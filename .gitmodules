@@ -1,0 +1,4 @@
+[submodule "3rdparty/net/3rdparty/net/acc_links"]
+	path = 3rdparty/net/3rdparty/net/acc_links
+	url = git@gitee.com:ascend/acc_links.git
+	branch = master

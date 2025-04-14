@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ */
+#ifndef MEM_FABRIC_HYBRID_HYBM_H
+#define MEM_FABRIC_HYBRID_HYBM_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Initialize hybrid big memory library
+ *
+ * @param globalSize       [in] total size of gva.
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
+int32_t hybm_init(size_t globalSize, uint64_t flags);
+
+/**
+ * @brief UnInitialize hybrid big memory library
+ */
+void hybm_uninit();
+
+/**
+ * @brief Set external log function, if not set, log message will be instdout
+ *
+ * @param logger           [in] logger function
+ * @return 0 if successful
+ */
+int32_t hybm_set_extern_logger(void (*logger)(int level, const char* msg));
+
+/**
+ * @brief Get error message by error code
+ *
+ * @param errCode          [in] error number returned by other functions
+ * @return error string if the error code exists, null if the error is invalid
+ */
+const char* hybm_get_error_string(int32_t errCode);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // MEM_FABRIC_HYBRID_HYBM_H
