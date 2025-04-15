@@ -19,7 +19,7 @@ extern "C" {
  * @param flags            [in] optional flags, default value 0
  * @return entity if created, nullptr if failed to create
  */
-hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options* options, uint32_t flags);
+hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options *options, uint32_t flags);
 
 /**
  * @brief Destroy HyBM entity
@@ -37,7 +37,7 @@ void hybm_destroy_entity(hybm_entity_t e, uint32_t flags);
  * @param reservedMem      [out] pointer of reserved virtual space
  * @return 0 if reserved successful
  */
-int32_t hybm_reserve_mem_space(hybm_entity_t e, uint32_t flags, void** reservedMem);
+int32_t hybm_reserve_mem_space(hybm_entity_t e, uint32_t flags, void **reservedMem);
 
 /**
  * @brief Un-reserve virtual memory space at local side
@@ -47,7 +47,7 @@ int32_t hybm_reserve_mem_space(hybm_entity_t e, uint32_t flags, void** reservedM
  * @param reservedMem      [in] pointer of reserved virtual space to be un-reserved
  * @return 0 if reserved successful
  */
-int32_t hybm_unreserve_mem_space(hybm_entity_t e, uint32_t flags, void* reservedMem);
+int32_t hybm_unreserve_mem_space(hybm_entity_t e, uint32_t flags, void *reservedMem);
 
 /**
  * @brief Allocate memory at local side
@@ -80,7 +80,7 @@ int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t
  * @param exInfo           [out] exchange info to be filled in
  * @return 0 if successful, error code if failed
  */
-int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info* exInfo);
+int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo);
 
 /**
  * @brief Import batch of exchange info of other HyBM entities
@@ -101,7 +101,7 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
  * @param size             [in] user extra context size
  * @return 0 if successful
  */
-int32_t hybm_set_extra_context(hybm_entity_t e, const void* context, uint32_t size);
+int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
 
 /**
  * @brief Start the entity, for example threads for RoCE, SDMA related threads
@@ -124,4 +124,4 @@ void hybm_stop(hybm_entity_t e, uint32_t flags);
 }
 #endif
 
-#endif  // MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
+#endif // MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H

@@ -33,14 +33,13 @@ protected:
     int32_t mRefCount = 0;
 };
 
-template <typename T>
-class SmRef {
+template <typename T> class SmRef {
 public:
     // constructor
     SmRef() noexcept = default;
 
     // fix: can't be explicit
-    SmRef(T* newObj) noexcept
+    SmRef(T *newObj) noexcept
     {
         // if new obj is not null, increase reference count and assign to mObj
         // else nothing need to do as mObj is nullptr by default
@@ -50,7 +49,7 @@ public:
         }
     }
 
-    SmRef(const SmRef<T>& other) noexcept
+    SmRef(const SmRef<T> &other) noexcept
     {
         // if other's obj is not null, increase reference count and assign to mObj
         // else nothing need to do as mObj is nullptr by default
@@ -60,7 +59,7 @@ public:
         }
     }
 
-    SmRef(SmRef<T>&& other) noexcept : mObj(std::__exchange(other.mObj, nullptr))
+    SmRef(SmRef<T> &&other) noexcept : mObj(std::__exchange(other.mObj, nullptr))
     {
         // move constructor
         // since this mObj is null, just exchange
@@ -75,13 +74,13 @@ public:
     }
 
     // operator =
-    inline SmRef<T>& operator=(T* newObj)
+    inline SmRef<T> &operator = (T *newObj)
     {
         this->Set(newObj);
         return *this;
     }
 
-    inline SmRef<T>& operator=(const SmRef<T>& other)
+    inline SmRef<T> &operator = (const SmRef<T> &other)
     {
         if (this != &other) {
             this->Set(other.mObj);
@@ -89,7 +88,7 @@ public:
         return *this;
     }
 
-    SmRef<T>& operator=(SmRef<T>&& other) noexcept
+    SmRef<T> &operator = (SmRef<T> &&other) noexcept
     {
         if (this != &other) {
             auto tmp = mObj;
@@ -102,38 +101,38 @@ public:
     }
 
     // equal operator
-    inline bool operator==(const SmRef<T>& other) const
+    inline bool operator == (const SmRef<T> &other) const
     {
         return mObj == other.mObj;
     }
 
-    inline bool operator==(T* other) const
+    inline bool operator == (T *other) const
     {
         return mObj == other;
     }
 
-    inline bool operator!=(const SmRef<T>& other) const
+    inline bool operator != (const SmRef<T> &other) const
     {
         return mObj != other.mObj;
     }
 
-    inline bool operator!=(T* other) const
+    inline bool operator != (T *other) const
     {
         return mObj != other;
     }
 
     // get operator and set
-    inline T* operator->() const
+    inline T *operator->() const
     {
         return mObj;
     }
 
-    inline T* Get() const
+    inline T *Get() const
     {
         return mObj;
     }
 
-    inline void Set(T* newObj)
+    inline void Set(T *newObj)
     {
         if (newObj == mObj) {
             return;
@@ -151,24 +150,22 @@ public:
     }
 
 private:
-    T* mObj = nullptr;
+    T *mObj = nullptr;
 };
 
-template <class Src, class Des>
-static SmRef<Des> Convert(const SmRef<Src>& child)
+template <class Src, class Des> static SmRef<Des> Convert(const SmRef<Src> &child)
 {
     if (child.Get() != nullptr) {
-        return SmRef<Des>(static_cast<Des*>(child.Get()));
+        return SmRef<Des>(static_cast<Des *>(child.Get()));
     }
     return nullptr;
 }
 
-template <typename C, typename... ARGS>
-inline SmRef<C> SmMakeRef(ARGS... args)
+template <typename C, typename... ARGS> inline SmRef<C> SmMakeRef(ARGS... args)
 {
     return new (std::nothrow) C(args...);
 }
 
-}  // namespace smem
-}  // namespace ock
-#endif  // MEMFABRIC_HYBRID_SMEM_REF_H
+}
+}
+#endif // MEMFABRIC_HYBRID_SMEM_REF_H

@@ -35,7 +35,9 @@ constexpr uint32_t UN58 = 58;
 constexpr uint32_t UN128 = 128;
 constexpr uint32_t UN65536 = 65536;
 constexpr uint32_t UN16777216 = 16777216;
-}  // namespace smem
-}  // namespace ock
 
-#endif  // MEMFABRIC_HYBRID_SMEM_TYPES_H
+constexpr uint32_t SMEM_DEFAUT_WAIT_TIME = 120; // 120s
+} // namespace smem
+} // namespace ock
+
+#endif // MEMFABRIC_HYBRID_SMEM_TYPES_H

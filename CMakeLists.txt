@@ -65,4 +65,4 @@ if(BUILD_TESTS STREQUAL "ON")
 endif()
 
 add_subdirectory(3rdparty)
-add_subdirectory(src/smem)
+add_subdirectory(src)

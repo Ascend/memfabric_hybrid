@@ -12,7 +12,7 @@ constexpr uint64_t SECOND_TO_MILLSEC = 1000U;
 
 namespace ock {
 namespace smem {
-class SmemTimedwait {  // wait signal or overtime, instead of sem_timedwait
+class SmemTimedwait {    // wait signal or overtime, instead of sem_timedwait
 public:
     SmemTimedwait() = default;
     ~SmemTimedwait() = default;
@@ -31,9 +31,7 @@ public:
 
     int32_t TimedwaitMillsecs(long msecs)
     {
-        struct timespec ts {
-            0, 0
-        };
+        struct timespec ts {0, 0};
         int32_t ret = 0;
 
         pthread_mutex_lock(&this->timeCheckerMutex_);
@@ -45,9 +43,9 @@ public:
         long add = msecs / (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
         ts.tv_sec += (add + secs);
         ts.tv_nsec = msecs % (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
-        while (!this->signalFlag) {  // avoid spurious wakeup
+        while (!this->signalFlag) {    // avoid spurious wakeup
             ret = pthread_cond_timedwait(&this->condTimeChecker_, &this->timeCheckerMutex_, &ts);
-            if (ret == ETIMEDOUT) {  // avoid infinite loop
+            if (ret == ETIMEDOUT) {    // avoid infinite loop
                 ret = SM_TIMEOUT;
                 break;
             }
@@ -73,15 +71,14 @@ public:
         pthread_mutex_unlock(&this->timeCheckerMutex_);
         return signalRet;
     }
-
 private:
     pthread_condattr_t cattr_;
     pthread_cond_t condTimeChecker_;
     pthread_mutex_t timeCheckerMutex_;
-    bool signalFlag{false};  // signal will NOT lost when call PthreadSignal before PthreadTimedwaitMillsecs
+    bool signalFlag { false };  // signal will NOT lost when call PthreadSignal before PthreadTimedwaitMillsecs
 };
 
-}  // namespace smem
-}  // namespace ock
+}
+}
 
-#endif  // MEM_FABRIC_HYBRID_SMEM_TIMEDWAIT_H
+#endif // MEM_FABRIC_HYBRID_SMEM_TIMEDWAIT_H

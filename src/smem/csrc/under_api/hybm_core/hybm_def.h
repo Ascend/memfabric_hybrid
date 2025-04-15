@@ -10,8 +10,8 @@
 extern "C" {
 #endif
 
-typedef void* hybm_entity_t;
-typedef void* hybm_mem_slice_t;
+typedef void *hybm_entity_t;
+typedef void *hybm_mem_slice_t;
 
 #define HYBM_FREE_SINGLE_SLICE 0x00
 #define HYBM_FREE_ALL_SLICE 0x01
@@ -84,4 +84,8 @@ typedef enum {
 }
 #endif
 
-#endif  // MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
+namespace ock {
+namespace mf {}
+}
+
+#endif // MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
