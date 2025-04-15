@@ -51,17 +51,18 @@ message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
-        )
-
-add_subdirectory(3rdparty)
-add_subdirectory(src/smem)
+        ${PROJECT_SOURCE_DIR}/include/hybm
+)
 
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
 if(BUILD_TESTS STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 14)
     message(STATUS "BUILD_TESTS = ON, add compile gov")
     add_subdirectory(test)
-    add_definitions(-DUT_ENABLED)
+    add_compile_options(-DUT_ENABLED)
     add_compile_options(-fprofile-arcs -ftest-coverage)
     add_link_options(-lgcov --coverage)
 endif()
+
+add_subdirectory(3rdparty)
+add_subdirectory(src/smem)
