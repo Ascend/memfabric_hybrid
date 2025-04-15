@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#ifndef MEMFABRIC_HYBRID_SMEM_H
-#define MEMFABRIC_HYBRID_SMEM_H
+#ifndef __MEMFABRIC_SMEM_H__
+#define __MEMFABRIC_SMEM_H__
 
 #include "stdint.h"
 
@@ -13,11 +13,10 @@ extern "C" {
 /**
  * @brief Initialize the smem running environment
  *
- * @param globalSize       [in] reserved memory size
  * @param flags            [in] optional flags, reserved
  * @return 0 if successful,
  */
-int32_t smem_init(uint64_t globalSize, uint32_t flags);
+int32_t smem_init(uint32_t flags);
 
 /**
  * @brief Set external log function
@@ -51,4 +50,4 @@ const char* smem_get_error_msg(int32_t errCode);
 }
 #endif
 
-#endif //MEMFABRIC_HYBRID_SMEM_H
+#endif  // __MEMFABRIC_SMEM_H__
