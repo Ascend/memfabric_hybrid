@@ -9,5 +9,5 @@ include(${ASCENDC_CMAKE_DIR}/ascendc.cmake)
 
 # ascendc_library use to add kernel file to generate ascendc library
 ascendc_library(ascendc_kernels_${RUN_MODE} SHARED ${KERNEL_FILES})
-ascendc_include_directories(ascendc_kernels_${RUN_MODE} PUBLIC ${SMEM_INCLUDE_DIR}/low_level_api)
-ascendc_include_directories(ascendc_kernels_${RUN_MODE} PUBLIC ${SMEM_INCLUDE_DIR}/high_level_api)
+ascendc_include_directories(ascendc_kernels_${RUN_MODE} PUBLIC ${SMEM_INCLUDE_DIR}/low_level)
+ascendc_include_directories(ascendc_kernels_${RUN_MODE} PUBLIC ${SMEM_INCLUDE_DIR}/high_level)

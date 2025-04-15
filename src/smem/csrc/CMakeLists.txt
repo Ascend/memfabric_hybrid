@@ -41,7 +41,9 @@ target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a)
 
 #install
 file(GLOB HEADER_FILES ../include/host/*.h)
+file(GLOB DEVICE_HEADER_FILES ../include/device/low_level/*.h)
 install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/host)
+install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/device/)
 install(TARGETS smem_shared
         LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE

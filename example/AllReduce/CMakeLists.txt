@@ -13,7 +13,7 @@ if(CMAKE_INSTALL_PREFIX STREQUAL /usr/local)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}/out" CACHE STRING "path for install()" FORCE)
 endif()
 
-set(SMEM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src/smem/include/aicore/)
+set(SMEM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src/smem/include/device/)
 
 # ${KERNEL_FILES} are used to compile library, push files written by ascendc in ${KERNEL_FILES}.
 # ref to cmake/npu.cmake ascendc_library, cmake/cpu.cmake add_library
@@ -35,8 +35,9 @@ target_compile_options(shm_kernels PRIVATE
     -O2 -std=c++17 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Werror
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../src/smem/include/host)
-target_link_directories(shm_kernels PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../output)
+set(SMEM_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../output)
+include_directories(${SMEM_LIB_DIR}/smem/include/host)
+target_link_directories(shm_kernels PUBLIC ${SMEM_LIB_DIR}/smem/lib ${SMEM_LIB_DIR}/hybmm/lib)
 
 target_link_libraries(shm_kernels PRIVATE
     $<BUILD_INTERFACE:$<$<OR:$<STREQUAL:${RUN_MODE},npu>,$<STREQUAL:${RUN_MODE},sim>>:host_intf_pub>>

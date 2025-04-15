@@ -8,7 +8,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 #include "kernel_operator.h"
-#include "smem_shm_aicore_high_api.h"
+#include "smem_shm_aicore_api.h"
 
 constexpr uint64_t TOTAL_LENGTH = 16 * 2048;                            // total length of data
 constexpr int32_t USE_CORE_NUM = 8;                                   // num of core used
