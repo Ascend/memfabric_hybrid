@@ -29,14 +29,19 @@ typedef enum {
  * controlOperationTimeout: control operation timeout in second, i.e. barrier, allgather, topology_can_reach etc
  */
 typedef struct {
-    uint32_t shmInitTimeout;            // func smem_shm_init timeout, default 120 second
-    uint32_t shmCreateTimeout;          // func smem_shm_create timeout, default 120 second
-    uint32_t controlOperationTimeout;   // control operation timeout, i.e. barrier, allgather, topology_can_reach etc, default 120 second
-    bool startConfigStore;          // whether to start config store, default true
-    uint32_t flags;                     // other flag, default 0
+    uint32_t shmInitTimeout;            /* func smem_shm_init timeout, default 120 second */
+    uint32_t shmCreateTimeout;          /* func smem_shm_create timeout, default 120 second */
+    uint32_t controlOperationTimeout;   /* control operation timeout, i.e. barrier, allgather, topology_can_reach etc, default 120 second */
+    bool startConfigStore;              /* whether to start config store, default true */
+    uint32_t flags;                     /* other flag, default 0 */
 } smem_shm_config_t;
 
-
+/**
+ * @brief Initialize smem_shm_config_t, i.e. set to default value
+ *
+ * @param config           [in] config to be initialed
+ * @return 0 if successful
+ */
 int32_t smem_shm_config_init(smem_shm_config_t *config);
 
 /**
@@ -46,12 +51,12 @@ int32_t smem_shm_config_init(smem_shm_config_t *config);
  * this function will finish when all processes connected or timeout;
  * the global config store will be used to exchange information about shm object and team
  *
- * @param gvaSpaceSize     [in] global virtual memory space size, all shm objects will be created on this space
  * @param configStoreIpPort[in] ipPort of config store, e.g. tcp:://ip:port
  * @param worldSize        [in] size of processes
  * @param rankId           [in] local rank id in world size
  * @param deviceId         [in] device npu id
- * @param config           [in] init config, see smem_shm_config_t
+ * @param gvaSpaceSize     [in] global virtual memory space size, all shm objects will be created on this space
+ * @param config           [in] config, see @smem_shm_config_t
  * @return 0 if successfully
  */
 int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
@@ -99,7 +104,8 @@ int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags);
 int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size);
 
 /**
- * get global shm team
+ * @brief Get global shm team
+ *
  * @param handle            [in] the shm object
  * @return global team
  */

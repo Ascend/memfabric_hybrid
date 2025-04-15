@@ -19,18 +19,27 @@ extern "C" {
 int32_t smem_init(uint32_t flags);
 
 /**
- * @brief Set external log function
+ * @brief Set external log function, user can set customized logger function,
+ * in the customized logger function, user can use unified logger utility,
+ * then the log message can be written into the same log file as caller's,
+ * if it is not set, acc_links log message will be printed to stdout.
  *
- * @param fun              [in] external log function
+ * level description:
+ * 0 DEBUG,
+ * 1 INFO,
+ * 2 WARN,
+ * 3 ERROR
+ *
+ * @param func             [in] external function
  * @return 0 if successful
  */
-int32_t smem_set_extern_logger(void (*fun)(int, const char*));
+int32_t smem_set_extern_logger(void (*func)(int level, const char* msg));
 
 /**
  * @brief set log print level
  *
  * @param level            [in] log level, 0:debug 1:info 2:warn 3:error
- * @return 0 if successful,
+ * @return 0 if successful
  */
 int32_t smem_set_log_level(int level);
 
