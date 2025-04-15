@@ -8,10 +8,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 #include "kernel_operator.h"
-#include "smem_shm_aicore_high_api.h"
+#include "smem_shm_aicore_api.h"
 
 constexpr int32_t RANK_SIZE_MAX = 32;
-constexpr int32_t BLOCK_LEN = SMEM_ALIGN_SIZE / sizeof(int64_t);
+constexpr int32_t BLOCK_LEN = SHMEM_ALIGN_SIZE / sizeof(int64_t);
 constexpr int64_t FLAG_MAGIC = 3285742LL;
 
 
@@ -22,13 +22,13 @@ public:
     {
         gvaSt = (__gm__ int64_t *)gva;
         inputGm = (__gm__ int64_t *)local;
-        pipe.InitBuffer(bufQueue, BUFFER_NUM, SMEM_ALIGN_SIZE);
+        pipe.InitBuffer(bufQueue, BUFFER_NUM, SHMEM_ALIGN_SIZE);
     }
     __aicore__ inline void Process()
     {
         AscendC::LocalTensor<int64_t> bufTensor = bufQueue.AllocTensor<int64_t>();
         __ubuf__ int64_t *buf = (__ubuf__ int64_t *)bufTensor.address_.bufferAddr;
-        smem_set_copy_ubuf(buf, SMEM_ALIGN_SIZE);
+        smem_set_copy_ubuf(buf, SHMEM_ALIGN_SIZE);
 
         uint32_t rank = smem_shm_get_global_rank();
         uint32_t rankSize = smem_shm_get_global_rank_size();

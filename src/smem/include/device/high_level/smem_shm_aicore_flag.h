@@ -6,7 +6,7 @@
 
 #include "smem_shm_aicore_copy.h"
 
-SMEM_INLINE_AICORE void smem_set_flag(__ubuf__ int64_t *ubAddr,
+SHMEM_INLINE_AICORE void smem_set_flag(__ubuf__ int64_t *ubAddr,
 __gm__ int64_t *gvaAddr, int64_t flagValue)
 {
     AscendC::PipeBarrier<PIPE_ALL>();
@@ -17,7 +17,7 @@ __gm__ int64_t *gvaAddr, int64_t flagValue)
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-SMEM_INLINE_AICORE void smem_wait_flag(__ubuf__ int64_t *ubAddr,
+SHMEM_INLINE_AICORE void smem_wait_flag(__ubuf__ int64_t *ubAddr,
 __gm__ int64_t *gvaAddr, int64_t expectValue)
 {
     while (true) {

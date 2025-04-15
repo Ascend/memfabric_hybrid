@@ -8,12 +8,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 #include "kernel_operator.h"
-#include "smem_shm_aicore_high_api.h"
+#include "smem_shm_aicore_api.h"
 
 constexpr uint64_t TOTAL_LENGTH = 16 * 2048;                            // total length of data
 constexpr int32_t USE_CORE_NUM = 8;                                   // num of core used
 constexpr int32_t RANK_SIZE_MAX = 32;
-constexpr int32_t FLAG_OFFSET = SMEM_ALIGN_SIZE / sizeof(int64_t);
+constexpr int32_t FLAG_OFFSET = SHMEM_ALIGN_SIZE / sizeof(int64_t);
 constexpr int64_t FLAG_MAGIC = 3285742LL;
 
 class KernelAllReduce {
@@ -33,13 +33,13 @@ public:
             uint64_t startAddr = shmVa + flagOffset + coreOffset * blockLen * sizeof(half);
 
             dataGm[i].SetGlobalBuffer((__gm__ half *)startAddr, blockLen);
-            flagAddr[i] = (__gm__ int64_t *)(shmVa + AscendC::GetBlockIdx() * SMEM_ALIGN_SIZE * 2);
+            flagAddr[i] = (__gm__ int64_t *)(shmVa + AscendC::GetBlockIdx() * SHMEM_ALIGN_SIZE * 2);
         }
 
         pipe.InitBuffer(inQueue, BUFFER_NUM, blockLen * sizeof(half));
         pipe.InitBuffer(calQueue, BUFFER_NUM, blockLen * sizeof(half));
         pipe.InitBuffer(outQueue, BUFFER_NUM, blockLen * sizeof(half));
-        pipe.InitBuffer(flagQueue, BUFFER_NUM, sizeof(int64_t) * SMEM_ALIGN_SIZE);
+        pipe.InitBuffer(flagQueue, BUFFER_NUM, sizeof(int64_t) * SHMEM_ALIGN_SIZE);
     }
     __aicore__ inline void Process()
     {

@@ -16,7 +16,7 @@
 extern void shm_all_shift_do(void* stream, uint8_t* gva, int64_t *localInput);
 
 static uint32_t gNpuNum = 16;
-static uint64_t gNpuMallocSpace = 1024UL * 1024UL;
+static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)

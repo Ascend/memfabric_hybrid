@@ -10,13 +10,13 @@ __BLOCK_LOCAL__ __inline__ uint64_t gD2dUbuf;
 __BLOCK_LOCAL__ __inline__ uint32_t gUbufSize;
 
 template<typename T>
-SMEM_INLINE_AICORE void smem_set_copy_ubuf(__ubuf__ T* srcUb, uint32_t size)
+SHMEM_INLINE_AICORE void smem_set_copy_ubuf(__ubuf__ T* srcUb, uint32_t size)
 {
     gD2dUbuf = reinterpret_cast<uint64_t>(srcUb);
     gUbufSize = size;
 }
 
-SMEM_INLINE_AICORE void smem_unset_copy_ubuf()
+SHMEM_INLINE_AICORE void smem_unset_copy_ubuf()
 {
     gD2dUbuf = 0;
     gUbufSize = 0;
@@ -32,7 +32,7 @@ public:
         outputGm = dstGva;
         transUb = tmpUb;
         dataSizeRemain = size;
-        blockSize = SMEM_ALIGN_DOWN(ubSize, sizeof(T));
+        blockSize = SHMEM_ALIGN_DOWN(ubSize, sizeof(T));
     }
 
     __aicore__ inline void Process()
@@ -65,7 +65,7 @@ private:
 };
 
 template <typename T>
-SMEM_INLINE_AICORE void smem_copy_gm2gm(__gm__ T* dstGva, __gm__ T* srcGva, uint32_t size)
+SHMEM_INLINE_AICORE void smem_copy_gm2gm(__gm__ T* dstGva, __gm__ T* srcGva, uint32_t size)
 {
     SmemCopyGM2GM<T> cpKernel;
     cpKernel.Init(dstGva, srcGva, reinterpret_cast<__ubuf__ T*>(gD2dUbuf), size, gUbufSize);
