@@ -54,10 +54,10 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     auto client = SmemShmEntryManager::Instance().GetStoreClient();
     SM_ASSERT_RETURN(client != nullptr, SM_INVALID_PARAM);
 
-    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(0, rankSize, rankId);
+    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(0, id_, rankSize, rankId);
     SM_ASSERT_RETURN(team != nullptr, SM_ERROR);
 
-    auto ret = team->Initialize(id_, extraConfig_.controlOperationTimeout, client);
+    auto ret = team->Initialize(extraConfig_.controlOperationTimeout, client);
     if (ret != SM_OK) {
         SM_LOG_ERROR("global team init failed! ret: " << ret);
         return SM_ERROR;
@@ -168,15 +168,35 @@ SmemShmTeam *SmemShmEntry::CreateTeam(const uint32_t *rankList, uint32_t rankSiz
 
     auto client = SmemShmEntryManager::Instance().GetStoreClient();
     SM_ASSERT_RETURN(client != nullptr, nullptr);
-    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(teamSn_.fetch_add(1U), rankSize, id);
+    uint32_t teamId = teamSn_.fetch_add(1U);
+    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(teamId, id_, rankSize, id);
     SM_ASSERT_RETURN(team != nullptr, nullptr);
 
-    auto ret = team->Initialize(id_, extraConfig_.controlOperationTimeout, client);
+    auto ret = team->Initialize(extraConfig_.controlOperationTimeout, client);
     if (ret != SM_OK) {
         SM_LOG_ERROR("smem team init failed! ret: " << ret);
         return nullptr;
     }
+
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    teamMap_.emplace(teamId, team);
+
+    SM_LOG_INFO("smemId: " << id_ << " create team : " <<
+        SmemArray2String(rankList, rankSize) << " teamId: " << teamId);
     return team.Get();
+}
+
+Result SmemShmEntry::RemoveTeam(SmemShmTeam *team)
+{
+    uint32_t teamId = team->GetTeamId();
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    auto it = teamMap_.find(teamId);
+    if (it == teamMap_.end()) {
+        SM_LOG_ERROR("not found this team, remove team failed, teamId: " << teamId << " smemId: " << id_);
+        return SM_ERROR;
+    }
+    teamMap_.erase(it);
+    return SM_OK;
 }
 
 void SmemShmEntry::SetConfig(const smem_shm_config_t &config)

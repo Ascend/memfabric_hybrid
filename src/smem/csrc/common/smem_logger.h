@@ -240,4 +240,15 @@ private:
         }                                               \
     } while (0)
 
+template<class T>
+inline std::string SmemArray2String(const T *arr, uint32_t len)
+{
+    std::ostringstream oss;
+    oss << "[";
+    for (uint32_t i = 0; i < len; i++) {
+        oss << arr[i] << (i + 1 == len ? "]" : ",");
+    }
+    return oss.str();
+}
+
 #endif  // MEMFABRIC_HYBRID_SMEM_LOGGER_H

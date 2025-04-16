@@ -13,11 +13,11 @@ namespace smem {
 
 class SmemShmTeam : public SmReferable {
 public:
-    SmemShmTeam(uint32_t id, uint32_t rankSize, uint32_t rank)
-        : teamId_(id), rankSize_(rankSize), localRank_(rank) {}
+    SmemShmTeam(uint32_t id, uint32_t entryId, uint32_t rankSize, uint32_t rank)
+        : teamId_(id), shmEntryId_(entryId), rankSize_(rankSize), localRank_(rank) {}
     ~SmemShmTeam();
     // teamTimeout(unit: second)
-    Result Initialize(uint32_t smemId, uint32_t teamTimeout, StorePtr store);
+    Result Initialize(uint32_t teamTimeout, StorePtr store);
 
     Result TeamBarrier();
 
@@ -27,12 +27,17 @@ public:
 
     uint32_t GetRankSize() const;
 
+    uint32_t GetShmEntryId() const;
+
+    uint32_t GetTeamId() const;
+
 private:
     SmemGroupEnginePtr ge_ = nullptr;
     std::string prefix_;
     uint32_t rankSize_ = UINT32_MAX;
     uint32_t localRank_ = UINT32_MAX;
     uint32_t teamId_ = UINT32_MAX;
+    uint32_t shmEntryId_ = UINT32_MAX;
     bool inited_ = false;
 };
 using SmemShmTeamPtr = SmRef<SmemShmTeam>;
@@ -45,6 +50,16 @@ inline uint32_t SmemShmTeam::GetLocalRank() const
 inline uint32_t SmemShmTeam::GetRankSize() const
 {
     return rankSize_;
+}
+
+inline uint32_t SmemShmTeam::GetShmEntryId() const
+{
+    return shmEntryId_;
+}
+
+inline uint32_t SmemShmTeam::GetTeamId() const
+{
+    return teamId_;
 }
 } // namespace smem
 } // namespace ock

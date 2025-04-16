@@ -25,6 +25,7 @@ public:
                       uint16_t deviceId, smem_shm_config_t *config);
     Result CreateEntryById(uint32_t id, SmemShmEntryPtr &entry);
     Result GetEntryByPtr(uintptr_t ptr, SmemShmEntryPtr &entry);
+    Result GetEntryById(uint32_t id, SmemShmEntryPtr &entry);
     Result RemoveEntryByPtr(uintptr_t ptr);
 
     uint16_t GetDeviceId() const;
@@ -34,7 +35,7 @@ public:
 private:
     std::mutex entryMutex_;
     std::map<uintptr_t, SmemShmEntryPtr> ptr2EntryMap_; /* lookup entry by ptr */
-    std::set<uint32_t> entryIdSet_;                     /* deduplicate entry by id */
+    std::map<uint32_t, SmemShmEntryPtr> entryIdMap_;    /* deduplicate entry by id */
     smem_shm_config_t config_;
     uint16_t deviceId_ = 0;
     bool inited_ = false;
