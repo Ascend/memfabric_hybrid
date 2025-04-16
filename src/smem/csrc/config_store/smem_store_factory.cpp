@@ -12,24 +12,27 @@ namespace smem {
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId) noexcept
 {
-    auto store = std::make_shared<TcpConfigStore>(ip, port, isServer, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, rankId);
+    SM_ASSERT_RETURN(store != nullptr, nullptr);
+
     auto ret = store->Startup();
     if (ret != 0) {
-        SM_LOG_ERROR("startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
+        SM_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
                                               << ") failed:" << ret);
         return nullptr;
     }
 
-    return store;
+    return store.Get();
 }
 
 StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::string &prefix) noexcept
 {
-    if (base == nullptr) {
-        return nullptr;
-    }
+    SM_PARAM_VALIDATE(base == nullptr, "Invalid param, base is nullptr", nullptr);
 
-    return std::make_shared<PrefixConfigStore>(base, prefix);
+    auto store = SmMakeRef<PrefixConfigStore>(base, prefix);
+    SM_ASSERT_RETURN(store != nullptr, nullptr);
+
+    return store.Get();
 }
-}
-}
+}  // namespace smem
+}  // namespace ock

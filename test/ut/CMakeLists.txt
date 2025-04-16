@@ -12,7 +12,7 @@ if(NOT EXISTS ${CHECK_FILE_LINKS})
 endif()
 
 target_compile_options(test_mf_hy PUBLIC -D_GNU_SOURCE -g)
-target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/net/lib/)
+target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib/)
 set_target_properties(test_mf_hy PROPERTIES OUTPUT_NAME "test_mf_hy")
 set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)

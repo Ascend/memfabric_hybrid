@@ -21,13 +21,13 @@ public:
 
     void TearDown() override
     {
-        client.reset();
-        server.reset();
+        // client.reset();
+        // server.reset();
     }
 
 protected:
-    std::shared_ptr<ock::smem::ConfigStore> client;
-    std::shared_ptr<ock::smem::ConfigStore> server;
+    ock::smem::StorePtr client;
+    ock::smem::StorePtr server;
 };
 
 TEST_F(AccConfigStoreTest, set_get_check)
@@ -81,7 +81,7 @@ TEST_F(AccConfigStoreTest, get_timeout)
     std::vector<uint8_t> value;
 
     auto ret = client->Get(key, value, 100);
-    ASSERT_EQ(ock::smem::ErrorCode::TIMEOUT, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::TIMEOUT, ret);
 }
 
 TEST_F(AccConfigStoreTest, get_not_exist_imm)
@@ -90,7 +90,7 @@ TEST_F(AccConfigStoreTest, get_not_exist_imm)
     std::vector<uint8_t> value;
 
     auto ret = client->Get(key, value, 0);
-    ASSERT_EQ(ock::smem::ErrorCode::NOT_EXIST, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::NOT_EXIST, ret);
 }
 
 TEST_F(AccConfigStoreTest, append_key_check)
@@ -103,22 +103,22 @@ TEST_F(AccConfigStoreTest, append_key_check)
     uint64_t size = 0;
     uint64_t expectSize = value1.length();
     auto ret = client->Append(key, value1, size);
-    ASSERT_EQ(ock::smem::ErrorCode::SUCCESS, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
     ASSERT_EQ(expectSize, size);
 
     expectSize += value2.size();
     ret = server->Append(key, value2, size);
-    ASSERT_EQ(ock::smem::ErrorCode::SUCCESS, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
     ASSERT_EQ(expectSize, size);
 
     expectSize += value3.size();
     ret = client->Append(key, value3, size);
-    ASSERT_EQ(ock::smem::ErrorCode::SUCCESS, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
     ASSERT_EQ(expectSize, size);
 
     std::string lastValue;
     ret = client->Get(key, lastValue, 0);
-    ASSERT_EQ(ock::smem::ErrorCode::SUCCESS, ret);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
     ASSERT_EQ(std::string(value1).append(value2).append(value3), lastValue);
 }
 

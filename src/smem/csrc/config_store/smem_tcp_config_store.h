@@ -5,10 +5,11 @@
 #ifndef SMEM_SMEM_TCP_CONFIG_STORE_H
 #define SMEM_SMEM_TCP_CONFIG_STORE_H
 
-#include <memory>
-#include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
+#include <mutex>
+
 #include "smem_config_store.h"
 #include "smem_tcp_config_store_server.h"
 
@@ -32,37 +33,41 @@ class TcpConfigStore : public ConfigStore {
 public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, int32_t rankId = 0) noexcept;
     ~TcpConfigStore() noexcept override;
-    int32_t Startup() noexcept;
+
+    Result Startup() noexcept;
     void Shutdown() noexcept;
 
-    int Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
-    int Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;
-    int Remove(const std::string &key) noexcept override;
-    int Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override;
+    Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
+    Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;
+    Result Remove(const std::string &key) noexcept override;
+    Result Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override;
 
 protected:
-    int GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs = -1) noexcept override;
+    Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs = -1) noexcept override;
 
 private:
     std::shared_ptr<ock::acc::AccTcpRequestContext> SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept;
-    int32_t LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
-    int32_t ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
+    Result LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
+    Result ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
     static uint8_t *DuplicateMessage(const std::vector<uint8_t> &message) noexcept;
 
 private:
-    const std::string serverIp_;
-    const uint16_t serverPort_;
-    const bool isServer_;
-    const int32_t rankId_;
-    std::shared_ptr<AccStoreServer> accServer_;
+    AccStoreServerPtr accServer_;
     ock::acc::AccTcpServerPtr accClient_;
     ock::acc::AccTcpLinkComplexPtr accClientLink_;
 
     std::mutex msgCtxMutex_;
     std::unordered_map<uint32_t, std::shared_ptr<ClientWaitContext>> msgWaitContext_;
     static std::atomic<uint32_t> reqSeqGen_;
+
+    std::mutex mutex_;
+    const std::string serverIp_;
+    const uint16_t serverPort_;
+    const bool isServer_;
+    const int32_t rankId_;
 };
-}
-}
+using TcpConfigStorePtr = SmRef<TcpConfigStore>;
+}  // namespace smem
+}  // namespace ock
 
 #endif  // SMEM_SMEM_TCP_CONFIG_STORE_H

@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "acc_tcp_server.h"
+#include "acc_links/net/acc_tcp_server.h"
 #include "smem_message_packer.h"
 
 namespace ock {
@@ -61,21 +61,26 @@ private:
     static std::atomic<uint64_t> idGen_;
 };
 
-class AccStoreServer {
+class AccStoreServer : public SmReferable {
 public:
     AccStoreServer(std::string ip, uint16_t port) noexcept;
-    int32_t Startup() noexcept;
+    ~AccStoreServer() override = default;
+
+    Result Startup() noexcept;
     void Shutdown() noexcept;
 
 private:
-    int32_t ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
-    int LinkConnectedHandler(const ock::acc::AccConnReq &req, const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
-    int32_t LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
-    int32_t SetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    int32_t GetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    int32_t AddHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    int32_t RemoveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    int32_t AppendHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
+    Result LinkConnectedHandler(const ock::acc::AccConnReq &req, const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
+    Result LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
+
+    /* business handler */
+    Result SetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result GetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result AddHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result RemoveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result AppendHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+
     std::list<ock::acc::AccTcpRequestContext> GetOutWaitersInLock(const std::unordered_set<uint64_t> &ids) noexcept;
     void WakeupWaiters(const std::list<ock::acc::AccTcpRequestContext> &waiters,
                        const std::vector<uint8_t> &value) noexcept;
@@ -86,8 +91,6 @@ private:
 
 private:
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;
-    const std::string listenIp_;
-    const uint16_t listenPort_;
 
     using MessageHandle = int32_t (AccStoreServer::*)(const ock::acc::AccTcpRequestContext &, SmemMessage &);
     const std::unordered_map<MessageType, MessageHandle> requestHandlers_;
@@ -101,8 +104,13 @@ private:
     std::unordered_map<int64_t, std::unordered_set<uint64_t>> timedWaiters_;
     std::thread timerThread_;
     bool running_{false};
+
+    const std::string listenIp_;
+    const uint16_t listenPort_;
+    std::mutex mutex_;
 };
-}
-}
+using AccStoreServerPtr = SmRef<AccStoreServer>;
+}  // namespace smem
+}  // namespace ock
 
 #endif  //SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H

@@ -13,14 +13,14 @@ using Result = int32_t;
 enum SMErrorCode : int32_t {
     SM_OK = 0,
     SM_ERROR = -1,
-    SM_INVALID_PARAM = -2,
-    SM_MALLOC_FAILED = -3,
-    SM_NEW_OBJECT_FAILED = -4,
-    SM_NOT_STARTED = -5,
-    SM_TIMEOUT = -6,
-    SM_REPEAT_CALL = -7,
-    SM_DUPLICATED_OBJECT = -8,
-    SM_OBJECT_NOT_EXISTS = -9,
+    SM_INVALID_PARAM = -2000,
+    SM_MALLOC_FAILED = -2001,
+    SM_NEW_OBJECT_FAILED = -2002,
+    SM_NOT_STARTED = -2003,
+    SM_TIMEOUT = -2004,
+    SM_REPEAT_CALL = -2005,
+    SM_DUPLICATED_OBJECT = -2006,
+    SM_OBJECT_NOT_EXISTS = -2007,
 };
 
 constexpr int32_t N16 = 16;

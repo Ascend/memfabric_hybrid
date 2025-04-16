@@ -44,7 +44,7 @@ TcpConfigStore::TcpConfigStore(std::string ip, uint16_t port, bool isServer, int
       rankId_{rankId}
 {
     if (isServer_) {
-        accServer_ = std::make_shared<AccStoreServer>(serverIp_, serverPort_);
+        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
     }
 }
 
@@ -53,25 +53,32 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-int32_t TcpConfigStore::Startup() noexcept
+Result TcpConfigStore::Startup() noexcept
 {
+    Result result = SM_OK;
+
+    std::lock_guard<std::mutex> guard(mutex_);
     if (accClient_ != nullptr) {
-        SM_LOG_ERROR("TcpConfigStore already startup");
-        return -1;
+        SM_LOG_WARN("TcpConfigStore already startup");
+        return SM_OK;
     }
 
     accClient_ = ock::acc::AccTcpServer::Create();
     if (accClient_ == nullptr) {
         SM_LOG_ERROR("create acc tcp client failed.");
-        return -1;
+        return SM_ERROR;
     }
 
     if (isServer_) {
-        accServer_ = std::make_shared<AccStoreServer>(serverIp_, serverPort_);
-        auto ret = accServer_->Startup();
-        if (ret != 0) {
+        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
+        if (accServer_ == nullptr) {
             Shutdown();
-            return ret;
+            return SM_NEW_OBJECT_FAILED;
+        }
+
+        if ((result = accServer_->Startup()) != SM_OK) {
+            Shutdown();
+            return result;
         }
     }
 
@@ -82,23 +89,21 @@ int32_t TcpConfigStore::Startup() noexcept
 
     ock::acc::AccTcpServerOptions options;
     options.linkSendQueueSize = ock::acc::UNO_48;
-    auto ret = accClient_->Start(options);
-    if (ret != 0) {
-        SM_LOG_ERROR("start acc client failed: " << ret);
+    if ((result = accClient_->Start(options)) != SM_OK) {
+        SM_LOG_ERROR("start acc client failed: " << result);
         Shutdown();
-        return ret;
+        return result;
     }
 
     ock::acc::AccConnReq connReq;
     connReq.rankId = rankId_;
-    ret = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, accClientLink_);
-    if (ret != 0) {
-        SM_LOG_ERROR("connect to server failed: " << ret);
+    if ((result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, accClientLink_)) != 0) {
+        SM_LOG_ERROR("connect to server failed: " << result);
         Shutdown();
-        return ret;
+        return result;
     }
 
-    return 0;
+    return SM_OK;
 }
 
 void TcpConfigStore::Shutdown() noexcept
@@ -116,11 +121,11 @@ void TcpConfigStore::Shutdown() noexcept
     }
 }
 
-int TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &value) noexcept
+Result TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &value) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length invalid.");
-        return INVALID_KEY;
+        return StoreErrorCode::INVALID_KEY;
     }
 
     SmemMessage request{MessageType::SET};
@@ -142,11 +147,11 @@ int TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &valu
     return responseCode;
 }
 
-int TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept
+Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length invalid.");
-        return INVALID_KEY;
+        return StoreErrorCode::INVALID_KEY;
     }
 
     SmemMessage request{MessageType::GET};
@@ -184,11 +189,11 @@ int TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &value,
     return 0;
 }
 
-int TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &value) noexcept
+Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &value) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length invalid.");
-        return INVALID_KEY;
+        return StoreErrorCode::INVALID_KEY;
     }
 
     SmemMessage request{MessageType::ADD};
@@ -200,7 +205,7 @@ int TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &valu
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
         SM_LOG_ERROR("send add for key : " << key << ", get null response");
-        return -1;
+        return StoreErrorCode::ERROR;
     }
 
     auto responseCode = response->Header().result;
@@ -212,14 +217,14 @@ int TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &valu
     auto data = reinterpret_cast<const char *>(response->DataPtr());
     value = strtol(data, nullptr, 10);
 
-    return 0;
+    return StoreErrorCode::SUCCESS;
 }
 
-int TcpConfigStore::Remove(const std::string &key) noexcept
+Result TcpConfigStore::Remove(const std::string &key) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length invalid.");
-        return INVALID_KEY;
+        return StoreErrorCode::INVALID_KEY;
     }
 
     SmemMessage request{MessageType::REMOVE};
@@ -229,7 +234,7 @@ int TcpConfigStore::Remove(const std::string &key) noexcept
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
         SM_LOG_ERROR("send remove for key : " << key << ", get null response");
-        return -1;
+        return StoreErrorCode::ERROR;
     }
 
     auto responseCode = response->Header().result;
@@ -241,11 +246,11 @@ int TcpConfigStore::Remove(const std::string &key) noexcept
     return responseCode;
 }
 
-int TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept
+Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length invalid.");
-        return INVALID_KEY;
+        return StoreErrorCode::INVALID_KEY;
     }
 
     SmemMessage request{MessageType::APPEND};
@@ -256,7 +261,7 @@ int TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t> &v
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
         SM_LOG_ERROR("send append for key : " << key << ", get null response");
-        return -1;
+        return StoreErrorCode::ERROR;
     }
 
     auto responseCode = response->Header().result;
@@ -268,7 +273,7 @@ int TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t> &v
     auto data = reinterpret_cast<const char *>(response->DataPtr());
     newSize = strtol(data, nullptr, 10);
 
-    return 0;
+    return StoreErrorCode::SUCCESS;
 }
 
 std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlocked(
@@ -283,7 +288,7 @@ std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlock
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(dup, reqBody.size());
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
-    if (ret != 0) {
+    if (ret != SM_OK) {
         SM_LOG_ERROR("send message failed: " << ret);
         return nullptr;
     }
@@ -300,13 +305,13 @@ std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlock
     return response;
 }
 
-int32_t TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
+Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     SM_LOG_INFO("link broken: " << link->Id());
-    return 0;
+    return SM_OK;
 }
 
-int32_t TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept
+Result TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept
 {
     SM_LOG_DEBUG("client received message: " << context.SeqNo());
     std::shared_ptr<ClientWaitContext> waitContext;
@@ -320,22 +325,20 @@ int32_t TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestCont
 
     if (waitContext == nullptr) {
         SM_LOG_ERROR("receive response(" << context.SeqNo() << ") not sent request.");
-        return -1;
+        return SM_ERROR;
     }
 
     waitContext->SetFinished(context);
-    return 0;
+    return SM_OK;
 }
 
 uint8_t *TcpConfigStore::DuplicateMessage(const std::vector<uint8_t> &message) noexcept
 {
     auto dup = (uint8_t *)malloc(message.size());
-    if (dup == nullptr) {
-        return nullptr;
-    }
+    SM_ASSERT_RETURN(dup != nullptr, nullptr);
 
     memcpy(dup, message.data(), message.size());
     return dup;
 }
-}
-}
+}  // namespace smem
+}  // namespace ock

@@ -16,7 +16,7 @@ public:
     static StorePtr PrefixStore(const StorePtr &base, const std::string &prefix) noexcept;
 };
 
-}
-}
+}  // namespace smem
+}  // namespace ock
 
 #endif  //SMEM_SMEM_STORE_FACTORY_H
