@@ -2,7 +2,7 @@ set(SOURCE_DIR ${PROJECT_3RDPARTY_SRC_DIR}/net/acc_links)
 set(BUILD_DIR ${PROJECT_BUILD_PATH}/build/acc_links)
 set(INSTALL_DIR ${PROJECT_3RDPARTY_BIN_DIR}/acc_links)
 
-set(CHECK_FILE_LINKS ${INSTALL_DIR}/net/lib/libacc_tcp_net.a)
+set(CHECK_FILE_LINKS ${INSTALL_DIR}/lib/libacc_tcp_net.a)
 
 message(STATUS "acc_links: check if need to build at ${CHECK_FILE_LINKS}")
 
