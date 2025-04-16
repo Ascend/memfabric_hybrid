@@ -9,6 +9,7 @@
 #include "smem_shm_entry_manager.h"
 
 using namespace ock::smem;
+std::mutex g_smemShmMutex_;
 
 smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId,
                            uint64_t symmetricSize, smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
@@ -17,6 +18,7 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId,
         rankSize > UINT16_MAX || rankId >= rankSize,
         "Invalid param, input size: " << rankSize << " limit: " << UINT16_MAX << " input rank: " << rankId, nullptr);
 
+    std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     SmemShmEntryPtr entry = nullptr;
     auto ret = SmemShmEntryManager::Instance().CreateEntryById(id, entry);
     if (ret != SM_OK || entry == nullptr) {
@@ -180,6 +182,7 @@ int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint
         return SM_INVALID_PARAM;
     }
     // TODO: 待实现
+    *reachInfo = SMEM_TRANSPORT_CAP_MAP | SMEM_TRANSPORT_CAP_MTE;
     return 0;
 }
 
@@ -197,9 +200,16 @@ int32_t smem_shm_config_init(smem_shm_config_t *config)
 int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
                       uint16_t deviceId, uint64_t gvaSpaceSize, smem_shm_config_t *config)
 {
+    static bool inited = false;
+    std::lock_guard<std::mutex> guard(g_smemShmMutex_);
+    if (inited) {
+        SM_LOG_INFO("smem shm has inited!");
+        return SM_OK;
+    }
+
     int32_t ret = SmemShmEntryManager::Instance().Initialize(configStoreIpPort, worldSize, rankId, deviceId, config);
     if (ret != 0) {
-        SM_LOG_ERROR("init shm entry manager failed(" << ret);
+        SM_LOG_ERROR("init shm entry manager failed(" << ret << ")");
         return SM_ERROR;
     }
 
@@ -209,6 +219,7 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
         return SM_ERROR;
     }
 
+    inited = true;
     SM_LOG_INFO("smem_shm_init success. space_size: " << gvaSpaceSize << " world_size: " <<
         worldSize << " config_ip: " << configStoreIpPort);
     return SM_OK;
