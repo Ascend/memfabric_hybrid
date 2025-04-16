@@ -13,7 +13,7 @@ SmemShmTeam::~SmemShmTeam()
     ge_ = nullptr;
 }
 
-Result SmemShmTeam::Initialize(uint32_t smemId, uint32_t teamTimeout, StorePtr store)
+Result SmemShmTeam::Initialize(uint32_t teamTimeout, StorePtr store)
 {
     SM_ASSERT_RETURN(store != nullptr, SM_INVALID_PARAM);
     if (teamTimeout > UINT32_MAX / SECOND_TO_MILLSEC) {
@@ -21,7 +21,7 @@ Result SmemShmTeam::Initialize(uint32_t smemId, uint32_t teamTimeout, StorePtr s
         return SM_INVALID_PARAM;
     }
 
-    prefix_ = "shmem(" + std::to_string(smemId) + ")_T(" + std::to_string(teamId_) + ")";
+    prefix_ = "shmem(" + std::to_string(shmEntryId_) + ")_T(" + std::to_string(teamId_) + ")";
 
     ge_ = SmMakeRef<SmemNetGroupEngine>(store, teamTimeout * SECOND_TO_MILLSEC);
     SM_ASSERT_RETURN(ge_ != nullptr, SM_ERROR);

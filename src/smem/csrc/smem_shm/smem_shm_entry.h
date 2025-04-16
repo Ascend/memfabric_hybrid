@@ -22,6 +22,8 @@ public:
 
     SmemShmTeam *CreateTeam(const uint32_t *rankList, uint32_t rankSize, uint32_t flags);
 
+    Result RemoveTeam(SmemShmTeam *team);
+
     void SetConfig(const smem_shm_config_t &config);
 
     Result SetExtraContext(const void *context, uint32_t size);
@@ -42,10 +44,12 @@ private:
     bool inited_ = false;
     const uint32_t id_;
     uint32_t localRank_ = UINT32_MAX;
-    uint32_t waitTimeout_ = 0;
     hybm_entity_t entity_ = nullptr;
     void *gva_ = nullptr;
+
+    std::mutex entryMutex_;
     std::atomic<uint32_t> teamSn_ = { 1U }; // global_team sn is 0
+    std::map<uint32_t, SmemShmTeamPtr> teamMap_;
 };
 using SmemShmEntryPtr = SmRef<SmemShmEntry>;
 

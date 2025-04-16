@@ -48,10 +48,7 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId,
 int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "Invalid param, handle is NULL", SM_INVALID_PARAM);
-
-    SmemShmEntry* entry = reinterpret_cast<SmemShmEntry*>(handle);
-    delete entry;
-    return 0;
+    return SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
 }
 
 int32_t smem_shm_set_extra_context(smem_shm_t handle, const void* context, uint32_t size)
@@ -60,9 +57,10 @@ int32_t smem_shm_set_extra_context(smem_shm_t handle, const void* context, uint3
     SM_PARAM_VALIDATE(context == nullptr, "Invalid param, context is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(size == 0 || size > UN65536, "Invalid param, size must be between 1~65536", SM_INVALID_PARAM);
 
-    SmemShmEntry* entry = reinterpret_cast<SmemShmEntry*>(handle);
-    if (entry == nullptr) {
-        SM_LOG_ERROR("input handle is null!");
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_ERROR("input handle is invalid! ret: " << ret);
         return SM_INVALID_PARAM;
     }
     return entry->SetExtraContext(context, size);
@@ -74,10 +72,11 @@ smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t* rankList
     SM_PARAM_VALIDATE(rankList == nullptr, "Invalid param, rankList is NULL", nullptr);
     SM_PARAM_VALIDATE(rankSize == 0 || rankSize > UN65536, "Invalid param, size must be between 1~65536", nullptr);
 
-    SmemShmEntry* entry = reinterpret_cast<SmemShmEntry*>(handle);
-    if (entry == nullptr) {
-        SM_LOG_ERROR("input handle is null!");
-        return NULL;
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_ERROR("input handle is invalid! ret: " << ret);
+        return nullptr;
     }
     return entry->CreateTeam(rankList, rankSize, flags);
 }
@@ -91,7 +90,15 @@ int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags)
         SM_LOG_WARN("input team is null!");
         return 0;
     }
-    // TODO: 待定,在SmemShmEntry中删除
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryById(t->GetShmEntryId(), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_ERROR("input handle is invalid! ret: " << ret);
+        return SM_ERROR;
+    }
+
+    entry->RemoveTeam(t);
     return 0;
 }
 
@@ -99,10 +106,11 @@ smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "Invalid param, handle is NULL", nullptr);
 
-    SmemShmEntry* entry = reinterpret_cast<SmemShmEntry*>(handle);
-    if (entry == nullptr) {
-        SM_LOG_ERROR("input handle is null!");
-        return NULL;
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_ERROR("input handle is invalid! ret: " << ret);
+        return nullptr;
     }
     return reinterpret_cast<void*>(entry->GetGlobalTeam().Get());
 }
@@ -165,6 +173,12 @@ int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint
     SM_PARAM_VALIDATE(handle == nullptr, "Invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(reachInfo == nullptr, "Invalid param, reachInfo is NULL", SM_INVALID_PARAM);
 
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_ERROR("input handle is invalid! ret: " << ret);
+        return SM_INVALID_PARAM;
+    }
     // TODO: 待实现
     return 0;
 }
