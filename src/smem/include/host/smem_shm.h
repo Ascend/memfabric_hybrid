@@ -4,7 +4,8 @@
 #ifndef __MEMFABRIC_SMEM_SHM_H__
 #define __MEMFABRIC_SMEM_SHM_H__
 
-#include "smem_def.h"
+#include "smem_shm_def.h"
+#include "smem.h"
 
 #ifdef __cplusplus
 extern "C" {
