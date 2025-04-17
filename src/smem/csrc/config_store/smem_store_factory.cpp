@@ -9,16 +9,16 @@
 
 namespace ock {
 namespace smem {
-
-StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId) noexcept
+StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
+    int32_t connMaxRetry) noexcept
 {
     auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, rankId);
     SM_ASSERT_RETURN(store != nullptr, nullptr);
 
-    auto ret = store->Startup();
+    auto ret = store->Startup(connMaxRetry);
     if (ret != 0) {
-        SM_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
-                                              << ") failed:" << ret);
+        SM_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId <<
+            ") failed:" << ret);
         return nullptr;
     }
 
@@ -34,5 +34,5 @@ StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::s
 
     return store.Get();
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

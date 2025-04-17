@@ -9,14 +9,29 @@
 
 namespace ock {
 namespace smem {
-
 class StoreFactory {
 public:
-    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId = 0) noexcept;
+    /**
+     * @brief create a new store
+     * @param ip server ip address
+     * @param port server tcp port
+     * @param isServer is local store server side
+     * @param rankId rank id, default 0
+     * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
+     * @return Newly created store
+     */
+    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId = 0,
+        int32_t connMaxRetry = -1) noexcept;
+
+    /**
+     * @brief Encapsulate an existing store into a prefix store.
+     * @param base existing store
+     * @param prefix Prefix of keys
+     * @return prefix store.
+     */
     static StorePtr PrefixStore(const StorePtr &base, const std::string &prefix) noexcept;
 };
+} // namespace smem
+} // namespace ock
 
-}  // namespace smem
-}  // namespace ock
-
-#endif  //SMEM_SMEM_STORE_FACTORY_H
+#endif // SMEM_SMEM_STORE_FACTORY_H

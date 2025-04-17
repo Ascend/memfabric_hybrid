@@ -393,23 +393,25 @@ void AccStoreServer::WakeupWaiters(const std::list<ock::acc::AccTcpRequestContex
 void AccStoreServer::ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
                                       const std::string &message) noexcept
 {
-    auto data = (uint8_t *)strdup(message.c_str());
-    if (data == nullptr) {
-        SM_LOG_ERROR("duplicate message failed");
+    auto response = ock::acc::AccDataBuffer::Create(message.c_str(), message.size());
+    if (response == nullptr) {
+        SM_LOG_ERROR("create response message failed");
         return;
     }
 
-    ctx.Reply(code, ock::acc::AccDataBuffer::Create(data, message.size()));
+    ctx.Reply(code, response);
 }
 
 void AccStoreServer::ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
                                       const std::vector<uint8_t> &message) noexcept
 {
-    auto data = (uint8_t *)malloc(message.size());
-    SM_ASSERT_RET_VOID(data != nullptr);
+    auto response = ock::acc::AccDataBuffer::Create(message.data(), message.size());
+    if (response == nullptr) {
+        SM_LOG_ERROR("create response message failed");
+        return;
+    }
 
-    memcpy(data, message.data(), message.size());
-    ctx.Reply(code, ock::acc::AccDataBuffer::Create(data, message.size()));
+    ctx.Reply(code, response);
 }
 
 void AccStoreServer::TimerThreadTask() noexcept

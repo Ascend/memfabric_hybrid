@@ -34,7 +34,7 @@ public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, int32_t rankId = 0) noexcept;
     ~TcpConfigStore() noexcept override;
 
-    Result Startup() noexcept;
+    Result Startup(int reconnectRetryTimes = -1) noexcept;
     void Shutdown() noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
@@ -43,7 +43,7 @@ public:
     Result Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override;
 
 protected:
-    Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs = -1) noexcept override;
+    Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override;
 
 private:
     std::shared_ptr<ock::acc::AccTcpRequestContext> SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept;
