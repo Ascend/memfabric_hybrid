@@ -1,7 +1,7 @@
 ﻿/*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#include "hybm.h"
+#include "hybm_core_api.h"
 #include "smem_shm.h"
 #include "smem_logger.h"
 #include "smem_shm_entry.h"
@@ -9,7 +9,11 @@
 #include "smem_shm_entry_manager.h"
 
 using namespace ock::smem;
+#ifdef UT_ENABLED
+thread_local std::mutex g_smemShmMutex_;
+#else
 std::mutex g_smemShmMutex_;
+#endif
 
 smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId,
                            uint64_t symmetricSize, smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
@@ -213,7 +217,7 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
         return SM_ERROR;
     }
 
-    ret = hybm_init(gvaSpaceSize, deviceId, config->flags);
+    ret = HybmCoreApi::HybmCoreInit(gvaSpaceSize, deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
@@ -227,6 +231,6 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
 
 void smem_shm_uninit(uint32_t flags)
 {
-    hybm_uninit();
+    HybmCoreApi::HybmCoreUninit();
     SM_LOG_INFO("smem_shm_uninit finished");
 }

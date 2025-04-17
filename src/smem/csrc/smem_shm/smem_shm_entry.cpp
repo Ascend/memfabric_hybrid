@@ -4,9 +4,9 @@
 
 #include <algorithm>
 #include "smem_common_includes.h"
-#include "hybm_big_mem.h"
 #include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
+#include "hybm_core_api.h"
 
 namespace ock {
 namespace smem {
@@ -23,12 +23,12 @@ SmemShmEntry::~SmemShmEntry()
     }
 
     if (entity_ != nullptr && gva_ != nullptr) {
-        hybm_unreserve_mem_space(entity_, 0, gva_);
+        HybmCoreApi::HybmUnreserveMemSpace(entity_, 0, gva_);
         gva_ = nullptr;
     }
 
     if (entity_ != nullptr) {
-        hybm_destroy_entity(entity_, 0);
+        HybmCoreApi::HybmDestroyEntity(entity_, 0);
         entity_ = nullptr;
     }
 }
@@ -37,15 +37,15 @@ static void ReleaseAfterFailed(hybm_entity_t entity, hybm_mem_slice_t slice, voi
 {
     uint32_t flags = 0;
     if (entity != nullptr && slice != 0) {
-        hybm_free_local_memory(entity, slice, 1, flags);
+        HybmCoreApi::HybmFreeLocalMemory(entity, slice, 1, flags);
     }
 
     if (entity != nullptr && reservedMem != nullptr) {
-        hybm_unreserve_mem_space(entity, flags, reservedMem);
+        HybmCoreApi::HybmUnreserveMemSpace(entity, flags, reservedMem);
     }
 
     if (entity != nullptr) {
-        hybm_destroy_entity(entity, flags);
+        HybmCoreApi::HybmDestroyEntity(entity, flags);
     }
 }
 
@@ -80,21 +80,21 @@ Result SmemShmEntry::Initialize(hybm_options &options)
         "create global team failed");
 
     do {
-        entity = hybm_create_entity(id_, &options, flags);
+        entity = HybmCoreApi::HybmCreateEntity(id_, &options, flags);
         if (entity == nullptr) {
             SM_LOG_ERROR("create entity failed");
             ret = SM_ERROR;
             break;
         }
 
-        ret = hybm_reserve_mem_space(entity, flags, &reservedMem);
+        ret = HybmCoreApi::HybmReserveMemSpace(entity, flags, &reservedMem);
         if (ret != 0 || reservedMem == nullptr) {
             SM_LOG_ERROR("reserve mem failed, result: " << ret);
             ret = SM_ERROR;
             break;
         }
 
-        slice = hybm_alloc_local_memory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
+        slice = HybmCoreApi::HybmAllocLocalMemory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
         if (slice == 0) {
             SM_LOG_ERROR("alloc local mem failed, size: " << options.singleRankVASpace);
             ret = SM_ERROR;
@@ -102,7 +102,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
         }
 
         hybm_exchange_info exInfo = { 0 };
-        ret = hybm_export(entity, slice, flags, &exInfo);
+        ret = HybmCoreApi::HybmExport(entity, slice, flags, &exInfo);
         if (ret != 0) {
             SM_LOG_ERROR("hybm export failed, result: " << ret);
             break;
@@ -116,7 +116,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        ret = hybm_import(entity, allExInfo, options.rankCount, flags);
+        ret = HybmCoreApi::HybmImport(entity, allExInfo, options.rankCount, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm import failed, result: " << ret);
             break;
@@ -128,7 +128,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        ret = hybm_start(entity, flags);
+        ret = HybmCoreApi::HybmStart(entity, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm start failed, result: " << ret);
             break;
@@ -212,7 +212,7 @@ Result SmemShmEntry::SetExtraContext(const void *context, uint32_t size)
         return SM_ERROR;
     }
 
-    return hybm_set_extra_context(entity_, context, size);
+    return HybmCoreApi::HybmSetExtraContext(entity_, context, size);
 }
 
 void *SmemShmEntry::GetGva() const

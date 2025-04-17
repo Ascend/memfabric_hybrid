@@ -12,5 +12,6 @@
 #include "smem_types.h"
 #include "smem_ref.h"
 #include "smem_timedwait.h"
+#include "smem_common_func.h"
 
 #endif // MEMFABRIC_HYBRID_SMEM_COMMON_INCLUDES_H

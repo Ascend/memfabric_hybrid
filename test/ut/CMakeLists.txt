@@ -1,4 +1,18 @@
-file(GLOB_RECURSE UT_SOURCE_FILES *.cpp testcase/* ../stub/*)
+include_directories(
+        ${PROJECT_SMEM_SRC_BASE}/include/host
+        ${PROJECT_SMEM_SRC_BASE}/csrc/common
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
+        ${PROJECT_SMEM_SRC_BASE}/csrc/net
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
+        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
+        ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
+)
+
+file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
+        testcase/*
+        ../stub/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/*
+)
 message(STATUS "llt build")
 add_executable(test_mf_hy ${UT_SOURCE_FILES})
 
@@ -16,7 +30,7 @@ target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/
 set_target_properties(test_mf_hy PROPERTIES OUTPUT_NAME "test_mf_hy")
 set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
-target_link_libraries(test_mf_hy smem_shared gtest dl)
+target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a)
 target_include_directories(test_mf_hy PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
         ${PROJECT_SMEM_SRC_BASE}/include/host

@@ -1,0 +1,145 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ */
+#ifndef __SMEM_HYBM_CORE_API_H__
+#define __SMEM_HYBM_CORE_API_H__
+
+#include "hybm_def.h"
+#include "smem_common_includes.h"
+
+namespace ock {
+namespace smem {
+
+using hybmInitFunc = int32_t (*)(uint64_t, uint16_t, uint64_t);
+using hybmUninitFunc = void (*)(void);
+using hybmSetLoggerFunc = int32_t (*)(void (*)(int, const char *));
+using hybmSetLogLevelFunc = int32_t (*)(int);
+using hybmGetErrorFunc = const char *(*)(int32_t);
+
+using hybmCreateEntityFunc = hybm_entity_t (*)(uint16_t, const hybm_options *, uint32_t);
+using hybmDestroyEntityFunc = void (*)(hybm_entity_t, uint32_t);
+using hybmReserveMemFunc = int32_t (*)(hybm_entity_t, uint32_t, void **);
+using hybmUnreserveMemFunc = int32_t (*)(hybm_entity_t, uint32_t, void *);
+using hybmAllocLocalMemFunc = hybm_mem_slice_t (*)(hybm_entity_t, hybm_mem_type, uint64_t, uint32_t);
+using hybmFreeLocalMemFunc = int32_t (*)(hybm_entity_t, hybm_mem_slice_t, uint32_t, uint32_t);
+using hybmExportFunc = int32_t (*)(hybm_entity_t, hybm_mem_slice_t, uint32_t, hybm_exchange_info *);
+using hybmImportFunc = int32_t (*)(hybm_entity_t, const hybm_exchange_info *, uint32_t, uint32_t);
+using hybmSetExtraContextFunc = int32_t (*)(hybm_entity_t, const void *, uint32_t);
+using hybmStartFunc = int32_t (*)(hybm_entity_t, uint32_t);
+using hybmStopFunc = void (*)(hybm_entity_t, uint32_t);
+
+class HybmCoreApi {
+public:
+    static Result LoadLibrary(const std::string &libDirPath);
+
+    static inline int32_t HybmCoreInit(uint64_t globalSize, uint16_t deviceId, uint64_t flags)
+    {
+        return pHybmInit(globalSize, deviceId, flags);
+    }
+
+    static inline void HybmCoreUninit()
+    {
+        return pHybmUninit();
+    }
+
+    static inline int32_t HybmCoreSetExternLogger(void (*logger)(int level, const char *msg))
+    {
+        return pHybmSetLogger(logger);
+    }
+
+    static inline int32_t HybmCoreSetLogLevel(int level)
+    {
+        return pHybmSetLogLevel(level);
+    }
+
+    static inline const char *HybmGetErrorString(int32_t errCode)
+    {
+        return pHybmGetError(errCode);
+    }
+
+    static inline hybm_entity_t HybmCreateEntity(uint16_t id, const hybm_options *options, uint32_t flags)
+    {
+        return pHybmCreateEntity(id, options, flags);
+    }
+
+    static inline void HybmDestroyEntity(hybm_entity_t e, uint32_t flags)
+    {
+        return pHybmDestroyEntity(e, flags);
+    }
+
+    static inline int32_t HybmReserveMemSpace(hybm_entity_t e, uint32_t flags, void **reservedMem)
+    {
+        return pHybmReserveMem(e, flags, reservedMem);
+    }
+
+    static inline int32_t HybmUnreserveMemSpace(hybm_entity_t e, uint32_t flags, void *reservedMem)
+    {
+        return pHybmUnreserveMem(e, flags, reservedMem);
+    }
+
+    static inline hybm_mem_slice_t HybmAllocLocalMemory(hybm_entity_t e, hybm_mem_type mType, uint64_t size, uint32_t flags)
+    {
+        return pHybmAllocLocalMem(e, mType, size, flags);
+    }
+
+    static inline int32_t HybmFreeLocalMemory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t count, uint32_t flags)
+    {
+        return pHybmFreeLocalMem(e, slice, count, flags);
+    }
+
+    static inline int32_t HybmExport(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo)
+    {
+        return pHybmExport(e, slice, flags, exInfo);
+    }
+
+    static inline int32_t HybmImport(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags)
+    {
+        return pHybmImport(e, allExInfo, count, flags);
+    }
+
+    static inline int32_t HybmSetExtraContext(hybm_entity_t e, const void *context, uint32_t size)
+    {
+        return pHybmSetExtraContext(e, context, size);
+    }
+
+    static inline int32_t HybmStart(hybm_entity_t e, uint32_t flags)
+    {
+        return pHybmStart(e, flags);
+    }
+
+    static inline void HybmStop(hybm_entity_t e, uint32_t flags)
+    {
+        return pHybmStop(e, flags);
+    }
+
+private:
+    static int32_t GetLibPath(const std::string &libDir, std::string &outputPath);
+
+private:
+    static std::mutex gMutex;
+    static bool gLoaded;
+    static void *coreHandle;
+    static const char *gHybmCoreLibName;
+
+    static hybmInitFunc pHybmInit;
+    static hybmUninitFunc pHybmUninit;
+    static hybmSetLoggerFunc pHybmSetLogger;
+    static hybmSetLogLevelFunc pHybmSetLogLevel;
+    static hybmGetErrorFunc pHybmGetError;
+
+    static hybmCreateEntityFunc pHybmCreateEntity;
+    static hybmDestroyEntityFunc pHybmDestroyEntity;
+    static hybmReserveMemFunc pHybmReserveMem;
+    static hybmUnreserveMemFunc pHybmUnreserveMem;
+    static hybmAllocLocalMemFunc pHybmAllocLocalMem;
+    static hybmFreeLocalMemFunc pHybmFreeLocalMem;
+    static hybmExportFunc pHybmExport;
+    static hybmImportFunc pHybmImport;
+    static hybmSetExtraContextFunc pHybmSetExtraContext;
+    static hybmStartFunc pHybmStart;
+    static hybmStopFunc pHybmStop;
+};
+}
+}
+
+#endif  // __SMEM_HYBM_CORE_API_H__
