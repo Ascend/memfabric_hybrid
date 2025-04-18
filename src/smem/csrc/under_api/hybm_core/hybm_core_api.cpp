@@ -44,6 +44,7 @@ namespace smem {
 
 Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
 {
+    SM_LOG_DEBUG("try to load library: " << gHybmCoreLibName << ", dir: " << libDirPath);
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {
         return SM_OK;
@@ -62,7 +63,7 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     /* dlopen library */
     coreHandle = dlopen(realPath.c_str(), RTLD_NOW);
     if (coreHandle == nullptr) {
-        SM_LOG_ERROR("Failed to open library [" << realPath << "], error: " << dlerror());
+        SM_LOG_ERROR("open library failed, path: " << realPath << ", error: " << dlerror());
         return SM_ERROR;
     }
 

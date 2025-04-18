@@ -21,6 +21,7 @@ enum SMErrorCode : int32_t {
     SM_REPEAT_CALL = -2005,
     SM_DUPLICATED_OBJECT = -2006,
     SM_OBJECT_NOT_EXISTS = -2007,
+    SM_NOT_INITIALIZED = -2008,
 };
 
 constexpr int32_t N16 = 16;
