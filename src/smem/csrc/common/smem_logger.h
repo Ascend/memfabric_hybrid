@@ -39,36 +39,36 @@ public:
 
     inline void SetLogLevel(LogLevel level)
     {
-        mLogLevel = level;
+        logLevel_ = level;
     }
 
     inline void SetAuditLogLevel(LogLevel level)
     {
-        mAuditLogLevel = level;
+        auditLogLevel_ = level;
     }
 
     inline void SetExternalLogFunction(ExternalLog func, bool forceUpdate = false)
     {
-        if (mLogFunc == nullptr || forceUpdate) {
-            mLogFunc = func;
+        if (logFunc_ == nullptr || forceUpdate) {
+            logFunc_ = func;
         }
     }
 
     inline void SetExternalAuditLogFunction(ExternalLog func, bool forceUpdate = false)
     {
-        if (mAuditLogFunc == nullptr || forceUpdate) {
-            mAuditLogFunc = func;
+        if (auditLogFunc_ == nullptr || forceUpdate) {
+            auditLogFunc_ = func;
         }
     }
 
     inline void Log(int level, const std::ostringstream &oss)
     {
-        if (mLogFunc != nullptr) {
-            mLogFunc(level, oss.str().c_str());
+        if (logFunc_ != nullptr) {
+            logFunc_(level, oss.str().c_str());
             return;
         }
 
-        if (level < mLogLevel) {
+        if (level < logLevel_) {
             return;
         }
 
@@ -89,12 +89,12 @@ public:
 
     inline void AuditLog(int level, const std::ostringstream &oss)
     {
-        if (mAuditLogFunc != nullptr) {
-            mAuditLogFunc(level, oss.str().c_str());
+        if (auditLogFunc_ != nullptr) {
+            auditLogFunc_(level, oss.str().c_str());
             return;
         }
 
-        if (level < mAuditLogLevel) {
+        if (level < auditLogLevel_) {
             return;
         }
 
@@ -117,29 +117,29 @@ public:
 
     ~SMOutLogger()
     {
-        mLogFunc = nullptr;
-        mAuditLogFunc = nullptr;
+        logFunc_ = nullptr;
+        auditLogFunc_ = nullptr;
     }
 
 private:
     SMOutLogger() = default;
 
-    inline const std::string &LogLevelDesc(int level)
+    const char *LogLevelDesc(const int level) const
     {
-        static std::string invalid = "invalid";
+        const static std::string invalid = "invalid";
         if (UNLIKELY(level < DEBUG_LEVEL || level >= BUTT_LEVEL)) {
-            return invalid;
+            return invalid.c_str();
         }
-        return mLogLevelDesc[level];
+        return logLevelDesc_[level];
     }
 
 private:
-    const std::string mLogLevelDesc[BUTT_LEVEL] = {"debug", "info", "warn", "error"};
+    LogLevel logLevel_ = INFO_LEVEL;
+    LogLevel auditLogLevel_ = INFO_LEVEL;
+    ExternalLog logFunc_ = nullptr;
+    ExternalLog auditLogFunc_ = nullptr;
 
-    LogLevel mLogLevel = INFO_LEVEL;
-    LogLevel mAuditLogLevel = INFO_LEVEL;
-    ExternalLog mLogFunc = nullptr;
-    ExternalLog mAuditLogFunc = nullptr;
+    const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error"};
 };
 }  // namespace smem
 }  // namespace ock
