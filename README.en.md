@@ -1,36 +1,43 @@
 # memfabric_hybrid
 
 #### Description
-{**When you're done, you can delete the content in this README and update the file with details for others getting started with your repository**}
+MemFabric Hybrid is a memory pool facility for Huawei Ascend Npu Server and Super Pod, providing easy way to build memory pool cross nodes include HBM and DRAM. It provides a parallel programing interface to user and creates a global address space for data that span the memory for multiple NPUs and can be accessed with NPU-initiated data operations using MTE, RoCE, SDMA, also provides data copy operations initiated by CPU.
 
 #### Software Architecture
 Software architecture description
 
-#### Installation
+#### How build
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+To build binary, it doesn't reply on CANN and HDK.
 
-#### Instructions
+1. Download the code using git and its dependent submodule
+```
+git clone git@gitee.com:ascend/memfabric_hybrid.git
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+cd memfabric_hybrid
 
-#### Contribution
+git submodule init
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+git submodule update --recursive
 
+```
 
-#### Gitee Feature
+2. Build the binary
+```
+cd memfabric_hybrid
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+mkdir build
+
+cd build 
+
+cmake ..
+
+make install -j4
+
+ll ../output/smem
+```
+
+3 run example
+```
+
+```
