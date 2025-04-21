@@ -33,6 +33,6 @@ TEST_F(ShmemWrapperTest, smem_api_test)
     ASSERT_EQ(SmemApi::LoadLibrary("") != 0, true);
     ASSERT_EQ(SmemApi::LoadLibrary(outLibPath + "/smem/lib/") == 0, true);
 
-    // ASSERT_EQ(SmemApi::SmemInit(0) != 0, true);
+    ASSERT_EQ(SmemApi::SmemInit(0) != 0, true);
 }
 

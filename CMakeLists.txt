@@ -66,15 +66,11 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/include/hybm
 )
 
+add_subdirectory(src)
+add_subdirectory(3rdparty)
+
 if(BUILD_TESTS STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 14)
     message(STATUS "BUILD_TESTS = ON, add compile gov")
-    add_compile_options(-DUT_ENABLED)
     add_subdirectory(test)
-    add_compile_options(-fprofile-arcs -ftest-coverage)
-    add_link_options(-lgcov --coverage)
-else()
-    add_subdirectory(src)
 endif()
-
-add_subdirectory(3rdparty)

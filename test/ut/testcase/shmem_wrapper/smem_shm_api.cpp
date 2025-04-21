@@ -47,6 +47,7 @@ int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
     if (!libDirPath.empty()) {
         if (!Func::LibraryRealPath(libDirPath, std::string(gSmemFileName), realPath)) {
             LOG_ERROR("get lib path failed, library path: " << libDirPath);
+            return -1;
         }
     } else {
         realPath = std::string(gSmemFileName);

@@ -17,12 +17,13 @@ endif()
 
 add_definitions(-DOUT_LIB_PATH="${TARGET_INSTALL_DIR}")
 
-target_compile_options(test_mf_hy PUBLIC -D_GNU_SOURCE -g)
+add_link_options(-lgcov --coverage)
+target_compile_options(test_mf_hy PUBLIC -D_GNU_SOURCE -g -fprofile-arcs -ftest-coverage -DUT_ENABLED)
 target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib/)
 set_target_properties(test_mf_hy PROPERTIES OUTPUT_NAME "test_mf_hy")
 set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
-target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a)
+target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a gcov)
 target_include_directories(test_mf_hy PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
         ${CMAKE_CURRENT_SOURCE_DIR}/shmem_wrapper

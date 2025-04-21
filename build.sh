@@ -23,7 +23,4 @@ rm -rf ./build ./output
 mkdir build/
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
 make -j5 -C build/ || exit 2
-
-if [[ "$BUILD_TESTS" == "OFF" ]]; then
 make install -C build/
-fi
