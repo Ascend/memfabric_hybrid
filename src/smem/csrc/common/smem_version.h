@@ -23,9 +23,10 @@ extern "C" {
 
 /*
  * global lib version string with build time
- * which can be got
  */
-static const char *LIB_VERSION = "library version: " SM_VERSION ", build time: " __DATE__ ", " __TIME__;
+static const char *LIB_VERSION = "library version: " SM_VERSION
+                                 ", build time: " __DATE__ " " __TIME__
+                                 ", commit: " STR2(GIT_LAST_COMMIT);
 
 #ifdef __cplusplus
 }

@@ -7,11 +7,15 @@ option(BUILD_EXAMPLE "build example or not" ON)
 option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
+option(GENERATE_GIT_COMMIT_FILE "generate commit file using git log" OFF)
+option(BUILD_GIT_COMMIT "build library version with commit" OFF)
 
 message(STATUS "BUILD_EXAMPLE = ${BUILD_EXAMPLE}")
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
 message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
 message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
+message(STATUS "GENERATE_GIT_COMMIT_FILE = ${GENERATE_GIT_COMMIT_FILE}")
+message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
 
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
@@ -38,6 +42,27 @@ endif()
 
 if (ENABLE_CPU_MONOTONIC STREQUAL "ON")
     add_compile_options(-DENABLE_CPU_MONOTONIC)
+endif ()
+
+# generate commit log
+if (GENERATE_GIT_COMMIT_FILE STREQUAL "ON")
+    exec_program(sh ${PROJECT_SOURCE_DIR} ARGS ${PROJECT_SOURCE_DIR}/script/gen_last_git_commit.sh)
+endif ()
+
+# set log commit into compile definition
+if (BUILD_GIT_COMMIT STREQUAL "ON")
+    execute_process(COMMAND head -n 1 ${PROJECT_SOURCE_DIR}/script/git_last_commit.txt
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+            RESULT_VARIABLE GET_COMMIT_RESULT
+            OUTPUT_VARIABLE GIT_LAST_COMMIT)
+    if (${GET_COMMIT_RESULT} EQUAL 1)
+        set(GIT_LAST_COMMIT "empty")
+    endif ()
+    add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
+    message(STATUS "add gcc definition for last commit: ${GIT_LAST_COMMIT}")
+else ()
+    add_definitions(-DGIT_LAST_COMMIT=empty)
+    message(STATUS "add gcc definition for last commit: empty")
 endif ()
 
 set(PROJECT_BUILD_PATH ${PROJECT_SOURCE_DIR}/build)
