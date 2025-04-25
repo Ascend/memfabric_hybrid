@@ -6,6 +6,10 @@
 #include "hybm_core_api.h"
 #include "acc_links/net/acc_log.h"
 
+namespace {
+bool g_smemInited = false;
+}
+
 int32_t smem_init(uint32_t flags)
 {
     using namespace ock::smem;
@@ -28,11 +32,21 @@ int32_t smem_init(uint32_t flags)
         SM_LOG_AND_SET_LAST_ERROR("smem init failed as load library failed, result: " << result);
         return result;
     }
+    g_smemInited = true;
+
+    // 未init时不能给hybm更新log配置,所以在init后延迟更新
+    auto func = SMOutLogger::Instance().GetLogExtraFunc();
+    if (func != nullptr) {
+        (void)smem_set_extern_logger(func);
+    }
+    (void)smem_set_log_level(SMOutLogger::Instance().GetLogLevel());
+
     return SM_OK;
 }
 
 void smem_uninit()
 {
+    g_smemInited = false;
     return;
 }
 
@@ -53,10 +67,12 @@ int32_t smem_set_extern_logger(void (*fun)(int, const char *))
     }
 
     /* set dependent hybm core log function */
-    result = HybmCoreApi::HybmCoreSetExternLogger(fun);
-    if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("set hybm core log function failed, result: " << result);
-        return result;
+    if (g_smemInited) {
+        result = HybmCoreApi::HybmCoreSetExternLogger(fun);
+        if (result != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("set hybm core log function failed, result: " << result);
+            return result;
+        }
     }
 
     return SM_OK;
@@ -80,10 +96,12 @@ int32_t smem_set_log_level(int level)
     }
 
     /* set hybm core log level */
-    result = HybmCoreApi::HybmCoreSetLogLevel(level);
-    if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("set hybm core log level failed, result: " << result);
-        return result;
+    if (g_smemInited) {
+        result = HybmCoreApi::HybmCoreSetLogLevel(level);
+        if (result != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("set hybm core log level failed, result: " << result);
+            return result;
+        }
     }
 
     return SM_OK;

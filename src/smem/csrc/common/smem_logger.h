@@ -37,27 +37,25 @@ public:
         return gLogger;
     }
 
+    inline LogLevel GetLogLevel()
+    {
+        return logLevel_;
+    }
+
+    inline ExternalLog GetLogExtraFunc()
+    {
+        return logFunc_;
+    }
+
     inline void SetLogLevel(LogLevel level)
     {
         logLevel_ = level;
-    }
-
-    inline void SetAuditLogLevel(LogLevel level)
-    {
-        auditLogLevel_ = level;
     }
 
     inline void SetExternalLogFunction(ExternalLog func, bool forceUpdate = false)
     {
         if (logFunc_ == nullptr || forceUpdate) {
             logFunc_ = func;
-        }
-    }
-
-    inline void SetExternalAuditLogFunction(ExternalLog func, bool forceUpdate = false)
-    {
-        if (auditLogFunc_ == nullptr || forceUpdate) {
-            auditLogFunc_ = func;
         }
     }
 
@@ -87,38 +85,12 @@ public:
         }
     }
 
-    inline void AuditLog(int level, const std::ostringstream &oss)
-    {
-        if (auditLogFunc_ != nullptr) {
-            auditLogFunc_(level, oss.str().c_str());
-            return;
-        }
-
-        if (level < auditLogLevel_) {
-            return;
-        }
-
-        struct timeval tv {};
-        char strTime[24];
-        gettimeofday(&tv, nullptr);
-        time_t timeStamp = tv.tv_sec;
-        struct tm localTime {};
-        if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
-            std::cout << strTime << std::setw(6) << std::setfill('0') << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " " << oss.str() << std::endl;
-        } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
-                      << std::endl;
-        }
-    }
-
     SMOutLogger(const SMOutLogger &) = delete;
     SMOutLogger(SMOutLogger &&) = delete;
 
     ~SMOutLogger()
     {
         logFunc_ = nullptr;
-        auditLogFunc_ = nullptr;
     }
 
 private:
@@ -135,9 +107,7 @@ private:
 
 private:
     LogLevel logLevel_ = INFO_LEVEL;
-    LogLevel auditLogLevel_ = INFO_LEVEL;
     ExternalLog logFunc_ = nullptr;
-    ExternalLog auditLogFunc_ = nullptr;
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error"};
 };
@@ -155,21 +125,10 @@ private:
         ock::smem::SMOutLogger::Instance().Log(LEVEL, oss);                            \
     } while (0)
 
-#define SM_AUDIT_OUT_LOG(LEVEL, ARGS)                            \
-    do {                                                         \
-        std::ostringstream oss;                                  \
-        oss << "[SMEM_AUDIT] " << ARGS;                          \
-        ock::smem::SMOutLogger::Instance().AuditLog(LEVEL, oss); \
-    } while (0)
-
 #define SM_LOG_DEBUG(ARGS) SM_OUT_LOG(ock::smem::DEBUG_LEVEL, ARGS)
 #define SM_LOG_INFO(ARGS) SM_OUT_LOG(ock::smem::INFO_LEVEL, ARGS)
 #define SM_LOG_WARN(ARGS) SM_OUT_LOG(ock::smem::WARN_LEVEL, ARGS)
 #define SM_LOG_ERROR(ARGS) SM_OUT_LOG(ock::smem::ERROR_LEVEL, ARGS)
-
-#define SM_AUDIT_LOG_INFO(MODULE, ARGS) SM_AUDIT_OUT_LOG(ock::smem::INFO_LEVEL, ARGS)
-#define SM_AUDIT_LOG_WARN(MODULE, ARGS) SM_AUDIT_OUT_LOG(ock::smem::WARN_LEVEL, ARGS)
-#define SM_AUDIT_LOG_ERROR(MODULE, ARGS) SM_AUDIT_OUT_LOG(ock::smem::ERROR_LEVEL, ARGS)
 
 #define SM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \
