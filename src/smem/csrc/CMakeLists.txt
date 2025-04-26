@@ -14,6 +14,7 @@ set(SMEM_SRC_NET "")
 set(SMEM_SRC_SMEM_SHM "")
 set(SMEM_SRC_STORE "")
 set(SMEM_SRC_CORE_API "")
+set(SMEM_SRC_SMEM_BM "")
 
 ## add files into src variables
 aux_source_directory(common SMEM_SRC_COMMON)
@@ -21,9 +22,16 @@ aux_source_directory(config_store SMEM_SRC_STORE)
 aux_source_directory(net/ SMEM_SRC_NET)
 aux_source_directory(smem_shm SMEM_SRC_SMEM_SHARE)
 aux_source_directory(under_api/hybm_core/ SMEM_SRC_CORE_API)
+aux_source_directory(smem_bm SMEM_SRC_SMEM_BM)
 
 # set whole source for platform
-set(PLATFORM_SRC ${SMEM_SRC_COMMON} ${SMEM_SRC_NET} ${SMEM_SRC_SMEM_SHARE} ${SMEM_SRC_STORE} ${SMEM_SRC_CORE_API} smem.cpp)
+set(PLATFORM_SRC ${SMEM_SRC_COMMON}
+        ${SMEM_SRC_NET}
+        ${SMEM_SRC_SMEM_SHARE}
+        ${SMEM_SRC_STORE}
+        ${SMEM_SRC_CORE_API}
+        ${SMEM_SRC_SMEM_BM}
+        smem.cpp)
 
 ## build the static and shared library
 add_library(smem_objects OBJECT ${PLATFORM_SRC})
