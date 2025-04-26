@@ -17,7 +17,7 @@ std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
 #endif
 
-smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
+SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                            smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
     SM_PARAM_VALIDATE(
@@ -56,7 +56,7 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint
     return reinterpret_cast<void *>(entry.Get());
 }
 
-int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
+SMEM_API int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
 
@@ -65,7 +65,7 @@ int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
     return SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
 }
 
-int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size)
+SMEM_API int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(context == nullptr, "invalid param, context is NULL", SM_INVALID_PARAM);
@@ -82,7 +82,7 @@ int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint3
     return entry->SetExtraContext(context, size);
 }
 
-smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t *rankList, uint32_t rankSize, uint32_t flags)
+SMEM_API smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t *rankList, uint32_t rankSize, uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", nullptr);
     SM_PARAM_VALIDATE(rankList == nullptr, "invalid param, rankList is NULL", nullptr);
@@ -99,7 +99,7 @@ smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t *rankList
     return entry->CreateTeam(rankList, rankSize, flags);
 }
 
-int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags)
+SMEM_API int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags)
 {
     SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
 
@@ -122,7 +122,7 @@ int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags)
     return SM_OK;
 }
 
-smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle)
+SMEM_API smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", nullptr);
 
@@ -137,7 +137,7 @@ smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle)
     return reinterpret_cast<void *>(entry->GetGlobalTeam().Get());
 }
 
-uint32_t smem_shm_team_get_rank(smem_shm_team_t team)
+SMEM_API uint32_t smem_shm_team_get_rank(smem_shm_team_t team)
 {
     SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
 
@@ -151,7 +151,7 @@ uint32_t smem_shm_team_get_rank(smem_shm_team_t team)
     return t->GetLocalRank();
 }
 
-uint32_t smem_shm_team_get_size(smem_shm_team_t team)
+SMEM_API uint32_t smem_shm_team_get_size(smem_shm_team_t team)
 {
     SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
 
@@ -165,7 +165,7 @@ uint32_t smem_shm_team_get_size(smem_shm_team_t team)
     return t->GetRankSize();
 }
 
-int32_t smem_shm_control_barrier(smem_shm_team_t team)
+SMEM_API int32_t smem_shm_control_barrier(smem_shm_team_t team)
 {
     SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
 
@@ -180,7 +180,7 @@ int32_t smem_shm_control_barrier(smem_shm_team_t team)
     return t->TeamBarrier();
 }
 
-int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, uint32_t sendSize, char *recvBuf,
+SMEM_API int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, uint32_t sendSize, char *recvBuf,
                                    uint32_t recvSize)
 {
     SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
@@ -199,7 +199,7 @@ int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, ui
     return t->TeamAllGather(sendBuf, sendSize, recvBuf, recvSize);
 }
 
-int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo)
+SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(reachInfo == nullptr, "invalid param, reachInfo is NULL", SM_INVALID_PARAM);
@@ -217,7 +217,7 @@ int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint
     return SM_OK;
 }
 
-int32_t smem_shm_config_init(smem_shm_config_t *config)
+SMEM_API int32_t smem_shm_config_init(smem_shm_config_t *config)
 {
     SM_PARAM_VALIDATE(config == nullptr, "invalid param, config is NULL", SM_INVALID_PARAM);
     config->shmInitTimeout = SMEM_DEFAUT_WAIT_TIME;
@@ -228,7 +228,7 @@ int32_t smem_shm_config_init(smem_shm_config_t *config)
     return SM_OK;
 }
 
-int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
+SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
                       uint64_t gvaSpaceSize, smem_shm_config_t *config)
 {
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
@@ -255,7 +255,7 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
     return SM_OK;
 }
 
-void smem_shm_uninit(uint32_t flags)
+SMEM_API void smem_shm_uninit(uint32_t flags)
 {
     if (!g_smemShmInited) {
         SM_LOG_WARN("smem shm not initialized yet");
@@ -266,7 +266,7 @@ void smem_shm_uninit(uint32_t flags)
     SM_LOG_INFO("smem_shm_uninit finished");
 }
 
-uint32_t smem_shm_query_support_data_operation(void)
+SMEM_API uint32_t smem_shm_query_support_data_operation(void)
 {
     return SMEMS_DATA_OP_MTE;
 }

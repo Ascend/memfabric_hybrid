@@ -87,7 +87,7 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
 
     for (uint32_t i = 0; i < mgr->ranksize; i++) {
         std::string base = std::to_string(mgr->ranksize) + "_" + std::to_string(i);
-        std::string input((char *) allExInfo[i].desc, allExInfo[i].descLen);
+        std::string input((const char *) allExInfo[i].desc, allExInfo[i].descLen);
 
         if (base.compare(0, input.size(), input) != 0) {
             std::cout << "import failed, export_desc: " << base << " input_desc: " << input << std::endl;

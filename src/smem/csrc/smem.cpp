@@ -11,7 +11,7 @@ namespace {
 bool g_smemInited = false;
 }
 
-int32_t smem_init(uint32_t flags)
+SMEM_API int32_t smem_init(uint32_t flags)
 {
     using namespace ock::smem;
 
@@ -47,13 +47,13 @@ int32_t smem_init(uint32_t flags)
     return SM_OK;
 }
 
-void smem_uninit()
+SMEM_API void smem_uninit()
 {
     g_smemInited = false;
     return;
 }
 
-int32_t smem_set_extern_logger(void (*fun)(int, const char *))
+SMEM_API int32_t smem_set_extern_logger(void (*fun)(int, const char *))
 {
     using namespace ock::smem;
 
@@ -81,7 +81,7 @@ int32_t smem_set_extern_logger(void (*fun)(int, const char *))
     return SM_OK;
 }
 
-int32_t smem_set_log_level(int level)
+SMEM_API int32_t smem_set_log_level(int level)
 {
     using namespace ock::smem;
 
@@ -110,12 +110,12 @@ int32_t smem_set_log_level(int level)
     return SM_OK;
 }
 
-const char *smem_get_last_err_msg()
+SMEM_API const char *smem_get_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(false);
 }
 
-const char *smem_get_and_clear_last_err_msg()
+SMEM_API const char *smem_get_and_clear_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(true);
 }

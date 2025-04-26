@@ -100,7 +100,8 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        hybm_exchange_info exInfo = { 0 };
+        hybm_exchange_info exInfo;
+        bzero(&exInfo, sizeof(hybm_exchange_info));
         ret = HybmCoreApi::HybmExport(entity, slice, flags, &exInfo);
         if (ret != 0) {
             SM_LOG_ERROR("hybm export failed, result: " << ret);

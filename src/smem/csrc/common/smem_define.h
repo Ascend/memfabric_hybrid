@@ -46,6 +46,9 @@ namespace smem {
             return returnValue;                         \
         }                                               \
     } while (0)
+
+#define SMEM_API __attribute__((visibility("default")))
+
 }  // namespace smem
 }  // namespace ock
 
