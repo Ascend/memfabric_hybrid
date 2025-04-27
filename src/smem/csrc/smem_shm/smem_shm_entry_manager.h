@@ -36,7 +36,7 @@ private:
     std::mutex entryMutex_;
     std::map<uintptr_t, SmemShmEntryPtr> ptr2EntryMap_; /* lookup entry by ptr */
     std::map<uint32_t, SmemShmEntryPtr> entryIdMap_;    /* deduplicate entry by id */
-    smem_shm_config_t config_;
+    smem_shm_config_t config_{};
     uint16_t deviceId_ = 0;
     bool inited_ = false;
 
