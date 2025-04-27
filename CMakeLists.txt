@@ -7,15 +7,15 @@ option(BUILD_EXAMPLE "build example or not" ON)
 option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
-option(GENERATE_GIT_COMMIT_FILE "generate commit file using git log" OFF)
-option(BUILD_GIT_COMMIT "build library version with commit" OFF)
+option(BUILD_GIT_COMMIT "build library version with commit" ON)
+option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 
 message(STATUS "BUILD_EXAMPLE = ${BUILD_EXAMPLE}")
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
 message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
 message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
-message(STATUS "GENERATE_GIT_COMMIT_FILE = ${GENERATE_GIT_COMMIT_FILE}")
 message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
+message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
@@ -50,13 +50,36 @@ if (ENABLE_CPU_MONOTONIC STREQUAL "ON")
     add_compile_options(-DENABLE_CPU_MONOTONIC)
 endif ()
 
-# generate commit log
-if (GENERATE_GIT_COMMIT_FILE STREQUAL "ON")
-    exec_program(sh ${PROJECT_SOURCE_DIR} ARGS ${PROJECT_SOURCE_DIR}/script/gen_last_git_commit.sh)
-endif ()
-
 # set log commit into compile definition
 if (BUILD_GIT_COMMIT STREQUAL "ON")
+    if (BUILD_GIT_COMMIT_GEN_FILE STREQUAL "ON")
+        # find dos2unix command
+        find_program(DOS2UNIX_CMD dos2unix)
+        if (NOT EXISTS ${DOS2UNIX_CMD})
+            message(FATAL_ERROR "no dos2unix found, please install")
+        else ()
+            message(STATUS "dos2unix found at ${DOS2UNIX_CMD}")
+        endif ()
+
+        # covert file from dos format to unix format
+        set(COMMIT_GEN_FILE ${PROJECT_SOURCE_DIR}/script/gen_last_git_commit.sh)
+        execute_process(COMMAND ${DOS2UNIX_CMD} ${COMMIT_GEN_FILE}
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                RESULT_VARIABLE DOS2UNIX_RESULT)
+        if (${DOS2UNIX_RESULT} EQUAL 1)
+            message(FATAL_ERROR "failed to dos2unix script file ${COMMIT_GEN_FILE}")
+        endif ()
+
+        # generate file
+        execute_process(COMMAND sh ${COMMIT_GEN_FILE}
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                RESULT_VARIABLE GET_GEN_COMMIT_RESULT)
+        if (${GET_GEN_COMMIT_RESULT} EQUAL 1)
+            message(FATAL_ERROR "generate last commit file failed")
+        endif ()
+    endif ()
+
+    # get commit id from file
     execute_process(COMMAND head -n 1 ${PROJECT_SOURCE_DIR}/script/git_last_commit.txt
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
             RESULT_VARIABLE GET_COMMIT_RESULT

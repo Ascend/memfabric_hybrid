@@ -22,6 +22,10 @@ extern "C" {
 /* get cancat version string */
 #define SM_VERSION STR2(CONCAT2(VERSION_MAJOR, VERSION_MINOR, VERSION_FIX))
 
+#ifndef GIT_LAST_COMMIT
+#define GIT_LAST_COMMIT empty
+#endif
+
 /*
  * global lib version string with build time
  */
