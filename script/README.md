@@ -4,12 +4,15 @@ ${INSTALL_PATH}/
     |--mxc
           |--memfabric_hybrid
               |-- latest
+              |-- set_env.sh
               |-- ${version}
                    |-- ${arch}-${os}
                         |-- include    (头文件)
                         |-- bin        (用于TLS相关二进制文件)
                         |-- lib64      (so库)
                         |-- whl        (python的whl包)
+                   |-- uninstall.sh
+                   |-- version.info
 
 
 default ${INSTALL_PATH} is /usr/local/
@@ -17,7 +20,7 @@ default ${INSTALL_PATH} is /usr/local/
 
 ### 2 rule of package name
 ```
-mxc-memfabric-hybrid-${ascend_version}_${version}_${os}_${arch}.run
+mxc-memfabric-hybrid-${version}_${os}_${arch}.run
 ```
 
 ### 3 upgrade
