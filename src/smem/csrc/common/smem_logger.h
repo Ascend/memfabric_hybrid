@@ -15,7 +15,6 @@
 #include <sys/syscall.h>
 
 #include "smem_define.h"
-#include "smem_types.h"
 
 namespace ock {
 namespace smem {
@@ -37,12 +36,12 @@ public:
         return gLogger;
     }
 
-    inline LogLevel GetLogLevel()
+    inline LogLevel GetLogLevel() const
     {
         return logLevel_;
     }
 
-    inline ExternalLog GetLogExtraFunc()
+    inline ExternalLog GetLogExtraFunc() const
     {
         return logFunc_;
     }

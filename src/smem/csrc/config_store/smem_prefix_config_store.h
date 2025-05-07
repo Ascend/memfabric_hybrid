@@ -5,7 +5,6 @@
 #ifndef SMEM_SMEM_PREFIX_CONFIG_STORE_H
 #define SMEM_SMEM_PREFIX_CONFIG_STORE_H
 
-#include <memory>
 #include "smem_config_store.h"
 
 namespace ock {

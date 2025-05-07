@@ -11,15 +11,20 @@ extern "C" {
 /* version information */
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 0
+#define VERSION_FIX 0
 
 /* second level marco define 'CON' to get string */
-#define CONCAT(x, y) x.##y
+#define CONCAT(x, y, z) x.##y.##z
 #define STR(x) #x
-#define CONCAT2(x, y) CONCAT(x, y)
+#define CONCAT2(x, y, z) CONCAT(x, y, z)
 #define STR2(x) STR(x)
 
 /* get cancat version string */
-#define SM_VERSION STR2(CONCAT2(VERSION_MAJOR, VERSION_MINOR))
+#define SM_VERSION STR2(CONCAT2(VERSION_MAJOR, VERSION_MINOR, VERSION_FIX))
+
+#ifndef GIT_LAST_COMMIT
+#define GIT_LAST_COMMIT empty
+#endif
 
 /*
  * global lib version string with build time

@@ -4,8 +4,6 @@
 #ifndef MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
 #define MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
 
-#include <sstream>
-
 #include "smem_common_includes.h"
 
 namespace ock {
@@ -59,7 +57,7 @@ inline const char *SmLastError::GetAndClear(bool clear)
     }
 
     /* empty string */
-    static std::string emptyString = "";
+    static std::string emptyString;
 
     return emptyString.c_str();
 }
