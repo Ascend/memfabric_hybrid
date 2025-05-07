@@ -139,10 +139,6 @@ int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, ui
  */
 int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo);
 
-smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t *rankList, uint32_t rankSize, uint32_t flags);
-
-int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags);
-
 #ifdef __cplusplus
 }
 #endif

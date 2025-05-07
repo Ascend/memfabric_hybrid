@@ -16,11 +16,16 @@ if [ -z "$BUILD_OPEN_ABI" ]; then
     BUILD_OPEN_ABI="ON"
 fi
 
+set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
-cd "${ROOT_PATH}" || exit 1
+CURRENT_DIR=$(pwd)
+
+cd ${ROOT_PATH}/..
 rm -rf ./build ./output
 
 mkdir build/
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
-make -j5 -C build/ || exit 2
+make -j5 -C build/
 make install -C build/
+
+cd ${CURRENT_DIR}

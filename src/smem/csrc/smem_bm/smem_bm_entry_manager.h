@@ -6,6 +6,7 @@
 
 #include "smem_bm.h"
 #include "smem_bm_entry.h"
+#include "smem_config_store.h"
 
 namespace ock {
 namespace smem {
@@ -20,6 +21,9 @@ public:
     SmemBmEntryManager(const SmemBmEntryManager &) = delete;
     SmemBmEntryManager(SmemBmEntryManager &&) = delete;
 
+    Result Initialize(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
+                      uint16_t deviceId, smem_bm_config_t *config);
+
 public:
     std::mutex entryMutex_;
     std::map<uintptr_t, SmemBmEntryPtr> ptr2EntryMap_; /* lookup entry by ptr */
@@ -27,6 +31,9 @@ public:
     smem_bm_config_t config_{};
     uint16_t deviceId_ = 0;
     bool inited_ = false;
+
+    StorePtr storeServer_ = nullptr;
+    StorePtr storeClient_ = nullptr;
 };
 
 }  // namespace smem

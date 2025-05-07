@@ -64,6 +64,6 @@ endif()
 
 # install library
 install(TARGETS smem_shared
-        LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib
+        LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
         )

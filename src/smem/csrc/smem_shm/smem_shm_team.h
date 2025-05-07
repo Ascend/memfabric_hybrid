@@ -15,7 +15,7 @@ class SmemShmTeam : public SmReferable {
 public:
     SmemShmTeam(uint32_t id, uint32_t entryId, uint32_t rankSize, uint32_t rank)
         : teamId_(id), shmEntryId_(entryId), rankSize_(rankSize), localRank_(rank) {}
-    ~SmemShmTeam();
+    ~SmemShmTeam() override;
     // teamTimeout(unit: second)
     Result Initialize(uint32_t teamTimeout, StorePtr store);
 
