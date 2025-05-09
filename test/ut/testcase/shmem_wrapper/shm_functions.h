@@ -4,9 +4,18 @@
 #ifndef SHMEM_SHM_DEFINE_H
 #define SHMEM_SHM_DEFINE_H
 
-#include "shm_out_logger.h"
+#include <string>
+#include <iostream>
+#include <unistd.h>
+#include <limits.h>
+#include "stdint.h"
+#include "dlfcn.h"
 
 namespace shm {
+
+#define LOG_ERROR(ARGS) std::cout << "[SHM][ERROR] " << ARGS << std::endl;
+#define LOG_INFO(ARGS) std::cout << "[SHM][INFO] " << ARGS << std::endl;
+
 class Func {
 public:
     /**

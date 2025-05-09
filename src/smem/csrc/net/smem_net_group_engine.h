@@ -13,19 +13,35 @@ namespace smem {
 
 class SmemNetGroupEngine : public SmReferable {
 public:
-    SmemNetGroupEngine(const StorePtr& store, uint32_t timeoutMs) : store_(store), timeoutMs_(timeoutMs) {}
+    SmemNetGroupEngine(const StorePtr& store, uint32_t rankSize, uint32_t rank, uint32_t timeoutMs) :
+        store_(store), rankSize_(rankSize), localRank_(rank), timeoutMs_(timeoutMs) {}
     ~SmemNetGroupEngine() override = default;
 
-    Result GroupBarrier(const std::string &key, uint32_t size);
+    Result GroupBarrier();
 
-    Result GroupAllGather(const std::string &key, uint32_t rank, uint32_t size,
-        const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
+    Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
+
+    uint32_t GetLocalRank() const;
+
+    uint32_t GetRankSize() const;
 
 private:
     StorePtr store_ = nullptr;
     uint32_t timeoutMs_ = 0;
-    std::atomic<uint32_t> operationSn_ = { 0 };
+    uint32_t rankSize_ = UINT32_MAX;
+    uint32_t localRank_ = UINT32_MAX;
+    std::atomic<uint32_t> groupSn_ = { 0 };
 };
+
+inline uint32_t SmemNetGroupEngine::GetLocalRank() const
+{
+    return localRank_;
+}
+
+inline uint32_t SmemNetGroupEngine::GetRankSize() const
+{
+    return rankSize_;
+}
 
 using SmemGroupEnginePtr = SmRef<SmemNetGroupEngine>;
 }

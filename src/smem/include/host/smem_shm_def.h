@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 typedef void *smem_shm_t;
-typedef void *smem_shm_team_t;
 
 /**
  * @brief NPU initiated data operation type, currently only support MTE

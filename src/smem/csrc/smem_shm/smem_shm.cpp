@@ -5,7 +5,6 @@
 #include "smem_shm.h"
 #include "smem_logger.h"
 #include "smem_shm_entry.h"
-#include "smem_shm_team.h"
 #include "smem_shm_entry_manager.h"
 
 using namespace ock::smem;
@@ -82,108 +81,58 @@ SMEM_API int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *conte
     return entry->SetExtraContext(context, size);
 }
 
-SMEM_API smem_shm_team_t smem_shm_team_create(smem_shm_t handle, const uint32_t *rankList, uint32_t rankSize, uint32_t flags)
+SMEM_API uint32_t smem_shm_get_global_rank(smem_shm_t handle)
 {
-    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", nullptr);
-    SM_PARAM_VALIDATE(rankList == nullptr, "invalid param, rankList is NULL", nullptr);
-    SM_PARAM_VALIDATE(rankSize == 0 || rankSize > UN65536, "invalid param, size must be between 1~65536", nullptr);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", nullptr);
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemShmEntryPtr entry = nullptr;
     auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
     if (ret != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
-        return nullptr;
-    }
-    return entry->CreateTeam(rankList, rankSize, flags);
-}
-
-SMEM_API int32_t smem_shm_team_destroy(smem_shm_team_t team, uint32_t flags)
-{
-    SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
-
-    auto *t = reinterpret_cast<SmemShmTeam *>(team);
-    if (t == nullptr) {
-        SM_LOG_WARN("input team is null");
-        return SM_OK;
-    }
-
-    SmemShmEntryPtr entry = nullptr;
-    auto ret = SmemShmEntryManager::Instance().GetEntryById(t->GetShmEntryId(), entry);
-    if (ret != SM_OK || entry == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
-        return SM_ERROR;
-    }
-
-    entry->RemoveTeam(t);
-    return SM_OK;
-}
-
-SMEM_API smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle)
-{
-    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", nullptr);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", nullptr);
-
-    SmemShmEntryPtr entry = nullptr;
-    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
-    if (ret != SM_OK || entry == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
-        return nullptr;
-    }
-    return reinterpret_cast<void *>(entry->GetGlobalTeam().Get());
-}
-
-SMEM_API uint32_t smem_shm_team_get_rank(smem_shm_team_t team)
-{
-    SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
-
-    auto *t = reinterpret_cast<SmemShmTeam *>(team);
-    if (t == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input team is null");
-        return UINT32_MAX;
-    }
-    return t->GetLocalRank();
-}
-
-SMEM_API uint32_t smem_shm_team_get_size(smem_shm_team_t team)
-{
-    SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
-
-    auto *t = reinterpret_cast<SmemShmTeam *>(team);
-    if (t == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input team is null");
-        return UINT32_MAX;
-    }
-    return t->GetRankSize();
-}
-
-SMEM_API int32_t smem_shm_control_barrier(smem_shm_team_t team)
-{
-    SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
-
-    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
-
-    auto *t = reinterpret_cast<SmemShmTeam *>(team);
-    if (t == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input team is null");
         return SM_INVALID_PARAM;
     }
-
-    return t->TeamBarrier();
+    auto group = entry->GetGroup();
+    SM_PARAM_VALIDATE(group == nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GetLocalRank();
 }
 
-SMEM_API int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, uint32_t sendSize, char *recvBuf,
-                                   uint32_t recvSize)
+SMEM_API uint32_t smem_shm_get_global_rank_size(smem_shm_t handle)
 {
-    SM_PARAM_VALIDATE(team == nullptr, "invalid param, team is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_PARAM_VALIDATE(group == nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GetRankSize();
+}
+
+SMEM_API int32_t smem_shm_control_barrier(smem_shm_t handle)
+{
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_PARAM_VALIDATE(group == nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GroupBarrier();
+}
+
+SMEM_API int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, char *recvBuf,
+                                            uint32_t recvSize)
+{
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(sendBuf == nullptr, "invalid param, sendBuf is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(recvBuf == nullptr, "invalid param, recvBuf is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(sendSize == 0 || sendSize > UN65536, "Invalid sendSize, sendSize must be 1~65536",
@@ -191,12 +140,15 @@ SMEM_API int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *se
 
     SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
 
-    auto *t = reinterpret_cast<SmemShmTeam *>(team);
-    if (t == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input team is null");
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
         return SM_INVALID_PARAM;
     }
-    return t->TeamAllGather(sendBuf, sendSize, recvBuf, recvSize);
+    auto group = entry->GetGroup();
+    SM_PARAM_VALIDATE(group == nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GroupAllGather(sendBuf, sendSize, recvBuf, recvSize);
 }
 
 SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo)

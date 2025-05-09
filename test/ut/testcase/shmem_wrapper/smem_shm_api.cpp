@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include <dlfcn.h>
-
+#include <mutex>
 #include "smem_shm_api.h"
 
 namespace shm {
@@ -28,7 +28,6 @@ SmemShmQuerySupportDataOpFunc SmemApi::gSmemShmQuerySupportDataOp = nullptr;
 SmemShmCreateFunc SmemApi::gSmemShmCreate = nullptr;
 SmemShmDestroyFunc SmemApi::gSmemShmDestroy = nullptr;
 SmemShmSetExtraContextFunc SmemApi::gSmemShmSetExtraContext = nullptr;
-SmemShmGetGlobalTeamFunc SmemApi::gSmemShmGetGlobalTeam = nullptr;
 SmemShmTeamGetRankFunc SmemApi::gSmemShmTeamGetRank = nullptr;
 SmemShmTeamGetSizeFunc SmemApi::gSmemShmTeamGetSize = nullptr;
 SmemShmControlBarrierFunc SmemApi::gSmemShmControlBarrier = nullptr;
@@ -37,7 +36,6 @@ SmemShmTopoCanReachFunc SmemApi::gSmemShmTopoCanReach = nullptr;
 
 int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
 {
-    LOG_DEBUG("try to load library: " << gSmemFileName << ", dir: " << libDirPath.c_str());
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {
         return 0;
@@ -78,9 +76,8 @@ int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(gSmemShmCreate, SmemShmCreateFunc, gSmemHandle, "smem_shm_create");
     DL_LOAD_SYM(gSmemShmDestroy, SmemShmDestroyFunc, gSmemHandle, "smem_shm_destroy");
     DL_LOAD_SYM(gSmemShmSetExtraContext, SmemShmSetExtraContextFunc, gSmemHandle, "smem_shm_set_extra_context");
-    DL_LOAD_SYM(gSmemShmGetGlobalTeam, SmemShmGetGlobalTeamFunc, gSmemHandle, "smem_shm_get_global_team");
-    DL_LOAD_SYM(gSmemShmTeamGetRank, SmemShmTeamGetRankFunc, gSmemHandle, "smem_shm_team_get_rank");
-    DL_LOAD_SYM(gSmemShmTeamGetSize, SmemShmTeamGetSizeFunc, gSmemHandle, "smem_shm_team_get_size");
+    DL_LOAD_SYM(gSmemShmTeamGetRank, SmemShmTeamGetRankFunc, gSmemHandle, "smem_shm_get_global_rank");
+    DL_LOAD_SYM(gSmemShmTeamGetSize, SmemShmTeamGetSizeFunc, gSmemHandle, "smem_shm_get_global_rank_size");
     DL_LOAD_SYM(gSmemShmControlBarrier, SmemShmControlBarrierFunc, gSmemHandle, "smem_shm_control_barrier");
     DL_LOAD_SYM(gSmemShmControlAllGather, SmemShmControlAllGatherFunc, gSmemHandle, "smem_shm_control_allgather");
     DL_LOAD_SYM(gSmemShmTopoCanReach, SmemShmTopoCanReachFunc, gSmemHandle, "smem_shm_topology_can_reach");

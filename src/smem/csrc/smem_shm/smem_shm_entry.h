@@ -8,7 +8,7 @@
 #include "hybm_def.h"
 #include "smem.h"
 #include "smem_shm.h"
-#include "smem_shm_team.h"
+#include "smem_net_group_engine.h"
 
 namespace ock {
 namespace smem {
@@ -20,17 +20,13 @@ public:
 
     int32_t Initialize(hybm_options &options);
 
-    SmemShmTeam *CreateTeam(const uint32_t *rankList, uint32_t rankSize, uint32_t flags);
-
-    Result RemoveTeam(SmemShmTeam *team);
-
     void SetConfig(const smem_shm_config_t &config);
 
     Result SetExtraContext(const void *context, uint32_t size);
 
     void *GetGva() const;
 
-    SmemShmTeamPtr GetGlobalTeam() const;
+    SmemGroupEnginePtr GetGroup() const;
 
     uint32_t Id() const;
 
@@ -38,7 +34,7 @@ private:
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
 
 private:
-    SmemShmTeamPtr globalTeam_ = nullptr;
+    SmemGroupEnginePtr globalGroup_ = nullptr;
     smem_shm_config_t extraConfig_;
 
     bool inited_ = false;
@@ -48,14 +44,12 @@ private:
     void *gva_ = nullptr;
 
     std::mutex entryMutex_;
-    std::atomic<uint32_t> teamSn_ = { 1U }; // global_team sn is 0
-    std::map<uint32_t, SmemShmTeamPtr> teamMap_;
 };
 using SmemShmEntryPtr = SmRef<SmemShmEntry>;
 
-inline SmemShmTeamPtr SmemShmEntry::GetGlobalTeam() const
+inline SmemGroupEnginePtr SmemShmEntry::GetGroup() const
 {
-    return globalTeam_;
+    return globalGroup_;
 }
 
 inline uint32_t SmemShmEntry::Id() const

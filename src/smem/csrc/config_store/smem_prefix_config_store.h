@@ -40,6 +40,11 @@ public:
         return baseStore_->Append(std::string(keyPrefix_).append(key), value, newSize);
     }
 
+    std::string GetCompleteKey(std::string &key) noexcept override
+    {
+        return std::string(keyPrefix_).append(key);
+    }
+
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override
     {
