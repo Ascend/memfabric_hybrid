@@ -37,7 +37,7 @@ target_compile_options(shm_kernels PRIVATE
 
 set(SMEM_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../output)
 include_directories(${SMEM_LIB_DIR}/smem/include/smem/host)
-target_link_directories(shm_kernels PUBLIC ${SMEM_LIB_DIR}/smem/lib)
+target_link_directories(shm_kernels PUBLIC ${SMEM_LIB_DIR}/smem/lib64)
 
 target_link_libraries(shm_kernels PRIVATE
     $<BUILD_INTERFACE:$<$<OR:$<STREQUAL:${RUN_MODE},npu>,$<STREQUAL:${RUN_MODE},sim>>:host_intf_pub>>
