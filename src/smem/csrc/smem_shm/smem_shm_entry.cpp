@@ -7,6 +7,7 @@
 #include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
 #include "hybm_core_api.h"
+#include "smem_store_factory.h"
 
 namespace ock {
 namespace smem {
@@ -18,8 +19,8 @@ SmemShmEntry::SmemShmEntry(uint32_t id) : id_{ id }, entity_{ nullptr }, gva_{ n
 
 SmemShmEntry::~SmemShmEntry()
 {
-    if (globalTeam_ != nullptr) {
-        globalTeam_ = nullptr;
+    if (globalGroup_ != nullptr) {
+        globalGroup_ = nullptr;
     }
 
     if (entity_ != nullptr && gva_ != nullptr) {
@@ -54,17 +55,16 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     auto client = SmemShmEntryManager::Instance().GetStoreClient();
     SM_ASSERT_RETURN(client != nullptr, SM_INVALID_PARAM);
 
-    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(0, id_, rankSize, rankId);
-    SM_ASSERT_RETURN(team != nullptr, SM_ERROR);
+    std::string prefix = "shmem(" + std::to_string(id_) + ")_";
+    StorePtr store = StoreFactory::PrefixStore(client, prefix);
+    SM_ASSERT_RETURN(store != nullptr, SM_ERROR);
 
-    auto ret = team->Initialize(extraConfig_.controlOperationTimeout, client);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("global team init failed, result: " << ret);
-        return SM_ERROR;
-    }
+    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(store, rankSize, rankId,
+        extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC);
+    SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 
-    globalTeam_ = team;
-    return team->TeamBarrier();  // 保证所有rank都初始化了
+    globalGroup_ = group;
+    return globalGroup_->GroupBarrier();  // 保证所有rank都初始化了
 }
 
 Result SmemShmEntry::Initialize(hybm_options &options)
@@ -109,7 +109,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
         }
 
         hybm_exchange_info allExInfo[options.rankCount];
-        ret = globalTeam_->TeamAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
+        ret = globalGroup_->GroupAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
                                          sizeof(hybm_exchange_info) * options.rankCount);
         if (ret != 0) {
             SM_LOG_ERROR("hybm gather export failed, result: " << ret);
@@ -122,7 +122,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        ret = globalTeam_->TeamBarrier();
+        ret = globalGroup_->GroupBarrier();
         if (ret != 0) {
             SM_LOG_ERROR("hybm barrier failed, result: " << ret);
             break;
@@ -137,7 +137,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
 
     if (ret != 0) {
         ReleaseAfterFailed(entity, slice, reservedMem);
-        globalTeam_ = nullptr;
+        globalGroup_ = nullptr;
         return ret;
     }
 
@@ -145,58 +145,6 @@ Result SmemShmEntry::Initialize(hybm_options &options)
     gva_ = reservedMem;
     inited_ = true;
     return 0;
-}
-
-SmemShmTeam *SmemShmEntry::CreateTeam(const uint32_t *rankList, uint32_t rankSize, uint32_t flags)
-{
-    if (!inited_) {
-        SM_LOG_ERROR("smem shm entry has not been initialized");
-        return nullptr;
-    }
-
-    bool hasRank = false;
-    uint32_t id = 0;
-    for (uint32_t i = 0; i < rankSize; i++) {
-        id += (rankList[i] <= localRank_);
-        hasRank |= (rankList[i] == localRank_);
-    }
-
-    if (!hasRank) {
-        SM_LOG_ERROR("the input rank list don't contain local rank: " << localRank_);
-        return nullptr;
-    }
-
-    auto client = SmemShmEntryManager::Instance().GetStoreClient();
-    SM_ASSERT_RETURN(client != nullptr, nullptr);
-    uint32_t teamId = teamSn_.fetch_add(1U);
-    SmemShmTeamPtr team = SmMakeRef<SmemShmTeam>(teamId, id_, rankSize, id);
-    SM_ASSERT_RETURN(team != nullptr, nullptr);
-
-    auto ret = team->Initialize(extraConfig_.controlOperationTimeout, client);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("smem team init failed! ret: " << ret);
-        return nullptr;
-    }
-
-    std::lock_guard<std::mutex> guard(entryMutex_);
-    teamMap_.emplace(teamId, team);
-
-    SM_LOG_INFO("shmId: " << id_ << " create team : " << CommonFunc::SmemArray2String(rankList, rankSize)
-                          << " teamId: " << teamId);
-    return team.Get();
-}
-
-Result SmemShmEntry::RemoveTeam(SmemShmTeam *team)
-{
-    uint32_t teamId = team->GetTeamId();
-    std::lock_guard<std::mutex> guard(entryMutex_);
-    auto it = teamMap_.find(teamId);
-    if (it == teamMap_.end()) {
-        SM_LOG_ERROR("not found this team, remove team failed, teamId: " << teamId << " shmId: " << id_);
-        return SM_ERROR;
-    }
-    teamMap_.erase(it);
-    return SM_OK;
 }
 
 void SmemShmEntry::SetConfig(const smem_shm_config_t &config)

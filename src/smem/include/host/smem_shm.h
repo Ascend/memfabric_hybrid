@@ -85,48 +85,40 @@ int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags);
 int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size);
 
 /**
- * @brief Get global shm team
+ * @brief Get local rank of a shm object
  *
  * @param handle            [in] the shm object
- * @return global team
+ * @return local rank in the input object
  */
-smem_shm_team_t smem_shm_get_global_team(smem_shm_t handle);
+uint32_t smem_shm_get_global_rank(smem_shm_t handle);
 
 /**
- * @brief Get local rank of a shm team
+ * @brief Get rank size of a shm object
  *
- * @param team              [in] query shm team
- * @return local rank in the input team (if team is null, return UINT32_MAX)
+ * @param handle            [in] the shm object
+ * @return rank size in the input object
  */
-uint32_t smem_shm_team_get_rank(smem_shm_team_t team);
+uint32_t smem_shm_get_global_rank_size(smem_shm_t handle);
 
 /**
- * @brief Get rank size of a shm team
+ * @brief Do barrier on a shm object, using control network
  *
- * @param team              [in] query shm team
- * @return rank size in the input team (if team is null, return UINT32_MAX)
- */
-uint32_t smem_shm_team_get_size(smem_shm_team_t team);
-
-/**
- * @brief Do barrier on a shm team, using control network
- *
- * @param team              [in] barrier shm team
+ * @param handle            [in] the shm object
  * @return 0 if successful, other is error
  */
-int32_t smem_shm_control_barrier(smem_shm_team_t team);
+int32_t smem_shm_control_barrier(smem_shm_t handle);
 
 /**
- * @brief Do all gather on a shm team, using control network
+ * @brief Do all gather on a shm object, using control network
  *
- * @param team              [in] barrier shm team
+ * @param handle            [in] the shm object
  * @param sendBuf           [in] input data buf
  * @param sendSize          [in] input data buf size
  * @param recvBuf           [in] output data buf
  * @param recvSize          [in] output data buf size
  * @return 0 if successful
  */
-int32_t smem_shm_control_allgather(smem_shm_team_t team, const char *sendBuf, uint32_t sendSize, char *recvBuf,
+int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, char *recvBuf,
                                    uint32_t recvSize);
 
 /**

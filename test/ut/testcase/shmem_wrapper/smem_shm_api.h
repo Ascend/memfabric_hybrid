@@ -4,7 +4,6 @@
 #ifndef SHMEM_MF_HYBRID_API_H
 #define SHMEM_MF_HYBRID_API_H
 
-#include "shm_out_logger.h"
 #include "shm_functions.h"
 #include "smem_shm_def.h"
 
@@ -26,11 +25,10 @@ using SmemShmCreateFunc = smem_shm_t (*)(uint32_t, uint32_t, uint32_t, uint64_t,
                                          void **);
 using SmemShmDestroyFunc = int32_t (*)(smem_shm_t, uint32_t);
 using SmemShmSetExtraContextFunc = int32_t (*)(smem_shm_t, const void *, uint32_t);
-using SmemShmGetGlobalTeamFunc = smem_shm_team_t (*)(smem_shm_t);
-using SmemShmTeamGetRankFunc = uint32_t (*)(smem_shm_team_t);
-using SmemShmTeamGetSizeFunc = uint32_t (*)(smem_shm_team_t);
-using SmemShmControlBarrierFunc = int32_t (*)(smem_shm_team_t);
-using SmemShmControlAllGatherFunc = int32_t (*)(smem_shm_team_t, const char *, uint32_t, char *, uint32_t);
+using SmemShmTeamGetRankFunc = uint32_t (*)(smem_shm_t);
+using SmemShmTeamGetSizeFunc = uint32_t (*)(smem_shm_t);
+using SmemShmControlBarrierFunc = int32_t (*)(smem_shm_t);
+using SmemShmControlAllGatherFunc = int32_t (*)(smem_shm_t, const char *, uint32_t, char *, uint32_t);
 using SmemShmTopoCanReachFunc = int32_t (*)(smem_shm_t, uint32_t, uint32_t *);
 
 class SmemApi {
@@ -107,30 +105,25 @@ public:
         return gSmemShmSetExtraContext(handle, context, size);
     }
 
-    static inline smem_shm_team_t SmemShmGetGlobalTeam(smem_shm_t handle)
+    static inline uint32_t SmemShmTeamGetRank(smem_shm_t handle)
     {
-        return gSmemShmGetGlobalTeam(handle);
+        return gSmemShmTeamGetRank(handle);
     }
 
-    static inline uint32_t SmemShmTeamGetRank(smem_shm_team_t team)
+    static inline uint32_t SmemShmTeamGetSize(smem_shm_t handle)
     {
-        return gSmemShmTeamGetRank(team);
+        return gSmemShmTeamGetSize(handle);
     }
 
-    static inline uint32_t SmemShmTeamGetSize(smem_shm_team_t team)
+    static inline int32_t SmemShmControlBarrier(smem_shm_t handle)
     {
-        return gSmemShmTeamGetSize(team);
+        return gSmemShmControlBarrier(handle);
     }
 
-    static inline int32_t SmemShmControlBarrier(smem_shm_team_t team)
-    {
-        return gSmemShmControlBarrier(team);
-    }
-
-    static inline int32_t SmemShmControlAllGather(smem_shm_team_t team, const char *sendBuf, uint32_t sendSize,
+    static inline int32_t SmemShmControlAllGather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize,
                                                   char *recvBuf, uint32_t recvSize)
     {
-        return gSmemShmControlAllGather(team, sendBuf, sendSize, recvBuf, recvSize);
+        return gSmemShmControlAllGather(handle, sendBuf, sendSize, recvBuf, recvSize);
     }
 
     static inline int32_t SmemShmTopoCanReach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo)
@@ -159,7 +152,6 @@ private:
     static SmemShmCreateFunc gSmemShmCreate;
     static SmemShmDestroyFunc gSmemShmDestroy;
     static SmemShmSetExtraContextFunc gSmemShmSetExtraContext;
-    static SmemShmGetGlobalTeamFunc gSmemShmGetGlobalTeam;
     static SmemShmTeamGetRankFunc gSmemShmTeamGetRank;
     static SmemShmTeamGetSizeFunc gSmemShmTeamGetSize;
     static SmemShmControlBarrierFunc gSmemShmControlBarrier;

@@ -112,6 +112,8 @@ public:
      */
     static const char *ErrStr(int16_t errCode);
 
+    virtual std::string GetCompleteKey(std::string &key) noexcept = 0;
+
 protected:
     virtual Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept = 0;
     static constexpr uint32_t MAX_KEY_LEN_CLIENT = 1024U;
