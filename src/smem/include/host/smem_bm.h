@@ -13,8 +13,7 @@ extern "C" {
 int32_t smem_bm_config_init(smem_bm_config_t *config);
 
 int32_t smem_bm_init(const char *configStoreIpPort, smem_bm_mem_type memType, smem_bm_data_op_type dataOpType,
-                     uint32_t worldSize, uint32_t rankId, uint16_t deviceId, uint64_t gvaSpaceSize,
-                     smem_bm_config_t *config);
+                     uint32_t worldSize, uint32_t rankId, uint16_t deviceId, smem_bm_config_t *config);
 
 void smem_bm_uninit(uint32_t flags);
 

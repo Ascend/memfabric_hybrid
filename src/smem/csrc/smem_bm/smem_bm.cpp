@@ -31,8 +31,7 @@ SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
 }
 
 SMEM_API int32_t smem_bm_init(const char *configStoreIpPort, smem_bm_mem_type memType, smem_bm_data_op_type dataOpType,
-                              uint32_t worldSize, uint32_t rankId, uint16_t deviceId, uint64_t gvaSpaceSize,
-                              smem_bm_config_t *config)
+                              uint32_t worldSize, uint32_t rankId, uint16_t deviceId, smem_bm_config_t *config)
 {
     std::lock_guard<std::mutex> guard(g_smemBmMutex_);
     if (g_smemBmInited) {
@@ -46,16 +45,14 @@ SMEM_API int32_t smem_bm_init(const char *configStoreIpPort, smem_bm_mem_type me
         return SM_ERROR;
     }
 
-    // TODO: HybmCoreInit和shm侧仅能调一次
-    ret = HybmCoreApi::HybmCoreInit(gvaSpaceSize, deviceId, config->flags);
+    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. space_size: " << gvaSpaceSize << " world_size: " << worldSize
-                                                      << " config_ip: " << configStoreIpPort);
+    SM_LOG_INFO("smem_bm_init success. world_size: " << worldSize << " config_ip: " << configStoreIpPort);
     return SM_OK;
 }
 

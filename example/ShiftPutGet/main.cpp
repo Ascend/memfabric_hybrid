@@ -91,7 +91,7 @@ int32_t main(int32_t argc, char* argv[])
     }
     smem_shm_config_t config;
     (void)smem_shm_config_init(&config);
-    ret = smem_shm_init(ipport.c_str(), rankSize, rankId, deviceId, gNpuMallocSpace * rankSize, &config);
+    ret = smem_shm_init(ipport.c_str(), rankSize, rankId, deviceId, &config);
     if (ret != 0) {
         ERROR_LOG("[TEST] shm init failed, ret:%d, rank:%d", ret, rankId);
         return -1;

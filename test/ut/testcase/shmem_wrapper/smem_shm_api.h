@@ -74,9 +74,9 @@ public:
     }
 
     static inline int32_t SmemShmInit(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
-                                      uint16_t deviceId, uint64_t gvaSpaceSize, smem_shm_config_t *config)
+                                      uint16_t deviceId, smem_shm_config_t *config)
     {
-        return gSmemShmInit(configStoreIpPort, worldSize, rankId, deviceId, gvaSpaceSize, config);
+        return gSmemShmInit(configStoreIpPort, worldSize, rankId, deviceId, config);
     }
 
     static inline void SmemShmUnInit(uint32_t flags)

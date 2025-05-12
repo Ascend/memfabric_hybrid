@@ -30,12 +30,11 @@ int32_t smem_shm_config_init(smem_shm_config_t *config);
  * @param worldSize        [in] size of processes
  * @param rankId           [in] local rank id in world size
  * @param deviceId         [in] device npu id
- * @param gvaSpaceSize     [in] size of virtual memory space to be reserved, all shm objects will be created on it
  * @param config           [in] config, see @smem_shm_config_t
  * @return 0 if successfully, negative value if failed, use @ref smem_get_last_error_msg to get last err msg
  */
 int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
-                      uint64_t gvaSpaceSize, smem_shm_config_t *config);
+                      smem_shm_config_t *config);
 
 /**
  * @brief Un-initialize shm library with destroy all things

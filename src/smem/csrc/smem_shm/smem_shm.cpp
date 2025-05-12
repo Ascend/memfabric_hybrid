@@ -181,7 +181,7 @@ SMEM_API int32_t smem_shm_config_init(smem_shm_config_t *config)
 }
 
 SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
-                      uint64_t gvaSpaceSize, smem_shm_config_t *config)
+                               smem_shm_config_t *config)
 {
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     if (g_smemShmInited) {
@@ -195,15 +195,14 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmCoreInit(gvaSpaceSize, deviceId, config->flags);
+    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
     }
 
     g_smemShmInited = true;
-    SM_LOG_INFO("smem_shm_init success. space_size: " << gvaSpaceSize << " world_size: " << worldSize
-                                                      << " config_ip: " << configStoreIpPort);
+    SM_LOG_INFO("smem_shm_init success. world_size: " << worldSize << " config_ip: " << configStoreIpPort);
     return SM_OK;
 }
 

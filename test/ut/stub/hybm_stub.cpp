@@ -8,7 +8,7 @@
 namespace ock {
 namespace smem {
 
-int32_t hybm_init(uint64_t globalSize, uint16_t deviceId, uint64_t flags) {
+int32_t hybm_init(uint16_t deviceId, uint64_t flags) {
     return 0;
 }
 

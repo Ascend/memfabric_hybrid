@@ -40,7 +40,7 @@ TEST_F(TestSmem, twoCardGroupTest)
         smem_shm_config_t config;
         ret = smem_shm_config_init(&config);
         ASSERT_EQ(ret, 0);
-        ret = smem_shm_init(UT_IP_PORT, rankCount, rank, rank, UT_CREATE_MEM_SIZE * rankCount, &config);
+        ret = smem_shm_init(UT_IP_PORT, rankCount, rank, rank, &config);
         ASSERT_EQ(ret, 0);
 
         auto handle = smem_shm_create(UT_SMEM_ID, rankCount, rank, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);

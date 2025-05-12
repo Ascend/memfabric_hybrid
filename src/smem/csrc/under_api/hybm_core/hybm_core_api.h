@@ -10,7 +10,7 @@
 namespace ock {
 namespace smem {
 
-using hybmInitFunc = int32_t (*)(uint64_t, uint16_t, uint64_t);
+using hybmInitFunc = int32_t (*)(uint16_t, uint64_t);
 using hybmUninitFunc = void (*)(void);
 using hybmSetLoggerFunc = int32_t (*)(void (*)(int, const char *));
 using hybmSetLogLevelFunc = int32_t (*)(int);
@@ -32,9 +32,9 @@ class HybmCoreApi {
 public:
     static Result LoadLibrary(const std::string &libDirPath);
 
-    static inline int32_t HybmCoreInit(uint64_t globalSize, uint16_t deviceId, uint64_t flags)
+    static inline int32_t HybmCoreInit(uint16_t deviceId, uint64_t flags)
     {
-        return pHybmInit(globalSize, deviceId, flags);
+        return pHybmInit(deviceId, flags);
     }
 
     static inline void HybmCoreUninit()
