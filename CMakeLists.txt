@@ -9,6 +9,7 @@ option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
 option(BUILD_GIT_COMMIT "build library version with commit" ON)
 option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
+option(INSTALL_HIGH_LEVEL_API "add device high level api into pkg" ON)
 
 message(STATUS "BUILD_EXAMPLE = ${BUILD_EXAMPLE}")
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")

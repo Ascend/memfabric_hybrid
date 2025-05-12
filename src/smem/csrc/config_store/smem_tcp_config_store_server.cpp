@@ -276,7 +276,7 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         responseValue = storedValueNum;
     }
     lockGuard.unlock();
-
+    SM_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << responseValue << ") end.");
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, std::to_string(responseValue));
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, reqVal);
