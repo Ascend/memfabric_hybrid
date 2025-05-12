@@ -39,6 +39,7 @@ Result SmemNetGroupEngine::GroupBarrier()
                 << " failed, result:" << ConfigStore::ErrStr(ret));
             return SM_ERROR;
         }
+        SM_LOG_DEBUG("store set key: " << store_->GetCompleteKey(waitKey));
     }
 
     /* all guys wait for waitKey status with timeout, timeout happens if the ok status not set by the last guy */

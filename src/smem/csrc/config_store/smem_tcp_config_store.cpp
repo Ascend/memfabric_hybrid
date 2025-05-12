@@ -211,9 +211,8 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
         return responseCode;
     }
 
-    auto data = reinterpret_cast<const char *>(response->DataPtr());
-    value = strtol(data, nullptr, 10);
-
+    std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
+    value = strtol(data.c_str(), nullptr, 10);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -267,8 +266,8 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
         return responseCode;
     }
 
-    auto data = reinterpret_cast<const char *>(response->DataPtr());
-    newSize = strtol(data, nullptr, 10);
+    std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
+    newSize = strtol(data.c_str(), nullptr, 10);
 
     return StoreErrorCode::SUCCESS;
 }
