@@ -128,6 +128,12 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
+        ret = HybmCoreApi::HybmMmap(entity, flags);
+        if (ret != 0) {
+            SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+            break;
+        }
+
         ret = HybmCoreApi::HybmStart(entity, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm start failed, result: " << ret);

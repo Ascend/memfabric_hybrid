@@ -82,14 +82,17 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     // 比较MD5
     uint32_t hashValue1 = fnv1a_32(outputHost, gDataByteSize);
     std::string hexHash1 = hashToHexString(hashValue1);
-    INFO_LOG("rankId: %u, cal output_z: %s", rankId, hexHash1.c_str());
     if (rankId == 0) {
         WriteFile("./output/output_z.bin", outputHost, gDataByteSize);
     }
     ReadFile("./output/golden.bin", gDataByteSize, outputHost, gDataByteSize);
     uint32_t hashValue2 = fnv1a_32(outputHost, gDataByteSize);
     std::string hexHash2 = hashToHexString(hashValue2);
-    INFO_LOG("rankId: %u, ori output_z: %s", rankId, hexHash2.c_str());
+    if (hexHash1 == hexHash2) {
+        INFO_LOG("rankId: %u do all reduce ok, output: %s", rankId, hexHash2.c_str());
+    } else {
+        ERROR_LOG("rankId: %u do all reduce failed, ori: %s, cal: %s", rankId, hexHash1.c_str(), hexHash2.c_str());
+    }
 
     CHECK_ACL(aclrtFreeHost(inputHost));
     CHECK_ACL(aclrtFreeHost(outputHost));

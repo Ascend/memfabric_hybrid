@@ -63,4 +63,12 @@ typedef enum {
         }                                                                  \
     } while (0);
 
+#define CHECK_EQUALS(x, y) \
+    do {                   \
+        if ((x) != (y)) {  \
+            std::cerr << __FILE__ << ":" << __LINE__ << " check not equal:" << (x) << " " << (y) << std::endl;  \
+        }   \
+    } while (0)
+
+
 #endif // DATA_UTILS_H

@@ -106,6 +106,21 @@ void hybm_stop(hybm_entity_t e, uint32_t flags) {
     return;
 }
 
+int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
+{
+    return 0;
+}
+
+int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags)
+{
+    return 0;
+}
+
+int32_t hybm_leave(hybm_entity_t e, uint32_t rank, uint32_t flags)
+{
+    return 0;
+}
+
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size) {
     return 0;
 }
@@ -132,6 +147,8 @@ hybmImportFunc HybmCoreApi::pHybmImport = hybm_import;
 hybmSetExtraContextFunc HybmCoreApi::pHybmSetExtraContext = hybm_set_extra_context;
 hybmStartFunc HybmCoreApi::pHybmStart = hybm_start;
 hybmStopFunc HybmCoreApi::pHybmStop = hybm_stop;
-
+hybmMmapFunc HybmCoreApi::pHybmMmap = hybm_mmap;
+hybmJoinFunc HybmCoreApi::pHybmJoin = hybm_join;
+hybmLeaveFunc HybmCoreApi::pHybmLeave = hybm_leave;
 }
 }

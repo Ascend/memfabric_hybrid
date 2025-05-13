@@ -30,6 +30,9 @@ namespace smem {
     hybmSetExtraContextFunc HybmCoreApi::pHybmSetExtraContext = nullptr;
     hybmStartFunc HybmCoreApi::pHybmStart = nullptr;
     hybmStopFunc HybmCoreApi::pHybmStop = nullptr;
+    hybmMmapFunc HybmCoreApi::pHybmMmap = nullptr;
+    hybmJoinFunc HybmCoreApi::pHybmJoin = nullptr;
+    hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
 #endif
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
@@ -85,6 +88,9 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmSetExtraContext, hybmSetExtraContextFunc, coreHandle, "hybm_set_extra_context");
     DL_LOAD_SYM(pHybmStart, hybmStartFunc, coreHandle, "hybm_start");
     DL_LOAD_SYM(pHybmStop, hybmStopFunc, coreHandle, "hybm_stop");
+    DL_LOAD_SYM(pHybmMmap, hybmMmapFunc, coreHandle, "hybm_mmap");
+    DL_LOAD_SYM(pHybmJoin, hybmJoinFunc, coreHandle, "hybm_join");
+    DL_LOAD_SYM(pHybmLeave, hybmLeaveFunc, coreHandle, "hybm_leave");
     gLoaded = true;
     return SM_OK;
 }

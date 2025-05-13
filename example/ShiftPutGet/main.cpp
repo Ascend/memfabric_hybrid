@@ -18,6 +18,7 @@ extern void shm_all_shift_do(void* stream, uint8_t* gva, int64_t *localInput);
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
+static uint32_t ctxSize = 16;
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
@@ -35,15 +36,19 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
 
     uint64_t metaAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    std::cout << "[TEST] Get info, smemId:" << yHost[0] << " rank:" << yHost[1] << " rankSize:" << yHost[2] << " ctxSize:" << yHost[3] << std::endl;
+    CHECK_EQUALS(yHost[0], 0);
+    CHECK_EQUALS(yHost[1], rankId);
+    CHECK_EQUALS(yHost[2], rankSize);
+    CHECK_EQUALS(yHost[3], ctxSize);
 
     CHECK_ACL(aclrtMemcpy(xDevice, inputSize, xHost, inputSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_all_shift_do(stream, gva, xDevice);
     CHECK_ACL(aclrtSynchronizeStream(stream));
-    sleep(2);
+    sleep(1);
 
     CHECK_ACL(aclrtMemcpy(xHost, outputSize, gva + rankId * gNpuMallocSpace, outputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    std::cout << "[OUTPUT] local_rank: " << rankId << " remote_put: " << xHost[0] << " local_put: " << xHost[4] << std::endl;
+    CHECK_EQUALS(xHost[0], (rankId + rankSize - 1) % rankSize);
+    CHECK_EQUALS(xHost[4], rankId);
 
     CHECK_ACL(aclrtFree(xDevice));
     CHECK_ACL(aclrtFreeHost(xHost));
@@ -54,7 +59,6 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
 static void TestContext(smem_shm_t handle)
 {
     char srcCtx[] = "1234567890123456";
-    uint32_t ctxSize = 16;
     CHECK_ACL(smem_shm_set_extra_context(handle, (void *)srcCtx, ctxSize));
 
     char dstCtx[32];
