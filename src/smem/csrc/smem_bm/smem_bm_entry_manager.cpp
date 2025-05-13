@@ -158,5 +158,88 @@ int32_t SmemBmEntryManager::BarrierForAutoRanking(const std::string &localIp)
     return 0;
 }
 
+Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /* out */)
+{
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    /* look up the bm entry exists or not with lock */
+    SM_ASSERT_RETURN(inited_, SM_NOT_STARTED);
+    auto iter = entryIdMap_.find(id);
+    if (iter != entryIdMap_.end()) {
+        SM_LOG_WARN("create bm entry failed as already exists, id: " << id);
+        return SM_DUPLICATED_OBJECT;
+    }
+
+    /* create new bm entry */
+    SmemBmEntryOptions opt;
+    opt.id = id;
+    auto tmpEntry = SmMakeRef<SmemBmEntry>(opt);
+    SM_ASSERT_RETURN(tmpEntry != nullptr, SM_NEW_OBJECT_FAILED);
+
+    /* add into set and map */
+    entryIdMap_.emplace(id, tmpEntry);
+    ptr2EntryMap_.emplace(reinterpret_cast<uintptr_t>(tmpEntry.Get()), tmpEntry);
+
+    /* assign out object ptr */
+    entry = tmpEntry;
+    entry->SetConfig(config_);
+
+    SM_LOG_DEBUG("create new bm entry success, id: " << id);
+    return SM_OK;
+}
+
+Result SmemBmEntryManager::GetEntryByPtr(uintptr_t ptr, SmemBmEntryPtr &entry)
+{
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    /* look up the bm entry exists or not with lock */
+    SM_ASSERT_RETURN(inited_, SM_NOT_STARTED);
+    auto iter = ptr2EntryMap_.find(ptr);
+    if (iter != ptr2EntryMap_.end()) {
+        entry = iter->second;
+        return SM_OK;
+    }
+
+    SM_LOG_DEBUG("not found bm entry with ptr " << ptr);
+    return SM_OBJECT_NOT_EXISTS;
+}
+
+Result SmemBmEntryManager::GetEntryById(uint32_t id, SmemBmEntryPtr &entry)
+{
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    /* look up the bm entry exists or not with lock */
+    SM_ASSERT_RETURN(inited_, SM_NOT_STARTED);
+    auto iter = entryIdMap_.find(id);
+    if (iter != entryIdMap_.end()) {
+        entry = iter->second;
+        return SM_OK;
+    }
+
+    SM_LOG_DEBUG("not found bm entry with id " << id);
+    return SM_OBJECT_NOT_EXISTS;
+}
+
+Result SmemBmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
+{
+    std::lock_guard<std::mutex> guard(entryMutex_);
+    /* look up the bm entry exists or not with lock */
+    SM_ASSERT_RETURN(inited_, SM_NOT_STARTED);
+    auto iter = ptr2EntryMap_.find(ptr);
+    if (iter == ptr2EntryMap_.end()) {
+        SM_LOG_DEBUG("not found bm entry with ptr " << ptr);
+        return SM_OBJECT_NOT_EXISTS;
+    }
+
+    /* assign to a tmp ptr and remove from map */
+    auto entry = iter->second;
+    ptr2EntryMap_.erase(iter);
+
+    /* remove from id set */
+    SM_ASSERT_RETURN(entry != nullptr, SM_ERROR);
+    entryIdMap_.erase(entry->Id());
+
+    SM_LOG_DEBUG("remove bm entry success, ptr: " << ptr << ", id: " << entry->Id());
+
+    return SM_OK;
+}
+
 }  // namespace smem
 }  // namespace ock

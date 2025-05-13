@@ -26,6 +26,11 @@ public:
     Result Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                       const smem_bm_config_t &config);
 
+    Result CreateEntryById(uint32_t id, SmemBmEntryPtr &entry);
+    Result GetEntryByPtr(uintptr_t ptr, SmemBmEntryPtr &entry);
+    Result GetEntryById(uint32_t id, SmemBmEntryPtr &entry);
+    Result RemoveEntryByPtr(uintptr_t ptr);
+
     inline uint32_t GetRankId() const
     {
         return config_.rankId;

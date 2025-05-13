@@ -21,11 +21,15 @@ public:
 
     ~SmemBmEntry() override = default;
 
-    Result Join(uint32_t flags);
+    void SetConfig(const smem_bm_config_t &config);
+
+    Result Join(uint32_t flags, void **localGvaAddress);
 
     Result Leave(uint32_t flags);
 
     Result DateCopy(void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+
+    uint32_t Id() const;
 
 private:
     /* hot used variables */
@@ -34,8 +38,14 @@ private:
 
     /* non-hot used variables */
     SmemBmEntryOptions options_;
+    smem_bm_config_t extraConfig_;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
+
+inline uint32_t SmemBmEntry::Id() const
+{
+    return options_.id;
+}
 
 }  // namespace smem
 }  // namespace ock
