@@ -26,33 +26,33 @@ SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
     config->startConfigStoreOnly = false;
     config->dynamicWorldSize = false;
     config->unifiedAddressSpace = true;
+    config->autoRanking = true;
+    config->rankId = std::numeric_limits<uint16_t>::max();
     config->flags = 0;
     return SM_OK;
 }
 
-SMEM_API int32_t smem_bm_init(const char *configStoreIpPort, smem_bm_mem_type memType, smem_bm_data_op_type dataOpType,
-                              uint32_t worldSize, uint32_t rankId, uint16_t deviceId, smem_bm_config_t *config)
+SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId,
+                              const smem_bm_config_t *config)
 {
+
+    SM_PARAM_VALIDATE(worldSize == 0, "invalid param, worldSize is 0", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config == nullptr, "invalid param, config is null", SM_INVALID_PARAM);
+
     std::lock_guard<std::mutex> guard(g_smemBmMutex_);
     if (g_smemBmInited) {
         SM_LOG_INFO("smem bm initialized already");
         return SM_OK;
     }
 
-    int32_t ret = SmemBmEntryManager::Instance().Initialize(configStoreIpPort, worldSize, rankId, deviceId, config);
+    int32_t ret = SmemBmEntryManager::Instance().Initialize(storeURL, worldSize, deviceId, *config);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init bm entry manager failed, result: " << ret);
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
-    if (ret != 0) {
-        SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
-        return SM_ERROR;
-    }
-
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. world_size: " << worldSize << " config_ip: " << configStoreIpPort);
+    SM_LOG_INFO("smem_bm_init success. " << " config_ip: " << storeURL);
     return SM_OK;
 }
 
@@ -67,14 +67,17 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
     SM_LOG_INFO("smem_bm_uninit finished");
 }
 
+uint32_t smem_bm_get_rank_id()
+{
+    return SmemBmEntryManager::Instance().GetRankId();
+}
+
 SMEM_API smem_bm_t smem_bm_create(uint32_t id)
 {
     return nullptr;
 }
 
-SMEM_API void smem_bm_destroy(smem_bm_t handle)
-{
-}
+SMEM_API void smem_bm_destroy(smem_bm_t handle) {}
 
 SMEM_API int32_t smem_bm_join(smem_bm_t handle, uint32_t flags)
 {

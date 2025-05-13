@@ -5,6 +5,7 @@
 #define __MEMFABRIC_SMEM_BM_DEF_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +48,9 @@ typedef struct {
     bool startConfigStore;            /* whether to start config store, default true */
     bool startConfigStoreOnly;        /* only start the config store */
     bool dynamicWorldSize;            /* member cannot join dynamically */
-    bool unifiedAddressSpace;         /* unified adderss with SVM */
+    bool unifiedAddressSpace;         /* unified address with SVM */
+    bool autoRanking;                 /* automatically allocate rank IDs. */
+    uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
 } smem_bm_config_t;
 

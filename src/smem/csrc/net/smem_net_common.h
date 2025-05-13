@@ -17,6 +17,7 @@ struct UrlExtraction {
     Result ExtractIpPortFromUrl(const std::string &url);
 };
 
+Result GetLocalIpWithTarget(const std::string &target, std::string &local);
 }
 }
 #endif // MEM_FABRIC_HYBRID_SMEM_NET_COMMON_H

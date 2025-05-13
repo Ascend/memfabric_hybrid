@@ -1,6 +1,9 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 
 #include <vector>
 #include <map>
@@ -35,14 +38,14 @@ inline bool StrToLong(const std::string &src, long &value)
 {
     char *remain = nullptr;
     errno = 0;
-    value = std::strtol(src.c_str(), &remain, 10L); // 10 is decimal digits
+    value = std::strtol(src.c_str(), &remain, 10L);  // 10 is decimal digits
     if ((value == 0 && src != "0") || remain == nullptr || strlen(remain) > 0 || errno == ERANGE) {
         return false;
     }
     return true;
 }
 
-inline bool IsValidIpV4(const std::string& address)
+inline bool IsValidIpV4(const std::string &address)
 {
     // 校验输入长度，防止正则表达式栈溢出
     constexpr size_t maxIpLen = 15;
@@ -126,5 +129,50 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     return SM_OK;
 }
 
+Result GetLocalIpWithTarget(const std::string &target, std::string &local)
+{
+    struct ifaddrs *ifaddr;
+    char localResultIp[64];
+    Result result = SM_ERROR;
+
+    struct in_addr targetIp;
+    if (inet_aton(target.c_str(), &targetIp) == 0) {
+        SM_LOG_ERROR("target ip address invalid: " << target);
+        return SM_INVALID_PARAM;
+    }
+
+    if (getifaddrs(&ifaddr) == -1) {
+        SM_LOG_ERROR("get local net interfaces failed: " << errno << ": " << strerror(errno));
+        return SM_ERROR;
+    }
+
+    for (auto ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == nullptr) {
+            continue;
+        }
+
+        if (ifa->ifa_addr->sa_family != AF_INET) { // only IPV4
+            continue;
+        }
+
+        auto localIp = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+        auto localMask = ((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr;
+        if ((localIp.s_addr & localMask.s_addr) != (targetIp.s_addr & localMask.s_addr)) {
+            continue;
+        }
+
+        if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == 0) {
+            SM_LOG_ERROR("convert local ip to string failed : " << localIp.s_addr);
+            result = SM_ERROR;
+        } else {
+            local = std::string(localResultIp);
+            result = SM_OK;
+        }
+        break;
+    }
+
+    freeifaddrs(ifaddr);
+    return result;
+}
 }
 }
