@@ -129,7 +129,7 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     return SM_OK;
 }
 
-Result GetLocalIpWithTarget(const std::string &target, std::string &local)
+Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint32_t &ipv4)
 {
     struct ifaddrs *ifaddr;
     char localResultIp[64];
@@ -165,6 +165,7 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local)
             SM_LOG_ERROR("convert local ip to string failed : " << localIp.s_addr);
             result = SM_ERROR;
         } else {
+            ipv4 = ntohl(localIp.s_addr);
             local = std::string(localResultIp);
             result = SM_OK;
         }

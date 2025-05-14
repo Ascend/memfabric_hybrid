@@ -11,6 +11,24 @@
 
 namespace ock {
 namespace smem {
+#pragma pack(push, 1)
+struct RankTable {
+    uint32_t ipv4;
+    uint8_t deviceId;
+    RankTable(): ipv4{0}, deviceId{0} {}
+    RankTable(uint32_t ip, uint16_t dev) : ipv4{ip}, deviceId{static_cast<uint8_t>(dev)} {}
+
+    static bool Less(const RankTable &r1, const RankTable &r2)
+    {
+        if (r1.ipv4 != r2.ipv4) {
+            return r1.ipv4 < r2.ipv4;
+        }
+
+        return r1.deviceId < r2.deviceId;
+    }
+};
+#pragma pack(pop)
+
 SmemBmEntryManager &SmemBmEntryManager::Instance()
 {
     static SmemBmEntryManager instance;
@@ -72,90 +90,49 @@ int32_t SmemBmEntryManager::PrepareStore()
 
 int32_t SmemBmEntryManager::AutoRanking()
 {
+    uint32_t localIpv4;
     std::string localIp;
 
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp);
+    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
     if (ret != 0) {
         SM_LOG_ERROR("get local ip address connect to target ip: " << storeUrlExtraction_.ip << " failed: " << ret);
         return ret;
     }
 
-    return BarrierForAutoRanking(localIp);
-}
+    std::string rankTableKey = std::string("AutoRanking#RankTables");
+    std::string sortedRankTableKey = std::string("AutoRanking#SortedRankTables");
+    RankTable rt{localIpv4, deviceId_};
+    uint64_t size;
+    std::vector<uint8_t> rtv{(uint8_t *)&rt, (uint8_t *)&rt + sizeof(rt)};
+    ret = confStore_->Append(rankTableKey, rtv, size);
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "append key: " << rankTableKey << " failed: " << ret);
 
-int32_t SmemBmEntryManager::BarrierForAutoRanking(const std::string &localIp)
-{
-    uint16_t hostRankIdOffset = 0;
-    uint16_t rankIdInHost;
-    int64_t tempValue;
-    int64_t hostRankCount;
-    int64_t totalRankCount;
-    int64_t totalHostCount;
-    std::string hostRankCountKey = std::string("AutoRanking#HostRankCount#").append(localIp);
-    std::string hostRankOffsetKey = std::string("AutoRanking#HostRankOffset#").append(localIp);
-    std::string totalRankCountKey = std::string("AutoRanking#TotalRankCount");
-    std::string totalHostCountKey = std::string("AutoRanking#TotalHostCount");
-    std::string ranksInHostListKey = std::string("AutoRanking#RanksInHostList");
+    std::vector<RankTable> ranks;
+    if (size == sizeof(rtv) * worldSize_) {
+        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
+        confStore_->Remove(rankTableKey);
 
-    auto ret = confStore_->Add(hostRankCountKey, 1L, hostRankCount);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store add for key: " << hostRankCountKey << " failed: " << ret);
-    rankIdInHost = static_cast<uint16_t>(hostRankCount - 1L);
-    if (rankIdInHost == 0U) {
-        ret = confStore_->Add(totalHostCountKey, 1L, totalHostCount);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store add for key: " << totalHostCountKey << " failed: " << ret);
+        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
+        std::sort(ranks.begin(), ranks.end(), RankTable::Less);
+
+        rtv = std::vector<uint8_t>{(uint8_t *)ranks.data(), (uint8_t *)ranks.data() + sizeof(RankTable) * worldSize_};
+        ret = confStore_->Set(sortedRankTableKey, rtv);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
+    } else {
+        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
+        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
     }
 
-    ret = confStore_->Add(totalRankCountKey, 1L, totalRankCount);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store add for key: " << totalRankCountKey << " failed: " << ret);
-
-    while (totalRankCount < worldSize_) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        ret = confStore_->Add(totalRankCountKey, 0L, totalRankCount);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store read key: " << totalRankCountKey << " failed: " << ret);
-    }
-
-    ret = confStore_->Add(hostRankCountKey, 0L, hostRankCount);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store read key: " << hostRankCountKey << " failed: " << ret);
-
-    ret = confStore_->Add(totalHostCountKey, 0L, totalHostCount);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store read key: " << totalHostCountKey << " failed: " << ret);
-
-    SmemNetGroupEngine hostGroup{confStore_, static_cast<uint32_t>(hostRankCount), rankIdInHost, SMEM_DEFAUT_WAIT_TIME};
-    std::vector<uint16_t> receiveDevices(hostRankCount);
-    ret = hostGroup.GroupAllGather((const char *)&deviceId_, sizeof(deviceId_), (char *)receiveDevices.data(),
-                                   receiveDevices.size() * sizeof(deviceId_));
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store based all gather failed: " << ret);
-
-    std::sort(receiveDevices.begin(), receiveDevices.end(), std::less<uint16_t>());
-    for (auto i = 0U; i < receiveDevices.size(); ++i) {
-        if (receiveDevices[i] == deviceId_) {
-            rankIdInHost = i;
+    for (auto i = 0U; i < ranks.size(); ++i) {
+        if (ranks[i].ipv4 == localIpv4 && ranks[i].deviceId == deviceId_) {
+            config_.rankId = i;
+            break;
         }
     }
 
-    if (rankIdInHost == 0) {
-        uint64_t hostReportCount;
-        std::vector<uint8_t> ranksInHost;
-        ranksInHost.emplace_back(static_cast<uint8_t>(hostRankCount));
-        ret = confStore_->Append(ranksInHostListKey, ranksInHost, hostReportCount);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store append for key: " << ranksInHostListKey << " failed: " << ret);
-
-        ret = confStore_->Get(ranksInHostListKey, ranksInHost, SMEM_DEFAUT_WAIT_TIME);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store get for key: " << ranksInHostListKey << " failed: " << ret);
-        for (auto i = 0U; i < hostReportCount; i++) {
-            hostRankIdOffset += ranksInHost[i];
-        }
-
-        ret = confStore_->Add(hostRankOffsetKey, hostRankIdOffset, tempValue);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store add for key: " << hostRankOffsetKey << " failed: " << ret);
-    }
-
-    ret = confStore_->Add(hostRankOffsetKey, 0L, tempValue);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "store read key: " << hostRankOffsetKey << " failed: " << ret);
-    hostRankIdOffset = static_cast<uint16_t>(tempValue);
-    config_.rankId = hostRankIdOffset + rankIdInHost;
-
-    return 0;
+    return SM_OK;
 }
 
 }  // namespace smem
