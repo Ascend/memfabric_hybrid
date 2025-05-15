@@ -75,6 +75,8 @@ typedef struct {
 typedef enum {
     HyBM_LOCAL_TO_SHARED = 0,
     HyBM_SHARED_TO_LOCAL,
+    HyBM_DRAM_TO_SHARED,
+    HyBM_SHARED_TO_DRAM,
     HyBM_SHARED_TO_SHARED,
 
     HyBM_DATA_COPY_DIRECTION_BUTT

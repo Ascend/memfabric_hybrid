@@ -37,7 +37,7 @@ public:
 
     Result Leave(uint32_t flags);
 
-    Result DateCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+    Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
     uint32_t Id() const;
 

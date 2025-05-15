@@ -132,7 +132,7 @@ Result SmemBmEntry::Leave(uint32_t flags)
     return SM_OK;
 }
 
-Result SmemBmEntry::DateCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
+Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
 {
     SM_PARAM_VALIDATE(src == nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(dest == nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
@@ -140,20 +140,24 @@ Result SmemBmEntry::DateCopy(const void *src, void *dest, uint64_t size, smem_bm
     SM_PARAM_VALIDATE(t >= SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(!inited_, SM_NOT_INITIALIZED);
 
+    hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
         SM_PARAM_VALIDATE(!AddressInRange(dest, size), "dest address: " << dest << ", size: " << size << " invalid.",
                           SM_INVALID_PARAM);
+        direction = t == SMEMB_COPY_L2G ? HyBM_LOCAL_TO_SHARED : HyBM_DRAM_TO_SHARED;
     } else {
         SM_PARAM_VALIDATE(!AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
                           SM_INVALID_PARAM);
+        direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
     }
 
-    return SM_OK;
+    return HybmCoreApi::HybmDataCopy(entity_, src, dest, size, direction, flags);
 }
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
-    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(_configStore, rankSize, rankId,
-                                                             extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC);
+    SmemGroupOption opt = {rankSize, rankId,  extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           false,    nullptr, nullptr};
+    SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 
     globalGroup_ = group;

@@ -193,5 +193,5 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
         return SM_INVALID_PARAM;
     }
 
-    return entry->DateCopy(src, dest, size, t, flags);
+    return entry->DataCopy(src, dest, size, t, flags);
 }

@@ -148,15 +148,11 @@ Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /*
 
     /* create new bm entry */
     SmemBmEntryOptions opt{ id, config_.rankId, config_.dynamicWorldSize, config_.controlOperationTimeout };
-    auto tmpEntry = SmMakeRef<SmemBmEntry>(opt);
-    SmemBmEntryOptions opt;
-    opt.id = id;
     auto store = StoreFactory::PrefixStore(confStore_, std::string("#BmEntry#").append(std::to_string(id)));
     if (store == nullptr) {
         SM_LOG_ERROR("create new prefix store for entity: " << id << " failed");
         return SM_ERROR;
     }
-
 
     auto tmpEntry = SmMakeRef<SmemBmEntry>(opt, store);
     SM_ASSERT_RETURN(tmpEntry != nullptr, SM_NEW_OBJECT_FAILED);
