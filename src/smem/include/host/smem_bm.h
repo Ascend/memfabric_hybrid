@@ -32,7 +32,7 @@ uint64_t smem_bm_get_local_mem_size(smem_bm_t handle);
 
 void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId);
 
-int32_t smem_bm_copy(smem_bm_t handle, void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
 #ifdef __cplusplus
 }

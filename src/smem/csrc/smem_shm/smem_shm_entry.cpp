@@ -79,7 +79,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
 
     do {
-        entity = HybmCoreApi::HybmCreateEntity(id_, &options, flags);
+        entity = HybmCoreApi::HybmCreateEntity(id_ << 1, &options, flags);
         if (entity == nullptr) {
             SM_LOG_ERROR("create entity failed");
             ret = SM_ERROR;

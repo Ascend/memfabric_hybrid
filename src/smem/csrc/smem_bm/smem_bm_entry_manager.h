@@ -36,10 +36,19 @@ public:
         return config_.rankId;
     }
 
+    inline uint32_t GetWorldSize() const
+    {
+        return worldSize_;
+    }
+
+    inline uint16_t GetDeviceId() const
+    {
+        return deviceId_;
+    }
+
 private:
     int32_t PrepareStore();
     int32_t AutoRanking();
-    int32_t BarrierForAutoRanking(const std::string &localIp);
 
 private:
     std::mutex entryMutex_;
