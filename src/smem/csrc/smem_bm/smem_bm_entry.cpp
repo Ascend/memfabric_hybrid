@@ -6,13 +6,6 @@
 namespace ock {
 namespace smem {
 
-void SmemBmEntry::SetConfig(const smem_bm_config_t &config)
-{
-    extraConfig_ = config;
-    SM_LOG_INFO("bmId: " << options_.id << " set_config control_operation_timeout: " <<
-        extraConfig_.controlOperationTimeout);
-}
-
 Result SmemBmEntry::Join(uint32_t flags, void **localGvaAddress)
 {
     SM_ASSERT_RETURN(!inited_, SM_NOT_INITIALIZED);

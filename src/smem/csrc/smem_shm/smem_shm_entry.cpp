@@ -55,12 +55,13 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     auto client = SmemShmEntryManager::Instance().GetStoreClient();
     SM_ASSERT_RETURN(client != nullptr, SM_INVALID_PARAM);
 
-    std::string prefix = "shmem(" + std::to_string(id_) + ")_";
+    std::string prefix = "SHMEM(" + std::to_string(id_) + ")_";
     StorePtr store = StoreFactory::PrefixStore(client, prefix);
     SM_ASSERT_RETURN(store != nullptr, SM_ERROR);
 
-    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(store, rankSize, rankId,
-        extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC);
+    SmemGroupOption opt = {rankSize, rankId, extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           false, nullptr, nullptr};
+    SmemGroupEnginePtr group = SmemNetGroupEngine::Create(store, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 
     globalGroup_ = group;
