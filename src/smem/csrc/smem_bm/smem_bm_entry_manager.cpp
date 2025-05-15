@@ -147,8 +147,7 @@ Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /*
     }
 
     /* create new bm entry */
-    SmemBmEntryOptions opt;
-    opt.id = id;
+    SmemBmEntryOptions opt{ id, config_.rankId, config_.dynamicWorldSize, config_.controlOperationTimeout };
     auto tmpEntry = SmMakeRef<SmemBmEntry>(opt);
     SM_ASSERT_RETURN(tmpEntry != nullptr, SM_NEW_OBJECT_FAILED);
 
@@ -158,8 +157,6 @@ Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /*
 
     /* assign out object ptr */
     entry = tmpEntry;
-    entry->SetConfig(config_);
-
     SM_LOG_DEBUG("create new bm entry success, id: " << id);
     return SM_OK;
 }

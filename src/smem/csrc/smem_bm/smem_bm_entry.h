@@ -10,7 +10,10 @@
 namespace ock {
 namespace smem {
 struct SmemBmEntryOptions {
-    uint32_t id = 0;
+    uint32_t id;
+    uint32_t rank;
+    uint32_t rankSize;
+    uint64_t controlOperationTimeout;
 };
 
 class SmemBmEntry : public SmReferable {
@@ -20,8 +23,6 @@ public:
     }
 
     ~SmemBmEntry() override = default;
-
-    void SetConfig(const smem_bm_config_t &config);
 
     Result Join(uint32_t flags, void **localGvaAddress);
 
@@ -38,7 +39,6 @@ private:
 
     /* non-hot used variables */
     SmemBmEntryOptions options_;
-    smem_bm_config_t extraConfig_;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 
