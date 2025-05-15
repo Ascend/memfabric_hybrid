@@ -33,6 +33,7 @@ namespace smem {
     hybmMmapFunc HybmCoreApi::pHybmMmap = nullptr;
     hybmJoinFunc HybmCoreApi::pHybmJoin = nullptr;
     hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
+    hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = nullptr;
 #endif
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
@@ -91,6 +92,7 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmMmap, hybmMmapFunc, coreHandle, "hybm_mmap");
     DL_LOAD_SYM(pHybmJoin, hybmJoinFunc, coreHandle, "hybm_join");
     DL_LOAD_SYM(pHybmLeave, hybmLeaveFunc, coreHandle, "hybm_leave");
+    DL_LOAD_SYM(pHybmDataCopy, hybmDataCopyFunc, coreHandle, "hybm_data_copy");
     gLoaded = true;
     return SM_OK;
 }

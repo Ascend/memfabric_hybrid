@@ -30,6 +30,12 @@ using hybmStopFunc = void (*)(hybm_entity_t, uint32_t);
 using hybmMmapFunc = int32_t (*)(hybm_entity_t, uint32_t);
 using hybmJoinFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmLeaveFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
+using hybmDataCopyFunc = int32_t (*)(hybm_entity_t, const void *, void *, size_t, hybm_data_copy_direction, uint32_t);
+
+/*
+ * int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
+                       uint32_t flags);
+ */
 
 class HybmCoreApi {
 public:
@@ -80,7 +86,8 @@ public:
         return pHybmUnreserveMem(e, flags, reservedMem);
     }
 
-    static inline hybm_mem_slice_t HybmAllocLocalMemory(hybm_entity_t e, hybm_mem_type mType, uint64_t size, uint32_t flags)
+    static inline hybm_mem_slice_t HybmAllocLocalMemory(hybm_entity_t e, hybm_mem_type mType, uint64_t size,
+                                                        uint32_t flags)
     {
         return pHybmAllocLocalMem(e, mType, size, flags);
     }
@@ -90,12 +97,14 @@ public:
         return pHybmFreeLocalMem(e, slice, count, flags);
     }
 
-    static inline int32_t HybmExport(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo)
+    static inline int32_t HybmExport(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags,
+                                     hybm_exchange_info *exInfo)
     {
         return pHybmExport(e, slice, flags, exInfo);
     }
 
-    static inline int32_t HybmImport(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags)
+    static inline int32_t HybmImport(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
+                                     uint32_t flags)
     {
         return pHybmImport(e, allExInfo, count, flags);
     }
@@ -130,6 +139,12 @@ public:
         return pHybmLeave(e, rank, flags);
     }
 
+    static inline int32_t HybmDataCopy(hybm_entity_t e, const void *src, void *dest, size_t count,
+                                       hybm_data_copy_direction direction, uint32_t flags)
+    {
+        return pHybmDataCopy(e, src, dest, count, direction, flags);
+    }
+
 private:
     static int32_t GetLibPath(const std::string &libDir, std::string &outputPath);
 
@@ -159,6 +174,7 @@ private:
     static hybmMmapFunc pHybmMmap;
     static hybmJoinFunc pHybmJoin;
     static hybmLeaveFunc pHybmLeave;
+    static hybmDataCopyFunc pHybmDataCopy;
 };
 }
 }
