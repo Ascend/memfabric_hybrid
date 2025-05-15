@@ -45,6 +45,7 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
     }
 
     SM_PARAM_VALIDATE(worldSize == 0, "invalid param, worldSize is 0", SM_INVALID_PARAM);
+
     storeURL_ = storeURL;
     worldSize_ = worldSize;
     deviceId_ = deviceId;
@@ -58,6 +59,7 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "auto ranking failed: " << ret);
     }
 
+    inited_ = true;
     SM_LOG_INFO("initialize store(" << storeURL << ") world size(" << worldSize << ") device(" << deviceId << ") OK.");
     return SM_OK;
 }
@@ -66,9 +68,10 @@ int32_t SmemBmEntryManager::PrepareStore()
 {
     SM_ASSERT_RETURN(storeUrlExtraction_.ExtractIpPortFromUrl(storeURL_) == SM_OK, SM_INVALID_PARAM);
     if (!config_.autoRanking) {
-        SM_ASSERT_RETURN(config_.rankId >= worldSize_, SM_INVALID_PARAM);
+        SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
         if (config_.rankId == 0 && config_.startConfigStore) {
             confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true, 0);
+            SM_LOG_INFO("smem bm start store server success, rk: " << config_.rankId);
         } else {
             confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false,
                                                    static_cast<int>(config_.rankId));

@@ -389,7 +389,7 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
         }
     } else {
         if (expected.empty()) {
-            pos->second = std::move(exchange);
+            kvStore_.emplace(key, std::move(exchange));
             auto wPos = keyWaiters_.find(key);
             if (wPos != keyWaiters_.end()) {
                 wakeupWaiters = GetOutWaitersInLock(wPos->second);

@@ -43,11 +43,7 @@ TcpConfigStore::TcpConfigStore(std::string ip, uint16_t port, bool isServer, int
       serverPort_{port},
       isServer_{isServer},
       rankId_{rankId}
-{
-    if (isServer_) {
-        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
-    }
-}
+{}
 
 TcpConfigStore::~TcpConfigStore() noexcept
 {

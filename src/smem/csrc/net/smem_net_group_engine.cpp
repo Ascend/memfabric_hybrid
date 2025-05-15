@@ -2,7 +2,6 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <algorithm>
-#include <thread>
 #include "smem_net_group_engine.h"
 #include "smem_store_factory.h"
 
@@ -16,6 +15,19 @@ constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int64_t SMEM_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
 constexpr int32_t SMEM_SLEEP_TIMEOUT = 100; // 100us
 
+constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
+constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
+
+static inline std::pair<int32_t, int32_t> SplitSizeAndVersion(int64_t val)
+{
+    return std::make_pair(val >> GROUP_DYNAMIC_SIZE_BIT_LEN, val & GROUP_DYNAMIC_SIZE_BIT_MASK);
+}
+
+static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
+{
+    return ((1LL * ver) << GROUP_DYNAMIC_SIZE_BIT_LEN | size);
+}
+
 SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr& store, const SmemGroupOption &option)
 {
     std::string prefix = (option.dynamic ? "_D" : "_S");
@@ -27,27 +39,15 @@ SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr& store, const SmemG
 
     if (option.dynamic) {
         SM_ASSERT_RETURN(group->StartListenEvent() == SM_OK, nullptr);
-        SM_ASSERT_RETURN(group->GroupJoin() == SM_OK, nullptr);
     }
     return group.Get();
-}
-
-bool SmemNetGroupEngine::OperationPreCheck()
-{
-    uint64_t ts = 0;
-    while (!joined_ && ts < option_.timeoutMs) {
-        usleep(SMEM_SLEEP_TIMEOUT);
-        ts += SMEM_SLEEP_TIMEOUT;
-    }
-    return joined_;
 }
 
 Result SmemNetGroupEngine::GroupBarrier()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
-    SM_ASSERT_RETURN(OperationPreCheck(), SM_NOT_STARTED);
     uint32_t size = option_.rankSize;
-    std::string idx = std::to_string(groupSn_.fetch_add(1U));
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_.fetch_add(1U));
     std::string addKey = idx + "_BA";
     std::string waitKey = idx + "_BW";
     int64_t val = 0;
@@ -125,11 +125,10 @@ static void SortGatherRecv(std::vector<uint8_t> &vec, uint32_t preSize, uint32_t
 Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
-    SM_ASSERT_RETURN(OperationPreCheck(), SM_NOT_STARTED);
     uint32_t size = option_.rankSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
 
-    std::string idx = std::to_string(groupSn_.fetch_add(1U));
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_.fetch_add(1U));
     std::string addKey = idx + "_GA";
     std::string waitKey = idx + "_GW";
 
@@ -183,7 +182,8 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     if (ret != SM_OK || output.size() != input.size() * size) {
         SM_LOG_AND_SET_LAST_ERROR("after wait, store get key: " << store_->GetCompleteKey(addKey)
                                    << " failed, result:" << ConfigStore::ErrStr(ret)
-                                   << " recv_size: " << output.size());
+                                   << " recv_size: " << output.size() << " input_size:" << input.size()
+                                   << " group_size:" << size);
         return SM_ERROR;
     }
     traceGetData.RecordEnd();
@@ -202,7 +202,7 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
 void SmemNetGroupEngine::GroupListenEvent()
 {
     std::string getVal;
-    uint32_t prevRank = UINT32_MAX;
+    std::string prevEvent;
 
     listenThreadStarted_ = true;
     while (!groupStoped_) {
@@ -223,9 +223,10 @@ void SmemNetGroupEngine::GroupListenEvent()
 
         char opt = getVal[0];
         uint32_t rk = strtol(getVal.c_str() + 1, nullptr, 10);
-        if (rk == prevRank) {
+        if (getVal == prevEvent) {
             continue;
         }
+        prevEvent = getVal;
 
         ret = store_->Get(SMEM_GROUP_DYNAMIC_SIZE_KEY, getVal, option_.timeoutMs);
         if (ret != SM_OK) {
@@ -233,14 +234,16 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
         // TODO: getVal不合法校验
-        uint32_t newSize = strtol(getVal.c_str(), nullptr, 10);
+        int64_t tmpVal = strtol(getVal.c_str(), nullptr, 10);
+        SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " event_rk:" << rk << " event:" << opt);
+        UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
         if (opt == 'J') {
-            option_.rankSize = newSize + 1;
+            option_.rankSize = SplitSizeAndVersion(tmpVal).second + 1;
             if (option_.joinCb != nullptr) {
                 option_.joinCb(rk);
             }
         } else if (opt == 'L') {
-            option_.rankSize = newSize - 1;
+            option_.rankSize = SplitSizeAndVersion(tmpVal).second - 1;
             if (option_.leaveCb != nullptr) {
                 option_.leaveCb(rk);
             }
@@ -257,6 +260,7 @@ Result SmemNetGroupEngine::StartListenEvent()
     while (!listenThreadStarted_) {
         usleep(SMEM_SLEEP_TIMEOUT);
     }
+    listenThread_ = std::move(th);
     return SM_OK;
 }
 
@@ -267,31 +271,34 @@ Result SmemNetGroupEngine::GroupJoin()
     std::string val = "J" + std::to_string(option_.rank);
     while (true) {
         auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK) {
+        if (ret == SM_OK && old == val) {
             break;
         }
+        usleep(SMEM_SLEEP_TIMEOUT);
     }
-    int64_t size;
-    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0, size);
+    int64_t tmp;
+    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0, tmp);
     if (ret != SM_OK) {
         SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-        ret = store_->Set(SMEM_GROUP_LISTEN_EVENT_KEY, "");
-        if (ret != SM_OK) {
-            SM_LOG_ERROR("failed to reset event, maybe store happened error! ret:" << ret);
-        }
-        return SM_ERROR;
+        goto join_exit;
     }
 
-    option_.rankSize = size + 1;
+    UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
+    option_.rankSize = SplitSizeAndVersion(tmp).second + 1;
     if (option_.joinCb != nullptr) {
-        option_.joinCb(option_.rank);
+        ret = option_.joinCb(option_.rank);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("call join func failed, ret: " << ret);
+            goto join_exit;
+        }
     }
-    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 1, size);
+    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 1LL << GROUP_DYNAMIC_SIZE_BIT_LEN | 1, tmp);
     if (ret != SM_OK) {
         SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
     }
 
-    auto ret2 = store_->Set(SMEM_GROUP_LISTEN_EVENT_KEY, "");
+join_exit:
+    auto ret2 = store_->Remove(SMEM_GROUP_LISTEN_EVENT_KEY);
     if (ret2 != SM_OK) {
         SM_LOG_ERROR("reset group event failed, ret: " << ret2);
     }
@@ -307,31 +314,45 @@ Result SmemNetGroupEngine::GroupLeave()
 {
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
+    Result ret = 0;
     std::string old;
     std::string val = "L" + std::to_string(option_.rank);
     while (true) {
-        auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK) {
+        ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
+        if (ret == SM_OK && old == val) {
             break;
         }
+        usleep(SMEM_SLEEP_TIMEOUT);
     }
 
     if (option_.leaveCb != nullptr) {
-        option_.leaveCb(option_.rank);
+        ret = option_.leaveCb(option_.rank);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("call join func failed, ret: " << ret);
+            goto leave_exit;
+        }
     }
-    int64_t size;
-    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, -1, size);
+    int64_t tmpVal;
+    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, GROUP_DYNAMIC_SIZE_BIT_MASK, tmpVal);
     if (ret != SM_OK) {
         SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
     }
+    UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
 
-    auto ret2 = store_->Set(SMEM_GROUP_LISTEN_EVENT_KEY, "");
+leave_exit:
+    auto ret2 = store_->Remove(SMEM_GROUP_LISTEN_EVENT_KEY);
     if (ret2 != SM_OK) {
         SM_LOG_ERROR("reset group event failed, ret: " << ret2);
     }
 
     joined_ = false;
     return (ret | ret2) == SM_OK ? SM_OK : SM_ERROR;
+}
+
+void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
+{
+    groupVersion_ = ver;
+    groupSn_ = 0;
 }
 
 }  // namespace smem

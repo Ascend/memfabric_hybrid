@@ -26,7 +26,7 @@ SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
     config->startConfigStoreOnly = false;
     config->dynamicWorldSize = false;
     config->unifiedAddressSpace = true;
-    config->autoRanking = true;
+    config->autoRanking = false;
     config->rankId = std::numeric_limits<uint16_t>::max();
     config->flags = 0;
     return SM_OK;
@@ -47,6 +47,12 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     int32_t ret = SmemBmEntryManager::Instance().Initialize(storeURL, worldSize, deviceId, *config);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init bm entry manager failed, result: " << ret);
+        return SM_ERROR;
+    }
+
+    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
+    if (ret != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
     }
 

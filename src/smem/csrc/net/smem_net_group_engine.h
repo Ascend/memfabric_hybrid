@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <functional>
+#include <thread>
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
 
@@ -40,14 +41,20 @@ public:
     static SmemGroupEnginePtr Create(const StorePtr& store, const SmemGroupOption &option);
 
 public:
-    SmemNetGroupEngine(const StorePtr& store, const SmemGroupOption &option) : option_(option)
+    SmemNetGroupEngine(const StorePtr& store, const SmemGroupOption &option) : store_(store), option_(option)
     {
         joined_ = !option_.dynamic;
         if (option_.dynamic) {
             option_.rankSize = 1;
         }
     }
-    ~SmemNetGroupEngine() override = default;
+    ~SmemNetGroupEngine() override
+    {
+        groupStoped_ = true;
+        if (listenThread_.joinable()) {
+            listenThread_.join();
+        }
+    }
 
     Result GroupBarrier();
 
@@ -65,12 +72,13 @@ public:
 
 private:
     void GroupListenEvent();
-
-    bool OperationPreCheck();
+    void UpdateGroupVersion(int32_t ver);
 
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
+    int32_t groupVersion_ = 0;
     std::atomic<uint32_t> groupSn_ = { 0 };
+    std::thread listenThread_;
     bool joined_ = false;
     bool listenThreadStarted_ = false;
     bool groupStoped_ = false;
