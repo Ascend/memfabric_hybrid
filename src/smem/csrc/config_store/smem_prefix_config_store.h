@@ -14,7 +14,7 @@ class PrefixConfigStore : public ConfigStore {
 public:
     PrefixConfigStore(const StorePtr &base, std::string prefix) noexcept
         : baseStore_{base->GetCoreStore()},
-          keyPrefix_{std::move(prefix).append(base->GetCommonPrefix())}
+          keyPrefix_{base->GetCommonPrefix().append(std::move(prefix))}
     {
     }
 
