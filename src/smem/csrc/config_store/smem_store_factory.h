@@ -5,6 +5,9 @@
 #ifndef SMEM_SMEM_STORE_FACTORY_H
 #define SMEM_SMEM_STORE_FACTORY_H
 
+#include <mutex>
+#include <string>
+#include <unordered_map>
 #include "smem_config_store.h"
 
 namespace ock {
@@ -30,6 +33,11 @@ public:
      * @return prefix store.
      */
     static StorePtr PrefixStore(const StorePtr &base, const std::string &prefix) noexcept;
+
+private:
+    static std::mutex storesMutex_;
+    static std::unordered_map<std::string, StorePtr> serverStores_;
+    static std::unordered_map<std::string, StorePtr> clientStores_;
 };
 } // namespace smem
 } // namespace ock
