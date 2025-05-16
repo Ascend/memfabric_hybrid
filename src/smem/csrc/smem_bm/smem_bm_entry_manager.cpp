@@ -74,21 +74,42 @@ int32_t SmemBmEntryManager::PrepareStore()
             SM_LOG_INFO("smem bm start store server success, rk: " << config_.rankId);
         } else {
             confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false,
-                                                   static_cast<int>(config_.rankId));
+                static_cast<int>(config_.rankId));
         }
-        SM_ASSERT_RETURN(confStore_ != nullptr, SM_ERROR);
+        SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
 
-        confStore_ = StoreFactory::PrefixStore(confStore_, "SMEM_BM_");
     } else {
         if (config_.startConfigStore) {
-            SM_LOG_ERROR("AutoRanking mode not support configure store open.");
-            return SM_INVALID_PARAM;
+            auto ret = RacingForStoreServer();
+            SM_ASSERT_RETURN(ret != SM_OK, ret);
         }
 
-        confStore_ = ock::smem::StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false);
+        if (confStore_ == nullptr) {
+            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false);
+            SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
+        }
     }
+    confStore_ = StoreFactory::PrefixStore(confStore_, "SMEM_BM_");
 
     return SM_OK;
+}
+
+int32_t SmemBmEntryManager::RacingForStoreServer()
+{
+    uint32_t localIpv4;
+    std::string localIp;
+    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
+    SM_ASSERT_RETURN(ret != 0, SM_ERROR);
+    if (localIp != storeUrlExtraction_.ip) {
+        return SM_OK;
+    }
+
+    confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true);
+    if (confStore_ != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE) {
+        return SM_OK;
+    }
+
+    return StoreFactory::GetFailedReason();
 }
 
 int32_t SmemBmEntryManager::AutoRanking()
@@ -111,7 +132,7 @@ int32_t SmemBmEntryManager::AutoRanking()
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "append key: " << rankTableKey << " failed: " << ret);
 
     std::vector<RankTable> ranks;
-    if (size == sizeof(rtv) * worldSize_) {
+    if (size == sizeof(rt) * worldSize_) {
         ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME);
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
         confStore_->Remove(rankTableKey);
@@ -223,6 +244,5 @@ Result SmemBmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 
     return SM_OK;
 }
-
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
