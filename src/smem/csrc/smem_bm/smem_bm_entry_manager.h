@@ -48,6 +48,7 @@ public:
 
 private:
     int32_t PrepareStore();
+    int32_t RacingForStoreServer();
     int32_t AutoRanking();
 
 private:
