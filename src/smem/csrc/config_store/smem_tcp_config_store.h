@@ -43,9 +43,19 @@ public:
     Result Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override;
     Result Cas(const std::string &key, const std::vector<uint8_t> &expect, const std::vector<uint8_t> &value,
                std::vector<uint8_t> &exists) noexcept override;
-    std::string GetCompleteKey(std::string &key) noexcept override
+    std::string GetCompleteKey(const std::string &key) noexcept override
     {
         return key;
+    }
+
+    std::string GetCommonPrefix() noexcept override
+    {
+        return "";
+    }
+
+    StorePtr GetCoreStore() noexcept override
+    {
+        return this;
     }
 
 protected:
