@@ -34,6 +34,8 @@ public:
      */
     static StorePtr PrefixStore(const StorePtr &base, const std::string &prefix) noexcept;
 
+    static int GetFailedReason() noexcept;
+
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> serverStores_;

@@ -39,14 +39,14 @@ add_library(smem_objects OBJECT ${PLATFORM_SRC})
 target_link_libraries(smem_objects PUBLIC smem)
 target_compile_options(smem_objects PRIVATE -fPIC)
 
-link_directories(${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-
 add_library(smem_static STATIC $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_static PROPERTIES OUTPUT_NAME "mf_smem")
+target_link_directories(smem_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
 target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a)
 
 add_library(smem_shared SHARED $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
+target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
 target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a)
 
 #install

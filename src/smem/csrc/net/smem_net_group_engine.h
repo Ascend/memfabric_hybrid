@@ -4,7 +4,6 @@
 #ifndef SMEM_SMEM_NET_GROUP_ENGINE_H
 #define SMEM_SMEM_NET_GROUP_ENGINE_H
 
-#include <atomic>
 #include <functional>
 #include <thread>
 #include "smem_common_includes.h"
@@ -77,7 +76,7 @@ private:
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
-    std::atomic<uint32_t> groupSn_ = { 0 };
+    uint32_t groupSn_ = 0;
     std::thread listenThread_;
     bool joined_ = false;
     bool listenThreadStarted_ = false;

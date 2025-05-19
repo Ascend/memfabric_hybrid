@@ -9,8 +9,8 @@ namespace ock {
 namespace smem {
 
 const std::string SMEM_GROUP_SET_STR = "ok";
-const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "_event";
-const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "_size";
+const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "_EVENT";
+const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "_DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int64_t SMEM_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
 constexpr int32_t SMEM_SLEEP_TIMEOUT = 100; // 100us
@@ -30,7 +30,7 @@ static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
 
 SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr& store, const SmemGroupOption &option)
 {
-    std::string prefix = (option.dynamic ? "_D" : "_S");
+    std::string prefix = (option.dynamic ? "D_" : "S_");
     StorePtr ss = StoreFactory::PrefixStore(store, prefix);
     SM_ASSERT_RETURN(ss != nullptr, nullptr);
 
@@ -47,7 +47,7 @@ Result SmemNetGroupEngine::GroupBarrier()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     uint32_t size = option_.rankSize;
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_.fetch_add(1U));
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
     std::string addKey = idx + "_BA";
     std::string waitKey = idx + "_BW";
     int64_t val = 0;
@@ -128,7 +128,7 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     uint32_t size = option_.rankSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
 
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_.fetch_add(1U));
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
     std::string addKey = idx + "_GA";
     std::string waitKey = idx + "_GW";
 
@@ -267,6 +267,9 @@ Result SmemNetGroupEngine::StartListenEvent()
 Result SmemNetGroupEngine::GroupJoin()
 {
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
+    if (joined_) {
+        return SM_OK;
+    }
     std::string old;
     std::string val = "J" + std::to_string(option_.rank);
     while (true) {

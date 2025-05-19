@@ -49,9 +49,13 @@ Result AccStoreServer::Startup() noexcept
     options.enableListener = true;
     options.linkSendQueueSize = ock::acc::UNO_48;
     auto result = tmpAccTcpServer->Start(options);
+    if (result == ock::acc::ACC_LINK_ADDRESS_IN_USE) {
+        SM_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
+        return SM_RESOURCE_IN_USE;
+    }
     if (result != SM_OK) {
         SM_LOG_ERROR("startup acc tcp server on port: " << listenPort_ << " failed: " << result);
-        return result;
+        return SM_ERROR;
     }
 
     accTcpServer_ = tmpAccTcpServer;

@@ -55,7 +55,7 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     auto client = SmemShmEntryManager::Instance().GetStoreClient();
     SM_ASSERT_RETURN(client != nullptr, SM_INVALID_PARAM);
 
-    std::string prefix = "SHMEM(" + std::to_string(id_) + ")_";
+    std::string prefix = "SHM_(" + std::to_string(id_) + ")_";
     StorePtr store = StoreFactory::PrefixStore(client, prefix);
     SM_ASSERT_RETURN(store != nullptr, SM_ERROR);
 

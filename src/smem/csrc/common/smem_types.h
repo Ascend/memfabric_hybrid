@@ -22,6 +22,7 @@ enum SMErrorCode : int32_t {
     SM_DUPLICATED_OBJECT = -2006,
     SM_OBJECT_NOT_EXISTS = -2007,
     SM_NOT_INITIALIZED = -2008,
+    SM_RESOURCE_IN_USE = -2009,
 };
 
 constexpr int32_t N16 = 16;
