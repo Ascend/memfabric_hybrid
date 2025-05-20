@@ -49,6 +49,8 @@ set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
 target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a)
 
+add_subdirectory(python_wrapper)
+
 #install
 file(GLOB HEADER_FILES ../include/host/*.h)
 file(GLOB DEVICE_HEADER_FILES ../include/device/low_level/*.h)

@@ -1,7 +1,13 @@
 file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         testcase/*
         ../stub/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/common/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/net/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/*
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
 )
 message(STATUS "llt build")
 add_executable(test_mf_hy ${UT_SOURCE_FILES})

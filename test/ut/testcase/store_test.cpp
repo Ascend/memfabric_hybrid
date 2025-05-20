@@ -14,17 +14,17 @@ public:
     void SetUp() override
     {
         std::cout << "port is : " << port << std::endl;
-        server = ock::smem::StoreFactory::CreateStore("127.0.0.1", port, true, 0);
+        server = ock::smem::StoreFactory::CreateStore("0.0.0.0", port, true, 0);
         client = ock::smem::StoreFactory::CreateStore("127.0.0.1", port, false, 1);
     }
 
     void TearDown() override
     {
         client = nullptr;
-        ock::smem::StoreFactory::DestroyStore("127.0.0.1", port, false);
+        ock::smem::StoreFactory::DestroyStore("127.0.0.1", port);
 
         server = nullptr;
-        ock::smem::StoreFactory::DestroyStore("127.0.0.1", port, true);
+        ock::smem::StoreFactory::DestroyStore("0.0.0.0", port);
     }
 
 protected:
@@ -160,7 +160,7 @@ TEST_F(AccConfigStoreTest, get_when_server_exit)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     server = nullptr;
-    ock::smem::StoreFactory::DestroyStore("127.0.0.1", port, true);
+    ock::smem::StoreFactory::DestroyStore("0.0.0.0", port);
     std::this_thread::sleep_for(std::chrono::seconds (1));
 
     ASSERT_TRUE(finished.load());
@@ -185,7 +185,7 @@ TEST_F(AccConfigStoreTest, watch_one_key_notify_success)
         std::string value;
     } notifyContext;
 
-    auto ret = client->Watch(
+    auto ret = store->Watch(
         key,
         [&notifyContext](int res, const std::string &nKey, const std::string &nValue) {
             std::unique_lock<std::mutex> lockGuard{notifyContext.mutex};
@@ -200,7 +200,7 @@ TEST_F(AccConfigStoreTest, watch_one_key_notify_success)
         wid);
     ASSERT_EQ(0, ret) << "client watch key: (" << key << ") failed.";
 
-    ret = server->Set(key, value);
+    ret = server->Set(std::string(prefix).append(key), value);
     ASSERT_EQ(0, ret) << "server set key: (" << key << ") failed.";
 
     std::unique_lock<std::mutex> lockGuard{notifyContext.mutex};
@@ -221,11 +221,11 @@ TEST_F(AccConfigStoreTest, watch_one_key_unwatch)
     std::string value = "this is value";
 
     std::atomic<int64_t> notifyTimes{0L};
-    auto ret = client->Watch(
+    auto ret = store->Watch(
         key, [&notifyTimes](int, const std::string &, const std::string &) { notifyTimes.fetch_add(1L); }, wid);
     ASSERT_EQ(0, ret) << "client watch key: (" << key << ") failed.";
 
-    ret = client->Unwatch(wid);
+    ret = store->Unwatch(wid);
     ASSERT_EQ(0, ret) << "client unwatch for wid: (" << wid << ") failed.";
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(0L, notifyTimes.load());

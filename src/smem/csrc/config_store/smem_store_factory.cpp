@@ -47,7 +47,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     return store.Get();
 }
 
-void StoreFactory::DestroyStore(const std::string &ip, uint16_t port, bool isServer) noexcept
+void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
     std::unique_lock<std::mutex> lockGuard{storesMutex_};

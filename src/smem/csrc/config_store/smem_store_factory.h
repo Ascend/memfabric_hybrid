@@ -30,9 +30,8 @@ public:
      * @brief destroy on exist store
      * @param ip server ip address
      * @param port server tcp port
-     * @param isServer is local store server side
      */
-    static void DestroyStore(const std::string &ip, uint16_t port, bool isServer) noexcept;
+    static void DestroyStore(const std::string &ip, uint16_t port) noexcept;
 
     /**
      * @brief Encapsulate an existing store into a prefix store.

@@ -73,7 +73,7 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
     SM_LOG_INFO("smem_bm_uninit finished");
 }
 
-uint32_t smem_bm_get_rank_id()
+SMEM_API uint32_t smem_bm_get_rank_id()
 {
     return SmemBmEntryManager::Instance().GetRankId();
 }
@@ -152,7 +152,7 @@ SMEM_API int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags)
     return entry->Leave(flags);
 }
 
-uint64_t smem_bm_get_local_mem_size(smem_bm_t handle)
+SMEM_API uint64_t smem_bm_get_local_mem_size(smem_bm_t handle)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", 0UL);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", 0UL);
@@ -167,7 +167,7 @@ uint64_t smem_bm_get_local_mem_size(smem_bm_t handle)
     return entry->GetCoreOptions().singleRankVASpace;
 }
 
-void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId)
+SMEM_API void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", nullptr);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", nullptr);

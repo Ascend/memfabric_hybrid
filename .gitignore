@@ -2,3 +2,4 @@
 /cmake-build-*/
 /.idea/
 /output/
+/script/git_last_commit.txt
