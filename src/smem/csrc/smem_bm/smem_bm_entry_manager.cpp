@@ -81,7 +81,7 @@ int32_t SmemBmEntryManager::PrepareStore()
     } else {
         if (config_.startConfigStore) {
             auto ret = RacingForStoreServer();
-            SM_ASSERT_RETURN(ret != SM_OK, ret);
+            SM_ASSERT_RETURN(ret == SM_OK, ret);
         }
 
         if (confStore_ == nullptr) {
@@ -99,7 +99,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
     uint32_t localIpv4;
     std::string localIp;
     auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
-    SM_ASSERT_RETURN(ret != 0, SM_ERROR);
+    SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
     if (localIp != storeUrlExtraction_.ip) {
         return SM_OK;
     }
@@ -133,7 +133,7 @@ int32_t SmemBmEntryManager::AutoRanking()
 
     std::vector<RankTable> ranks;
     if (size == sizeof(rt) * worldSize_) {
-        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME);
+        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
         confStore_->Remove(rankTableKey);
 
@@ -144,7 +144,7 @@ int32_t SmemBmEntryManager::AutoRanking()
         ret = confStore_->Set(sortedRankTableKey, rtv);
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
     } else {
-        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME);
+        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
         ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
     }

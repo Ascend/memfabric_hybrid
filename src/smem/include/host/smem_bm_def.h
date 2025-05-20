@@ -14,7 +14,7 @@ extern "C" {
 typedef void *smem_bm_t;
 
 /**
- * @brief CPU initiated data operation type, currently only support MTE
+ * @brief CPU initiated data operation type, currently only support SDMA
  */
 typedef enum {
     SMEMB_DATA_OP_SDMA = 1U << 0,
@@ -22,7 +22,7 @@ typedef enum {
 } smem_bm_data_op_type;
 
 /**
- * @brief Memory type
+ * @brief Memory type, current only support HBM
  */
 typedef enum {
     SMEMB_MEM_TYPE_HBM = 1U << 0,
@@ -33,10 +33,10 @@ typedef enum {
 * @brief Data copy direction
 */
 typedef enum {
-    SMEMB_COPY_L2G = 0,
-    SMEMB_COPY_G2L = 1,
-    SMEMB_COPY_G2H = 2,
-    SMEMB_COPY_H2G = 3,
+    SMEMB_COPY_L2G = 0,              /* copy data from local space to global space */
+    SMEMB_COPY_G2L = 1,              /* copy data from global space to local space */
+    SMEMB_COPY_G2H = 2,              /* copy data from global space to host memory */
+    SMEMB_COPY_H2G = 3,              /* copy data from host memory to global space */
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
@@ -49,7 +49,7 @@ typedef struct {
     bool startConfigStoreOnly;        /* only start the config store */
     bool dynamicWorldSize;            /* member cannot join dynamically */
     bool unifiedAddressSpace;         /* unified address with SVM */
-    bool autoRanking;                 /* automatically allocate rank IDs. */
+    bool autoRanking;                 /* automatically allocate rank IDs, default is false. */
     uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
 } smem_bm_config_t;

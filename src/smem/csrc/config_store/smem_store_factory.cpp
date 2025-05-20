@@ -11,18 +11,16 @@ namespace ock {
 namespace smem {
 static __thread int failedReason_ = 0;
 std::mutex StoreFactory::storesMutex_;
-std::unordered_map<std::string, StorePtr> StoreFactory::serverStores_;
-std::unordered_map<std::string, StorePtr> StoreFactory::clientStores_;
+std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
                                    int32_t connMaxRetry) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
-    std::unordered_map<std::string, StorePtr> *storeMap = isServer ? &serverStores_ : &clientStores_;
 
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    auto pos = storeMap->find(storeKey);
-    if (pos != storeMap->end()) {
+    auto pos = storesMap_.find(storeKey);
+    if (pos != storesMap_.end()) {
         return pos->second;
     }
 
@@ -43,7 +41,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
         return nullptr;
     }
 
-    storeMap->emplace(storeKey, store.Get());
+    storesMap_.emplace(storeKey, store.Get());
     lockGuard.unlock();
 
     return store.Get();
@@ -52,10 +50,8 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 void StoreFactory::DestroyStore(const std::string &ip, uint16_t port, bool isServer) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
-    std::unordered_map<std::string, StorePtr> *storeMap = isServer ? &serverStores_ : &clientStores_;
-
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    storeMap->erase(storeKey);
+    storesMap_.erase(storeKey);
 }
 
 StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::string &prefix) noexcept

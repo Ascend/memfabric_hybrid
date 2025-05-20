@@ -34,12 +34,12 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
     SM_ASSERT_RETURN(option.ExtractIpPortFromUrl(url) == SM_OK, SM_INVALID_PARAM);
 
     if (rankId == 0 && config->startConfigStore) {
-        storeServer_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, true, 0);
-        SM_ASSERT_RETURN(storeServer_ != nullptr, SM_ERROR);
+        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, true, 0);
+    } else {
+        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false,
+            static_cast<int32_t>(rankId), static_cast<int32_t>(config->shmInitTimeout));
     }
-    storeClient_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false,
-        static_cast<int32_t>(rankId), static_cast<int32_t>(config->shmInitTimeout));
-    SM_ASSERT_RETURN(storeClient_ != nullptr, SM_ERROR);
+    SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 
     config_ = *config;
     deviceId_ = deviceId;

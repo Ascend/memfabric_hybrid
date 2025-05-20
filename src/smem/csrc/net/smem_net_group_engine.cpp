@@ -9,11 +9,11 @@ namespace ock {
 namespace smem {
 
 const std::string SMEM_GROUP_SET_STR = "ok";
-const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "_EVENT";
-const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "_DSIZE";
+const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
+const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int64_t SMEM_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
-constexpr int32_t SMEM_SLEEP_TIMEOUT = 100; // 100us
+constexpr int32_t SMEM_SLEEP_TIMEOUT = 100 * 1000; // 100ms
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
@@ -26,6 +26,18 @@ static inline std::pair<int32_t, int32_t> SplitSizeAndVersion(int64_t val)
 static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
 {
     return ((1LL * ver) << GROUP_DYNAMIC_SIZE_BIT_LEN | size);
+}
+
+SmemNetGroupEngine::~SmemNetGroupEngine()
+{
+    groupStoped_ = true;
+    if (listenCtx_.watchId != UINT32_MAX) {
+        (void)store_->Unwatch(listenCtx_.watchId);
+    }
+    if (listenThread_.joinable()) {
+        listenSignal_.PthreadSignal();
+        listenThread_.join();
+    }
 }
 
 SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr& store, const SmemGroupOption &option)
@@ -211,7 +223,25 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
 
-        auto ret = store_->Get(SMEM_GROUP_LISTEN_EVENT_KEY, getVal, SMEM_LISTER_TIMEOUT);
+        if (listenCtx_.watchId == UINT32_MAX) {
+            uint32_t wid;
+            auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY, std::bind(&SmemNetGroupEngine::GroupWatchCb, this,
+                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), wid);
+            if (ret != SM_OK) {
+                SM_LOG_WARN("group watch failed, ret: " << ret);
+                usleep(SMEM_SLEEP_TIMEOUT);
+                continue;
+            }
+            listenCtx_.watchId = wid;
+        }
+
+        auto ret = listenSignal_.TimedwaitMillsecs(SMEM_LISTER_TIMEOUT);
+        getVal = std::move(listenCtx_.value);
+        if (groupStoped_) {
+            break;
+        }
+
+        listenCtx_.watchId = UINT32_MAX;
         if (ret != SM_OK || getVal.empty()) {
             // TODO: 处理退出场景
             continue;
@@ -254,8 +284,25 @@ void SmemNetGroupEngine::GroupListenEvent()
     listenThreadStarted_ = false;
 }
 
+void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const std::string &value)
+{
+    if (result != SM_OK) {
+        // TODO
+        listenCtx_.ret = SM_ERROR;
+    }
+
+    if (key != SMEM_GROUP_LISTEN_EVENT_KEY) {
+        listenCtx_.ret = SM_ERROR;
+    }
+
+    listenCtx_.value = value;
+    listenSignal_.PthreadSignal();
+}
+
 Result SmemNetGroupEngine::StartListenEvent()
 {
+    SM_ASSERT_RETURN(listenSignal_.Initialize() == SM_OK, SM_ERROR);
+
     std::thread th(&SmemNetGroupEngine::GroupListenEvent, this);
     while (!listenThreadStarted_) {
         usleep(SMEM_SLEEP_TIMEOUT);

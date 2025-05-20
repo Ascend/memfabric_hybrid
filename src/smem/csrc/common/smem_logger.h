@@ -129,6 +129,7 @@ private:
 #define SM_LOG_WARN(ARGS) SM_OUT_LOG(ock::smem::WARN_LEVEL, ARGS)
 #define SM_LOG_ERROR(ARGS) SM_OUT_LOG(ock::smem::ERROR_LEVEL, ARGS)
 
+// if ARGS is false, print error
 #define SM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \
         if (__builtin_expect(!(ARGS), 0) != 0) { \

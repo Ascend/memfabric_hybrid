@@ -46,8 +46,7 @@ public:
 
 private:
     static std::mutex storesMutex_;
-    static std::unordered_map<std::string, StorePtr> serverStores_;
-    static std::unordered_map<std::string, StorePtr> clientStores_;
+    static std::unordered_map<std::string, StorePtr> storesMap_;
 };
 } // namespace smem
 } // namespace ock

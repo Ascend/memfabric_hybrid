@@ -35,6 +35,12 @@ struct SmemGroupOption {
     SmemGroupChangeCallback leaveCb;
 };
 
+struct GroupListenContext {
+    uint32_t watchId = UINT32_MAX;
+    int32_t ret = SM_OK;
+    std::string value;
+};
+
 class SmemNetGroupEngine : public SmReferable {
 public:
     static SmemGroupEnginePtr Create(const StorePtr& store, const SmemGroupOption &option);
@@ -47,13 +53,7 @@ public:
             option_.rankSize = 1;
         }
     }
-    ~SmemNetGroupEngine() override
-    {
-        groupStoped_ = true;
-        if (listenThread_.joinable()) {
-            listenThread_.join();
-        }
-    }
+    ~SmemNetGroupEngine() override;
 
     Result GroupBarrier();
 
@@ -72,12 +72,16 @@ public:
 private:
     void GroupListenEvent();
     void UpdateGroupVersion(int32_t ver);
+    void GroupWatchCb(int result, const std::string &key, const std::string &value);
 
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
     uint32_t groupSn_ = 0;
+
     std::thread listenThread_;
+    SmemTimedwait listenSignal_;
+    GroupListenContext listenCtx_;
     bool joined_ = false;
     bool listenThreadStarted_ = false;
     bool groupStoped_ = false;

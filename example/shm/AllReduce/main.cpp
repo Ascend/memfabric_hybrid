@@ -62,7 +62,7 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     // 将本地 host copy到 shm local
     int32_t ret = aclrtMemcpy(inputShm, gDataByteSize, inputHost, gDataByteSize, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
-        ERROR_LOG("aclrtMemcpy to local shm faield, ret: %d, rankId: %u", ret, rankId);
+        ERROR_LOG("aclrtMemcpy to local shm failed, ret: %d, rankId: %u", ret, rankId);
         return -1;
     }
 
@@ -75,7 +75,7 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     // 将ouput copy到 host
     ret = aclrtMemcpy(outputHost, gDataByteSize, outputShm, gDataByteSize, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
-        ERROR_LOG("aclrtMemcpy from local shm faield, ret: %d, rankId: %u", ret, rankId);
+        ERROR_LOG("aclrtMemcpy from local shm failed, ret: %d, rankId: %u", ret, rankId);
         return -1;
     }
 
@@ -135,7 +135,7 @@ int32_t main(int32_t argc, char* argv[])
     void *gva = nullptr;
     smem_shm_t handle = smem_shm_create(0, rankSize, rankId, gNpuMallocSpace, SMEMS_DATA_OP_MTE, flags, &gva);
     if (handle == nullptr || gva == nullptr) {
-        ERROR_LOG("[TEST] smem_shm_create faield, rank:%d", rankId);
+        ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
     WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);

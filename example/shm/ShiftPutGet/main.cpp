@@ -105,7 +105,7 @@ int32_t main(int32_t argc, char* argv[])
     void *gva = nullptr;
     smem_shm_t handle = smem_shm_create(0, rankSize, rankId, gNpuMallocSpace, SMEMS_DATA_OP_MTE, flags, &gva);
     if (handle == nullptr || gva == nullptr) {
-        ERROR_LOG("[TEST] smem_shm_create faield, rank:%d", rankId);
+        ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
     WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);

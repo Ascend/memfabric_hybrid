@@ -38,6 +38,7 @@ namespace smem {
         std::cout << msg << std::endl;  \
     } while (0)
 
+// if expression is true, print error
 #define SM_PARAM_VALIDATE(expression, msg, returnValue) \
     do {                                                \
         if ((expression)) {                             \

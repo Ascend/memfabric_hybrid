@@ -91,6 +91,7 @@ public:
             return;
         }
 
+        SM_LOG_DEBUG("watch end, id: " << response.SeqNo());
         notify_(SUCCESS, responseBody.values[0]);
     }
 
@@ -238,7 +239,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send get for key: " << key << ", get response code: " << responseCode);
+        SM_LOG_ERROR("send get for key: " << key << ", response code: " << responseCode << " timeout:" << timeoutMs);
         return responseCode;
     }
 
@@ -411,7 +412,7 @@ Result TcpConfigStore::Watch(
         return ret;
     }
 
-    SM_LOG_INFO("watch for key: " << key << ", id: " << wid);
+    SM_LOG_DEBUG("watch for key: " << key << ", id: " << wid);
     return SM_OK;
 }
 
@@ -462,7 +463,6 @@ std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlock
 Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     SM_LOG_INFO("link broken, linkId: " << link->Id());
-
     std::unordered_map<uint32_t, std::shared_ptr<ClientCommonContext>> tempContext;
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     tempContext.swap(msgClientContext_);

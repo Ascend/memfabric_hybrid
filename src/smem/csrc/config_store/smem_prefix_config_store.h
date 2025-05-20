@@ -51,7 +51,7 @@ public:
                  uint32_t &wid) noexcept override
     {
         return baseStore_->Watch(
-            key,
+            std::string(keyPrefix_).append(key),
             [key, notify](int result, const std::string &, const std::vector<uint8_t> &value) {
                 notify(result, key, value);
             },

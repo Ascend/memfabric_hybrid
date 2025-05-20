@@ -40,8 +40,7 @@ private:
     uint16_t deviceId_ = 0;
     bool inited_ = false;
 
-    StorePtr storeServer_ = nullptr;
-    StorePtr storeClient_ = nullptr;
+    StorePtr store_ = nullptr;
 };
 
 inline uint16_t SmemShmEntryManager::GetDeviceId() const
@@ -51,7 +50,7 @@ inline uint16_t SmemShmEntryManager::GetDeviceId() const
 
 inline StorePtr SmemShmEntryManager::GetStoreClient() const
 {
-    return storeClient_;
+    return store_;
 }
 
 }
