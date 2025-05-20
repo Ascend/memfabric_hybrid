@@ -262,9 +262,17 @@ function install_to_path()
     pip_path=$(which pip3 2>/dev/null)
     if [ -z "$pip_path" ]; then
         print "WARNING" "pip3 Not Found, skip install wheel package."
-    else
-        pip3 install "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel/mf_smem-*.whl --force-reinstall
+        return
     fi
+
+    python_version=$(python3 -c "import sys; print(''.join(map(str, sys.version_info[:2])))")
+    wheel_package=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "mf_smem-${version1}-cp${python_version}*")
+    if [ -z "${wheel_package}" ]; then
+        print "WARNING" "not found wheel package for python-${python_version}, skip install wheel."
+        return
+    fi
+
+    pip3 install "${wheel_package}" --force-reinstall
 }
 
 function generate_set_env() {

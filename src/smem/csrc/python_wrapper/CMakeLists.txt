@@ -8,8 +8,3 @@ pybind11_add_module(_pysmem pysmem.cpp)
 set_target_properties(_pysmem PROPERTIES CXX_STANDARD 17)
 set_target_properties(_pysmem PROPERTIES OUTPUT_NAME "_pymf_smem")
 target_link_libraries(_pysmem PRIVATE smem_shared)
-
-install(TARGETS _pysmem
-        LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib64
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-)
