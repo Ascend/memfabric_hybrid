@@ -9,7 +9,7 @@
 #include "acl/acl.h"
 #include "smem.h"
 #include "smem_bm.h"
-#include "smem_shm.h"
+#include "barrier_util.h"
 
 #define LOG_INFO(msg) std::cout << __FILE__ << ":" << __LINE__ << "[INFO]" << msg << std::endl;
 #define LOG_WARN(msg) std::cout << __FILE__ << ":" << __LINE__ << "[WARN]" << msg << std::endl;
@@ -35,7 +35,7 @@ const int32_t RANK_SIZE_MAX = 16;
 const int32_t SHM_MSG_SIZE = 1024;
 const int32_t COPY_SIZE = 4096;
 const uint64_t GVA_SIZE = 1024ULL * 1024 * 1024;
-smem_shm_t barrierHandle = nullptr;
+BarrierUtil *g_barrier = nullptr;
 
 void GenerateData(void *ptr, int32_t rank)
 {
@@ -86,25 +86,19 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string
     ret = smem_bm_init(ipPort.c_str(), rkSize, deviceId, &config);
     CHECK_RET_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rankId);
 
-    smem_shm_config_t config2;
-    (void)smem_shm_config_init(&config2);
-    if (autoRank) config2.startConfigStore = false;
-    ret = smem_shm_init(ipPort.c_str(), rkSize, rankId, deviceId, &config2);
-    CHECK_RET_ERR(ret, "smem shm init failed, ret:" << ret << " rank:" << rankId);
-
-    void *gva = nullptr;
-    smem_shm_t handle = smem_shm_create(0, rkSize, rankId, GVA_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
-    CHECK_RET_ERR((handle == nullptr || gva == nullptr), "smem_shm_create failed, rank:" << rankId);
+    g_barrier = new BarrierUtil;
+    CHECK_RET_ERR((g_barrier == nullptr), "malloc failed, rank:" << rankId);
+    ret = g_barrier->Init(deviceId, rankId, rkSize, ipPort);
+    CHECK_RET_ERR(ret, "barrier init failed, rank:" << rankId);
 
     *stream = ss;
-    barrierHandle = handle;
     return 0;
 }
 
 void FinalizeAll(aclrtStream *stream, uint32_t deviceId)
 {
-    smem_shm_destroy(barrierHandle, 0);
-    smem_shm_uninit(0);
+    delete g_barrier;
+    g_barrier = nullptr;
     smem_bm_uninit(0);
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
@@ -125,7 +119,7 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
     CHECK_RET_VOID(ret, "smem_bm_join failed, ret:" << ret << " rank:" << rankId);
     LOG_INFO("smem_bm_create gva:" << gva << " rank:" << rankId);
 
-    ret = smem_shm_control_barrier(barrierHandle);
+    ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
     LOG_INFO(" ==================== [TEST] bm init ok, rank:" << rankId);
     // copy
@@ -148,7 +142,7 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
     ret = smem_bm_copy(handle, deviceSrc, (void *)((uint64_t)remote + COPY_SIZE), COPY_SIZE, SMEMB_COPY_L2G, 0);
     CHECK_RET_VOID(ret, "copy hbm to gva failed, ret:" << ret << " rank:" << rankId);
 
-    ret = smem_shm_control_barrier(barrierHandle);
+    ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after copy, ret:" << ret << " rank:" << rankId);
     LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId);
     // check
@@ -164,13 +158,14 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
     CHECK_RET_VOID(ret, "copy device to host failed, ret:" << ret << " rank:" << rankId);
     CHECK_RET_VOID((!CheckData(hostDst, hostSrc)), "check G2L data failed, rank:" << rankId);
 
-    ret = smem_shm_control_barrier(barrierHandle);
+    ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after check, ret:" << ret << " rank:" << rankId);
     LOG_INFO(" ==================== [TEST] bm check ok, rank:" << rankId);
     // exit
     free(hostSrc);
     free(hostDst);
     aclrtFree(deviceSrc);
+    smem_bm_destroy(handle);
     FinalizeAll(&stream, deviceId);
 }
 

@@ -37,7 +37,6 @@ mkdir -p "${PROJ_DIR}/src/smem/python/smem/lib"
 GIT_COMMIT=$(cat script/git_last_commit.txt)
 {
   echo "smem version info:"
-  echo "VERSION: 1.0.0"
   echo "smem version: 1.0.0"
   echo "git: ${GIT_COMMIT}"
 } > "${PROJ_DIR}/src/smem/python/smem/VERSION"

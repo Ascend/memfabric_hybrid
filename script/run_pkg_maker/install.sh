@@ -28,7 +28,7 @@ function get_version_in_file()
         pkg_arch=`cat ${script_dir}/../version.info | awk -F ':' '$1=="Platform" {print $2}'`
         os1=`cat ${script_dir}/../version.info | awk -F ':' '$1=="Kernel" {print $2}'`
     fi
-    print "INFO" "MF version: ${version1} arch: ${pkg_arch} os: ${os1}"
+    print "INFO" "memfabric_hybrid version: ${version1} arch: ${pkg_arch} os: ${os1}"
 }
 
 function chmod_authority()
@@ -148,7 +148,7 @@ function delete_install_files()
     fi
 
     install_dir=$1
-    print "INFO" "MF $(basename $1) delete install files!"
+    print "INFO" "memfabric_hybrid $(basename $1) delete install files!"
     if [ -d ${install_dir} ]; then
         chmod -R 700 ${install_dir}
         rm -rf ${install_dir}
@@ -161,7 +161,7 @@ function delete_install_files()
 function delete_latest()
 {
     cd $1/..
-    print "INFO" "MF delete latest!"
+    print "INFO" "memfabric_hybrid delete latest!"
     if [ -d "latest" ]; then
         chmod -R 700 latest
         rm -rf latest
@@ -177,7 +177,7 @@ function uninstall_process()
     if [ ! -d $1 ]; then
         return 0
     fi
-    print "INFO" "MF $(basename $1) uninstall start!"
+    print "INFO" "memfabric_hybrid $(basename $1) uninstall start!"
     mf_dir=$(cd $1/..;pwd)
     delete_latest $1
     delete_install_files $1
@@ -185,7 +185,7 @@ function uninstall_process()
         chmod -R 700 $mf_dir
         rm -rf $mf_dir
     fi
-    print "INFO" "MF $(basename $1) uninstall success!"
+    print "INFO" "memfabric_hybrid $(basename $1) uninstall success!"
 }
 
 function uninstall()
@@ -285,7 +285,7 @@ function install_process()
         fi
     fi
 
-    print "INFO" "MF start install into ${default_install_dir}"
+    print "INFO" "memfabric_hybrid start install into ${default_install_dir}"
     install_to_path
     generate_set_env
 }
@@ -301,7 +301,7 @@ function main()
         check_owner
         install_process
         chmod_authority
-        print "INFO" "MF install success"
+        print "INFO" "memfabric_hybrid install success"
     fi
 }
 
