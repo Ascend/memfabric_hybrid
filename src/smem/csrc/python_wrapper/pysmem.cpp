@@ -8,6 +8,7 @@
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
+#include "smem_version.h"
 
 namespace py = pybind11;
 
@@ -190,6 +191,8 @@ set log print level.
 
 Arguments:
     level(int): log level, 0:debug 1:info 2:warn 3:error)");
+
+    m.doc() = LIB_VERSION;
 }
 
 void DefineShmConfig(py::module_ &m)
@@ -386,7 +389,7 @@ Returns:
 }
 }
 
-PYBIND11_MODULE(_pysmem, m)
+PYBIND11_MODULE(_pymf_smem, m)
 {
     DefineSmemFunctions(m);
 

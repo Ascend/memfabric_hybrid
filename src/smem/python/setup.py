@@ -2,7 +2,7 @@
 # coding=utf-8
 # Copyright: (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 
-"""python api for smem."""
+"""python api for mf_smem."""
 
 import os
 
@@ -28,7 +28,7 @@ print(pkgs)
 
 
 setuptools.setup(
-    name="smem",
+    name="mf_smem",
     version=current_version,
     author="",
     author_email="",
@@ -37,6 +37,6 @@ setuptools.setup(
     url="https://gitee.com/ascend/memfabric_hybrid",
     license="Apache License Version 2.0",
     python_requires=">=3.7",
-    package_data={"smem": ["_pysmem.cpython*.so", "lib/**", "VERSION"]},
+    package_data={"mf_smem": ["_pymf_smem.cpython*.so", "lib/**", "VERSION"]},
     distclass=BinaryDistribution
 )

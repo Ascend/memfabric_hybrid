@@ -263,7 +263,7 @@ function install_to_path()
     if [ -z "$pip_path" ]; then
         print "WARNING" "pip3 Not Found, skip install wheel package."
     else
-        pip3 install "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel/smem-*.whl --force-reinstall
+        pip3 install "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel/mf_smem-*.whl --force-reinstall
     fi
 }
 

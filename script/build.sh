@@ -30,16 +30,16 @@ mkdir build/
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
 make install -j5 -C build/
 
-mkdir -p "${PROJ_DIR}/src/smem/python/smem/lib"
-\cp -v "${PROJ_DIR}"/output/smem/lib64/_pysmem.cpython*.so "${PROJ_DIR}/src/smem/python/smem"
-\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/smem/lib"
+mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
+\cp -v "${PROJ_DIR}"/output/smem/lib64/_pymf_smem.cpython*.so "${PROJ_DIR}/src/smem/python/mf_smem"
+\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 
 GIT_COMMIT=$(cat script/git_last_commit.txt)
 {
   echo "smem version info:"
   echo "smem version: 1.0.0"
   echo "git: ${GIT_COMMIT}"
-} > "${PROJ_DIR}/src/smem/python/smem/VERSION"
+} > "${PROJ_DIR}/src/smem/python/mf_smem/VERSION"
 
 cd "${PROJ_DIR}/src/smem/python"
 rm -rf build/
