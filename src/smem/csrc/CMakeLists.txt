@@ -53,8 +53,8 @@ add_subdirectory(python_wrapper)
 
 #install
 file(GLOB HEADER_FILES ../include/host/*.h)
-file(GLOB DEVICE_HEADER_FILES ../include/device/low_level/*.h)
-file(GLOB DEVICE_HEADER_FILES_HIGH ../include/device/high_level/*.h)
+file(GLOB DEVICE_HEADER_FILES ../include/device/lowlevel/*.h)
+file(GLOB DEVICE_HEADER_FILES_HIGH ../include/device/highlevel/*.h)
 
 #install head files
 install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/host)

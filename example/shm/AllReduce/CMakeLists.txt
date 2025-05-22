@@ -4,6 +4,9 @@ project(Ascend_c)
 set(RUN_MODE "npu" CACHE STRING "cpu/sim/npu")
 set(SOC_VERSION "Ascend910B3" CACHE STRING "system on chip type")
 set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
+if("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
+    message(FATAL_ERROR "ascend cann path not found!")
+endif()
 set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake)
 include(${ASCENDC_CMAKE_DIR}/ascendc.cmake)
 
@@ -13,8 +16,11 @@ endif()
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_LIST_DIR}/out)
 
 set(MF_PATH $ENV{MEMFABRIC_HYBRID_HOME_PATH})
-set(SMEM_INCLUDE_DIR ${MF_PATH}/aarch64-linux/include/smem/device/)
+if("${MF_PATH}" STREQUAL "")
+    message(FATAL_ERROR "memfabric_hybrid path not found!")
+endif()
 
+set(SMEM_INCLUDE_DIR ${MF_PATH}/aarch64-linux/include/smem/device/)
 ascendc_library(shm_allreduce_kernels SHARED ${CMAKE_CURRENT_LIST_DIR}/shm_all_reduce.cpp)
 ascendc_include_directories(shm_allreduce_kernels
         PUBLIC
