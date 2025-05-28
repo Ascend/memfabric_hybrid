@@ -100,8 +100,13 @@ set(PROJECT_3RDPARTY_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdparty)
 set(PROJECT_3RDPARTY_BIN_DIR ${PROJECT_SOURCE_DIR}/output/3rdparty)
 set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
 
+# set src base dir and output dir of smem
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
+
+# set src base dir and output dir of mobs
+set(PROJECT_MOBS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mobs)
+set(PROJECT_MOBS_OUTPUT ${PROJECT_SOURCE_DIR}/output/mobs)
 
 # set install target top dir
 message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
@@ -113,9 +118,6 @@ else ()
     set(TARGET_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/)
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
-
-#set(PROJECT_PLATFORM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/platform)
-#set(PROJECT_PLATFORM_OUTPUT ${PROJECT_SOURCE_DIR}/output/platform)
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
