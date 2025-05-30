@@ -120,7 +120,7 @@ private:
 #define MO_OUT_LOG(LEVEL, ARGS)                                                        \
     do {                                                                               \
         std::ostringstream oss;                                                        \
-        oss << "[SMEM " << MOBS_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
+        oss << "[MOBS " << MOBS_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
         ock::mobs::MOOutLogger::Instance().Log(LEVEL, oss);                            \
     } while (0)
 

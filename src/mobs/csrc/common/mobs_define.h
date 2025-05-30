@@ -19,7 +19,7 @@ namespace mobs {
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        MOLastError::Set(tmpStr.str()); \
         MO_LOG_ERROR(tmpStr.str());     \
     } while (0)
 
@@ -27,21 +27,21 @@ namespace mobs {
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        MOLastError::Set(tmpStr.str()); \
     } while (0)
 
 #define MO_COUT_AND_SET_LAST_ERROR(msg) \
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        MOLastError::Set(tmpStr.str()); \
         std::cout << msg << std::endl;  \
     } while (0)
 
-// if expression is true, print error
+// if expression is false, print error
 #define MO_PARAM_VALIDATE(expression, msg, returnValue) \
     do {                                                \
-        if ((expression)) {                             \
+        if (!(expression)) {                             \
             MO_SET_LAST_ERROR(msg);                     \
             MO_LOG_ERROR(msg);                          \
             return returnValue;                         \
