@@ -6,22 +6,22 @@
 
 using namespace ock::mobs;
 
-MOBS_API mobs_meta_service_t mobs_meta_service_start(mobs_meta_service_config_t *config)
+MOBS_API mobs_meta_service_t mobss_meta_service_start(mobs_meta_service_config_t *config)
 {
     return nullptr;
 }
 
-MOBS_API void mobs_meta_service_stop(void)
+MOBS_API void mobss_meta_service_stop(mobs_meta_service_t handle)
 {
     return;
 }
 
-MOBS_API mobs_local_service_t mobs_local_service_start(mobs_local_service_config_t *config)
+MOBS_API mobs_local_service_t mobss_local_service_start(mobs_local_service_config_t *config)
 {
     return nullptr;
 }
 
-MOBS_API void mobs_local_service_stop()
+MOBS_API void mobss_local_service_stop(mobs_local_service_t handle)
 {
     return;
 }

@@ -10,13 +10,13 @@
 extern "C" {
 #endif
 
-mobs_meta_service_t mobs_meta_service_start(mobs_meta_service_config_t *config);
+mobs_meta_service_t mobss_meta_service_start(mobs_meta_service_config_t *config);
 
-void mobs_meta_service_stop(void);
+void mobss_meta_service_stop(mobs_meta_service_t handle);
 
-mobs_local_service_t mobs_local_service_start(mobs_local_service_config_t *config);
+mobs_local_service_t mobss_local_service_start(mobs_local_service_config_t *config);
 
-void mobs_local_service_stop();
+void mobss_local_service_stop(mobs_local_service_t handle);
 
 #ifdef __cplusplus
 }
