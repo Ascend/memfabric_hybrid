@@ -6,6 +6,7 @@ include_directories(
         ${PROJECT_MOBS_SRC_BASE}/csrc/meta_service
         ${PROJECT_MOBS_SRC_BASE}/csrc/net
         ${PROJECT_MOBS_SRC_BASE}/csrc/proto
+        ${PROJECT_UTIL_SRC_BASE}
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )
 
@@ -23,6 +24,7 @@ aux_source_directory(client MOBS_SRC_CLIENT)
 aux_source_directory(local_service MOBS_SRC_LOCAL_SERVICE)
 aux_source_directory(meta_service MOBS_SRC_META_SERVICE)
 aux_source_directory(net MOBS_SRC_NET)
+aux_source_directory(net/acc_links_impl MOBS_SRC_NET)
 aux_source_directory(proto MOBS_SRC_PROTO)
 
 # set whole source for platform

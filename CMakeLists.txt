@@ -122,11 +122,6 @@ else ()
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 
-include_directories(
-        ${PROJECT_SMEM_SRC_BASE}/include/host
-        ${PROJECT_SOURCE_DIR}/include/hybm
-)
-
 add_subdirectory(src)
 add_subdirectory(3rdparty)
 
