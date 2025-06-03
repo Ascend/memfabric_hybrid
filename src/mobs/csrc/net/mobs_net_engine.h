@@ -38,9 +38,9 @@ public:
     virtual Result Call(const uint16_t &targetId, int32_t timeoutInSecond) = 0;
 
     virtual Result RegRequestReceivedHandler(uint16_t opCode, const NetReqReceivedHandler &h) = 0;
-    virtual Result RegRequestSentHandler(uint16_t opCode, const NetReqReceiveHandler &h) = 0;
+    virtual Result RegRequestSentHandler(uint16_t opCode, const NetReqSentHandler &h) = 0;
     virtual Result RegNewLinkHandler(uint16_t opCode, const NetNewLinkHandler &h) = 0;
-    virtual Result RegLinkBrokenHandler(uint16_t opCode, const NetNewLinkHandler &h) = 0;
+    virtual Result RegLinkBrokenHandler(uint16_t opCode, const NetLinkBrokenHandler &h) = 0;
 };
 }
 }

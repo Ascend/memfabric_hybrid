@@ -21,9 +21,9 @@ public:
     Result Call(const uint16_t &targetId, int32_t timeoutInSecond) override;
 
     Result RegRequestReceivedHandler(uint16_t opCode, const NetReqReceivedHandler &h) override;
-    Result RegRequestSentHandler(uint16_t opCode, const NetReqReceiveHandler &h) override;
+    Result RegRequestSentHandler(uint16_t opCode, const NetReqSentHandler &h) override;
     Result RegNewLinkHandler(uint16_t opCode, const NetNewLinkHandler &h) override;
-    Result RegLinkBrokenHandler(uint16_t opCode, const NetNewLinkHandler &h) override;
+    Result RegLinkBrokenHandler(uint16_t opCode, const NetLinkBrokenHandler &h) override;
 };
 }
 }

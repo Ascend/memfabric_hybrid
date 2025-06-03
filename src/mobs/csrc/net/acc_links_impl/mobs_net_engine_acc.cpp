@@ -30,7 +30,7 @@ Result NetEngineAcc::RegRequestReceivedHandler(uint16_t opCode, const NetReqRece
 {
     return MO_OK;
 }
-Result NetEngineAcc::RegRequestSentHandler(uint16_t opCode, const NetReqReceiveHandler &h)
+Result NetEngineAcc::RegRequestSentHandler(uint16_t opCode, const NetReqSentHandler &h)
 {
     return MO_OK;
 }
@@ -38,7 +38,7 @@ Result NetEngineAcc::RegNewLinkHandler(uint16_t opCode, const NetNewLinkHandler 
 {
     return MO_OK;
 }
-Result NetEngineAcc::RegLinkBrokenHandler(uint16_t opCode, const NetNewLinkHandler &h)
+Result NetEngineAcc::RegLinkBrokenHandler(uint16_t opCode, const NetLinkBrokenHandler &h)
 {
     return MO_OK;
 }
