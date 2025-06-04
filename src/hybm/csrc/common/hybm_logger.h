@@ -95,7 +95,6 @@ public:
     ~HyBMOutLogger()
     {
         mLogFunc = nullptr;
-        mAuditLogFunc = nullptr;
     }
 
 private:

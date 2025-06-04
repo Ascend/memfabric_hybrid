@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#include "securec.h"
+#include <algorithm>
 #include "hybm_logger.h"
 #include "runtime_api.h"
 #include "hybm_ex_info_transfer.h"
@@ -18,7 +18,7 @@ MemEntityDefault::~MemEntityDefault() = default;
 
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
-    if (id_ >= HYBM_ENTITY_NUM_MAX) {
+    if (id_ < 0 || id_ >= HYBM_ENTITY_NUM_MAX) {
         BM_LOG_ERROR("input entity id is invalid, input: " << id_ << " must be less than: " << HYBM_ENTITY_NUM_MAX);
         return BM_INVALID_PARAM;
     }
@@ -102,12 +102,8 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
         return -1;
     }
 
-    ret = memcpy_s(desc.desc, sizeof(desc.desc), info.data(), info.size());
-    if (ret != EOK) {
-        BM_LOG_ERROR("copy export info desc failed: " << ret);
-        return -1;
-    }
-
+    std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
+    desc.descLen = info.size();
     return BM_OK;
 }
 
@@ -130,12 +126,7 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
         return -1;
     }
 
-    ret = memcpy_s(desc.desc, sizeof(desc.desc), info.data(), info.size());
-    if (ret != EOK) {
-        BM_LOG_ERROR("copy export info desc failed: " << ret);
-        return -1;
-    }
-
+    std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
     desc.descLen = info.size();
     return BM_OK;
 }

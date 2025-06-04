@@ -5,9 +5,7 @@
 #include <iomanip>
 #include "runtime_api.h"
 #include "hybm_logger.h"
-#include "hybm_cmd.h"
 #include "hybm_ex_info_transfer.h"
-#include "devmm_svm_gva.h"
 #include "hybm_devide_mem_segment.h"
 
 namespace ock {
