@@ -8,7 +8,7 @@
 
 using namespace ock::mf;
 
-int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
+HYBM_API int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
                        uint32_t flags)
 {
     if (e == nullptr || src == nullptr || dest == nullptr) {

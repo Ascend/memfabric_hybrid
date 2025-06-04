@@ -50,6 +50,8 @@ struct HybmDeviceMeta {
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
 
+#define HYBM_API __attribute__((visibility("default")))
+
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
     do {                                                                                  \
         TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);              \

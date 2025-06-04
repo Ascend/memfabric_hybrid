@@ -189,7 +189,7 @@ int32_t HalGvaPrecheck(void)
     return BM_ERROR;
 }
 
-int32_t hybm_init(uint16_t deviceId, uint64_t flags)
+HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
     if (initialized > 0) {
@@ -248,7 +248,7 @@ int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     return 0;
 }
 
-void hybm_uninit()
+HYBM_API void hybm_uninit()
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
     if (initialized <= 0L) {
@@ -265,7 +265,7 @@ void hybm_uninit()
     initialized = 0;
 }
 
-int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
+HYBM_API int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
 {
     auto instance = HyBMOutLogger::Instance();
     if (instance == nullptr) {
@@ -276,7 +276,7 @@ int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
     return 0;
 }
 
-int32_t hybm_set_log_level(int level)
+HYBM_API int32_t hybm_set_log_level(int level)
 {
     auto instance = HyBMOutLogger::Instance();
     if (instance == nullptr) {
@@ -291,7 +291,7 @@ int32_t hybm_set_log_level(int level)
     return 0;
 }
 
-const char *hybm_get_error_string(int32_t errCode)
+HYBM_API const char *hybm_get_error_string(int32_t errCode)
 {
     static thread_local std::string info;
     info = std::string("error(").append(std::to_string(errCode)).append(")");
