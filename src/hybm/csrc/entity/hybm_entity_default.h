@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ */
+#ifndef MEM_FABRIC_HYBRID_HYBM_ENGINE_IMPL_H
+#define MEM_FABRIC_HYBRID_HYBM_ENGINE_IMPL_H
+
+#include <map>
+#include "hybm_common_include.h"
+#include "hybm_devide_mem_segment.h"
+#include "hybm_data_operator.h"
+#include "hybm_mem_segment.h"
+#include "hybm_entity.h"
+
+namespace ock {
+namespace mf {
+class MemEntityDefault : public MemEntity {
+public:
+    explicit MemEntityDefault(int32_t id) noexcept;
+    ~MemEntityDefault() override;
+
+    int32_t Initialize(const hybm_options *options) noexcept override;
+    void UnInitialize() noexcept override;
+
+    int32_t ReserveMemorySpace(void **reservedMem) noexcept override;
+    int32_t UnReserveMemorySpace() noexcept override;
+
+    int32_t AllocLocalMemory(uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept override;
+    void FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept override;
+
+    int32_t ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept override;
+    int32_t ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept override;
+    int32_t ImportExchangeInfo(const hybm_exchange_info *desc, uint32_t count, uint32_t flags) noexcept override;
+
+    int32_t SetExtraContext(const void *context, uint32_t size) noexcept override;
+
+    int32_t Mmap() noexcept override;
+    int32_t Join(uint32_t rank) noexcept override;
+    int32_t Leave(uint32_t rank) noexcept override;
+
+    int32_t Start(uint32_t flags) noexcept override;
+    void Stop() noexcept override;
+    bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept override;
+    int32_t CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
+                     uint32_t flags) noexcept override;
+
+private:
+    static int CheckOptions(const hybm_options *options) noexcept;
+
+    void SetHybmDeviceInfo(HybmDeviceMeta &info);
+
+private:
+    const int32_t id_; /* id of the engine */
+    hybm_options options_{};
+    void *stream_{nullptr};
+    std::shared_ptr<MemSegment> segment_;
+    std::shared_ptr<DataOperator> dataOperator_;
+};
+using EngineImplPtr = std::shared_ptr<MemEntityDefault>;
+}
+}
+
+#endif  // MEM_FABRIC_HYBRID_HYBM_ENGINE_IMPL_H
