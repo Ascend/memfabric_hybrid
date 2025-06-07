@@ -6,6 +6,7 @@
 
 #include <map>
 #include <mutex>
+#include <vector>
 
 #include "hybm_big_mem.h"
 #include "hybm_define.h"
