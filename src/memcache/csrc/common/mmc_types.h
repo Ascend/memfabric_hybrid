@@ -22,6 +22,9 @@ enum MmcErrorCode : int32_t {
     MMC_DUPLICATED_OBJECT = -3006,
     MMC_OBJECT_NOT_EXISTS = -3007,
     MMC_NOT_INITIALIZED = -3008,
+    MMC_NET_SEQ_DUP = -3009,
+    MMC_NET_SEQ_NO_FOUND = -3010,
+    MMC_ALREADY_NOTIFIED = -3011,
 };
 
 constexpr int32_t N16 = 16;
@@ -31,6 +34,7 @@ constexpr int32_t N1024 = 1024;
 constexpr int32_t N8192 = 8192;
 
 constexpr uint32_t UN2 = 2;
+constexpr uint32_t UN16 = 16;
 constexpr uint32_t UN32 = 32;
 constexpr uint32_t UN58 = 58;
 constexpr uint32_t UN128 = 128;

@@ -25,12 +25,12 @@ enum NetProtocol {
 };
 
 struct NetEngineOptions {
-    std::string name;           /* name of engine */
-    std::string ip;             /* ip */
-    uint16_t port = 9980L;      /* listen port */
-    uint16_t threadCount = 2;   /* worker thread count */
-    uint16_t rankId = 0;        /* rank id*/
-    bool startListener = false; /* start listener or not */
+    std::string name;             /* name of engine */
+    std::string ip;               /* ip */
+    uint16_t port = 9980L;        /* listen port */
+    uint16_t threadCount = 2;     /* worker thread count */
+    uint16_t rankId = UINT16_MAX; /* rank id*/
+    bool startListener = false;   /* start listener or not */
 
     /* functions */
     std::string ToString() const;
@@ -46,6 +46,7 @@ private:
 class NetContext;
 class NetLink;
 class NetEngine;
+using NetContextPtr = MmcRef<NetContext>;
 using NetLinkPtr = MmcRef<NetLink>;
 using NetEnginePtr = MmcRef<NetEngine>;
 
@@ -66,7 +67,7 @@ inline Result NetEngineOptions::ExtractIpPortFromUrl(const std::string &url, Net
     std::map<std::string, std::string> details;
     /* extract to vector */
     auto result = ExtractURL(url, p, details);
-    MMC_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, "Failed to extract url " << url << ", which is invalid");
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, "Failed to extract url " << url << ", which is invalid");
 
     std::string ipStr = details["ip"];
     std::string portStr = details["port"];

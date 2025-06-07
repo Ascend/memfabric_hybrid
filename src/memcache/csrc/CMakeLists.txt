@@ -5,6 +5,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/local_service
         ${PROJECT_MMC_SRC_BASE}/csrc/meta_service
         ${PROJECT_MMC_SRC_BASE}/csrc/net
+        ${PROJECT_MMC_SRC_BASE}/csrc/net/acc_links_impl
         ${PROJECT_MMC_SRC_BASE}/csrc/proto
         ${PROJECT_UTIL_SRC_BASE}
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/

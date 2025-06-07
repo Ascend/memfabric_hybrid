@@ -6,13 +6,14 @@
 
 #include "mmc_common_includes.h"
 #include "mmc_net_common.h"
+#include "mmc_net_common_acc.h"
 
 namespace ock {
 namespace mmc {
 
 constexpr uint32_t TRY_GET_FLAT_TIME = 3; // Try to get empty flat bucket 3 times
 
-class NetContextStore : public Referable {
+class NetContextStore : public MmcReferable {
 public:
     explicit NetContextStore(uint32_t flatCapacity) : mFlatCapacity(flatCapacity) {}
 
@@ -46,8 +47,8 @@ public:
 
         mFlatCtxBucks = new (std::nothrow) uint64_t[mFlatCapacity];
         if (mFlatCtxBucks == nullptr) {
-            KVS_LOG_ERROR("Failed to new service flat context buckets, probably out of memory");
-            return K_NEW_OBJECT_FAILED;
+            MMC_LOG_ERROR("Failed to new service flat context buckets, probably out of memory");
+            return MMC_NEW_OBJECT_FAILED;
         }
 
         /* make physical memory allocated and set them to 0 */
@@ -57,10 +58,10 @@ public:
         for (auto &i : mHashCtxMap) {
             i.reserve(N1024);
         }
-        KVS_LOG_INFO("Initialized context store, flatten capacity " << mFlatCapacity << ", versionAndSeqMask " <<
+        MMC_LOG_INFO("Initialized context store, flatten capacity " << mFlatCapacity << ", versionAndSeqMask " <<
             mSeqNoAndVersionMask << ", seqNoMask " << mSeqNoMask << ", seqNoAndVersionIndex " << mSeqNoAndVersionIndex);
 
-        return K_OK;
+        return MMC_OK;
     }
 
     void UnInitialize()
@@ -84,7 +85,7 @@ public:
     template <typename T> Result PutAndGetSeqNo(T *ctx, uint32_t &output)
     {
         if (UNLIKELY(ctx == nullptr)) {
-            return K_INVALID_PARAM;
+            return MMC_INVALID_PARAM;
         }
 
         auto value = reinterpret_cast<uint64_t>(ctx);
@@ -121,7 +122,7 @@ public:
                 output = sn.wholeSeq;
                 /* increase ref count */
                 ctx->IncreaseRef();
-                return K_OK;
+                return MMC_OK;
             }
         }
 
@@ -136,7 +137,7 @@ public:
                 /* increase ref count */
                 ctx->IncreaseRef();
             }
-            return inserted ? K_OK : K_NET_SEQ_DUP;
+            return inserted ? MMC_OK : MMC_NET_SEQ_DUP;
         }
     }
 
@@ -146,7 +147,7 @@ public:
      * @param seqNo        [in] seqNo, which whole got from response and timer
      * @param out          [out] ctx ptr
      *
-     * @return K_OK if successful
+     * @return MMC_OK if successful
      * SER_INVALID_PARAM if param is invalid
      * SER_STORE_SEQ_NO_FOUND if seq is not existed, probably removed already
      *
@@ -166,7 +167,7 @@ public:
                2、CAS ERR by version++ */
             if (__sync_bool_compare_and_swap(&mFlatCtxBucks[no.realSeq], (tmpVersion << UN58) | value, 0)) {
                 if (UNLIKELY(value == 0)) {
-                    return K_NET_SEQ_NO_FOUND;
+                    return MMC_NET_SEQ_NO_FOUND;
                 }
 
                 out = reinterpret_cast<T *>(value);
@@ -174,10 +175,10 @@ public:
                 if (decreaseRef) {
                     out->DecreaseRef();
                 }
-                return K_OK;
+                return MMC_OK;
             }
 
-            return K_NET_SEQ_NO_FOUND;
+            return MMC_NET_SEQ_NO_FOUND;
         }
 
         uint32_t mapIndex = no.realSeq % gHashCount;
@@ -192,19 +193,19 @@ public:
                     out->DecreaseRef();
                 }
                 mHashCtxMap[mapIndex].erase(iter);
-                return K_OK;
+                return MMC_OK;
             }
         }
 
-        return K_NET_SEQ_NO_FOUND;
+        return MMC_NET_SEQ_NO_FOUND;
     }
 
     template <typename T> inline void RemoveSeqNo(uint32_t seqNo)
     {
         T *out = nullptr;
-        if (UNLIKELY(GetSeqNoAndRemove<T>(seqNo, out) != K_OK)) {
+        if (UNLIKELY(GetSeqNoAndRemove<T>(seqNo, out) != MMC_OK)) {
             NetSeqNo dumpSeq(seqNo);
-            KVS_LOG_ERROR("Failed to remove ctx with seqNo " << dumpSeq.ToString() << " as not found");
+            MMC_LOG_ERROR("Failed to remove ctx with seqNo " << dumpSeq.ToString() << " as not found");
             return;
         }
     }
@@ -231,7 +232,6 @@ private:
     std::mutex mHashCtxMutex[gHashCount];                           /* mutex to guard unordered_map */
     std::unordered_map<uint32_t, uint64_t> mHashCtxMap[gHashCount]; /* unordered_map to store un-flat */
 };
-using NetContextStorePtr = MoRef<NetContextStore>;
 }
 }
 

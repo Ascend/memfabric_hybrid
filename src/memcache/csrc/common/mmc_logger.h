@@ -121,7 +121,7 @@ private:
     do {                                                                              \
         std::ostringstream oss;                                                       \
         oss << "[MOBS " << MMC_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
-        ock::mmc::MmcOutLogger::Instance().Log(LEVEL, oss);                          \
+        ock::mmc::MmcOutLogger::Instance().Log(LEVEL, oss);                           \
     } while (0)
 
 #define MMC_LOG_DEBUG(ARGS) MMC_OUT_LOG(ock::mmc::DEBUG_LEVEL, ARGS)
@@ -160,16 +160,16 @@ private:
         }                                        \
     } while (0)
 
-#define MMC_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, msg) \
-    do {                                               \
-        auto innerResult = (result);                   \
-        if (UNLIKELY(innerResult != 0)) {              \
-            MMC_LOG_ERROR(msg);                        \
-            return innerResult;                        \
-        }                                              \
+#define MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, msg) \
+    do {                                             \
+        auto innerResult = (result);                 \
+        if (UNLIKELY(innerResult != 0)) {            \
+            MMC_LOG_ERROR(msg);                      \
+            return innerResult;                      \
+        }                                            \
     } while (0)
 
-#define MMC_RETURN_IT_IF_NOT_OK(result)   \
+#define MMC_RETURN_NOT_OK(result)         \
     do {                                  \
         auto innerResult = (result);      \
         if (UNLIKELY(innerResult != 0)) { \

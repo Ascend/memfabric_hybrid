@@ -4,15 +4,15 @@
 #ifndef MEM_FABRIC_MMC_NET_WAIT_HANDLE_H
 #define MEM_FABRIC_MMC_NET_WAIT_HANDLE_H
 
+#include <ctime>
 #include <pthread.h>
 
 #include "mmc_net_common.h"
-#include "mmc_net_context_store.h"
+#include "mmc_net_ctx_store.h"
 
 namespace ock {
 namespace mmc {
-
-class NetWaitHandler : public MoReferable {
+class NetWaitHandler : public MmcReferable {
 public:
     explicit NetWaitHandler(const NetContextStorePtr &ctxStore)
     {
@@ -44,13 +44,13 @@ public:
         pthread_condattr_init(&attr);
         auto err = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
         if (UNLIKELY(err != 0)) {
-            KVS_LOG_ERROR("Failed to init pthread condition, error " << err);
-            return K_ERROR;
+            MMC_LOG_ERROR("Failed to init pthread condition, error " << err);
+            return MMC_ERROR;
         }
 
         /* init condition */
         pthread_cond_init(&cond_, &attr);
-        return K_OK;
+        return MMC_OK;
     }
 
     /* *
@@ -58,7 +58,7 @@ public:
      *
      * @param second         [in] time in second, default timeout is max value of uint32_t
      *
-     * @return 0 if ok, K_TIMEOUT if timeout
+     * @return 0 if ok, MMC_TIMEOUT if timeout
      */
     Result TimedWait(uint32_t second = UINT32_MAX) noexcept
     {
@@ -66,7 +66,7 @@ public:
         /* already notified */
         if (notified) {
             pthread_mutex_unlock(&mutex_);
-            return K_OK;
+            return MMC_OK;
         }
 
         /* relative time instead of abs */
@@ -79,12 +79,12 @@ public:
         auto waitResult = pthread_cond_timedwait(&cond_, &mutex_, &futureTime);
         if (waitResult == ETIMEDOUT) {
             pthread_mutex_unlock(&mutex_);
-            return K_TIMEOUT;
+            return MMC_TIMEOUT;
         }
 
         /* notify by other */
         pthread_mutex_unlock(&mutex_);
-        return K_OK;
+        return MMC_OK;
     }
 
     /* *
@@ -92,7 +92,7 @@ public:
      *
      * @param result         [in] net response result
      * @param data           [in] data from peer
-     * @return 0 if ok, K_ALREADY_NOTIFIED if already notified
+     * @return 0 if ok, MMC_ALREADY_NOTIFIED if already notified
      */
     Result Notify(int32_t result, const TcpDataBufPtr &data) noexcept
     {
@@ -100,7 +100,7 @@ public:
         /* already notified */
         if (notified) {
             pthread_mutex_unlock(&mutex_);
-            return K_ALREADY_NOTIFIED;
+            return MMC_ALREADY_NOTIFIED;
         }
 
         data_ = data;
@@ -108,7 +108,7 @@ public:
         pthread_cond_signal(&cond_);
         notified = true;
         pthread_mutex_unlock(&mutex_);
-        return K_OK;
+        return MMC_OK;
     }
 
     /* *
@@ -139,7 +139,6 @@ private:
     pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cond_{};
 };
-using NetWaitHandlerPtr = MoRef<NetWaitHandler>;
 }
 }
 
