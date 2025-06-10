@@ -16,6 +16,10 @@ enum TransType {
 
 struct TransDeviceOptions {
     TransType transType;
+    uint32_t deviceId;
+    TransDeviceOptions() : TransDeviceOptions{0U} {}
+    TransDeviceOptions(uint32_t id) : TransDeviceOptions{TT_HCCP_RDMA, id} {}
+    TransDeviceOptions(TransType type, uint32_t id) : transType{type}, deviceId{id} {}
 };
 
 struct TransMemRegInput {

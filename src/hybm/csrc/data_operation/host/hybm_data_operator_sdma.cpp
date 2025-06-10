@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include "hybm_logger.h"
-#include "runtime_api.h"
+#include "../../under_api/dl_acl_api.h"
 #include "hybm_data_operator_sdma.h"
 
 namespace ock {
@@ -42,38 +42,38 @@ int32_t HostDataOpSDMA::DataCopy(const void *srcVA, void *destVA, uint64_t lengt
 int HostDataOpSDMA::CopyHost2Gva(void *gvaAddr, const void *hostAddr, size_t count) noexcept
 {
     void *copyDevice;
-    auto ret = RuntimeApi::AclrtMalloc(&copyDevice, count, 0);
+    auto ret = DlAclApi::AclrtMalloc(&copyDevice, count, 0);
     if (ret != 0) {
         BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    ret = RuntimeApi::AclrtMemcpy(copyDevice, count, hostAddr, count, ACL_MEMCPY_HOST_TO_DEVICE);
+    ret = DlAclApi::AclrtMemcpy(copyDevice, count, hostAddr, count, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
         BM_LOG_ERROR("copy host data to temp copy memory on local device failed: " << ret);
-        RuntimeApi::AclrtFree(copyDevice);
+        DlAclApi::AclrtFree(copyDevice);
         return BM_DL_FUNCTION_FAILED;
     }
 
     auto result = CopyDevice2Gva(gvaAddr, copyDevice, count);
     if (result != BM_OK) {
-        RuntimeApi::AclrtFree(copyDevice);
+        DlAclApi::AclrtFree(copyDevice);
         return result;
     }
 
-    RuntimeApi::AclrtFree(copyDevice);
+    DlAclApi::AclrtFree(copyDevice);
     return BM_OK;
 }
 
 int HostDataOpSDMA::CopyDevice2Gva(void *gvaAddr, const void *deviceAddr, size_t count) noexcept
 {
-    auto ret = RuntimeApi::AclrtMemcpyAsync(gvaAddr, count, deviceAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream_);
+    auto ret = DlAclApi::AclrtMemcpyAsync(gvaAddr, count, deviceAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream_);
     if (ret != 0) {
         BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    ret = RuntimeApi::AclrtSynchronizeStream(stream_);
+    ret = DlAclApi::AclrtSynchronizeStream(stream_);
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -84,13 +84,13 @@ int HostDataOpSDMA::CopyDevice2Gva(void *gvaAddr, const void *deviceAddr, size_t
 
 int HostDataOpSDMA::CopyGva2Device(void *deviceAddr, const void *gvaAddr, size_t count) noexcept
 {
-    auto ret = RuntimeApi::AclrtMemcpyAsync(deviceAddr, count, gvaAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream_);
+    auto ret = DlAclApi::AclrtMemcpyAsync(deviceAddr, count, gvaAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream_);
     if (ret != 0) {
         BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    ret = RuntimeApi::AclrtSynchronizeStream(stream_);
+    ret = DlAclApi::AclrtSynchronizeStream(stream_);
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -102,7 +102,7 @@ int HostDataOpSDMA::CopyGva2Device(void *deviceAddr, const void *gvaAddr, size_t
 int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t count) noexcept
 {
     void *copyDevice;
-    auto ret = RuntimeApi::AclrtMalloc(&copyDevice, count, 0);
+    auto ret = DlAclApi::AclrtMalloc(&copyDevice, count, 0);
     if (ret != 0) {
         BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -110,18 +110,18 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
 
     auto result = CopyGva2Device(copyDevice, gvaAddr, count);
     if (result != BM_OK) {
-        RuntimeApi::AclrtFree(copyDevice);
+        DlAclApi::AclrtFree(copyDevice);
         return result;
     }
 
-    ret = RuntimeApi::AclrtMemcpy(hostAddr, count, copyDevice, count, ACL_MEMCPY_DEVICE_TO_HOST);
+    ret = DlAclApi::AclrtMemcpy(hostAddr, count, copyDevice, count, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
         BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret);
-        RuntimeApi::AclrtFree(copyDevice);
+        DlAclApi::AclrtFree(copyDevice);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    RuntimeApi::AclrtFree(copyDevice);
+    DlAclApi::AclrtFree(copyDevice);
     return BM_OK;
 }
 }
