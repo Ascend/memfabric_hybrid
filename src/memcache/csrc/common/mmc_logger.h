@@ -120,7 +120,7 @@ private:
 #define MMC_OUT_LOG(LEVEL, ARGS)                                                      \
     do {                                                                              \
         std::ostringstream oss;                                                       \
-        oss << "[MOBS " << MMC_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
+        oss << "[MMC " << MMC_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
         ock::mmc::MmcOutLogger::Instance().Log(LEVEL, oss);                           \
     } while (0)
 

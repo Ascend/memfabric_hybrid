@@ -10,12 +10,23 @@ namespace ock {
 namespace mmc {
 class NetMsgPacker {
 public:
+    /**
+     * @brief Append a POD(Plain Old Data) struct
+     *
+     * @tparam T           [in] type of POD
+     * @param val          [in] value of POD
+     */
     template <typename T>
     void Serialize(const T &val, typename std::enable_if<std::is_trivially_copyable<T>::value, int>::type = 0)
     {
         outStream_.write(reinterpret_cast<const char *>(&val), sizeof(T));
     }
 
+    /**
+     * @brief Append a string
+     *
+     * @param val          [in] value of string
+     */
     void Serialize(const std::string &val)
     {
         uint32_t size = val.size();
@@ -23,6 +34,13 @@ public:
         outStream_.write(val.data(), size);
     }
 
+    /**
+     * @brief Append a pair
+     *
+     * @tparam K           [in] type of K of pair
+     * @tparam V           [in] type of V of pair
+     * @param val          [in] value of pair
+     */
     template <typename K, typename V>
     void Serialize(const std::pair<K, V> &val)
     {
@@ -30,6 +48,12 @@ public:
         Serialize(val.second);
     }
 
+    /**
+     * @brief Append a vector
+     *
+     * @tparam V           [in] type of vector element
+     * @param container    [in] vector to be appended
+     */
     template <typename V>
     void Serialize(const std::vector<V> &container)
     {
@@ -40,6 +64,13 @@ public:
         }
     }
 
+    /**
+     * @brief Append a map
+     *
+     * @tparam K           [in] type of map key
+     * @tparam V           [in] type of map value
+     * @param container    [in] map to be appended
+     */
     template <typename K, typename V>
     void Serialize(const std::map<K, V> &container)
     {
@@ -50,6 +81,11 @@ public:
         }
     }
 
+    /**
+     * @brief Get the serialized result
+     *
+     * @return String value of serialized
+     */
     std::string String() const
     {
         return outStream_.str();
@@ -61,14 +97,30 @@ private:
 
 class NetMsgUnpacker {
 public:
+    /**
+     * @brief Create unpacker with serialized data
+     *
+     * @param value        [in] serialized data with string type
+     */
     explicit NetMsgUnpacker(const std::string &value) : inStream_(value) {}
 
+    /**
+     * @brief Take data and deserialize to POD data
+     *
+     * @tparam T           [in] type of POD
+     * @param val          [in/out] result data of POD
+     */
     template <typename T>
     void Deserialize(T &val, typename std::enable_if<std::is_trivially_copyable<T>::value, int>::type = 0)
     {
         inStream_.read(reinterpret_cast<char *>(&val), sizeof(T));
     }
 
+    /**
+     * @brief Take data and deserialize to string
+     *
+     * @param val          [in/out] result data of string
+     */
     void Deserialize(std::string &val)
     {
         uint32_t size = 0;
@@ -77,6 +129,12 @@ public:
         inStream_.read(&val[0], size);
     }
 
+    /**
+     * @brief Take data and deserialize to vector
+     *
+     * @tparam V           [in] type of vector element
+     * @param container    [in/out] result data of vector
+     */
     template <typename V>
     void Deserialize(std::vector<V> &container)
     {
@@ -91,6 +149,13 @@ public:
         }
     }
 
+    /**
+     * @brief Take data and deserialize to vector
+     *
+     * @tparam K           [in] type of map key
+     * @tparam V           [in] type of map value
+     * @param container    [in/out] result data of map
+     */
     template <typename K, typename V>
     void Deserialize(std::map<K, V> &container)
     {

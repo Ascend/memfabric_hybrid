@@ -8,6 +8,18 @@ file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
+
+        ${PROJECT_MMC_SRC_BASE}/csrc/client/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/common/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/local_service/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/meta_service/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/net/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/proto/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/under_api/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem/*
+        ${PROJECT_MMC_SRC_BASE}/csrc/mmc.cpp
+        ${PROJECT_MMC_SRC_BASE}/csrc/mmc_client.cpp
+        ${PROJECT_MMC_SRC_BASE}/csrc/mmc_service.cpp
 )
 message(STATUS "llt build")
 add_executable(test_mf_hy ${UT_SOURCE_FILES})
@@ -45,4 +57,7 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_MMC_SRC_BASE}/csrc/common
         ${PROJECT_MMC_SRC_BASE}/csrc/net
         ${PROJECT_MMC_SRC_BASE}/csrc/proto
+        ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem
+
+        ${PROJECT_UTIL_SRC_BASE}
 )

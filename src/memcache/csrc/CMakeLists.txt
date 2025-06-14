@@ -7,6 +7,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/net
         ${PROJECT_MMC_SRC_BASE}/csrc/net/acc_links_impl
         ${PROJECT_MMC_SRC_BASE}/csrc/proto
+        ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem
         ${PROJECT_UTIL_SRC_BASE}
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )
@@ -18,6 +19,7 @@ set(MMC_SRC_LOCAL_SERVICE "")
 set(MMC_SRC_META_SERVICE "")
 set(MMC_SRC_NET "")
 set(MMC_SRC_PROTO "")
+set(MMC_SRC_UNDER_API_MF_SMEM "")
 
 ## add files into src variables
 aux_source_directory(common MMC_SRC_COMMON)
@@ -27,6 +29,7 @@ aux_source_directory(meta_service MMC_SRC_META_SERVICE)
 aux_source_directory(net MMC_SRC_NET)
 aux_source_directory(net/acc_links_impl MMC_SRC_NET)
 aux_source_directory(proto MMC_SRC_PROTO)
+aux_source_directory(under_api/mf_smem MMC_SRC_UNDER_API_MF_SMEM)
 
 # set whole source for platform
 set(PLATFORM_SRC ${MMC_SRC_COMMON}
@@ -35,6 +38,7 @@ set(PLATFORM_SRC ${MMC_SRC_COMMON}
         ${MMC_SRC_META_SERVICE}
         ${MMC_SRC_NET}
         ${MMC_SRC_PROTO}
+        ${MMC_SRC_UNDER_API_MF_SMEM}
         mmc.cpp
         mmc_client.cpp
         mmc_service.cpp)
