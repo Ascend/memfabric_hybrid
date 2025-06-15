@@ -6,16 +6,16 @@
 
 namespace ock {
 namespace mf {
-bool RuntimeHcclApi::gLoaded = false;
-std::mutex RuntimeHcclApi::gMutex;
-void *RuntimeHcclApi::hcclHandle;
+bool DlHcclApi::gLoaded = false;
+std::mutex DlHcclApi::gMutex;
+void *DlHcclApi::hcclHandle;
 
-const char *RuntimeHcclApi::gHcclLibName = "libhccl.so";
+const char *DlHcclApi::gHcclLibName = "libhccl.so";
 
-hcclGetRootInfoFunc RuntimeHcclApi::gHcclGetRootInfo;
-hcclCommInitRootInfoFunc RuntimeHcclApi::gHcclCommInitRootInfo;
+hcclGetRootInfoFunc DlHcclApi::gHcclGetRootInfo;
+hcclCommInitRootInfoFunc DlHcclApi::gHcclCommInitRootInfo;
 
-Result RuntimeHcclApi::LoadLibrary()
+Result DlHcclApi::LoadLibrary()
 {
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {

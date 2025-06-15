@@ -13,7 +13,7 @@ namespace mf {
 using hcclGetRootInfoFunc = int (*)(HcclRootInfo *);
 using hcclCommInitRootInfoFunc = int (*)(uint32_t, const HcclRootInfo *, uint32_t, HcclComm *);
 
-class RuntimeHcclApi {
+class DlHcclApi {
 public:
     static Result LoadLibrary();
 

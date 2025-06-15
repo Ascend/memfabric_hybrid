@@ -30,7 +30,7 @@ using halGvaOpenFun = int32_t (*)(void *, const char *, size_t, uint64_t);
 using halGvaCloseFun = int32_t (*)(void *, uint64_t);
 
 
-class RuntimeHalApi {
+class DlHalApi {
 public:
     static Result LoadLibrary();
 

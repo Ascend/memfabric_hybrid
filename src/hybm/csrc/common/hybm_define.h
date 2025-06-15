@@ -225,6 +225,14 @@ struct ibv_qp_init_attr {
     int sq_sig_all;
 };
 
+union ai_data_plane_cstm_flag {
+    struct {
+        uint32_t cq_cstm : 1;  // 0: hccp poll cq; 1: caller poll cq
+        uint32_t reserved : 31;
+    } bs;
+    uint32_t value;
+};
+
 struct HccpQpExtAttrs {
     int qpMode;
     // cq attr
@@ -235,13 +243,51 @@ struct HccpQpExtAttrs {
     int version;
     int mem_align;  // 0,1:4KB, 2:2MB
     uint32_t udp_sport;
-    uint32_t reserved[30U];
+    union ai_data_plane_cstm_flag data_plane_flag;  // only valid in ra_ai_qp_create
+    uint32_t reserved[29];
+};
+
+struct ai_data_plane_wq {
+    unsigned wqn;
+    unsigned long long buf_addr;
+    unsigned int wqebb_size;
+    unsigned int depth;
+    unsigned long long head_addr;
+    unsigned long long tail_addr;
+    unsigned long long swdb_addr;
+    unsigned long long db_reg;
+    unsigned int reserved[8U];
+};
+
+struct ai_data_plane_cq {
+    unsigned int cqn;
+    unsigned long long buf_addr;
+    unsigned int cqe_size;
+    unsigned int depth;
+    unsigned long long head_addr;
+    unsigned long long tail_addr;
+    unsigned long long swdb_addr;
+    unsigned long long db_reg;
+    unsigned int reserved[2U];
+};
+
+struct ai_data_plane_info {
+    struct ai_data_plane_wq sq;
+    struct ai_data_plane_wq rq;
+    struct ai_data_plane_cq scq;
+    struct ai_data_plane_cq rcq;
+    unsigned int reserved[8U];
 };
 
 struct HccpAiQpInfo {
     unsigned long long aiQpAddr;  // refer to struct ibv_qp *
     unsigned int sqIndex;         // index of sq
     unsigned int dbIndex;         // index of db
+
+    // below cq related info valid when data_plane_flag.bs.cq_cstm was 1
+    unsigned long long ai_scq_addr;  // refer to struct ibv_cq *scq
+    unsigned long long ai_rcq_addr;  // refer to struct ibv_cq *rcq
+    struct ai_data_plane_info data_plane_info;
 };
 
 /**

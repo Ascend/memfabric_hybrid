@@ -2,8 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#ifndef MF_HYBM_CORE_RUNTIME_HCCP_API_H
-#define MF_HYBM_CORE_RUNTIME_HCCP_API_H
+#ifndef MF_HYBM_CORE_DL_HCCP_API_H
+#define MF_HYBM_CORE_DL_HCCP_API_H
 
 #include "hybm_common_include.h"
 
@@ -12,6 +12,7 @@ namespace mf {
 
 using raRdevGetHandleFunc = int (*)(uint32_t, void **);
 
+using raGetInterfaceVersionFunc = int (*)(uint32_t, uint32_t, uint32_t *);
 using raInitFunc = int (*)(const HccpRaInitConfig *);
 using raSocketInitFunc = int (*)(HccpNetworkMode, HccpRdev, void **);
 using raSocketDeinitFunc = int (*)(void *);
@@ -29,7 +30,7 @@ using raGetIfAddrsFunc = int (*)(const HccpRaGetIfAttr *, HccpInterfaceInfo[], u
 using raSocketWhiteListAddFunc = int (*)(void *, const HccpSocketWhiteListInfo[], uint32_t num);
 using raSocketWhiteListDelFunc = int (*)(void *, const HccpSocketWhiteListInfo[], uint32_t num);
 using raQpCreateFunc = int (*)(void *, int, int, void **);
-using raQpAiCreateFunc = int (*)(void *, HccpQpExtAttrs *, HccpAiQpInfo *, void **);
+using raQpAiCreateFunc = int (*)(void *, const HccpQpExtAttrs *, HccpAiQpInfo *, void **);
 using raQpDestroyFunc = int (*)(void *);
 using raGetQpStatusFunc = int (*)(void *, int *);
 using raQpConnectAsyncFunc = int (*)(void *, const void *);
@@ -40,9 +41,14 @@ using raMrDeregFunc = int (*)(void *, HccpMrInfo *);
 
 using tsdOpenFunc = uint32_t (*)(uint32_t, uint32_t);
 
-class RuntimeHccpApi {
+class DlHccpApi {
 public:
     static Result LoadLibrary();
+
+    static inline int RaGetInterfaceVersion(uint32_t deviceId, uint32_t opcode, uint32_t &version)
+    {
+        return gRaGetInterfaceVersion(deviceId, opcode, &version);
+    }
 
     static inline int RaSocketInit(HccpNetworkMode mode, const HccpRdev &rdev, void *&socketHandle)
     {
@@ -134,6 +140,11 @@ public:
         return gRaQpCreate(rdmaHandle, flag, qpMode, &qpHandle);
     }
 
+    static inline int RaQpAiCreate(void *rdmaHandle, const HccpQpExtAttrs &attrs, HccpAiQpInfo &info, void *&qpHandle)
+    {
+        return gRaQpAiCreate(rdmaHandle, &attrs, &info, &qpHandle);
+    }
+
     static inline int RaQpDestroy(void *qpHandle)
     {
         return gRaQpDestroy(qpHandle);
@@ -184,6 +195,7 @@ private:
 
     static raRdevGetHandleFunc gRaRdevGetHandle;
 
+    static raGetInterfaceVersionFunc gRaGetInterfaceVersion;
     static raInitFunc gRaInit;
     static raSocketInitFunc gRaSocketInit;
     static raSocketDeinitFunc gRaSocketDeinit;
@@ -216,4 +228,4 @@ private:
 }
 }
 
-#endif  // MF_HYBM_CORE_RUNTIME_HCCP_API_H
+#endif  // MF_HYBM_CORE_DL_HCCP_API_H

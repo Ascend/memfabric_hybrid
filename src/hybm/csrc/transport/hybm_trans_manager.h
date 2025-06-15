@@ -4,6 +4,7 @@
 #ifndef HYBM_TRANSPORT_H
 #define HYBM_TRANSPORT_H
 
+#include <chrono>
 #include "hybm_common_include.h"
 #include "hybm_trans_common.h"
 
@@ -27,6 +28,16 @@ public:
 
     virtual Result CreateDataConn(const TransDataConnOptions &options) = 0;
     virtual void CloseAllDataConn() = 0;
+    virtual bool IsReady() = 0;
+
+    template<class R, class P>
+    Result WaitingReady(const std::chrono::duration<R, P> &timeout)
+    {
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(timeout);
+        return WaitingReady(ns);
+    }
+    
+    virtual Result WaitingReady(int64_t timeoutNs) = 0;
     virtual std::vector<TransDataConnPtr> GetDataConn() = 0;
 
     virtual TransDataConnAddressInfo GetDataConnAddrInfo() = 0;

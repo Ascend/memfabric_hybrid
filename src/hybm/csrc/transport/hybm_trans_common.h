@@ -16,10 +16,8 @@ enum TransType {
 
 struct TransDeviceOptions {
     TransType transType;
-    uint32_t deviceId;
-    TransDeviceOptions() : TransDeviceOptions{0U} {}
-    TransDeviceOptions(uint32_t id) : TransDeviceOptions{TT_HCCP_RDMA, id} {}
-    TransDeviceOptions(TransType type, uint32_t id) : transType{type}, deviceId{id} {}
+    TransDeviceOptions() : TransDeviceOptions{TT_HCCP_RDMA} {}
+    TransDeviceOptions(TransType type) : transType{type} {}
 };
 
 struct TransMemRegInput {
@@ -46,6 +44,7 @@ struct TransDataConnOptions {
     uint32_t connNumber = 1;
     uint32_t maxRetries = 0;
     uint32_t timeout = 0;
+    std::vector<std::string> servers;
 };
 
 struct TransDataConnAddressInfo {
@@ -54,8 +53,17 @@ struct TransDataConnAddressInfo {
     uint64_t dbrAddress = 0;
 };
 
-class TransHandle;
-class TransDataConn;
+struct TransHandle {
+    void *handle;
+    TransHandle() : TransHandle{nullptr} {}
+    TransHandle(void *hdl) : handle{hdl} {}
+};
+
+struct TransDataConn
+{
+
+};
+
 class TransportManager;
 using TransHandlePtr = std::shared_ptr<TransHandle>;
 using TransDataConnPtr = std::shared_ptr<TransDataConn>;

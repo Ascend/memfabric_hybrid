@@ -4,4 +4,8 @@
 #ifndef HYBM_TRANS_CONN_PRDMA_H
 #define HYBM_TRANS_CONN_PRDMA_H
 
-#endif //HYBM_TRANS_CONN_PRDMA_H
+#include <map>
+#include <string>
+
+
+#endif // HYBM_TRANS_CONN_PRDMA_H

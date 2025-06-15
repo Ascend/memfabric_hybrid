@@ -7,34 +7,34 @@
 
 namespace ock {
 namespace mf {
-bool RuntimeHalApi::gLoaded = false;
-std::mutex RuntimeHalApi::gMutex;
-void *RuntimeHalApi::halHandle;
+bool DlHalApi::gLoaded = false;
+std::mutex DlHalApi::gMutex;
+void *DlHalApi::halHandle;
 
-const char *RuntimeHalApi::gAscendHalLibName = "libascend_hal.so";
+const char *DlHalApi::gAscendHalLibName = "libascend_hal.so";
 
-halSvmModuleAllocedSizeIncFunc RuntimeHalApi::pSvmModuleAllocedSizeInc = nullptr;
-halDevmmVirtAllocMemFromBaseFunc RuntimeHalApi::pDevmmVirtAllocMemFromBase = nullptr;
-halDevmmIoctlEnableHeapFunc RuntimeHalApi::pDevmmIoctlEnableHeap = nullptr;
-halDevmmGetHeapListByTypeFunc RuntimeHalApi::pDevmmGetHeapListByType = nullptr;
-halDevmmVirtSetHeapIdleFunc RuntimeHalApi::pDevmmVirtSetHeapIdle = nullptr;
-halDevmmVirtDestroyHeapFunc RuntimeHalApi::pDevmmVirtDestroyHeap = nullptr;
-halDevmmVirtGetHeapMgmtFunc RuntimeHalApi::pDevmmVirtGetHeapMgmt = nullptr;
-halDevmmIoctlFreePagesFunc RuntimeHalApi::pDevmmIoctlFreePages = nullptr;
-halDevmmVaToHeapIdxFunc RuntimeHalApi::pDevmmVaToHeapIdx = nullptr;
-halDevmmVirtGetHeapFromQueueFunc RuntimeHalApi::pDevmmVirtGetHeapFromQueue = nullptr;
-halDevmmVirtNormalHeapUpdateInfoFunc RuntimeHalApi::pDevmmVirtNormalHeapUpdateInfo = nullptr;
-halDevmmVaToHeapFunc RuntimeHalApi::pDevmmVaToHeap = nullptr;
-int *RuntimeHalApi::pHalDevmmFd = nullptr;
+halSvmModuleAllocedSizeIncFunc DlHalApi::pSvmModuleAllocedSizeInc = nullptr;
+halDevmmVirtAllocMemFromBaseFunc DlHalApi::pDevmmVirtAllocMemFromBase = nullptr;
+halDevmmIoctlEnableHeapFunc DlHalApi::pDevmmIoctlEnableHeap = nullptr;
+halDevmmGetHeapListByTypeFunc DlHalApi::pDevmmGetHeapListByType = nullptr;
+halDevmmVirtSetHeapIdleFunc DlHalApi::pDevmmVirtSetHeapIdle = nullptr;
+halDevmmVirtDestroyHeapFunc DlHalApi::pDevmmVirtDestroyHeap = nullptr;
+halDevmmVirtGetHeapMgmtFunc DlHalApi::pDevmmVirtGetHeapMgmt = nullptr;
+halDevmmIoctlFreePagesFunc DlHalApi::pDevmmIoctlFreePages = nullptr;
+halDevmmVaToHeapIdxFunc DlHalApi::pDevmmVaToHeapIdx = nullptr;
+halDevmmVirtGetHeapFromQueueFunc DlHalApi::pDevmmVirtGetHeapFromQueue = nullptr;
+halDevmmVirtNormalHeapUpdateInfoFunc DlHalApi::pDevmmVirtNormalHeapUpdateInfo = nullptr;
+halDevmmVaToHeapFunc DlHalApi::pDevmmVaToHeap = nullptr;
+int *DlHalApi::pHalDevmmFd = nullptr;
 
-halGvaReserveMemoryFun RuntimeHalApi::pHalGvaReserveMemory = nullptr;
-halGvaUnreserveMemoryFun RuntimeHalApi::pHalGvaUnreserveMemory = nullptr;
-halGvaAllocFun RuntimeHalApi::pHalGvaAlloc = nullptr;
-halGvaFreeFun RuntimeHalApi::pHalGvaFree = nullptr;
-halGvaOpenFun RuntimeHalApi::pHalGvaOpen = nullptr;
-halGvaCloseFun RuntimeHalApi::pHalGvaClose = nullptr;
+halGvaReserveMemoryFun DlHalApi::pHalGvaReserveMemory = nullptr;
+halGvaUnreserveMemoryFun DlHalApi::pHalGvaUnreserveMemory = nullptr;
+halGvaAllocFun DlHalApi::pHalGvaAlloc = nullptr;
+halGvaFreeFun DlHalApi::pHalGvaFree = nullptr;
+halGvaOpenFun DlHalApi::pHalGvaOpen = nullptr;
+halGvaCloseFun DlHalApi::pHalGvaClose = nullptr;
 
-Result RuntimeHalApi::LoadLibrary()
+Result DlHalApi::LoadLibrary()
 {
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {

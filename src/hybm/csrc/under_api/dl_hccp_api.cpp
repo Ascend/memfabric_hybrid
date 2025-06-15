@@ -7,45 +7,46 @@
 
 namespace ock {
 namespace mf {
-bool RuntimeHccpApi::gLoaded = false;
-std::mutex RuntimeHccpApi::gMutex;
-void *RuntimeHccpApi::raHandle;
-void *RuntimeHccpApi::tsdHandle;
+bool DlHccpApi::gLoaded = false;
+std::mutex DlHccpApi::gMutex;
+void *DlHccpApi::raHandle;
+void *DlHccpApi::tsdHandle;
 
-const char *RuntimeHccpApi::gRaLibName = "libra.so";
-const char *RuntimeHccpApi::gTsdLibName = "libtsdclient.so";
+const char *DlHccpApi::gRaLibName = "libra.so";
+const char *DlHccpApi::gTsdLibName = "libtsdclient.so";
 
-raRdevGetHandleFunc RuntimeHccpApi::gRaRdevGetHandle;
+raRdevGetHandleFunc DlHccpApi::gRaRdevGetHandle;
 
-raInitFunc RuntimeHccpApi::gRaInit;
-raSocketInitFunc RuntimeHccpApi::gRaSocketInit;
-raSocketDeinitFunc RuntimeHccpApi::gRaSocketDeinit;
-raRdevInitV2Func RuntimeHccpApi::gRaRdevInitV2;
-raSocketBatchConnectFunc RuntimeHccpApi::gRaSocketBatchConnect;
-raSocketBatchCloseFunc RuntimeHccpApi::gRaSocketBatchClose;
-raSocketBatchAbortFunc RuntimeHccpApi::gRaSocketBatchAbort;
-raSocketListenStartFunc RuntimeHccpApi::gRaSocketListenStart;
-raSocketListenStopFunc RuntimeHccpApi::gRaSocketListenStop;
-raGetSocketsFunc RuntimeHccpApi::gRaGetSockets;
-raSocketSendFunc RuntimeHccpApi::gRaSocketSend;
-raSocketRecvFunc RuntimeHccpApi::gRaSocketRecv;
-raGetIfNumFunc RuntimeHccpApi::gRaGetIfNum;
-raGetIfAddrsFunc RuntimeHccpApi::gRaGetIfAddrs;
-raSocketWhiteListAddFunc RuntimeHccpApi::gRaSocketWhiteListAdd;
-raSocketWhiteListDelFunc RuntimeHccpApi::gRaSocketWhiteListDel;
-raQpCreateFunc RuntimeHccpApi::gRaQpCreate;
-raQpAiCreateFunc RuntimeHccpApi::gRaQpAiCreate;
-raQpDestroyFunc RuntimeHccpApi::gRaQpDestroy;
-raGetQpStatusFunc RuntimeHccpApi::gRaGetQpStatus;
-raQpConnectAsyncFunc RuntimeHccpApi::gRaQpConnectAsync;
-raRegisterMrFunc RuntimeHccpApi::gRaRegisterMR;
-raDeregisterMrFunc RuntimeHccpApi::gRaDeregisterMR;
-raMrRegFunc RuntimeHccpApi::gRaMrReg;
-raMrDeregFunc RuntimeHccpApi::gRaMrDereg;
+raInitFunc DlHccpApi::gRaInit;
+raGetInterfaceVersionFunc DlHccpApi::gRaGetInterfaceVersion;
+raSocketInitFunc DlHccpApi::gRaSocketInit;
+raSocketDeinitFunc DlHccpApi::gRaSocketDeinit;
+raRdevInitV2Func DlHccpApi::gRaRdevInitV2;
+raSocketBatchConnectFunc DlHccpApi::gRaSocketBatchConnect;
+raSocketBatchCloseFunc DlHccpApi::gRaSocketBatchClose;
+raSocketBatchAbortFunc DlHccpApi::gRaSocketBatchAbort;
+raSocketListenStartFunc DlHccpApi::gRaSocketListenStart;
+raSocketListenStopFunc DlHccpApi::gRaSocketListenStop;
+raGetSocketsFunc DlHccpApi::gRaGetSockets;
+raSocketSendFunc DlHccpApi::gRaSocketSend;
+raSocketRecvFunc DlHccpApi::gRaSocketRecv;
+raGetIfNumFunc DlHccpApi::gRaGetIfNum;
+raGetIfAddrsFunc DlHccpApi::gRaGetIfAddrs;
+raSocketWhiteListAddFunc DlHccpApi::gRaSocketWhiteListAdd;
+raSocketWhiteListDelFunc DlHccpApi::gRaSocketWhiteListDel;
+raQpCreateFunc DlHccpApi::gRaQpCreate;
+raQpAiCreateFunc DlHccpApi::gRaQpAiCreate;
+raQpDestroyFunc DlHccpApi::gRaQpDestroy;
+raGetQpStatusFunc DlHccpApi::gRaGetQpStatus;
+raQpConnectAsyncFunc DlHccpApi::gRaQpConnectAsync;
+raRegisterMrFunc DlHccpApi::gRaRegisterMR;
+raDeregisterMrFunc DlHccpApi::gRaDeregisterMR;
+raMrRegFunc DlHccpApi::gRaMrReg;
+raMrDeregFunc DlHccpApi::gRaMrDereg;
 
-tsdOpenFunc RuntimeHccpApi::gTsdOpen;
+tsdOpenFunc DlHccpApi::gTsdOpen;
 
-Result RuntimeHccpApi::LoadLibrary()
+Result DlHccpApi::LoadLibrary()
 {
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {
@@ -75,6 +76,7 @@ Result RuntimeHccpApi::LoadLibrary()
     }
 
     /* load sym */
+    DL_LOAD_SYM(gRaGetInterfaceVersion, raGetInterfaceVersionFunc, raHandle, "ra_get_interface_version");
     DL_LOAD_SYM(gRaSocketInit, raSocketInitFunc, raHandle, "ra_socket_init");
     DL_LOAD_SYM(gRaInit, raInitFunc, raHandle, "ra_init");
     DL_LOAD_SYM(gRaSocketDeinit, raSocketDeinitFunc, raHandle, "ra_socket_deinit");
@@ -96,6 +98,7 @@ Result RuntimeHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaQpAiCreate, raQpAiCreateFunc, raHandle, "ra_ai_qp_create");
     DL_LOAD_SYM(gRaQpDestroy, raQpDestroyFunc, raHandle, "ra_qp_destroy");
     DL_LOAD_SYM(gRaGetQpStatus, raGetQpStatusFunc, raHandle, "ra_get_qp_status");
+    DL_LOAD_SYM(gRaQpConnectAsync, raQpConnectAsyncFunc , raHandle, "ra_qp_connect_async");
     DL_LOAD_SYM(gRaRegisterMR, raRegisterMrFunc, raHandle, "ra_register_mr");
     DL_LOAD_SYM(gRaDeregisterMR, raDeregisterMrFunc, raHandle, "ra_deregister_mr");
     DL_LOAD_SYM(gRaMrReg, raMrRegFunc, raHandle, "ra_mr_reg");

@@ -24,17 +24,17 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
         return result;
     }
 
-    result = RuntimeHalApi::LoadLibrary();
+    result = DlHalApi::LoadLibrary();
     if (result != BM_OK) {
         return result;
     }
 
-    result = RuntimeHcclApi::LoadLibrary();
+    result = DlHcclApi::LoadLibrary();
     if (result != BM_OK) {
         return result;
     }
 
-    result = RuntimeHccpApi::LoadLibrary();
+    result = DlHccpApi::LoadLibrary();
     if (result != BM_OK) {
         return result;
     }
