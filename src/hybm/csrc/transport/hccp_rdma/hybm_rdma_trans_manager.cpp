@@ -61,6 +61,11 @@ TransHandlePtr RdmaTransportManager::OpenDevice(const TransDeviceOptions &option
 
 void RdmaTransportManager::CloseDevice(const TransHandlePtr &h) {}
 
+uint64_t RdmaTransportManager::GetTransportId() const
+{
+    return static_cast<uint64_t>(deviceIp_.s_addr);
+}
+
 Result RdmaTransportManager::RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out)
 {
     void *mrHandle = nullptr;
@@ -97,21 +102,16 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
 {
     std::vector<HccpSocketWhiteListInfo> allWhitelist;
     SetRunningState(RDMA_SOCKET_LISTENING);
-    for (auto &address : options.whitelist) {
+    for (auto &item : options.whitelist) {
         in_addr temp{};
-        auto cnt = inet_aton(address.c_str(), &temp);
-        if (cnt != 1) {
-            BM_LOG_ERROR("whitelist address (" << address << ") invalid.");
-            SetRunningState(RDMA_EXITING);
-            return BM_INVALID_PARAM;
-        }
+        temp.s_addr = static_cast<uint32_t>(item);
 
         HccpSocketWhiteListInfo info{};
         info.remoteIp.addr = temp;
         info.connLimit = 10U;
         memset(info.tag, 0, sizeof(info.tag));
         allWhitelist.emplace_back(info);
-        serverConnections_.emplace(address, ChannelConnection{temp});
+        serverConnections_.emplace(inet_ntoa(temp), ChannelConnection{temp});
     }
 
     void *socketHandle;

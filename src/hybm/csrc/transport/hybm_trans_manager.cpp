@@ -10,6 +10,11 @@ namespace ock {
 namespace mf {
 TransportManagerPtr TransportManager::Create(TransType t)
 {
+    static TransportManagerPtr rdmaTransportInstance = nullptr;
+    if (rdmaTransportInstance != nullptr) {
+        return rdmaTransportInstance;
+    }
+
     int32_t deviceId = -1;
     auto ret = DlAclApi::AclrtGetDevice(&deviceId);
     if (ret != 0 || deviceId < 0) {
@@ -22,7 +27,15 @@ TransportManagerPtr TransportManager::Create(TransType t)
         return nullptr;
     }
 
-    return std::make_shared<RdmaTransportManager>(deviceId, 10002);
+    TransDeviceOptions deviceOptions{};
+    auto manager = std::make_shared<RdmaTransportManager>(deviceId, 10002);
+    if (manager->OpenDevice(deviceOptions) == nullptr) {
+        BM_LOG_ERROR("Open Transport failed: " << ret);
+        return nullptr;
+    }
+
+    rdmaTransportInstance = manager;
+    return manager;
 }
 }
 }

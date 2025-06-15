@@ -35,7 +35,7 @@ struct TransMemRegOutput {
 
 struct TransPrepareOptions {
     bool isServer = true;               /* server or client */
-    std::vector<std::string> whitelist; /* list of whilelist */
+    std::vector<uint64_t> whitelist; /* list of whilelist */
 };
 
 struct TransDataConnOptions {

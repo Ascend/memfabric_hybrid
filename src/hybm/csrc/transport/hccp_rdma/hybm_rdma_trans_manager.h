@@ -59,6 +59,7 @@ public:
     RdmaTransportManager(uint32_t deviceId, uint32_t port);
     TransHandlePtr OpenDevice(const TransDeviceOptions &options) override;
     void CloseDevice(const TransHandlePtr &h) override;
+    uint64_t GetTransportId() const override;
     Result RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out) override;
     Result UnRegMemFromDevice(const TransMemRegOutput &out) override;
     Result PrepareDataConn(const TransPrepareOptions &options) override;

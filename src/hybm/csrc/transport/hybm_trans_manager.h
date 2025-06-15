@@ -19,6 +19,7 @@ public:
 
     virtual TransHandlePtr OpenDevice(const TransDeviceOptions &options) = 0;
     virtual void CloseDevice(const TransHandlePtr &h) = 0;
+    virtual uint64_t GetTransportId() const = 0;
 
     virtual Result RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out) = 0;
     virtual Result UnRegMemFromDevice(const TransMemRegOutput &out) = 0;
