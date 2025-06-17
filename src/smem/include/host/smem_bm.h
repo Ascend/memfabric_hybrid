@@ -55,15 +55,15 @@ uint32_t smem_bm_get_rank_id(void);
  *
  * @param id               [in] identity of the Big Memory object
  * @param memberSize       [in] number of guys participating, which should equal or less the world size
- * @param memType          [in] memory type, device HBM memory, host dram memory or both
  * @param dataOpType       [in] data operation type, SDMA or RoCE etc
- * @param localMemorySize  [in] the size of local memory contributes to Big Memory object
+ * @param localDRAMSize    [in] the size of local DRAM memory contributes to Big Memory object
+ * @param localHBMSize     [in] the size of local HBM memory contributes to Big Memory object
  * @param flags            [in] optional flags
  * @return Big Memory object handle if successful, nullptr if failed
  */
 smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
-                         smem_bm_mem_type memType, smem_bm_data_op_type dataOpType,
-                         uint64_t localMemorySize, uint32_t flags);
+                         smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+                         uint64_t localHBMSize, uint32_t flags);
 
 /**
  * @brief Destroy the Big Memory object

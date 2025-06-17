@@ -154,10 +154,10 @@ public:
         return smem_bm_get_rank_id();
     }
 
-    static BigMemory *Create(uint32_t id, uint64_t localMemorySize, smem_bm_mem_type memType,
+    static BigMemory *Create(uint32_t id, uint64_t localDRAMSize, uint64_t localHBMSize,
                              smem_bm_data_op_type dataOpType, uint32_t flags)
     {
-        auto hd = smem_bm_create(id, worldSize_, memType, dataOpType, localMemorySize, flags);
+        auto hd = smem_bm_create(id, worldSize_, dataOpType, localDRAMSize, localHBMSize, flags);
         if (hd == nullptr) {
             throw std::runtime_error(std::string("create bm handle failed."));
         }
@@ -306,9 +306,6 @@ get global virtual address created, it can be passed to kernel to data operation
 
 void DefineBmClass(py::module_ &m)
 {
-    py::enum_<smem_bm_mem_type>(m, "BmMemType")
-        .value("HBM", SMEMB_MEM_TYPE_HBM)
-        .value("DRAM", SMEMB_MEM_TYPE_DRAM);
     py::enum_<smem_bm_data_op_type>(m, "BmDataOpType")
         .value("SDMA", SMEMB_DATA_OP_SDMA)
         .value("ROCE", SMEMB_DATA_OP_ROCE);
@@ -338,14 +335,14 @@ Returns:
     rank id if successful, UINT32_MAX is returned if failed.)");
 
     m.def("create", &BigMemory::Create, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
-          py::arg("local_mem_size"), py::arg("mem_type") = SMEMB_MEM_TYPE_HBM,
+          py::arg("local_dram_size"), py::arg("local_hbm_size"),
           py::arg("data_op_type") = SMEMB_DATA_OP_SDMA, py::arg("flags") = 0, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
     id(int):                     identity of the big memory object
-    local_mem_size(int):         the size of local memory contributes to big memory object
-    mem_type(BmMemType):         memory type, device HBM memory, host dram memory or both
+    local_dram_size(int):         the size of local dram memory contributes to big memory object
+    local_hbm_size(int):         the size of local hbm memory contributes to big memory object
     data_op_type(BmDataOpType):  data operation type, SDMA or RoCE etc
     flags(int):                  optional flags)");
 

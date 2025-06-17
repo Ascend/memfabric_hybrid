@@ -78,11 +78,11 @@ SMEM_API uint32_t smem_bm_get_rank_id()
     return SmemBmEntryManager::Instance().GetRankId();
 }
 
-SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_mem_type memType,
-                                  smem_bm_data_op_type dataOpType, uint64_t localMemorySize, uint32_t flags)
+SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
+                                  uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", nullptr);
-    SM_PARAM_VALIDATE(localMemorySize == 0UL, "localMemorySize is 0", nullptr);
+    SM_PARAM_VALIDATE(localDRAMSize == 0UL && localHBMSize == 0UL, "localMemorySize is 0", nullptr);
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
@@ -100,7 +100,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_mem_
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
-    options.singleRankVASpace = localMemorySize;
+    options.singleRankVASpace = localHBMSize;
     options.preferredGVA = 0;
 
     ret = entry->Initialize(options);
