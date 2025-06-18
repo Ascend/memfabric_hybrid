@@ -3,7 +3,7 @@
  */
 #include <algorithm>
 #include "hybm_logger.h"
-#include "../under_api/dl_acl_api.h"
+#include "dl_acl_api.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_data_operator_sdma.h"

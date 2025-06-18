@@ -32,6 +32,12 @@ using hybmJoinFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmLeaveFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmDataCopyFunc = int32_t (*)(hybm_entity_t, const void *, void *, size_t, hybm_data_copy_direction, uint32_t);
 
+using hybmTransportInitFunc = int (*)(uint32_t, uint32_t);
+using hybmTransportGetAddressFunc = int (*)(uint64_t *);
+using hybmTransportSetAddressesFunc = int (*)(uint64_t [], uint32_t);
+using hybmTransportMakeConnectionsFunc = int (*)();
+using hybmTransportAiQpInfoAddressFunc = int (*)(void **);
+
 /*
  * int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
                        uint32_t flags);
@@ -145,6 +151,31 @@ public:
         return pHybmDataCopy(e, src, dest, count, direction, flags);
     }
 
+    static inline int32_t HybmTransportInit(uint32_t rankId, uint32_t rankCount)
+    {
+        return gHybmTransportInit(rankId, rankCount);
+    }
+
+    static inline int32_t HybmTransportGetAddress(uint64_t &address)
+    {
+        return gHybmTransportGetAddress(&address);
+    }
+
+    static int32_t HybmTransportSetAddresses(uint64_t addresses[], uint32_t count)
+    {
+        return gHybmTransportSetAddresses(addresses, count);
+    }
+
+    static int32_t HybmTransportMakeConnections()
+    {
+        return gHybmTransportMakeConnections();
+    }
+
+    static int32_t HybmTransportAiQpInfoAddress(void *&address)
+    {
+        return gHybmTransportAiQpInfoAddress(&address);
+    }
+
 private:
     static int32_t GetLibPath(const std::string &libDir, std::string &outputPath);
 
@@ -175,6 +206,12 @@ private:
     static hybmJoinFunc pHybmJoin;
     static hybmLeaveFunc pHybmLeave;
     static hybmDataCopyFunc pHybmDataCopy;
+
+    static hybmTransportInitFunc gHybmTransportInit;
+    static hybmTransportGetAddressFunc gHybmTransportGetAddress;
+    static hybmTransportSetAddressesFunc gHybmTransportSetAddresses;
+    static hybmTransportMakeConnectionsFunc gHybmTransportMakeConnections;
+    static hybmTransportAiQpInfoAddressFunc gHybmTransportAiQpInfoAddress;
 };
 }
 }

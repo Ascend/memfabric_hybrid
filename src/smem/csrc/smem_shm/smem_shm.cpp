@@ -16,6 +16,18 @@ std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
 #endif
 
+static int InitializeTransport(uint32_t rankId, uint32_t rankCount)
+{
+    auto ret = HybmCoreApi::HybmTransportInit(rankId, rankCount);
+    if (ret != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("init transport failed: " << ret);
+        return SM_ERROR;
+    }
+
+    uint64_t address;
+    ret = HybmCoreApi::HybmTransportGetAddress(address);
+}
+
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                            smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
@@ -176,6 +188,7 @@ SMEM_API int32_t smem_shm_config_init(smem_shm_config_t *config)
     config->shmCreateTimeout = SMEM_DEFAUT_WAIT_TIME;
     config->controlOperationTimeout = SMEM_DEFAUT_WAIT_TIME;
     config->startConfigStore = true;
+    config->connectTransport = false;
     config->flags = 0;
     return SM_OK;
 }
@@ -199,6 +212,14 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
+    }
+
+    if (config->connectTransport) {
+        ret = HybmCoreApi::HybmTransportInit(rankId, worldSize);
+        if (ret != 0) {
+            SM_LOG_AND_SET_LAST_ERROR("init transport failed: " << ret);
+            return SM_ERROR;
+        }
     }
 
     g_smemShmInited = true;

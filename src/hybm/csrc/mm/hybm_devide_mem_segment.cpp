@@ -8,7 +8,6 @@
 #include "dl_acl_api.h"
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_trans_manager.h"
 #include "hybm_devide_mem_segment.h"
 
 namespace ock {
@@ -122,7 +121,6 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     info.pid = pid_;
     info.rankId = rankIndex_;
     info.size = slice->size_;
-    info.transportId = TransportManager::Create(TransType::TT_HCCP_RDMA)->GetTransportId();
     info.entityId = entityId_;
     info.sdid = sdid_;
     info.pageTblType = MEM_PT_TYPE_SVM;
@@ -224,36 +222,6 @@ Result MemSegmentDevice::Mmap() noexcept
 
 Result MemSegmentDevice::Start() noexcept
 {
-    auto transport = TransportManager::Create(TransType::TT_HCCP_RDMA);
-    if (transport == nullptr) {
-        BM_LOG_ERROR("create transport failed!");
-        return BM_ERROR;
-    }
-
-    TransPrepareOptions prepareOptions;
-    for (auto i = 0U; i < rankIndex_; i++) {
-        prepareOptions.whitelist.push_back(imports_[i].transportId);
-    }
-
-    auto ret = transport->PrepareDataConn(prepareOptions);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("PrepareDataConn for transport failed: " << ret);
-        return ret;
-    }
-
-    TransDataConnOptions connOptions{};
-    ret = transport->CreateDataConn(connOptions);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("CreateDataConn for transport failed: " << ret);
-        return ret;
-    }
-
-    ret = transport->WaitingReady(std::chrono::minutes(1));
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("WaitingReady for transport failed: " << ret);
-        return ret;
-    }
-
     return BM_OK;
 }
 

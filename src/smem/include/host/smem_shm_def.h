@@ -31,6 +31,7 @@ typedef struct {
     uint32_t controlOperationTimeout; /* control operation timeout, i.e. barrier, allgather,topology_can_reach etc,
                                          default 120 second */
     bool startConfigStore;            /* whether to start config store, default true */
+    bool connectTransport;            /* whether connect transport, default false */
     uint32_t flags;                   /* other flag, default 0 */
 } smem_shm_config_t;
 

@@ -60,6 +60,7 @@ public:
     TransHandlePtr OpenDevice(const TransDeviceOptions &options) override;
     void CloseDevice(const TransHandlePtr &h) override;
     uint64_t GetTransportId() const override;
+    void SetTransportIds(const std::vector<uint64_t> transports) override;
     Result RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out) override;
     Result UnRegMemFromDevice(const TransMemRegOutput &out) override;
     Result PrepareDataConn(const TransPrepareOptions &options) override;
@@ -76,20 +77,31 @@ private:
     bool RaInit();
     bool RetireDeviceIp();
     bool RaRdevInit();
-    void SetRunningState(RdmaManagerState state);
+    void SetClientState(RdmaManagerState state);
+    void SetServerState(RdmaManagerState state);
     int CreateQpWaitingReady(std::unordered_map<std::string, ChannelConnection> &connections);
+    int FillQpInfo();
+    void CopyAiWQInfo(struct AiQpRMAWQ& dest, const struct ai_data_plane_wq& source, DBMode dbMode, uint32_t sl);
+    void CopyAiCQInfo(struct AiQpRMACQ& dest, const ai_data_plane_cq& source, DBMode dbMode);
     static int WaitConnectionsReady(std::unordered_map<std::string, ChannelConnection> &connections);
 
 private:
     const uint32_t listenPort_;
     const uint32_t deviceId_;
+    uint32_t localRankId_{0};
+    uint32_t totalRankCount_{1};
 
+    std::vector<uint64_t> clusterTransports_;
     std::mutex stateMutex_;
     std::condition_variable stateCond_;
-    RdmaManagerState runningState_{RDMA_IDLE};
+    RdmaManagerState clientState_{RDMA_IDLE};
+    RdmaManagerState serverState_{RDMA_IDLE};
     in_addr deviceIp_;
     void *rdmaHandle_{nullptr};
     void *serverSocketHandle_{nullptr};
+
+    size_t qpInfoSize_{0};
+    AiQpRMAQueueInfo *qpInfo_{nullptr};
     std::unordered_map<std::string, ChannelConnection> clientConnections_;
     std::unordered_map<std::string, ChannelConnection> serverConnections_;
 };

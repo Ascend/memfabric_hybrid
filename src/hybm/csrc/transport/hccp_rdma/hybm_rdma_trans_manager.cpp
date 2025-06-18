@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "hybm_logger.h"
+#include "dl_acl_api.h"
 #include "dl_hccp_api.h"
 #include "hybm_rdma_trans_manager.h"
 
@@ -55,7 +56,20 @@ TransHandlePtr RdmaTransportManager::OpenDevice(const TransDeviceOptions &option
         return nullptr;
     }
 
-    SetRunningState(RDMA_INIT);
+    void *ptr = nullptr;
+    auto oneQpSize = 2U * (sizeof(AiQpRMAWQ) + sizeof(AiQpRMACQ));
+    qpInfoSize_ = sizeof(AiQpRMAQueueInfo) + oneQpSize * options.rankCount;
+    auto ret = DlAclApi::AclrtMalloc(&ptr, qpInfoSize_, 0);
+    if (ret != 0) {
+        BM_LOG_ERROR("allocate device size: " << qpInfoSize_ << ", failed: " << ret);
+        return nullptr;
+    }
+
+    qpInfo_ = (AiQpRMAQueueInfo *)ptr;
+    localRankId_ = options.rankId;
+    totalRankCount_ = options.rankCount;
+    SetClientState(RDMA_INIT);
+    SetServerState(RDMA_INIT);
     return std::make_shared<TransHandle>(rdmaHandle_);
 }
 
@@ -64,6 +78,11 @@ void RdmaTransportManager::CloseDevice(const TransHandlePtr &h) {}
 uint64_t RdmaTransportManager::GetTransportId() const
 {
     return static_cast<uint64_t>(deviceIp_.s_addr);
+}
+
+void RdmaTransportManager::SetTransportIds(const std::vector<uint64_t> transports)
+{
+    clusterTransports_ = transports;
 }
 
 Result RdmaTransportManager::RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out)
@@ -100,11 +119,20 @@ Result RdmaTransportManager::UnRegMemFromDevice(const ock::mf::TransMemRegOutput
 
 Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
 {
+    if (totalRankCount_ != clusterTransports_.size()) {
+        BM_LOG_ERROR("total rank size : " << totalRankCount_ << ", transports size(): " << clusterTransports_.size());
+        return BM_ERROR;
+    }
+
+    if (localRankId_ + 1U == totalRankCount_) {
+        return BM_OK;
+    }
+
     std::vector<HccpSocketWhiteListInfo> allWhitelist;
-    SetRunningState(RDMA_SOCKET_LISTENING);
-    for (auto &item : options.whitelist) {
+    SetServerState(RDMA_SOCKET_LISTENING);
+    for (auto i = localRankId_ + 1U; i < totalRankCount_; i++) {
         in_addr temp{};
-        temp.s_addr = static_cast<uint32_t>(item);
+        temp.s_addr = static_cast<uint32_t>(clusterTransports_[i]);
 
         HccpSocketWhiteListInfo info{};
         info.remoteIp.addr = temp;
@@ -122,7 +150,7 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
     auto ret = DlHccpApi::RaSocketInit(HccpNetworkMode::NETWORK_OFFLINE, rdev, socketHandle);
     if (ret != 0) {
         BM_LOG_ERROR("initialize socket handle failed: " << ret);
-        SetRunningState(RDMA_EXITING);
+        SetServerState(RDMA_EXITING);
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -134,7 +162,7 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
     ret = DlHccpApi::RaSocketListenStart(&listenInfo, 1);
     if (ret != 0) {
         BM_LOG_WARN("start to listen on port: " << listenPort_ << " failed: " << ret);
-        SetRunningState(RDMA_EXITING);
+        SetServerState(RDMA_EXITING);
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -142,27 +170,27 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
     if (ret != 0) {
         BM_LOG_ERROR("socket handle add white list failed: " << ret);
         DlHccpApi::RaSocketDeinit(socketHandle);
-        SetRunningState(RDMA_EXITING);
+        SetServerState(RDMA_EXITING);
         return BM_DL_FUNCTION_FAILED;
     }
 
     serverSocketHandle_ = socketHandle;
-    SetRunningState(RDMA_SOCKET_ACCEPTING);
+    SetServerState(RDMA_SOCKET_ACCEPTING);
     BM_LOG_INFO("start to listen on port: " << listenPort_ << " success.");
 
     std::thread waitingTask{[this]() {
         auto ret = WaitConnectionsReady(serverConnections_);
         if (ret != BM_OK) {
-            SetRunningState(RDMA_EXITING);
+            SetServerState(RDMA_EXITING);
             return;
         }
 
-        SetRunningState(RDMA_SOCKET_CONNECTED);
+        SetServerState(RDMA_SOCKET_CONNECTED);
         ret = CreateQpWaitingReady(serverConnections_);
         if (ret != BM_OK) {
-            SetRunningState(RDMA_EXITING);
+            SetServerState(RDMA_EXITING);
         } else {
-            SetRunningState(RDMA_READY);
+            SetServerState(RDMA_READY);
         }
     }};
 
@@ -195,14 +223,13 @@ void RdmaTransportManager::UnPrepareDataConn()
 Result RdmaTransportManager::CreateDataConn(const TransDataConnOptions &options)
 {
     std::vector<in_addr> serverIps;
-    for (auto &remote : options.servers) {
-        in_addr temp{};
-        auto cnt = inet_aton(remote.c_str(), &temp);
-        if (cnt != 1) {
-            BM_LOG_ERROR("server ip(" << remote << ") invalid.");
-            return BM_INVALID_PARAM;
-        }
+    if (localRankId_ == 0) {
+        return BM_OK;
+    }
 
+    for (auto i = 0U; i < localRankId_; i++) {
+        in_addr temp{};
+        temp.s_addr = static_cast<uint32_t>(clusterTransports_[i]);
         serverIps.push_back(temp);
     }
 
@@ -217,7 +244,7 @@ Result RdmaTransportManager::CreateDataConn(const TransDataConnOptions &options)
         if (ret != 0) {
             BM_LOG_ERROR("initialize socket handle failed: " << ret);
             CloseAllDataConn();
-            SetRunningState(RDMA_EXITING);
+            SetClientState(RDMA_EXITING);
             return BM_DL_FUNCTION_FAILED;
         }
 
@@ -236,29 +263,29 @@ Result RdmaTransportManager::CreateDataConn(const TransDataConnOptions &options)
     if (ret != 0) {
         BM_LOG_ERROR("connect to all servers failed: " << ret);
         CloseAllDataConn();
-        SetRunningState(RDMA_EXITING);
+        SetClientState(RDMA_EXITING);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    SetRunningState(RDMA_SOCKET_CONNECTING);
+    SetClientState(RDMA_SOCKET_CONNECTING);
     ret = WaitConnectionsReady(clientConnections_);
     if (ret != BM_OK) {
         BM_LOG_ERROR("client wait connections failed: " << ret);
         CloseAllDataConn();
-        SetRunningState(RDMA_EXITING);
+        SetClientState(RDMA_EXITING);
         return ret;
     }
 
-    SetRunningState(RDMA_SOCKET_CONNECTING);
+    SetClientState(RDMA_SOCKET_CONNECTING);
     ret = CreateQpWaitingReady(clientConnections_);
     if (ret != BM_OK) {
         BM_LOG_ERROR("client create qp failed: " << ret);
         CloseAllDataConn();
-        SetRunningState(RDMA_EXITING);
+        SetClientState(RDMA_EXITING);
         return ret;
     }
 
-    SetRunningState(RDMA_READY);
+    SetClientState(RDMA_READY);
     return BM_OK;
 }
 
@@ -293,17 +320,17 @@ void RdmaTransportManager::CloseAllDataConn()
 bool RdmaTransportManager::IsReady()
 {
     std::unique_lock<std::mutex> lockGuard{stateMutex_};
-    return runningState_ == RDMA_READY;
+    return clientState_ == RDMA_READY && serverState_ == RDMA_READY;
 }
 
 Result RdmaTransportManager::WaitingReady(int64_t timeoutNs)
 {
     std::unique_lock<std::mutex> lockGuard{stateMutex_};
-    if (runningState_ == RDMA_READY) {
+    if (clientState_ == RDMA_READY && serverState_ == RDMA_READY) {
         return BM_OK;
     }
 
-    if (runningState_ > RDMA_READY) {
+    if (clientState_ > RDMA_READY || serverState_ > RDMA_READY) {
         return BM_ERROR;
     }
 
@@ -312,11 +339,16 @@ Result RdmaTransportManager::WaitingReady(int64_t timeoutNs)
         return BM_TIMEOUT;
     }
 
-    if (runningState_ == RDMA_READY) {
+    if (clientState_ == RDMA_READY && serverState_ == RDMA_READY) {
         return BM_OK;
     }
 
     return BM_ERROR;
+}
+
+TransDataConnAddressInfo RdmaTransportManager::GetDataConnAddrInfo()
+{
+    return TransDataConnAddressInfo{qpInfo_};
 }
 
 bool RdmaTransportManager::OpenTsd()
@@ -404,12 +436,32 @@ bool RdmaTransportManager::RaRdevInit()
     return true;
 }
 
-void RdmaTransportManager::SetRunningState(ock::mf::RdmaManagerState state)
+void RdmaTransportManager::SetClientState(RdmaManagerState state)
 {
-    BM_LOG_INFO("RunningState set to: " << GetRunStateMessage(state));
+    BM_LOG_INFO("clientState_ set to: " << GetRunStateMessage(state));
     std::unique_lock<std::mutex> lockGuard{stateMutex_};
-    runningState_ = state;
-    if (runningState_ >= RDMA_READY) {
+    clientState_ = state;
+    if (clientState_ > RDMA_READY) {
+        stateCond_.notify_all();
+        return;
+    }
+
+    if (clientState_ >= RDMA_READY && serverState_ >= RDMA_READY) {
+        stateCond_.notify_all();
+    }
+}
+
+void RdmaTransportManager::SetServerState(RdmaManagerState state)
+{
+    BM_LOG_INFO("serverState_ set to: " << GetRunStateMessage(state));
+    std::unique_lock<std::mutex> lockGuard{stateMutex_};
+    serverState_ = state;
+    if (serverState_ > RDMA_READY) {
+        stateCond_.notify_all();
+        return;
+    }
+
+    if (clientState_ >= RDMA_READY && serverState_ >= RDMA_READY) {
         stateCond_.notify_all();
     }
 }
@@ -515,10 +567,108 @@ int RdmaTransportManager::CreateQpWaitingReady(std::unordered_map<std::string, C
             }
         }
         if (connectingCount == 0) {
-            return BM_OK;
+            return FillQpInfo();
         }
     }
     return BM_TIMEOUT;
+}
+
+int RdmaTransportManager::FillQpInfo()
+{
+    in_addr addr{};
+    AiQpRMAQueueInfo *copyInfo = (AiQpRMAQueueInfo *)malloc(qpInfoSize_);
+    if (copyInfo == nullptr) {
+        BM_LOG_ERROR("allocate memory with size: " << qpInfoSize_ << " failed.");
+        return BM_ERROR;
+    }
+
+    copyInfo->count = 1;
+    copyInfo->sq = (AiQpRMAWQ *)(void *)(copyInfo + 1);
+    copyInfo->rq = (AiQpRMAWQ *)(void *)(copyInfo->sq + clusterTransports_.size());
+    copyInfo->scq = (AiQpRMACQ *)(void *)(copyInfo->rq + clusterTransports_.size());
+    copyInfo->rcq = (AiQpRMACQ *)(void *)(copyInfo->scq + clusterTransports_.size());
+    for (auto i = 0U; i < totalRankCount_; i++) {
+        if (i == localRankId_) {
+            continue;
+        }
+
+        std::unordered_map<std::string, ChannelConnection> *connections;
+        addr.s_addr = static_cast<uint32_t>(clusterTransports_[i]);
+        std::string key{inet_ntoa(addr)};
+        if (i < localRankId_) {
+            connections = &clientConnections_;
+        } else {
+            connections = &serverConnections_;
+        }
+
+        auto pos = connections->find(key);
+        if (pos == connections->end()) {
+            BM_LOG_ERROR("missing for remote: " << key);
+            free(copyInfo);
+            return BM_ERROR;
+        }
+
+        CopyAiWQInfo(copyInfo->sq[i], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 0);
+        CopyAiWQInfo(copyInfo->rq[i], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 0);
+        CopyAiCQInfo(copyInfo->scq[i], pos->second.aiQpInfo.data_plane_info.scq, DBMode::SW_DB);
+        CopyAiCQInfo(copyInfo->rcq[i], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
+    }
+
+    auto pointer = (ptrdiff_t)(void *)(qpInfo_);
+    pointer += sizeof(AiQpRMAQueueInfo);
+    copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
+
+    pointer += sizeof(AiQpRMAWQ) * clusterTransports_.size();
+    copyInfo->rq = (AiQpRMAWQ *)(void *)(pointer);
+
+    pointer += sizeof(AiQpRMAWQ) * clusterTransports_.size();
+    copyInfo->scq = (AiQpRMACQ *)(void *)(pointer);
+
+    pointer += sizeof(AiQpRMACQ) * clusterTransports_.size();
+    copyInfo->rcq = (AiQpRMACQ *)(void *)(pointer);
+
+    auto ret = DlAclApi::AclrtMemcpy(qpInfo_, qpInfoSize_, copyInfo, qpInfoSize_, ACL_MEMCPY_HOST_TO_DEVICE);
+    free(copyInfo);
+    if (ret != 0) {
+        BM_LOG_ERROR("copy qp info to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    return BM_OK;
+}
+
+void RdmaTransportManager::CopyAiWQInfo(struct AiQpRMAWQ &dest, const struct ai_data_plane_wq &source, DBMode dbMode,
+                                        uint32_t sl)
+{
+    dest.wqn = source.wqn;
+    dest.bufAddr = source.buf_addr;
+    dest.wqeSize = source.wqebb_size;
+    dest.depth = source.depth;
+    dest.headAddr = source.head_addr;
+    dest.tailAddr = source.tail_addr;
+    dest.dbMode = dbMode;
+    if (dbMode == DBMode::SW_DB) {
+        dest.dbAddr = source.swdb_addr;
+    } else if (dbMode == DBMode::HW_DB) {
+        dest.dbAddr = source.db_reg;
+    }
+    dest.sl = sl;
+}
+
+void RdmaTransportManager::CopyAiCQInfo(struct AiQpRMACQ &dest, const ai_data_plane_cq &source, DBMode dbMode)
+{
+    dest.cqn = source.cqn;
+    dest.bufAddr = source.buf_addr;
+    dest.cqeSize = source.cqe_size;
+    dest.depth = source.depth;
+    dest.headAddr = source.head_addr;
+    dest.tailAddr = source.tail_addr;
+    dest.dbMode = dbMode;
+    if (dbMode == DBMode::SW_DB) {
+        dest.dbAddr = source.swdb_addr;
+    } else if (dbMode == DBMode::HW_DB) {
+        dest.dbAddr = source.db_reg;
+    }
 }
 }
 }

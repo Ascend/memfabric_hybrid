@@ -25,7 +25,6 @@ struct HbmExportInfo {
     int pid{0};
     uint32_t rankId{0};
     uint64_t size{0};
-    uint64_t transportId;
     int entityId{0};
     MemPageTblType pageTblType;
     MemSegType memSegType;

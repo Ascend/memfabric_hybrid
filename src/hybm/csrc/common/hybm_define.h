@@ -44,7 +44,8 @@ struct HybmDeviceMeta {
     uint32_t rankSize;
     uint32_t extraContextSize;
     uint64_t symmetricSize;
-    uint64_t reserved[13];  // total 128B, equal HYBM_DEVICE_PRE_META_SIZE
+    uint64_t qpInfoAddress;
+    uint64_t reserved[12];  // total 128B, equal HYBM_DEVICE_PRE_META_SIZE
 };
 
 /**
@@ -288,6 +289,39 @@ struct HccpAiQpInfo {
     unsigned long long ai_scq_addr;  // refer to struct ibv_cq *scq
     unsigned long long ai_rcq_addr;  // refer to struct ibv_cq *rcq
     struct ai_data_plane_info data_plane_info;
+};
+
+enum class DBMode : int32_t { INVALID_DB = -1, HW_DB = 0, SW_DB };
+
+struct AiQpRMAWQ {
+    uint32_t wqn{0};
+    uint64_t bufAddr{0};
+    uint32_t wqeSize{0};
+    uint32_t depth{0};
+    uint64_t headAddr{0};
+    uint64_t tailAddr{0};
+    DBMode dbMode{DBMode::INVALID_DB};  // 0-hw/1-sw
+    uint64_t dbAddr{0};
+    uint32_t sl{0};
+};
+
+struct AiQpRMACQ {
+    uint32_t cqn{0};
+    uint64_t bufAddr{0};
+    uint32_t cqeSize{0};
+    uint32_t depth{0};
+    uint64_t headAddr{0};
+    uint64_t tailAddr{0};
+    DBMode dbMode{DBMode::INVALID_DB};  // 0-hw/1-sw
+    uint64_t dbAddr{0};
+};
+
+struct AiQpRMAQueueInfo {
+    uint32_t count;
+    struct AiQpRMAWQ *sq;
+    struct AiQpRMAWQ *rq;
+    struct AiQpRMACQ *scq;
+    struct AiQpRMACQ *rcq;
 };
 
 /**
