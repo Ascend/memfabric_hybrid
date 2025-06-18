@@ -290,6 +290,39 @@ struct HccpAiQpInfo {
     struct ai_data_plane_info data_plane_info;
 };
 
+enum class DBMode : int32_t { INVALID_DB = -1, HW_DB = 0, SW_DB };
+
+struct AiQpRMAWQ {
+    uint32_t wqn{0};
+    uint64_t bufAddr{0};
+    uint32_t wqeSize{0};
+    uint32_t depth{0};
+    uint64_t headAddr{0};
+    uint64_t tailAddr{0};
+    DBMode dbMode{DBMode::INVALID_DB};  // 0-hw/1-sw
+    uint64_t dbAddr{0};
+    uint32_t sl{0};
+};
+
+struct AiQpRMACQ {
+    uint32_t cqn{0};
+    uint64_t bufAddr{0};
+    uint32_t cqeSize{0};
+    uint32_t depth{0};
+    uint64_t headAddr{0};
+    uint64_t tailAddr{0};
+    DBMode dbMode{DBMode::INVALID_DB};  // 0-hw/1-sw
+    uint64_t dbAddr{0};
+};
+
+struct AiQpRMAQueueInfo {
+    uint32_t count;
+    struct AiQpRMAWQ *sq;
+    struct AiQpRMAWQ *rq;
+    struct AiQpRMACQ *scq;
+    struct AiQpRMACQ *rcq;
+};
+
 /**
  * @brief handle to HCCL communicator
  */
