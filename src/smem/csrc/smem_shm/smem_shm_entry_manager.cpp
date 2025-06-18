@@ -1,9 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
+#include <vector>
 #include "smem_shm_entry_manager.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
+#include "hybm_core_api.h"
 
 namespace ock {
 namespace smem {
@@ -36,8 +38,8 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
     if (rankId == 0 && config->startConfigStore) {
         store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, true, 0);
     } else {
-        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false,
-            static_cast<int32_t>(rankId), static_cast<int32_t>(config->shmInitTimeout));
+        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false, static_cast<int32_t>(rankId),
+                                                      static_cast<int32_t>(config->shmInitTimeout));
     }
     SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 
@@ -124,6 +126,85 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
     entryIdMap_.erase(entry->Id());
 
     SM_LOG_DEBUG("remove shm entry success, ptr: " << ptr << ", id: " << entry->Id());
+
+    return SM_OK;
+}
+
+struct TransportAddressExchange {
+    uint32_t rankId;
+    uint64_t address;
+    TransportAddressExchange(): TransportAddressExchange{0, 0} {}
+    TransportAddressExchange(uint32_t rk, uint64_t addr): rankId{rk}, address{addr} {}
+};
+
+Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount)
+{
+    auto ret = HybmCoreApi::HybmTransportInit(rankId, rankCount);
+    if (ret != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("init transport failed: " << ret);
+        return SM_ERROR;
+    }
+
+    uint64_t address;
+    ret = HybmCoreApi::HybmTransportGetAddress(address);
+    if (ret != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("get transport address failed: " << ret);
+        return SM_ERROR;
+    }
+
+    std::string key{"transport_address_exchange"};
+    TransportAddressExchange exchange{rankId, address};
+    uint64_t realSize;
+    uint64_t expectSize = sizeof(exchange) * rankCount;
+    ret = store_->Append(key, std::vector<uint8_t>{(uint8_t *)(void *)&exchange, (uint8_t *)(void *)&exchange + sizeof(exchange)}, realSize);
+    if (ret != 0) {
+        SM_LOG_ERROR("append key for exchange transport address failed: " << ret);
+        return ret;
+    }
+
+    std::vector<uint8_t> data;
+    auto timeout = std::chrono::steady_clock::now() + std::chrono::minutes(1);
+    while (realSize < expectSize) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ret = store_->Get(key, data, 60 * 1000);
+        if (ret != 0) {
+            SM_LOG_ERROR("get for exchange transport failed: " << ret);
+            return ret;
+        }
+
+        if (data.size() >= expectSize) {
+            break;
+        }
+
+        if (std::chrono::steady_clock::now() > timeout) {
+            return SM_TIMEOUT;
+        }
+    }
+
+    std::vector<uint64_t> addresses;
+    auto transportInfo = (const TransportAddressExchange *)(const void *)data.data();
+    for (auto i = 0U; i < rankCount; i++) {
+        addresses[transportInfo[i].rankId] = transportInfo[i].address;
+    }
+
+    ret = HybmCoreApi::HybmTransportSetAddresses(addresses.data(), rankCount);
+    if (ret != 0) {
+        SM_LOG_ERROR("set address for transport failed: " << ret);
+        return ret;
+    }
+
+    ret = HybmCoreApi::HybmTransportMakeConnections();
+    if (ret != 0) {
+        SM_LOG_ERROR("make connections for transport failed: " << ret);
+        return ret;
+    }
+
+    void *qpInfoAddress;
+    ret = HybmCoreApi::HybmTransportAiQpInfoAddress(qpInfoAddress);
+    if (ret != 0) {
+        SM_LOG_ERROR("get qp info address for transport failed: " << ret);
+        return ret;
+    }
 
     return SM_OK;
 }

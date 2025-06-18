@@ -34,6 +34,11 @@ namespace smem {
     hybmJoinFunc HybmCoreApi::pHybmJoin = nullptr;
     hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
     hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = nullptr;
+    hybmTransportInitFunc HybmCoreApi::gHybmTransportInit = nullptr;
+    hybmTransportGetAddressFunc HybmCoreApi::gHybmTransportGetAddress = nullptr;
+    hybmTransportSetAddressesFunc HybmCoreApi::gHybmTransportSetAddresses = nullptr;
+    hybmTransportSetAddressesFunc HybmCoreApi::gHybmTransportMakeConnections = nullptr;
+    hybmTransportAiQpInfoAddressFunc HybmCoreApi::gHybmTransportAiQpInfoAddress = nullptr;
 #endif
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
@@ -93,6 +98,12 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmJoin, hybmJoinFunc, coreHandle, "hybm_join");
     DL_LOAD_SYM(pHybmLeave, hybmLeaveFunc, coreHandle, "hybm_leave");
     DL_LOAD_SYM(pHybmDataCopy, hybmDataCopyFunc, coreHandle, "hybm_data_copy");
+
+    DL_LOAD_SYM(gHybmTransportInit, hybmTransportInitFunc, coreHandle, "hybm_transport_init");
+    DL_LOAD_SYM(gHybmTransportGetAddress, hybmTransportGetAddressFunc, coreHandle, "hybm_transport_get_address");
+    DL_LOAD_SYM(gHybmTransportSetAddresses, hybmTransportSetAddressesFunc, coreHandle, "hybm_transport_set_addresses");
+    DL_LOAD_SYM(gHybmTransportMakeConnections, hybmTransportMakeConnectionsFunc, coreHandle, "hybm_transport_make_connections");
+    DL_LOAD_SYM(gHybmTransportAiQpInfoAddress, hybmTransportAiQpInfoAddressFunc, coreHandle, "hybm_transport_ai_qp_info_address");
     gLoaded = true;
     return SM_OK;
 }

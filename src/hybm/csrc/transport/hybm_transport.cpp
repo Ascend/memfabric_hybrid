@@ -3,11 +3,13 @@
  */
 #include "hybm_logger.h"
 #include "hybm_trans_manager.h"
+#include "dl_acl_api.h"
 #include "hybm_transport.h"
 
 using namespace ock::mf;
 
 namespace {
+    uint32_t rankId_ = 0;
     TransportManagerPtr instance_;
 }
 
@@ -29,6 +31,7 @@ int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
         return BM_ERROR;
     }
 
+    rankId_ = rankId;
     return BM_OK;
 }
 
@@ -124,5 +127,13 @@ int hybm_transport_ai_qp_info_address(void **address)
     }
 
     *address = connectInfo.address;
+    auto offset = offsetof(HybmDeviceMeta, qpInfoAddress);
+    auto deviceAddr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + rankId_ * HYBM_DEVICE_PRE_META_SIZE + offset;
+    auto ret = DlAclApi::AclrtMemcpy((void *)deviceAddr, DEVICE_LARGE_PAGE_SIZE, &connectInfo.address, sizeof(uint64_t),
+                                ACL_MEMCPY_HOST_TO_DEVICE);
+    if (ret != 0) {
+        BM_LOG_ERROR("copy qp info address from host to device failed: " << ret);
+        return BM_ERROR;
+    }
     return BM_OK;
 }

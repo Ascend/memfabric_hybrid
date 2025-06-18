@@ -31,6 +31,7 @@ public:
     uint16_t GetDeviceId() const;
 
     StorePtr GetStoreClient() const;
+    Result PrepareTransport(uint32_t rankId, uint32_t rankCount);
 
 private:
     std::mutex entryMutex_;
