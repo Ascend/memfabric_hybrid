@@ -27,13 +27,7 @@ TransportManagerPtr TransportManager::Create(TransType t)
         return nullptr;
     }
 
-    TransDeviceOptions deviceOptions{};
     auto manager = std::make_shared<RdmaTransportManager>(deviceId, 10002);
-    if (manager->OpenDevice(deviceOptions) == nullptr) {
-        BM_LOG_ERROR("Open Transport failed: " << ret);
-        return nullptr;
-    }
-
     rdmaTransportInstance = manager;
     return manager;
 }
