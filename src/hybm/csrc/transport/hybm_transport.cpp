@@ -14,7 +14,7 @@ TransportManagerPtr instance_;
 TransHandlePtr transHandle_;
 }
 
-int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
+HYBM_API int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
 {
     instance_ = TransportManager::Create(TransType::TT_HCCP_RDMA);
     if (instance_ == nullptr) {
@@ -37,7 +37,7 @@ int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
     return BM_OK;
 }
 
-int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, uint32_t *rkey)
+HYBM_API int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, uint32_t *rkey)
 {
     if (address == 0 || size == 0) {
         BM_LOG_ERROR("input address " << address << ", size " << size << " invalid.");
@@ -73,7 +73,7 @@ int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, 
     return BM_OK;
 }
 
-int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t count)
+HYBM_API int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t count)
 {
     if (mrs == nullptr) {
         BM_LOG_ERROR("input mrs is null");
@@ -103,7 +103,7 @@ int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t c
     return BM_OK;
 }
 
-int hybm_transport_get_address(uint64_t *address)
+HYBM_API int hybm_transport_get_address(uint64_t *address)
 {
     if (address == nullptr) {
         BM_LOG_ERROR("input address is null");
@@ -119,7 +119,7 @@ int hybm_transport_get_address(uint64_t *address)
     return BM_OK;
 }
 
-int hybm_transport_set_addresses(uint64_t addresses[], uint32_t count)
+HYBM_API int hybm_transport_set_addresses(uint64_t addresses[], uint32_t count)
 {
     if (addresses == nullptr) {
         BM_LOG_ERROR("input address is null");
@@ -140,7 +140,7 @@ int hybm_transport_set_addresses(uint64_t addresses[], uint32_t count)
     return BM_OK;
 }
 
-int hybm_transport_make_connections()
+HYBM_API int hybm_transport_make_connections()
 {
     if (instance_ == nullptr) {
         BM_LOG_ERROR("transport not initialize.");
@@ -176,7 +176,7 @@ int hybm_transport_make_connections()
     return BM_OK;
 }
 
-int hybm_transport_ai_qp_info_address(void **address)
+HYBM_API int hybm_transport_ai_qp_info_address(void **address)
 {
     if (address == nullptr) {
         BM_LOG_ERROR("input address is null");

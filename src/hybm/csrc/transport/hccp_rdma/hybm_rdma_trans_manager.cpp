@@ -357,6 +357,11 @@ Result RdmaTransportManager::WaitingReady(int64_t timeoutNs)
     return BM_ERROR;
 }
 
+std::vector<TransDataConnPtr> RdmaTransportManager::GetDataConn()
+{
+    return std::vector<TransDataConnPtr>{};
+}
+
 TransDataConnAddressInfo RdmaTransportManager::GetDataConnAddrInfo()
 {
     return TransDataConnAddressInfo{qpInfo_};
@@ -642,7 +647,6 @@ int RdmaTransportManager::FillQpInfo()
 
     pointer += sizeof(AiQpRMACQ) * clusterTransports_.size();
     copyInfo->mr = (RdmaMemRegionInfo *)(void *)pointer;
-
 
     auto ret = DlAclApi::AclrtMemcpy(qpInfo_, qpInfoSize_, copyInfo, qpInfoSize_, ACL_MEMCPY_HOST_TO_DEVICE);
     free(copyInfo);
