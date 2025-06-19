@@ -23,7 +23,7 @@ HYBM_API int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
     }
 
     TransDeviceOptions options{};
-    options.rankId = rankCount;
+    options.rankId = rankId;
     options.rankCount = rankCount;
     auto handle = instance_->OpenDevice(options);
     if (handle == nullptr) {

@@ -193,6 +193,7 @@ Result SmemShmEntryManager::ExchangeTransportAddress(uint32_t rankId, uint32_t r
     }
 
     std::vector<uint8_t> data;
+    realSize = 0;
     auto timeout = std::chrono::steady_clock::now() + std::chrono::minutes(1);
     while (realSize < expectSize) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -202,7 +203,7 @@ Result SmemShmEntryManager::ExchangeTransportAddress(uint32_t rankId, uint32_t r
             return ret;
         }
 
-        if (data.size() >= expectSize) {
+        if ((realSize = data.size()) >= expectSize) {
             break;
         }
 
@@ -211,7 +212,7 @@ Result SmemShmEntryManager::ExchangeTransportAddress(uint32_t rankId, uint32_t r
         }
     }
 
-    std::vector<uint64_t> addresses;
+    std::vector<uint64_t> addresses{rankCount};
     auto transportInfo = (const TransportAddressExchange *)(const void *)data.data();
     for (auto i = 0U; i < rankCount; i++) {
         addresses[transportInfo[i].rankId] = transportInfo[i].address;
@@ -248,6 +249,7 @@ Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t
         return ret;
     }
 
+    realSize = 0;
     std::vector<uint8_t> data;
     auto timeout = std::chrono::steady_clock::now() + std::chrono::minutes(1);
     while (realSize < expectSize) {
@@ -258,7 +260,7 @@ Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t
             return ret;
         }
 
-        if (data.size() >= expectSize) {
+        if ((realSize = data.size()) >= expectSize) {
             break;
         }
 
@@ -267,7 +269,7 @@ Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t
         }
     }
 
-    std::vector<hybm_transport_mr_info> mrInfos;
+    std::vector<hybm_transport_mr_info> mrInfos{rankCount};
     auto mrs = (const hybm_transport_mr_info *)(const void *)data.data();
     for (auto i = 0U; i < rankCount; i++) {
         auto index = (mrs[i].addr - (ptrdiff_t)gva) / localSize;

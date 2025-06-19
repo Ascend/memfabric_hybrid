@@ -84,7 +84,7 @@ private:
     int FillQpInfo();
     void CopyAiWQInfo(struct AiQpRMAWQ& dest, const struct ai_data_plane_wq& source, DBMode dbMode, uint32_t sl);
     void CopyAiCQInfo(struct AiQpRMACQ& dest, const ai_data_plane_cq& source, DBMode dbMode);
-    static int WaitConnectionsReady(std::unordered_map<std::string, ChannelConnection> &connections);
+    int WaitConnectionsReady(std::unordered_map<std::string, ChannelConnection> &connections);
 
 private:
     const uint32_t listenPort_;

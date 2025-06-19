@@ -136,21 +136,8 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
     }
 
     if (localRankId_ + 1U == totalRankCount_) {
+        SetServerState(RDMA_READY);
         return BM_OK;
-    }
-
-    std::vector<HccpSocketWhiteListInfo> allWhitelist;
-    SetServerState(RDMA_SOCKET_LISTENING);
-    for (auto i = localRankId_ + 1U; i < totalRankCount_; i++) {
-        in_addr temp{};
-        temp.s_addr = static_cast<uint32_t>(clusterTransports_[i]);
-
-        HccpSocketWhiteListInfo info{};
-        info.remoteIp.addr = temp;
-        info.connLimit = 10U;
-        memset(info.tag, 0, sizeof(info.tag));
-        allWhitelist.emplace_back(info);
-        serverConnections_.emplace(inet_ntoa(temp), ChannelConnection{temp});
     }
 
     void *socketHandle;
@@ -165,6 +152,20 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
         return BM_DL_FUNCTION_FAILED;
     }
 
+    std::vector<HccpSocketWhiteListInfo> allWhitelist;
+    SetServerState(RDMA_SOCKET_LISTENING);
+    for (auto i = localRankId_ + 1U; i < totalRankCount_; i++) {
+        in_addr temp{};
+        temp.s_addr = static_cast<uint32_t>(clusterTransports_[i]);
+
+        HccpSocketWhiteListInfo info{};
+        info.remoteIp.addr = temp;
+        info.connLimit = 10U;
+        memset(info.tag, 0, sizeof(info.tag));
+        allWhitelist.emplace_back(info);
+        serverConnections_.emplace(inet_ntoa(temp), ChannelConnection{temp, socketHandle});
+    }
+
     HccpSocketListenInfo listenInfo;
     listenInfo.handle = socketHandle;
     listenInfo.port = listenPort_;
@@ -177,12 +178,14 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
         return BM_DL_FUNCTION_FAILED;
     }
 
-    ret = DlHccpApi::RaSocketWhiteListAdd(socketHandle, allWhitelist.data(), allWhitelist.size());
-    if (ret != 0) {
-        BM_LOG_ERROR("socket handle add white list failed: " << ret);
-        DlHccpApi::RaSocketDeinit(socketHandle);
-        SetServerState(RDMA_EXITING);
-        return BM_DL_FUNCTION_FAILED;
+    if (!allWhitelist.empty()) {
+        ret = DlHccpApi::RaSocketWhiteListAdd(socketHandle, allWhitelist.data(), allWhitelist.size());
+        if (ret != 0) {
+            BM_LOG_ERROR("socket handle add white list failed: " << ret);
+            DlHccpApi::RaSocketDeinit(socketHandle);
+            SetServerState(RDMA_EXITING);
+            return BM_DL_FUNCTION_FAILED;
+        }
     }
 
     serverSocketHandle_ = socketHandle;
@@ -190,6 +193,7 @@ Result RdmaTransportManager::PrepareDataConn(const TransPrepareOptions &options)
     BM_LOG_INFO("start to listen on port: " << listenPort_ << " success.");
 
     std::thread waitingTask{[this]() {
+        DlAclApi::AclrtSetDevice(deviceId_);
         auto ret = WaitConnectionsReady(serverConnections_);
         if (ret != BM_OK) {
             SetServerState(RDMA_EXITING);
@@ -235,6 +239,7 @@ Result RdmaTransportManager::CreateDataConn(const TransDataConnOptions &options)
 {
     std::vector<in_addr> serverIps;
     if (localRankId_ == 0) {
+        SetClientState(RDMA_READY);
         return BM_OK;
     }
 
@@ -502,13 +507,18 @@ int RdmaTransportManager::WaitConnectionsReady(std::unordered_map<std::string, C
 
             HccpSocketInfo info{};
             info.handle = it->second.socketHandle;
+            info.fd = nullptr;
+            info.remoteIp.addr = it->second.remoteIp;
+            info.status = 0;
+            memset(info.tag, 0, sizeof(info.tag));
             socketInfos.push_back(info);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        auto ret = DlHccpApi::RaGetSockets(1, socketInfos.data(), socketInfos.size(), successCount);
+        auto role = (&connections == &clientConnections_) ? 1 : 0;
+        auto ret = DlHccpApi::RaGetSockets(role, socketInfos.data(), socketInfos.size(), successCount);
         if (ret != 0) {
-            BM_LOG_ERROR("client side get sockets failed: " << ret);
+            BM_LOG_ERROR("role(" << role << ") side get sockets failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
         }
 
@@ -585,6 +595,7 @@ int RdmaTransportManager::CreateQpWaitingReady(std::unordered_map<std::string, C
         if (connectingCount == 0) {
             return FillQpInfo();
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     return BM_TIMEOUT;
 }
@@ -654,6 +665,7 @@ int RdmaTransportManager::FillQpInfo()
         BM_LOG_ERROR("copy qp info to device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
+    BM_LOG_INFO("copy qp info success");
 
     return BM_OK;
 }

@@ -38,7 +38,7 @@ public:
     template<class R, class P>
     Result WaitingReady(const std::chrono::duration<R, P> &timeout)
     {
-        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(timeout);
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(timeout).count();
         return WaitingReady(ns);
     }
     
