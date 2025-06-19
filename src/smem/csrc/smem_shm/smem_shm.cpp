@@ -11,22 +11,12 @@ using namespace ock::smem;
 #ifdef UT_ENABLED
 thread_local std::mutex g_smemShmMutex_;
 thread_local bool g_smemShmInited = false;
+thread_local bool g_smemUseTransport = false;
 #else
 std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
+bool g_smemUseTransport = false;
 #endif
-
-static int InitializeTransport(uint32_t rankId, uint32_t rankCount)
-{
-    auto ret = HybmCoreApi::HybmTransportInit(rankId, rankCount);
-    if (ret != 0) {
-        SM_LOG_AND_SET_LAST_ERROR("init transport failed: " << ret);
-        return SM_ERROR;
-    }
-
-    uint64_t address;
-    ret = HybmCoreApi::HybmTransportGetAddress(address);
-}
 
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                            smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
@@ -64,6 +54,13 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     }
 
     *gva = entry->GetGva();
+    if (g_smemUseTransport) {
+        ret = SmemShmEntryManager::Instance().PrepareTransport(rankId, rankSize, symmetricSize, *gva);
+        if (ret != 0) {
+            SM_LOG_AND_SET_LAST_ERROR("PrepareTransport failed: " << ret);
+            return nullptr;
+        }
+    }
     return reinterpret_cast<void *>(entry.Get());
 }
 
@@ -215,11 +212,7 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
     }
 
     if (config->connectTransport) {
-        ret = HybmCoreApi::HybmTransportInit(rankId, worldSize);
-        if (ret != 0) {
-            SM_LOG_AND_SET_LAST_ERROR("init transport failed: " << ret);
-            return SM_ERROR;
-        }
+        g_smemUseTransport = true;
     }
 
     g_smemShmInited = true;

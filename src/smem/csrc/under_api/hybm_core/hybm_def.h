@@ -82,6 +82,13 @@ typedef enum {
     HyBM_DATA_COPY_DIRECTION_BUTT
 } hybm_data_copy_direction;
 
+struct hybm_transport_mr_info {
+    uint64_t size; // size of the memory region
+    uint64_t addr; // start address of the memory region
+    uint32_t lkey; // key of the memory region
+    uint32_t rkey;
+};
+
 #ifndef __cplusplus
 }
 #endif

@@ -63,6 +63,7 @@ public:
     void SetTransportIds(const std::vector<uint64_t> transports) override;
     Result RegMemToDevice(const TransHandlePtr &h, const TransMemRegInput &in, TransMemRegOutput &out) override;
     Result UnRegMemFromDevice(const TransMemRegOutput &out) override;
+    Result SetGlobalRegisterMrInfo(const std::vector<RdmaMemRegionInfo> &mrs) override;
     Result PrepareDataConn(const TransPrepareOptions &options) override;
     void UnPrepareDataConn() override;
     Result CreateDataConn(const TransDataConnOptions &options) override;
@@ -92,6 +93,7 @@ private:
     uint32_t totalRankCount_{1};
 
     std::vector<uint64_t> clusterTransports_;
+    std::vector<RdmaMemRegionInfo> rdmaMemRegionInfos_;
     std::mutex stateMutex_;
     std::condition_variable stateCond_;
     RdmaManagerState clientState_{RDMA_IDLE};

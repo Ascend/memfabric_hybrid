@@ -35,9 +35,11 @@ namespace smem {
     hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
     hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = nullptr;
     hybmTransportInitFunc HybmCoreApi::gHybmTransportInit = nullptr;
+    hybmTransportRegMrFunc HybmCoreApi::gHybmTransportRegMr = nullptr;
+    hybmTransportSetGMRFunc HybmCoreApi::gHybmTransportSetGMR = nullptr;
     hybmTransportGetAddressFunc HybmCoreApi::gHybmTransportGetAddress = nullptr;
     hybmTransportSetAddressesFunc HybmCoreApi::gHybmTransportSetAddresses = nullptr;
-    hybmTransportSetAddressesFunc HybmCoreApi::gHybmTransportMakeConnections = nullptr;
+    hybmTransportMakeConnectionsFunc HybmCoreApi::gHybmTransportMakeConnections = nullptr;
     hybmTransportAiQpInfoAddressFunc HybmCoreApi::gHybmTransportAiQpInfoAddress = nullptr;
 #endif
 
@@ -100,6 +102,8 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmDataCopy, hybmDataCopyFunc, coreHandle, "hybm_data_copy");
 
     DL_LOAD_SYM(gHybmTransportInit, hybmTransportInitFunc, coreHandle, "hybm_transport_init");
+    DL_LOAD_SYM(gHybmTransportRegMr, hybmTransportRegMrFunc, coreHandle, "hybm_transport_register_mr");
+    DL_LOAD_SYM(gHybmTransportSetGMR, hybmTransportSetGMRFunc, coreHandle, "hybm_transport_set_mrs");
     DL_LOAD_SYM(gHybmTransportGetAddress, hybmTransportGetAddressFunc, coreHandle, "hybm_transport_get_address");
     DL_LOAD_SYM(gHybmTransportSetAddresses, hybmTransportSetAddressesFunc, coreHandle, "hybm_transport_set_addresses");
     DL_LOAD_SYM(gHybmTransportMakeConnections, hybmTransportMakeConnectionsFunc, coreHandle, "hybm_transport_make_connections");

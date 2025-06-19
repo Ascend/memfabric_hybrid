@@ -9,8 +9,9 @@
 using namespace ock::mf;
 
 namespace {
-    uint32_t rankId_ = 0;
-    TransportManagerPtr instance_;
+uint32_t rankId_ = 0;
+TransportManagerPtr instance_;
+TransHandlePtr transHandle_;
 }
 
 int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
@@ -32,6 +33,73 @@ int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
     }
 
     rankId_ = rankId;
+    transHandle_ = handle;
+    return BM_OK;
+}
+
+int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, uint32_t *rkey)
+{
+    if (address == 0 || size == 0) {
+        BM_LOG_ERROR("input address " << address << ", size " << size << " invalid.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (lkey == nullptr || rkey == nullptr) {
+        BM_LOG_ERROR("input lkey or rkey is null");
+        return BM_INVALID_PARAM;
+    }
+
+    if (instance_ == nullptr) {
+        BM_LOG_ERROR("transport not initialize.");
+        return BM_ERROR;
+    }
+
+    TransMemRegInput input;
+    TransMemRegOutput output;
+    input.addr = (void *)(ptrdiff_t)address;
+    input.size = size;
+    input.access = RA_ACCESS_LOCAL_WRITE | RA_ACCESS_REMOTE_WRITE | RA_ACCESS_REMOTE_READ;
+    auto ret = instance_->RegMemToDevice(transHandle_, input, output);
+    if (ret != 0) {
+        BM_LOG_ERROR("transport register memory region failed: " << ret);
+        return ret;
+    }
+
+    *lkey = output.lkey;
+    *rkey = output.rkey;
+
+    BM_LOG_INFO("register address: " << input.addr << ", size: " << size << ", lkey=" << output.lkey
+                                     << ", rkey=" << output.rkey);
+    return BM_OK;
+}
+
+int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t count)
+{
+    if (mrs == nullptr) {
+        BM_LOG_ERROR("input mrs is null");
+        return BM_INVALID_PARAM;
+    }
+
+    if (instance_ == nullptr) {
+        BM_LOG_ERROR("transport not initialize.");
+        return BM_ERROR;
+    }
+
+    std::vector<RdmaMemRegionInfo> mrv;
+    for (auto i = 0U; i < count; i++) {
+        RdmaMemRegionInfo mr;
+        mr.size = mrs[i].size;
+        mr.addr = mrs[i].addr;
+        mr.lkey = mrs[i].lkey;
+        mr.rkey = mrs[i].rkey;
+        mrv.push_back(mr);
+    }
+    auto ret = instance_->SetGlobalRegisterMrInfo(mrv);
+    if (ret != 0) {
+        BM_LOG_ERROR("set global register mr failed: " << ret);
+        return ret;
+    }
+
     return BM_OK;
 }
 
@@ -128,9 +196,10 @@ int hybm_transport_ai_qp_info_address(void **address)
 
     *address = connectInfo.address;
     auto offset = offsetof(HybmDeviceMeta, qpInfoAddress);
-    auto deviceAddr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + rankId_ * HYBM_DEVICE_PRE_META_SIZE + offset;
+    auto deviceAddr =
+        HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + rankId_ * HYBM_DEVICE_PRE_META_SIZE + offset;
     auto ret = DlAclApi::AclrtMemcpy((void *)deviceAddr, DEVICE_LARGE_PAGE_SIZE, &connectInfo.address, sizeof(uint64_t),
-                                ACL_MEMCPY_HOST_TO_DEVICE);
+                                     ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
         BM_LOG_ERROR("copy qp info address from host to device failed: " << ret);
         return BM_ERROR;

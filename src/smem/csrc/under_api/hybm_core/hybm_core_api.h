@@ -33,6 +33,8 @@ using hybmLeaveFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmDataCopyFunc = int32_t (*)(hybm_entity_t, const void *, void *, size_t, hybm_data_copy_direction, uint32_t);
 
 using hybmTransportInitFunc = int (*)(uint32_t, uint32_t);
+using hybmTransportRegMrFunc = int(*)(uint64_t, uint64_t, uint32_t *, uint32_t *);
+using hybmTransportSetGMRFunc = int(*)(const struct hybm_transport_mr_info[], uint32_t);
 using hybmTransportGetAddressFunc = int (*)(uint64_t *);
 using hybmTransportSetAddressesFunc = int (*)(uint64_t [], uint32_t);
 using hybmTransportMakeConnectionsFunc = int (*)();
@@ -156,6 +158,16 @@ public:
         return gHybmTransportInit(rankId, rankCount);
     }
 
+    static inline int32_t HybmTransportRegMR(uint64_t address, uint64_t size, uint32_t &lkey, uint32_t &rkey)
+    {
+        return gHybmTransportRegMr(address, size, &lkey, &rkey);
+    }
+
+    static inline int32_t HybmTransportSetGMR(const struct hybm_transport_mr_info mrs[], uint32_t count)
+    {
+        return gHybmTransportSetGMR(mrs, count);
+    }
+
     static inline int32_t HybmTransportGetAddress(uint64_t &address)
     {
         return gHybmTransportGetAddress(&address);
@@ -208,6 +220,8 @@ private:
     static hybmDataCopyFunc pHybmDataCopy;
 
     static hybmTransportInitFunc gHybmTransportInit;
+    static hybmTransportRegMrFunc gHybmTransportRegMr;
+    static hybmTransportSetGMRFunc gHybmTransportSetGMR;
     static hybmTransportGetAddressFunc gHybmTransportGetAddress;
     static hybmTransportSetAddressesFunc gHybmTransportSetAddresses;
     static hybmTransportMakeConnectionsFunc gHybmTransportMakeConnections;

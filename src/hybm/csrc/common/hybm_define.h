@@ -316,12 +316,20 @@ struct AiQpRMACQ {
     uint64_t dbAddr{0};
 };
 
+struct RdmaMemRegionInfo {
+    uint64_t size{0};  // size of the memory region
+    uint64_t addr{0};  // start address of the memory region
+    uint32_t lkey{0};
+    uint32_t rkey{0};   // key of the memory region
+};
+
 struct AiQpRMAQueueInfo {
     uint32_t count;
     struct AiQpRMAWQ *sq;
     struct AiQpRMAWQ *rq;
     struct AiQpRMACQ *scq;
     struct AiQpRMACQ *rcq;
+    RdmaMemRegionInfo *mr;
 };
 
 /**

@@ -57,7 +57,7 @@ TransHandlePtr RdmaTransportManager::OpenDevice(const TransDeviceOptions &option
     }
 
     void *ptr = nullptr;
-    auto oneQpSize = 2U * (sizeof(AiQpRMAWQ) + sizeof(AiQpRMACQ));
+    auto oneQpSize = 2U * (sizeof(AiQpRMAWQ) + sizeof(AiQpRMACQ)) + sizeof(RdmaMemRegionInfo);
     qpInfoSize_ = sizeof(AiQpRMAQueueInfo) + oneQpSize * options.rankCount;
     auto ret = DlAclApi::AclrtMalloc(&ptr, qpInfoSize_, 0);
     if (ret != 0) {
@@ -114,6 +114,17 @@ Result RdmaTransportManager::UnRegMemFromDevice(const ock::mf::TransMemRegOutput
         return BM_DL_FUNCTION_FAILED;
     }
 
+    return BM_OK;
+}
+
+Result RdmaTransportManager::SetGlobalRegisterMrInfo(const std::vector<RdmaMemRegionInfo> &mrs)
+{
+    if (mrs.size() != totalRankCount_) {
+        BM_LOG_ERROR("MR size :" << mrs.size() << " should be " << totalRankCount_);
+        return BM_INVALID_PARAM;
+    }
+
+    rdmaMemRegionInfos_ = mrs;
     return BM_OK;
 }
 
@@ -587,7 +598,9 @@ int RdmaTransportManager::FillQpInfo()
     copyInfo->rq = (AiQpRMAWQ *)(void *)(copyInfo->sq + clusterTransports_.size());
     copyInfo->scq = (AiQpRMACQ *)(void *)(copyInfo->rq + clusterTransports_.size());
     copyInfo->rcq = (AiQpRMACQ *)(void *)(copyInfo->scq + clusterTransports_.size());
+    copyInfo->mr = (RdmaMemRegionInfo *)(void *)(copyInfo->rcq + clusterTransports_.size());
     for (auto i = 0U; i < totalRankCount_; i++) {
+        copyInfo->mr[i] = rdmaMemRegionInfos_[i];
         if (i == localRankId_) {
             continue;
         }
@@ -626,6 +639,10 @@ int RdmaTransportManager::FillQpInfo()
 
     pointer += sizeof(AiQpRMACQ) * clusterTransports_.size();
     copyInfo->rcq = (AiQpRMACQ *)(void *)(pointer);
+
+    pointer += sizeof(AiQpRMACQ) * clusterTransports_.size();
+    copyInfo->mr = (RdmaMemRegionInfo *)(void *)pointer;
+
 
     auto ret = DlAclApi::AclrtMemcpy(qpInfo_, qpInfoSize_, copyInfo, qpInfoSize_, ACL_MEMCPY_HOST_TO_DEVICE);
     free(copyInfo);

@@ -133,11 +133,11 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 struct TransportAddressExchange {
     uint32_t rankId;
     uint64_t address;
-    TransportAddressExchange(): TransportAddressExchange{0, 0} {}
-    TransportAddressExchange(uint32_t rk, uint64_t addr): rankId{rk}, address{addr} {}
+    TransportAddressExchange() : TransportAddressExchange{0, 0} {}
+    TransportAddressExchange(uint32_t rk, uint64_t addr) : rankId{rk}, address{addr} {}
 };
 
-Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount)
+Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount, uint64_t localSize, void *gva)
 {
     auto ret = HybmCoreApi::HybmTransportInit(rankId, rankCount);
     if (ret != 0) {
@@ -145,8 +145,36 @@ Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount
         return SM_ERROR;
     }
 
+    ret = ExchangeTransportAddress(rankId, rankCount);
+    if (ret != 0) {
+        return ret;
+    }
+
+    ret = ExchangeTransportMemRegion(rankId, rankCount, localSize, gva);
+    if (ret != 0) {
+        return ret;
+    }
+
+    ret = HybmCoreApi::HybmTransportMakeConnections();
+    if (ret != 0) {
+        SM_LOG_ERROR("make connections for transport failed: " << ret);
+        return ret;
+    }
+
+    void *qpInfoAddress;
+    ret = HybmCoreApi::HybmTransportAiQpInfoAddress(qpInfoAddress);
+    if (ret != 0) {
+        SM_LOG_ERROR("get qp info address for transport failed: " << ret);
+        return ret;
+    }
+
+    return SM_OK;
+}
+
+Result SmemShmEntryManager::ExchangeTransportAddress(uint32_t rankId, uint32_t rankCount)
+{
     uint64_t address;
-    ret = HybmCoreApi::HybmTransportGetAddress(address);
+    auto ret = HybmCoreApi::HybmTransportGetAddress(address);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("get transport address failed: " << ret);
         return SM_ERROR;
@@ -156,7 +184,9 @@ Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount
     TransportAddressExchange exchange{rankId, address};
     uint64_t realSize;
     uint64_t expectSize = sizeof(exchange) * rankCount;
-    ret = store_->Append(key, std::vector<uint8_t>{(uint8_t *)(void *)&exchange, (uint8_t *)(void *)&exchange + sizeof(exchange)}, realSize);
+    ret = store_->Append(
+        key, std::vector<uint8_t>{(uint8_t *)(void *)&exchange, (uint8_t *)(void *)&exchange + sizeof(exchange)},
+        realSize);
     if (ret != 0) {
         SM_LOG_ERROR("append key for exchange transport address failed: " << ret);
         return ret;
@@ -193,16 +223,60 @@ Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount
         return ret;
     }
 
-    ret = HybmCoreApi::HybmTransportMakeConnections();
+    return SM_OK;
+}
+
+Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t rankCount, uint64_t localSize,
+                                                       void *gva)
+{
+    hybm_transport_mr_info localMR;
+    localMR.addr = (ptrdiff_t)gva + localSize * rankId;
+    auto ret = HybmCoreApi::HybmTransportRegMR(localMR.addr, localSize, localMR.lkey, localMR.rkey);
     if (ret != 0) {
-        SM_LOG_ERROR("make connections for transport failed: " << ret);
+        SM_LOG_ERROR("transport register MR failed: " << ret);
         return ret;
     }
 
-    void *qpInfoAddress;
-    ret = HybmCoreApi::HybmTransportAiQpInfoAddress(qpInfoAddress);
+    std::string key{"transport_memory_region_exchange"};
+    uint64_t realSize;
+    uint64_t expectSize = sizeof(localMR) * rankCount;
+    ret = store_->Append(
+            key, std::vector<uint8_t>{(uint8_t *)(void *)&localMR, (uint8_t *)(void *)&localMR + sizeof(localMR)},
+            realSize);
     if (ret != 0) {
-        SM_LOG_ERROR("get qp info address for transport failed: " << ret);
+        SM_LOG_ERROR("append key for exchange transport memory region failed: " << ret);
+        return ret;
+    }
+
+    std::vector<uint8_t> data;
+    auto timeout = std::chrono::steady_clock::now() + std::chrono::minutes(1);
+    while (realSize < expectSize) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ret = store_->Get(key, data, 60 * 1000);
+        if (ret != 0) {
+            SM_LOG_ERROR("get for exchange transport failed: " << ret);
+            return ret;
+        }
+
+        if (data.size() >= expectSize) {
+            break;
+        }
+
+        if (std::chrono::steady_clock::now() > timeout) {
+            return SM_TIMEOUT;
+        }
+    }
+
+    std::vector<hybm_transport_mr_info> mrInfos;
+    auto mrs = (const hybm_transport_mr_info *)(const void *)data.data();
+    for (auto i = 0U; i < rankCount; i++) {
+        auto index = (mrs[i].addr - (ptrdiff_t)gva) / localSize;
+        mrInfos[index] = mrs[i];
+    }
+
+    ret = HybmCoreApi::HybmTransportSetGMR(mrInfos.data(), mrInfos.size());
+    if (ret != 0) {
+        SM_LOG_ERROR("set global MR information failed: " << ret);
         return ret;
     }
 
