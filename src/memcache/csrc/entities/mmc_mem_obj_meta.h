@@ -15,25 +15,49 @@ static const uint16_t MAX_NUM_BLOB_CHAINS = 5; // to make sure MmcMemObjMeta <= 
 
 class MmcMemObjMeta : public MmcReferable {
 public:
-    inline MmcMemObjMeta() = default;
-    inline void ExtendLease(uint64_t ttl);
-    inline uint16_t NumBlobs();
-    inline bool IsLeaseExpired();
+    MmcMemObjMeta() = default;
     void AddBlob(MmcMemBlobPtr blob);
     Result RemoveBlob(MmcMemBlobPtr blob);
+    void ExtendLease(uint64_t ttl);
+    bool IsLeaseExpired();
+    uint16_t NumBlobs();
 
 private:
-    uint8_t numBlobs_ {0};
-    uint8_t priority_ {0};
-    uint16_t prot_ {0};
+    uint8_t numBlobs_{0};
+    uint8_t priority_{0};
+    uint16_t prot_{0};
     MmcMemBlobPtr blobs_[MAX_NUM_BLOB_CHAINS];
-    uint64_t lease_ {0};
-    uint32_t size_{0};  // byteSize of each blob
+    uint64_t lease_{0};
+    uint32_t size_{0}; // byteSize of each blob
 
-    Spinlock spinlock_;  // 4 bytes
+    Spinlock spinlock_; // 4 bytes
 };
 
 using MmcMemBlobPtr = MmcRef<MmcMemBlob>;
+
+inline void MmcMemObjMeta::ExtendLease(uint64_t ttl)
+{
+    std::lock_guard<Spinlock> guard(spinlock_);
+    auto now = std::chrono::steady_clock::now();
+    uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    lease_ = std::max(lease_, nowMs + ttl);
+}
+
+inline bool MmcMemObjMeta::IsLeaseExpired()
+{
+    std::lock_guard<Spinlock> guard(spinlock_);
+    auto now = std::chrono::steady_clock::now();
+    uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    bool ret = lease_ < nowMs;
+    return ret;
+}
+
+inline uint16_t MmcMemObjMeta::NumBlobs()
+{
+    std::lock_guard<Spinlock> guard(spinlock_);
+    auto ret = numBlobs_;
+    return ret;
+}
 
 } // namespace mmc
 } // namespace ock
