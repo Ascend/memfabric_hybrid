@@ -20,9 +20,9 @@ int hybm_transport_init(uint32_t rankId, uint32_t rankCount);
 int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, uint32_t *rkey);
 int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t count);
 int hybm_transport_get_address(uint64_t *address);
-int hybm_transport_set_addresses(uint64_t addresses[], uint32_t count);
+int hybm_transport_set_addresses(const uint64_t addresses[], uint32_t count);
 int hybm_transport_make_connections(void);
-int hybm_transport_ai_qp_info_address(void **address);
+int hybm_transport_ai_qp_info_address(uint32_t shmId, void **address);
 
 #ifdef __cplusplus
 }

@@ -119,7 +119,7 @@ HYBM_API int hybm_transport_get_address(uint64_t *address)
     return BM_OK;
 }
 
-HYBM_API int hybm_transport_set_addresses(uint64_t addresses[], uint32_t count)
+HYBM_API int hybm_transport_set_addresses(const uint64_t addresses[], uint32_t count)
 {
     if (addresses == nullptr) {
         BM_LOG_ERROR("input address is null");
@@ -176,7 +176,7 @@ HYBM_API int hybm_transport_make_connections()
     return BM_OK;
 }
 
-HYBM_API int hybm_transport_ai_qp_info_address(void **address)
+HYBM_API int hybm_transport_ai_qp_info_address(uint32_t shmId, void **address)
 {
     if (address == nullptr) {
         BM_LOG_ERROR("input address is null");
@@ -195,9 +195,10 @@ HYBM_API int hybm_transport_ai_qp_info_address(void **address)
     }
 
     *address = connectInfo.address;
+    BM_LOG_INFO("=========== connectInfo.address = " << connectInfo.address);
     auto offset = offsetof(HybmDeviceMeta, qpInfoAddress);
     auto deviceAddr =
-        HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + rankId_ * HYBM_DEVICE_PRE_META_SIZE + offset;
+        HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + shmId * HYBM_DEVICE_PRE_META_SIZE + offset;
     auto ret = DlAclApi::AclrtMemcpy((void *)deviceAddr, DEVICE_LARGE_PAGE_SIZE, &connectInfo.address, sizeof(uint64_t),
                                      ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {

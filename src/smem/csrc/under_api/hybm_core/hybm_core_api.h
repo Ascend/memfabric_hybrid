@@ -38,7 +38,7 @@ using hybmTransportSetGMRFunc = int(*)(const struct hybm_transport_mr_info[], ui
 using hybmTransportGetAddressFunc = int (*)(uint64_t *);
 using hybmTransportSetAddressesFunc = int (*)(uint64_t [], uint32_t);
 using hybmTransportMakeConnectionsFunc = int (*)();
-using hybmTransportAiQpInfoAddressFunc = int (*)(void **);
+using hybmTransportAiQpInfoAddressFunc = int (*)(uint32_t, void **);
 
 /*
  * int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
@@ -183,9 +183,9 @@ public:
         return gHybmTransportMakeConnections();
     }
 
-    static int32_t HybmTransportAiQpInfoAddress(void *&address)
+    static int32_t HybmTransportAiQpInfoAddress(uint32_t shmId, void *&address)
     {
-        return gHybmTransportAiQpInfoAddress(&address);
+        return gHybmTransportAiQpInfoAddress(shmId, &address);
     }
 
 private:
