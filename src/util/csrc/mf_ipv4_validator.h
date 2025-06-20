@@ -112,7 +112,7 @@ private:
     std::string name_;
     std::string errMsg_;
     std::string covertedIp_;
-    uint16_t covertedPort_;
+    uint16_t covertedPort_{0};
 };
 
 }

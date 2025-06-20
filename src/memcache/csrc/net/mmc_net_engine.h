@@ -43,35 +43,35 @@ public:
      *
      * @return seq number
      */
-    virtual uint32_t SeqNo() = 0;
+    virtual uint32_t SeqNo() const = 0;
 
     /**
      * @brief Get op code of request
      *
      * @return op code
      */
-    virtual int16_t OpCode() = 0;
+    virtual int16_t OpCode() const = 0;
 
     /**
      * @brief Get rank id where the request sent
      *
      * @return rank id of source
      */
-    virtual int16_t SrcRankId() = 0;
+    virtual int16_t SrcRankId() const = 0;
 
     /**
      * @brief Data length of request
      *
      * @return length of data
      */
-    virtual uint32_t DataLen() = 0;
+    virtual uint32_t DataLen() const = 0;
 
     /**
      * @brief Data pointer of request
      *
      * @return data pointer
      */
-    virtual void *Data() = 0;
+    virtual void *Data() const = 0;
 };
 
 class NetLink : public MmcReferable {
@@ -191,13 +191,14 @@ public:
             /* do call */
             respLen = sizeof(RESP);
             respData = reinterpret_cast<char *>(&resp);
-            return Call(peerId, reinterpret_cast<char *>(const_cast<REQ *>(&req)), sizeof(REQ), &respData, respLen, userResult,
-                        timeoutInSecond);
+            return Call(peerId, reinterpret_cast<char *>(const_cast<REQ *>(&req)), sizeof(REQ), &respData, respLen,
+                        userResult, timeoutInSecond);
         } else if (std::is_pod<REQ>::value && !std::is_pod<RESP>::value) {
             /* do call */
             respLen = UINT32_MAX;
             respData = nullptr;
-            auto result = Call(peerId, reinterpret_cast<char *>(const_cast<REQ *>(&req)), sizeof(REQ), &respData, respLen, userResult, timeoutInSecond);
+            auto result = Call(peerId, reinterpret_cast<char *>(const_cast<REQ *>(&req)), sizeof(REQ), &respData,
+                               respLen, userResult, timeoutInSecond);
             MMC_RETURN_NOT_OK(result);
 
             /* deserialize */
@@ -216,8 +217,8 @@ public:
             /* do call */
             respLen = sizeof(RESP);
             char *respData = reinterpret_cast<char *>(&resp);
-            return Call(peerId, serializedData.c_str(), serializedData.length(), &respData, respLen,
-                        userResult, timeoutInSecond);
+            return Call(peerId, serializedData.c_str(), serializedData.length(), &respData, respLen, userResult,
+                        timeoutInSecond);
         } else {
             NetMsgPacker packer;
             packer.Serialize(req);
@@ -226,7 +227,8 @@ public:
             /* do call */
             respLen = sizeof(RESP);
             respData = nullptr;
-            Result result = Call(peerId, serializedData.c_str(), serializedData.length(), &respData, respLen, userResult, timeoutInSecond);
+            Result result = Call(peerId, serializedData.c_str(), serializedData.length(), &respData, respLen,
+                                 userResult, timeoutInSecond);
             MMC_RETURN_NOT_OK(result);
 
             /* deserialize */

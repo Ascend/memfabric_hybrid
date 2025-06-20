@@ -12,18 +12,34 @@ namespace mmc {
 
 class Spinlock {
 public:
-    void lock()
-    {
-        while (lock_.exchange(1, std::memory_order_acquire)) {
-        }
-    }
-    void unlock() { lock_.store(0, std::memory_order_release); }
+    /**
+     * Acquire the lock
+     * Note: Use lowercase name here, then we can use std::lock_guard with SpinLock
+     */
+    void lock();
+
+    /**
+     * Release the lock
+     * Note: Use lowercase name here, then we can use std::lock_guard with SpinLock
+     */
+    void unlock();
 
 private:
-    std::atomic<uint32_t> lock_{0}; // 4 bytes atomic variable
+    std::atomic<uint32_t> lock_{0};  // 4 bytes atomic variable
 };
 
-} // namespace mmc
-} // namespace ock
+inline void Spinlock::lock()
+{
+    while (lock_.exchange(1, std::memory_order_acquire)) {
+    }
+}
 
-#endif // MEMFABRIC_HYBRID_MMC_SPINLOCK_H
+inline void Spinlock::unlock()
+{
+    lock_.store(0, std::memory_order_release);
+}
+
+}  // namespace mmc
+}  // namespace ock
+
+#endif  // MEMFABRIC_HYBRID_MMC_SPINLOCK_H

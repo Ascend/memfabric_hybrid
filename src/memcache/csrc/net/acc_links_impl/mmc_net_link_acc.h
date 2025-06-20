@@ -9,7 +9,7 @@
 
 namespace ock {
 namespace mmc {
-class NetLinkAcc : public NetLink {
+class NetLinkAcc final : public NetLink {
 public:
     NetLinkAcc(int32_t id, const TcpLinkPtr &tcpLink) : id_(id), tcpLink_(tcpLink) {}
     ~NetLinkAcc() override = default;

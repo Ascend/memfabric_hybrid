@@ -6,7 +6,7 @@
 namespace ock {
 namespace mmc {
 
-void MmcMemObjMeta::AddBlob(MmcMemBlobPtr blob)
+void MmcMemObjMeta::AddBlob(const MmcMemBlobPtr& blob)
 {
     std::lock_guard<Spinlock> guard(spinlock_);
     if (numBlobs_ < MAX_NUM_BLOB_CHAINS) {
@@ -22,12 +22,12 @@ void MmcMemObjMeta::AddBlob(MmcMemBlobPtr blob)
         while (last->Next() != nullptr) {
             last = last->Next();
         }
-        last->SetNext(blob);
+        last->Next(blob);
         numBlobs_++;
     }
 }
 
-Result MmcMemObjMeta::RemoveBlob(MmcMemBlobPtr blob)
+Result MmcMemObjMeta::RemoveBlob(const MmcMemBlobPtr& blob)
 {
     if (blob == nullptr) {
         return MMC_INVALID_PARAM;
