@@ -162,7 +162,7 @@ Result SmemShmEntryManager::PrepareTransport(uint32_t rankId, uint32_t rankCount
     }
 
     void *qpInfoAddress;
-    ret = HybmCoreApi::HybmTransportAiQpInfoAddress(qpInfoAddress);
+    ret = HybmCoreApi::HybmTransportAiQpInfoAddress(0, qpInfoAddress);
     if (ret != 0) {
         SM_LOG_ERROR("get qp info address for transport failed: " << ret);
         return ret;
@@ -232,6 +232,7 @@ Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t
 {
     hybm_transport_mr_info localMR;
     localMR.addr = (ptrdiff_t)gva + localSize * rankId;
+    localMR.size = localSize;
     auto ret = HybmCoreApi::HybmTransportRegMR(localMR.addr, localSize, localMR.lkey, localMR.rkey);
     if (ret != 0) {
         SM_LOG_ERROR("transport register MR failed: " << ret);

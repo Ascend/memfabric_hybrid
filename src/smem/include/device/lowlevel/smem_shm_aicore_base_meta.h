@@ -24,6 +24,7 @@ constexpr uint64_t SMEM_SHM_DEVICE_META_RANK_OFFSET = SMEM_SHM_DEVICE_META_OBJ_I
 constexpr uint64_t SMEM_SHM_DEVICE_META_RANK_SIZE_OFFSET = SMEM_SHM_DEVICE_META_RANK_OFFSET + sizeof(uint32_t);
 constexpr uint64_t SMEM_SHM_DEVICE_META_CONTEXT_OFFSET = SMEM_SHM_DEVICE_META_RANK_SIZE_OFFSET + sizeof(uint32_t);
 constexpr uint64_t SMEM_SHM_DEVICE_META_SYMM_OFFSET = SMEM_SHM_DEVICE_META_CONTEXT_OFFSET + sizeof(uint32_t);
+constexpr uint64_t SMEM_SHM_DEVICE_META_QP_INFO_OFFSET = SMEM_SHM_DEVICE_META_SYMM_OFFSET + sizeof(uint64_t);
 
 SMEM_SHM_INLINE_AICORE uint32_t smem_shm_get_global_rank(uint32_t shmemId)
 {
@@ -53,6 +54,17 @@ SMEM_SHM_INLINE_AICORE uint64_t smem_shm_get_symmetric_size(uint32_t shmemId)
     uint64_t metaAddr = SMEM_SHM_DEVICE_META_ADDR + SMEM_SHM_DEVICE_GLOBAL_META_SIZE +
         shmemId * SMEM_SHM_DEVICE_PRE_META_SIZE;
     return (*(__gm__ uint64_t*)(metaAddr + SMEM_SHM_DEVICE_META_SYMM_OFFSET));
+}
+
+SMEM_SHM_INLINE_AICORE __gm__ void* smem_shm_get_qp_info_address(uint32_t shmemId)
+{
+    if (shmemId >= SMEM_OBJECT_NUM_MAX) {
+        return NULL;
+    }
+
+    uint64_t metaAddr = SMEM_SHM_DEVICE_META_ADDR + SMEM_SHM_DEVICE_GLOBAL_META_SIZE +
+        shmemId * SMEM_SHM_DEVICE_PRE_META_SIZE;
+    return *(__gm__ void **)(metaAddr + SMEM_SHM_DEVICE_META_QP_INFO_OFFSET);
 }
 
 SMEM_SHM_INLINE_AICORE __gm__ void* smem_shm_get_extra_context_addr(uint32_t shmemId)

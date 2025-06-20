@@ -33,6 +33,88 @@ std::string GetRunStateMessage(RdmaManagerState state)
 
     return pos->second;
 }
+
+std::string AiQpRMAWQ2String(const AiQpRMAWQ &info)
+{
+    std::stringstream ss;
+    ss << "wqn=" << info.wqn << ", buff_addr=" << (void *)(ptrdiff_t)info.bufAddr << ", wqe_size=" << info.wqeSize
+       << ", depth=" << info.depth << ", head=" << (void *)(ptrdiff_t)info.headAddr
+       << ", tail=" << (void *)(ptrdiff_t)info.tailAddr << ", db_mode=" << static_cast<int>(info.dbMode)
+       << ", db_addr=" << (void *)(ptrdiff_t)info.dbAddr << ", sl=" << info.sl;
+    return ss.str();
+}
+
+std::string AiQpRMACQ2String(const AiQpRMACQ &info)
+{
+    std::stringstream ss;
+    ss << "cqn=" << info.cqn << ", buff_addr=" << (void *)(ptrdiff_t)info.bufAddr << ", cqe_size=" << info.cqeSize
+       << ", depth=" << info.depth << ", head=" << (void *)(ptrdiff_t)info.headAddr
+       << ", tail=" << (void *)(ptrdiff_t)info.tailAddr << ", db_mode=" << static_cast<int>(info.dbMode)
+       << ", db_addr=" << (void *)(ptrdiff_t)info.dbAddr;
+    return ss.str();
+}
+
+std::string RdmaMemRegionInfo2String(const RdmaMemRegionInfo &info)
+{
+    std::stringstream ss;
+    ss << "size=" << info.size << ", addr=" << (void *)(ptrdiff_t)(info.addr) << ", lkey=" << info.lkey
+       << ", rkey=" << info.rkey;
+    return ss.str();
+}
+
+std::string AiQpInfoToString(const AiQpRMAQueueInfo &info, uint32_t rankCount)
+{
+    std::stringstream ss;
+    ss << "QiQpInfo(rankCount=" << rankCount << ", mq_count=" << info.count << ")={\n";
+    for (auto i = 0U; i < rankCount; i++) {
+        ss << "  rank" << i << "={\n";
+        for (auto j = 0U; j < info.count; j++) {
+            ss << "    qp" << j << "_info={\n";
+            ss << "      sq=<" << AiQpRMAWQ2String(*(info.sq + i * info.count + j)) << ">\n";
+            ss << "      rq=<" << AiQpRMAWQ2String(*(info.rq + i * info.count + j)) << ">\n";
+            ss << "      scq=<" << AiQpRMACQ2String(*(info.scq + i * info.count + j)) << ">\n";
+            ss << "      rcq=<" << AiQpRMACQ2String(*(info.rcq + i * info.count + j)) << ">\n";
+            ss << "    }\n";
+        }
+        ss << "    MR-rank-" << i << "=<" << RdmaMemRegionInfo2String(*(info.mr + i)) << ">";
+        ss << "  }\n";
+    }
+    ss << "}";
+    return ss.str();
+}
+
+std::string ai_data_plane_wq_2string(const ai_data_plane_wq &info)
+{
+    std::stringstream ss;
+    ss << "wqn=" << info.wqn << ", buff_addr=" << (void *)(ptrdiff_t)info.buf_addr << ", wqebb_size=" << info.wqebb_size
+       << ", depth=" << info.depth << ", head=" << (void *)(ptrdiff_t)info.head_addr
+       << ", tail=" << (void *)(ptrdiff_t)info.tail_addr << ", swdb_addr=" << (void *)(ptrdiff_t)info.swdb_addr
+       << ", db_reg=" << info.db_reg;
+    return ss.str();
+}
+
+std::string ai_data_plane_cq_2string(const ai_data_plane_cq &info)
+{
+    std::stringstream ss;
+    ss << "cqn=" << info.cqn << ", buff_addr=" << (void *)(ptrdiff_t)info.buf_addr << ", cqe_size=" << info.cqe_size
+       << ", depth=" << info.depth << ", head=" << (void *)(ptrdiff_t)info.head_addr
+       << ", tail=" << (void *)(ptrdiff_t)info.tail_addr << ", swdb_addr=" << (void *)(ptrdiff_t)info.swdb_addr
+       << ", db_reg=" << info.db_reg;
+    return ss.str();
+}
+
+std::string HccpAiQpInfo2String(const HccpAiQpInfo &info)
+{
+    std::stringstream ss;
+    ss << "addr=" << (void *)(ptrdiff_t)info.aiQpAddr << ", sq_index=" << info.sqIndex << ", db_index=" << info.dbIndex
+       << ", ai_scq_addr=" << (void *)(ptrdiff_t)info.ai_scq_addr << ", ai_rcq_addr"
+       << (void *)(ptrdiff_t)info.ai_rcq_addr
+       << ", data_plane_info=data_plane_info(sq=" << ai_data_plane_wq_2string(info.data_plane_info.sq)
+       << ", rq=" << ai_data_plane_wq_2string(info.data_plane_info.rq)
+       << ", scq=" << ai_data_plane_cq_2string(info.data_plane_info.scq)
+       << ", rcq=" << ai_data_plane_cq_2string(info.data_plane_info.rcq) << ")";
+    return ss.str();
+}
 }
 
 RdmaTransportManager::RdmaTransportManager(uint32_t deviceId, uint32_t port) : deviceId_{deviceId}, listenPort_{port} {}
@@ -102,6 +184,8 @@ Result RdmaTransportManager::RegMemToDevice(const TransHandlePtr &h, const Trans
     out.handle = mrHandle;
     out.lkey = info.lkey;
     out.rkey = info.rkey;
+    BM_LOG_DEBUG("register MR(address=" << in.addr << ", size=" << in.size << ", lkey=" << info.lkey
+                                        << ", rkey=" << info.rkey << ")");
 
     return BM_OK;
 }
@@ -124,6 +208,10 @@ Result RdmaTransportManager::SetGlobalRegisterMrInfo(const std::vector<RdmaMemRe
         return BM_INVALID_PARAM;
     }
 
+    for (auto i = 0U; i < mrs.size(); i++) {
+        BM_LOG_DEBUG("MR(" << i << ") addr=" << (void *)(ptrdiff_t)(mrs[i].addr) << ", size=" << mrs[i].size
+                           << ", lkey=" << mrs[i].lkey << ", rkey=" << mrs[i].rkey);
+    }
     rdmaMemRegionInfos_ = mrs;
     return BM_OK;
 }
@@ -570,6 +658,7 @@ int RdmaTransportManager::CreateQpWaitingReady(std::unordered_map<std::string, C
             return BM_DL_FUNCTION_FAILED;
         }
 
+        BM_LOG_DEBUG("create one qp=" << HccpAiQpInfo2String(it->second.aiQpInfo));
         ret = DlHccpApi::RaQpConnectAsync(it->second.qpHandle, it->second.socketFd);
         if (ret != 0) {
             BM_LOG_ERROR("connect AI QP to " << it->first << " failed: " << ret);
@@ -643,6 +732,7 @@ int RdmaTransportManager::FillQpInfo()
         CopyAiCQInfo(copyInfo->rcq[i], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }
 
+    BM_LOG_DEBUG("transport qp info : " << AiQpInfoToString(*copyInfo, totalRankCount_));
     auto pointer = (ptrdiff_t)(void *)(qpInfo_);
     pointer += sizeof(AiQpRMAQueueInfo);
     copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
