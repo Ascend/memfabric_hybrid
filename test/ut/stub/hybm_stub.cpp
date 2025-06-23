@@ -147,6 +147,42 @@ int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t coun
     return 0;
 }
 
+// transport API stubs
+int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
+{
+    return 0;
+}
+
+int hybm_transport_register_mr(uint64_t address, uint64_t size, uint32_t *lkey, uint32_t *rkey)
+{
+    return 0;
+}
+
+int hybm_transport_set_mrs(const struct hybm_transport_mr_info mrs[], uint32_t count)
+{
+    return 0;
+}
+
+int hybm_transport_get_address(uint64_t *address)
+{
+    return 0;
+}
+
+int hybm_transport_set_addresses(const uint64_t addresses[], uint32_t count)
+{
+    return 0;
+}
+
+int hybm_transport_make_connections(void)
+{
+    return 0;
+}
+
+int hybm_transport_ai_qp_info_address(uint32_t shmId, void **address)
+{
+    return 0;
+}
+
 bool HybmCoreApi::gLoaded = true;
 std::mutex HybmCoreApi::gMutex;
 void *HybmCoreApi::coreHandle = nullptr;
@@ -173,5 +209,13 @@ hybmMmapFunc HybmCoreApi::pHybmMmap = hybm_mmap;
 hybmJoinFunc HybmCoreApi::pHybmJoin = hybm_join;
 hybmLeaveFunc HybmCoreApi::pHybmLeave = hybm_leave;
 hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = hybm_data_copy;
+
+hybmTransportInitFunc HybmCoreApi::gHybmTransportInit = hybm_transport_init;
+hybmTransportRegMrFunc HybmCoreApi::gHybmTransportRegMr = hybm_transport_register_mr;
+hybmTransportSetGMRFunc HybmCoreApi::gHybmTransportSetGMR = hybm_transport_set_mrs;
+hybmTransportGetAddressFunc HybmCoreApi::gHybmTransportGetAddress = hybm_transport_get_address;
+hybmTransportSetAddressesFunc HybmCoreApi::gHybmTransportSetAddresses = hybm_transport_set_addresses;
+hybmTransportMakeConnectionsFunc HybmCoreApi::gHybmTransportMakeConnections = hybm_transport_make_connections;
+hybmTransportAiQpInfoAddressFunc HybmCoreApi::gHybmTransportAiQpInfoAddress = hybm_transport_ai_qp_info_address;
 }
 }
