@@ -1,14 +1,22 @@
 ## 代码实现介绍
-本样例简单验证了bm相关接口
+本样例简单验证了big memory相关接口
 
 本样例需要在npu环境下编译运行
 
-运行样例前请先编译安装**memfabric_hybrid的run包**,并source安装路径下的set_env.sh
+首先,请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
 
-另外,请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
+HDK固件驱动需要使用**25.0.RC1**及以上版本([社区版HDK下载链接](https://www.hiascend.com/hardware/firmware-drivers/community))
 
-安装完成后记得配置CANN环境变量
+安装完成后需要配置CANN环境变量
 ([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
+
+运行样例前请先编译安装**memfabric_hybrid的run包**,默认安装路径为/usr/local/,然后source安装路径下的set_env.sh
+
+memfabric_hybrid参考安装命令
+```bash
+bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
+source /usr/local/mxc/memfabric_hybrid/set_env.sh
+```
 
 ## 编译
 在当前目录执行如下命令即可
