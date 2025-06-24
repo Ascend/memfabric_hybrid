@@ -14,8 +14,6 @@
 #include "under_api/dl_api.h"
 #include "under_api/dl_acl_api.h"
 #include "under_api/dl_hal_api.h"
-#include "under_api/dl_hccl_api.h"
-#include "under_api/dl_hccp_api.h"
 #include "hybm.h"
 
 using namespace ock::mf;

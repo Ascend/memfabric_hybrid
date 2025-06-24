@@ -726,8 +726,8 @@ int RdmaTransportManager::FillQpInfo()
             return BM_ERROR;
         }
 
-        CopyAiWQInfo(copyInfo->sq[i], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 0);
-        CopyAiWQInfo(copyInfo->rq[i], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 0);
+        CopyAiWQInfo(copyInfo->sq[i], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 4);
+        CopyAiWQInfo(copyInfo->rq[i], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 4);
         CopyAiCQInfo(copyInfo->scq[i], pos->second.aiQpInfo.data_plane_info.scq, DBMode::SW_DB);
         CopyAiCQInfo(copyInfo->rcq[i], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }

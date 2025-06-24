@@ -11,7 +11,6 @@ NWtxRcrHiW0xLOsR# */
 #include "dl_api.h"
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
-#include "dl_hccl_api.h"
 #include "dl_hccp_api.h"
 
 namespace ock {
@@ -25,11 +24,6 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
     }
 
     result = DlHalApi::LoadLibrary();
-    if (result != BM_OK) {
-        return result;
-    }
-
-    result = DlHcclApi::LoadLibrary();
     if (result != BM_OK) {
         return result;
     }

@@ -212,7 +212,7 @@ Result SmemShmEntryManager::ExchangeTransportAddress(uint32_t rankId, uint32_t r
         }
     }
 
-    std::vector<uint64_t> addresses{rankCount};
+    std::vector<uint64_t> addresses(rankCount);
     auto transportInfo = (const TransportAddressExchange *)(const void *)data.data();
     for (auto i = 0U; i < rankCount; i++) {
         addresses[transportInfo[i].rankId] = transportInfo[i].address;
@@ -270,7 +270,7 @@ Result SmemShmEntryManager::ExchangeTransportMemRegion(uint32_t rankId, uint32_t
         }
     }
 
-    std::vector<hybm_transport_mr_info> mrInfos{rankCount};
+    std::vector<hybm_transport_mr_info> mrInfos(rankCount);
     auto mrs = (const hybm_transport_mr_info *)(const void *)data.data();
     for (auto i = 0U; i < rankCount; i++) {
         auto index = (mrs[i].addr - (ptrdiff_t)gva) / localSize;
