@@ -37,6 +37,9 @@ public:
 
     Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
+    Result DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
+                      smem_bm_copy_type t, uint32_t flags);
+
     uint32_t Id() const;
 
     const hybm_options &GetCoreOptions() const;

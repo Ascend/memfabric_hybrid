@@ -201,3 +201,20 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
 
     return entry->DataCopy(src, dest, size, t, flags);
 }
+
+SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch,
+                                 void *dest, uint64_t dpitch, uint64_t width, uint64_t heigth,
+                                 smem_bm_copy_type t, uint32_t flags)
+{
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->DataCopy2d(src, spitch, dest, dpitch, width, heigth, t, flags);
+}

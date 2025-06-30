@@ -34,6 +34,7 @@ namespace smem {
     hybmJoinFunc HybmCoreApi::pHybmJoin = nullptr;
     hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
     hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = nullptr;
+    hybmDataCopy2dFunc HybmCoreApi::pHybmDataCopy2d = nullptr;
 #endif
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
@@ -93,6 +94,7 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmJoin, hybmJoinFunc, coreHandle, "hybm_join");
     DL_LOAD_SYM(pHybmLeave, hybmLeaveFunc, coreHandle, "hybm_leave");
     DL_LOAD_SYM(pHybmDataCopy, hybmDataCopyFunc, coreHandle, "hybm_data_copy");
+    DL_LOAD_SYM(pHybmDataCopy2d, hybmDataCopy2dFunc, coreHandle, "hybm_data_copy_2d");
     gLoaded = true;
     return SM_OK;
 }
