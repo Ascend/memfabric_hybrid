@@ -34,6 +34,7 @@ namespace smem {
     hybmJoinFunc HybmCoreApi::pHybmJoin = nullptr;
     hybmLeaveFunc HybmCoreApi::pHybmLeave = nullptr;
     hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = nullptr;
+    hybmDataCopy2dFunc HybmCoreApi::pHybmDataCopy2d = nullptr;
     hybmTransportInitFunc HybmCoreApi::gHybmTransportInit = nullptr;
     hybmTransportRegMrFunc HybmCoreApi::gHybmTransportRegMr = nullptr;
     hybmTransportSetGMRFunc HybmCoreApi::gHybmTransportSetGMR = nullptr;
@@ -100,6 +101,7 @@ Result HybmCoreApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pHybmJoin, hybmJoinFunc, coreHandle, "hybm_join");
     DL_LOAD_SYM(pHybmLeave, hybmLeaveFunc, coreHandle, "hybm_leave");
     DL_LOAD_SYM(pHybmDataCopy, hybmDataCopyFunc, coreHandle, "hybm_data_copy");
+    DL_LOAD_SYM(pHybmDataCopy2d, hybmDataCopy2dFunc, coreHandle, "hybm_data_copy_2d");
 
     DL_LOAD_SYM(gHybmTransportInit, hybmTransportInitFunc, coreHandle, "hybm_transport_init");
     DL_LOAD_SYM(gHybmTransportRegMr, hybmTransportRegMrFunc, coreHandle, "hybm_transport_register_mr");

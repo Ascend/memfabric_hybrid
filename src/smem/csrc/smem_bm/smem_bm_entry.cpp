@@ -176,6 +176,31 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
 
     return HybmCoreApi::HybmDataCopy(entity_, src, dest, size, direction, flags);
 }
+
+Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
+                               uint64_t width, uint64_t height, smem_bm_copy_type t, uint32_t flags)
+{
+    SM_PARAM_VALIDATE(src == nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(dest == nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(width == 0, "invalid param, width is 0", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(height == 0, "invalid param, height is 0", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(t >= SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+
+    hybm_data_copy_direction direction;
+    if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
+        SM_PARAM_VALIDATE(!AddressInRange(dest, dpitch * (height - 1) + width), "dest address: " << dest << ", dpitch: "
+                          << dpitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
+        direction = t == SMEMB_COPY_L2G ? HyBM_LOCAL_TO_SHARED : HyBM_DRAM_TO_SHARED;
+    } else {
+        SM_PARAM_VALIDATE(!AddressInRange(src,  spitch * (height - 1) + width), "src address: " << src << ", spitch: "
+                          << spitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
+        direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
+    }
+
+    return HybmCoreApi::HybmDataCopy2d(entity_, src, spitch, dest, dpitch, width, height, direction, flags);
+}
+
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);

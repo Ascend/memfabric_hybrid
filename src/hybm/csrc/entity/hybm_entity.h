@@ -39,6 +39,8 @@ public:
     virtual bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept = 0;
     virtual int32_t CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
                              uint32_t flags) noexcept = 0;
+    virtual int32_t CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,  uint64_t width,
+                               uint64_t height, hybm_data_copy_direction direction, uint32_t flags) noexcept = 0;
 
     virtual ~MemEntity() noexcept = default;
 };

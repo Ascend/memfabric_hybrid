@@ -31,6 +31,8 @@ using hybmMmapFunc = int32_t (*)(hybm_entity_t, uint32_t);
 using hybmJoinFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmLeaveFunc = int32_t (*)(hybm_entity_t, uint32_t, uint32_t);
 using hybmDataCopyFunc = int32_t (*)(hybm_entity_t, const void *, void *, size_t, hybm_data_copy_direction, uint32_t);
+using hybmDataCopy2dFunc = int32_t (*)(hybm_entity_t, const void *, uint64_t, void *, uint64_t, uint64_t, uint64_t,
+                                     hybm_data_copy_direction, uint32_t);
 
 using hybmTransportInitFunc = int (*)(uint32_t, uint32_t);
 using hybmTransportRegMrFunc = int(*)(uint64_t, uint64_t, uint32_t *, uint32_t *);
@@ -153,6 +155,13 @@ public:
         return pHybmDataCopy(e, src, dest, count, direction, flags);
     }
 
+    static inline int32_t HybmDataCopy2d(hybm_entity_t e, const void *src, uint64_t spitch,
+                                         void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
+                                         hybm_data_copy_direction direction, uint32_t flags)
+    {
+        return pHybmDataCopy2d(e, src, spitch, dest, dpitch, width, height, direction, flags);
+    }
+
     static inline int32_t HybmTransportInit(uint32_t rankId, uint32_t rankCount)
     {
         return gHybmTransportInit(rankId, rankCount);
@@ -218,6 +227,7 @@ private:
     static hybmJoinFunc pHybmJoin;
     static hybmLeaveFunc pHybmLeave;
     static hybmDataCopyFunc pHybmDataCopy;
+    static hybmDataCopy2dFunc pHybmDataCopy2d;
 
     static hybmTransportInitFunc gHybmTransportInit;
     static hybmTransportRegMrFunc gHybmTransportRegMr;

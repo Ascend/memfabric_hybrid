@@ -234,6 +234,18 @@ int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length,
     return dataOperator_->DataCopy(src, dest, length, static_cast<DataOpDirection>(direction), flags);
 }
 
+int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
+                                     uint64_t height,  hybm_data_copy_direction direction, uint32_t flags) noexcept
+{
+    if (dataOperator_ == nullptr) {
+        BM_LOG_ERROR("memory entity not initialized.");
+        return BM_ERROR;
+    }
+
+    return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height,
+                                     static_cast<DataOpDirection>(direction), flags);
+}
+
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept
 {
     if (segment_ == nullptr) {

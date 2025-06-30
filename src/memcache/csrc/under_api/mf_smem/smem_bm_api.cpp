@@ -30,6 +30,7 @@ smemBmLeaveFunc MFSmemApi::gSmemBmLeave = nullptr;
 smemBmGetLocalMemSizeFunc MFSmemApi::gSmemBmGetLocalMemSizeFunc = nullptr;
 smemBmPtrFunc MFSmemApi::gSmemBmPtr = nullptr;
 smemBmCopyFunc MFSmemApi::gSmemBmCopy = nullptr;
+smemBmCopy2dFunc MFSmemApi::gSmemBmCopy2d = nullptr;
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)           \
     do {                                                                                   \
@@ -85,6 +86,7 @@ Result MFSmemApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(gSmemBmGetLocalMemSizeFunc, smemBmGetLocalMemSizeFunc, gSmemHandle, "smem_bm_get_local_mem_size");
     DL_LOAD_SYM(gSmemBmPtr, smemBmPtrFunc, gSmemHandle, "smem_bm_ptr");
     DL_LOAD_SYM(gSmemBmCopy, smemBmCopyFunc, gSmemHandle, "smem_bm_copy");
+    DL_LOAD_SYM(gSmemBmCopy2d, smemBmCopy2dFunc, gSmemHandle, "smem_bm_copy_2d");
 
     gLoaded = true;
     return MMC_OK;
