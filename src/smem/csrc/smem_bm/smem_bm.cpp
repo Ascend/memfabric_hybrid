@@ -2,7 +2,7 @@
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include "smem_common_includes.h"
-#include "hybm_core_api.h"
+#include "hybm_big_mem.h"
 #include "smem_bm.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
@@ -50,7 +50,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
+    ret = hybm_init(deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
@@ -69,7 +69,7 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
         return;
     }
 
-    HybmCoreApi::HybmCoreUninit();
+    hybm_uninit();
     SM_LOG_INFO("smem_bm_uninit finished");
 }
 
@@ -99,7 +99,6 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.bmRankType = HyBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
-    options.devId = manager.GetDeviceId();
     options.singleRankVASpace = localHBMSize;
     options.preferredGVA = 0;
 

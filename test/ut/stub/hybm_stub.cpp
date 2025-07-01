@@ -3,10 +3,8 @@
  */
 #include <string>
 #include <iostream>
-#include "hybm_core_api.h"
-
-namespace ock {
-namespace smem {
+#include "hybm_big_mem.h"
+#include "hybm_data_op.h"
 
 int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
@@ -147,31 +145,9 @@ int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t coun
     return 0;
 }
 
-bool HybmCoreApi::gLoaded = true;
-std::mutex HybmCoreApi::gMutex;
-void *HybmCoreApi::coreHandle = nullptr;
-const char *HybmCoreApi::gHybmCoreLibName = "libmf_hybm_core.so";
-
-hybmInitFunc HybmCoreApi::pHybmInit = hybm_init;
-hybmUninitFunc HybmCoreApi::pHybmUninit = hybm_uninit;
-hybmSetLoggerFunc HybmCoreApi::pHybmSetLogger = hybm_set_extern_logger;
-hybmSetLogLevelFunc HybmCoreApi::pHybmSetLogLevel = hybm_set_log_level;
-hybmGetErrorFunc HybmCoreApi::pHybmGetError = hybm_get_error_string;
-
-hybmCreateEntityFunc HybmCoreApi::pHybmCreateEntity = hybm_create_entity;
-hybmDestroyEntityFunc HybmCoreApi::pHybmDestroyEntity = hybm_destroy_entity;
-hybmReserveMemFunc HybmCoreApi::pHybmReserveMem = hybm_reserve_mem_space;
-hybmUnreserveMemFunc HybmCoreApi::pHybmUnreserveMem = hybm_unreserve_mem_space;
-hybmAllocLocalMemFunc HybmCoreApi::pHybmAllocLocalMem = hybm_alloc_local_memory;
-hybmFreeLocalMemFunc HybmCoreApi::pHybmFreeLocalMem = hybm_free_local_memory;
-hybmExportFunc HybmCoreApi::pHybmExport = hybm_export;
-hybmImportFunc HybmCoreApi::pHybmImport = hybm_import;
-hybmSetExtraContextFunc HybmCoreApi::pHybmSetExtraContext = hybm_set_extra_context;
-hybmStartFunc HybmCoreApi::pHybmStart = hybm_start;
-hybmStopFunc HybmCoreApi::pHybmStop = hybm_stop;
-hybmMmapFunc HybmCoreApi::pHybmMmap = hybm_mmap;
-hybmJoinFunc HybmCoreApi::pHybmJoin = hybm_join;
-hybmLeaveFunc HybmCoreApi::pHybmLeave = hybm_leave;
-hybmDataCopyFunc HybmCoreApi::pHybmDataCopy = hybm_data_copy;
-}
+int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t spitch,
+                          void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
+                          hybm_data_copy_direction direction, uint32_t flags)
+{
+    return 0;
 }

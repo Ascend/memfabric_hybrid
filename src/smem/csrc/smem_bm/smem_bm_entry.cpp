@@ -1,7 +1,8 @@
 /*
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#include "hybm_core_api.h"
+#include "hybm_big_mem.h"
+#include "hybm_data_op.h"
 #include "smem_store_factory.h"
 #include "smem_bm_entry.h"
 
@@ -12,15 +13,15 @@ static void ReleaseAfterFailed(hybm_entity_t entity, hybm_mem_slice_t slice, voi
 {
     uint32_t flags = 0;
     if (entity != nullptr && slice != 0) {
-        HybmCoreApi::HybmFreeLocalMemory(entity, slice, 1, flags);
+        hybm_free_local_memory(entity, slice, 1, flags);
     }
 
     if (entity != nullptr && reservedMem != nullptr) {
-        HybmCoreApi::HybmUnreserveMemSpace(entity, flags, reservedMem);
+        hybm_unreserve_mem_space(entity, flags, reservedMem);
     }
 
     if (entity != nullptr) {
-        HybmCoreApi::HybmDestroyEntity(entity, flags);
+        hybm_destroy_entity(entity, flags);
     }
 }
 
@@ -35,21 +36,21 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
 
     do {
-        entity = HybmCoreApi::HybmCreateEntity((Id() << 1) + 1U, &options, flags);
+        entity = hybm_create_entity((Id() << 1) + 1U, &options, flags);
         if (entity == nullptr) {
             SM_LOG_ERROR("create entity failed");
             ret = SM_ERROR;
             break;
         }
 
-        ret = HybmCoreApi::HybmReserveMemSpace(entity, flags, &reservedMem);
+        ret = hybm_reserve_mem_space(entity, flags, &reservedMem);
         if (ret != 0 || reservedMem == nullptr) {
             SM_LOG_ERROR("reserve mem failed, result: " << ret);
             ret = SM_ERROR;
             break;
         }
 
-        slice = HybmCoreApi::HybmAllocLocalMemory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
+        slice = hybm_alloc_local_memory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
         if (slice == nullptr) {
             SM_LOG_ERROR("alloc local mem failed, size: " << options.singleRankVASpace);
             ret = SM_ERROR;
@@ -57,13 +58,13 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
 
         bzero(&exInfo_, sizeof(hybm_exchange_info));
-        ret = HybmCoreApi::HybmExport(entity, slice, flags, &exInfo_);
+        ret = hybm_export(entity, slice, flags, &exInfo_);
         if (ret != 0) {
             SM_LOG_ERROR("hybm export failed, result: " << ret);
             break;
         }
 
-        ret = HybmCoreApi::HybmStart(entity, flags);
+        ret = hybm_start(entity, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm start failed, result: " << ret);
             break;
@@ -96,7 +97,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmImport(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
+    ret = hybm_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import failed, result: " << ret);
         return SM_ERROR;
@@ -108,13 +109,13 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmMmap(entity_, 0);
+    ret = hybm_mmap(entity_, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm mmap failed, result: " << ret);
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmJoin(entity_, rk, 0);
+    ret = hybm_join(entity_, rk, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm join failed, result: " << ret);
         return SM_ERROR;
@@ -128,7 +129,7 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
 {
     SM_LOG_INFO("do leave func, receive_rk: " << rk);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    auto ret = HybmCoreApi::HybmLeave(entity_, rk, 0);
+    auto ret = hybm_leave(entity_, rk, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm leave failed, result: " << ret);
         return SM_ERROR;
@@ -174,7 +175,7 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
         direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
     }
 
-    return HybmCoreApi::HybmDataCopy(entity_, src, dest, size, direction, flags);
+    return hybm_data_copy(entity_, src, dest, size, direction, flags);
 }
 
 Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
@@ -198,7 +199,7 @@ Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uin
         direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
     }
 
-    return HybmCoreApi::HybmDataCopy2d(entity_, src, spitch, dest, dpitch, width, height, direction, flags);
+    return hybm_data_copy_2d(entity_, src, spitch, dest, dpitch, width, height, direction, flags);
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)

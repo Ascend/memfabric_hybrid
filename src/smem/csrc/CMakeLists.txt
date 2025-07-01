@@ -4,7 +4,7 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
-        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
+        ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )
 
@@ -21,7 +21,6 @@ aux_source_directory(common SMEM_SRC_COMMON)
 aux_source_directory(config_store SMEM_SRC_STORE)
 aux_source_directory(net/ SMEM_SRC_NET)
 aux_source_directory(smem_shm SMEM_SRC_SMEM_SHARE)
-aux_source_directory(under_api/hybm_core/ SMEM_SRC_CORE_API)
 aux_source_directory(smem_bm SMEM_SRC_SMEM_BM)
 
 # set whole source for platform
@@ -29,7 +28,6 @@ set(PLATFORM_SRC ${SMEM_SRC_COMMON}
         ${SMEM_SRC_NET}
         ${SMEM_SRC_SMEM_SHARE}
         ${SMEM_SRC_STORE}
-        ${SMEM_SRC_CORE_API}
         ${SMEM_SRC_SMEM_BM}
         smem.cpp)
 
@@ -42,12 +40,12 @@ target_compile_options(smem_objects PRIVATE -fPIC)
 add_library(smem_static STATIC $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_static PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a)
+target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a hybmm_shared)
 
 add_library(smem_shared SHARED $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a)
+target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a hybmm_static)
 
 if(BUILD_PYTHON STREQUAL "ON")
     add_subdirectory(python_wrapper)
