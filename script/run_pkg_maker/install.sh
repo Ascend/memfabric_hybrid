@@ -1,9 +1,10 @@
 #!/bin/bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.                #这个值是指这个脚本的行数加 1
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 install_flag=y
 uninstall_flag=n
 install_path_flag=n
 install_for_all_flag=n
+nocheck=n
 script_dir=$(dirname $(readlink -f "$0"))
 version1="none"
 pkg_arch="none"
@@ -14,6 +15,7 @@ function print_help() {
     echo "--install-path=<path>             Install to specific dir"
     echo "--uninstall                       Uninstall product"
     echo "--install-for-all                 Install for all user"
+    echo "--no-check                        Skip check during installation"
 }
 
 function print()
@@ -93,6 +95,10 @@ function parse_script_args()
         --help)
             print_help
             exit 0
+        ;;
+        --no-check)
+            nocheck=y
+            shift
         ;;
         --*)
             shift
@@ -275,7 +281,8 @@ function install_to_path()
     pip3 install "${wheel_package}" --force-reinstall
 }
 
-function generate_set_env() {
+function generate_set_env()
+{
     touch ${default_install_dir}/set_env.sh
     cat>>${default_install_dir}/set_env.sh<<EOF
 export MEMFABRIC_HYBRID_HOME_PATH=${default_install_dir}/latest
@@ -305,8 +312,14 @@ function main()
         uninstall
     elif [ "$install_flag" == "y" ] || [ "$install_path_flag" == "y" ]; then
         get_version_in_file
-        check_arch
-        check_owner
+
+        if [ "$nocheck" == "y" ]; then
+            print "INFO" "skip check arch and owner."
+        else
+            check_arch
+            check_owner
+        fi
+
         install_process
         chmod_authority
         print "INFO" "memfabric_hybrid install success"
