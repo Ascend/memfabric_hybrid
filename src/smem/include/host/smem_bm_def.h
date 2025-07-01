@@ -22,14 +22,6 @@ typedef enum {
 } smem_bm_data_op_type;
 
 /**
- * @brief Memory type, current only support HBM
- */
-typedef enum {
-    SMEMB_MEM_TYPE_HBM = 1U << 0,
-    SMEMB_MEM_TYPE_DRAM = 1U << 1,
-} smem_bm_mem_type;
-
-/**
 * @brief Data copy direction
 */
 typedef enum {

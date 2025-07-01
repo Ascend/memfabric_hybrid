@@ -2,7 +2,7 @@
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include "smem_common_includes.h"
-#include "hybm_core_api.h"
+#include "hybm_big_mem.h"
 #include "smem_bm.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
@@ -50,7 +50,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
         return SM_ERROR;
     }
 
-    ret = HybmCoreApi::HybmCoreInit(deviceId, config->flags);
+    ret = hybm_init(deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         return SM_ERROR;
@@ -69,7 +69,7 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
         return;
     }
 
-    HybmCoreApi::HybmCoreUninit();
+    hybm_uninit();
     SM_LOG_INFO("smem_bm_uninit finished");
 }
 
@@ -78,11 +78,11 @@ SMEM_API uint32_t smem_bm_get_rank_id()
     return SmemBmEntryManager::Instance().GetRankId();
 }
 
-SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_mem_type memType,
-                                  smem_bm_data_op_type dataOpType, uint64_t localMemorySize, uint32_t flags)
+SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
+                                  uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", nullptr);
-    SM_PARAM_VALIDATE(localMemorySize == 0UL, "localMemorySize is 0", nullptr);
+    SM_PARAM_VALIDATE(localDRAMSize == 0UL && localHBMSize == 0UL, "localMemorySize is 0", nullptr);
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
@@ -99,8 +99,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_mem_
     options.bmRankType = HyBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
-    options.devId = manager.GetDeviceId();
-    options.singleRankVASpace = localMemorySize;
+    options.singleRankVASpace = localHBMSize;
     options.preferredGVA = 0;
 
     ret = entry->Initialize(options);
@@ -200,4 +199,21 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
     }
 
     return entry->DataCopy(src, dest, size, t, flags);
+}
+
+SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch,
+                                 void *dest, uint64_t dpitch, uint64_t width, uint64_t heigth,
+                                 smem_bm_copy_type t, uint32_t flags)
+{
+    SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->DataCopy2d(src, spitch, dest, dpitch, width, heigth, t, flags);
 }

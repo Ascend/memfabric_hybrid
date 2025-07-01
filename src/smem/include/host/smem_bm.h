@@ -55,15 +55,15 @@ uint32_t smem_bm_get_rank_id(void);
  *
  * @param id               [in] identity of the Big Memory object
  * @param memberSize       [in] number of guys participating, which should equal or less the world size
- * @param memType          [in] memory type, device HBM memory, host dram memory or both
  * @param dataOpType       [in] data operation type, SDMA or RoCE etc
- * @param localMemorySize  [in] the size of local memory contributes to Big Memory object
+ * @param localDRAMSize    [in] the size of local DRAM memory contributes to Big Memory object
+ * @param localHBMSize     [in] the size of local HBM memory contributes to Big Memory object
  * @param flags            [in] optional flags
  * @return Big Memory object handle if successful, nullptr if failed
  */
 smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
-                         smem_bm_mem_type memType, smem_bm_data_op_type dataOpType,
-                         uint64_t localMemorySize, uint32_t flags);
+                         smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+                         uint64_t localHBMSize, uint32_t flags);
 
 /**
  * @brief Destroy the Big Memory object
@@ -125,6 +125,28 @@ void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId);
  * @return 0 if successful
  */
 int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+
+/**
+ * @brief Data copy on Big Memory object, several copy types supported:
+ * L2G: local memory to global space
+ * G2L: global space to local memory
+ * G2H: global space to host memory
+ * H2G: host memory to global space
+ *
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param src              [in] source gva of data
+ * @param spitch           [in] pitch of source memory
+ * @param dest             [in] target gva of data
+ * @param dpitch           [in] pitch of destination memory
+ * @param width            [in] width of matrix transfer
+ * @param heigth           [in] height of matrix transfer
+ * @param t                [in] copy type, L2G, G2L, G2H, H2G
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
+int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch,
+                        void *dest, uint64_t dpitch, uint64_t width, uint64_t heigth,
+                        smem_bm_copy_type t, uint32_t flags);
 
 #ifdef __cplusplus
 }

@@ -35,7 +35,7 @@ rm -rf ${PKG_DIR}
 mkdir -p ${PKG_DIR}/${ARCH}_${OS_NAME}
 
 cp -r ${OUTPUT_DIR}/smem ${PKG_DIR}/${ARCH}-${OS_NAME}
-cp ${BASH_PATH}/../../3rdparty/hybmm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
+cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
 
 mkdir -p ${PKG_DIR}/script
 cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/

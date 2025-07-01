@@ -4,7 +4,7 @@
 #include "smem.h"
 #include "smem_common_includes.h"
 #include "smem_version.h"
-#include "hybm_core_api.h"
+#include "hybm.h"
 #include "acc_links/net/acc_log.h"
 
 namespace {
@@ -18,30 +18,7 @@ SMEM_API int32_t smem_init(uint32_t flags)
     /* create logger instance */
     SMOutLogger::Instance();
 
-    /* get hybm core env */
-    std::string path;
-    auto corePath = std::getenv("SMEM_SHM_HYBM_CORE_PATH");
-    if (corePath != nullptr) {
-        path = corePath;
-    } else {
-        SM_LOG_INFO("env SMEM_SHM_HYBM_CORE_PATH is not set, use default lib path.");
-    }
-
-    /* load libraries in under_api */
-    auto result = HybmCoreApi::LoadLibrary(path);
-    if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("smem init failed as load library failed, result: " << result);
-        return result;
-    }
     g_smemInited = true;
-
-    // 未init时不能给hybm更新log配置,所以在init后延迟更新
-    auto func = SMOutLogger::Instance().GetLogExtraFunc();
-    if (func != nullptr) {
-        (void)smem_set_extern_logger(func);
-    }
-    (void)smem_set_log_level(SMOutLogger::Instance().GetLogLevel());
-
     SM_LOG_INFO("smem init successfully, " << LIB_VERSION);
 	
     return SM_OK;
@@ -71,7 +48,7 @@ SMEM_API int32_t smem_set_extern_logger(void (*fun)(int, const char *))
 
     /* set dependent hybm core log function */
     if (g_smemInited) {
-        result = HybmCoreApi::HybmCoreSetExternLogger(fun);
+        result = hybm_set_extern_logger(fun);
         if (result != SM_OK) {
             SM_LOG_AND_SET_LAST_ERROR("set hybm core log function failed, result: " << result);
             return result;
@@ -100,7 +77,7 @@ SMEM_API int32_t smem_set_log_level(int level)
 
     /* set hybm core log level */
     if (g_smemInited) {
-        result = HybmCoreApi::HybmCoreSetLogLevel(level);
+        result = hybm_set_log_level(level);
         if (result != SM_OK) {
             SM_LOG_AND_SET_LAST_ERROR("set hybm core log level failed, result: " << result);
             return result;

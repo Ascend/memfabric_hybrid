@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 3.12.0)
-project(SMEM VERSION 1.0 LANGUAGES CXX C)
+project(MF_HYBRID VERSION 1.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 11)
 
-option(BUILD_EXAMPLE "build example or not" ON)
 option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
 option(BUILD_GIT_COMMIT "build library version with commit" ON)
 option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(INSTALL_HIGH_LEVEL_API "add device high level api into pkg" ON)
+option(BUILD_PYTHON "build python file" ON)
 
-message(STATUS "BUILD_EXAMPLE = ${BUILD_EXAMPLE}")
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
 message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
 message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
 message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
 message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
+message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
@@ -103,6 +103,9 @@ set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
 
+# set src base dir and output dir of smem
+set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
+set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
 # set install target top dir
 message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")

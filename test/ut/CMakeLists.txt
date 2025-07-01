@@ -1,12 +1,11 @@
 file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         testcase/*
-        ../stub/*
+        stub/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/common/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/net/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
 )
 message(STATUS "llt build")
@@ -39,5 +38,5 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_OUTPUT_PATH}/3rdparty/acc_links/net/include
-        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
+        ${PROJECT_HYBM_SRC_BASE}/include
 )
