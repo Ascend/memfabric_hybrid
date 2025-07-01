@@ -3,7 +3,7 @@
  */
 #include <algorithm>
 #include "hybm_logger.h"
-#include "runtime_api.h"
+#include "dl_acl_api.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
@@ -18,7 +18,7 @@ MemEntityDefault::~MemEntityDefault() = default;
 
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
-    if (id_ < 0 || id_ >= HYBM_ENTITY_NUM_MAX) {
+    if (id_ < 0 || (uint32_t)(id_) >= HYBM_ENTITY_NUM_MAX) {
         BM_LOG_ERROR("input entity id is invalid, input: " << id_ << " must be less than: " << HYBM_ENTITY_NUM_MAX);
         return BM_INVALID_PARAM;
     }
@@ -28,7 +28,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
         return ret;
     }
 
-    ret = RuntimeApi::AclrtCreateStream(&stream_);
+    ret = DlAclApi::AclrtCreateStream(&stream_);
     if (ret != 0) {
         BM_LOG_ERROR("create stream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -41,7 +41,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     segment_ = MemSegment::Create(HyBM_MST_HBM, segmentOptions, id_);
     ret = MemSegmentDevice::GetDeviceId(segmentOptions.id);
     if (ret != 0) {
-        RuntimeApi::AclrtDestroyStream(stream_);
+        DlAclApi::AclrtDestroyStream(stream_);
         stream_ = nullptr;
         return ret;
     }
@@ -54,7 +54,7 @@ void MemEntityDefault::UnInitialize() noexcept
 {
     segment_.reset();
     dataOperator_.reset();
-    RuntimeApi::AclrtDestroyStream(stream_);
+    DlAclApi::AclrtDestroyStream(stream_);
     stream_ = nullptr;
 }
 
@@ -133,7 +133,7 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
 
 int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uint32_t count, uint32_t flags) noexcept
 {
-    auto ret = RuntimeApi::AclrtSetDevice(HybmGetInitDeviceId());
+    auto ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
     if (ret != BM_OK) {
         BM_LOG_ERROR("set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
         return BM_ERROR;
@@ -157,8 +157,8 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
     }
 
     uint64_t addr = HYBM_DEVICE_USER_CONTEXT_ADDR + id_ * HYBM_DEVICE_USER_CONTEXT_PRE_SIZE;
-    auto ret = RuntimeApi::AclrtMemcpy((void *)addr, HYBM_DEVICE_USER_CONTEXT_PRE_SIZE, context, size,
-                                       ACL_MEMCPY_HOST_TO_DEVICE);
+    auto ret = DlAclApi::AclrtMemcpy((void *)addr, HYBM_DEVICE_USER_CONTEXT_PRE_SIZE, context, size,
+                                     ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("memcpy user context failed, ret: " << ret);
         return BM_ERROR;
@@ -168,8 +168,8 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
     SetHybmDeviceInfo(info);
     info.extraContextSize = size;
     addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    ret = RuntimeApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
-                                  ACL_MEMCPY_HOST_TO_DEVICE);
+    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+                                ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("update hybm info memory failed, ret: " << ret);
         return BM_ERROR;
@@ -183,8 +183,8 @@ int32_t MemEntityDefault::Start(uint32_t flags) noexcept
     SetHybmDeviceInfo(info);
 
     uint64_t addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    auto ret = RuntimeApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
-                                       ACL_MEMCPY_HOST_TO_DEVICE);
+    auto ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+                                     ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("memcpy hybm info memory failed, ret: " << ret);
         return BM_ERROR;

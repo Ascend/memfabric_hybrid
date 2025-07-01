@@ -3,7 +3,9 @@
  */
 #include <cstring>
 #include <iomanip>
-#include "runtime_api.h"
+#include "dl_api.h"
+#include "dl_hal_api.h"
+#include "dl_acl_api.h"
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_devide_mem_segment.h"
@@ -37,7 +39,7 @@ Result MemSegmentDevice::PrepareVirtualMemory(uint32_t rankNo, uint32_t rankCnt,
 
     void *base = nullptr;
     totalVirtualSize_ = rankCnt * options_.size;
-    auto ret = RuntimeApi::HalGvaReserveMemory(&base, totalVirtualSize_, deviceId_, 0ULL);
+    auto ret = DlHalApi::HalGvaReserveMemory(&base, totalVirtualSize_, deviceId_, 0ULL);
     if (ret != 0 || base == nullptr) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -61,7 +63,7 @@ Result MemSegmentDevice::AllocMemory(uint64_t size, std::shared_ptr<MemSlice> &s
     }
 
     auto localVirtualBase = globalVirtualAddress_ + options_.size * rankIndex_;
-    auto ret = RuntimeApi::HalGvaAlloc((void *)(localVirtualBase + allocatedSize_), size, 0);
+    auto ret = DlHalApi::HalGvaAlloc((void *)(localVirtualBase + allocatedSize_), size, 0);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -104,8 +106,8 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     }
 
     HbmExportInfo info{};
-    auto ret = RuntimeApi::RtIpcSetMemoryName((void *)(ptrdiff_t)slice->vAddress_, slice->size_, info.shmName,
-                                              sizeof(info.shmName));
+    auto ret = DlAclApi::RtIpcSetMemoryName((void *)(ptrdiff_t)slice->vAddress_, slice->size_, info.shmName,
+                                            sizeof(info.shmName));
     if (ret != 0) {
         BM_LOG_ERROR("set memory name failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -127,7 +129,7 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     ret = LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
-        RuntimeApi::RtIpcDestroyMemoryName(info.shmName);
+        DlAclApi::RtIpcDestroyMemoryName(info.shmName);
         return BM_ERROR;
     }
 
@@ -167,7 +169,7 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
         }
 
         if (deserializedInfos[i].deviceId != deviceId_) {
-            auto ret = RuntimeApi::AclrtDeviceEnablePeerAccess(deserializedInfos[i].deviceId, 0);
+            auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(deserializedInfos[i].deviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                     << " remote_device:" << (int)deserializedInfos[i].deviceId);
@@ -175,8 +177,8 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
             }
         }
 
-        auto ret = RuntimeApi::RtSetIpcMemorySuperPodPid(deserializedInfos[localIdx].shmName,
-                                                         deserializedInfos[i].sdid, &deserializedInfos[i].pid, 1);
+        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(deserializedInfos[localIdx].shmName,
+                                                       deserializedInfos[i].sdid, &deserializedInfos[i].pid, 1);
         if (ret != 0) {
             BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret 
                 << ", local rank = " << rankIndex_ << ", shmName=" << deserializedInfos[localIdx].shmName);
@@ -207,7 +209,7 @@ Result MemSegmentDevice::Mmap() noexcept
 
         BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
                                             << ", size = " << im.size);
-        auto ret = RuntimeApi::HalGvaOpen((void *)remoteAddress, im.shmName, im.size, 0);
+        auto ret = DlHalApi::HalGvaOpen((void *)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
             return -1;
@@ -220,13 +222,13 @@ Result MemSegmentDevice::Mmap() noexcept
 
 Result MemSegmentDevice::Start() noexcept
 {
-    return 0;
+    return BM_OK;
 }
 
 Result MemSegmentDevice::Stop() noexcept
 {
     for (auto va : mappedMem_) {
-        (void)RuntimeApi::HalGvaClose((void *)va, 0);
+        (void)DlHalApi::HalGvaClose((void *)va, 0);
     }
     mappedMem_.clear();
 
@@ -245,7 +247,7 @@ Result MemSegmentDevice::Leave(uint32_t rank) noexcept
     auto it = mappedMem_.lower_bound(addr);
     auto st = it;
     while (it != mappedMem_.end() && (*it) < addr + options_.size) {
-        (void)RuntimeApi::HalGvaClose((void *)(*it), 0);
+        (void)DlHalApi::HalGvaClose((void *)(*it), 0);
         it++;
     }
 
@@ -302,7 +304,7 @@ int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
     }
 
     uint32_t tgid = 0;
-    auto ret = RuntimeApi::RtDeviceGetBareTgid(&tgid);
+    auto ret = DlAclApi::RtDeviceGetBareTgid(&tgid);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get bare tgid failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -310,7 +312,7 @@ int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
 
     constexpr auto sdidInfo = 26;
     int64_t value = 0;
-    ret = RuntimeApi::RtGetDeviceInfo(deviceId, 0, sdidInfo, &value);
+    ret = DlAclApi::RtGetDeviceInfo(deviceId, 0, sdidInfo, &value);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get sdid failed: " << ret);
         return BM_DL_FUNCTION_FAILED;

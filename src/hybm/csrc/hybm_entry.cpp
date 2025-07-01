@@ -11,7 +11,9 @@
 
 #include "hybm_version.h"
 #include "hybm_common_include.h"
-#include "runtime_api.h"
+#include "under_api/dl_api.h"
+#include "under_api/dl_acl_api.h"
+#include "under_api/dl_hal_api.h"
 #include "hybm.h"
 
 using namespace ock::mf;
@@ -215,13 +217,13 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     }
 
     auto libPath = std::string(path).append("/lib64");
-    auto ret = RuntimeApi::LoadLibrary(libPath);
+    auto ret = DlApi::LoadLibrary(libPath);
     if (ret != 0) {
         BM_LOG_ERROR("load library from path : " << libPath << " failed: " << ret);
         return ret;
     }
 
-    ret = RuntimeApi::AclrtSetDevice(deviceId);
+    ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
         return BM_ERROR;
@@ -229,15 +231,15 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE;  // 申请meta空间
-    ret = RuntimeApi::HalGvaReserveMemory(&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
+    ret = DlHalApi::HalGvaReserveMemory(&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
     if (ret != 0) {
         BM_LOG_ERROR("initialize mete memory with size: " << allocSize << ", flag: " << flags << " failed: " << ret);
         return -1;
     }
 
-    ret = RuntimeApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
+    ret = DlHalApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
     if (ret != BM_OK) {
-        (void)RuntimeApi::HalGvaUnreserveMemory();
+        (void)DlHalApi::HalGvaUnreserveMemory();
         BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret);
         return BM_MALLOC_FAILED;
     }
@@ -260,7 +262,7 @@ HYBM_API void hybm_uninit()
         return;
     }
 
-    auto ret = RuntimeApi::HalGvaUnreserveMemory();
+    auto ret = DlHalApi::HalGvaUnreserveMemory();
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     initialized = 0;
 }
