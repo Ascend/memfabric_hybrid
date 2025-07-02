@@ -50,7 +50,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
             break;
         }
 
-        slice = hybm_alloc_local_memory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
+        slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
         if (slice == nullptr) {
             SM_LOG_ERROR("alloc local mem failed, size: " << options.singleRankVASpace);
             ret = SM_ERROR;
@@ -61,12 +61,6 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         ret = hybm_export(entity, slice, flags, &exInfo_);
         if (ret != 0) {
             SM_LOG_ERROR("hybm export failed, result: " << ret);
-            break;
-        }
-
-        ret = hybm_start(entity, flags);
-        if (ret != 0) {
-            SM_LOG_ERROR("hybm start failed, result: " << ret);
             break;
         }
     } while (0);
@@ -115,12 +109,6 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = hybm_join(entity_, rk, 0);
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm join failed, result: " << ret);
-        return SM_ERROR;
-    }
-
     // TODO: rollback after join failed
     return SM_OK;
 }
@@ -129,7 +117,7 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
 {
     SM_LOG_INFO("do leave func, receive_rk: " << rk);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    auto ret = hybm_leave(entity_, rk, 0);
+    auto ret = hybm_remove_imported(entity_, rk, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm leave failed, result: " << ret);
         return SM_ERROR;
@@ -168,14 +156,14 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
         SM_PARAM_VALIDATE(!AddressInRange(dest, size), "dest address: " << dest << ", size: " << size << " invalid.",
                           SM_INVALID_PARAM);
-        direction = t == SMEMB_COPY_L2G ? HyBM_LOCAL_TO_SHARED : HyBM_DRAM_TO_SHARED;
+        direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
         SM_PARAM_VALIDATE(!AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
                           SM_INVALID_PARAM);
-        direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
+        direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
 
-    return hybm_data_copy(entity_, src, dest, size, direction, flags);
+    return hybm_data_copy(entity_, src, dest, size, direction, nullptr, flags);
 }
 
 Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
@@ -192,14 +180,14 @@ Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uin
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
         SM_PARAM_VALIDATE(!AddressInRange(dest, dpitch * (height - 1) + width), "dest address: " << dest << ", dpitch: "
                           << dpitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
-        direction = t == SMEMB_COPY_L2G ? HyBM_LOCAL_TO_SHARED : HyBM_DRAM_TO_SHARED;
+        direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
         SM_PARAM_VALIDATE(!AddressInRange(src,  spitch * (height - 1) + width), "src address: " << src << ", spitch: "
                           << spitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
-        direction = t == SMEMB_COPY_G2L ? HyBM_SHARED_TO_LOCAL : HyBM_SHARED_TO_DRAM;
+        direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
 
-    return hybm_data_copy_2d(entity_, src, spitch, dest, dpitch, width, height, direction, flags);
+    return hybm_data_copy_2d(entity_, src, spitch, dest, dpitch, width, height, direction, nullptr, flags);
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)

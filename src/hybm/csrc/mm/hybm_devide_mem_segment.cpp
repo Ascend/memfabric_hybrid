@@ -18,35 +18,28 @@ uint32_t MemSegmentDevice::sdid_{0};
 
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
-    if (options_.segType != HyBM_MST_HBM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
+    if (options_.segType != HYBM_MST_HBM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
         return BM_INVALID_PARAM;
     }
 
     return BM_OK;
 }
 
-Result MemSegmentDevice::PrepareVirtualMemory(uint32_t rankNo, uint32_t rankCnt, void **address) noexcept
+Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
 {
-    if (rankCount_ > 0) {
+    if (globalVirtualAddress_ != nullptr) {
         BM_LOG_ERROR("already prepare virtual memory.");
         return BM_ERROR;
     }
 
-    if (rankNo >= rankCnt) {
-        BM_LOG_ERROR("rank(" << rankNo << ") but total " << rankCnt);
-        return BM_INVALID_PARAM;
-    }
-
     void *base = nullptr;
-    totalVirtualSize_ = rankCnt * options_.size;
+    totalVirtualSize_ = options_.rankCnt * options_.size;
     auto ret = DlHalApi::HalGvaReserveMemory(&base, totalVirtualSize_, deviceId_, 0ULL);
     if (ret != 0 || base == nullptr) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
     }
 
-    rankIndex_ = rankNo;
-    rankCount_ = rankCnt;
     globalVirtualAddress_ = reinterpret_cast<uint8_t *>(base);
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
@@ -54,7 +47,7 @@ Result MemSegmentDevice::PrepareVirtualMemory(uint32_t rankNo, uint32_t rankCnt,
     return BM_OK;
 }
 
-Result MemSegmentDevice::AllocMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
     if ((size % DEVICE_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
         BM_LOG_ERROR("invalid allocate memory size : " << size << ", now used " << allocatedSize_ << " of "
@@ -62,7 +55,7 @@ Result MemSegmentDevice::AllocMemory(uint64_t size, std::shared_ptr<MemSlice> &s
         return BM_INVALID_PARAM;
     }
 
-    auto localVirtualBase = globalVirtualAddress_ + options_.size * rankIndex_;
+    auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
     auto ret = DlHalApi::HalGvaAlloc((void *)(localVirtualBase + allocatedSize_), size, 0);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
@@ -115,17 +108,17 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
 
     info.magic = EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
-    info.mappingOffset = slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * rankIndex_);
+    info.mappingOffset = slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.deviceId = deviceId_;
     info.pid = pid_;
-    info.rankId = rankIndex_;
+    info.rankId = options_.rankId;
     info.size = slice->size_;
     info.entityId = entityId_;
     info.sdid = sdid_;
     info.pageTblType = MEM_PT_TYPE_SVM;
-    info.memSegType = HyBM_MST_HBM;
-    info.exchangeType = HyBM_INFO_EXG_IN_NODE;
+    info.memSegType = HYBM_MST_HBM;
+    info.exchangeType = HYBM_INFO_EXG_IN_NODE;
     ret = LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
@@ -157,14 +150,14 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
             return BM_INVALID_PARAM;
         }
 
-        if (deserializedInfos[i].rankId == rankIndex_) {
+        if (deserializedInfos[i].rankId == options_.rankId) {
             localIdx = i;
         }
     }
     BM_ASSERT_RETURN(localIdx < deserializedInfos.size(), BM_INVALID_PARAM);
 
     for (auto i = 0U; i < deserializedInfos.size(); i++) {
-        if (deserializedInfos[i].rankId == rankIndex_) {
+        if (deserializedInfos[i].rankId == options_.rankId) {
             continue;
         }
 
@@ -181,7 +174,7 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
                                                        deserializedInfos[i].sdid, &deserializedInfos[i].pid, 1);
         if (ret != 0) {
             BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret 
-                << ", local rank = " << rankIndex_ << ", shmName=" << deserializedInfos[localIdx].shmName);
+                << ", local rank = " << options_.rankId << ", shmName=" << deserializedInfos[localIdx].shmName);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -197,7 +190,7 @@ Result MemSegmentDevice::Mmap() noexcept
     }
 
     for (auto &im : imports_) {
-        if (im.rankId == rankIndex_) {
+        if (im.rankId == options_.rankId) {
             continue;
         }
 
@@ -220,12 +213,7 @@ Result MemSegmentDevice::Mmap() noexcept
     return BM_OK;
 }
 
-Result MemSegmentDevice::Start() noexcept
-{
-    return BM_OK;
-}
-
-Result MemSegmentDevice::Stop() noexcept
+Result MemSegmentDevice::Unmap() noexcept
 {
     for (auto va : mappedMem_) {
         (void)DlHalApi::HalGvaClose((void *)va, 0);
@@ -236,23 +224,27 @@ Result MemSegmentDevice::Stop() noexcept
     return 0;
 }
 
-Result MemSegmentDevice::Join(uint32_t rank) noexcept
+Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
 {
-    return 0;
-}
-
-Result MemSegmentDevice::Leave(uint32_t rank) noexcept
-{
-    uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.size * rank;
-    auto it = mappedMem_.lower_bound(addr);
-    auto st = it;
-    while (it != mappedMem_.end() && (*it) < addr + options_.size) {
-        (void)DlHalApi::HalGvaClose((void *)(*it), 0);
-        it++;
+    for (auto &rank : ranks) {
+        if (rank >= options_.rankCnt) {
+            BM_LOG_ERROR("input rank is invalid! rank:" << rank << " rankSize:" << options_.rankCnt);
+            return BM_INVALID_PARAM;
+        }
     }
 
-    if (st != it) {
-        mappedMem_.erase(st, it);
+    for (auto &rank : ranks) {
+        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.size * rank;
+        auto it = mappedMem_.lower_bound(addr);
+        auto st = it;
+        while (it != mappedMem_.end() && (*it) < addr + options_.size) {
+            (void) DlHalApi::HalGvaClose((void *) (*it), 0);
+            it++;
+        }
+
+        if (st != it) {
+            mappedMem_.erase(st, it);
+        }
     }
     return 0;
 }

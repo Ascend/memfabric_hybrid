@@ -39,25 +39,27 @@ enum MemAddrType : uint8_t {
 };
 
 enum MemSegType : uint8_t {
-    HyBM_MST_HBM = 0,
-    HyBM_MST_DRAM,
+    HYBM_MST_HBM = 0,
+    HYBM_MST_DRAM,
 
-    HyBM_MST_BUTT
+    HYBM_MST_BUTT
 };
 
 enum MemSegInfoExchangeType : uint8_t {
-    HyBM_INFO_EXG_IN_NODE,
-    HyBM_INFO_EXG_CROSS_NODE_HCCS,
-    HyBM_INFO_EXG_CROSS_NODE_SDMA,
+    HYBM_INFO_EXG_IN_NODE,
+    HYBM_INFO_EXG_CROSS_NODE_HCCS,
+    HYBM_INFO_EXG_CROSS_NODE_SDMA,
 
-    HyBM_INFO_EXG_BUTT
+    HYBM_INFO_EXG_BUTT
 };
 
 struct MemSegmentOptions {
-    int32_t id = 0;
-    MemSegType segType = HyBM_MST_HBM;
-    MemSegInfoExchangeType infoExType = HyBM_INFO_EXG_IN_NODE;
+    int32_t segId = 0;
+    MemSegType segType = HYBM_MST_HBM;
+    MemSegInfoExchangeType infoExType = HYBM_INFO_EXG_IN_NODE;
     uint64_t size = 0;
+    uint32_t rankId = 0;  // must start from 0 and increase continuously
+    uint32_t rankCnt = 0;  // total rank count
 };
 }
 }

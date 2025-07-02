@@ -94,7 +94,7 @@ int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hyb
 int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
 
 /**
- * @brief mmap memory which is imported
+ * @brief mmap all memory which is imported
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param flags            [in] optional flags, default value 0
@@ -103,24 +103,14 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
 int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
 
 /**
- * @brief join one rank after start
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param rank             [in] join rank
- * @param flags            [in] optional flags, default value 0
- * @return 0 if successful, error code if failed
- */
-int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags);
-
-/**
- * @brief leave one rank after start
+ * @brief remove one rank after imported
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param rank             [in] leave rank
  * @param flags            [in] optional flags, default value 0
  * @return 0 if successful, error code if failed
  */
-int32_t hybm_leave(hybm_entity_t e, uint32_t rank, uint32_t flags);
+int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
 
 /**
  * @brief write user extra context into the fixed addr of the hbm
@@ -133,21 +123,12 @@ int32_t hybm_leave(hybm_entity_t e, uint32_t rank, uint32_t flags);
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
 
 /**
- * @brief Start the entity, for example threads for RoCE, SDMA related threads
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param flags            [in] optional flags, default value 0
- * @return 0 if successful
- */
-int32_t hybm_start(hybm_entity_t e, uint32_t flags);
-
-/**
- * @brief Stop the entity
+ * @brief unmap the entity
  *
  * @param e                 [in] entity created by hybm_create_entity
  * @param flags             [in] optional flags, default value 0
  */
-void hybm_stop(hybm_entity_t e, uint32_t flags);
+void hybm_unmap(hybm_entity_t e, uint32_t flags);
 
 #ifdef __cplusplus
 }

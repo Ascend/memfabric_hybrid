@@ -95,18 +95,13 @@ HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
     return entity->Mmap();
 }
 
-HYBM_API int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags)
+HYBM_API int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags)
 {
     auto entity = (MemEntity *)e;
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    return entity->Join(rank);
-}
 
-HYBM_API int32_t hybm_leave(hybm_entity_t e, uint32_t rank, uint32_t flags)
-{
-    auto entity = (MemEntity *)e;
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    return entity->Leave(rank);
+    std::vector<uint32_t> ranks = { rank };
+    return entity->RemoveImported(ranks);
 }
 
 HYBM_API int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size)
@@ -116,16 +111,9 @@ HYBM_API int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, ui
     return entity->SetExtraContext(context, size);
 }
 
-HYBM_API int32_t hybm_start(hybm_entity_t e, uint32_t flags)
-{
-    auto entity = (MemEntity *)e;
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    return entity->Start(flags);
-}
-
-HYBM_API void hybm_stop(hybm_entity_t e, uint32_t flags)
+HYBM_API void hybm_unmap(hybm_entity_t e, uint32_t flags)
 {
     auto entity = (MemEntity *)e;
     BM_ASSERT_RET_VOID(entity != nullptr);
-    entity->Stop();
+    entity->Unmap();
 }

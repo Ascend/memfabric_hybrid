@@ -109,12 +109,7 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
     return 0;
 }
 
-int32_t hybm_start(hybm_entity_t e, uint32_t flags)
-{
-    return 0;
-}
-
-void hybm_stop(hybm_entity_t e, uint32_t flags)
+void hybm_unmap(hybm_entity_t e, uint32_t flags)
 {
     return;
 }
@@ -124,12 +119,7 @@ int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
     return 0;
 }
 
-int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags)
-{
-    return 0;
-}
-
-int32_t hybm_leave(hybm_entity_t e, uint32_t rank, uint32_t flags)
+int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags)
 {
     return 0;
 }
@@ -140,14 +130,14 @@ int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t si
 }
 
 int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
-                       uint32_t flags)
+                       void *stream, uint32_t flags)
 {
     return 0;
 }
 
 int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t spitch,
                           void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
-                          hybm_data_copy_direction direction, uint32_t flags)
+                          hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
     return 0;
 }

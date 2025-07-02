@@ -17,7 +17,7 @@ using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
 class MemSegment {
 public:
-    static MemSegmentPtr Create(MemSegType segType, const MemSegmentOptions &options, int entityId);
+    static MemSegmentPtr Create(const MemSegmentOptions &options, int entityId);
 
 public:
     explicit MemSegment(const MemSegmentOptions &options, int eid) : options_{options}, entityId_{eid} {}
@@ -28,13 +28,13 @@ public:
      */
     virtual Result ValidateOptions() noexcept = 0;
 
-    virtual Result PrepareVirtualMemory(uint32_t rankNo, uint32_t rankCnt, void **address) noexcept = 0;
+    virtual Result ReserveMemorySpace(void **address) noexcept = 0;
 
     /*
      * Allocate memory according to segType
      * @return 0 if successful
      */
-    virtual Result AllocMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
+    virtual Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
 
     /*
      * Export exchange info according to infoExType
@@ -50,18 +50,30 @@ public:
      */
     virtual Result Import(const std::vector<std::string> &allExInfo) noexcept = 0;
 
+    /*
+     * delete imported memory area according to rankid
+     * @return 0 if successful
+     */
+    virtual Result RemoveImported(const std::vector<uint32_t>& ranks) noexcept = 0;
+
+    /*
+     * @brief after Import exchange info, should call this func to make it work
+     * @return 0 if successful
+     */
     virtual Result Mmap() noexcept = 0;
 
-    virtual Result Start() noexcept = 0;
-
-    virtual Result Stop() noexcept = 0;
-
-    virtual Result Join(uint32_t rank) noexcept = 0;
-
-    virtual Result Leave(uint32_t rank) noexcept = 0;
+    /*
+     * After remove imported exchange info, should call this func to make it work
+     * @return 0 if successful
+     */
+    virtual Result Unmap() noexcept = 0;
 
     virtual std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept = 0;
 
+    /*
+     * check memery area in this segment
+     * @return true if in range
+     */
     virtual bool MemoryInRange(const void *begin, uint64_t size) const noexcept = 0;
 
 protected:

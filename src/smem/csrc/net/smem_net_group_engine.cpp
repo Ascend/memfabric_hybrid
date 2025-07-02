@@ -40,7 +40,7 @@ SmemNetGroupEngine::~SmemNetGroupEngine()
     }
 }
 
-SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr& store, const SmemGroupOption &option)
+SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr &store, const SmemGroupOption &option)
 {
     std::string prefix = (option.dynamic ? "D_" : "S_");
     StorePtr ss = StoreFactory::PrefixStore(store, prefix);

@@ -94,7 +94,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        slice = hybm_alloc_local_memory(entity, HyBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
+        slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_DEVICE, options.singleRankVASpace, flags);
         if (slice == nullptr) {
             SM_LOG_ERROR("alloc local mem failed, size: " << options.singleRankVASpace);
             ret = SM_ERROR;
@@ -132,12 +132,6 @@ Result SmemShmEntry::Initialize(hybm_options &options)
         ret = hybm_mmap(entity, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm mmap failed, result: " << ret);
-            break;
-        }
-
-        ret = hybm_start(entity, flags);
-        if (ret != 0) {
-            SM_LOG_ERROR("hybm start failed, result: " << ret);
             break;
         }
     } while (0);

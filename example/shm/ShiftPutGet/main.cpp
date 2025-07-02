@@ -13,7 +13,7 @@
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
 
-extern void shm_all_shift_do(void* stream, uint8_t* gva, int64_t *localInput);
+extern void shm_all_shift_do(void *stream, uint8_t *gva, int64_t *localInput);
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;

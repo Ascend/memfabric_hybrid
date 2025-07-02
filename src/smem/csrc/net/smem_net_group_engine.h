@@ -43,10 +43,10 @@ struct GroupListenContext {
 
 class SmemNetGroupEngine : public SmReferable {
 public:
-    static SmemGroupEnginePtr Create(const StorePtr& store, const SmemGroupOption &option);
+    static SmemGroupEnginePtr Create(const StorePtr &store, const SmemGroupOption &option);
 
 public:
-    SmemNetGroupEngine(const StorePtr& store, const SmemGroupOption &option) : store_(store), option_(option)
+    SmemNetGroupEngine(const StorePtr &store, const SmemGroupOption &option) : store_(store), option_(option)
     {
         joined_ = !option_.dynamic;
         if (option_.dynamic) {

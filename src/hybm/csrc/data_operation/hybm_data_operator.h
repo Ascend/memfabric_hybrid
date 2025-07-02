@@ -9,23 +9,22 @@
 
 namespace ock {
 namespace mf {
-enum DataOpDirection {
-    DOP_L2S = HyBM_LOCAL_TO_SHARED,
-    DOP_S2L = HyBM_SHARED_TO_LOCAL,
-    DOP_H2S = HyBM_DRAM_TO_SHARED,
-    DOP_S2H = HyBM_SHARED_TO_DRAM,
-    DOP_S2S = HyBM_SHARED_TO_SHARED,
-
-    DOP_BUTT = HyBM_DATA_COPY_DIRECTION_BUTT
-};
 
 class DataOperator {
 public:
-public:
-    virtual int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, DataOpDirection direction,
+    virtual int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction, void *stream,
         uint32_t flags) noexcept = 0;
-    virtual int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                               uint64_t width, uint64_t height, DataOpDirection direction, uint32_t flags) noexcept = 0;
+    virtual int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch, uint64_t width,
+                               uint64_t height, hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept = 0;
+
+    /*
+     * 异步data copy
+     * @return 0 if successful, > 0 is wait id, < 0 is error
+     */
+    virtual int32_t DataCopyAsync(const void* srcVA, void* destVA, uint64_t length, hybm_data_copy_direction direction,
+                                  void *stream, uint32_t flags) noexcept = 0;
+
+    virtual int32_t Wait(int32_t waitId) noexcept = 0;
 
     virtual ~DataOperator() = default;
 };

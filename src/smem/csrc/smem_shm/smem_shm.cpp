@@ -35,10 +35,10 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     }
 
     hybm_options options;
-    options.bmType = HyBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HyBM_DOP_TYPE_MTE;
-    options.bmScope = HyBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HyBM_RANK_TYPE_STATIC;
+    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
+    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmScope = HYBM_SCOPE_CROSS_NODE;
+    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = rankSize;
     options.rankId = rankId;
     options.singleRankVASpace = symmetricSize;

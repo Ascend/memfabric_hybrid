@@ -19,11 +19,12 @@ extern "C" {
  * @param dest             [in] pointer to copy destination memory area.
  * @param count            [in] copy memory size in bytes.
  * @param direction        [in] copy direction.
+ * @param stream           [in] copy used stream (use default stream if stream == NULL)
  * @param flags            [in] optional flags, default value 0.
  * @return 0 if reserved successful
  */
 int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
-                       uint32_t flags);
+                       void *stream, uint32_t flags);
 
 /**
  * @brief copies <i>count</i> bytes from memory area <i>src</i> to memory area <i>dest</i>.
@@ -35,12 +36,13 @@ int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t coun
  * @param width            [in] width of matrix transfer
  * @param height           [in] height of matrix transfer
  * @param direction        [in] copy direction.
+ * @param stream           [in] copy used stream (use default stream if stream == NULL)
  * @param flags            [in] optional flags, default value 0.
  * @return 0 if reserved successful
  */
 int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t spitch,
                           void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
-                          hybm_data_copy_direction direction, uint32_t flags);
+                          hybm_data_copy_direction direction, void *stream, uint32_t flags);
 
 #ifdef __cplusplus
 }

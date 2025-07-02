@@ -37,9 +37,17 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     options_ = *options;
     MemSegmentOptions segmentOptions;
     segmentOptions.size = options_.singleRankVASpace;
-    segmentOptions.id = HybmGetInitDeviceId();
-    segment_ = MemSegment::Create(HyBM_MST_HBM, segmentOptions, id_);
-    ret = MemSegmentDevice::GetDeviceId(segmentOptions.id);
+    segmentOptions.segId = HybmGetInitDeviceId();
+    segmentOptions.segType = HYBM_MST_HBM;
+    segmentOptions.rankId = options_.rankId;
+    segmentOptions.rankCnt = options_.rankCount;
+
+    segment_ = MemSegment::Create(segmentOptions, id_);
+    if (segment_ == nullptr) {
+        return BM_INVALID_PARAM;
+    }
+
+    ret = MemSegmentDevice::GetDeviceId(segmentOptions.segId);
     if (ret != 0) {
         DlAclApi::AclrtDestroyStream(stream_);
         stream_ = nullptr;
@@ -60,7 +68,7 @@ void MemEntityDefault::UnInitialize() noexcept
 
 int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
 {
-    return segment_->PrepareVirtualMemory(options_.rankId, options_.rankCount, reservedMem);
+    return segment_->ReserveMemorySpace(reservedMem);
 }
 
 int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
@@ -76,13 +84,24 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
     }
 
     std::shared_ptr<MemSlice> realSlice;
-    auto ret = segment_->AllocMemory(size, realSlice);
+    auto ret = segment_->AllocLocalMemory(size, realSlice);
     if (ret != 0) {
         BM_LOG_ERROR("segment allocate slice with size: " << size << " failed: " << ret);
         return ret;
     }
 
     slice = realSlice->ConvertToId();
+
+    HybmDeviceMeta info;
+    SetHybmDeviceInfo(info);
+
+    uint64_t addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
+    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+                                ACL_MEMCPY_HOST_TO_DEVICE);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("memcpy hybm info memory failed, ret: " << ret);
+        return BM_ERROR;
+    }
     return BM_OK;
 }
 
@@ -177,25 +196,9 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
     return BM_OK;
 }
 
-int32_t MemEntityDefault::Start(uint32_t flags) noexcept
+void MemEntityDefault::Unmap() noexcept
 {
-    HybmDeviceMeta info;
-    SetHybmDeviceInfo(info);
-
-    uint64_t addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    auto ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
-                                     ACL_MEMCPY_HOST_TO_DEVICE);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("memcpy hybm info memory failed, ret: " << ret);
-        return BM_ERROR;
-    }
-
-    return segment_->Start();
-}
-
-void MemEntityDefault::Stop() noexcept
-{
-    segment_->Stop();
+    segment_->Unmap();
 }
 
 int32_t MemEntityDefault::Mmap() noexcept
@@ -203,39 +206,25 @@ int32_t MemEntityDefault::Mmap() noexcept
     return segment_->Mmap();
 }
 
-int32_t MemEntityDefault::Join(uint32_t rank) noexcept
+int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
 {
-    if (rank >= options_.rankCount) {
-        BM_LOG_ERROR("input rank is invalid! rank:" << rank << " rankSize:" << options_.rankCount);
-        return BM_INVALID_PARAM;
-    }
-
-    return segment_->Join(rank);
-}
-
-int32_t MemEntityDefault::Leave(uint32_t rank) noexcept
-{
-    if (rank >= options_.rankCount) {
-        BM_LOG_ERROR("input rank is invalid! rank:" << rank << " rankSize:" << options_.rankCount);
-        return BM_INVALID_PARAM;
-    }
-
-    return segment_->Leave(rank);
+    return segment_->RemoveImported(ranks);
 }
 
 int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
-                                   uint32_t flags) noexcept
+                                   void *stream, uint32_t flags) noexcept
 {
     if (dataOperator_ == nullptr) {
         BM_LOG_ERROR("memory entity not initialized.");
         return BM_ERROR;
     }
 
-    return dataOperator_->DataCopy(src, dest, length, static_cast<DataOpDirection>(direction), flags);
+    return dataOperator_->DataCopy(src, dest, length, direction, stream, flags);
 }
 
 int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
-                                     uint64_t height,  hybm_data_copy_direction direction, uint32_t flags) noexcept
+                                     uint64_t height,  hybm_data_copy_direction direction,
+                                     void *stream, uint32_t flags) noexcept
 {
     if (dataOperator_ == nullptr) {
         BM_LOG_ERROR("memory entity not initialized.");
@@ -243,7 +232,7 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
     }
 
     return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height,
-                                     static_cast<DataOpDirection>(direction), flags);
+                                     direction, stream, flags);
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept

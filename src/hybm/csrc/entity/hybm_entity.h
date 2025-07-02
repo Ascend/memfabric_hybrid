@@ -5,6 +5,7 @@
 #define __MF_HYBRID_BM_H__
 
 #include <string>
+#include <vector>
 #include <type_traits>
 #include "hybm_big_mem.h"
 #include "hybm_common_include.h"
@@ -26,21 +27,19 @@ public:
     virtual int32_t ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
     virtual int32_t ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
     virtual int32_t ImportExchangeInfo(const hybm_exchange_info desc[], uint32_t count, uint32_t flags) noexcept = 0;
+    virtual int32_t RemoveImported(const std::vector<uint32_t>& ranks) noexcept = 0;
 
     virtual int32_t SetExtraContext(const void *context, uint32_t size) noexcept = 0;
 
-    virtual int32_t Start(uint32_t flags) noexcept = 0;
-    virtual void Stop() noexcept = 0;
-
+    virtual void Unmap() noexcept = 0;
     virtual int32_t Mmap() noexcept = 0;
-    virtual int32_t Join(uint32_t rank) noexcept = 0;
-    virtual int32_t Leave(uint32_t rank) noexcept = 0;
 
     virtual bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept = 0;
     virtual int32_t CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
-                             uint32_t flags) noexcept = 0;
+                             void *stream, uint32_t flags) noexcept = 0;
     virtual int32_t CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,  uint64_t width,
-                               uint64_t height, hybm_data_copy_direction direction, uint32_t flags) noexcept = 0;
+                               uint64_t height, hybm_data_copy_direction direction,
+                               void *stream, uint32_t flags) noexcept = 0;
 
     virtual ~MemEntity() noexcept = default;
 };

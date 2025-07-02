@@ -48,16 +48,14 @@ public:
     }
 
     Result ValidateOptions() noexcept override;
-    Result PrepareVirtualMemory(uint32_t rankNo, uint32_t rankCnt, void **address) noexcept override;
-    Result AllocMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
+    Result ReserveMemorySpace(void **address) noexcept override;
+    Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
     Result Export(std::string &exInfo) noexcept override;
     Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
     Result Import(const std::vector<std::string> &allExInfo) noexcept override;
+    Result RemoveImported(const std::vector<uint32_t>& ranks) noexcept override;
     Result Mmap() noexcept override;
-    Result Start() noexcept override;
-    Result Stop() noexcept override;
-    Result Join(uint32_t rank) noexcept override;
-    Result Leave(uint32_t rank) noexcept override;
+    Result Unmap() noexcept override;
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
 
@@ -68,10 +66,7 @@ private:
     void FreeMemory() noexcept;
 
 private:
-    uint32_t rankIndex_{0U};
-    uint32_t rankCount_{0U};
     uint8_t *globalVirtualAddress_{nullptr};
-    uint64_t shareId_;
     uint64_t totalVirtualSize_{0UL};
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};

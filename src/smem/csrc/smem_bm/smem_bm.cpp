@@ -93,10 +93,10 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = HyBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HyBM_DOP_TYPE_MTE;
-    options.bmScope = HyBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HyBM_RANK_TYPE_STATIC;
+    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
+    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmScope = HYBM_SCOPE_CROSS_NODE;
+    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.singleRankVASpace = localHBMSize;
