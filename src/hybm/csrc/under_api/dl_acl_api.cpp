@@ -74,5 +74,37 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     gLoaded = true;
     return BM_OK;
 }
+
+void DlAclApi::CleanupLibrary()
+{
+    std::lock_guard<std::mutex> guard(gMutex);
+    if (!gLoaded) {
+        return;
+    }
+
+    pAclrtGetDevice = nullptr;
+    pAclrtSetDevice = nullptr;
+    pAclrtDeviceEnablePeerAccess = nullptr;
+    pAclrtCreateStream = nullptr;
+    pAclrtDestroyStream = nullptr;
+    pAclrtSynchronizeStream = nullptr;
+    pAclrtMalloc = nullptr;
+    pAclrtFree = nullptr;
+    pAclrtMemcpy = nullptr;
+    pAclrtMemcpyAsync = nullptr;
+    pAclrtMemcpy2d = nullptr;
+    pAclrtMemcpy2dAsync = nullptr;
+    pAclrtMemset = nullptr;
+    pRtDeviceGetBareTgid = nullptr;
+    pRtGetDeviceInfo = nullptr;
+    pRtSetIpcMemorySuperPodPid = nullptr;
+    pRtIpcDestroyMemoryName = nullptr;
+    pRtIpcSetMemoryName = nullptr;
+
+    if (rtHandle != nullptr) {
+        dlclose(rtHandle);
+        rtHandle = nullptr;
+    }
+}
 }
 }

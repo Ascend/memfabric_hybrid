@@ -17,10 +17,18 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
 
     result = DlHalApi::LoadLibrary();
     if (result != BM_OK) {
+        DlAclApi::CleanupLibrary();
         return result;
     }
 
     return BM_OK;
 }
+
+void DlApi::CleanupLibrary()
+{
+    DlAclApi::CleanupLibrary();
+    DlHalApi::CleanupLibrary();
+}
+
 }
 }

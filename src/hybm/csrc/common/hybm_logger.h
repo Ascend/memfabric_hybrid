@@ -148,6 +148,15 @@ private:
         }                                        \
     } while (0)
 
+#define BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, msg) \
+    do {                                              \
+        auto innerResult = (result);                  \
+        if (UNLIKELY(innerResult != 0)) {             \
+            BM_LOG_ERROR(msg);                        \
+            return innerResult;                       \
+        }                                             \
+    } while (0)
+
 #define BM_ASSERT(ARGS)                          \
     do {                                         \
         if (__builtin_expect(!(ARGS), 0) != 0) { \

@@ -19,6 +19,7 @@ using halGvaCloseFun = int32_t (*)(void *, uint64_t);
 class DlHalApi {
 public:
     static Result LoadLibrary();
+    static void CleanupLibrary();
 
     static inline Result HalGvaReserveMemory(void **address, size_t size, int32_t deviceId, uint64_t flags)
     {

@@ -48,5 +48,25 @@ Result DlHalApi::LoadLibrary()
     gLoaded = true;
     return BM_OK;
 }
+
+void DlHalApi::CleanupLibrary()
+{
+    std::lock_guard<std::mutex> guard(gMutex);
+    if (!gLoaded) {
+        return;
+    }
+
+    pHalGvaReserveMemory = nullptr;
+    pHalGvaUnreserveMemory = nullptr;
+    pHalGvaAlloc = nullptr;
+    pHalGvaFree = nullptr;
+    pHalGvaOpen = nullptr;
+    pHalGvaClose = nullptr;
+
+    if (halHandle != nullptr) {
+        dlclose(halHandle);
+        halHandle = nullptr;
+    }
+}
 }
 }

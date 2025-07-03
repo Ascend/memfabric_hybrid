@@ -218,13 +218,11 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     auto libPath = std::string(path).append("/lib64");
     auto ret = DlApi::LoadLibrary(libPath);
-    if (ret != 0) {
-        BM_LOG_ERROR("load library from path : " << libPath << " failed: " << ret);
-        return ret;
-    }
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path: " << libPath << " failed: " << ret);
 
     ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {
+        DlApi::CleanupLibrary();
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
         return BM_ERROR;
     }
@@ -233,12 +231,14 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     size_t allocSize = HYBM_DEVICE_INFO_SIZE;  // 申请meta空间
     ret = DlHalApi::HalGvaReserveMemory(&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
     if (ret != 0) {
+        DlApi::CleanupLibrary();
         BM_LOG_ERROR("initialize mete memory with size: " << allocSize << ", flag: " << flags << " failed: " << ret);
         return -1;
     }
 
     ret = DlHalApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
     if (ret != BM_OK) {
+        DlApi::CleanupLibrary();
         (void)DlHalApi::HalGvaUnreserveMemory();
         BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret);
         return BM_MALLOC_FAILED;
@@ -262,6 +262,7 @@ HYBM_API void hybm_uninit()
         return;
     }
 
+    DlApi::CleanupLibrary();
     auto ret = DlHalApi::HalGvaUnreserveMemory();
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     initialized = 0;
@@ -285,7 +286,8 @@ HYBM_API int32_t hybm_set_log_level(int level)
         return -1;
     }
 
-    if (level >= BUTT_LEVEL) {
+    if (level < 0 || level >= BUTT_LEVEL) {
+        BM_LOG_ERROR("Set log level error, invalid param level: " << level);
         return -1;
     }
 

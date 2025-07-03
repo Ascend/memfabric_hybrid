@@ -13,6 +13,7 @@ namespace mf {
 class DlApi {
 public:
     static Result LoadLibrary(const std::string &libDirPath);
+    static void CleanupLibrary();
 };
 }
 }

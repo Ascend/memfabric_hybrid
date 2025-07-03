@@ -32,6 +32,7 @@ using rtIpcDestroyMemoryNameFunc = int32_t (*)(const char *);
 class DlAclApi {
 public:
     static Result LoadLibrary(const std::string &libDirPath);
+    static void CleanupLibrary();
 
     static inline Result AclrtSetDevice(int32_t deviceId)
     {
