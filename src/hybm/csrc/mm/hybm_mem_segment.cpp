@@ -20,10 +20,10 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
             tmpSeg = std::make_shared<MemSegmentDevice>(options, entityId);
             break;
         case HYBM_MST_DRAM:
-            BM_LOG_WARN("Un-supported memory seg type " << options.segType);
+            BM_LOG_WARN("Un-supported memory seg type " << int(options.segType));
             break;
         default:
-            BM_LOG_ERROR("Invalid memory seg type " << options.segType);
+            BM_LOG_ERROR("Invalid memory seg type " << int(options.segType));
     }
     return tmpSeg;
 }

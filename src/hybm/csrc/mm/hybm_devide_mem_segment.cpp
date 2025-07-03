@@ -81,6 +81,11 @@ Result MemSegmentDevice::Export(std::string &exInfo) noexcept
 // export不可重入
 Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
 {
+    if (slice == nullptr) {
+        BM_LOG_ERROR("input slice is nullptr");
+        return BM_INVALID_PARAM;
+    }
+
     auto pos = slices_.find(slice->index_);
     if (pos == slices_.end()) {
         BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
