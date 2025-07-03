@@ -90,6 +90,7 @@ Result ExtractTcpURL(const std::string &url, std::map<std::string, std::string> 
 
     /* get ip mask */
     tmpUrl = splits[0];
+    splits.clear();
     Split(tmpUrl, "/", splits);
     if (splits.size() != UN2) {
         return SM_INVALID_PARAM;

@@ -2,6 +2,9 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <algorithm>
+#include <cerrno>
+#include <cctype>
+#include <climits>
 #include "smem_net_group_engine.h"
 #include "smem_store_factory.h"
 
@@ -211,6 +214,24 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     return SM_OK;
 }
 
+bool SmemNetGroupEngine::IsDigit(const std::string& str)
+{
+    if (str.empty()) {
+        return false;
+    }
+    size_t start = str.find_first_not_of(" \t");
+    if (start == std::string::npos) {
+        return false;
+    }
+
+    for (size_t i = start; i < str.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(str[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void SmemNetGroupEngine::GroupListenEvent()
 {
     std::string getVal;
@@ -252,6 +273,10 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         char opt = getVal[0];
+        if (!IsDigit(getVal.substr(1))) {
+            SM_LOG_WARN("value is not digit");
+            continue;
+        }
         uint32_t rk = strtol(getVal.c_str() + 1, nullptr, 10);
         if (getVal == prevEvent) {
             continue;
@@ -263,7 +288,10 @@ void SmemNetGroupEngine::GroupListenEvent()
             SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
             continue;
         }
-        // TODO: getVal不合法校验
+        if (!IsDigit(getVal)) {
+            SM_LOG_WARN("value is not digit");
+            continue;
+        }
         int64_t tmpVal = strtol(getVal.c_str(), nullptr, 10);
         SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " event_rk:" << rk << " event:" << opt);
         UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
@@ -287,7 +315,7 @@ void SmemNetGroupEngine::GroupListenEvent()
 void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const std::string &value)
 {
     if (result != SM_OK) {
-        // TODO
+        SM_LOG_AND_SET_LAST_ERROR("result: " << result);
         listenCtx_.ret = SM_ERROR;
     }
 

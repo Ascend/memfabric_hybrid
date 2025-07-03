@@ -70,6 +70,7 @@ public:
     uint32_t GetRankSize() const;
 
 private:
+    bool IsDigit(const std::string& str);
     void GroupListenEvent();
     void UpdateGroupVersion(int32_t ver);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
