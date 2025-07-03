@@ -39,6 +39,8 @@ else ()
 endif ()
 
 if(BUILD_TESTS STREQUAL "ON")
+    add_compile_options(-fprofile-arcs -ftest-coverage)
+    add_link_options(-lgcov --coverage)
     set(BUILD_OPEN_ABI "ON")
 endif()
 
