@@ -20,13 +20,10 @@ if("${MF_PATH}" STREQUAL "")
     message(FATAL_ERROR "memfabric_hybrid path not found!")
 endif()
 
-set(SMEM_INCLUDE_DIR ${MF_PATH}/aarch64-linux/include/smem/device/)
-
 ascendc_library(shm_shift_kernels SHARED ${CMAKE_CURRENT_LIST_DIR}/shm_all_shift.cpp)
 ascendc_include_directories(shm_shift_kernels
         PUBLIC
-        ${SMEM_INCLUDE_DIR}/lowlevel
-        ${SMEM_INCLUDE_DIR}/highlevel
+        ${MF_PATH}/aarch64-linux/include/smem/device/
 )
 
 add_executable(shm_example ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)

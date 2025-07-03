@@ -40,12 +40,12 @@ target_compile_options(smem_objects PRIVATE -fPIC)
 add_library(smem_static STATIC $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_static PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a hybmm_shared)
+target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a hybmm_static)
 
 add_library(smem_shared SHARED $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a hybmm_static)
+target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a hybmm_shared)
 
 if(BUILD_PYTHON STREQUAL "ON")
     add_subdirectory(python_wrapper)
@@ -53,16 +53,11 @@ endif()
 
 #install
 file(GLOB HEADER_FILES ../include/host/*.h)
-file(GLOB DEVICE_HEADER_FILES ../include/device/lowlevel/*.h)
-file(GLOB DEVICE_HEADER_FILES_HIGH ../include/device/highlevel/*.h)
+file(GLOB DEVICE_HEADER_FILES ../include/device/*.h)
 
 #install head files
 install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/host)
-install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/device/lowlevel)
-
-if(INSTALL_HIGH_LEVEL_API STREQUAL "ON")
-    install(FILES ${DEVICE_HEADER_FILES_HIGH} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/device/highlevel)
-endif()
+install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/device/)
 
 # install library
 install(TARGETS smem_shared

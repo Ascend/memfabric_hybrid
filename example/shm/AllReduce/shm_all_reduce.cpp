@@ -8,13 +8,38 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 #include "kernel_operator.h"
-#include "smem_shm_aicore_api.h"
+#include "smem_shm_aicore_base_api.h"
 
 constexpr uint64_t TOTAL_LENGTH = 16 * 2048;                            // total length of data
 constexpr int32_t USE_CORE_NUM = 8;                                   // num of core used
 constexpr int32_t RANK_SIZE_MAX = 32;
 constexpr int32_t FLAG_OFFSET = SMEM_SHM_ALIGN_SIZE / sizeof(int64_t);
 constexpr int64_t FLAG_MAGIC = 3285742LL;
+
+SMEM_SHM_INLINE_AICORE void smem_shm_set_flag(__ubuf__ int64_t *ubAddr,
+    __gm__ int64_t *gvaAddr, int64_t flagValue)
+{
+    AscendC::PipeBarrier<PIPE_ALL>();
+    *ubAddr = flagValue;
+    AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID1);
+    AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID1);
+    smem_shm_copy_ub2gm(gvaAddr, ubAddr, sizeof(int64_t));
+    AscendC::PipeBarrier<PIPE_ALL>();
+}
+
+SMEM_SHM_INLINE_AICORE void smem_shm_wait_flag(__ubuf__ int64_t *ubAddr,
+    __gm__ int64_t *gvaAddr, int64_t expectValue)
+{
+    while (true) {
+        AscendC::PipeBarrier<PIPE_ALL>();
+        smem_shm_copy_gm2ub(ubAddr, gvaAddr, sizeof(int64_t));
+        AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
+        if (*ubAddr == expectValue) {
+            break;
+        }
+    }
+}
 
 class KernelAllReduce {
 public:
