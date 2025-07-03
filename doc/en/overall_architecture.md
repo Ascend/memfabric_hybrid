@@ -1,1 +1,0 @@
-### Overall architecture of MemFabric Hybrid
