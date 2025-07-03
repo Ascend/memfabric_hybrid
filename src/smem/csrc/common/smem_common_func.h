@@ -85,6 +85,10 @@ inline std::string CommonFunc::SmemArray2String(const T *arr, uint32_t len)
 {
     std::ostringstream oss;
     oss << "[";
+    if (arr == nullptr) {
+        oss << "]";
+        return oss.str();
+    }
     for (uint32_t i = 0; i < len; i++) {
         oss << arr[i] << (i + 1 == len ? "]" : ",");
     }

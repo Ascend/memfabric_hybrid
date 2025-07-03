@@ -24,8 +24,8 @@ public:
 
 private:
     /* only ENABLE_CPU_MONOTONIC */
-    template <int32_t FAILURE_RET>
-    static int32_t InitTickUs();
+    template <uint64_t FAILURE_RET>
+    static uint64_t InitTickUs();
 };
 
 class MonoPerfTrace {
@@ -66,18 +66,18 @@ public:
 
 #if defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__)
 
-template <int32_t FAILURE_RET>
-inline int32_t MonotonicTime::InitTickUs()
+template <uint64_t FAILURE_RET>
+inline uint64_t MonotonicTime::InitTickUs()
 {
     /* get frequ */
     uint64_t tmpFreq = 0;
     __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(tmpFreq));
-    auto freq = static_cast<uint32_t>(tmpFreq);
+    uint64_t freq = tmpFreq;
 
     /* calculate */
-    freq = freq / 1000L / 1000L;
+    freq = freq / 1000ULL / 1000ULL;
     if (freq == 0) {
-        printf("Failed to get tick as freq is %d\n", freq);
+        printf("Failed to get tick as freq is %lu\n", freq);
         return FAILURE_RET;
     }
 
@@ -86,7 +86,7 @@ inline int32_t MonotonicTime::InitTickUs()
 
 inline uint64_t MonotonicTime::TimeUs()
 {
-    const static int32_t TICK_PER_US = InitTickUs<1>();
+    const static uint64_t TICK_PER_US = InitTickUs<1>();
     uint64_t timeValue = 0;
     __asm__ volatile("mrs %0, cntvct_el0" : "=r"(timeValue));
     return timeValue / TICK_PER_US;
@@ -94,16 +94,16 @@ inline uint64_t MonotonicTime::TimeUs()
 
 inline uint64_t MonotonicTime::TimeNs()
 {
-    const static int32_t TICK_PER_US = InitTickUs<1>();
+    const static uint64_t TICK_PER_US = InitTickUs<1>();
     uint64_t timeValue = 0;
     __asm__ volatile("mrs %0, cntvct_el0" : "=r"(timeValue));
-    return timeValue * 1000L / TICK_PER_US;
+    return timeValue * 1000ULL / TICK_PER_US;
 }
 
 #else  /* defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__) */
 
-template <int32_t FAILURE_RET>
-int32_t MonotonicTime::InitTickUs()
+template <uint64_t FAILURE_RET>
+uint64_t MonotonicTime::InitTickUs()
 {
     return 0;
 }

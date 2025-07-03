@@ -116,9 +116,9 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
         return ret;
     }
 
-    if (info.size() > sizeof(desc.desc)) {
-        BM_LOG_ERROR("export to string too long size : " << info.size());
-        return -1;
+    if (info.size() != sizeof(desc.desc)) {
+        BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
+        return BM_ERROR;
     }
 
     std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
@@ -140,9 +140,9 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
         return ret;
     }
 
-    if (info.size() > sizeof(desc.desc)) {
-        BM_LOG_ERROR("export to string too long size : " << info.size());
-        return -1;
+    if (info.size() != sizeof(desc.desc)) {
+        BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
+        return BM_ERROR;
     }
 
     std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
@@ -155,6 +155,11 @@ int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uin
     auto ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
     if (ret != BM_OK) {
         BM_LOG_ERROR("set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
+        return BM_ERROR;
+    }
+
+    if (desc == nullptr) {
+        BM_LOG_ERROR("the input desc is nullptr.");
         return BM_ERROR;
     }
 
