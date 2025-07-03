@@ -97,6 +97,17 @@ def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_r
         logging.error(f'child process rank: {rank_id}, rank_size: {rank_size} process failed: {e}')
 
 
+def str_to_bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def main_process():
     parser = argparse.ArgumentParser(description='Example for BigMemory in SMEM.')
     parser.add_argument('--world_size', type=int, help='Number of cards used by the entire cluster.', required=True)
@@ -108,7 +119,7 @@ def main_process():
                         help='Listening IP address and port number of the configStore server, for example,'
                              ' tcp://<ip>:<port>.',
                         required=True)
-    parser.add_argument('--auto_ranking', type=bool,
+    parser.add_argument('--auto_ranking', type=str_to_bool,
                         help='If autorank is enabled, the BM automatically generates a global rank ID, which does '
                              'not need to be specified. The default value is false.',
                         default=False)
