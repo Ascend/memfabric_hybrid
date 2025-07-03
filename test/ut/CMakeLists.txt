@@ -30,6 +30,7 @@ set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
 target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a gcov pthread)
 target_include_directories(test_mf_hy PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
         ${CMAKE_CURRENT_SOURCE_DIR}/shmem_wrapper
         ${PROJECT_SMEM_SRC_BASE}/include/host
