@@ -2,9 +2,17 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include <string>
+#include <cstring>
 #include <iostream>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+
+const char UT_SHM_NAME2[] = "/mfhy_ut_shm_128M";
+const uint64_t UT_SHM_SIZE2 = 128 * 1024 * 1024ULL;
 
 int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
@@ -35,6 +43,7 @@ const char *hybm_get_error_string(int32_t errCode)
 struct HybmMgrStub {
     uint32_t rankId;
     uint32_t ranksize;
+    int shmFd = -1;
 };
 
 hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options *options, uint32_t flags)
@@ -51,13 +60,26 @@ hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options *options, uint3
 void hybm_destroy_entity(hybm_entity_t e, uint32_t flags)
 {
     HybmMgrStub *mgr = reinterpret_cast<HybmMgrStub *>(e);
+    if (mgr->shmFd >= 0) {
+        close(mgr->shmFd);
+    }
     delete mgr;
     return;
 }
 
 int32_t hybm_reserve_mem_space(hybm_entity_t e, uint32_t flags, void **reservedMem)
 {
-    *reservedMem = reinterpret_cast<void *>(0x123456ULL);
+    int fd = shm_open(UT_SHM_NAME2, O_RDWR, 0666);
+    if (fd < 0) {
+        return -1;
+    }
+    *reservedMem = mmap(NULL, UT_SHM_SIZE2, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (*reservedMem == MAP_FAILED) {
+        close(fd);
+        return -1;
+    }
+    HybmMgrStub *mgr = reinterpret_cast<HybmMgrStub *>(e);
+    mgr->shmFd = fd;
     return 0;
 }
 
@@ -98,7 +120,9 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
 
     for (uint32_t i = 0; i < mgr->ranksize; i++) {
         std::string base = std::to_string(mgr->ranksize) + "_" + std::to_string(i);
-        std::string input((const char *)allExInfo[i].desc, allExInfo[i].descLen);
+        printf(" %u descLen:%u\n", i, allExInfo[i].descLen);
+        std::string input;
+        input.assign(reinterpret_cast<const char*>(allExInfo[i].desc), allExInfo[i].descLen);
 
         if (base.compare(0, input.size(), input) != 0) {
             std::cout << "import failed, export_desc: " << base << " input_desc: " << input << std::endl;
@@ -142,6 +166,7 @@ int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t si
 int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
                        uint32_t flags)
 {
+    memcpy(dest, src, count);
     return 0;
 }
 
@@ -149,5 +174,10 @@ int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t spitch,
                           void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
                           hybm_data_copy_direction direction, uint32_t flags)
 {
+    auto srcAddr = (uint64_t)src;
+    auto destAddr = (uint64_t)dest;
+    for (auto i = 0; i < height; i++) {
+        memcpy((void *)(destAddr + i * dpitch), (const void *)(srcAddr + i * spitch), width);
+    }
     return 0;
 }
