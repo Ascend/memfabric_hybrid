@@ -4,6 +4,7 @@
 #ifndef SHMEM_MF_HYBRID_API_H
 #define SHMEM_MF_HYBRID_API_H
 
+#include <mutex>
 #include "shm_functions.h"
 #include "smem_shm_def.h"
 
