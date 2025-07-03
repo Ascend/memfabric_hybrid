@@ -20,6 +20,7 @@ enum BErrorCode : int32_t {
     BM_FILE_NOT_ACCESS = -5,
     BM_DL_FUNCTION_FAILED = -6,
     BM_TIMEOUT = -7,
+    BM_UNDER_API_UNLOAD = -8
 };
 
 constexpr uint32_t UN40 = 40;

@@ -23,31 +23,49 @@ public:
 
     static inline Result HalGvaReserveMemory(void **address, size_t size, int32_t deviceId, uint64_t flags)
     {
+        if (pHalGvaReserveMemory == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaReserveMemory(address, size, deviceId, flags);
     }
 
     static inline Result HalGvaUnreserveMemory()
     {
+        if (pHalGvaUnreserveMemory == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaUnreserveMemory();
     }
 
     static inline Result HalGvaAlloc(void *address, size_t size, uint64_t flags)
     {
+        if (pHalGvaAlloc == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaAlloc(address, size, flags);
     }
 
     static inline Result HalGvaFree(void *address, size_t size)
     {
+        if (pHalGvaFree == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaFree(address, size);
     }
 
     static inline Result HalGvaOpen(void *address, const char *name, size_t size, uint64_t flags)
     {
+        if (pHalGvaOpen == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaOpen(address, name, size, flags);
     }
 
     static inline Result HalGvaClose(void *address, uint64_t flags)
     {
+        if (pHalGvaClose == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pHalGvaClose(address, flags);
     }
 
