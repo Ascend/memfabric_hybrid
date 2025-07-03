@@ -262,9 +262,9 @@ HYBM_API void hybm_uninit()
         return;
     }
 
-    DlApi::CleanupLibrary();
     auto ret = DlHalApi::HalGvaUnreserveMemory();
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
+    DlApi::CleanupLibrary();
     initialized = 0;
 }
 
