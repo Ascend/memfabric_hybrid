@@ -172,12 +172,12 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
         return ret;
     }
 
-    if (info.size() != sizeof(desc.desc)) {
+    if (info.size() > sizeof(desc.desc)) {
         BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
         return BM_ERROR;
     }
 
-    std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
+    std::copy_n(info.data(), info.size(), desc.desc);
     desc.descLen = info.size();
     return BM_OK;
 }
