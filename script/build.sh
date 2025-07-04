@@ -3,6 +3,7 @@
 BUILD_MODE=$1
 BUILD_TESTS=$2
 BUILD_OPEN_ABI=$3
+BUILD_PYTHON=$4
 
 if [ -z "$BUILD_MODE" ]; then
     BUILD_MODE="RELEASE"
@@ -16,6 +17,10 @@ if [ -z "$BUILD_OPEN_ABI" ]; then
     BUILD_OPEN_ABI="ON"
 fi
 
+if [ -z "$BUILD_PYTHON" ]; then
+    BUILD_PYTHON="ON"
+fi
+
 set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -27,11 +32,18 @@ bash script/gen_last_git_commit.sh
 rm -rf ./build ./output
 
 mkdir build/
-cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
+cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -S . -B build/
 make install -j5 -C build/
 
 mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
+
+  if [ "${BUILD_PYTHON}" != "ON" ]; then
+    echo "========= skip build python ============"
+      cd ${CURRENT_DIR}
+      exit 0
+  fi
+
 
 GIT_COMMIT=$(cat script/git_last_commit.txt)
 {

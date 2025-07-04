@@ -166,7 +166,7 @@ int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t spitch,
 {
     auto srcAddr = (uint64_t)src;
     auto destAddr = (uint64_t)dest;
-    for (auto i = 0; i < height; i++) {
+    for (uint64_t i = 0; i < height; i++) {
         memcpy((void *)(destAddr + i * dpitch), (const void *)(srcAddr + i * spitch), width);
     }
     return 0;

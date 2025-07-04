@@ -1,6 +1,6 @@
 #!/bin/bash
 
-readonly SCRIPT_FULL_PATH=$(pwd)
+readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
 
 readonly BUILD_PATH="$PROJECT_FULL_PATH/build"

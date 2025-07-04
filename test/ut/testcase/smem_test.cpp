@@ -108,7 +108,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
     pid_t pids[rankSize];
     uint32_t maxProcess = rankSize;
     bool needKillOthers = false;
-    for (int i = 0; i < rankSize; ++i) {
+    for (uint32_t i = 0; i < rankSize; ++i) {
         pids[i] = fork();
         EXPECT_NE(pids[i], -1);
         if (pids[i] == -1) {
@@ -123,7 +123,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
     }
 
     if (needKillOthers) {
-        for (int i = 0; i < maxProcess; ++i) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
             int status = 0;
             kill(pids[i], SIGKILL);
             waitpid(pids[i], &status, 0);
@@ -132,7 +132,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
         ASSERT_NE(needKillOthers, true);
     }
 
-    for (int i = 0; i < rankSize; ++i) {
+    for (uint32_t i = 0; i < rankSize; ++i) {
         int status = 0;
         if (needKillOthers) {
             kill(pids[i], SIGKILL);
@@ -242,7 +242,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
     pid_t pids[rankSize];
     uint32_t maxProcess = rankSize;
     bool needKillOthers = false;
-    for (int i = 0; i < rankSize; ++i) {
+    for (uint32_t i = 0; i < rankSize; ++i) {
         pids[i] = fork();
         EXPECT_NE(pids[i], -1);
         if (pids[i] == -1) {
@@ -257,7 +257,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
     }
 
     if (needKillOthers) {
-        for (int i = 0; i < maxProcess; ++i) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
             int status = 0;
             kill(pids[i], SIGKILL);
             waitpid(pids[i], &status, 0);
@@ -266,7 +266,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
         ASSERT_NE(needKillOthers, true);
     }
 
-    for (int i = 0; i < rankSize; ++i) {
+    for (uint32_t i = 0; i < rankSize; ++i) {
         int status = 0;
         if (needKillOthers) {
             kill(pids[i], SIGKILL);

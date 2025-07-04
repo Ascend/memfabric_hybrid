@@ -2,7 +2,7 @@
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include <gtest/gtest.h>
-
+#include <stdlib.h>
 #include "smem_shm_api.h"
 
 using namespace shm;
