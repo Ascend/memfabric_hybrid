@@ -62,8 +62,8 @@ SMEM_API int32_t smem_set_log_level(int level)
 {
     using namespace ock::smem;
 
-    SM_PARAM_VALIDATE(level < 0 || level > LogLevel::BUTT_LEVEL,
-                      "set log level failed, invalid param, level should be 0~3, 4 is close all log", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(level < 0 || level >= LogLevel::BUTT_LEVEL,
+                      "set log level failed, invalid param, level should be 0~3", SM_INVALID_PARAM);
 
     /* set my logger's level */
     SMOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
