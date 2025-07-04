@@ -12,12 +12,17 @@
 namespace ock {
 namespace mf {
 
-MemEntityDefault::MemEntityDefault(int id) noexcept : id_(id) {}
+MemEntityDefault::MemEntityDefault(int id) noexcept : id_(id), initialized(false) {}
 
 MemEntityDefault::~MemEntityDefault() = default;
 
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
+    if (initialized) {
+        BM_LOG_WARN("the object is already initialized.");
+        return BM_OK;
+    }
+
     if (id_ < 0 || (uint32_t)(id_) >= HYBM_ENTITY_NUM_MAX) {
         BM_LOG_ERROR("input entity id is invalid, input: " << id_ << " must be less than: " << HYBM_ENTITY_NUM_MAX);
         return BM_INVALID_PARAM;
@@ -44,6 +49,8 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     segment_ = MemSegment::Create(segmentOptions, id_);
     if (segment_ == nullptr) {
+        DlAclApi::AclrtDestroyStream(stream_);
+        stream_ = nullptr;
         return BM_INVALID_PARAM;
     }
 
@@ -55,11 +62,16 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     }
 
     dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
+    initialized = true;
     return BM_OK;
 }
 
 void MemEntityDefault::UnInitialize() noexcept
 {
+    if (!initialized) {
+        return;
+    }
+
     segment_.reset();
     dataOperator_.reset();
     DlAclApi::AclrtDestroyStream(stream_);
@@ -68,6 +80,11 @@ void MemEntityDefault::UnInitialize() noexcept
 
 int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+    
     return segment_->ReserveMemorySpace(reservedMem);
 }
 
@@ -78,6 +95,11 @@ int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
 
 int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     if ((size % DEVICE_LARGE_PAGE_SIZE) != 0) {
         BM_LOG_ERROR("allocate memory size: " << size << " invalid, page size is: " << DEVICE_LARGE_PAGE_SIZE);
         return BM_INVALID_PARAM;
@@ -109,6 +131,11 @@ void MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) n
 
 int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     std::string info;
     auto ret = segment_->Export(info);
     if (ret != 0) {
@@ -128,6 +155,11 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
 
 int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     std::string info;
     auto realSlice = segment_->GetMemSlice(slice);
     if (realSlice == nullptr) {
@@ -152,6 +184,11 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
 
 int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uint32_t count, uint32_t flags) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     auto ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
     if (ret != BM_OK) {
         BM_LOG_ERROR("set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
@@ -173,6 +210,11 @@ int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uin
 
 int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     BM_ASSERT_RETURN(context != nullptr, BM_INVALID_PARAM);
     if (size > HYBM_DEVICE_USER_CONTEXT_PRE_SIZE) {
         BM_LOG_ERROR("set extra context failed, context size is too large: " << size << " limit: "
@@ -203,25 +245,40 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
 
 void MemEntityDefault::Unmap() noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return;
+    }
+
     segment_->Unmap();
 }
 
 int32_t MemEntityDefault::Mmap() noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     return segment_->Mmap();
 }
 
 int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
 {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
     return segment_->RemoveImported(ranks);
 }
 
 int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
                                    void *stream, uint32_t flags) noexcept
 {
-    if (dataOperator_ == nullptr) {
-        BM_LOG_ERROR("memory entity not initialized.");
-        return BM_ERROR;
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
     }
 
     return dataOperator_->DataCopy(src, dest, length, direction, stream, flags);
@@ -231,9 +288,9 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
                                      uint64_t height,  hybm_data_copy_direction direction,
                                      void *stream, uint32_t flags) noexcept
 {
-    if (dataOperator_ == nullptr) {
-        BM_LOG_ERROR("memory entity not initialized.");
-        return BM_ERROR;
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
     }
 
     return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height,
@@ -242,7 +299,8 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept
 {
-    if (segment_ == nullptr) {
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return false;
     }
 

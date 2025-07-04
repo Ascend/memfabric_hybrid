@@ -49,6 +49,7 @@ private:
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
 
 private:
+    bool initialized;
     const int32_t id_; /* id of the engine */
     hybm_options options_{};
     void *stream_{nullptr};
