@@ -3,6 +3,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/googletest/googlemock/i
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
+        ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )
 
