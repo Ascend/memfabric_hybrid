@@ -72,6 +72,7 @@ public:
 private:
     bool IsDigit(const std::string& str);
     void GroupListenEvent();
+    Result TryCasEventKey(std::string &val);
     void UpdateGroupVersion(int32_t ver);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
 

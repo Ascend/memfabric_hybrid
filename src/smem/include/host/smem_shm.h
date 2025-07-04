@@ -87,7 +87,7 @@ int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint3
  * @brief Get local rank of a shm object
  *
  * @param handle            [in] the shm object
- * @return local rank in the input object
+ * @return local rank in the input object, return UINT32_MAX if error
  */
 uint32_t smem_shm_get_global_rank(smem_shm_t handle);
 
@@ -95,7 +95,7 @@ uint32_t smem_shm_get_global_rank(smem_shm_t handle);
  * @brief Get rank size of a shm object
  *
  * @param handle            [in] the shm object
- * @return rank size in the input object
+ * @return rank size in the input object, return UINT32_MAX if error
  */
 uint32_t smem_shm_get_global_rank_size(smem_shm_t handle);
 

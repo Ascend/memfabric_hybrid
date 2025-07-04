@@ -15,8 +15,9 @@ const std::string SMEM_GROUP_SET_STR = "ok";
 const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
 const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
-constexpr int64_t SMEM_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
-constexpr int32_t SMEM_SLEEP_TIMEOUT = 100 * 1000; // 100ms
+constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
+constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
+constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
@@ -240,7 +241,7 @@ void SmemNetGroupEngine::GroupListenEvent()
     listenThreadStarted_ = true;
     while (!groupStoped_) {
         if (!joined_) {
-            usleep(SMEM_SLEEP_TIMEOUT);
+            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
             continue;
         }
 
@@ -250,13 +251,13 @@ void SmemNetGroupEngine::GroupListenEvent()
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), wid);
             if (ret != SM_OK) {
                 SM_LOG_WARN("group watch failed, ret: " << ret);
-                usleep(SMEM_SLEEP_TIMEOUT);
+                usleep(SMEM_GROUP_SLEEP_TIMEOUT);
                 continue;
             }
             listenCtx_.watchId = wid;
         }
 
-        auto ret = listenSignal_.TimedwaitMillsecs(SMEM_LISTER_TIMEOUT);
+        auto ret = listenSignal_.TimedwaitMillsecs(SMEM_GROUP_LISTER_TIMEOUT);
         getVal = std::move(listenCtx_.value);
         if (groupStoped_) {
             break;
@@ -333,10 +334,31 @@ Result SmemNetGroupEngine::StartListenEvent()
 
     std::thread th(&SmemNetGroupEngine::GroupListenEvent, this);
     while (!listenThreadStarted_) {
-        usleep(SMEM_SLEEP_TIMEOUT);
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
     }
     listenThread_ = std::move(th);
     return SM_OK;
+}
+
+Result SmemNetGroupEngine::TryCasEventKey(std::string &val)
+{
+    uint64_t casTimes = 0;
+    uint64_t casLimit = option_.timeoutMs / (SMEM_GROUP_SLEEP_TIMEOUT / SMEM_GROUP_MS_TO_US);
+    std::string old;
+    std::string prev = "";
+    while (casTimes++ < casLimit) {
+        auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
+        if (ret == SM_OK && old == val) {
+            return SM_OK;
+        }
+        if (old != prev) {
+            prev = old;
+            casTimes = 0;
+        }
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+    }
+
+    return SM_ERROR;
 }
 
 Result SmemNetGroupEngine::GroupJoin()
@@ -345,15 +367,13 @@ Result SmemNetGroupEngine::GroupJoin()
     if (joined_) {
         return SM_OK;
     }
-    std::string old;
+
     std::string val = "J" + std::to_string(option_.rank);
-    while (true) {
-        auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK && old == val) {
-            break;
-        }
-        usleep(SMEM_SLEEP_TIMEOUT);
+    if (TryCasEventKey(val) != SM_OK) {
+        SM_LOG_ERROR("cas event failed, maybe some rank fault!");
+        return SM_ERROR;
     }
+
     int64_t tmp;
     auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0, tmp);
     if (ret != SM_OK) {
@@ -393,14 +413,10 @@ Result SmemNetGroupEngine::GroupLeave()
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
     Result ret = 0;
-    std::string old;
     std::string val = "L" + std::to_string(option_.rank);
-    while (true) {
-        ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK && old == val) {
-            break;
-        }
-        usleep(SMEM_SLEEP_TIMEOUT);
+    if (TryCasEventKey(val) != SM_OK) {
+        SM_LOG_ERROR("cas event failed, maybe some rank fault!");
+        return SM_ERROR;
     }
 
     if (option_.leaveCb != nullptr) {

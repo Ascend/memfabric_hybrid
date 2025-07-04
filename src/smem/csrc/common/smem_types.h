@@ -39,6 +39,7 @@ constexpr uint32_t UN65536 = 65536;
 constexpr uint32_t UN16777216 = 16777216;
 
 constexpr uint32_t SMEM_DEFAUT_WAIT_TIME = 120; // 120s
+constexpr uint32_t SMEM_WORLD_SIZE_MAX = UINT16_MAX;
 } // namespace smem
 } // namespace ock
 

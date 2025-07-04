@@ -32,11 +32,30 @@ SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
     return SM_OK;
 }
 
+static int32_t SmemBmConfigCheck(const smem_bm_config_t *config)
+{
+    SM_PARAM_VALIDATE(config == nullptr, "config is null", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->unifiedAddressSpace != true, "unifiedAddressSpace must be true", SM_INVALID_PARAM);
+
+    SM_PARAM_VALIDATE(config->initTimeout == 0, "initTimeout is zero", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->initTimeout > SMEM_BM_TIMEOUT_MAX, "initTimeout is too large", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->createTimeout == 0, "createTimeout is zero", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->createTimeout > SMEM_BM_TIMEOUT_MAX, "initTimeout is too large", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->controlOperationTimeout == 0, "controlOperationTimeout is zero", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->controlOperationTimeout > SMEM_BM_TIMEOUT_MAX,
+                      "controlOperationTimeout is too large", SM_INVALID_PARAM);
+
+    // config->rank 在SmemBmEntryManager::PrepareStore中check
+    return 0;
+}
+
 SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId,
                               const smem_bm_config_t *config)
 {
     SM_PARAM_VALIDATE(worldSize == 0, "invalid param, worldSize is 0", SM_INVALID_PARAM);
-    SM_PARAM_VALIDATE(config == nullptr, "invalid param, config is null", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(worldSize > SMEM_WORLD_SIZE_MAX, "invalid param, worldSize is too large", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(storeURL == nullptr, "invalid param, storeURL is null", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(SmemBmConfigCheck(config) != 0, "config is invalid", SM_INVALID_PARAM);
 
     std::lock_guard<std::mutex> guard(g_smemBmMutex_);
     if (g_smemBmInited) {
@@ -57,8 +76,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. "
-                << " config_ip: " << storeURL);
+    SM_LOG_INFO("smem_bm_init success. config_ip: " << storeURL);
     return SM_OK;
 }
 
@@ -105,6 +123,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
+        SmemBmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return nullptr;
     }
 
@@ -124,6 +143,7 @@ SMEM_API void smem_bm_destroy(smem_bm_t handle)
 SMEM_API int32_t smem_bm_join(smem_bm_t handle, uint32_t flags, void **localGvaAddress)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(localGvaAddress == nullptr, "invalid param, addr is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;

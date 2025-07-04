@@ -44,8 +44,6 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
         return SM_OK;
     }
 
-    SM_PARAM_VALIDATE(worldSize == 0, "invalid param, worldSize is 0", SM_INVALID_PARAM);
-
     storeURL_ = storeURL;
     worldSize_ = worldSize;
     deviceId_ = deviceId;

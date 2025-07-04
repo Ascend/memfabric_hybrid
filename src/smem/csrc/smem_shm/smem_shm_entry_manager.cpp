@@ -26,9 +26,6 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
         return SM_OK;
     }
 
-    SM_PARAM_VALIDATE(config == nullptr, "invalid param, config is NULL", SM_INVALID_PARAM);
-    SM_PARAM_VALIDATE(configStoreIpPort == nullptr, "invalid param, ipPort is NULL", SM_INVALID_PARAM);
-
     UrlExtraction option;
     std::string url(configStoreIpPort);
     SM_ASSERT_RETURN(option.ExtractIpPortFromUrl(url) == SM_OK, SM_INVALID_PARAM);

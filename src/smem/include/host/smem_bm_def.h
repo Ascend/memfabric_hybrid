@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 typedef void *smem_bm_t;
+#define SMEM_BM_TIMEOUT_MAX     UINT32_MAX /* all timeout must <= UINT32_MAX */
 
 /**
  * @brief CPU initiated data operation type, currently only support SDMA
@@ -34,9 +35,9 @@ typedef enum {
 } smem_bm_copy_type;
 
 typedef struct {
-    uint32_t initTimeout;             /* func smem_bm_init timeout, default 120 second */
-    uint32_t createTimeout;           /* func smem_bm_create timeout, default 120 second */
-    uint32_t controlOperationTimeout; /* control operation timeout, default 120 second */
+    uint32_t initTimeout;             /* func smem_bm_init timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t createTimeout;           /* func smem_bm_create timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t controlOperationTimeout; /* control operation timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
     bool startConfigStore;            /* whether to start config store, default true */
     bool startConfigStoreOnly;        /* only start the config store */
     bool dynamicWorldSize;            /* member cannot join dynamically */

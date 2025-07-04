@@ -76,6 +76,7 @@ void MemEntityDefault::UnInitialize() noexcept
     dataOperator_.reset();
     DlAclApi::AclrtDestroyStream(stream_);
     stream_ = nullptr;
+    initialized = false;
 }
 
 int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
@@ -114,7 +115,7 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
 
     slice = realSlice->ConvertToId();
 
-    HybmDeviceMeta info;
+    HybmDeviceMeta info = {};
     SetHybmDeviceInfo(info);
 
     uint64_t addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
@@ -143,12 +144,12 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
         return ret;
     }
 
-    if (info.size() != sizeof(desc.desc)) {
-        BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
+    if (info.size() > sizeof(desc.desc)) {
+        BM_LOG_ERROR("info size: " << info.size() << " is too long than " << sizeof(desc.desc));
         return BM_ERROR;
     }
 
-    std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
+    std::copy_n(info.data(), info.size(), desc.desc);
     desc.descLen = info.size();
     return BM_OK;
 }
@@ -172,12 +173,12 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
         return ret;
     }
 
-    if (info.size() != sizeof(desc.desc)) {
-        BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
+    if (info.size() > sizeof(desc.desc)) {
+        BM_LOG_ERROR("info size: " << info.size() << " is too long than " << sizeof(desc.desc));
         return BM_ERROR;
     }
 
-    std::copy_n(info.data(), sizeof(desc.desc), desc.desc);
+    std::copy_n(info.data(), info.size(), desc.desc);
     desc.descLen = info.size();
     return BM_OK;
 }

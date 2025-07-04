@@ -128,13 +128,13 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
 Result SmemBmEntry::Join(uint32_t flags, void **localGvaAddress)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    auto ret = globalGroup_->GroupJoin();
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
-
     if (localGvaAddress == nullptr) {
         SM_LOG_ERROR("the input localGvaAddress is nullptr.");
         return SM_INVALID_PARAM;
     }
+
+    auto ret = globalGroup_->GroupJoin();
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
 
     *localGvaAddress = (void *)(reinterpret_cast<uint64_t>(gva_) + coreOptions_.singleRankVASpace * options_.rank);
     return SM_OK;
