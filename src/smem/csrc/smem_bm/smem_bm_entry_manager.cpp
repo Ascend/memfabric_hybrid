@@ -135,7 +135,9 @@ int32_t SmemBmEntryManager::AutoRanking()
     if (size == sizeof(rt) * worldSize_) {
         ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
-        confStore_->Remove(rankTableKey);
+
+        ret = confStore_->Remove(rankTableKey);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "remove key: " << rankTableKey << " failed: " << ret);
 
         ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
         std::sort(ranks.begin(), ranks.end(), RankTable::Less);
