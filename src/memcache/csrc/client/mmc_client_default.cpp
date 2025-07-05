@@ -4,6 +4,7 @@
 #include "mmc_client_default.h"
 #include "mmc_msg_client_meta.h"
 #include "mmc_mem_obj_meta.h"
+#include "mmc_bm_proxy.h"
 
 namespace ock {
 namespace mmc {
@@ -48,12 +49,26 @@ const std::string& MmcClientDefault::Name() const
 
 Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, uint32_t flags)
 {
-    AllocRequest request{key, {buf->hbm.width * buf->hbm.layerCount, 1, static_cast<uint16_t>(buf->type), randId_, 0}};
+    AllocRequest request;
+    request.key_ = key;
+    if (buf->type == 0) {
+        request.options_ = AllocOptions(buf->dram.len, 1, 0, randId_, flags);
+    } else if (buf->type == 1) {
+        request.options_ = AllocOptions(buf->hbm.width * buf->hbm.layerNum, 1, 0, randId_, flags);
+    } else {
+        MMC_LOG_ERROR("Invalid buffer type");
+        return MMC_INVALID_PARAM;
+    }
     AllocResponse response;
     int16_t respRet;
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, respRet, timeOut_),
                                     "client " << name_ << " alloc " << key << " failed!");
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(respRet, "client " << name_ << " alloc " << key << " failed!");
+    MmcBmProxy& bmProxy = MmcBmProxy::GetInstance();
+    for (uint8_t i = 0; i < response.numBlobs_; i++) {
+        MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy.Put(buf, response.blobs_[i].gva_),
+                                        "client " << name_ << " put " << key << " failed!");
+    }
     return MMC_OK;
 }
 
@@ -65,7 +80,14 @@ Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, respRet, timeOut_),
                                     "client " << name_ << " get " << key << " failed!");
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(respRet, "client " << name_ << " get " << key << " failed!");
-    return 0;
+    MmcBmProxy& bmProxy = MmcBmProxy::GetInstance();
+    if (response.numBlobs_ > 0) {
+        MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy.Get(buf, response.blobs_[0].gva_),
+                                        "client " << name_ << " put " << key << " failed!");
+    } else {
+        return MMC_ERROR;
+    }
+    return MMC_OK;
 }
 
 mmc_location_t MmcClientDefault::GetLocation(const char* key, uint32_t flags)

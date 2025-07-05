@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,10 +18,21 @@ typedef void *mmc_client_t;
 
 typedef struct {
     char discoveryURL[1024]; /* composed by schema and url, e.g. tcp:// or etcd:// or zk:// */
+    uint32_t worldSize;
 } mmc_meta_service_config_t;
 
 typedef struct {
     char discoveryURL[1024];
+    uint32_t deviceId;
+    uint32_t rankId;
+    uint32_t worldSize;
+    std::string bmIpPort;
+    int autoRanking;
+    uint32_t createId;
+    std::string dataOpType;
+    uint64_t localDRAMSize;
+    uint64_t localHBMSize;
+    uint32_t flags;
 } mmc_local_service_config_t;
 
 typedef struct {

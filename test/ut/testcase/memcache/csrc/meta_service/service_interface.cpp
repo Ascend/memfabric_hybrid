@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "mmc_service.h"
 #include "mmc_client.h"
+#include "mmc_blob_allocator.h"
 
 using namespace testing;
 using namespace std;
@@ -39,16 +40,43 @@ static void UrlStringToChar(std::string &urlString, char *urlChar)
     urlChar[urlString.length()] = '\0';
 }
 
+static void GenerateData(void *ptr, int32_t rank)
+{
+    int32_t *arr = (int32_t *)ptr;
+    static int32_t mod = INT16_MAX;
+    int32_t base = rank;
+    for (uint32_t i = 0; i < SIZE_32K / sizeof(int); i++) {
+        base = (base * 23 + 17) % mod;
+        if ((i + rank) % 3 == 0) {
+            arr[i] = -base; // 构造三分之一的负数
+        } else {
+            arr[i] = base;
+        }
+    }
+}
+
+static bool CheckData(void *base, void *ptr)
+{
+    int32_t *arr1 = (int32_t *)base;
+    int32_t *arr2 = (int32_t *)ptr;
+    for (uint32_t i = 0; i < SIZE_32K / sizeof(int); i++) {
+        if (arr1[i] != arr2[i]) return false;
+    }
+    return true;
+}
+
 TEST_F(TestMmcServiceInterface, metaServiceStart)
 {
     std::string metaUrl = "tcp://127.0.0.1:5668";
+    std::string bmUrl = "tcp://127.0.0.1:5681";
     std::string localUrl = "";
     mmc_meta_service_config_t metaServiceConfig;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
+    metaServiceConfig.worldSize = 1;
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
 
-    mmc_local_service_config_t localServiceConfig;
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, 0, 0, "sdma", 0, 104857600, 0};
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);
@@ -58,22 +86,39 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     int32_t ret = mmcc_init(&clientConfig);
     ASSERT_TRUE(ret == 0);
     std::string test = "test";
+
+    void *hostSrc = malloc(SIZE_32K);
+    void *hostDest = malloc(SIZE_32K);
+
+    GenerateData(hostSrc, 1);
+
     mmc_buffer buffer;
-    buffer.addr = 0;
+    buffer.addr = (uint64_t)hostSrc;
     buffer.type = 0;
-    buffer.hbm.width = 32;
-    buffer.hbm.layerCount = 61;
+    buffer.dram.offset = 0;
+    buffer.dram.len = SIZE_32K;
 
     ret = mmcc_put(test.c_str(), &buffer, 0);
     ASSERT_TRUE(ret == 0);
 
     mmc_buffer readBuffer;
+    readBuffer.addr = (uint64_t)hostDest;
+    readBuffer.type = 0;
+    readBuffer.dram.offset = 0;
+    readBuffer.dram.len = SIZE_32K;
+
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
+
+    bool result = CheckData(hostSrc, hostDest);
+    EXPECT_TRUE(result);
 
     mmc_location_t location = mmcc_get_location(test.c_str(), 0);
     ASSERT_TRUE(location.xx == 0);
 
     ret = mmcc_remove(test.c_str(), 0);
     ASSERT_TRUE(ret == 0);
+
+    free(hostSrc);
+    free(hostDest);
 }

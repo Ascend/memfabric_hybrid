@@ -9,6 +9,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/net/acc_links_impl
         ${PROJECT_MMC_SRC_BASE}/csrc/proto
         ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem
+        ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_UTIL_SRC_BASE}
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )

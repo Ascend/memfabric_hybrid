@@ -173,7 +173,7 @@ struct AllocResponse : public MsgBase {
             packer.Deserialize(state);
             packer.Deserialize(prot);
 
-            MmcMemBlobDesc blobDesc = MmcMemBlobDesc(rank, gva, size, mediaType, state, prot);
+            blobs_.push_back(MmcMemBlobDesc(rank, gva, size, mediaType, state, prot));
         }
         return MMC_OK;
     }
@@ -242,6 +242,37 @@ struct Response : public MsgBase {
     }
 };
 
+struct BmRegisterRequest : public MsgBase {
+    uint32_t rank_;
+    uint16_t mediaType_;
+    uint64_t bm_;
+    uint64_t capacity_;
+
+    BmRegisterRequest() : MsgBase{0, ML_BM_REGISTER_REQ, 0}{}
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(rank_);
+        packer.Serialize(mediaType_);
+        packer.Serialize(bm_);
+        packer.Serialize(capacity_);
+        return MMC_OK;
+    }
+    Result Deserialize(NetMsgUnpacker &packer)
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(rank_);
+        packer.Deserialize(mediaType_);
+        packer.Deserialize(bm_);
+        packer.Deserialize(capacity_);
+        return MMC_OK;
+    }
+};
 }  // namespace mmc
 }  // namespace ock
 #endif  // MF_HYBRID_MMC_MSG_CLIENT_META_H

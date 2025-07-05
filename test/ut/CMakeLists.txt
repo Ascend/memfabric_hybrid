@@ -1,3 +1,4 @@
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty "${CMAKE_CURRENT_BINARY_DIR}/3rdparty_build")
 file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         testcase/*
         ../stub/*
@@ -20,6 +21,12 @@ file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         ${PROJECT_MMC_SRC_BASE}/csrc/mmc_client.cpp
         ${PROJECT_MMC_SRC_BASE}/csrc/mmc_service.cpp
 )
+
+set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
+if("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
+    message(FATAL_ERROR "ascend cann path not found!")
+endif()
+
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc
@@ -39,6 +46,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/proto
         ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem
         ${PROJECT_MMC_SRC_BASE}/../util/csrc
+        ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
 )
 message(STATUS "llt build")
 add_executable(test_mf_hy ${UT_SOURCE_FILES})
@@ -77,8 +85,13 @@ FUNCTION(ADD_UNIT_TEST TEST_NAME)
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib/)
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${GTEST_BUILD_LIB_DIR}/lib)
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_OUTPUT_PATH}/memcache/lib64)
+    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_OUTPUT_PATH}/smem/lib64)
+    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64)
+    if(NOT EXISTS ${CHECK_FILE_LINKS})
+        add_dependencies(${TEST_TARGET_NAME} googletest)
+    endif()
     install(TARGETS ${TEST_TARGET_NAME}
-            DESTINATION ${TARGET_INSTALL_BIN_DIR}/bin/ut/
+            DESTINATION ${PROJECT_OUTPUT_PATH}/bin/ut/
             PERMISSIONS ${CACHE_INSTALL_EXE_PERMISSIONS})
     IF(ADD_UNIT_TEST_INCLUDE_PATHS)
         target_include_directories(${TEST_TARGET_NAME} PUBLIC ${ADD_UNIT_TEST_INCLUDE_PATHS})
@@ -102,7 +115,7 @@ ENDFUNCTION()
 
 set(TEST_INCLUDE_PATHS ../../src/memcache/)
 set(TEST_SRC_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_DEPEND_LIBS gtest dl libacc_tcp_net.a mmc_static gcov pthread)
+set(TEST_DEPEND_LIBS gtest dl libacc_tcp_net.a mmc_static gcov pthread libascendcl.a smem_static)
 
 add_subdirectory(testcase/memcache/csrc/net)
 add_subdirectory(testcase/memcache/csrc/meta_service)

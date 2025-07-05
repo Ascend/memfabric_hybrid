@@ -8,6 +8,8 @@
 #include "mmc_local_common.h"
 #include "mmc_local_service.h"
 #include "mmc_def.h"
+#include "smem.h"
+#include "smem_bm.h"
 
 namespace ock {
 namespace mmc {
@@ -20,6 +22,8 @@ public:
     Result Start(const mmc_local_service_config_t &config) override;
 
     void Stop() override;
+
+    Result InitBm(const mmc_local_service_config_t &config);
 
     const std::string &Name() const override;
 

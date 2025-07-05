@@ -5,6 +5,7 @@
 #include "mmc_meta_service.h"
 #include "mmc_msg_base.h"
 #include "mmc_msg_client_meta.h"
+#include "mmc_meta_service_default.h"
 
 namespace ock {
 namespace mmc {
@@ -35,6 +36,8 @@ Result ock::mmc::MetaNetServer::Start()
     NetEnginePtr server = NetEngine::Create();
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_ALLOC_REQ,
                                       std::bind(&MetaNetServer::HandleAlloc, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BM_REGISTER_REQ,
+                                      std::bind(&MetaNetServer::HandleBmRegister, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_PING_REQ,
                                       std::bind(&MetaNetServer::HandlePing, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_UPDATE_REQ,
@@ -52,6 +55,19 @@ Result ock::mmc::MetaNetServer::Start()
     started_ = true;
     MMC_LOG_INFO("initialize meta net server success [" << name_ << "]");
     return MMC_OK;
+}
+
+Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
+{
+    MmcMetaServiceDefaultPtr metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
+    BmRegisterRequest req;
+    context->GetRequest<BmRegisterRequest>(req);
+    MMC_LOG_INFO("HandleBmRegister  " << req.rank_);
+    auto result = metaServiceDefaultPtr->BmRegister(req.rank_, req.mediaType_, req.bm_, req.capacity_);
+    MMC_LOG_INFO("HandleBmRegister  " << req.rank_);
+    Response resp;
+    resp.ret_ = result;
+    return context->Reply(0, resp);
 }
 
 Result MetaNetServer::HandlePing(const NetContextPtr &context)

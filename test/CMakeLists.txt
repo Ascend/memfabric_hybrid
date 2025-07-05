@@ -9,5 +9,4 @@ include_directories(
 
 link_directories(${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib)
 
-add_subdirectory(3rdparty)
 add_subdirectory(ut)

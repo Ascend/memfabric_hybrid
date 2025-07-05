@@ -25,6 +25,8 @@ private:
     /* message handle function */
     Result HandleAlloc(const NetContextPtr &context);
 
+    Result HandleBmRegister(const NetContextPtr &context);
+
     Result HandlePing(const NetContextPtr &context);
 
     Result HandleUpdate(const NetContextPtr &context);

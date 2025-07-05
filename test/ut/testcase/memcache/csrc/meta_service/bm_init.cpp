@@ -14,9 +14,9 @@ using namespace testing;
 using namespace std;
 using namespace ock::mmc;
 
-class TestMmcMetaService : public testing::Test {
+class TestBmInit : public testing::Test {
 public:
-    TestMmcMetaService();
+    TestBmInit();
 
     void SetUp() override;
 
@@ -24,14 +24,14 @@ public:
 
 protected:
 };
-TestMmcMetaService::TestMmcMetaService() {}
+TestBmInit::TestBmInit() {}
 
-void TestMmcMetaService::SetUp()
+void TestBmInit::SetUp()
 {
     cout << "this is NetEngine TEST_F setup:";
 }
 
-void TestMmcMetaService::TearDown()
+void TestBmInit::TearDown()
 {
     cout << "this is NetEngine TEST_F teardown";
 }
@@ -44,7 +44,7 @@ static void UrlStringToChar(std::string &urlString, char *urlChar)
     urlChar[urlString.length()] = '\0';
 }
 
-TEST_F(TestMmcMetaService, Init)
+TEST_F(TestBmInit, Init)
 {
     std::string metaUrl = "tcp://127.0.0.1:5678";
     std::string bmUrl = "tcp://127.0.0.1:5681";
@@ -55,30 +55,28 @@ TEST_F(TestMmcMetaService, Init)
     MmcMetaServicePtr metaServicePtr = Convert<MmcMetaServiceDefault, MmcMetaService>(metaServiceDefault);
     ASSERT_TRUE(metaServicePtr->Start(metaServiceConfig) == MMC_OK);
 
-    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, 0, 0, "sdma", 0, 104857600, 0};
-    UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
-    auto localServiceDefault = MmcMakeRef<MmcLocalServiceDefault>("testLocalService");
-    MmcLocalServicePtr localServicePtr = Convert<MmcLocalServiceDefault, MmcLocalService>(localServiceDefault);
-    ASSERT_TRUE(localServicePtr->Start(localServiceConfig) == MMC_OK);
+    mmc_local_service_config_t localServiceConfig1 = {"", 0, 0, 1, bmUrl, 0, 0, "sdma", 0, 104857600, 0};
+    UrlStringToChar(metaUrl, localServiceConfig1.discoveryURL);
+    auto localServiceDefault1 = MmcMakeRef<MmcLocalServiceDefault>("testLocalService1");
+    MmcLocalServicePtr localServicePtr1 = Convert<MmcLocalServiceDefault, MmcLocalService>(localServiceDefault1);
+    ASSERT_TRUE(localServicePtr1->Start(localServiceConfig1) == MMC_OK);
 
     PingMsg req;
     req.msgId = ML_PING_REQ;
     req.num = 123;
     PingMsg resp;
     int16_t respRet;
-    ASSERT_TRUE(localServiceDefault->SyncCallMeta(req, resp, respRet, 30) == MMC_OK);
+    ASSERT_TRUE(localServiceDefault1->SyncCallMeta(req, resp, respRet, 30) == MMC_OK);
     ASSERT_TRUE(respRet == MMC_OK);
-
 
     AllocRequest reqAlloc;
     reqAlloc.key_ = "test";
     reqAlloc.options_ = {SIZE_32K, 1, 0, 0, 0};
-    AllocResponse respAlloc;
-    ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, respRet, 30) == MMC_OK);
+    AllocResponse response;
+    ASSERT_TRUE(localServiceDefault1->SyncCallMeta(reqAlloc, response, respRet, 30) == MMC_OK);
     ASSERT_TRUE(respRet == MMC_OK);
-    ASSERT_TRUE(respAlloc.numBlobs_ == 1);
-    ASSERT_TRUE(respAlloc.blobs_.size() == 1);
-    ASSERT_TRUE(respAlloc.blobs_[0].size_ == SIZE_32K);
+    ASSERT_TRUE(response.numBlobs_ == 1);
+    ASSERT_TRUE(response.blobs_[0].size_ == SIZE_32K);
     metaServicePtr->Stop();
-    localServicePtr->Stop();
+    localServicePtr1->Stop();
 }

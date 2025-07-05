@@ -39,6 +39,7 @@ public:
     static Result ArrangeLocality(const MmcAllocators &allocators, const AllocOptions &allocReq,
                                   std::vector<MmcLocation> &locations)
     {
+        // todo 改为迭代器遍历
         MmcLocation location;
         location.mediaType_ = allocReq.mediaType_;
         location.rank_ = allocReq.preferredRank_;

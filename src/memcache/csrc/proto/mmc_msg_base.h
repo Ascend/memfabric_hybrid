@@ -29,12 +29,14 @@ enum LOCAL_META_OPCODE_REQ : int16_t {
     ML_UPDATE_REQ = 2,
     ML_GET_REQ = 3,
     ML_REMOVE_REQ = 4,
+    ML_BM_REGISTER_REQ = 5,
 };
 
 enum LOCAL_META_OPCODE_RESP : int16_t {
     ML_PING_RESP = 0,
     ML_ALLOC_RESP = 1,
     ML_UPDATE_RESP = 2,
+    ML_BM_REGISTER_RESP = 3,
 };
 }  // namespace mmc
 }  // namespace ock
