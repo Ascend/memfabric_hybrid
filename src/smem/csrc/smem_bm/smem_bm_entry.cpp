@@ -85,7 +85,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
 
     hybm_exchange_info allExInfo[coreOptions_.rankCount];
     auto ret = globalGroup_->GroupAllGather((char *)&exInfo_, sizeof(hybm_exchange_info), (char *)allExInfo,
-                                       sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
+                                            sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
     if (ret != 0) {
         SM_LOG_ERROR("hybm gather export failed, result: " << ret);
         return SM_ERROR;
@@ -171,8 +171,8 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     return hybm_data_copy(entity_, src, dest, size, direction, nullptr, flags);
 }
 
-Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
-                               uint64_t width, uint64_t height, smem_bm_copy_type t, uint32_t flags)
+Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
+                               uint64_t height, smem_bm_copy_type t, uint32_t flags)
 {
     SM_PARAM_VALIDATE(src == nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(dest == nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
@@ -183,12 +183,16 @@ Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uin
 
     hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
-        SM_PARAM_VALIDATE(!AddressInRange(dest, dpitch * (height - 1) + width), "dest address: " << dest << ", dpitch: "
-                          << dpitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
+        SM_PARAM_VALIDATE(!AddressInRange(dest, dpitch * (height - 1) + width),
+                          "dest address: " << dest << ", dpitch: " << dpitch << " width: " << width
+                                           << " height: " << height << " invalid.",
+                          SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
-        SM_PARAM_VALIDATE(!AddressInRange(src,  spitch * (height - 1) + width), "src address: " << src << ", spitch: "
-                          << spitch << " width: " << width << " height: " << height << " invalid.", SM_INVALID_PARAM);
+        SM_PARAM_VALIDATE(!AddressInRange(src, spitch * (height - 1) + width),
+                          "src address: " << src << ", spitch: " << spitch << " width: " << width
+                                          << " height: " << height << " invalid.",
+                          SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
 
@@ -199,8 +203,8 @@ Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback leaveFunc = std::bind(&SmemBmEntry::LeaveHandle, this, std::placeholders::_1);
-    SmemGroupOption opt = {rankSize, rankId,  options_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           true, joinFunc, leaveFunc};
+    SmemGroupOption opt = {rankSize, rankId,   options_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           true,     joinFunc, leaveFunc};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

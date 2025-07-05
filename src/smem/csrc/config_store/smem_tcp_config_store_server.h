@@ -114,4 +114,4 @@ using AccStoreServerPtr = SmRef<AccStoreServer>;
 }  // namespace smem
 }  // namespace ock
 
-#endif  //SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H
+#endif  // SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H

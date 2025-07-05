@@ -101,7 +101,7 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     }
 
     auto exp = exportMap_.find(slice->index_);
-    if (exp != exportMap_.end()) { // RtIpcSetMemoryName不支持重复调用
+    if (exp != exportMap_.end()) {  // RtIpcSetMemoryName不支持重复调用
         exInfo = exp->second;
         return BM_OK;
     }
@@ -116,7 +116,8 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
 
     info.magic = EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
-    info.mappingOffset = slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
+    info.mappingOffset =
+        slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.deviceId = deviceId_;
     info.pid = pid_;
@@ -173,16 +174,17 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
             auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(deserializedInfos[i].deviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                    << " remote_device:" << (int)deserializedInfos[i].deviceId);
+                                                            << " remote_device:" << (int)deserializedInfos[i].deviceId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
 
-        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(deserializedInfos[localIdx].shmName,
-                                                       deserializedInfos[i].sdid, &deserializedInfos[i].pid, 1);
+        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(deserializedInfos[localIdx].shmName, deserializedInfos[i].sdid,
+                                                       &deserializedInfos[i].pid, 1);
         if (ret != 0) {
-            BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret 
-                << ", local rank = " << options_.rankId << ", shmName=" << deserializedInfos[localIdx].shmName);
+            BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret
+                                                       << ", local rank = " << options_.rankId
+                                                       << ", shmName=" << deserializedInfos[localIdx].shmName);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -209,7 +211,7 @@ Result MemSegmentDevice::Mmap() noexcept
         }
 
         BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
-                                            << ", size = " << im.size);
+                                             << ", size = " << im.size);
         auto ret = DlHalApi::HalGvaOpen((void *)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
@@ -232,7 +234,7 @@ Result MemSegmentDevice::Unmap() noexcept
     return 0;
 }
 
-Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
+Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
     for (auto &rank : ranks) {
         if (rank >= options_.rankCnt) {
@@ -246,7 +248,7 @@ Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t>& ranks) noex
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
         while (it != mappedMem_.end() && (*it) < addr + options_.size) {
-            (void) DlHalApi::HalGvaClose((void *) (*it), 0);
+            (void)DlHalApi::HalGvaClose((void *)(*it), 0);
             it++;
         }
 
@@ -256,7 +258,6 @@ Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t>& ranks) noex
     }
     return 0;
 }
-
 
 std::shared_ptr<MemSlice> MemSegmentDevice::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
@@ -323,5 +324,5 @@ int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
     sdid_ = static_cast<uint32_t>(value);
     return BM_OK;
 }
-}
-}
+}  // namespace mf
+}  // namespace ock

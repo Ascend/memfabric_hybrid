@@ -42,8 +42,8 @@ static int32_t SmemBmConfigCheck(const smem_bm_config_t *config)
     SM_PARAM_VALIDATE(config->createTimeout == 0, "createTimeout is zero", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(config->createTimeout > SMEM_BM_TIMEOUT_MAX, "initTimeout is too large", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(config->controlOperationTimeout == 0, "controlOperationTimeout is zero", SM_INVALID_PARAM);
-    SM_PARAM_VALIDATE(config->controlOperationTimeout > SMEM_BM_TIMEOUT_MAX,
-                      "controlOperationTimeout is too large", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->controlOperationTimeout > SMEM_BM_TIMEOUT_MAX, "controlOperationTimeout is too large",
+                      SM_INVALID_PARAM);
 
     // config->rank 在SmemBmEntryManager::PrepareStore中check
     return 0;
@@ -105,7 +105,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
     auto ret = manager.CreateEntryById(id, entry);
-    if (ret != 0|| entry == nullptr) {
+    if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
         return nullptr;
     }
@@ -126,7 +126,6 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
         SmemBmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return nullptr;
     }
-
 
     return reinterpret_cast<void *>(entry.Get());
 }
@@ -221,9 +220,8 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
     return entry->DataCopy(src, dest, size, t, flags);
 }
 
-SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch,
-                                 void *dest, uint64_t dpitch, uint64_t width, uint64_t heigth,
-                                 smem_bm_copy_type t, uint32_t flags)
+SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
+                                 uint64_t width, uint64_t heigth, smem_bm_copy_type t, uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);

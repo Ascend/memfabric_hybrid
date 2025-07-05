@@ -62,7 +62,7 @@ private:
 
 class ClientWatchContext : public ClientCommonContext {
 public:
-    ClientWatchContext(std::function<void(int result, const std::vector<uint8_t> &)> nfy) noexcept
+    explicit ClientWatchContext(std::function<void(int result, const std::vector<uint8_t> &)> nfy) noexcept
         : notify_{std::move(nfy)}
     {
     }

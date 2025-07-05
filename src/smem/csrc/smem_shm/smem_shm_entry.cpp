@@ -12,7 +12,7 @@
 namespace ock {
 namespace smem {
 
-SmemShmEntry::SmemShmEntry(uint32_t id) : id_{ id }, entity_{ nullptr }, gva_{ nullptr }
+SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullptr}
 {
     (void)smem_shm_config_init(&extraConfig_);
 }
@@ -59,8 +59,8 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     StorePtr store = StoreFactory::PrefixStore(client, prefix);
     SM_ASSERT_RETURN(store != nullptr, SM_ERROR);
 
-    SmemGroupOption opt = {rankSize, rankId, extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           false, nullptr, nullptr};
+    SmemGroupOption opt = {rankSize, rankId,  extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           false,    nullptr, nullptr};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(store, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 
@@ -111,7 +111,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
 
         hybm_exchange_info allExInfo[options.rankCount];
         ret = globalGroup_->GroupAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
-                                         sizeof(hybm_exchange_info) * options.rankCount);
+                                           sizeof(hybm_exchange_info) * options.rankCount);
         if (ret != 0) {
             SM_LOG_ERROR("hybm gather export failed, result: " << ret);
             break;

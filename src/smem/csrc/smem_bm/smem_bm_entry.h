@@ -87,4 +87,4 @@ inline void *SmemBmEntry::GetGvaAddress() const
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
+#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H

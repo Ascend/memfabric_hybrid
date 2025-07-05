@@ -15,7 +15,7 @@ namespace smem {
 struct RankTable {
     uint32_t ipv4;
     uint8_t deviceId;
-    RankTable(): ipv4{0}, deviceId{0} {}
+    RankTable() : ipv4{0}, deviceId{0} {}
     RankTable(uint32_t ip, uint16_t dev) : ipv4{ip}, deviceId{static_cast<uint8_t>(dev)} {}
 
     static bool Less(const RankTable &r1, const RankTable &r2)
@@ -72,10 +72,9 @@ int32_t SmemBmEntryManager::PrepareStore()
             SM_LOG_INFO("smem bm start store server success, rk: " << config_.rankId);
         } else {
             confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false,
-                static_cast<int>(config_.rankId));
+                                                   static_cast<int>(config_.rankId));
         }
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
-
     } else {
         if (config_.startConfigStore) {
             auto ret = RacingForStoreServer();
@@ -171,7 +170,7 @@ Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /*
     }
 
     /* create new bm entry */
-    SmemBmEntryOptions opt{ id, config_.rankId, config_.dynamicWorldSize, config_.controlOperationTimeout };
+    SmemBmEntryOptions opt{id, config_.rankId, config_.dynamicWorldSize, config_.controlOperationTimeout};
     auto store = StoreFactory::PrefixStore(confStore_, std::string("(").append(std::to_string(id)).append(")_"));
     if (store == nullptr) {
         SM_LOG_ERROR("create new prefix store for entity: " << id << " failed");
@@ -244,5 +243,5 @@ Result SmemBmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 
     return SM_OK;
 }
-} // namespace smem
-} // namespace ock
+}  // namespace smem
+}  // namespace ock

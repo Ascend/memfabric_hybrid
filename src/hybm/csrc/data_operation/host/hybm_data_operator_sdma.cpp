@@ -134,8 +134,8 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
     return BM_OK;
 }
 
-int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch,
-                                   size_t width, uint64_t height, void *stream) noexcept
+int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch, size_t width,
+                                   uint64_t height, void *stream) noexcept
 {
     void *copyDevice;
     auto ret = DlAclApi::AclrtMalloc(&copyDevice, width * height, 0);
@@ -146,8 +146,8 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
 
     ret = DlAclApi::AclrtMemcpy2d(copyDevice, width, hostAddr, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
-        BM_LOG_ERROR("copy2d host data to temp copy memory on local device failed: " << ret << " hostAddr: "
-                     << hostAddr << " spitch: " << spitch << " deviceAddr: " << copyDevice
+        BM_LOG_ERROR("copy2d host data to temp copy memory on local device failed: "
+                     << ret << " hostAddr: " << hostAddr << " spitch: " << spitch << " deviceAddr: " << copyDevice
                      << " dpitch: " << width << " width: " << width << " height:" << height);
         DlAclApi::AclrtFree(copyDevice);
         return BM_DL_FUNCTION_FAILED;
@@ -164,7 +164,7 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
 }
 
 int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void *deviceAddr, uint64_t spitch,
-                   size_t width, uint64_t height, void *stream) noexcept
+                                     size_t width, uint64_t height, void *stream) noexcept
 {
     void *st = stream_;
     if (stream != nullptr) {
@@ -173,19 +173,19 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
 
     int ret = BM_OK;
     for (uint64_t i = 0; i < height; ++i) {
-        void *dstAddr = reinterpret_cast<void *>((uint64_t) gvaAddr + i * dpitch);
-        void *srcAddr = reinterpret_cast<void *>((uint64_t) deviceAddr + i * spitch);
-        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, width, srcAddr, width,
-                                                   ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+        void *dstAddr = reinterpret_cast<void *>((uint64_t)gvaAddr + i * dpitch);
+        void *srcAddr = reinterpret_cast<void *>((uint64_t)deviceAddr + i * spitch);
+        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, width, srcAddr, width, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
         if (asyncRet != 0) {
-            BM_LOG_ERROR("copy2d memory on gva to device failed:: " << asyncRet << " gvaAddr: "
-                         << gvaAddr << " dpitch: " << dpitch << " deviceAddr: " << deviceAddr
-                         << " spitch: " << spitch << " width: " << width << " height:" << height << " stream:" << st);
+            BM_LOG_ERROR("copy2d memory on gva to device failed:: "
+                         << asyncRet << " gvaAddr: " << gvaAddr << " dpitch: " << dpitch
+                         << " deviceAddr: " << deviceAddr << " spitch: " << spitch << " width: " << width
+                         << " height:" << height << " stream:" << st);
             ret = asyncRet;
         }
     }
 
-    int syncRet  = DlAclApi::AclrtSynchronizeStream(st);
+    int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
         ret = syncRet;
@@ -193,8 +193,8 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
     return ret;
 }
 
-int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch,
-                 size_t width, uint64_t height, void *stream) noexcept
+int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch, size_t width,
+                                   uint64_t height, void *stream) noexcept
 {
     void *copyDevice;
     auto ret = DlAclApi::AclrtMalloc(&copyDevice, width * height, 0);
@@ -211,8 +211,9 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
 
     ret = DlAclApi::AclrtMemcpy2d(hostAddr, dpitch, copyDevice, width, width, height, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
-        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " gvaAddr: "
-                     << gvaAddr << " spitch: " << spitch << " width: " << width << " height:" << height);
+        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " gvaAddr: " << gvaAddr
+                                                                << " spitch: " << spitch << " width: " << width
+                                                                << " height:" << height);
         DlAclApi::AclrtFree(copyDevice);
         return BM_DL_FUNCTION_FAILED;
     }
@@ -222,7 +223,7 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
 }
 
 int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch,
-                   size_t width, uint64_t height, void *stream) noexcept
+                                     size_t width, uint64_t height, void *stream) noexcept
 {
     void *st = stream_;
     if (stream != nullptr) {
@@ -231,19 +232,18 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
 
     int ret = BM_OK;
     for (uint64_t i = 0; i < height; ++i) {
-        void *dstAddr = reinterpret_cast<void *>((uint64_t) deviceAddr + i * dpitch);
-        void *srcAddr = reinterpret_cast<void *>((uint64_t) gvaAddr + i * spitch);
-        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, width, srcAddr, width,
-                                                   ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+        void *dstAddr = reinterpret_cast<void *>((uint64_t)deviceAddr + i * dpitch);
+        void *srcAddr = reinterpret_cast<void *>((uint64_t)gvaAddr + i * spitch);
+        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, width, srcAddr, width, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
         if (asyncRet != 0) {
-            BM_LOG_ERROR("copy2d memory on gva to device failed:: " << asyncRet << " gvaAddr: "
-                         << srcAddr << " spitch: " << spitch << " deviceAddr: " << dstAddr
+            BM_LOG_ERROR("copy2d memory on gva to device failed:: "
+                         << asyncRet << " gvaAddr: " << srcAddr << " spitch: " << spitch << " deviceAddr: " << dstAddr
                          << " dpitch: " << dpitch << " width: " << width << " height:" << height << " stream:" << st);
             ret = asyncRet;
         }
     }
 
-    int syncRet  = DlAclApi::AclrtSynchronizeStream(st);
+    int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
         ret = syncRet;
@@ -251,9 +251,9 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
     return ret;
 }
 
-int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                               uint64_t width, uint64_t height, hybm_data_copy_direction direction,
-                               void *stream, uint32_t flags) noexcept
+int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch, uint64_t width,
+                               uint64_t height, hybm_data_copy_direction direction, void *stream,
+                               uint32_t flags) noexcept
 {
     int ret;
     switch (direction) {
@@ -280,7 +280,7 @@ int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA,
     return ret;
 }
 
-int32_t HostDataOpSDMA::DataCopyAsync(const void* srcVA, void* destVA, uint64_t length,
+int32_t HostDataOpSDMA::DataCopyAsync(const void *srcVA, void *destVA, uint64_t length,
                                       hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept
 {
     BM_LOG_ERROR("not supported data copy async!");
@@ -293,5 +293,5 @@ int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
     return BM_ERROR;
 }
 
-}
-}
+}  // namespace mf
+}  // namespace ock

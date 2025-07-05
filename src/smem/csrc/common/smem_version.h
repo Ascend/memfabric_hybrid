@@ -37,4 +37,4 @@ static const char *LIB_VERSION = "library version: " SM_VERSION
 }
 #endif
 
-#endif  //MEM_FABRIC_HYBRID_SMEM_VERSION_H
+#endif  // MEM_FABRIC_HYBRID_SMEM_VERSION_H

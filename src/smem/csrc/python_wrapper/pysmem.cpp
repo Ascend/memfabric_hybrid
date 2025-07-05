@@ -90,7 +90,7 @@ private:
 
 class BigMemory {
 public:
-    BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
+    explicit BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
     virtual ~BigMemory() noexcept
     {
         smem_bm_destroy(handle_);
@@ -209,7 +209,7 @@ func smem_shm_init timeout, default 120 second.)")
         .def_readwrite("create_timeout", &smem_shm_config_t::shmCreateTimeout, R"(
 func smem_shm_create timeout, default 120 second)")
         .def_readwrite("operation_timeout", &smem_shm_config_t::controlOperationTimeout, R"(
-control operation timeout, i.e. barrier, allgather,topology_can_reach etc, default 120 second)")
+control operation timeout, i.e. barrier, allgather, topology_can_reach etc, default 120 second)")
         .def_readwrite("start_store", &smem_shm_config_t::startConfigStore, R"(
 whether to start config store, default true)")
         .def_readwrite("flags", &smem_shm_config_t::flags, "other flags, default 0");
@@ -335,8 +335,8 @@ Returns:
     rank id if successful, UINT32_MAX is returned if failed.)");
 
     m.def("create", &BigMemory::Create, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
-          py::arg("local_dram_size"), py::arg("local_hbm_size"),
-          py::arg("data_op_type") = SMEMB_DATA_OP_SDMA, py::arg("flags") = 0, R"(
+          py::arg("local_dram_size"), py::arg("local_hbm_size"), py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
+          py::arg("flags") = 0, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
@@ -384,7 +384,7 @@ Arguments:
 Returns:
     0 if successful)");
 }
-}
+}  // namespace
 
 PYBIND11_MODULE(_pymf_smem, m)
 {

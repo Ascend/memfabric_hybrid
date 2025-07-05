@@ -20,11 +20,11 @@ public:
 
     SmemShmEntryManager(const SmemShmEntryManager &) = delete;
     SmemShmEntryManager(SmemShmEntryManager &&) = delete;
-    SmemShmEntryManager& operator=(const SmemShmEntryManager&) = delete;
-    SmemShmEntryManager& operator=(SmemShmEntryManager&&) = delete;
+    SmemShmEntryManager &operator=(const SmemShmEntryManager &) = delete;
+    SmemShmEntryManager &operator=(SmemShmEntryManager &&) = delete;
 
-    Result Initialize(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
-                      uint16_t deviceId, smem_shm_config_t *config);
+    Result Initialize(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
+                      smem_shm_config_t *config);
     Result CreateEntryById(uint32_t id, SmemShmEntryPtr &entry);
     Result GetEntryByPtr(uintptr_t ptr, SmemShmEntryPtr &entry);
     Result GetEntryById(uint32_t id, SmemShmEntryPtr &entry);
@@ -55,7 +55,7 @@ inline StorePtr SmemShmEntryManager::GetStoreClient() const
     return store_;
 }
 
-}
-}
+}  // namespace smem
+}  // namespace ock
 
-#endif // SMEM_SMEM_SHM_ENTRY_MANAGER_H
+#endif  // SMEM_SMEM_SHM_ENTRY_MANAGER_H

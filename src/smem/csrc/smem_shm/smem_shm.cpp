@@ -17,10 +17,12 @@ bool g_smemShmInited = false;
 #endif
 
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
-                           smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
+                                    smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
-    SM_PARAM_VALIDATE(rankSize > SMEM_WORLD_SIZE_MAX || rankId >= rankSize, "invalid param, input size: " << rankSize <<
-        " limit: " << SMEM_WORLD_SIZE_MAX << " input rank: " << rankId, nullptr);
+    SM_PARAM_VALIDATE(rankSize > SMEM_WORLD_SIZE_MAX || rankId >= rankSize,
+                      "invalid param, input size: " << rankSize << " limit: " << SMEM_WORLD_SIZE_MAX
+                                                    << " input rank: " << rankId,
+                      nullptr);
     SM_PARAM_VALIDATE(dataOpType != SMEMS_DATA_OP_MTE, "only support SMEMS_DATA_OP_MTE now", nullptr);
     SM_PARAM_VALIDATE(gva == nullptr, "invalid param, gva is NULL", nullptr);
     SM_PARAM_VALIDATE(!g_smemShmInited, "smem shm not initialized yet", nullptr);
@@ -188,8 +190,8 @@ static int32_t SmemShmConfigCheck(const smem_shm_config_t *config)
     SM_PARAM_VALIDATE(config->shmCreateTimeout == 0, "createTimeout is zero", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(config->shmCreateTimeout > SMEM_SHM_TIMEOUT_MAX, "initTimeout is too large", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(config->controlOperationTimeout == 0, "controlOperationTimeout is zero", SM_INVALID_PARAM);
-    SM_PARAM_VALIDATE(config->controlOperationTimeout > SMEM_SHM_TIMEOUT_MAX,
-                      "controlOperationTimeout is too large", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(config->controlOperationTimeout > SMEM_SHM_TIMEOUT_MAX, "controlOperationTimeout is too large",
+                      SM_INVALID_PARAM);
     return 0;
 }
 
@@ -198,8 +200,10 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
 {
     SM_PARAM_VALIDATE(configStoreIpPort == nullptr, "invalid param, ipport is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(SmemShmConfigCheck(config) != 0, "config is invalid", SM_INVALID_PARAM);
-    SM_PARAM_VALIDATE(worldSize > SMEM_WORLD_SIZE_MAX || rankId >= worldSize, "invalid param, input size: " <<
-        worldSize << " limit: " << SMEM_WORLD_SIZE_MAX << " input rank: " << rankId, SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(worldSize > SMEM_WORLD_SIZE_MAX || rankId >= worldSize,
+                      "invalid param, input size: " << worldSize << " limit: " << SMEM_WORLD_SIZE_MAX
+                                                    << " input rank: " << rankId,
+                      SM_INVALID_PARAM);
 
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     if (g_smemShmInited) {

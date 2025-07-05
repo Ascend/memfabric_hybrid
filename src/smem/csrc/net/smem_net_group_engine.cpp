@@ -20,7 +20,7 @@ constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000;
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
-constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
+constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
 
 static inline std::pair<int32_t, int32_t> SplitSizeAndVersion(int64_t val)
 {
