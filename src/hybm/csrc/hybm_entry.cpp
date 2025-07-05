@@ -241,8 +241,8 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     ret = DlHalApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();
-        (void)DlHalApi::HalGvaUnreserveMemory();
-        BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret);
+        int32_t hal_ret = DlHalApi::HalGvaUnreserveMemory();
+        BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret << ", un-reserve memory " << hal_ret);
         return BM_MALLOC_FAILED;
     }
 

@@ -49,14 +49,20 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     segment_ = MemSegment::Create(segmentOptions, id_);
     if (segment_ == nullptr) {
-        DlAclApi::AclrtDestroyStream(stream_);
+        int32_t des_ret = DlAclApi::AclrtDestroyStream(stream_);
+        if (des_ret != 0) {
+            BM_LOG_ERROR("destroy stream failed: " << ret);
+        }
         stream_ = nullptr;
         return BM_INVALID_PARAM;
     }
 
     ret = MemSegmentDevice::GetDeviceId(segmentOptions.segId);
     if (ret != 0) {
-        DlAclApi::AclrtDestroyStream(stream_);
+        int32_t des_ret = DlAclApi::AclrtDestroyStream(stream_);
+        if (des_ret != 0) {
+            BM_LOG_ERROR("destroy stream failed: " << ret);
+        }
         stream_ = nullptr;
         return ret;
     }
@@ -74,7 +80,10 @@ void MemEntityDefault::UnInitialize() noexcept
 
     segment_.reset();
     dataOperator_.reset();
-    DlAclApi::AclrtDestroyStream(stream_);
+    int32_t ret = DlAclApi::AclrtDestroyStream(stream_);
+    if (ret != 0) {
+        BM_LOG_ERROR("destroy stream failed " << ret);
+    }
     stream_ = nullptr;
     initialized = false;
 }

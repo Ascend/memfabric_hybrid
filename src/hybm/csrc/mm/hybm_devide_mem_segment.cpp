@@ -130,8 +130,8 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     info.exchangeType = HYBM_INFO_EXG_IN_NODE;
     ret = LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("export info failed: " << ret);
-        DlAclApi::RtIpcDestroyMemoryName(info.shmName);
+        auto acl_ret = DlAclApi::RtIpcDestroyMemoryName(info.shmName);
+        BM_LOG_ERROR("export info failed: " << ret << ", ipc destroy memory name " << acl_ret);
         return BM_ERROR;
     }
 
@@ -226,7 +226,10 @@ Result MemSegmentDevice::Mmap() noexcept
 Result MemSegmentDevice::Unmap() noexcept
 {
     for (auto va : mappedMem_) {
-        (void)DlHalApi::HalGvaClose((void *)va, 0);
+        int32_t ret = DlHalApi::HalGvaClose((void *)va, 0);
+        if (ret != 0) {
+            BM_LOG_ERROR("HalGvaClose memory failed:" << ret);
+        }
     }
     mappedMem_.clear();
 
@@ -248,7 +251,10 @@ Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t> &ranks) noex
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
         while (it != mappedMem_.end() && (*it) < addr + options_.size) {
-            (void)DlHalApi::HalGvaClose((void *)(*it), 0);
+            int32_t ret = DlHalApi::HalGvaClose((void *)(*it), 0);
+            if (ret != 0) {
+                BM_LOG_ERROR("HalGvaClose failed " << ret);
+            }
             it++;
         }
 

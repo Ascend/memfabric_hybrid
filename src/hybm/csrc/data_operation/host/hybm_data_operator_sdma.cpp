@@ -50,17 +50,26 @@ int HostDataOpSDMA::CopyHost2Gva(void *gvaAddr, const void *hostAddr, size_t cou
     ret = DlAclApi::AclrtMemcpy(copyDevice, count, hostAddr, count, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
         BM_LOG_ERROR("copy host data to temp copy memory on local device failed: " << ret);
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return BM_DL_FUNCTION_FAILED;
     }
 
     auto result = CopyDevice2Gva(gvaAddr, copyDevice, count, stream);
     if (result != BM_OK) {
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return result;
     }
 
-    DlAclApi::AclrtFree(copyDevice);
+    int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+    if (free_ret != 0) {
+        BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+    }
     return BM_OK;
 }
 
@@ -119,18 +128,27 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
 
     auto result = CopyGva2Device(copyDevice, gvaAddr, count, stream);
     if (result != BM_OK) {
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return result;
     }
 
     ret = DlAclApi::AclrtMemcpy(hostAddr, count, copyDevice, count, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
         BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret);
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return BM_DL_FUNCTION_FAILED;
     }
 
-    DlAclApi::AclrtFree(copyDevice);
+    int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+    if (free_ret != 0) {
+        BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+    }
     return BM_OK;
 }
 
@@ -149,17 +167,26 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
         BM_LOG_ERROR("copy2d host data to temp copy memory on local device failed: "
                      << ret << " hostAddr: " << hostAddr << " spitch: " << spitch << " deviceAddr: " << copyDevice
                      << " dpitch: " << width << " width: " << width << " height:" << height);
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return BM_DL_FUNCTION_FAILED;
     }
 
     auto result = CopyDevice2Gva2d(gvaAddr, dpitch, copyDevice, width, width, height, stream);
     if (result != BM_OK) {
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return result;
     }
 
-    DlAclApi::AclrtFree(copyDevice);
+    int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+    if (free_ret != 0) {
+        BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+    }
     return BM_OK;
 }
 
@@ -205,7 +232,10 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
 
     auto result = CopyGva2Device2d(copyDevice, width, gvaAddr, spitch, width, height, stream);
     if (result != BM_OK) {
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return result;
     }
 
@@ -214,11 +244,17 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
         BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " gvaAddr: " << gvaAddr
                                                                 << " spitch: " << spitch << " width: " << width
                                                                 << " height:" << height);
-        DlAclApi::AclrtFree(copyDevice);
+        int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+        if (free_ret != 0) {
+            BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+        }
         return BM_DL_FUNCTION_FAILED;
     }
 
-    DlAclApi::AclrtFree(copyDevice);
+    int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
+    if (free_ret != 0) {
+        BM_LOG_ERROR("free device " << copyDevice << " memory failed " << free_ret);
+    }
     return BM_OK;
 }
 
