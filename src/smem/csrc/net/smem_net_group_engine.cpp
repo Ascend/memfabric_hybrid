@@ -24,12 +24,15 @@ constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
 
 static inline std::pair<int32_t, int32_t> SplitSizeAndVersion(int64_t val)
 {
-    return std::make_pair(val >> GROUP_DYNAMIC_SIZE_BIT_LEN, val & GROUP_DYNAMIC_SIZE_BIT_MASK);
+    auto unsignedVal = static_cast<uint64_t>(val);
+    return std::make_pair(unsignedVal >> GROUP_DYNAMIC_SIZE_BIT_LEN, unsignedVal & GROUP_DYNAMIC_SIZE_BIT_MASK);
 }
 
 static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
 {
-    return ((1LL * ver) << GROUP_DYNAMIC_SIZE_BIT_LEN | size);
+    auto unsignedVer = static_cast<uint32_t>(ver);
+    auto unsignedSize = static_cast<uint32_t>(size);
+    return ((1LL * unsignedVer) << GROUP_DYNAMIC_SIZE_BIT_LEN | unsignedSize);
 }
 
 SmemNetGroupEngine::~SmemNetGroupEngine()
@@ -278,7 +281,7 @@ void SmemNetGroupEngine::GroupListenEvent()
             SM_LOG_WARN("value is not digit");
             continue;
         }
-        uint32_t rk = strtol(getVal.c_str() + 1, nullptr, 10);
+        auto rk = static_cast<uint32_t>(strtol(getVal.c_str() + 1, nullptr, 10));
         if (getVal == prevEvent) {
             continue;
         }
@@ -297,12 +300,12 @@ void SmemNetGroupEngine::GroupListenEvent()
         SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " event_rk:" << rk << " event:" << opt);
         UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
         if (opt == 'J') {
-            option_.rankSize = SplitSizeAndVersion(tmpVal).second + 1;
+            option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second + 1);
             if (option_.joinCb != nullptr) {
                 option_.joinCb(rk);
             }
         } else if (opt == 'L') {
-            option_.rankSize = SplitSizeAndVersion(tmpVal).second - 1;
+            option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second - 1);
             if (option_.leaveCb != nullptr) {
                 option_.leaveCb(rk);
             }
@@ -382,7 +385,7 @@ Result SmemNetGroupEngine::GroupJoin()
     }
 
     UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
-    option_.rankSize = SplitSizeAndVersion(tmp).second + 1;
+    option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmp).second + 1);
     if (option_.joinCb != nullptr) {
         ret = option_.joinCb(option_.rank);
         if (ret != SM_OK) {
@@ -401,7 +404,7 @@ join_exit:
         SM_LOG_ERROR("reset group event failed, ret: " << ret2);
     }
 
-    if ((ret | ret2) == SM_OK) {
+    if (ret == SM_OK && ret2 == SM_OK) {
         joined_ = true;
         return SM_OK;
     }
@@ -440,7 +443,10 @@ leave_exit:
     }
 
     joined_ = false;
-    return (ret | ret2) == SM_OK ? SM_OK : SM_ERROR;
+    if (ret == SM_OK && ret2 == SM_OK) {
+        return SM_OK;
+    }
+    return SM_ERROR;
 }
 
 void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)

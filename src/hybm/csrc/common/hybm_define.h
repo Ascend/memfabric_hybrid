@@ -55,7 +55,7 @@ struct HybmDeviceMeta {
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)          \
     do {                                                                                  \
         TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);              \
-        if (TARGET_FUNC_VAR == nullptr) {                                                 \
+        if ((TARGET_FUNC_VAR) == nullptr) {                                               \
             BM_LOG_ERROR("Failed to call dlsym to load SYMBOL_NAME, error" << dlerror()); \
             dlclose(FILE_HANDLE);                                                         \
             return BM_DL_FUNCTION_FAILED;                                                 \

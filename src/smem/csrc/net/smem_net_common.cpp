@@ -156,13 +156,13 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
             continue;
         }
 
-        auto localIp = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-        auto localMask = ((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr;
+        auto localIp = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr;
+        auto localMask = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask)->sin_addr;
         if ((localIp.s_addr & localMask.s_addr) != (targetIp.s_addr & localMask.s_addr)) {
             continue;
         }
 
-        if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == 0) {
+        if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == nullptr) {
             SM_LOG_ERROR("convert local ip to string failed : " << localIp.s_addr);
             result = SM_ERROR;
         } else {

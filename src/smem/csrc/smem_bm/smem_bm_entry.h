@@ -63,9 +63,9 @@ private:
 
     /* non-hot used variables */
     SmemBmEntryOptions options_;
-    hybm_options coreOptions_;
+    hybm_options coreOptions_{};
     StorePtr _configStore;
-    hybm_exchange_info exInfo_;
+    hybm_exchange_info exInfo_{};
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

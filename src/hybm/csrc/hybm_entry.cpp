@@ -124,8 +124,10 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
     }
 
     std::string tmp;
-    while (++found < ver.length() && std::isdigit(ver[found])) {
+    found += 1;
+    while (found < ver.length() && std::isdigit(ver[found])) {
         tmp += ver[found];
+        ++found;
     }
 
     try {

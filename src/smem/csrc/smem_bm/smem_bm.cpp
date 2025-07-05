@@ -105,7 +105,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
     auto ret = manager.CreateEntryById(id, entry);
-    if (ret != 0) {
+    if (ret != 0|| entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
         return nullptr;
     }

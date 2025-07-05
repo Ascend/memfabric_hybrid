@@ -28,7 +28,7 @@ public:
         }
 
         BM_LOG_DEBUG("serialize data length = " << sizeof(DataType));
-        info = std::string((const char *)(const void *)&d, sizeof(DataType));
+        info = std::string(reinterpret_cast<const char *>(&d), sizeof(DataType));
         return 0;
     }
 

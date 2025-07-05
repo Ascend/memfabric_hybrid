@@ -11,7 +11,7 @@
 #define VERSION_FIX 0
 
 /* second level marco define 'CON' to get string */
-#define CONCAT(x, y, z) x.##y.##z
+#define CONCAT(x, y, z) (x).##y.##z
 #define STR(x) #x
 #define CONCAT2(x, y, z) CONCAT(x, y, z)
 #define STR2(x) STR(x)

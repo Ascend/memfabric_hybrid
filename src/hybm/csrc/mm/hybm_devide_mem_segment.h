@@ -13,9 +13,6 @@
 namespace ock {
 namespace mf {
 
-static const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
-static const uint64_t EXPORT_INFO_VERSION = 0x1UL;
-
 struct HbmExportInfo {
     uint64_t magic;
     uint64_t version;

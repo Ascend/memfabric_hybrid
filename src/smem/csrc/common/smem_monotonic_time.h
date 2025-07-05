@@ -112,14 +112,14 @@ inline uint64_t MonotonicTime::TimeUs()
 {
     struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<uint64_t>(ts.tv_sec) * 1000000L + ts.tv_nsec / 1000L;
+    return static_cast<uint64_t>(ts.tv_sec) * 1000000L + static_cast<uint64_t>(ts.tv_nsec) / 1000L;
 }
 
 inline uint64_t MonotonicTime::TimeNs()
 {
     struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<uint64_t>(ts.tv_sec) * 1000000000L + ts.tv_nsec;
+    return static_cast<uint64_t>(ts.tv_sec) * 1000000000L + static_cast<uint64_t>(ts.tv_nsec);
 }
 #endif /* ENABLE_CPU_MONOTONIC */
 

@@ -37,7 +37,7 @@ public:
         static std::mutex gMutex;
 
         if (__builtin_expect(gLogger == nullptr, 0) != 0) {
-            gMutex.lock();
+            std::lock_guard<std::mutex> lg(gMutex);
             if (gLogger == nullptr) {
                 gLogger = new (std::nothrow) HyBMOutLogger();
 
@@ -45,7 +45,6 @@ public:
                     printf("Failed to new HyBMOutLogger, probably out of memory");
                 }
             }
-            gMutex.unlock();
         }
 
         return gLogger;
@@ -91,6 +90,8 @@ public:
 
     HyBMOutLogger(const HyBMOutLogger &) = delete;
     HyBMOutLogger(HyBMOutLogger &&) = delete;
+    HyBMOutLogger& operator=(HyBMOutLogger&&) = delete;
+    HyBMOutLogger& operator=(const HyBMOutLogger&) = delete;
 
     ~HyBMOutLogger()
     {

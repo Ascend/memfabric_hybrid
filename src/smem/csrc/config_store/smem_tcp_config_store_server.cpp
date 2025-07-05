@@ -421,15 +421,14 @@ std::list<ock::acc::AccTcpRequestContext> AccStoreServer::GetOutWaitersInLock(
         auto it = waitCtx_.find(id);
         if (it != waitCtx_.end()) {
             reqCtx.emplace_back(std::move(it->second.ReqCtx()));
-            waitCtx_.erase(it);
-        }
-
-        auto wit = timedWaiters_.find(it->second.TimeoutMs());
-        if (wit != timedWaiters_.end()) {
-            wit->second.erase(it->second.Id());
-            if (wit->second.empty()) {
-                timedWaiters_.erase(wit);
+            auto wit = timedWaiters_.find(it->second.TimeoutMs());
+            if (wit != timedWaiters_.end()) {
+                wit->second.erase(it->second.Id());
+                if (wit->second.empty()) {
+                    timedWaiters_.erase(wit);
+                }
             }
+            waitCtx_.erase(it);
         }
     }
     return std::move(reqCtx);

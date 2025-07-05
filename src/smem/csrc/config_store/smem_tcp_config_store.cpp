@@ -342,7 +342,7 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    newSize = strtol(data.c_str(), nullptr, 10);
+    newSize = static_cast<uint64_t>(strtol(data.c_str(), nullptr, 10));
 
     return StoreErrorCode::SUCCESS;
 }

@@ -16,6 +16,9 @@ int MemSegmentDevice::deviceId_{-1};
 int MemSegmentDevice::pid_{-1};
 uint32_t MemSegmentDevice::sdid_{0};
 
+static const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
+static const uint64_t EXPORT_INFO_VERSION = 0x1UL;
+
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
     if (options_.segType != HYBM_MST_HBM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
@@ -65,7 +68,7 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     auto sliceAddr = localVirtualBase + allocatedSize_;
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
-                                       (uint64_t)(ptrdiff_t)(void *)sliceAddr, size);
+                                       static_cast<uint64_t>(reinterpret_cast<std::ptrdiff_t>(sliceAddr)), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ", address:0x" << std::hex
                                        << slice->vAddress_ << ").");
@@ -277,7 +280,7 @@ bool MemSegmentDevice::MemoryInRange(const void *begin, uint64_t size) const noe
         return false;
     }
 
-    if ((const uint8_t *)begin + size >= globalVirtualAddress_ + totalVirtualSize_) {
+    if (static_cast<const uint8_t *>(begin) + size >= globalVirtualAddress_ + totalVirtualSize_) {
         return false;
     }
 

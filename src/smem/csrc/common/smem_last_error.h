@@ -4,7 +4,7 @@
 #ifndef MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
 #define MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
 
-#include "smem_common_includes.h"
+#include <string>
 
 namespace ock {
 namespace smem {
