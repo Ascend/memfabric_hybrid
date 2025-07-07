@@ -27,7 +27,7 @@ public:
     {
     }
 
-    ~SmemBmEntry() override = default;
+    ~SmemBmEntry() override;
 
     int32_t Initialize(const hybm_options &options);
 

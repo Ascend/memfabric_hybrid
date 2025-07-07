@@ -25,6 +25,16 @@ static void ReleaseAfterFailed(hybm_entity_t entity, hybm_mem_slice_t slice, voi
     }
 }
 
+SmemBmEntry::~SmemBmEntry()
+{
+    if (entity_ == nullptr) {
+        return;
+    }
+
+    hybm_destroy_entity(entity_, 0);
+    entity_ = nullptr;
+}
+
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
     uint32_t flags = 0;

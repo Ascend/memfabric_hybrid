@@ -14,7 +14,10 @@ namespace mf {
 
 MemEntityDefault::MemEntityDefault(int id) noexcept : id_(id), initialized(false) {}
 
-MemEntityDefault::~MemEntityDefault() = default;
+MemEntityDefault::~MemEntityDefault()
+{
+    ReleaseResources();
+}
 
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
@@ -74,18 +77,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
 void MemEntityDefault::UnInitialize() noexcept
 {
-    if (!initialized) {
-        return;
-    }
-
-    segment_.reset();
-    dataOperator_.reset();
-    int32_t ret = DlAclApi::AclrtDestroyStream(stream_);
-    if (ret != 0) {
-        BM_LOG_ERROR("destroy stream failed " << ret);
-    }
-    stream_ = nullptr;
-    initialized = false;
+    ReleaseResources();
 }
 
 int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
@@ -94,7 +86,7 @@ int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    
+
     return segment_->ReserveMemorySpace(reservedMem);
 }
 
@@ -273,7 +265,7 @@ int32_t MemEntityDefault::Mmap() noexcept
     return segment_->Mmap();
 }
 
-int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
+int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
     if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
@@ -295,16 +287,15 @@ int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length,
 }
 
 int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
-                                     uint64_t height,  hybm_data_copy_direction direction,
-                                     void *stream, uint32_t flags) noexcept
+                                     uint64_t height, hybm_data_copy_direction direction, void *stream,
+                                     uint32_t flags) noexcept
 {
     if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
 
-    return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height,
-                                     direction, stream, flags);
+    return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height, direction, stream, flags);
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept
@@ -345,6 +336,22 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.rankSize = options_.rankCount;
     info.symmetricSize = options_.singleRankVASpace;
     info.extraContextSize = 0;
+}
+
+void MemEntityDefault::ReleaseResources()
+{
+    if (!initialized) {
+        return;
+    }
+
+    segment_.reset();
+    dataOperator_.reset();
+    auto ret = DlAclApi::AclrtDestroyStream(stream_);
+    if (ret != 0) {
+        BM_LOG_WARN("destroy stream failed " << ret);
+    }
+    stream_ = nullptr;
+    initialized = false;
 }
 
 }

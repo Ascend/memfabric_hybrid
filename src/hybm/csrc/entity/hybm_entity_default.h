@@ -47,6 +47,7 @@ private:
     static int CheckOptions(const hybm_options *options) noexcept;
 
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
+    void ReleaseResources();
 
 private:
     bool initialized = false;

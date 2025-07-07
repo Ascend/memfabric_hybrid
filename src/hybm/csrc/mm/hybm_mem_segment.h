@@ -30,11 +30,19 @@ public:
 
     virtual Result ReserveMemorySpace(void **address) noexcept = 0;
 
+    virtual Result UnreserveMemorySpace() noexcept = 0;
+
     /*
      * Allocate memory according to segType
      * @return 0 if successful
      */
     virtual Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
+
+    /*
+     * release one slice
+     * @return 0 if successful
+     */
+    virtual Result ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept = 0;
 
     /*
      * Export exchange info according to infoExType

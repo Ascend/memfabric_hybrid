@@ -50,6 +50,13 @@ Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
     return BM_OK;
 }
 
+Result MemSegmentDevice::UnreserveMemorySpace() noexcept
+{
+    BM_LOG_INFO("un-reserve memory space.");
+    FreeMemory();
+    return BM_OK;
+}
+
 Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
     if ((size % DEVICE_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
@@ -76,9 +83,36 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     return BM_OK;
 }
 
+Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+{
+    if (slice == nullptr) {
+        BM_LOG_ERROR("input slice is nullptr");
+        return BM_INVALID_PARAM;
+    }
+
+    auto pos = slices_.find(slice->index_);
+    if (pos == slices_.end()) {
+        BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (pos->second.slice != slice) {
+        BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
+        return BM_INVALID_PARAM;
+    }
+
+    auto res = DlHalApi::HalGvaFree((void *)(ptrdiff_t)slice->vAddress_, slice->size_);
+    BM_LOG_INFO("free slice(idx:" << slice->index_ << ") address: " << (void *)(ptrdiff_t)slice->vAddress_
+                                  << ", size: " << slice->size_ << " return:" << res);
+
+    slices_.erase(pos);
+    return BM_OK;
+}
+
 Result MemSegmentDevice::Export(std::string &exInfo) noexcept
 {
-    return BM_OK;
+    BM_LOG_ERROR("MemSegmentDevice not supported export device info.");
+    return BM_ERROR;
 }
 
 // export不可重入
@@ -232,9 +266,7 @@ Result MemSegmentDevice::Unmap() noexcept
         }
     }
     mappedMem_.clear();
-
-    // TODO: free local slice memory
-    return 0;
+    return BM_OK;
 }
 
 Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
@@ -294,7 +326,23 @@ bool MemSegmentDevice::MemoryInRange(const void *begin, uint64_t size) const noe
     return true;
 }
 
-void MemSegmentDevice::FreeMemory() noexcept {}
+void MemSegmentDevice::FreeMemory() noexcept
+{
+    while (!slices_.empty()) {
+        auto slice = slices_.begin()->second.slice;
+        ReleaseSliceMemory(slice);
+    }
+
+    allocatedSize_ = 0;
+    sliceCount_ = 0;
+    if (globalVirtualAddress_ != nullptr) {
+        auto ret = DlHalApi::HalGvaUnreserveMemory();
+        if (ret != 0) {
+            BM_LOG_ERROR("HalGvaUnreserveMemory failed: " << ret);
+        }
+        globalVirtualAddress_ = nullptr;
+    }
+}
 
 int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
 {

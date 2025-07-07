@@ -4,7 +4,7 @@
 #ifndef MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 #define MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 
-#include <cstdint>
+#include <stdint.h>
 
 #ifndef __cplusplus
 extern "C" {
