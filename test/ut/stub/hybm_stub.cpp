@@ -26,6 +26,9 @@ void hybm_uninit()
 
 int32_t hybm_set_log_level(int level)
 {
+    if (level < 0 || level > 4) {
+        return -1;
+    }
     return 0;
 }
 

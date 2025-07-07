@@ -7,6 +7,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <mockcpp/mockcpp.hpp>
+#include "hybm_big_mem.h"
+#include "hybm_data_op.h"
+#include "acc_links/net/acc_log.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
@@ -103,6 +107,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
         }
         smem_shm_destroy(handle, 0);
         smem_shm_uninit(0);
+        smem_uninit();
     };
 
     pid_t pids[rankSize];
@@ -235,6 +240,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
         delete barrier;
         barrier = nullptr;
         smem_bm_uninit(0);
+        smem_uninit();
         if (!cpyRet) {
             exit(15);
         }
@@ -283,4 +289,38 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
         }
     }
     FinalizeUTShareMem(shmFd);
+}
+
+TEST_F(TestSmem, smem_log_set_level_success)
+{
+    smem_init(0);
+    auto ret = smem_set_log_level(0);
+    EXPECT_EQ(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_log_set_level_failed)
+{
+    auto ret = smem_set_log_level(-1);
+    ASSERT_NE(ret, 0);
+    ret = smem_set_log_level(5);
+    ASSERT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_log_set_level_acclink_failed)
+{
+    MOCKER(AccSetLogLevel).stubs().will(returnValue(-1));
+    smem_init(0);
+    auto ret = smem_set_log_level(0);
+    EXPECT_NE(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_log_set_level_hybm_failed)
+{
+    MOCKER(hybm_set_log_level).stubs().will(returnValue(-1));
+    smem_init(0);
+    auto ret = smem_set_log_level(0);
+    EXPECT_NE(ret, 0);
+    smem_uninit();
 }

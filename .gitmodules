@@ -6,3 +6,7 @@
 	path = test/3rdparty/googletest
 	url = https://github.com/google/googletest.git
 	branch = tags/v1.12.0
+[submodule "test/3rdparty/mockcpp"]
+	path = test/3rdparty/mockcpp
+	url = https://github.com/sinojelly/mockcpp.git
+	branch = tags/v2.7
