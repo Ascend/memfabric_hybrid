@@ -142,11 +142,13 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
     if (isServer_) {
         accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
         if (accServer_ == nullptr) {
+            SM_LOG_ERROR("Failed to create AccStoreServer instance");
             Shutdown();
             return SM_NEW_OBJECT_FAILED;
         }
 
         if ((result = accServer_->Startup()) != SM_OK) {
+            SM_LOG_ERROR("AccStoreServer startup failed: " << result);
             Shutdown();
             return result;
         }

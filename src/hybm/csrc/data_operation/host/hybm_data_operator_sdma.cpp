@@ -234,6 +234,7 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
                          << " deviceAddr: " << deviceAddr << " spitch: " << spitch << " width: " << width
                          << " height:" << height << " stream:" << st);
             ret = asyncRet;
+            return BM_DL_FUNCTION_FAILED;
         }
     }
 

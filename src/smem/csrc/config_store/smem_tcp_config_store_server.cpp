@@ -85,7 +85,13 @@ void AccStoreServer::Shutdown() noexcept
     running_ = false;
     lockGuard.unlock();
     storeCond_.notify_one();
-    timerThread_.join();
+    if (timerThread_.joinable()) {
+        try {
+            timerThread_.join();
+        } catch (const std::system_error& e) {
+            SM_LOG_ERROR("thread join failed: " << e.what());
+        }
+    }
     SM_LOG_INFO("finished shutdown Acc Store Server");
 }
 
