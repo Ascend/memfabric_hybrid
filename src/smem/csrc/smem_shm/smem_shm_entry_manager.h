@@ -34,6 +34,8 @@ public:
 
     StorePtr GetStoreClient() const;
 
+    void Destroy();
+
 private:
     std::mutex entryMutex_;
     std::map<uintptr_t, SmemShmEntryPtr> ptr2EntryMap_; /* lookup entry by ptr */
@@ -41,6 +43,8 @@ private:
     smem_shm_config_t config_{};
     uint16_t deviceId_ = 0;
     bool inited_ = false;
+    std::string ip_;
+    uint16_t port_ = 9980L;
 
     StorePtr store_ = nullptr;
 };

@@ -264,6 +264,7 @@ HYBM_API void hybm_uninit()
         return;
     }
 
+    DlHalApi::HalGvaFree((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
     auto ret = DlHalApi::HalGvaUnreserveMemory();
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     DlApi::CleanupLibrary();
