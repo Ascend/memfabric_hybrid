@@ -98,9 +98,8 @@ Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContex
         return SM_INVALID_PARAM;
     }
 
-    std::vector<uint8_t> body(data, data + context.DataLen());
     SmemMessage requestMessage;
-    auto size = SmemMessagePacker::Unpack(body, requestMessage);
+    auto size = SmemMessagePacker::Unpack(data, context.DataLen(), requestMessage);
     if (size < 0) {
         SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request");

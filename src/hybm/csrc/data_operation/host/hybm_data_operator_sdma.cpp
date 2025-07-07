@@ -198,6 +198,31 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
         st = stream;
     }
 
+    if (width == 0) {
+        BM_LOG_ERROR("copy width cannot be zero.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (dpitch < width || spitch < width) {
+        BM_LOG_ERROR("dst pitch or src pitch cannot be less than width.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (height > std::numeric_limits<uint64_t>::max() / dpitch || height > std::numeric_limits<uint64_t>::max() / spitch) {
+        BM_LOG_ERROR("length of dst or src address cannot exceed max value of uint64_t.");
+        return BM_INVALID_PARAM;
+    }
+
+    if ((uint64_t)gvaAddr > std::numeric_limits<uint64_t>::max() - height * dpitch || (uint64_t)deviceAddr > std::numeric_limits<uint64_t>::max() - height * spitch) {
+        BM_LOG_ERROR("length of dst or src address with max address length cannot exceed max value of uint64_t.");
+        return BM_INVALID_PARAM;
+    }
+
+    if ((uint64_t)gvaAddr + height * dpitch > SVM_END_ADDR || (uint64_t)deviceAddr + height * spitch > SVM_END_ADDR) {
+        BM_LOG_ERROR("copy addr exceeds available address.");
+        return BM_INVALID_PARAM;
+    }
+
     int ret = BM_OK;
     for (uint64_t i = 0; i < height; ++i) {
         void *dstAddr = reinterpret_cast<void *>((uint64_t)gvaAddr + i * dpitch);

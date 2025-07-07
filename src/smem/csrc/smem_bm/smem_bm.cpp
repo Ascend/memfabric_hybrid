@@ -120,6 +120,11 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.singleRankVASpace = localHBMSize;
     options.preferredGVA = 0;
 
+    if (options.rankCount > std::numeric_limits<uint64_t>::max() / options.singleRankVASpace) {
+        SM_LOG_AND_SET_LAST_ERROR("options.rankCount mutiply options.singleRankVASpace exceeds max value of uint64_t");
+        return nullptr;
+    }
+
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);

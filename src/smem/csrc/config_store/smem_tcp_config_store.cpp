@@ -75,10 +75,9 @@ public:
     void SetFinished(const ock::acc::AccTcpRequestContext &response) noexcept override
     {
         auto data = reinterpret_cast<const uint8_t *>(response.DataPtr());
-        auto packedResponse = std::vector<uint8_t>(data, data + response.DataLen());
 
         SmemMessage responseBody;
-        auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
+        auto ret = SmemMessagePacker::Unpack(data, response.DataLen(), responseBody);
         if (ret < 0) {
             SM_LOG_ERROR("unpack response body failed, result: " << ret);
             notify_(IO_ERROR, std::vector<uint8_t>{});
@@ -244,9 +243,8 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     }
 
     auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
-    auto packedResponse = std::vector<uint8_t>(data, data + response->DataLen());
     SmemMessage responseBody;
-    auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
+    auto ret = SmemMessagePacker::Unpack(data, response->DataLen(), responseBody);
     if (ret < 0) {
         SM_LOG_ERROR("unpack response body failed, result: " << ret);
         return -1;
@@ -374,9 +372,8 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
     }
 
     auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
-    auto packedResponse = std::vector<uint8_t>(data, data + response->DataLen());
     SmemMessage responseBody;
-    auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
+    auto ret = SmemMessagePacker::Unpack(data, response->DataLen(), responseBody);
     if (ret < 0) {
         SM_LOG_ERROR("unpack response body failed, result: " << ret);
         return -1;
