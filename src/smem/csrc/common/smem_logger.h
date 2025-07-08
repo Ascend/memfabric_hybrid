@@ -131,6 +131,12 @@ private:
 #define SM_LOG_WARN(ARGS) SM_OUT_LOG(ock::smem::WARN_LEVEL, ARGS)
 #define SM_LOG_ERROR(ARGS) SM_OUT_LOG(ock::smem::ERROR_LEVEL, ARGS)
 
+#define SM_CHECK_CONDITION_RET(condition, RET)   \
+    do {                                         \
+        if (condition) {                         \
+            return RET;                          \
+        }                                        \
+    } while (0)
 // if ARGS is false, print error
 #define SM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \

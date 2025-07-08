@@ -2,6 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
+#include "smem_logger.h"
 #include "smem_message_packer.h"
 
 namespace ock {
@@ -58,13 +59,9 @@ int64_t SmemMessagePacker::MessageSize(const std::vector<uint8_t> &buffer) noexc
 
 int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLen, SmemMessage &message) noexcept
 {
-    if (buffer == nullptr) {
-        return -1;
-    }
+    SM_CHECK_CONDITION_RET(buffer == nullptr, -1);
+    SM_CHECK_CONDITION_RET(!Full(buffer, bufferLen), -1);
 
-    if (!Full(buffer, bufferLen)) {
-        return -1;
-    }
     uint64_t length = 0ULL;
     auto totalSize = *reinterpret_cast<const uint64_t *>(buffer + length);
     length += sizeof(uint64_t);
@@ -74,11 +71,11 @@ int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLe
 
     message.mt = *reinterpret_cast<const MessageType *>(buffer + length);
     length += sizeof(MessageType);
+    SM_CHECK_CONDITION_RET(message.mt < MessageType::SET || message.mt > MessageType::INVALID_MSG, -1);
 
     auto keyCount = *reinterpret_cast<const uint64_t *>(buffer + length);
-    if (keyCount > MAX_KEY_COUNT) {
-        return -1;
-    }
+    SM_CHECK_CONDITION_RET(keyCount > MAX_KEY_COUNT, -1);
+
     length += sizeof(uint64_t);
     message.keys.reserve(keyCount);
 
@@ -86,30 +83,26 @@ int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLe
         auto keySize = *reinterpret_cast<const uint64_t *>(buffer + length);
         length += sizeof(uint64_t);
 
-        if (keySize > MAX_KEY_SIZE || length + keySize > bufferLen) {
-            return -1;
-        }
+        SM_CHECK_CONDITION_RET(keySize > MAX_KEY_SIZE || length + keySize > bufferLen, -1);
         message.keys.emplace_back(reinterpret_cast<const char *>(buffer + length), keySize);
         length += keySize;
     }
 
     auto valueCount = *reinterpret_cast<const uint64_t *>(buffer + length);
-    if (valueCount > MAX_VALUE_COUNT) {
-        return -1;
-    }
+    SM_CHECK_CONDITION_RET(valueCount > MAX_VALUE_COUNT, -1);
+
     length += sizeof(uint64_t);
     message.values.reserve(valueCount);
 
     for (auto i = 0UL; i < valueCount; i++) {
         auto valueSize = *reinterpret_cast<const uint64_t *>(buffer + length);
         length += sizeof(uint64_t);
-        if (valueSize > MAX_VALUE_SIZE || length + valueSize > bufferLen) {
-            return -1;
-        }
+        SM_CHECK_CONDITION_RET(valueSize > MAX_VALUE_SIZE || length + valueSize > bufferLen, -1);
+
         message.values.emplace_back(buffer + length, buffer + length + valueSize);
         length += valueSize;
     }
-
+    SM_CHECK_CONDITION_RET(totalSize != length, -1);
     return static_cast<int64_t>(totalSize);
 }
 
