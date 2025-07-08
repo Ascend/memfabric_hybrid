@@ -15,6 +15,7 @@
 #include "smem_shm.h"
 #include "smem_bm.h"
 #include "ut_barrier_util.h"
+#include "hybm_stub.h"
 
 const int32_t UT_SMEM_ID = 1;
 const char UT_IP_PORT[] = "tcp://127.0.0.1:7758";
@@ -37,9 +38,15 @@ void TestSmem::SetUpTestCase() {}
 
 void TestSmem::TearDownTestCase() {}
 
-void TestSmem::SetUp() {}
+void TestSmem::SetUp()
+{
+    mock_hybm_api();
+}
 
-void TestSmem::TearDown() {}
+void TestSmem::TearDown()
+{
+    GlobalMockObject::verify();
+}
 
 void FinalizeUTShareMem(int shmFd)
 {
@@ -318,6 +325,7 @@ TEST_F(TestSmem, smem_log_set_level_acclink_failed)
 
 TEST_F(TestSmem, smem_log_set_level_hybm_failed)
 {
+    GlobalMockObject::verify();
     MOCKER(hybm_set_log_level).stubs().will(returnValue(-1));
     smem_init(0);
     auto ret = smem_set_log_level(0);

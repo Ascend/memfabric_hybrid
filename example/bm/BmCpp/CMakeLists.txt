@@ -20,6 +20,7 @@ include_directories(
         ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
 )
 target_link_directories(bm_example PUBLIC
+        ${MF_PATH}/aarch64-linux/lib
         ${MF_PATH}/aarch64-linux/lib64
         ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64
 )

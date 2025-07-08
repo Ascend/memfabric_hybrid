@@ -67,6 +67,8 @@ void DlHalApi::CleanupLibrary()
         dlclose(halHandle);
         halHandle = nullptr;
     }
+
+    gLoaded = false;
 }
 }
 }

@@ -9,6 +9,7 @@ readonly HYBM_LIB_PATH="$OUTPUT_PATH/hybm/lib"
 readonly COVERAGE_PATH="$OUTPUT_PATH/coverage"
 readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
 readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
+readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 
 cd ${PROJECT_FULL_PATH}
 rm -rf ${COVERAGE_PATH}
@@ -29,7 +30,8 @@ dos2unix $TEST_3RD_PATCH_PATH/*.patch
 
 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
 make install -j5 -C ${BUILD_PATH}
-export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
+export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 
 cd "$OUTPUT_PATH/bin" && ./test_mf_hy --gtest_output=xml:gcover_report/test_detail.xml
 

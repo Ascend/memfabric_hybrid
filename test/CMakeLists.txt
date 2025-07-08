@@ -5,3 +5,4 @@ include_directories(
 
 add_subdirectory(3rdparty)
 add_subdirectory(ut)
+add_subdirectory(ut/mock)

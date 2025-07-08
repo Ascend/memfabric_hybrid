@@ -1,0 +1,12 @@
+Version=24.1.rc3.b999
+ascendhal_version=7.35.23
+aicpu_version=1.0
+tdt_version=1.0
+log_version=1.0
+prof_version=2.0
+dvppkernels_version=1.1
+tsfw_version=1.0
+Innerversion=V100R001C21SPC003B235
+compatible_version=[V100R001C17],[V100R001C18],[V100R001C19],[V100R001C20],[V100R001C21]
+compatible_version_fw=[7.0.0,7.7.99]
+package_version=24.1.rc3.b999

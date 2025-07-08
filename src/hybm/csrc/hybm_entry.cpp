@@ -235,7 +235,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     if (ret != 0) {
         DlApi::CleanupLibrary();
         BM_LOG_ERROR("initialize mete memory with size: " << allocSize << ", flag: " << flags << " failed: " << ret);
-        return -1;
+        return BM_ERROR;
     }
 
     ret = DlHalApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);

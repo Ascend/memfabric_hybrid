@@ -7,6 +7,13 @@ file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
+        ${PROJECT_HYBM_SRC_BASE}/csrc/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/common/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/entity/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/mm/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/under_api/*
 )
 message(STATUS "llt build")
 add_executable(test_mf_hy ${UT_SOURCE_FILES})
@@ -24,6 +31,7 @@ set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
 target_link_libraries(test_mf_hy dl libacc_tcp_net.a gcov pthread)
 target_include_directories(test_mf_hy PRIVATE
+        stub/
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
         ${CMAKE_CURRENT_SOURCE_DIR}/shmem_wrapper
@@ -34,4 +42,11 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_OUTPUT_PATH}/3rdparty/acc_links/net/include
         ${PROJECT_HYBM_SRC_BASE}/include
+        ${PROJECT_HYBM_SRC_BASE}/csrc/common
+        ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation
+        ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/host
+        ${PROJECT_HYBM_SRC_BASE}/csrc/entity
+        ${PROJECT_HYBM_SRC_BASE}/csrc/mm
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
 )

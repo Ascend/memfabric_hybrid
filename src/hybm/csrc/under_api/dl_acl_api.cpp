@@ -105,6 +105,8 @@ void DlAclApi::CleanupLibrary()
         dlclose(rtHandle);
         rtHandle = nullptr;
     }
+
+    gLoaded = false;
 }
 }
 }
