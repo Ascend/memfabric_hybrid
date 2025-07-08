@@ -65,10 +65,11 @@ add_definitions(-DOUT_LIB_PATH="${TARGET_INSTALL_DIR}")
 add_link_options(-lgcov --coverage)
 target_compile_options(test_mf_hy PUBLIC -D_GNU_SOURCE -g -fprofile-arcs -ftest-coverage -DUT_ENABLED)
 target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib/)
+target_link_directories(test_mf_hy PUBLIC ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64)
 set_target_properties(test_mf_hy PROPERTIES OUTPUT_NAME "test_mf_hy")
 set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
-target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a gcov pthread hybmm_static)
+target_link_libraries(test_mf_hy gtest dl libacc_tcp_net.a gcov pthread hybmm_static ascendcl)
 target_include_directories(test_mf_hy PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
         ${CMAKE_CURRENT_SOURCE_DIR}/shmem_wrapper
@@ -115,7 +116,7 @@ ENDFUNCTION()
 
 set(TEST_INCLUDE_PATHS ../../src/memcache/)
 set(TEST_SRC_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_DEPEND_LIBS gtest dl libacc_tcp_net.a mmc_static gcov pthread libascendcl.a smem_static)
+set(TEST_DEPEND_LIBS gtest dl libacc_tcp_net.a mmc_static gcov pthread smem_static ascendcl)
 
 add_subdirectory(testcase/memcache/csrc/net)
 add_subdirectory(testcase/memcache/csrc/meta_service)
