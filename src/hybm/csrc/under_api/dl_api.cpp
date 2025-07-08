@@ -12,12 +12,13 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
 {
     auto result = DlAclApi::LoadLibrary(libDirPath);
     if (result != BM_OK) {
+        DlApi::CleanupLibrary();
         return result;
     }
 
     result = DlHalApi::LoadLibrary();
     if (result != BM_OK) {
-        DlAclApi::CleanupLibrary();
+        DlApi::CleanupLibrary();
         return result;
     }
 

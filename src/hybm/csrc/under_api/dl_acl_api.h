@@ -143,7 +143,7 @@ public:
 
     static inline Result RtDeviceGetBareTgid(uint32_t *pid)
     {
-        if (RtDeviceGetBareTgid == nullptr) {
+        if (pRtDeviceGetBareTgid == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
         return pRtDeviceGetBareTgid(pid);
