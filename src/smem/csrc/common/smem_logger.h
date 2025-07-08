@@ -60,6 +60,7 @@ public:
 
     inline void Log(int level, const std::ostringstream &oss)
     {
+        // LCOV_EXCL_START
         if (logFunc_ != nullptr) {
             logFunc_(level, oss.str().c_str());
             return;
@@ -82,6 +83,7 @@ public:
             std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
                       << std::endl;
         }
+        // LCOV_EXCL_STOP
     }
 
     SMOutLogger(const SMOutLogger &) = delete;
@@ -117,7 +119,11 @@ private:
 
 // macro for log
 #ifndef SMEM_LOG_FILENAME_SHORT
+#ifndef UT_ENABLED
 #define SMEM_LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#else
+#define SMEM_LOG_FILENAME_SHORT (__FILE__)
+#endif
 #endif
 #define SM_OUT_LOG(LEVEL, ARGS)                                                        \
     do {                                                                               \

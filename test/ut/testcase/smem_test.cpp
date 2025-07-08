@@ -16,6 +16,12 @@
 #include "smem_bm.h"
 #include "ut_barrier_util.h"
 #include "hybm_stub.h"
+#include "smem_shm_entry_manager.h"
+#include "smem_tcp_config_store.h"
+
+#define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
+
+using namespace ock::smem;
 
 const int32_t UT_SMEM_ID = 1;
 const char UT_IP_PORT[] = "tcp://127.0.0.1:7758";
@@ -24,6 +30,7 @@ const char UT_SHM_NAME[] = "/mfhy_ut_shm_128M";
 const uint32_t UT_CREATE_MEM_SIZE = 1024;
 const uint32_t UT_COPY_MEM_SIZE = 128;
 const uint64_t UT_SHM_SIZE = 128 * 1024 * 1024ULL;
+static uint32_t g_utEntryIdx = 1;
 
 class TestSmem : public testing::Test {
 public:
@@ -46,6 +53,7 @@ void TestSmem::SetUp()
 void TestSmem::TearDown()
 {
     GlobalMockObject::verify();
+    GlobalMockObject::reset();
 }
 
 void FinalizeUTShareMem(int shmFd)
@@ -330,5 +338,588 @@ TEST_F(TestSmem, smem_log_set_level_hybm_failed)
     smem_init(0);
     auto ret = smem_set_log_level(0);
     EXPECT_NE(ret, 0);
+    smem_uninit();
+}
+
+void UtExLoggerFunc(int level, const char *msg)
+{
+    if (msg == nullptr) {
+        return;
+    }
+    switch (level) {
+        case 0:
+            printf("UtLogger: DEBUG %s\n", msg);
+            break;
+        case 1:
+            printf("UtLogger: INFO  %s\n", msg);
+            break;
+        case 2:
+            printf("UtLogger: WARN  %s\n", msg);
+            break;
+        case 3:
+            printf("UtLogger: ERROR %s\n", msg);
+            break;
+        default:
+            printf("UtLogger: level(%d), msg(%s)\n", level, msg);
+            break;
+    }
+}
+
+TEST_F(TestSmem, smem_log_set_ex_logger_success)
+{
+    MOCKER(AccSetExternalLog).stubs().will(returnValue(0));
+    smem_init(0);
+    auto ret = smem_set_extern_logger(UtExLoggerFunc);
+    EXPECT_EQ(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_log_set_ex_logger_failed)
+{
+    smem_init(0);
+    auto ret = smem_set_extern_logger(nullptr);
+    EXPECT_NE(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_log_set_ex_logger_acclink_failed)
+{
+    MOCKER(AccSetExternalLog).stubs().will(returnValue(-1));
+    smem_init(0);
+    auto ret = smem_set_extern_logger(UtExLoggerFunc);
+    EXPECT_NE(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_log_set_ex_logger_hybm_failed)
+{
+    GlobalMockObject::verify();
+    MOCKER(AccSetExternalLog).stubs().will(returnValue(0));
+    MOCKER(hybm_set_extern_logger).stubs().will(returnValue(-1));
+    smem_init(0);
+    auto ret = smem_set_extern_logger(UtExLoggerFunc);
+    EXPECT_NE(ret, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_get_last_err_msg)
+{
+    smem_init(0);
+    auto ret = smem_set_log_level(-1);
+    ASSERT_NE(ret, 0);
+    auto errStr = smem_get_last_err_msg();
+    EXPECT_NE(errStr, nullptr);
+    auto len = strlen(errStr);
+    EXPECT_NE(len, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_get_and_clear_last_err_msg)
+{
+    smem_init(0);
+    auto ret = smem_set_log_level(-1);
+    ASSERT_NE(ret, 0);
+    auto errStr = smem_get_and_clear_last_err_msg();
+    EXPECT_NE(errStr, nullptr);
+    auto len = strlen(errStr);
+    EXPECT_NE(len, 0);
+    auto emptyStr = smem_get_last_err_msg();
+    EXPECT_NE(emptyStr, nullptr);
+    len = strlen(emptyStr);
+    EXPECT_EQ(len, 0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_config_init_failed)
+{
+    auto ret = smem_shm_config_init(nullptr);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_init_failed_invalid_params)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+
+    auto ret = smem_shm_init(nullptr, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, nullptr);
+    EXPECT_NE(ret, 0);
+
+    config.shmInitTimeout = 0;
+    ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    smem_shm_config_init(&config);
+    config.shmCreateTimeout = 0;
+    ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    smem_shm_config_init(&config);
+    config.controlOperationTimeout = 0;
+    ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_config_init(&config);
+    ret = smem_shm_init(UT_IP_PORT, 65536, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT, 2, 2, 0, &config);
+    EXPECT_NE(ret, 0);
+
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_init_failed_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(-1));
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_init_failed_hybm_error)
+{
+    GlobalMockObject::verify();
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER(hybm_init).stubs().will(returnValue(-1));
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_init_already_inited)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_EQ(ret, 0);
+    smem_shm_uninit(0);
+
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_uninit_failed_not_inited_yet)
+{
+    smem_shm_uninit(0);
+}
+
+TEST_F(TestSmem, smem_shm_query_support_data_operation_success)
+{
+    auto ret = smem_shm_query_support_data_operation();
+    EXPECT_EQ(ret, 1u);
+}
+
+TEST_F(TestSmem, smem_shm_create_failed_invalid_params)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    void *gva;
+
+    auto shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+
+    shm = smem_shm_create(0, 65536, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+    shm = smem_shm_create(0, 2, 2, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+    shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_SDMA, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+    shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, nullptr);
+    EXPECT_EQ(shm, nullptr);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+int32_t UtCreateEntryByIdStub(SmemShmEntryManager *, uint32_t id, ock::smem::SmemShmEntryPtr &entry)
+{
+    auto tempEntry = SmMakeRef<SmemShmEntry>(g_utEntryIdx++);
+    entry = tempEntry;
+    return 0;
+}
+
+TEST_F(TestSmem, smem_shm_create_failed_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    void *gva;
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::CreateEntryById, int32_t(*)(SmemShmEntryManager *,
+        uint32_t, ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+
+    auto shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_create_failed_entry_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    void *gva;
+
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::CreateEntryById, int32_t(*)(SmemShmEntryManager *,
+        uint32_t, ock::smem::SmemShmEntryPtr &)).stubs().will(invoke(UtCreateEntryByIdStub));
+    MOCKER_CPP(&SmemShmEntry::Initialize, int32_t(*)(SmemShmEntry *, hybm_options &)).stubs().will(returnValue(-1));
+    MOCKER_CPP(&SmemShmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemShmEntryManager *,
+        uintptr_t)).stubs().will(returnValue(0));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+
+    auto shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+    EXPECT_EQ(shm, nullptr);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_destroy_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    auto ret = smem_shm_destroy(nullptr, 0);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_destroy(handle, 0);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_set_extra_context_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    void *context = reinterpret_cast<void *>(tmp);
+    auto ret = smem_shm_set_extra_context(nullptr, context, 1024);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_set_extra_context(handle, nullptr, 1024);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 0);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 65555);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 1024);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_set_extra_context_falied_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    void *context = reinterpret_cast<void *>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(0));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 1024);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 1024);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+int32_t UtGetEntryByPtrStub(SmemShmEntryManager *, uintptr_t ptr, ock::smem::SmemShmEntryPtr &entry)
+{
+    auto tempEntry = SmMakeRef<SmemShmEntry>(g_utEntryIdx++);
+    entry = tempEntry;
+    return 0;
+}
+
+TEST_F(TestSmem, smem_shm_set_extra_context_falied_entry_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    void *context = reinterpret_cast<void *>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(invoke(UtGetEntryByPtrStub));
+    MOCKER_CPP(&SmemShmEntry::SetExtraContext, int32_t(*)(SmemShmEntry *, const void *,
+        uint32_t)).stubs().will(returnValue(-1));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_set_extra_context(handle, context, 1024);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_get_global_rank_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    auto ret = smem_shm_get_global_rank(nullptr);
+    EXPECT_EQ(ret, UINT32_MAX);
+    ret = smem_shm_get_global_rank(handle);
+    EXPECT_EQ(ret, UINT32_MAX);
+    ret = smem_shm_get_global_rank_size(nullptr);
+    EXPECT_EQ(ret, UINT32_MAX);
+    ret = smem_shm_get_global_rank_size(handle);
+    EXPECT_EQ(ret, UINT32_MAX);
+}
+
+TEST_F(TestSmem, smem_shm_get_global_rank_falied_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(-1)).then(returnValue(0));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto ret2 = smem_shm_get_global_rank(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+    ret2 = smem_shm_get_global_rank_size(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+    ret2 = smem_shm_get_global_rank(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+    ret2 = smem_shm_get_global_rank_size(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+SmemGroupEnginePtr UtGetGroupStub(SmemShmEntry *)
+{
+    auto tcpStore = SmMakeRef<TcpConfigStore>("127.0.0.1", 8761, false, 0);
+    StorePtr ss = tcpStore.Get();
+    SmemGroupOption option;
+    option.rank = 0;
+    option.rankSize = 2;
+    option.dynamic = false;
+    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(ss, option);
+}
+
+TEST_F(TestSmem, smem_shm_get_global_rank_falied_entry_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(invoke(UtGetEntryByPtrStub));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto ret2 = smem_shm_get_global_rank(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+    ret2 = smem_shm_get_global_rank_size(handle);
+    EXPECT_EQ(ret2, UINT32_MAX);
+    MOCKER_CPP(&SmemShmEntry::GetGroup, SmemGroupEnginePtr(*)(SmemShmEntry *)).stubs().will(invoke(UtGetGroupStub));
+    ret2 = smem_shm_get_global_rank(handle);
+    EXPECT_NE(ret2, UINT32_MAX);
+    ret2 = smem_shm_get_global_rank_size(handle);
+    EXPECT_NE(ret2, UINT32_MAX);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_control_barrier_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    auto ret = smem_shm_control_barrier(nullptr);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_barrier(handle);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_control_barrier_falied_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(0));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_control_barrier(handle);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_barrier(handle);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_control_barrier_falied_entry_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(invoke(UtGetEntryByPtrStub));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_control_barrier(handle);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_control_allgather_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    auto ret = smem_shm_control_allgather(nullptr, tmp, 5, tmp, 5);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_allgather(handle, nullptr, 5, tmp, 5);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 5, nullptr, 5);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 0, tmp, 5);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 65555, tmp, 5);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_control_allgather_falied_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(0));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 5, tmp, 5);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 5, tmp, 5);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_control_allgather_falied_entry_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(invoke(UtGetEntryByPtrStub));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_control_allgather(handle, tmp, 5, tmp, 5);
+    EXPECT_NE(ret, 0);
+
+    smem_shm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_shm_topology_can_reach_falied_invalid_params)
+{
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    uint32_t rank = 0;
+    auto ret = smem_shm_topology_can_reach(nullptr, rank, &rank);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_topology_can_reach(handle, rank, nullptr);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_topology_can_reach(handle, rank, &rank);
+    EXPECT_NE(ret, 0);
+}
+
+TEST_F(TestSmem, smem_shm_topology_can_reach_falied_manager_error)
+{
+    smem_init(0);
+    smem_shm_config_t config;
+    smem_shm_config_init(&config);
+    char tmp[] = "test";
+    smem_shm_t handle = reinterpret_cast<smem_shm_t>(tmp);
+    uint32_t rank = 0;
+    MOCKER_CPP(&SmemShmEntryManager::Initialize, int32_t(*)(SmemShmEntryManager *, const char *,
+        uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemShmEntryManager::GetEntryByPtr, int32_t(*)(SmemShmEntryManager *, uintptr_t,
+        ock::smem::SmemShmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(0))
+        .then(invoke(UtGetEntryByPtrStub));
+
+    auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    ASSERT_EQ(ret, 0);
+    ret = smem_shm_topology_can_reach(handle, rank, &rank);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_topology_can_reach(handle, rank, &rank);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_topology_can_reach(handle, rank, &rank);
+    EXPECT_EQ(ret, 0);
+
+    smem_shm_uninit(0);
     smem_uninit();
 }
