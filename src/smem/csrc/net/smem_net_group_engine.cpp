@@ -18,6 +18,7 @@ constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
+constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US; // 5s
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
@@ -253,8 +254,8 @@ void SmemNetGroupEngine::GroupListenEvent()
             auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY, std::bind(&SmemNetGroupEngine::GroupWatchCb, this,
                 std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), wid);
             if (ret != SM_OK) {
-                SM_LOG_WARN("group watch failed, ret: " << ret);
-                usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+                SM_LOG_WARN("group watch failed, maybe link down, ret: " << ret);
+                usleep(SMEM_GROUP_SLEEP_5S);
                 continue;
             }
             listenCtx_.watchId = wid;
@@ -267,8 +268,7 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         listenCtx_.watchId = UINT32_MAX;
-        if (ret != SM_OK || getVal.empty()) {
-            // TODO: 处理退出场景
+        if (ret != SM_OK || getVal.empty()) { // 非法watch事件,重新watch
             continue;
         }
 
@@ -318,6 +318,7 @@ void SmemNetGroupEngine::GroupListenEvent()
 
 void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const std::string &value)
 {
+    listenCtx_.ret = SM_OK;
     if (result != SM_OK) {
         SM_LOG_AND_SET_LAST_ERROR("result: " << result);
         listenCtx_.ret = SM_ERROR;
