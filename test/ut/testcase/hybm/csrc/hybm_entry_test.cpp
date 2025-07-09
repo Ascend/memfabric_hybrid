@@ -36,6 +36,8 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnZero_WhenAllConditionsMet)
 
     int32_t result = hybm_init(deviceId, flags);
     EXPECT_EQ(result, 0);
+    EXPECT_EQ(HybmHasInited(), true);
+    EXPECT_EQ(HybmGetInitDeviceId(), deviceId);
 
     hybm_uninit();
 }

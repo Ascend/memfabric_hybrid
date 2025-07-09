@@ -7,10 +7,12 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
 
 constexpr int32_t RETURN_OK = 0;
 constexpr int32_t RETURN_ERROR = -1;
+constexpr uint64_t baseAddr = 0x10000000000;
 
 extern "C" {
 int32_t halGvaReserveMemory(void **address, size_t size, int32_t deviceId, uint64_t flags)
 {
+    *address = (void *) baseAddr;
     return RETURN_OK;
 }
 

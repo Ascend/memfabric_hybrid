@@ -38,5 +38,5 @@ cd "$OUTPUT_PATH/bin" && ./test_mf_hy --gtest_output=xml:gcover_report/test_deta
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"
 lcov --d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1
-lcov -e "$COVERAGE_PATH"/coverage.info "*/src/smem/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+lcov -e "$COVERAGE_PATH"/coverage.info "*/src/smem/*" "*/src/hybm/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
 genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1
