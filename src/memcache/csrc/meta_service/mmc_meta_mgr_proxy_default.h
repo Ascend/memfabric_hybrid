@@ -84,9 +84,14 @@ public:
     {
 
         MmcMemObjMetaPtr objMeta;
-        //metaMangerPtr_->(updateReq.key_, objMeta);
-        resp.ret_ = MMC_OK;
-        return MMC_OK;
+        Result ret = metaMangerPtr_->Remove(req.key_);
+        resp.ret_ = ret;
+        if (ret != MMC_OK) {
+            MMC_LOG_ERROR("Remove failed for key: " << req.key_ << " error: " << ret);
+            return MMC_ERROR;
+        } else {
+            return MMC_OK;
+        }
     }
 
 private:

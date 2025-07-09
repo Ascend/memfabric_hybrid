@@ -81,14 +81,14 @@ TEST_F(TestBmProxy, Init)
         return;
     }
 
-    MmcBmProxy& bmProxy = MmcBmProxy::GetInstance();
+    MmcBmProxyPtr bmProxy = MmcBmProxyFactory::GetInstance("bmProxyDefault");
 
     mmc_bm_init_config_t initConfig = {0, 0, 1, bmUrl, 0};
     mmc_bm_create_config_t createConfig = {0, 1, "sdma", 0, 104857600, 0};
-    ret = bmProxy.InitBm(initConfig, createConfig);
+    ret = bmProxy->InitBm(initConfig, createConfig);
     EXPECT_EQ(ret, MMC_OK);
 
-    uint64_t bmAddr = bmProxy.GetGva();
+    uint64_t bmAddr = bmProxy->GetGva();
 
     void *hostSrc1 = malloc(SIZE_32K);
     void *hostSrc2 = malloc(SIZE_32K);
@@ -130,13 +130,13 @@ TEST_F(TestBmProxy, Init)
     buffer2.hbm.width = SIZE_32K;
     buffer2.hbm.layerNum = 1;
 
-    ret = bmProxy.Put(&buffer1, bmAddr);
+    ret = bmProxy->Put(&buffer1, bmAddr, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
-    ret = bmProxy.Put(&buffer2, bmAddr + SIZE_32K);
+    ret = bmProxy->Put(&buffer2, bmAddr + SIZE_32K, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
-    ret = bmProxy.Get(&buffer3, bmAddr + SIZE_32K);
+    ret = bmProxy->Get(&buffer3, bmAddr + SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
-    ret = bmProxy.Get(&buffer2, bmAddr);
+    ret = bmProxy->Get(&buffer2, bmAddr);
     EXPECT_EQ(ret, MMC_OK);
 
     ret = aclrtMemcpy(hostDest2, SIZE_32K, deviceSrc, SIZE_32K, ACL_MEMCPY_DEVICE_TO_HOST);
