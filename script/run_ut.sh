@@ -28,10 +28,11 @@ dos2unix "$MOCKCPP_PATH/src/JmpOnlyApiHook.cpp"
 dos2unix "$MOCKCPP_PATH/src/UnixCodeModifier.cpp"
 dos2unix $TEST_3RD_PATCH_PATH/*.patch
 
-cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
+cmake -DCMAKE_BUILD_TYPE=ASAN -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
 make install -j5 -C ${BUILD_PATH}
 export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
+export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 
 cd "$OUTPUT_PATH/bin" && ./test_mf_hy --gtest_output=xml:gcover_report/test_detail.xml
 

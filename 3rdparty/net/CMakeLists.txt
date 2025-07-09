@@ -10,6 +10,9 @@ set(ACCLINK_BUILD_TYPE release)
 IF (x${CMAKE_BUILD_TYPE} STREQUAL "xDEBUG")
     set(ACCLINK_BUILD_TYPE debug)
 endif ()
+IF (x${CMAKE_BUILD_TYPE} STREQUAL "xASAN")
+    set(ACCLINK_BUILD_TYPE asan)
+endif ()
 
 # build the lib if not built yet
 if(EXISTS ${CHECK_FILE_LINKS})

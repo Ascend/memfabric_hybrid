@@ -731,7 +731,7 @@ TEST_F(TestSmem, smem_shm_get_global_rank_falied_manager_error)
     smem_uninit();
 }
 
-SmemGroupEnginePtr UtGetGroupStub(SmemShmEntry *)
+SmemGroupEnginePtr UtGetGroupStub(SmemShmEntry *entry)
 {
     auto tcpStore = SmMakeRef<TcpConfigStore>("127.0.0.1", 8761, false, 0);
     StorePtr ss = tcpStore.Get();
@@ -740,6 +740,7 @@ SmemGroupEnginePtr UtGetGroupStub(SmemShmEntry *)
     option.rankSize = 2;
     option.dynamic = false;
     SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(ss, option);
+    return group;
 }
 
 TEST_F(TestSmem, smem_shm_get_global_rank_falied_entry_error)
