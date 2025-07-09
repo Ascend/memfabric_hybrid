@@ -88,6 +88,7 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
     }
 
     hybm_uninit();
+    g_smemBmInited = false;
     SM_LOG_INFO("smem_bm_uninit finished");
 }
 
