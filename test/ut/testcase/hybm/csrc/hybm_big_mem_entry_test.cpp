@@ -13,9 +13,11 @@
 using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
+namespace {
 const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                        HYBM_RANK_TYPE_STATIC, 8, 0, 1024 * 1024 * 1024, 0};
+                                HYBM_RANK_TYPE_STATIC, 8, 0, 1024 * 1024 * 1024, 0};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
+}
 
 class HybmBigMemEntryTest : public ::testing::Test {
 protected:

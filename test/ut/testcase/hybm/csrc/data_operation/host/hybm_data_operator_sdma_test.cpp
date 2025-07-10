@@ -16,11 +16,12 @@
 using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
-
+namespace {
 HostDataOpSDMA g_dataOperator = HostDataOpSDMA(nullptr);
 void *g_srcVA = reinterpret_cast<void *>(0x001000000000);
 void *g_dstVA = reinterpret_cast<void *>(0x002000000000);
 const uint64_t g_size = 1024;
+}
 
 class HybmDataOpSdmaTest : public ::testing::Test {
 protected:
@@ -101,11 +102,88 @@ TEST_F(HybmDataOpSdmaTest, CopyHost2Gva_ShouldReturnFail_WhenAclApiFailed)
     MOCKER_CPP(&DlAclApi::AclrtMalloc, int (*)(void **, size_t, uint32_t)).stubs().will(returnValue(-1));
     ret = g_dataOperator.CopyHost2Gva(g_srcVA, g_dstVA, g_size, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
     GlobalMockObject::verify();
 
     MOCKER_CPP(&DlAclApi::AclrtMemcpy, int (*)(void *, size_t, void *, size_t, uint32_t))
         .stubs().will(returnValue(-1));
     ret = g_dataOperator.CopyHost2Gva(g_srcVA, g_dstVA, g_size, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtMemcpyAsync, int (*)(void *, size_t, void *, size_t, uint32_t, void *))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtSynchronizeStream, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtFree, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = g_dataOperator.CopyGva2Host(g_srcVA, g_dstVA, g_size, nullptr);
+    EXPECT_EQ(ret, BM_OK);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HybmDataOpSdmaTest, CopyHost2Gva2d_ShouldReturnFail_WhenAclApiFailed)
+{
+    int ret = 0;
+    MOCKER_CPP(&DlAclApi::AclrtMalloc, int (*)(void **, size_t, uint32_t)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtMemcpy2d, int (*)(void *, size_t, const void *, size_t, size_t, size_t, uint32_t))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtMemcpyAsync, int (*)(void *, size_t, void *, size_t, uint32_t, void *))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtSynchronizeStream, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtFree, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    EXPECT_EQ(ret, BM_OK);
     GlobalMockObject::verify();
 }

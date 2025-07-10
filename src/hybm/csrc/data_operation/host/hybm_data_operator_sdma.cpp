@@ -233,15 +233,15 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
                          << asyncRet << " gvaAddr: " << gvaAddr << " dpitch: " << dpitch
                          << " deviceAddr: " << deviceAddr << " spitch: " << spitch << " width: " << width
                          << " height:" << height << " stream:" << st);
-            ret = asyncRet;
-            return BM_DL_FUNCTION_FAILED;
+            ret = BM_DL_FUNCTION_FAILED;
+            break;
         }
     }
 
     int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
-        ret = syncRet;
+        ret = BM_DL_FUNCTION_FAILED;
     }
     return ret;
 }
@@ -301,14 +301,15 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
             BM_LOG_ERROR("copy2d memory on gva to device failed:: "
                          << asyncRet << " gvaAddr: " << srcAddr << " spitch: " << spitch << " deviceAddr: " << dstAddr
                          << " dpitch: " << dpitch << " width: " << width << " height:" << height << " stream:" << st);
-            ret = asyncRet;
+            ret = BM_DL_FUNCTION_FAILED;
+            break;
         }
     }
 
     int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
-        ret = syncRet;
+        ret = BM_DL_FUNCTION_FAILED;
     }
     return ret;
 }

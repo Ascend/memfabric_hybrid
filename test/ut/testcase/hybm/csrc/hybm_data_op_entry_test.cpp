@@ -14,6 +14,7 @@
 using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
+namespace {
 const uint64_t g_rankSize = 8;
 const uint64_t g_localMemSize = 1024 * 1024 * 1024;
 const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
@@ -22,6 +23,7 @@ const uint64_t g_allocSize = 2 * 1024 * 1024;
 hybm_entity_t g_entity = nullptr;
 hybm_mem_slice_t g_slice = nullptr;
 void *g_reservedMem = nullptr;
+}
 
 class HybmDataOpEntryTest : public ::testing::Test {
 protected:

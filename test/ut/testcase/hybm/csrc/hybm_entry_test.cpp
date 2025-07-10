@@ -12,10 +12,10 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
 using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
-
+namespace {
 const std::string ASCEND_HOME_PATH = std::string(getenv("ASCEND_HOME_PATH"));
 const std::string LD_LIBRARY_PATH = std::string(getenv("LD_LIBRARY_PATH"));
-
+}
 class HybmEntryTest : public ::testing::Test {
 protected:
     void SetUp() override {}

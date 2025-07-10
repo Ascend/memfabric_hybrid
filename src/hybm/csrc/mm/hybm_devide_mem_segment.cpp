@@ -249,7 +249,7 @@ Result MemSegmentDevice::Mmap() noexcept
         auto ret = DlHalApi::HalGvaOpen((void *)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
-            return -1;
+            return BM_DL_FUNCTION_FAILED;
         }
         mappedMem_.insert((uint64_t)remoteAddress);
     }
