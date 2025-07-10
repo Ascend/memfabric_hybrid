@@ -110,6 +110,23 @@ public:
     }
 
     /**
+     * @brief Find the value by key from the concurrent hash map
+     *
+     * @param key          [in] key to be found
+     * @return 0 if found
+     */
+    Result Find(const Key &key)
+    {
+        std::size_t index = GetIndex(key);
+        std::lock_guard<std::mutex> guard(locks_[index]);
+        auto iter = buckets_[index].find(key);
+        if (iter != buckets_[index].end()) {
+            return MMC_OK;
+        }
+        return MMC_ERROR;
+    }
+
+    /**
      * @brief Erase the value by key
      *
      * @param key          [in] the key of value to be erased

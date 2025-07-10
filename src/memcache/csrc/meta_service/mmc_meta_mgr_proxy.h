@@ -25,6 +25,10 @@ public:
     virtual Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo) = 0;
 
     virtual Result Unmount(const MmcLocation &loc) = 0;
+
+    virtual Result ExistKey(const IsExistRequest &updateReq, Response &upddateResp) = 0;
+
+    virtual Result BatchExistKey(const BatchIsExistRequest &updateReq, BatchIsExistResponse &upddateResp) = 0;
 };
 using MmcMetaMgrProxyPtr = MmcRef<MmcMetaMgrProxy>;
 }  // namespace mmc

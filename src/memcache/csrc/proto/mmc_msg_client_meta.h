@@ -287,6 +287,83 @@ struct MetaReplicateRequest : public MsgBase {
         return MMC_OK;
     }
 };
+
+struct IsExistRequest : public MsgBase {
+    std::string key_;
+
+    IsExistRequest() : MsgBase{0, ML_IS_EXIST_REQ, 0}{}
+    explicit IsExistRequest(std::string key) : MsgBase{0, ML_IS_EXIST_REQ, 0}, key_(std::move(key)) {}
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(key_);
+        return MMC_OK;
+    }
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(key_);
+        return MMC_OK;
+    }
+};
+
+struct BatchIsExistRequest : public MsgBase {
+    std::vector<std::string> keys_;
+
+    BatchIsExistRequest() : MsgBase{0, ML_BATCH_IS_EXIST_REQ, 0}{}
+    explicit BatchIsExistRequest(const std::vector<std::string>& keys) : 
+        MsgBase{0, ML_BATCH_IS_EXIST_REQ, 0}, keys_(keys) {}
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(keys_);
+        return MMC_OK;
+    }
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(keys_);
+        return MMC_OK;
+    }
+};
+
+struct BatchIsExistResponse : public MsgBase {
+    Result ret_;
+    std::vector<Result> results_;
+
+    BatchIsExistResponse() : MsgBase{0, ML_BATCH_IS_EXIST_RESP, 0}{}
+    explicit BatchIsExistResponse(const Result &ret, const std::vector<Result> &results) : 
+        MsgBase{0, ML_BATCH_IS_EXIST_RESP, 0}, ret_(ret), results_(results) {}
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(ret_);
+        packer.Serialize(results_);
+        return MMC_OK;
+    }
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(ret_);
+        packer.Deserialize(results_);
+        return MMC_OK;
+    }
+};
 }  // namespace mmc
 }  // namespace ock
 #endif  // MF_HYBRID_MMC_MSG_CLIENT_META_H

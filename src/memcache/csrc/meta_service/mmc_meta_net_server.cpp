@@ -46,6 +46,10 @@ Result ock::mmc::MetaNetServer::Start()
                                       std::bind(&MetaNetServer::HandleGet, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_REMOVE_REQ,
                                       std::bind(&MetaNetServer::HandleRemove, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_IS_EXIST_REQ,
+                                      std::bind(&MetaNetServer::HandleIsExist, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_IS_EXIST_REQ,
+                                      std::bind(&MetaNetServer::HandleBatchIsExist, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_PING_REQ, nullptr);
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_META_REPLICATE_REQ, nullptr);
     server->RegNewLinkHandler(std::bind(&MetaNetServer::HandleNewLink, this, std::placeholders::_1));
@@ -146,6 +150,34 @@ Result MetaNetServer::HandleRemove(const NetContextPtr &context)
     MmcMetaMgrProxyPtr metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->Remove(req, resp);
     MMC_LOG_INFO("HandleRemove key " << req.key_);
+
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleIsExist(const NetContextPtr &context)
+{
+    IsExistRequest req;
+    Response resp;
+    context->GetRequest<IsExistRequest>(req);
+
+    MMC_LOG_INFO("HandleIsExist key " << req.key_);
+    MmcMetaMgrProxyPtr metaMgrProxy = metaService_->GetMetaMgrProxy();
+    metaMgrProxy->ExistKey(req, resp);
+    MMC_LOG_INFO("HandleIsExist key " << req.key_);
+
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleBatchIsExist(const NetContextPtr &context)
+{
+    BatchIsExistRequest req;
+    BatchIsExistResponse resp;
+    context->GetRequest<BatchIsExistRequest>(req);
+
+    MMC_LOG_INFO("HandleBatchIsExist keys");
+    MmcMetaMgrProxyPtr metaMgrProxy = metaService_->GetMetaMgrProxy();
+    metaMgrProxy->BatchExistKey(req, resp);
+    MMC_LOG_INFO("HandleBatchIsExist keys");
 
     return context->Reply(req.msgId, resp);
 }

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {

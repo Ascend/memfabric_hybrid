@@ -32,6 +32,10 @@ public:
 
     Result Remove(const char *key, uint32_t flags);
 
+    Result IsExist(const std::string& key, uint32_t flags);
+
+    Result BatchIsExist(const std::vector<std::string>& keys, std::vector<Result>& exist_results, uint32_t flags);
+
 private:
     inline uint32_t RankId(const affinity_policy &policy);
     std::mutex mutex_;

@@ -40,6 +40,10 @@ private:
 
     Result HandleRemove(const NetContextPtr &context);
 
+    Result HandleIsExist(const NetContextPtr &context);
+
+    Result HandleBatchIsExist(const NetContextPtr &context);
+
 private:
     NetEnginePtr engine_;
     MmcMetaServicePtr metaService_;

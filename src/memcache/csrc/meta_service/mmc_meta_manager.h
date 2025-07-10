@@ -70,6 +70,19 @@ public:
      */
     Result Unmount(const MmcLocation &loc);
 
+    /**
+     * @brief Check if a meta object (key) is in memory
+     * @param key          [in] key of the meta object
+     */
+    Result ExistKey(const std::string &key);
+
+    /**
+     * @brief Check if a list of meta objects (keys) is in memory
+     * @param keys          [in] keys of the meta objects
+     * @param results       [out] the accessible state corresponding to each key
+     */
+    Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results);
+
 private:
     /**
      * @brief force remove the blobs and object meta(if all its blobs are removed)

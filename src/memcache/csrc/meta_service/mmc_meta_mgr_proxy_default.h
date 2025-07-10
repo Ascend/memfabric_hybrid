@@ -45,6 +45,19 @@ public:
         return metaMangerPtr_->Unmount(loc);
     }
 
+    Result ExistKey(const IsExistRequest &req, Response &resp) override
+    {
+        resp.ret_ = metaMangerPtr_->ExistKey(req.key_);
+        return resp.ret_;
+    }
+
+    Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) override
+    {
+        std::vector<Result> results;
+        resp.ret_ = metaMangerPtr_->BatchExistKey(req.keys_, results);
+        resp.results_ = results;
+        return resp.ret_;
+    }
 private:
     MmcMetaManagerPtr metaMangerPtr_;
     MetaNetServerPtr netServerPtr_;

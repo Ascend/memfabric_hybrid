@@ -28,15 +28,17 @@ enum LOCAL_META_OPCODE_REQ : int16_t {
     ML_BM_REGISTER_REQ = 5,
     LM_PING_REQ = 6,
     LM_META_REPLICATE_REQ = 7,
+    ML_IS_EXIST_REQ = 8,
+    ML_BATCH_IS_EXIST_REQ = 9,
 };
-
-
 
 enum LOCAL_META_OPCODE_RESP : int16_t {
     ML_PING_RESP = 0,
     ML_ALLOC_RESP = 1,
     ML_UPDATE_RESP = 2,
     ML_BM_REGISTER_RESP = 3,
+    ML_IS_EXIST_RESP = 4,  // unused
+    ML_BATCH_IS_EXIST_RESP = 5,
 };
 }  // namespace mmc
 }  // namespace ock

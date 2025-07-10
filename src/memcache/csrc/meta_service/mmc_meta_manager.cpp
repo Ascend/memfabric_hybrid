@@ -152,5 +152,24 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
     return ret;
 }
 
+Result MmcMetaManager::ExistKey(const std::string &key)
+{
+    auto ret = objMetaLookupMap_.Find(key);
+    return (ret == MMC_OK) ? MMC_OK : MMC_UNMATCHED_KEY;
+}
+
+Result MmcMetaManager::BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results)
+{
+    results.reserve(keys.size());
+    bool has_exist = false;
+    for (size_t i = 0; i < keys.size(); ++i) {
+        results.emplace_back(objMetaLookupMap_.Find(keys[i]));
+        if (results.back() == MMC_OK) {
+            has_exist = true;
+        }
+    }
+    return (has_exist) ? MMC_OK : MMC_UNMATCHED_KEY;
+}
+
 }  // namespace mmc
 }  // namespace ock

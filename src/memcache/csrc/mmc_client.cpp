@@ -54,3 +54,22 @@ MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
                                     mmmcClientHandler->Name() << " remove key " << key << " failed!");
     return MMC_OK;
 }
+
+MMC_API int32_t mmcc_exist(const std::string& key, uint32_t flags)
+{
+    MMC_ASSERT_RETURN(mmmcClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
+    Result result = mmmcClientHandler->IsExist(key, flags);
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK && result != MMC_UNMATCHED_KEY,
+                                    mmmcClientHandler->Name() << " is_exist failed!");
+    return (result == MMC_OK) ? 0 : 1;
+}
+
+MMC_API int32_t mmcc_batch_exist(const std::vector<std::string>& keys, std::vector<Result>& exist_results, uint32_t flags)
+{
+    MMC_ASSERT_RETURN(mmmcClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(keys.size() == 0, "Got empty keys");
+    Result result = mmmcClientHandler->BatchIsExist(keys, exist_results, flags);
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK && result != MMC_UNMATCHED_KEY,
+                                    mmmcClientHandler->Name() << " batch_is_exist failed!");
+    return (result == MMC_OK) ? 0 : 1;
+}

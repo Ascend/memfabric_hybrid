@@ -103,5 +103,34 @@ Result MmcClientDefault::Remove(const char* key, uint32_t flags)
     return 0;
 }
 
+Result MmcClientDefault::IsExist(const std::string &key, uint32_t flags)
+{
+    IsExistRequest request{key};
+    Response response;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, timeOut_),
+                                    "client " << name_ << " IsExist " << key << " failed");
+    return response.ret_;
+}
+
+Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<Result> &exist_results, uint32_t flags)
+{
+    BatchIsExistRequest request{keys};
+    BatchIsExistResponse response;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, timeOut_),
+                                    "client " << name_ << " BatchIsExist failed");
+
+    if (response.results_.size() != keys.size()) {
+        MMC_LOG_ERROR("BatchIsExist response size mismatch. Expected: "
+                       << keys.size()
+                       << ", Got: " << response.results_.size());
+        std::fill(exist_results.begin(), exist_results.end(), MMC_ERROR);
+        return MMC_ERROR;
+    }
+
+    exist_results.resize(keys.size());
+    exist_results = response.results_;
+    
+    return response.ret_;
+}
 }
 }

@@ -97,6 +97,23 @@ int32_t mmcc_remove(const char *key, uint32_t flags);
  */
 int32_t mobsc_wait(int32_t waitHandle, int32_t timeoutSec);
 
+/**
+ * @brief Determine whether the key is within the BM
+ *
+ * @param key              [in] key of data, less than 256
+ * @return 0 if successfully, 1 if failed, positive value if error happens
+ */
+int32_t mmcc_exist(const std::string& key, uint32_t flags);
+
+/**
+ * @brief Determine whether the list of keys is within the BM
+ *
+ * @param keys             [in] keys of data, the length of key is less than 256
+ * @param exist_results    [out] existence status list of keys in BM
+ * @return 0 if at least one key exist, 1 if all key not exist, positive value if error happens
+ */
+int32_t mmcc_batch_exist(const std::vector<std::string>& keys, std::vector<int32_t>& exist_results, uint32_t flags);
+
 #ifdef __cplusplus
 }
 #endif
