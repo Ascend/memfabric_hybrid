@@ -67,7 +67,7 @@ public:
     AccStoreServer(std::string ip, uint16_t port) noexcept;
     ~AccStoreServer() override = default;
 
-    Result Startup() noexcept;
+    Result Startup(const smem_tls_option &tlsOption) noexcept;
     void Shutdown() noexcept;
 
 private:

@@ -122,7 +122,22 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
+Result TcpConfigStore::AccClientStart(const smem_tls_option &tlsOption) noexcept
+{
+    ock::acc::AccTcpServerOptions options;
+    options.linkSendQueueSize = ock::acc::UNO_48;
+
+    ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
+    Result result;
+    if (tlsOpt.enableTls) {
+        result = accClient_->Start(options, tlsOpt);
+    } else {
+        result = accClient_->Start(options);
+    }
+    return result;
+}
+
+Result TcpConfigStore::Startup(const smem_tls_option &tlsOption, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
@@ -139,6 +154,10 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
         return SM_ERROR;
     }
 
+    if (tlsOption.enableTls) {
+        result = accClient_->LoadDynamicLib(tlsOption.packagePath);
+    }
+
     if (isServer_) {
         accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
         if (accServer_ == nullptr) {
@@ -147,7 +166,7 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
             return SM_NEW_OBJECT_FAILED;
         }
 
-        if ((result = accServer_->Startup()) != SM_OK) {
+        if ((result = accServer_->Startup(tlsOption)) != SM_OK) {
             SM_LOG_ERROR("AccStoreServer startup failed: " << result);
             Shutdown();
             return result;
@@ -159,9 +178,7 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
     accClient_->RegisterLinkBrokenHandler(
         [this](const ock::acc::AccTcpLinkComplexPtr &link) { return LinkBrokenHandler(link); });
 
-    ock::acc::AccTcpServerOptions options;
-    options.linkSendQueueSize = ock::acc::UNO_48;
-    if ((result = accClient_->Start(options)) != SM_OK) {
+    if ((result = AccClientStart(tlsOption)) != SM_OK) {
         SM_LOG_ERROR("start acc client failed, result: " << result);
         Shutdown();
         return result;

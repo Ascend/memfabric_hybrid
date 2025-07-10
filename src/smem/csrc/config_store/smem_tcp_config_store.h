@@ -31,7 +31,7 @@ public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, int32_t rankId = 0) noexcept;
     ~TcpConfigStore() noexcept override;
 
-    Result Startup(int reconnectRetryTimes = -1) noexcept;
+    Result Startup(const smem_tls_option &tlsOption, int reconnectRetryTimes = -1) noexcept;
     void Shutdown() noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
@@ -68,6 +68,8 @@ private:
     Result ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
     Result SendWatchRequest(const std::vector<uint8_t> &reqBody,
                             const std::function<void(int result, const std::vector<uint8_t> &)> &notify, uint32_t &id) noexcept;
+
+    Result AccClientStart(const smem_tls_option &tlsOption) noexcept;
 
 private:
     AccStoreServerPtr accServer_;

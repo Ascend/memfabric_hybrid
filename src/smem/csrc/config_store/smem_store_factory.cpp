@@ -12,6 +12,7 @@ namespace smem {
 static __thread int failedReason_ = 0;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
+smem_tls_option StoreFactory::tlsOption_;
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
                                    int32_t connMaxRetry) noexcept
@@ -27,7 +28,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, rankId);
     SM_ASSERT_RETURN(store != nullptr, nullptr);
 
-    auto ret = store->Startup(connMaxRetry);
+    auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
         SM_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
                                              << ") address in use");
@@ -67,6 +68,11 @@ StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::s
 int StoreFactory::GetFailedReason() noexcept
 {
     return failedReason_;
+}
+
+void StoreFactory::SetTlsOption(const smem_tls_option *opt) noexcept
+{
+    tlsOption_ = *opt;
 }
 }  // namespace smem
 }  // namespace ock

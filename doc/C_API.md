@@ -55,6 +55,17 @@
     |-|-|
     |返回值|错误信息|
 
+1. 设置ssl参数，在打开TLS时设置
+    ```c
+    int32_t smem_set_ssl_option(const smem_tls_option *tlsOption);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |tlsOption|tls相关参数|
+    |返回值|错误信息|
+
+
 ##### BM接口列表
 
 1. BM配置初始化

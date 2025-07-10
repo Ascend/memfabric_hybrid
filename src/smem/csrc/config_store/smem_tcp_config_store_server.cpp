@@ -20,7 +20,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port) noexcept
 {
 }
 
-Result AccStoreServer::Startup() noexcept
+Result AccStoreServer::Startup(const smem_tls_option &tlsOption) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {
@@ -48,7 +48,14 @@ Result AccStoreServer::Startup() noexcept
     options.listenPort = listenPort_;
     options.enableListener = true;
     options.linkSendQueueSize = ock::acc::UNO_48;
-    auto result = tmpAccTcpServer->Start(options);
+
+    ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
+    Result result;
+    if (tlsOpt.enableTls) {
+        result = tmpAccTcpServer->Start(options, tlsOpt);
+    } else {
+        result = tmpAccTcpServer->Start(options);
+    }
     if (result == ock::acc::ACC_LINK_ADDRESS_IN_USE) {
         SM_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
         return SM_RESOURCE_IN_USE;

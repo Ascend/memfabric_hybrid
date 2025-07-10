@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include "smem_config_store.h"
+#include "smem_security.h"
 
 namespace ock {
 namespace smem {
@@ -43,9 +44,12 @@ public:
 
     static int GetFailedReason() noexcept;
 
+    static void SetTlsOption(const smem_tls_option *opt) noexcept;
+
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
+    static smem_tls_option tlsOption_;
 };
 } // namespace smem
 } // namespace ock

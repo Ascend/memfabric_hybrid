@@ -4,11 +4,13 @@
 #include <Python.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
+#include <pybind11/stl.h>
 
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
 #include "smem_version.h"
+#include "smem_security.h"
 
 namespace py = pybind11;
 
@@ -172,6 +174,33 @@ private:
 
 uint32_t BigMemory::worldSize_;
 
+int32_t set_ssl_option(const smem_tls_option &tls_option)
+{
+    return smem_set_ssl_option(&tls_option);
+}
+
+void DefineSemeConfig(py::module_ &m)
+{
+    py::class_<smem_tls_option>(m, "TlsOption")
+        .def(py::init([]() {
+                auto opt = new smem_tls_option;
+                return opt;
+            }),
+            py::call_guard<py::gil_scoped_release>())
+        .def_readwrite("enable_tls", &smem_tls_option::enableTls, "Enable TLS, default is false")
+        .def_readwrite("tls_top_path", &smem_tls_option::tlsTopPath, "Root path of certificates")
+        .def_readwrite("tls_cert", &smem_tls_option::tlsCert, "Server certificate")
+        .def_readwrite("tls_crl_path", &smem_tls_option::tlsCrlPath, "Optional, CRL file path")
+        .def_readwrite("tls_ca_path", &smem_tls_option::tlsCaPath, "CA file path")
+        .def_readwrite("tls_ca_file", &smem_tls_option::tlsCaFile, "Paths of CA files")
+        .def_readwrite("tls_crl_file", &smem_tls_option::tlsCrlFile, "Path of CRL file")
+        .def_readwrite("tls_pk", &smem_tls_option::tlsPk, "Private key")
+        .def_readwrite("tls_pk_pwd", &smem_tls_option::tlsPkPwd, "Password for private key (optional)")
+        .def_readwrite("kmc_ksf_master", &smem_tls_option::kmcKsfMaster, "Master KSF private key file")
+        .def_readwrite("kmc_ksf_standby", &smem_tls_option::kmcKsfStandby, "Standby KSF private key file")
+        .def_readwrite("package_path", &smem_tls_option::packagePath, "Library path");
+}
+
 void DefineSmemFunctions(py::module_ &m)
 {
     m.def("initialize", &smem_init, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
@@ -191,6 +220,14 @@ set log print level.
 
 Arguments:
     level(int): log level, 0:debug 1:info 2:warn 3:error)");
+
+    m.def("set_ssl_option", &set_ssl_option, py::call_guard<py::gil_scoped_release>(), py::arg("tls_option"), R"(
+Set ssl option, required if TLS enabled.
+
+Arguments:
+    tls_option(TlsOption): tlsOption set
+Returns:
+    0 if successful)");
 
     m.doc() = LIB_VERSION;
 }
@@ -388,6 +425,7 @@ Returns:
 
 PYBIND11_MODULE(_pymf_smem, m)
 {
+    DefineSemeConfig(m);
     DefineSmemFunctions(m);
 
     auto shm = m.def_submodule("shm", "Share Memory Module.");

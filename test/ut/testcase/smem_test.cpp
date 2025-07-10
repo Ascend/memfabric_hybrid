@@ -14,6 +14,7 @@
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
+#include "smem_security.h"
 #include "ut_barrier_util.h"
 #include "hybm_stub.h"
 #include "smem_shm_entry_manager.h"
@@ -972,7 +973,7 @@ TEST_F(TestSmem, smem_bm_init_falied_manager_error)
         uint32_t, uint16_t, const smem_bm_config_t &)).stubs().will(returnValue(-1));
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     EXPECT_NE(ret, 0);
-    
+
     smem_uninit();
 }
 
@@ -987,7 +988,7 @@ TEST_F(TestSmem, smem_bm_init_falied_hybm_error)
     MOCKER(hybm_init).stubs().will(returnValue(-1));
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     EXPECT_NE(ret, 0);
-    
+
     smem_uninit();
 }
 
@@ -1002,7 +1003,7 @@ TEST_F(TestSmem, smem_bm_init_already_inited)
     ASSERT_EQ(ret, 0);
     ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     EXPECT_EQ(ret, 0);
-    
+
     smem_bm_uninit(0);
     smem_uninit();
 }
@@ -1434,4 +1435,13 @@ TEST_F(TestSmem, smem_bm_copy_2d_failed_manager_error)
 
     smem_bm_uninit(0);
     smem_uninit();
+}
+
+TEST_F(TestSmem, smem_set_ssl_option_success)
+{
+    smem_tls_option tlsOption;
+    tlsOption.enableTls = false;
+    tlsOption.tlsTopPath = "/tmp";
+    auto result = smem_set_ssl_option(&tlsOption);
+    EXPECT_EQ(result, 0);
 }

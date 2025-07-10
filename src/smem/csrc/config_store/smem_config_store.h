@@ -11,6 +11,8 @@
 #include <memory>
 #include <functional>
 
+#include "acc_links/net/acc_def.h"
+#include "smem_security.h"
 #include "smem_common_includes.h"
 
 namespace ock {
@@ -258,6 +260,24 @@ inline const char *ConfigStore::ErrStr(int16_t errCode)
         default:
             return "unknown error";
     }
+}
+
+inline ock::acc::AccTlsOption ConvertTlsOption(const smem_tls_option &opt)
+{
+    ock::acc::AccTlsOption tlsOption;
+    tlsOption.enableTls = opt.enableTls;
+    tlsOption.tlsTopPath = opt.tlsTopPath;
+    tlsOption.tlsCert = opt.tlsCert;
+    tlsOption.tlsCaPath = opt.tlsCaPath;
+    tlsOption.tlsCrlPath = opt.tlsCrlPath;
+    tlsOption.tlsCaFile = opt.tlsCaFile;
+    tlsOption.tlsCrlFile = opt.tlsCrlFile;
+    tlsOption.tlsPk = opt.tlsPk;
+    tlsOption.tlsPkPwd = opt.tlsPkPwd;
+    tlsOption.kmcKsfMaster = opt.kmcKsfMaster;
+    tlsOption.kmcKsfStandby = opt.kmcKsfStandby;
+    tlsOption.packagePath = opt.packagePath;
+    return tlsOption;
 }
 
 }  // namespace smem

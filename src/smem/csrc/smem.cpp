@@ -6,6 +6,8 @@
 #include "smem_version.h"
 #include "hybm.h"
 #include "acc_links/net/acc_log.h"
+#include "smem_security.h"
+#include "smem_store_factory.h"
 
 namespace {
 bool g_smemInited = false;
@@ -95,4 +97,14 @@ SMEM_API const char *smem_get_last_err_msg()
 SMEM_API const char *smem_get_and_clear_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(true);
+}
+
+SMEM_API int32_t smem_set_ssl_option(const smem_tls_option *tlsOption)
+{
+    using namespace ock::smem;
+
+    SM_PARAM_VALIDATE(tlsOption == nullptr, "set tlsOption failed, invalid param which is NULL", SM_INVALID_PARAM);
+    ock::smem::StoreFactory::SetTlsOption(tlsOption);
+
+    return SM_OK;
 }

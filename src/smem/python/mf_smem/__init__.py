@@ -14,7 +14,7 @@ for lib in ["libmf_smem.so"]:
     ctypes.CDLL(os.path.join(libs_path, lib))
 
 
-from _pymf_smem import bm, shm, initialize, uninitialize, set_log_level
+from _pymf_smem import bm, shm, initialize, uninitialize, set_log_level, set_ssl_option, TlsOption
 
 
-__all__ = ['bm', 'shm', 'initialize', 'uninitialize', 'set_log_level']
+__all__ = ['bm', 'shm', 'initialize', 'uninitialize', 'set_log_level', 'set_ssl_option', 'TlsOption']
