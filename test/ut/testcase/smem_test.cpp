@@ -1170,8 +1170,6 @@ TEST_F(TestSmem, smem_bm_join_failed_manager_error)
     void *gva;
     MOCKER_CPP(&SmemBmEntryManager::Initialize, int32_t(*)(SmemBmEntryManager *, const std::string &,
         uint32_t, uint16_t, const smem_bm_config_t &)).stubs().will(returnValue(0));
-    MOCKER_CPP(&SmemBmEntryManager::GetEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t,
-        ock::smem::SmemBmEntryPtr &)).stubs().will(returnValue(-1)).then(returnValue(0));
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     ASSERT_EQ(ret, 0);
 

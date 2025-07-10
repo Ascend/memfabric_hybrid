@@ -7,6 +7,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
 
 constexpr int32_t RETURN_OK = 0;
 constexpr int32_t RETURN_ERROR = -1;
+constexpr uint64_t START_ADDR = 0x100000000000ULL;
 
 extern "C" {
 int32_t aclrtSetDevice(int32_t deviceId)
@@ -41,6 +42,7 @@ int32_t aclrtSynchronizeStream(void *stream)
 
 int32_t aclrtMalloc(void **ptr, size_t count, uint32_t type)
 {
+    *ptr = (void *) START_ADDR;
     return RETURN_OK;
 }
 

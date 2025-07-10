@@ -18,8 +18,8 @@ using namespace ock::mf;
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
 HostDataOpSDMA g_dataOperator = HostDataOpSDMA(nullptr);
-void *g_srcVA = reinterpret_cast<void *>(0x001000000000);
-void *g_dstVA = reinterpret_cast<void *>(0x002000000000);
+void *g_srcVA = reinterpret_cast<void *>(0x100000000000ULL);
+void *g_dstVA = reinterpret_cast<void *>(0x100000000000ULL);
 const uint64_t g_size = 1024;
 }
 
