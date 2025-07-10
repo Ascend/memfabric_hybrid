@@ -643,13 +643,13 @@ int RdmaTransportManager::CreateQpWaitingReady(std::unordered_map<std::string, C
     HccpQpExtAttrs attr{};
     attr.qpMode = NETWORK_OFFLINE;
     attr.version = 1;
-    attr.cqAttr.sendCqDepth = 32768;
+    attr.cqAttr.sendCqDepth = 8192;
     attr.cqAttr.recvDqDepth = 128;
     attr.qp_attr.cap.max_recv_sge = 1;
     attr.qp_attr.cap.max_recv_wr = 128;
     attr.qp_attr.cap.max_recv_sge = 1;
     attr.qp_attr.qp_type = IBV_QPT_RC;
-    attr.qp_attr.cap.max_send_wr = 128;
+    attr.qp_attr.cap.max_send_wr = 8192;
     attr.data_plane_flag.bs.cq_cstm = 1;
 
     for (auto it = connections.begin(); it != connections.end(); ++it) {
@@ -729,7 +729,7 @@ int RdmaTransportManager::FillQpInfo()
 
         CopyAiWQInfo(copyInfo->sq[i], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 4);
         CopyAiWQInfo(copyInfo->rq[i], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 4);
-        CopyAiCQInfo(copyInfo->scq[i], pos->second.aiQpInfo.data_plane_info.scq, DBMode::SW_DB);
+        CopyAiCQInfo(copyInfo->scq[i], pos->second.aiQpInfo.data_plane_info.scq, DBMode::HW_DB);
         CopyAiCQInfo(copyInfo->rcq[i], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }
 

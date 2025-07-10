@@ -128,13 +128,12 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uin
     auto curHardwareTailAddr = cqCtxEntry->tailAddr;
     cacheWriteThrough((__gm__ uint8_t*)curHardwareTailAddr, 8);
     uint32_t curTail = *(__gm__ uint32_t*)(curHardwareTailAddr);
-    // TODO: Check wraparound situation
 
     AscendC::DataCopyExtParams copyParamsTail{1, 1 * sizeof(uint32_t), 0, 0, 0};
     while (curTail != idx) {
         __gm__ cqeCtx* cqeAddr = (__gm__ cqeCtx*)(cqBaseAddr + cqeSize * (curTail & (depth - 1)));
         uint32_t cqeByte4 = *(__gm__ uint32_t*)cqeAddr;
-        while (!(cqeByte4 & (1 << 7))) {
+        while (((cqeByte4 & (1 << 7)) != 0) == ((curTail & depth) != 0)) {
             int64_t tmp = AscendC::GetSystemCycle();
             cacheWriteThrough((__gm__ uint8_t*)cqeAddr, 32);
             cqeByte4 = *(__gm__ uint32_t*)cqeAddr;
@@ -221,10 +220,10 @@ SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, 
     auto wqeSize = qpCtxEntry->wqeSize;
     auto curHardwareHeadAddr = qpCtxEntry->headAddr;
     cacheWriteThrough((__gm__ uint8_t*)curHardwareHeadAddr, 8);
-    uint64_t curHead = *(__gm__ uint32_t*)(curHardwareHeadAddr);
+    uint32_t curHead = *(__gm__ uint32_t*)(curHardwareHeadAddr);
     auto curHardwareTailAddr = qpCtxEntry->tailAddr;
     auto depth = qpCtxEntry->depth;
-    auto shift = 15;
+    auto shift = 13;
     AscendC::PipeBarrier<PIPE_ALL>();
 
     // Poll CQ if send queue is full
@@ -263,7 +262,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, 
     uint64_t doorBellInfo = 0;
     doorBellInfo |= qpCtxEntry->wqn; // [0:23] DB_TAG = qp_num
     doorBellInfo |= 0 << 24; // [24:27] DB_CMD = HNS_ROCE_V2_SQ_DB(0)
-    doorBellInfo |= (curHead % 65536) << 32; // [32:47] DB_PI = sq.head
+    doorBellInfo |= ((uint64_t)curHead % 65536) << 32; // [32:47] DB_PI = sq.head
     doorBellInfo |= (uint64_t)(qpCtxEntry->sl) << 48; // [48:50] DB_SL = qp.sl
 
     __gm__ uint64_t* doorBellAddr = (__gm__ uint64_t*)(qpCtxEntry->dbAddr);

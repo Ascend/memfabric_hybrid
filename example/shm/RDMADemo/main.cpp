@@ -14,6 +14,7 @@
 #include <cstring>
 
 extern void shm_rdma_write_test_do(void* stream, uint8_t* gva, uint64_t heap_size);
+extern void shm_rdma_read_test_do(void* stream, uint8_t* gva, uint64_t heap_size);
 extern void shm_rdma_get_qpinfo_test_do(void* stream, uint8_t* gva, uint32_t rankId);
 extern void shm_rdma_pollcq_test_do(void* stream, uint8_t* gva, uint64_t heap_size);
 
@@ -57,6 +58,29 @@ static int32_t TestRDMAPollCQ(aclrtStream stream, uint8_t *gva, uint32_t rankId,
 }
 
 static int32_t TestRDMAWrite(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
+{
+    uint32_t *xHost;
+    size_t totalSize = messageSize * rankSize;
+    CHECK_ACL(aclrtMallocHost((void **)(&xHost), totalSize));
+    for (uint32_t i = 0; i < messageSize / sizeof(uint32_t); i++) {
+        xHost[i] = rankId;
+    }
+
+    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+    shm_rdma_write_test_do(stream, gva, gNpuMallocSpace);
+    CHECK_ACL(aclrtSynchronizeStream(stream));
+    sleep(1);
+
+    CHECK_ACL(aclrtMemcpy(xHost, totalSize, gva + rankId * gNpuMallocSpace, totalSize, ACL_MEMCPY_DEVICE_TO_HOST));
+    for (uint32_t i = 0; i < rankSize; i++) {
+        CHECK_EQUALS(xHost[i * messageSize / sizeof(uint32_t)], i);
+    }
+
+    CHECK_ACL(aclrtFreeHost(xHost));
+    return 0;
+}
+
+static int32_t TestRDMARead(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
     uint32_t *xHost;
     size_t totalSize = messageSize * rankSize;
@@ -148,8 +172,9 @@ int32_t main(int32_t argc, char* argv[])
     WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
     TestGetQPInfo(stream, (uint8_t *)gva, rankId, rankSize);
     sleep(1);
-    // TestRDMAWrite(stream, (uint8_t *)gva, rankId, rankSize);
-    TestRDMAPollCQ(stream, (uint8_t *)gva, rankId, rankSize);
+    TestRDMAWrite(stream, (uint8_t *)gva, rankId, rankSize);
+    // TestRDMARead(stream, (uint8_t *)gva, rankId, rankSize);
+    // TestRDMAPollCQ(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;
     smem_shm_destroy(handle, flags);
