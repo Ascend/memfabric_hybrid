@@ -39,7 +39,7 @@ public:
 
 inline bool CommonFunc::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX) {
+    if (path.empty() || path.size() >= PATH_MAX) {
         SM_LOG_ERROR("Failed to get realpath of [" << path << "] as path is invalid");
         return false;
     }

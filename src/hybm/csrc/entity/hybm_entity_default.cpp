@@ -232,7 +232,7 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
         return BM_ERROR;
     }
 
-    HybmDeviceMeta info;
+    HybmDeviceMeta info{};
     SetHybmDeviceInfo(info);
     info.extraContextSize = size;
     addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;

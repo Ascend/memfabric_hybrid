@@ -9,7 +9,7 @@ namespace ock {
 namespace mf {
 bool Func::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX) {
+    if (path.empty() || path.size() >= PATH_MAX) {
         BM_LOG_ERROR("Failed to get realpath of [" << path << "] as path is invalid");
         return false;
     }
