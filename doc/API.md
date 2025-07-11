@@ -86,7 +86,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |storeURL|初始化参数|
+    |storeURL|config store地址，格式tcp:://ip:port|
     |worldSize|参与初始化BM的rank数量|
     |deviceId|当前rank的deviceId|
     |config|BM初始化配置|
@@ -122,9 +122,9 @@
     |-|-|
     |id|BM id，用户自定义，BM之间取不同值|
     |memberSize|创建BM的rank数量|
-    |dataOpType|数据操作类型|
-    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小|
-    |localHBMSize|创建BM当前rank贡献的HBM空间大小|
+    |dataOpType|数据操作类型，取值内容参考smem_bm_data_op_type定义|
+    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节|
+    |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节|
     |flags|创建标记位，预留|
     |返回值|成功返回BM handle，失败返回空指针|
 
@@ -193,7 +193,7 @@
     |handle|BM handle|
     |src|源gva地址|
     |dest|目的gva地址|
-    |size|拷贝数据大小|
+    |size|拷贝数据大小，单位字节|
     |t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
@@ -238,7 +238,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |configStoreIpPort|config store的IP和端口|
+    |configStoreIpPort|config store的IP和端口，格式tcp:://ip:port|
     |worldSize|参与SHM初始化rank数量|
     |rankId|当前rank id|
     |deviceId|当前rank的device id|
@@ -274,7 +274,7 @@
     |id|SHM对象id，用户指定，与其他SHM对象不重复|
     |rankSize|参与创建SHM的rank数量|
     |rankId|当前rank id|
-    |symmetricSize|每个rank贡献到创建SHM对象的空间大小|
+    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节|
     |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
     |flags|预留参数|
     |gva|出参，gva空间地址|
@@ -300,7 +300,7 @@
     |-|-|
     |handle|SHM对象handle|
     |context|用户context指针|
-    |size|用户context大小，最大64K|
+    |size|用户context大小，最大64K，单位字节|
     |返回值|成功返回0，失败返回错误码|
 
 1. 获取rank id
@@ -343,9 +343,9 @@
     |-|-|
     |handle|SHM对象handle|
     |sendBuf|发送数据buffer|
-    |sendSize|发送数据大小|
+    |sendSize|发送数据大小，单位字节|
     |recvBuf|接收数据buffer|
-    |recvSize|接收数据大小|
+    |recvSize|接收数据大小，单位字节|
     |返回值|成功返回0，失败返回错误码|
 
 1. rank连通检查
@@ -357,5 +357,14 @@
     |-|-|
     |handle|SHM对象handle|
     |remoteRank|待检查rank id|
-    |reachInfo|连通信息|
+    |reachInfo|连通信息类型，参考smem_shm_data_op_type定义|
     |返回值|成功返回0，失败返回错误码|
+
+##### 环境变量
+
+
+|环境变量|含义|
+|-|-|
+|LD_LIBRARY_PATH|动态链接库搜索路径|
+|ASCEND_HOME_PATH|cann包安装路径|
+|VERSION|编译whl包版本，默认1.0.0|
