@@ -126,7 +126,7 @@ int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], 
         return -1;
     }
 
-    for (uint32_t i = 0; i < mgr->ranksize; i++) {
+    for (uint32_t i = 0; i < count; i++) {
         std::string base = std::to_string(mgr->ranksize) + "_" + std::to_string(i);
         printf(" %u descLen:%u\n", i, allExInfo[i].descLen);
         std::string input;

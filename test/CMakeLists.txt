@@ -4,5 +4,13 @@ include_directories(
 )
 
 add_subdirectory(3rdparty)
-add_subdirectory(ut)
-add_subdirectory(ut/mock)
+
+set(ENABLE_FUZZ $ENV{ENABLE_FUZZ})
+if (ENABLE_FUZZ STREQUAL "ON")
+    message(STATUS "ENABLE_FUZZ is ${ENABLE_FUZZ}")
+    add_subdirectory(fuzz)
+    add_subdirectory(ut/mock)
+else ()
+    add_subdirectory(ut)
+    add_subdirectory(ut/mock)
+endif()
