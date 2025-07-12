@@ -101,6 +101,17 @@ public:
 
     int init(const std::string &discoveryURL, u_int32_t rankId, u_int32_t timeOut=5);
 
+    int setupLocalService(const std::string &discoveryURL,
+                          uint32_t deviceId,
+                          uint32_t rankId,
+                          uint32_t worldSize,
+                          const std::string& bmIpPort,
+                          int autoRanking,
+                          uint32_t createId,
+                          const std::string& protocol,
+                          uint64_t localDRAMSize,
+                          uint64_t localHBMSize);
+
     int setup(const std::string &local_hostname,
               const std::string &metadata_server,
               size_t global_segment_size = 1024 * 1024 * 16,
@@ -215,6 +226,8 @@ public:
      */
     int64_t getSize(const std::string &key);
 
+private:
+    mmc_local_service_t local_service_;
 };
 
 #endif
