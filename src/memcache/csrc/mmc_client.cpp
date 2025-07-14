@@ -99,13 +99,13 @@ MMC_API int32_t mmcc_batch_exist(const std::vector<std::string> &keys, std::vect
 
 MMC_API int32_t mmcc_batch_remove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags)
 {
-    MMC_ASSERT_RETURN(mmmcClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
+    MMC_ASSERT_RETURN(gClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
     if (keys.empty()) {
         MMC_LOG_ERROR("Got empty keys");
         return MMC_ERROR;
     }
-    Result result = mmmcClientHandler->BatchRemove(keys, remove_results, flags);
+    Result result = gClientHandler->BatchRemove(keys, remove_results, flags);
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK,
-                                    mmmcClientHandler->Name() << " batch_remove failed!");
+                                    gClientHandler->Name() << " batch_remove failed!");
     return MMC_OK;
 }
