@@ -113,6 +113,16 @@ int32_t mmcc_exist(const char* key, uint32_t flags);
  */
 int32_t mmcc_batch_exist(const std::vector<std::string>& keys, std::vector<int32_t>& exist_results, uint32_t flags);
 
+/**
+ * @brief Remove multiple keys from the BM
+ *
+ * @param keys             [in] List of keys to be removed from the BM
+ * @param remove_results   [out] Results of each removal operation
+ * @param flags            [in] Flags for the operation
+ * @return 0 if successfully, 1 if all keys not found, positive value if error happens
+ */
+int32_t mmcc_batch_remove(const std::vector<std::string>& keys, std::vector<int32_t>& remove_results, uint32_t flags);
+
 #ifdef __cplusplus
 }
 #endif

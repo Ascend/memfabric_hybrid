@@ -217,3 +217,76 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
     CheckReturn(partExistKeys, MMC_OK, 10U);
     CheckReturn(allNotExistKeys, MMC_UNMATCHED_KEY, 0U);
 }
+
+TEST_F(TestMmcMetaManager, Remove)
+{
+    MmcLocation loc{0, 0};
+    MmcLocalMemlInitInfo locInfo{0, 1000000};
+    uint64_t defaultTtl = 2000;
+    MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl);
+    metaMng->Mount(loc, locInfo);
+
+    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    MmcMemObjMetaPtr objMeta;
+    Result ret = metaMng->Alloc("testKey", allocReq, objMeta);
+    ASSERT_TRUE(ret == MMC_OK);
+    ASSERT_TRUE(objMeta != nullptr);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    ret = metaMng->Remove("testKey");
+    ASSERT_TRUE(ret == MMC_OK);
+
+    ret = metaMng->Remove("nonexistentKey");
+    ASSERT_TRUE(ret == MMC_UNMATCHED_KEY);
+
+    ret = metaMng->Alloc("testKey2", allocReq, objMeta);
+    ASSERT_TRUE(ret == MMC_OK);
+    ret = metaMng->Remove("testKey2");
+    ASSERT_TRUE(ret == MMC_LEASE_NOT_EXPIRED);
+}
+
+TEST_F(TestMmcMetaManager, BatchRemove) 
+{
+    MmcLocation loc{0, 0};
+    MmcLocalMemlInitInfo locInfo{0, 1000000};
+    uint64_t defaultTtl = 2000;
+    MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl);
+    metaMng->Mount(loc, locInfo);
+
+    std::vector<std::string> keys = {"key1", "key2", "key3"};
+    std::vector<Result> results;
+
+    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    MmcMemObjMetaPtr objMeta;
+    for (const auto& key : keys) {
+        Result ret = metaMng->Alloc(key, allocReq, objMeta);
+        ASSERT_TRUE(ret == MMC_OK);
+        ASSERT_TRUE(objMeta != nullptr);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    Result ret = metaMng->BatchRemove(keys, results);
+    ASSERT_TRUE(ret == MMC_OK);
+    ASSERT_EQ(results.size(), keys.size());
+    for (const auto& result : results) {
+        ASSERT_TRUE(result == MMC_OK);
+    }
+
+    std::vector<std::string> nonExistentKeys = {"nonexistentKey1", "nonexistentKey2"};
+    ret = metaMng->BatchRemove(nonExistentKeys, results);
+    ASSERT_TRUE(ret == MMC_OK);
+    for (const auto& result : results) {
+        ASSERT_TRUE(result == MMC_UNMATCHED_KEY);
+    }
+
+    ret = metaMng->Alloc("leaseNotExpiredKey", allocReq, objMeta);
+    ASSERT_TRUE(ret == MMC_OK);
+    std::vector<std::string> leaseNotExpiredKeys = {"leaseNotExpiredKey"};
+    ret = metaMng->BatchRemove(leaseNotExpiredKeys, results);
+    ASSERT_TRUE(ret == MMC_OK);
+    for (const auto& result : results) {
+        ASSERT_TRUE(result == MMC_LEASE_NOT_EXPIRED);
+    }
+}

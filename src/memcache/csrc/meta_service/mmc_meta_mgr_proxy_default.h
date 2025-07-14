@@ -31,6 +31,8 @@ public:
 
     Result Remove(const RemoveRequest &req, Response &resp) override;
 
+    Result BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp);
+
     Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo) override
     {
         return metaMangerPtr_->Mount(loc, localMemInitInfo);

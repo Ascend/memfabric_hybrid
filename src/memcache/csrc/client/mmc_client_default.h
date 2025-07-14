@@ -31,6 +31,8 @@ public:
 
     Result Remove(const char *key, uint32_t flags) const;
 
+    Result BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags);
+
     Result IsExist(const std::string &key, uint32_t flags) const;
 
     Result BatchIsExist(const std::vector<std::string> &keys, std::vector<Result> &exist_results, uint32_t flags) const;

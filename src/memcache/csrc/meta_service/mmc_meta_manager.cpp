@@ -99,6 +99,21 @@ Result MmcMetaManager::Remove(const std::string &key)
     }
 }
 
+Result MmcMetaManager::BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results) {
+    remove_results.resize(keys.size());
+    
+    for (size_t i = 0; i < keys.size(); ++i) {
+        const std::string& key = keys[i];
+        Result ret = Remove(key);
+        remove_results[i] = ret;
+        if (ret != MMC_OK && ret != MMC_UNMATCHED_KEY && ret != MMC_LEASE_NOT_EXPIRED) {
+            MMC_LOG_ERROR("Failed to remove key: " << key);
+        }
+    }
+    
+    return MMC_OK;
+}
+
 Result MmcMetaManager::ForceRemoveBlobs(const MmcMemObjMetaPtr &objMeta, const MmcBlobFilterPtr &filter)
 {
     Result ret;

@@ -79,5 +79,27 @@ Result MmcMetaMgrProxyDefault::Remove(const RemoveRequest &req, Response &resp)
         return MMC_OK;
     }
 }
+
+Result MmcMetaMgrProxyDefault::BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp)
+{
+    std::vector<Result> results;
+    results.reserve(req.keys_.size());
+
+    Result ret = metaMangerPtr_->BatchRemove(req.keys_, results);
+    if (ret != MMC_OK) {
+        MMC_LOG_ERROR("BatchRemove failed");
+        return ret;
+    }
+
+    for (size_t i = 0; i < req.keys_.size(); ++i) {
+        if (results[i] != MMC_OK) {
+            MMC_LOG_ERROR("BatchRemove failed for key: " << req.keys_[i] << " error: " << results[i]);
+        }
+    }
+
+    resp.results_ = results;
+    return MMC_OK;
+}
+
 }
 }

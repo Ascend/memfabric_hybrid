@@ -108,6 +108,25 @@ Result MmcClientDefault::Remove(const char *key, uint32_t flags) const
     return 0;
 }
 
+Result MmcClientDefault::BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags) {
+    BatchRemoveRequest request{keys};
+    BatchRemoveResponse response;
+    
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(
+        metaNetClient_->SyncCall(request, response, timeOut_),
+        "client " << name_ << " BatchRemove failed"
+    );
+
+    if (response.results_.size() != keys.size()) {
+        MMC_LOG_ERROR("BatchRemove response size mismatch. Expected: " << keys.size() << ", Got: " << response.results_.size());
+        std::fill(remove_results.begin(), remove_results.end(), MMC_ERROR);
+        return MMC_ERROR;
+    }
+
+    remove_results = response.results_;
+    return MMC_OK;
+}
+
 Result MmcClientDefault::IsExist(const std::string &key, uint32_t flags) const
 {
     IsExistRequest request{key};

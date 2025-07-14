@@ -28,6 +28,8 @@ public:
 
     virtual Result ExistKey(const IsExistRequest &req, Response &resp) = 0;
 
+    virtual Result BatchRemove(const BatchRemoveRequest &updateReq, BatchRemoveResponse &upddateResp) = 0;
+
     virtual Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) = 0;
 };
 using MmcMetaMgrProxyPtr = MmcRef<MmcMetaMgrProxy>;

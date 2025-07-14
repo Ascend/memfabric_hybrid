@@ -115,6 +115,54 @@ struct RemoveRequest : MsgBase {
     }
 };
 
+struct BatchRemoveRequest : public MsgBase {
+    std::vector<std::string> keys_;
+
+    BatchRemoveRequest() : MsgBase{0, ML_BATCH_REMOVE_REQ, 0} {}
+    explicit BatchRemoveRequest(const std::vector<std::string>& keys) : 
+        MsgBase{0, ML_BATCH_REMOVE_REQ, 0}, keys_(keys) {}
+
+    Result Serialize(NetMsgPacker& packer) const override {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(keys_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker& packer) override {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(keys_);
+        return MMC_OK;
+    }
+};
+
+struct BatchRemoveResponse : public MsgBase {
+    std::vector<Result> results_;
+
+    BatchRemoveResponse() : MsgBase{0, ML_BATCH_REMOVE_RESP, 0}{}
+    explicit BatchRemoveResponse(const std::vector<Result>& results) : 
+        MsgBase{0, ML_BATCH_REMOVE_RESP, 0}, results_(results) {}
+
+    Result Serialize(NetMsgPacker& packer) const override {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(results_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker& packer) override {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(results_);
+        return MMC_OK;
+    }
+};
+
 struct AllocResponse : MsgBase {
     std::vector<MmcMemBlobDesc> blobs_; /* pointers of blobs */
     uint8_t numBlobs_{0};               /* number of blob that the memory object, i.e. replica count */

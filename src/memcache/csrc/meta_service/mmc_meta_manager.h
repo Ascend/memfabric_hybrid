@@ -84,6 +84,13 @@ public:
      */
     Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results);
 
+    /**
+    * @brief Batch remove multiple meta objects
+    * @param keys          [in] List of keys of the to-be-removed meta objects
+    * @param remove_results [out] Results of each removal operation
+    */
+    Result BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results);
+
 private:
     /**
      * @brief force remove the blobs and object meta(if all its blobs are removed)
