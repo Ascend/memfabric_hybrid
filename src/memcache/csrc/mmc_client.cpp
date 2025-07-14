@@ -53,7 +53,7 @@ MMC_API int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags)
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(gClientHandler->Get(key, buf, flags), gClientHandler->Name()
-                                                                              << " gut key " << key << " failed!");
+                                                                              << " get key " << key << " failed!");
     return MMC_OK;
 }
 
@@ -83,7 +83,7 @@ MMC_API int32_t mmcc_exist(const char *key, uint32_t flags)
     Result result = gClientHandler->IsExist(key, flags);
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK && result != MMC_UNMATCHED_KEY, gClientHandler->Name()
                                                                                          << " is_exist failed!");
-    return result == MMC_OK ? 0 : 1;
+    return result;
 }
 
 MMC_API int32_t mmcc_batch_exist(const std::vector<std::string> &keys, std::vector<Result> &exist_results,
@@ -94,7 +94,7 @@ MMC_API int32_t mmcc_batch_exist(const std::vector<std::string> &keys, std::vect
     Result result = gClientHandler->BatchIsExist(keys, exist_results, flags);
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK && result != MMC_UNMATCHED_KEY, gClientHandler->Name()
                                                                                          << " batch_is_exist failed!");
-    return (result == MMC_OK) ? 0 : 1;
+    return result;
 }
 
 MMC_API int32_t mmcc_batch_remove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags)

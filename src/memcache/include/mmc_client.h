@@ -29,6 +29,7 @@ void mmcc_uninit();
  *
  * @param key              [in] key of data, less than 256
  * @param buf              [in] data to be put
+ * @param options          [in] options for put operation
  * @param flags            [in] optional flags, reserved
  * @return 0 if successful
  */
@@ -51,6 +52,7 @@ int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags);
  *
  * @param key              [in] key of data, less than 256
  * @param buf              [in] data to be put
+ * @param options          [in] options for batch put operation
  * @param flags            [in] optional flags, reserved
  * @return 0 if successful
  */

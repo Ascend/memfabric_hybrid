@@ -17,6 +17,9 @@ TIMEOUT = 5
 
 
 class TestExample(unittest.TestCase):
+    key_1 = "key_1"
+    original_data = b"some data"
+
     def setUp(self):
         self._distributed_object_store = DistributedObjectStore()
         self._distributed_object_store.setup_local_service(DISCOVERY_URL, DEVICE_ID, RANK_ID, WORLD_SIZE, BM_IP_PORT,
@@ -25,8 +28,18 @@ class TestExample(unittest.TestCase):
         self._distributed_object_store.init(DISCOVERY_URL, RANK_ID, TIMEOUT)
         print("object store initialized")
 
-    def test_put(self):
-        pass
+    def test_1(self):
+        # check existence before put
+        exist_res = self._distributed_object_store.is_exist(self.key_1)
+        self.assertEqual(exist_res, 0)
+
+        # test put
+        put_res = self._distributed_object_store.put(self.key_1, self.original_data)
+        self.assertEqual(put_res, 0)
+
+        # check existence after put
+        exist_res = self._distributed_object_store.is_exist(self.key_1)
+        self.assertEqual(exist_res, 1)
 
     def tearDown(self):
         self._distributed_object_store.close()

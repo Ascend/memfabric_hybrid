@@ -9,8 +9,10 @@
 #include "mmc_client.h"
 #include "mmc.h"
 #include "mmc_service.h"
+#include "mmc_types.h"
 
 namespace py = pybind11;
+using namespace ock::mmc;
 
 // ResourceTracker implementation using singleton pattern
 ResourceTracker &ResourceTracker::getInstance() {
@@ -148,8 +150,9 @@ int DistributedObjectStore::tearDownAll() {
     return 0;
 }
 
-int DistributedObjectStore::put(const std::string &key, mmc_buffer value) {
-    return 0;
+int DistributedObjectStore::put(const std::string &key, mmc_buffer buffer) {
+    mmc_put_options options = {.mediaType = 0, .policy = NATIVE_AFFINITY};
+    return mmcc_put(key.c_str(), &buffer, options, 0);
 }
 
 int DistributedObjectStore::put_batch(
@@ -183,7 +186,17 @@ long DistributedObjectStore::removeAll() {
 }
 
 int DistributedObjectStore::isExist(const std::string &key) {
-    return 0;
+    int32_t res = mmcc_exist(key.c_str(), 0);
+    if (res == MMC_OK) {
+        // align with mooncake: 1 represents exist
+        return 1;
+    }
+    if (res == MMC_UNMATCHED_KEY) {
+        // align with mooncake: 0 represents not exist
+        return 0;
+    }
+    // align with mooncake: other integers represent error
+    return res;
 }
 
 std::vector<int> DistributedObjectStore::batchIsExist(const std::vector<std::string> &keys) {

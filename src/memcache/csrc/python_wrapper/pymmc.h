@@ -123,7 +123,7 @@ public:
     int initAll(const std::string &protocol, const std::string &device_name,
                 size_t mount_segment_size = 1024 * 1024 * 16);  // Default 16MB
 
-    int put(const std::string &key, mmc_buffer value);
+    int put(const std::string &key, mmc_buffer buffer);
 
     int register_buffer(void *buffer, size_t size);
 

@@ -83,7 +83,7 @@ Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags) c
                                     "client " << name_ << " get " << key << " failed");
     if (response.numBlobs_ > 0) {
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Get(buf, response.blobs_[0].gva_),
-                                        "client " << name_ << " put " << key << " failed");
+                                        "client " << name_ << " get " << key << " failed");
     } else {
         MMC_LOG_ERROR("client " << name_ << " get " << key << " failed");
         return MMC_ERROR;
