@@ -154,6 +154,7 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
     Result ret;
     // Force delete the blobs
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
+    std::vector<std::string> tempKeys;
 
     for (auto iter = objMetaLookupMap_.begin(); iter != objMetaLookupMap_.end(); ++iter) {
         ret = ForceRemoveBlobs((*iter).second, filter);
@@ -162,9 +163,14 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
             return MMC_ERROR;
         }
         if ((*iter).second->NumBlobs() == 0) {
-            objMetaLookupMap_.Erase((*iter).first);
+            tempKeys.push_back((*iter).first);
         }
     }
+
+    for (const std::string& tempKey : tempKeys) {
+        objMetaLookupMap_.Erase(tempKey);
+    }
+
     ret = globalAllocator_->Unmount(loc);
     return ret;
 }

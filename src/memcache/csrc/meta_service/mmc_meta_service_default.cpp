@@ -41,6 +41,20 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
     return MMC_OK;
 }
 
+Result MmcMetaServiceDefault::BmUnregister(uint32_t rank, uint16_t mediaType)
+{
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (!started_) {
+        MMC_LOG_ERROR("MetaService (" << name_ << ") is not started");
+        return MMC_NOT_STARTED;
+    }
+
+    MmcLocation loc{rank, mediaType};
+    metaMgrProxy_->Unmount(loc);
+    --registerRank_;
+    return MMC_OK;
+}
+
 void MmcMetaServiceDefault::Stop()
 {
     std::lock_guard<std::mutex> guard(mutex_);

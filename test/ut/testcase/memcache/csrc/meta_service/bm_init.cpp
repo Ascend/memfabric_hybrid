@@ -74,6 +74,6 @@ TEST_F(TestBmInit, Init)
     ASSERT_TRUE(localServiceDefault1->SyncCallMeta(reqAlloc, response, 30) == MMC_OK);
     ASSERT_TRUE(response.numBlobs_ == 1);
     ASSERT_TRUE(response.blobs_[0].size_ == SIZE_32K);
-    metaServicePtr->Stop();
     localServicePtr1->Stop();
+    metaServicePtr->Stop();
 }

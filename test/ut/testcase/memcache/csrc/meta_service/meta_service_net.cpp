@@ -76,8 +76,8 @@ TEST_F(TestMmcMetaService, Init)
     ASSERT_TRUE(respAlloc.numBlobs_ == 1);
     ASSERT_TRUE(respAlloc.blobs_.size() == 1);
     ASSERT_TRUE(respAlloc.blobs_[0].size_ == SIZE_32K);
-    metaServicePtr->Stop();
     localServicePtr->Stop();
+    metaServicePtr->Stop();
 }
 
 TEST_F(TestMmcMetaService, ExistRequest)
@@ -115,8 +115,8 @@ TEST_F(TestMmcMetaService, ExistRequest)
     ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqNotExist, respNotExist, 30) == MMC_OK);
     ASSERT_TRUE(respNotExist.ret_ == MMC_UNMATCHED_KEY);
 
-    metaServicePtr->Stop();
     localServicePtr->Stop();
+    metaServicePtr->Stop();
 }
 
 TEST_F(TestMmcMetaService, BatchExistRequest)
@@ -175,6 +175,6 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
     CheckReturn(partExistKeys, MMC_OK, 5U);
     CheckReturn(allNotExistKeys, MMC_UNMATCHED_KEY, 0U);
     
-    metaServicePtr->Stop();
     localServicePtr->Stop();
+    metaServicePtr->Stop();
 }

@@ -33,6 +33,8 @@ private:
 
     Result HandleBmRegister(const NetContextPtr &context);
 
+    Result HandleBmUnregister(const NetContextPtr &context);
+
     Result HandlePing(const NetContextPtr &context);
 
     Result HandleUpdate(const NetContextPtr &context);

@@ -27,6 +27,8 @@ public:
 
     Result BmRegister(uint32_t rank, uint16_t mediaType, uint64_t bm, uint64_t capacity);
 
+    Result BmUnregister(uint32_t rank, uint16_t mediaType);
+
     const std::string &Name() const override;
 
     const mmc_meta_service_config_t &Options() const override;

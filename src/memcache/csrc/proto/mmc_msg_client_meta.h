@@ -119,7 +119,7 @@ struct BatchRemoveRequest : public MsgBase {
     std::vector<std::string> keys_;
 
     BatchRemoveRequest() : MsgBase{0, ML_BATCH_REMOVE_REQ, 0} {}
-    explicit BatchRemoveRequest(const std::vector<std::string>& keys) : 
+    explicit BatchRemoveRequest(const std::vector<std::string>& keys) :
         MsgBase{0, ML_BATCH_REMOVE_REQ, 0}, keys_(keys) {}
 
     Result Serialize(NetMsgPacker& packer) const override {
@@ -143,7 +143,7 @@ struct BatchRemoveResponse : public MsgBase {
     std::vector<Result> results_;
 
     BatchRemoveResponse() : MsgBase{0, ML_BATCH_REMOVE_RESP, 0}{}
-    explicit BatchRemoveResponse(const std::vector<Result>& results) : 
+    explicit BatchRemoveResponse(const std::vector<Result>& results) :
         MsgBase{0, ML_BATCH_REMOVE_RESP, 0}, results_(results) {}
 
     Result Serialize(NetMsgPacker& packer) const override {
@@ -299,6 +299,34 @@ struct BmRegisterRequest : MsgBase {
         packer.Deserialize(mediaType_);
         packer.Deserialize(addr_);
         packer.Deserialize(capacity_);
+        return MMC_OK;
+    }
+};
+
+struct BmUnregisterRequest : public MsgBase {
+    uint32_t rank_{UINT32_MAX};
+    uint16_t mediaType_{UINT16_MAX};
+
+    BmUnregisterRequest() : MsgBase{0, ML_BM_UNREGISTER_REQ, 0}{}
+    explicit BmUnregisterRequest(uint32_t rank, uint16_t mediaType) :
+        MsgBase{0, ML_BM_UNREGISTER_REQ, 0}, rank_(rank), mediaType_(mediaType) {}
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(rank_);
+        packer.Serialize(mediaType_);
+        return MMC_OK;
+    }
+    Result Deserialize(NetMsgUnpacker &packer)
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(rank_);
+        packer.Deserialize(mediaType_);
         return MMC_OK;
     }
 };

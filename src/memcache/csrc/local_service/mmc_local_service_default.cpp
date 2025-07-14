@@ -41,8 +41,8 @@ void MmcLocalServiceDefault::Stop()
         MMC_LOG_WARN("MmcClientDefault has not been started");
         return;
     }
+    DestroyBm();
     metaNetClient_->Stop();
-    bmProxyPtr_->DestoryBm();
     MMC_LOG_INFO("Stop MmcClientDefault (" << name_ << ") server " << options_.discoveryURL);
     started_ = false;
 }
@@ -71,6 +71,24 @@ Result MmcLocalServiceDefault::InitBm(const mmc_local_service_config_t &config)
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(SyncCallMeta(req, resp, 30), "bm init register failed!");
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_, "bm init register failed!");
     bmProxyPtr_ = bmProxy;
+    return ret;
+}
+
+Result MmcLocalServiceDefault::DestroyBm()
+{
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxyPtr_ == nullptr, "bm proxy has not been initialized.");
+    bmProxyPtr_->DestoryBm();
+
+    BmUnregisterRequest req;
+    req.rank_ = options_.rankId;
+    req.mediaType_ = (uint16_t)(options_.localHBMSize == 0);
+
+    Response resp;
+
+    Result ret = SyncCallMeta(req, resp, 30);
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(ret, "bm destroy failed!");
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_, "bm destroy failed!");
+    bmProxyPtr_ = nullptr;
     return ret;
 }
 }

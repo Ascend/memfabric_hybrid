@@ -53,6 +53,8 @@ Result ock::mmc::MetaNetServer::Start()
                                       std::bind(&MetaNetServer::HandleIsExist, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_IS_EXIST_REQ,
                                       std::bind(&MetaNetServer::HandleBatchIsExist, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BM_UNREGISTER_REQ,
+                                      std::bind(&MetaNetServer::HandleBmUnregister, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_PING_REQ, nullptr);
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_META_REPLICATE_REQ, nullptr);
     server->RegNewLinkHandler(std::bind(&MetaNetServer::HandleNewLink, this, std::placeholders::_1));
@@ -74,6 +76,19 @@ Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
     MMC_LOG_INFO("HandleBmRegister  " << req.rank_);
     auto result = metaServiceDefaultPtr->BmRegister(req.rank_, req.mediaType_, req.addr_, req.capacity_);
     MMC_LOG_INFO("HandleBmRegister  " << req.rank_);
+    Response resp;
+    resp.ret_ = result;
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleBmUnregister(const NetContextPtr &context)
+{
+    auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
+    BmUnregisterRequest req;
+    context->GetRequest<BmUnregisterRequest>(req);
+    MMC_LOG_INFO("HandleBmUnregister rank : " << req.rank_ << ", start");
+    auto result = metaServiceDefaultPtr->BmUnregister(req.rank_, req.mediaType_);
+    MMC_LOG_INFO("HandleBmUnregister rank : " << req.rank_ << ", get return : " << result);
     Response resp;
     resp.ret_ = result;
     return context->Reply(req.msgId, resp);
