@@ -97,14 +97,16 @@ Result MmcBmProxy::Put(mmc_buffer *buf, uint64_t bmAddr, uint64_t size)
     }
     if (buf->type == 0) {
         if (buf->dram.len > size) {
-            MMC_LOG_ERROR("Failed to put data to smem bm, buf size is larger than bm block size");
+            MMC_LOG_ERROR("Failed to put data to smem bm, buf size : " << buf->dram.len
+                << " is larger than bm block size : " << size);
             return MMC_ERROR;
         }
         return smem_bm_copy(handle_, (void *)(buf->addr + buf->dram.offset), (void *)bmAddr, buf->dram.len,
             SMEMB_COPY_H2G, 0);
     } else if (buf->type == 1) {
         if (buf->hbm.width * buf->hbm.layerNum > size) {
-            MMC_LOG_ERROR("Failed to put data to smem bm, buf size is larger than bm block size");
+            MMC_LOG_ERROR("Failed to put data to smem bm, buf size : " << buf->hbm.width * buf->hbm.layerNum
+                << " is larger than bm block size : " << size);
             return MMC_ERROR;
         }
         if (buf->hbm.dpitch == buf->hbm.width) {

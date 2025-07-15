@@ -8,9 +8,18 @@ namespace ock {
 namespace mmc {
 bool MmcBlobAllocator::CanAlloc(uint64_t blobSize)
 {
+    if (isStop_ == true) {
+        MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
+        return false;
+    }
     SpaceRange anchor{0, AllocSizeAlignUp(blobSize)};
 
     spinlock_.lock();
+    if (isStop_ == true) {
+        spinlock_.unlock();
+        MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
+        return false;
+    }
     bool exists = (sizeTree_.lower_bound(anchor) != sizeTree_.end());
     spinlock_.unlock();
 
@@ -19,13 +28,24 @@ bool MmcBlobAllocator::CanAlloc(uint64_t blobSize)
 
 MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
 {
+    if (isStop_ == true) {
+        MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
+        return nullptr;
+    }
     auto alignedSize = AllocSizeAlignUp(blobSize);
     SpaceRange anchor{0, alignedSize};
 
     spinlock_.lock();
+    if (isStop_ == true) {
+        spinlock_.unlock();
+        MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
+        return nullptr;
+    }
     auto sizePos = sizeTree_.lower_bound(anchor);
     if (sizePos == sizeTree_.end()) {
         spinlock_.unlock();
+        MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_
+            << " cannot allocate with size: " << blobSize);
         return nullptr;
     }
 
@@ -34,6 +54,8 @@ MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
     auto addrPos = addressTree_.find(targetOffset);
     if (addrPos == addressTree_.end()) {
         spinlock_.unlock();
+        MMC_LOG_ERROR("Allocator rank: " << rank_ << " mediaType: " << mediaType_
+            << " offset in size tree, not in address tree");
         return nullptr;
     }
 
@@ -44,6 +66,7 @@ MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
         addressTree_.emplace(left.offset_, left.size_);
         sizeTree_.emplace(left);
     }
+    allocatedSize_ += alignedSize;
     spinlock_.unlock();
 
     return MmcMakeRef<MmcMemBlob>(rank_, bm_ + targetOffset, blobSize, mediaType_, ALLOCATED);
@@ -68,8 +91,18 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
 
     spinlock_.lock();
     auto prevAddrPos = addressTree_.lower_bound(offset);
+    if (prevAddrPos != addressTree_.end() && prevAddrPos->first == offset) {
+        spinlock_.unlock();
+        MMC_LOG_ERROR("blob already released");
+        return MMC_ERROR;
+    }
     if (prevAddrPos != addressTree_.begin()) {
         --prevAddrPos;
+        if (prevAddrPos->first + prevAddrPos->second > offset) { 
+            spinlock_.unlock();
+            MMC_LOG_ERROR("blob already released");
+            return MMC_ERROR;
+        }
         if (prevAddrPos != addressTree_.end() &&
             prevAddrPos->first + prevAddrPos->second == offset) {  // 合并前一个range
             finalOffset = prevAddrPos->first;
@@ -88,6 +121,8 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
 
     addressTree_.emplace(finalOffset, finalSize);
     sizeTree_.emplace(SpaceRange{finalOffset, finalSize});
+
+    allocatedSize_ -= alignedSize;
 
     spinlock_.unlock();
     return MMC_OK;

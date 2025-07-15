@@ -327,16 +327,17 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
 
     ret = allocator->Free(blobs[3]);
     EXPECT_EQ(ret, MMC_OK);
-    blobs.clear();
+
+    std::vector<MmcMemBlobPtr> blobs1;
 
     allocReq.numBlobs_ = 1;
-    ret = allocator->Alloc(allocReq, blobs);
+    ret = allocator->Alloc(allocReq, blobs1);
     EXPECT_EQ(ret, MMC_OK);
-    EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
-    EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
-    EXPECT_EQ(blobs[0]->MediaType(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_ + 3 * allocReq.blobSize_);
+    EXPECT_EQ(blobs1.size(), 1U);
+    EXPECT_EQ(blobs1[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs1[0]->Size(), allocReq.blobSize_);
+    EXPECT_EQ(blobs1[0]->MediaType(), allocReq.mediaType_);
+    EXPECT_EQ(blobs1[0]->Gva(), size * allocReq.preferredRank_ + 3 * allocReq.blobSize_);
 
     MmcLocation loc;
     MmcLocalMemlInitInfo info;
@@ -347,20 +348,27 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
     ret = allocator->Mount(loc, info);
     EXPECT_EQ(ret, MMC_OK);
 
-    blobs.clear();
+    std::vector<MmcMemBlobPtr> blobs2;
 
     allocReq.numBlobs_ = 10;
-    ret = allocator->Alloc(allocReq, blobs);
+    ret = allocator->Alloc(allocReq, blobs2);
     EXPECT_EQ(ret, MMC_OK);
-    EXPECT_EQ(blobs.size(), 10U);
+    EXPECT_EQ(blobs2.size(), 10U);
     for (int i = 0; i < 10; i++) {
-        EXPECT_EQ(blobs[i]->Rank(), allocReq.preferredRank_ + 1);
-        EXPECT_EQ(blobs[i]->Size(), allocReq.blobSize_);
-        EXPECT_EQ(blobs[i]->MediaType(), allocReq.mediaType_);
-        EXPECT_EQ(blobs[i]->Gva(), size * (allocReq.preferredRank_ + 1) + i * allocReq.blobSize_);
+        EXPECT_EQ(blobs2[i]->Rank(), allocReq.preferredRank_ + 1);
+        EXPECT_EQ(blobs2[i]->Size(), allocReq.blobSize_);
+        EXPECT_EQ(blobs2[i]->MediaType(), allocReq.mediaType_);
+        EXPECT_EQ(blobs2[i]->Gva(), size * (allocReq.preferredRank_ + 1) + i * allocReq.blobSize_);
     }
 
     loc.rank_ = 7;
+    ret = allocator->Unmount(loc);
+    EXPECT_EQ(ret, MMC_INVALID_PARAM);
+
+    for (int i = 10; i < 12; i++) {
+        allocator->Free(blobs[i]);
+    }
+
     ret = allocator->Unmount(loc);
     EXPECT_EQ(ret, MMC_OK);
 

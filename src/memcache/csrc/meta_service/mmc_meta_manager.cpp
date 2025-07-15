@@ -183,6 +183,10 @@ Result MmcMetaManager::Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo 
 Result MmcMetaManager::Unmount(const MmcLocation &loc)
 {
     Result ret;
+    ret = globalAllocator_->Stop(loc);
+    if (ret != MMC_OK) {
+        return ret;
+    }
     // Force delete the blobs
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
     std::vector<std::string> tempKeys;

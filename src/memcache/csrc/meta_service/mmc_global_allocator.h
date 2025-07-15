@@ -20,6 +20,11 @@ public:
     Result Alloc(const AllocOptions &allocReq, std::vector<MmcMemBlobPtr> &blobs)
     {
         globalAllocLock_.LockRead();
+        if (allocators_.empty() == true) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("Alloc allocators_ is empty");
+            return MMC_ERROR;
+        }
         Result ret = MmcLocalityStrategy::ArrangeLocality(allocators_, allocReq, blobs);
         globalAllocLock_.UnlockRead();
         return ret;
@@ -32,7 +37,8 @@ public:
         const auto iter = allocators_.find(location);
         if (iter == allocators_.end()) {
             globalAllocLock_.UnlockRead();
-            return MMC_ERROR;
+            MMC_LOG_ERROR("Free blob failed, location not found");
+            return MMC_INVALID_PARAM;
         }
 
         const auto &allocator = iter->second;
@@ -46,8 +52,8 @@ public:
         globalAllocLock_.LockWrite();
         auto iter = allocators_.find(loc);
         if (iter != allocators_.end()) {
-            MMC_LOG_WARN("Cannot mount at the existing position");
             globalAllocLock_.UnlockWrite();
+            MMC_LOG_WARN("Cannot mount at the existing position");
             return MMC_INVALID_PARAM;
         }
 
@@ -57,14 +63,36 @@ public:
         return MMC_OK;
     }
 
+    Result Stop(const MmcLocation &loc)
+    {
+        globalAllocLock_.LockRead();
+        const auto iter = allocators_.find(loc);
+        if (iter == allocators_.end()) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("location not found, rank: " << loc.rank_ << ", mediaType: " << loc.mediaType_);
+            return MMC_INVALID_PARAM;
+        }
+
+        const auto &allocator = iter->second;
+        allocator->Stop();
+        globalAllocLock_.UnlockRead();
+        return MMC_OK;
+    }
+
     Result Unmount(const MmcLocation &loc)
     {
         globalAllocLock_.LockWrite();
         auto iter = allocators_.find(loc);
         if (iter == allocators_.end()) {
-            MMC_LOG_WARN("Cannot find the given location in the mem pool!");
             globalAllocLock_.UnlockWrite();
+            MMC_LOG_WARN("Cannot find the given location in the mem pool");
             return MMC_INVALID_PARAM;
+        }
+        if (!iter->second->CanUnmount()) {
+            globalAllocLock_.UnlockWrite();
+            MMC_LOG_WARN("Cannot unmount the given location in the mem pool, space is in use");
+            return MMC_INVALID_PARAM;
+
         }
         allocators_.erase(iter);
         globalAllocLock_.UnlockWrite();

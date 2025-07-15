@@ -45,6 +45,16 @@ public:
     bool CanAlloc(uint64_t blobSize);
     MmcMemBlobPtr Alloc(uint64_t blobSize);
     Result Release(const MmcMemBlobPtr& blob);
+    void Stop()
+    {
+        spinlock_.lock();
+        isStop_ = true;
+        spinlock_.unlock();
+    }
+    bool CanUnmount()
+    {
+        return allocatedSize_ == 0;
+    }
 
 private:
     static uint64_t AllocSizeAlignUp(uint64_t size);
@@ -57,6 +67,9 @@ private:
 
     std::map<uint64_t, uint64_t> addressTree_;
     std::set<SpaceRange, RangeSizeFirst> sizeTree_;
+    
+    volatile bool isStop_ = false;
+    uint64_t allocatedSize_ = 0;
 
     Spinlock spinlock_;
 };
