@@ -1,38 +1,37 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#ifndef MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
-#define MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
+#ifndef MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
+#define MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
 
-#include <cstdint>
-#include <map>
 #include <set>
-#include "hybm_mem_common.h"
 #include "hybm_mem_segment.h"
+#include "hybm_mem_common.h"
+//#include "hcom_service_c.h"
 
 namespace ock {
 namespace mf {
-struct HbmExportInfo {
-    uint64_t magic;
-    uint64_t version;
-    uint64_t mappingOffset{0};
-    uint32_t sliceIndex{0};
-    uint32_t sdid{0};
-    int pid{0};
-    uint32_t rankId{0};
-    uint64_t size{0};
-    int entityId{0};
-    MemPageTblType pageTblType;
-    MemSegType memSegType;
-    MemSegInfoExchangeType exchangeType;
-    uint8_t deviceId{0};
-    char shmName[DEVICE_SHM_NAME_SIZE + 1U]{};
+
+struct OneSideKey {
+    uint32_t keys[4];
 };
 
-class MemSegmentDevice : public MemSegment {
+struct HostExportInfo {
+    uint64_t magic{0};
+    uint64_t version{0};
+    uint64_t mappingOffset{0};
+    uint32_t sliceIndex{0};
+    uint32_t rankId{0};
+    uint64_t size{0};
+    MemPageTblType pageTblType{};
+    MemSegType memSegType{};
+    MemSegInfoExchangeType exchangeType{};
+    OneSideKey oneSideKey{};
+};
+class MemSegmentHost : public MemSegment {
 public:
-    explicit MemSegmentDevice(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
-    ~MemSegmentDevice()
+    explicit MemSegmentHost(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
+    ~MemSegmentHost()
     {
         FreeMemory();
     }
@@ -43,34 +42,27 @@ public:
     Result Export(std::string &exInfo) noexcept override;
     Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
     Result Import(const std::vector<std::string> &allExInfo) noexcept override;
-    Result RemoveImported(const std::vector<uint32_t>& ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
 
-public:
-    static int GetDeviceId(int deviceId) noexcept;
-
 private:
     void FreeMemory() noexcept;
-
+    void LvaShmReservePhysicalMemory(const void *mappedAddress, uint64_t size) noexcept;
 private:
     uint8_t *globalVirtualAddress_{nullptr};
     uint64_t totalVirtualSize_{0UL};
+    uint8_t * localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};
+    int32_t shmFd_{-1};
+    OneSideKey oneSideKey_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::string> exportMap_;
-    std::set<uint64_t> mappedMem_;
-    std::vector<HbmExportInfo> imports_;
-
-private:
-    static int deviceId_;
-    static int pid_;
-    static uint32_t sdid_;
+    std::vector<HostExportInfo> imports_;
 };
 }
 }
 
-#endif  // MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
+#endif //MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H

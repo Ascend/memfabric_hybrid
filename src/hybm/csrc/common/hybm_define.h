@@ -32,6 +32,10 @@ constexpr uint32_t HCCL_ROOT_INFO_BYTES = 256;  // 4108: root info length
 constexpr uint32_t HCCP_SOCK_CONN_TAG_SIZE = 192;
 constexpr uint32_t HCCP_MAX_INTERFACE_NAME_LEN = 256;
 
+
+constexpr uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
+constexpr uint64_t EXPORT_INFO_VERSION = 0x1UL;
+
 struct HybmDeviceGlobalMeta {
     uint64_t entityCount;
     uint64_t reserved[15]; // total 128B, equal HYBM_DEVICE_PRE_META_SIZE

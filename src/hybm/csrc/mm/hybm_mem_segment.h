@@ -15,6 +15,12 @@ namespace mf {
 class MemSegment;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
+struct MemSliceStatus {
+    std::shared_ptr<MemSlice> slice;
+
+    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)} {}
+};
+
 class MemSegment {
 public:
     static MemSegmentPtr Create(const MemSegmentOptions &options, int entityId);
