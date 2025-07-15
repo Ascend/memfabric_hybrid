@@ -12,16 +12,14 @@
 
 namespace ock {
 namespace mf {
-int MemSegmentDevice::deviceId_{-1};
-int MemSegmentDevice::pid_{-1};
-uint32_t MemSegmentDevice::sdid_{0};
 
 static const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
 static const uint64_t EXPORT_INFO_VERSION = 0x1UL;
 
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
-    if (options_.segType != HYBM_MST_HBM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
+    if (options_.segType != HYBM_MST_HBM || options_.size == 0 || options_.devId < 0 ||
+        (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
         return BM_INVALID_PARAM;
     }
 
@@ -37,7 +35,7 @@ Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
 
     void *base = nullptr;
     totalVirtualSize_ = options_.rankCnt * options_.size;
-    auto ret = DlHalApi::HalGvaReserveMemory(&base, totalVirtualSize_, deviceId_, 0ULL);
+    auto ret = DlHalApi::HalGvaReserveMemory(&base, totalVirtualSize_, options_.devId, 0ULL);
     if (ret != 0 || base == nullptr) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -143,17 +141,15 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     HbmExportInfo info{};
     auto ret = DlAclApi::RtIpcSetMemoryName((void *)(ptrdiff_t)slice->vAddress_, slice->size_, info.shmName,
                                             sizeof(info.shmName));
-    if (ret != 0) {
-        BM_LOG_ERROR("set memory name failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
 
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
     info.magic = EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.mappingOffset =
         slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
-    info.deviceId = deviceId_;
+    info.deviceId = options_.devId;
     info.pid = pid_;
     info.rankId = options_.rankId;
     info.size = slice->size_;
@@ -204,10 +200,10 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
             continue;
         }
 
-        if (deserializedInfos[i].deviceId != deviceId_) {
+        if (deserializedInfos[i].deviceId != options_.devId) {
             auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(deserializedInfos[i].deviceId, 0);
             if (ret != 0) {
-                BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
+                BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << options_.devId
                                                             << " remote_device:" << (int)deserializedInfos[i].deviceId);
                 return BM_DL_FUNCTION_FAILED;
             }
@@ -344,18 +340,14 @@ void MemSegmentDevice::FreeMemory() noexcept
     }
 }
 
-int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
+Result MemSegmentDevice::GetDeviceInfo() noexcept
 {
-    if (deviceId < 0) {
+    if (options_.devId < 0) {
         return BM_INVALID_PARAM;
     }
 
-    if (deviceId_ >= 0) {
-        if (deviceId == deviceId_) {
-            return 0;
-        }
-
-        return BM_INVALID_PARAM;
+    if (pid_ >= 0) {
+        return 0;
     }
 
     uint32_t tgid = 0;
@@ -367,13 +359,12 @@ int MemSegmentDevice::GetDeviceId(int deviceId) noexcept
 
     constexpr auto sdidInfo = 26;
     int64_t value = 0;
-    ret = DlAclApi::RtGetDeviceInfo(deviceId, 0, sdidInfo, &value);
+    ret = DlAclApi::RtGetDeviceInfo(options_.devId, 0, sdidInfo, &value);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get sdid failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    deviceId_ = deviceId;
     pid_ = static_cast<int>(tgid);
     sdid_ = static_cast<uint32_t>(value);
     return BM_OK;

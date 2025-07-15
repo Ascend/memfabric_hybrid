@@ -4,8 +4,7 @@
 #include <algorithm>
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
-#include "hybm_ex_info_transfer.h"
-#include "hybm_devide_mem_segment.h"
+#include "hybm_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
 #include "hybm_entity_default.h"
 
@@ -45,7 +44,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     options_ = *options;
     MemSegmentOptions segmentOptions;
     segmentOptions.size = options_.singleRankVASpace;
-    segmentOptions.segId = HybmGetInitDeviceId();
+    segmentOptions.devId = HybmGetInitDeviceId();
     segmentOptions.segType = HYBM_MST_HBM;
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
@@ -58,16 +57,6 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
         }
         stream_ = nullptr;
         return BM_INVALID_PARAM;
-    }
-
-    ret = MemSegmentDevice::GetDeviceId(segmentOptions.segId);
-    if (ret != 0) {
-        int32_t des_ret = DlAclApi::AclrtDestroyStream(stream_);
-        if (des_ret != 0) {
-            BM_LOG_ERROR("destroy stream failed: " << ret);
-        }
-        stream_ = nullptr;
-        return ret;
     }
 
     dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);

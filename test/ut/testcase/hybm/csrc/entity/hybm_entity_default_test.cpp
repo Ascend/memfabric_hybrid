@@ -38,9 +38,6 @@ protected:
     void SetUp() override {}
     void TearDown() override
     {
-        MemSegmentDevice::deviceId_ = -1;
-        MemSegmentDevice::pid_ = -1;
-        MemSegmentDevice::sdid_ = 0;
         GlobalMockObject::verify();
     }
 };
@@ -97,21 +94,6 @@ TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnDlFunctionFailed_WhenCreate
     MemEntityDefault entity(0);
     MOCKER_CPP(&DlAclApi::AclrtCreateStream, int (*)(void **)).stubs().will(returnValue(-1));
     ret = entity.Initialize(&g_options);
-    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
-}
-
-TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnInvalidParam_WhenGetDeviceIdFail)
-{
-    int ret = 0;
-    MemEntityDefault entity(0);
-    hybm_options options = g_options;
-    MOCKER_CPP(&DlAclApi::RtDeviceGetBareTgid, int (*)(uint32_t *)).stubs().will(returnValue(-1));
-    ret = entity.Initialize(&options);
-    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
-
-
-    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int(*)(uint32_t, int32_t, int32_t, int64_t *)).stubs().will(returnValue(-1));
-    ret = entity.Initialize(&options);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 }
 

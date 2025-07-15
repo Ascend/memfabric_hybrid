@@ -43,9 +43,6 @@ protected:
     void SetUp() override {}
     void TearDown() override
     {
-        MemSegmentDevice::deviceId_ = -1;
-        MemSegmentDevice::pid_ = -1;
-        MemSegmentDevice::sdid_ = 0;
         GlobalMockObject::verify();
     }
 };
@@ -149,6 +146,23 @@ TEST_F(HybmDevideMemSegmentTest, Export_ShouldReturnError_WhenExportError)
 
     EXPECT_EQ(seg.Export(slice, exInfo), BM_OK);
     EXPECT_EQ(seg.Export(slice, exInfo), BM_OK);
+}
+
+TEST_F(HybmDevideMemSegmentTest, Export_ShouldReturnError_WhenGetDeviceIdFail)
+{
+    MemSegmentOptions options = g_options;
+    MemSegmentDevice seg(options, 0);
+    void *addr = nullptr;
+    EXPECT_EQ(seg.ReserveMemorySpace(&addr), BM_OK);
+    std::shared_ptr<MemSlice> slice;
+    EXPECT_EQ(seg.AllocLocalMemory(DEVICE_LARGE_PAGE_SIZE, slice), BM_OK);
+
+    std::string exInfo;
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int(*)(uint32_t, int32_t, int32_t, int64_t *)).stubs().will(returnValue(-1));
+    EXPECT_EQ(seg.Export(slice, exInfo), BM_DL_FUNCTION_FAILED);
+
+    MOCKER_CPP(&DlAclApi::RtDeviceGetBareTgid, int (*)(uint32_t *)).stubs().will(returnValue(-1));
+    EXPECT_EQ(seg.Export(slice, exInfo), BM_DL_FUNCTION_FAILED);
 }
 
 TEST_F(HybmDevideMemSegmentTest, Import_ShouldReturnError_WhenImportError)

@@ -58,10 +58,8 @@ public:
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
 
-public:
-    static int GetDeviceId(int deviceId) noexcept;
-
 private:
+    Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
 
 private:
@@ -74,10 +72,8 @@ private:
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;
 
-private:
-    static int deviceId_;
-    static int pid_;
-    static uint32_t sdid_;
+    int pid_ = -1;
+    uint32_t sdid_ = 0;
 };
 }
 }
