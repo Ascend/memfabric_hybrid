@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE];
     uint32_t deviceId;
-    uint32_t rankId;
+    uint32_t rankId;  // bmRankId: BM全局统一编号
     uint32_t worldSize;
     std::string bmIpPort;
     int autoRanking;

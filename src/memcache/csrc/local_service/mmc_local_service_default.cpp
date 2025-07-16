@@ -18,18 +18,31 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
         MMC_LOG_INFO("MetaService " << name_ << " already started");
         return MMC_OK;
     }
+
+    // 初始化BM，并更新bmRankId
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(InitBm(config), "Failed to init bm of local service " << name_);
+
     options_ = config;
     metaNetClient_ = MetaNetClientFactory::GetInstance(this->options_.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(metaNetClient_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!metaNetClient_->Status()) {
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Start(config.rankId),
-                                        "Failed to start net server of local service " << name_);
+            "Failed to start net server of local service, name=" << name_ << ", bmRankId=" << config.rankId);
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Connect(config.discoveryURL),
-                                        "Failed to connect net server of local service " << name_);
+            "Failed to connect net server of local service, name=" << name_ << ", bmRankId=" << config.rankId);
     }
     pid_ = getpid();
 
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(InitBm(config), "Failed to init bm of local service " << name_);
+    BmRegisterRequest req;
+    req.rank_ = config.rankId;
+    req.mediaType_ = static_cast<uint16_t>(config.localHBMSize == 0);
+    req.addr_ = bmProxyPtr_->GetGva();
+    req.capacity_ = config.localDRAMSize + config.localHBMSize;
+
+    Response resp;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_,
+        "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
 
     started_ = true;
     MMC_LOG_INFO("Started LocalService (" << name_ << ") server " << options_.discoveryURL);
@@ -59,17 +72,9 @@ Result MmcLocalServiceDefault::InitBm(const mmc_local_service_config_t &config)
     if (ret != MMC_OK) {
         return ret;
     }
-
-    BmRegisterRequest req;
-    req.rank_ = initConfig.rankId;
-    req.mediaType_ = static_cast<uint16_t>(createConfig.localHBMSize == 0);
-    req.addr_ = bmProxy->GetGva();
-    req.capacity_ = createConfig.localDRAMSize + createConfig.localHBMSize;
-
-    Response resp;
-
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(SyncCallMeta(req, resp, 30), "bm init register failed!");
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_, "bm init register failed!");
+    if (config.autoRanking == 1) {
+        config.rankId = initConfig.rankId;
+    }
     bmProxyPtr_ = bmProxy;
     return ret;
 }

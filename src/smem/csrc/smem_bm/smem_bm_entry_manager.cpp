@@ -56,6 +56,7 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
 
     if (config_.autoRanking) {
         ret = AutoRanking();
+        config.rankId = config_.rankId;
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "auto ranking failed: " << ret);
     }
 
