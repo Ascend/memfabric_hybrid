@@ -33,6 +33,10 @@ public:
     virtual Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) = 0;
 
     virtual Result BatchGet(const BatchGetRequest &req, BatchAllocResponse &resp) = 0;
+
+    virtual Result Query(const QueryRequest &req, QueryResponse &resp) = 0;
+
+    virtual Result BatchQuery(const BatchQueryRequest &req, BatchQueryResponse &resp) = 0;
 };
 using MmcMetaMgrProxyPtr = MmcRef<MmcMetaMgrProxy>;
 }  // namespace mmc

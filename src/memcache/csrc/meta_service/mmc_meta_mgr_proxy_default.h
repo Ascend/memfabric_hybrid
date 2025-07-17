@@ -47,17 +47,29 @@ public:
 
     Result ExistKey(const IsExistRequest &req, Response &resp) override
     {
-        resp.ret_ = metaMangerPtr_->ExistKey(req.key_);
-        return resp.ret_;
+        return metaMangerPtr_->ExistKey(req.key_, resp.ret_);
     }
 
     Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) override
     {
-        std::vector<Result> results;
-        resp.ret_ = metaMangerPtr_->BatchExistKey(req.keys_, results);
-        resp.results_ = results;
-        return resp.ret_;
+        return metaMangerPtr_->BatchExistKey(req.keys_, resp.results_, resp.ret_);
     }
+
+    Result Query(const QueryRequest &req, QueryResponse &resp) override
+    {
+        return metaMangerPtr_->Query(req.key_, resp.queryInfo_);
+    }
+
+    Result BatchQuery(const BatchQueryRequest &req, BatchQueryResponse &resp) override
+    {
+        for (const std::string& key : req.keys_) {
+            MemObjQueryInfo queryInfo;
+            metaMangerPtr_->Query(key, queryInfo);
+            resp.batchQueryInfos_.push_back(queryInfo);
+        }
+        return MMC_OK;
+    }
+
 private:
     MmcMetaManagerPtr metaMangerPtr_;
     MetaNetServerPtr netServerPtr_;

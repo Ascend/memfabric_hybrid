@@ -94,6 +94,12 @@ public:
      */
     uint16_t Size();
 
+    /**
+     * @brief Get the query info
+     * @return query info
+     */
+    MemObjQueryInfo QueryInfo();
+
 private:
     /* make sure the size of this class is 64 bytes */
     uint16_t prot_{0};                         /* prot of the mem object, i.e. accessibility */
@@ -153,6 +159,12 @@ inline uint16_t MmcMemObjMeta::Size()
 {
     std::lock_guard<Spinlock> guard(spinlock_);
     return size_;
+}
+
+inline MemObjQueryInfo MmcMemObjMeta::QueryInfo()
+{
+    std::lock_guard<Spinlock> guard(spinlock_);
+    return {size_, prot_, numBlobs_, true};
 }
 
 }  // namespace mmc

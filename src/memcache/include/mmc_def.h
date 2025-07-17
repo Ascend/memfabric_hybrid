@@ -75,9 +75,10 @@ typedef struct {
 } mmc_location_t;
 
 typedef struct {
-    uint32_t rank;
     uint32_t size;
     uint16_t prot;
+    uint8_t numBlobs;
+    bool valid;
 } mmc_data_info;
 
 #ifdef __cplusplus

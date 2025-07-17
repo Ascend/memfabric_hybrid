@@ -35,9 +35,13 @@ public:
 
     Result BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags) const;
 
-    Result IsExist(const std::string &key, uint32_t flags) const;
+    Result IsExist(const std::string &key, bool &result, uint32_t flags) const;
 
-    Result BatchIsExist(const std::vector<std::string> &keys, std::vector<Result> &exist_results, uint32_t flags) const;
+    Result BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, bool &result, uint32_t flags) const;
+
+    Result Query(const std::string &key, mmc_data_info &query_info, uint32_t flags) const;
+
+    Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const;
 
 private:
     inline uint32_t RankId(const affinity_policy &policy);

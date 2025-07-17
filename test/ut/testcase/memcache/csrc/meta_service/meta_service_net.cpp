@@ -113,7 +113,7 @@ TEST_F(TestMmcMetaService, ExistRequest)
     reqNotExist.key_ = "another_test";
     Response respNotExist;
     ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqNotExist, respNotExist, 30) == MMC_OK);
-    ASSERT_TRUE(respNotExist.ret_ == MMC_UNMATCHED_KEY);
+    ASSERT_TRUE(respNotExist.ret_ != MMC_OK);
 
     localServicePtr->Stop();
     metaServicePtr->Stop();
@@ -173,8 +173,117 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
     };
     CheckReturn(allExistKeys, MMC_OK, 10U);
     CheckReturn(partExistKeys, MMC_OK, 5U);
-    CheckReturn(allNotExistKeys, MMC_UNMATCHED_KEY, 0U);
+    CheckReturn(allNotExistKeys, MMC_ERROR, 0U);
     
+    localServicePtr->Stop();
+    metaServicePtr->Stop();
+}
+
+TEST_F(TestMmcMetaService, QueryRequest)
+{
+    std::string metaUrl = "tcp://127.0.0.1:5679";
+    std::string bmUrl = "tcp://127.0.0.1:5682";
+    mmc_meta_service_config_t metaServiceConfig;
+    UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
+    metaServiceConfig.worldSize = 1;
+    auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
+    MmcMetaServicePtr metaServicePtr = Convert<MmcMetaServiceDefault, MmcMetaService>(metaServiceDefault);
+    ASSERT_TRUE(metaServicePtr->Start(metaServiceConfig) == MMC_OK);
+
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, 0, 0, "sdma", 0, 104857600, 0};
+    UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
+    auto localServiceDefault = MmcMakeRef<MmcLocalServiceDefault>("testLocalService");
+    MmcLocalServicePtr localServicePtr = Convert<MmcLocalServiceDefault, MmcLocalService>(localServiceDefault);
+    ASSERT_TRUE(localServicePtr->Start(localServiceConfig) == MMC_OK);
+
+    AllocRequest reqAlloc;
+    reqAlloc.key_ = "test";
+    reqAlloc.options_ = {SIZE_32K, 1, 0, 0, 0};
+    AllocResponse respAlloc;
+    ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
+
+    QueryRequest reqQuery;
+    reqQuery.key_ = "test";
+    QueryResponse respQuery;
+    ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqQuery, respQuery, 30) == MMC_OK);
+    ASSERT_TRUE(respQuery.queryInfo_.valid_ == true);
+    ASSERT_TRUE(respQuery.queryInfo_.size_ == SIZE_32K);
+    ASSERT_TRUE(respQuery.queryInfo_.prot_ == 0);
+    ASSERT_TRUE(respQuery.queryInfo_.numBlobs_ == 1);
+
+    QueryRequest reqQueryNone;
+    reqQueryNone.key_ = "another_test";
+    QueryResponse respQueryNone;
+    ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqQueryNone, respQueryNone, 30) == MMC_OK);
+    ASSERT_TRUE(respQueryNone.queryInfo_.valid_ == false);
+
+    localServicePtr->Stop();
+    metaServicePtr->Stop();
+}
+
+TEST_F(TestMmcMetaService, BatchQueryRequest)
+{
+    std::string metaUrl = "tcp://127.0.0.1:5680";
+    std::string bmUrl = "tcp://127.0.0.1:5683";
+    mmc_meta_service_config_t metaServiceConfig;
+    UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
+    metaServiceConfig.worldSize = 1;
+    auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
+    MmcMetaServicePtr metaServicePtr = Convert<MmcMetaServiceDefault, MmcMetaService>(metaServiceDefault);
+    ASSERT_TRUE(metaServicePtr->Start(metaServiceConfig) == MMC_OK);
+
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, 0, 0, "sdma", 0, 104857600, 0};
+    UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
+    auto localServiceDefault = MmcMakeRef<MmcLocalServiceDefault>("testLocalService");
+    MmcLocalServicePtr localServicePtr = Convert<MmcLocalServiceDefault, MmcLocalService>(localServiceDefault);
+    ASSERT_TRUE(localServicePtr->Start(localServiceConfig) == MMC_OK);
+
+    AllocRequest reqAlloc;
+    std::map<std::string, std::pair<uint32_t, uint8_t>> keyMap;  // key : {size, numBlobs}
+    reqAlloc.options_ = {SIZE_32K, 1, 0, 0, 0};
+    for (uint16_t i = 0U; i < 3U; ++i) {
+        reqAlloc.key_ = "test_" + std::to_string(i);
+        reqAlloc.options_.numBlobs_ = i + 1;
+        keyMap.insert({reqAlloc.key_, {SIZE_32K, static_cast<uint8_t>(i + 1)}});
+        AllocResponse respAlloc;
+        ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
+    }
+
+    std::vector<std::string> allExistKeys, partExistKeys, allNotExistKeys;
+    std::vector<Result> results;
+    auto GetKeys = [](uint16_t start, uint16_t end, std::vector<std::string> &keys) {
+        for (uint16_t i = start; i < end; ++i) {
+            string key = "test_" + std::to_string(i);
+            keys.push_back(key);
+        }
+    };
+    GetKeys(0U, 3U, allExistKeys);
+    GetKeys(2U, 5U, partExistKeys);
+    GetKeys(3U, 7U, allNotExistKeys);
+
+    auto CheckReturn = [&localServiceDefault, &keyMap](const std::vector<std::string> &keys) {
+        BatchQueryRequest reqQuery;
+        reqQuery.keys_ = keys;
+        BatchQueryResponse respQuery;
+        ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqQuery, respQuery, 30) == MMC_OK);
+        ASSERT_TRUE(respQuery.batchQueryInfos_.size() == keys.size());
+        auto queryInfo = respQuery.batchQueryInfos_.begin();
+        for (const std::string &key : keys) {
+            if (keyMap.find(key) != keyMap.end()) {
+                ASSERT_TRUE(true == queryInfo->valid_);
+                ASSERT_TRUE(keyMap[key].first == queryInfo->size_);
+                ASSERT_TRUE(keyMap[key].second == queryInfo->numBlobs_);
+                ASSERT_TRUE(0 == queryInfo->prot_);
+            } else {
+                ASSERT_TRUE(false == queryInfo->valid_);
+            }
+            ++queryInfo;
+        }
+    };
+    CheckReturn(allExistKeys);
+    CheckReturn(partExistKeys);
+    CheckReturn(allNotExistKeys);
+
     localServicePtr->Stop();
     metaServicePtr->Stop();
 }

@@ -57,6 +57,10 @@ Result ock::mmc::MetaNetServer::Start()
                                       std::bind(&MetaNetServer::HandleBatchIsExist, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BM_UNREGISTER_REQ,
                                       std::bind(&MetaNetServer::HandleBmUnregister, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_QUERY_REQ,
+                                      std::bind(&MetaNetServer::HandleQuery, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_QUERY_REQ,
+                                      std::bind(&MetaNetServer::HandleBatchQuery, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_PING_REQ, nullptr);
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_META_REPLICATE_REQ, nullptr);
     server->RegNewLinkHandler(std::bind(&MetaNetServer::HandleNewLink, this, std::placeholders::_1));
@@ -225,6 +229,34 @@ Result MetaNetServer::HandleBatchIsExist(const NetContextPtr &context)
     MMC_LOG_DEBUG("HandleBatchIsExist keys nums " << req.keys_.size());
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchExistKey(req, resp);
+
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleQuery(const NetContextPtr &context)
+{
+    QueryRequest req;
+    QueryResponse resp;
+    context->GetRequest<QueryRequest>(req);
+
+    MMC_LOG_INFO("HandleQuery key " << req.key_ << " start.");
+    auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
+    metaMgrProxy->Query(req, resp);
+    MMC_LOG_INFO("HandleQuery key " << req.key_ << " finish.");
+
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleBatchQuery(const NetContextPtr &context)
+{
+    BatchQueryRequest req;
+    BatchQueryResponse resp;
+    context->GetRequest<BatchQueryRequest>(req);
+
+    MMC_LOG_INFO("HandleBatchQuery key size " << req.keys_.size());
+    auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
+    metaMgrProxy->BatchQuery(req, resp);
+    MMC_LOG_INFO("HandleBatchQuery finish.");
 
     return context->Reply(req.msgId, resp);
 }

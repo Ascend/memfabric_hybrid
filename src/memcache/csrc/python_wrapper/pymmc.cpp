@@ -216,16 +216,12 @@ long DistributedObjectStore::removeAll() {
 
 int DistributedObjectStore::isExist(const std::string &key) {
     int32_t res = mmcc_exist(key.c_str(), 0);
-    if (res == MMC_OK) {
+    if (res == 0) {
         // align with mooncake: 1 represents exist
         return 1;
     }
-    if (res == MMC_UNMATCHED_KEY) {
-        // align with mooncake: 0 represents not exist
-        return 0;
-    }
-    // align with mooncake: other integers represent error
-    return res;
+    // align with mooncake: 0 represents not exist
+    return 0;
 }
 
 std::vector<int> DistributedObjectStore::batchIsExist(const std::vector<std::string> &keys) {

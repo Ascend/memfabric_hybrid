@@ -9,6 +9,16 @@
 
 namespace ock {
 namespace mmc {
+struct MemObjQueryInfo {
+    uint32_t size_;
+    uint16_t prot_;
+    uint8_t numBlobs_;
+    bool valid_;
+    MemObjQueryInfo() : size_(0), prot_(0), numBlobs_(0), valid_(false) {}
+    MemObjQueryInfo(const uint32_t size, const uint16_t prot, const uint8_t numBlobs, const bool valid)
+        : size_(size), prot_(prot), numBlobs_(numBlobs), valid_(valid) {}
+};
+
 class MmcMemBlob;
 using MmcMemBlobPtr = MmcRef<MmcMemBlob>;
 

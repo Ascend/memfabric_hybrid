@@ -55,7 +55,18 @@ int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags);
  * @param flags            [in] optional flags, reserved
  * @return 0 if successful
  */
-int32_t mmcc_query(const char* key, mmc_data_info *info, uint32_t flags);
+int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags);
+
+/**
+ * @brief query blob info with key
+ *
+ * @param keys             [in] keys of data, less than 256
+ * @param keys_count       [in] Count of keys
+ * @param info             [out] Blob info of keys
+ * @param flags            [in] Flags for the operation
+ * @return 0 if successfully
+ */
+int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_info *info, uint32_t flags);
 
 /**
  * @brief Put data of object with key into Distributed Memory Cache
@@ -113,18 +124,19 @@ int32_t mmcc_wait(int32_t waitHandle, int32_t timeoutSec);
  * @brief Determine whether the key is within the BM
  *
  * @param key              [in] key of data, less than 256
- * @return 0 if successfully, 1 if failed, positive value if error happens
+ * @return 0 if successfully
  */
-int32_t mmcc_exist(const char* key, uint32_t flags);
+int32_t mmcc_exist(const char *key, uint32_t flags);
 
 /**
  * @brief Determine whether the list of keys is within the BM
  *
  * @param keys             [in] keys of data, the length of key is less than 256
+ * @param keys_count       [in] Count of keys
  * @param exist_results    [out] existence status list of keys in BM
- * @return 0 if at least one key exist, 1 if all key not exist, positive value if error happens
+ * @return 0 if successfully
  */
-int32_t mmcc_batch_exist(const std::vector<std::string>& keys, std::vector<int32_t>& exist_results, uint32_t flags);
+int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, int32_t *exist_results, uint32_t flags);
 
 /**
  * @brief Remove multiple keys from the BM

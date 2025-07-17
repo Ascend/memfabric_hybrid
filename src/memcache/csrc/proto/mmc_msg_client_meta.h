@@ -496,7 +496,7 @@ struct BatchIsExistRequest : MsgBase {
 };
 
 struct BatchIsExistResponse : MsgBase {
-    Result ret_ = 0;
+    Result ret_ = -1;
     std::vector<Result> results_;
 
     BatchIsExistResponse() : MsgBase{0, ML_BATCH_IS_EXIST_RESP, 0} {}
@@ -524,6 +524,122 @@ struct BatchIsExistResponse : MsgBase {
         packer.Deserialize(destRankId);
         packer.Deserialize(ret_);
         packer.Deserialize(results_);
+        return MMC_OK;
+    }
+};
+
+struct QueryRequest : MsgBase {
+    std::string key_;
+
+    QueryRequest() : MsgBase{0, ML_QUERY_REQ, 0} {}
+    explicit QueryRequest(const std::string& key)
+        : MsgBase{0, ML_QUERY_REQ, 0},
+          key_(key)
+    {
+    }
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(key_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(key_);
+        return MMC_OK;
+    }
+};
+
+struct QueryResponse : MsgBase {
+    MemObjQueryInfo queryInfo_;
+
+    QueryResponse() : MsgBase{0, ML_QUERY_RESP, 0} {}
+    explicit QueryResponse(const MemObjQueryInfo &queryInfo)
+        : MsgBase{0, ML_QUERY_RESP, 0},
+          queryInfo_(queryInfo)
+    {
+    }
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(queryInfo_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(queryInfo_);
+        return MMC_OK;
+    }
+};
+
+struct BatchQueryRequest : MsgBase {
+    std::vector<std::string> keys_;
+
+    BatchQueryRequest() : MsgBase{0, ML_BATCH_QUERY_REQ, 0} {}
+    explicit BatchQueryRequest(const std::vector<std::string> &keys)
+        : MsgBase{0, ML_BATCH_QUERY_REQ, 0},
+          keys_(keys)
+    {
+    }
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(keys_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(keys_);
+        return MMC_OK;
+    }
+};
+
+struct BatchQueryResponse : MsgBase {
+    std::vector<MemObjQueryInfo> batchQueryInfos_;
+
+    BatchQueryResponse() : MsgBase{0, ML_BATCH_QUERY_RESP, 0} {}
+    explicit BatchQueryResponse(const std::vector<MemObjQueryInfo> &batchQueryInfos)
+        : MsgBase{0, ML_BATCH_QUERY_RESP, 0},
+          batchQueryInfos_(batchQueryInfos)
+    {
+    }
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(batchQueryInfos_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(batchQueryInfos_);
         return MMC_OK;
     }
 };

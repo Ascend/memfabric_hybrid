@@ -89,15 +89,17 @@ public:
     /**
      * @brief Check if a meta object (key) is in memory
      * @param key          [in] key of the meta object
+     * @param found        [out] status regarding whether the key was found
      */
-    Result ExistKey(const std::string &key);
+    Result ExistKey(const std::string &key, Result &found);
 
     /**
      * @brief Check if a list of meta objects (keys) is in memory
      * @param keys          [in] keys of the meta objects
      * @param results       [out] the accessible state corresponding to each key
+     * @param found        [out] status regarding whether the key was found
      */
-    Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results);
+    Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results, Result &found);
 
     /**
      * @brief Batch remove multiple meta objects
@@ -105,6 +107,13 @@ public:
      * @param remove_results [out] Results of each removal operation
      */
     Result BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &remove_results);
+
+    /**
+    * @brief Get blob query info with key
+    * @param key            [in] key of the meta object
+    * @param queryInfo      [out] the query info of the meta object
+    */
+    Result Query(const std::string &key, MemObjQueryInfo &queryInfo);
 
 private:
     // LRU

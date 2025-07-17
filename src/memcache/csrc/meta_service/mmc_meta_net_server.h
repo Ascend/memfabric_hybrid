@@ -53,6 +53,10 @@ private:
 
     Result HandleBatchRemove(const NetContextPtr &context);
 
+    Result HandleQuery(const NetContextPtr &context);
+
+    Result HandleBatchQuery(const NetContextPtr &context);
+
 private:
     NetEnginePtr engine_;
     MmcMetaServicePtr metaService_;

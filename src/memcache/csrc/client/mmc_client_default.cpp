@@ -174,18 +174,28 @@ Result MmcClientDefault::BatchRemove(const std::vector<std::string>& keys,
     return MMC_OK;
 }
 
-Result MmcClientDefault::IsExist(const std::string &key, uint32_t flags) const
+Result MmcClientDefault::IsExist(const std::string &key, bool &result, uint32_t flags) const
 {
+    if (key.empty()) {
+        MMC_LOG_ERROR("Get empty key!");
+        return MMC_INVALID_PARAM;
+    }
+
     IsExistRequest request{key};
     Response response;
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                                     "client " << name_ << " IsExist " << key << " failed");
-    return response.ret_;
+    result = response.ret_ == MMC_OK;
+    return MMC_OK;
 }
 
-Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<Result> &exist_results,
-                                      uint32_t flags) const
+Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, bool &result, uint32_t flags) const
 {
+    if (keys.empty()) {
+        MMC_LOG_ERROR("Get empty keys!");
+        return MMC_INVALID_PARAM;
+    }
+
     BatchIsExistRequest request{keys};
     BatchIsExistResponse response;
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
@@ -198,10 +208,49 @@ Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std:
         return MMC_ERROR;
     }
 
-    exist_results.resize(keys.size());
     exist_results = response.results_;
+    result = response.ret_ == MMC_OK;
+    return MMC_OK;
+}
 
-    return response.ret_;
+Result MmcClientDefault::Query(const std::string &key, mmc_data_info &query_info, uint32_t flags) const
+{
+    if (key.empty()) {
+        MMC_LOG_ERROR("Get empty key!");
+        return MMC_INVALID_PARAM;
+    }
+
+    QueryRequest request{key};
+    QueryResponse response;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                                    "client " << name_ << " Query " << key << " failed");
+    query_info.size = response.queryInfo_.size_;
+    query_info.prot = response.queryInfo_.prot_;
+    query_info.numBlobs = response.queryInfo_.numBlobs_;
+    query_info.valid = response.queryInfo_.valid_;
+    return MMC_OK;
+}
+
+Result MmcClientDefault::BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const
+{
+    if (keys.empty()) {
+        MMC_LOG_ERROR("Get empty keys!");
+        return MMC_INVALID_PARAM;
+    }
+
+    BatchQueryRequest request{keys};
+    BatchQueryResponse response;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                                    "client " << name_ << " BatchIsExist failed");
+
+    if (response.batchQueryInfos_.empty()) {
+        MMC_LOG_WARN("BatchQuery get empty response.");
+    }
+
+    for (const auto& info : response.batchQueryInfos_) {
+        query_infos.push_back({info.size_, info.prot_, info.numBlobs_, info.valid_});
+    }
+    return MMC_OK;
 }
 }
 }
