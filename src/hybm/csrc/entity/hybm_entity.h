@@ -10,6 +10,7 @@
 #include "hybm_big_mem.h"
 #include "hybm_common_include.h"
 #include "hybm_mem_slice.h"
+#include "hybm_trans.h"
 
 namespace ock {
 namespace mf {
@@ -40,6 +41,15 @@ public:
     virtual int32_t CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch,  uint64_t width,
                                uint64_t height, hybm_data_copy_direction direction,
                                void *stream, uint32_t flags) noexcept = 0;
+
+    virtual int32_t TransportInit(uint32_t rankId, const std::string &nic) noexcept = 0;
+    virtual int32_t TransportRegisterMr(uint64_t address, uint64_t size,
+                                        hybm_mr_key *lkey, hybm_mr_key *rkey) noexcept = 0;
+    virtual int32_t TransportSetMr(const std::vector<hybm_transport_mr_info> &mrs) noexcept = 0;
+    virtual int32_t TransportGetAddress(std::string &nic) noexcept = 0;
+    virtual int32_t TransportSetAddress(const std::vector<std::string> &nics) noexcept = 0;
+    virtual int32_t TransportMakeConnect() noexcept = 0;
+    virtual int32_t TransportAiQPInfoAddress(uint32_t shmId, void **address) noexcept = 0;
 
     virtual ~MemEntity() noexcept = default;
 };

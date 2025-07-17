@@ -61,6 +61,13 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
         return ret;
     }
 
+    static HybmTransType transTypeMap[HYBM_TYPE_BUTT + 1][HYBM_DOP_TYPE_BUTT + 1] = {
+        {TT_BUTT, TT_HCCP_RDMA, TT_BUTT, TT_BUTT},
+        {TT_BUTT, TT_HCOM_RDMA, TT_BUTT, TT_BUTT},
+        {TT_BUTT, TT_HCOM_RDMA, TT_BUTT, TT_BUTT}
+    };
+    transportManager_ = HybmTransManager::Create(transTypeMap[options_.bmType][options_.bmDataOpType]);
+
     dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
     initialized = true;
     return BM_OK;
@@ -337,5 +344,67 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.extraContextSize = 0;
 }
 
+int32_t MemEntityDefault::TransportInit(uint32_t rankId, const std::string &nic) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    HybmTransOptions transOptions{};
+    transOptions.rankId = rankId;
+    transOptions.nic = nic;
+    transOptions.transType = TT_HCOM_RDMA;
+    auto ret = transportManager_->OpenDevice(transOptions);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("transport manager open device failed, rankId: " << rankId << " nic: " << nic << " ret: " << ret);
+        return ret;
+    }
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportRegisterMr(uint64_t address, uint64_t size,
+                                              hybm_mr_key *lkey, hybm_mr_key *rkey) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    HybmTransMemReg memInfo{};
+    memInfo.addr = address;
+    memInfo.size = size;
+    HybmTransKey transKey{};
+    auto ret = transportManager_->RegisterMemoryRegion(memInfo, transKey);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("transport manager register mem failed, addr: " << address
+                     << " size: " << size << " ret: " << ret);
+        return ret;
+    }
+    std::copy_n(transKey.keys, sizeof(HybmTransKey), lkey->key);
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportSetMr(const std::vector<hybm_transport_mr_info> &mrs) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportGetAddress(std::string &nic) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportSetAddress(const std::vector<std::string> &nics) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportMakeConnect() noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::TransportAiQPInfoAddress(uint32_t shmId, void **address) noexcept
+{
+    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
+    return BM_OK;
+}
 }
 }

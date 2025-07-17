@@ -3,7 +3,7 @@
  */
 #include "dl_acl_api.h"
 #include "hybm_logger.h"
-#include "hybm_trans_manager.h"
+#include "hybm_transport_manager.h"
 #include "hybm_rdma_trans_manager.h"
 
 namespace ock {

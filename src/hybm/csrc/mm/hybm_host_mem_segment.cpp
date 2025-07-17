@@ -46,7 +46,7 @@ Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
     return BM_OK;
 }
 
-void MemSegmentHost::LvaShmReservePhysicalMemory(const void *mappedAddress, uint64_t size) noexcept
+void MemSegmentHost::LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept
 {
     auto *pos = (uint8_t *) (mappedAddress);
     uint64_t setLength = 0;
@@ -209,8 +209,10 @@ void MemSegmentHost::FreeMemory() noexcept
 {
     if (localVirtualBase_ != nullptr) {
         munmap(localVirtualBase_, options_.size);
+        localVirtualBase_ = nullptr;
     }
     if (globalVirtualAddress_ != nullptr) {
         munmap(globalVirtualAddress_, totalVirtualSize_);
+        globalVirtualAddress_ = nullptr;
     }
 }

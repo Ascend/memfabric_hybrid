@@ -49,14 +49,13 @@ public:
 
 private:
     void FreeMemory() noexcept;
-    void LvaShmReservePhysicalMemory(const void *mappedAddress, uint64_t size) noexcept;
+    static void LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept;
 private:
     uint8_t *globalVirtualAddress_{nullptr};
     uint64_t totalVirtualSize_{0UL};
     uint8_t * localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};
-    int32_t shmFd_{-1};
     OneSideKey oneSideKey_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::string> exportMap_;
