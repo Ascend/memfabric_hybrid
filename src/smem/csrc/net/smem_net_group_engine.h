@@ -15,6 +15,7 @@ namespace smem {
 class SmemNetGroupEngine;
 using SmemGroupEnginePtr = SmRef<SmemNetGroupEngine>;
 using SmemGroupChangeCallback = std::function<Result(uint32_t rank)>;
+const uint32_t REMOVE_INTERVAL = 2;
 
 /**
  * @brief create group option
@@ -75,11 +76,13 @@ private:
     Result TryCasEventKey(std::string &val);
     void UpdateGroupVersion(int32_t ver);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
+    bool DealWithListenEvent(std::string& getVal, std::string& prevEvent);
 
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
-    uint32_t groupSn_ = 0;
+    uint32_t allGatherGroupSn_ = 0;
+    uint32_t barrierGroupSn_ = 0;
 
     std::thread listenThread_;
     SmemTimedwait listenSignal_;

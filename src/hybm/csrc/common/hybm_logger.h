@@ -140,6 +140,14 @@ private:
             return RET;                          \
         }                                        \
     } while (0)
+    
+#define BM_VALIDATE_RETURN(ARGS, msg, RET)       \
+    do {                                         \
+        if (__builtin_expect(!(ARGS), 0) != 0) { \
+            BM_LOG_ERROR(msg);                   \
+            return RET;                          \
+        }                                        \
+    } while (0)
 
 #define BM_ASSERT_RET_VOID(ARGS)                 \
     do {                                         \

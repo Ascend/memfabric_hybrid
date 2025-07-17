@@ -25,17 +25,12 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
         return BM_OK;
     }
 
-    if (id_ < 0 || (uint32_t)(id_) >= HYBM_ENTITY_NUM_MAX) {
-        BM_LOG_ERROR("input entity id is invalid, input: " << id_ << " must be less than: " << HYBM_ENTITY_NUM_MAX);
-        return BM_INVALID_PARAM;
-    }
+    BM_VALIDATE_RETURN((id_ >= 0 && (uint32_t)(id_) < HYBM_ENTITY_NUM_MAX), "input entity id is invalid, input: "
+                     << id_ << " must be less than: " << HYBM_ENTITY_NUM_MAX, BM_INVALID_PARAM);
 
-    auto ret = CheckOptions(options);
-    if (ret != BM_OK) {
-        return ret;
-    }
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CheckOptions(options), "check options failed.");
 
-    ret = DlAclApi::AclrtCreateStream(&stream_);
+    auto ret = DlAclApi::AclrtCreateStream(&stream_);
     if (ret != 0) {
         BM_LOG_ERROR("create stream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -81,7 +76,12 @@ int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
 
 int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
 {
-    return BM_OK;
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+    
+    return segment_->UnreserveMemorySpace();
 }
 
 int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept
@@ -118,7 +118,20 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
     return BM_OK;
 }
 
-void MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept {}
+int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept
+{
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_INVALID_PARAM;
+    }
+
+    auto memSlice = segment_->GetMemSlice(slice);
+    if (memSlice == nullptr) {
+        BM_LOG_ERROR("GetMemSlice failed, please check input slice.");
+        return BM_INVALID_PARAM;
+    }
+    return segment_->ReleaseSliceMemory(memSlice);
+}
 
 int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept
 {
@@ -225,7 +238,7 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
     SetHybmDeviceInfo(info);
     info.extraContextSize = size;
     addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+    ret = DlAclApi::AclrtMemcpy((void *)addr, HYBM_DEVICE_PRE_META_SIZE, &info, sizeof(HybmDeviceMeta),
                                 ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("update hybm info memory failed, ret: " << ret);

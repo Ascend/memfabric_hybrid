@@ -89,6 +89,7 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
         --maxRows;
         if (maxRows < 0) {
             BM_LOG_WARN("driver version file content is too long.");
+            infile.close();
             return "";
         }
         auto found = line.find(keyStr);

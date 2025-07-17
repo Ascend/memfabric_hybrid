@@ -25,7 +25,7 @@ public:
     int32_t UnReserveMemorySpace() noexcept override;
 
     int32_t AllocLocalMemory(uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept override;
-    void FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept override;
+    int32_t FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept override;
 
     int32_t ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept override;
     int32_t ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept override;

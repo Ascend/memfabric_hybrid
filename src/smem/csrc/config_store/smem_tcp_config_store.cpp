@@ -304,7 +304,7 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    value = strtol(data.c_str(), nullptr, 10);
+    SM_VALIDATE_RETURN(StrToLong(data, value), "convert string to long failed.", StoreErrorCode::ERROR);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -359,7 +359,10 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    newSize = static_cast<uint64_t>(strtol(data.c_str(), nullptr, 10));
+
+    long tmpValue = 0;
+    SM_VALIDATE_RETURN(StrToLong(data, tmpValue), "convert string to long failed.", StoreErrorCode::ERROR);
+    newSize = static_cast<uint64_t>(tmpValue);
 
     return StoreErrorCode::SUCCESS;
 }

@@ -255,14 +255,15 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
 
     auto &key = request.keys[0];
     auto &value = request.values[0];
-    if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
-        return StoreErrorCode::INVALID_KEY;
-    }
+    SM_VALIDATE_RETURN(key.length() <= MAX_KEY_LEN_SERVER, "key length too large, length: "
+                     << key.length(), StoreErrorCode::INVALID_KEY);
 
     std::string valueStr{value.begin(), value.end()};
     SM_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << valueStr << ") start.");
-    auto valueNum = strtol(valueStr.c_str(), nullptr, 10);
+
+    long valueNum;
+    SM_VALIDATE_RETURN(StrToLong(valueStr, valueNum), "convert string to long failed.", SM_ERROR);
+
     if (valueStr != std::to_string(valueNum)) {
         SM_LOG_ERROR("request(" << context.SeqNo() << ") add for key(" << key << ") value is not a number");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: value should be a number.");
@@ -284,7 +285,9 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         kvStore_.emplace(key, std::move(value));
     } else {
         std::string oldValueStr{pos->second.begin(), pos->second.end()};
-        auto storedValueNum = strtol(oldValueStr.c_str(), nullptr, 10);
+        long storedValueNum = 0;
+        SM_VALIDATE_RETURN(StrToLong(oldValueStr, storedValueNum), "convert string to long failed.", SM_ERROR);
+        
         storedValueNum += valueNum;
         auto storedValueStr = std::to_string(storedValueNum);
         pos->second = std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end());

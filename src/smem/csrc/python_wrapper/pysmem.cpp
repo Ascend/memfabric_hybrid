@@ -82,7 +82,7 @@ public:
             throw std::runtime_error("create shm failed!");
         }
 
-        return new ShareMemory(handle, gva);
+        return new (std::nothrow)ShareMemory(handle, gva);
     }
 
 private:
@@ -164,7 +164,7 @@ public:
             throw std::runtime_error(std::string("create bm handle failed."));
         }
 
-        return new BigMemory{hd};
+        return new (std::nothrow)BigMemory{hd};
     }
 
 private:
@@ -236,7 +236,7 @@ void DefineShmConfig(py::module_ &m)
 {
     py::class_<smem_shm_config_t>(m, "ShmConfig")
         .def(py::init([]() {
-                 auto config = new smem_shm_config_t;
+                 auto config = new (std::nothrow)smem_shm_config_t;
                  smem_shm_config_init(config);
                  return config;
              }),
@@ -262,7 +262,7 @@ void DefineBmConfig(py::module_ &m)
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
-                 auto config = new smem_bm_config_t;
+                 auto config = new (std::nothrow)smem_bm_config_t;
                  smem_bm_config_init(config);
                  return config;
              }),

@@ -34,17 +34,6 @@ inline void Split(const std::string &src, const std::string &sep, std::vector<st
     }
 }
 
-inline bool StrToLong(const std::string &src, long &value)
-{
-    char *remain = nullptr;
-    errno = 0;
-    value = std::strtol(src.c_str(), &remain, 10L);  // 10 is decimal digits
-    if ((value == 0 && src != "0") || remain == nullptr || strlen(remain) > 0 || errno == ERANGE) {
-        return false;
-    }
-    return true;
-}
-
 inline bool IsValidIpV4(const std::string &address)
 {
     // 校验输入长度，防止正则表达式栈溢出

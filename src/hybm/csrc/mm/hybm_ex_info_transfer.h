@@ -8,7 +8,7 @@
 #include <cstring>
 #include <string>
 #include <type_traits>
-
+#include <algorithm>
 #include "hybm_logger.h"
 
 namespace ock {
@@ -43,7 +43,7 @@ public:
             return -1;
         }
 
-        memcpy(&d, info.data(), sizeof(DataType));
+        std::copy_n(info.data(), info.size(), reinterpret_cast<char*>(&d));
         return 0;
     }
 };

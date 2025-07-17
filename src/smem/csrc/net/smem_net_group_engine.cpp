@@ -67,7 +67,7 @@ Result SmemNetGroupEngine::GroupBarrier()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     uint32_t size = option_.rankSize;
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++barrierGroupSn_);
     std::string addKey = idx + "_BA";
     std::string waitKey = idx + "_BW";
     int64_t val = 0;
@@ -76,22 +76,31 @@ Result SmemNetGroupEngine::GroupBarrier()
     /* all guys add 1 to barrier key and get it */
     MonoPerfTrace traceAdd;
     auto ret = store_->Add(addKey, 1, val);
-    if (ret != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("store add key: " << store_->GetCompleteKey(addKey) <<
-            " failed, result:" << ConfigStore::ErrStr(ret));
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(ret == SM_OK, "store add key: " << store_->GetCompleteKey(addKey)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+
     traceAdd.RecordEnd();
     SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " value: " << val);
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == 1 && barrierGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t removeBarrierGroupSn_ = barrierGroupSn_ - REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BW";
+        ret = store_->Remove(removeAddIdx);
+        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeAddIdx)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+
+        ret = store_->Remove(removeWaitIdx);
+        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeWaitIdx)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+    }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
     if (val == size) {
         ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
-        if (ret != SM_OK) {
-            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
-                << " failed, result:" << ConfigStore::ErrStr(ret));
-            return SM_ERROR;
-        }
+        SM_VALIDATE_RETURN(ret == SM_OK, "store set key: " << store_->GetCompleteKey(waitKey)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
         SM_LOG_DEBUG("store set key: " << store_->GetCompleteKey(waitKey));
     }
 
@@ -99,18 +108,12 @@ Result SmemNetGroupEngine::GroupBarrier()
     MonoPerfTrace traceGetStatus;
     std::string getVal;
     ret = store_->Get(waitKey, getVal, option_.timeoutMs);
-    if (ret != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) <<
-            " failed, result:" << ConfigStore::ErrStr(ret));
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(ret == SM_OK, "store get key: " << store_->GetCompleteKey(waitKey)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
     traceGetStatus.RecordEnd();
 
-    if (getVal != SMEM_GROUP_SET_STR) {
-        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) <<
-            " val is not equal, val: " << getVal << " expect: " << SMEM_GROUP_SET_STR);
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(getVal == SMEM_GROUP_SET_STR, "store get key: " << store_->GetCompleteKey(waitKey) <<
+                     " val is not equal, val: " << getVal << " expect: " << SMEM_GROUP_SET_STR, SM_ERROR);
     traceBarrier.RecordEnd();
 
     SM_LOG_INFO("groupBarrier successfully, key: " << store_->GetCompleteKey(waitKey) << ", size: " <<
@@ -148,7 +151,7 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     uint32_t size = option_.rankSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
 
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++allGatherGroupSn_);
     std::string addKey = idx + "_GA";
     std::string waitKey = idx + "_GW";
 
@@ -161,39 +164,39 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     MonoPerfTrace traceAppend;
     uint64_t val = 0;
     auto ret = store_->Append(addKey, input, val);
-    if (ret != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("store add key: " << store_->GetCompleteKey(addKey) <<
-            " failed, result:" << ConfigStore::ErrStr(ret));
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(ret == SM_OK, "store add key: " << store_->GetCompleteKey(addKey)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
     traceAppend.RecordEnd();
 
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t removeAllGatherGroupSn_ = allGatherGroupSn_- REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GW";
+        ret = store_->Remove(removeAddIdx);
+        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeAddIdx)
+                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+        ret = store_->Remove(removeWaitIdx);
+        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeWaitIdx)
+                << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+    }
     /* the last guy set ok status */
     if (val == input.size() * size) {
         ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
-        if (ret != SM_OK) {
-            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
-                                       << " failed, result:" << ConfigStore::ErrStr(ret));
-            return SM_ERROR;
-        }
+        SM_VALIDATE_RETURN(ret == SM_OK, "store set key: " << store_->GetCompleteKey(waitKey)
+                         << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
     }
 
     /* all guys wait for ok status with timeout */
     MonoPerfTrace traceGetStatus;
     std::string getVal;
     ret = store_->Get(waitKey, getVal, option_.timeoutMs);
-    if (ret != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) <<
-            " failed, result:" << ConfigStore::ErrStr(ret));
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(ret == SM_OK, "store get key: " << store_->GetCompleteKey(waitKey)
+                << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
     traceGetStatus.RecordEnd();
 
-    if (getVal != SMEM_GROUP_SET_STR) {
-        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) << " val is not equal, val: " <<
-            getVal << " expect: " << SMEM_GROUP_SET_STR);
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(getVal == SMEM_GROUP_SET_STR, "store get key: " << store_->GetCompleteKey(waitKey)
+                     << " val is not equal, val: " << getVal << " expect: " << SMEM_GROUP_SET_STR, SM_ERROR);
 
     /* get the whole value */
     MonoPerfTrace traceGetData;
@@ -237,6 +240,58 @@ bool SmemNetGroupEngine::IsDigit(const std::string& str)
     return true;
 }
 
+bool SmemNetGroupEngine::DealWithListenEvent(std::string& getVal, std::string& prevEvent)
+{
+    char opt = getVal[0];
+    if (!IsDigit(getVal.substr(1))) {
+        SM_LOG_WARN("value is not digit");
+        return false;
+    }
+
+    long tmpValue = 0;
+    if (!CharToLong(getVal.c_str() + 1, tmpValue)) {
+        SM_LOG_ERROR("convert string to long failed.");
+        return false;
+    }
+    uint32_t rk = static_cast<uint32_t>(tmpValue);
+    if (getVal == prevEvent) {
+        return false;
+    }
+    prevEvent = getVal;
+
+    auto ret = store_->Get(SMEM_GROUP_DYNAMIC_SIZE_KEY, getVal, option_.timeoutMs);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
+        return false;
+    }
+    if (!IsDigit(getVal)) {
+        SM_LOG_WARN("value is not digit");
+        return false;
+    }
+    tmpValue = 0;
+    if (!StrToLong(getVal, tmpValue)) {
+        SM_LOG_ERROR("convert string to long failed.");
+        return false;
+    }
+    int64_t tmpVal = static_cast<int64_t>(tmpValue);
+    SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " event_rk:" << rk << " event:" << opt);
+    UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
+    if (opt == 'J') {
+        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second + 1);
+        if (option_.joinCb != nullptr) {
+            option_.joinCb(rk);
+        }
+    } else if (opt == 'L') {
+        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second - 1);
+        if (option_.leaveCb != nullptr) {
+            option_.leaveCb(rk);
+        }
+    } else {
+        SM_LOG_WARN("group listen event, unknown operation:" << opt);
+    }
+    return true;
+}
+
 void SmemNetGroupEngine::GroupListenEvent()
 {
     std::string getVal;
@@ -276,41 +331,8 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
 
-        char opt = getVal[0];
-        if (!IsDigit(getVal.substr(1))) {
-            SM_LOG_WARN("value is not digit");
+        if (!DealWithListenEvent(getVal, prevEvent)) {
             continue;
-        }
-        auto rk = static_cast<uint32_t>(strtol(getVal.c_str() + 1, nullptr, 10));
-        if (getVal == prevEvent) {
-            continue;
-        }
-        prevEvent = getVal;
-
-        ret = store_->Get(SMEM_GROUP_DYNAMIC_SIZE_KEY, getVal, option_.timeoutMs);
-        if (ret != SM_OK) {
-            SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-            continue;
-        }
-        if (!IsDigit(getVal)) {
-            SM_LOG_WARN("value is not digit");
-            continue;
-        }
-        int64_t tmpVal = strtol(getVal.c_str(), nullptr, 10);
-        SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " event_rk:" << rk << " event:" << opt);
-        UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
-        if (opt == 'J') {
-            option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second + 1);
-            if (option_.joinCb != nullptr) {
-                option_.joinCb(rk);
-            }
-        } else if (opt == 'L') {
-            option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second - 1);
-            if (option_.leaveCb != nullptr) {
-                option_.leaveCb(rk);
-            }
-        } else {
-            SM_LOG_WARN("group listen event, unknown operation:" << opt);
         }
     }
     listenThreadStarted_ = false;
@@ -453,7 +475,8 @@ leave_exit:
 void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
 {
     groupVersion_ = ver;
-    groupSn_ = 0;
+    allGatherGroupSn_ = 0;
+    barrierGroupSn_ = 0;
 }
 
 }  // namespace smem
