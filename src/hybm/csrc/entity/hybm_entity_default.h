@@ -47,13 +47,13 @@ private:
     static int CheckOptions(const hybm_options *options) noexcept;
 
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
+    int32_t CreateDataOperator();
     void ReleaseResources();
 
 private:
     bool initialized = false;
     const int32_t id_; /* id of the engine */
     hybm_options options_{};
-    void *stream_{nullptr};
     std::shared_ptr<MemSegment> segment_;
     std::shared_ptr<DataOperator> dataOperator_;
 };

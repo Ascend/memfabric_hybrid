@@ -8,11 +8,47 @@
 namespace ock {
 namespace mf {
 
-HostDataOpSDMA::HostDataOpSDMA(void *stm) noexcept : stream_{stm} {}
+HostDataOpSDMA::~HostDataOpSDMA()
+{
+    HostDataOpSDMA::UnInitialize();
+}
+
+int32_t HostDataOpSDMA::Initialize() noexcept
+{
+    if (inited_) {
+        return BM_OK;
+    }
+
+    auto ret = DlAclApi::AclrtCreateStream(&stream_);
+    if (ret != 0) {
+        BM_LOG_ERROR("create stream failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    inited_ = true;
+    return 0;
+}
+
+void HostDataOpSDMA::UnInitialize() noexcept
+{
+    if (!inited_) {
+        return;
+    }
+
+    if (stream_ != nullptr) {
+        int32_t ret = DlAclApi::AclrtDestroyStream(stream_);
+        if (ret != 0) {
+            BM_LOG_ERROR("destroy stream failed: " << ret);
+        }
+        stream_ = nullptr;
+    }
+    inited_ = false;
+}
 
 int32_t HostDataOpSDMA::DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
                                  void *stream, uint32_t flags) noexcept
 {
+    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
@@ -318,6 +354,7 @@ int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA,
                                uint64_t height, hybm_data_copy_direction direction, void *stream,
                                uint32_t flags) noexcept
 {
+    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:

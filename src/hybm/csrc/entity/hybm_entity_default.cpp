@@ -18,6 +18,24 @@ MemEntityDefault::~MemEntityDefault()
     ReleaseResources();
 }
 
+int32_t MemEntityDefault::CreateDataOperator()
+{
+    switch (options_.bmType) {
+        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
+            dataOperator_ = std::make_shared<HostDataOpSDMA>();
+            break;
+        default:
+            BM_LOG_ERROR("Invalid memory seg type " << int(options_.bmType));
+            return BM_INVALID_PARAM;
+    }
+
+    if (dataOperator_ == nullptr) {
+        BM_LOG_ERROR("create data operator failed");
+        return BM_INVALID_PARAM;
+    }
+    return BM_OK;
+}
+
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
     if (initialized) {
@@ -30,12 +48,6 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CheckOptions(options), "check options failed.");
 
-    auto ret = DlAclApi::AclrtCreateStream(&stream_);
-    if (ret != 0) {
-        BM_LOG_ERROR("create stream failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
     options_ = *options;
     MemSegmentOptions segmentOptions;
     segmentOptions.size = options_.singleRankVASpace;
@@ -45,16 +57,22 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     segmentOptions.rankCnt = options_.rankCount;
 
     segment_ = MemSegment::Create(segmentOptions, id_);
-    if (segment_ == nullptr) {
-        int32_t des_ret = DlAclApi::AclrtDestroyStream(stream_);
-        if (des_ret != 0) {
-            BM_LOG_ERROR("destroy stream failed: " << ret);
-        }
-        stream_ = nullptr;
+    BM_VALIDATE_RETURN(segment_ != nullptr, "create segment failed", BM_INVALID_PARAM);
+
+    auto ret = CreateDataOperator();
+    if (ret != 0) {
+        segment_ = nullptr;
         return BM_INVALID_PARAM;
     }
 
-    dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
+    ret = dataOperator_->Initialize();
+    if (ret != 0) {
+        BM_LOG_ERROR("data operator init failed, ret:" << ret);
+        segment_ = nullptr;
+        dataOperator_ = nullptr;
+        return ret;
+    }
+
     initialized = true;
     return BM_OK;
 }
@@ -348,11 +366,6 @@ void MemEntityDefault::ReleaseResources()
 
     segment_.reset();
     dataOperator_.reset();
-    auto ret = DlAclApi::AclrtDestroyStream(stream_);
-    if (ret != 0) {
-        BM_LOG_WARN("destroy stream failed " << ret);
-    }
-    stream_ = nullptr;
     initialized = false;
 }
 

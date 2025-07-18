@@ -10,7 +10,10 @@ namespace ock {
 namespace mf {
 class HostDataOpSDMA : public DataOperator {
 public:
-    explicit HostDataOpSDMA(void *stm) noexcept;
+    ~HostDataOpSDMA() override;
+
+    int32_t Initialize() noexcept override;
+    void UnInitialize() noexcept override;
 
     int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction, void *stream,
                      uint32_t flags) noexcept override;
@@ -38,7 +41,8 @@ private:
                          uint64_t height, void *stream) noexcept;
 
 private:
-    void *stream_;
+    bool inited_ = false;
+    void *stream_ = nullptr;
 };
 }  // namespace mf
 }  // namespace ock

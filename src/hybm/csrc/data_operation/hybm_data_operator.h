@@ -12,6 +12,9 @@ namespace mf {
 
 class DataOperator {
 public:
+    virtual int32_t Initialize() noexcept = 0;
+    virtual void UnInitialize() noexcept = 0;
+
     virtual int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction, void *stream,
         uint32_t flags) noexcept = 0;
     virtual int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch, uint64_t width,

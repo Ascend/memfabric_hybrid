@@ -17,7 +17,7 @@ using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
-HostDataOpSDMA g_dataOperator = HostDataOpSDMA(nullptr);
+HostDataOpSDMA g_dataOperator = HostDataOpSDMA();
 void *g_srcVA = reinterpret_cast<void *>(0x100000000000ULL);
 void *g_dstVA = reinterpret_cast<void *>(0x100000000000ULL);
 const uint64_t g_size = 1024;
@@ -28,10 +28,12 @@ protected:
     static void SetUpTestSuite()
     {
         EXPECT_EQ(hybm_init(0, 0), BM_OK);
+        EXPECT_EQ(g_dataOperator.Initialize(), BM_OK);
     }
 
     static void TearDownTestSuite()
     {
+        g_dataOperator.UnInitialize();
         hybm_uninit();
     }
 
