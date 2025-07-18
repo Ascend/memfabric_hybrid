@@ -5,7 +5,6 @@
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_transport_manager.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
 #include "hybm_entity_default.h"
@@ -343,15 +342,6 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.rankSize = options_.rankCount;
     info.symmetricSize = options_.singleRankVASpace;
     info.extraContextSize = 0;
-
-    void *qpInfoAddress = nullptr;
-    auto manager = TransportManager::Create(TT_HCCP_RDMA);
-    if (manager == nullptr) {
-        BM_LOG_WARN("TransportManager::Create(TT_HCCP_RDMA) failed!");
-    } else {
-        qpInfoAddress = manager->GetDataConnAddrInfo().address;
-    }
-    info.qpInfoAddress = (uint64_t)(ptrdiff_t)qpInfoAddress;
 }
 
 int32_t MemEntityDefault::TransportInit(uint32_t rankId, const std::string &nic) noexcept
