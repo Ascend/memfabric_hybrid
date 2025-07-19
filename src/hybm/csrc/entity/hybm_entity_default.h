@@ -54,7 +54,7 @@ public:
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;
-
+    int UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
 
 private:

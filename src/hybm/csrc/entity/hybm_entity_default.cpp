@@ -121,17 +121,7 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
 
     slice = realSlice->ConvertToId();
 
-    HybmDeviceMeta info;
-    SetHybmDeviceInfo(info);
-
-    uint64_t addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
-                                ACL_MEMCPY_HOST_TO_DEVICE);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("memcpy hybm info memory failed, ret: " << ret);
-        return BM_ERROR;
-    }
-    return BM_OK;
+    return UpdateHybmDeviceInfo(0);
 }
 
 void MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept {}
@@ -237,17 +227,7 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
         return BM_ERROR;
     }
 
-    HybmDeviceMeta info;
-    SetHybmDeviceInfo(info);
-    info.extraContextSize = size;
-    addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
-    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
-                                ACL_MEMCPY_HOST_TO_DEVICE);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("update hybm info memory failed, ret: " << ret);
-        return BM_ERROR;
-    }
-    return BM_OK;
+    return UpdateHybmDeviceInfo(size);
 }
 
 void MemEntityDefault::Unmap() noexcept
@@ -270,7 +250,7 @@ int32_t MemEntityDefault::Mmap() noexcept
     return segment_->Mmap();
 }
 
-int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t>& ranks) noexcept
+int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
     if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
@@ -332,6 +312,30 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
         return BM_INVALID_PARAM;
     }
 
+    return BM_OK;
+}
+
+int MemEntityDefault::UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept
+{
+    HybmDeviceMeta info;
+    HybmDeviceMeta backupInfo;
+    auto addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
+    auto ret = DlAclApi::AclrtMemcpy(&backupInfo, sizeof(HybmDeviceMeta), (void *)addr, sizeof(HybmDeviceMeta),
+                                     ACL_MEMCPY_DEVICE_TO_HOST);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("backup hybm info memory failed, ret: " << ret);
+        return BM_ERROR;
+    }
+
+    SetHybmDeviceInfo(info);
+    info.extraContextSize = extCtxSize;
+    info.qpInfoAddress = backupInfo.qpInfoAddress;
+    ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+                                     ACL_MEMCPY_HOST_TO_DEVICE);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("update hybm info memory failed, ret: " << ret);
+        return BM_ERROR;
+    }
     return BM_OK;
 }
 
