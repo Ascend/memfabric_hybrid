@@ -38,6 +38,10 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
     MmcLocalMemlInitInfo locInfo{bm, capacity};
     metaMgrProxy_->Mount(loc, locInfo);
     registerRank_++;
+    if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {
+        rankMediaTypeMap_.insert({rank, {}});
+    }
+    rankMediaTypeMap_[rank].insert(mediaType);
     return MMC_OK;
 }
 
@@ -52,6 +56,35 @@ Result MmcMetaServiceDefault::BmUnregister(uint32_t rank, uint16_t mediaType)
     MmcLocation loc{rank, mediaType};
     metaMgrProxy_->Unmount(loc);
     --registerRank_;
+    if (rankMediaTypeMap_.find(rank) != rankMediaTypeMap_.end() &&
+        rankMediaTypeMap_[rank].find(mediaType) != rankMediaTypeMap_[rank].end()) {
+        rankMediaTypeMap_[rank].erase(mediaType);
+    }
+    if (rankMediaTypeMap_.find(rank) != rankMediaTypeMap_.end() &&
+        rankMediaTypeMap_[rank].empty()) {
+        rankMediaTypeMap_.erase(rank);
+    }
+    return MMC_OK;
+}
+
+Result MmcMetaServiceDefault::ClearResource(uint32_t rank) {
+    if (!started_) {
+        MMC_LOG_ERROR("MetaService (" << name_ << ") is not started.");
+        return MMC_NOT_STARTED;
+    }
+    std::unordered_set<uint16_t> mediaTypes;
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {
+            MMC_LOG_INFO("Rank " << rank << " has no resources.");
+            return MMC_OK;
+        }
+        mediaTypes = rankMediaTypeMap_[rank];
+    }
+    for (const auto& mediaType : mediaTypes) {
+        MMC_LOG_INFO("Clear resource {rank, mediaType} -> { " << rank << ", " << mediaType << " }");
+        BmUnregister(rank, mediaType);
+    }
     return MMC_OK;
 }
 

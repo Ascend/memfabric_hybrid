@@ -125,7 +125,9 @@ Result MetaNetServer::HandleNewLink(const NetLinkPtr &link)
 Result MetaNetServer::HandleLinkBroken(const NetLinkPtr &link)
 {
     MMC_LOG_INFO(name_ << " link addr " << link.Get() << " broken");
-    return MMC_OK;
+    auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
+    int32_t rankId = link->Id();
+    return metaServiceDefaultPtr->ClearResource(rankId);
 }
 
 Result MetaNetServer::HandleAlloc(const NetContextPtr &context)

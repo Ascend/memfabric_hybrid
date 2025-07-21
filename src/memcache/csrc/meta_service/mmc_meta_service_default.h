@@ -29,6 +29,8 @@ public:
 
     Result BmUnregister(uint32_t rank, uint16_t mediaType);
 
+    Result ClearResource(uint32_t rank);
+
     const std::string &Name() const override;
 
     const mmc_meta_service_config_t &Options() const override;
@@ -45,6 +47,7 @@ private:
     uint32_t worldSize_;
     uint32_t registerRank_ = 0;
     mmc_meta_service_config_t options_;
+    std::unordered_map<uint32_t, std::unordered_set<uint16_t>> rankMediaTypeMap_;
 };
 inline const std::string &MmcMetaServiceDefault::Name() const
 {
