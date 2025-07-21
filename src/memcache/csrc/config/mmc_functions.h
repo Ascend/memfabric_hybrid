@@ -39,6 +39,20 @@ inline bool OckStol(const std::string &str, long &value)
     return true;
 }
 
+inline bool OckStoULL(const std::string &str, uint64_t &value)
+{
+    char *remain = nullptr;
+    errno = 0;
+    value = std::strtoull(str.c_str(), &remain, 10);
+    if (remain == nullptr || strnlen(remain, PATH_MAX) > 0 || (value == ULLONG_MAX && errno == ERANGE)) {
+        return false;
+    }
+    if (value == 0 && str != "0") {
+        return false;
+    }
+    return true;
+}
+
 inline bool OckStof(const std::string &str, float &value)
 {
     errno = 0;

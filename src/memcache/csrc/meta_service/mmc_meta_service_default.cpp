@@ -16,7 +16,6 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
         return MMC_OK;
     }
     options_ = options;
-    worldSize_ = options_.worldSize;
     metaNetServer_ = MmcMakeRef<MetaNetServer>(this, name_ + "_MetaServer").Get();
     MMC_ASSERT_RETURN(metaNetServer_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetServer_->Start(), "Failed to start net server of meta service " << name_);

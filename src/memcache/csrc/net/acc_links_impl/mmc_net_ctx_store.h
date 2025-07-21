@@ -5,7 +5,6 @@
 #define MEM_FABRIC_MMC_NET_CTX_STORE_H
 
 #include "mmc_common_includes.h"
-#include "mmc_net_common.h"
 #include "mmc_net_common_acc.h"
 
 namespace ock {

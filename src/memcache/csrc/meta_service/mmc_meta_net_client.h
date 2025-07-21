@@ -17,10 +17,10 @@ public:
     /**
      * @brief Start the net client to meta net server
      *
-     * @param rankId       [in] rankId of client
+     * @param config       [in] mmc client config
      * @return 0 if successful
      */
-    Result Start(uint16_t rankId);
+    Result Start(const mmc_client_config_t &config);
 
     /**
      * @brief Stop the net client

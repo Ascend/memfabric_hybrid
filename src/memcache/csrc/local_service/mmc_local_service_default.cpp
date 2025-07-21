@@ -26,7 +26,10 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     metaNetClient_ = MetaNetClientFactory::GetInstance(this->options_.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(metaNetClient_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!metaNetClient_->Status()) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Start(options_.rankId),
+        mmc_client_config_t clientConfig;
+        clientConfig.rankId = options_.rankId;
+        clientConfig.tlsConfig = options_.tlsConfig;
+        MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Start(clientConfig),
             "Failed to start net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Connect(options_.discoveryURL),
             "Failed to connect net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);

@@ -18,17 +18,21 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
         return MMC_OK;
     }
 
+    bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
+    if (config.autoRanking == 1) {
+        randId_ = bmProxy_->RandId();
+    } else {
+        randId_ = config.rankId;
+    }
+
     auto tmpNetClient  = MetaNetClientFactory::GetInstance(config.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(tmpNetClient != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!tmpNetClient->Status()) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(tmpNetClient->Start(config.rankId),
+        MMC_LOG_ERROR_AND_RETURN_NOT_OK(tmpNetClient->Start(config),
                                         "Failed to start net server of local service " << name_);
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(tmpNetClient->Connect(config.discoveryURL),
                                         "Failed to connect net server of local service " << name_);
     }
-
-    randId_ = config.rankId;
-    bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
 
     metaNetClient_ = tmpNetClient;
     started_ = true;

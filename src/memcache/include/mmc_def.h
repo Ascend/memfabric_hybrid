@@ -9,6 +9,7 @@
 #include <vector>
 
 #define DISCOVERY_URL_SIZE 1024
+#define PATH_MAX_SIZE 1024
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,8 +20,18 @@ typedef void *mmc_local_service_t;
 typedef void *mmc_client_t;
 
 typedef struct {
+    bool tlsEnable;
+    char tlsTopPath[PATH_MAX_SIZE];
+    char tlsCaPath[PATH_MAX_SIZE];
+    char tlsCertPath[PATH_MAX_SIZE];
+    char tlsKeyPath[PATH_MAX_SIZE];
+    char packagePath[PATH_MAX_SIZE];
+} mmc_tls_config;
+
+typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE]; /* composed by schema and url, e.g. tcp:// or etcd:// or zk:// */
     uint32_t worldSize;
+    mmc_tls_config tlsConfig;
 } mmc_meta_service_config_t;
 
 typedef struct {
@@ -35,12 +46,15 @@ typedef struct {
     uint64_t localDRAMSize;
     uint64_t localHBMSize;
     uint32_t flags;
+    mmc_tls_config tlsConfig;
 } mmc_local_service_config_t;
 
 typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE];
     uint32_t rankId;
     uint32_t timeOut;
+    int autoRanking;
+    mmc_tls_config tlsConfig;
 } mmc_client_config_t;
 
 typedef struct {

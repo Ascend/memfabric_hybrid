@@ -13,6 +13,7 @@
 #include "mmc_config_validator.h"
 #include "mmc_config_convertor.h"
 #include "mmc_config_const.h"
+#include "mmc_def.h"
 
 namespace ock {
 namespace mmc {
@@ -23,7 +24,7 @@ enum class ConfValueType {
     VFLOAT = 1,
     VSTRING = 2,
     VBOOL = 3,
-    VLONG = 4,
+    VUINT64 = 4,
 };
 
 class Configuration;
@@ -31,7 +32,7 @@ using ConfigurationPtr = MmcRef<Configuration>;
 
 class Configuration : public MmcReferable {
 public:
-    Configuration();
+    Configuration() = default;
     ~Configuration() override;
 
     // forbid copy operation
@@ -42,23 +43,20 @@ public:
     Configuration(const Configuration &&) = delete;
     Configuration &operator = (const Configuration &&) = delete;
 
-    static ConfigurationPtr FromFile(const std::string &filePath);
-    static ConfigurationPtr GetInstance(const std::string &filePath);
-    static ConfigurationPtr GetInstance();
-    static void DestroyInstance();
+    bool LoadFromFile(const std::string &filePath);
 
-    int32_t GetInt(const std::string &key, int32_t defaultValue = 0);
-    float GetFloat(const std::string &key, float defaultValue = 0.0);
-    std::string GetString(const std::string &key, const std::string &defaultValue = "");
-    bool GetBool(const std::string &key, bool defaultValue = false);
-    long GetLong(const std::string &key, long defaultValue = 0);
+    int32_t GetInt(const std::pair<const char *, int32_t> &item);
+    float GetFloat(const std::pair<const char *, float> &item);
+    std::string GetString(const std::pair<const char *, const char *> &item);
+    bool GetBool(const std::pair<const char *, bool> &item);
+    uint64_t GetUInt64(const std::pair<const char *, uint64_t> &item);
     std::string GetConvertedValue(const std::string &key);
 
     void Set(const std::string &key, int32_t value);
     void Set(const std::string &key, float value);
     void Set(const std::string &key, const std::string &value);
     void Set(const std::string &key, bool value);
-    void Set(const std::string &key, long value);
+    void Set(const std::string &key, uint64_t value);
 
     bool SetWithTypeAutoConvert(const std::string &key, const std::string &value);
 
@@ -66,21 +64,17 @@ public:
         uint32_t flag = CONF_MUST);
     void AddStrConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
+    void AddBoolConf(const std::pair<std::string, bool> &pair, const ValidatorPtr &validator = nullptr,
+        uint32_t flag = CONF_MUST);
+    void AddUInt64Conf(const std::pair<std::string, uint64_t> &pair, const ValidatorPtr &validator = nullptr,
+        uint32_t flag = CONF_MUST);
     void AddConverter(const std::string &key, const ConverterPtr &converter);
     void AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
     std::vector<std::string> Validate(bool isAuth = false, bool isTLS = false, bool isAuthor = false,
         bool isZKSecure = false);
-    std::vector<std::string> ValidateDaemonConf();
-    inline std::string GetConfigPath()
-    {
-        return mConfigPath;
-    }
-
-    inline void SetConfigPath(std::string filePath)
-    {
-        mConfigPath = std::move(filePath);
-    }
+    std::vector<std::string> ValidateConf();
+    void GetTlsConfig(mmc_tls_config &tlsConfig);
 
     bool Initialized() const
     {
@@ -111,24 +105,15 @@ private:
 
     void LoadConfigurations();
 
-    void LoadDefault()
-    {
-        using namespace ConfConstant;
-        AddStrConf(OCK_MMC_META_SERVICE_DISCOVERY_URL, VNoCheck::Create(), 0);
-        AddIntConf(OCK_MMC_META_SERVICE_WORLD_SIZE,
-            VIntRange::Create(OCK_MMC_META_SERVICE_WORLD_SIZE.first,
-                MIN_META_SERVICE_WORLD_SIZE,MAX_META_SERVICE_WORLD_SIZE));
-    }
+    virtual void LoadDefault() {}
 
-private:
-    static ConfigurationPtr gInstance;
     std::string mConfigPath;
 
     std::map<std::string, int32_t> mIntItems;
     std::map<std::string, float> mFloatItems;
     std::map<std::string, std::string> mStrItems;
     std::map<std::string, bool> mBoolItems;
-    std::map<std::string, long> mLongItems;
+    std::map<std::string, uint64_t> mUInt64Items;
     std::map<std::string, std::string> mAllItems;
 
     std::map<std::string, ConfValueType> mValueTypes;
@@ -145,6 +130,82 @@ private:
 
     bool mInitialized = false;
     Lock mLock;
+};
+
+class MetaServiceConfig final : public Configuration {
+public:
+    void LoadDefault() override {
+        using namespace ConfConstant;
+        AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
+        AddIntConf(OCK_MMC_META_SERVICE_WORLD_SIZE,
+            VIntRange::Create(OCK_MMC_META_SERVICE_WORLD_SIZE.first,
+                MIN_META_SERVICE_WORLD_SIZE,MAX_META_SERVICE_WORLD_SIZE));
+
+        AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_TOP_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_CA_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_CERT_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_KEY_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VNoCheck::Create());
+    }
+
+    void GetMetaServiceConfig(mmc_meta_service_config_t &config) {
+        const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
+        strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
+        config.worldSize = GetInt(ConfConstant::OCK_MMC_META_SERVICE_WORLD_SIZE);
+        GetTlsConfig(config.tlsConfig);
+    }
+};
+
+class ClientConfig final: public Configuration {
+public:
+    void LoadDefault() override {
+        using namespace ConfConstant;
+        AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
+
+        AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_TOP_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_CA_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_CERT_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_KEY_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VNoCheck::Create());
+
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_DEVICE_ID, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_RANK_ID, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE, VNoCheck::Create());
+        AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_IP_PORT, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_BM_ID, VNoCheck::Create());
+        AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL, VNoCheck::Create());
+        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE, VNoCheck::Create());
+        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
+
+        AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS, VNoCheck::Create());
+    }
+
+    void GetLocalServiceConfig(mmc_local_service_config_t &config) {
+        const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
+        strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
+        config.deviceId = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_DEVICE_ID);
+        config.rankId = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_RANK_ID);
+        config.worldSize = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_WORLD_SIZE);
+        config.bmIpPort = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_IP_PORT);
+        config.autoRanking = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_AUTO_RANKING);
+        config.createId = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_ID);
+        config.dataOpType = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_PROTOCOL);
+        config.localDRAMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_SIZE);
+        config.localHBMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_HBM_SIZE);
+        GetTlsConfig(config.tlsConfig);
+    }
+
+    void GetClientConfig(mmc_client_config_t &config) {
+        const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
+        strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
+        config.rankId = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_RANK_ID);
+        config.timeOut = GetInt(ConfConstant::OCK_MMC_CLIENT_TIMEOUT_SECONDS);
+        config.autoRanking = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_AUTO_RANKING);
+        GetTlsConfig(config.tlsConfig);
+    }
 };
 
 } // namespace mmc

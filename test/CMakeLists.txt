@@ -5,6 +5,7 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
+        ${PROJECT_SOURCE_DIR}/3rdparty/net/acc_links/src/net/include
 )
 
 link_directories(${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib)

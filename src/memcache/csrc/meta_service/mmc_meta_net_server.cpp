@@ -33,6 +33,7 @@ Result ock::mmc::MetaNetServer::Start()
     options.threadCount = 2;
     options.rankId = 0;
     options.startListener = true;
+    options.tlsOption = metaService_->Options().tlsConfig;
 
     NetEnginePtr server = NetEngine::Create();
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_ALLOC_REQ,

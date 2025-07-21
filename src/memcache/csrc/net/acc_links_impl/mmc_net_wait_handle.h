@@ -7,7 +7,6 @@
 #include <ctime>
 #include <pthread.h>
 
-#include "mmc_net_common.h"
 #include "mmc_net_ctx_store.h"
 
 namespace ock {

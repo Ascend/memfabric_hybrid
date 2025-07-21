@@ -11,12 +11,11 @@ extern "C" {
 #endif
 
 /**
- * @brief Initialize the distributed memory object store running environment
+ * @brief Initialize the memcache client and local service
  *
- * @param flags            [in] optional flags, reserved
  * @return 0 if successful,
  */
-int32_t mmc_init(uint32_t flags);
+int32_t mmc_init();
 
 /**
  * @brief Set external log function, user can set customized logger function,

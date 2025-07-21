@@ -99,18 +99,7 @@ public:
     DistributedObjectStore();
     ~DistributedObjectStore();
 
-    int init(const std::string &discoveryURL, u_int32_t rankId, u_int32_t timeOut=5);
-
-    int setupLocalService(const std::string &discoveryURL,
-                          uint32_t deviceId,
-                          uint32_t rankId,
-                          uint32_t worldSize,
-                          const std::string& bmIpPort,
-                          int autoRanking,
-                          uint32_t createId,
-                          const std::string& protocol,
-                          uint64_t localDRAMSize,
-                          uint64_t localHBMSize);
+    int init();
 
     int setup(const std::string &local_hostname,
               const std::string &metadata_server,

@@ -10,11 +10,8 @@
 
 namespace ock {
 namespace mmc {
-ConfigurationPtr Configuration::gInstance;
-Configuration::Configuration()
-{
-    LoadConfigurations();
-}
+
+static constexpr int MAX_CONF_ITEM_COUNT = 100;
 
 Configuration::~Configuration()
 {
@@ -28,92 +25,91 @@ Configuration::~Configuration()
     mValueConverter.clear();
 }
 
-ConfigurationPtr Configuration::FromFile(const std::string &filePath)
+bool Configuration::LoadFromFile(const std::string &filePath)
 {
-    auto *conf = new (std::nothrow) Configuration();
-    if (conf == nullptr) {
-        return nullptr;
-    }
-    if (!conf->Initialized()) {
-        SAFE_DELETE(conf);
-        return nullptr;
+    LoadConfigurations();
+    if (!Initialized()) {
+        return false;
     }
     auto *kvParser = new (std::nothrow) KVParser();
     if (kvParser == nullptr) {
-        SAFE_DELETE(conf);
-        return nullptr;
+        return false;
     }
     if (RESULT_FAIL(kvParser->FromFile(filePath))) {
         SAFE_DELETE(kvParser);
-        SAFE_DELETE(conf);
-        return nullptr;
+        return false;
     }
 
     uint32_t size = kvParser->Size();
-    static const int MAX_CONF_ITEM_COUNT = 100;
     if (size > MAX_CONF_ITEM_COUNT) {
         SAFE_DELETE(kvParser);
-        SAFE_DELETE(conf);
-        return nullptr;
+        return false;
     }
     for (uint32_t i = 0; i < size; i++) {
         std::string key;
         std::string value;
         kvParser->GetI(i, key, value);
-        if (!conf->SetWithTypeAutoConvert(key, value)) {
+        if (!SetWithTypeAutoConvert(key, value)) {
             SAFE_DELETE(kvParser);
-            SAFE_DELETE(conf);
-            return nullptr;
+            return false;
         }
     }
 
-    conf->SetConfigPath(filePath);
-    if (!kvParser->CheckSet(conf->mMustKeys)) {
+    if (!kvParser->CheckSet(mMustKeys)) {
         SAFE_DELETE(kvParser);
-        SAFE_DELETE(conf);
-        return nullptr;
+        return false;
     }
     SAFE_DELETE(kvParser);
-    return conf;
-}
-
-ConfigurationPtr Configuration::GetInstance(const std::string &filePath)
-{
-    if (gInstance.Get() == nullptr) {
-        gInstance = FromFile(filePath);
-    }
-    return gInstance;
-}
-
-ConfigurationPtr Configuration::GetInstance()
-{
-    return gInstance;
-}
-
-void Configuration::DestroyInstance()
-{
-    gInstance.Set(nullptr);
+    return true;
 }
 
 
-int32_t Configuration::GetInt(const std::string &key, int32_t defaultValue)
+int32_t Configuration::GetInt(const std::pair<const char *, int32_t> &item)
 {
     GUARD(&mLock, mLock);
-    auto iter = mIntItems.find(key);
+    const auto iter = mIntItems.find(item.first);
     if (iter != mIntItems.end()) {
         return iter->second;
     }
-    return defaultValue;
+    return item.second;
 }
 
-std::string Configuration::GetString(const std::string &key, const std::string &defaultValue)
+float Configuration::GetFloat(const std::pair<const char *, float> &item)
 {
     GUARD(&mLock, mLock);
-    auto iter = mStrItems.find(key);
+    const auto iter = mFloatItems.find(item.first);
+    if (iter != mFloatItems.end()) {
+        return iter->second;
+    }
+    return item.second;
+}
+
+std::string Configuration::GetString(const std::pair<const char *, const char *> &item)
+{
+    GUARD(&mLock, mLock);
+    const auto iter = mStrItems.find(item.first);
     if (iter != mStrItems.end()) {
         return iter->second;
     }
-    return defaultValue;
+    return item.second;
+}
+
+bool Configuration::GetBool(const std::pair<const char *, bool> &item) {
+    GUARD(&mLock, mLock);
+    const auto iter = mBoolItems.find(item.first);
+    if (iter != mBoolItems.end()) {
+        return iter->second;
+    }
+    return item.second;
+}
+
+uint64_t Configuration::GetUInt64(const std::pair<const char *, uint64_t> &item) {
+    GUARD(&mLock, mLock);
+    const auto iter = mUInt64Items.find(item.first);
+    if (iter != mUInt64Items.end()) {
+        return iter->second;
+    }
+    return item.second;
 }
 
 std::string Configuration::GetConvertedValue(const std::string &key)
@@ -136,9 +132,9 @@ std::string Configuration::GetConvertedValue(const std::string &key)
             value = iterBool != mBoolItems.end() ? std::to_string(iterBool->second) : std::string();
             break;
         }
-        case ConfValueType::VLONG: {
-            auto iterLong = mLongItems.find(key);
-            value = iterLong != mLongItems.end() ? std::to_string(iterLong->second) : std::string();
+        case ConfValueType::VUINT64: {
+            auto iterUInt64 = mUInt64Items.find(key);
+            value = iterUInt64 != mUInt64Items.end() ? std::to_string(iterUInt64->second) : std::string();
             break;
         }
         case ConfValueType::VINT: {
@@ -192,11 +188,11 @@ void Configuration::Set(const std::string &key, bool value)
     }
 }
 
-void Configuration::Set(const std::string &key, long value)
+void Configuration::Set(const std::string &key, uint64_t value)
 {
     GUARD(&mLock, mLock);
-    if (mLongItems.count(key) > 0) {
-        mLongItems.at(key) = value;
+    if (mUInt64Items.count(key) > 0) {
+        mUInt64Items.at(key) = value;
     }
 }
 
@@ -236,17 +232,21 @@ bool Configuration::SetWithTypeAutoConvert(const std::string &key, const std::st
         }
     } else if (valueType == ConfValueType::VBOOL) {
         bool b = false;
-        if (IsBool(value, b)) {
+        if (!IsBool(value, b)) {
             std::cerr << "<" << key << "> should represent a bool value." << std::endl;
             return false;
         }
         if (mBoolItems.count(key) > 0) {
             mBoolItems.at(key) = b;
         }
-    } else if (valueType == ConfValueType::VLONG) {
-        if (!OckStol(value, mLongItems.at(key))) {
-            std::cerr << "<" << key << "> was empty or in wrong type, it should be a long number." << std::endl;
+    } else if (valueType == ConfValueType::VUINT64) {
+        uint64_t tmp = 0;
+        if (!OckStoULL(value, tmp)) {
+            std::cerr << "<" << key << "> was empty or in wrong type, it should be a unsigned long long number." << std::endl;
             return false;
+        }
+        if (mUInt64Items.count(key) > 0) {
+            mUInt64Items.at(key) = tmp;
         }
     }
     return true;
@@ -284,11 +284,27 @@ void Configuration::AddStrConf(const std::pair<std::string, std::string> &pair, 
     SetValidator(pair.first, validator, flag);
 }
 
+void Configuration::AddBoolConf(const std::pair<std::string, bool> &pair, const ValidatorPtr &validator, uint32_t flag)
+{
+    mBoolItems.insert(pair);
+    mValueTypes.insert(std::make_pair(pair.first, ConfValueType::VBOOL));
+    SetValidator(pair.first, validator, flag);
+}
+
+void Configuration::AddUInt64Conf(const std::pair<std::string, uint64_t> &pair, const ValidatorPtr &validator,
+    uint32_t flag)
+{
+    mUInt64Items.insert(pair);
+    mValueTypes.insert(std::make_pair(pair.first, ConfValueType::VUINT64));
+    SetValidator(pair.first, validator, flag);
+}
+
 void Configuration::AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator,
     uint32_t flag)
 {
     AddStrConf(pair, validator, flag);
     mPathConfs.push_back(pair.first);
+    SetValidator(pair.first, validator, flag);
 }
 
 void Configuration::AddConverter(const std::string &key, const ConverterPtr &converter)
@@ -340,13 +356,13 @@ void Configuration::ValidateOneType(const std::string &key, const ValidatorPtr &
             AddValidateError(validator, errors, valueIterInt);
             break;
         }
-        case ConfValueType::VLONG: {
-            auto valueIterLong = mLongItems.find(key);
-            if (valueIterLong == mLongItems.end()) {
-                errors.push_back("Failed to find <" + key + "> in long value map, which should not happen.");
+        case ConfValueType::VUINT64: {
+            auto valueIterULL = mUInt64Items.find(key);
+            if (valueIterULL == mUInt64Items.end()) {
+                errors.push_back("Failed to find <" + key + "> in UInt64 value map, which should not happen.");
                 break;
             }
-            AddValidateError(validator, errors, valueIterLong);
+            AddValidateError(validator, errors, valueIterULL);
             break;
         }
         default:;
@@ -394,7 +410,7 @@ void Configuration::ValidateItem(const std::string &itemKey, std::vector<std::st
     ValidateOneType(validatorIter->first, validatorIter->second, errors, typeIter->second);
 }
 
-std::vector<std::string> Configuration::ValidateDaemonConf()
+std::vector<std::string> Configuration::ValidateConf()
 {
     using namespace ConfConstant;
     std::vector<std::string> errors;
@@ -432,6 +448,16 @@ void Configuration::LoadConfigurations()
     }
     mLoadDefaultErrors.clear();
     mInitialized = true;
+}
+
+void Configuration::GetTlsConfig(mmc_tls_config &tlsConfig)
+{
+    tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_TLS_ENABLE);
+    strncpy(tlsConfig.tlsTopPath, GetString(ConfConstant::OCK_MMC_TLS_TOP_PATH).c_str(), PATH_MAX_SIZE);
+    strncpy(tlsConfig.tlsCaPath, GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_SIZE);
+    strncpy(tlsConfig.tlsCertPath, GetString(ConfConstant::OCK_MMC_TLS_CERT_PATH).c_str(), PATH_MAX_SIZE);
+    strncpy(tlsConfig.tlsKeyPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PATH).c_str(), PATH_MAX_SIZE);
+    strncpy(tlsConfig.packagePath, GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_SIZE);
 }
 } // namespace common
 } // namespace ock

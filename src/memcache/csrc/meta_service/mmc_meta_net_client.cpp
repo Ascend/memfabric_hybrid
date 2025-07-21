@@ -16,7 +16,7 @@ MetaNetClient::MetaNetClient(const std::string &serverUrl, const std::string& in
     : serverUrl_(serverUrl), name_(inputName)
 {}
 
-Result MetaNetClient::Start(uint16_t rankId)
+Result MetaNetClient::Start(const mmc_client_config_t &config)
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (started_) {
@@ -28,8 +28,9 @@ Result MetaNetClient::Start(uint16_t rankId)
     NetEngineOptions options;
     options.name = name_;
     options.threadCount = 2;
-    options.rankId = rankId;
+    options.rankId = config.rankId;
     options.startListener = false;
+    options.tlsOption = config.tlsConfig;
 
     NetEnginePtr client = NetEngine::Create();
     client->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_PING_REQ, nullptr);
@@ -53,7 +54,7 @@ Result MetaNetClient::Start(uint16_t rankId)
     MMC_ASSERT_RETURN(client->Start(options) == MMC_OK, MMC_NOT_STARTED);
 
     engine_ = client;
-    rankId_ = rankId;
+    rankId_ = config.rankId;
     started_ = true;
     MMC_LOG_INFO("initialize meta net server success [" << name_ << "]");
     return MMC_OK;

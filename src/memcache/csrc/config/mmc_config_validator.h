@@ -25,7 +25,7 @@ public:
 
     virtual bool Validate(float) { return true; }
 
-    virtual bool Validate(long) { return true; }
+    virtual bool Validate(long unsigned) { return true; }
 
     const std::string& ErrorMessage() { return mErrMsg; }
 

@@ -9,8 +9,9 @@
 #include "mmc_client.h"
 #include "mmc.h"
 #include "mmc_logger.h"
-#include "mmc_service.h"
+#include "mmc_define.h"
 #include "mmc_types.h"
+#include "mmc_last_error.h"
 
 namespace py = pybind11;
 using namespace ock::mmc;
@@ -90,40 +91,8 @@ DistributedObjectStore::~DistributedObjectStore() {
     ResourceTracker::getInstance().unregisterInstance(this);
 }
 
-int DistributedObjectStore::init(const std::string &discoveryURL, u_int32_t rankId, u_int32_t timeOut) {
-    mmc_client_config_t config;
-    strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
-    config.rankId = rankId;
-    config.timeOut = timeOut;
-    return mmcc_init(&config);
-}
-
-int DistributedObjectStore::setupLocalService(const std::string &discoveryURL,
-                                              const uint32_t deviceId,
-                                              const uint32_t rankId,
-                                              const uint32_t worldSize,
-                                              const std::string& bmIpPort,
-                                              const int autoRanking,
-                                              const uint32_t createId,
-                                              const std::string& protocol,
-                                              const uint64_t localDRAMSize,
-                                              const uint64_t localHBMSize) {
-    mmc_local_service_config_t config = {
-        .discoveryURL = "",
-        .deviceId = deviceId,
-        .rankId = rankId,
-        .worldSize = worldSize,
-        .bmIpPort = bmIpPort,
-        .autoRanking = autoRanking,
-        .createId = createId,
-        .dataOpType = protocol,
-        .localDRAMSize = localDRAMSize,
-        .localHBMSize = localHBMSize,
-        .flags = 0
-    };
-    strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
-    local_service_ = mmcs_local_service_start(&config);
-    return 0;
+int DistributedObjectStore::init() {
+    return mmc_init();
 }
 
 int DistributedObjectStore::setup(const std::string &local_hostname,
@@ -143,11 +112,7 @@ int DistributedObjectStore::initAll(const std::string &protocol,
 }
 
 int DistributedObjectStore::tearDownAll() {
-    if (local_service_ != nullptr) {
-        mmcs_local_service_stop(local_service_);
-        local_service_ = nullptr;
-    }
-    mmcc_uninit();
+    mmc_uninit();
     return 0;
 }
 
@@ -332,7 +297,6 @@ PYBIND11_MODULE(_pymmc, m) {
     py::class_<DistributedObjectStore>(m, "DistributedObjectStore")
         .def(py::init<>())
         .def("init", &DistributedObjectStore::init)
-        .def("setup_local_service", &DistributedObjectStore::setupLocalService)
         .def("setup", &DistributedObjectStore::setup)
         .def("init_all", &DistributedObjectStore::initAll)
         .def("get", &DistributedObjectStore::get)

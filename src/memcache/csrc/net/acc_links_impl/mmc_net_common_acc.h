@@ -4,8 +4,7 @@
 #ifndef MEM_FABRIC_MMC_NET_COMMON_ACC_H
 #define MEM_FABRIC_MMC_NET_COMMON_ACC_H
 
-#include "acc_links/net/acc_tcp_server.h"
-#include "acc_links/net/acc_tcp_server.h"
+#include "acc_tcp_server.h"
 #include "mmc_common_includes.h"
 #include "mmc_net_link_map.h"
 

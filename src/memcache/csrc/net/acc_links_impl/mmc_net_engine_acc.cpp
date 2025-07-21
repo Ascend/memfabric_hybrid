@@ -1,6 +1,9 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
+#include "acc_def.h"
+#include "acc_tcp_server.h"
+
 #include "mmc_net_link_acc.h"
 #include "mmc_net_engine_acc.h"
 #include "mmc_net_ctx_store.h"
@@ -101,7 +104,18 @@ Result NetEngineAcc::StartInner()
     serverOptions.linkSendQueueSize = UN32;
 
     TcpTlsOption tlsOpt;
-    // TODO
+    tlsOpt.enableTls = options_.tlsOption.tlsEnable;
+    tlsOpt.tlsTopPath = options_.tlsOption.tlsTopPath;
+    tlsOpt.tlsCaPath = "/";
+    tlsOpt.tlsCaFile.insert(options_.tlsOption.tlsCaPath);
+    tlsOpt.tlsCert = options_.tlsOption.tlsCertPath;
+    tlsOpt.tlsPk = options_.tlsOption.tlsKeyPath;
+    tlsOpt.packagePath = options_.tlsOption.packagePath;
+
+    if (tlsOpt.enableTls) {
+        MMC_LOG_ERROR_AND_RETURN_NOT_OK(server_->LoadDynamicLib(tlsOpt.packagePath),
+            "Failed to load openssl dynamic library");
+    }
 
     /* start server, listen and thread will be started */
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(server_->Start(serverOptions, tlsOpt),

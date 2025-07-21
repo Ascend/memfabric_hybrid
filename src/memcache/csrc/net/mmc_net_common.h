@@ -6,6 +6,7 @@
 
 #include "mmc_common_includes.h"
 #include "mf_ipv4_validator.h"
+#include "mmc_def.h"
 
 namespace ock {
 namespace mmc {
@@ -31,6 +32,7 @@ struct NetEngineOptions {
     uint16_t threadCount = 2;     /* worker thread count */
     uint16_t rankId = UINT16_MAX; /* rank id*/
     bool startListener = false;   /* start listener or not */
+    mmc_tls_config tlsOption;     /* TLS communication options */
 
     /* functions */
     std::string ToString() const;
@@ -54,8 +56,13 @@ using NetEnginePtr = MmcRef<NetEngine>;
 inline std::string NetEngineOptions::ToString() const
 {
     std::ostringstream oss;
-    oss << "NetEngineOptions [name " << name << ", rankId " << rankId << ", startListener: " << startListener
-        << ", ip: " << ip << ", port: " << port << ", threadCount: " << threadCount << "]";
+    oss << "NetEngineOptions [name " << name
+        << ", ip: " << ip << ", port: " << port
+        << ", threadCount: " << threadCount
+        << ", rankId " << rankId
+        << ", startListener: " << startListener
+        << ", tlsEnables: " << tlsOption.tlsEnable
+        << "]";
     return oss.str();
 }
 

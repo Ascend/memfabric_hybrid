@@ -44,7 +44,6 @@ private:
     std::mutex mutex_;
     bool started_ = false;
     std::string name_;
-    uint32_t worldSize_;
     uint32_t registerRank_ = 0;
     mmc_meta_service_config_t options_;
     std::unordered_map<uint32_t, std::unordered_set<uint16_t>> rankMediaTypeMap_;
