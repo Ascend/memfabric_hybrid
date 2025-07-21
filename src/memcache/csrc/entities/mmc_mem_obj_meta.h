@@ -9,6 +9,7 @@
 #include "mmc_ref.h"
 #include "mmc_spinlock.h"
 #include "mmc_montotonic.h"
+#include "mmc_meta_lease_manager.h"
 #include <vector>
 
 namespace ock {
@@ -21,7 +22,7 @@ public:
     MmcMemObjMeta() = default;
     MmcMemObjMeta(uint16_t prot, uint8_t priority, uint8_t numBlobs, std::vector<MmcMemBlobPtr> blobs, uint64_t lease,
                   uint32_t size)
-        : prot_(prot), priority_(priority), numBlobs_(numBlobs), lease_(lease)
+        : prot_(prot), priority_(priority), numBlobs_(numBlobs)
     {
         for (auto &blob : blobs) {
             AddBlob(blob);
@@ -45,18 +46,6 @@ public:
      * @return 0 if removed
      */
     Result RemoveBlobs(const MmcBlobFilterPtr &filter=nullptr, bool revert = false);
-
-    /**
-     * @brief Extend the lease
-     * @param ttl          [in] time of live in ms
-     */
-    void ExtendLease(uint64_t ttl);
-
-    /**
-     * @brief Check if the lease already expired
-     * @return true if expired
-     */
-    bool IsLeaseExpired();
 
     /**
      * @brief Get the prot
@@ -83,16 +72,20 @@ public:
     std::vector<MmcMemBlobPtr> GetBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
 
     /**
-     * @brief Get the lease
-     * @return lease
-     */
-    uint16_t Lease();
-
-    /**
      * @brief Get the size
      * @return size
      */
     uint16_t Size();
+
+    void Lock()
+    {
+        spinlock_.lock();
+    }
+
+    void Unlock()
+    {
+        spinlock_.unlock();
+    }
 
     /**
      * @brief Get the query info
@@ -106,58 +99,29 @@ private:
     uint8_t priority_{0};                      /* priority of the memory object, used for eviction */
     uint8_t numBlobs_{0};                      /* number of blob that the memory object, i.e. replica count */
     MmcMemBlobPtr blobs_[MAX_NUM_BLOB_CHAINS]; /* pointers of blobs */
-    uint64_t lease_{0};                        /* lease of the memory object */
     uint32_t size_{0};                         /* byteSize of each blob */
     Spinlock spinlock_;                        /* 4 bytes */
 };
 
 using MmcMemObjMetaPtr = MmcRef<MmcMemObjMeta>;
 
-inline void MmcMemObjMeta::ExtendLease(const uint64_t ttl)
-{
-    using namespace std::chrono;
-    const uint64_t nowMs = ock::dagger::Monotonic::TimeNs() / 1000U;
-
-    std::lock_guard<Spinlock> guard(spinlock_);
-    lease_ = std::max(lease_, nowMs + ttl);
-}
-
-inline bool MmcMemObjMeta::IsLeaseExpired()
-{
-    using namespace std::chrono;
-    const uint64_t nowMs = ock::dagger::Monotonic::TimeNs() / 1000U;
-
-    std::lock_guard<Spinlock> guard(spinlock_);
-    return (lease_ < nowMs);
-}
-
 inline uint16_t MmcMemObjMeta::Prot()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return prot_;
 }
 
 inline uint8_t MmcMemObjMeta::Priority()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return priority_;
 }
 
 inline uint16_t MmcMemObjMeta::NumBlobs()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return numBlobs_;
-}
-
-inline uint16_t MmcMemObjMeta::Lease()
-{
-    std::lock_guard<Spinlock> guard(spinlock_);
-    return lease_;
 }
 
 inline uint16_t MmcMemObjMeta::Size()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return size_;
 }
 

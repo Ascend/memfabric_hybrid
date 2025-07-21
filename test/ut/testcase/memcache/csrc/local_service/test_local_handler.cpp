@@ -34,7 +34,7 @@ void TestMmcMetaManager1::TearDown()
 
 TEST_F(TestMmcMetaManager1, Init)
 {
-    MmcLocation loc{0, 0};
+    MmcLocation loc{0, MEDIA_DRAM};
     MmcLocalMemlInitInfo locInfo{100, 1000};
 
     uint64_t defaultTtl = 2000;
@@ -46,7 +46,7 @@ TEST_F(TestMmcMetaManager1, Init)
 
 TEST_F(TestMmcMetaManager1, Alloc)
 {
-    MmcLocation loc{0, 0};
+    MmcLocation loc{0, MEDIA_DRAM};
     MmcLocalMemlInitInfo locInfo{0, 1000000};
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl);
@@ -54,7 +54,7 @@ TEST_F(TestMmcMetaManager1, Alloc)
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta;
-    Result ret = metaMng->Alloc("test_string", allocReq, objMeta);
+    Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);
     ASSERT_TRUE(objMeta->NumBlobs() == 1);
     ASSERT_TRUE(objMeta->Size() == SIZE_32K);

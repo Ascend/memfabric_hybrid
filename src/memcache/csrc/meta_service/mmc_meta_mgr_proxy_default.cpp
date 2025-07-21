@@ -8,23 +8,18 @@ namespace mmc {
 Result MmcMetaMgrProxyDefault::Alloc(const AllocRequest &req, AllocResponse &resp)
 {
     MmcMemObjMetaPtr objMeta;
-    Result ret = metaMangerPtr_->Alloc(req.key_, req.options_, objMeta);
-    if (ret != MMC_OK) {
-        MMC_LOG_ERROR("Meta Alloc Fail!");
-        return MMC_ERROR;
-    }
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaMangerPtr_->Alloc(req.key_, req.options_, req.operateId_, objMeta),
+                                    "Meta Alloc Fail, key  " << req.key_);
     resp.numBlobs_ = objMeta->NumBlobs();
     resp.prot_ = objMeta->Prot();
     resp.priority_ = objMeta->Priority();
-    resp.lease_ = objMeta->Lease();
 
     std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
     for (size_t i = 0; i < blobs.size(); i++) {
         MmcMemBlobDesc blobDesc = blobs[i]->GetDesc();
         resp.blobs_.push_back(blobDesc);
         if (req.options_.preferredRank_ != blobDesc.rank_) {
-            MetaReplicateRequest request{req.key_, blobDesc, objMeta->Prot(), objMeta->Priority(),
-                                         objMeta->Lease()};
+            MetaReplicateRequest request{req.key_, blobDesc, objMeta->Prot(), objMeta->Priority()};
             Response response;
             netServerPtr_->SyncCall(blobDesc.rank_, request, response, timeOut_);
         }
@@ -38,8 +33,8 @@ Result MmcMetaMgrProxyDefault::UpdateState(const UpdateRequest &req, Response &r
 {
 
     // const std::string &key, const MmcLocation &loc, const BlobActionResult &actRet
-    MmcLocation loc{req.rank_, req.mediaType_};
-    Result ret = metaMangerPtr_->UpdateState(req.key_, loc, req.actionResult_);
+    MmcLocation loc{req.rank_, static_cast<MediaType>(req.mediaType_)};
+    Result ret = metaMangerPtr_->UpdateState(req.key_, loc, req.rank_, req.operateId_, req.actionResult_);
     resp.ret_ = ret;
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("Meta Update State Fail!");
@@ -54,15 +49,31 @@ Result MmcMetaMgrProxyDefault::Get(const GetRequest &req, AllocResponse &resp)
 
     MmcMemObjMetaPtr objMeta;
     metaMangerPtr_->Get(req.key_, objMeta);
+    objMeta->Lock();
+    if (objMeta->NumBlobs() == 0) {
+        objMeta->Unlock();
+        MMC_LOG_ERROR("key " << req.key_ << " already released ");
+        return MMC_ERROR;
+    }
     resp.numBlobs_ = objMeta->NumBlobs();
     resp.prot_ = objMeta->Prot();
     resp.priority_ = objMeta->Priority();
-    resp.lease_ = objMeta->Lease();
 
-    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
-    for (size_t i = 0; i < blobs.size(); i++) {
-        resp.blobs_.push_back(blobs[i]->GetDesc());
+
+    MmcBlobFilterPtr filterPtr = MmcMakeRef<MmcBlobFilter>(req.rankId_, MEDIA_NONE, NONE);
+    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs(filterPtr);
+    MmcMemBlobPtr blobPtr = nullptr;
+    for (auto iter = blobs.begin(); iter != blobs.end(); iter++) {
+        if ((*iter)->Type() == MEDIA_HBM) {
+            blobPtr = *iter;
+        }
     }
+    if (blobPtr == nullptr) {
+        blobPtr = objMeta->GetBlobs()[0];
+    }
+    blobPtr->UpdateState(req.rankId_, req.operateId_, MMC_READ_START);
+    resp.blobs_.push_back(blobPtr->GetDesc());
+    objMeta->Unlock();
     return MMC_OK;
 }
 
@@ -91,15 +102,30 @@ Result MmcMetaMgrProxyDefault::BatchGet(const BatchGetRequest &req, BatchAllocRe
     for (size_t i = 0; i < req.keys_.size(); ++i) {
         if (getResults[i] == MMC_OK) {
             const MmcMemObjMetaPtr &objMeta = objMetas[i];
+            objMeta->Lock();
+            if (objMeta->NumBlobs() == 0) {
+                getResults[i] = MMC_OBJECT_NOT_EXISTS;
+                objMeta->Unlock();
+                continue;
+            }
             resp.numBlobs_[i] = objMeta->NumBlobs();
             resp.prots_[i] = objMeta->Prot();
             resp.priorities_[i] = objMeta->Priority();
-            resp.leases_[i] = objMeta->Lease();
-
-            std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
-            for (const auto &blob : blobs) {
-                resp.blobs_[i].push_back(blob->GetDesc());
+            resp.leases_[i] = 0;
+            MmcBlobFilterPtr filterPtr = MmcMakeRef<MmcBlobFilter>(req.rankId_, MEDIA_NONE, NONE);
+            std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs(filterPtr);
+            MmcMemBlobPtr blobPtr = nullptr;
+            for (auto iter = blobs.begin(); iter != blobs.end(); iter++) {
+                if ((*iter)->Type() == MEDIA_HBM) {
+                    blobPtr = *iter;
+                }
             }
+            if (blobPtr == nullptr) {
+                blobPtr = objMeta->GetBlobs()[0];
+            }
+            blobPtr->UpdateState(req.rankId_, req.operateId_, MMC_READ_START);
+            resp.blobs_[i].push_back(blobPtr->GetDesc());
+            objMeta->Unlock();
         } else {
             resp.numBlobs_[i] = 0;
             resp.prots_[i] = 0;

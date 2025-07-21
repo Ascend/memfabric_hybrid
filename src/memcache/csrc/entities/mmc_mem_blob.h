@@ -6,6 +6,8 @@
 
 #include "mmc_blob_state.h"
 #include "mmc_common_includes.h"
+#include "mmc_meta_lease_manager.h"
+#include "mmc_montotonic.h"
 
 namespace ock {
 namespace mmc {
@@ -24,9 +26,9 @@ using MmcMemBlobPtr = MmcRef<MmcMemBlob>;
 
 struct MmcBlobFilter : public MmcReferable {
     uint32_t rank_{UINT32_MAX};
-    uint16_t mediaType_{UINT16_MAX};
+    MediaType mediaType_{MEDIA_NONE};
     BlobState state_{NONE};
-    MmcBlobFilter(const uint32_t &rank, const uint16_t &mediaType, const BlobState &state)
+    MmcBlobFilter(const uint32_t &rank, const MediaType &mediaType, const BlobState &state)
         : rank_(rank),
           mediaType_(mediaType),
           state_(state){};
@@ -57,7 +59,7 @@ struct MmcMemBlobDesc {
 class MmcMemBlob final : public MmcReferable {
 public:
     MmcMemBlob() = delete;
-    MmcMemBlob(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const uint16_t &mediaType,
+    MmcMemBlob(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const MediaType &mediaType,
                const BlobState &state = NONE)
         : rank_(rank),
           gva_(gva),
@@ -74,7 +76,7 @@ public:
      *
      * @param ret     [in] BlobActionResult
      */
-    Result UpdateState(BlobActionResult ret);
+    Result UpdateState(uint32_t rankId, uint32_t operateId, BlobActionResult ret);
 
     /**
      * @brief Link a blob to this blob
@@ -112,7 +114,7 @@ public:
      * @brief Get the media type of blob located, dram or xx
      * @return media type
      */
-    uint16_t MediaType() const;
+    uint16_t Type() const;
 
     /**
      * @brief Get the state of the blob
@@ -130,13 +132,18 @@ public:
 
     MmcMemBlobDesc GetDesc() const;
 
+    inline Result ExtendLease(const uint32_t id, const uint32_t requestId, uint64_t ttl);
+
+    inline bool IsLeaseExpired();
+
 private:
     const uint32_t rank_;              /* rank id of the blob located */
     const uint64_t gva_;               /* global virtual address */
     const uint32_t size_;              /* data size of the blob */
-    const uint16_t mediaType_;         /* media type where blob located */
+    const enum MediaType mediaType_;        /* media type where blob located */
     BlobState state_{BlobState::NONE}; /* state of the blob */
     uint16_t prot_{0};                 /* prot, i.e. access */
+    MmcMetaLeaseManager metaLeaseManager_;
 
     MmcMemBlobPtr nextBlob_;
 
@@ -145,7 +152,7 @@ private:
     static const StateTransTable stateTransTable_;
 };
 
-inline Result MmcMemBlob::UpdateState(BlobActionResult ret)
+inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobActionResult ret)
 {
     std::lock_guard<Spinlock> guard(spinlock_);
     auto curStateIter = stateTransTable_.find(state_);
@@ -160,7 +167,10 @@ inline Result MmcMemBlob::UpdateState(BlobActionResult ret)
         return MMC_UNMATCHED_RET;
     }
 
-    state_ = retIter->second;
+    state_ = retIter->second.state_;
+    if (retIter->second.action_) {
+        retIter->second.action_(metaLeaseManager_, rankId, operateId);
+    }
     return MMC_OK;
 }
 
@@ -190,7 +200,7 @@ inline uint64_t MmcMemBlob::Size() const
     return size_;
 }
 
-inline uint16_t MmcMemBlob::MediaType() const
+inline uint16_t MmcMemBlob::Type() const
 {
     return mediaType_;
 }
@@ -219,7 +229,7 @@ inline bool MmcMemBlob::MatchFilter(const MmcBlobFilterPtr &filter) const
         return true;
     }
 
-    return (rank_ == filter->rank_) && (mediaType_ == filter->mediaType_) &&
+    return (rank_ == filter->rank_) && (filter->mediaType_ == MEDIA_NONE|| mediaType_ == filter->mediaType_) &&
            (filter->state_ == NONE || state_ == filter->state_);
 }
 
@@ -228,6 +238,19 @@ inline MmcMemBlobDesc MmcMemBlob::GetDesc() const
     return MmcMemBlobDesc{rank_, gva_, size_, mediaType_, state_, prot_};
 }
 
+Result MmcMemBlob::ExtendLease(const uint32_t id, const uint32_t requestId, uint64_t ttl)
+{
+    metaLeaseManager_.Add(id, requestId, ttl);
+    return MMC_OK;
+}
+bool MmcMemBlob::IsLeaseExpired()
+{
+    if (metaLeaseManager_.UseCount() == 0) {
+        return true;
+    }
+    metaLeaseManager_.Wait();
+    return true;
+}
 }  // namespace mmc
 }  // namespace ock
 

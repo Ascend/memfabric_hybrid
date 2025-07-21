@@ -34,7 +34,7 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
         return MMC_NOT_STARTED;
     }
 
-    MmcLocation loc{rank, mediaType};
+    MmcLocation loc{rank, static_cast<MediaType>(mediaType)};
     MmcLocalMemlInitInfo locInfo{bm, capacity};
     metaMgrProxy_->Mount(loc, locInfo);
     registerRank_++;
@@ -53,7 +53,7 @@ Result MmcMetaServiceDefault::BmUnregister(uint32_t rank, uint16_t mediaType)
         return MMC_NOT_STARTED;
     }
 
-    MmcLocation loc{rank, mediaType};
+    MmcLocation loc{rank, static_cast<MediaType>(mediaType)};
     metaMgrProxy_->Unmount(loc);
     --registerRank_;
     if (rankMediaTypeMap_.find(rank) != rankMediaTypeMap_.end() &&

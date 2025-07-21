@@ -54,9 +54,14 @@ constexpr uint32_t UN16777216 = 16777216;
 
 constexpr uint32_t MMC_DEFAUT_WAIT_TIME = 120;  // 120s
 
+enum MediaType : uint8_t {
+    MEDIA_DRAM,
+    MEDIA_HBM,
+    MEDIA_NONE,
+};
 struct MmcLocation {
     uint32_t rank_;
-    uint16_t mediaType_;
+    MediaType mediaType_;
 
     bool operator<(const MmcLocation &other) const
     {

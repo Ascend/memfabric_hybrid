@@ -67,8 +67,8 @@ static bool CheckData(void *base, void *ptr)
 
 TEST_F(TestMmcServiceInterface, metaServiceStart)
 {
-    std::string metaUrl = "tcp://127.0.0.1:5668";
-    std::string bmUrl = "tcp://127.0.0.1:5681";
+    std::string metaUrl = "tcp://127.0.0.1:5868";
+    std::string bmUrl = "tcp://127.0.0.1:5881";
     std::string localUrl = "";
     mmc_meta_service_config_t metaServiceConfig;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
@@ -120,7 +120,6 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
 
     ret = mmcc_remove(test.c_str(), 0);
     ASSERT_TRUE(ret == 0);
-    sleep(3);
     free(hostSrc);
     free(hostDest);
 

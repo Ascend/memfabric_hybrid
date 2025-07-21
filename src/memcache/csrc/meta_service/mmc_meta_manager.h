@@ -59,13 +59,14 @@ public:
      * @param key          [in] key of the meta object
      * @param metaInfo     [out] the meta object created
      */
-    Result Alloc(const std::string &key, const AllocOptions &allocOpt, MmcMemObjMetaPtr &objMeta);
+    Result Alloc(const std::string &key, const AllocOptions &allocOpt, uint32_t requestId, MmcMemObjMetaPtr &objMeta);
 
     /**
      * @brief Update the state
      * @param req          [in] update state request
      */
-    Result UpdateState(const std::string &key, const MmcLocation &loc, const BlobActionResult &actRet);
+    Result UpdateState(const std::string &key, const MmcLocation &loc, uint32_t rankId, uint32_t operateId,
+                       const BlobActionResult &actRet);
 
     /**
      * @brief remove the meta object
@@ -112,6 +113,11 @@ public:
     * @param queryInfo      [out] the query info of the meta object
     */
     Result Query(const std::string &key, MemObjQueryInfo &queryInfo);
+
+    inline uint64_t Ttl()
+    {
+        return defaultTtlMs_;
+    }
 
 private:
     // LRU

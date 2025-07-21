@@ -63,7 +63,8 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
     }
 
     uint64_t blobSize = buf->type == 0 ? buf->dram.len : buf->hbm.width * buf->hbm.layerNum;
-    AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}};
+    uint32_t operateId = operateId_++;
+    AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
     AllocResponse response;
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                                     "client " << name_ << " alloc " << key << " failed");
@@ -79,7 +80,7 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
                                         "client " << name_ << " put " << key << " failed");
     }
 
-    UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0};
+    UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0, operateId};
     Response updateResponse;
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
                                     "client " << name_ << " update " << key << " failed");
@@ -88,22 +89,29 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
     return MMC_OK;
 }
 
-Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags) const
+Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
 {
-    GetRequest request{key};
+    uint32_t operateId = operateId_++;
+    GetRequest request{key, randId_, operateId, true};
     AllocResponse response;
     uint64_t startTime = ock::dagger::Monotonic::TimeUs();
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                                     "client " << name_ << " get " << key << " failed");
-    if (response.numBlobs_ > 0) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Get(buf, response.blobs_[0].gva_),
-                                        "client " << name_ << " get " << key << " failed");
-        uint64_t timeMs = (ock::dagger::Monotonic::TimeUs() - startTime) / 1000U;
-        MMC_ASSERT_RETURN(timeMs < defaultTtlMs_, MMC_ERROR);
-    } else {
+    if (response.numBlobs_ == 0) {
         MMC_LOG_ERROR("client " << name_ << " get " << key << " failed");
         return MMC_ERROR;
     }
+
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Get(buf, response.blobs_[0].gva_),
+                                    "client " << name_ << " get " << key << " failed");
+    UpdateRequest updateRequest{MMC_READ_OK, key, 0, 0, operateId};
+    Response updateResponse;
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
+                                    "client " << name_ << " update " << key << " failed");
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(updateResponse.ret_, "client " << name_ << " update " << key << " failed");
+    uint64_t timeMs = (ock::dagger::Monotonic::TimeUs() - startTime) / 1000U;
+    MMC_ASSERT_RETURN(timeMs < defaultTtlMs_, MMC_ERROR);
+
     return MMC_OK;
 }
 
@@ -116,7 +124,7 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
         MMC_LOG_ERROR("client " << name_ << " batch put failed: keys and bufs size mismatch");
         return MMC_ERROR;
     }
-
+    uint32_t operateId = operateId_++;
     std::vector<AllocOptions> allocOptions;
     for (size_t i = 0; i < keys.size(); ++i) {
         AllocOptions opt;
@@ -152,14 +160,14 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
         uint64_t blobSize = buf.type == 0 ? buf.dram.len : buf.hbm.width * buf.hbm.layerNum;
 
         for (uint8_t j = 0; j < numBlobs; ++j) {
-            mmc_buffer tempBuf = buf; 
+            mmc_buffer tempBuf = buf;
             MMC_LOG_ERROR_AND_RETURN_NOT_OK(
                 bmProxy_->Put(&tempBuf, blobs[j].gva_, blobSize),
                 "client " << name_ << " batch put failed for key " << key
             );
         }
 
-        UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0};
+        UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0, operateId};
         Response updateResponse;
         MMC_LOG_ERROR_AND_RETURN_NOT_OK(
             metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
@@ -173,10 +181,10 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
     return MMC_OK;
 }
 
-Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys,
-                                  std::vector<mmc_buffer> &bufs, uint32_t flags) const
+Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys, std::vector<mmc_buffer> &bufs, uint32_t flags)
 {
-    BatchGetRequest request{keys};
+    uint32_t operateId = operateId_++;
+    BatchGetRequest request{keys, randId_, operateId};
     BatchAllocResponse response;
     uint64_t startTime = ock::dagger::Monotonic::TimeUs();
     MMC_LOG_ERROR_AND_RETURN_NOT_OK(
@@ -213,9 +221,10 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys,
     return MMC_OK;
 }
 
-mmc_location_t MmcClientDefault::GetLocation(const char *key, uint32_t flags) const
+mmc_location_t MmcClientDefault::GetLocation(const char *key, uint32_t flags)
 {
-    GetRequest request{key};
+    uint32_t operateId = operateId_++;
+    GetRequest request{key, randId_, operateId, false};
     AllocResponse response;
     MMC_ASSERT_RETURN(metaNetClient_->SyncCall(request, response, rpcTimeOut_) == MMC_OK, {-1});
     return {};

@@ -12,7 +12,7 @@ Result MmcMemObjMeta::AddBlob(const MmcMemBlobPtr &blob)
         return MMC_ERROR;
     }
 
-    std::lock_guard<Spinlock> guard(spinlock_);
+    //std::lock_guard<Spinlock> guard(spinlock_);
     if (numBlobs_ < MAX_NUM_BLOB_CHAINS) {
         for (size_t i = 0; i < MAX_NUM_BLOB_CHAINS; ++i) {
             if (blobs_[i] == nullptr) {
@@ -35,7 +35,7 @@ Result MmcMemObjMeta::AddBlob(const MmcMemBlobPtr &blob)
 
 Result MmcMemObjMeta::RemoveBlobs(const MmcBlobFilterPtr &filter, bool revert)
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
+    //std::lock_guard<Spinlock> guard(spinlock_);
     uint8_t oldNumBlobs = numBlobs_;
     for (size_t i = 0; i < MAX_NUM_BLOB_CHAINS - 1; ++i) {
         if (blobs_[i] != nullptr && blobs_[i]->MatchFilter(filter) ^ revert) {

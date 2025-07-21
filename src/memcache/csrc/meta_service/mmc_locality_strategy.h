@@ -40,7 +40,7 @@ public:
                                   std::vector<MmcMemBlobPtr> &blobs)
     {
         MmcLocation location{};
-        location.mediaType_ = allocReq.mediaType_;
+        location.mediaType_ = static_cast<MediaType>(allocReq.mediaType_);
         location.rank_ = allocReq.preferredRank_;
         auto itPrefer = allocators.find(location);
         if (itPrefer == allocators.end()) {

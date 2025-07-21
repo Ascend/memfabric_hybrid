@@ -33,7 +33,7 @@ public:
     Result Free(const MmcMemBlobPtr& blob)
     {
         globalAllocLock_.LockRead();
-        const MmcLocation location{blob->Rank(), blob->MediaType()};
+        const MmcLocation location{blob->Rank(), static_cast<MediaType>(blob->Type())};
         const auto iter = allocators_.find(location);
         if (iter == allocators_.end()) {
             globalAllocLock_.UnlockRead();

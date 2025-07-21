@@ -31,7 +31,7 @@ struct RangeSizeFirst {
 
 class MmcBlobAllocator : public MmcReferable {
 public:
-    MmcBlobAllocator(const uint32_t rank, const uint16_t mediaType, const uint64_t bm, const uint64_t capacity)
+    MmcBlobAllocator(const uint32_t rank, const MediaType mediaType, const uint64_t bm, const uint64_t capacity)
         : rank_(rank),
           mediaType_(mediaType),
           bm_(bm),
@@ -66,7 +66,7 @@ private:
 
 private:
     const uint32_t rank_;      /* rank id of the space */
-    const uint16_t mediaType_; /* media type of the space */
+    const MediaType mediaType_; /* media type of the space */
     const uint64_t bm_;        /* bm address */
     const uint64_t capacity_;  /* capacity of the space */
 

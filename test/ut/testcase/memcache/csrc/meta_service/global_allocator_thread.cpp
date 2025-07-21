@@ -41,7 +41,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
     uint64_t size = SIZE_32K * 10;
     MmcLocation loc;
     MmcLocalMemlInitInfo info;
-    loc.mediaType_ = 0;
+    loc.mediaType_ = MEDIA_DRAM;
     loc.rank_ = rankId;
     info.bm_ = size * rankId;
     info.capacity_ = size;
