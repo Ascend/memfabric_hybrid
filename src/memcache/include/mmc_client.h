@@ -69,30 +69,6 @@ int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags);
 int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_info *info, uint32_t flags);
 
 /**
- * @brief Put data of object with key into Distributed Memory Cache
- * This data operation supports both sync and async
- *
- * @param key              [in] key of data, less than 256
- * @param buf              [in] data to be put
- * @param options          [in] options for batch put operation
- * @param flags            [in] optional flags, reserved
- * @return 0 if successful
- */
-int32_t mmcc_batch_put(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                               const mmc_put_options& options, uint32_t flags);
-
-/**
- * @brief Get data of object by key from Distributed Memory Cache
- * This data operation supports both sync and async
- *
- * @param key              [in] key of data, less than 256
- * @param buf              [in] data to be gotten
- * @param flags            [in] optional flags, reserved
- * @return 0 if successful
- */
-int32_t mmcc_batch_get(const char *key, mmc_buffer *buf, uint32_t flags);
-
-/**
  * @brief Get the locations of object
  * This data operation only supports sync mode
  *
@@ -140,14 +116,42 @@ int32_t mmcc_exist(const char *key, uint32_t flags);
 int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, int32_t *exist_results, uint32_t flags);
 
 /**
- * @brief Remove multiple keys from the BM
+ * @brief Put multiple data objects into Distributed Memory Cache
+ * This data operation supports both sync and async
  *
- * @param keys             [in] List of keys to be removed from the BM
- * @param remove_results   [out] Results of each removal operation
- * @param flags            [in] Flags for the operation
- * @return 0 if successfully, 1 if all keys not found, positive value if error happens
+ * @param keys           [in] Array of keys for the data objects
+ * @param keys_count     [in] Number of keys in the array
+ * @param bufs           [in] Array of data buffers to be put
+ * @param options        [in] Options for the batch put operation
+ * @param flags          [in] Optional flags, reserved
+ * @return 0 if successful
  */
-int32_t mmcc_batch_remove(const std::vector<std::string>& keys, std::vector<int32_t>& remove_results, uint32_t flags);
+int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc_buffer *bufs,
+                       const mmc_put_options& options, uint32_t flags);
+
+/**
+ * @brief Get multiple data objects by keys from Distributed Memory Cache
+ * This data operation supports both sync and async
+ *
+ * @param keys           [in] Array of keys for the data objects
+ * @param keys_count     [in] Number of keys in the array
+ * @param bufs           [out] Array of data buffers to store the retrieved data
+ * @param flags          [in] Optional flags, reserved
+ * @return 0 if successful
+ */
+int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffer *bufs, uint32_t flags);
+
+/**
+ * @brief Remove multiple data objects from Distributed Memory Cache
+ * This data operation supports both sync and async
+ *
+ * @param keys           [in] Array of keys for the data objects to be removed
+ * @param keys_count     [in] Number of keys in the array
+ * @param remove_results [out] Array to store the removal results
+ * @param flags          [in] Optional flags, reserved
+ * @return 0 if successful
+ */
+int32_t mmcc_batch_remove(const char **keys, uint32_t keys_count, int32_t *remove_results, uint32_t flags);
 
 #ifdef __cplusplus
 }

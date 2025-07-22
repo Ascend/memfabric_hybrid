@@ -143,38 +143,69 @@ MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, i
     return MMC_OK;
 }
 
-MMC_API int32_t mmcc_batch_remove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags)
+MMC_API int32_t mmcc_batch_remove(const char **keys, uint32_t keys_count, int32_t *remove_results, uint32_t flags)
 {
-    MMC_ASSERT_RETURN(gClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
-    if (keys.empty()) {
-        MMC_LOG_ERROR("Got empty keys");
+    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0, "invalid param, keys_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(remove_results != nullptr, "invalid param, remove_results is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
+
+    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<Result> remove_results_vector;
+
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(gClientHandler->BatchRemove(keys_vector, remove_results_vector, flags),
+                                    gClientHandler->Name() << " batch_remove failed!");
+
+    if (remove_results_vector.size() != keys_count) {
+        MMC_LOG_ERROR("Batch remove error!");
         return MMC_ERROR;
     }
-    Result result = gClientHandler->BatchRemove(keys, remove_results, flags);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK,
-                                    gClientHandler->Name() << " batch_remove failed!");
+
+    for (size_t i = 0; i < keys_count; ++i) {
+        remove_results[i] = static_cast<int32_t>(remove_results_vector[i]);
+    }
+
     return MMC_OK;
 }
 
-MMC_API int32_t mmcc_batch_get(const std::vector<std::string>& keys, std::vector<mmc_buffer>& bufs, uint32_t flags)
+MMC_API int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffer *bufs, uint32_t flags)
 {
-    MMC_VALIDATE_RETURN(!keys.empty(), "invalid param, keys is empty", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(bufs.size() == keys.size(), "invalid param, bufs size mismatch", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0, "invalid param, keys_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    Result result = gClientHandler->BatchGet(keys, bufs, flags);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK, gClientHandler->Name() << " batch_get failed!");
+    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<mmc_buffer> bufs_vector;
+
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(gClientHandler->BatchGet(keys_vector, bufs_vector, flags),
+                                    gClientHandler->Name() << " batch_get failed!");
+
+    if (bufs_vector.size() != keys_count) {
+        MMC_LOG_ERROR("Batch get error!");
+        return MMC_ERROR;
+    }
+
+    for (size_t i = 0; i < keys_count; ++i) {
+        bufs[i] = bufs_vector[i];
+    }
+
     return MMC_OK;
 }
 
-MMC_API int32_t mmcc_batch_put(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
+MMC_API int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc_buffer *bufs,
                                const mmc_put_options& options, uint32_t flags)
 {
-    MMC_VALIDATE_RETURN(!keys.empty(), "invalid param, keys is empty", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(bufs.size() == keys.size(), "invalid param, bufs size mismatch", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0, "invalid param, keys_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    Result result = gClientHandler->BatchPut(keys, bufs, options, flags);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result != MMC_OK, gClientHandler->Name() << " batch_put failed!");
+    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<mmc_buffer> bufs_vector(bufs, bufs + keys_count); 
+
+    MMC_LOG_ERROR_AND_RETURN_NOT_OK(gClientHandler->BatchPut(keys_vector, bufs_vector, options, flags),
+                                    gClientHandler->Name() << " batch_put failed!");
+
     return MMC_OK;
 }

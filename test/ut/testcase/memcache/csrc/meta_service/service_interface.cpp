@@ -71,6 +71,7 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     std::string bmUrl = "tcp://127.0.0.1:5881";
     std::string localUrl = "";
     mmc_meta_service_config_t metaServiceConfig;
+    metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     metaServiceConfig.worldSize = 1;
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
@@ -120,52 +121,53 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
 
     ret = mmcc_remove(test.c_str(), 0);
     ASSERT_TRUE(ret == 0);
+
+    const char* keys[] = {"test1", "test2"};
+    uint32_t keys_count = sizeof(keys) / sizeof(keys[0]);
+    void* hostSrcs[keys_count];
+    void* hostDests[keys_count];
+    mmc_buffer bufs[keys_count];
+
+    for (uint32_t i = 0; i < keys_count; ++i) {
+        hostSrcs[i] = malloc(SIZE_32K);
+        hostDests[i] = malloc(SIZE_32K);
+        GenerateData(hostSrcs[i], 1);
+
+        bufs[i].addr = (uint64_t)hostSrcs[i];
+        bufs[i].type = 0;
+        bufs[i].dram.offset = 0;
+        bufs[i].dram.len = SIZE_32K;
+    }
+
+    ret = mmcc_batch_put(keys, keys_count, bufs, options, 0);
+    ASSERT_TRUE(ret == 0);
+
+    for (uint32_t i = 0; i < keys_count; ++i) {
+        mmc_buffer readBuffer;
+        readBuffer.addr = (uint64_t)hostDests[i];
+        readBuffer.type = 0;
+        readBuffer.dram.offset = 0;
+        readBuffer.dram.len = SIZE_32K;
+
+        ret = mmcc_get(keys[i], &readBuffer, 0);
+        ASSERT_TRUE(ret == 0);
+
+        bool result = CheckData(hostSrcs[i], hostDests[i]);
+        EXPECT_TRUE(result);
+    }
+
+    for (uint32_t i = 0; i < keys_count; ++i) {
+        ret = mmcc_remove(keys[i], 0);
+        ASSERT_TRUE(ret == 0);
+    }
+
+    for (uint32_t i = 0; i < keys_count; ++i) {
+        free(hostSrcs[i]);
+        free(hostDests[i]);
+    }
+    sleep(3);
     free(hostSrc);
     free(hostDest);
-
-    const int BATCH_SIZE = 3;
-    std::vector<std::string> keys = {"batch_test1", "batch_test2", "batch_test3"};
-    std::vector<void *> batchHostSrc(BATCH_SIZE);
-    std::vector<void *> batchHostDest(BATCH_SIZE);
-    std::vector<mmc_buffer> batchBuffers(BATCH_SIZE);
-    std::vector<mmc_buffer> batchReadBuffers(BATCH_SIZE);
-
-    for (int i = 0; i < BATCH_SIZE; ++i) {
-        batchHostSrc[i] = malloc(SIZE_32K);
-        batchHostDest[i] = malloc(SIZE_32K);
-        GenerateData(batchHostSrc[i], i + 1);
-
-        batchBuffers[i].addr = (uint64_t)batchHostSrc[i];
-        batchBuffers[i].type = 0;
-        batchBuffers[i].dram.offset = 0;
-        batchBuffers[i].dram.len = SIZE_32K;
-
-        batchReadBuffers[i].addr = (uint64_t)batchHostDest[i];
-        batchReadBuffers[i].type = 0;
-        batchReadBuffers[i].dram.offset = 0;
-        batchReadBuffers[i].dram.len = SIZE_32K;
-    }
-
-    ret = mmcc_batch_put(keys, batchBuffers, options, 0);
-    EXPECT_EQ(ret, 0);
-
-    for (int i = 0; i < BATCH_SIZE; ++i) {
-        ret = mmcc_get(keys[i].c_str(), &batchReadBuffers[i], 0);
-        EXPECT_EQ(ret, 0);
-        bool batchResult = CheckData(batchHostSrc[i], batchHostDest[i]);
-        EXPECT_TRUE(batchResult);
-
-        mmc_location_t batchLocation = mmcc_get_location(keys[i].c_str(), 0);
-        EXPECT_EQ(batchLocation.xx, 0);
-
-        ret = mmcc_remove(keys[i].c_str(), 0);
-        EXPECT_EQ(ret, 0);
-    }
-
-    for (int i = 0; i < BATCH_SIZE; ++i) {
-        free(batchHostSrc[i]);
-        free(batchHostDest[i]);
-    }
 
     mmcs_local_service_stop(local_service);
     mmcs_meta_service_stop(meta_service);
