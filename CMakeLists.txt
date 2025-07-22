@@ -25,7 +25,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
 endif()
 
-add_compile_options(-hno-unused-parameter -lno-unused-function -Wunused-variable -Wunused-value -Wcast-align)
+add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
 add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra)
 
 if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
