@@ -126,6 +126,15 @@ public:
 
     inline bool IsLeaseExpired();
 
+    friend std::ostream &operator<<(std::ostream &os, MmcMemBlob &blob)
+    {
+        std::lock_guard<Spinlock> guard(blob.spinlock_);
+        os << "MmcMemBlob{rank=" << blob.rank_ << ",gva=" << blob.gva_ << ",size=" << blob.size_
+           << ",mediaType=" << static_cast<int>(blob.mediaType_) << ",state=" << static_cast<int>(blob.state_)
+           << ",prot=" << blob.prot_ << ",metaLeaseManager=" << blob.metaLeaseManager_ << "}";
+        return os;
+    }
+
 private:
     const uint32_t rank_;              /* rank id of the blob located */
     const uint64_t gva_;               /* global virtual address */
@@ -221,7 +230,8 @@ inline bool MmcMemBlob::MatchFilter(const MmcBlobFilterPtr &filter) const
         return true;
     }
 
-    return (filter->rank_ == UINT32_MAX || rank_ == filter->rank_) && (filter->mediaType_ == MEDIA_NONE || mediaType_ == filter->mediaType_) &&
+    return (filter->rank_ == UINT32_MAX || rank_ == filter->rank_) &&
+           (filter->mediaType_ == MEDIA_NONE || mediaType_ == filter->mediaType_) &&
            (filter->state_ == NONE || state_ == filter->state_);
 }
 

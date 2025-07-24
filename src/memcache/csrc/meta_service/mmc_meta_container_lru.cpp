@@ -128,11 +128,18 @@ public:
         return MMC_UNMATCHED_KEY;
     }
 
-    std::vector<Key> TopKeys(const uint16_t percent)
+    std::vector<Key> EvictCandidates(const uint16_t percent)
     {
         std::lock_guard<std::mutex> guard(mutex_);
+
         uint32_t numEvictObjs = std::min(lruList_.size() * percent / 100, lruList_.size());
-        return std::vector<Key>(lruList_.begin(), std::next(lruList_.begin(), numEvictObjs));
+        std::vector<Key> candidates;
+        candidates.reserve(numEvictObjs);
+        auto iter = lruList_.rbegin();
+        for (size_t i = 0; i < numEvictObjs; ++i, ++iter) {
+            candidates.push_back(*iter);
+        }
+        return candidates;
     }
 
 private:

@@ -28,7 +28,7 @@ public:
     virtual Result Get(const Key &key, Value &value) = 0;
     virtual Result Erase(const Key &key) = 0;
     virtual Result Promote(const Key &key) = 0;
-    virtual std::vector<Key> TopKeys(const uint16_t percent) = 0;
+    virtual std::vector<Key> EvictCandidates(const uint16_t percent) = 0;
 
     static MmcRef<MmcMetaContainer<Key, Value>> Create();
 };

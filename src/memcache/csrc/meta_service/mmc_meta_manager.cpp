@@ -80,7 +80,7 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
 {
     // TODO: 不能阻塞
     if (globalAllocator_->TouchedThreshold(EVICT_THRESHOLD_HIGH)) {
-        std::vector<std::string> keys = metaContainer_->TopKeys(EVICT_THRESHOLD_LOW);
+        std::vector<std::string> keys = metaContainer_->EvictCandidates(EVICT_THRESHOLD_LOW);
         std::vector<Result> remove_results;
         BatchRemove(keys, remove_results);
     }
@@ -143,7 +143,6 @@ Result MmcMetaManager::Remove(const std::string &key)
         objMeta->Unlock();
         return MMC_OK;
     }
-
     std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
     for (size_t i = 0; i < blobs.size(); i++) {
         MMC_RETURN_ERROR(blobs[i]->UpdateState(0, 0, MMC_REMOVE_START),
@@ -207,9 +206,7 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
     while (*it != *end) {
         auto kv = **it;
         std::string key = kv.first;
-        std::cout << "key:" << key << "|||||||||||||||||||||2||||||||||||||||||||||" << std::endl;
         MmcMemObjMetaPtr objMeta = kv.second;
-        std::cout << "|||||||||||||||||||||3||||||||||||||||||||||" << std::endl;
         objMeta->Lock();
         ret = ForceRemoveBlobs(objMeta, filter);
         if (ret != MMC_OK) {

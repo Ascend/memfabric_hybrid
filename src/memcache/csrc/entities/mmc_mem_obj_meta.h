@@ -5,11 +5,11 @@
 #define MEM_FABRIC_MMC_MEM_OBJ_META_H
 
 #include "mmc_mem_blob.h"
+#include "mmc_meta_lease_manager.h"
+#include "mmc_montotonic.h"
 #include "mmc_msg_packer.h"
 #include "mmc_ref.h"
 #include "mmc_spinlock.h"
-#include "mmc_montotonic.h"
-#include "mmc_meta_lease_manager.h"
 #include <vector>
 
 namespace ock {
@@ -45,7 +45,7 @@ public:
      * @param revert false: remove those matching the filter; true: remove those not matching the filter
      * @return 0 if removed
      */
-    Result RemoveBlobs(const MmcBlobFilterPtr &filter=nullptr, bool revert = false);
+    Result RemoveBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
 
     /**
      * @brief Get the prot
@@ -69,7 +69,7 @@ public:
      * @brief Get blobs with filter
      * @return blobs passing the filter
      */
-    std::vector<MmcMemBlobPtr> GetBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
+    std::vector<MmcMemBlobPtr> GetBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false) const;
 
     /**
      * @brief Get the size
@@ -92,6 +92,19 @@ public:
      * @return query info
      */
     MemObjQueryInfo QueryInfo();
+
+    friend std::ostream &operator<<(std::ostream &os, MmcMemObjMeta &obj)
+    {
+        std::lock_guard<Spinlock> guard(obj.spinlock_);
+        os << "MmcMemObjMeta{numBlobs=" << static_cast<int>(obj.numBlobs_) << ",size=" << obj.size_
+           << ",priority=" << obj.priority_ << ",prot=" << obj.prot_ << ", blobs: ";
+        std::vector<MmcMemBlobPtr> blobs = obj.GetBlobs();
+        for (auto &blob : blobs) {
+            os << *(blob.Get()) << ",";
+        }
+        os << "}";
+        return os;
+    }
 
 private:
     /* make sure the size of this class is 64 bytes */

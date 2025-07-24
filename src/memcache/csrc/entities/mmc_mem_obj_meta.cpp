@@ -65,7 +65,7 @@ Result MmcMemObjMeta::RemoveBlobs(const MmcBlobFilterPtr &filter, bool revert)
     return numBlobs_ < oldNumBlobs ? MMC_OK : MMC_ERROR;
 }
 
-std::vector<MmcMemBlobPtr> MmcMemObjMeta::GetBlobs(const MmcBlobFilterPtr &filter, bool revert)
+std::vector<MmcMemBlobPtr> MmcMemObjMeta::GetBlobs(const MmcBlobFilterPtr &filter, bool revert) const
 {
     std::vector<MmcMemBlobPtr> blobs;
     MmcMemBlobPtr curBlob;
