@@ -3,6 +3,7 @@
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
+PROJECT_DIR=${BASH_PATH}/../..
 
 cd ${BASH_PATH}
 
@@ -26,16 +27,35 @@ fi
 
 #get os
 OS_NAME=$(uname -s | awk '{print tolower($0)}')
+ARCH_OS=${ARCH}-${OS_NAME}
 
 PKG_DIR="mxc-memfabric_hybrid"
 VERSION="1.0.0"
 OUTPUT_DIR=${BASH_PATH}/../../output
 
 rm -rf ${PKG_DIR}
-mkdir -p ${PKG_DIR}/${ARCH}_${OS_NAME}
+mkdir -p ${PKG_DIR}/${ARCH_OS}
+mkdir ${PKG_DIR}/${ARCH_OS}/bin
+mkdir ${PKG_DIR}/${ARCH_OS}/include
+mkdir ${PKG_DIR}/${ARCH_OS}/lib64
+mkdir ${PKG_DIR}/${ARCH_OS}/wheel
+mkdir ${PKG_DIR}/${ARCH_OS}/script
+mkdir ${PKG_DIR}/${ARCH_OS}/config
 
-cp -r ${OUTPUT_DIR}/smem ${PKG_DIR}/${ARCH}-${OS_NAME}
-cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
+# smem
+cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include
+cp ${OUTPUT_DIR}/smem/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64
+cp ${OUTPUT_DIR}/smem/wheel/* ${PKG_DIR}/${ARCH_OS}/wheel
+# hybm
+cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
+# memcache
+cp -r ${OUTPUT_DIR}/memcache/include/* ${PKG_DIR}/${ARCH_OS}/include/
+cp ${OUTPUT_DIR}/memcache/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
+cp ${OUTPUT_DIR}/memcache/bin/* ${PKG_DIR}/${ARCH_OS}/bin/
+cp ${OUTPUT_DIR}/memcache/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+
+cp ${PROJECT_DIR}/config/* ${PKG_DIR}/${ARCH_OS}/config
+cp -r ${PROJECT_DIR}/script/certs ${PKG_DIR}/${ARCH_OS}/script
 
 mkdir -p ${PKG_DIR}/script
 cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/

@@ -272,13 +272,19 @@ function install_to_path()
     fi
 
     python_version=$(python3 -c "import sys; print(''.join(map(str, sys.version_info[:2])))")
-    wheel_package=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "mf_smem-${version1}-cp${python_version}*")
-    if [ -z "${wheel_package}" ]; then
-        print "WARNING" "not found wheel package for python-${python_version}, skip install wheel."
+    mf_smem=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "mf_smem-${version1}-cp${python_version}*")
+    if [ -z "${mf_smem}" ]; then
+        print "WARNING" "not found mf_smem package for python-${python_version}, skip install wheel."
+        return
+    fi
+    pymmc=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "pymmc-${version1}-cp${python_version}*")
+    if [ -z "${pymmc}" ]; then
+        print "WARNING" "not found pymmc package for python-${python_version}, skip install wheel."
         return
     fi
 
-    pip3 install "${wheel_package}" --force-reinstall
+    pip3 install "${mf_smem}" --force-reinstall
+    pip3 install "${pymmc}" --force-reinstall
 }
 
 function generate_set_env()
