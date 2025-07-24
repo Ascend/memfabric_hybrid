@@ -4,6 +4,7 @@
 #include "hybm_mem_segment.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_types.h"
+#include "hybm_host_mem_segment.h"
 
 namespace ock {
 namespace mf {
@@ -20,7 +21,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
             tmpSeg = std::make_shared<MemSegmentDevice>(options, entityId);
             break;
         case HYBM_MST_DRAM:
-            BM_LOG_WARN("Un-supported memory seg type " << int(options.segType));
+            tmpSeg = std::make_shared<MemSegmentHost>(options, entityId);
             break;
         default:
             BM_LOG_ERROR("Invalid memory seg type " << int(options.segType));

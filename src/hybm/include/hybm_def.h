@@ -70,6 +70,7 @@ typedef struct {
     uint16_t devId;
     uint64_t singleRankVASpace;
     uint64_t preferredGVA;
+    char nic[64];
 } hybm_options;
 
 typedef enum {

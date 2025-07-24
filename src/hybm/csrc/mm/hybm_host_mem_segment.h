@@ -7,14 +7,9 @@
 #include <set>
 #include "hybm_mem_segment.h"
 #include "hybm_mem_common.h"
-//#include "hcom_service_c.h"
 
 namespace ock {
 namespace mf {
-
-struct OneSideKey {
-    uint32_t keys[4];
-};
 
 struct HostExportInfo {
     uint64_t magic{0};
@@ -26,7 +21,6 @@ struct HostExportInfo {
     MemPageTblType pageTblType{};
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
-    OneSideKey oneSideKey{};
 };
 class MemSegmentHost : public MemSegment {
 public:
@@ -47,6 +41,7 @@ public:
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     void GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
+    Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
 
 private:
     void FreeMemory() noexcept;
@@ -57,7 +52,6 @@ private:
     uint8_t * localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};
-    OneSideKey oneSideKey_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::string> exportMap_;
     std::vector<HostExportInfo> imports_;

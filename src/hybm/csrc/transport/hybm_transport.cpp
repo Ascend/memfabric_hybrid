@@ -16,7 +16,7 @@ TransHandlePtr transHandle_;
 
 HYBM_API int hybm_transport_init(uint32_t rankId, uint32_t rankCount)
 {
-    instance_ = TransportManager::Create(TransType::TT_HCCP_RDMA);
+    instance_ = TransportManager::Create(TransType::TT_HCCP);
     if (instance_ == nullptr) {
         BM_LOG_ERROR("create transport manager failed.");
         return BM_ERROR;

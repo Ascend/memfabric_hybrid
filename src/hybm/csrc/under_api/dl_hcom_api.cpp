@@ -43,8 +43,6 @@ serviceSetTimeOutDetectionThreadNumFunc DlHcomApi::gServiceSetTimeOutDetectionTh
 serviceSetMaxConnectionCountFunc DlHcomApi::gServiceSetMaxConnectionCount = nullptr;
 serviceSetHeartBeatOptionsFunc DlHcomApi::gServiceSetHeartBeatOptions = nullptr;
 serviceSetMultiRailOptionsFunc DlHcomApi::gServiceSetMultiRailOptions = nullptr;
-channelReferFunc DlHcomApi::gChannelRefer = nullptr;
-channelDeReferFunc DlHcomApi::gChannelDeRefer = nullptr;
 channelSendFunc DlHcomApi::gChannelSend = nullptr;
 channelCallFunc DlHcomApi::gChannelCall = nullptr;
 channelReplyFunc DlHcomApi::gChannelReply = nullptr;
@@ -52,8 +50,6 @@ channelPutFunc DlHcomApi::gChannelPut = nullptr;
 channelGetFunc DlHcomApi::gChannelGet = nullptr;
 channelSetFlowControlConfigFunc DlHcomApi::gChannelSetFlowControlConfig = nullptr;
 channelSetChannelTimeOutFunc DlHcomApi::gChannelSetChannelTimeOut = nullptr;
-channelCloseFunc DlHcomApi::gChannelClose = nullptr;
-channelGetIdFunc DlHcomApi::gChannelGetId = nullptr;
 serviceGetRspCtxFunc DlHcomApi::gServiceGetRspCtx = nullptr;
 serviceGetChannelFunc DlHcomApi::gServiceGetChannel = nullptr;
 serviceGetContextTypeFunc DlHcomApi::gServiceGetContextType = nullptr;
@@ -119,8 +115,6 @@ Result DlHcomApi::LoadLibrary()
         "Service_SetMaxConnectionCount");
     DL_LOAD_SYM(gServiceSetHeartBeatOptions, serviceSetHeartBeatOptionsFunc, hcomHandle, "Service_SetHeartBeatOptions");
     DL_LOAD_SYM(gServiceSetMultiRailOptions, serviceSetMultiRailOptionsFunc, hcomHandle, "Service_SetMultiRailOptions");
-    DL_LOAD_SYM(gChannelRefer, channelReferFunc, hcomHandle, "Channel_Refs");
-    DL_LOAD_SYM(gChannelDeRefer, channelDeReferFunc, hcomHandle, "Channel_Unrefs");
     DL_LOAD_SYM(gChannelSend, channelSendFunc, hcomHandle, "Channel_Send");
     DL_LOAD_SYM(gChannelCall, channelCallFunc, hcomHandle, "Channel_Call");
     DL_LOAD_SYM(gChannelReply, channelReplyFunc, hcomHandle, "Channel_Reply");
@@ -129,8 +123,6 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gChannelSetFlowControlConfig, channelSetFlowControlConfigFunc, hcomHandle,
         "Channel_SetFlowControlConfig");
     DL_LOAD_SYM(gChannelSetChannelTimeOut, channelSetChannelTimeOutFunc, hcomHandle, "Channel_SetChannelTimeOut");
-    DL_LOAD_SYM(gChannelClose, channelCloseFunc, hcomHandle, "Channel_Close");
-    DL_LOAD_SYM(gChannelGetId, channelGetIdFunc, hcomHandle, "Channel_GetId");
     DL_LOAD_SYM(gServiceGetRspCtx, serviceGetRspCtxFunc, hcomHandle, "Service_GetRspCtx");
     DL_LOAD_SYM(gServiceGetChannel, serviceGetChannelFunc, hcomHandle, "Service_GetChannel");
     DL_LOAD_SYM(gServiceGetContextType, serviceGetContextTypeFunc, hcomHandle, "Service_GetContextType");
@@ -182,8 +174,6 @@ void DlHcomApi::CleanupLibrary()
     gServiceSetMaxConnectionCount = nullptr;
     gServiceSetHeartBeatOptions = nullptr;
     gServiceSetMultiRailOptions = nullptr;
-    gChannelRefer = nullptr;
-    gChannelDeRefer = nullptr;
     gChannelSend = nullptr;
     gChannelCall = nullptr;
     gChannelReply = nullptr;
@@ -191,8 +181,6 @@ void DlHcomApi::CleanupLibrary()
     gChannelGet = nullptr;
     gChannelSetFlowControlConfig = nullptr;
     gChannelSetChannelTimeOut = nullptr;
-    gChannelClose = nullptr;
-    gChannelGetId = nullptr;
     gServiceGetRspCtx = nullptr;
     gServiceGetChannel = nullptr;
     gServiceGetContextType = nullptr;

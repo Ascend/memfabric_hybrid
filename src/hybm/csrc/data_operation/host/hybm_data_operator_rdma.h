@@ -14,21 +14,21 @@ namespace mf {
 
 class HostDataOpRDMA : public DataOperator {
 public:
-    HostDataOpRDMA(uint32_t rankId, std::shared_ptr<HybmTransManager> &transportManager) noexcept
-        :rankId_(rankId), transportManager_(transportManager) {};
+    HostDataOpRDMA(uint32_t rankId, void *stm, std::shared_ptr<HybmTransManager> &transportManager) noexcept
+        :rankId_(rankId), stream_(stm), transportManager_(transportManager) {};
 
-    ~HostDataOpRDMA();
+    ~HostDataOpRDMA() override;
 
-    int32_t Initialized();
-    void UnInitialized();
+    int32_t Initialized() noexcept override;
+    void UnInitialized() noexcept override;
 
-    int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction, void *stream,
+    int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
                      const ExtOptions &options) noexcept override;
     int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                        uint64_t width,uint64_t height, hybm_data_copy_direction direction,
-                       void *stream, const ExtOptions &options) noexcept override;
+                       const ExtOptions &options) noexcept override;
     int32_t DataCopyAsync(const void* srcVA, void* destVA, uint64_t length, hybm_data_copy_direction direction,
-                          void *stream, const ExtOptions &options) noexcept override;
+                          const ExtOptions &options) noexcept override;
     int32_t Wait(int32_t waitId) noexcept override;
 
 private:
@@ -48,8 +48,14 @@ private:
                              uint64_t width,uint64_t height, const ExtOptions &options);
     int32_t CopyGva2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                           uint64_t width,uint64_t height, const ExtOptions &options);
+    int32_t RtMemoryCopyAsync(const void *srcVA, void *destVA, uint64_t length,
+                              uint32_t kind, const ExtOptions &options);
+    int32_t RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
+                                uint64_t width,uint64_t height,  uint32_t kind, const ExtOptions &options);
+
 private:
     uint32_t rankId_{0};
+    void *stream_{nullptr};
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<HybmTransManager> transportManager_;
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;

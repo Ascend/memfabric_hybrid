@@ -22,7 +22,7 @@ TransportManagerPtr TransportManager::Create(TransType t)
         return nullptr;
     }
 
-    if (t != TransType::TT_HCCP_RDMA) {
+    if (t != TransType::TT_HCCP) {
         BM_LOG_ERROR("Create Transport failed, trans type invalid: " << t);
         return nullptr;
     }

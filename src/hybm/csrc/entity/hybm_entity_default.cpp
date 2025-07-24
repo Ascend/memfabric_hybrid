@@ -4,10 +4,11 @@
 #include <algorithm>
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
-#include "hybm_ex_info_transfer.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
 #include "hybm_entity_default.h"
+#include "hybm_data_operator_rdma.h"
+#include "hybm_ex_info_transfer.h"
 
 namespace ock {
 namespace mf {
@@ -40,35 +41,27 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     }
 
     options_ = *options;
-    MemSegmentOptions segmentOptions;
-    segmentOptions.size = options_.singleRankVASpace;
-    segmentOptions.segId = HybmGetInitDeviceId();
-    segmentOptions.segType = HYBM_MST_HBM;
-    segmentOptions.rankId = options_.rankId;
-    segmentOptions.rankCnt = options_.rankCount;
-
-    segment_ = MemSegment::Create(segmentOptions, id_);
-    if (segment_ == nullptr) {
-        DlAclApi::AclrtDestroyStream(stream_);
-        stream_ = nullptr;
-        return BM_INVALID_PARAM;
-    }
-
-    ret = MemSegmentDevice::GetDeviceId(segmentOptions.segId);
+    ret = InitSegment();
     if (ret != 0) {
         DlAclApi::AclrtDestroyStream(stream_);
         stream_ = nullptr;
         return ret;
     }
 
-    static HybmTransType transTypeMap[HYBM_TYPE_BUTT + 1][HYBM_DOP_TYPE_BUTT + 1] = {
-        {TT_BUTT, TT_HCCP_RDMA, TT_BUTT, TT_BUTT},
-        {TT_BUTT, TT_HCOM_RDMA, TT_BUTT, TT_BUTT},
-        {TT_BUTT, TT_HCOM_RDMA, TT_BUTT, TT_BUTT}
-    };
-    transportManager_ = HybmTransManager::Create(transTypeMap[options_.bmType][options_.bmDataOpType]);
+    ret = InitTransManager();
+    if (ret != 0) {
+        DlAclApi::AclrtDestroyStream(stream_);
+        stream_ = nullptr;
+        return ret;
+    }
 
-    dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
+    ret = InitDataOperator();
+    if (ret != 0) {
+        DlAclApi::AclrtDestroyStream(stream_);
+        stream_ = nullptr;
+        return ret;
+    }
+
     initialized = true;
     return BM_OK;
 }
@@ -81,6 +74,7 @@ void MemEntityDefault::UnInitialize() noexcept
 
     segment_.reset();
     dataOperator_.reset();
+    transportManager_.reset();
     DlAclApi::AclrtDestroyStream(stream_);
     stream_ = nullptr;
 }
@@ -91,7 +85,7 @@ int32_t MemEntityDefault::ReserveMemorySpace(void **reservedMem) noexcept
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    
+
     return segment_->ReserveMemorySpace(reservedMem);
 }
 
@@ -120,6 +114,15 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
     }
 
     slice = realSlice->ConvertToId();
+    HybmTransMemReg info{};
+    info.addr = realSlice->vAddress_;
+    info.size = realSlice->size_;
+    ret = transportManager_->RegisterMemoryRegion(info, hostMrInfo_);
+    if (ret != 0) {
+        BM_LOG_ERROR("register memory region allocate failed: " << ret << " addr: "
+                     << info.addr << " size: " << info.size);
+        return ret;
+    }
 
     return UpdateHybmDeviceInfo(0);
 }
@@ -134,13 +137,19 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
     }
 
     std::string info;
-    auto ret = segment_->Export(info);
-    if (ret != 0) {
-        BM_LOG_ERROR("export to string failed: " << ret);
-        return ret;
+    EntityExportInfo exportInfo;
+    exportInfo.magic = EXPORT_INFO_MAGIC;
+    exportInfo.version = EXPORT_INFO_VERSION;
+    exportInfo.rankId = options_.rankId;
+    std::copy_n(options_.nic, sizeof(options_.nic), exportInfo.nic);
+    exportInfo.hostMrInfo = hostMrInfo_;
+    auto ret = LiteralExInfoTranslater<EntityExportInfo>{}.Serialize(exportInfo, info);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("export info failed: " << ret);
+        return BM_ERROR;
     }
 
-    if (info.size() != sizeof(desc.desc)) {
+    if (info.size() > sizeof(desc.desc)) {
         BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
         return BM_ERROR;
     }
@@ -203,6 +212,52 @@ int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uin
     }
 
     return segment_->Import(infos);
+}
+
+int32_t
+MemEntityDefault::ImportEntityExchangeInfo(const hybm_exchange_info *desc, uint32_t count, uint32_t flags) noexcept
+{
+    if (!initialized) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
+    if (desc == nullptr) {
+        BM_LOG_ERROR("the input desc is nullptr.");
+        return BM_ERROR;
+    }
+
+    LiteralExInfoTranslater<EntityExportInfo> translator;
+    std::vector<EntityExportInfo> deserializedInfos{count};
+    for (auto i = 0U; i < count; i++) {
+        auto ret = translator.Deserialize(std::string((const char *) desc[i].desc, desc[i].descLen),
+                                          deserializedInfos[i]);
+        if (ret != 0) {
+            BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
+            return BM_INVALID_PARAM;
+        }
+    }
+
+    HybmTransPrepareOptions transPrepareOpt{};
+    for (auto i = 0U; i < deserializedInfos.size(); i++) {
+        if (deserializedInfos[i].magic != EXPORT_INFO_MAGIC) {
+            BM_LOG_ERROR("import info(" << i << ") magic(" << deserializedInfos[i].magic << ") invalid.");
+            return BM_INVALID_PARAM;
+        }
+
+        if (deserializedInfos[i].rankId == options_.rankId) {
+            continue;
+        }
+        transPrepareOpt.mrs.push_back(deserializedInfos[i].hostMrInfo);
+        transPrepareOpt.nics[deserializedInfos[i].rankId] = deserializedInfos[i].nic;
+    }
+
+    auto ret = transportManager_->Prepare(transPrepareOpt);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to prepare transport connect data, ret: " << ret);
+        return ret;
+    }
+    return transportManager_->Connect(transPrepareOpt.nics, 0);
 }
 
 int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) noexcept
@@ -272,7 +327,8 @@ int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length,
     options.flags = flags;
     segment_->GetRankIdByAddr(src, length, options.srcRankId);
     segment_->GetRankIdByAddr(dest, length, options.destRankId);
-    return dataOperator_->DataCopy(src, dest, length, direction, stream, options);
+    options.stream = stream;
+    return dataOperator_->DataCopy(src, dest, length, direction, options);
 }
 
 int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
@@ -285,10 +341,11 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
     }
     ExtOptions options{};
     options.flags = flags;
+    options.stream = stream;
     segment_->GetRankIdByAddr(src, spitch * height, options.srcRankId);
     segment_->GetRankIdByAddr(dest, dpitch * height, options.destRankId);
     return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height,
-                                     direction, stream, options);
+                                     direction, options);
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept
@@ -355,67 +412,102 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.extraContextSize = 0;
 }
 
-int32_t MemEntityDefault::TransportInit(uint32_t rankId, const std::string &nic) noexcept
+Result MemEntityDefault::InitSegment()
 {
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    HybmTransOptions transOptions{};
-    transOptions.rankId = rankId;
-    transOptions.nic = nic;
-    transOptions.transType = TT_HCOM_RDMA;
-    auto ret = transportManager_->OpenDevice(transOptions);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("transport manager open device failed, rankId: " << rankId << " nic: " << nic << " ret: " << ret);
-        return ret;
+    switch (options_.bmType) {
+        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
+        case HYBM_TYPE_HBM_HOST_INITIATE:
+            return InitHbmSegment();
+        case HYBM_TYPE_HBM_DRAM_HOST_INITIATE:
+            return InitDramSegment();
+        default:
+            return BM_INVALID_PARAM;
     }
-    return BM_OK;
 }
 
-int32_t MemEntityDefault::TransportRegisterMr(uint64_t address, uint64_t size,
-                                              hybm_mr_key *lkey, hybm_mr_key *rkey) noexcept
+Result MemEntityDefault::InitHbmSegment()
 {
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    HybmTransMemReg memInfo{};
-    memInfo.addr = address;
-    memInfo.size = size;
-    HybmTransKey transKey{};
-    auto ret = transportManager_->RegisterMemoryRegion(memInfo, transKey);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("transport manager register mem failed, addr: " << address
-                     << " size: " << size << " ret: " << ret);
-        return ret;
+    if (options_.singleRankVASpace == 0) {
+        BM_LOG_INFO("Hbm rank space is zero.");
+        return BM_OK;
     }
-    std::copy_n(transKey.keys, sizeof(HybmTransKey), lkey->key);
+
+    MemSegmentOptions segmentOptions;
+    segmentOptions.size = options_.singleRankVASpace;
+    segmentOptions.segId = HybmGetInitDeviceId();
+    segmentOptions.segType = HYBM_MST_HBM;
+    segmentOptions.rankId = options_.rankId;
+    segmentOptions.rankCnt = options_.rankCount;
+    segment_ = MemSegment::Create(segmentOptions, id_);
+    if (segment_ == nullptr) {
+        BM_LOG_ERROR("Failed to create hbm segment");
+        return BM_ERROR;
+    }
+
+    return MemSegmentDevice::GetDeviceId(HybmGetInitDeviceId());
+}
+
+Result MemEntityDefault::InitDramSegment()
+{
+    if (options_.singleRankVASpace == 0) {
+        BM_LOG_INFO("Dram rank space is zero.");
+        return BM_OK;
+    }
+
+    MemSegmentOptions segmentOptions;
+    segmentOptions.size = options_.singleRankVASpace;
+    segmentOptions.segId = HybmGetInitDeviceId();
+    segmentOptions.segType = HYBM_MST_DRAM;
+    segmentOptions.rankId = options_.rankId;
+    segmentOptions.rankCnt = options_.rankCount;
+    segment_ = MemSegment::Create(segmentOptions, id_);
+    if (segment_ == nullptr) {
+        BM_LOG_ERROR("Failed to create dram segment");
+        return BM_ERROR;
+    }
+
     return BM_OK;
 }
 
-int32_t MemEntityDefault::TransportSetMr(const std::vector<hybm_transport_mr_info> &mrs) noexcept
+Result MemEntityDefault::InitTransManager()
 {
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    return BM_OK;
+    switch (options_.bmType) {
+        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
+        case HYBM_TYPE_HBM_HOST_INITIATE:
+            transportManager_ = HybmTransManager::Create(TT_HCCP);
+            break;
+        case HYBM_TYPE_HBM_DRAM_HOST_INITIATE:
+            transportManager_ = HybmTransManager::Create(TT_HCOM);
+            break;
+        default:
+            return BM_INVALID_PARAM;
+    }
+    HybmTransOptions options;
+    options.rankId = options_.rankId;
+    options.rankCount = options_.rankCount;
+    options.nic = options_.nic;
+    auto ret = transportManager_->OpenDevice(options);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to open device, ret: " << ret);
+        transportManager_ = nullptr;
+    }
+    return ret;
 }
 
-int32_t MemEntityDefault::TransportGetAddress(std::string &nic) noexcept
+Result MemEntityDefault::InitDataOperator()
 {
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    return BM_OK;
-}
-
-int32_t MemEntityDefault::TransportSetAddress(const std::vector<std::string> &nics) noexcept
-{
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    return BM_OK;
-}
-
-int32_t MemEntityDefault::TransportMakeConnect() noexcept
-{
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    return BM_OK;
-}
-
-int32_t MemEntityDefault::TransportAiQPInfoAddress(uint32_t shmId, void **address) noexcept
-{
-    BM_ASSERT_RETURN(transportManager_ != nullptr, BM_ERROR);
-    return BM_OK;
+    switch (options_.bmDataOpType) {
+        case HYBM_DOP_TYPE_MTE:
+        case HYBM_DOP_TYPE_ROCE:
+            dataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, stream_, transportManager_);
+            break;
+        case HYBM_DOP_TYPE_SDMA:
+            dataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
+            break;
+        default:
+            return BM_ERROR;
+    }
+    return dataOperator_->Initialized();
 }
 }
 }

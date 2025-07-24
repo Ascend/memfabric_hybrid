@@ -94,6 +94,27 @@ int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hyb
 int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
 
 /**
+ * @brief Export exchange info for peer to import
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param flags            [in] HYBM_EXPORT_SINGLE_SLICE | HYBM_EXPORT_ALL_SLICE
+ * @param exInfo           [out] exchange info to be filled in
+ * @return 0 if successful, error code if failed
+ */
+int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo);
+
+/**
+ * @brief Import batch of exchange info of other HyBM entities
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param allExInfo        [in] ptr of entities array
+ * @param count            [in] count of entities
+ * @param flags            [in] optional flags, default value 0
+ * @return 0 if successful
+ */
+int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
+
+/**
  * @brief mmap all memory which is imported
  *
  * @param e                [in] entity created by hybm_create_entity

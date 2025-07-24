@@ -48,8 +48,6 @@ using serviceSetTimeOutDetectionThreadNumFunc = void (*)(Hcom_Service, uint32_t)
 using serviceSetMaxConnectionCountFunc = void (*)(Hcom_Service, uint32_t);
 using serviceSetHeartBeatOptionsFunc = void (*)(Hcom_Service, uint16_t, uint16_t, uint16_t);
 using serviceSetMultiRailOptionsFunc = void (*)(Hcom_Service, bool, uint32_t);
-using channelReferFunc = void (*)(Hcom_Channel);
-using channelDeReferFunc = void (*)(Hcom_Channel);
 using channelSendFunc = int (*)(Hcom_Channel, Channel_Request, Channel_Callback *);
 using channelCallFunc = int (*)(Hcom_Channel, Channel_Request, Channel_Response *, Channel_Callback *);
 using channelReplyFunc = int (*)(Hcom_Channel, Channel_Request, Channel_ReplyContext, Channel_Callback *);
@@ -57,8 +55,6 @@ using channelPutFunc = int (*)(Hcom_Channel, Channel_OneSideRequest, Channel_Cal
 using channelGetFunc = int (*)(Hcom_Channel, Channel_OneSideRequest, Channel_Callback *);
 using channelSetFlowControlConfigFunc = int (*)(Hcom_Channel, Channel_FlowCtrlOptions);
 using channelSetChannelTimeOutFunc = void (*)(Hcom_Channel, int16_t, int16_t);
-using channelCloseFunc = void (*)(Hcom_Channel);
-using channelGetIdFunc = uint64_t (*)(Hcom_Channel);
 using serviceGetRspCtxFunc = int (*)(Service_Context, Channel_ReplyContext *);
 using serviceGetChannelFunc = int (*)(Service_Context, Hcom_Channel *);
 using serviceGetContextTypeFunc = int (*)(Service_Context, Service_ContextType *);
@@ -248,16 +244,6 @@ public:
         gServiceSetMultiRailOptions(service, enable, threshold);
     }
 
-    static inline void ChannelRefer(Hcom_Channel channel)
-    {
-        gChannelRefer(channel);
-    }
-
-    static inline void ChannelDeRefer(Hcom_Channel channel)
-    {
-        gChannelDeRefer(channel);
-    }
-
     static inline int ChannelSend(Hcom_Channel channel, Channel_Request req, Channel_Callback *cb)
     {
         return gChannelSend(channel, req, cb);
@@ -294,16 +280,6 @@ public:
     ChannelSetChannelTimeOut(Hcom_Channel channel, int16_t oneSideTimeout, int16_t twoSideTimeout)
     {
         gChannelSetChannelTimeOut(channel, oneSideTimeout, twoSideTimeout);
-    }
-
-    static inline void ChannelClose(Hcom_Channel channel)
-    {
-        gChannelClose(channel);
-    }
-
-    static inline uint64_t ChannelGetId(Hcom_Channel channel)
-    {
-        return gChannelGetId(channel);
     }
 
     static inline int ServiceGetRspCtx(Service_Context context, Channel_ReplyContext *rspCtx)
@@ -384,8 +360,6 @@ private:
     static serviceSetMaxConnectionCountFunc gServiceSetMaxConnectionCount;
     static serviceSetHeartBeatOptionsFunc gServiceSetHeartBeatOptions;
     static serviceSetMultiRailOptionsFunc gServiceSetMultiRailOptions;
-    static channelReferFunc gChannelRefer;
-    static channelDeReferFunc gChannelDeRefer;
     static channelSendFunc gChannelSend;
     static channelCallFunc gChannelCall;
     static channelReplyFunc gChannelReply;
@@ -393,8 +367,6 @@ private:
     static channelGetFunc gChannelGet;
     static channelSetFlowControlConfigFunc gChannelSetFlowControlConfig;
     static channelSetChannelTimeOutFunc gChannelSetChannelTimeOut;
-    static channelCloseFunc gChannelClose;
-    static channelGetIdFunc gChannelGetId;
     static serviceGetRspCtxFunc gServiceGetRspCtx;
     static serviceGetChannelFunc gServiceGetChannel;
     static serviceGetContextTypeFunc gServiceGetContextType;

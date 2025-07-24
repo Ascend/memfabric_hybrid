@@ -1,6 +1,8 @@
 /*
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
+#include <algorithm>
+
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_bm.h"
@@ -93,8 +95,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmType = (localDRAMSize == 0) ? HYBM_TYPE_HBM_AI_CORE_INITIATE : HYBM_TYPE_HBM_DRAM_HOST_INITIATE;
+    options.bmDataOpType = (dataOpType == SMEMB_DATA_OP_SDMA) ? HYBM_DOP_TYPE_SDMA : HYBM_DOP_TYPE_ROCE;
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
@@ -102,13 +104,13 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.devId = manager.GetDeviceId();
     options.singleRankVASpace = localHBMSize;
     options.preferredGVA = 0;
+    (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
         return nullptr;
     }
-
 
     return reinterpret_cast<void *>(entry.Get());
 }

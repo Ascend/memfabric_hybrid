@@ -9,7 +9,7 @@
 namespace ock {
 namespace mf {
 enum TransType {
-    TT_HCCP_RDMA = 0,
+    TT_HCCP = 0,
 
     TT_BUTT,
 };
@@ -18,7 +18,7 @@ struct TransDeviceOptions {
     TransType transType;
     uint32_t rankId{0};
     uint32_t rankCount{1};
-    TransDeviceOptions() : TransDeviceOptions{TT_HCCP_RDMA} {}
+    TransDeviceOptions() : TransDeviceOptions{TT_HCCP} {}
     TransDeviceOptions(TransType type) : transType{type} {}
 };
 

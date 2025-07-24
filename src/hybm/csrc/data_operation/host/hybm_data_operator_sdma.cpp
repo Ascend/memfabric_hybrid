@@ -11,24 +11,24 @@ namespace mf {
 HostDataOpSDMA::HostDataOpSDMA(void *stm) noexcept : stream_{stm} {}
 
 int32_t HostDataOpSDMA::DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
-                                 void *stream, const ExtOptions &options) noexcept
+                                 const ExtOptions &options) noexcept
 {
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva(destVA, srcVA, length, stream);
+            ret = CopyDevice2Gva(destVA, srcVA, length, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device(destVA, srcVA, length, stream);
+            ret = CopyGva2Device(destVA, srcVA, length, options.stream);
             break;
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
-            ret = CopyHost2Gva(destVA, srcVA, length, stream);
+            ret = CopyHost2Gva(destVA, srcVA, length, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
-            ret = CopyGva2Host(destVA, srcVA, length, stream);
+            ret = CopyGva2Host(destVA, srcVA, length, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva(destVA, srcVA, length, stream);
+            ret = CopyDevice2Gva(destVA, srcVA, length, options.stream);
             break;
 
         default:
@@ -253,24 +253,24 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
 
 int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                                uint64_t width, uint64_t height, hybm_data_copy_direction direction,
-                               void *stream, const ExtOptions &options) noexcept
+                               const ExtOptions &options) noexcept
 {
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva2d(destVA, dpitch, srcVA, spitch, width, height, stream);
+            ret = CopyDevice2Gva2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device2d(destVA, dpitch, srcVA, spitch, width, height, stream);
+            ret = CopyGva2Device2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
-            ret = CopyHost2Gva2d(destVA, dpitch, srcVA, spitch, width, height, stream);
+            ret = CopyHost2Gva2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
-            ret = CopyGva2Host2d(destVA, dpitch, srcVA, spitch, width, height, stream);
+            ret = CopyGva2Host2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva2d(destVA, dpitch, srcVA, spitch, width, height, stream);
+            ret = CopyDevice2Gva2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
 
         default:
@@ -281,8 +281,7 @@ int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA,
 }
 
 int32_t HostDataOpSDMA::DataCopyAsync(const void* srcVA, void* destVA, uint64_t length,
-                                      hybm_data_copy_direction direction, void *stream,
-                                      const ExtOptions &options) noexcept
+                                      hybm_data_copy_direction direction, const ExtOptions &options) noexcept
 {
     BM_LOG_ERROR("not supported data copy async!");
     return BM_ERROR;
@@ -294,5 +293,14 @@ int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
     return BM_ERROR;
 }
 
+int32_t HostDataOpSDMA::Initialized() noexcept
+{
+    return 0;
+}
+
+void HostDataOpSDMA::UnInitialized() noexcept
+{
+
+}
 }
 }

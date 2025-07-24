@@ -6,26 +6,22 @@
 
 #include "hybm_common_include.h"
 #include <vector>
+#include <unordered_map>
 
 namespace ock {
 namespace mf {
 enum HybmTransType {
-    TT_HCCP_RDMA = 0,
-    TT_HCOM_RDMA,
-
+    TT_HCCP = 0,
+    TT_HCOM,
+    TT_COMPOSE,
     TT_BUTT,
 };
 
 struct HybmTransOptions {
     uint32_t rankId;
+    uint32_t rankCount;
     std::string nic;
-    HybmTransType transType;
 
-    HybmTransOptions() : HybmTransOptions{TT_HCCP_RDMA}
-    {}
-
-    HybmTransOptions(HybmTransType type) : transType{type}
-    {}
 };
 
 struct HybmTransMemReg {
@@ -36,12 +32,23 @@ struct HybmTransMemReg {
 };
 
 struct HybmTransKey {
-    uint8_t keys[64];
+    uint32_t keys[16];
+};
+
+
+struct MrInfo {
+    uint64_t memAddr;
+    uint64_t size;
+    uint64_t lAddress;
+    HybmTransKey lKey;
+    void *mr;
 };
 
 struct HybmTransPrepareOptions {
     bool isServer = true;               /* server or client */
     std::vector<uint64_t> whitelist; /* list of whilelist */
+    std::unordered_map<uint32_t, std::string> nics;
+    std::vector<MrInfo> mrs;
 };
 }
 }

@@ -11,7 +11,7 @@
 using namespace ock::mf;
 
 namespace {
-constexpr uint64_t HYBM_HOST_GVA_START_ADDR = 0x2000000000000ULL;
+constexpr uint64_t HYBM_HOST_GVA_START_ADDR = 0x0000200000000000UL;
 }
 
 Result MemSegmentHost::ValidateOptions() noexcept
@@ -26,17 +26,18 @@ Result MemSegmentHost::ValidateOptions() noexcept
 
 Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
 {
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.");
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(address != nullptr, "Invalid param, address is NULL.");
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(globalVirtualAddress_ != nullptr, "Already prepare virtual memory.");
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(address == nullptr, "Invalid param, address is NULL.");
 
     void *startAddr = (void *) HYBM_HOST_GVA_START_ADDR;
     uint64_t totalSize = options_.rankCnt * options_.size;
-    void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE,
+                        MAP_FIXED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to mmap startAddr:" << startAddr << " size:" << totalSize << " error:" << strerror(errno));
+        BM_LOG_ERROR("Failed to mmap startAddr:" << startAddr << " size:" << totalSize
+                     << " error: " << errno);
         return BM_ERROR;
     }
-    // TODO Register MrInfo
     globalVirtualAddress_ = (uint8_t *) startAddr;
     totalVirtualSize_ = totalSize;
     localVirtualBase_ = globalVirtualAddress_ + options_.size * options_.rankId;
@@ -68,10 +69,11 @@ Result MemSegmentHost::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice>
         return BM_INVALID_PARAM;
     }
 
-    auto sliceAddr = localVirtualBase_ + allocatedSize_;
-    void *mapped = mmap(sliceAddr, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_HUGETLB | MAP_FIXED, -1, 0);
+    void *sliceAddr = localVirtualBase_ + allocatedSize_;
+    void *mapped = mmap(sliceAddr, size, PROT_READ | PROT_WRITE,
+                        MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to alloc startAddr:" << sliceAddr << " size:" << size << " error:" << strerror(errno));
+        BM_LOG_ERROR("Failed to alloc startAddr:" << sliceAddr << " size:" << size << " error:" << errno);
         return BM_ERROR;
     }
     LvaShmReservePhysicalMemory(sliceAddr, size);
@@ -124,7 +126,6 @@ Result MemSegmentHost::Export(const std::shared_ptr<MemSlice> &slice, std::strin
     info.pageTblType = MEM_PT_TYPE_SVM;
     info.memSegType = HYBM_MST_DRAM;
     info.exchangeType = HYBM_INFO_EXG_IN_NODE;
-    info.oneSideKey = oneSideKey_;
     auto ret = LiteralExInfoTranslater<HostExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
@@ -226,4 +227,9 @@ void MemSegmentHost::FreeMemory() noexcept
         munmap(globalVirtualAddress_, totalVirtualSize_);
         globalVirtualAddress_ = nullptr;
     }
+}
+
+Result MemSegmentHost::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
+{
+    return 0;
 }

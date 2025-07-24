@@ -23,7 +23,7 @@ const char *HCOM_RPC_SERVICE_NAME = "hybm_hcom_service";
 Result HcomTransManager::OpenDevice(HybmTransOptions &options)
 {
     BM_ASSERT_RETURN(rpcService_ == 0, BM_OK);
-    BM_ASSERT_RETURN(CheckHybmTransOptions(options), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(CheckHybmTransOptions(options) == BM_OK, BM_INVALID_PARAM);
 
     Service_Options opt {};
     opt.workerGroupMode = C_SERVICE_BUSY_POLLING;
@@ -44,6 +44,8 @@ Result HcomTransManager::OpenDevice(HybmTransOptions &options)
     DlHcomApi::ServiceRegisterHandler(rpcService_, C_SERVICE_REQUEST_POSTED, TransRpcHcomRequestPosted, 1);
     DlHcomApi::ServiceRegisterHandler(rpcService_, C_SERVICE_READWRITE_DONE, TransRpcHcomOneSideDone, 1);
 
+    std::string ipMask = localIp_ + "/32";
+    DlHcomApi::ServiceSetDeviceIpMask(rpcService_, ipMask.c_str());
     DlHcomApi::ServiceBind(rpcService_, options.nic.c_str(), TransRpcHcomNewEndPoint);
     ret = DlHcomApi::ServiceStart(rpcService_);
     if (ret != 0) {
@@ -67,7 +69,7 @@ Result HcomTransManager::CloseDevice()
     return BM_OK;
 }
 
-Result HcomTransManager::RegisterMemoryRegion(const HybmTransMemReg &input, HybmTransKey &key)
+Result HcomTransManager::RegisterMemoryRegion(const HybmTransMemReg &input, MrInfo &output)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(input.addr != 0 && input.size != 0, BM_INVALID_PARAM);
@@ -95,14 +97,15 @@ Result HcomTransManager::RegisterMemoryRegion(const HybmTransMemReg &input, Hybm
         return BM_DL_FUNCTION_FAILED;
     }
 
-    HcomMrInfo info{};
-    info.memAddr = input.addr;
-    info.size = input.size;
-    info.lAddress = mrInfo.lAddress;
-    info.lKey = mrInfo.lKey;
-    info.mr = mr;
+    output.memAddr = input.addr;
+    output.size = input.size;
+    output.lAddress = mrInfo.lAddress;
+    std::copy_n(mrInfo.lKey.keys, sizeof(mrInfo.lKey.keys) / sizeof(mrInfo.lKey.keys[0]), output.lKey.keys);
+    output.mr = reinterpret_cast<void *>(mr);
 
-    mrInfoMap_[info.memAddr] = info;
+    mrInfoMap_[output.memAddr] = output;
+    BM_LOG_DEBUG("Success to register to mr info addr: " << (void *)output.memAddr << " lAddr: "
+        << (void *)output.lAddress << " lKey: " << output.lKey.keys[0] << " size: " << output.size);
     return BM_OK;
 }
 
@@ -118,7 +121,7 @@ Result HcomTransManager::UnregisterMemoryRegion(const void *addr)
     }
 
     auto mrInfo = it->second;
-    DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, mrInfo.mr);
+    DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, reinterpret_cast<Service_MemoryRegion>(mrInfo.mr));
 
     mrInfoMap_.erase(it);
     return BM_OK;
@@ -126,6 +129,26 @@ Result HcomTransManager::UnregisterMemoryRegion(const void *addr)
 
 Result HcomTransManager::Prepare(const HybmTransPrepareOptions &options)
 {
+    for (const auto &item: options.mrs) {
+        auto it = mrInfoMap_.find(item.memAddr);
+        if (it != mrInfoMap_.end()) {
+            BM_LOG_WARN("Failed to set mr info, addr: " << item.memAddr << " already registered");
+            continue;
+        }
+        mrInfoMap_[item.memAddr] = item;
+        BM_LOG_DEBUG("Success to register to mr info addr: " << (void *)item.memAddr << " lAddr: "
+            << (void *)item.lAddress << " lKey: " << item.lKey.keys[0] << " size: " << item.size);
+    }
+
+    for (const auto &item: options.nics) {
+        auto it = nicMap_.find(item.first);
+        if (it != nicMap_.end()) {
+            BM_LOG_WARN("Failed to set mr info, rankId: " << item.first
+                        << " nic: " << item.second << " already registered");
+            continue;
+        }
+        nicMap_[item.first] = item.second;
+    }
     return BM_OK;
 }
 
@@ -172,7 +195,7 @@ Result HcomTransManager::QueryKey(void *addr, HybmTransKey& key)
     return BM_OK;
 }
 
-static Result CheckNic(const std::string &nic)
+Result CheckNic(const std::string &nic, std::string &ipStr, int32_t &port)
 {
     const std::regex pattern(R"(^tcp://(\d{1,3}\.){3}\d{1,3}:(\d{1,5})$)");
 
@@ -182,13 +205,14 @@ static Result CheckNic(const std::string &nic)
     }
 
     size_t colonPos = nic.find("tcp://");
-    size_t atPos = nic.find(':');
+    std::string ipPort = nic.substr(colonPos + 6);
 
-    std::string ipStr = nic.substr(atPos + 7, colonPos - (atPos + 7));
-    std::string portStr = nic.substr(colonPos + 1);
+    colonPos = ipPort.find(':');
+    ipStr = ipPort.substr(0, colonPos);
+    std::string portStr = ipPort.substr(colonPos + 1);
 
     try {
-        int port = std::stoi(portStr);
+        port = std::stoi(portStr);
         if (port < 1 || port > 65535) {
             BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
             return BM_INVALID_PARAM;
@@ -209,7 +233,7 @@ static Result CheckNic(const std::string &nic)
 
 Result HcomTransManager::CheckHybmTransOptions(HybmTransOptions &options)
 {
-    auto ret = CheckNic(options.nic);
+    auto ret = CheckNic(options.nic, localIp_, localPort_);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to check nic, nic: " << options.nic << " ret: " << ret);
         return ret;
@@ -272,6 +296,8 @@ Result HcomTransManager::ConnectHcomService(uint32_t rankId, const std::string &
         }
     } while (0);
     connectMap_[rankId] = channel;
+    BM_LOG_DEBUG("Success to connect to hcom service rankId: " << rankId << " url: " << url
+        << " channel: " << (void *)channel);
     return BM_OK;
 }
 
@@ -310,6 +336,9 @@ Result HcomTransManager::RdmaOneSideTrans(const uint32_t &rankId, const uint64_t
         BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << " rAddr" << rAddr << " is not set");
         return BM_ERROR;
     }
+    BM_LOG_DEBUG("Try to one side trans rankId: " << rankId << " channel: " << (void *)channel \
+        << " lAddr: " << (void *)lAddr << " lKey:" << req.lKey.keys[0] << " rAddr: "
+        << (void *)rAddr << " rKey: " << req.rKey.keys[0] << " size: " << size);
     if (isGet) {
         ret = DlHcomApi::ChannelGet(channel, req, nullptr);
     } else {
@@ -323,7 +352,7 @@ Result HcomTransManager::GetOneSideKeyByAddr(const uint64_t &addr, OneSideKey &k
     for (const auto &item: mrInfoMap_) {
         auto mrInfo = item.second;
         if (mrInfo.lAddress <= addr && mrInfo.lAddress + mrInfo.size > addr) {
-            key = mrInfo.lKey;
+            (void) std::copy_n(mrInfo.lKey.keys, sizeof(key.keys) / sizeof(key.keys[0]), key.keys);
             return BM_OK;
         }
     }

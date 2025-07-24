@@ -11,13 +11,6 @@
 
 namespace ock {
 namespace mf {
-struct HcomMrInfo {
-    uint64_t memAddr;
-    uint64_t size;
-    uint64_t lAddress;
-    OneSideKey lKey;
-    Service_MemoryRegion mr;
-};
 
 class HcomTransManager : public HybmTransManager {
 public:
@@ -29,19 +22,19 @@ public:
 
     Result OpenDevice(HybmTransOptions &options) override;
     Result CloseDevice() override;
-    Result RegisterMemoryRegion(const HybmTransMemReg &input, HybmTransKey &key) override;
+    Result RegisterMemoryRegion(const HybmTransMemReg &input, MrInfo &output) override;
     Result UnregisterMemoryRegion(const void *addr) override;
     Result Prepare(const HybmTransPrepareOptions &options) override;
     Result Connect(const std::unordered_map<uint32_t, std::string> &nics, int mode) override;
     Result AsyncConnect(const std::unordered_map<uint32_t, std::string> &nics, int mode) override;
     Result WaitForConnected(int64_t timeoutNs) override;
     std::string GetNic() override;
-    Result QueryKey(void *addr, HybmTransKey& key) override;
+    Result QueryKey(void *addr, HybmTransKey &key) override;
     Result RdmaOneSideTrans(const uint32_t &rankId, const uint64_t &lAddr, const uint64_t &rAddr,
                             const uint64_t &size, const bool &isGet) override;
 
 private:
-    static Result CheckHybmTransOptions(HybmTransOptions &options);
+    Result CheckHybmTransOptions(HybmTransOptions &options);
     static Result TransRpcHcomNewEndPoint(Hcom_Channel newCh, uint64_t usrCtx, const char *payLoad);
     static Result TransRpcHcomEndPointBroken(Hcom_Channel ch, uint64_t usrCtx, const char *payLoad);
     static Result TransRpcHcomRequestReceived(Service_Context ctx, uint64_t usrCtx);
@@ -54,8 +47,11 @@ private:
 
 private:
     std::string localNic_;
+    std::string localIp_;
+    int32_t localPort_;
     Hcom_Service rpcService_{};
-    std::unordered_map<uint64_t, HcomMrInfo> mrInfoMap_;
+    std::unordered_map<uint64_t, MrInfo> mrInfoMap_;
+    std::unordered_map<uint32_t, std::string> nicMap_;
     std::unordered_map<uint32_t, Hcom_Channel> connectMap_;
 };
 }

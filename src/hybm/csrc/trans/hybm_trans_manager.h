@@ -34,7 +34,7 @@ public:
      * 2、注册内存
      * @return 0 if successful
      */
-    virtual Result RegisterMemoryRegion(const HybmTransMemReg &input, HybmTransKey &key) = 0;;
+    virtual Result RegisterMemoryRegion(const HybmTransMemReg &input, MrInfo &output) = 0;
     virtual Result UnregisterMemoryRegion(const void *addr) = 0;
 
     /*
@@ -79,7 +79,6 @@ public:
     virtual Result RdmaOneSideTrans(const uint32_t &rankId, const uint64_t &lAddr, const uint64_t &rAddr,
                                     const uint64_t &size, const bool &isGet) = 0;
 };
-
 }
 }
 

@@ -96,6 +96,28 @@ HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo
     return entity->ImportExchangeInfo(allExInfo, count, flags);
 }
 
+HYBM_API int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo)
+{
+    auto entity = (MemEntity *)e;
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    auto ret = entity->ExportExchangeInfo(*exInfo, flags);
+    if (ret != 0) {
+        BM_LOG_ERROR("export entity data failed: " << ret);
+        return ret;
+    }
+
+    return BM_OK;
+}
+
+HYBM_API int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[],
+                                    uint32_t count, uint32_t flags)
+{
+    auto entity = (MemEntity *)e;
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(allExInfo != nullptr, BM_INVALID_PARAM);
+    return entity->ImportEntityExchangeInfo(allExInfo, count, flags);
+}
+
 HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
 {
     auto entity = (MemEntity *)e;

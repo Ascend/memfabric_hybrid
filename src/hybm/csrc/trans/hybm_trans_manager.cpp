@@ -3,18 +3,19 @@
  */
 #include "hybm_trans_manager.h"
 #include "hybm_hcom_trans_manager.h"
+#include "hybm_hccp_trans_manager.h"
 
 using namespace ock::mf;
 
 TransManagerPtr HybmTransManager::Create(HybmTransType type)
 {
-    TransManagerPtr res;
     switch (type) {
-        case TT_HCOM_RDMA:
-            res = HcomTransManager::GetInstance();
-            break;
+        case TT_HCCP:
+            return HccpTransManager::GetInstance();
+        case TT_HCOM:
+            return HcomTransManager::GetInstance();
         default:
             BM_LOG_ERROR("Invalid trans type: " << type);
+            return nullptr;
     }
-    return res;
 }

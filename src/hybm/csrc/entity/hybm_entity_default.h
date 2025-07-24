@@ -14,6 +14,14 @@
 
 namespace ock {
 namespace mf {
+struct EntityExportInfo {
+    uint64_t magic{0};
+    uint64_t version{0};
+    uint32_t rankId{0};
+    char nic[64]{};
+    MrInfo hostMrInfo{};
+};
+
 class MemEntityDefault : public MemEntity {
 public:
     explicit MemEntityDefault(int32_t id) noexcept;
@@ -43,26 +51,27 @@ public:
                      void *stream, uint32_t flags) noexcept override;
     int32_t CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
                        hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept override;
-    int32_t TransportInit(uint32_t rankId, const std::string &nic) noexcept override;
-    int32_t TransportRegisterMr(uint64_t address, uint64_t size,
-                                hybm_mr_key *lkey, hybm_mr_key *rkey) noexcept override;
-    int32_t TransportSetMr(const std::vector<hybm_transport_mr_info> &mrs) noexcept override;
-    int32_t TransportGetAddress(std::string &nic) noexcept override;
-    int32_t TransportSetAddress(const std::vector<std::string> &nics) noexcept override;
-    int32_t TransportMakeConnect() noexcept override;
-    int32_t TransportAiQPInfoAddress(uint32_t shmId, void **address) noexcept override;
+    int32_t ImportEntityExchangeInfo(const hybm_exchange_info desc[],
+                                     uint32_t count, uint32_t flags) noexcept override;
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;
     int UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
 
+    Result InitSegment();
+    Result InitHbmSegment();
+    Result InitDramSegment();
+    Result InitTransManager();
+    Result InitDataOperator();
+
 private:
     bool initialized;
     const int32_t id_; /* id of the engine */
     hybm_options options_{};
     void *stream_{nullptr};
-    std::shared_ptr<MemSegment> segment_;
+    MrInfo hostMrInfo_{};
+    std::shared_ptr<MemSegment> segment_{nullptr};
     std::shared_ptr<DataOperator> dataOperator_;
     std::shared_ptr<HybmTransManager> transportManager_;
 };

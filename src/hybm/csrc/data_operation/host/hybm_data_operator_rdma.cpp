@@ -12,7 +12,7 @@ namespace {
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 }
 
-int32_t HostDataOpRDMA::Initialized()
+int32_t HostDataOpRDMA::Initialized() noexcept
 {
     rdmaSwapBaseAddr_ = malloc(RDMA_SWAP_SPACE_SIZE);
     if (rdmaSwapBaseAddr_ == nullptr) {
@@ -23,8 +23,8 @@ int32_t HostDataOpRDMA::Initialized()
     HybmTransMemReg input;
     input.addr = reinterpret_cast<uint64_t>(rdmaSwapBaseAddr_);
     input.size = RDMA_SWAP_SPACE_SIZE;
-    HybmTransKey key{};
-    auto ret = transportManager_->RegisterMemoryRegion(input, key);
+    MrInfo info{};
+    auto ret = transportManager_->RegisterMemoryRegion(input, info);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to register rdma swap memory, addr: " << rdmaSwapBaseAddr_
                      << " size: " << RDMA_SWAP_SPACE_SIZE);
@@ -36,7 +36,7 @@ int32_t HostDataOpRDMA::Initialized()
     return BM_OK;
 }
 
-void HostDataOpRDMA::UnInitialized()
+void HostDataOpRDMA::UnInitialized() noexcept
 {
     if (rdmaSwapBaseAddr_ != nullptr) {
         free(rdmaSwapBaseAddr_);
@@ -50,7 +50,7 @@ HostDataOpRDMA::~HostDataOpRDMA()
 }
 
 int32_t HostDataOpRDMA::DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
-                                 void *stream, const ExtOptions &options) noexcept
+                                 const ExtOptions &options) noexcept
 {
     int ret;
     switch (direction) {
@@ -78,7 +78,7 @@ int32_t HostDataOpRDMA::DataCopy(const void *srcVA, void *destVA, uint64_t lengt
 
 int32_t HostDataOpRDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                                    uint64_t width, uint64_t height, hybm_data_copy_direction direction,
-                                   void *stream, const ExtOptions &options) noexcept
+                                   const ExtOptions &options) noexcept
 {
     int ret;
     switch (direction) {
@@ -106,7 +106,7 @@ int32_t HostDataOpRDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *des
 
 int32_t
 HostDataOpRDMA::DataCopyAsync(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
-                              void *stream, const ExtOptions &options) noexcept
+                              const ExtOptions &options) noexcept
 {
     BM_LOG_ERROR("not supported data copy async!");
     return BM_ERROR;
@@ -309,7 +309,7 @@ int32_t HostDataOpRDMA::CopyGva2Device2d(const void *srcVA, uint64_t spitch, voi
 
     uint64_t size = width * height;
     if (options.srcRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy2d(destVA, dpitch, srcVA, spitch, width, height, ACL_MEMCPY_DEVICE_TO_HOST);
+        return DlAclApi::AclrtMemcpy2d(destVA, dpitch, srcVA, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE);
     }
 
     auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(size);
@@ -342,4 +342,51 @@ int32_t HostDataOpRDMA::CopyGva2Gva2d(const void *srcVA, uint64_t spitch, void *
     }
     uint64_t size = width * height;
     return CopyGva2Gva(srcVA, destVA, size, options);
+}
+
+int32_t HostDataOpRDMA::RtMemoryCopyAsync(const void *srcVA, void *destVA, uint64_t length,
+                                          uint32_t kind, const ExtOptions &options)
+{
+    void *st = stream_;
+    if (options.stream != nullptr) {
+        st = options.stream;
+    }
+
+    auto ret = DlAclApi::AclrtMemcpyAsync(destVA, length, srcVA, length, kind, st);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to add aclrt memory copy async task srcVa: " << srcVA << " destVa: "
+                     << destVA << " length: " << length << " ret: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    ret = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
+}
+
+int32_t HostDataOpRDMA::RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
+                                            uint64_t width,uint64_t height, uint32_t kind, const ExtOptions &options)
+{
+    void *st = stream_;
+    if (options.stream != nullptr) {
+        st = options.stream;
+    }
+
+    auto ret = DlAclApi::AclrtMemcpy2dAsync(destVA, dpitch, srcVA, spitch, width, height, kind, st);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to add aclrt memory copy2d async task srcVa: " << srcVA << " spitch: " << spitch
+                     << " destVA: " << destVA << " width: " << width << " height: " << height
+                     << " kind: " << kind << " ret: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    ret = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
 }
