@@ -9,6 +9,19 @@
 
 namespace ock {
 namespace mmc {
+std::string Join(const std::vector<std::string> &vec) {
+    std::string result = "[";
+    for (const std::string &str : vec) {
+        result += "\"" + str + "\", ";
+    }
+    if (!vec.empty()) {
+        result.pop_back();  // space
+        result.pop_back();  // comma
+    }
+    result += "]";
+    return result;
+}
+
 MetaNetServer::MetaNetServer(const MmcMetaServicePtr &metaService, const std::string inputName)
     : metaService_(metaService),
       name_(inputName)
@@ -137,9 +150,10 @@ Result MetaNetServer::HandleAlloc(const NetContextPtr &context)
     AllocResponse resp;
     context->GetRequest<AllocRequest>(req);
 
-    MMC_LOG_DEBUG("HandleAlloc key " << req.key_);
+    MMC_LOG_DEBUG("HandleAlloc key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->Alloc(req, resp);
+    MMC_LOG_DEBUG("HandleAlloc key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
 }
@@ -150,9 +164,10 @@ Result MetaNetServer::HandleUpdate(const NetContextPtr &context)
     Response resp;
     context->GetRequest<UpdateRequest>(req);
 
-    MMC_LOG_DEBUG("HandleUpdate key " << req.key_);
+    MMC_LOG_DEBUG("HandleUpdate key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->UpdateState(req, resp);
+    MMC_LOG_DEBUG("HandleUpdate key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
 }
@@ -163,9 +178,10 @@ Result MetaNetServer::HandleGet(const NetContextPtr &context)
     AllocResponse resp;
     context->GetRequest<GetRequest>(req);
 
-    MMC_LOG_DEBUG("HandleGet key " << req.key_);
+    MMC_LOG_DEBUG("HandleGet key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->Get(req, resp);
+    MMC_LOG_DEBUG("HandleGet key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
 }
@@ -176,10 +192,10 @@ Result MetaNetServer::HandleBatchGet(const NetContextPtr &context)
     BatchAllocResponse resp;
     context->GetRequest<BatchGetRequest>(req);
 
-    MMC_LOG_INFO("HandleBatchGet keys");
+    MMC_LOG_DEBUG("HandleBatchGet keys (size  " << req.keys_.size() << ") start: " << Join(req.keys_));
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchGet(req, resp);
-    MMC_LOG_INFO("HandleBatchGet keys processed");
+    MMC_LOG_DEBUG("HandleBatchGet keys (size  " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
 }
@@ -190,9 +206,10 @@ Result MetaNetServer::HandleRemove(const NetContextPtr &context)
     Response resp;
     context->GetRequest<RemoveRequest>(req);
 
-    MMC_LOG_DEBUG("HandleRemove key " << req.key_);
+    MMC_LOG_DEBUG("HandleRemove key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->Remove(req, resp);
+    MMC_LOG_DEBUG("HandleRemove key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
 }
@@ -203,9 +220,10 @@ Result MetaNetServer::HandleBatchRemove(const NetContextPtr &context)
     BatchRemoveResponse resp;
     context->GetRequest<BatchRemoveRequest>(req);
 
-    MMC_LOG_DEBUG("HandleBatchRemove keys nums " << req.keys_.size());
+    MMC_LOG_DEBUG("HandleBatchRemove keys (size  " << req.keys_.size() << ") start: " << Join(req.keys_));
     MmcMetaMgrProxyPtr metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchRemove(req, resp);
+    MMC_LOG_DEBUG("HandleBatchRemove keys (size  " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
 }
@@ -213,11 +231,12 @@ Result MetaNetServer::HandleBatchRemove(const NetContextPtr &context)
 Result MetaNetServer::HandleIsExist(const NetContextPtr &context)
 {
     IsExistRequest req;
-    Response resp;
+    IsExistResponse resp;
     context->GetRequest<IsExistRequest>(req);
 
-    MMC_LOG_DEBUG("HandleIsExist key " << req.key_);
+    MMC_LOG_DEBUG("HandleIsExist key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
+    MMC_LOG_DEBUG("HandleIsExist key " << req.key_ << " finish.");
     metaMgrProxy->ExistKey(req, resp);
 
     return context->Reply(req.msgId, resp);
@@ -229,9 +248,10 @@ Result MetaNetServer::HandleBatchIsExist(const NetContextPtr &context)
     BatchIsExistResponse resp;
     context->GetRequest<BatchIsExistRequest>(req);
 
-    MMC_LOG_DEBUG("HandleBatchIsExist keys nums " << req.keys_.size());
+    MMC_LOG_DEBUG("HandleBatchIsExist keys (size " << req.keys_.size() << ") start: " << Join(req.keys_));
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchExistKey(req, resp);
+    MMC_LOG_DEBUG("HandleBatchIsExist keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
 }
@@ -242,10 +262,10 @@ Result MetaNetServer::HandleQuery(const NetContextPtr &context)
     QueryResponse resp;
     context->GetRequest<QueryRequest>(req);
 
-    MMC_LOG_INFO("HandleQuery key " << req.key_ << " start.");
+    MMC_LOG_DEBUG("HandleQuery key " << req.key_ << " start.");
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->Query(req, resp);
-    MMC_LOG_INFO("HandleQuery key " << req.key_ << " finish.");
+    MMC_LOG_DEBUG("HandleQuery key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
 }
@@ -256,10 +276,10 @@ Result MetaNetServer::HandleBatchQuery(const NetContextPtr &context)
     BatchQueryResponse resp;
     context->GetRequest<BatchQueryRequest>(req);
 
-    MMC_LOG_INFO("HandleBatchQuery key size " << req.keys_.size());
+    MMC_LOG_INFO("HandleBatchQuery keys (size " << req.keys_.size() << ") start: " << Join(req.keys_));
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchQuery(req, resp);
-    MMC_LOG_INFO("HandleBatchQuery finish.");
+    MMC_LOG_INFO("HandleBatchQuery keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
 }

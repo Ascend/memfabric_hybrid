@@ -173,7 +173,23 @@ std::vector<pybind11::bytes> DistributedObjectStore::get_batch(const std::vector
 }
 
 int DistributedObjectStore::remove(const std::string &key) {
-    return mmcc_remove(key.c_str(), 0);
+    return mmcc_remove(key.c_str(), 0);  // 0 - success, other - not success
+}
+
+std::vector<int> DistributedObjectStore::removeBatch(const std::vector<std::string> &keys) {
+    const char** c_keys = new const char*[keys.size()];
+    for (size_t i = 0 ; i < keys.size(); ++i) {
+        c_keys[i] = keys[i].c_str();
+    }
+
+    std::vector<int> results(keys.size(), -1);
+    int32_t res = mmcc_batch_remove(c_keys, keys.size(), results.data(), 0);
+    if (res != 0) {
+        MMC_LOG_ERROR("remove_batch failed");
+    }
+
+    delete[] c_keys;
+    return results;
 }
 
 long DistributedObjectStore::removeAll() {
@@ -182,16 +198,39 @@ long DistributedObjectStore::removeAll() {
 
 int DistributedObjectStore::isExist(const std::string &key) {
     int32_t res = mmcc_exist(key.c_str(), 0);
-    if (res == 0) {
+    if (res == MMC_OK) {
         // align with mooncake: 1 represents exist
         return 1;
+    } else if (res == MMC_UNMATCHED_KEY) {
+        // align with mooncake: 0 represents not exist
+        return 0;
     }
-    // align with mooncake: 0 represents not exist
-    return 0;
+    return res;
 }
 
 std::vector<int> DistributedObjectStore::batchIsExist(const std::vector<std::string> &keys) {
-    std::vector<int> results;
+    const char** c_keys = new const char*[keys.size()];
+    for (size_t i = 0 ; i < keys.size(); ++i) {
+        c_keys[i] = keys[i].c_str();
+    }
+
+    std::vector<int> results(keys.size(), 0);
+    int32_t res = mmcc_batch_exist(c_keys, keys.size(), results.data(), 0);
+    if (res != 0) {
+        MMC_LOG_ERROR("batch_exist failed");
+    }
+
+    for (int &result : results) {
+        if (result == MMC_OK) {
+            // align with mooncake: 1 represents exist
+            result = 1;
+        } else if (result == MMC_UNMATCHED_KEY) {
+            // align with mooncake: 0 represents not exist
+            result = 0;
+        }
+    }
+
+    delete[] c_keys;
     return results;
 }
 
@@ -306,6 +345,8 @@ PYBIND11_MODULE(_pymmc, m) {
              py::call_guard<py::gil_scoped_release>(),
              py::return_value_policy::take_ownership)
         .def("remove", &DistributedObjectStore::remove,
+             py::call_guard<py::gil_scoped_release>())
+        .def("remove_batch", &DistributedObjectStore::removeBatch,
              py::call_guard<py::gil_scoped_release>())
         .def("remove_all", &DistributedObjectStore::removeAll,
              py::call_guard<py::gil_scoped_release>())

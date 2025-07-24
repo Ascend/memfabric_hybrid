@@ -146,6 +146,7 @@ inline Result NetEngineOptions::ExtractTcpURL(const std::string &url, NetProtoco
     tmpUrl = splits[0];
     StrUtil::Split(tmpUrl, "/", splits);
     if (splits.size() != UN2) {
+        MMC_LOG_ERROR("Get mismatched splits' size (" << splits.size() << "), should get size (" << UN2 << ").");
         return MMC_INVALID_PARAM;
     }
 

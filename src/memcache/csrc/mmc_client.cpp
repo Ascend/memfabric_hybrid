@@ -101,73 +101,58 @@ MMC_API mmc_location_t mmcc_get_location(const char *key, uint32_t flags)
 
 MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
 {
-    MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
+    MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_RETURN_ERROR(gClientHandler->Remove(key, flags), gClientHandler->Name() << " remove key " << key << " failed!");
+    return MMC_OK;
+}
 
-    MMC_RETURN_ERROR(gClientHandler->Remove(key, flags), gClientHandler->Name()
-                                                                            << " remove key " << key << " failed!");
+MMC_API int32_t mmcc_batch_remove(const char **keys, const uint32_t keys_count, int32_t *remove_results, uint32_t flags)
+{
+    MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
+    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0U, "invalid param, key_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(remove_results != nullptr, "invalid param, remove_results is null", MMC_INVALID_PARAM);
+
+    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<int32_t> remove_results_vector;
+    MMC_RETURN_ERROR(gClientHandler->BatchRemove(keys_vector, remove_results_vector, flags),
+                     gClientHandler->Name() << " batch_remove failed!");
+    for (size_t i = 0; i < keys_count; ++i) {
+        remove_results[i] = remove_results_vector[i];
+    }
     return MMC_OK;
 }
 
 MMC_API int32_t mmcc_exist(const char *key, uint32_t flags)
 {
-    MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
-
-    bool result = false;
-    MMC_RETURN_ERROR(gClientHandler->IsExist(key, result, flags), gClientHandler->Name() << " is_exist failed!");
-    if (!result) {
-        return MMC_OBJECT_NOT_EXISTS;  // not found
+    MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    Result result = gClientHandler->IsExist(key, flags);
+    if (result == MMC_UNMATCHED_KEY) {
+        // not exist, but does not need write error log
+        return result;
     }
+    MMC_RETURN_ERROR(result, gClientHandler->Name() << " is_exist failed!");
     return MMC_OK;
 }
 
 MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, int32_t *exist_results, uint32_t flags)
 {
-    MMC_ASSERT_RETURN(gClientHandler != nullptr, MMC_CLIENT_NOT_INIT);
-    if (keys_count != 0) {
-        MMC_LOG_ERROR("Got empty keys");
-        return MMC_INVALID_PARAM;
-    }
+    MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
+    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0U, "invalid param, key_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(exist_results != nullptr, "invalid param, exist_results is null", MMC_INVALID_PARAM);
 
     std::vector<std::string> keys_vector(keys, keys + keys_count);
     std::vector<int32_t> exist_results_vector;
-
-    bool result = false;
-    MMC_RETURN_ERROR(gClientHandler->BatchIsExist(keys_vector, exist_results_vector, result, flags),
+    MMC_RETURN_ERROR(gClientHandler->BatchIsExist(keys_vector, exist_results_vector, flags),
                      gClientHandler->Name() << " batch_is_exist failed!");
-
+    MMC_VALIDATE_RETURN(keys_count == exist_results_vector.size(),
+                        "invalid results' size, size is not equals to keys_count (" << keys_count << ").", MMC_ERROR);
     for (size_t i = 0; i < keys_count; ++i) {
         exist_results[i] = exist_results_vector[i];
     }
-    if (!result) {
-        return MMC_OBJECT_NOT_EXISTS;  // not found
-    }
-    return MMC_OK;
-}
-
-MMC_API int32_t mmcc_batch_remove(const char **keys, uint32_t keys_count, int32_t *remove_results, uint32_t flags)
-{
-    MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0, "invalid param, keys_count is 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(remove_results != nullptr, "invalid param, remove_results is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
-
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
-    std::vector<Result> remove_results_vector;
-
-    MMC_RETURN_ERROR(gClientHandler->BatchRemove(keys_vector, remove_results_vector, flags),
-                     gClientHandler->Name() << " batch_remove failed!");
-
-    if (remove_results_vector.size() != keys_count) {
-        MMC_LOG_ERROR("Batch remove error!");
-        return MMC_ERROR;
-    }
-
-    for (size_t i = 0; i < keys_count; ++i) {
-        remove_results[i] = static_cast<int32_t>(remove_results_vector[i]);
-    }
-
     return MMC_OK;
 }
 

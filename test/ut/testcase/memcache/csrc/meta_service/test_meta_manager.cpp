@@ -201,7 +201,7 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl);
     metaMng->Mount(loc, locInfo);
 
-    uint16_t numKeys = 20U;
+    uint16_t numKeys = 5U;
     std::vector<std::string> keys;
     std::vector<MmcMemObjMetaPtr> memMetaObjs;
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
@@ -225,25 +225,21 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
             keys.push_back(key);
         }
     };
-    GetKeys(0U, 20U, allExistKeys);
-    GetKeys(10U, 30U, partExistKeys);
-    GetKeys(20U, 40U, allNotExistKeys);
+    GetKeys(0U, 5U, allExistKeys);
+    GetKeys(2U, 7U, partExistKeys);
+    GetKeys(5U, 10U, allNotExistKeys);
 
-    auto CheckReturn = [&metaMng](const std::vector<std::string> &keys, const Result targetResult,
-                                  const uint16_t mmcOkCnt) {
-        uint16_t mmcResultOkCnt = 0;
+    auto CheckReturn = [&metaMng](const std::vector<std::string> &keys, const std::vector<Result> &targetResults) {
         std::vector<Result> results;
-        ASSERT_TRUE(metaMng->BatchExistKey(keys, results) == targetResult);
-        for (const Result &result : results) {
-            if (result == MMC_OK) {
-                ++mmcResultOkCnt;
-            }
+        ASSERT_TRUE(metaMng->BatchExistKey(keys, results) == MMC_OK);
+        ASSERT_TRUE(results.size() == targetResults.size());
+        for (size_t i = 0; i < results.size(); ++i) {
+            ASSERT_TRUE(targetResults[i] == results[i]);
         }
-        ASSERT_TRUE(mmcResultOkCnt == mmcOkCnt);
     };
-    CheckReturn(allExistKeys, MMC_OK, 20U);
-    CheckReturn(partExistKeys, MMC_OK, 10U);
-    CheckReturn(allNotExistKeys, MMC_UNMATCHED_KEY, 0U);
+    CheckReturn(allExistKeys, std::vector<Result>(5, MMC_OK));
+    CheckReturn(partExistKeys, {MMC_OK, MMC_OK, MMC_OK, MMC_UNMATCHED_KEY, MMC_UNMATCHED_KEY});
+    CheckReturn(allNotExistKeys, std::vector<Result>(5, MMC_UNMATCHED_KEY));
 }
 
 TEST_F(TestMmcMetaManager, Remove)
@@ -302,6 +298,7 @@ TEST_F(TestMmcMetaManager, BatchRemove)
         ASSERT_TRUE(result == MMC_OK);
     }
 
+    results.clear();
     std::vector<std::string> nonExistentKeys = {"nonexistentKey1", "nonexistentKey2"};
     ret = metaMng->BatchRemove(nonExistentKeys, results);
     ASSERT_TRUE(ret == MMC_OK);
@@ -309,6 +306,7 @@ TEST_F(TestMmcMetaManager, BatchRemove)
         ASSERT_TRUE(result == MMC_UNMATCHED_KEY);
     }
 
+    results.clear();
     ret = metaMng->Alloc("leaseNotExpiredKey", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);
     std::vector<std::string> leaseNotExpiredKeys = {"leaseNotExpiredKey"};

@@ -89,6 +89,17 @@ mmc_location_t mmcc_get_location(const char *key, uint32_t flags);
 int32_t mmcc_remove(const char *key, uint32_t flags);
 
 /**
+ * @brief Remove multiple keys from the BM
+ *
+ * @param keys             [in] List of keys to be removed from the BM
+ * @param keys_count       [in] Count of keys
+ * @param remove_results   [out] Results of each removal operation
+ * @param flags            [in] Flags for the operation
+ * @return 0 if successfully, positive value if error happens
+ */
+int32_t mmcc_batch_remove(const char **keys, uint32_t keys_count, int32_t *remove_results, uint32_t flags);
+
+/**
  * @brief Wait for async operation to object
  *
  * @param waitHandle       [in] handle created by data operation, i.e. mobsc_put, mobsc_get, mobsc_remove
@@ -140,18 +151,6 @@ int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc_buffer 
  * @return 0 if successful
  */
 int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffer *bufs, uint32_t flags);
-
-/**
- * @brief Remove multiple data objects from Distributed Memory Cache
- * This data operation supports both sync and async
- *
- * @param keys           [in] Array of keys for the data objects to be removed
- * @param keys_count     [in] Number of keys in the array
- * @param remove_results [out] Array to store the removal results
- * @param flags          [in] Optional flags, reserved
- * @return 0 if successful
- */
-int32_t mmcc_batch_remove(const char **keys, uint32_t keys_count, int32_t *remove_results, uint32_t flags);
 
 #ifdef __cplusplus
 }

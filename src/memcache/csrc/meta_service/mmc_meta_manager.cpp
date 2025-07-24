@@ -39,15 +39,16 @@ Result MmcMetaManager::ExistKey(const std::string &key)
 
 Result MmcMetaManager::BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results)
 {
-    Result ret = MMC_UNMATCHED_KEY;
     results.reserve(keys.size());
     for (size_t i = 0; i < keys.size(); ++i) {
         results.emplace_back(ExistKey(keys[i]));
-        if (results.back() == MMC_OK) {
-            ret = MMC_OK;
+        if (results.back() != MMC_OK && results.back() != MMC_UNMATCHED_KEY) {
+            MMC_LOG_ERROR("BatchExistKey get unexpected result: " << results.back()
+                          << ", should be " << MMC_OK << " or " << MMC_UNMATCHED_KEY);
+            return results.back();
         }
     }
-    return ret;
+    return MMC_OK;
 }
 
 Result MmcMetaManager::BatchGet(const std::vector<std::string> &keys, std::vector<MmcMemObjMetaPtr> &objMetas,
@@ -163,19 +164,12 @@ Result MmcMetaManager::Remove(const std::string &key)
     return MMC_OK;
 }
 
-Result MmcMetaManager::BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &remove_results)
+Result MmcMetaManager::BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &results)
 {
-    remove_results.resize(keys.size());
-
-    for (size_t i = 0; i < keys.size(); ++i) {
-        const std::string &key = keys[i];
-        Result ret = Remove(key);
-        remove_results[i] = ret;
-        if (ret != MMC_OK && ret != MMC_UNMATCHED_KEY && ret != MMC_LEASE_NOT_EXPIRED) {
-            MMC_LOG_ERROR("Failed to remove key: " << key);
-        }
+    results.reserve(keys.size());
+    for (const std::string &key : keys) {
+        results.emplace_back(Remove(key));
     }
-
     return MMC_OK;
 }
 

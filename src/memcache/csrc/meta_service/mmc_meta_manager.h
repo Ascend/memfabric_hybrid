@@ -56,7 +56,7 @@ public:
     Result BatchGet(const std::vector<std::string> &keys, std::vector<MmcMemObjMetaPtr> &objMetas,
                     std::vector<Result> &getResults);
     /**
-     * @brief Alloc the global memeory space and create the meta object
+     * @brief Alloc the global memory space and create the meta object
      * @param key          [in] key of the meta object
      * @param metaInfo     [out] the meta object created
      */
@@ -74,6 +74,13 @@ public:
      * @param key          [in] key of the to-be-removed meta object
      */
     Result Remove(const std::string &key);
+
+    /**
+     * @brief Batch remove multiple meta objects
+     * @param keys          [in] List of keys of the to-be-removed meta objects
+     * @param results       [out] Results of each removal operation
+     */
+    Result BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &results);
 
     /**
      * @brief unmount new mem pool contributor
@@ -100,13 +107,6 @@ public:
      * @param results       [out] the accessible state corresponding to each key
      */
     Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results);
-
-    /**
-     * @brief Batch remove multiple meta objects
-     * @param keys          [in] List of keys of the to-be-removed meta objects
-     * @param remove_results [out] Results of each removal operation
-     */
-    Result BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &remove_results);
 
     /**
      * @brief Get blob query info with key

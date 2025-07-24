@@ -31,9 +31,15 @@ public:
 
     Result BatchGet(const BatchGetRequest &req, BatchAllocResponse &resp) override;
 
-    Result Remove(const RemoveRequest &req, Response &resp) override;
+    Result Remove(const RemoveRequest &req, Response &resp) override
+    {
+        return resp.ret_ = metaMangerPtr_->Remove(req.key_);
+    }
 
-    Result BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp) override;
+    Result BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp) override
+    {
+        return metaMangerPtr_->BatchRemove(req.keys_, resp.results_);
+    }
 
     Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo) override
     {
@@ -45,14 +51,14 @@ public:
         return metaMangerPtr_->Unmount(loc);
     }
 
-    Result ExistKey(const IsExistRequest &req, Response &resp) override
+    Result ExistKey(const IsExistRequest &req, IsExistResponse &resp) override
     {
         return resp.ret_ = metaMangerPtr_->ExistKey(req.key_);
     }
 
     Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) override
     {
-        return resp.ret_ = metaMangerPtr_->BatchExistKey(req.keys_, resp.results_);
+        return metaMangerPtr_->BatchExistKey(req.keys_, resp.results_);
     }
 
     Result Query(const QueryRequest &req, QueryResponse &resp) override

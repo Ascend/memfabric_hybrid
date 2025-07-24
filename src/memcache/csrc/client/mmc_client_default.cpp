@@ -49,6 +49,8 @@ void MmcClientDefault::Stop()
 
     if (metaNetClient_ != nullptr) {
         metaNetClient_->Stop();
+        metaNetClient_ = nullptr;
+        MMC_LOG_INFO("MetaNetClient stopped.");
     }
     started_ = false;
 }
@@ -65,6 +67,10 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
         MMC_LOG_ERROR("Invalid arguments");
         return MMC_ERROR;
     }
+    if (bmProxy_ == nullptr) {
+        MMC_LOG_ERROR("BmProxy is null");
+        return MMC_ERROR;
+    }
 
     uint64_t blobSize = buf->dimType == 0 ? buf->oneDim.len : buf->twoDim.width * buf->twoDim.layerNum;
     uint32_t operateId = operateId_++;
@@ -72,11 +78,6 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
     AllocResponse response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " alloc " << key << " failed");
-
-    if (bmProxy_ == nullptr) {
-        MMC_LOG_ERROR("BmProxy is null");
-        return MMC_ERROR;
-    }
 
     for (uint8_t i = 0; i < response.numBlobs_; i++) {
         MMC_LOG_INFO("Attempting to put to blob " << i << " at address " << response.blobs_[i].gva_);
@@ -228,7 +229,7 @@ Result MmcClientDefault::Remove(const char *key, uint32_t flags) const
     Response response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " remove " << key << " failed");
-    return 0;
+    return response.ret_;
 }
 
 Result MmcClientDefault::BatchRemove(const std::vector<std::string>& keys,
@@ -251,7 +252,7 @@ Result MmcClientDefault::BatchRemove(const std::vector<std::string>& keys,
     return MMC_OK;
 }
 
-Result MmcClientDefault::IsExist(const std::string &key, bool &result, uint32_t flags) const
+Result MmcClientDefault::IsExist(const std::string &key, uint32_t flags) const
 {
     if (key.empty()) {
         MMC_LOG_ERROR("Get empty key!");
@@ -262,11 +263,10 @@ Result MmcClientDefault::IsExist(const std::string &key, bool &result, uint32_t 
     Response response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " IsExist " << key << " failed");
-    result = response.ret_ == MMC_OK;
-    return MMC_OK;
+    return response.ret_;
 }
 
-Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, bool &result, uint32_t flags) const
+Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, uint32_t flags) const
 {
     if (keys.empty()) {
         MMC_LOG_ERROR("Get empty keys!");
@@ -286,7 +286,6 @@ Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std:
     }
 
     exist_results = response.results_;
-    result = response.ret_ == MMC_OK;
     return MMC_OK;
 }
 
@@ -320,8 +319,12 @@ Result MmcClientDefault::BatchQuery(const std::vector<std::string> &keys, std::v
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " BatchIsExist failed");
 
-    if (response.batchQueryInfos_.empty()) {
-        MMC_LOG_WARN("BatchQuery get empty response.");
+    if (response.batchQueryInfos_.size() != keys.size()) {
+        MMC_LOG_ERROR("BatchQuery get a response with mismatched size (" << response.batchQueryInfos_.size()
+                      << "), should get size (" << keys.size() << ").");
+        MemObjQueryInfo info_fill;
+        query_infos.resize(keys.size(), {info_fill.size_, info_fill.prot_, info_fill.numBlobs_, info_fill.valid_});
+        return MMC_ERROR;
     }
 
     for (const auto& info : response.batchQueryInfos_) {

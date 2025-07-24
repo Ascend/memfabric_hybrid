@@ -26,9 +26,9 @@ public:
 
     virtual Result Unmount(const MmcLocation &loc) = 0;
 
-    virtual Result ExistKey(const IsExistRequest &req, Response &resp) = 0;
+    virtual Result ExistKey(const IsExistRequest &req, IsExistResponse &resp) = 0;
 
-    virtual Result BatchRemove(const BatchRemoveRequest &updateReq, BatchRemoveResponse &upddateResp) = 0;
+    virtual Result BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp) = 0;
 
     virtual Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) = 0;
 

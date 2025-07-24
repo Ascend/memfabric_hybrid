@@ -516,6 +516,35 @@ struct IsExistRequest : MsgBase {
     }
 };
 
+struct IsExistResponse : MsgBase {
+    Result ret_ = -1;
+
+    IsExistResponse() : MsgBase{0, ML_IS_EXIST_RESP, 0} {}
+    explicit IsExistResponse(const Result &ret)
+        : MsgBase{0, ML_IS_EXIST_RESP, 0},
+          ret_(ret)
+    {
+    }
+
+    Result Serialize(NetMsgPacker &packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(ret_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(ret_);
+        return MMC_OK;
+    }
+};
+
 struct BatchIsExistRequest : MsgBase {
     std::vector<std::string> keys_;
 
@@ -545,13 +574,11 @@ struct BatchIsExistRequest : MsgBase {
 };
 
 struct BatchIsExistResponse : MsgBase {
-    Result ret_ = -1;
     std::vector<Result> results_;
 
     BatchIsExistResponse() : MsgBase{0, ML_BATCH_IS_EXIST_RESP, 0} {}
-    explicit BatchIsExistResponse(const Result &ret, const std::vector<Result> &results)
+    explicit BatchIsExistResponse(const std::vector<Result> &results)
         : MsgBase{0, ML_BATCH_IS_EXIST_RESP, 0},
-          ret_(ret),
           results_(results)
     {
     }
@@ -561,7 +588,6 @@ struct BatchIsExistResponse : MsgBase {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
-        packer.Serialize(ret_);
         packer.Serialize(results_);
         return MMC_OK;
     }
@@ -571,7 +597,6 @@ struct BatchIsExistResponse : MsgBase {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
-        packer.Deserialize(ret_);
         packer.Deserialize(results_);
         return MMC_OK;
     }

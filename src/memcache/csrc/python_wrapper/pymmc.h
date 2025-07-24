@@ -5,6 +5,7 @@
 #define MMC_PYMMC_H
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <csignal>
 #include <mutex>
 #include <string>
@@ -187,6 +188,14 @@ public:
     std::shared_ptr<SliceBuffer> get_buffer(const std::string &key);
 
     int remove(const std::string &key);
+
+    /**
+     * @brief Remove objects with keys
+     * @param keys Keys of the objects
+     * @return std::vector<int> Remove status for each keys, 1 if success, -1 if error
+     * exist
+     */
+    std::vector<int> removeBatch(const std::vector<std::string> &keys);
 
     long removeAll();
 

@@ -138,7 +138,7 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
 
     AllocRequest reqAlloc;
     reqAlloc.options_ = {SIZE_32K, 1, 0, 0, 0};
-    for (uint16_t i = 0U; i < 10U; ++i) {
+    for (uint16_t i = 0U; i < 5U; ++i) {
         reqAlloc.key_ = "test_" + std::to_string(i);
         AllocResponse respAlloc;
         ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
@@ -152,28 +152,24 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
             keys.push_back(key);
         }
     };
-    GetKeys(0U, 10U, allExistKeys);
-    GetKeys(5U, 15U, partExistKeys);
-    GetKeys(10U, 20U, allNotExistKeys);
+    GetKeys(0U, 5U, allExistKeys);
+    GetKeys(2U, 7U, partExistKeys);
+    GetKeys(5U, 10U, allNotExistKeys);
 
-    auto CheckReturn = [&localServiceDefault](const std::vector<std::string> &keys, const Result targetResult, const uint16_t mmcOkCnt) {
+    auto CheckReturn = [&localServiceDefault](const std::vector<std::string> &keys,
+                                              const std::vector<Result> &targetResults) {
         BatchIsExistRequest reqExist;
         reqExist.keys_ = keys;
         BatchIsExistResponse respExist;
         ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqExist, respExist, 30) == MMC_OK);
-        ASSERT_TRUE(respExist.ret_ == targetResult);  
-        
-        uint16_t mmcResultOkCnt = 0;
-        for (const Result& result : respExist.results_) {
-            if (result == MMC_OK) {
-                ++mmcResultOkCnt;
-            }
+        ASSERT_TRUE(respExist.results_.size() == targetResults.size());
+        for (size_t i = 0; i < targetResults.size(); ++i) {
+            ASSERT_TRUE(targetResults[i] == respExist.results_[i]);
         }
-        ASSERT_TRUE(mmcResultOkCnt == mmcOkCnt);
     };
-    CheckReturn(allExistKeys, MMC_OK, 10U);
-    CheckReturn(partExistKeys, MMC_OK, 5U);
-    CheckReturn(allNotExistKeys, MMC_UNMATCHED_KEY, 0U);
+    CheckReturn(allExistKeys, std::vector<Result>(5, MMC_OK));
+    CheckReturn(partExistKeys, {MMC_OK, MMC_OK, MMC_OK, MMC_UNMATCHED_KEY, MMC_UNMATCHED_KEY});
+    CheckReturn(allNotExistKeys, std::vector<Result>(5, MMC_UNMATCHED_KEY));
     
     localServicePtr->Stop();
     metaServicePtr->Stop();

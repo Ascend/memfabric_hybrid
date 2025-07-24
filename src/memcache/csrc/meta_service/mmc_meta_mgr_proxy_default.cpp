@@ -137,40 +137,5 @@ Result MmcMetaMgrProxyDefault::BatchGet(const BatchGetRequest &req, BatchAllocRe
     return MMC_OK;
 }
 
-Result MmcMetaMgrProxyDefault::Remove(const RemoveRequest &req, Response &resp)
-{
-
-    MmcMemObjMetaPtr objMeta;
-    Result ret = metaMangerPtr_->Remove(req.key_);
-    resp.ret_ = ret;
-    if (ret != MMC_OK) {
-        MMC_LOG_ERROR("Remove failed for key: " << req.key_ << " error: " << ret);
-        return MMC_ERROR;
-    } else {
-        return MMC_OK;
-    }
-}
-
-Result MmcMetaMgrProxyDefault::BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp)
-{
-    std::vector<Result> results;
-    results.reserve(req.keys_.size());
-
-    Result ret = metaMangerPtr_->BatchRemove(req.keys_, results);
-    if (ret != MMC_OK) {
-        MMC_LOG_ERROR("BatchRemove failed");
-        return ret;
-    }
-
-    for (size_t i = 0; i < req.keys_.size(); ++i) {
-        if (results[i] != MMC_OK) {
-            MMC_LOG_ERROR("BatchRemove failed for key: " << req.keys_[i] << " error: " << results[i]);
-        }
-    }
-
-    resp.results_ = results;
-    return MMC_OK;
-}
-
 }
 }
