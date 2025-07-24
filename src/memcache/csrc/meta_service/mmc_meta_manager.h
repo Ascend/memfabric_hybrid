@@ -5,12 +5,11 @@
 #define MEM_FABRIC_MMC_META_MANAGER_H
 
 #include "mmc_global_allocator.h"
-#include "mmc_lookup_map.h"
 #include "mmc_mem_obj_meta.h"
+#include "mmc_meta_container.h"
 #include "mmc_meta_service.h"
 #include "mmc_msg_packer.h"
 #include <functional>
-#include <list>
 #include <thread>
 
 namespace ock {
@@ -26,6 +25,8 @@ public:
     {
         globalAllocator_ = MmcMakeRef<MmcGlobalAllocator>();
         MMC_ASSERT(globalAllocator_ != nullptr);
+        metaContainer_ = MmcMetaContainer<std::string, MmcMemObjMetaPtr>::Create();
+        MMC_ASSERT(metaContainer_ != nullptr);
         removeThread_ = std::thread(std::bind(&MmcMetaManager::AsyncRemoveThreadFunc, this));
     }
 
@@ -108,10 +109,10 @@ public:
     Result BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &remove_results);
 
     /**
-    * @brief Get blob query info with key
-    * @param key            [in] key of the meta object
-    * @param queryInfo      [out] the query info of the meta object
-    */
+     * @brief Get blob query info with key
+     * @param key            [in] key of the meta object
+     * @param queryInfo      [out] the query info of the meta object
+     */
     Result Query(const std::string &key, MemObjQueryInfo &queryInfo);
 
     inline uint64_t Ttl()
@@ -120,12 +121,6 @@ public:
     }
 
 private:
-    // LRU
-    struct MemObjMetaLruItem {
-        MmcMemObjMetaPtr memObjMetaPtr_;
-        std::list<std::string>::iterator lruIter_;
-    };
-
     /**
      * @brief force remove the blobs and object meta(if all its blobs are removed)
      * @param key          [in] key of the to-be-removed meta object
@@ -135,37 +130,15 @@ private:
 
     void AsyncRemoveThreadFunc();
 
-    void UpdateLRU(const std::string &key, MemObjMetaLruItem &lruItem)
-    {
-        lruList_.erase(lruItem.lruIter_);
-        lruList_.push_front(key);
-        lruItem.lruIter_ = lruList_.begin();
-    }
-
-    void DoEviction()
-    {
-        uint32_t numEvictObjs = lruList_.size() * EVICT_THRESHOLD_LOW / 100;
-        for (uint32_t i = 0; i < numEvictObjs; ++i) {
-            if (!lruList_.empty()) {
-                std::string key = lruList_.back();
-                Remove(key);
-            } else {
-                break;
-            }
-        }
-    }
-
-    MmcLookupMap<std::string, MemObjMetaLruItem, NUM_BUCKETS> objMetaLookupMap_;
-    std::list<std::string> lruList_;
+    MmcRef<MmcMetaContainer<std::string, MmcMemObjMetaPtr>> metaContainer_;
     MmcGlobalAllocatorPtr globalAllocator_;
     std::thread removeThread_;
     std::mutex removeThreadLock_;
     std::condition_variable removeThreadCv_;
     std::mutex removeListLock_;
-    std::list<MmcMemObjMetaPtr> removeList_;
+    // std::list<MmcMemObjMetaPtr> removeList_;
     bool removePredicate_ = false;
     uint64_t defaultTtlMs_; /* defult ttl in miliseconds*/
-    mutable std::mutex mutex_;
 };
 using MmcMetaManagerPtr = MmcRef<MmcMetaManager>;
 }  // namespace mmc

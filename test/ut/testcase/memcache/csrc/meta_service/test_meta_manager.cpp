@@ -148,27 +148,28 @@ TEST_F(TestMmcMetaManager, LRU)
     std::vector<MmcMemObjMetaPtr> memMetaObjs;
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     Result ret;
+    Result writeRet;
 
     for (int i = 0; i < numKeys; ++i) {
         MmcMemObjMetaPtr objMeta;
         string key = "testKey" + std::to_string(i);
         ret = metaMng->Alloc(key, allocReq, 1, objMeta);
-        std::cout << "Alloc Result:" << ret << std::endl;
+        ASSERT_TRUE(ret == MMC_OK);
         memMetaObjs.push_back(objMeta);
         keys.push_back(key);
+        writeRet = metaMng->UpdateState(key, loc, 0, 1, MMC_WRITE_OK);
+        ASSERT_TRUE(writeRet == MMC_OK);
     }
-    for (int i = 0; i < numKeys; ++i) {
-        std::cout << "ExistKey:" << metaMng->ExistKey(keys[i]) << std::endl;
-    }
-    ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
-    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 2]) == MMC_OK);
+
+    ASSERT_TRUE(metaMng->ExistKey(keys[1]) == MMC_UNMATCHED_KEY);
+    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_OK);
     ASSERT_TRUE(memMetaObjs[numKeys - 2]->Size() == SIZE_32K);
 
     for (int i = 0; i < numKeys; ++i) {
         ret = metaMng->Remove(keys[i]);
     }
-    ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
-    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 2]) == MMC_UNMATCHED_KEY);
+    ASSERT_TRUE(metaMng->ExistKey(keys[1]) == MMC_UNMATCHED_KEY);
+    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_UNMATCHED_KEY);
 }
 
 TEST_F(TestMmcMetaManager, AllocAndExistKey)
@@ -183,6 +184,7 @@ TEST_F(TestMmcMetaManager, AllocAndExistKey)
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta;
     Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
+    metaMng->UpdateState("test_string", loc, 0, 1, MMC_WRITE_OK);
     ASSERT_TRUE(ret == MMC_OK);
     ASSERT_TRUE(objMeta->NumBlobs() == 1);
     ASSERT_TRUE(objMeta->Size() == SIZE_32K);
@@ -210,6 +212,7 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
         ret = metaMng->Alloc(key, allocReq, 1, objMeta);
         memMetaObjs.push_back(objMeta);
         keys.push_back(key);
+        metaMng->UpdateState(key, loc, 0, 1, MMC_WRITE_OK);
     }
     ASSERT_TRUE(ret == MMC_OK);
     ASSERT_TRUE(memMetaObjs[0]->NumBlobs() == 1);
@@ -335,6 +338,7 @@ TEST_F(TestMmcMetaManager, BatchGet)
         ret = metaMng->Alloc(key, allocReq, 1, objMeta);
         memMetaObjs.push_back(objMeta);
         keys.push_back(key);
+        metaMng->UpdateState(key, loc, 0, 1, MMC_WRITE_OK);
     }
     ASSERT_TRUE(ret == MMC_OK);
     ASSERT_TRUE(memMetaObjs[0]->NumBlobs() == 1);
@@ -358,7 +362,7 @@ TEST_F(TestMmcMetaManager, BatchGet)
     ret = metaMng->BatchGet(partialKeys, partialObjMetas, partialGetResults);
 
     ASSERT_TRUE(partialGetResults[0] == MMC_OK) << "Partial key " << partialKeys[0] << " failed";
-    ASSERT_TRUE(partialGetResults[1] == MMC_ERROR) << "Partial key " << partialKeys[1] << " not unmatched";
+    ASSERT_TRUE(partialGetResults[1] == MMC_UNMATCHED_KEY) << "Partial key " << partialKeys[1] << " not unmatched";
 
     std::vector<std::string> nonExistentKeys = {"nonexistentKey1", "nonexistentKey2"};
     std::vector<MmcMemObjMetaPtr> nonExistentObjMetas;
@@ -366,7 +370,7 @@ TEST_F(TestMmcMetaManager, BatchGet)
     ret = metaMng->BatchGet(nonExistentKeys, nonExistentObjMetas, nonExistentGetResults);
 
     for (size_t i = 0; i < nonExistentKeys.size(); ++i) {
-        ASSERT_TRUE(nonExistentGetResults[i] == MMC_ERROR)
+        ASSERT_TRUE(nonExistentGetResults[i] == MMC_UNMATCHED_KEY)
             << "Nonexistent key " << nonExistentKeys[i] << " not unmatched ";
     }
 

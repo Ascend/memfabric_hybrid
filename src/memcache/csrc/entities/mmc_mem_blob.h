@@ -18,7 +18,9 @@ struct MemObjQueryInfo {
     bool valid_;
     MemObjQueryInfo() : size_(0), prot_(0), numBlobs_(0), valid_(false) {}
     MemObjQueryInfo(const uint32_t size, const uint16_t prot, const uint8_t numBlobs, const bool valid)
-        : size_(size), prot_(prot), numBlobs_(numBlobs), valid_(valid) {}
+        : size_(size), prot_(prot), numBlobs_(numBlobs), valid_(valid)
+    {
+    }
 };
 
 class MmcMemBlob;
@@ -29,9 +31,7 @@ struct MmcBlobFilter : public MmcReferable {
     MediaType mediaType_{MEDIA_NONE};
     BlobState state_{NONE};
     MmcBlobFilter(const uint32_t &rank, const MediaType &mediaType, const BlobState &state)
-        : rank_(rank),
-          mediaType_(mediaType),
-          state_(state){};
+        : rank_(rank), mediaType_(mediaType), state_(state) {};
 };
 using MmcBlobFilterPtr = MmcRef<MmcBlobFilter>;
 
@@ -46,12 +46,7 @@ struct MmcMemBlobDesc {
     MmcMemBlobDesc() = default;
     MmcMemBlobDesc(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const uint16_t &mediaType,
                    const BlobState &state, const uint16_t &prot)
-        : rank_(rank),
-          size_(size),
-          gva_(gva),
-          mediaType_(mediaType),
-          prot_(prot),
-          state_(state)
+        : rank_(rank), size_(size), gva_(gva), mediaType_(mediaType), prot_(prot), state_(state)
     {
     }
 };
@@ -61,12 +56,7 @@ public:
     MmcMemBlob() = delete;
     MmcMemBlob(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const MediaType &mediaType,
                const BlobState &state = NONE)
-        : rank_(rank),
-          gva_(gva),
-          size_(size),
-          mediaType_(mediaType),
-          state_(state),
-          nextBlob_(nullptr)
+        : rank_(rank), gva_(gva), size_(size), mediaType_(mediaType), state_(state), nextBlob_(nullptr)
     {
     }
     ~MmcMemBlob() override = default;
@@ -140,7 +130,7 @@ private:
     const uint32_t rank_;              /* rank id of the blob located */
     const uint64_t gva_;               /* global virtual address */
     const uint32_t size_;              /* data size of the blob */
-    const enum MediaType mediaType_;        /* media type where blob located */
+    const enum MediaType mediaType_;   /* media type where blob located */
     BlobState state_{BlobState::NONE}; /* state of the blob */
     uint16_t prot_{0};                 /* prot, i.e. access */
     MmcMetaLeaseManager metaLeaseManager_;
@@ -163,7 +153,9 @@ inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobA
 
     const auto retIter = curStateIter->second.find(ret);
     if (retIter == curStateIter->second.end()) {
-        MMC_LOG_WARN("Cannot update state! Retcode dismatch!");
+        MMC_LOG_WARN("Cannot update state! Current state is " << static_cast<int>(state_) << ", ret("
+                                                              << static_cast<int>(ret)
+                                                              << ") dismatch! RetCode: " << MMC_UNMATCHED_RET);
         return MMC_UNMATCHED_RET;
     }
 
@@ -229,7 +221,7 @@ inline bool MmcMemBlob::MatchFilter(const MmcBlobFilterPtr &filter) const
         return true;
     }
 
-    return (rank_ == filter->rank_) && (filter->mediaType_ == MEDIA_NONE|| mediaType_ == filter->mediaType_) &&
+    return (filter->rank_ == UINT32_MAX || rank_ == filter->rank_) && (filter->mediaType_ == MEDIA_NONE || mediaType_ == filter->mediaType_) &&
            (filter->state_ == NONE || state_ == filter->state_);
 }
 
