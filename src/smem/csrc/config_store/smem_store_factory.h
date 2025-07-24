@@ -5,14 +5,17 @@
 #ifndef SMEM_SMEM_STORE_FACTORY_H
 #define SMEM_SMEM_STORE_FACTORY_H
 
+#include <set>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <functional>
 #include "smem_config_store.h"
 #include "smem_security.h"
 
 namespace ock {
 namespace smem {
+
 class StoreFactory {
 public:
     /**
@@ -44,12 +47,17 @@ public:
 
     static int GetFailedReason() noexcept;
 
-    static void SetTlsOption(const smem_tls_option *opt) noexcept;
+    static void RegisterDecryptHandler(const smem_decrypt_handler &h) noexcept;
+
+private:
+    static Result InitTlsOption() noexcept;
+    static std::function<int(const std::string&, char*, int&)> ConvertFunc(int (*rawFunc)(const char*, int*, char*, int*)) noexcept;
 
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
-    static smem_tls_option tlsOption_;
+    static acclinkTlsOption tlsOption_;
+    static bool isTlsInitialized_;
 };
 } // namespace smem
 } // namespace ock

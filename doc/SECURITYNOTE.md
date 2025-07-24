@@ -18,7 +18,30 @@
 |特殊场景|无|
 
 说明：
-支持通过接口`smem_set_ssl_option`配置TLS秘钥证书等，进行tls安全连接。系统启动后，建议删除本地秘钥证书等信息敏感文件。
+支持通过环境变量 `MEMFABRIC_HYBRID_TLS_ENABLE`和`MEMFABRIC_HYBRID_TLS_INFO` 配置TLS秘钥证书等，进行tls安全连接。系统启动后，建议删除本地秘钥证书等信息敏感文件。
+用户通过json字符串形式从环境变量 MEMFABRIC_HYBRID_TLS_INFO 传入tlsOption相关参数。
+例如，在终端输入：
+```
+配置关闭tls:
+export MEMFABRIC_HYBRID_TLS_ENABLE=0
+配置打开tls:
+export MEMFABRIC_HYBRID_TLS_ENABLE=1(或者不设置MEMFABRIC_HYBRID_TLS_ENABLE环境变量)
+export MEMFABRIC_HYBRID_TLS_INFO=$'\
+{
+    "tlsCaPath": "/etc/ssl/certs/",
+    "tlsCert": "/etc/ssl/certs/server.crt",
+    "tlsPk": "/etc/ssl/private/server.key",
+    "tlsPkPwd": "/etc/ssl/private/key_pwd.txt",
+    "tlsCrlPath": "/etc/ssl/crl/",
+    "tlsCrlFile": [ "server_crl.pem" ],
+    "tlsCaFile": [ "ca.pem" ]，
+    "packagePath": "/etc/lib"
+}'
+```
+| 环境变量 | 说明                                         |
+|------|--------------------------------------------|
+| MEMFABRIC_HYBRID_TLS_ENABLE  | 只支持配置0和1。其中0代表关闭tls，1代表打开tls。不配置的时候默认打开tls |
+| MEMFABRIC_HYBRID_TLS_INFO  | tls相关参数配置，json格式字符串。当tls打开时，必须配置MEMFABRIC_HYBRID_TLS_INFO           |
 
 ### 运行用户建议
 

@@ -12,8 +12,24 @@
 #include <functional>
 
 #include "acc_links/net/acc_def.h"
+#include "acc_links/net/acc_tcp_server.h"
 #include "smem_security.h"
 #include "smem_common_includes.h"
+
+struct acclinkTlsOption {
+    bool enableTls = true;
+    std::string tlsTopPath = "";                  /* root path of certifications */
+    std::string tlsCert;                          /* certification of server */
+    std::string tlsCrlPath;                       /* optional, crl file path */
+    std::string tlsCaPath;                        /* ca file path */
+    std::set<std::string> tlsCaFile;              /* paths of ca */
+    std::set<std::string> tlsCrlFile;             /* path of crl file */
+    std::string tlsPk;                            /* private key */
+    std::string tlsPkPwd;                         /* private key加密文件->可选传入 */
+    ock::acc::AccDecryptHandler decryptHandler_;  /* private key decryptor */
+    std::string packagePath;                      /* lib库路径 */
+};
+
 
 namespace ock {
 namespace smem {
@@ -262,7 +278,7 @@ inline const char *ConfigStore::ErrStr(int16_t errCode)
     }
 }
 
-inline ock::acc::AccTlsOption ConvertTlsOption(const smem_tls_option &opt)
+inline ock::acc::AccTlsOption ConvertTlsOption(const acclinkTlsOption &opt)
 {
     ock::acc::AccTlsOption tlsOption;
     tlsOption.enableTls = opt.enableTls;
@@ -274,9 +290,6 @@ inline ock::acc::AccTlsOption ConvertTlsOption(const smem_tls_option &opt)
     tlsOption.tlsCrlFile = opt.tlsCrlFile;
     tlsOption.tlsPk = opt.tlsPk;
     tlsOption.tlsPkPwd = opt.tlsPkPwd;
-    tlsOption.kmcKsfMaster = opt.kmcKsfMaster;
-    tlsOption.kmcKsfStandby = opt.kmcKsfStandby;
-    tlsOption.packagePath = opt.packagePath;
     return tlsOption;
 }
 

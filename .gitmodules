@@ -10,3 +10,7 @@
 	path = test/3rdparty/mockcpp
 	url = https://github.com/sinojelly/mockcpp.git
 	branch = tags/v2.7
+[submodule "3rdparty/nlohmann"]
+	path = 3rdparty/nlohmann
+	url = https://gitee.com/mirrors/JSON-for-Modern-CPP.git
+	tag = v3.12.0

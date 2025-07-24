@@ -14,7 +14,6 @@
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
-#include "smem_security.h"
 #include "ut_barrier_util.h"
 #include "hybm_stub.h"
 #include "smem_shm_entry_manager.h"
@@ -104,6 +103,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
     uint32_t rankSize = 2;
     std::thread ts[rankSize];
     auto func = [](uint32_t rank, uint32_t rankCount) {
+        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
         void *gva;
         int32_t ret = smem_init(0);
         if (ret != 0) {
@@ -183,6 +183,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
     smem_set_log_level(0);
     uint32_t rankSize = 2;
     auto func = [](uint32_t rank, uint32_t rankCount) {
+        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
         int32_t ret = smem_init(0);
         if (ret != 0) {
             exit(1);
@@ -1433,13 +1434,4 @@ TEST_F(TestSmem, smem_bm_copy_2d_failed_manager_error)
 
     smem_bm_uninit(0);
     smem_uninit();
-}
-
-TEST_F(TestSmem, smem_set_ssl_option_success)
-{
-    smem_tls_option tlsOption;
-    tlsOption.enableTls = false;
-    tlsOption.tlsTopPath = "/tmp";
-    auto result = smem_set_ssl_option(&tlsOption);
-    EXPECT_EQ(result, 0);
 }

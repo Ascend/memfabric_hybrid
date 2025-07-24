@@ -99,12 +99,12 @@ SMEM_API const char *smem_get_and_clear_last_err_msg()
     return ock::smem::SmLastError::GetAndClear(true);
 }
 
-SMEM_API int32_t smem_set_ssl_option(const smem_tls_option *tlsOption)
+SMEM_API int32_t smem_register_decrypt_handler(const smem_decrypt_handler h)
 {
-    using namespace ock::smem;
-
-    SM_PARAM_VALIDATE(tlsOption == nullptr, "set tlsOption failed, invalid param which is NULL", SM_INVALID_PARAM);
-    ock::smem::StoreFactory::SetTlsOption(tlsOption);
-
-    return SM_OK;
+    if (h == nullptr) {
+        SM_LOG_ERROR("decrypt handler is nullptr");
+        return ock::smem::SM_ERROR;
+    }
+    ock::smem::StoreFactory::RegisterDecryptHandler(h);
+    return ock::smem::SM_OK;
 }

@@ -122,7 +122,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::AccClientStart(const smem_tls_option &tlsOption) noexcept
+Result TcpConfigStore::AccClientStart(const acclinkTlsOption &tlsOption) noexcept
 {
     ock::acc::AccTcpServerOptions options;
     options.linkSendQueueSize = ock::acc::UNO_48;
@@ -130,6 +130,9 @@ Result TcpConfigStore::AccClientStart(const smem_tls_option &tlsOption) noexcept
     ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
     Result result;
     if (tlsOpt.enableTls) {
+        if (!tlsOpt.tlsPkPwd.empty()) {
+            accClient_->RegisterDecryptHandler(tlsOption.decryptHandler_);
+        }
         result = accClient_->Start(options, tlsOpt);
     } else {
         result = accClient_->Start(options);
@@ -137,7 +140,7 @@ Result TcpConfigStore::AccClientStart(const smem_tls_option &tlsOption) noexcept
     return result;
 }
 
-Result TcpConfigStore::Startup(const smem_tls_option &tlsOption, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const acclinkTlsOption &tlsOption, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;

@@ -55,16 +55,24 @@
     |-|-|
     |返回值|错误信息|
 
-1. 设置ssl参数，在打开TLS时设置
+1. 设置私钥解密的函数，仅在开启Tls，并且使用的是加密私钥时（在配置MEMFABRIC_HYBRID_TLS_INFO环境变量时，有传入tlsPkPwd参数），需要调用该接口进行设置。
     ```c
-    int32_t smem_set_ssl_option(const smem_tls_option *tlsOption);
+    int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
     ```
-
     |参数/返回值|含义|
     |-|-|
-    |tlsOption|tls相关参数|
+    |h|密钥解密函数|
     |返回值|错误信息|
-
+    ```c
+    typedef int (*smem_decrypt_handler)(const char *cipherText, int *cipherTextLen, char *plainText, int *plainTextLen);
+    ```
+    |参数/返回值|含义|
+    |-|-|
+    |cipherText|密文（加密的密钥）|
+    |cipherTextLen|密文的长度|
+    |plainText|解密后的密钥（出参）|
+    |plainTextLen|解密后的密钥长度|
+    |返回值|错误信息|
 
 ##### BM接口列表
 

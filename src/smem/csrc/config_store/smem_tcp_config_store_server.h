@@ -67,7 +67,7 @@ public:
     AccStoreServer(std::string ip, uint16_t port) noexcept;
     ~AccStoreServer() override = default;
 
-    Result Startup(const smem_tls_option &tlsOption) noexcept;
+    Result Startup(const acclinkTlsOption &tlsOption) noexcept;
     void Shutdown() noexcept;
 
 private:
@@ -90,6 +90,7 @@ private:
     void ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
                           const std::vector<uint8_t> &message) noexcept;
     void TimerThreadTask() noexcept;
+    SMErrorCode AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer, const acclinkTlsOption &tlsOption) noexcept;
 
 private:
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;

@@ -20,7 +20,40 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port) noexcept
 {
 }
 
-Result AccStoreServer::Startup(const smem_tls_option &tlsOption) noexcept
+SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer, const acclinkTlsOption &tlsOption) noexcept
+{
+    ock::acc::AccTcpServerOptions options;
+    options.listenIp = listenIp_;
+    options.listenPort = listenPort_;
+    options.enableListener = true;
+    options.linkSendQueueSize = ock::acc::UNO_48;
+
+    ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
+    Result result;
+    if (tlsOpt.enableTls) {
+        if (accTcpServer->LoadDynamicLib(tlsOption.packagePath) != 0) {
+            SM_LOG_ERROR("Load openssl failed");
+            return SM_ERROR;
+        }
+        if (!tlsOpt.tlsPkPwd.empty()) {
+            accTcpServer->RegisterDecryptHandler(tlsOption.decryptHandler_);
+        }
+        result = accTcpServer->Start(options, tlsOpt);
+    } else {
+        result = accTcpServer->Start(options);
+    }
+    if (result == ock::acc::ACC_LINK_ADDRESS_IN_USE) {
+        SM_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
+        return SM_RESOURCE_IN_USE;
+    }
+    if (result != ock::acc::ACC_OK) {
+        SM_LOG_ERROR("startup acc tcp server on port: " << listenPort_ << " failed: " << result);
+        return SM_ERROR;
+    }
+    return SM_OK;
+}
+
+Result AccStoreServer::Startup(const acclinkTlsOption &tlsOption) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {
@@ -43,26 +76,9 @@ Result AccStoreServer::Startup(const smem_tls_option &tlsOption) noexcept
     tmpAccTcpServer->RegisterLinkBrokenHandler(
         [this](const ock::acc::AccTcpLinkComplexPtr &link) { return LinkBrokenHandler(link); });
 
-    ock::acc::AccTcpServerOptions options;
-    options.listenIp = listenIp_;
-    options.listenPort = listenPort_;
-    options.enableListener = true;
-    options.linkSendQueueSize = ock::acc::UNO_48;
-
-    ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
-    Result result;
-    if (tlsOpt.enableTls) {
-        result = tmpAccTcpServer->Start(options, tlsOpt);
-    } else {
-        result = tmpAccTcpServer->Start(options);
-    }
-    if (result == ock::acc::ACC_LINK_ADDRESS_IN_USE) {
-        SM_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
-        return SM_RESOURCE_IN_USE;
-    }
+    SMErrorCode result = AccServerStart(tmpAccTcpServer, tlsOption);
     if (result != SM_OK) {
-        SM_LOG_ERROR("startup acc tcp server on port: " << listenPort_ << " failed: " << result);
-        return SM_ERROR;
+        return result;
     }
 
     accTcpServer_ = tmpAccTcpServer;

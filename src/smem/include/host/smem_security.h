@@ -5,31 +5,32 @@
 #ifndef __MEMFABRIC_SMEM_SECURITY_H__
 #define __MEMFABRIC_SMEM_SECURITY_H__
 
-#include <set>
 #include <string>
 
-
-typedef struct {
-    bool enableTls = false;
-    std::string tlsTopPath;           /* root path of certifications */
-    std::string tlsCert;              /* certification of server */
-    std::string tlsCrlPath;           /* optional, crl file path */
-    std::string tlsCaPath;            /* ca file path */
-    std::set<std::string> tlsCaFile;  /* paths of ca */
-    std::set<std::string> tlsCrlFile; /* path of crl file */
-    std::string tlsPk;                /* private key */
-    std::string tlsPkPwd;             /* private key加密文件->可选传入 */
-    std::string kmcKsfMaster;         /* private key加密文件 */
-    std::string kmcKsfStandby;        /* private key加密文件 */
-    std::string packagePath;          /* lib库路径 */
-} smem_tls_option;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
- * @brief Set ssl option, required if TLS enabled
+ * @brief Callback function of private key password decryptor, see smem_register_decrypt_handler
  *
- * @param tlsOption     [in] tlsOption set
- * @return 0 if successful
+ * @param cipherText       [in] the encrypted text(private password)
+ * @param cipherTextLen    [in] the length of encrypted text
+ * @param plainText        [out] the decrypted text(private password)
+ * @param plaintextLen     [in] the length of plainText
  */
-int32_t smem_set_ssl_option(const smem_tls_option *tlsOption);
+typedef int (*smem_decrypt_handler)(const char *cipherText, int *cipherTextLen, char *plainText, int *plainTextLen);
+
+/**
+ * @brief Register the handler for decryption of private key password.
+ * If the private key is encrypted, this hanlder is needed to be set.
+ *
+ * @param h            [in] handler
+ */
+int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
