@@ -28,10 +28,10 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
     auto tmpNetClient  = MetaNetClientFactory::GetInstance(config.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(tmpNetClient != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!tmpNetClient->Status()) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(tmpNetClient->Start(config),
-                                        "Failed to start net server of local service " << name_);
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(tmpNetClient->Connect(config.discoveryURL),
-                                        "Failed to connect net server of local service " << name_);
+        MMC_RETURN_ERROR(tmpNetClient->Start(config),
+                         "Failed to start net server of local service " << name_);
+        MMC_RETURN_ERROR(tmpNetClient->Connect(config.discoveryURL),
+                         "Failed to connect net server of local service " << name_);
     }
 
     metaNetClient_ = tmpNetClient;
@@ -66,12 +66,12 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
         return MMC_ERROR;
     }
 
-    uint64_t blobSize = buf->type == 0 ? buf->dram.len : buf->hbm.width * buf->hbm.layerNum;
+    uint64_t blobSize = buf->dimType == 0 ? buf->oneDim.len : buf->twoDim.width * buf->twoDim.layerNum;
     uint32_t operateId = operateId_++;
     AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
     AllocResponse response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " alloc " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " alloc " << key << " failed");
 
     if (bmProxy_ == nullptr) {
         MMC_LOG_ERROR("BmProxy is null");
@@ -80,15 +80,15 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
 
     for (uint8_t i = 0; i < response.numBlobs_; i++) {
         MMC_LOG_INFO("Attempting to put to blob " << i << " at address " << response.blobs_[i].gva_);
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Put(buf, response.blobs_[i].gva_, blobSize),
-                                        "client " << name_ << " put " << key << " failed");
+        MMC_RETURN_ERROR(bmProxy_->Put(buf, response.blobs_[i].gva_, blobSize),
+                         "client " << name_ << " put " << key << " failed");
     }
 
     UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0, operateId};
     Response updateResponse;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
-                                    "client " << name_ << " update " << key << " failed");
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(updateResponse.ret_, "client " << name_ << " update " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
+                     "client " << name_ << " update " << key << " failed");
+    MMC_RETURN_ERROR(updateResponse.ret_, "client " << name_ << " update " << key << " failed");
 
     return MMC_OK;
 }
@@ -107,7 +107,7 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys, const st
         const std::string& key = keys[i];
         const mmc_buffer& buf = bufs[i];
 
-        uint64_t blobSize = buf.type == 0 ? buf.dram.len : buf.hbm.width * buf.hbm.layerNum;
+        uint64_t blobSize = buf.dimType == 0 ? buf.oneDim.len : buf.twoDim.width * buf.twoDim.layerNum;
 
         AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
         AllocResponse response;
@@ -148,26 +148,27 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys, const st
     return MMC_OK;
 }
 
-Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags) 
+Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
 {
     uint32_t operateId = operateId_++;
     GetRequest request{key, randId_, operateId, true};
     AllocResponse response;
     uint64_t startTime = ock::dagger::Monotonic::TimeUs();
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " get " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " get " << key << " failed");
     if (response.numBlobs_ == 0) {
         MMC_LOG_ERROR("client " << name_ << " get " << key << " failed");
         return MMC_ERROR;
     }
 
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Get(buf, response.blobs_[0].gva_),
-                                    "client " << name_ << " get " << key << " failed");
+    MMC_RETURN_ERROR(bmProxy_->Get(buf, response.blobs_[0].gva_), "client " << name_ << " get " << key << " failed");
     UpdateRequest updateRequest{MMC_READ_OK, key, 0, 0, operateId};
     Response updateResponse;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
-                                    "client " << name_ << " update " << key << " failed");
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(updateResponse.ret_, "client " << name_ << " update " << key << " failed");
+    if(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_ != MMC_OK)) {
+        MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
+    } else if(updateResponse.ret_ != MMC_OK) {
+        MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
+    }
     uint64_t timeMs = (ock::dagger::Monotonic::TimeUs() - startTime) / 1000U;
     MMC_ASSERT_RETURN(timeMs < defaultTtlMs_, MMC_ERROR);
 
@@ -180,10 +181,8 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys, std::vec
     BatchGetRequest request{keys, randId_, operateId};
     BatchAllocResponse response;
     uint64_t startTime = ock::dagger::Monotonic::TimeUs();
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(
-        metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-        "client " << name_ << " batch get failed"
-    );
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+        "client " << name_ << " batch get failed");
 
     if (response.blobs_.size() != keys.size()) {
         MMC_LOG_ERROR("client " << name_ << " batch get response size mismatch: expected " << keys.size() << ", got "
@@ -201,8 +200,8 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys, std::vec
                 return MMC_ERROR;
             }
 
-            MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxy_->Get(&bufs[i], blobs[0].gva_),
-                "client " << name_ << " batch get failed for key " << keys[i]);
+            MMC_RETURN_ERROR(bmProxy_->Get(&bufs[i], blobs[0].gva_),
+                             "client " << name_ << " batch get failed for key " << keys[i]);
 
         } else {
             MMC_LOG_ERROR("client " << name_ << " batch get failed for key " << keys[i]);
@@ -227,8 +226,8 @@ Result MmcClientDefault::Remove(const char *key, uint32_t flags) const
 {
     RemoveRequest request{key};
     Response response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " remove " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " remove " << key << " failed");
     return 0;
 }
 
@@ -238,10 +237,8 @@ Result MmcClientDefault::BatchRemove(const std::vector<std::string>& keys,
     BatchRemoveRequest request{keys};
     BatchRemoveResponse response;
 
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(
-        metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-        "client " << name_ << " BatchRemove failed"
-    );
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+        "client " << name_ << " BatchRemove failed");
 
     if (response.results_.size() != keys.size()) {
         MMC_LOG_ERROR("BatchRemove response size mismatch. Expected: "
@@ -263,8 +260,8 @@ Result MmcClientDefault::IsExist(const std::string &key, bool &result, uint32_t 
 
     IsExistRequest request{key};
     Response response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " IsExist " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " IsExist " << key << " failed");
     result = response.ret_ == MMC_OK;
     return MMC_OK;
 }
@@ -278,8 +275,8 @@ Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std:
 
     BatchIsExistRequest request{keys};
     BatchIsExistResponse response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " BatchIsExist failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " BatchIsExist failed");
 
     if (response.results_.size() != keys.size()) {
         MMC_LOG_ERROR("BatchIsExist response size mismatch. Expected: " << keys.size()
@@ -302,8 +299,8 @@ Result MmcClientDefault::Query(const std::string &key, mmc_data_info &query_info
 
     QueryRequest request{key};
     QueryResponse response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " Query " << key << " failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " Query " << key << " failed");
     query_info.size = response.queryInfo_.size_;
     query_info.prot = response.queryInfo_.prot_;
     query_info.numBlobs = response.queryInfo_.numBlobs_;
@@ -320,8 +317,8 @@ Result MmcClientDefault::BatchQuery(const std::vector<std::string> &keys, std::v
 
     BatchQueryRequest request{keys};
     BatchQueryResponse response;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
-                                    "client " << name_ << " BatchIsExist failed");
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " BatchIsExist failed");
 
     if (response.batchQueryInfos_.empty()) {
         MMC_LOG_WARN("BatchQuery get empty response.");

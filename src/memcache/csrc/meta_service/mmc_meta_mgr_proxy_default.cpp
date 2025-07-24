@@ -8,8 +8,8 @@ namespace mmc {
 Result MmcMetaMgrProxyDefault::Alloc(const AllocRequest &req, AllocResponse &resp)
 {
     MmcMemObjMetaPtr objMeta;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaMangerPtr_->Alloc(req.key_, req.options_, req.operateId_, objMeta),
-                                    "Meta Alloc Fail, key  " << req.key_);
+    MMC_RETURN_ERROR(metaMangerPtr_->Alloc(req.key_, req.options_, req.operateId_, objMeta),
+                     "Meta Alloc Fail, key  " << req.key_);
     resp.numBlobs_ = objMeta->NumBlobs();
     resp.prot_ = objMeta->Prot();
     resp.priority_ = objMeta->Priority();

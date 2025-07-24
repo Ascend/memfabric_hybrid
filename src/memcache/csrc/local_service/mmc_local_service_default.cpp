@@ -21,7 +21,7 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
 
     // 初始化BM，并更新bmRankId
     options_ = config;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(InitBm(), "Failed to init bm of local service " << name_);
+    MMC_RETURN_ERROR(InitBm(), "Failed to init bm of local service " << name_);
 
     metaNetClient_ = MetaNetClientFactory::GetInstance(this->options_.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(metaNetClient_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
@@ -29,10 +29,10 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
         mmc_client_config_t clientConfig;
         clientConfig.rankId = options_.rankId;
         clientConfig.tlsConfig = options_.tlsConfig;
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Start(clientConfig),
-            "Failed to start net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(metaNetClient_->Connect(options_.discoveryURL),
-            "Failed to connect net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
+        MMC_RETURN_ERROR(metaNetClient_->Start(clientConfig),
+                         "Failed to start net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
+        MMC_RETURN_ERROR(metaNetClient_->Connect(options_.discoveryURL),
+                         "Failed to connect net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
     }
     pid_ = getpid();
 
@@ -43,9 +43,9 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     req.capacity_ = options_.localDRAMSize + options_.localHBMSize;
 
     Response resp;
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_,
-        "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
+    MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
+    MMC_RETURN_ERROR(resp.ret_,
+                     "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
 
     started_ = true;
     MMC_LOG_INFO("Started LocalService (" << name_ << ") server " << options_.discoveryURL);
@@ -84,7 +84,7 @@ Result MmcLocalServiceDefault::InitBm()
 
 Result MmcLocalServiceDefault::DestroyBm()
 {
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(bmProxyPtr_ == nullptr, "bm proxy has not been initialized.");
+    MMC_RETURN_ERROR(bmProxyPtr_ == nullptr, "bm proxy has not been initialized.");
     bmProxyPtr_->DestoryBm();
 
     BmUnregisterRequest req;
@@ -94,8 +94,8 @@ Result MmcLocalServiceDefault::DestroyBm()
     Response resp;
 
     Result ret = SyncCallMeta(req, resp, 30);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(ret, "bm destroy failed!");
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(resp.ret_, "bm destroy failed!");
+    MMC_RETURN_ERROR(ret, "bm destroy failed!");
+    MMC_RETURN_ERROR(resp.ret_, "bm destroy failed!");
     bmProxyPtr_ = nullptr;
     return ret;
 }

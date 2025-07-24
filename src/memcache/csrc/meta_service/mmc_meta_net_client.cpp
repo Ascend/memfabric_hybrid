@@ -75,8 +75,8 @@ Result MetaNetClient::Connect(const std::string &url)
 {
     NetEngineOptions options;
     NetEngineOptions::ExtractIpPortFromUrl(url, options);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(engine_->ConnectToPeer(rankId_, options.ip, options.port, link2Index_, false),
-        "MetaNetClient Connect " << url << " failed");
+    MMC_RETURN_ERROR(engine_->ConnectToPeer(rankId_, options.ip, options.port, link2Index_, false),
+                     "MetaNetClient Connect " << url << " failed");
     return MMC_OK;
 }
 

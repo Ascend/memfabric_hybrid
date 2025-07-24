@@ -28,9 +28,14 @@ MMC_API void mmcs_meta_service_stop(mmc_meta_service_t handle)
 MMC_API mmc_local_service_t mmcs_local_service_start(mmc_local_service_config_t *config)
 {
     auto *serviceDefault = new (std::nothrow) MmcLocalServiceDefault("local_service");
-    if (serviceDefault != nullptr && serviceDefault->Start(*config) == MMC_OK) {
+    if (serviceDefault == nullptr) {
+        MMC_LOG_AND_SET_LAST_ERROR("create or start local service failed");
+        return nullptr;
+    }
+    if (serviceDefault->Start(*config) == MMC_OK) {
         return serviceDefault;
     }
+    delete serviceDefault;
     MMC_LOG_AND_SET_LAST_ERROR("create or start local service failed");
     return nullptr;
 }

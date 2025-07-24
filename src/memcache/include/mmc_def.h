@@ -58,8 +58,9 @@ typedef struct {
 } mmc_client_config_t;
 
 typedef struct {
-    uint64_t addr : 60;
-    uint64_t type : 4;  // 0 dram, 1 hbm
+    uint64_t addr;
+    uint32_t type; // 0 dram, 1 hbm
+    uint32_t dimType; // 0 oneDim, 1 twoDim
     union {
         struct {
             uint64_t dpitch : 48;
@@ -67,11 +68,11 @@ typedef struct {
             uint32_t width;  // max 4GB
             uint16_t layerNum;
             uint16_t layerCount;
-        } hbm;
+        } twoDim;
         struct {
             uint64_t offset;
             uint64_t len;
-        } dram;
+        } oneDim;
     };
 } mmc_buffer;
 

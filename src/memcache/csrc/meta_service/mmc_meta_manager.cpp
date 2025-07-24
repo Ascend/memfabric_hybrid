@@ -145,8 +145,8 @@ Result MmcMetaManager::Remove(const std::string &key)
 
     std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
     for (size_t i = 0; i < blobs.size(); i++) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(blobs[i]->UpdateState(0, 0, MMC_REMOVE_START),
-                                        "remove op, meta update failed, key " << key);
+        MMC_RETURN_ERROR(blobs[i]->UpdateState(0, 0, MMC_REMOVE_START),
+                         "remove op, meta update failed, key " << key);
         if (globalAllocator_->Free(blobs[i]) != MMC_OK) {
             MMC_LOG_ERROR("Error in free blobs!");
         }

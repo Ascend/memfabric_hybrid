@@ -149,7 +149,8 @@ pybind11::bytes DistributedObjectStore::get(const std::string &key) {
     mmc_buffer buffer = {
         .addr = reinterpret_cast<uintptr_t>(data_ptr.get()),
         .type = 0,
-        .dram = {
+        .dimType = 0,
+        .oneDim = {
             .offset = 0,
             .len = info.size,
         }
@@ -163,7 +164,7 @@ pybind11::bytes DistributedObjectStore::get(const std::string &key) {
     }
 
     py::gil_scoped_acquire acquire_gil;
-    return {reinterpret_cast<const char *>(buffer.addr), buffer.dram.len};
+    return {reinterpret_cast<const char *>(buffer.addr), buffer.oneDim.len};
 }
 
 std::vector<pybind11::bytes> DistributedObjectStore::get_batch(const std::vector<std::string> &keys) {
@@ -390,7 +391,8 @@ PYBIND11_MODULE(_pymmc, m) {
                 mmc_buffer buffer = {
                     .addr=reinterpret_cast<uint64_t>(info.ptr), \
                     .type=0,
-                    .dram={.offset=0, .len=static_cast<uint64_t>(info.size)}
+                    .dimType=0,
+                    .oneDim={.offset=0, .len=static_cast<uint64_t>(info.size)}
                 };
                 py::gil_scoped_release release;
                 return self.put(key, buffer);
@@ -413,7 +415,8 @@ PYBIND11_MODULE(_pymmc, m) {
                     buffers.emplace_back(mmc_buffer{
                         .addr=reinterpret_cast<uint64_t>(info.ptr),
                         .type=0,
-                        .dram={.offset=0, .len=static_cast<uint64_t>(info.size)}});
+                        .dimType=0,
+                        .oneDim={.offset=0, .len=static_cast<uint64_t>(info.size)}});
                 }
 
                 // 2) Call C++ function
@@ -435,7 +438,8 @@ PYBIND11_MODULE(_pymmc, m) {
                     buffers.emplace_back(mmc_buffer{
                         .addr=reinterpret_cast<uintptr_t>(s.data()),
                         .type=0,
-                        .dram={.offset=0, .len=s.size()}});
+                        .dimType=0,
+                        .oneDim={.offset=0, .len=s.size()}});
                 }
 
                 return self.put_batch(keys, buffers);

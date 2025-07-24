@@ -227,13 +227,13 @@ public:
             respData = nullptr;
             auto result = Call(peerId, opCode, reinterpret_cast<char *>(const_cast<REQ *>(&req)), sizeof(REQ),
                                &respData, respLen, timeoutInSecond);
-            MMC_RETURN_NOT_OK(result);
+            MMC_RETURN_ERROR(result, "NetEngine call error, op " << opCode << ", peerId " << peerId);
 
             /* deserialize */
             std::string respStr(respData, respLen);
             NetMsgUnpacker unpacker(respStr);
             result = resp.Deserialize(unpacker);
-            MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, "deserialize failed");
+            MMC_RETURN_ERROR(result, "deserialize failed");
 
             return result;
         } else if (!std::is_pod<REQ>::value && std::is_pod<RESP>::value) {
@@ -257,13 +257,13 @@ public:
             respData = nullptr;
             Result result = Call(peerId, opCode, serializedData.c_str(), serializedData.length(), &respData, respLen,
                                  timeoutInSecond);
-            MMC_RETURN_NOT_OK(result);
+            MMC_RETURN_ERROR(result, "NetEngine call error, op " << opCode << ", peerId " << peerId);
 
             /* deserialize */
             std::string respStr(respData, respLen);
             NetMsgUnpacker unpacker(respStr);
             result = resp.Deserialize(unpacker);
-            MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, "deserialize failed");
+            MMC_RETURN_ERROR(result, "deserialize failed");
 
             return result;
         }

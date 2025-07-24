@@ -54,11 +54,11 @@ private:
     std::string name_;
     bool started_ = false;
     std::mutex mutex_;
-    uint32_t randId_;
+    uint32_t bmRankId_;
 };
 
 uint32_t MmcBmProxy::RandId() {
-    return randId_;
+    return bmRankId_;
 }
 
 using MmcBmProxyPtr = MmcRef<MmcBmProxy>;

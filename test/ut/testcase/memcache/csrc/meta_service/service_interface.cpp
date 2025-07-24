@@ -97,8 +97,9 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     mmc_buffer buffer;
     buffer.addr = (uint64_t)hostSrc;
     buffer.type = 0;
-    buffer.dram.offset = 0;
-    buffer.dram.len = SIZE_32K;
+    buffer.dimType = 0;
+    buffer.oneDim.offset = 0;
+    buffer.oneDim.len = SIZE_32K;
 
     mmc_put_options options{0, NATIVE_AFFINITY};
     ret = mmcc_put(test.c_str(), &buffer, options, 0);
@@ -107,8 +108,9 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     mmc_buffer readBuffer;
     readBuffer.addr = (uint64_t)hostDest;
     readBuffer.type = 0;
-    readBuffer.dram.offset = 0;
-    readBuffer.dram.len = SIZE_32K;
+    readBuffer.dimType = 0;
+    readBuffer.oneDim.offset = 0;
+    readBuffer.oneDim.len = SIZE_32K;
 
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
@@ -135,8 +137,9 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
 
         bufs[i].addr = (uint64_t)hostSrcs[i];
         bufs[i].type = 0;
-        bufs[i].dram.offset = 0;
-        bufs[i].dram.len = SIZE_32K;
+        bufs[i].dimType = 0;
+        bufs[i].oneDim.offset = 0;
+        bufs[i].oneDim.len = SIZE_32K;
     }
 
     ret = mmcc_batch_put(keys, keys_count, bufs, options, 0);
@@ -146,8 +149,9 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
         mmc_buffer readBuffer;
         readBuffer.addr = (uint64_t)hostDests[i];
         readBuffer.type = 0;
-        readBuffer.dram.offset = 0;
-        readBuffer.dram.len = SIZE_32K;
+        readBuffer.dimType = 0;
+        readBuffer.oneDim.offset = 0;
+        readBuffer.oneDim.len = SIZE_32K;
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         ASSERT_TRUE(ret == 0);

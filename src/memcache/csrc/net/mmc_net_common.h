@@ -74,7 +74,7 @@ inline Result NetEngineOptions::ExtractIpPortFromUrl(const std::string &url, Net
     std::map<std::string, std::string> details;
     /* extract to vector */
     auto result = ExtractURL(url, p, details);
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, "Failed to extract url " << url << ", which is invalid");
+    MMC_RETURN_ERROR(result, "Failed to extract url " << url << ", which is invalid");
 
     std::string ipStr = details["ip"];
     std::string portStr = details["port"];

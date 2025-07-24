@@ -25,10 +25,10 @@ Result NetEngineAcc::Start(const NetEngineOptions &options)
     }
 
     /* verify */
-    MMC_RETURN_NOT_OK(VerifyOptions(options));
+    MMC_RETURN_ERROR(VerifyOptions(options), "NetEngineAcc " << options.name << " option set error");
 
     /* initialize */
-    MMC_RETURN_NOT_OK(Initialize(options));
+    MMC_RETURN_ERROR(Initialize(options), "NetEngineAcc " << options.name << " initialize error");
 
     /* check handler */
     if (options_.startListener && newLinkHandler_ == nullptr) {
@@ -40,7 +40,7 @@ Result NetEngineAcc::Start(const NetEngineOptions &options)
     }
 
     /* call start inner */
-    MMC_RETURN_NOT_OK(StartInner());
+    MMC_RETURN_ERROR(StartInner(), "NetEngineAcc " << options.name << " start error");
 
     started_ = true;
     return MMC_OK;
@@ -112,13 +112,13 @@ Result NetEngineAcc::StartInner()
     tlsOpt.tlsPk = options_.tlsOption.tlsKeyPath;
 
     if (tlsOpt.enableTls) {
-        MMC_LOG_ERROR_AND_RETURN_NOT_OK(server_->LoadDynamicLib(options_.tlsOption.packagePath),
+        MMC_RETURN_ERROR(server_->LoadDynamicLib(options_.tlsOption.packagePath),
             "Failed to load openssl dynamic library");
     }
 
     /* start server, listen and thread will be started */
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(server_->Start(serverOptions, tlsOpt),
-                                    "Failed to start tcp server for NetEngine " << options_.name);
+    MMC_RETURN_ERROR(server_->Start(serverOptions, tlsOpt),
+                     "Failed to start tcp server for NetEngine " << options_.name);
 
     return MMC_OK;
 }
@@ -241,7 +241,7 @@ Result NetEngineAcc::Initialize(const NetEngineOptions &options)
     NetContextStorePtr tmpCtxStore = MmcMakeRef<NetContextStore>(UN65536);
     MMC_ASSERT_RETURN(tmpCtxStore != nullptr, MMC_NEW_OBJECT_FAILED);
     auto result = tmpCtxStore->Initialize();
-    MMC_LOG_ERROR_AND_RETURN_NOT_OK(result, "Failed to initialize ctx store for communication seq number");
+    MMC_RETURN_ERROR(result, "Failed to initialize ctx store for communication seq number");
 
     /* create tcp server */
     auto tmpServer = TcpServer::Create();
@@ -250,7 +250,7 @@ Result NetEngineAcc::Initialize(const NetEngineOptions &options)
 
     /* register callbacks */
     options_ = options;
-    MMC_RETURN_NOT_OK(RegisterTcpServerHandler());
+    MMC_RETURN_ERROR(RegisterTcpServerHandler(), "NetEngineAcc " << options_.name << " register handler error");
     /* assign to member variables */
     peerLinkMap_ = tmpLinkMap;
     ctxStore_ = tmpCtxStore;
@@ -325,7 +325,6 @@ Result NetEngineAcc::HandleNeqRequest(const TcpReqContext &context)
     NetContextPtr contextPtr = MmcMakeRef<NetContextAcc>(&context).Get();
     MMC_ASSERT_RETURN(contextPtr != nullptr, MMC_NEW_OBJECT_FAILED);
     int16_t opCode = contextPtr->OpCode();
-    MMC_LOG_INFO("OPCODE "<< opCode);
     MMC_ASSERT_RETURN(opCode < gHandlerSize, MMC_NET_REQ_HANDLE_NO_FOUND);
     if (reqReceivedHandlers_[opCode]  == nullptr) {
         /*  client do reply response */
