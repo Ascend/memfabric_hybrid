@@ -103,8 +103,9 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
-    options.singleRankVASpace = localHBMSize;
+    options.singleRankVASpace = (localDRAMSize == 0) ? localHBMSize : localDRAMSize;
     options.preferredGVA = 0;
+    bzero(options.nic, sizeof(options.nic));
     (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
     ret = entry->Initialize(options);

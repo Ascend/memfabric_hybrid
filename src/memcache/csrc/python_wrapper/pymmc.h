@@ -127,7 +127,7 @@ public:
      * @note The buffer address must be previously registered with
      * register_buffer() for zero-copy operations
      */
-    int get_into(const std::string &key, void *buffer, size_t size);
+    int get_into(const std::string &key, mmc_buffer &buffer);
 
     /**
      * @brief Get object data directly into pre-allocated buffers for multiple
@@ -154,7 +154,7 @@ public:
      * @note The buffer address must be previously registered with
      * register_buffer() for zero-copy operations
      */
-    int put_from(const std::string &key, void *buffer, size_t size);
+    int put_from(const std::string &key, mmc_buffer &buffer);
 
     /**
      * @brief Put object data directly from pre-allocated buffers for multiple

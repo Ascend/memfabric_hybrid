@@ -12,6 +12,7 @@
 #include "mmc_define.h"
 #include "mmc_types.h"
 #include "mmc_last_error.h"
+#include "smem_bm_def.h"
 
 namespace py = pybind11;
 using namespace ock::mmc;
@@ -272,7 +273,22 @@ int DistributedObjectStore::register_buffer(void *buffer, size_t size) {
     return 0;
 }
 
-int DistributedObjectStore::get_into(const std::string &key, void *buffer, size_t size) {
+int DistributedObjectStore::get_into(const std::string &key, mmc_buffer &buffer) {
+    mmc_data_info info;
+    auto res = mmcc_query(key.c_str(), &info, 0);
+    if (res != MMC_OK) {
+        MMC_LOG_ERROR("Failed to query key " << key << ", error code: " << res);
+        py::gil_scoped_acquire acquire_gil;
+        return res;
+    }
+
+    res = mmcc_get(key.c_str(), &buffer, 0);
+    if (res != MMC_OK) {
+        MMC_LOG_ERROR("Failed to get key " << key << ", error code: " << res);
+        py::gil_scoped_acquire acquire_gil;
+        return res;
+    }
+    py::gil_scoped_acquire acquire_gil;
     return 0;
 }
 
@@ -290,11 +306,21 @@ std::vector<int> DistributedObjectStore::batch_get_into(
     return results;
 }
 
-int DistributedObjectStore::put_from(const std::string &key, void *buffer, size_t size) {
-    return 0;
+int DistributedObjectStore::put_from(const std::string &key, mmc_buffer &buffer) {
+    return put(key, buffer);
+}
+
+void DefineMmcStructModule(py::module_& m)
+{
+    py::enum_<smem_bm_copy_type>(m, "MmcCopyDirect")
+            .value("SMEMB_COPY_L2G", SMEMB_COPY_L2G)
+            .value("SMEMB_COPY_G2L", SMEMB_COPY_G2L)
+            .value("SMEMB_COPY_G2H", SMEMB_COPY_G2H)
+            .value("SMEMB_COPY_H2G", SMEMB_COPY_H2G);
 }
 
 PYBIND11_MODULE(_pymmc, m) {
+    DefineMmcStructModule(m);
     // Define the SliceBuffer class
     py::class_<SliceBuffer, std::shared_ptr<SliceBuffer>>(m, "SliceBuffer",
                                                           py::buffer_protocol())
@@ -373,13 +399,28 @@ PYBIND11_MODULE(_pymmc, m) {
         .def(
             "get_into",
             [](DistributedObjectStore &self, const std::string &key,
-               uintptr_t buffer_ptr, size_t size) {
-                // Get data directly into user-provided buffer
-                void *buffer = reinterpret_cast<void *>(buffer_ptr);
-                py::gil_scoped_release release;
-                return self.get_into(key, buffer, size);
+                uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
+                std::cout << "key:" << key << " buffer:" << buffer_ptr << " size:" << size << " direct:" << direct << std::endl;
+                uint32_t type = 0;
+                switch (direct) {
+                    case SMEMB_COPY_G2L:
+                        type = 1;
+                        break;
+                    case SMEMB_COPY_G2H:
+                        type = 0;
+                        break;
+                    default:
+                        throw std::invalid_argument("direct is invalid");
+                }
+                mmc_buffer buffer = {
+                    .addr=reinterpret_cast<uint64_t>(buffer_ptr), \
+                    .type=type,
+                    .dimType=0,
+                    .oneDim={.offset=0, .len=static_cast<uint64_t>(size)}
+                };
+                return self.get_into(key, buffer);
             },
-            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"),
+            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_G2H,
             "Get object data directly into a pre-allocated buffer")
         .def(
             "batch_get_into",
@@ -401,13 +442,29 @@ PYBIND11_MODULE(_pymmc, m) {
         .def(
             "put_from",
             [](DistributedObjectStore &self, const std::string &key,
-               uintptr_t buffer_ptr, size_t size) {
-                // Put data directly from user-provided buffer
-                void *buffer = reinterpret_cast<void *>(buffer_ptr);
+               uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
+                std::cout << "key:" << key << " buffer:" << buffer_ptr << " size:" << size << " direct:" << direct << std::endl;
+                uint32_t type = 0;
+                switch (direct) {
+                    case SMEMB_COPY_L2G:
+                        type = 1;
+                        break;
+                    case SMEMB_COPY_H2G:
+                        type = 0;
+                        break;
+                    default:
+                        throw std::invalid_argument("direct is invalid");
+                }
+                mmc_buffer buffer = {
+                    .addr=reinterpret_cast<uint64_t>(buffer_ptr), \
+                    .type=type,
+                    .dimType=0,
+                    .oneDim={.offset=0, .len=static_cast<uint64_t>(size)}
+                };
                 py::gil_scoped_release release;
-                return self.put_from(key, buffer, size);
+                return self.put_from(key, buffer);
             },
-            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"),
+            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_H2G,
             "Put object data directly from a pre-allocated buffer")
         .def(
             "batch_put_from",
