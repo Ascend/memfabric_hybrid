@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
  */
 #ifndef MF_HYBM_CORE_HYBM_DATA_OP_H
 #define MF_HYBM_CORE_HYBM_DATA_OP_H

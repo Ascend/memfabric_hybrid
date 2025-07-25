@@ -6,6 +6,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
 
 #include "hybm.h"
 #include "hybm_types.h"
+#include "devmm_svm_gva.h"
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 
@@ -125,7 +126,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnMinusOne_WhenReserveMemoryFails)
     uint16_t deviceId = 1;
     uint64_t flags = 0;
 
-    MOCKER_CPP(&DlHalApi::HalGvaReserveMemory, int32_t (*)(void **, size_t, int32_t, uint64_t))
+    MOCKER_CPP(&drv::HalGvaReserveMemory, int32_t (*)(uint64_t *, size_t, int32_t, uint64_t))
         .stubs().will(returnValue(-1));
     int32_t result = hybm_init(deviceId, flags);
     EXPECT_EQ(result, BM_ERROR);
@@ -142,7 +143,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMMallocFailed_WhenAllocMemoryFails)
     uint16_t deviceId = 1;
     uint64_t flags = 0;
 
-    MOCKER_CPP(&DlHalApi::HalGvaAlloc, int32_t (*)(void *, size_t, uint64_t))
+    MOCKER_CPP(&drv::HalGvaAlloc, int32_t (*)(uint64_t, size_t, uint64_t))
         .stubs().will(returnValue(-1));
     int32_t result = hybm_init(deviceId, flags);
     EXPECT_EQ(result, BM_MALLOC_FAILED);

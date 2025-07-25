@@ -3,6 +3,8 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/common
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/host
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
@@ -13,6 +15,7 @@ include_directories(
 aux_source_directory(common SRC_FILES_COMMON)
 aux_source_directory(data_operation SRC_FILES_DATA_OP)
 aux_source_directory(data_operation/host SRC_FILES_DATA_OP)
+aux_source_directory(driver/userspace SRC_FILES_DRIVER)
 aux_source_directory(entity SRC_FILES_ENTITY)
 aux_source_directory(mm SRC_FILES_MEM_MANAGER)
 aux_source_directory(transport SRC_FILES_TRANSPORT)
@@ -22,6 +25,7 @@ aux_source_directory(under_api SRC_FILES_CANN)
 set(HYBMM_SRC_FILES
         ${SRC_FILES_COMMON}
         ${SRC_FILES_DATA_OP}
+        ${SRC_FILES_DRIVER}
         ${SRC_FILES_ENTITY}
         ${SRC_FILES_CANN}
         ${SRC_FILES_TRANSPORT}

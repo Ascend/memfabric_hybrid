@@ -5,6 +5,16 @@ set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
 
+BUILD_MODE=$1
+if [ -z "$BUILD_MODE" ]; then
+    BUILD_MODE="RELEASE"
+fi
+
+BUILD_PYTHON=$2
+if [ -z "$BUILD_PYTHON" ]; then
+    BUILD_PYTHON="ON"
+fi
+
 cd ${ROOT_PATH}
 ACC_LINKS_SRC=${ROOT_PATH}/../3rdparty/net/acc_links/src
 if [ ! -d "${ACC_LINKS_SRC}" ]; then
@@ -12,7 +22,7 @@ if [ ! -d "${ACC_LINKS_SRC}" ]; then
     git submodule update
 fi
 
-bash build.sh RELEASE OFF OFF
+bash build.sh ${BUILD_MODE} OFF OFF ${BUILD_PYTHON}
 
 bash run_pkg_maker/make_run.sh
 

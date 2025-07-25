@@ -14,16 +14,20 @@
 #include "under_api/dl_api.h"
 #include "under_api/dl_acl_api.h"
 #include "under_api/dl_hal_api.h"
+#include "devmm_svm_gva.h"
+#include "hybm_cmd.h"
 #include "hybm.h"
 
 using namespace ock::mf;
 
 namespace {
-constexpr uint16_t HYBM_INIT_MODULE_ID_MAX = 32;
-const std::string LEAST_DRIVER_VER = "V100R001C21B035";
+const std::string DRIVER_VER_V2 = "V100R001C21B035";
+const std::string DRIVER_VER_V1 = "V100R001C18B100";
 
+uint64_t g_baseAddr = 0ULL;
 int64_t initialized = 0;
 uint16_t initedDeviceId = 0;
+HybmGvaVersion checkVer = HYBM_GVA_UNKNOWN;
 std::mutex initMutex;
 }
 
@@ -35,6 +39,11 @@ int32_t HybmGetInitDeviceId()
 bool HybmHasInited()
 {
     return initialized > 0;
+}
+
+HybmGvaVersion HybmGetGvaVersion()
+{
+    return checkVer;
 }
 
 static std::string GetDriverVersionPath(const std::string &driverEnvStr, const std::string &keyStr)
@@ -147,6 +156,10 @@ static bool DriverVersionCheck(const std::string &ver)
         return false;
     }
 
+#ifdef UT_ENABLED
+    return true;
+#endif
+
     std::string readVer = CastDriverVersion(libPath);
     if (readVer.empty()) {
         BM_LOG_ERROR("check driver version failed, read version is empty.");
@@ -156,21 +169,21 @@ static bool DriverVersionCheck(const std::string &ver)
     int32_t baseVal = GetValueFromVersion(ver, "V");
     int32_t readVal = GetValueFromVersion(readVer, "V");
     if (baseVal == -1 || readVal == -1 || baseVal != readVal) {
-        BM_LOG_ERROR("check driver version failed, Version not equal, limit:" << ver << " read:" << readVer);
+        BM_LOG_INFO("check driver version failed, Version not equal, limit:" << ver << " read:" << readVer);
         return false;
     }
 
     baseVal = GetValueFromVersion(ver, "R");
     readVal = GetValueFromVersion(readVer, "R");
     if (baseVal == -1 || readVal == -1 || baseVal != readVal) {
-        BM_LOG_ERROR("check driver version failed, Release not equal, limit:" << ver << " read:" << readVer);
+        BM_LOG_INFO("check driver version failed, Release not equal, limit:" << ver << " read:" << readVer);
         return false;
     }
 
     baseVal = GetValueFromVersion(ver, "C");
     readVal = GetValueFromVersion(readVer, "C");
     if (baseVal == -1 || readVal == -1 || readVal < baseVal) {
-        BM_LOG_ERROR("check driver version failed, Customer is too low, limit:" << ver << " read:" << readVer);
+        BM_LOG_INFO("check driver version failed, Customer is too low, limit:" << ver << " read:" << readVer);
         return false;
     }
     if (readVal > baseVal) {
@@ -180,7 +193,7 @@ static bool DriverVersionCheck(const std::string &ver)
     baseVal = GetValueFromVersion(ver, "B");
     readVal = GetValueFromVersion(readVer, "B");
     if (baseVal == -1 || readVal == -1 || readVal < baseVal) {
-        BM_LOG_ERROR("check driver version failed, Build is too low, input:" << ver << " read:" << readVer);
+        BM_LOG_INFO("check driver version failed, Build is too low, input:" << ver << " read:" << readVer);
         return false;
     }
     return true;
@@ -188,7 +201,12 @@ static bool DriverVersionCheck(const std::string &ver)
 
 int32_t HalGvaPrecheck(void)
 {
-    if (DriverVersionCheck(LEAST_DRIVER_VER)) {
+    if (DriverVersionCheck(DRIVER_VER_V2)) {
+        checkVer = HYBM_GVA_V2;
+        return BM_OK;
+    }
+    if (DriverVersionCheck(DRIVER_VER_V1)) {
+        checkVer = HYBM_GVA_V1;
         return BM_OK;
     }
     return BM_ERROR;
@@ -208,10 +226,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         return 0;
     }
 
-    if (HalGvaPrecheck() != BM_OK) {
-        BM_LOG_ERROR("the current version of ascend driver does not support global virtual address!");
-        return BM_ERROR;
-    }
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
 
     auto path = std::getenv("ASCEND_HOME_PATH");
     if (path == nullptr) {
@@ -232,23 +247,25 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE;  // 申请meta空间
-    ret = DlHalApi::HalGvaReserveMemory(&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
+    drv::HybmInitialize(deviceId, DlHalApi::GetFd());
+    ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
     if (ret != 0) {
         DlApi::CleanupLibrary();
         BM_LOG_ERROR("initialize mete memory with size: " << allocSize << ", flag: " << flags << " failed: " << ret);
         return BM_ERROR;
     }
 
-    ret = DlHalApi::HalGvaAlloc((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
+    ret = drv::HalGvaAlloc(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();
-        int32_t hal_ret = DlHalApi::HalGvaUnreserveMemory();
+        int32_t hal_ret = drv::HalGvaUnreserveMemory((uint64_t)globalMemoryBase);
         BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret << ", un-reserve memory " << hal_ret);
         return BM_MALLOC_FAILED;
     }
 
     initedDeviceId = deviceId;
     initialized = 1L;
+    g_baseAddr = (uint64_t)globalMemoryBase;
     BM_LOG_INFO("hybm init successfully, " << LIB_VERSION);
     return 0;
 }
@@ -265,8 +282,9 @@ HYBM_API void hybm_uninit()
         return;
     }
 
-    DlHalApi::HalGvaFree((void *)HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
-    auto ret = DlHalApi::HalGvaUnreserveMemory();
+    drv::HalGvaFree(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
+    auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
+    g_baseAddr = 0ULL;
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     DlApi::CleanupLibrary();
     initialized = 0;

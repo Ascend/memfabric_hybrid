@@ -9,6 +9,7 @@
 #include "dl_acl_api.h"
 #include "dl_api.h"
 #include "dl_hal_api.h"
+#include "devmm_svm_gva.h"
 #include "hybm_ex_info_transfer.h"
 
 #define private public
@@ -74,7 +75,7 @@ TEST_F(HybmDevideMemSegmentTest, ReserveMemorySpace_ShouldReturnMallocFailed_Whe
     MemSegmentOptions options = g_options;
     MemSegmentDevice seg(options, 0);
     void *addr = nullptr;
-    MOCKER_CPP(&DlHalApi::HalGvaReserveMemory, int (*)(void **, size_t, int32_t, uint64_t))
+    MOCKER_CPP(&drv::HalGvaReserveMemory, int (*)(uint64_t *, size_t, int32_t, uint64_t))
         .stubs().will(returnValue(-1));
     EXPECT_EQ(seg.ReserveMemorySpace(&addr), BM_MALLOC_FAILED);
 }
@@ -102,7 +103,7 @@ TEST_F(HybmDevideMemSegmentTest, AllocLocalMemory_ShouldReturnError_WhenAllocErr
 
     EXPECT_EQ(seg.AllocLocalMemory(DEVICE_LARGE_PAGE_SIZE + DEVICE_LARGE_PAGE_SIZE, slice), BM_INVALID_PARAM);
 
-    MOCKER_CPP(&DlHalApi::HalGvaAlloc, int (*)(void *, size_t, uint64_t)).stubs().will(returnValue(-1));
+    MOCKER_CPP(&drv::HalGvaAlloc, int (*)(uint64_t, size_t, uint64_t)).stubs().will(returnValue(-1));
     EXPECT_EQ(seg.AllocLocalMemory(DEVICE_LARGE_PAGE_SIZE, slice), BM_DL_FUNCTION_FAILED);
 
     EXPECT_EQ(seg.UnreserveMemorySpace(), BM_OK);
@@ -209,13 +210,13 @@ TEST_F(HybmDevideMemSegmentTest, Mmap_ShouldReturnError_WhenMmapError)
     info.rankId = 1;
     info.deviceId = 1;
     LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo2);
-    MOCKER_CPP(&DlHalApi::HalGvaOpen, int (*)(void *, char *, size_t, uint64_t)).stubs().will(returnValue(-1));
+    MOCKER_CPP(&drv::HalGvaOpen, int (*)(uint64_t, char *, size_t, uint64_t)).stubs().will(returnValue(-1));
     EXPECT_EQ(seg.Import({exInfo1, exInfo2, exInfo2}), BM_OK);
     EXPECT_EQ(seg.Mmap(), BM_DL_FUNCTION_FAILED);
 
     GlobalMockObject::verify();
     EXPECT_EQ(seg.Mmap(), BM_OK);
 
-    MOCKER_CPP(&DlHalApi::HalGvaClose, int (*)(void *, uint64_t)).stubs().will(returnValue(-1));
+    MOCKER_CPP(&drv::HalGvaClose, int (*)(uint64_t, uint64_t)).stubs().will(returnValue(-1));
     seg.Unmap();
 }

@@ -34,7 +34,7 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     xHost[2] = gInputLen;
     xHost[3] = gNpuMallocSpace;
 
-    uint64_t metaAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 128UL;
+    uint64_t metaAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
     CHECK_EQUALS(yHost[0], 0);
     CHECK_EQUALS(yHost[1], rankId);
@@ -62,7 +62,7 @@ static void TestContext(smem_shm_t handle)
     CHECK_ACL(smem_shm_set_extra_context(handle, (void *)srcCtx, ctxSize));
 
     char dstCtx[32];
-    uint64_t ctxAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 64ULL * 1024;
+    uint64_t ctxAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 64ULL * 1024;
     CHECK_ACL(aclrtMemcpy(dstCtx, ctxSize, (void *)ctxAddr, ctxSize, ACL_MEMCPY_DEVICE_TO_HOST));
     dstCtx[ctxSize] = 0;
 

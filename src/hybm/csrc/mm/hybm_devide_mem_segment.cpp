@@ -6,6 +6,7 @@
 #include "dl_api.h"
 #include "dl_hal_api.h"
 #include "dl_acl_api.h"
+#include "devmm_svm_gva.h"
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_devide_mem_segment.h"
@@ -33,10 +34,10 @@ Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
         return BM_ERROR;
     }
 
-    void *base = nullptr;
+    uint64_t base = 0;
     totalVirtualSize_ = options_.rankCnt * options_.size;
-    auto ret = DlHalApi::HalGvaReserveMemory(&base, totalVirtualSize_, options_.devId, 0ULL);
-    if (ret != 0 || base == nullptr) {
+    auto ret = drv::HalGvaReserveMemory(&base, totalVirtualSize_, options_.devId, 0ULL);
+    if (ret != 0 || base == 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
     }
@@ -44,7 +45,7 @@ Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
     globalVirtualAddress_ = reinterpret_cast<uint8_t *>(base);
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
-    *address = base;
+    *address = reinterpret_cast<void *>(base);
     return BM_OK;
 }
 
@@ -64,7 +65,7 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     }
 
     auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
-    auto ret = DlHalApi::HalGvaAlloc((void *)(localVirtualBase + allocatedSize_), size, 0);
+    auto ret = drv::HalGvaAlloc((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -99,7 +100,7 @@ Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &sli
         return BM_INVALID_PARAM;
     }
 
-    auto res = DlHalApi::HalGvaFree((void *)(ptrdiff_t)slice->vAddress_, slice->size_);
+    auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
     BM_LOG_INFO("free slice(idx:" << slice->index_ << ") address: " << (void *)(ptrdiff_t)slice->vAddress_
                                   << ", size: " << slice->size_ << " return:" << res);
 
@@ -242,7 +243,7 @@ Result MemSegmentDevice::Mmap() noexcept
 
         BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
                                              << ", size = " << im.size);
-        auto ret = DlHalApi::HalGvaOpen((void *)remoteAddress, im.shmName, im.size, 0);
+        auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
             return BM_DL_FUNCTION_FAILED;
@@ -256,7 +257,7 @@ Result MemSegmentDevice::Mmap() noexcept
 Result MemSegmentDevice::Unmap() noexcept
 {
     for (auto va : mappedMem_) {
-        int32_t ret = DlHalApi::HalGvaClose((void *)va, 0);
+        int32_t ret = drv::HalGvaClose(va, 0);
         if (ret != 0) {
             BM_LOG_ERROR("HalGvaClose memory failed:" << ret);
         }
@@ -279,7 +280,7 @@ Result MemSegmentDevice::RemoveImported(const std::vector<uint32_t> &ranks) noex
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
         while (it != mappedMem_.end() && (*it) < addr + options_.size) {
-            int32_t ret = DlHalApi::HalGvaClose((void *)(*it), 0);
+            int32_t ret = drv::HalGvaClose((*it), 0);
             if (ret != 0) {
                 BM_LOG_ERROR("HalGvaClose failed " << ret);
             }
@@ -332,7 +333,7 @@ void MemSegmentDevice::FreeMemory() noexcept
     allocatedSize_ = 0;
     sliceCount_ = 0;
     if (globalVirtualAddress_ != nullptr) {
-        auto ret = DlHalApi::HalGvaUnreserveMemory();
+        auto ret = drv::HalGvaUnreserveMemory((uint64_t)globalVirtualAddress_);
         if (ret != 0) {
             BM_LOG_ERROR("HalGvaUnreserveMemory failed: " << ret);
         }

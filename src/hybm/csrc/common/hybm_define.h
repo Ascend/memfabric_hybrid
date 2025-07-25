@@ -10,7 +10,7 @@ namespace ock {
 namespace mf {
 
 constexpr uint64_t DEVICE_LARGE_PAGE_SIZE = 2UL * 1024UL * 1024UL;  // 大页的size, 2M
-constexpr uint64_t SVM_END_ADDR = 0x100000000000ULL + 0x80000000000ULL; // svm的结尾虚拟地址
+constexpr uint64_t SVM_END_ADDR = 0x100000000000ULL + 0x80000000000ULL - (1UL << 30UL); // svm的结尾虚拟地址
 constexpr uint64_t HYBM_DEVICE_PRE_META_SIZE = 128UL; // 128B
 constexpr uint64_t HYBM_DEVICE_GLOBAL_META_SIZE = HYBM_DEVICE_PRE_META_SIZE; // 128B
 constexpr uint64_t HYBM_ENTITY_NUM_MAX = 511UL; // entity最大数量
@@ -61,6 +61,14 @@ struct HybmDeviceMeta {
             return BM_DL_FUNCTION_FAILED;                                                 \
         }                                                                                 \
     } while (0)
+
+
+enum HybmGvaVersion : uint32_t {
+    HYBM_GVA_V1 = 0,
+    HYBM_GVA_V2 = 1,
+    HYBM_GVA_UNKNOWN
+};
+
 }  // namespace mf
 }  // namespace ock
 

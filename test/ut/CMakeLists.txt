@@ -7,7 +7,9 @@ file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
-        ${PROJECT_HYBM_SRC_BASE}/csrc/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/hybm_entry.cpp
+        ${PROJECT_HYBM_SRC_BASE}/csrc/hybm_data_op_entry.cpp
+        ${PROJECT_HYBM_SRC_BASE}/csrc/hybm_big_mem_entry.cpp
         ${PROJECT_HYBM_SRC_BASE}/csrc/common/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity/*
@@ -50,6 +52,8 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
 )

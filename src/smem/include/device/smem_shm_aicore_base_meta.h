@@ -6,7 +6,7 @@
 
 #include "smem_shm_aicore_base_define.h"
 
-constexpr uint64_t SMEM_SHM_DEVICE_END_ADDR = 0x180000000000ULL;
+constexpr uint64_t SMEM_SHM_DEVICE_END_ADDR = 0x180000000000ULL - (1UL << 30UL);
 constexpr uint64_t SMEM_SHM_DEVICE_PRE_META_SIZE = 128UL; // 128B
 constexpr uint64_t SMEM_SHM_DEVICE_GLOBAL_META_SIZE = SMEM_SHM_DEVICE_PRE_META_SIZE; // 128B
 constexpr uint64_t SMEM_OBJECT_NUM_MAX = 511UL; // entity最大数量
