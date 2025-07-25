@@ -8,6 +8,7 @@
 #include "mmc_meta_net_client.h"
 #include "mmc_def.h"
 #include "mmc_bm_proxy.h"
+#include "mmc_msg_client_meta.h"
 
 namespace ock {
 namespace mmc {
@@ -29,6 +30,12 @@ public:
     Result Put(const char *key, mmc_buffer *buf, mmc_put_options &options, uint32_t flags);
 
     Result Get(const char *key, mmc_buffer *buf, uint32_t flags);
+
+    Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);
+
+    Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
+                               const mmc_put_options& options, uint32_t flags, uint32_t operateId,
+                               BatchAllocResponse& allocResponse);
 
     Result BatchPut(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
                     const mmc_put_options& options, uint32_t flags);

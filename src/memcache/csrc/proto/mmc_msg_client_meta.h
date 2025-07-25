@@ -113,7 +113,8 @@ struct BatchGetRequest : MsgBase {
     explicit BatchGetRequest(const std::vector<std::string> &keys, uint32_t rankId, uint32_t operateId)
         : MsgBase{0, ML_BATCH_GET_REQ, 0}, keys_(keys), rankId_(rankId), operateId_(operateId) {}
 
-    Result Serialize(NetMsgPacker &packer) const override {
+    Result Serialize(NetMsgPacker &packer) const override
+    {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
@@ -123,7 +124,8 @@ struct BatchGetRequest : MsgBase {
         return MMC_OK;
     }
 
-    Result Deserialize(NetMsgUnpacker &packer) override {
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
@@ -134,45 +136,105 @@ struct BatchGetRequest : MsgBase {
     }
 };
 
+struct BatchUpdateRequest : MsgBase {
+    std::vector<BlobActionResult> actionResults_;
+    std::vector<std::string> keys_;
+    std::vector<uint32_t> ranks_;
+    std::vector<uint16_t> mediaTypes_;
+    uint32_t operateId_;
+
+    BatchUpdateRequest() : MsgBase{0, ML_BATCH_UPDATE_REQ, 0} {}
+
+    BatchUpdateRequest(
+        const std::vector<BlobActionResult>& actionResults,
+        const std::vector<std::string>& keys,
+        const std::vector<uint32_t>& ranks,
+        const std::vector<uint16_t>& mediaTypes,
+        uint32_t operateId
+    ) : MsgBase{0, ML_BATCH_UPDATE_REQ, 0},
+        actionResults_(actionResults),
+        keys_(keys),
+        ranks_(ranks),
+        mediaTypes_(mediaTypes),
+        operateId_(operateId) {}
+
+    Result Serialize(NetMsgPacker& packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(actionResults_);
+        packer.Serialize(keys_);
+        packer.Serialize(ranks_);
+        packer.Serialize(mediaTypes_);
+        packer.Serialize(operateId_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker& packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(actionResults_);
+        packer.Deserialize(keys_);
+        packer.Deserialize(ranks_);
+        packer.Deserialize(mediaTypes_);
+        packer.Deserialize(operateId_);
+        return MMC_OK;
+    }
+};
+
 struct BatchAllocRequest : MsgBase {
     std::vector<std::string> keys_;
     std::vector<AllocOptions> options_;
     uint32_t flags_;
+    uint32_t operateId_;  
 
-    BatchAllocRequest() : MsgBase{0, ML_BATCH_ALLOC_REQ, 0} {}
-    BatchAllocRequest(const std::vector<std::string>& keys, const std::vector<AllocOptions>& options, uint32_t flags)
+    BatchAllocRequest() : MsgBase{0, ML_BATCH_ALLOC_REQ, 0}, operateId_(0) {}
+    
+    BatchAllocRequest(const std::vector<std::string>& keys,
+                      const std::vector<AllocOptions>& options,
+                      uint32_t flags,
+                      uint32_t operateId)
         : MsgBase{0, ML_BATCH_ALLOC_REQ, 0},
           keys_(keys),
           options_(options),
-          flags_(flags) {}
+          flags_(flags),
+          operateId_(operateId) {}
 
-    Result Serialize(NetMsgPacker& packer) const override {
+    Result Serialize(NetMsgPacker& packer) const override
+    {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
         packer.Serialize(keys_);
         packer.Serialize(options_);
         packer.Serialize(flags_);
+        packer.Serialize(operateId_);
         return MMC_OK;
     }
 
-    Result Deserialize(NetMsgUnpacker& packer) override {
+    Result Deserialize(NetMsgUnpacker& packer) override
+    {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
         packer.Deserialize(keys_);
         packer.Deserialize(options_);
         packer.Deserialize(flags_);
+        packer.Deserialize(operateId_);
         return MMC_OK;
     }
 };
 
 struct BatchAllocResponse : MsgBase {
-    std::vector<std::vector<MmcMemBlobDesc>> blobs_; 
-    std::vector<uint8_t> numBlobs_;                  
-    std::vector<uint16_t> prots_;                    
-    std::vector<uint8_t> priorities_;                
-    std::vector<uint64_t> leases_;                   
+    std::vector<std::vector<MmcMemBlobDesc>> blobs_;
+    std::vector<uint8_t> numBlobs_;              
+    std::vector<uint16_t> prots_;             
+    std::vector<uint8_t> priorities_;        
+    std::vector<uint64_t> leases_;
+    std::vector<Result> results_;              
 
     BatchAllocResponse() : MsgBase{0, ML_BATCH_ALLOC_RESP, 0} {}
     BatchAllocResponse(
@@ -180,15 +242,18 @@ struct BatchAllocResponse : MsgBase {
         const std::vector<uint16_t> &prot,
         const std::vector<uint8_t> &priority,
         const std::vector<uint64_t> &lease,
-        const std::vector<std::vector<MmcMemBlobDesc>> &blobs
+        const std::vector<std::vector<MmcMemBlobDesc>> &blobs,
+        const std::vector<Result>& results
     ) : MsgBase{0, ML_BATCH_ALLOC_RESP, 0},
         numBlobs_(numBlobs),
         prots_(prot),
         priorities_(priority),
         leases_(lease),
-        blobs_(blobs) {}
+        blobs_(blobs),
+        results_(results) {}
 
-    Result Serialize(NetMsgPacker &packer) const override {
+    Result Serialize(NetMsgPacker &packer) const override
+    {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
@@ -197,10 +262,12 @@ struct BatchAllocResponse : MsgBase {
         packer.Serialize(leases_);
         packer.Serialize(numBlobs_);
         packer.Serialize(blobs_);
+        packer.Serialize(results_);
         return MMC_OK;
     }
 
-    Result Deserialize(NetMsgUnpacker &packer) override {
+    Result Deserialize(NetMsgUnpacker &packer) override
+    {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
@@ -209,6 +276,7 @@ struct BatchAllocResponse : MsgBase {
         packer.Deserialize(leases_);
         packer.Deserialize(numBlobs_);
         packer.Deserialize(blobs_);
+        packer.Deserialize(results_);
         return MMC_OK;
     }
 };
@@ -245,7 +313,8 @@ struct BatchRemoveRequest : MsgBase {
     explicit BatchRemoveRequest(const std::vector<std::string>& keys) :
         MsgBase{0, ML_BATCH_REMOVE_REQ, 0}, keys_(keys) {}
 
-    Result Serialize(NetMsgPacker& packer) const override {
+    Result Serialize(NetMsgPacker& packer) const override
+    {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
@@ -253,7 +322,8 @@ struct BatchRemoveRequest : MsgBase {
         return MMC_OK;
     }
 
-    Result Deserialize(NetMsgUnpacker& packer) override {
+    Result Deserialize(NetMsgUnpacker& packer) override
+    {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
@@ -269,7 +339,8 @@ struct BatchRemoveResponse : MsgBase {
     explicit BatchRemoveResponse(const std::vector<Result>& results) :
         MsgBase{0, ML_BATCH_REMOVE_RESP, 0}, results_(results) {}
 
-    Result Serialize(NetMsgPacker& packer) const override {
+    Result Serialize(NetMsgPacker& packer) const override
+    {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
@@ -277,7 +348,8 @@ struct BatchRemoveResponse : MsgBase {
         return MMC_OK;
     }
 
-    Result Deserialize(NetMsgUnpacker& packer) override {
+    Result Deserialize(NetMsgUnpacker& packer) override
+    {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
@@ -389,6 +461,34 @@ struct Response : MsgBase {
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
         packer.Deserialize(ret_);
+        return MMC_OK;
+    }
+};
+
+struct BatchUpdateResponse : MsgBase {
+    std::vector<Result> results_;
+
+    BatchUpdateResponse() : MsgBase{0, ML_BATCH_UPDATE_RESP, 0} {}
+
+    explicit BatchUpdateResponse(const std::vector<Result>& results)
+        : MsgBase{0, ML_BATCH_UPDATE_RESP, 0},
+          results_(results) {}
+
+    Result Serialize(NetMsgPacker& packer) const override
+    {
+        packer.Serialize(msgVer);
+        packer.Serialize(msgId);
+        packer.Serialize(destRankId);
+        packer.Serialize(results_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker& packer) override
+    {
+        packer.Deserialize(msgVer);
+        packer.Deserialize(msgId);
+        packer.Deserialize(destRankId);
+        packer.Deserialize(results_);
         return MMC_OK;
     }
 };

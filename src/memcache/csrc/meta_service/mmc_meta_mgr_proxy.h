@@ -16,6 +16,8 @@ public:
 
     virtual Result Alloc(const AllocRequest &req, AllocResponse &resp) = 0;
 
+    virtual Result BatchAlloc(const BatchAllocRequest &req, BatchAllocResponse &resp) = 0;
+
     virtual Result UpdateState(const UpdateRequest &req, Response &resp) = 0;
 
     virtual Result Get(const GetRequest &req, AllocResponse &resp) = 0;

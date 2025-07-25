@@ -75,6 +75,8 @@ Result ock::mmc::MetaNetServer::Start()
                                       std::bind(&MetaNetServer::HandleQuery, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_QUERY_REQ,
                                       std::bind(&MetaNetServer::HandleBatchQuery, this, std::placeholders::_1));
+    server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_ALLOC_REQ,
+                                      std::bind(&MetaNetServer::HandleBatchAlloc, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_PING_REQ, nullptr);
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::LM_META_REPLICATE_REQ, nullptr);
     server->RegNewLinkHandler(std::bind(&MetaNetServer::HandleNewLink, this, std::placeholders::_1));
@@ -155,6 +157,30 @@ Result MetaNetServer::HandleAlloc(const NetContextPtr &context)
     metaMgrProxy->Alloc(req, resp);
     MMC_LOG_DEBUG("HandleAlloc key " << req.key_ << " finish.");
 
+    return context->Reply(req.msgId, resp);
+}
+
+Result MetaNetServer::HandleBatchAlloc(const NetContextPtr &context)
+{
+    BatchAllocRequest req;
+    BatchAllocResponse resp;
+
+    Result getResult = context->GetRequest<BatchAllocRequest>(req);
+    if (getResult != MMC_OK) {
+        MMC_LOG_ERROR("Failed to get BatchAllocRequest: " << getResult);
+        return getResult;
+    }
+
+    MMC_LOG_INFO("HandleBatchAlloc start. Keys count: " << req.keys_.size()
+                 << ", OperateId: " << req.operateId_
+                 << ", Flags: " << req.flags_);
+    
+    auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
+    Result batchResult = metaMgrProxy->BatchAlloc(req, resp);
+    if (batchResult != MMC_OK) {
+        MMC_LOG_ERROR("BatchAlloc failed. Keys count: " << req.keys_.size()
+                     << ", Error: " << batchResult);
+    }
     return context->Reply(req.msgId, resp);
 }
 

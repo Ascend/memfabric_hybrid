@@ -94,54 +94,110 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
     return MMC_OK;
 }
 
-Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                                 const mmc_put_options& options, uint32_t flags)
+Result MmcClientDefault::ValidateBatchPutInputs(
+    const std::vector<std::string>& keys,
+    const std::vector<mmc_buffer>& bufs)
 {
     if (keys.empty() || bufs.empty() || keys.size() != bufs.size()) {
         MMC_LOG_ERROR("Invalid arguments");
         return MMC_ERROR;
     }
+    return MMC_OK;
+}
 
-    uint32_t operateId = operateId_++;
+Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& keys,
+                                             const std::vector<mmc_buffer>& bufs,
+                                             const mmc_put_options& options,
+                                             uint32_t flags,
+                                             uint32_t operateId,
+                                             BatchAllocResponse& allocResponse)
+{
+    if (bmProxy_ == nullptr) {
+        MMC_LOG_ERROR("BmProxy is null");
+        return MMC_ERROR;
+    }
+    
+    std::vector<AllocOptions> allocOptionsList;
+    for (size_t i = 0; i < keys.size(); ++i) {
+        const mmc_buffer& buf = bufs[i];
+        uint64_t blobSize = buf.dimType == 0 ? buf.oneDim.len : buf.twoDim.width * buf.twoDim.layerNum;
+        allocOptionsList.emplace_back(blobSize, 1, options.mediaType, RankId(options.policy), flags);
+    }
 
-    for (uint32_t i = 0; i < keys.size(); ++i) {
+    BatchAllocRequest request(keys, allocOptionsList, flags, operateId);
+    Result allocResult = metaNetClient_->SyncCall(request, allocResponse, rpcTimeOut_);
+    if (allocResult != MMC_OK) {
+        MMC_LOG_ERROR("client " << name_ << " batch put alloc failed");
+        return MMC_ERROR;
+    }
+
+    if (keys.size() != allocResponse.blobs_.size()) {
+        MMC_LOG_ERROR("Mismatch in number of keys and allocated blobs");
+        return MMC_ERROR;
+    }
+
+    for (size_t i = 0; i < keys.size(); ++i) {
         const std::string& key = keys[i];
         const mmc_buffer& buf = bufs[i];
+        const auto& blobs = allocResponse.blobs_[i];
+        const auto numBlobs = allocResponse.numBlobs_[i];
+
+        if (numBlobs == 0 || blobs.size() != numBlobs) {
+            MMC_LOG_ERROR("Invalid number of blobs for key " << key);
+            return MMC_ERROR;
+        }
 
         uint64_t blobSize = buf.dimType == 0 ? buf.oneDim.len : buf.twoDim.width * buf.twoDim.layerNum;
-
-        AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
-        AllocResponse response;
-        Result allocResult = metaNetClient_->SyncCall(request, response, rpcTimeOut_);
-        if (allocResult != MMC_OK) {
-            MMC_LOG_ERROR("client " << name_ << " batch put alloc " << key << " failed");
-            return MMC_ERROR;
-        }
-
-        if (bmProxy_ == nullptr) {
-            MMC_LOG_ERROR("BmProxy is null");
-            return MMC_ERROR;
-        }
-
-        for (uint8_t j = 0; j < response.numBlobs_; ++j) {
+        for (uint8_t j = 0; j < numBlobs; ++j) {
             mmc_buffer bufCopy = buf;
-            Result putResult = bmProxy_->Put(&bufCopy, response.blobs_[j].gva_, blobSize);
+            Result putResult = bmProxy_->Put(&bufCopy, blobs[j].gva_, blobSize);
             if (putResult != MMC_OK) {
                 MMC_LOG_ERROR("client " << name_ << " batch put " << key << " failed");
                 return MMC_ERROR;
             }
         }
+    }
+    return MMC_OK;
+}
 
-        UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0, operateId};
-        Response updateResponse;
-        Result updateResult = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
-        if (updateResult != MMC_OK) {
-            MMC_LOG_ERROR("client " << name_ << " batch put update " << key << " failed");
-            return MMC_ERROR;
-        }
+Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
+                                  const std::vector<mmc_buffer>& bufs,
+                                  const mmc_put_options& options,
+                                  uint32_t flags)
+{
+    Result validationResult = ValidateBatchPutInputs(keys, bufs);
+    if (validationResult != MMC_OK) {
+        return validationResult;
+    }
 
-        if (updateResponse.ret_ != MMC_OK) {
-            MMC_LOG_ERROR("client " << name_ << " batch put update " << key << " failed");
+    uint32_t operateId = operateId_++;
+    BatchAllocResponse allocResponse;
+    
+    Result allocationResult = AllocateAndPutBlobs(keys, bufs, options, flags, operateId, allocResponse);
+    if (allocationResult != MMC_OK) {
+        return allocationResult;
+    }
+
+    std::vector<BlobActionResult> actionResults(keys.size(), MMC_WRITE_OK);
+    std::vector<uint32_t> ranks(keys.size(), 0);
+    std::vector<uint16_t> mediaTypes(keys.size(), options.mediaType);
+
+    BatchUpdateRequest updateRequest{actionResults, keys, ranks, mediaTypes, operateId};
+    BatchUpdateResponse updateResponse;
+    Result updateResult = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
+    if (updateResult != MMC_OK) {
+        MMC_LOG_ERROR("client " << name_ << " batch put update failed");
+        return MMC_ERROR;
+    }
+
+    if (updateResponse.results_.size() != keys.size()) {
+        MMC_LOG_ERROR("Mismatch in number of update results");
+        return MMC_ERROR;
+    }
+
+    for (size_t i = 0; i < updateResponse.results_.size(); ++i) {
+        if (updateResponse.results_[i] != MMC_OK) {
+            MMC_LOG_ERROR("client " << name_ << " batch put update for key " << keys[i] << " failed");
             return MMC_ERROR;
         }
     }

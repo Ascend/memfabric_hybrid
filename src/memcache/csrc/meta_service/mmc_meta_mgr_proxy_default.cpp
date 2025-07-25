@@ -29,6 +29,64 @@ Result MmcMetaMgrProxyDefault::Alloc(const AllocRequest &req, AllocResponse &res
     return MMC_OK;
 }
 
+Result MmcMetaMgrProxyDefault::BatchAlloc(const BatchAllocRequest &req, BatchAllocResponse &resp)
+{
+    std::vector<MmcMemObjMetaPtr> objMetas;
+    std::vector<Result> allocResults;
+    Result batchRet = metaMangerPtr_->BatchAlloc(req.keys_, req.options_, req.operateId_, objMetas, allocResults);
+    
+    resp.blobs_.resize(req.keys_.size());
+    
+    for (size_t i = 0; i < req.keys_.size(); ++i) {
+        if (allocResults[i] != MMC_OK) {
+            MMC_LOG_DEBUG("Allocation failed for key: " << req.keys_[i]
+                          << ", error: " << allocResults[i]);
+            continue;
+        }
+        
+        ProcessAllocatedObject(i, objMetas[i], req, resp);
+    }
+    
+    return batchRet;
+}
+
+void MmcMetaMgrProxyDefault::ProcessAllocatedObject(size_t index, const MmcMemObjMetaPtr& objMeta,
+                                                    const BatchAllocRequest &req, BatchAllocResponse &resp)
+{
+    resp.numBlobs_.push_back(objMeta->NumBlobs());
+    resp.prots_.push_back(objMeta->Prot());
+    resp.priorities_.push_back(objMeta->Priority());
+    resp.leases_.push_back(0);
+    
+    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
+    resp.blobs_[index].resize(blobs.size());
+    
+    for (size_t j = 0; j < blobs.size(); ++j) {
+        const MmcMemBlobDesc& blobDesc = blobs[j]->GetDesc();
+        resp.blobs_[index][j] = blobDesc;
+        
+        if (req.options_[index].preferredRank_ != blobDesc.rank_) {
+            HandleBlobReplication(index, j, blobDesc, objMeta, req);
+        }
+    }
+}
+
+void MmcMetaMgrProxyDefault::HandleBlobReplication(size_t objIndex, size_t blobIndex,
+                                                   const MmcMemBlobDesc& blobDesc,
+                                                   const MmcMemObjMetaPtr& objMeta,
+                                                   const BatchAllocRequest &req)
+{
+    MetaReplicateRequest replicateReq{
+        req.keys_[objIndex],
+        blobDesc,
+        objMeta->Prot(),
+        objMeta->Priority()
+    };
+    
+    Response replicateResp;
+    netServerPtr_->SyncCall(blobDesc.rank_, replicateReq, replicateResp, timeOut_);
+}
+
 Result MmcMetaMgrProxyDefault::UpdateState(const UpdateRequest &req, Response &resp)
 {
 

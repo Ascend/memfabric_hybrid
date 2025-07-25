@@ -33,6 +33,8 @@ private:
     /* message handle function */
     Result HandleAlloc(const NetContextPtr &context);
 
+    Result HandleBatchAlloc(const NetContextPtr &context);
+
     Result HandleBmRegister(const NetContextPtr &context);
 
     Result HandleBmUnregister(const NetContextPtr &context);

@@ -102,6 +102,51 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
     return MMC_OK;
 }
 
+Result MmcMetaManager::BatchAlloc(const std::vector<std::string>& keys,
+                                  const std::vector<AllocOptions>& allocOpts,
+                                  uint32_t requestId,
+                                  std::vector<MmcMemObjMetaPtr>& objMetas,
+                                  std::vector<Result>& allocResults)
+{
+    if (globalAllocator_->TouchedThreshold(EVICT_THRESHOLD_HIGH)) {
+        std::vector<std::string> keysToEvict = metaContainer_->EvictCandidates(EVICT_THRESHOLD_LOW);
+        std::vector<Result> removeResults;
+        BatchRemove(keysToEvict, removeResults);
+    }
+
+    objMetas.resize(keys.size(), nullptr);
+    allocResults.resize(keys.size(), MMC_ERROR);
+
+    bool allSuccess = true;
+    for (size_t i = 0; i < keys.size(); ++i) {
+        const std::string& key = keys[i];
+        const AllocOptions& opt = allocOpts[i];
+
+        MmcMemObjMetaPtr objMeta = MmcMakeRef<MmcMemObjMeta>();
+        std::vector<MmcMemBlobPtr> blobs;
+
+        Result ret = globalAllocator_->Alloc(opt, blobs);
+        if (ret != MMC_OK) {
+            MMC_LOG_ERROR("Allocation failed for key: " << key << ", error: " << ret);
+            allocResults[i] = ret;
+            allSuccess = false;
+            continue;
+        }
+
+        for (auto& blob : blobs) {
+            blob->UpdateState(blob->Rank(), requestId, MMC_ALLOCATED_OK);
+            objMeta->AddBlob(blob);
+        }
+
+        metaContainer_->Insert(key, objMeta);
+        objMetas[i] = objMeta;
+        allocResults[i] = MMC_OK;
+        MMC_LOG_DEBUG("Allocated for key: " << key);
+    }
+    
+    return allSuccess ? MMC_OK : MMC_ERROR;
+}
+
 Result MmcMetaManager::UpdateState(const std::string &key, const MmcLocation &loc, uint32_t rankId, uint32_t operateId,
                                    const BlobActionResult &actRet)
 {

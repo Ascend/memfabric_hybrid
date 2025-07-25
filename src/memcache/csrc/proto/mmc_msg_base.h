@@ -39,6 +39,7 @@ enum LOCAL_META_OPCODE_REQ : int16_t {
     ML_QUERY_REQ = 13,         /* query a key to meta service to get blob info */
     ML_BATCH_QUERY_REQ = 14,   /* query keys to meta service to get blob info */
     ML_BATCH_ALLOC_REQ = 15,   /* allocate batch of objects by key and size */
+    ML_BATCH_UPDATE_REQ = 16,  /* update batch of objects by key and size */
 };
 
 enum LOCAL_META_OPCODE_RESP : int16_t {
@@ -53,6 +54,7 @@ enum LOCAL_META_OPCODE_RESP : int16_t {
     ML_BATCH_ALLOC_RESP = 8,
     ML_QUERY_RESP = 9,
     ML_BATCH_QUERY_RESP = 10,
+    ML_BATCH_UPDATE_RESP = 11,
 };
 }  // namespace mmc
 }  // namespace ock

@@ -55,12 +55,21 @@ public:
      */
     Result BatchGet(const std::vector<std::string> &keys, std::vector<MmcMemObjMetaPtr> &objMetas,
                     std::vector<Result> &getResults);
+
     /**
      * @brief Alloc the global memory space and create the meta object
      * @param key          [in] key of the meta object
      * @param metaInfo     [out] the meta object created
      */
     Result Alloc(const std::string &key, const AllocOptions &allocOpt, uint32_t requestId, MmcMemObjMetaPtr &objMeta);
+
+   /**
+     * @brief Alloc the global memory space and create the meta object
+     * @param key          [in] key of the meta object
+     * @param metaInfo     [out] the meta object created
+     */
+    Result BatchAlloc(const std::vector<std::string>& keys, const std::vector<AllocOptions>& allocOpts,
+                     uint32_t requestId, std::vector<MmcMemObjMetaPtr>& objMetas, std::vector<Result>& allocResults);
 
     /**
      * @brief Update the state
