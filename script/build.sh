@@ -21,6 +21,20 @@ if [ -z "$BUILD_PYTHON" ]; then
     BUILD_PYTHON="ON"
 fi
 
+readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
+readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
+readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
+readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
+dos2unix "$MOCKCPP_PATH/include/mockcpp/JmpCode.h"
+dos2unix "$MOCKCPP_PATH/include/mockcpp/mockcpp.h"
+dos2unix "$MOCKCPP_PATH/src/JmpCode.cpp"
+dos2unix "$MOCKCPP_PATH/src/JmpCodeArch.h"
+dos2unix "$MOCKCPP_PATH/src/JmpCodeX64.h"
+dos2unix "$MOCKCPP_PATH/src/JmpCodeX86.h"
+dos2unix "$MOCKCPP_PATH/src/JmpOnlyApiHook.cpp"
+dos2unix "$MOCKCPP_PATH/src/UnixCodeModifier.cpp"
+dos2unix $TEST_3RD_PATCH_PATH/*.patch
+
 set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)

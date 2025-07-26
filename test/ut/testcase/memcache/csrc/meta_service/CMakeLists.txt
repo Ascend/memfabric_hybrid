@@ -49,6 +49,16 @@ ADD_UNIT_TEST(test_bm_init
         BUILD_FLAGS -fpermissive --coverage
 )
 
+file(GLOB_RECURSE bm_proxy_src
+        ${CMAKE_CURRENT_SOURCE_DIR}/bm_proxy.cpp
+)
+ADD_UNIT_TEST(test_bm_proxy
+        FILES ${bm_proxy_src} ${TEST_SRC_PATHS}/ut_main.cpp
+        INCLUDE_PATHS  ${TEST_INCLUDE_PATHS}
+        LINK_LIBRARIES ${TEST_DEPEND_LIBS}
+        BUILD_FLAGS -fpermissive --coverage
+)
+
 file(GLOB_RECURSE global_allocator_thread_src
         ${CMAKE_CURRENT_SOURCE_DIR}/global_allocator_thread.cpp
 )

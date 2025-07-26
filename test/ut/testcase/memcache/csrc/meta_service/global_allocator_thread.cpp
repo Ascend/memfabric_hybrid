@@ -66,7 +66,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
     }
 
     std::vector<MmcMemBlobPtr> blobs1;
-    allocReq.blobSize_ = SIZE_32K + 10000;
+    allocReq.blobSize_ = SIZE_32K + 5000;
     allocReq.numBlobs_ = 4;
 
     result = allocator->Alloc(allocReq, blobs1);

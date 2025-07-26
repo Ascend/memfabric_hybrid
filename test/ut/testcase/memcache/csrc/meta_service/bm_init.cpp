@@ -51,7 +51,6 @@ TEST_F(TestBmInit, Init)
     std::string hcomUrl = "tcp://127.0.0.1:5682";
     mmc_meta_service_config_t metaServiceConfig;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
-    metaServiceConfig.worldSize = 1;
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
     MmcMetaServicePtr metaServicePtr = Convert<MmcMetaServiceDefault, MmcMetaService>(metaServiceDefault);
     ASSERT_TRUE(metaServicePtr->Start(metaServiceConfig) == MMC_OK);

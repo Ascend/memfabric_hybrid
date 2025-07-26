@@ -79,10 +79,21 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " alloc " << key << " failed");
 
+    if (response.numBlobs_ == 0) {
+        MMC_LOG_ERROR("client " << name_ << " alloc " << key << " failed");
+        return MMC_ERROR;
+    }
+    
     for (uint8_t i = 0; i < response.numBlobs_; i++) {
         MMC_LOG_INFO("Attempting to put to blob " << i << " at address " << response.blobs_[i].gva_);
-        MMC_RETURN_ERROR(bmProxy_->Put(buf, response.blobs_[i].gva_, blobSize),
-                         "client " << name_ << " put " << key << " failed");
+        Result ret = bmProxy_->Put(buf, response.blobs_[i].gva_, blobSize);
+        if (ret != MMC_OK) {
+            UpdateRequest updateRequest{MMC_WRITE_FAIL, key, 0, 0, operateId};
+            Response updateResponse;
+            metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
+            MMC_LOG_ERROR("client " << name_ << " put " << key << " failed");
+            return MMC_ERROR;
+        }
     }
 
     UpdateRequest updateRequest{MMC_WRITE_OK, key, 0, 0, operateId};

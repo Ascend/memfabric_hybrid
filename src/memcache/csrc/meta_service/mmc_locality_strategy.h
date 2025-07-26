@@ -62,7 +62,9 @@ public:
                     it = allocators.begin();
                 }
                 if (it == itPrefer) {
-                    MMC_LOG_ERROR("Cannot allocate blob");
+                    MMC_LOG_ERROR("Cannot allocate blob, blobSize "<< allocReq.blobSize_
+                        << " numBlobs " << allocReq.numBlobs_ << " mediaType " << allocReq.mediaType_
+                        << " preferredRank " << allocReq.preferredRank_);
                     return MMC_ERROR;
                 }
             }

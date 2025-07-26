@@ -2,6 +2,7 @@ file(GLOB_RECURSE mmc_test_src
         # ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/meta_service_net.cpp
         # ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/service_interface.cpp
         # ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/bm_init.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/bm_proxy.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/test_meta_manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/global_allocator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/meta_service/global_allocator_thread.cpp

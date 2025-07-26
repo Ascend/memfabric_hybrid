@@ -11,7 +11,6 @@ namespace mmc {
 namespace ConfConstant {
 // add configuration here with default values
 constexpr auto OCK_MMC_META_SERVICE_URL = std::make_pair("ock.mmc.meta_service_url", "tcp://127.0.0.1:5000");
-constexpr auto OCK_MMC_META_SERVICE_WORLD_SIZE = std::make_pair("ock.mmc.meta_service.world_size", 1);
 
 constexpr auto OCK_MMC_TLS_ENABLE = std::make_pair("ock.mmc.tls.enable", true);
 constexpr auto OCK_MMC_TLS_TOP_PATH = std::make_pair("ock.mmc.tls.top.path", "");
@@ -33,8 +32,6 @@ constexpr auto OKC_MMC_LOCAL_SERVICE_HBM_SIZE = std::make_pair("ock.mmc.local_se
 
 constexpr auto OCK_MMC_CLIENT_TIMEOUT_SECONDS = std::make_pair("ock.mmc.client.timeout.seconds", 60);
 
-constexpr int MIN_META_SERVICE_WORLD_SIZE = 1;
-constexpr int MAX_META_SERVICE_WORLD_SIZE = 1024;
 }
 }  // namespace mmc
 }  // namespace ock

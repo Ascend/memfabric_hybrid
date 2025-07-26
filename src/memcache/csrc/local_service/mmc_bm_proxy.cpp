@@ -13,13 +13,9 @@ std::mutex MmcBmProxyFactory::instanceMutex_;
 Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_create_config_t &createConfig)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (started_) {
+    if (started_ || handle_ != nullptr) {
         MMC_LOG_INFO("MmcBmProxy " << name_ << " already init");
         return MMC_OK;
-    }
-    if (handle_ != nullptr) {
-        MMC_LOG_ERROR("Bm proxy has been initialized");
-        return MMC_ERROR;
     }
 
     auto ret = smem_init(0);
@@ -50,6 +46,9 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
         opType = SMEMB_DATA_OP_SDMA;
     } else if (createConfig.dataOpType == "roce") {
         opType = SMEMB_DATA_OP_ROCE;
+    } else {
+        MMC_LOG_ERROR("MmcBmProxy unknown data op type " << createConfig.dataOpType);
+        return MMC_ERROR;
     }
     handle_ = smem_bm_create(createConfig.id, createConfig.memberSize, opType,
         createConfig.localDRAMSize, createConfig.localHBMSize, createConfig.flags);

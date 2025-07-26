@@ -137,9 +137,6 @@ public:
     void LoadDefault() override {
         using namespace ConfConstant;
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
-        AddIntConf(OCK_MMC_META_SERVICE_WORLD_SIZE,
-            VIntRange::Create(OCK_MMC_META_SERVICE_WORLD_SIZE.first,
-                MIN_META_SERVICE_WORLD_SIZE,MAX_META_SERVICE_WORLD_SIZE));
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
         AddStrConf(OCK_MMC_TLS_TOP_PATH, VNoCheck::Create());
@@ -152,7 +149,6 @@ public:
     void GetMetaServiceConfig(mmc_meta_service_config_t &config) {
         const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
         strncpy(config.discoveryURL, discoveryURL.c_str(), DISCOVERY_URL_SIZE);
-        config.worldSize = GetInt(ConfConstant::OCK_MMC_META_SERVICE_WORLD_SIZE);
         GetTlsConfig(config.tlsConfig);
     }
 };

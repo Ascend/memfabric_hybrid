@@ -74,7 +74,6 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     mmc_meta_service_config_t metaServiceConfig;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
-    metaServiceConfig.worldSize = 1;
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
 

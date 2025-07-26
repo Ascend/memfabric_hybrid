@@ -20,7 +20,7 @@ public:
     Result Alloc(const AllocOptions &allocReq, std::vector<MmcMemBlobPtr> &blobs)
     {
         globalAllocLock_.LockRead();
-        if (allocators_.empty() == true) {
+        if (allocators_.empty()) {
             globalAllocLock_.UnlockRead();
             MMC_LOG_ERROR("Alloc allocators_ is empty");
             return MMC_ERROR;
@@ -37,7 +37,8 @@ public:
         const auto iter = allocators_.find(location);
         if (iter == allocators_.end()) {
             globalAllocLock_.UnlockRead();
-            MMC_LOG_ERROR("Free blob failed, location not found");
+            MMC_LOG_ERROR("Free blob failed, location not found, rank: "
+                << location.rank_ << ", mediaType: " << location.mediaType_);
             return MMC_INVALID_PARAM;
         }
 

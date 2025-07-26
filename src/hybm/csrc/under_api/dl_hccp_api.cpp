@@ -155,6 +155,7 @@ void DlHccpApi::CleanupLibrary()
         dlclose(tsdHandle);
         tsdHandle = nullptr;
     }
+    gLoaded = false;
 }
 }
 }

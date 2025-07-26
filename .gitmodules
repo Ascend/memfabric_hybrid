@@ -9,3 +9,4 @@
 [submodule "test/3rdparty/mockcpp"]
 	path = test/3rdparty/mockcpp
 	url = https://github.com/sinojelly/mockcpp.git
+	branch = tags/v2.7

@@ -30,7 +30,6 @@ typedef struct {
 
 typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE]; /* composed by schema and url, e.g. tcp:// or etcd:// or zk:// */
-    uint32_t worldSize;
     mmc_tls_config tlsConfig;
 } mmc_meta_service_config_t;
 
