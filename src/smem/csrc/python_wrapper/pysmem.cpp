@@ -48,7 +48,15 @@ public:
             throw std::runtime_error("barrier failed:");
         }
     }
- 
+
+    void Destroy(uint32_t flags)
+    {
+        auto ret = smem_shm_destroy(handle_, flags);
+        if (ret != 0) {
+            throw std::runtime_error("destroy failed:");
+        }
+    }
+
     void AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
     {
         auto ret = smem_shm_control_allgather(handle_, sendBuf, sendSize, recvBuf, recvSize);
@@ -369,6 +377,8 @@ Returns:
 Get local rank of a shm object)")
         .def_property_readonly("rank_size", &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>(), R"(
 Get rank size of a shm object)")
+        .def("destory", &ShareMemory::Destroy, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
+Destroy the shm handle.)")
         .def("query_support_data_operation", &ShareMemory::QuerySupportDataOp,
             py::call_guard<py::gil_scoped_release>(), R"(
 Get supported data operations)")
