@@ -5,6 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
+#include <mutex>
 
 #include "smem.h"
 #include "smem_shm.h"
@@ -47,7 +48,7 @@ public:
             throw std::runtime_error("barrier failed:");
         }
     }
-
+ 
     void AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
     {
         auto ret = smem_shm_control_allgather(handle_, sendBuf, sendSize, recvBuf, recvSize);
@@ -80,8 +81,18 @@ public:
         if (handle == nullptr) {
             throw std::runtime_error("create shm failed!");
         }
-
+ 
         return new (std::nothrow)ShareMemory(handle, gva);
+    }
+
+    uint32_t QuerySupportDataOp() noexcept
+    {
+        return smem_shm_query_support_data_operation();
+    }
+
+    uint32_t TopologyCanReach(uint32_t remoteRank, uint32_t *reachInfo)
+    {
+        return smem_shm_topology_can_reach(handle_, remoteRank, reachInfo);
     }
 
 private:
@@ -104,7 +115,7 @@ public:
         if (ret != 0) {
             throw std::runtime_error(std::string("join bm failed:").append(std::to_string(ret)));
         }
-        return (uint64_t)(ptrdiff_t)address;
+        return static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(address));
     }
 
     void Leave(uint32_t flags)
@@ -138,6 +149,15 @@ public:
         }
     }
 
+    void CopyData2D(uint64_t src, uint64_t spitch, uint64_t dest, uint64_t dpitch, uint64_t width, uint64_t height,
+                    smem_bm_copy_type type, uint32_t flags)
+    {
+        auto ret = smem_bm_copy_2d(handle_, (const void *)(ptrdiff_t)src, spitch, (void *)(ptrdiff_t)dest, dpitch,
+                                   width, height, type, flags);
+        if (ret != 0) {
+            throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
+        }
+    }
     static int Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                           const smem_bm_config_t &config) noexcept
     {
@@ -149,7 +169,7 @@ public:
     {
         smem_bm_uninit(flags);
     }
-
+ 
     static uint32_t GetRankId() noexcept
     {
         return smem_bm_get_rank_id();
@@ -173,6 +193,27 @@ private:
 
 uint32_t BigMemory::worldSize_;
 
+struct LoggerState {
+    static std::mutex mutex;
+    static std::shared_ptr<py::function> py_logger;
+};
+
+std::mutex LoggerState::mutex;
+std::shared_ptr<py::function> LoggerState::py_logger;
+
+static void cpp_logger_adapter(int level, const char* msg) {
+    std::lock_guard<std::mutex> lock(LoggerState::mutex);
+
+    if (!LoggerState::py_logger) {
+        return;
+    }
+
+    py::gil_scoped_acquire acquire;
+    if (Py_IsInitialized()) {
+        (*(LoggerState::py_logger))(level, msg ? msg : "");
+    }
+}
+
 void DefineSmemFunctions(py::module_ &m)
 {
     m.def("initialize", &smem_init, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
@@ -189,9 +230,57 @@ Un-Initialize the smem running environment)");
 
     m.def("set_log_level", &smem_set_log_level, py::call_guard<py::gil_scoped_release>(), py::arg("level"), R"(
 set log print level.
-
+ 
 Arguments:
     level(int): log level, 0:debug 1:info 2:warn 3:error)");
+    m.def(
+        "set_extern_logger",
+        [](py::function log_fn) {
+            if (!log_fn || log_fn.is_none()) {
+                std::lock_guard<std::mutex> lock(LoggerState::mutex);
+                LoggerState::py_logger.reset();
+                auto ret = smem_set_extern_logger(nullptr);
+                return ret;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(LoggerState::mutex);
+                LoggerState::py_logger = std::make_shared<py::function>(log_fn);
+            }
+
+            auto ret = smem_set_extern_logger(cpp_logger_adapter);
+            if (ret != 0) {
+                throw std::runtime_error("Failed to set logger");
+            }
+            return ret;
+        },
+        py::call_guard<py::gil_scoped_release>(), py::arg("log_fn"), R"(
+Set external logger callback function
+
+Parameters:
+    log_fn (callable): Python function that accepts (int level, str message)
+        level: log level
+        message: log content
+Returns:
+    0 if successful
+)");
+
+    m.add_object("_cleanup_capsule", py::capsule([]() {
+        smem_set_extern_logger(nullptr);
+        LoggerState::py_logger.reset();
+    }));
+
+    m.def("get_last_err_msg", &smem_get_last_err_msg, py::call_guard<py::gil_scoped_release>(), R"(
+Get last error message.
+Returns:
+    error message string
+)");
+
+    m.def("get_and_clear_last_err_msg", &smem_get_and_clear_last_err_msg, py::call_guard<py::gil_scoped_release>(), R"(
+Get and clear all error message.
+Returns:
+    error message string
+)");
 
     m.doc() = LIB_VERSION;
 }
@@ -215,7 +304,7 @@ control operation timeout, i.e. barrier, allgather, topology_can_reach etc, defa
 whether to start config store, default true)")
         .def_readwrite("flags", &smem_shm_config_t::flags, "other flags, default 0");
 }
-
+ 
 void DefineBmConfig(py::module_ &m)
 {
     py::enum_<smem_bm_copy_type>(m, "BmCopyType")
@@ -280,6 +369,9 @@ Returns:
 Get local rank of a shm object)")
         .def_property_readonly("rank_size", &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>(), R"(
 Get rank size of a shm object)")
+        .def("query_support_data_operation", &ShareMemory::QuerySupportDataOp,
+            py::call_guard<py::gil_scoped_release>(), R"(
+Get supported data operations)")
         .def("barrier", &ShareMemory::Barrier, py::call_guard<py::gil_scoped_release>(), R"(
 Do barrier on a shm object, using control network.)")
         .def(
@@ -299,6 +391,17 @@ Arguments:
     local_data(bytes): input data
 Returns:
     output data)")
+        .def("topology_can_reach",
+            [](ShareMemory &shm, uint32_t remote_rank, uint32_t reach_info) {
+                return shm.TopologyCanReach(remote_rank, &reach_info);
+            }, py::call_guard<py::gil_scoped_release>(), py::arg("remote_rank"), py::arg("reach_info"), R"(
+Query the topology reachability to a remote rank
+
+Arguments:
+    remote_rank (int): Target rank ID to check
+    reach_info (int): Reachability information
+Returns:
+    int: 0 if successful)")
         .def_property_readonly(
             "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
             py::call_guard<py::gil_scoped_release>(), R"(
@@ -361,7 +464,7 @@ Arguments:
     flags(int): optional flags)")
         .def("local_mem_size", &BigMemory::LocalMemSize, py::call_guard<py::gil_scoped_release>(), R"(
 Get size of local memory that contributed to global space.
-
+ 
 Returns:
     local memory size in bytes)")
         .def("peer_rank_ptr", &BigMemory::GetPtrByRank, py::call_guard<py::gil_scoped_release>(), py::arg("peer_rank"),
@@ -380,6 +483,22 @@ Arguments:
     src_ptr(int): source gva of data
     dst_ptr(int): destination gva of data
     size(int): size of data to be copied
+    type(BmCopyType): copy type, L2G, G2L, G2H, H2G
+    flags(int): optional flags
+Returns:
+    0 if successful)")
+        .def("copy_data_2d", &BigMemory::CopyData2D, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
+             py::arg("src_pitch"), py::arg("dst_ptr"), py::arg("dst_pitch"), py::arg("width"), py::arg("height"),
+             py::arg("type"), py::arg("flags") = 0, R"(
+2D data operation on Big Memory object.
+
+Arguments:
+    src_ptr(int): source gva of data
+    src_pitch(int): pitch of source gva of data
+    dst_ptr(int): destination gva of data
+    dst_pitch(int): pitch destination gva of data
+    width(int): width of data to be copied
+    height(int): height of data to be copied
     type(BmCopyType): copy type, L2G, G2L, G2H, H2G
     flags(int): optional flags
 Returns:
