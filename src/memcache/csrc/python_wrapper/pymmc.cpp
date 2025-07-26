@@ -292,17 +292,66 @@ int DistributedObjectStore::get_into(const std::string &key, mmc_buffer &buffer)
     return 0;
 }
 
-std::vector<int> DistributedObjectStore::batch_put_from(
-    const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-    const std::vector<size_t> &sizes) {
-    std::vector<int> results(keys.size());
+std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::string> &keys,
+                                                        const std::vector<void *> &buffers,
+                                                        const std::vector<size_t> &sizes, const int32_t &direct)
+{
+    size_t count = keys.size();
+    std::vector<int> results(count, -1);
+    if (buffers.size() != count || sizes.size() != count) {
+        return results;
+    }
+    uint32_t type = 0;
+    switch (direct) {
+        case SMEMB_COPY_L2G:
+            type = 1;
+            break;
+        case SMEMB_COPY_H2G:
+            type = 0;
+            break;
+        default:
+            throw std::invalid_argument("direct is invalid");
+    }
+    for (size_t i = 0; i < count; ++i) {
+        mmc_buffer buffer = {
+            .addr=reinterpret_cast<uint64_t>(buffers[i]), \
+            .type=type,
+            .dimType=0,
+            .oneDim={.offset=0, .len=static_cast<uint64_t>(sizes[i])}
+        };
+        results[i] = put_from(keys[i], buffer);
+    }
     return results;
 }
 
 std::vector<int> DistributedObjectStore::batch_get_into(
     const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-    const std::vector<size_t> &sizes) {
-    std::vector<int> results(keys.size());
+    const std::vector<size_t> &sizes, const int32_t &direct) {
+    size_t count = keys.size();
+    std::vector<int> results(count, -1);
+    if (buffers.size() != count || sizes.size() != count) {
+        return results;
+    }
+    uint32_t type = 0;
+    switch (direct) {
+        case SMEMB_COPY_G2L:
+            type = 1;
+            break;
+        case SMEMB_COPY_G2H:
+            type = 0;
+            break;
+        default:
+            throw std::invalid_argument("direct is invalid");
+    }
+    for (size_t i = 0; i < count; ++i) {
+        mmc_buffer buffer = {
+            .addr=reinterpret_cast<uint64_t>(buffers[i]), \
+            .type=type,
+            .dimType=0,
+            .oneDim={.offset=0, .len=static_cast<uint64_t>(sizes[i])}
+        };
+        results[i] = get_into(keys[i], buffer);
+    }
     return results;
 }
 
@@ -427,16 +476,16 @@ PYBIND11_MODULE(_pymmc, m) {
             [](DistributedObjectStore &self,
                const std::vector<std::string> &keys,
                const std::vector<uintptr_t> &buffer_ptrs,
-               const std::vector<size_t> &sizes) {
+               const std::vector<size_t> &sizes, const int32_t &direct) {
                 std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
                     buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
-                return self.batch_get_into(keys, buffers, sizes);
+                return self.batch_get_into(keys, buffers, sizes, direct);
             },
-            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"),
+            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_G2H,
             "Get object data directly into pre-allocated buffers for multiple "
             "keys")
         .def(
@@ -471,16 +520,16 @@ PYBIND11_MODULE(_pymmc, m) {
             [](DistributedObjectStore &self,
                const std::vector<std::string> &keys,
                const std::vector<uintptr_t> &buffer_ptrs,
-               const std::vector<size_t> &sizes) {
+               const std::vector<size_t> &sizes, const int32_t &direct) {
                 std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
                     buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
-                return self.batch_put_from(keys, buffers, sizes);
+                return self.batch_put_from(keys, buffers, sizes, direct);
             },
-            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"),
+            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G,
             "Put object data directly from pre-allocated buffers for multiple "
             "keys")
         .def("put",

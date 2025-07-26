@@ -142,7 +142,7 @@ public:
      */
     std::vector<int> batch_get_into(const std::vector<std::string> &keys,
                                     const std::vector<void *> &buffers,
-                                    const std::vector<size_t> &sizes);
+                                    const std::vector<size_t> &sizes, const int32_t &direct);
 
     /**
      * @brief Put object data directly from a pre-allocated buffer
@@ -167,9 +167,8 @@ public:
      * @note The buffer addresses must be previously registered with
      * register_buffer() for zero-copy operations
      */
-    std::vector<int> batch_put_from(const std::vector<std::string> &keys,
-                                    const std::vector<void *> &buffers,
-                                    const std::vector<size_t> &sizes);
+    std::vector<int> batch_put_from(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
+                                    const std::vector<size_t> &sizes, const int32_t &direct);
 
     int put_parts(const std::string &key, std::vector<mmc_buffer> values);
 

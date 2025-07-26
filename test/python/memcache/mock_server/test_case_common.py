@@ -5,10 +5,9 @@ import time
 
 
 class TestClient:
-    def __init__(self, socket_id):
-        self._socket_path = os.path.join(f"{os.path.dirname(os.path.abspath(__file__))}", f"mmc_{socket_id}.socket")
-        self._client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self._client.connect(self._socket_path)
+    def __init__(self, ip, port):
+        self._client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._client.connect((ip, int(port)))
 
     def __del__(self):
         self._client.close()
@@ -42,6 +41,12 @@ class TestClient:
     def get_into(self, key, index: int, media: int):
         return self.execute("get_into", [key, index, media])
 
+    def batch_get_into(self, keys: list, indexes: list, media: int):
+        return self.execute("batch_get_into", [keys, indexes, media])
+
+    def batch_put_from(self, keys: list, indexes: list, media: int):
+        return self.execute("batch_put_from", [keys, indexes, media])
+
     def tensor_sum(self, index: int, media: int):
         return self.execute("tensor_sum", [index, media])
 
@@ -67,35 +72,3 @@ class TestClient:
                 return b''.join(buffer_list).decode('utf-8').rstrip('\0')
             time.sleep(0.01)
         raise TimeoutError("未能在指定时间内收到响应")
-
-
-if __name__ == "__main__":
-    client = TestClient(123)
-    client.execute("help")
-    client.execute("getServerCommands")
-
-    test_key = "test"
-    media = 0
-
-    print("============ test cpu =========== ")
-    client.init_mmc()
-    client.is_exist(test_key)
-    client.put_from(test_key, 0, media)
-    client.is_exist(test_key)
-    client.get_into(test_key, 1, media)
-    client.tensor_sum(0, media)
-    client.tensor_sum(1, media)
-    client.remove(test_key)
-    client.is_exist(test_key)
-
-    print("============ test npu =========== ")
-    media = 1
-    client.put_from(test_key, 0, media)
-    client.is_exist(test_key)
-    client.get_into(test_key, 1, media)
-    client.tensor_sum(0, media)
-    client.tensor_sum(1, media)
-    client.remove(test_key)
-    client.is_exist(test_key)
-
-    client.close_mmc()
