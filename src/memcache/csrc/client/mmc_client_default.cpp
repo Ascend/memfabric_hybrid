@@ -150,7 +150,7 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
         return MMC_ERROR;
     }
 
-    if (keys.size() != allocResponse.blobs_.size()) {
+    if (keys.size() != allocResponse.blobs_.size() || keys.size() != allocResponse.numBlobs_.size()) {
         MMC_LOG_ERROR("Mismatch in number of keys and allocated blobs");
         return MMC_ERROR;
     }

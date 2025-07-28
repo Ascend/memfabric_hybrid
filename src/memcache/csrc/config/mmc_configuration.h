@@ -199,6 +199,8 @@ public:
         config.dataOpType = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_PROTOCOL);
         config.localDRAMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_SIZE);
         config.localHBMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_HBM_SIZE);
+        config.logLevel = 0;
+        config.logFunc = nullptr;
         GetTlsConfig(config.tlsConfig);
     }
 

@@ -9,7 +9,7 @@ using namespace ock::mmc;
 static MmcClientDefault *gClientHandler = nullptr;
 
 namespace {
-constexpr uint32_t MAX_BATCH_COUNT = 16384;
+constexpr uint32_t MAX_BATCH_COUNT = 512;
 }
 
 MMC_API int32_t mmcc_init(mmc_client_config_t *config)
