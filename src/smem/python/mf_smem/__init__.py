@@ -20,8 +20,6 @@ from _pymf_smem import (
     initialize,
     uninitialize,
     set_log_level,
-    set_ssl_option,
-    TlsOption,
     set_extern_logger,
     get_last_err_msg,
     get_and_clear_last_err_msg
@@ -33,8 +31,6 @@ __all__ = [
     'initialize',
     'uninitialize',
     'set_log_level',
-    'set_ssl_option',
-    'TlsOption',
     'set_extern_logger',
     'get_last_err_msg',
     'get_and_clear_last_err_msg'
