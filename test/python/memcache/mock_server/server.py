@@ -204,7 +204,9 @@ class MmcTest(TestServer):
             CliCommand("batch_get_into", "batch put data: [keys] [indexes] [media(0:cpu 1:npu)]", self.batch_get_into, 3),
             CliCommand("batch_put_from", "batch get data: [keys] [indexes] [media(0:cpu 1:npu)]", self.batch_put_from, 3),
             CliCommand("is_exist", "check if a key exist: [key]", self.is_exist, 1),
+            CliCommand("batch_is_exist", "check if a batch of keys exist: [keys]", self.batch_is_exist, 1),
             CliCommand("remove", "remove data: [key]", self.remove, 1),
+            CliCommand("remove_batch", "remove a batch of data: [keys]", self.remove_batch, 1),
             CliCommand("tensor_sum", "tensor sum data: [index] [media]", self.tensor_sum, 2),
         ]
         self.register_command(cmds)
@@ -346,8 +348,18 @@ class MmcTest(TestServer):
         self.cli_return(res)
 
     @result_handler
+    def batch_is_exist(self, keys: list[str]):
+        res = self.__distributed_store_object.batch_is_exist(keys)
+        self.cli_return(res)
+
+    @result_handler
     def remove(self, key: str):
         res = self.__distributed_store_object.remove(key)
+        self.cli_return(res)
+
+    @result_handler
+    def remove_batch(self, keys: list[str]):
+        res = self.__distributed_store_object.remove_batch(keys)
         self.cli_return(res)
 
 

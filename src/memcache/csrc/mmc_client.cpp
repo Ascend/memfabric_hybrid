@@ -42,6 +42,8 @@ MMC_API void mmcc_uninit()
 MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(buf != nullptr, "invalid param, buf is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
@@ -53,6 +55,8 @@ MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options optio
 MMC_API int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(buf != nullptr, "invalid param, buf is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
@@ -64,6 +68,8 @@ MMC_API int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags)
 MMC_API int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(info != nullptr, "invalid param, info is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
@@ -75,29 +81,50 @@ MMC_API int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags)
 MMC_API int32_t mmcc_batch_query(const char **keys, uint32_t keys_count, mmc_data_info *info, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0, "invalid param, keys_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+                        << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(info != nullptr, "invalid param, info is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<std::string> keys_vector;
     std::vector<mmc_data_info> info_vector;
+    std::vector<size_t> invalids;
+    keys_vector.reserve(keys_count);
+    info_vector.reserve(keys_count);
+    invalids.reserve(keys_count);
+
+    // remove invalid keys
+    for (size_t i = 0; i < keys_count; ++i) {
+        if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+            MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
+            invalids.emplace_back(i);
+            continue;
+        }
+        keys_vector.emplace_back(keys[i]);
+    }
 
     MMC_RETURN_ERROR(gClientHandler->BatchQuery(keys_vector, info_vector, flags),
                      gClientHandler->Name() << " batch query failed!");
-    if (info_vector.size() != keys_count) {
-        MMC_LOG_ERROR("Batch query error!");
-        return MMC_ERROR;
-    }
-    for (size_t i = 0; i < keys_count; ++i) {
-        info[i] = info_vector[i];
-    }
+    MMC_VALIDATE_RETURN(keys_count == info_vector.size() + invalids.size(),
+                        "invalid results' size (" << info_vector.size() << "), should be keys_count ("
+                        << keys_count << ") - invalid_keys' size (" << invalids.size() << ")", MMC_ERROR);
 
+    invalids.emplace_back(-1);
+    for (size_t i = 0, j = 0; i + j < keys_count; ++i) {
+        if (i + j == invalids[j]) {
+            info[i + j] = mmc_data_info{0, 0, 0, false};
+        } else {
+            info[i + j] = info_vector[i];
+        }
+    }
     return MMC_OK;
 }
 
 MMC_API mmc_location_t mmcc_get_location(const char *key, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", {});
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", {});
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", {});
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", {});
 
     return gClientHandler->GetLocation(key, flags);
@@ -107,6 +134,8 @@ MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_RETURN_ERROR(gClientHandler->Remove(key, flags), gClientHandler->Name() << " remove key " << key << " failed!");
     return MMC_OK;
 }
@@ -115,15 +144,40 @@ MMC_API int32_t mmcc_batch_remove(const char **keys, const uint32_t keys_count, 
 {
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0U, "invalid param, key_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+                        << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(remove_results != nullptr, "invalid param, remove_results is null", MMC_INVALID_PARAM);
 
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<std::string> keys_vector;
     std::vector<int32_t> remove_results_vector;
+    std::vector<size_t> invalids;
+    keys_vector.reserve(keys_count);
+    remove_results_vector.reserve(keys_count);
+    invalids.reserve(keys_count);
+
+    // remove invalid keys
+    for (size_t i = 0; i < keys_count; ++i) {
+        if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+            MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
+            invalids.emplace_back(i);
+            continue;
+        }
+        keys_vector.emplace_back(keys[i]);
+    }
+
     MMC_RETURN_ERROR(gClientHandler->BatchRemove(keys_vector, remove_results_vector, flags),
                      gClientHandler->Name() << " batch_remove failed!");
-    for (size_t i = 0; i < keys_count; ++i) {
-        remove_results[i] = remove_results_vector[i];
+    MMC_VALIDATE_RETURN(keys_count == remove_results_vector.size() + invalids.size(),
+                        "invalid results' size (" << remove_results_vector.size() << "), should be keys_count ("
+                        << keys_count << ") - invalid_keys' size (" << invalids.size() << ")", MMC_ERROR);
+
+    invalids.emplace_back(-1);
+    for (size_t i = 0, j = 0; i + j < keys_count; ++i) {
+        if (i + j == invalids[j]) {
+            remove_results[i + j] = MMC_INVALID_PARAM;
+        } else {
+            remove_results[i + j] = remove_results_vector[i];
+        }
     }
     return MMC_OK;
 }
@@ -132,6 +186,8 @@ MMC_API int32_t mmcc_exist(const char *key, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     Result result = gClientHandler->IsExist(key, flags);
     if (result == MMC_UNMATCHED_KEY) {
         // not exist, but does not need write error log
@@ -145,17 +201,40 @@ MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, i
 {
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0U, "invalid param, key_count is 0", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+                        << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(exist_results != nullptr, "invalid param, exist_results is null", MMC_INVALID_PARAM);
 
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
+    std::vector<std::string> keys_vector;
     std::vector<int32_t> exist_results_vector;
+    std::vector<size_t> invalids;
+    keys_vector.reserve(keys_count);
+    exist_results_vector.reserve(keys_count);
+    invalids.reserve(keys_count);
+
+    // remove invalid keys
+    for (size_t i = 0; i < keys_count; ++i) {
+        if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+            MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
+            invalids.emplace_back(i);
+            continue;
+        }
+        keys_vector.emplace_back(keys[i]);
+    }
+
     MMC_RETURN_ERROR(gClientHandler->BatchIsExist(keys_vector, exist_results_vector, flags),
                      gClientHandler->Name() << " batch_is_exist failed!");
-    MMC_VALIDATE_RETURN(keys_count == exist_results_vector.size(),
-                        "invalid results' size, size is not equals to keys_count (" << keys_count << ").", MMC_ERROR);
-    for (size_t i = 0; i < keys_count; ++i) {
-        exist_results[i] = exist_results_vector[i];
+    MMC_VALIDATE_RETURN(keys_count == exist_results_vector.size() + invalids.size(),
+                        "invalid results' size (" << exist_results_vector.size() << "), should be keys_count ("
+                        << keys_count << ") - invalid_keys' size (" << invalids.size() << ")", MMC_ERROR);
+
+    invalids.emplace_back(-1);
+    for (size_t i = 0, j = 0; i + j < keys_count; ++i) {
+        if (i + j == invalids[j]) {
+            exist_results[i + j] = MMC_INVALID_PARAM;
+        } else {
+            exist_results[i + j] = exist_results_vector[i];
+        }
     }
     return MMC_OK;
 }
@@ -168,16 +247,43 @@ MMC_API int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffe
     MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
-    std::vector<mmc_buffer> bufs_vector(bufs, bufs + keys_count);
+    std::vector<std::string> keys_vector;
+    std::vector<mmc_buffer> bufs_vector;
+    std::vector<size_t> invalids;
+    keys_vector.reserve(keys_count);
+    bufs_vector.reserve(keys_count);
+    invalids.reserve(keys_count);
+
+    // remove invalid keys
+    for (size_t i = 0; i < keys_count; ++i) {
+        if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+            MMC_LOG_WARN("Remove invalid key: " << keys[i]);
+            continue;
+        }
+        if (bufs == nullptr) {
+            MMC_LOG_WARN("Remove invalid buf with key: " << keys[i]);
+            continue;
+        }
+        keys_vector.emplace_back(keys[i]);
+        bufs_vector.emplace_back(bufs[i]);
+    }
 
     MMC_RETURN_ERROR(gClientHandler->BatchGet(keys_vector, bufs_vector, flags),
                      gClientHandler->Name() << " batch_get failed!");
 
-    if (bufs_vector.size() != keys_count) {
-        MMC_LOG_ERROR("Batch get error!");
-        return MMC_ERROR;
+    MMC_VALIDATE_RETURN(keys_count == bufs_vector.size() + invalids.size(),
+                        "invalid results' size (" << bufs_vector.size() << "), should be keys_count ("
+                        << keys_count << ") - invalid_keys' size (" << invalids.size() << ")", MMC_ERROR);
+
+    invalids.emplace_back(-1);
+    for (size_t i = 0, j = 0; i + j < keys_count; ++i) {
+        if (i + j == invalids[j]) {
+            bufs[i + j] = mmc_buffer{.addr = 0};
+        } else {
+            bufs[i + j] = bufs_vector[i];
+        }
     }
+
     return MMC_OK;
 }
 
@@ -190,8 +296,24 @@ MMC_API int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc
     MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(gClientHandler != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    std::vector<std::string> keys_vector(keys, keys + keys_count);
-    std::vector<mmc_buffer> bufs_vector(bufs, bufs + keys_count);
+    std::vector<std::string> keys_vector;
+    std::vector<mmc_buffer> bufs_vector;
+    keys_vector.reserve(keys_count);
+    bufs_vector.reserve(keys_count);
+
+    // remove invalid keys, bufs
+    for (size_t i = 0; i < keys_count; ++i) {
+        if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+            MMC_LOG_WARN("Remove invalid key: " << keys[i]);
+            continue;
+        }
+        if (bufs == nullptr || bufs[i].addr == 0 || bufs[i].type >= 2 || bufs[i].dimType >= 2) {
+            MMC_LOG_WARN("Remove invalid buf with key: " << keys[i]);
+            continue;
+        }
+        keys_vector.emplace_back(keys[i]);
+        bufs_vector.emplace_back(bufs[i]);
+    }
 
     MMC_RETURN_ERROR(gClientHandler->BatchPut(keys_vector, bufs_vector, options, flags),
                      gClientHandler->Name() << " batch_put failed!");

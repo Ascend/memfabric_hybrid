@@ -128,6 +128,7 @@ Result NetEngineAcc::StopInner()
     /* stop server */
     if (server_ != nullptr) {
         server_->Stop();
+        server_ = nullptr;
     }
 
     return MMC_OK;

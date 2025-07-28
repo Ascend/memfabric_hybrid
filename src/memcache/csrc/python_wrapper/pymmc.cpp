@@ -182,15 +182,29 @@ int DistributedObjectStore::remove(const std::string &key) {
 }
 
 std::vector<int> DistributedObjectStore::removeBatch(const std::vector<std::string> &keys) {
-    const char** c_keys = new const char*[keys.size()];
+    std::vector<int> results;
+
+    if (keys.empty()) {
+        MMC_LOG_ERROR("Empty keys vector provided to batchIsExist");
+        return results;  // Return empty vector
+    }
+
+    results.resize(keys.size(), -1);
+    const char** c_keys = new (std::nothrow) const char*[keys.size()];
+    if (c_keys == nullptr) {
+        MMC_LOG_ERROR("Cannot malloc memory for keys!");
+        return results;  // Return vector filled with error code
+    }
     for (size_t i = 0 ; i < keys.size(); ++i) {
         c_keys[i] = keys[i].c_str();
     }
 
-    std::vector<int> results(keys.size(), -1);
     int32_t res = mmcc_batch_remove(c_keys, keys.size(), results.data(), 0);
     if (res != 0) {
         MMC_LOG_ERROR("remove_batch failed");
+        std::fill(results.begin(), results.end(), res);
+        delete[] c_keys;
+        return results;  // Return vector filled with error code
     }
 
     delete[] c_keys;
@@ -214,15 +228,29 @@ int DistributedObjectStore::isExist(const std::string &key) {
 }
 
 std::vector<int> DistributedObjectStore::batchIsExist(const std::vector<std::string> &keys) {
-    const char** c_keys = new const char*[keys.size()];
+    std::vector<int> results;
+
+    if (keys.empty()) {
+        MMC_LOG_ERROR("Empty keys vector provided to batchIsExist");
+        return results;  // Return empty vector
+    }
+
+    results.resize(keys.size(), -1);
+    const char** c_keys = new (std::nothrow) const char*[keys.size()];
+    if (c_keys == nullptr) {
+        MMC_LOG_ERROR("Cannot malloc memory for keys!");
+        return results;  // Return vector filled with error code -1
+    }
     for (size_t i = 0 ; i < keys.size(); ++i) {
         c_keys[i] = keys[i].c_str();
     }
 
-    std::vector<int> results(keys.size(), 0);
     int32_t res = mmcc_batch_exist(c_keys, keys.size(), results.data(), 0);
     if (res != 0) {
         MMC_LOG_ERROR("batch_exist failed");
+        std::fill(results.begin(), results.end(), res);
+        delete[] c_keys;
+        return results;  // Return vector filled with error code
     }
 
     for (int &result : results) {

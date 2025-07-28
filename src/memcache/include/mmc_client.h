@@ -124,7 +124,7 @@ int32_t mmcc_exist(const char *key, uint32_t flags);
  * @param exist_results    [out] existence status list of keys in BM
  * @return 0 if successfully
  */
-int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, int32_t *exist_results, uint32_t flags);
+int32_t mmcc_batch_exist(const char **keys, uint32_t keys_count, int32_t *exist_results, uint32_t flags);
 
 /**
  * @brief Put multiple data objects into Distributed Memory Cache
