@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-#include <memory>
 #include <functional>
 
 #include "acc_links/net/acc_def.h"

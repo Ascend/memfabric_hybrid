@@ -113,7 +113,7 @@ private:
 private:
     const std::string mLogLevelDesc[BUTT_LEVEL] = {"debug", "info", "warn", "error"};
 
-    LogLevel mLogLevel = DEBUG_LEVEL;
+    LogLevel mLogLevel = INFO_LEVEL;
     ExternalLog mLogFunc = nullptr;
 };
 

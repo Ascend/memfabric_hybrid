@@ -117,7 +117,7 @@ Result SmemShmEntry::Initialize(hybm_options &options)
             break;
         }
 
-        ret = hybm_import(entity, allExInfo, options.rankCount, flags);
+        ret = hybm_import(entity, allExInfo, options.rankCount, nullptr, flags);
         if (ret != 0) {
             SM_LOG_ERROR("hybm import failed, result: " << ret);
             break;

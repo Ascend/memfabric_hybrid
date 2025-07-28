@@ -41,7 +41,7 @@ target_link_directories(test_mf_fuzz PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_link
 set_target_properties(test_mf_fuzz PROPERTIES OUTPUT_NAME "test_mf_fuzz")
 set_target_properties(test_mf_fuzz PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
-target_link_libraries(test_mf_fuzz dl libacc_tcp_net.a gcov pthread libSecodefuzz.a)
+target_link_libraries(test_mf_fuzz dl rt libacc_tcp_net.a gcov pthread libSecodefuzz.a)
 target_include_directories(test_mf_fuzz PRIVATE
         ../ut/stub/
         ${CMAKE_CURRENT_SOURCE_DIR}

@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <functional>
 #include "smem_config_store.h"
-#include "smem_security.h"
 
 namespace ock {
 namespace smem {
@@ -36,6 +35,7 @@ public:
      * @param port server tcp port
      */
     static void DestroyStore(const std::string &ip, uint16_t port) noexcept;
+    static void DestroyStoreAll(bool afterFork = false) noexcept;
 
     /**
      * @brief Encapsulate an existing store into a prefix store.

@@ -68,7 +68,7 @@ public:
     ~AccStoreServer() override = default;
 
     Result Startup(const acclinkTlsOption &tlsOption) noexcept;
-    void Shutdown() noexcept;
+    void Shutdown(bool afterFork = false) noexcept;
 
 private:
     Result ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept;

@@ -45,6 +45,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.rankId = rankId;
     options.singleRankVASpace = symmetricSize;
     options.preferredGVA = 0;
+    options.globalUniqueAddress = true;
 
     ret = entry->Initialize(options);
     if (ret != 0) {
@@ -225,7 +226,7 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
     }
 
     g_smemShmInited = true;
-    SM_LOG_INFO("smem_shm_init success. world_size: " << worldSize << " config_ip: " << configStoreIpPort);
+    SM_LOG_INFO("smem_shm_init success. world_size: " << worldSize);
     return SM_OK;
 }
 

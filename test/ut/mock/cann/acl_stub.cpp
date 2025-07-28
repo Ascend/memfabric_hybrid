@@ -103,4 +103,12 @@ int32_t rtIpcDestroyMemoryName(const char *name)
 {
     return RETURN_OK;
 }
+int32_t rtIpcOpenMemory(void **ptr, const char *name)
+{
+    return RETURN_OK;
+}
+int32_t rtIpcCloseMemory(const void *ptr)
+{
+    return RETURN_OK;
+}
 }

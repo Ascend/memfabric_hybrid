@@ -29,6 +29,8 @@ rtGetDeviceInfoFunc DlAclApi::pRtGetDeviceInfo = nullptr;
 rtSetIpcMemorySuperPodPidFunc DlAclApi::pRtSetIpcMemorySuperPodPid = nullptr;
 rtIpcDestroyMemoryNameFunc DlAclApi::pRtIpcDestroyMemoryName = nullptr;
 rtIpcSetMemoryNameFunc DlAclApi::pRtIpcSetMemoryName = nullptr;
+rtIpcOpenMemoryFunc DlAclApi::pRtIpcOpenMemory = nullptr;
+rtIpcCloseMemoryFunc DlAclApi::pRtIpcCloseMemory = nullptr;
 
 Result DlAclApi::LoadLibrary(const std::string &libDirPath)
 {
@@ -70,6 +72,8 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pRtSetIpcMemorySuperPodPid, rtSetIpcMemorySuperPodPidFunc, rtHandle, "rtSetIpcMemorySuperPodPid");
     DL_LOAD_SYM(pRtIpcSetMemoryName, rtIpcSetMemoryNameFunc, rtHandle, "rtIpcSetMemoryName");
     DL_LOAD_SYM(pRtIpcDestroyMemoryName, rtIpcDestroyMemoryNameFunc, rtHandle, "rtIpcDestroyMemoryName");
+    DL_LOAD_SYM(pRtIpcOpenMemory, rtIpcOpenMemoryFunc, rtHandle, "rtIpcOpenMemory");
+    DL_LOAD_SYM(pRtIpcCloseMemory, rtIpcCloseMemoryFunc, rtHandle, "rtIpcCloseMemory");
 
     gLoaded = true;
     return BM_OK;

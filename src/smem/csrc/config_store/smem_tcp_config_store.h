@@ -32,7 +32,7 @@ public:
     ~TcpConfigStore() noexcept override;
 
     Result Startup(const acclinkTlsOption &tlsOption, int reconnectRetryTimes = -1) noexcept;
-    void Shutdown() noexcept;
+    void Shutdown(bool afterFork = false) noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
     Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;

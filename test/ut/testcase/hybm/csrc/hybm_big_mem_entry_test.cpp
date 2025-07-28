@@ -15,7 +15,7 @@ using namespace ock::mf;
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
 const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC, 8, 0, 1024 * 1024 * 1024, 0};
+                                HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }
 
@@ -88,7 +88,8 @@ TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNotNull_WhenSuccess)
 
     hybm_exchange_info info = {};
     EXPECT_EQ(hybm_export(entity, slice, 0, &info), BM_OK);
-    EXPECT_EQ(hybm_import(entity, &info, 1, 0), BM_OK);
+    void* addresses[1] = { nullptr };
+    EXPECT_EQ(hybm_import(entity, &info, 1, addresses, 0), BM_OK);
     EXPECT_EQ(hybm_mmap(entity, 0), BM_OK);
 
     EXPECT_EQ(hybm_set_extra_context(entity, &g_options, sizeof(g_options)), BM_OK);

@@ -119,7 +119,7 @@ int32_t hybm_export_stub(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags
     }
 }
 
-int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags)
+int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[], uint32_t flags)
 {
     HybmMgrStub *mgr = reinterpret_cast<HybmMgrStub *>(e);
     if (mgr == nullptr || allExInfo == nullptr) {

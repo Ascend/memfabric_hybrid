@@ -28,6 +28,8 @@ using rtGetDeviceInfoFunc = int32_t (*)(uint32_t, int32_t, int32_t, int64_t *val
 using rtIpcSetMemoryNameFunc = int32_t (*)(const void *, uint64_t, char *, uint32_t);
 using rtSetIpcMemorySuperPodPidFunc = int32_t (*)(const char *, uint32_t, int32_t *, int32_t);
 using rtIpcDestroyMemoryNameFunc = int32_t (*)(const char *);
+using rtIpcOpenMemoryFunc = int32_t (*)(void **, const char *);
+using rtIpcCloseMemoryFunc = int32_t (*)(const void *);
 
 class DlAclApi {
 public:
@@ -181,6 +183,16 @@ public:
         return pRtIpcDestroyMemoryName(name);
     }
 
+    static inline Result RtIpcOpenMemory(void **ptr, const char *name)
+    {
+        return pRtIpcOpenMemory(ptr, name);
+    }
+
+    static inline Result RtIpcCloseMemory(const void *ptr)
+    {
+        return pRtIpcCloseMemory(ptr);
+    }
+
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -205,7 +217,8 @@ private:
     static rtSetIpcMemorySuperPodPidFunc pRtSetIpcMemorySuperPodPid;
     static rtIpcSetMemoryNameFunc pRtIpcSetMemoryName;
     static rtIpcDestroyMemoryNameFunc pRtIpcDestroyMemoryName;
-
+    static rtIpcOpenMemoryFunc pRtIpcOpenMemory;
+    static rtIpcCloseMemoryFunc pRtIpcCloseMemory;
 };
 }
 }

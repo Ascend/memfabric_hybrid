@@ -26,6 +26,7 @@ const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
 const uint64_t EXPORT_INFO_VERSION = 0x1UL;
 HbmExportInfo g_exportInfo = {EXPORT_INFO_MAGIC, EXPORT_INFO_VERSION, 0, 0, 0, 0, 0, g_allocSize, 0,
                               MEM_PT_TYPE_SVM, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE};
+const MemSegmentOptions g_seg_options = {0, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, 2UL * 1024UL * 1024UL, 0, 2};
 }
 
 class HybmDevideMemSegmentTest : public ::testing::Test {
@@ -47,6 +48,22 @@ protected:
         GlobalMockObject::verify();
     }
 };
+
+TEST_F(HybmDevideMemSegmentTest, CreateMemSeg_ShouldReturnNonNullptr)
+{
+    EXPECT_NE(MemSegment::Create(g_seg_options, 0), nullptr);
+}
+
+TEST_F(HybmDevideMemSegmentTest, CreateMemSeg_ShouldReturnNullptr_WhenOptionsInvalid)
+{
+    MemSegmentOptions options = g_seg_options;
+    options.rankId = options.rankCnt + 1;
+    EXPECT_EQ(MemSegment::Create(options, 0), nullptr);
+
+    options = g_seg_options;
+    options.segType = HYBM_MST_DRAM;
+    EXPECT_EQ(MemSegment::Create(options, 0), nullptr);
+}
 
 TEST_F(HybmDevideMemSegmentTest, ValidateOptions_ShouldReturnInvalidParam)
 {
@@ -160,23 +177,24 @@ TEST_F(HybmDevideMemSegmentTest, Export_ShouldReturnError_WhenGetDeviceIdFail)
 
     std::string exInfo;
     MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int(*)(uint32_t, int32_t, int32_t, int64_t *)).stubs().will(returnValue(-1));
-    EXPECT_EQ(seg.Export(slice, exInfo), BM_DL_FUNCTION_FAILED);
+    EXPECT_EQ(seg.Export(slice, exInfo), BM_OK);
 
     MOCKER_CPP(&DlAclApi::RtDeviceGetBareTgid, int (*)(uint32_t *)).stubs().will(returnValue(-1));
-    EXPECT_EQ(seg.Export(slice, exInfo), BM_DL_FUNCTION_FAILED);
+    EXPECT_EQ(seg.Export(slice, exInfo), BM_OK);
 }
 
 TEST_F(HybmDevideMemSegmentTest, Import_ShouldReturnError_WhenImportError)
 {
     MemSegmentOptions options = g_options;
     MemSegmentDevice seg(options, 0);
-    EXPECT_EQ(seg.Import({""}), BM_INVALID_PARAM);
+    void* addresses[1] = { nullptr };
+    EXPECT_EQ(seg.Import({""}, addresses), BM_INVALID_PARAM);
 
     std::string exInfo;
     HbmExportInfo info = g_exportInfo;
     info.magic = 0;
     LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
-    EXPECT_EQ(seg.Import({exInfo}), BM_INVALID_PARAM);
+    EXPECT_EQ(seg.Import({exInfo}, addresses), BM_INVALID_PARAM);
 
     std::string exInfo1;
     info = g_exportInfo;
@@ -189,10 +207,10 @@ TEST_F(HybmDevideMemSegmentTest, Import_ShouldReturnError_WhenImportError)
 
     MOCKER_CPP(&DlAclApi::RtSetIpcMemorySuperPodPid, int (*)(char *, uint32_t, int32_t *, int32_t))
         .stubs().will(returnValue(-1));
-    EXPECT_EQ(seg.Import({exInfo1, exInfo2}), BM_DL_FUNCTION_FAILED);
+    EXPECT_EQ(seg.Import({exInfo1, exInfo2}, addresses), BM_DL_FUNCTION_FAILED);
 
     MOCKER_CPP(&DlAclApi::AclrtDeviceEnablePeerAccess, int (*)(int32_t, uint32_t)).stubs().will(returnValue(-1));
-    EXPECT_EQ(seg.Import({exInfo1, exInfo2}), BM_DL_FUNCTION_FAILED);
+    EXPECT_EQ(seg.Import({exInfo1, exInfo2}, addresses), BM_DL_FUNCTION_FAILED);
 }
 
 TEST_F(HybmDevideMemSegmentTest, Mmap_ShouldReturnError_WhenMmapError)
@@ -211,7 +229,8 @@ TEST_F(HybmDevideMemSegmentTest, Mmap_ShouldReturnError_WhenMmapError)
     info.deviceId = 1;
     LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo2);
     MOCKER_CPP(&drv::HalGvaOpen, int (*)(uint64_t, char *, size_t, uint64_t)).stubs().will(returnValue(-1));
-    EXPECT_EQ(seg.Import({exInfo1, exInfo2, exInfo2}), BM_OK);
+    void* addresses[1] = { nullptr };
+    EXPECT_EQ(seg.Import({exInfo1, exInfo2, exInfo2}, addresses), BM_OK);
     EXPECT_EQ(seg.Mmap(), BM_DL_FUNCTION_FAILED);
 
     GlobalMockObject::verify();

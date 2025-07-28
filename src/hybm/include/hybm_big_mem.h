@@ -4,6 +4,7 @@
 #ifndef MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
 #define MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
 
+#include <stddef.h>
 #include "hybm.h"
 #include "hybm_def.h"
 
@@ -72,6 +73,18 @@ hybm_mem_slice_t hybm_alloc_local_memory(hybm_entity_t e, hybm_mem_type mType, u
 int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t count, uint32_t flags);
 
 /**
+ * @brief Register memory at local side, registered memory can be accessed by remote.
+ * @param e                [in] entity created by hybm_create_entity
+ * @param mType            [in] memory type, device or host
+ * @param ptr              [in] local memory start address
+ * @param size             [in] size of memory
+ * @param flags            [in] optional flags, default value 0
+ * @return mem slice handle if successful, null ptr if failed
+ */
+hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType, const void *ptr, uint64_t size,
+                                            uint32_t flags);
+
+/**
  * @brief Export exchange info for peer to import
  *
  * @param e                [in] entity created by hybm_create_entity
@@ -83,15 +96,25 @@ int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t
 int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo);
 
 /**
+ * @brief get fixed size for export slice size
+ * @param e               [in] entity created by hybm_create_entity
+ * @param size            [out] fixed size when export slice
+ * @return 0 if successful, error code if failed
+ */
+int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size);
+
+/**
  * @brief Import batch of exchange info of other HyBM entities
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param allExInfo        [in] ptr of entities array
  * @param count            [in] count of entities
+ * @param addresses        [out] import slices got local virtual address, can be null if not care
  * @param flags            [in] optional flags, default value 0
  * @return 0 if successful
  */
-int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
+int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
+                    uint32_t flags);
 
 /**
  * @brief mmap all memory which is imported
@@ -103,7 +126,17 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
 int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
 
 /**
- * @brief remove one rank after imported
+ * @brief join one rank after start
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param rank             [in] join rank
+ * @param flags            [in] optional flags, default value 0
+ * @return 0 if successful, error code if failed
+ */
+int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags);
+
+/**
+ * @brief leave one rank after start
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param rank             [in] leave rank

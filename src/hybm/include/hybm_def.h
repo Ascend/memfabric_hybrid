@@ -5,6 +5,7 @@
 #define MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifndef __cplusplus
 extern "C" {
@@ -18,6 +19,8 @@ typedef void *hybm_mem_slice_t;
 
 #define HYBM_EXPORT_PARTIAL_SLICE 0x00
 #define HYBM_EXPORT_ALL_SLICE 0x01
+
+#define HYBM_IMPORT_WITH_ADDRESS        0x01U
 
 typedef enum {
     HYBM_TYPE_HBM_AI_CORE_INITIATE = 0,
@@ -67,8 +70,10 @@ typedef struct {
     hybm_rank_type bmRankType;
     uint16_t rankCount;
     uint16_t rankId;
+    uint16_t devId;
     uint64_t singleRankVASpace;
     uint64_t preferredGVA;
+    bool globalUniqueAddress; // 是否使用全局统一内存地址
 } hybm_options;
 
 typedef enum {

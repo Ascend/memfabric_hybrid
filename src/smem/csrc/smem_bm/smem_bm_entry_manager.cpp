@@ -116,7 +116,7 @@ int32_t SmemBmEntryManager::AutoRanking()
 
     auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
     if (ret != 0) {
-        SM_LOG_ERROR("get local ip address connect to target ip: " << storeUrlExtraction_.ip << " failed: " << ret);
+        SM_LOG_ERROR("get local ip address connect to target ip failed: " << ret);
         return ret;
     }
 

@@ -38,16 +38,6 @@ namespace smem {
         std::cout << msg << std::endl;  \
     } while (0)
 
-// if expression is true, print error
-#define SM_PARAM_VALIDATE(expression, msg, returnValue) \
-    do {                                                \
-        if ((expression)) {                             \
-            SM_SET_LAST_ERROR(msg);                     \
-            SM_LOG_ERROR(msg);                          \
-            return returnValue;                         \
-        }                                               \
-    } while (0)
-
 #define SMEM_API __attribute__((visibility("default")))
 
 }  // namespace smem

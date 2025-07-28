@@ -95,7 +95,7 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     std::map<std::string, std::string> details;
     /* extract to vector */
     auto result = ExtractTcpURL(url, details);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, "Failed to extract url " << url << ", which is invalid");
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, "Failed to extract url , which is invalid");
 
     auto iterMask = details.find("mask");
     std::string ipStr = details["ip"];
@@ -104,12 +104,12 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     /* covert port */
     long tmpPort = 0;
     if (!StrToLong(portStr, tmpPort)) {
-        SM_LOG_ERROR("Invalid url " << url);
+        SM_LOG_ERROR("Invalid url. ");
         return SM_INVALID_PARAM;
     }
 
     if (!IsValidIpV4(ipStr) || tmpPort <= N1024 || tmpPort > UINT16_MAX) {
-        SM_LOG_ERROR("Invalid url " << url);
+        SM_LOG_ERROR("Invalid url. ");
         return SM_INVALID_PARAM;
     }
 
@@ -127,7 +127,7 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
 
     struct in_addr targetIp;
     if (inet_aton(target.c_str(), &targetIp) == 0) {
-        SM_LOG_ERROR("target ip address invalid: " << target);
+        SM_LOG_ERROR("target ip address invalid. ");
         return SM_INVALID_PARAM;
     }
 
@@ -152,7 +152,7 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
         }
 
         if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == nullptr) {
-            SM_LOG_ERROR("convert local ip to string failed : " << localIp.s_addr);
+            SM_LOG_ERROR("convert local ip to string failed. ");
             result = SM_ERROR;
         } else {
             ipv4 = ntohl(localIp.s_addr);

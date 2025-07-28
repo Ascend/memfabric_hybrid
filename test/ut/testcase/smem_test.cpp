@@ -1091,7 +1091,7 @@ TEST_F(TestSmem, smem_bm_create_failed_invalid_config)
     MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
         ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
     auto ret = smem_bm_init(UT_IP_PORT2, 65535, 0, &config);
-    ASSERT_EQ(ret, 0);
+    ASSERT_EQ(ret, SM_INVALID_PARAM);
     auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, UINT64_MAX, 0);
     EXPECT_EQ(handle, nullptr);
 

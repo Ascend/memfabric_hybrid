@@ -48,10 +48,12 @@ public:
     Result ReserveMemorySpace(void **address) noexcept override;
     Result UnreserveMemorySpace() noexcept override;
     Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
+    Result RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
     Result ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept override;
     Result Export(std::string &exInfo) noexcept override;
     Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
-    Result Import(const std::vector<std::string> &allExInfo) noexcept override;
+    Result GetExportSliceSize(size_t &size) noexcept override;
+    Result Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept override;
     Result RemoveImported(const std::vector<uint32_t>& ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
@@ -71,9 +73,6 @@ private:
     std::map<uint16_t, std::string> exportMap_;
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;
-
-    int pid_ = -1;
-    uint32_t sdid_ = 0;
 };
 }
 }

@@ -17,8 +17,10 @@ using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
-const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC, 8, 0, 1024 * 1024 * 1024, 0};
+const hybm_options g_options_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
+                                HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true};
+const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE,
+                                HYBM_SCOPE_CROSS_NODE, HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, false};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }
 
@@ -42,14 +44,22 @@ protected:
     }
 };
 
-TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnOk_WhenAlreadyInitialized)
+TEST_F(HybmEntityDefaultTest, Initialize_UA_ShouldReturnOk_WhenAlreadyInitialized)
 {
     int ret = 0;
     MemEntityDefault entity(0);
-    ret = entity.Initialize(&g_options);
+    ret = entity.Initialize(&g_options_unified_addr);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = entity.Initialize(&g_options);
+    ret = entity.Initialize(&g_options_unified_addr);
+    EXPECT_EQ(ret, BM_OK);
+}
+
+TEST_F(HybmEntityDefaultTest, Initialize_Non_UA_ShouldReturnOk)
+{
+    int ret = 0;
+    MemEntityDefault entity(0);
+    ret = entity.Initialize(&g_options_non_unified_addr);
     EXPECT_EQ(ret, BM_OK);
 }
 
@@ -57,11 +67,11 @@ TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnInvalidParam_WhenIdInvalid)
 {
     int ret = 0;
     MemEntityDefault entity(-1);
-    ret = entity.Initialize(&g_options);
+    ret = entity.Initialize(&g_options_unified_addr);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     MemEntityDefault entity2(HYBM_ENTITY_NUM_MAX);
-    ret = entity.Initialize(&g_options);
+    ret = entity.Initialize(&g_options_unified_addr);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
@@ -69,7 +79,7 @@ TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnInvalidParam_WhenOptionsInv
 {
     int ret = 0;
     MemEntityDefault entity(0);
-    hybm_options options = g_options;
+    hybm_options options = g_options_unified_addr;
     ret = entity.Initialize(nullptr);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
@@ -77,12 +87,12 @@ TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnInvalidParam_WhenOptionsInv
     ret = entity.Initialize(&options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-    options = g_options;
+    options = g_options_unified_addr;
     options.singleRankVASpace = 0;
     ret = entity.Initialize(&options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-    options = g_options;
+    options = g_options_unified_addr;
     options.singleRankVASpace = DEVICE_LARGE_PAGE_SIZE - 1;
     ret = entity.Initialize(&options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
@@ -93,8 +103,20 @@ TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnDlFunctionFailed_WhenCreate
     int ret = 0;
     MemEntityDefault entity(0);
     MOCKER_CPP(&DlAclApi::AclrtCreateStream, int (*)(void **)).stubs().will(returnValue(-1));
-    ret = entity.Initialize(&g_options);
-    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    ret = entity.Initialize(&g_options_unified_addr);
+    EXPECT_EQ(ret, 0);
+}
+
+TEST_F(HybmEntityDefaultTest, Initialize_ShouldReturnInvalidParam_WhenSegmentIsNullptr)
+{
+    int ret = 0;
+    MemEntityDefault entity(0);
+    MemSegmentPtr ptr = nullptr;
+    MOCKER_CPP(&MemEntityDefault::CheckOptions, int (*)(const hybm_options *)).stubs().will(returnValue(0));
+    hybm_options options = g_options_unified_addr;
+    options.rankId = options.rankCount + 1;
+    ret = entity.Initialize(&options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNotInitialized)
@@ -111,7 +133,8 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
 
     EXPECT_EQ(entity.ExportExchangeInfo(slice, info, 0), BM_NOT_INITIALIZED);
 
-    EXPECT_EQ(entity.ImportExchangeInfo(&info, 1, 0), BM_NOT_INITIALIZED);
+    void* addresses[1] = { nullptr };
+    EXPECT_EQ(entity.ImportExchangeInfo(&info, 1, addresses, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.SetExtraContext(&info, 1), BM_NOT_INITIALIZED);
 

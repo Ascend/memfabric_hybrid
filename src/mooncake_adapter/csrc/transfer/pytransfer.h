@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Create Date : 2025
+ */
+#ifndef PYTRANSFER_H
+#define PYTRANSFER_H
+
+#include <pybind11/pybind11.h>
+#include <mutex>
+#include "smem_bm_def.h"
+#include "smem_trans.h"
+
+#ifdef UINTPTR_MAX
+using uintptr_t = ::uintptr_t;
+inline auto to_uintptr(const void* p) -> uintptr_t
+{
+    return reinterpret_cast<uintptr_t>(p);
+}
+#else
+using uintptr_t = fallback_uintptr;
+inline auto to_uintptr(const void* p) -> fallback_uintptr
+{
+    return fallback_uintptr(p);
+}
+#endif
+
+class TransferAdapterPy {
+public:
+    enum class TransferOpcode { READ = 0, WRITE = 1 };
+
+public:
+    TransferAdapterPy();
+
+    ~TransferAdapterPy();
+
+    int Initialize(const char *storeUrl, const char *sessionId, const char *role, uint32_t deviceId);
+
+    int GetRpcPort();
+
+    int TransferSyncWrite(const char *destSession, uintptr_t buffer,
+                            uintptr_t peer_buffer_address, size_t length);
+
+    int BatchTransferSyncWrite(const char *destSession,
+                            std::vector<uintptr_t> buffers,
+                            std::vector<uintptr_t> peer_buffer_addresses,
+                            std::vector<size_t> lengths);
+
+    int RegisterMemory(uintptr_t buffer_addr, size_t capacity);
+
+    // must be called before TransferAdapterPy::~TransferAdapterPy()
+    int UnregisterMemory(uintptr_t buffer_addr);
+
+    int BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs, std::vector<size_t> capacities);
+
+private:
+    smem_bm_t handle_;
+};
+
+#endif // PYTRANSFER_H

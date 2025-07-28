@@ -23,7 +23,7 @@ template <class DataType> class LiteralExInfoTranslater : public ExInfoTranslato
 public:
     int Serialize(const DataType &d, std::string &info) noexcept override
     {
-        if (!std::is_literal_type<DataType>::value) {
+        if (!std::is_standard_layout<DataType>::value) {
             return -1;
         }
 
@@ -34,7 +34,7 @@ public:
 
     int Deserialize(const std::string &info, DataType &d) noexcept override
     {
-        if (!std::is_literal_type<DataType>::value) {
+        if (!std::is_standard_layout<DataType>::value) {
             return -1;
         }
 

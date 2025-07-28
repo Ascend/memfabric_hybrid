@@ -74,11 +74,26 @@ HYBM_API int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice,
     return 0;
 }
 
+HYBM_API hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType, const void *ptr,
+                                                     uint64_t size, uint32_t flags)
+{
+    auto entity = (MemEntity *)e;
+    BM_ASSERT_RETURN(entity != nullptr, nullptr);
+
+    hybm_mem_slice_t slice;
+    auto ret = entity->RegisterLocalMemory(ptr, size, flags, slice);
+    if (ret != 0) {
+        BM_LOG_ERROR("register slice with size: " << size << " failed: " << ret);
+        return nullptr;
+    }
+
+    return slice;
+}
+
 HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo)
 {
     auto entity = (MemEntity *)e;
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(slice != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(exInfo != nullptr, BM_INVALID_PARAM);
     auto ret = entity->ExportExchangeInfo(slice, *exInfo, flags);
     if (ret != 0) {
@@ -89,12 +104,23 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     return BM_OK;
 }
 
-HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags)
+HYBM_API int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size)
+{
+    auto entity = (MemEntity *)e;
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(size != nullptr, BM_INVALID_PARAM);
+
+    auto ret = entity->GetExportSliceInfoSize(*size);
+    return ret;
+}
+
+HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
+                             uint32_t flags)
 {
     auto entity = (MemEntity *)e;
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(allExInfo != nullptr, BM_INVALID_PARAM);
-    return entity->ImportExchangeInfo(allExInfo, count, flags);
+    return entity->ImportExchangeInfo(allExInfo, count, addresses, flags);
 }
 
 HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)

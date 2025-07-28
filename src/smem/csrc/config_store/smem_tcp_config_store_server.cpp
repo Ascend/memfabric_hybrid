@@ -94,27 +94,36 @@ Result AccStoreServer::Startup(const acclinkTlsOption &tlsOption) noexcept
     return SM_OK;
 }
 
-void AccStoreServer::Shutdown() noexcept
+void AccStoreServer::Shutdown(bool afterFork) noexcept
 {
     SM_LOG_INFO("start to shutdown Acc Store Server");
     if (accTcpServer_ == nullptr) {
         return;
     }
 
-    accTcpServer_->Stop();
-    accTcpServer_ = nullptr;
+    if (afterFork) {
+        accTcpServer_->StopAfterFork();
+        running_ = false;
+        if (timerThread_.joinable()) {
+            timerThread_.detach();
+        }
+    } else {
+        accTcpServer_->Stop();
+        std::unique_lock<std::mutex> lockGuard{storeMutex_};
+        running_ = false;
+        lockGuard.unlock();
+        storeCond_.notify_one();
 
-    std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    running_ = false;
-    lockGuard.unlock();
-    storeCond_.notify_one();
-    if (timerThread_.joinable()) {
-        try {
-            timerThread_.join();
-        } catch (const std::system_error& e) {
-            SM_LOG_ERROR("thread join failed: " << e.what());
+        if (timerThread_.joinable()) {
+            try {
+                timerThread_.join();
+            } catch (const std::system_error& e) {
+                SM_LOG_ERROR("thread join failed: " << e.what());
+            }
         }
     }
+
+    accTcpServer_ = nullptr;
     SM_LOG_INFO("finished shutdown Acc Store Server");
 }
 

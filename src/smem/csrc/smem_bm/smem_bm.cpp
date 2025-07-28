@@ -76,7 +76,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. config_ip: " << storeURL);
+    SM_LOG_INFO("smem_bm_init success. ");
     return SM_OK;
 }
 
@@ -132,7 +132,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
         SM_LOG_AND_SET_LAST_ERROR("options.rankCount mutiply options.singleRankVASpace exceeds max value of uint64_t");
         return nullptr;
     }
-
+    options.globalUniqueAddress = true;
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);

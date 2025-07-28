@@ -39,6 +39,12 @@ public:
     virtual Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
 
     /*
+     * register memory according to segType
+     * @return 0 if successful
+     */
+    virtual Result RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
+
+    /*
      * release one slice
      * @return 0 if successful
      */
@@ -52,11 +58,13 @@ public:
 
     virtual Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept = 0;
 
+    virtual Result GetExportSliceSize(size_t &size) noexcept = 0;
+
     /*
      * Import exchange info and translate it into data structure
      * @param allExInfo
      */
-    virtual Result Import(const std::vector<std::string> &allExInfo) noexcept = 0;
+    virtual Result Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept = 0;
 
     /*
      * delete imported memory area according to rankid
@@ -85,8 +93,16 @@ public:
     virtual bool MemoryInRange(const void *begin, uint64_t size) const noexcept = 0;
 
 protected:
+    static Result InitDeviceInfo();
+
+protected:
     const MemSegmentOptions options_;
     const int entityId_;
+
+    static bool deviceInfoReady;
+    static int deviceId_;
+    static uint32_t pid_;
+    static uint32_t sdid_;
 };
 }
 }

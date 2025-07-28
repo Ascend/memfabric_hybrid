@@ -14,7 +14,6 @@ set(SMEM_SRC_COMMON "")
 set(SMEM_SRC_NET "")
 set(SMEM_SRC_SMEM_SHM "")
 set(SMEM_SRC_STORE "")
-set(SMEM_SRC_CORE_API "")
 set(SMEM_SRC_SMEM_BM "")
 
 ## add files into src variables
@@ -23,6 +22,7 @@ aux_source_directory(config_store SMEM_SRC_STORE)
 aux_source_directory(net/ SMEM_SRC_NET)
 aux_source_directory(smem_shm SMEM_SRC_SMEM_SHARE)
 aux_source_directory(smem_bm SMEM_SRC_SMEM_BM)
+aux_source_directory(smem_trans SMEM_SRC_SMEM_TRANS)
 
 # set whole source for platform
 set(PLATFORM_SRC ${SMEM_SRC_COMMON}
@@ -30,10 +30,12 @@ set(PLATFORM_SRC ${SMEM_SRC_COMMON}
         ${SMEM_SRC_SMEM_SHARE}
         ${SMEM_SRC_STORE}
         ${SMEM_SRC_SMEM_BM}
+        ${SMEM_SRC_SMEM_TRANS}
         smem.cpp)
 
 ## build the static and shared library
 add_library(smem_objects OBJECT ${PLATFORM_SRC})
+target_link_libraries(smem_objects PRIVATE hybmm_objects)
 
 target_link_libraries(smem_objects PUBLIC smem)
 target_compile_options(smem_objects PRIVATE -fPIC)

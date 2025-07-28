@@ -101,7 +101,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = hybm_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
+    ret = hybm_import(entity_, allExInfo, globalGroup_->GetRankSize(), nullptr, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import failed, result: " << ret);
         return SM_ERROR;

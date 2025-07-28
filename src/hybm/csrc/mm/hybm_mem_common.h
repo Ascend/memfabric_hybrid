@@ -41,6 +41,7 @@ enum MemAddrType : uint8_t {
 enum MemSegType : uint8_t {
     HYBM_MST_HBM = 0,
     HYBM_MST_DRAM,
+    HYBM_MST_HBM_USER,
 
     HYBM_MST_BUTT
 };

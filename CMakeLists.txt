@@ -116,9 +116,14 @@ set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
 
-# set src base dir and output dir of smem
+# set src base dir and output dir of hybm
 set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
+
+# set src base dir and output dir of adapter
+set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
+set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mooncake_adapter)
+
 # set install target top dir
 message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")

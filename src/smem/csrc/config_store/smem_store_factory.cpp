@@ -38,14 +38,12 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        SM_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
-                                             << ") address in use");
+        SM_LOG_INFO("Startup for store(isSever=" << isServer << ", rank=" << rankId << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        SM_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
-                                              << ") failed:" << ret);
+        SM_LOG_ERROR("Startup for store(isSever=" << isServer << ", rank=" << rankId << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;
     }
@@ -61,6 +59,21 @@ void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
     storesMap_.erase(storeKey);
+}
+
+void StoreFactory::DestroyStoreAll(bool afterFork) noexcept
+{
+    if (afterFork) {
+        for (auto &e : storesMap_) {
+            Convert<ConfigStore, TcpConfigStore>(e.second)->Shutdown(afterFork);
+        }
+    } else {
+        std::unique_lock<std::mutex> lockGuard{storesMutex_};
+        for (auto &e: storesMap_) {
+            Convert<ConfigStore, TcpConfigStore>(e.second)->Shutdown(afterFork);
+        }
+    }
+    storesMap_.clear();
 }
 
 StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::string &prefix) noexcept

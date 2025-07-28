@@ -199,17 +199,21 @@ Result TcpConfigStore::Startup(const acclinkTlsOption &tlsOption, int reconnectR
     return SM_OK;
 }
 
-void TcpConfigStore::Shutdown() noexcept
+void TcpConfigStore::Shutdown(bool afterFork) noexcept
 {
     accClientLink_ = nullptr;
 
     if (accClient_ != nullptr) {
-        accClient_->Stop();
+        if (afterFork) {
+            accClient_->StopAfterFork();
+        } else {
+            accClient_->Stop();
+        }
         accClient_ = nullptr;
     }
 
     if (accServer_ != nullptr) {
-        accServer_->Shutdown();
+        accServer_->Shutdown(afterFork);
         accServer_ = nullptr;
     }
 }
@@ -463,12 +467,6 @@ std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlock
     const std::vector<uint8_t> &reqBody) noexcept
 {
     auto seqNo = reqSeqGen_.fetch_add(1U);
-    auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("send message failed, result: " << ret);
-        return nullptr;
-    }
 
     std::mutex waitRespMutex;
     std::condition_variable waitRespCond;
@@ -477,6 +475,13 @@ std::shared_ptr<ock::acc::AccTcpRequestContext> TcpConfigStore::SendMessageBlock
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, waitContext);
     msgCtxLocker.unlock();
+
+    auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
+    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("send message failed, result: " << ret);
+        return nullptr;
+    }
 
     auto response = waitContext->WaitFinished();
     return response;
@@ -524,17 +529,18 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
                                         uint32_t &id) noexcept
 {
     auto seqNo = reqSeqGen_.fetch_add(1U);
+
+    auto watchContext = std::make_shared<ClientWatchContext>(notify);
+    std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
+    msgClientContext_.emplace(seqNo, std::move(watchContext));
+    msgCtxLocker.unlock();
+
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         SM_LOG_ERROR("send message failed, result: " << ret);
         return ret;
     }
-
-    auto watchContext = std::make_shared<ClientWatchContext>(notify);
-    std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
-    msgClientContext_.emplace(seqNo, std::move(watchContext));
-    msgCtxLocker.unlock();
 
     id = seqNo;
     return SM_OK;

@@ -4,9 +4,9 @@
 #include "smem.h"
 #include "smem_common_includes.h"
 #include "smem_version.h"
+#include "smem_net_common.h"
 #include "hybm.h"
 #include "acc_links/net/acc_log.h"
-#include "smem_security.h"
 #include "smem_store_factory.h"
 
 namespace {
@@ -21,9 +21,50 @@ SMEM_API int32_t smem_init(uint32_t flags)
     SMOutLogger::Instance();
 
     g_smemInited = true;
+
+    // 未init时不能给hybm更新log配置,所以在init后延迟更新
+    auto func = SMOutLogger::Instance().GetLogExtraFunc();
+    if (func != nullptr) {
+        (void)smem_set_extern_logger(func);
+    }
+    (void)smem_set_log_level(SMOutLogger::Instance().GetLogLevel());
+
     SM_LOG_INFO("smem init successfully, " << LIB_VERSION);
 	
     return SM_OK;
+}
+
+SMEM_API int32_t smem_create_config_store(const char *storeUrl)
+{
+    static std::atomic<uint32_t> callNum = { 0 };
+
+    if (storeUrl == nullptr) {
+        SM_LOG_ERROR("input store URL is null.");
+        return ock::smem::SM_INVALID_PARAM;
+    }
+
+    ock::smem::UrlExtraction extraction;
+    auto ret = extraction.ExtractIpPortFromUrl(storeUrl);
+    if (ret != 0) {
+        SM_LOG_ERROR("input store URL invalid.");
+        return ock::smem::SM_INVALID_PARAM;
+    }
+
+    auto store = ock::smem::StoreFactory::CreateStore(extraction.ip, extraction.port, true);
+    if (store == nullptr) {
+        SM_LOG_ERROR("create store server failed with URL.");
+        return ock::smem::SM_ERROR;
+    }
+
+    if (callNum.fetch_add(1U) == 0) {
+        pthread_atfork(
+            []() {},  // 父进程 fork 前：释放锁等资源
+            []() {},  // 父进程 fork 后：无特殊操作
+            []() { ock::smem::StoreFactory::DestroyStoreAll(true); }
+        );
+    }
+
+    return ock::smem::SM_OK;
 }
 
 SMEM_API void smem_uninit()

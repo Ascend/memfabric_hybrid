@@ -24,8 +24,10 @@ const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE,
                                 HYBM_RANK_TYPE_STATIC,
                                 g_rankSize,
                                 0,
+                                0,
                                 g_localMemSize,
-                                0};
+                                0,
+                                true};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 hybm_entity_t g_entity = nullptr;
 hybm_mem_slice_t g_slice = nullptr;
@@ -56,8 +58,9 @@ void TestHybmOp::SetUp()
     EXPECT_NE(g_slice, nullptr);
 
     hybm_exchange_info info = {};
+    void* addresses[1] = { nullptr };
     EXPECT_EQ(hybm_export(g_entity, g_slice, 0, &info), BM_OK);
-    EXPECT_EQ(hybm_import(g_entity, &info, 1, 0), BM_OK);
+    EXPECT_EQ(hybm_import(g_entity, &info, 1, addresses, 0), BM_OK);
     EXPECT_EQ(hybm_mmap(g_entity, 0), BM_OK);
 }
 

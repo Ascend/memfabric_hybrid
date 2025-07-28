@@ -11,6 +11,8 @@
 namespace ock {
 namespace mf {
 
+thread_local bool MemEntityDefault::isSetDevice_ = false;
+
 MemEntityDefault::MemEntityDefault(int id) noexcept : id_(id), initialized(false) {}
 
 MemEntityDefault::~MemEntityDefault()
@@ -60,9 +62,15 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     options_ = *options;
     MemSegmentOptions segmentOptions;
-    segmentOptions.size = options_.singleRankVASpace;
     segmentOptions.devId = HybmGetInitDeviceId();
-    segmentOptions.segType = HYBM_MST_HBM;
+    if (options->globalUniqueAddress) {
+        segmentOptions.size = options_.singleRankVASpace;
+        segmentOptions.segType = HYBM_MST_HBM;
+        BM_LOG_DEBUG("create entity global unified memory space.");
+    } else {
+        segmentOptions.segType = HYBM_MST_HBM_USER;
+        BM_LOG_DEBUG("create entity user defined memory space.");
+    }
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
 
@@ -76,6 +84,21 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     }
 
     initialized = true;
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::SetThreadAclDevice()
+{
+    if (isSetDevice_) {
+        return BM_OK;
+    }
+    auto ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
+        return ret;
+    }
+    isSetDevice_ = true;
+    BM_LOG_DEBUG("Set device id to be " << HybmGetInitDeviceId() << " success.");
     return BM_OK;
 }
 
@@ -138,6 +161,25 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
     return BM_OK;
 }
 
+int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, uint32_t flags,
+                                              hybm_mem_slice_t &slice) noexcept
+{
+    if (ptr == nullptr || size == 0) {
+        BM_LOG_ERROR("input ptr(" << ptr << ") size(" << size << ") invalid");
+        return BM_INVALID_PARAM;
+    }
+
+    std::shared_ptr<MemSlice> realSlice;
+    auto ret = segment_->RegisterMemory(ptr, size, realSlice);
+    if (ret != 0) {
+        BM_LOG_ERROR("segment register slice with size: " << size << " failed: " << ret);
+        return ret;
+    }
+
+    slice = realSlice->ConvertToId();
+    return BM_OK;
+}
+
 int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept
 {
     if (!initialized) {
@@ -184,13 +226,18 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
         return BM_NOT_INITIALIZED;
     }
 
+    int ret = BM_ERROR;
     std::string info;
-    auto realSlice = segment_->GetMemSlice(slice);
-    if (realSlice == nullptr) {
-        return BM_INVALID_PARAM;
+    if (slice == nullptr) {
+        ret = segment_->Export(info);
+    } else {
+        auto realSlice = segment_->GetMemSlice(slice);
+        if (realSlice == nullptr) {
+            return BM_INVALID_PARAM;
+        }
+        ret = segment_->Export(realSlice, info);
     }
 
-    auto ret = segment_->Export(realSlice, info);
     if (ret != 0) {
         BM_LOG_ERROR("export to string failed: " << ret);
         return ret;
@@ -206,16 +253,16 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
     return BM_OK;
 }
 
-int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uint32_t count, uint32_t flags) noexcept
+int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uint32_t count, void *addresses[],
+                                             uint32_t flags) noexcept
 {
     if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
 
-    auto ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
+    auto ret = SetThreadAclDevice();
     if (ret != BM_OK) {
-        BM_LOG_ERROR("set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
         return BM_ERROR;
     }
 
@@ -229,7 +276,12 @@ int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info *desc, uin
         infos.emplace_back((const char *)desc[i].desc, desc[i].descLen);
     }
 
-    return segment_->Import(infos);
+    return segment_->Import(infos, addresses);
+}
+
+int32_t MemEntityDefault::GetExportSliceInfoSize(size_t &size) noexcept
+{
+    return segment_->GetExportSliceSize(size);
 }
 
 int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) noexcept
@@ -335,6 +387,10 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
     if (options == nullptr) {
         BM_LOG_ERROR("initialize with nullptr.");
         return BM_INVALID_PARAM;
+    }
+
+    if (!options->globalUniqueAddress) {
+        return BM_OK;
     }
 
     if (options->rankId >= options->rankCount) {

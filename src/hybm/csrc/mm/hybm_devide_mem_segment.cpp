@@ -81,6 +81,12 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     return BM_OK;
 }
 
+Result MemSegmentDevice::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+{
+    BM_LOG_ERROR("MemSegmentDevice NOT SUPPORT RegisterMemory");
+    return BM_NOT_SUPPORTED;
+}
+
 Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
 {
     if (slice == nullptr) {
@@ -168,8 +174,14 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     return BM_OK;
 }
 
+Result MemSegmentDevice::GetExportSliceSize(size_t &size) noexcept
+{
+    size = sizeof(HbmExportInfo);
+    return BM_OK;
+}
+
 // import可重入
-Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexcept
+Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
     LiteralExInfoTranslater<HbmExportInfo> translator;
     std::vector<HbmExportInfo> deserializedInfos{allExInfo.size()};
@@ -344,27 +356,9 @@ Result MemSegmentDevice::GetDeviceInfo() noexcept
         return BM_INVALID_PARAM;
     }
 
-    if (pid_ >= 0) {
-        return 0;
+    if (InitDeviceInfo() != BM_OK) {
+        return BM_ERROR;
     }
-
-    uint32_t tgid = 0;
-    auto ret = DlAclApi::RtDeviceGetBareTgid(&tgid);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get bare tgid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    constexpr auto sdidInfo = 26;
-    int64_t value = 0;
-    ret = DlAclApi::RtGetDeviceInfo(options_.devId, 0, sdidInfo, &value);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get sdid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    pid_ = static_cast<int>(tgid);
-    sdid_ = static_cast<uint32_t>(value);
     return BM_OK;
 }
 }  // namespace mf
