@@ -112,9 +112,9 @@ TEST_F(TestBmProxy, Init)
     EXPECT_EQ(ret, MMC_OK);
     ret = bmProxy->Put(&buffer2, bmAddr + SIZE_32K, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
-    ret = bmProxy->Get(&buffer3, bmAddr + SIZE_32K);
+    ret = bmProxy->Get(&buffer3, bmAddr + SIZE_32K, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
-    ret = bmProxy->Get(&buffer4, bmAddr);
+    ret = bmProxy->Get(&buffer4, bmAddr, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
 
     bool result = CheckData(hostSrc1, hostDest2);

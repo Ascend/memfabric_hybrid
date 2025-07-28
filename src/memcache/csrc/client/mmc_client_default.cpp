@@ -241,7 +241,8 @@ Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
         return MMC_ERROR;
     }
 
-    MMC_RETURN_ERROR(bmProxy_->Get(buf, response.blobs_[0].gva_), "client " << name_ << " get " << key << " failed");
+    MMC_RETURN_ERROR(bmProxy_->Get(buf, response.blobs_[0].gva_, response.blobs_[0].size_),
+                     "client " << name_ << " get " << key << " failed");
     UpdateRequest updateRequest{MMC_READ_OK, key, 0, 0, operateId};
     Response updateResponse;
     if(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_ != MMC_OK)) {
@@ -264,7 +265,7 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys, std::vec
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
         "client " << name_ << " batch get failed");
 
-    if (response.blobs_.size() != keys.size()) {
+    if (response.blobs_.size() != keys.size() || response.numBlobs_.size() != keys.size()) {
         MMC_LOG_ERROR("client " << name_ << " batch get response size mismatch: expected " << keys.size() << ", got "
                        << response.blobs_.size());
         return MMC_ERROR;
@@ -280,7 +281,7 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string> &keys, std::vec
                 return MMC_ERROR;
             }
 
-            MMC_RETURN_ERROR(bmProxy_->Get(&bufs[i], blobs[0].gva_),
+            MMC_RETURN_ERROR(bmProxy_->Get(&bufs[i], blobs[0].gva_, blobs[0].size_),
                              "client " << name_ << " batch get failed for key " << keys[i]);
 
         } else {

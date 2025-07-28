@@ -116,7 +116,7 @@ Result MmcBmProxy::Put(mmc_buffer *buf, uint64_t bmAddr, uint64_t size)
     }
 }
 
-Result MmcBmProxy::Get(mmc_buffer *buf, uint64_t bmAddr)
+Result MmcBmProxy::Get(mmc_buffer *buf, uint64_t bmAddr, uint64_t size)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (handle_ == nullptr) {
@@ -128,9 +128,20 @@ Result MmcBmProxy::Get(mmc_buffer *buf, uint64_t bmAddr)
         return MMC_ERROR;
     }
     if (buf->dimType == 0) {
+        if (buf->oneDim.len != size) {
+            MMC_LOG_ERROR("Failed to get data to smem bm, buf length: " << buf->oneDim.len
+                          << " not equal data length: " << size);
+            return MMC_ERROR;
+        }
         return smem_bm_copy(handle_, (void *)bmAddr, (void *)(buf->addr + buf->oneDim.offset), buf->oneDim.len,
                             SMEMB_COPY_G2H, 0);
     } else if (buf->dimType == 1) {
+        uint64_t length = buf->twoDim.width * buf->twoDim.layerNum;
+        if (length != size) {
+            MMC_LOG_ERROR("Failed to get data to smem bm, buf length: " << length
+                          << " not equal data length: " << size);
+            return MMC_ERROR;
+        }
         if (buf->twoDim.dpitch == buf->twoDim.width) {
             return smem_bm_copy(handle_, (void *)bmAddr, (void *)(buf->addr + buf->twoDim.dpitch * buf->twoDim.layerOffset),
                                 buf->twoDim.width * buf->twoDim.layerNum, SMEMB_COPY_G2L, 0);
