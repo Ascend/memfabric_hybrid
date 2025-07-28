@@ -25,7 +25,7 @@ int32_t smem_bm_config_init(smem_bm_config_t *config);
  * the KVBlocks then copy to global shared memory space, other workers can read it
  * by data copy as well.
  *
- * @param storeURL         [in] configure store url for control, e.g. tcp:://ip:port
+ * @param storeURL         [in] configure store url for control, e.g. tcp://ip:port
  * @param worldSize        [in] number of guys participating
  * @param deviceId         [in] device id
  * @param config           [in] extract config

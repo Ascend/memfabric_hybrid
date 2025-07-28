@@ -1,3 +1,5 @@
+> 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/smem/csrc/python_wrapper/pysmem.cpp`。
+
 ##### 公共接口列表
 
 1. 初始化运行环境
@@ -94,8 +96,8 @@
 
     |参数/返回值|含义|
     |-|-|
-    |storeURL|config store地址，格式tcp:://ip:port|
-    |worldSize|参与初始化BM的rank数量|
+    |storeURL|config store地址，格式tcp://ip:port|
+    |worldSize|参与初始化BM的rank数量，最大支持1024|
     |deviceId|当前rank的deviceId|
     |config|BM初始化配置|
     |返回值|成功返回0，其他为错误码|
@@ -129,10 +131,10 @@
     |参数/返回值|含义|
     |-|-|
     |id|BM id，用户自定义，BM之间取不同值|
-    |memberSize|创建BM的rank数量|
+    |memberSize|创建BM的rank数量，最大支持1024|
     |dataOpType|数据操作类型，取值内容参考smem_bm_data_op_type定义|
-    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节|
-    |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节|
+    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，最大支持4G|
+    |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，最大支持4G|
     |flags|创建标记位，预留|
     |返回值|成功返回BM handle，失败返回空指针|
 
@@ -246,8 +248,8 @@
 
     |参数/返回值|含义|
     |-|-|
-    |configStoreIpPort|config store的IP和端口，格式tcp:://ip:port|
-    |worldSize|参与SHM初始化rank数量|
+    |configStoreIpPort|config store的IP和端口，格式tcp://ip:port|
+    |worldSize|参与SHM初始化rank数量，最大支持1024|
     |rankId|当前rank id|
     |deviceId|当前rank的device id|
     |config|初始化SHM配置|
@@ -280,9 +282,9 @@
     |参数/返回值|含义|
     |-|-|
     |id|SHM对象id，用户指定，与其他SHM对象不重复|
-    |rankSize|参与创建SHM的rank数量|
+    |rankSize|参与创建SHM的rank数量，最大支持1024|
     |rankId|当前rank id|
-    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节|
+    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，最大支持4G|
     |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
     |flags|预留参数|
     |gva|出参，gva空间地址|

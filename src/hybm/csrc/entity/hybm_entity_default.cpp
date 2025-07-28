@@ -21,9 +21,11 @@ MemEntityDefault::~MemEntityDefault()
 int32_t MemEntityDefault::CreateDataOperator()
 {
     switch (options_.bmType) {
-        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
+        case HYBM_TYPE_HBM_HOST_INITIATE:
             dataOperator_ = std::make_shared<HostDataOpSDMA>();
             break;
+        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
+            return BM_OK;
         default:
             BM_LOG_ERROR("Invalid memory seg type " << int(options_.bmType));
             return BM_INVALID_PARAM;
@@ -33,6 +35,14 @@ int32_t MemEntityDefault::CreateDataOperator()
         BM_LOG_ERROR("create data operator failed");
         return BM_INVALID_PARAM;
     }
+
+    auto ret = dataOperator_->Initialize();
+    if (ret != 0) {
+        BM_LOG_ERROR("data operator init failed, ret:" << ret);
+        dataOperator_ = nullptr;
+        return ret;
+    }
+
     return BM_OK;
 }
 
@@ -63,14 +73,6 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     if (ret != 0) {
         segment_ = nullptr;
         return BM_INVALID_PARAM;
-    }
-
-    ret = dataOperator_->Initialize();
-    if (ret != 0) {
-        BM_LOG_ERROR("data operator init failed, ret:" << ret);
-        segment_ = nullptr;
-        dataOperator_ = nullptr;
-        return ret;
     }
 
     initialized = true;
@@ -298,7 +300,7 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
 int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
                                    void *stream, uint32_t flags) noexcept
 {
-    if (!initialized) {
+    if (!initialized || dataOperator_ == nullptr) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
@@ -310,7 +312,7 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
                                      uint64_t height, hybm_data_copy_direction direction, void *stream,
                                      uint32_t flags) noexcept
 {
-    if (!initialized) {
+    if (!initialized || dataOperator_ == nullptr) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
