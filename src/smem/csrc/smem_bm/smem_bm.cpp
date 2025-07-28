@@ -102,8 +102,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
 {
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
     SM_VALIDATE_RETURN(!(localDRAMSize == 0UL && localHBMSize == 0UL), "localMemorySize is 0", nullptr);
-    SM_VALIDATE_RETURN(localDRAMSize > SMEM_LOCAL_SIZE_MAX, "local DRAM size exceeded", nullptr);
-    SM_VALIDATE_RETURN(localHBMSize > SMEM_LOCAL_SIZE_MAX, "local HBM size exceeded", nullptr);
+    SM_VALIDATE_RETURN(localDRAMSize <= SMEM_LOCAL_SIZE_MAX, "local DRAM size exceeded", nullptr);
+    SM_VALIDATE_RETURN(localHBMSize <= SMEM_LOCAL_SIZE_MAX, "local HBM size exceeded", nullptr);
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
