@@ -157,6 +157,33 @@ public:
     }
 };
 
+class VStrLength : public Validator {
+public:
+    static ValidatorPtr Create(const std::string& name, const unsigned long lenLimit)
+    {
+        return {new (std::nothrow) VStrLength(name, lenLimit)};
+    }
+
+    explicit VStrLength(const std::string& name, const unsigned long lenLimit)
+        : Validator(name), mLengthLimit(lenLimit) {};
+
+    ~VStrLength() override = default;
+
+    bool Initialize() override { return true; }
+
+    bool Validate(const std::string& value) override
+    {
+        if (value.length() > mLengthLimit) {
+            mErrMsg = "String length exceeds limit for <" + mName + ">, it should be no longer than " +
+                std::to_string(mLengthLimit);
+            return false;
+        }
+        return true;
+    }
+private:
+    unsigned long mLengthLimit;
+};
+
 class VIntRange : public Validator {
 public:
     static ValidatorPtr Create(const std::string& name, const int& start, const int& end)
@@ -194,6 +221,42 @@ public:
 private:
     int mStart;
     int mEnd;
+};
+
+class VUInt64Range : public Validator {
+public:
+    static ValidatorPtr Create(const std::string& name, const uint64_t& start, const uint64_t& end)
+    {
+        return {new (std::nothrow) VUInt64Range(name, start, end)};
+    }
+    VUInt64Range(const std::string& name, const uint64_t& start, const uint64_t& end)
+        : Validator(name), mStart(start), mEnd(end) {};
+
+    ~VUInt64Range() override = default;
+
+    bool Initialize() override
+    {
+        if (mStart >= mEnd) {
+            mErrMsg = "Failed to initialize validator for <" + mName + ">, because end should be bigger than start";
+            return false;
+        }
+        return true;
+    }
+
+    bool Validate(const uint64_t value) override
+    {
+        if (value < mStart || value > mEnd) {
+            mErrMsg = "Invalid value for <" + mName + ">, it should be between " + std::to_string(mStart) + "-" +
+                          std::to_string(mEnd);
+            return false;
+        }
+
+        return true;
+    }
+
+private:
+    uint64_t mStart;
+    uint64_t mEnd;
 };
 
 class VPathAccess : public Validator {

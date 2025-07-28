@@ -35,6 +35,24 @@ constexpr auto OKC_MMC_LOCAL_SERVICE_HBM_SIZE = std::make_pair("ock.mmc.local_se
 constexpr auto OCK_MMC_CLIENT_TIMEOUT_SECONDS = std::make_pair("ock.mmc.client.timeout.seconds", 60);
 
 }
+
+constexpr int MIN_DEVICE_ID = 0;
+constexpr int MAX_DEVICE_ID = 383;
+
+constexpr int MIN_BM_RANK_ID = 0;
+constexpr int MAX_BM_RANK_ID = 1023;
+
+constexpr int MIN_WORLD_SIZE = 1;
+constexpr int MAX_WORLD_SIZE = 1024;
+
+constexpr int MIN_BM_ID = 0;
+constexpr int MAX_BM_ID = 127;
+
+constexpr uint64_t MAX_DRAM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB
+constexpr uint64_t MAX_HBM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB
+
+constexpr unsigned long PATH_MAX_LEN = 1023;
+
 }  // namespace mmc
 }  // namespace ock
 

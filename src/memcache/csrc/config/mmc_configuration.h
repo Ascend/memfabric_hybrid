@@ -142,12 +142,12 @@ public:
                    VIntRange::Create(OCK_MMC_META_SERVICE_LOG_LEVEL.first, DEBUG_LEVEL, BUTT_LEVEL));
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_TOP_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CA_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CRL_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CERT_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_KEY_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_TOP_PATH, VStrLength::Create(OCK_MMC_TLS_TOP_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CA_PATH, VStrLength::Create(OCK_MMC_TLS_CA_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CRL_PATH, VStrLength::Create(OCK_MMC_TLS_CRL_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CERT_PATH, VStrLength::Create(OCK_MMC_TLS_CERT_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_KEY_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VStrLength::Create(OCK_MMC_TLS_PACKAGE_PATH.first, PATH_MAX_LEN));
     }
 
     void GetMetaServiceConfig(mmc_meta_service_config_t &config) {
@@ -165,25 +165,32 @@ public:
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_TOP_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CA_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CRL_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_CERT_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_KEY_PATH, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VNoCheck::Create());
+        AddStrConf(OCK_MMC_TLS_TOP_PATH, VStrLength::Create(OCK_MMC_TLS_TOP_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CA_PATH, VStrLength::Create(OCK_MMC_TLS_CA_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CRL_PATH, VStrLength::Create(OCK_MMC_TLS_CRL_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_CERT_PATH, VStrLength::Create(OCK_MMC_TLS_CERT_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_KEY_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VStrLength::Create(OCK_MMC_TLS_PACKAGE_PATH.first, PATH_MAX_LEN));
 
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_DEVICE_ID, VNoCheck::Create());
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_RANK_ID, VNoCheck::Create());
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_DEVICE_ID,
+            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_DEVICE_ID.first, MIN_DEVICE_ID, MAX_DEVICE_ID));
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_RANK_ID,
+            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_RANK_ID.first, MIN_BM_RANK_ID, MAX_BM_RANK_ID));
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE,
+            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE.first, MIN_WORLD_SIZE, MAX_WORLD_SIZE));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_IP_PORT, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL, VNoCheck::Create());
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING, VNoCheck::Create());
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_BM_ID, VNoCheck::Create());
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING,
+            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING.first, 0, 1));
+        AddIntConf(OKC_MMC_LOCAL_SERVICE_BM_ID,
+            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_BM_ID.first, MIN_BM_ID, MAX_BM_ID));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL, VNoCheck::Create());
-        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE, VNoCheck::Create());
-        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
-
-        AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS, VNoCheck::Create());
+        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE,
+            VUInt64Range::Create(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE.first, 0, MAX_DRAM_SIZE));
+        AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE,
+            VUInt64Range::Create(OKC_MMC_LOCAL_SERVICE_HBM_SIZE.first, 0, MAX_HBM_SIZE));
+        AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS,
+            VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, 1, 600));
     }
 
     void GetLocalServiceConfig(mmc_local_service_config_t &config) {

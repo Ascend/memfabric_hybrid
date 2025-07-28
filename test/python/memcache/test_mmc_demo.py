@@ -10,8 +10,8 @@ class TestExample(unittest.TestCase):
 
     def setUp(self):
         self._distributed_object_store = DistributedObjectStore()
-        self._distributed_object_store.init()
-        print("object store initialized")
+        res = self._distributed_object_store.init()
+        self.assertEqual(res, 0)
 
     def test_1(self):
         # check existence before put
