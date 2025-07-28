@@ -273,8 +273,12 @@ class MmcTest(TestServer):
         else:
             direct = int(MmcDirect.COPY_L2G.value)
             tensor = self._npu_blocks[index][0]
-        self.cli_print(f"======== put_from({key}, {tensor.data_ptr()}, {self._min_block_size * 2}, {direct})")
-        res = self.__distributed_store_object.put_from(key, tensor.data_ptr(), self._min_block_size * 2, direct)
+        if (index == -1):
+            self.cli_print(f"======== put_from({key}, None, {self._min_block_size * 2}, {direct})")
+            res = self.__distributed_store_object.put_from(key, None, self._min_block_size * 2, direct)
+        else:
+            self.cli_print(f"======== put_from({key}, {tensor.data_ptr()}, {self._min_block_size * 2}, {direct})")
+            res = self.__distributed_store_object.put_from(key, tensor.data_ptr(), self._min_block_size * 2, direct)
         self.cli_return(res)
 
     @result_handler
