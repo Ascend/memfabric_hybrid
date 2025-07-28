@@ -58,7 +58,6 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     std::string fileNmae = "./input/input_" + std::to_string(rankId) + ".bin";
     ReadFile(fileNmae, gDataByteSize, inputHost, gDataByteSize);
 
-    INFO_LOG("gva: %p, remote: %p", gva, localShm);
     // 将本地 host copy到 shm local
     int32_t ret = aclrtMemcpy(inputShm, gDataByteSize, inputHost, gDataByteSize, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
@@ -138,7 +137,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %lu, rank:%d", gNpuMallocSpace, rankId);
     TestAllReduce(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;

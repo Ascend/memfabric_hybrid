@@ -219,7 +219,7 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
 
     ret = smem_bm_join(handle, 0, &gva);
     CHECK_RET_VOID(ret, "smem_bm_join failed, ret:" << ret << " rank:" << rankId);
-    LOG_INFO("smem_bm_create gva:" << gva << " rank:" << rankId);
+    LOG_INFO("smem_bm_create succeeded, rank:" << rankId);
 
     ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);

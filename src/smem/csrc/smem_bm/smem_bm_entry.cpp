@@ -169,11 +169,11 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
 
     hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
-        SM_VALIDATE_RETURN(AddressInRange(dest, size), "dest address: " << dest << ", size: " << size << " invalid.",
+        SM_VALIDATE_RETURN(AddressInRange(dest, size), "copy target range invalid (size: " << size << ")",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
-        SM_VALIDATE_RETURN(AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
+        SM_VALIDATE_RETURN(AddressInRange(src, size), "copy source range invalid (size: " << size << ")",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
@@ -194,14 +194,14 @@ Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uin
     hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
         SM_VALIDATE_RETURN(AddressInRange(dest, dpitch * (height - 1) + width),
-                           "dest address: " << dest << ", dpitch: " << dpitch << " width: " << width
-                                          << " height: " << height << " invalid.",
+                           "copy target range invalid (dpitch: " << dpitch << " width: " << width
+                                          << " height: " << height << ").",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
         SM_VALIDATE_RETURN(AddressInRange(src, spitch * (height - 1) + width),
-                           "src address: " << src << ", spitch: " << spitch << " width: " << width
-                                        << " height: " << height << " invalid.",
+                           "copy source range invalid (spitch: " << spitch << " width: " << width
+                                        << " height: " << height << ")",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }

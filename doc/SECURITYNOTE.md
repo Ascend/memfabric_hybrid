@@ -72,6 +72,30 @@ export MEMFABRIC_HYBRID_TLS_INFO=$'\
 | 密钥组件、私钥、证书、加密密文        | 600（rw-------）      |
 | 加解密接口、加解密脚本            |   500（r-x------）        |
 
+### 调用acc_links接口列表
+
+#### 日志模块
+
+| 接口功能描述                | 接口声明                                      |
+|-----------------------------|--------------------------------------------|
+| 设置自定义日志函数         | `int32_t AccSetExternalLog(void (*func)(int level, const char* msg));` |
+| 设置日志打印级别             | `int32_t AccSetLogLevel(int level);`       |
+
+#### TCP服务端模块
+
+| 接口功能描述                | 接口声明                                      |
+|-----------------------------|--------------------------------------------|
+| 创建TCP服务端           | `static AccTcpServerPtr Create();`         |
+| 启动服务端          | `int32_t Start(const AccTcpServerOptions &opt);` |
+| TLS认证方式启动服务端           | `int32_t Start(const AccTcpServerOptions &opt, const AccTlsOption &tlsOption);` |
+| 停止服务端                  | `void Stop();`                             |
+| 连接其余服务端            | `int32_t ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req, uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink);` |
+| 注册处理新请求事件函数              | `void RegisterNewRequestHandler(int16_t msgType, const AccNewReqHandler &h);` |
+| 注册处理断链事件函数            | `void RegisterLinkBrokenHandler(const AccLinkBrokenHandler &h);` |
+| 注册处理新链接事件函数              | `void RegisterNewLinkHandler(const AccNewLinkHandler &h);` |
+| 加载安全认证所需动态库          | `int32_t LoadDynamicLib(const std::string &dynLibPath);` |
+
+
 ### 依赖软件声明
 
 当前项目运行依赖 cann 和 Ascend HDK，安装使用及注意事项参考[CANN](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1beta1/index/index.html)和[Ascend HDK](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)并选择对应版本。

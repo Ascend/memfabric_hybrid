@@ -76,8 +76,7 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                        static_cast<uint64_t>(reinterpret_cast<std::ptrdiff_t>(sliceAddr)), size);
     slices_.emplace(slice->index_, slice);
-    BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ", address:0x" << std::hex
-                                       << slice->vAddress_ << ").");
+    BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
 
     return BM_OK;
 }
@@ -101,8 +100,7 @@ Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &sli
     }
 
     auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
-    BM_LOG_INFO("free slice(idx:" << slice->index_ << ") address: " << (void *)(ptrdiff_t)slice->vAddress_
-                                  << ", size: " << slice->size_ << " return:" << res);
+    BM_LOG_INFO("free slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
 
     slices_.erase(pos);
     return BM_OK;
@@ -237,12 +235,11 @@ Result MemSegmentDevice::Mmap() noexcept
 
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
-            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped: " << (void *)remoteAddress);
+            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") already mapped.");
             continue;
         }
 
-        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
-                                             << ", size = " << im.size);
+        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") prepare to map, size = " << im.size);
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);

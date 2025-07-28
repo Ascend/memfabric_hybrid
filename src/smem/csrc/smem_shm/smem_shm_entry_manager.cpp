@@ -86,7 +86,7 @@ Result SmemShmEntryManager::GetEntryByPtr(uintptr_t ptr, SmemShmEntryPtr &entry)
         return SM_OK;
     }
 
-    SM_LOG_DEBUG("not found shm entry with ptr " << ptr);
+    SM_LOG_DEBUG("not found shm entry");
     return SM_OBJECT_NOT_EXISTS;
 }
 
@@ -112,7 +112,7 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
     SM_ASSERT_RETURN(inited_, SM_NOT_STARTED);
     auto iter = ptr2EntryMap_.find(ptr);
     if (iter == ptr2EntryMap_.end()) {
-        SM_LOG_DEBUG("not found shm entry with ptr " << ptr);
+        SM_LOG_DEBUG("not found shm entry");
         return SM_OBJECT_NOT_EXISTS;
     }
 
@@ -124,7 +124,7 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
     SM_ASSERT_RETURN(entry != nullptr, SM_ERROR);
     entryIdMap_.erase(entry->Id());
 
-    SM_LOG_DEBUG("remove shm entry success, ptr: " << ptr << ", id: " << entry->Id());
+    SM_LOG_DEBUG("remove shm entry success, id: " << entry->Id());
 
     return SM_OK;
 }

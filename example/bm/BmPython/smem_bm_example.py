@@ -61,7 +61,7 @@ def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_r
         shm_handle = shm.create(id=0, rank_size=rank_size, rank_id=rank_id, local_mem_size=GVA_SIZE)
         bm_handle = bm.create(id=0, local_dram_size=0, local_hbm_size=GVA_SIZE)
         address = bm_handle.join()
-        logging.info(f'==================== bm handle create got local GVA: {address}')
+        logging.info(f'==================== bm handle create success')
 
         shm_handle.barrier()
         logging.info('==================== barrier finished, start test')
