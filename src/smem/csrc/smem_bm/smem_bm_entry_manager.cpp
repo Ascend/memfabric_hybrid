@@ -243,5 +243,13 @@ Result SmemBmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 
     return SM_OK;
 }
+
+void SmemBmEntryManager::Destroy()
+{
+    inited_ = false;
+    confStore_ = nullptr;
+    StoreFactory::DestroyStore(storeUrlExtraction_.ip, storeUrlExtraction_.port);
+}
+
 }  // namespace smem
 }  // namespace ock

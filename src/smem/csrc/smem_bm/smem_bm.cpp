@@ -76,7 +76,6 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. ");
     return SM_OK;
 }
 
@@ -88,6 +87,7 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
     }
 
     hybm_uninit();
+    SmemBmEntryManager::Instance().Destroy();
     g_smemBmInited = false;
     SM_LOG_INFO("smem_bm_uninit finished");
 }
@@ -114,8 +114,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmType = HYBM_TYPE_HBM_HOST_INITIATE;
+    options.bmDataOpType = HYBM_DOP_TYPE_SDMA;
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();

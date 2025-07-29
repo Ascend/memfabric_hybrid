@@ -149,6 +149,12 @@ public:
         return (uint64_t)(ptrdiff_t)ptr;
     }
 
+    void Destroy()
+    {
+        smem_bm_destroy(handle_);
+        handle_ = nullptr;
+    }
+
     void CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
     {
         auto ret = smem_bm_copy(handle_, (const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size, type, flags);
@@ -485,6 +491,8 @@ Arguments:
     peer_rank(int): rank id of peer
 Returns:
     ptr of peer gva)")
+        .def("destroy", &BigMemory::Destroy, py::call_guard<py::gil_scoped_release>(), R"(
+Destroy the big memory handle.)")
         .def("copy_data", &BigMemory::CopyData, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
              py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, R"(
 Data operation on Big Memory object.

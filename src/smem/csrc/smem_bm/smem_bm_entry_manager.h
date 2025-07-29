@@ -33,6 +33,8 @@ public:
     Result GetEntryById(uint32_t id, SmemBmEntryPtr &entry);
     Result RemoveEntryByPtr(uintptr_t ptr);
 
+    void Destroy();
+
     inline uint32_t GetRankId() const
     {
         return config_.rankId;
