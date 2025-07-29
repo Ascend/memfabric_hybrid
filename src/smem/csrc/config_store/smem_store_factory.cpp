@@ -14,7 +14,7 @@ static __thread int failedReason_ = 0;
 static constexpr size_t MAX_TLS_JSON_LEN = 10 * 1024U;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
-acclinkTlsOption StoreFactory::tlsOption_;
+AcclinkTlsOption StoreFactory::tlsOption_;
 bool StoreFactory::isTlsInitialized_ = false;
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
@@ -119,7 +119,7 @@ int StoreFactory::GetFailedReason() noexcept
         }                                                                                           \
     } while (0)
 
-Result ParseSSLFromJson(const char* tlsJsonInfo, acclinkTlsOption &tlsOption)
+Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
 {
     using json = nlohmann::json;
 

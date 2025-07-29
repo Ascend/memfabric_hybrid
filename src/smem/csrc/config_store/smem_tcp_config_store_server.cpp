@@ -20,7 +20,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port) noexcept
 {
 }
 
-SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer, const acclinkTlsOption &tlsOption) noexcept
+SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer, const AcclinkTlsOption &tlsOption) noexcept
 {
     ock::acc::AccTcpServerOptions options;
     options.listenIp = listenIp_;
@@ -53,7 +53,7 @@ SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServ
     return SM_OK;
 }
 
-Result AccStoreServer::Startup(const acclinkTlsOption &tlsOption) noexcept
+Result AccStoreServer::Startup(const AcclinkTlsOption &tlsOption) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {

@@ -70,6 +70,8 @@ public:
 
     uint32_t GetRankSize() const;
 
+    void GroupSnClean();
+
 private:
     bool IsDigit(const std::string& str);
     void GroupListenEvent();

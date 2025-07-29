@@ -15,7 +15,7 @@
 #include "smem_security.h"
 #include "smem_common_includes.h"
 
-struct acclinkTlsOption {
+struct AcclinkTlsOption {
     bool enableTls = true;
     std::string tlsTopPath = "";                  /* root path of certifications */
     std::string tlsCert;                          /* certification of server */
@@ -277,7 +277,7 @@ inline const char *ConfigStore::ErrStr(int16_t errCode)
     }
 }
 
-inline ock::acc::AccTlsOption ConvertTlsOption(const acclinkTlsOption &opt)
+inline ock::acc::AccTlsOption ConvertTlsOption(const AcclinkTlsOption &opt)
 {
     ock::acc::AccTlsOption tlsOption;
     tlsOption.enableTls = opt.enableTls;

@@ -479,5 +479,30 @@ void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
     barrierGroupSn_ = 0;
 }
 
+void SmemNetGroupEngine::GroupSnClean()
+{
+    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
+        if (allGatherGroupSn_ < i) {
+            break;
+        }
+        uint32_t removeAllGatherGroupSn_ = allGatherGroupSn_ - i;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GW";
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+
+    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
+        if (barrierGroupSn_ < i) {
+            break;
+        }
+        uint32_t removeBarrierGroupSn_ = barrierGroupSn_ - i;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BW";
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+}
+
 }  // namespace smem
 }  // namespace ock

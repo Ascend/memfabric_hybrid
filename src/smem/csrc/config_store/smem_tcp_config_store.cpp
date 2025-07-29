@@ -122,7 +122,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::AccClientStart(const acclinkTlsOption &tlsOption) noexcept
+Result TcpConfigStore::AccClientStart(const AcclinkTlsOption &tlsOption) noexcept
 {
     ock::acc::AccTcpServerOptions options;
     options.linkSendQueueSize = ock::acc::UNO_48;
@@ -140,7 +140,7 @@ Result TcpConfigStore::AccClientStart(const acclinkTlsOption &tlsOption) noexcep
     return result;
 }
 
-Result TcpConfigStore::Startup(const acclinkTlsOption &tlsOption, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const AcclinkTlsOption &tlsOption, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;

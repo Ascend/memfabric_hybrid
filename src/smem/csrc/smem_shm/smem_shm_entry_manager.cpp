@@ -131,6 +131,7 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 
 void SmemShmEntryManager::Destroy()
 {
+    inited_ = false;
     store_ = nullptr;
     StoreFactory::DestroyStore(ip_, port_);
 }

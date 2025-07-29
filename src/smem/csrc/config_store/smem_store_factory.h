@@ -56,7 +56,7 @@ private:
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
-    static acclinkTlsOption tlsOption_;
+    static AcclinkTlsOption tlsOption_;
     static bool isTlsInitialized_;
 };
 } // namespace smem
