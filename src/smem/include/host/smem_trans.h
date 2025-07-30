@@ -13,23 +13,96 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Initialize the config struct
+ *
+ * @param config           [in] ptr of config to be initialized
+ * @return 0 if successful
+ */
 int32_t smem_trans_config_init(smem_trans_config_t *config);
 
+/**
+ * @brief Create a transfer object with config, this transfer need to connect to global config store to exchange
+ * inner information for various protocols on different hardware
+ *
+ * @param storeUrl         [in] the url of config store, the store is created by <i>smem_create_config_store</i>
+ * @param sessionId        [in] session id for data transfer, which should be unique, a better practice is using ip:port
+ * @param config           [in] the config for config
+ * @return transfer object created if successful
+ */
 smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, const smem_trans_config_t *config);
 
+/**
+ * @brief Destroy the transfer created by <i>smem_trans_create</i>
+ *
+ * @param handle           [in] the transfer object created
+ * @param flags            [in] optional flags
+ */
 void smem_trans_destroy(smem_trans_t handle, uint32_t flags);
 
+/**
+ * @brief Un-initialize transfer
+ *
+ * @param flags            [in] optional flags
+ */
 void smem_trans_uninit(uint32_t flags);
 
+/**
+ * @brief Register a contiguous memory space to be transferred
+ *
+ * @param handle            [in] transfer object handle
+ * @param address           [in] start address of the contiguous memory space
+ * @param capacity          [in] size of contiguous memory space
+ * @param flags             [in] optional flags
+ * @return 0 if successful
+ */
 int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capacity, uint32_t flags);
 
+/**
+ * @brief Register multiple contiguous memory spaces to be transferred
+ *
+ * @param handle           [in] transfer object handle
+ * @param addresses        [in] starts addresses of the contiguous memory spaces
+ * @param capacities       [in] sizes of the contiguous memory spaces
+ * @param count            [in] count of the contiguous memory spaces
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
 int32_t smem_trans_register_mems(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count, uint32_t flags);
 
+/**
+ * @brief De-register contiguous memory spaces that registered by smem_trans_register_mem(s)
+ *
+ * @param handle           [in] transfer object handle
+ * @param address          [in] start address of the contiguous memory space
+ * @return 0 if successful
+ */
 int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
 
+/**
+ * @brief Transfer data to peer with write
+ *
+ * @param handle           [in] transfer object handle
+ * @param srcAddress       [in] address of src data to be written to peer
+ * @param destSession      [in] sessionId of dst
+ * @param destAddress      [in] address of dst
+ * @param dataSize         [in] data size to be transfered
+ * @return 0 if successful
+ */
 int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destSession, void *destAddress,
                          size_t dataSize);
 
+/**
+ * @brief Transfer data to peer with write in batch
+ *
+ * @param handle           [in] transfer object handle
+ * @param srcAddresses     [in] addresses of src data to be written to peer
+ * @param destSession      [in] sessionId of dst
+ * @param destAddresses    [in] addresses of data
+ * @param dataSizes        [in] sizes of data
+ * @param batchSize        [in] batch size
+ * @return 0 if successful
+ */
 int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destSession,
                                void *destAddresses[], size_t dataSizes[], uint32_t batchSize);
 

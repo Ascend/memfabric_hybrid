@@ -13,19 +13,25 @@ extern "C" {
 
 typedef void *smem_trans_t;
 
+/*
+ * @brief Transfer role, i.e. sender/receiver
+ */
 typedef enum {
-    SMEM_TRANS_NONE = 0,
-    SMEM_TRANS_SENDER,
-    SMEM_TRANS_RECEIVER,
-    SMEM_TRANS_BOTH,
+    SMEM_TRANS_NONE = 0, /* no role */
+    SMEM_TRANS_SENDER,   /* sender */
+    SMEM_TRANS_RECEIVER, /* receiver */
+    SMEM_TRANS_BOTH,     /* both sender and receiver */
     SMEM_TRANS_BUTT
 } smem_trans_role_t;
 
+/**
+ * @brief Transfer config
+ */
 typedef struct {
-    smem_trans_role_t role;    /* transfer role */
-    uint32_t initTimeout;      /* func timeout, default 120 seconds */
-    uint32_t deviceId;         /* npu device id */
-    uint32_t flags;            /* optional flags */
+    smem_trans_role_t role; /* transfer role */
+    uint32_t initTimeout;   /* func timeout, default 120 seconds */
+    uint32_t deviceId;      /* npu device id */
+    uint32_t flags;         /* optional flags */
 } smem_trans_config_t;
 
 #ifdef __cplusplus
