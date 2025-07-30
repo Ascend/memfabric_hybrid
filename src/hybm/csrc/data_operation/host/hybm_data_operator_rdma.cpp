@@ -167,7 +167,7 @@ int32_t HostDataOpRDMA::CopyGva2Host(const void *srcVA, void *destVA, uint64_t l
         return ret;
     }
 
-    ret = DlAclApi::AclrtMemcpy(tmpHost, length, destVA, length, ACL_MEMCPY_HOST_TO_HOST);
+    ret = DlAclApi::AclrtMemcpy(destVA, length, tmpHost, length, ACL_MEMCPY_HOST_TO_HOST);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to copy device data to host ret: " << ret);
     }

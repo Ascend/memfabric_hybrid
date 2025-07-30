@@ -218,6 +218,7 @@ def tensor_sum(tensor):
 class MmcTest(TestServer):
     def __init__(self, ip, port):
         super().__init__(ip, port)
+        acl_set_device()
         self._init_cmds()
         self.__distributed_store_object = None
         self._npu_addr = 0
