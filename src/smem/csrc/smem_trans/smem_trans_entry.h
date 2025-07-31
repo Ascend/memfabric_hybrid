@@ -96,7 +96,7 @@ private:
     std::mutex entryMutex_;
     bool inited_ = false;
     const std::string name_;
-    std::string storeUrl_;
+    UrlExtraction storeUrlExtraction_;
     smem_trans_config_t config_; /* config of transfer entry */
     WorkerSession workerSession_;
     uint32_t sliceInfoSize_{0};
@@ -105,6 +105,8 @@ private:
     std::mutex watchMutex_;
     std::condition_variable watchCond_;
     bool watchRunning_{true};
+    int64_t slicesLastTime_ = 0;
+    int64_t sendersLastTime_ = 0;
 
     ReadWriteLock remoteSliceRwMutex_;
     std::unordered_map<uint64_t, std::map<const void *, LocalMapAddress, std::greater<const void *>>> remoteSlices_;

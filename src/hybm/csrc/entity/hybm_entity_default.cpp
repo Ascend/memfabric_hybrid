@@ -421,7 +421,6 @@ void MemEntityDefault::ReleaseResources()
     if (!initialized) {
         return;
     }
-
     segment_.reset();
     dataOperator_.reset();
     initialized = false;

@@ -34,6 +34,7 @@ struct HbmExportSliceInfo {
 class MemSegmentDeviceUseMem : public MemSegment {
 public:
     MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept;
+    ~MemSegmentDeviceUseMem() noexcept;
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
     Result UnreserveMemorySpace() noexcept override;
@@ -49,6 +50,7 @@ public:
     Result Unmap() noexcept override;
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
+    void CloseMemory() noexcept;
 
 private:
     Result GetDeviceInfo() noexcept;
@@ -63,6 +65,8 @@ private:
     std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
+    std::vector<void *> registerAddrs_{};
+    std::vector<std::string> memNames_{};
 };
 }
 }

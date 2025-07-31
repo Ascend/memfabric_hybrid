@@ -13,6 +13,20 @@ MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options,
 {
 }
 
+MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem()
+{
+    if (!memNames_.empty()) {
+        for (auto& name: memNames_) {
+            DlAclApi::RtIpcDestroyMemoryName(name.c_str());
+        }
+        BM_LOG_INFO("Finish to destroy memory names.");
+    } else {
+        BM_LOG_INFO("Sender does not need to destroy memory names.");
+    }
+    memNames_.clear();
+    CloseMemory();
+}
+
 Result MemSegmentDeviceUseMem::ValidateOptions() noexcept
 {
     return BM_OK;
@@ -61,6 +75,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
         }
     }
 
+    memNames_.emplace_back(name);
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                     reinterpret_cast<uint64_t>(addr), size);
     registerSlices_.emplace(slice->index_, RegisterSlice{slice, name});
@@ -285,6 +300,7 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
         BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_ << ",pid=" << pid_);
         return BM_DL_FUNCTION_FAILED;
     }
+    registerAddrs_.emplace_back(address);
 
     remoteSlice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                             reinterpret_cast<uint64_t>(address), sliceInfo.size);
@@ -300,6 +316,18 @@ Result MemSegmentDeviceUseMem::GetDeviceInfo() noexcept
         return BM_ERROR;
     }
     return BM_OK;
+}
+
+void MemSegmentDeviceUseMem::CloseMemory() noexcept
+{
+    for (auto& addr: registerAddrs_) {
+        if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
+            BM_LOG_WARN("Failed to close memory. This may affect future memory registration.");
+        }
+        addr = nullptr;
+    }
+    registerAddrs_.clear();
+    BM_LOG_INFO("close memory finish.");
 }
 }
 }

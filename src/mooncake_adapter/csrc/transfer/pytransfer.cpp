@@ -143,6 +143,17 @@ int TransferAdapterPy::BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs,
     return smem_trans_register_mems(handle_, registerAddrs.data(), capacities.data(), count, 0);
 }
 
+void TransferAdapterPy::TransferDestroy()
+{
+    smem_trans_destroy(handle_, 0);
+    handle_ = nullptr;
+}
+
+void TransferAdapterPy::UnInitialize()
+{
+    smem_trans_uninit(0);
+}
+
 void DefineAdapterFunctions(py::module_ &m)
 {
     m.def("create_config_store", &PyTransferConfigStore, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"));
@@ -174,7 +185,9 @@ PYBIND11_MODULE(_pymf_transfer, m) {
             .def("batch_transfer_sync_write", &TransferAdapterPy::BatchTransferSyncWrite)
             .def("register_memory", &TransferAdapterPy::RegisterMemory)
             .def("unregister_memory", &TransferAdapterPy::UnregisterMemory)
-            .def("batch_register_memory", &TransferAdapterPy::BatchRegisterMemory);
+            .def("batch_register_memory", &TransferAdapterPy::BatchRegisterMemory)
+            .def("destroy", &TransferAdapterPy::TransferDestroy)
+            .def("unInitialize", &TransferAdapterPy::UnInitialize);
 
     adaptor_cls.attr("TransferOpcode") = transfer_opcode;
 }

@@ -52,6 +52,10 @@ public:
 
     int BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs, std::vector<size_t> capacities);
 
+    void TransferDestroy();
+
+    void UnInitialize();
+
 private:
     smem_bm_t handle_;
 };

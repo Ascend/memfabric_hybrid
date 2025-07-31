@@ -90,6 +90,7 @@ int HostDataOpSDMA::CopyHost2Gva(void *gvaAddr, const void *hostAddr, size_t cou
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -99,6 +100,7 @@ int HostDataOpSDMA::CopyHost2Gva(void *gvaAddr, const void *hostAddr, size_t cou
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return result;
     }
 
@@ -106,6 +108,7 @@ int HostDataOpSDMA::CopyHost2Gva(void *gvaAddr, const void *hostAddr, size_t cou
     if (free_ret != 0) {
         BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
     }
+    copyDevice = nullptr;
     return BM_OK;
 }
 
@@ -168,6 +171,7 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return result;
     }
 
@@ -178,6 +182,7 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -185,6 +190,7 @@ int HostDataOpSDMA::CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t cou
     if (free_ret != 0) {
         BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
     }
+    copyDevice = nullptr;
     return BM_OK;
 }
 
@@ -207,6 +213,7 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -216,6 +223,7 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return result;
     }
 
@@ -223,6 +231,7 @@ int HostDataOpSDMA::CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *h
     if (free_ret != 0) {
         BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
     }
+    copyDevice = nullptr;
     return BM_OK;
 }
 
@@ -297,6 +306,7 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return result;
     }
 
@@ -308,6 +318,7 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
         }
+        copyDevice = nullptr;
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -315,6 +326,7 @@ int HostDataOpSDMA::CopyGva2Host2d(void *hostAddr, uint64_t dpitch, const void *
     if (free_ret != 0) {
         BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
     }
+    copyDevice = nullptr;
     return BM_OK;
 }
 

@@ -66,6 +66,10 @@ SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::str
 SmemTransEntry::~SmemTransEntry()
 {
     UnInitialize();
+    if (entity_ != nullptr) {
+        hybm_destroy_entity(entity_, 0);
+        entity_ = nullptr;
+    }
 }
 
 int32_t SmemTransEntry::Initialize(const std::string &storeUrl, const smem_trans_config_t &config)
@@ -90,6 +94,7 @@ int32_t SmemTransEntry::Initialize(const std::string &storeUrl, const smem_trans
         return SM_NEW_OBJECT_FAILED;
     }
 
+    storeUrlExtraction_ = option;
     /* init hybm entity */
     hybm_options options;
     options.bmType = HYBM_TYPE_HBM_HOST_INITIATE;
@@ -147,6 +152,7 @@ void SmemTransEntry::UnInitialize()
             SM_LOG_ERROR("watch thread join failed: " << e.what());
         }
     }
+    StoreFactory::DestroyStore(storeUrlExtraction_.ip, storeUrlExtraction_.port);
 }
 
 Result SmemTransEntry::RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags)
@@ -311,7 +317,6 @@ void SmemTransEntry::WatchTaskOneLoop()
 
 void SmemTransEntry::WatchTaskFindNewSenders()
 {
-    static int64_t sendersLastTime = 0;
     int64_t totalValue = 0;
     auto ret = store_->Add(SENDER_COUNT_KEY, 0L, totalValue);
     if (ret != 0) {
@@ -319,8 +324,8 @@ void SmemTransEntry::WatchTaskFindNewSenders()
         return;
     }
 
-    if (totalValue > sendersLastTime) {
-        SM_LOG_DEBUG("find new sender workers from " << sendersLastTime << " to " << totalValue);
+    if (totalValue > sendersLastTime_) {
+        SM_LOG_DEBUG("find new sender workers from " << sendersLastTime_ << " to " << totalValue);
 
         std::vector<uint8_t> values;
         ret = store_->Get(SENDER_DEVICE_INFO_KEY, values);
@@ -329,27 +334,26 @@ void SmemTransEntry::WatchTaskFindNewSenders()
             return;
         }
 
-        auto increment = static_cast<uint32_t>(totalValue - sendersLastTime);
+        auto increment = static_cast<uint32_t>(totalValue - sendersLastTime_);
         std::vector<hybm_exchange_info> info(increment);
         for (auto i = 0U; i < increment; i++) {
-            std::copy_n(values.data() + (sendersLastTime + i) * deviceInfo_.descLen, deviceInfo_.descLen,
+            std::copy_n(values.data() + (sendersLastTime_ + i) * deviceInfo_.descLen, deviceInfo_.descLen,
                         info[i].desc);
             info[i].descLen = deviceInfo_.descLen;
         }
 
         ret = hybm_import(entity_, info.data(), increment, nullptr, 0);
         if (ret != 0) {
-            SM_LOG_ERROR("import sender info failed count from " << sendersLastTime << " to " << totalValue);
+            SM_LOG_ERROR("import sender info failed count from " << sendersLastTime_ << " to " << totalValue);
             return;
         }
 
-        sendersLastTime = totalValue;
+        sendersLastTime_ = totalValue;
     }
 }
 
 void SmemTransEntry::WatchTaskFindNewSlices()
 {
-    static int64_t slicesLastTime = 0;
     int64_t totalValue = 0;
     auto ret = store_->Add(RECEIVER_TOTAL_SLICE_COUNT_KEY, 0L, totalValue);
     if (ret != 0) {
@@ -357,10 +361,10 @@ void SmemTransEntry::WatchTaskFindNewSlices()
         return;
     }
 
-    if (totalValue <= slicesLastTime) {
+    if (totalValue <= slicesLastTime_) {
         return;
     }
-    SM_LOG_DEBUG("find new slices from " << slicesLastTime << " to " << totalValue);
+    SM_LOG_DEBUG("find new slices from " << slicesLastTime_ << " to " << totalValue);
 
     std::vector<uint8_t> values;
     ret = store_->Get(RECEIVER_SLICES_INFO_KEY, values);
@@ -369,11 +373,11 @@ void SmemTransEntry::WatchTaskFindNewSlices()
         return;
     }
 
-    auto increment = static_cast<uint32_t>(totalValue - slicesLastTime);
+    auto increment = static_cast<uint32_t>(totalValue - slicesLastTime_);
     std::vector<hybm_exchange_info> info(increment);
     std::vector<void *> addresses(increment);
     std::vector<const ReceiverSliceInfo *> recvSs(increment);
-    auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * slicesLastTime;
+    auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * slicesLastTime_;
     for (auto i = 0U; i < increment; i++) {
         recvSs[i] = (const ReceiverSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
         std::copy_n(values.data() + itemOffsetBytes + sizeof(ReceiverSliceInfo), sliceInfoSize_, info[i].desc);
@@ -383,7 +387,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
 
     ret = hybm_import(entity_, info.data(), increment, addresses.data(), 0);
     if (ret != 0) {
-        SM_LOG_ERROR("import sender info failed count from " << slicesLastTime << " to " << totalValue);
+        SM_LOG_ERROR("import sender info failed count from " << slicesLastTime_ << " to " << totalValue);
         return;
     }
     SM_LOG_DEBUG("import slices count=" << info.size());
@@ -394,7 +398,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
         remoteSlices_[workerId.workerId].emplace(recvSs[i]->address, LocalMapAddress{addresses[i], recvSs[i]->size});
     }
 
-    slicesLastTime = totalValue;
+    slicesLastTime_ = totalValue;
 }
 
 Result SmemTransEntry::StoreDeviceInfo()
