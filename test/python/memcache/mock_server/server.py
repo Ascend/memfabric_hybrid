@@ -211,6 +211,8 @@ def malloc_cpu(layer_num: int = 1, block_num: int = 1, min_block_size: int = 102
 
 
 def tensor_sum(tensor):
+    if tensor is None:
+        return 0
     acl_set_device()
     ret = torch.sum(tensor, dtype=torch.float32)
     return ret.item()
@@ -307,15 +309,16 @@ class MmcTest(TestServer):
         if media == 0:
             direct = int(MmcDirect.COPY_G2H.value)
             for i in range(len(sizes)):
-                block = malloc_cpu(min_block_size=sizes[i])
-                data_ptrs.append(block.data_ptr())
-                blocks.append(block)
+                blocks.append(malloc_cpu(min_block_size=sizes[i]))
         else:
             direct = int(MmcDirect.COPY_G2L.value)
             for i in range(len(sizes)):
-                block = malloc_npu(min_block_size=sizes[i])
-                data_ptrs.append(block.data_ptr())
-                blocks.append(block)
+                blocks.append(malloc_npu(min_block_size=sizes[i]))
+        for i in range(len(sizes)):
+            if blocks[i] is None:
+                data_ptrs.append(0)
+            else:
+                data_ptrs.append(blocks[i].data_ptr())
         res = self.__distributed_store_object.batch_get_into(keys, data_ptrs, sizes, direct)
         values = []
         for i in range(len(sizes)):
@@ -329,15 +332,16 @@ class MmcTest(TestServer):
         if media == 0:
             direct = int(MmcDirect.COPY_H2G.value)
             for i in range(len(sizes)):
-                block = malloc_cpu(min_block_size=sizes[i])
-                data_ptrs.append(block.data_ptr())
-                blocks.append(block)
+                blocks.append(malloc_cpu(min_block_size=sizes[i]))
         else:
             direct = int(MmcDirect.COPY_L2G.value)
             for i in range(len(sizes)):
-                block = malloc_npu(min_block_size=sizes[i])
-                data_ptrs.append(block.data_ptr())
-                blocks.append(block)
+                blocks.append(malloc_npu(min_block_size=sizes[i]))
+        for i in range(len(sizes)):
+            if blocks[i] is None:
+                data_ptrs.append(0)
+            else:
+                data_ptrs.append(blocks[i].data_ptr())
         res = self.__distributed_store_object.batch_put_from(keys, data_ptrs, sizes, direct)
         values = []
         for i in range(len(sizes)):
