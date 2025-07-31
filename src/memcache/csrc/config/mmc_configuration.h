@@ -185,8 +185,6 @@ public:
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL, VNoCheck::Create());
         AddIntConf(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING,
             VIntRange::Create(OKC_MMC_LOCAL_SERVICE_AUTO_RANKING.first, 0, 1));
-        AddIntConf(OKC_MMC_LOCAL_SERVICE_BM_ID,
-            VIntRange::Create(OKC_MMC_LOCAL_SERVICE_BM_ID.first, MIN_BM_ID, MAX_BM_ID));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL, VNoCheck::Create());
         AddUInt64Conf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE,
             VUInt64Range::Create(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE.first, 0, MAX_DRAM_SIZE));
@@ -205,7 +203,7 @@ public:
         config.bmIpPort = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_IP_PORT);
         config.bmHcomUrl = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL);
         config.autoRanking = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_AUTO_RANKING);
-        config.createId = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_ID);
+        config.createId = 0;
         config.dataOpType = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_PROTOCOL);
         config.localDRAMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_SIZE);
         config.localHBMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_HBM_SIZE);

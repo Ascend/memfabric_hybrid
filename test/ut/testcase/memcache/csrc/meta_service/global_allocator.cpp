@@ -41,7 +41,7 @@ TEST_F(TestMmcGlobalAllocator, AllocOne)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -50,7 +50,7 @@ TEST_F(TestMmcGlobalAllocator, AllocOne)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -81,7 +81,7 @@ TEST_F(TestMmcGlobalAllocator, AllocMulti)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -90,7 +90,7 @@ TEST_F(TestMmcGlobalAllocator, AllocMulti)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -123,7 +123,7 @@ TEST_F(TestMmcGlobalAllocator, AllocCrossRank)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -132,7 +132,7 @@ TEST_F(TestMmcGlobalAllocator, AllocCrossRank)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -171,7 +171,7 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -180,7 +180,7 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -223,7 +223,7 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -232,7 +232,7 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -287,7 +287,7 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_DRAM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -296,7 +296,7 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
         MmcLocalMemlInitInfo info;
         loc.mediaType_ = MEDIA_HBM;
         loc.rank_ = i;
-        info.bm_ = size * i;
+        info.bmAddr_ = size * i;
         info.capacity_ = size;
         allocator->Mount(loc, info);
     }
@@ -346,7 +346,7 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
     MmcLocalMemlInitInfo info;
     loc.mediaType_ = MEDIA_DRAM;
     loc.rank_ = 6;
-    info.bm_ = size * 6;
+    info.bmAddr_ = size * 6;
     info.capacity_ = size;
     ret = allocator->Mount(loc, info);
     EXPECT_EQ(ret, MMC_OK);

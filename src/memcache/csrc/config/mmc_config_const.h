@@ -27,7 +27,6 @@ constexpr auto OKC_MMC_LOCAL_SERVICE_WORLD_SIZE = std::make_pair("ock.mmc.local_
 constexpr auto OKC_MMC_LOCAL_SERVICE_BM_IP_PORT = std::make_pair("ock.mmc.local_service.config_store_url", "tcp://127.0.0.1:6000");
 constexpr auto OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL = std::make_pair("ock.mmc.local_service.hcom_url", "tcp://127.0.0.1:7000");
 constexpr auto OKC_MMC_LOCAL_SERVICE_AUTO_RANKING = std::make_pair("ock.mmc.local_service.auto_ranking", 0);
-constexpr auto OKC_MMC_LOCAL_SERVICE_BM_ID = std::make_pair("ock.mmc.local_service.bm_id", 0);
 constexpr auto OKC_MMC_LOCAL_SERVICE_PROTOCOL = std::make_pair("ock.mmc.local_service.protocol", "sdma");
 constexpr auto OKC_MMC_LOCAL_SERVICE_DRAM_SIZE = std::make_pair("ock.mmc.local_service.dram.size", 2097152ULL);
 constexpr auto OKC_MMC_LOCAL_SERVICE_HBM_SIZE = std::make_pair("ock.mmc.local_service.hbm.size", 2097152ULL);
@@ -44,9 +43,6 @@ constexpr int MAX_BM_RANK_ID = 1023;
 
 constexpr int MIN_WORLD_SIZE = 1;
 constexpr int MAX_WORLD_SIZE = 1024;
-
-constexpr int MIN_BM_ID = 0;
-constexpr int MAX_BM_ID = 127;
 
 constexpr uint64_t MAX_DRAM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB
 constexpr uint64_t MAX_HBM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB

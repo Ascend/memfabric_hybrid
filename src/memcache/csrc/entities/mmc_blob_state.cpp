@@ -15,26 +15,26 @@ struct StateTransitionItem {
     BlobLeaseFunction function;
 };
 
-int32_t LeaseAdd(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
+Result LeaseAdd(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
 {
     return leaseMgr.Add(rankId, requestId, MMC_DATA_TTL_MS);
 }
 
-int32_t LeaseRemove(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
+Result LeaseRemove(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
 {
     return leaseMgr.Remove(rankId, requestId);
 }
 
-int32_t LeaseWait(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
+Result LeaseWait(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
 {
     if (leaseMgr.UseCount() == 0) {
-        return true;
+        return MMC_OK;
     }
     leaseMgr.Wait();
-    return true;
+    return MMC_OK;
 }
 
-int32_t LeaseExtend(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
+Result LeaseExtend(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)
 {
     return leaseMgr.Extend(MMC_DATA_TTL_MS);
 }

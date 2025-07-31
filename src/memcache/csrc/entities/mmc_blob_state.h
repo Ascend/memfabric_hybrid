@@ -4,6 +4,8 @@
 #ifndef MEMFABRIC_HYBRID_MMC_BLOB_STATE_H
 #define MEMFABRIC_HYBRID_MMC_BLOB_STATE_H
 
+#include <utility>
+
 #include "functional"
 #include "mmc_common_includes.h"
 #include "mmc_meta_lease_manager.h"
@@ -13,7 +15,7 @@ namespace mmc {
 /**
  * @brief State of blob
  */
-using BlobLeaseFunction = std::function<int32_t(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)>;
+using BlobLeaseFunction = std::function<Result(MmcMetaLeaseManager &leaseMgr, uint32_t rankId, uint32_t requestId)>;
 
 enum BlobState : uint8_t {
     NONE,
@@ -27,7 +29,7 @@ enum BlobState : uint8_t {
 struct BlobStateAction {
     BlobState state_ = NONE;
     BlobLeaseFunction action_ = nullptr;
-    BlobStateAction(BlobState state, BlobLeaseFunction action) : state_(state), action_(action){}
+    BlobStateAction(BlobState state, BlobLeaseFunction action) : state_(state), action_(std::move(action)){}
     BlobStateAction() = default;
 };
 

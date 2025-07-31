@@ -9,7 +9,6 @@
 #include "mmc_client.h"
 #include "mmc.h"
 #include "mmc_logger.h"
-#include "mmc_define.h"
 #include "mmc_types.h"
 #include "mmc_last_error.h"
 #include "smem_bm_def.h"
@@ -29,7 +28,7 @@ ResourceTracker &ResourceTracker::getInstance() {
 
 ResourceTracker::ResourceTracker() {
     // Set up signal handlers
-    struct sigaction sa;
+    struct sigaction sa{};
     sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -75,7 +74,7 @@ void ResourceTracker::signalHandler(int signal) {
     getInstance().cleanupAllResources();
 
     // Re-raise the signal with default handler to allow normal termination
-    struct sigaction sa;
+    struct sigaction sa{};
     sa.sa_handler = SIG_DFL;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -331,6 +330,9 @@ std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::s
     size_t count = keys.size();
     std::vector<int> results(count, -1);
     if (buffers.size() != count || sizes.size() != count) {
+        MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size()
+                      << ", buffers=" << buffers.size()
+                      << ", sizes=" << sizes.size());
         return results;
     }
     uint32_t type = 0;
@@ -367,6 +369,9 @@ std::vector<int> DistributedObjectStore::batch_get_into(
     size_t count = keys.size();
     std::vector<int> results(count, -1);
     if (buffers.size() != count || sizes.size() != count) {
+        MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size()
+                      << ", buffers=" << buffers.size()
+                      << ", sizes=" << sizes.size());
         return results;
     }
     uint32_t type = 0;

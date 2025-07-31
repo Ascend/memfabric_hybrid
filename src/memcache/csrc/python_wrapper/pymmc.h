@@ -25,6 +25,10 @@ public:
     // Get the singleton instance
     static ResourceTracker &getInstance();
 
+    // Prevent copying
+    ResourceTracker(const ResourceTracker &) = delete;
+    ResourceTracker &operator=(const ResourceTracker &) = delete;
+
     // Register a DistributedObjectStore instance for cleanup
     void registerInstance(DistributedObjectStore *instance);
 
@@ -34,10 +38,6 @@ public:
 private:
     ResourceTracker();
     ~ResourceTracker();
-
-    // Prevent copying
-    ResourceTracker(const ResourceTracker &) = delete;
-    ResourceTracker &operator=(const ResourceTracker &) = delete;
 
     // Cleanup all registered resources
     void cleanupAllResources();
@@ -122,7 +122,6 @@ public:
      * @param key Key of the object to get
      * @param buffer Pointer to the pre-allocated buffer (must be registered
      * with register_buffer)
-     * @param size Size of the buffer
      * @return Number of bytes read on success, negative value on error
      * @note The buffer address must be previously registered with
      * register_buffer() for zero-copy operations
@@ -149,7 +148,6 @@ public:
      * @param key Key of the object to put
      * @param buffer Pointer to the buffer containing data (must be registered
      * with register_buffer)
-     * @param size Size of the data to put
      * @return 0 on success, negative value on error
      * @note The buffer address must be previously registered with
      * register_buffer() for zero-copy operations
@@ -222,9 +220,6 @@ public:
      * exist
      */
     int64_t getSize(const std::string &key);
-
-private:
-    mmc_local_service_t local_service_;
 };
 
 #endif

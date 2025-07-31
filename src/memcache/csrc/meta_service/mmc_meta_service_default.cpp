@@ -64,7 +64,7 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
     MmcLocation loc{rank, static_cast<MediaType>(mediaType)};
     MmcLocalMemlInitInfo locInfo{bm, capacity};
     MMC_LOG_DEBUG("Mount loc { " << rank << ", " << mediaType << " } start");
-    metaMgrProxy_->Mount(loc, locInfo);
+    MMC_RETURN_ERROR(metaMgrProxy_->Mount(loc, locInfo), "Mount loc { " << rank << ", " << mediaType << " } failed");
     MMC_LOG_DEBUG("Mount loc { " << rank << ", " << mediaType << " } finish");
     registerRank_++;
     if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {
@@ -84,7 +84,7 @@ Result MmcMetaServiceDefault::BmUnregister(uint32_t rank, uint16_t mediaType)
 
     MmcLocation loc{rank, static_cast<MediaType>(mediaType)};
     MMC_LOG_DEBUG("Unmount loc { " << rank << ", " << mediaType << " } start");
-    metaMgrProxy_->Unmount(loc);
+    MMC_RETURN_ERROR(metaMgrProxy_->Unmount(loc), "Unmount loc { " << rank << ", " << mediaType << " } failed");
     MMC_LOG_DEBUG("Unmount loc { " << rank << ", " << mediaType << " } finish");
     --registerRank_;
     if (rankMediaTypeMap_.find(rank) != rankMediaTypeMap_.end() &&

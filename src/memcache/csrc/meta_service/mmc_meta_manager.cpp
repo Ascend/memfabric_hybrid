@@ -100,6 +100,7 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
     }
 
     for (auto &blob : blobs) {
+        MMC_LOG_DEBUG("Blob allocated, key=" << key << ", size=" << blob->Size() << ", rank=" << blob->Rank());
         blob->UpdateState(blob->Rank(), requestId, MMC_ALLOCATED_OK);
         objMeta->AddBlob(blob);
     }
@@ -140,6 +141,7 @@ Result MmcMetaManager::BatchAlloc(const std::vector<std::string>& keys,
         }
 
         for (auto& blob : blobs) {
+            MMC_LOG_DEBUG("Blob allocated, key=" << key << ", size=" << blob->Size() << ", rank=" << blob->Rank());
             blob->UpdateState(blob->Rank(), requestId, MMC_ALLOCATED_OK);
             objMeta->AddBlob(blob);
         }

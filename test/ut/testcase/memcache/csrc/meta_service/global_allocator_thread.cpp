@@ -43,7 +43,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
     MmcLocalMemlInitInfo info;
     loc.mediaType_ = MEDIA_DRAM;
     loc.rank_ = rankId;
-    info.bm_ = size * rankId;
+    info.bmAddr_ = size * rankId;
     info.capacity_ = size;
     Result result = allocator->Mount(loc, info);
     if (result != MMC_OK) {

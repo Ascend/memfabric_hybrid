@@ -80,7 +80,7 @@ struct MmcLocation {
 };
 
 struct MmcLocalMemlInitInfo {
-    uint64_t bm_;
+    uint64_t bmAddr_;
     uint64_t capacity_;
 };
 

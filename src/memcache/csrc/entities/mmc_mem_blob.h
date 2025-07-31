@@ -170,7 +170,10 @@ inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobA
 
     state_ = retIter->second.state_;
     if (retIter->second.action_) {
-        retIter->second.action_(metaLeaseManager_, rankId, operateId);
+        auto res = retIter->second.action_(metaLeaseManager_, rankId, operateId);
+        if (res != MMC_OK) {
+            MMC_LOG_ERROR("Blob lease function failed! res=" << res);
+        }
     }
     return MMC_OK;
 }

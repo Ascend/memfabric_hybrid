@@ -54,12 +54,12 @@ public:
         auto iter = allocators_.find(loc);
         if (iter != allocators_.end()) {
             globalAllocLock_.UnlockWrite();
-            MMC_LOG_WARN("Cannot mount at the existing position");
+            MMC_LOG_ERROR("Cannot mount at the existing position");
             return MMC_INVALID_PARAM;
         }
 
         allocators_[loc] =
-            MmcMakeRef<MmcBlobAllocator>(loc.rank_, loc.mediaType_, localMemInitInfo.bm_, localMemInitInfo.capacity_);
+            MmcMakeRef<MmcBlobAllocator>(loc.rank_, loc.mediaType_, localMemInitInfo.bmAddr_, localMemInitInfo.capacity_);
         globalAllocLock_.UnlockWrite();
         return MMC_OK;
     }
