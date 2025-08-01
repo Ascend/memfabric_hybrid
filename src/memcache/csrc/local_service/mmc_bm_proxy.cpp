@@ -68,7 +68,6 @@ void MmcBmProxy::DestoryBm()
     }
 
     if (handle_ != nullptr) {
-        smem_bm_leave(handle_, 0);
         smem_bm_destroy(handle_);
         smem_bm_uninit(0);
         smem_uninit();
