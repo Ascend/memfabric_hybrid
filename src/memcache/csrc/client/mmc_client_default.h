@@ -65,7 +65,7 @@ private:
     MetaNetClientPtr metaNetClient_;
     MmcBmProxyPtr bmProxy_;
     std::string name_;
-    uint32_t randId_{UINT32_MAX};
+    uint32_t rankId_{UINT32_MAX};
     uint32_t rpcTimeOut_ = 60;
     uint64_t defaultTtlMs_ = MMC_DATA_TTL_MS;
     std::atomic<uint32_t> operateId_;
@@ -74,7 +74,7 @@ private:
 uint32_t MmcClientDefault::RankId(const affinity_policy &policy)
 {
     if (policy == NATIVE_AFFINITY) {
-        return randId_;
+        return rankId_;
     } else {
         MMC_LOG_ERROR("affinity policy " << policy << " not supported");
         return 0;

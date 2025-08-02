@@ -171,7 +171,7 @@ Result MmcMetaManager::UpdateState(const std::string &key, const MmcLocation &lo
     std::vector<MmcMemBlobPtr> blobs = metaObj->GetBlobs(filter);
 
     if (blobs.size() != 1) {
-        MMC_LOG_ERROR("UpdateState: More than one blob in one position!");
+        MMC_LOG_ERROR("One blob is expected, actual number: " << blobs.size());
         return MMC_ERROR;
     }
     ret = blobs[0]->UpdateState(rankId, operateId, actRet);
