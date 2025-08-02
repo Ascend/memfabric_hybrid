@@ -2,7 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#include <nlohmann/json.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 #include "smem_logger.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
@@ -93,8 +94,8 @@ int StoreFactory::GetFailedReason() noexcept
 
 #define GET_STRING_PATH(key)                                    \
     do {                                                        \
-        if (j.contains(#key) && j[#key].is_string()) {          \
-            std::string path = j[#key];                         \
+        if (doc.HasMember(#key) && doc[#key].IsString()) {      \
+            std::string path = doc[#key].GetString();           \
             if (!CommonFunc::Realpath(path)) {                  \
                 return StoreErrorCode::ERROR;                   \
             }                                                   \
@@ -104,9 +105,15 @@ int StoreFactory::GetFailedReason() noexcept
 
 #define GET_ARRAY_FILE(key, topPath)                                                                \
     do {                                                                                            \
-        if (j.contains(#key) && j[#key].is_array()) {                                               \
-            auto files = j[#key].get<std::vector<std::string>>();                                   \
-            std::set<std::string> tlsFileSet = std::set<std::string>(files.begin(), files.end());   \
+        if (doc.HasMember(#key) && doc[#key].IsArray()) {                                           \
+            std::set<std::string> tlsFileSet;                                                       \
+            for (rapidjson::SizeType i = 0; i < doc[#key].Size(); i++) {                            \
+                if (!doc[#key].IsString()) {                                                        \
+                    SM_LOG_ERROR("tlsFiles array contains non-stirng element");                     \
+                    return StoreErrorCode::ERROR;                                                   \
+                }                                                                                   \
+                tlsFileSet.insert(doc[#key][i].GetString());                                        \
+            }                                                                                       \
             for (const std::string &file : tlsFileSet) {                                            \
                 std::string filePath = (topPath) + (file);                                          \
                 std::string filePathCheck = filePath;                                               \
@@ -121,23 +128,23 @@ int StoreFactory::GetFailedReason() noexcept
 
 Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
 {
-    using json = nlohmann::json;
-
-    try {
-        json j = json::parse(tlsJsonInfo);
-        GET_STRING_PATH(tlsCert);
-        GET_STRING_PATH(tlsCrlPath);
-        GET_STRING_PATH(tlsCaPath);
-        GET_STRING_PATH(tlsPk);
-        GET_STRING_PATH(tlsPkPwd);
-        GET_STRING_PATH(packagePath);
-        GET_ARRAY_FILE(tlsCaFile, tlsOption.tlsCaPath);
-        GET_ARRAY_FILE(tlsCrlFile, tlsOption.tlsCrlPath);
-        return StoreErrorCode::SUCCESS;
-    } catch (const json::parse_error& e) {
-        SM_LOG_ERROR("Failed to parse TLS config JSON: " << e.what());
+    rapidjson::Document doc;
+    if (doc.Parse(tlsJsonInfo).HasParseError()) {
+        rapidjson::ParseErrorCode errorCode = doc.GetParseError();
+        size_t errorOffset = doc.GetErrorOffset();
+        const char *errorMsg = rapidjson::GetParseError_En(errorCode);
+        SM_LOG_ERROR("Failed to parse TLS config JSON with error: " << errorMsg << " at offset " << errorOffset);
         return StoreErrorCode::ERROR;
     }
+    GET_STRING_PATH(tlsCert);
+    GET_STRING_PATH(tlsCrlPath);
+    GET_STRING_PATH(tlsCaPath);
+    GET_STRING_PATH(tlsPk);
+    GET_STRING_PATH(tlsPkPwd);
+    GET_STRING_PATH(packagePath);
+    GET_ARRAY_FILE(tlsCaFile, tlsOption.tlsCaPath);
+    GET_ARRAY_FILE(tlsCrlFile, tlsOption.tlsCrlPath);
+    return StoreErrorCode::SUCCESS;
 }
 
 Result StoreFactory::InitTlsOption() noexcept

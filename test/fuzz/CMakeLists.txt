@@ -51,7 +51,7 @@ target_include_directories(test_mf_fuzz PRIVATE
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_OUTPUT_PATH}/3rdparty/acc_links/net/include
-        ${PROJECT_3RDPARTY_SRC_DIR}/nlohmann/include/
+        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_HYBM_SRC_BASE}/csrc/common
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation

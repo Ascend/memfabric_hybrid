@@ -47,7 +47,7 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans
         ${PROJECT_OUTPUT_PATH}/3rdparty/acc_links/net/include
-        ${PROJECT_3RDPARTY_SRC_DIR}/nlohmann/include/
+        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_HYBM_SRC_BASE}/csrc/common
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation

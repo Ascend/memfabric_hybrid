@@ -6,7 +6,7 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
-        ${PROJECT_3RDPARTY_SRC_DIR}/nlohmann/include/
+        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
 )
 
 ## define src variables
