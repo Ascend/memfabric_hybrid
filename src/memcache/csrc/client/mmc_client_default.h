@@ -38,7 +38,7 @@ public:
                                BatchAllocResponse& allocResponse);
 
     Result BatchPut(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                    const mmc_put_options& options, uint32_t flags);
+                    mmc_put_options& options, uint32_t flags);
 
     Result BatchGet(const std::vector<std::string> &keys, std::vector<mmc_buffer> &bufs, uint32_t flags);
 

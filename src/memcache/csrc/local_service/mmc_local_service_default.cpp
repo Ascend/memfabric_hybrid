@@ -80,7 +80,7 @@ Result MmcLocalServiceDefault::InitBm()
         return ret;
     }
     if (options_.autoRanking == 1) {
-        options_.rankId = bmProxy->RandId();
+        options_.rankId = bmProxy->RankId();
     }
     bmProxyPtr_ = bmProxy;
     return ret;
@@ -89,7 +89,7 @@ Result MmcLocalServiceDefault::InitBm()
 Result MmcLocalServiceDefault::DestroyBm()
 {
     MMC_RETURN_ERROR(bmProxyPtr_ == nullptr, "bm proxy has not been initialized.");
-    bmProxyPtr_->DestoryBm();
+    bmProxyPtr_->DestroyBm();
 
     BmUnregisterRequest req;
     req.rank_ = options_.rankId;
@@ -108,7 +108,7 @@ Result MmcLocalServiceDefault::RegisterBm()
 {
     BmRegisterRequest req;
     req.rank_ = options_.rankId;
-    req.mediaType_ = static_cast<uint16_t>(options_.localHBMSize == 0);
+    req.mediaType_ = options_.localHBMSize > 0 ? MEDIA_HBM : MEDIA_DRAM;
     req.addr_ = bmProxyPtr_->GetGva();
     req.capacity_ = options_.localDRAMSize + options_.localHBMSize;
 

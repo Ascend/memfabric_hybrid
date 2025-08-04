@@ -16,9 +16,6 @@
 namespace py = pybind11;
 using namespace ock::mmc;
 
-namespace {
-constexpr uint16_t MEDIA_TYPE = 0;
-}
 
 // ResourceTracker implementation using singleton pattern
 ResourceTracker &ResourceTracker::getInstance() {
@@ -121,7 +118,8 @@ int DistributedObjectStore::tearDownAll() {
 }
 
 int DistributedObjectStore::put(const std::string &key, mmc_buffer &buffer) {
-    mmc_put_options options = {.mediaType = MEDIA_TYPE, .policy = NATIVE_AFFINITY};
+    mmc_put_options options{};
+    options.policy = NATIVE_AFFINITY;
     return mmcc_put(key.c_str(), &buffer, options, 0);
 }
 
@@ -359,7 +357,8 @@ std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::s
         };
     }
 
-    mmc_put_options options = {.mediaType = MEDIA_TYPE, .policy = NATIVE_AFFINITY};
+    mmc_put_options options{};
+    options.policy = NATIVE_AFFINITY;
     return {mmcc_batch_put(keyArray, count, bufferArray, options, 0)};
 }
 

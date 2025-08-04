@@ -38,6 +38,15 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
 
     bmRankId_ = (initConfig.autoRanking == 1) ? smem_bm_get_rank_id() : initConfig.rankId;
 
+    if (createConfig.localHBMSize > 0 && createConfig.localDRAMSize == 0) {
+        mediaType_ = MEDIA_HBM;
+    } else if (createConfig.localDRAMSize > 0 && createConfig.localHBMSize == 0) {
+        mediaType_ = MEDIA_DRAM;
+    } else {
+        MMC_LOG_ERROR("Invalid BM config, both HBM size and DRAM size is 0");
+        return MMC_INVALID_PARAM;
+    }
+
     smem_bm_data_op_type opType = SMEMB_DATA_OP_SDMA;
     if (createConfig.dataOpType == "sdma") {
         opType = SMEMB_DATA_OP_SDMA;
@@ -59,7 +68,7 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
     return MMC_OK;
 }
 
-void MmcBmProxy::DestoryBm()
+void MmcBmProxy::DestroyBm()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!started_) {

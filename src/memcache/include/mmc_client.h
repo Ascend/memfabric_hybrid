@@ -138,7 +138,7 @@ int32_t mmcc_batch_exist(const char **keys, uint32_t keys_count, int32_t *exist_
  * @return 0 if successful
  */
 int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc_buffer *bufs,
-                       const mmc_put_options& options, uint32_t flags);
+                       mmc_put_options& options, uint32_t flags);
 
 /**
  * @brief Get multiple data objects by keys from Distributed Memory Cache

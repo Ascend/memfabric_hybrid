@@ -300,7 +300,7 @@ MMC_API int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffe
 }
 
 MMC_API int32_t mmcc_batch_put(const char **keys, uint32_t keys_count, const mmc_buffer *bufs,
-                               const mmc_put_options& options, uint32_t flags)
+                               mmc_put_options& options, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "

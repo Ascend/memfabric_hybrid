@@ -24,7 +24,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
     }
     bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
     if (config.autoRanking == 1) {
-        rankId_ = bmProxy_->RandId();
+        rankId_ = bmProxy_->RankId();
     } else {
         rankId_ = config.rankId;
     }
@@ -84,6 +84,8 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
         return MMC_ERROR;
     }
 
+    options.mediaType = bmProxy_->GetMediaType();
+
     uint64_t blobSize = buf->dimType == 0 ? buf->oneDim.len : buf->twoDim.width * buf->twoDim.layerNum;
     uint32_t operateId = operateId_++;
     AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
@@ -100,7 +102,7 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
         MMC_LOG_INFO("Attempting to put to blob " << i << " at address " << response.blobs_[i].gva_);
         Result ret = bmProxy_->Put(buf, response.blobs_[i].gva_, blobSize);
         if (ret != MMC_OK) {
-            UpdateRequest updateRequest{MMC_WRITE_FAIL, key, rankId_, 0, operateId};
+            UpdateRequest updateRequest{MMC_WRITE_FAIL, key, rankId_, options.mediaType, operateId};
             Response updateResponse;
             metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
             MMC_LOG_ERROR("client " << name_ << " put " << key << " failed");
@@ -108,7 +110,7 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
         }
     }
 
-    UpdateRequest updateRequest{MMC_WRITE_OK, key, rankId_, 0, operateId};
+    UpdateRequest updateRequest{MMC_WRITE_OK, key, rankId_, options.mediaType, operateId};
     Response updateResponse;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
                      "client " << name_ << " update " << key << " failed");
@@ -185,7 +187,7 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
 
 Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
                                   const std::vector<mmc_buffer>& bufs,
-                                  const mmc_put_options& options,
+                                  mmc_put_options& options,
                                   uint32_t flags)
 {
     Result validationResult = ValidateBatchPutInputs(keys, bufs);
@@ -195,6 +197,8 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
 
     uint32_t operateId = operateId_++;
     BatchAllocResponse allocResponse;
+
+    options.mediaType = bmProxy_->GetMediaType();
     
     Result allocationResult = AllocateAndPutBlobs(keys, bufs, options, flags, operateId, allocResponse);
     if (allocationResult != MMC_OK) {
@@ -243,7 +247,7 @@ Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
 
     MMC_RETURN_ERROR(bmProxy_->Get(buf, response.blobs_[0].gva_, response.blobs_[0].size_),
                      "client " << name_ << " get " << key << " failed");
-    UpdateRequest updateRequest{MMC_READ_OK, key, rankId_, 0, operateId};
+    UpdateRequest updateRequest{MMC_READ_OK, key, rankId_, bmProxy_->GetMediaType(), operateId};
     Response updateResponse;
     if(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_ != MMC_OK)) {
         MMC_LOG_WARN("client" << name_ << " update " << key << " failed");

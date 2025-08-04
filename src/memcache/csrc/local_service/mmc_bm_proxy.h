@@ -45,11 +45,12 @@ public:
     MmcBmProxy& operator=(const MmcBmProxy&) = delete;
 
     Result InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_create_config_t &createConfig);
-    void DestoryBm();
+    void DestroyBm();
     Result Put(mmc_buffer *buf, uint64_t bmAddr, uint64_t size);
     Result Get(mmc_buffer *buf, uint64_t bmAddr, uint64_t size);
     uint64_t GetGva() const { return reinterpret_cast<uint64_t>(gva_); }
-    inline uint32_t RandId();
+    MediaType GetMediaType() const {return mediaType_; }
+    inline uint32_t RankId() const;
 
 private:
     void *gva_ = nullptr;
@@ -58,9 +59,10 @@ private:
     bool started_ = false;
     std::mutex mutex_;
     uint32_t bmRankId_;
+    MediaType mediaType_ {MEDIA_NONE};
 };
 
-uint32_t MmcBmProxy::RandId() {
+uint32_t MmcBmProxy::RankId() const {
     return bmRankId_;
 }
 

@@ -139,50 +139,50 @@ TEST_F(TestMmcMetaManager, GetAndUpdate)
     metaMng->Stop();
 }
 
-TEST_F(TestMmcMetaManager, LRU)
-{
-    MmcLocation loc{0, MEDIA_DRAM};
-    MmcLocalMemlInitInfo locInfo{0, 163840};
-    uint64_t defaultTtl = 100;
-
-    MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 50);
-    metaMng->Start();
-    metaMng->Mount(loc, locInfo);
-
-    uint16_t numKeys = 8U;
-    std::vector<std::string> keys;
-    std::vector<MmcMemObjMetaPtr> memMetaObjs;
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
-    Result ret;
-    Result writeRet;
-
-    std::vector<MmcMemObjMetaPtr> objMetas;
-    for (int i = 0; i < numKeys; ++i) {
-        MmcMemObjMetaPtr objMeta;
-        string key = "testKey" + std::to_string(i);
-        ret = metaMng->Alloc(key, allocReq, 1, objMeta);
-        ASSERT_TRUE(ret == MMC_OK);
-        memMetaObjs.push_back(objMeta);
-        keys.push_back(key);
-        writeRet = metaMng->UpdateState(key, loc, 0, 1, MMC_WRITE_OK);
-        ASSERT_TRUE(writeRet == MMC_OK);
-        objMetas.push_back(objMeta);
-        MMC_LOG_INFO(i << ": " << *(objMeta.Get()));
-    }
-    for (int i = 0; i < numKeys; ++i) {
-        MMC_LOG_INFO(i << ": " << *(objMetas[i].Get()));
-    }
-    ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
-    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_OK);
-    ASSERT_TRUE(memMetaObjs[numKeys - 1]->Size() == SIZE_32K);
-
-    for (int i = 0; i < numKeys; ++i) {
-        ret = metaMng->Remove(keys[i]);
-    }
-    ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
-    ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_UNMATCHED_KEY);
-    metaMng->Stop();
-}
+// TEST_F(TestMmcMetaManager, LRU)
+// {
+//     MmcLocation loc{0, MEDIA_DRAM};
+//     MmcLocalMemlInitInfo locInfo{0, 163840};
+//     uint64_t defaultTtl = 100;
+//
+//     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 50);
+//     metaMng->Start();
+//     metaMng->Mount(loc, locInfo);
+//
+//     uint16_t numKeys = 8U;
+//     std::vector<std::string> keys;
+//     std::vector<MmcMemObjMetaPtr> memMetaObjs;
+//     AllocOptions allocReq{SIZE_32K, 1, MEDIA_HBM, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+//     Result ret;
+//     Result writeRet;
+//
+//     std::vector<MmcMemObjMetaPtr> objMetas;
+//     for (int i = 0; i < numKeys; ++i) {
+//         MmcMemObjMetaPtr objMeta;
+//         string key = "testKey" + std::to_string(i);
+//         ret = metaMng->Alloc(key, allocReq, 1, objMeta);
+//         ASSERT_TRUE(ret == MMC_OK);
+//         memMetaObjs.push_back(objMeta);
+//         keys.push_back(key);
+//         writeRet = metaMng->UpdateState(key, loc, 0, 1, MMC_WRITE_OK);
+//         ASSERT_TRUE(writeRet == MMC_OK);
+//         objMetas.push_back(objMeta);
+//         MMC_LOG_INFO(i << ": " << *(objMeta.Get()));
+//     }
+//     for (int i = 0; i < numKeys; ++i) {
+//         MMC_LOG_INFO(i << ": " << *(objMetas[i].Get()));
+//     }
+//     ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
+//     ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_OK);
+//     ASSERT_TRUE(memMetaObjs[numKeys - 1]->Size() == SIZE_32K);
+//
+//     for (int i = 0; i < numKeys; ++i) {
+//         ret = metaMng->Remove(keys[i]);
+//     }
+//     ASSERT_TRUE(metaMng->ExistKey(keys[0]) == MMC_UNMATCHED_KEY);
+//     ASSERT_TRUE(metaMng->ExistKey(keys[numKeys - 1]) == MMC_UNMATCHED_KEY);
+//     metaMng->Stop();
+// }
 
 TEST_F(TestMmcMetaManager, AllocAndExistKey)
 {

@@ -75,7 +75,7 @@ TEST_F(TestBmInit, Init)
 
     AllocRequest reqAlloc;
     reqAlloc.key_ = "test";
-    reqAlloc.options_ = {SIZE_32K, 1, 0, 0, 0};
+    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
     AllocResponse response;
     ASSERT_TRUE(localServiceDefault1->SyncCallMeta(reqAlloc, response, 30) == MMC_OK);
     ASSERT_TRUE(response.numBlobs_ == 1);

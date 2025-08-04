@@ -55,7 +55,7 @@ void TestBmProxy::TearDown()
     cout << "this is NetEngine TEST_F teardown" << endl;
 
     if (proxy_.Get() != nullptr) {
-        proxy_->DestoryBm();
+        proxy_->DestroyBm();
     }
 }
 
@@ -168,7 +168,7 @@ TEST_F(TestBmProxy, Copy)
     free(hostSrc2);
     free(hostDest1);
     free(hostDest2);
-    bmProxy->DestoryBm();
+    bmProxy->DestroyBm();
 }
 
 TEST_F(TestBmProxy, InitBm_Success)
@@ -192,7 +192,7 @@ TEST_F(TestBmProxy, InvalidOpType)
 TEST_F(TestBmProxy, DestroyBm)
 {
     ASSERT_EQ(proxy_->InitBm(initConfig_, createConfig_), MMC_OK);
-    proxy_->DestoryBm();
+    proxy_->DestroyBm();
     ASSERT_EQ(proxy_->InitBm(initConfig_, createConfig_), MMC_OK);
 }
 

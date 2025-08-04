@@ -153,13 +153,13 @@ TEST_F(TestMmcBmProxy, InitBm_InvalidOpType)
 TEST_F(TestMmcBmProxy, DestroyBm_Success)
 {
     InitBmWithConfig();
-    proxy->DestoryBm();
+    proxy->DestroyBm();
     EXPECT_EQ(proxy->GetGva(), 0UL);
 }
 
 TEST_F(TestMmcBmProxy, DestroyBm_NotStarted)
 {
-    proxy->DestoryBm();
+    proxy->DestroyBm();
     EXPECT_EQ(proxy->GetGva(), 0UL);
 }
 
