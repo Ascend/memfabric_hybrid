@@ -9,7 +9,7 @@
 #include "mmc_def.h"
 #include "mmc_env.h"
 #include "mmc_service.h"
-#include "common/mmc_env.h"
+
 
 using namespace ock::mmc;
 static ClientConfig *g_clientConfig;
@@ -36,6 +36,8 @@ MMC_API int32_t mmc_init()
 
     mmc_local_service_config_t localServiceConfig;
     g_clientConfig->GetLocalServiceConfig(localServiceConfig);
+    MMC_VALIDATE_RETURN(g_clientConfig->ValidateLocalServiceConfig(localServiceConfig) == MMC_OK,
+        "Invalid local service config", MMC_INVALID_PARAM);
     localServiceConfig.logFunc = nullptr;
     g_localService = mmcs_local_service_start(&localServiceConfig);
     MMC_VALIDATE_RETURN(g_localService != nullptr, "failed to create or start local service", MMC_ERROR);

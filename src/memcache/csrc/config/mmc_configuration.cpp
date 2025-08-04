@@ -414,7 +414,7 @@ std::vector<std::string> Configuration::ValidateConf()
 {
     using namespace ConfConstant;
     std::vector<std::string> errors;
-    for (auto validate : mValueValidator) {
+    for (const auto& validate : mValueValidator) {
         if (validate.second == nullptr) {
             std::string errorInfo = "The validator of <" + validate.first + "> create failed, maybe out of memory.";
             errors.push_back(errorInfo);
@@ -422,15 +422,6 @@ std::vector<std::string> Configuration::ValidateConf()
         }
         ValidateItem(validate.first, errors);
     }
-    return errors;
-}
-
-
-std::vector<std::string> Configuration::Validate(bool isAuth, bool isTLS, bool isAuthor, bool isZKSecure)
-{
-    std::vector<std::string> errors;
-    ValidateOneValueMap(errors, mValueValidator);
-
     return errors;
 }
 

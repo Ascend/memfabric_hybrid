@@ -15,10 +15,12 @@
 #include "mmc_config_const.h"
 #include "mmc_def.h"
 #include "mmc_logger.h"
+#include "mmc_types.h"
 
 namespace ock {
 namespace mmc {
 constexpr uint32_t CONF_MUST = 1;
+constexpr uint64_t DRAM_SIZE_ALIGNMENT = 2097152; // 2MB
 
 enum class ConfValueType {
     VINT = 0,
@@ -72,8 +74,6 @@ public:
     void AddConverter(const std::string &key, const ConverterPtr &converter);
     void AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
-    std::vector<std::string> Validate(bool isAuth = false, bool isTLS = false, bool isAuthor = false,
-        bool isZKSecure = false);
     std::vector<std::string> ValidateConf();
     void GetTlsConfig(mmc_tls_config &tlsConfig);
 
@@ -221,6 +221,23 @@ public:
         const auto logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         config.logLevel = ock::mmc::MmcOutLogger::Instance().GetLogLevel(logLevelStr);
         GetTlsConfig(config.tlsConfig);
+    }
+
+    static Result ValidateLocalServiceConfig(const mmc_local_service_config_t &config)
+    {
+        if (config.localDRAMSize == 0 && config.localHBMSize == 0) {
+            MMC_LOG_ERROR("DRAM size and HBM size cannot be zero at the same time");
+            return MMC_INVALID_PARAM;
+        }
+        if (config.localDRAMSize > 0 && config.localHBMSize > 0) {
+            MMC_LOG_ERROR("DRAM pool and HBM pool cannot be used simultaneously");
+            return MMC_INVALID_PARAM;
+        }
+        if (config.localDRAMSize % DRAM_SIZE_ALIGNMENT != 0) {
+            MMC_LOG_ERROR("DRAM size should be aligned at a integer multiple of 2M (2097152 bytes)");
+            return MMC_INVALID_PARAM;
+        }
+        return MMC_OK;
     }
 };
 
