@@ -30,6 +30,9 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     MMC_RETURN_ERROR(SPDLOG_AuditInit(logAuditPath.c_str(), OBJ_MAX_LOG_FILE_SIZE, OBJ_MAX_LOG_FILE_NUM),
                      "failed to init spdlog, error: " << SPDLOG_GetLastErrorMessage());
 
+    MMC_VALIDATE_RETURN(options.evictThresholdHigh > options.evictThresholdLow,
+        "invalid param, evictThresholdHigh must large than evictThresholdLow", MMC_INVALID_PARAM);
+
     uint64_t defaultTtl = MMC_DATA_TTL_MS;
     MMC_RETURN_ERROR(metaMgrProxy_->Start(defaultTtl, options.evictThresholdHigh, options.evictThresholdLow),
         "Failed to start meta mgr proxy of meta service " << name_);
