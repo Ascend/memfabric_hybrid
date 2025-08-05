@@ -157,6 +157,11 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
         return BM_OK;
     }
 
+    if (addresses == nullptr) {
+        BM_LOG_ERROR("Import addresses is null, please check.");
+        return BM_INVALID_PARAM;
+    }
+
     Result ret = BM_ERROR;
     auto index = 0;
     for (auto &info : allExInfo) {
@@ -178,13 +183,11 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
             break;
         }
 
-        if (addresses != nullptr) {
-            void *address = nullptr;
-            if (rms != nullptr) {
-                address = (void *)(ptrdiff_t)(rms->vAddress_);
-            }
-            addresses[index++] = address;
+        void *address = nullptr;
+        if (rms != nullptr) {
+            address = (void *)(ptrdiff_t)(rms->vAddress_);
         }
+        addresses[index++] = address;
     }
 
     return ret;
