@@ -314,29 +314,16 @@ static inline void NodeFlagSetValue(uint32_t *flag, uint32_t shift, uint32_t wid
 static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *node, uint32_t advise, uint32_t memtype)
 {
     struct DevRbtreeNode *treeNode = nullptr;
-    uint64_t mapSize = 0; // mapSize = 0 in base_heap
+    uint64_t mapSize = node->data.size; // mapSize = allocSize in base_heap
     uint64_t va = node->data.va;
 
     (void)DlHalApi::HalEraseIdleSizeTree(node, &heap->rbtree_queue);
     (void)DlHalApi::HalEraseIdleVaTree(node, &heap->rbtree_queue);
-    if (node->data.size > mapSize) { /* need to update original node */
-        UpdateTreeNode(node, heap, node->data.va + mapSize, node->data.size - mapSize, node->data.flag);
-    } else { /* for code maintenance */
-        BM_LOG_ERROR("Invalid node size check map size.");
-        return -1;
-    }
-
-    treeNode = (struct DevRbtreeNode *)DlHalApi::HalAllocRbtreeNode(&heap->rbtree_queue);
-    if (treeNode == nullptr) {
-        BM_LOG_ERROR("Out of memory, malloc treeNode fail.");
-        return -1;
-    }
-    DlHalApi::HalAssignNodeData(va, mapSize, mapSize, node->data.flag, treeNode);
+    treeNode = node;
 
     va = heap->ops->heap_alloc(heap, treeNode->data.va, mapSize, advise);
     if (va < DEVMM_SVM_MEM_START) {
         BM_LOG_ERROR("Can not alloc address.");
-        DlHalApi::HalFreeRbtreeNode(treeNode, &heap->rbtree_queue);
         return -1;
     }
     heap->sys_mem_alloced += node->data.total;
