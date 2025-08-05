@@ -121,13 +121,13 @@ int HostDataOpSDMA::CopyDevice2Gva(void *gvaAddr, const void *deviceAddr, size_t
 
     auto ret = DlAclApi::AclrtMemcpyAsync(gvaAddr, count, deviceAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
-        BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
     ret = DlAclApi::AclrtSynchronizeStream(st);
     if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -143,13 +143,13 @@ int HostDataOpSDMA::CopyGva2Device(void *deviceAddr, const void *gvaAddr, size_t
 
     auto ret = DlAclApi::AclrtMemcpyAsync(deviceAddr, count, gvaAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
-        BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
     ret = DlAclApi::AclrtSynchronizeStream(st);
     if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -276,7 +276,7 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
         if (asyncRet != 0) {
             BM_LOG_ERROR("copy2d memory on gva to device failed:: "
                          << asyncRet << " dpitch: " << dpitch << " spitch: " << spitch << " width: " << width
-                         << " height:" << height << " stream:" << st);
+                         << " height:" << height);
             ret = BM_DL_FUNCTION_FAILED;
             break;
         }
@@ -284,7 +284,7 @@ int HostDataOpSDMA::CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void 
 
     int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet);
         ret = BM_DL_FUNCTION_FAILED;
     }
     return ret;
@@ -346,7 +346,7 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
         if (asyncRet != 0) {
             BM_LOG_ERROR("copy2d memory on gva to device failed:: "
                          << asyncRet << " spitch: " << spitch << " dpitch: " << dpitch << " width: "
-                         << width << " height:" << height << " stream:" << st);
+                         << width << " height:" << height);
             ret = BM_DL_FUNCTION_FAILED;
             break;
         }
@@ -354,7 +354,7 @@ int HostDataOpSDMA::CopyGva2Device2d(void *deviceAddr, uint64_t dpitch, const vo
 
     int syncRet = DlAclApi::AclrtSynchronizeStream(st);
     if (syncRet != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << syncRet);
         ret = BM_DL_FUNCTION_FAILED;
     }
     return ret;

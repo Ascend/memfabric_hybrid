@@ -54,7 +54,7 @@ Result SmemTransEntryManager::GetEntryByPtr(uintptr_t ptr, SmemTransEntryPtr &en
         return SM_OK;
     }
 
-    SM_LOG_DEBUG("not found trans entry with ptr " << ptr);
+    SM_LOG_DEBUG("not found trans entry");
     return SM_OBJECT_NOT_EXISTS;
 }
 
@@ -78,7 +78,7 @@ Result SmemTransEntryManager::RemoveEntryByPtr(uintptr_t ptr)
     /* look up the trans entry exists or not with lock */
     auto iter = ptr2EntryMap_.find(ptr);
     if (iter == ptr2EntryMap_.end()) {
-        SM_LOG_DEBUG("not found trans entry with ptr " << ptr);
+        SM_LOG_DEBUG("not found trans entry");
         return SM_OBJECT_NOT_EXISTS;
     }
 
@@ -90,7 +90,7 @@ Result SmemTransEntryManager::RemoveEntryByPtr(uintptr_t ptr)
     SM_ASSERT_RETURN(entry != nullptr, SM_ERROR);
     name2EntryMap_.erase(entry->Name());
 
-    SM_LOG_DEBUG("remove trans entry success, ptr: " << ptr);
+    SM_LOG_DEBUG("remove trans entry success");
 
     return SM_OK;
 }
@@ -114,7 +114,7 @@ Result SmemTransEntryManager::RemoveEntryByName(const std::string &name)
     auto ptr = reinterpret_cast<uintptr_t>(entry.Get());
     ptr2EntryMap_.erase(ptr);
 
-    SM_LOG_DEBUG("remove trans entry success, ptr: " << ptr);
+    SM_LOG_DEBUG("remove trans entry success");
 
     return SM_OK;
 }
