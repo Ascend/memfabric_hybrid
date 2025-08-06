@@ -333,9 +333,11 @@ Result TcpConfigStore::Remove(const std::string &key) noexcept
     }
 
     auto responseCode = response->Header().result;
-    if (responseCode != 0) {
+    if (responseCode == StoreErrorCode::NOT_EXIST) {
+        // Do not need to print ERROR message when sending remove key which is already not exist.
+        SM_LOG_WARN("send remove for key: " << key << ", is already not exist");
+    } else if (responseCode != 0) {
         SM_LOG_ERROR("send remove for key: " << key << ", get response code: " << responseCode);
-        return responseCode;
     }
 
     return responseCode;

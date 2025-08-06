@@ -402,6 +402,7 @@ Result SmemNetGroupEngine::GroupJoin()
         goto join_exit;
     }
 
+    GroupSnClean();
     UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
     option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmp).second + 1);
     if (option_.joinCb != nullptr) {
@@ -452,6 +453,8 @@ Result SmemNetGroupEngine::GroupLeave()
     if (ret != SM_OK) {
         SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
     }
+    
+    GroupSnClean();
     UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
 
 leave_exit:
