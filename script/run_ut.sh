@@ -43,6 +43,6 @@ cd "$OUTPUT_PATH/bin/ut" && ./test_mmc_test --gtest_output=xml:"$TEST_REPORT_PAT
 
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"
-lcov --d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1
+lcov --d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|MMC_LOG*|MMC_RETURN*|MMC_ASSERT*|MMC_VALIDATE*"
 lcov -e "$COVERAGE_PATH"/coverage.info "*/src/memcache/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
 genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1
