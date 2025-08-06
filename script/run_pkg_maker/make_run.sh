@@ -32,9 +32,10 @@ VERSION="1.0.0"
 OUTPUT_DIR=${BASH_PATH}/../../output
 
 rm -rf ${PKG_DIR}
-mkdir -p ${PKG_DIR}/${ARCH}_${OS_NAME}
+mkdir -p ${PKG_DIR}/${ARCH}-${OS_NAME}
 
-cp -r ${OUTPUT_DIR}/smem ${PKG_DIR}/${ARCH}-${OS_NAME}
+cp -r ${OUTPUT_DIR}/smem/* ${PKG_DIR}/${ARCH}-${OS_NAME}
+cp -r ${OUTPUT_DIR}/mooncake_adapter/* ${PKG_DIR}/${ARCH}-${OS_NAME}
 cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
 
 mkdir -p ${PKG_DIR}/script

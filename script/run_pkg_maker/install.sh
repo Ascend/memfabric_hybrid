@@ -248,6 +248,32 @@ function check_path()
     fi
 }
 
+function install_wheel_package() {
+    wheel_dir="$1"
+    wheel_name="$2"
+    python_version="$3"
+    if [ -z ${wheel_dir} ]; then
+        print "ERROR" "invalid wheel package directory, skip install wheel."
+        return
+    fi
+    if [ -z "${wheel_name}" ]; then
+        print "ERROR" "empty wheel package name, skip install wheel."
+        return
+    fi
+    if [ -z "${python_version}" ]; then
+        print "ERROR" "empty python version, skip install wheel."
+        return
+    fi
+
+    wheel_package=$(find "${wheel_dir}" -name "${wheel_name}-${version1}-cp${python_version}*" -print -quit)
+    if [ -z "${wheel_package}" ]; then
+        print "WARNING" "not found wheel package ${wheel_name} for python-${python_version}, skip install wheel."
+        return
+    fi
+
+    pip3 install "${wheel_package}" --force-reinstall
+}
+
 function install_to_path()
 {
     install_dir=${default_install_dir}/${version1}
@@ -271,14 +297,11 @@ function install_to_path()
         return
     fi
 
+    wheel_dir="${install_dir}"/"${pkg_arch}"-"${os1}"/wheel
     python_version=$(python3 -c "import sys; print(''.join(map(str, sys.version_info[:2])))")
-    wheel_package=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "mf_smem-${version1}-cp${python_version}*")
-    if [ -z "${wheel_package}" ]; then
-        print "WARNING" "not found wheel package for python-${python_version}, skip install wheel."
-        return
-    fi
 
-    pip3 install "${wheel_package}" --force-reinstall
+    install_wheel_package "${wheel_dir}" mf_smem "${python_version}"
+    install_wheel_package "${wheel_dir}" mf_adapter "${python_version}"
 }
 
 function generate_set_env()

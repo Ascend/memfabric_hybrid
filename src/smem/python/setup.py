@@ -37,6 +37,6 @@ setuptools.setup(
     url="https://gitee.com/ascend/memfabric_hybrid",
     license="Apache License Version 2.0",
     python_requires=">=3.7",
-    package_data={"mf_smem": ["_pymf_smem.cpython*.so", "lib/**", "VERSION"]},
+    package_data={"mf_smem": ["_pymf_smem.cpython*.so", "VERSION"]},
     distclass=BinaryDistribution
 )

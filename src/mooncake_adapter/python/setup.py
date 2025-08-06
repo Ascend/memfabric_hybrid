@@ -37,6 +37,6 @@ setuptools.setup(
     url="https://gitee.com/ascend/memfabric_hybrid",
     license="Apache License Version 2.0",
     python_requires=">=3.7",
-    package_data={"mf_adapter": ["_pymf_transfer.cpython*.so", "lib/**", "VERSION"]},
-    distclass=BinaryDistribution
+    package_data={"mf_adapter": ["_pymf_transfer.cpython*.so", "VERSION"]},
+    distclass=BinaryDistribution,
 )
