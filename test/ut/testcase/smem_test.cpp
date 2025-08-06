@@ -554,6 +554,8 @@ TEST_F(TestSmem, smem_shm_create_failed_invalid_params)
     EXPECT_EQ(shm, nullptr);
     shm = smem_shm_create(0, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, nullptr);
     EXPECT_EQ(shm, nullptr);
+    shm = smem_shm_create(64, 2, 0, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, nullptr);
+    EXPECT_EQ(shm, nullptr);
 
     smem_shm_uninit(0);
     smem_uninit();

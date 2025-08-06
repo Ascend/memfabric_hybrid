@@ -281,7 +281,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |id|SHM对象id，用户指定，与其他SHM对象不重复|
+    |id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
     |rankSize|参与创建SHM的rank数量，最大支持1024|
     |rankId|当前rank id|
     |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，最大支持4G|

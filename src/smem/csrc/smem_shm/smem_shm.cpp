@@ -23,6 +23,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
                        "invalid param, input size: " << rankSize << " limit: " << SMEM_WORLD_SIZE_MAX
                                                    << " input rank: " << rankId,
                        nullptr);
+    SM_VALIDATE_RETURN(!(id > SMEM_ID_MAX), "invalid id, id range is: [0, " << SMEM_ID_MAX << "]", nullptr);
     SM_VALIDATE_RETURN(dataOpType == SMEMS_DATA_OP_MTE, "only support SMEMS_DATA_OP_MTE now", nullptr);
     SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", nullptr);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", nullptr);
