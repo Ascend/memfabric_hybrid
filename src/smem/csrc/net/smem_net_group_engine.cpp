@@ -87,13 +87,10 @@ Result SmemNetGroupEngine::GroupBarrier()
         uint32_t removeBarrierGroupSn_ = barrierGroupSn_ - REMOVE_INTERVAL;
         std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BA";
         std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn_) + "_BW";
-        ret = store_->Remove(removeAddIdx);
-        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeAddIdx)
-                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
-
-        ret = store_->Remove(removeWaitIdx);
-        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeWaitIdx)
-                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -173,12 +170,10 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
         uint32_t removeAllGatherGroupSn_ = allGatherGroupSn_- REMOVE_INTERVAL;
         std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GA";
         std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GW";
-        ret = store_->Remove(removeAddIdx);
-        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeAddIdx)
-                     << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
-        ret = store_->Remove(removeWaitIdx);
-        SM_VALIDATE_RETURN(ret == SM_OK, "store remove key: " << store_->GetCompleteKey(removeWaitIdx)
-                << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
     }
     /* the last guy set ok status */
     if (val == input.size() * size) {
