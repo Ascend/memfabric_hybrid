@@ -9,7 +9,7 @@
 #include "devmm_svm_gva.h"
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_devide_mem_segment.h"
+#include "hybm_device_mem_segment.h"
 
 namespace ock {
 namespace mf {

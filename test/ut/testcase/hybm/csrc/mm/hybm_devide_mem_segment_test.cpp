@@ -13,7 +13,7 @@
 #include "hybm_ex_info_transfer.h"
 
 #define private public
-#include "hybm_devide_mem_segment.h"
+#include "hybm_device_mem_segment.h"
 #undef private
 
 using namespace ock::mf;

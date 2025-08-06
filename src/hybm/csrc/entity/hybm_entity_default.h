@@ -6,7 +6,7 @@
 
 #include <map>
 #include "hybm_common_include.h"
-#include "hybm_devide_mem_segment.h"
+#include "hybm_device_mem_segment.h"
 #include "hybm_data_operator.h"
 #include "hybm_mem_segment.h"
 #include "hybm_entity.h"

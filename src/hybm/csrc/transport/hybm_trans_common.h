@@ -38,5 +38,5 @@ struct HybmTransPrepareOptions {
     std::vector<uint64_t> whitelist; /* list of whilelist */
 };
 }
-
+}
 #endif // MF_HYBRID_HYBM_TRANS_COMMON_H
