@@ -32,6 +32,7 @@ bash script/gen_last_git_commit.sh
 rm -rf ./build ./output
 
 mkdir build/
+bash script/compile_acc_links.sh "${BUILD_MODE}" "${BUILD_TESTS}" "${BUILD_OPEN_ABI}"
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -S . -B build/
 make install -j5 -C build/
 
