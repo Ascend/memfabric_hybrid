@@ -1,9 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
-#include <iomanip>
 #include "hybm_logger.h"
-#include "hybm_entity.h"
+#include "hybm_entity_factory.h"
 #include "hybm_data_op.h"
 
 using namespace ock::mf;
@@ -11,18 +10,16 @@ using namespace ock::mf;
 HYBM_API int32_t hybm_data_copy(hybm_entity_t e, const void *src, void *dest, size_t count,
                                 hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
-    if (e == nullptr || src == nullptr || dest == nullptr) {
-        BM_LOG_ERROR("input parameter invalid, nullptr check failed");
-        return BM_INVALID_PARAM;
-    }
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(count != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
 
-    if (count == 0 || direction >= HYBM_DATA_COPY_DIRECTION_BUTT) {
-        BM_LOG_ERROR("input parameter invalid, count: " << count << ", direction: " << direction);
-        return BM_INVALID_PARAM;
-    }
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
 
     bool addressValid = true;
-    auto entity = (MemEntity *)e;
     if (direction == HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE || direction == HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE ||
         direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
         addressValid = entity->CheckAddressInEntity(dest, count);
@@ -45,19 +42,17 @@ HYBM_API int32_t hybm_data_copy_2d(hybm_entity_t e, const void *src, uint64_t sp
                                    void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
                                    hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
-    if (e == nullptr || src == nullptr || dest == nullptr) {
-        BM_LOG_ERROR("input parameter invalid, , nullptr check failed");
-        return BM_INVALID_PARAM;
-    }
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(width != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(height != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
 
-    if (width == 0 || height == 0 || direction >= HYBM_DATA_COPY_DIRECTION_BUTT) {
-        BM_LOG_ERROR("input parameter invalid, width: " << width << " height: " << height << ", direction: "
-                     << direction);
-        return BM_INVALID_PARAM;
-    }
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
 
     bool addressValid = true;
-    auto entity = (MemEntity *)e;
     if (direction == HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE || direction == HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE ||
         direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
         addressValid = entity->CheckAddressInEntity(dest, dpitch * (height - 1) + width);

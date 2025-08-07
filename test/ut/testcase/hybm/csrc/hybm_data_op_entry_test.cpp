@@ -23,6 +23,7 @@ const uint64_t g_allocSize = 2 * 1024 * 1024;
 hybm_entity_t g_entity = nullptr;
 hybm_mem_slice_t g_slice = nullptr;
 void *g_reservedMem = nullptr;
+const uint16_t g_localEntityId = 2;
 }
 
 class HybmDataOpEntryTest : public ::testing::Test {
@@ -103,6 +104,12 @@ TEST_F(HybmDataOpEntryTest, hybm_data_copy_ShouldReturnInvalidParam)
     EXPECT_EQ(ret, BM_INVALID_PARAM);
     ret = hybm_data_copy(g_entity, endAddr, endAddr, g_allocSize, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    auto localEntity = hybm_create_entity(g_localEntityId, &g_options, 0);
+    hybm_destroy_entity(localEntity, 0);
+    ret = hybm_data_copy(localEntity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE,
+                         nullptr, 0);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmDataOpEntryTest, hybm_data_copy_2d_ShouldReturnOK)
@@ -156,5 +163,11 @@ TEST_F(HybmDataOpEntryTest, hybm_data_copy_2d_ShouldReturnInvalidParam)
     EXPECT_EQ(ret, BM_INVALID_PARAM);
     ret = hybm_data_copy_2d(g_entity, endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1,
                             HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    auto localEntity = hybm_create_entity(g_localEntityId, &g_options, 0);
+    hybm_destroy_entity(localEntity, 0);
+    ret = hybm_data_copy_2d(localEntity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+                            HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
