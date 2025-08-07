@@ -1,7 +1,3 @@
-[submodule "3rdparty/net/acc_links"]
-	path = 3rdparty/net/acc_links
-	url = https://gitee.com/ascend/acc_links.git
-	branch = master
 [submodule "test/3rdparty/googletest"]
 	path = test/3rdparty/googletest
 	url = https://github.com/google/googletest.git
