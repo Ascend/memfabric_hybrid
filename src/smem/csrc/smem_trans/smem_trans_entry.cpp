@@ -189,7 +189,7 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
     }
 
     for (auto it : regMemories) {
-        if (it.first == nullptr) {
+        if (it.first == nullptr || it.second == 0) {
             SM_LOG_ERROR("input address or size is invalid.");
             return SM_INVALID_PARAM;
         }

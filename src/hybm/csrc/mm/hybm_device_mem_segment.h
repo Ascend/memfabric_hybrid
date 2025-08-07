@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
-#ifndef MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
-#define MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
+#ifndef MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
+#define MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
 
 #include <cstdint>
 #include <map>
@@ -77,4 +77,4 @@ private:
 }
 }
 
-#endif  // MEM_FABRIC_HYBRID_HYBM_DEVIDE_MEM_SEGMENT_H
+#endif  // MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
