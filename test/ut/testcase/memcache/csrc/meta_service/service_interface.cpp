@@ -3,6 +3,7 @@
  */
 #include <iostream>
 #include "gtest/gtest.h"
+#include "mmc_def.h"
 #include "mmc_service.h"
 #include "mmc_client.h"
 #include "mmc_mem_blob.h"
@@ -20,6 +21,7 @@ public:
     void TearDown() override;
 
 protected:
+    std::shared_ptr<ock::mmc::MmcBlobAllocator> allocator;
 };
 TestMmcServiceInterface::TestMmcServiceInterface() {}
 
@@ -74,9 +76,9 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     std::string localUrl = "";
     mmc_meta_service_config_t metaServiceConfig;
     metaServiceConfig.logLevel = 0;
+    metaServiceConfig.tlsConfig.tlsEnable = false;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
-    metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
@@ -185,6 +187,193 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     mmcs_meta_service_stop(meta_service);
 }
 
+TEST_F(TestMmcServiceInterface, testClientInitUninit)
+{
+    mmc_client_config_t clientConfig{};
+    int32_t ret = mmcc_init(&clientConfig);
+    ASSERT_TRUE(ret == ock::mmc::MMC_INVALID_PARAM);
+
+    ret = mmcc_init(nullptr);
+    ASSERT_TRUE(ret == ock::mmc::MMC_INVALID_PARAM);
+}
+
+TEST_F(TestMmcServiceInterface, testPutInvalidParam)
+{
+    mmc_client_config_t clientConfig{};
+    int32_t ret = mmcc_init(&clientConfig);
+    ASSERT_TRUE(ret == ock::mmc::MMC_OK);
+
+    mmc_buffer validBuf{ (uint64_t)malloc(1024), 0, 0, {0, 1024} };
+    const char* emptyKey = "";
+
+    ret = mmcc_put(nullptr, &validBuf, mmc_put_options{}, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    ret = mmcc_put(emptyKey, &validBuf, mmc_put_options{}, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    ret = mmcc_put("validKey", nullptr, mmc_put_options{}, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    mmc_buffer invalidBuf{ 0, 0, 0, {0, 1024} };
+    ret = mmcc_put("validKey", &invalidBuf, mmc_put_options{}, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+    
+    free((void*)validBuf.addr);
+}
+
+TEST_F(TestMmcServiceInterface, testBatchOperationsEdgeCases)
+{
+
+    int32_t results[2];
+    mmc_data_info info[2];
+
+    int32_t ret = mmcc_batch_remove(nullptr, 0, results, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+    
+    ret = mmcc_batch_exist(nullptr, 0, results, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    const uint32_t oversize = MAX_BATCH_OP_COUNT + 1;
+    ret = mmcc_batch_remove(nullptr, oversize, results, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+}
+
+TEST_F(TestMmcServiceInterface, testBatchQueryInvalidKeys)
+{
+    const char* keys[] = {
+        "validKey1",
+        "",
+        nullptr,
+        "invalid*&^%key",
+        "validKey2"
+    };
+    const uint32_t keyCount = sizeof(keys) / sizeof(keys[0]);
+    mmc_data_info info[keyCount];
+
+    bool exists1 = mmcc_exist(keys[1], 0) == ock::mmc::MMC_OK;
+    ASSERT_FALSE(exists1);
+    
+    bool exists2 = mmcc_exist(keys[2], 0) == ock::mmc::MMC_OK;
+    ASSERT_FALSE(exists2);
+    
+    bool exists3 = mmcc_exist(keys[3], 0) == ock::mmc::MMC_OK;
+    ASSERT_FALSE(exists3);
+}
+
+TEST_F(TestMmcServiceInterface, testExistOperations)
+{
+    mmc_client_config_t clientConfig{};
+    mmcc_init(&clientConfig);
+
+    int32_t ret = mmcc_exist("non_existent_key", 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
+
+    const char* keys[] = {"key1", "key2", "non_existent"};
+    int32_t exists[3];
+    ret = mmcc_batch_exist(keys, 3, exists, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
+    ASSERT_EQ(exists[2], ock::mmc::MMC_OK);
+}
+
+TEST_F(TestMmcServiceInterface, testBatchGetErrorHandling)
+{
+    mmc_client_config_t clientConfig{};
+    int32_t ret = mmcc_init(&clientConfig);
+    ASSERT_EQ(ret, ock::mmc::MMC_OK);
+
+    ret = mmcc_batch_get(nullptr, 2, nullptr, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    const char* keys[] = {"test_key"};
+    mmc_buffer bufs[1];
+    ret = mmcc_batch_get(keys, 0, bufs, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    const uint32_t oversize = MAX_BATCH_OP_COUNT + 1;
+    ret = mmcc_batch_get(keys, oversize, bufs, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_INVALID_PARAM);
+
+    const char* validKeys[] = {"key1", "key2"};
+    mmc_buffer invalidBufs[2] = {
+        {.addr = (uint64_t)malloc(SIZE_32K), .type = 0, .dimType = 0, .oneDim = {0, SIZE_32K}},
+        {.addr = 0, .type = 0, .dimType = 0, .oneDim = {0, SIZE_32K}}
+    };
+
+    void* data = malloc(SIZE_32K);
+    GenerateData(data, 1);
+    mmc_buffer writeBuf = {.addr = (uint64_t)data, .type = 0, .dimType = 0, .oneDim = {0, SIZE_32K}};
+    mmc_put_options putOpts{0, NATIVE_AFFINITY};
+    
+    mmcc_put("key1", &writeBuf, putOpts, 0);
+    mmcc_put("key2", &writeBuf, putOpts, 0);
+    
+    ret = mmcc_batch_get(validKeys, 2, invalidBufs, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
+
+    EXPECT_NE(invalidBufs[0].addr, 0ULL);
+    EXPECT_EQ(invalidBufs[1].addr, 0ULL);
+
+    free(data);
+    free((void*)invalidBufs[0].addr);
+    mmcc_remove("key1", 0);
+    mmcc_remove("key2", 0);
+}
+
+TEST_F(TestMmcServiceInterface, testBatchGetWithPartialData)
+{
+    mmc_client_config_t clientConfig{};
+    int32_t ret = mmcc_init(&clientConfig);
+    ASSERT_EQ(ret, ock::mmc::MMC_OK);
+
+    const char* keys[] = {"partial_key1", "partial_key2", "partial_key3"};
+    const uint32_t keyCount = sizeof(keys) / sizeof(keys[0]);
+
+    void* data1 = malloc(SIZE_32K);
+    void* data3 = malloc(SIZE_32K);
+    GenerateData(data1, 1);
+    GenerateData(data3, 3);
+    
+    mmc_buffer writeBuf1 = {.addr = (uint64_t)data1, .type = 0, .dimType = 0, .oneDim = {0, SIZE_32K}};
+    mmc_buffer writeBuf3 = {.addr = (uint64_t)data3, .type = 0, .dimType = 0, .oneDim = {0, SIZE_32K}};
+    
+    mmc_put_options putOpts{0, NATIVE_AFFINITY};
+    mmcc_put(keys[0], &writeBuf1, putOpts, 0);
+    mmcc_put(keys[2], &writeBuf3, putOpts, 0);
+
+    mmc_buffer readBufs[keyCount];
+    void* destData[keyCount];
+    
+    for (uint32_t i = 0; i < keyCount; i++) {
+        destData[i] = malloc(SIZE_32K);
+        memset(destData[i], 0, SIZE_32K);
+        readBufs[i] = mmc_buffer{
+            .addr = (uint64_t)destData[i],
+            .type = 0,
+            .dimType = 0,
+            .oneDim = {0, SIZE_32K}
+        };
+    }
+
+    ret = mmcc_batch_get(keys, keyCount, readBufs, 0);
+    ASSERT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
+
+    EXPECT_FALSE(CheckData(data1, destData[0]));
+    EXPECT_FALSE(CheckData(data1, destData[1]));
+    EXPECT_FALSE(CheckData(data3, destData[2]));
+
+    EXPECT_NE(readBufs[0].addr, 0ULL);
+    EXPECT_NE(readBufs[1].addr, 0ULL);
+    EXPECT_NE(readBufs[2].addr, 0ULL);
+
+    free(data1);
+    free(data3);
+    for (uint32_t i = 0; i < keyCount; i++) {
+        free(destData[i]);
+        mmcc_remove(keys[i], 0);
+    }
+}
+
 class TestMmcBlobAllocator : public testing::Test {
 protected:
     void SetUp() override
@@ -216,6 +405,22 @@ protected:
 };
 
 constexpr uint64_t TestMmcBlobAllocator::CAPACITY;
+
+TEST_F(TestMmcBlobAllocator, testBlobAllocatorEdgeCases)
+{
+    auto blob = allocator->Alloc(CAPACITY * 2);
+    ASSERT_EQ(blob.Get(), nullptr);
+
+    auto fullBlob = allocator->Alloc(CAPACITY);
+    ASSERT_NE(fullBlob.Get(), nullptr);
+
+    ASSERT_EQ(allocator->Release(fullBlob), ock::mmc::MMC_OK);
+    ASSERT_EQ(allocator->Release(fullBlob), ock::mmc::MMC_ERROR);
+
+    auto invalidBlob = ock::mmc::MmcMakeRef<ock::mmc::MmcMemBlob>(
+        0, 0xDEADBEEF, 1024, ock::mmc::MediaType(0), ock::mmc::NONE);
+    ASSERT_EQ(allocator->Release(invalidBlob), ock::mmc::MMC_ERROR);
+}
 
 TEST_F(TestMmcBlobAllocator, StopBehavior)
 {
