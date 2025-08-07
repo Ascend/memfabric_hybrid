@@ -30,11 +30,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
 endif()
 
-add_compile_options(-hno-unused-parameter -lno-unused-function -Wunused-variable -Wunused-value -Wcast-align)
+add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
 add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra)
 
 if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
-    add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
+    # add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
     add_compile_options(-fstack-protector-strong)
     add_compile_options(-Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -fPIE -fPIC -ftrapv -s)
     add_compile_options(-D_FORTIFY_SOURCE=2 -O2)

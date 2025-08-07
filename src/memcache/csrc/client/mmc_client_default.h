@@ -14,11 +14,6 @@ namespace ock {
 namespace mmc {
 class MmcClientDefault : public MmcReferable {
 public:
-    explicit MmcClientDefault(const std::string& name) : name_(name)
-    {
-        operateId_ = 0;
-    }
-
     ~MmcClientDefault() override = default;
 
     Result Start(const mmc_client_config_t &config);
@@ -54,9 +49,17 @@ public:
 
     Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const;
 
-    static MmcClientDefault *gClientHandler;
+    static MmcClientDefault* GetInstance()
+    {
+        static MmcClientDefault instance("mmc_client");
+        return &instance;
+    }
 
 private:
+    explicit MmcClientDefault(const std::string& name) : name_(name) { operateId_ = 0; }
+    explicit MmcClientDefault(const MmcClientDefault&) = delete;
+    MmcClientDefault& operator=(const MmcClientDefault&) = delete;
+
     inline uint32_t RankId(const affinity_policy &policy);
 
     Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);

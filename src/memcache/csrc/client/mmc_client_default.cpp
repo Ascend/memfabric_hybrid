@@ -9,8 +9,6 @@
 
 namespace ock {
 namespace mmc {
-MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
-
 Result MmcClientDefault::Start(const mmc_client_config_t &config)
 {
     MMC_LOG_INFO("Starting client " << name_);

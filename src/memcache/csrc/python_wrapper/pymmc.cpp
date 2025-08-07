@@ -520,7 +520,7 @@ int DistributedObjectStore::put_from_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        return MmcClientDefault::gClientHandler->Put(key, mmc_buffers, options, 0);
+        return MmcClientDefault::GetInstance()->Put(key, mmc_buffers, options, 0);
     }
 }
 
@@ -580,7 +580,7 @@ int DistributedObjectStore::get_into_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        return MmcClientDefault::gClientHandler->Get(key, mmc_buffers, 0);
+        return MmcClientDefault::GetInstance()->Get(key, mmc_buffers, 0);
     }
 }
 
