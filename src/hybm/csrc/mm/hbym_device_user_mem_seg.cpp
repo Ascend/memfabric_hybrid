@@ -7,6 +7,7 @@
 
 namespace ock {
 namespace mf {
+constexpr uint8_t MAX_DEVICE_COUNT = 16;
 
 MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
     : MemSegment{options, eid}
@@ -253,6 +254,11 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
         return ret;
     }
 
+    if (deviceInfo.deviceId >= MAX_DEVICE_COUNT) {
+        BM_LOG_ERROR("Invalid deviceInfo device id: " << deviceInfo.deviceId);
+        return BM_ERROR;
+    }
+
     if (deviceInfo.deviceId != deviceId_ && !enablePeerDevices_.test(deviceInfo.deviceId)) {
         ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.deviceId, 0);
         if (ret != 0) {
@@ -285,6 +291,11 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     if (ret != 0) {
         BM_LOG_ERROR("deserialize slice info failed: " << ret);
         return ret;
+    }
+
+    if (sliceInfo.deviceId >= MAX_DEVICE_COUNT) {
+        BM_LOG_ERROR("Invalid sliceInfo device id: " << sliceInfo.deviceId);
+        return BM_ERROR;
     }
 
     if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {

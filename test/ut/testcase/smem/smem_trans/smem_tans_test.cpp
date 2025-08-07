@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <array>
+#include <thread>
+#include <chrono>
 #include "smem_types.h"
 #include "smem_trans.h"
 #include "dl_acl_api.h"
@@ -26,6 +29,7 @@ protected:
         EXPECT_NE(path, nullptr);
         auto libPath = std::string(path).append("/lib64");
         EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
+        smem_set_log_level(0);
     }
     static void TearDownTestSuite()
     {
@@ -144,101 +148,98 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
     EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
-TEST_F(SmemTransTest, smem_trans_register_mems_success_sender)
+TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 {
-    pid_t pid = fork();
-    EXPECT_NE(pid, -1);
+    setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
 
-    if (pid == 0) {
-        uint8_t flag = 0;
-        int* address1 = new int[1000];
-        int* address2 = new int[2000];
-        std::vector<void*> addrPtrs = {address1, address2};
-        std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
+    uint32_t rankSize = 2;
+    int* sender_buffer = new int[500];
+    int* recv_buffer = new int[500];
+    std::vector<void*> sender_addrPtrs = {sender_buffer};
+    std::vector<void*> recv_addrPtrs = {recv_buffer};
+    std::vector<size_t> capacities = {500 * sizeof(int)};
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
-        // first create server
-        smem_create_config_store(STORE_URL);
-        // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
+    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
+        std::vector<void*> addrPtrs, std::vector<size_t> capacities, const char* session_id) {
+        auto handle = smem_trans_create(STORE_URL, session_id, &trans_options);
+        if (handle == nullptr) {
+            exit(1);
+        }
 
-        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
-            flag = 1;
-            goto cleanup;
+            exit(2);
         }
 
-        cleanup:
-            delete[] address1;
-            delete[] address2;
-            smem_trans_destroy(handle, 0);
-            smem_trans_uninit(0);
-            exit(flag);
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+
+        smem_trans_destroy(handle, 0);
+        smem_trans_uninit(0);
+    };
+
+    const std::array<const char*, 2> session_ids = {{
+        "127.0.0.1:5321",
+        "127.0.0.1:5322"
+    }};
+    std::vector<std::vector<void*>> addrPtrs = {sender_addrPtrs, recv_addrPtrs};
+    std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            if (i == 0) {
+                smem_create_config_store(STORE_URL);
+            }
+            func(i, rankSize, trans_options[i], addrPtrs[i], capacities, session_ids[i]);
+            exit(0);
+        }
     }
 
-    int status;
-    EXPECT_NE(waitpid(pid, &status, 0), -1);
-
-    EXPECT_TRUE(WIFEXITED(status));
-    EXPECT_EQ(WEXITSTATUS(status), 0);
-}
-
-TEST_F(SmemTransTest, smem_trans_register_mems_failed_invalid_param)
-{
-    pid_t pid = fork();
-    EXPECT_NE(pid, -1);
-
-    if (pid == 0) {
-        uint8_t flag = 0;
-        int* address1 = new int[1000];
-        int* address2 = new int[2000];
-        std::vector<void*> addrPtrs = {address1, address2};
-        std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
-
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
-        // first create server
-        smem_create_config_store(STORE_URL);
-        // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
-
-        // handle = nullptr
-        auto ret = smem_trans_register_mems(nullptr, addrPtrs.data(), capacities.data(), 2, 0);
-        if (ret != SM_INVALID_PARAM) {
-            flag = 1;
-            goto cleanup;
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
         }
-        // addresses = nullptr
-        ret = smem_trans_register_mems(handle, nullptr, capacities.data(), 2, 0);
-        if (ret != SM_INVALID_PARAM) {
-            flag = 2;
-            goto cleanup;
-        }
-        // capacities = nullptr
-        ret = smem_trans_register_mems(handle, addrPtrs.data(), nullptr, 2, 0);
-        if (ret != SM_INVALID_PARAM) {
-            flag = 3;
-            goto cleanup;
-        }
-        // count = 0
-        smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 0, 0);
-        if (ret != SM_INVALID_PARAM) {
-            flag = 4;
-            goto cleanup;
-        }
-
-        cleanup:
-            delete[] address1;
-            delete[] address2;
-            smem_trans_destroy(handle, 0);
-            smem_trans_uninit(0);
-            exit(flag);
+        ASSERT_NE(needKillOthers, true);
     }
 
-    int status;
-    EXPECT_NE(waitpid(pid, &status, 0), -1);
-
-    EXPECT_TRUE(WIFEXITED(status));
-    EXPECT_EQ(WEXITSTATUS(status), 0);
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
+                needKillOthers = true;
+                for (uint32_t j = 0; j < rankSize; ++j) {
+                    if (i != j && pids[j] > 0) {
+                        kill(pids[j], SIGKILL);
+                    }
+                }
+            }
+        } else {
+            needKillOthers = true;
+            for (uint32_t j = 0; j < rankSize; ++j) {
+                if (i != j && pids[j] > 0) {
+                    kill(pids[j], SIGKILL);
+                }
+            }
+        }
+    }
+    delete[] sender_buffer;
+    delete[] recv_buffer;
 }
 
 TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)

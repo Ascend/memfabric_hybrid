@@ -17,6 +17,7 @@ int32_t aclrtSetDevice(int32_t deviceId)
 
 int32_t aclrtGetDevice(int32_t *deviceId)
 {
+    *deviceId = 0;
     return RETURN_OK;
 }
 
