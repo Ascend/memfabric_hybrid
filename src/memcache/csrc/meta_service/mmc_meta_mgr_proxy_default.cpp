@@ -139,9 +139,8 @@ Result MmcMetaMgrProxyDefault::BatchUpdateState(const BatchUpdateRequest &req, B
 
 Result MmcMetaMgrProxyDefault::Get(const GetRequest &req, AllocResponse &resp)
 {
-
     MmcMemObjMetaPtr objMeta;
-    metaMangerPtr_->Get(req.key_, objMeta);
+    MMC_RETURN_ERROR(metaMangerPtr_->Get(req.key_, objMeta), "failed to get objMeta for key " << req.key_);
     objMeta->Lock();
     if (objMeta->NumBlobs() == 0) {
         objMeta->Unlock();

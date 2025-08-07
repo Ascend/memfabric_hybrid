@@ -322,7 +322,7 @@ store.close()
 ```python
 result = store.put(key, data)
 ```
-**功能**: 将指定key的数据放入分布式内存缓存中
+**功能**: 将指定key的数据写入分布式内存缓存中
 
 **参数**:
 - `key`: 数据的键，字符串类型
@@ -336,7 +336,7 @@ result = store.put(key, data)
 ```python
 result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 ```
-**功能**: 从预分配的缓冲区中放入数据
+**功能**: 从预分配的缓冲区中写入数据
 
 **参数**:
 - `key`: 数据的键
@@ -354,12 +354,31 @@ result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 ```python
 result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 ```
-**功能**: 从预分配的缓冲区中批量放入数据
+**功能**: 从预分配的缓冲区中批量写入数据
 
 **参数**:
 - `keys`: 键列表
 - `buffer_ptrs`: 缓冲区指针列表
 - `sizes`: 数据大小列表
+- `direct`: 数据拷贝方向，可选值：
+  - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
+  - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+
+**返回值**:
+- 结果列表，每个元素表示对应写入操作的结果
+  - `0`: 成功
+  - 其他: 错误
+
+#### put_from_layers
+```python
+result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
+```
+**功能**: 从多个预分配的缓冲区中写入数据（分层数据）
+
+**参数**:
+- `key`: 数据的键
+- `buffer_ptrs`: 缓冲区指针列表，每个指针对应一个数据层
+- `sizes`: 数据大小列表，每个元素对应一个数据层的大小
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
@@ -415,6 +434,26 @@ results = store.batch_get_into(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_G2H)
 
 **返回值**:
 - 结果列表，每个元素表示对应操作的结果
+  - `0`: 成功
+  - 其他: 错误
+
+#### get_into_layers
+```python
+result = store.get_into_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_G2H)
+```
+**功能**: 将数据分层获取到预分配的缓冲区中
+
+**参数**:
+- `key`: 数据的键
+- `buffer_ptrs`: 目标缓冲区指针列表，每个指针对应一个数据层
+- `sizes`: 缓冲区大小列表，每个元素对应一个数据层的大小
+- `direct`: 数据拷贝方向，可选值：
+  - `SMEMB_COPY_G2H`: 从全局内存到主机内存（默认）
+  - `SMEMB_COPY_G2L`: 从全局内存到卡上内存
+
+**返回值**:
+- `0`: 成功
+- 其他: 失败
 
 #### remove
 ```python
@@ -440,6 +479,8 @@ results = store.remove_batch(keys)
 
 **返回值**:
 - 结果列表，每个元素表示对应删除操作的结果
+  - `0`: 成功
+  - 其他: 错误
 
 #### is_exist
 ```python

@@ -9,6 +9,8 @@
 
 namespace ock {
 namespace mmc {
+MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
+
 Result MmcClientDefault::Start(const mmc_client_config_t &config)
 {
     MMC_LOG_INFO("Starting client " << name_);
@@ -107,6 +109,58 @@ Result MmcClientDefault::Put(const char *key, mmc_buffer *buf, mmc_put_options &
             metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
             MMC_LOG_ERROR("client " << name_ << " put " << key << " failed");
             return MMC_ERROR;
+        }
+    }
+
+    UpdateRequest updateRequest{MMC_WRITE_OK, key, rankId_, options.mediaType, operateId};
+    Response updateResponse;
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_),
+                     "client " << name_ << " update " << key << " failed");
+    MMC_RETURN_ERROR(updateResponse.ret_, "client " << name_ << " update " << key << " failed");
+
+    return MMC_OK;
+}
+
+Result MmcClientDefault::Put(const std::string &key, std::vector<mmc_buffer>& buffers, mmc_put_options &options,
+                             uint32_t flags)
+{
+    if (bmProxy_ == nullptr) {
+        MMC_LOG_ERROR("BmProxy is null");
+        return MMC_ERROR;
+    }
+    options.mediaType = bmProxy_->GetMediaType();
+    uint64_t blobSize = 0;
+    for (const mmc_buffer& buf : buffers) {
+        if (buf.dimType != 0) {
+            MMC_LOG_ERROR("multiple 2d buffers are not supported");
+            return MMC_INVALID_PARAM;
+        }
+        blobSize += buf.oneDim.len;
+    }
+    uint32_t operateId = operateId_++;
+    AllocRequest request{key, {blobSize, 1, options.mediaType, RankId(options.policy), flags}, operateId};
+    AllocResponse response;
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " alloc " << key << " failed");
+    if (response.numBlobs_ == 0) {
+        MMC_LOG_ERROR("client " << name_ << " alloc " << key << " failed");
+        return MMC_ERROR;
+    }
+
+    for (uint8_t i = 0; i < response.numBlobs_; i++) {
+        auto blob = response.blobs_[i];
+        MMC_LOG_INFO("Attempting to put to blob " << i << " at address " << blob.gva_);
+        size_t shift = 0;
+        for (mmc_buffer& buf : buffers) {
+            Result ret = bmProxy_->Put(&buf, blob.gva_ + shift, buf.oneDim.len);
+            if (ret != MMC_OK) {
+                MMC_LOG_ERROR("client " << name_ << " put " << key << " failed");
+                UpdateRequest updateRequest{MMC_WRITE_FAIL, key, rankId_, options.mediaType, operateId};
+                Response updateResponse;
+                metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_);
+                return MMC_ERROR;
+            }
+            shift += buf.oneDim.len;
         }
     }
 
@@ -249,9 +303,40 @@ Result MmcClientDefault::Get(const char *key, mmc_buffer *buf, uint32_t flags)
                      "client " << name_ << " get " << key << " failed");
     UpdateRequest updateRequest{MMC_READ_OK, key, rankId_, bmProxy_->GetMediaType(), operateId};
     Response updateResponse;
-    if(metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_ != MMC_OK)) {
+    if (metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_) != MMC_OK) {
         MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
-    } else if(updateResponse.ret_ != MMC_OK) {
+    } else if (updateResponse.ret_ != MMC_OK) {
+        MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
+    }
+    uint64_t timeMs = (ock::dagger::Monotonic::TimeUs() - startTime) / 1000U;
+    MMC_ASSERT_RETURN(timeMs < defaultTtlMs_, MMC_ERROR);
+
+    return MMC_OK;
+}
+
+Result MmcClientDefault::Get(const std::string &key, std::vector<mmc_buffer>& buffers, uint32_t flags)
+{
+    uint32_t operateId = operateId_++;
+    GetRequest request{key, rankId_, operateId, true};
+    AllocResponse response;
+    uint64_t startTime = ock::dagger::Monotonic::TimeUs();
+    MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
+                     "client " << name_ << " get " << key << " failed");
+    if (response.numBlobs_ == 0) {
+        MMC_LOG_ERROR("client " << name_ << " get " << key << " failed");
+        return MMC_ERROR;
+    }
+    size_t shift = 0;
+    for (auto buf : buffers) {
+        MMC_RETURN_ERROR(bmProxy_->Get(&buf, response.blobs_[0].gva_ + shift, buf.oneDim.len),
+            "client " << name_ << " get " << key << " failed");
+        shift += buf.oneDim.len;
+    }
+    UpdateRequest updateRequest{MMC_READ_OK, key, rankId_, bmProxy_->GetMediaType(), operateId};
+    Response updateResponse;
+    if (metaNetClient_->SyncCall(updateRequest, updateResponse, rpcTimeOut_) != MMC_OK) {
+        MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
+    } else if (updateResponse.ret_ != MMC_OK) {
         MMC_LOG_WARN("client" << name_ << " update " << key << " failed");
     }
     uint64_t timeMs = (ock::dagger::Monotonic::TimeUs() - startTime) / 1000U;

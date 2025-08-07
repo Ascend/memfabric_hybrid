@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "mmc_client.h"
+#include "mmc_client_default.h"
 #include "mmc.h"
 #include "mmc_logger.h"
 #include "mmc_types.h"
@@ -16,6 +17,7 @@
 namespace py = pybind11;
 using namespace ock::mmc;
 
+constexpr int MAX_LAYER_NUM = 255;
 
 // ResourceTracker implementation using singleton pattern
 ResourceTracker &ResourceTracker::getInstance() {
@@ -367,7 +369,7 @@ std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::s
     for (size_t i = 0; i < count; ++i) {
         keyArray[i] = keys[i].c_str();
         bufferArray[i] = {
-            .addr=reinterpret_cast<uint64_t>(buffers[i]), \
+            .addr=reinterpret_cast<uint64_t>(buffers[i]),
             .type=type,
             .dimType=0,
             .oneDim={.offset=0, .len=static_cast<uint64_t>(sizes[i])}
@@ -407,7 +409,7 @@ std::vector<int> DistributedObjectStore::batch_get_into(
     for (size_t i = 0; i < count; ++i) {
         keyArray[i] = keys[i].c_str();
         bufferArray[i] = {
-            .addr=reinterpret_cast<uint64_t>(buffers[i]), \
+            .addr=reinterpret_cast<uint64_t>(buffers[i]),
             .type=type,
             .dimType=0,
             .oneDim={.offset=0, .len=static_cast<uint64_t>(sizes[i])}
@@ -420,32 +422,150 @@ int DistributedObjectStore::put_from(const std::string &key, mmc_buffer &buffer)
     return put(key, buffer);
 }
 
-int DistributedObjectStore::put_from_layers(const std::string& key, const std::vector<void*>& buffers,
+int DistributedObjectStore::put_from_layers(const std::string& key, const std::vector<uint8_t*>& buffers,
                                             const std::vector<size_t>& sizes, const int32_t& direct)
 {
-    return 0;
+    uint32_t type;
+    if (direct == SMEMB_COPY_L2G) {
+        type = 1;
+    } else if (direct == SMEMB_COPY_H2G) {
+        type = 0;
+    } else {
+        MMC_LOG_ERROR("Invalid direct, only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
+        return MMC_INVALID_PARAM;
+    }
+
+    auto layerNum = buffers.size();
+    if (layerNum == 0 || layerNum > MAX_LAYER_NUM) {
+        MMC_LOG_ERROR("Layer number is 0 or exceeds the limit of " << MAX_LAYER_NUM);
+        return MMC_INVALID_PARAM;
+    }
+
+    if (sizes.size() != layerNum) {
+        MMC_LOG_ERROR("Unmatched number of layers and sizes");
+        return MMC_INVALID_PARAM;
+    }
+
+    mmc_put_options options{};
+    options.policy = NATIVE_AFFINITY;
+    if (is2D(buffers, sizes)) {
+        mmc_buffer buffer = {
+            .addr=reinterpret_cast<uint64_t>(buffers[0]),
+            .type=type,
+            .dimType=1,
+            .twoDim = {
+                .dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                .layerOffset = 0,
+                .width = static_cast<uint32_t>(sizes[0]),
+                .layerNum = static_cast<uint16_t>(layerNum),
+                .layerCount = static_cast<uint16_t>(layerNum)
+            }
+        };
+        return mmcc_put(key.c_str(), &buffer, options, 0);
+    } else {
+        std::vector<mmc_buffer> mmc_buffers;
+        for (size_t i = 0; i < layerNum; i+=1) {
+            mmc_buffers.push_back({
+                .addr=reinterpret_cast<uint64_t>(buffers[i]),
+                .type=type,
+                .dimType=0,
+                .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
+            });
+        }
+        return MmcClientDefault::gClientHandler->Put(key, mmc_buffers, options, 0);
+    }
 }
 
 std::vector<int> DistributedObjectStore::batch_put_from_layers(const std::vector<std::string>& keys,
-                                                               const std::vector<std::vector<void*>>& buffers,
+                                                               const std::vector<std::vector<uint8_t*>>& buffers,
                                                                const std::vector<std::vector<size_t>>& sizes,
                                                                const int32_t& direct)
 {
     return {};
 }
 
-int DistributedObjectStore::get_into_layers(const std::string& key, const std::vector<void*>& buffers,
+int DistributedObjectStore::get_into_layers(const std::string& key, const std::vector<uint8_t*>& buffers,
                                             const std::vector<size_t>& sizes, const int32_t& direct)
 {
-    return 0;
+    uint32_t type;
+    if (direct == SMEMB_COPY_G2L) {
+        type = 1;
+    } else if (direct == SMEMB_COPY_G2H) {
+        type = 0;
+    } else {
+        MMC_LOG_ERROR("Invalid direct, only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
+        return MMC_INVALID_PARAM;
+    }
+
+    auto layerNum = buffers.size();
+    if (layerNum == 0 || layerNum > MAX_LAYER_NUM) {
+        MMC_LOG_ERROR("Layer number is 0 or exceeds the limit of " << MAX_LAYER_NUM);
+        return MMC_INVALID_PARAM;
+    }
+
+    if (sizes.size() != layerNum) {
+        MMC_LOG_ERROR("Unmatched number of layers and sizes");
+        return MMC_INVALID_PARAM;
+    }
+
+    if (is2D(buffers, sizes)) {
+        mmc_buffer buffer = {
+            .addr=reinterpret_cast<uint64_t>(buffers[0]),
+            .type=type,
+            .dimType=1,
+            .twoDim = {
+                .dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                .layerOffset = 0,
+                .width = static_cast<uint32_t>(sizes[0]),
+                .layerNum = static_cast<uint16_t>(layerNum),
+                .layerCount = static_cast<uint16_t>(layerNum)
+            }
+        };
+        return mmcc_get(key.c_str(), &buffer, 0);
+    } else {
+        std::vector<mmc_buffer> mmc_buffers;
+        for (size_t i = 0; i < layerNum; i+=1) {
+            mmc_buffers.push_back({
+                .addr=reinterpret_cast<uint64_t>(buffers[i]),
+                .type=type,
+                .dimType=0,
+                .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
+            });
+        }
+        return MmcClientDefault::gClientHandler->Get(key, mmc_buffers, 0);
+    }
 }
 
 std::vector<int> DistributedObjectStore::batch_get_into_layers(const std::vector<std::string>& keys,
-                                                               const std::vector<std::vector<void*>>& buffers,
+                                                               const std::vector<std::vector<uint8_t*>>& buffers,
                                                                const std::vector<std::vector<size_t>>& sizes,
                                                                const int32_t& direct)
 {
     return {};
+}
+
+bool DistributedObjectStore::is2D(const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes)
+{
+    const auto layerNum = buffers.size();
+    if (layerNum < 2) {
+        return false;
+    }
+
+    const auto interval = buffers[1] - buffers[0];
+    for (size_t i = 2; i < layerNum; i+=1) {
+        if (buffers[i] - buffers[i - 1] != interval) {
+            return false;
+        }
+    }
+
+    const auto size = sizes[0];
+    for (size_t i = 1; i < layerNum; i+=1) {
+        if (sizes[i] != size) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void DefineMmcStructModule(py::module_& m)
@@ -542,7 +662,6 @@ PYBIND11_MODULE(_pymmc, m) {
             "get_into",
             [](DistributedObjectStore &self, const std::string &key,
                 uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
-                std::cout << "key:" << key << " buffer:" << buffer_ptr << " size:" << size << " direct:" << direct << std::endl;
                 uint32_t type = 0;
                 switch (direct) {
                     case SMEMB_COPY_G2L:
@@ -555,10 +674,10 @@ PYBIND11_MODULE(_pymmc, m) {
                         throw std::invalid_argument("direct is invalid");
                 }
                 mmc_buffer buffer = {
-                    .addr=reinterpret_cast<uint64_t>(buffer_ptr), \
+                    .addr=buffer_ptr, \
                     .type=type,
                     .dimType=0,
-                    .oneDim={.offset=0, .len=static_cast<uint64_t>(size)}
+                    .oneDim={.offset=0, .len=size}
                 };
                 return self.get_into(key, buffer);
             },
@@ -587,10 +706,10 @@ PYBIND11_MODULE(_pymmc, m) {
                const std::string &key,
                const std::vector<uintptr_t> &buffer_ptrs,
                const std::vector<size_t> &sizes, const int32_t &direct) {
-                std::vector<void *> buffers;
+                std::vector<uint8_t*> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
-                    buffers.push_back(reinterpret_cast<void *>(ptr));
+                    buffers.push_back(reinterpret_cast<uint8_t*>(ptr));
                 }
                 py::gil_scoped_release release;
                 return self.get_into_layers(key, buffers, sizes, direct);
@@ -602,12 +721,12 @@ PYBIND11_MODULE(_pymmc, m) {
                const std::vector<std::string> &keys,
                const std::vector<std::vector<uintptr_t>> &buffer_ptrs,
                const std::vector<std::vector<size_t>> &sizes, const int32_t &direct) {
-                std::vector<std::vector<void *>> buffers;
+                std::vector<std::vector<uint8_t*>> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (auto vec : buffer_ptrs) {
-                    std::vector<void *> tmp;
+                    std::vector<uint8_t*> tmp;
                     for (uintptr_t ptr : vec) {
-                        tmp.push_back(reinterpret_cast<void*>(ptr));
+                        tmp.push_back(reinterpret_cast<uint8_t*>(ptr));
                     }
                     buffers.push_back(tmp);
                 }
@@ -619,7 +738,6 @@ PYBIND11_MODULE(_pymmc, m) {
             "put_from",
             [](DistributedObjectStore &self, const std::string &key,
                uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
-                std::cout << "key:" << key << " buffer:" << buffer_ptr << " size:" << size << " direct:" << direct << std::endl;
                 uint32_t type = 0;
                 switch (direct) {
                     case SMEMB_COPY_L2G:
@@ -632,10 +750,10 @@ PYBIND11_MODULE(_pymmc, m) {
                         throw std::invalid_argument("direct is invalid");
                 }
                 mmc_buffer buffer = {
-                    .addr=reinterpret_cast<uint64_t>(buffer_ptr), \
+                    .addr=buffer_ptr, \
                     .type=type,
                     .dimType=0,
-                    .oneDim={.offset=0, .len=static_cast<uint64_t>(size)}
+                    .oneDim={.offset=0, .len=size}
                 };
                 py::gil_scoped_release release;
                 return self.put_from(key, buffer);
@@ -665,10 +783,10 @@ PYBIND11_MODULE(_pymmc, m) {
                const std::string &key,
                const std::vector<uintptr_t> &buffer_ptrs,
                const std::vector<size_t> &sizes, const int32_t &direct) {
-                std::vector<void *> buffers;
+                std::vector<uint8_t*> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
-                    buffers.push_back(reinterpret_cast<void *>(ptr));
+                    buffers.push_back(reinterpret_cast<uint8_t*>(ptr));
                 }
                 py::gil_scoped_release release;
                 return self.put_from_layers(key, buffers, sizes, direct);
@@ -680,12 +798,12 @@ PYBIND11_MODULE(_pymmc, m) {
                const std::vector<std::string> &keys,
                const std::vector<std::vector<uintptr_t>> &buffer_ptrs,
                const std::vector<std::vector<size_t>> &sizes, const int32_t &direct) {
-                std::vector<std::vector<void *>> buffers;
+                std::vector<std::vector<uint8_t*>> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (auto vec : buffer_ptrs) {
-                    std::vector<void *> tmp;
+                    std::vector<uint8_t*> tmp;
                     for (uintptr_t ptr : vec) {
-                        tmp.push_back(reinterpret_cast<void*>(ptr));
+                        tmp.push_back(reinterpret_cast<uint8_t*>(ptr));
                     }
                     buffers.push_back(tmp);
                 }

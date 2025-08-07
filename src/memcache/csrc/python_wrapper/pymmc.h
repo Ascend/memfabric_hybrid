@@ -180,18 +180,18 @@ public:
     std::vector<int> batch_put_from(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
                                     const std::vector<size_t> &sizes, const int32_t &direct);
 
-    int put_from_layers(const std::string& key, const std::vector<void*>& buffers, const std::vector<size_t>& sizes,
+    int put_from_layers(const std::string& key, const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes,
                         const int32_t& direct);
 
     std::vector<int> batch_put_from_layers(const std::vector<std::string>& keys,
-                                           const std::vector<std::vector<void*>>& buffers,
+                                           const std::vector<std::vector<uint8_t*>>& buffers,
                                            const std::vector<std::vector<size_t>>& sizes, const int32_t& direct);
 
-    int get_into_layers(const std::string& key, const std::vector<void*>& buffers, const std::vector<size_t>& sizes,
+    int get_into_layers(const std::string& key, const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes,
                         const int32_t& direct);
 
     std::vector<int> batch_get_into_layers(const std::vector<std::string>& keys,
-                                           const std::vector<std::vector<void*>>& buffers,
+                                           const std::vector<std::vector<uint8_t*>>& buffers,
                                            const std::vector<std::vector<size_t>>& sizes, const int32_t& direct);
 
     int put_parts(const std::string &key, std::vector<mmc_buffer> values);
@@ -250,6 +250,9 @@ public:
      * exist
      */
     int64_t getSize(const std::string &key);
+
+private:
+    bool is2D(const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes);
 };
 
 #endif

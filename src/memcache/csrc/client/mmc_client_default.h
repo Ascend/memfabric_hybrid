@@ -31,11 +31,9 @@ public:
 
     Result Get(const char *key, mmc_buffer *buf, uint32_t flags);
 
-    Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);
+    Result Put(const std::string &key, std::vector<mmc_buffer>& buffers, mmc_put_options &options, uint32_t flags);
 
-    Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                               const mmc_put_options& options, uint32_t flags, uint32_t operateId,
-                               BatchAllocResponse& allocResponse);
+    Result Get(const std::string &key, std::vector<mmc_buffer>& buffers, uint32_t flags);
 
     Result BatchPut(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
                     mmc_put_options& options, uint32_t flags);
@@ -56,10 +54,17 @@ public:
 
     Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const;
 
+    static MmcClientDefault *gClientHandler;
+
 private:
     inline uint32_t RankId(const affinity_policy &policy);
 
-private:
+    Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);
+
+    Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
+                               const mmc_put_options& options, uint32_t flags, uint32_t operateId,
+                               BatchAllocResponse& allocResponse);
+
     std::mutex mutex_;
     bool started_ = false;
     MetaNetClientPtr metaNetClient_;

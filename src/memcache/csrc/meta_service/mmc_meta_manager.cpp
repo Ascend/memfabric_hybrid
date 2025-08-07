@@ -14,13 +14,13 @@ Result MmcMetaManager::Get(const std::string &key, MmcMemObjMetaPtr &objMeta)
 {
     auto ret = metaContainer_->Get(key, objMeta);
     if (ret != MMC_OK) {
-        MMC_LOG_DEBUG("MmcMetaManager::Get Fail! key: " << key << ". ErrCode: " << ret);
+        MMC_LOG_ERROR("MmcMetaManager::Get Fail! key: " << key << ". ErrCode: " << ret);
         return ret;
     }
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(UINT32_MAX, MEDIA_NONE, DATA_READY);
     std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs(filter);
     if (blobs.size() != objMeta->NumBlobs()) {
-        MMC_LOG_DEBUG("Fail to Get! Not all blobs are ready!" << blobs.size() << "," << objMeta->NumBlobs());
+        MMC_LOG_ERROR("Fail to Get! Not all blobs are ready!" << blobs.size() << "," << objMeta->NumBlobs());
         objMeta = nullptr;
         return MMC_ERROR;
     }
