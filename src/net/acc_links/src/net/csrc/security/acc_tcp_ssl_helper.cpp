@@ -102,10 +102,10 @@ AccResult AccTcpSslHelper::InitSSL(SSL_CTX* sslCtx)
 AccResult AccTcpSslHelper::LoadCaFileList(std::vector<std::string> &caFileList)
 {
     std::string path = tlsTopPath;
-    path.append(tlsCaPath);
+    path = path + "/" + tlsCaPath;
     caFileList.clear();
     for (auto &file : tlsCaFile) {
-        auto tmpPath = path + file;
+        auto tmpPath = path + "/" + file;
         if (!FileUtil::CanonicalPath(tmpPath)) {
             LOG_ERROR("Failed to check ca path with ca file " << file);
             return ACC_ERROR;
@@ -123,10 +123,14 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
 
     if (!tlsCrlPath.empty() && !tlsCrlFile.empty()) {
         crlFullPath = "";
-        std::string crlDirPath = tlsTopPath + tlsCrlPath;
+        std::string crlDirPath = tlsTopPath + "/" + tlsCrlPath;
         bool isFirstFile = true;
         for (auto &file : tlsCrlFile) {
-            std::string tmpPath = crlDirPath + file;
+            std::string tmpPath = crlDirPath + "/" + file;
+            if (!FileUtil::CanonicalPath(tmpPath)) {
+                LOG_ERROR("Failed to check crl path with crl file " << file);
+                return ACC_ERROR;
+            }
             if (!isFirstFile) {
                 crlFullPath += ",";
             } else {
@@ -152,7 +156,7 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
 
 AccResult AccTcpSslHelper::LoadServerCert(SSL_CTX *sslCtx)
 {
-    auto tmpPath = tlsTopPath + tlsCert;
+    auto tmpPath = tlsTopPath + "/" + tlsCert;
     SSL_LAYER_CHECK_RET(!FileUtil::CanonicalPath(tmpPath), "get invalid cert path");
 
     /* load cert */
@@ -166,14 +170,14 @@ AccResult AccTcpSslHelper::LoadServerCert(SSL_CTX *sslCtx)
 
 AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
 {
-    auto tmpPath = tlsTopPath + tlsPk;
+    auto tmpPath = tlsTopPath + "/" + tlsPk;
     if (!FileUtil::CanonicalPath(tmpPath)) {
         LOG_ERROR("Failed to get private key path");
         return ACC_ERROR;
     }
 
     int ret = 0;
-    auto tmpTlsPriKeyPwdPath = tlsTopPath + tlsPkPwd;
+    auto tmpTlsPriKeyPwdPath = tlsTopPath + "/" + tlsPkPwd;
     if (!tlsPkPwd.empty()) {
         std::string encryptedText;
         auto ret = ReadFile(tmpTlsPriKeyPwdPath, encryptedText);
@@ -483,15 +487,23 @@ void AccTcpSslHelper::StopCheckCertExpired(bool afterFork)
 
 AccResult AccTcpSslHelper::HandleCertExpiredCheck()
 {
-    auto certPath = tlsTopPath + tlsCert;
+    auto certPath = tlsTopPath + "/" + tlsCert;
+    if (!FileUtil::CanonicalPath(certPath)) {
+        LOG_ERROR("Failed to get cert path");
+        return ACC_ERROR;
+    }
     auto ret = CertExpiredCheck(certPath, "cert");
     if (ret != ACC_OK) {
         return ACC_ERROR;
     }
 
-    auto caDirPath = tlsTopPath + tlsCaPath;
+    auto caDirPath = tlsTopPath + "/" + tlsCaPath;
     for (auto &file : tlsCaFile) {
-        auto caPath = caDirPath + file;
+        auto caPath = caDirPath + "/" + file;
+        if (!FileUtil::CanonicalPath(caPath)) {
+            LOG_ERROR("Failed to get ca path");
+            return ACC_ERROR;
+        }
         ret = CertExpiredCheck(caPath, "ca");
         if (ret != ACC_OK) {
             return ACC_ERROR;

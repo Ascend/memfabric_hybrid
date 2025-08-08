@@ -128,22 +128,22 @@ TEST_F(TestAccTcpSslHelper, start)
     AccTlsOption tslOption;
     tslOption.enableTls = true;
     std::string errStr;
-    ASSERT_FALSE(tslOption.ValidateOption(errStr));
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     tslOption.tlsTopPath = certPath;
-    ASSERT_FALSE(tslOption.ValidateOption(errStr));
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     tslOption.tlsCert = "/cert/cert.pem";
-    ASSERT_FALSE(tslOption.ValidateOption(errStr));
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     tslOption.tlsCaPath = "/CA/";
-    ASSERT_FALSE(tslOption.ValidateOption(errStr));
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     tslOption.tlsCaFile.insert("ca_cert.pem");
-    ASSERT_FALSE(tslOption.ValidateOption(errStr));
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     tslOption.tlsPk = "/cert/key.pem";
-    ASSERT_TRUE(tslOption.ValidateOption(errStr));
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     const char *days = "9";
     const char *checkPeriod = "24";
@@ -193,7 +193,7 @@ TEST_F(TestAccTcpSslHelper, load_crl)
     tslOption.tlsCrlFile.insert("crl.pem");
     tslOption.tlsCrlPath = "/crl/";
     std::string errStr;
-    ASSERT_TRUE(tslOption.ValidateOption(errStr));
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     const char *days = "2";
     const char *checkPeriod = "33";
@@ -236,7 +236,7 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
     tslOption.tlsPk = "/cert/key.pem";
     tslOption.tlsPkPwd = "/key_pwd.txt";
     std::string errStr;
-    ASSERT_TRUE(tslOption.ValidateOption(errStr));
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     const char *days = "error_val";
     const char *checkPeriod = "illegal_val";
@@ -291,7 +291,7 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_zero)
     tslOption.tlsCaFile.insert("ca_cert.pem");
     tslOption.tlsPk = "/cert/key.pem";
     std::string errStr;
-    ASSERT_TRUE(tslOption.ValidateOption(errStr));
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
     double diff = -100.0;
     MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(diff));
     auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
@@ -328,7 +328,7 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_required)
     tslOption.tlsCaFile.insert("ca_cert.pem");
     tslOption.tlsPk = "/cert/key.pem";
     std::string errStr;
-    ASSERT_TRUE(tslOption.ValidateOption(errStr));
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
 
     MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(1.0));
     auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);

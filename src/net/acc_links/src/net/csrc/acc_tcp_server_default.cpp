@@ -81,7 +81,12 @@ Result AccTcpServerDefault::Start(const AccTcpServerOptions &opt, const AccTlsOp
 
 Result AccTcpServerDefault::LoadDynamicLib(const std::string &dynLibPath)
 {
-    auto ret = OpenSslApiWrapper::Load(dynLibPath);
+    std::string libPath = dynLibPath;
+    if (FileUtil::IsSymlink(libPath) || !FileUtil::CanonicalPath(libPath) || !FileUtil::IsDir(libPath)) {
+        LOG_ERROR("dynLibPath check failed");
+        return ACC_ERROR;
+    }
+    auto ret = OpenSslApiWrapper::Load(libPath);
     if (ret != ACC_OK) {
         LOG_ERROR("load open ssl failed");
         return ACC_ERROR;
@@ -172,9 +177,8 @@ Result AccTcpServerDefault::ValidateOptions() const
         return ACC_INVALID_PARAM;
     }
 
-    std::string error;
-    if (!tlsOption_.ValidateOption(error)) {
-        LOG_ERROR("Invalid tls option as " << error);
+    if (AccCommonUtil::CheckTlsOptions(tlsOption_) != ACC_OK) {
+        LOG_ERROR("Invalid tls option");
         return ACC_INVALID_PARAM;
     }
 

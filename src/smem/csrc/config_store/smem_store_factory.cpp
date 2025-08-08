@@ -96,34 +96,23 @@ int StoreFactory::GetFailedReason() noexcept
     do {                                                        \
         if (doc.HasMember(#key) && doc[#key].IsString()) {      \
             std::string path = doc[#key].GetString();           \
-            if (!CommonFunc::Realpath(path)) {                  \
-                return StoreErrorCode::ERROR;                   \
-            }                                                   \
             tlsOption.key = path;                               \
         }                                                       \
     } while (0)
 
-#define GET_ARRAY_FILE(key, topPath)                                                                \
-    do {                                                                                            \
-        if (doc.HasMember(#key) && doc[#key].IsArray()) {                                           \
-            std::set<std::string> tlsFileSet;                                                       \
-            for (rapidjson::SizeType i = 0; i < doc[#key].Size(); i++) {                            \
-                if (!doc[#key].IsString()) {                                                        \
-                    SM_LOG_ERROR("tlsFiles array contains non-stirng element");                     \
-                    return StoreErrorCode::ERROR;                                                   \
-                }                                                                                   \
-                tlsFileSet.insert(doc[#key][i].GetString());                                        \
-            }                                                                                       \
-            for (const std::string &file : tlsFileSet) {                                            \
-                std::string filePath = (topPath) + (file);                                          \
-                std::string filePathCheck = filePath;                                               \
-                if (!CommonFunc::Realpath(filePath) || filePath != filePathCheck) {                 \
-                    SM_LOG_ERROR("Failed to check tlsFiles");                                       \
-                    return StoreErrorCode::ERROR;                                                   \
-                }                                                                                   \
-            }                                                                                       \
-            tlsOption.key = tlsFileSet;                                                             \
-        }                                                                                           \
+#define GET_ARRAY_FILE(key)                                                       \
+    do {                                                                          \
+        if (doc.HasMember(#key) && doc[#key].IsArray()) {                         \
+            std::set<std::string> tlsFileSet;                                     \
+            for (rapidjson::SizeType i = 0; i < doc[#key].Size(); i++) {          \
+                if (!doc[#key].IsString()) {                                      \
+                    SM_LOG_ERROR("tlsFiles array contains non-stirng element");   \
+                    return StoreErrorCode::ERROR;                                 \
+                }                                                                 \
+                tlsFileSet.insert(doc[#key][i].GetString());                      \
+            }                                                                     \
+            tlsOption.key = tlsFileSet;                                           \
+        }                                                                         \
     } while (0)
 
 Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
@@ -142,8 +131,8 @@ Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
     GET_STRING_PATH(tlsPk);
     GET_STRING_PATH(tlsPkPwd);
     GET_STRING_PATH(packagePath);
-    GET_ARRAY_FILE(tlsCaFile, tlsOption.tlsCaPath);
-    GET_ARRAY_FILE(tlsCrlFile, tlsOption.tlsCrlPath);
+    GET_ARRAY_FILE(tlsCaFile);
+    GET_ARRAY_FILE(tlsCrlFile);
     return StoreErrorCode::SUCCESS;
 }
 

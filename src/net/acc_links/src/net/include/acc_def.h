@@ -122,32 +122,6 @@ struct AccTlsOption {
     AccTlsOption() : enableTls(false)
     {
     }
-
-    bool ValidateOption(std::string &error) const
-    {
-        if (!enableTls) {
-            return true;
-        }
-
-        if (tlsCert.empty()) {
-            error = "Failed to validate tlsCert which is empty";
-            return false;
-        }
-        if (tlsCaPath.empty()) {
-            error = "Failed to validate tlsCaPath which is empty";
-            return false;
-        }
-        if (tlsCaFile.empty()) {
-            error = "Failed to validate tlsCaFile which is empty";
-            return false;
-        }
-        if (tlsPk.empty()) {
-            error = "Failed to validate tlsPk which is empty";
-            return false;
-        }
-
-        return true;
-    }
 };
 
 /**

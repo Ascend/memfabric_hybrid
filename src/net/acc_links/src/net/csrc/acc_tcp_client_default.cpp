@@ -115,9 +115,8 @@ void AccTcpClientDefault::StartPolling()
 
 Result AccTcpClientDefault::ConnectInit(int &fd)
 {
-    std::string error;
-    if (!tlsOption_.ValidateOption(error)) {
-        LOG_ERROR("Invalid param " << error);
+    if (AccCommonUtil::CheckTlsOptions(tlsOption_) != ACC_OK) {
+        LOG_ERROR("Invalid tls option");
         return ACC_ERROR;
     }
 

@@ -10,6 +10,7 @@
 #include <regex>
 
 #include "acc_includes.h"
+#include "acc_file_util.h"
 #include "openssl_api_wrapper.h"
 
 namespace ock {
@@ -21,6 +22,7 @@ public:
     static uint32_t GetEnvValue2Uint32(const char *envName);
     static uint32_t String2Uint(const char *str);
     static bool IsAllDigits(const std::string &str);
+    static Result CheckTlsOptions(const AccTlsOption &tlsOption);
 };
 }  // namespace acc
 }  // namespace ock

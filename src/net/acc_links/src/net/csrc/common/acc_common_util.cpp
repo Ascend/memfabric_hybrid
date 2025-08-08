@@ -86,5 +86,67 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         return std::isdigit(ch);
     });
 }
+
+#define CHECK_FILE_PATH(key, required)                                           \
+    do {                                                                         \
+        if (!tlsOption.key.empty()) {                                            \
+            std::string path = tlsOption.tlsTopPath + tlsOption.key;             \
+            if (FileUtil::IsSymlink(path) || !FileUtil::CanonicalPath(path)      \
+                || !FileUtil::IsFile(path) || !FileUtil::CheckFileSize(path)) {  \
+                LOG_ERROR("TLS " #key " check failed");                          \
+                return ACC_ERROR;                                                \
+            }                                                                    \
+        } else if (required) {                                                   \
+            LOG_ERROR("TLS check failed, " #key " is required");                 \
+            return ACC_ERROR;                                                    \
+        }                                                                        \
+    } while (0)
+
+#define CHECK_DIR_PATH(key, required)                                                                               \
+    do {                                                                                                            \
+        if (!tlsOption.key.empty()) {                                                                               \
+            std::string path = (#key == "tlsTopPath") ? tlsOption.key : tlsOption.tlsTopPath + "/" + tlsOption.key; \
+            if (FileUtil::IsSymlink(path) || !FileUtil::CanonicalPath(path) || !FileUtil::IsDir(path)) {            \
+                LOG_ERROR("TLS " #key " check failed");                                                             \
+                return ACC_ERROR;                                                                                   \
+            }                                                                                                       \
+        } else if (required) {                                                                                      \
+            LOG_ERROR("TLS check failed, " #key " is required");                                                    \
+            return ACC_ERROR;                                                                                       \
+        }                                                                                                           \
+    } while (0)
+
+#define CHECK_FILE_SET(key, topPath, required)                                               \
+    do {                                                                                     \
+        if (!tlsOption.key.empty()) {                                                        \
+            for (const std::string &file : tlsOption.key) {                                  \
+                std::string filePath = (topPath) + "/" + (file);                             \
+                if (FileUtil::IsSymlink(filePath) || !FileUtil::CanonicalPath(filePath)      \
+                    || !FileUtil::IsFile(filePath) || !FileUtil::CheckFileSize(filePath)) {  \
+                    LOG_ERROR("TLS " #key " check failed");                                  \
+                    return ACC_ERROR;                                                        \
+                }                                                                            \
+            }                                                                                \
+        } else if (required) {                                                               \
+            LOG_ERROR("TLS check failed, " #key " is required");                             \
+            return ACC_ERROR;                                                                \
+        }                                                                                    \
+    } while (0)
+
+Result AccCommonUtil::CheckTlsOptions(const AccTlsOption &tlsOption)
+{
+    if (!tlsOption.enableTls) {
+        return ACC_OK;
+    }
+    CHECK_DIR_PATH(tlsTopPath, false);
+    CHECK_DIR_PATH(tlsCaPath, true);
+    CHECK_DIR_PATH(tlsCrlPath, false);
+    CHECK_FILE_PATH(tlsCert, true);
+    CHECK_FILE_PATH(tlsPk, true);
+    CHECK_FILE_PATH(tlsPkPwd, false);
+    CHECK_FILE_SET(tlsCaFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCaPath, true);
+    CHECK_FILE_SET(tlsCrlFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCrlPath, false);
+    return ACC_OK;
+}
 }  // namespace acc
 }  // namespace ock

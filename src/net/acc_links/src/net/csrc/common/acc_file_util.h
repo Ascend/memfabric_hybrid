@@ -13,7 +13,9 @@
 namespace ock {
 namespace acc {
 class FileUtil {
+    static constexpr uint32_t ACC_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 public:
+
     /**
      * @brief Check if file or dir exists
      */
@@ -73,6 +75,31 @@ public:
      * @brief Check if the file is empty one
      */
     static bool IsEmptyFile(const std::string &filePath);
+
+    /**
+     * @brief Find whether the path is a file or not
+     *
+     * @param path         [in] input path
+     * @return true if it is a file
+     */
+    static bool IsFile(const std::string &path);
+
+    /**
+     * @brief Find whether the path is a directory or not
+     *
+     * @param path         [in] input path
+     * @return true if it is a directory
+     */
+    static bool IsDir(const std::string &path);
+
+    /**
+     * @brief Find whether the path exceed the max size or not
+     *
+     * @param path         [in] input path
+     * @param maxSize      [in] the max size allowed
+     * @return true if the file size is less or equals to maxSize
+     */
+    static bool CheckFileSize(const std::string &path, uint32_t maxSize = ACC_MAX_FILE_SIZE);
 };
 
 inline bool FileUtil::Exist(const std::string &path)
@@ -258,6 +285,33 @@ inline bool FileUtil::IsEmptyFile(const std::string &filePath)
     }
 
     return GetFileSize(filePath) == 0;
+}
+
+inline bool FileUtil::IsFile(const std::string &path)
+{
+    struct stat buf;
+    if (lstat(path.c_str(), &buf) != 0) {
+        return false;
+    }
+    return S_ISREG(buf.st_mode);
+}
+
+inline bool FileUtil::IsDir(const std::string &path)
+{
+    struct stat buf;
+    if (lstat(path.c_str(), &buf) != 0) {
+        return false;
+    }
+    return S_ISDIR(buf.st_mode);
+}
+
+inline bool FileUtil::CheckFileSize(const std::string &path, uint32_t maxSize)
+{
+    if (!Exist(path)) {
+        return false;
+    }
+
+    return GetFileSize(path) <= static_cast<size_t>(maxSize);
 }
 }  // namespace acc
 }  // namespace ock
