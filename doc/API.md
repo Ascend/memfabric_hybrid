@@ -133,8 +133,8 @@
     |id|BM id，用户自定义，BM之间取不同值|
     |memberSize|创建BM的rank数量，最大支持1024|
     |dataOpType|数据操作类型，取值内容参考smem_bm_data_op_type定义|
-    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，最大支持4G|
-    |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，最大支持4G|
+    |localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数（保留参数，后续迭代使用）|
+    |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
     |flags|创建标记位，预留|
     |返回值|成功返回BM handle，失败返回空指针|
 
@@ -284,7 +284,7 @@
     |id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
     |rankSize|参与创建SHM的rank数量，最大支持1024|
     |rankId|当前rank id|
-    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，最大支持4G|
+    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
     |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
     |flags|预留参数|
     |gva|出参，gva空间地址|
