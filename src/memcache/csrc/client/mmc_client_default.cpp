@@ -9,6 +9,8 @@
 
 namespace ock {
 namespace mmc {
+MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
+
 Result MmcClientDefault::Start(const mmc_client_config_t &config)
 {
     MMC_LOG_INFO("Starting client " << name_);
@@ -186,14 +188,9 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
                                              const std::vector<mmc_buffer>& bufs,
                                              const mmc_put_options& options,
                                              uint32_t flags,
-                                             uint32_t operateId,
-                                             BatchAllocResponse& allocResponse)
+                                             uint32_t operateId)
 {
-    if (bmProxy_ == nullptr) {
-        MMC_LOG_ERROR("BmProxy is null");
-        return MMC_ERROR;
-    }
-    
+    BatchAllocResponse allocResponse;
     std::vector<AllocOptions> allocOptionsList;
     for (size_t i = 0; i < keys.size(); ++i) {
         const mmc_buffer& buf = bufs[i];
@@ -246,13 +243,14 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys,
     if (validationResult != MMC_OK) {
         return validationResult;
     }
-
+    if (bmProxy_ == nullptr) {
+        MMC_LOG_ERROR("BmProxy is null");
+        return MMC_ERROR;
+    }
     uint32_t operateId = operateId_++;
-    BatchAllocResponse allocResponse;
-
     options.mediaType = bmProxy_->GetMediaType();
     
-    Result allocationResult = AllocateAndPutBlobs(keys, bufs, options, flags, operateId, allocResponse);
+    Result allocationResult = AllocateAndPutBlobs(keys, bufs, options, flags, operateId);
     if (allocationResult != MMC_OK) {
         return allocationResult;
     }

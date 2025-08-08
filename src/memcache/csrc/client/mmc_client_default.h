@@ -51,8 +51,12 @@ public:
 
     static MmcClientDefault* GetInstance()
     {
-        static MmcClientDefault instance("mmc_client");
-        return &instance;
+        static std::mutex mtx;
+        std::lock_guard<std::mutex> lock(mtx);
+        if (gClientHandler == nullptr) {
+            gClientHandler = new MmcClientDefault("mmc_client");
+        }
+        return gClientHandler;
     }
 
 private:
@@ -65,9 +69,9 @@ private:
     Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);
 
     Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                               const mmc_put_options& options, uint32_t flags, uint32_t operateId,
-                               BatchAllocResponse& allocResponse);
+                               const mmc_put_options& options, uint32_t flags, uint32_t operateId);
 
+    static MmcClientDefault *gClientHandler;
     std::mutex mutex_;
     bool started_ = false;
     MetaNetClientPtr metaNetClient_;
