@@ -88,8 +88,9 @@ Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
     auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
     BmRegisterRequest req;
     context->GetRequest<BmRegisterRequest>(req);
-    MMC_LOG_DEBUG("HandleBmRegister rand " << req.rank_ << " capacity " << req.capacity_);
     auto result = metaServiceDefaultPtr->BmRegister(req.rank_, req.mediaType_, req.addr_, req.capacity_);
+    MMC_LOG_INFO("HandleBmRegister rank:" << req.rank_ << ", capacity:" << req.capacity_ << ", media:" << req.mediaType_
+                                          << ", ret:" << result);
     Response resp;
     resp.ret_ = result;
     return context->Reply(req.msgId, resp);
@@ -100,9 +101,8 @@ Result MetaNetServer::HandleBmUnregister(const NetContextPtr &context)
     auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
     BmUnregisterRequest req;
     context->GetRequest<BmUnregisterRequest>(req);
-    MMC_LOG_INFO("HandleBmUnregister rank : " << req.rank_ << ", start");
     auto result = metaServiceDefaultPtr->BmUnregister(req.rank_, req.mediaType_);
-    MMC_LOG_INFO("HandleBmUnregister rank : " << req.rank_ << ", get return : " << result);
+    MMC_LOG_INFO("HandleBmUnregister rank:" << req.rank_ << ", media:" << req.mediaType_ << ", ret:" << result);
     Response resp;
     resp.ret_ = result;
     return context->Reply(req.msgId, resp);
@@ -308,7 +308,6 @@ Result MetaNetServer::HandleBatchQuery(const NetContextPtr &context)
     BatchQueryResponse resp;
     context->GetRequest<BatchQueryRequest>(req);
 
-    MMC_LOG_INFO("HandleBatchQuery keys (size " << req.keys_.size() << ") start: " << Join(req.keys_));
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
     metaMgrProxy->BatchQuery(req, resp);
     MMC_LOG_INFO("HandleBatchQuery keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));

@@ -49,13 +49,36 @@ public:
 
     Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const;
 
+    static Result RegisterInstance()
+    {
+        std::lock_guard<std::mutex> lock(gClientHandlerMtx);
+        if (gClientHandler != nullptr) {
+            MMC_LOG_INFO("client handler alreay register");
+            return MMC_OK;
+        }
+        gClientHandler = new (std::nothrow) MmcClientDefault("mmc_client");
+        if (gClientHandler == nullptr) {
+            MMC_LOG_ERROR("alloc client handler failed");
+            return MMC_ERROR;
+        }
+        return MMC_OK;
+    }
+
+    static Result UnregisterInstance()
+    {
+        std::lock_guard<std::mutex> lock(gClientHandlerMtx);
+        if (gClientHandler == nullptr) {
+            MMC_LOG_INFO("client handler alreay unregister");
+            return MMC_OK;
+        }
+        delete gClientHandler;
+        gClientHandler = nullptr;
+        return MMC_OK;
+    }
+
     static MmcClientDefault* GetInstance()
     {
-        static std::mutex mtx;
-        std::lock_guard<std::mutex> lock(mtx);
-        if (gClientHandler == nullptr) {
-            gClientHandler = new MmcClientDefault("mmc_client");
-        }
+        std::lock_guard<std::mutex> lock(gClientHandlerMtx);
         return gClientHandler;
     }
 
@@ -71,6 +94,7 @@ private:
     Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
                                const mmc_put_options& options, uint32_t flags, uint32_t operateId);
 
+    static std::mutex gClientHandlerMtx;
     static MmcClientDefault *gClientHandler;
     std::mutex mutex_;
     bool started_ = false;

@@ -10,6 +10,7 @@
 namespace ock {
 namespace mmc {
 MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
+std::mutex MmcClientDefault::gClientHandlerMtx;
 
 Result MmcClientDefault::Start(const mmc_client_config_t &config)
 {

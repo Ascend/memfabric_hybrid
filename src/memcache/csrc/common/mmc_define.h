@@ -8,7 +8,7 @@ using HRESULT = uint32_t;
 #define OK (HRESULT(0x00000000L))
 #define MMC_FAIL (HRESULT(0x00000001L))
 #define MMC_DATA_TTL_MS 2000
-#define MMC_THRESHOLD_PRINT_SECONDS 5
+#define MMC_THRESHOLD_PRINT_SECONDS 30
 
 namespace ock {
 namespace mmc {

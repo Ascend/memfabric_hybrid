@@ -14,14 +14,22 @@ constexpr uint32_t MAX_BATCH_COUNT = 512;
 MMC_API int32_t mmcc_init(mmc_client_config_t *config)
 {
     MMC_VALIDATE_RETURN(config != nullptr, "invalid param, config is null", MMC_INVALID_PARAM);
-    MMC_RETURN_ERROR(MmcClientDefault::GetInstance()->Start(*config), MmcClientDefault::GetInstance()->Name() << " init client failed");
-    return MMC_OK;
+
+    MMC_RETURN_ERROR(MmcClientDefault::RegisterInstance(), "register client failed");
+    auto ret = MmcClientDefault::GetInstance()->Start(*config);
+    if (ret != MMC_OK) {
+        MMC_LOG_ERROR(MmcClientDefault::GetInstance()->Name() << " init client failed, ret:" << ret);
+        MmcClientDefault::UnregisterInstance();
+        return ret;
+    }
+    return ret;
 }
 
 MMC_API void mmcc_uninit()
 {
     MMC_VALIDATE_RETURN_VOID(MmcClientDefault::GetInstance() != nullptr, "client is not initialize");
     MmcClientDefault::GetInstance()->Stop();
+    MmcClientDefault::UnregisterInstance();
 }
 
 MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags)
