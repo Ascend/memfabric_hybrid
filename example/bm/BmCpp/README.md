@@ -41,11 +41,11 @@ source /usr/local/mxc/memfabric_hybrid/set_env.sh
   示例如下(假设期望指定监听8570端口)
   ```bash
   单节点运行8张卡: 
-  export MEMFABRIC_HYBRID_TLS_ENABLE=0
+  export SMEM_CONF_STORE_TLS_ENABLE=0
   ./bm_example 8 8 0 tcp://127.0.0.1:8570
   
   单节点运行8张卡,并启用autorank: 
-  export MEMFABRIC_HYBRID_TLS_ENABLE=0
+  export SMEM_CONF_STORE_TLS_ENABLE=0
   ./bm_example 8 8 0 tcp://127.0.0.1:8570 1
   
   两节点运行16张卡,每节点8张(假设nodeA的ip为x.x.x.x):

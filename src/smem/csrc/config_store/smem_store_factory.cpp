@@ -150,7 +150,7 @@ Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
 Result StoreFactory::InitTlsOption() noexcept
 {
     bool isTlsEnable = true;
-    auto tlsEnableEnv = std::getenv("MEMFABRIC_HYBRID_TLS_ENABLE");
+    auto tlsEnableEnv = std::getenv("SMEM_CONF_STORE_TLS_ENABLE");
     if (tlsEnableEnv != nullptr) {
         std::string tlsEnableStr = tlsEnableEnv;
         if (tlsEnableStr == "0") {
@@ -158,7 +158,7 @@ Result StoreFactory::InitTlsOption() noexcept
         } else if (tlsEnableStr == "1") {
             isTlsEnable = true;
         } else {
-            SM_LOG_INFO("Environment variable MEMFABRIC_HYBRID_TLS_ENABLE must be 0 or 1.");
+            SM_LOG_INFO("Environment variable SMEM_CONF_STORE_TLS_ENABLE must be 0 or 1.");
             return StoreErrorCode::ERROR;
         }
     }
@@ -169,15 +169,15 @@ Result StoreFactory::InitTlsOption() noexcept
         return StoreErrorCode::SUCCESS;
     }
 
-    const char* tlsJsonInfo = std::getenv("MEMFABRIC_HYBRID_TLS_INFO");
+    const char* tlsJsonInfo = std::getenv("SMEM_CONF_STORE_TLS_INFO");
     if (tlsJsonInfo == nullptr) {
-        SM_LOG_ERROR("set ssl option failed, environment MEMFABRIC_HYBRID_TLS_INFO not set. ");
+        SM_LOG_ERROR("set ssl option failed, environment SMEM_CONF_STORE_TLS_INFO not set. ");
         return StoreErrorCode::ERROR;
     }
 
     size_t jsonLen = std::strlen(tlsJsonInfo);
     if (jsonLen > MAX_TLS_JSON_LEN) {
-        SM_LOG_ERROR("MEMFABRIC_HYBRID_TLS_INFO is too long (" << jsonLen << " bytes)");
+        SM_LOG_ERROR("SMEM_CONF_STORE_TLS_INFO is too long (" << jsonLen << " bytes)");
         return StoreErrorCode::ERROR;
     }
 

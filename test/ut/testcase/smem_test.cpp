@@ -103,7 +103,7 @@ TEST_F(TestSmem, two_card_shm_create_success)
     uint32_t rankSize = 2;
     std::thread ts[rankSize];
     auto func = [](uint32_t rank, uint32_t rankCount) {
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         void *gva;
         int32_t ret = smem_init(0);
         if (ret != 0) {
@@ -183,7 +183,7 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
     smem_set_log_level(0);
     uint32_t rankSize = 2;
     auto func = [](uint32_t rank, uint32_t rankCount) {
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         int32_t ret = smem_init(0);
         if (ret != 0) {
             exit(1);

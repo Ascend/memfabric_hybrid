@@ -13,7 +13,7 @@ class AccConfigStoreTest : public testing::Test {
 public:
     void SetUp() override
     {
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         std::cout << "port is : " << port << std::endl;
         server = ock::smem::StoreFactory::CreateStore("0.0.0.0", port, true, 0);
         client = ock::smem::StoreFactory::CreateStore("127.0.0.1", port, false, 1);

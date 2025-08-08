@@ -5,7 +5,7 @@ add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
 if(BUILD_PYTHON STREQUAL "ON")
 
-    find_package(pybind11 REQUIRED)
+    find_package(pybind11 REQUIRED HINTS /root/miniconda3/lib/python3.11/site-packages/pybind11/share/cmake/pybind11)
     pybind11_add_module(_pysmem pysmem.cpp)
     set_target_properties(_pysmem PROPERTIES CXX_STANDARD 17)
     set_target_properties(_pysmem PROPERTIES OUTPUT_NAME "_pymf_smem")

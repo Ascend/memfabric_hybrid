@@ -58,7 +58,7 @@ TEST_F(SmemTransTest, smem_trans_create_success)
     EXPECT_NE(pid, -1);
 
     if (pid == 0) {
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
         int ret = smem_create_config_store(STORE_URL);
         if (ret != 0) {
@@ -109,7 +109,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
         int* address = new int[10];
         size_t size = 10 * sizeof(int);
 
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
         // client connect to server when initializing
@@ -150,7 +150,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
 TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 {
-    setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+    setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
     uint32_t rankSize = 2;
     int* sender_buffer = new int[500];
@@ -257,7 +257,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         std::vector<void*> destAddrPtrs = {destPtr1, destPtr2};
         std::vector<size_t> dataSizes = {128U, 128U};
 
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
         // client connect to server when initializing
@@ -332,7 +332,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         std::vector<void*> addrPtrs = {address1, address2};
         std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
-        setenv("MEMFABRIC_HYBRID_TLS_ENABLE", "0", 1);
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
         // client connect to server when initializing
