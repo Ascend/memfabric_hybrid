@@ -92,14 +92,15 @@ public:
         auto iter = allocators_.find(loc);
         if (iter == allocators_.end()) {
             globalAllocLock_.UnlockWrite();
-            MMC_LOG_WARN("Cannot find the given location in the mem pool");
+            MMC_LOG_ERROR("Cannot find the given {rank:" << loc.rank_ << ", type:" << loc.mediaType_
+                                                         << "} in the mem pool");
             return MMC_INVALID_PARAM;
         }
         if (!iter->second->CanUnmount()) {
             globalAllocLock_.UnlockWrite();
-            MMC_LOG_WARN("Cannot unmount the given location in the mem pool, space is in use");
+            MMC_LOG_ERROR("Cannot unmount the given {rank:" << loc.rank_ << ", type:" << loc.mediaType_
+                                                            << "}  in the mem pool, space is in use");
             return MMC_INVALID_PARAM;
-
         }
         allocators_.erase(iter);
         globalAllocLock_.UnlockWrite();

@@ -314,7 +314,7 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
         objMeta->Lock();
         ret = ForceRemoveBlobs(objMeta, filter);
         if (ret != MMC_OK) {
-            MMC_LOG_ERROR("Fail to force remove blobs in MmcMetaManager::Unmount!");
+            MMC_LOG_ERROR("Fail to force remove key:" << key << " blobs in when unmount!");
             objMeta->Unlock();
             return MMC_ERROR;
         }
@@ -325,8 +325,9 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
         ++(*it);
     }
 
-    for (const std::string &tempKey : tempKeys) {
+    for (const std::string& tempKey : tempKeys) {
         metaContainer_->Erase(tempKey);
+        MMC_LOG_INFO("Unmount {rank:" << loc.rank_ << ", type:" << loc.mediaType_ << "} key:" << tempKey);
     }
 
     ret = globalAllocator_->Unmount(loc);
