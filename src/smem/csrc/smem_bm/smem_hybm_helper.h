@@ -16,7 +16,7 @@ public:
     static inline hybm_type TransHybmType(const uint64_t &localDRAMSize, const uint64_t &localHBMSize)
     {
         if (localDRAMSize == 0 && localHBMSize > 0) {
-            return HYBM_TYPE_HBM_AI_CORE_INITIATE;
+            return HYBM_TYPE_HBM_HOST_INITIATE;
         }
         if (localDRAMSize > 0 && localHBMSize == 0) {
             return HYBM_TYPE_DRAM_HOST_INITIATE;

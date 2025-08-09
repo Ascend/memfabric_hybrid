@@ -6,6 +6,7 @@
 #include "dl_acl_api.h"
 #include "hybm_devide_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
+#include "hybm_default_transport_manager.h"
 #include "hybm_entity_default.h"
 #include "hybm_data_operator_rdma.h"
 #include "hybm_ex_info_transfer.h"
@@ -60,13 +61,11 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
         return ret;
     }
 
-    if (options_.bmType != HYBM_TYPE_HBM_AI_CORE_INITIATE) {
-        ret = InitDataOperator();
-        if (ret != 0) {
-            DlAclApi::AclrtDestroyStream(stream_);
-            stream_ = nullptr;
-            return ret;
-        }
+    ret = InitDataOperator();
+    if (ret != 0) {
+        DlAclApi::AclrtDestroyStream(stream_);
+        stream_ = nullptr;
+        return ret;
     }
 
     initialized = true;
@@ -520,6 +519,10 @@ Result MemEntityDefault::InitDramSegment()
 
 Result MemEntityDefault::InitTransManager()
 {
+    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA) {
+        transportManager_ = std::make_shared<transport::DefaultTransportManager>();
+        return BM_OK;
+    }
     switch (options_.bmType) {
         case HYBM_TYPE_HBM_AI_CORE_INITIATE:
         case HYBM_TYPE_HBM_HOST_INITIATE:
@@ -549,6 +552,10 @@ Result MemEntityDefault::InitTransManager()
 
 Result MemEntityDefault::InitDataOperator()
 {
+    // AI_CORE驱动不走这里的dateOperator
+    if (options_.bmType == HYBM_TYPE_HBM_AI_CORE_INITIATE) {
+        return BM_OK;
+    }
     switch (options_.bmDataOpType) {
         case HYBM_DOP_TYPE_TCP:
         case HYBM_DOP_TYPE_ROCE:
