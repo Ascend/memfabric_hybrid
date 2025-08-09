@@ -3,10 +3,8 @@ project(MF_HYBRID VERSION 1.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 11)
 
-option(BUILD_EXAMPLE "Build example" ON)
 option(ENABLE_TRACE_LOG "Enable trace log" OFF)
 option(ENABLE_ASAN "Enable ASAN" OFF)
-option(BUILD_ACC_LINK "compile acc links" OFF)
 option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
@@ -124,6 +122,7 @@ set(PROJECT_3RDPARTY_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdparty)
 set(PROJECT_3RDPARTY_BIN_DIR ${PROJECT_SOURCE_DIR}/output/3rdparty)
 set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
 
+# set src base dir and output dir of smem
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
 
@@ -134,6 +133,10 @@ set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
 # set src base dir and output dir of adapter
 set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
 set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mooncake_adapter)
+
+# set src base dir and output dir of acc_links
+set(PROJECT_ACCLINKS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/acc_links)
+set(PROJECT_ACCLINKS_OUTPUT ${PROJECT_SOURCE_DIR}/output/acc_links)
 
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/bin")
 message(STATUS "3rdparty src dir ${PROJECT_3RDPARTY_SRC_DIR}")
@@ -151,9 +154,6 @@ else ()
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 
-#set(PROJECT_PLATFORM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/platform)
-#set(PROJECT_PLATFORM_OUTPUT ${PROJECT_SOURCE_DIR}/output/platform)
-
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SOURCE_DIR}/include/hybm
@@ -165,11 +165,6 @@ link_directories(
 )
 
 add_subdirectory(src)
-
-if(BUILD_EXAMPLE STREQUAL "ON" AND BUILD_ACC_LINK STREQUAL "ON")
-    message (STATUS "BUILD_EXAMPLE = ON")
-    add_subdirectory(src/net/acc_links/example)
-endif()
 
 if(BUILD_TESTS STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 14)

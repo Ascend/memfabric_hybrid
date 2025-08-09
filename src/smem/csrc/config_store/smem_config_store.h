@@ -10,8 +10,8 @@
 #include <string>
 #include <functional>
 
-#include "acc_links/net/acc_def.h"
-#include "acc_links/net/acc_tcp_server.h"
+#include "acc_def.h"
+#include "acc_tcp_server.h"
 #include "smem_security.h"
 #include "smem_common_includes.h"
 

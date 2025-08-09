@@ -10,7 +10,7 @@
 #include <mockcpp/mockcpp.hpp>
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
-#include "net/acc_links/src/net/include/acc_log.h"
+#include "acc_log.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
@@ -237,6 +237,10 @@ TEST_F(TestSmem, smem_init_copy)
             auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, UT_CREATE_MEM_SIZE, 0);
             if (handle == nullptr) {
                 exit(6);
+            }
+
+            if (rank == 1) {
+                sleep(1); // sleep 1s, 保证rank0先join
             }
 
             void *gva = nullptr;

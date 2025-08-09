@@ -12,7 +12,7 @@
 #include <vector>
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
-#include "acc_links/net/acc_log.h"
+#include "acc_log.h"
 #include "hybm_stub.h"
 #define private public
 #include "smem_bm_entry_manager.h"

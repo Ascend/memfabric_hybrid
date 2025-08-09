@@ -331,11 +331,10 @@ function install_process()
 function main()
 {
     parse_script_args $*
+    get_version_in_file
     if [ "$uninstall_flag" == "y" ]; then
         uninstall
     elif [ "$install_flag" == "y" ] || [ "$install_path_flag" == "y" ]; then
-        get_version_in_file
-
         if [ "$nocheck" == "y" ]; then
             print "INFO" "skip check arch and owner."
         else

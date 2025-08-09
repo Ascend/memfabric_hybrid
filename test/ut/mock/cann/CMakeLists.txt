@@ -21,18 +21,18 @@ set_target_properties(hal_shared PROPERTIES OUTPUT_NAME "ascend_hal")
 
 install(
         TARGETS acl_shared
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/lib64
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/lib64
         PERMISSIONS OWNER_READ GROUP_READ
 )
 
 install(
         TARGETS hal_shared
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver/lib64
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver/lib64
         PERMISSIONS OWNER_READ GROUP_READ
 )
 
 install(
         FILES version.info
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver
         PERMISSIONS OWNER_READ GROUP_READ
 )

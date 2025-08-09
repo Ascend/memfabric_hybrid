@@ -36,8 +36,8 @@ void *g_reservedMem = nullptr;
 
 class TestHybmOp : public testing::Test {
 public:
-    void SetUp();
-    void TearDown();
+    void SetUp() override;
+    void TearDown() override;
 };
 
 void TestHybmOp::SetUp()

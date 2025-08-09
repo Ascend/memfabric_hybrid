@@ -176,7 +176,6 @@ Result AccTcpClientDefault::Connect(const AccConnReq &connReq, uint32_t maxConnR
     addr.sin_port = htons(serverPort_);
 
     uint32_t timesRetried = 0;
-    uint32_t maxConnRetryInterval = 10;
     LOG_INFO("connRank: " << connRanks << " connect max times: " << maxConnRetryTimes);
     while (timesRetried < maxConnRetryTimes && !needStop_.load()) {
         LOG_INFO("connRank: " << connRanks << " Trying to connect to " << IpAndPort());
@@ -191,12 +190,8 @@ Result AccTcpClientDefault::Connect(const AccConnReq &connReq, uint32_t maxConnR
             continue;
         }
 
-        /*
-         interval between each retry, 1 sec for the first time,
-         and will be doubled for each time after, while it will be maxConnRetryInterval at maximum.
-         */
-        auto tmp = static_cast<uint32_t>(1 << timesRetried);
-        sleep(tmp > maxConnRetryInterval ? maxConnRetryInterval : tmp);
+        // interval between each retry, 1 sec for each time,
+        sleep(1);
         timesRetried++;
 
         LOG_WARN("connRank: " << connRanks << " Trying to connect to " << IpAndPort() << " errno:" << errno

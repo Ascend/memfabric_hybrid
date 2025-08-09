@@ -16,14 +16,14 @@ if [ -z "$BUILD_PYTHON" ]; then
 fi
 
 cd ${ROOT_PATH}
-ACC_LINKS_SRC=${ROOT_PATH}/../3rdparty/net/acc_links/src
-if [ ! -d "${ACC_LINKS_SRC}" ]; then
+JSON_INC=${ROOT_PATH}/../3rdparty/rapidjson/include/
+if [ ! -d "${JSON_INC}" ]; then
     git submodule init
     git submodule update
 fi
 
 bash build.sh ${BUILD_MODE} OFF OFF ${BUILD_PYTHON}
 
-bash run_pkg_maker/make_run.sh
+bash run_pkg_maker/make_run.sh ${BUILD_PYTHON}
 
 cd ${CURRENT_DIR}

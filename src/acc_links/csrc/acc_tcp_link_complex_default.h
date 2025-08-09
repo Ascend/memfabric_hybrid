@@ -356,15 +356,15 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
                 return ACC_LINK_EAGAIN;
             }
         } else { /* ECONNRESET is broken during io, SUCCESS is broken during idle time. */
-            if (errno == ECONNRESET || errno == 0) {
-                LOG_INFO("Link " << id_ << " receive header failed, reset by peer, errno " << errno);
+            const auto errorNumber = errno;  // avoid errno writed by log
+            if (errorNumber == ECONNRESET || errorNumber == 0) {
+                LOG_INFO("Link " << id_ << " receive header failed, reset by peer, errno " << errorNumber);
                 return ACC_LINK_ERROR; /* socket is closed by peer, socket is error */
             }
             /* if errno is eagain is normal, need to continue to receive */
             /* else meaning failed to read from socket, socket is error */
-            const auto errorNumber = errno;  // avoid errno writed by log
             if (errorNumber != EAGAIN) {
-                LOG_ERROR("Link " << id_ << " receive header failed, errno " << errno);
+                LOG_ERROR("Link " << id_ << " receive header failed, errno " << errorNumber);
             }
 
             return (errorNumber == EAGAIN ? ACC_LINK_EAGAIN : ACC_LINK_ERROR);
@@ -385,13 +385,13 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
         /* body is not fully received, continue to receive */
         return ACC_LINK_EAGAIN;
     } else { /* ECONNRESET is broken during io, SUCCESS is broken during idle time. */
-        if (errno == ECONNRESET || errno == 0) {
-            LOG_INFO("Link " << id_ << " receive body failed, reset by peer, errno " << errno);
+        const auto errorNumber = errno;  // avoid errno writed by log
+        if (errorNumber == ECONNRESET || errorNumber == 0) {
+            LOG_INFO("Link " << id_ << " receive body failed, reset by peer, errno " << errorNumber);
             return ACC_LINK_ERROR; /* socket is closed by peer, socket is error */
         }
         /* if errno is eagain is normal, need to continue to receive */
         /* else meaning failed to read from socket,socket is error */
-        const auto errorNumber = errno;  // avoid errno writed by log
         if (errorNumber != EAGAIN) {
             LOG_ERROR("Link " << id_ << " receive body failed, errno " << errorNumber);
         }

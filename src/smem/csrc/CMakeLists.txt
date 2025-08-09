@@ -5,33 +5,19 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_HYBM_SRC_BASE}/include
-        ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
+        ${PROJECT_ACCLINKS_SRC_BASE}/include
         ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
 )
 
-## define src variables
-set(SMEM_SRC_COMMON "")
-set(SMEM_SRC_NET "")
-set(SMEM_SRC_SMEM_SHM "")
-set(SMEM_SRC_STORE "")
-set(SMEM_SRC_SMEM_BM "")
-
-## add files into src variables
-aux_source_directory(common SMEM_SRC_COMMON)
-aux_source_directory(config_store SMEM_SRC_STORE)
-aux_source_directory(net/ SMEM_SRC_NET)
-aux_source_directory(smem_shm SMEM_SRC_SMEM_SHARE)
-aux_source_directory(smem_bm SMEM_SRC_SMEM_BM)
-aux_source_directory(smem_trans SMEM_SRC_SMEM_TRANS)
-
-# set whole source for platform
-set(PLATFORM_SRC ${SMEM_SRC_COMMON}
-        ${SMEM_SRC_NET}
-        ${SMEM_SRC_SMEM_SHARE}
-        ${SMEM_SRC_STORE}
-        ${SMEM_SRC_SMEM_BM}
-        ${SMEM_SRC_SMEM_TRANS}
-        smem.cpp)
+file(GLOB_RECURSE PLATFORM_SRC
+        ${PROJECT_SMEM_SRC_BASE}/csrc/common/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/net/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans/*.cpp
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
+)
 
 ## build the static and shared library
 add_library(smem_objects OBJECT ${PLATFORM_SRC})
@@ -43,12 +29,12 @@ target_compile_options(smem_objects PRIVATE -fPIC)
 add_library(smem_static STATIC $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_static PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_static PUBLIC pthread libacc_tcp_net.a hybmm_static)
+target_link_libraries(smem_static PUBLIC pthread acc_tcp_net_static hybmm_static)
 
 add_library(smem_shared SHARED $<TARGET_OBJECTS:smem_objects>)
 set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
-target_link_libraries(smem_shared PUBLIC pthread libacc_tcp_net.a hybmm_shared)
+target_link_libraries(smem_shared PUBLIC pthread acc_tcp_net_static hybmm_shared)
 
 if(BUILD_PYTHON STREQUAL "ON")
     add_subdirectory(python_wrapper)

@@ -6,7 +6,7 @@
 #include "smem_version.h"
 #include "smem_net_common.h"
 #include "hybm.h"
-#include "acc_links/net/acc_log.h"
+#include "acc_log.h"
 #include "smem_store_factory.h"
 
 namespace {

@@ -62,10 +62,10 @@ public:
         }
     }
 
-    inline void Log(int level, const std::ostringstream &oss)
+    inline void Log(int level, const std::string &oss)
     {
         if (mLogFunc != nullptr) {
-            mLogFunc(level, oss.str().c_str());
+            mLogFunc(level, oss.c_str());
             return;
         }
 
@@ -81,9 +81,9 @@ public:
         struct tm localTime {};
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
             std::cout << strTime << tv.tv_usec << " " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " <<
-                oss.str() << std::endl;
+                oss << std::endl;
         } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str() <<
+            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss <<
                 std::endl;
         }
     }
@@ -125,7 +125,7 @@ private:
     do {                                                                               \
         std::ostringstream oss;                                                        \
         oss << "[HyBM " << HYBM_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
-        HyBMOutLogger::Instance()->Log(LEVEL, oss);                                    \
+        HyBMOutLogger::Instance()->Log(LEVEL, oss.str());                                    \
     } while (0)
 
 #define BM_LOG_DEBUG(ARGS) BM_OUT_LOG(DEBUG_LEVEL, ARGS)

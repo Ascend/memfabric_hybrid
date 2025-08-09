@@ -44,7 +44,7 @@ bool GetCertPath(std::string &execPath) noexcept
         return false;
     }
 
-    // test/build/bin/test_acc_links
+    // (base)/build/bin/test_acc_links
     realPath[size] = '\0';
     std::string path{realPath};
 
@@ -53,7 +53,7 @@ bool GetCertPath(std::string &execPath) noexcept
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/build/bin
+    // (base)/build/bin
     path = path.substr(0, position);
 
     position = path.find_last_of('/');
@@ -61,7 +61,7 @@ bool GetCertPath(std::string &execPath) noexcept
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/build
+    // (base)/build
     path = path.substr(0, position);
 
     position = path.find_last_of('/');
@@ -69,11 +69,11 @@ bool GetCertPath(std::string &execPath) noexcept
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/
+    // (base)/
     path = path.substr(0, position);
-    path.append("/llt/openssl_cert");
+    path.append("/test/ut/openssl_cert");
 
-    // test/llt/openssl_cert
+    // (base)/test/ut/openssl_cert
     execPath = path;
     std::cout << "Get cert path " << path << std::endl;
     return true;

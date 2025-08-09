@@ -35,6 +35,8 @@ set(HYBMM_SRC_FILES
         hybm_data_op_entry.cpp
 )
 
+set(HYBM_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../include")
+
 ## build the static and shared library
 add_library(hybmm_objects OBJECT ${HYBMM_SRC_FILES})
 target_compile_options(hybmm_objects PRIVATE -fPIC)
@@ -60,6 +62,6 @@ install(
 ## install library
 install(
         TARGETS hybmm_static hybmm_shared
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )

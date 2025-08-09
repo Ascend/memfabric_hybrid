@@ -255,7 +255,7 @@ void TestAccTcpClient::SetUp()
         perror("getcwd() error");
     }
     dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
 }
 
 void TestAccTcpClient::TearDown()
@@ -340,10 +340,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
         ASSERT_TRUE(data != nullptr);
         memset(data, 0, BUFF_SIZE);
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-        if (buffer == nullptr) {
-            free(data);
-            ASSERT_TRUE(buffer != nullptr);
-        }
+        ASSERT_TRUE(buffer != nullptr);
 
         for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
             AccTcpLinkComplexPtr link = it->second;
@@ -355,6 +352,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
         mClient->Disconnect();
         mServer->Stop();
         g_rankLinkMap.clear();
+        free(data);
     }
     DT_FUZZ_END()
 }
@@ -387,10 +385,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
         ASSERT_TRUE(data != nullptr);
         memset(data, 0, BUFF_SIZE);
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-        if (buffer == nullptr) {
-            free(data);
-            ASSERT_TRUE(buffer != nullptr);
-        }
+        ASSERT_TRUE(buffer != nullptr);
 
         for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
             AccTcpLinkComplexPtr link = it->second;
@@ -405,6 +400,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
         mClient->Destroy();
         mServer->Stop();
         g_rankLinkMap.clear();
+        free(data);
     }
     DT_FUZZ_END()
 }

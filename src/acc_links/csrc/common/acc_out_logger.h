@@ -5,6 +5,7 @@
 #define ACC_LINKS_ACC_OUT_LOGGER_H
 
 #include <ctime>
+#include <iomanip>
 #include <cstring>
 #include <iostream>
 #include <mutex>
@@ -66,10 +67,10 @@ public:
         }
     }
 
-    void Log(int level, const std::ostringstream &oss)
+    void Log(int level, const std::string &oss)
     {
         if (mLogFunc != nullptr) {
-            mLogFunc(level, oss.str().c_str());
+            mLogFunc(level, oss.c_str());
             return;
         }
 
@@ -78,41 +79,15 @@ public:
         }
 
         struct timeval tv {};
-        char strTime[24];
 
         gettimeofday(&tv, nullptr);
         time_t timeStamp = tv.tv_sec;
         struct tm localTime {};
-        if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
-            std::cout << strTime << tv.tv_usec << " " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " "
-                      << oss.str() << std::endl;
+        if (localtime_r(&timeStamp, &localTime) != nullptr) {
+            std::cout << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S.") << std::setw(6) << std::setfill('0') <<
+                tv.tv_usec << " " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss << std::endl;
         } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
-                      << std::endl;
-        }
-    }
-
-    void AuditLog(int level, const std::ostringstream &oss)
-    {
-        if (mAuditLogFunc != nullptr) {
-            mAuditLogFunc(level, oss.str().c_str());
-            return;
-        }
-
-        if (level < mAuditLogLevel) {
-            return;
-        }
-
-        struct timeval tv {};
-        char strTime[24];
-        gettimeofday(&tv, nullptr);
-        time_t timeStamp = tv.tv_sec;
-        struct tm localTime {};
-        if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
-            std::cout << strTime << tv.tv_usec << " " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " "
-                      << oss.str() << std::endl;
-        } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
+            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss
                       << std::endl;
         }
     }
@@ -157,24 +132,13 @@ private:
     do {                                                                                             \
         std::ostringstream oss;                                                                      \
         oss << "[" << #MODULE << " " << ACC_LINKS_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
-        AccOutLogger::Instance()->Log(LEVEL, oss);                                                   \
-    } while (0)
-
-#define AUDIT_OUT_LOG(LEVEL, MODULE, ARGS)              \
-    do {                                                \
-        std::ostringstream oss;                         \
-        oss << "[AUDIT " << #MODULE << "] " << ARGS;    \
-        AccOutLogger::Instance()->AuditLog(LEVEL, oss); \
+        AccOutLogger::Instance()->Log(LEVEL, oss.str());                                                   \
     } while (0)
 
 #define LOG_DEBUG(ARGS) ACC_LINKS_OUT_LOG(DEBUG_LEVEL, AccLinks, ARGS)
 #define LOG_INFO(ARGS) ACC_LINKS_OUT_LOG(INFO_LEVEL, AccLinks, ARGS)
 #define LOG_WARN(ARGS) ACC_LINKS_OUT_LOG(WARN_LEVEL, AccLinks, ARGS)
 #define LOG_ERROR(ARGS) ACC_LINKS_OUT_LOG(ERROR_LEVEL, AccLinks, ARGS)
-
-#define AUDIT_LOG_INFO(ARGS) AUDIT_OUT_LOG(INFO_LEVEL, AccLinks, ARGS)
-#define AUDIT_LOG_WARN(ARGS) AUDIT_OUT_LOG(WARN_LEVEL, AccLinks, ARGS)
-#define AUDIT_LOG_ERROR(ARGS) AUDIT_OUT_LOG(ERROR_LEVEL, AccLinks, ARGS)
 
 #ifndef ENABLE_TRACE_LOG
 #define LOG_TRACE(x)

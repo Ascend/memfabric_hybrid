@@ -67,16 +67,16 @@ bool GetCertPath(std::string &execPath) noexcept
         return false;
     }
 
-    // test/build/bin/test_acc_links
+    // (base)/build/bin/test_acc_links
     realPath[size] = '\0';
-    std::string path{ realPath };
+    std::string path{realPath};
 
     std::string::size_type position = path.find_last_of('/');
     if (position == std::string::npos) {
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/build/bin
+    // (base)/build/bin
     path = path.substr(0, position);
 
     position = path.find_last_of('/');
@@ -84,7 +84,7 @@ bool GetCertPath(std::string &execPath) noexcept
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/build
+    // (base)/build
     path = path.substr(0, position);
 
     position = path.find_last_of('/');
@@ -92,11 +92,11 @@ bool GetCertPath(std::string &execPath) noexcept
         std::cout << "get lib path failed : invalid folder path." << std::endl;
         return false;
     }
-    // test/
+    // (base)/
     path = path.substr(0, position);
-    path.append("/llt/openssl_cert");
+    path.append("/test/ut/openssl_cert");
 
-    // test/llt/openssl_cert
+    // (base)/test/ut/openssl_cert
     execPath = path;
     std::cout << "Get cert path " << path << std::endl;
     return true;
@@ -120,7 +120,7 @@ TEST_F(TestAccTcpSslHelper, start)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
@@ -178,7 +178,7 @@ TEST_F(TestAccTcpSslHelper, load_crl)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
@@ -222,7 +222,7 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
@@ -278,7 +278,7 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_zero)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
@@ -315,7 +315,7 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_required)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
@@ -469,7 +469,7 @@ void TestAccTcpSslClient::SetUp()
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
 
     std::string certPath;
@@ -637,7 +637,7 @@ TEST_F(TestOPENSSLAPIDL, LoadSSLSymbols_return_error)
         perror("getcwd() error");
     }
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
 
     std::string libDir = dynLibPath;
     std::string libSslPath;
@@ -739,7 +739,7 @@ TEST_F(TestOPENSSLAPIDL, LoadCryptoSymbols_return_error)
     char buff[1024];
     auto buffret = getcwd(buff, sizeof(buff));
     std::string dynLibPath = buff;
-    dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
+    dynLibPath.append("/../3rdparty/openssl/lib/");
 
     std::string libDir = dynLibPath;
     std::string libSslPath;

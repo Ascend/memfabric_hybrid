@@ -48,6 +48,7 @@ enum OpCode : int32_t {
 static std::unordered_map<int32_t, AccTcpLinkComplexPtr> g_rankLinkMap;
 uint32_t connectCnt{ 0 };
 static void *g_cbCtx = nullptr;
+static uint32_t initCnt = 0;
 
 class TestAccTcpClient : public testing::Test {
 public:
@@ -57,6 +58,7 @@ public:
 public:
     void SetUp() override;
     void TearDown() override;
+    void RegisterHandle();
 
 public:
     int32_t HandleHeartBeat(const AccTcpRequestContext &context)
@@ -202,7 +204,7 @@ void TestAccTcpClient::TearDownTestSuite()
     GlobalMockObject::verify();
 }
 
-void TestAccTcpClient::SetUp()
+void TestAccTcpClient::RegisterHandle()
 {
     // add server handler
     auto hbMethod = [this](const AccTcpRequestContext &context) { return HandleHeartBeat(context); };
@@ -248,6 +250,13 @@ void TestAccTcpClient::SetUp()
 
     auto linkBrokenMethod = [this](const AccTcpLinkComplexPtr &link) { return HandleLinkBroken(link); };
     mServer->RegisterLinkBrokenHandler(linkBrokenMethod);
+}
+
+void TestAccTcpClient::SetUp()
+{
+    if (initCnt++ == 0) {
+        RegisterHandle();
+    }
 
     AccTcpServerOptions opts;
     opts.enableListener = true;
@@ -334,10 +343,8 @@ TEST_F(TestAccTcpClient, recv_reconnect_times_match)
     ASSERT_TRUE(data != nullptr);
     memset(data, 0, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-    if (buffer == nullptr) {
-        free(data);
-        ASSERT_TRUE(buffer != nullptr);
-    }
+    ASSERT_TRUE(buffer != nullptr);
+
     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
         AccTcpLinkComplexPtr link = it->second;
         result = link->NonBlockSend(TTP_OP_CTRL_NOTIFY, buffer, nullptr);
@@ -348,6 +355,7 @@ TEST_F(TestAccTcpClient, recv_reconnect_times_match)
     sleep(2);
     mClient->Disconnect();
     ASSERT_EQ(2, connectCnt);
+    free(data);
 }
 
 TEST_F(TestAccTcpClient, test_client_connect_send_should_return_ok)
@@ -513,10 +521,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
     ASSERT_TRUE(data != nullptr);
     memset(data, 0, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-    if (buffer == nullptr) {
-        free(data);
-        ASSERT_TRUE(buffer != nullptr);
-    }
+    ASSERT_TRUE(buffer != nullptr);
 
     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
         AccTcpLinkComplexPtr link = it->second;
@@ -526,6 +531,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
     std::cout << "server send msg" << std::endl;
     sleep(2);
     mClient->Disconnect();
+    free(data);
 }
 
 TEST_F(TestAccTcpClient, test_server_send_should_return_error)
@@ -543,10 +549,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_error)
     ASSERT_TRUE(data != nullptr);
     memset(data, 0, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-    if (buffer == nullptr) {
-        free(data);
-        ASSERT_TRUE(buffer != nullptr);
-    }
+    ASSERT_TRUE(buffer != nullptr);
 
     mClient->Disconnect();
     sleep(1);
@@ -555,6 +558,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_error)
         result = link->NonBlockSend(TTP_OP_CTRL_NOTIFY, buffer, nullptr);
         ASSERT_TRUE(true != result);
     }
+    free(data);
     std::cout << "server send msg" << std::endl;
 }
 
@@ -634,10 +638,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
     ASSERT_TRUE(data != nullptr);
     memset(data, 0, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-    if (buffer == nullptr) {
-        free(data);
-        ASSERT_TRUE(buffer != nullptr);
-    }
+    ASSERT_TRUE(buffer != nullptr);
 
     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
         AccTcpLinkComplexPtr link = it->second;
@@ -649,7 +650,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
 
     ASSERT_TRUE(isClientRecv.load());
     ASSERT_TRUE(clientRecvLen == BUFF_SIZE);
-
+    free(data);
     mClient->Disconnect();
     mClient->Destroy();
 }
@@ -729,58 +730,6 @@ TEST_F(TestAccTcpClient, test_worker_ValidateOptions_NoName)
     ASSERT_TRUE(ret != ACC_OK);
 }
 
-// TEST_F(TestAccTcpClient, test_server_send_1_should_return_error)
-// {
-//     AccConnReq req{};
-//     req.rankId = 0;
-//     req.magic = 0;
-//     req.version = 1;
-//     AccTcpClientPtr mClient = AccTcpClient::Create("127.0.0.1", 8100);
-//     ASSERT_TRUE(mClient != nullptr);
-//     int32_t result = mClient->Connect(req);
-//     ASSERT_EQ(ACC_OK, result);
-
-//     std::thread recvThread([&result, mClient]() {
-//         int16_t msgType;
-//         int16_t msgRet;
-//         uint32_t bodyLength;
-//         result = mClient->Receive(nullptr, 0, msgType, msgRet, bodyLength);
-//         std::cout << "client recevie msg header, result:" << result << std::endl;
-//         if (result != ACC_OK) {
-//             return;
-//         }
-
-//         uint8_t *data = new uint8_t[bodyLength]();
-//         if (bodyLength != 0) {
-//             result = mClient->ReceiveRaw(data, bodyLength);
-//             std::cout << "client recevie msg body" << std::endl;
-//         }
-//     });
-//     recvThread.detach();
-//     ASSERT_EQ(result, 0);
-
-//     void *data = malloc(BUFF_SIZE);
-//     ASSERT_TRUE(data != nullptr);
-//     memset(data, 0, BUFF_SIZE);
-//     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-//     if (buffer == nullptr) {
-//         free(data);
-//         ASSERT_TRUE(buffer != nullptr);
-//     }
-
-//     MOCKER_CPP(&AccTcpWorker::ModifyLink, int32_t(*)(const AccTcpLinkComplexDefaultPtr &, uint32_t))
-//         .stubs()
-//         .will(returnValue(-8));
-//     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
-//         AccTcpLinkComplexPtr link = it->second;
-//         result = link->NonBlockSend(TTP_OP_CTRL_NOTIFY, buffer, nullptr);
-//         ASSERT_EQ(ACC_EPOLL_ERROR, result);
-//     }
-//     std::cout << "server send msg" << std::endl;
-//     sleep(2);
-//     mClient->Disconnect();
-// }
-
 TEST_F(TestAccTcpClient, test_server_connect_to_peer_server_should_return_ok)
 {
     const std::string nextIp = "127.0.0.1";
@@ -806,7 +755,7 @@ TEST_F(TestAccTcpClient, test_server_connect_to_peer_server_should_return_error)
     AccTcpLinkComplexPtr nextLink;
     mServer->Stop();
     sleep(2);
-    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, nextLink);
+    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, 5, nextLink);
     ASSERT_EQ(ACC_ERROR, ret);
     std::cout << "finish" << std::endl;
 }
@@ -820,7 +769,7 @@ TEST_F(TestAccTcpClient, test_server_connect_to_peer_server_1_should_return_erro
     req.magic = 0;
     req.version = 1;
     AccTcpLinkComplexPtr nextLink;
-    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, nextLink);
+    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, 5, nextLink);
     ASSERT_EQ(ACC_ERROR, ret);
     std::cout << "finish" << std::endl;
 }
@@ -1006,6 +955,7 @@ TEST_F(TestAccTcpClient, test_server_start_newRequestHandle_validate_should_retu
     }
     int32_t ret = mServer->Start(opts);
     ASSERT_TRUE(ret != true);
+    initCnt = 0;
 }
 
 TEST_F(TestAccTcpClient, test_server_start_requestSentHandle_validate_should_return_error)
@@ -1027,6 +977,7 @@ TEST_F(TestAccTcpClient, test_server_start_requestSentHandle_validate_should_ret
     }
     int32_t ret = mServer->Start(opts);
     ASSERT_TRUE(ret != true);
+    initCnt = 0;
 }
 
 TEST_F(TestAccTcpClient, test_server_start_linkBrokenHandle_validate_should_return_error)
@@ -1047,6 +998,7 @@ TEST_F(TestAccTcpClient, test_server_start_linkBrokenHandle_validate_should_retu
 
     int32_t ret = mServer->Start(opts);
     ASSERT_TRUE(ret != true);
+    initCnt = 0;
 }
 
 TEST_F(TestAccTcpClient, test_server_start_StartWorkers_validate_should_return_error)
@@ -1398,7 +1350,7 @@ TEST_F(TestAccTcpClient, ssl_shutdown_test_shutdown_fail)
     SSL *ssl = nullptr;
     ssl = reinterpret_cast<SSL *>(&ssl);
     MOCKER_CPP(&OpenSslApiWrapper::SslShutdown, int (*)(SSL *)).stubs().will(returnValue(failRetVal));
-    MOCKER_CPP(&OpenSslApiWrapper::SslGetError, int (*)(const SSL *, int)).stubs().will(returnValue(failRetVal));
+    MOCKER_CPP(&OpenSslApiWrapper::SslGetError, int (*)(const SSL *, int)).stubs().will(returnValue(-1));
     ASSERT_EQ(AccCommonUtil::SslShutdownHelper(ssl), ACC_ERROR);
 }
 }

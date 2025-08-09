@@ -92,5 +92,7 @@ cd "$OUTPUT_PATH/bin" && ./test_mf_fuzz --gtest_output=xml:gcover_report/test_de
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"
 lcov --d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1
-lcov -e "$COVERAGE_PATH"/coverage.info "*/src/smem/*" "*/src/hybm/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+lcov -e "$COVERAGE_PATH"/coverage.info "*/src/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+lcov -r "$COVERAGE_PATH"/coverage.info "*/3rdparty/*" "*/src/hybm/driver/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+
 genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1

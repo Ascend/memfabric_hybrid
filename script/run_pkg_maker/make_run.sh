@@ -4,6 +4,7 @@ set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
 
+BUILD_PYTHON=$1
 cd ${BASH_PATH}
 
 # get commit id
@@ -35,8 +36,11 @@ rm -rf ${PKG_DIR}
 mkdir -p ${PKG_DIR}/${ARCH}-${OS_NAME}
 
 cp -r ${OUTPUT_DIR}/smem/* ${PKG_DIR}/${ARCH}-${OS_NAME}
-cp -r ${OUTPUT_DIR}/mooncake_adapter/* ${PKG_DIR}/${ARCH}-${OS_NAME}
-cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
+cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH}-${OS_NAME}/lib64/
+
+if [ "${BUILD_PYTHON}" == "ON" ]; then
+    cp -r ${OUTPUT_DIR}/mooncake_adapter/* ${PKG_DIR}/${ARCH}-${OS_NAME}
+fi
 
 mkdir -p ${PKG_DIR}/script
 cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/

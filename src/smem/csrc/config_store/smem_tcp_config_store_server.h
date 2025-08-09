@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include <system_error>
 
-#include "acc_links/net/acc_tcp_server.h"
+#include "acc_tcp_server.h"
 #include "smem_message_packer.h"
 
 namespace ock {

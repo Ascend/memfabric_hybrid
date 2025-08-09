@@ -120,7 +120,7 @@ int SSL_get_shutdown(SSL *s)
 
 int SSL_get_error(const SSL *s, int retCode)
 {
-    return RETURN_OK;
+    return retCode;
 }
 
 int SSL_write_ex(SSL *s, const void *buf, size_t num, size_t *written)

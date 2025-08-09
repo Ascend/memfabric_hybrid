@@ -32,8 +32,10 @@ target_link_directories(test_mf_hy PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/
 set_target_properties(test_mf_hy PROPERTIES OUTPUT_NAME "test_mf_hy")
 set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
-target_link_libraries(test_mf_hy dl rt libacc_tcp_net.a gcov pthread)
+target_link_libraries(test_mf_hy dl rt acc_tcp_net_static gcov pthread)
 target_include_directories(test_mf_hy PRIVATE
+        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
+
         stub/
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/testcase
@@ -46,8 +48,7 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans
-        ${PROJECT_OUTPUT_PATH}/3rdparty/acc_links/net/include
-        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
+
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_HYBM_SRC_BASE}/csrc/common
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation
@@ -58,4 +59,10 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+
+        ${PROJECT_ACCLINKS_SRC_BASE}/include
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/common
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/security
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/under_api/openssl
 )

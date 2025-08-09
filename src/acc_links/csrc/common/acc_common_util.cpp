@@ -31,7 +31,8 @@ Result AccCommonUtil::SslShutdownHelper(SSL *ssl)
     if (ret == 1) {
         return ACC_OK;
     } else if (ret < 0) {
-        LOG_ERROR("ssl shutdown failed!, error code is:" << OpenSslApiWrapper::SslGetError(ssl, ret));
+        ret = OpenSslApiWrapper::SslGetError(ssl, ret);
+        LOG_ERROR("ssl shutdown failed!, error code is:" << ret);
         return ACC_ERROR;
     } else if (ret != 0) {
         LOG_ERROR("unknown ssl shutdown ret val!");
