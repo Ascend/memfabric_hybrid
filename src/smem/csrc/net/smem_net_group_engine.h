@@ -60,6 +60,10 @@ public:
 
     Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
 
+    Result GroupBroadcastExit(int status);
+
+    Result RegisterExit(const std::function<void(int)> &exit);
+
     Result StartListenEvent();
 
     Result GroupJoin();
@@ -79,6 +83,7 @@ private:
     void UpdateGroupVersion(int32_t ver);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
     bool DealWithListenEvent(std::string& getVal, std::string& prevEvent);
+    void RankExit(int result, const std::string &key, const std::string &value);
 
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
@@ -92,6 +97,7 @@ private:
     bool joined_ = false;
     bool listenThreadStarted_ = false;
     bool groupStoped_ = false;
+    std::function<void(int)> globalExitHandler_;
 };
 
 inline uint32_t SmemNetGroupEngine::GetLocalRank() const

@@ -248,3 +248,43 @@ SMEM_API uint32_t smem_shm_query_support_data_operation(void)
 {
     return SMEMS_DATA_OP_MTE;
 }
+
+SMEM_API int32_t smem_shm_register_exit(smem_shm_t handle, void (*exit)(int))
+{
+    SM_VALIDATE_RETURN(exit != nullptr, "set exit function failed, invalid func which is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    SM_VALIDATE_RETURN(entry->GetGroup() != nullptr, "invalid param, Group is NULL", SM_INVALID_PARAM);
+    ret = entry->GetGroup()->RegisterExit(exit);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("RegisterExit failed, result: " << ret);
+        return SM_ERROR;
+    }
+    return SM_OK;
+}
+
+SMEM_API void smem_shm_global_exit(smem_shm_t handle, int status)
+{
+    if (handle == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("invalid param, handle is NULL");
+        return;
+    }
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return;
+    }
+    if (entry->GetGroup() == nullptr) {
+        SM_LOG_ERROR("Group is NULL");
+        return;
+    }
+    entry->GetGroup()->GroupBroadcastExit(status);
+}
