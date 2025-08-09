@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#ifndef ACC_LINKS_ACC_FILE_UTIL_H
-#define ACC_LINKS_ACC_FILE_UTIL_H
+#ifndef MEMFABRIC_FILE_UTIL_H
+#define MEMFABRIC_FILE_UTIL_H
 
 #include <cstring>
 #include <dirent.h>
@@ -11,9 +11,8 @@
 #include <unistd.h>
 
 namespace ock {
-namespace acc {
 class FileUtil {
-    static constexpr uint32_t ACC_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    static constexpr uint32_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 public:
 
     /**
@@ -59,7 +58,17 @@ public:
     /**
      * @brief Get the realpath for security consideration
      */
-    static bool CanonicalPath(std::string &path);
+    static bool Realpath(std::string &path);
+
+    /**
+     * @brief Get real path of a library and check if exists
+     *
+     * @param libDirPath   [in] dir path of the library
+     * @param libName      [in] library name
+     * @param realPath     [out] realpath of the library
+     * @return 0 if successful
+     */
+    static bool LibraryRealPath(const std::string &libDirPath, const std::string &libName, std::string &realPath);
 
     /**
      * @brief Get size of a file
@@ -99,7 +108,7 @@ public:
      * @param maxSize      [in] the max size allowed
      * @return true if the file size is less or equals to maxSize
      */
-    static bool CheckFileSize(const std::string &path, uint32_t maxSize = ACC_MAX_FILE_SIZE);
+    static bool CheckFileSize(const std::string &path, uint32_t maxSize = MAX_FILE_SIZE);
 };
 
 inline bool FileUtil::Exist(const std::string &path)
@@ -169,7 +178,7 @@ inline bool FileUtil::Remove(const std::string &path, bool canonicalPath)
     }
 
     std::string realPath = path;
-    if (canonicalPath && !CanonicalPath(realPath)) {
+    if (canonicalPath && !Realpath(realPath)) {
         return false;
     }
 
@@ -183,7 +192,7 @@ inline bool FileUtil::RemoveDirRecursive(const std::string &path)
     }
 
     std::string realPath = path;
-    if (!CanonicalPath(realPath)) {
+    if (!Realpath(realPath)) {
         return false;
     }
 
@@ -213,7 +222,7 @@ inline bool FileUtil::RemoveDirRecursive(const std::string &path)
     return true;
 }
 
-inline bool FileUtil::CanonicalPath(std::string &path)
+inline bool FileUtil::Realpath(std::string &path)
 {
     if (path.empty() || path.size() > 4096L) {
         return false;
@@ -231,6 +240,27 @@ inline bool FileUtil::CanonicalPath(std::string &path)
     return true;
 }
 
+inline bool FileUtil::LibraryRealPath(const std::string &libDirPath, const std::string &libName, std::string &realPath)
+{
+    std::string tmpFullPath = libDirPath;
+    if (!Realpath(tmpFullPath)) {
+        return false;
+    }
+
+    if (tmpFullPath.back() != '/') {
+        tmpFullPath.push_back('/');
+    }
+
+    tmpFullPath.append(libName);
+    auto ret = ::access(tmpFullPath.c_str(), F_OK);
+    if (ret != 0) {
+        return false;
+    }
+
+    realPath = tmpFullPath;
+    return true;
+}
+
 inline size_t FileUtil::GetFileSize(const std::string &path)
 {
     if (!Exist(path)) {
@@ -238,7 +268,7 @@ inline size_t FileUtil::GetFileSize(const std::string &path)
     }
 
     std::string realFilePath;
-    if (!CanonicalPath(realFilePath)) {
+    if (!Realpath(realFilePath)) {
         return 0;
     }
 
@@ -313,7 +343,6 @@ inline bool FileUtil::CheckFileSize(const std::string &path, uint32_t maxSize)
 
     return GetFileSize(path) <= static_cast<size_t>(maxSize);
 }
-}  // namespace acc
 }  // namespace ock
 
-#endif  // HDAGGER_DAGGER_FILE_H
+#endif

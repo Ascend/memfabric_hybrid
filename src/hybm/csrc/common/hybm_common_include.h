@@ -10,6 +10,7 @@
 #include "hybm_big_mem.h"
 #include "hybm_define.h"
 #include "hybm_functions.h"
+#include "file_util.h"
 #include "hybm_logger.h"
 #include "hybm_types.h"
 

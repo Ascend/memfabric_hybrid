@@ -58,6 +58,10 @@ static std::string GetDriverVersionPath(const std::string &driverEnvStr, const s
         }
         // 对存放driver版本文件的路径进行搜索
         if (driverEnvStr[i] == ':' || i == driverEnvStr.length() - 1) {
+            if (!ock::FileUtil::Realpath(tempPath)) {
+                tempPath.clear();
+                continue;
+            }
             auto found = tempPath.find(keyStr);
             if (found == std::string::npos) {
                 tempPath.clear();
@@ -229,12 +233,13 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
 
     auto path = std::getenv("ASCEND_HOME_PATH");
-    if (path == nullptr) {
-        BM_LOG_ERROR("Environment ASCEND_HOME_PATH not set.");
-        return BM_ERROR;
-    }
+    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
 
     auto libPath = std::string(path).append("/lib64");
+    if (!ock::FileUtil::Realpath(libPath) || !ock::FileUtil::IsDir(libPath)) {
+        BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
+        return BM_ERROR;
+    }
     auto ret = DlApi::LoadLibrary(libPath);
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path: " << libPath << " failed: " << ret);
 

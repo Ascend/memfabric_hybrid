@@ -42,7 +42,6 @@ constexpr uint32_t SMEM_DEFAUT_WAIT_TIME = 120; // 120s
 constexpr uint32_t SMEM_WORLD_SIZE_MAX = 1024;
 constexpr uint32_t SMEM_ID_MAX = 63;
 constexpr uint64_t SMEM_LOCAL_SIZE_MAX = 4 * 1024 * 1024 * 1024L;
-constexpr uint32_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 } // namespace smem
 } // namespace ock
 

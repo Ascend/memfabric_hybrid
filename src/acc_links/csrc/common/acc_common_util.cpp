@@ -92,7 +92,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     do {                                                                         \
         if (!tlsOption.key.empty()) {                                            \
             std::string path = tlsOption.tlsTopPath + tlsOption.key;             \
-            if (FileUtil::IsSymlink(path) || !FileUtil::CanonicalPath(path)      \
+            if (FileUtil::IsSymlink(path) || !FileUtil::Realpath(path)           \
                 || !FileUtil::IsFile(path) || !FileUtil::CheckFileSize(path)) {  \
                 LOG_ERROR("TLS " #key " check failed");                          \
                 return ACC_ERROR;                                                \
@@ -107,7 +107,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     do {                                                                                                            \
         if (!tlsOption.key.empty()) {                                                                               \
             std::string path = (#key == "tlsTopPath") ? tlsOption.key : tlsOption.tlsTopPath + "/" + tlsOption.key; \
-            if (FileUtil::IsSymlink(path) || !FileUtil::CanonicalPath(path) || !FileUtil::IsDir(path)) {            \
+            if (FileUtil::IsSymlink(path) || !FileUtil::Realpath(path) || !FileUtil::IsDir(path)) {                 \
                 LOG_ERROR("TLS " #key " check failed");                                                             \
                 return ACC_ERROR;                                                                                   \
             }                                                                                                       \
@@ -122,7 +122,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         if (!tlsOption.key.empty()) {                                                        \
             for (const std::string &file : tlsOption.key) {                                  \
                 std::string filePath = (topPath) + "/" + (file);                             \
-                if (FileUtil::IsSymlink(filePath) || !FileUtil::CanonicalPath(filePath)      \
+                if (FileUtil::IsSymlink(filePath) || !FileUtil::Realpath(filePath)           \
                     || !FileUtil::IsFile(filePath) || !FileUtil::CheckFileSize(filePath)) {  \
                     LOG_ERROR("TLS " #key " check failed");                                  \
                     return ACC_ERROR;                                                        \

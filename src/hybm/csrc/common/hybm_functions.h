@@ -12,9 +12,6 @@ namespace ock {
 namespace mf {
 class Func {
 public:
-    static bool Realpath(std::string &path);
-    static Result LibraryRealPath(const std::string &libDirPath, const std::string &libName, std::string &realPath);
-
     static uint64_t MakeObjectMagic(uint64_t srcAddress);
     static uint64_t ValidateObjectMagic(void *ptr, uint64_t magic);
 

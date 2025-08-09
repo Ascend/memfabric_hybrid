@@ -1254,7 +1254,7 @@ TEST_F(TestAccTcpClient, fileUtils_checkDataSize)
 TEST_F(TestAccTcpClient, fileUtils_file_not_exist)
 {
     std::string invalidPath = "/path/with/invalid*chars";
-    auto ret = FileUtil::GetFileSize(invalidPath);
+    auto ret = ock::FileUtil::GetFileSize(invalidPath);
     ASSERT_EQ(ret, 0);
 }
 

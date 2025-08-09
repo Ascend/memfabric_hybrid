@@ -119,7 +119,7 @@ int OPENSSLAPIDL::GetLibPath(std::string &libDir, std::string &libSslPath, std::
         return -1;
     }
 
-    if (!FileUtil::CanonicalPath(libDir)) {
+    if (!FileUtil::Realpath(libDir)) {
         LOG_ERROR("Path for openssl library is invalid.");
         return -1;
     }

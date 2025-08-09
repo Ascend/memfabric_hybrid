@@ -10,7 +10,7 @@
 #include <regex>
 
 #include "acc_includes.h"
-#include "acc_file_util.h"
+#include "file_util.h"
 #include "openssl_api_wrapper.h"
 
 namespace ock {

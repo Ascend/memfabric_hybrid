@@ -156,6 +156,7 @@ message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SOURCE_DIR}/include/hybm
+        ${PROJECT_SOURCE_DIR}/src/utils
 )
 
 link_directories(
