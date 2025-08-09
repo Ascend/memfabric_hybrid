@@ -377,7 +377,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
     std::vector<hybm_exchange_info> info(increment);
     std::vector<void *> addresses(increment);
     std::vector<const ReceiverSliceInfo *> recvSs(increment);
-    auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * slicesLastTime_;
+    auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * static_cast<uint64_t>(slicesLastTime_);
     for (auto i = 0U; i < increment; i++) {
         recvSs[i] = (const ReceiverSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
         std::copy_n(values.data() + itemOffsetBytes + sizeof(ReceiverSliceInfo), sliceInfoSize_, info[i].desc);

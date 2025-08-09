@@ -133,7 +133,7 @@ Result MemSegmentDeviceUseMem::Export(const std::shared_ptr<MemSlice> &slice, st
     HbmExportSliceInfo info;
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
-    info.deviceId = deviceId_;
+    info.deviceId = static_cast<uint32_t>(deviceId_);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
 
     auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);

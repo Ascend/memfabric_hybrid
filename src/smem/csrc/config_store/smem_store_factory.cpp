@@ -182,7 +182,7 @@ Result StoreFactory::InitTlsOption() noexcept
 std::function<int(const std::string&, char*, int&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, int*, char*, int*)) noexcept
 {
     return [rawFunc](const std::string &cipherText, char *plainText, int32_t &plainTextLen) {
-        int tmpCipherLen = cipherText.size();
+        int tmpCipherLen = static_cast<int>(cipherText.size());
         int tmpPlainLen = plainTextLen;
         int ret = rawFunc(cipherText.c_str(), &tmpCipherLen, plainText, &tmpPlainLen);
         plainTextLen = tmpPlainLen;

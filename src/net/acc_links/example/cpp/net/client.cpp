@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     AccConnReq req{};
     req.magic = 0;
     req.version = 1;
-    req.rankId = rank;
+    req.rankId = static_cast<uint64_t>(rank);
     AccTcpClientPtr client = AccTcpClient::Create(masterIp, port);
     auto result = client->Connect(req);
     if (result != ACC_OK) {
