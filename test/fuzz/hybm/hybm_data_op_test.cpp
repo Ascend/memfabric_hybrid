@@ -18,7 +18,7 @@ using namespace ock::mf;
 namespace {
 const uint64_t g_rankSize = 8;
 const uint64_t g_localMemSize = 1024 * 1024 * 1024;
-const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE,
+const hybm_options g_options = {HYBM_TYPE_HBM_HOST_INITIATE,
                                 HYBM_DOP_TYPE_MTE,
                                 HYBM_SCOPE_CROSS_NODE,
                                 HYBM_RANK_TYPE_STATIC,

@@ -40,7 +40,7 @@ TARGET_MOCKCPP_HEADER(test_mf_fuzz)
 add_definitions(-DOUT_LIB_PATH="${TARGET_INSTALL_DIR}")
 
 add_link_options(-lgcov --coverage)
-target_compile_options(test_mf_fuzz PUBLIC -D_GNU_SOURCE -g -fprofile-arcs -ftest-coverage -DUT_ENABLED -fsanitize-blacklist=smem_test.cpp)
+target_compile_options(test_mf_fuzz PUBLIC -D_GNU_SOURCE -g -fprofile-arcs -ftest-coverage -DUT_ENABLED)
 set_target_properties(test_mf_fuzz PROPERTIES OUTPUT_NAME "test_mf_fuzz")
 set_target_properties(test_mf_fuzz PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)

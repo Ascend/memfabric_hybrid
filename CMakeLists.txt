@@ -114,7 +114,6 @@ if (ENABLE_TRACE_L0G)
     add_definitions(-DLOG_TRACE_INFO_ENABLED)
 endif()
 
-set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/net/acc_links)
 set(BUILD_PATH ${PROJECT_BINARY_DIR}/)
 set(ENV{3RDPARTY_BIN_DIR} ${PROJECT_3RDPARTY_BIN_DIR})
 set(PROJECT_BUILD_PATH ${PROJECT_SOURCE_DIR}/build)
@@ -157,7 +156,6 @@ message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SOURCE_DIR}/include/hybm
-        ${SRC_DIR}/src/net/include
 )
 
 link_directories(

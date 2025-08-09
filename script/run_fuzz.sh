@@ -5,7 +5,7 @@ readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
 
 readonly BUILD_PATH="$PROJECT_FULL_PATH/build"
 readonly OUTPUT_PATH="$PROJECT_FULL_PATH/output"
-readonly HYBM_LIB_PATH="$OUTPUT_PATH/hybm/lib"
+readonly HYBM_LIB_PATH="$OUTPUT_PATH/hybm/lib64"
 readonly COVERAGE_PATH="$OUTPUT_PATH/coverage"
 readonly TEST_3RD_PATH="$PROJECT_FULL_PATH/test/3rdparty"
 readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
@@ -44,7 +44,7 @@ if [ ! -d "${SECODE_FUZZZ_PATH}" ] || ! check_files_exist; then
 
     # 拉取 secodefuzz 代码
     cd "${TEST_3RD_PATH}"
-    git clone https://codehub-dg-y.huawei.com/software-engineering-research-community/fuzz/secodefuzz.git
+    git clone secodefuzz.git # use fuzz git repo as neccessary
     if [ $? -ne 0 ]; then
         echo "Failed to clone secodefuzz repository."
         exit 1
