@@ -64,4 +64,4 @@ inline const char *SmLastError::GetAndClear(bool clear)
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
+#endif  // MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H

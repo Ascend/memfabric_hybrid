@@ -110,6 +110,15 @@ private:
 
 class BigMemory {
 public:
+    struct CopyData2DParams{
+        uint64_t src;
+        uint64_t spitch;
+        uint64_t dest;
+        uint64_t dpitch;
+        uint64_t width;
+        uint64_t height;
+    };
+public:
     explicit BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
     virtual ~BigMemory() noexcept
     {
@@ -157,17 +166,18 @@ public:
 
     void CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
     {
-        auto ret = smem_bm_copy(handle_, (const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size, type, flags);
+        smem_copy_params params = {(const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size};
+        auto ret = smem_bm_copy(handle_, &params, type, flags);
         if (ret != 0) {
             throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
         }
     }
 
-    void CopyData2D(uint64_t src, uint64_t spitch, uint64_t dest, uint64_t dpitch, uint64_t width, uint64_t height,
-                    smem_bm_copy_type type, uint32_t flags)
+    void CopyData2D(CopyData2DParams &params, smem_bm_copy_type type, uint32_t flags)
     {
-        auto ret = smem_bm_copy_2d(handle_, (const void *)(ptrdiff_t)src, spitch, (void *)(ptrdiff_t)dest, dpitch,
-                                   width, height, type, flags);
+        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch, (void *)(ptrdiff_t)params.dest,
+            params.dpitch, params.width, params.height};
+        auto ret = smem_bm_copy_2d(handle_, &copyParams, type, flags);
         if (ret != 0) {
             throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
         }
@@ -318,7 +328,24 @@ control operation timeout, i.e. barrier, allgather, topology_can_reach etc, defa
 whether to start config store, default true)")
         .def_readwrite("flags", &smem_shm_config_t::flags, "other flags, default 0");
 }
- 
+
+void DefineBmCopyData2DParams(py::module_ &m)
+{
+    py::class_<BigMemory::CopyData2DParams>(m, "CopyData2DParams")
+        .def_readwrite("src", &BigMemory::CopyData2DParams::src, R"(
+            source src of data.)")
+        .def_readwrite("spitch", &BigMemory::CopyData2DParams::spitch, R"(
+            source pitch of data.)")
+        .def_readwrite("dest", &BigMemory::CopyData2DParams::dest, R"(
+            destination src of data.)")
+        .def_readwrite("dpitch", &BigMemory::CopyData2DParams::dpitch, R"(
+            destination pitch of data.)")
+        .def_readwrite("width", &BigMemory::CopyData2DParams::width, R"(
+            width of data to be copied.)")
+        .def_readwrite("height", &BigMemory::CopyData2DParams::height, R"(
+            height of data to be copied.)");
+}
+
 void DefineBmConfig(py::module_ &m)
 {
     py::enum_<smem_bm_copy_type>(m, "BmCopyType")
@@ -505,18 +532,12 @@ Arguments:
     flags(int): optional flags
 Returns:
     0 if successful)")
-        .def("copy_data_2d", &BigMemory::CopyData2D, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
-             py::arg("src_pitch"), py::arg("dst_ptr"), py::arg("dst_pitch"), py::arg("width"), py::arg("height"),
+        .def("copy_data_2d", &BigMemory::CopyData2D, py::call_guard<py::gil_scoped_release>(), py::arg("params"),
              py::arg("type"), py::arg("flags") = 0, R"(
 2D data operation on Big Memory object.
 
 Arguments:
-    src_ptr(int): source gva of data
-    src_pitch(int): pitch of source gva of data
-    dst_ptr(int): destination gva of data
-    dst_pitch(int): pitch destination gva of data
-    width(int): width of data to be copied
-    height(int): height of data to be copied
+    params(CopyData2DParams): parameters of 2D copy
     type(BmCopyType): copy type, L2G, G2L, G2H, H2G
     flags(int): optional flags
 Returns:
@@ -536,4 +557,5 @@ PYBIND11_MODULE(_pymf_smem, m)
 
     DefineBmConfig(bm);
     DefineBmClass(bm);
+    DefineBmCopyData2DParams(bm);
 }

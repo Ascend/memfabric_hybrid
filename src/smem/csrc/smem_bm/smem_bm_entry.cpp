@@ -177,36 +177,37 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
-
-    return hybm_data_copy(entity_, src, dest, size, direction, nullptr, flags);
+    hybm_copy_params copyParams = {src, dest, size};
+    return hybm_data_copy(entity_, &copyParams, direction, nullptr, flags);
 }
 
-Result SmemBmEntry::DataCopy2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
-                               uint64_t height, smem_bm_copy_type t, uint32_t flags)
+Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags)
 {
-    SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(width != 0, "invalid param, width is 0", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(height != 0, "invalid param, height is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params.src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params.dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params.width != 0, "invalid param, width is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params.height != 0, "invalid param, height is 0", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
     hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
-        SM_VALIDATE_RETURN(AddressInRange(dest, dpitch * (height - 1) + width),
-                           "copy target range invalid (dpitch: " << dpitch << " width: " << width
-                                          << " height: " << height << ").",
+        SM_VALIDATE_RETURN(AddressInRange(params.dest, params.dpitch * (params.height - 1) + params.width),
+                           "copy target range invalid (dpitch: " << params.dpitch << " width: " << params.width
+                                          << " height: " << params.height << ").",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
-        SM_VALIDATE_RETURN(AddressInRange(src, spitch * (height - 1) + width),
-                           "copy source range invalid (spitch: " << spitch << " width: " << width
-                                        << " height: " << height << ")",
+        SM_VALIDATE_RETURN(AddressInRange(params.src, params.spitch * (params.height - 1) + params.width),
+                           "copy source range invalid (spitch: " << params.spitch << " width: " << params.width
+                                        << " height: " << params.height << ")",
                            SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
 
-    return hybm_data_copy_2d(entity_, src, spitch, dest, dpitch, width, height, direction, nullptr, flags);
+    hybm_copy_2d_params copy2dparams = {.src = params.src, .spitch = params.spitch, .dest = params.dest,
+        .dpitch = params.dpitch, .width = params.width, .height = params.height};
+    return hybm_data_copy_2d(entity_, &copy2dparams, direction, nullptr, flags);
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)

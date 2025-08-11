@@ -96,6 +96,21 @@ typedef enum {
     HYBM_DATA_COPY_DIRECTION_BUTT
 } hybm_data_copy_direction;
 
+typedef struct {
+    const void *src;
+    uint64_t spitch;
+    void *dest;
+    uint64_t dpitch;
+    uint64_t width;
+    uint64_t height;
+} hybm_copy_2d_params;
+
+typedef struct {
+    const void *src;
+    void *dest;
+    size_t count;
+} hybm_copy_params;
+
 #ifndef __cplusplus
 }
 #endif

@@ -124,10 +124,12 @@ void CheckSmemCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::str
     ret = aclrtMemcpy(deviceSrc, COPY_SIZE, hostSrc, COPY_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
     CHECK_RET_VOID(ret, "copy host to device failed, ret:" << ret << " rank:" << rankId);
 
-    ret = smem_bm_copy(handle, hostSrc, remote, COPY_SIZE, SMEMB_COPY_H2G, 0);
+    smem_copy_params params = {hostSrc, remote, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_H2G, 0);
     CHECK_RET_VOID(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId);
 
-    ret = smem_bm_copy(handle, deviceSrc, (void *)((uint64_t)remote + COPY_SIZE), COPY_SIZE, SMEMB_COPY_L2G, 0);
+    params = {deviceSrc, (void *)((uint64_t)remote + COPY_SIZE), COPY_SIZE};
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_L2G, 0);
     CHECK_RET_VOID(ret, "copy hbm to gva failed, ret:" << ret << " rank:" << rankId);
 
     ret = g_barrier->Barrier();
@@ -135,11 +137,13 @@ void CheckSmemCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::str
     LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId);
     // check
     GenerateData(hostDst, (rankId + rkSize - 1) % rkSize);
-    ret = smem_bm_copy(handle, gva, hostSrc, COPY_SIZE, SMEMB_COPY_G2H, 0);
+    params = {gva, hostSrc, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2H, 0);
     CHECK_RET_VOID(ret, "copy gva to host failed, ret:" << ret << " rank:" << rankId);
     CHECK_RET_VOID((!CheckData(hostDst, hostSrc)), "check G2H data failed, rank:" << rankId);
 
-    ret = smem_bm_copy(handle, (void *)((uint64_t)gva + COPY_SIZE), deviceSrc, COPY_SIZE, SMEMB_COPY_G2L, 0);
+    params = {(void *)((uint64_t)gva + COPY_SIZE), deviceSrc, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2L, 0);
     CHECK_RET_VOID(ret, "copy hbm to gva failed, ret:" << ret << " rank:" << rankId);
 
     ret = aclrtMemcpy(hostSrc, COPY_SIZE, deviceSrc, COPY_SIZE, ACL_MEMCPY_DEVICE_TO_HOST);
@@ -172,12 +176,12 @@ void CheckSmemCopy2D(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::s
     ret = aclrtMemcpy(deviceSrc, COPY_2D_SIZE, hostSrc, COPY_2D_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
     CHECK_RET_VOID(ret, "copy host to device failed, ret:" << ret << " rank:" << rankId);
 
-    ret = smem_bm_copy_2d(handle, hostSrc, COPY_SIZE, remote, COPY_SIZE,
-                          COPY_SIZE, COPY_2D_HEIGHT, SMEMB_COPY_H2G, 0);
+    smem_copy_2d_params params = {hostSrc, COPY_SIZE, remote, COPY_SIZE, COPY_SIZE, COPY_2D_HEIGHT};
+    ret = smem_bm_copy_2d(handle, &params, SMEMB_COPY_H2G, 0);
     CHECK_RET_VOID(ret, "copy2d host to gva failed, ret:" << ret << " rank:" << rankId);
 
-    ret = smem_bm_copy_2d(handle, deviceSrc, COPY_SIZE, (void *)((uint64_t)remote + COPY_2D_SIZE), COPY_SIZE,
-                          COPY_SIZE, COPY_2D_HEIGHT, SMEMB_COPY_L2G, 0);
+    params = {deviceSrc, COPY_SIZE, (void *)((uint64_t)remote + COPY_2D_SIZE), COPY_SIZE, COPY_SIZE, COPY_2D_HEIGHT};
+    ret = smem_bm_copy_2d(handle, &params, SMEMB_COPY_L2G, 0);
     CHECK_RET_VOID(ret, "copy2d hbm to gva failed, ret:" << ret << " rank:" << rankId);
 
     ret = g_barrier->Barrier();
@@ -185,13 +189,13 @@ void CheckSmemCopy2D(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::s
     LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId);
     // check
     GenerateData(hostDst, (rankId + rkSize - 1) % rkSize);
-    ret = smem_bm_copy_2d(handle, gva, COPY_SIZE, hostSrc, COPY_SIZE,
-                          COPY_SIZE, COPY_2D_HEIGHT, SMEMB_COPY_G2H, 0);
+    params = {gva, COPY_SIZE, hostSrc, COPY_SIZE, COPY_SIZE, COPY_2D_HEIGHT};
+    ret = smem_bm_copy_2d(handle, &params, SMEMB_COPY_G2H, 0);
     CHECK_RET_VOID(ret, "copy gva to host failed, ret:" << ret << " rank:" << rankId);
     CHECK_RET_VOID((!CheckData(hostDst, hostSrc)), "check copy2d G2H data failed, rank:" << rankId);
 
-    ret = smem_bm_copy_2d(handle, (void *)((uint64_t)gva + COPY_2D_SIZE), COPY_SIZE, deviceSrc, COPY_SIZE,
-                          COPY_SIZE, COPY_2D_HEIGHT, SMEMB_COPY_G2L, 0);
+    params = {(void *)((uint64_t)gva + COPY_2D_SIZE), COPY_SIZE, deviceSrc, COPY_SIZE, COPY_SIZE, COPY_2D_HEIGHT};
+    ret = smem_bm_copy_2d(handle, &params, SMEMB_COPY_G2L, 0);
     CHECK_RET_VOID(ret, "copy hbm to gva failed, ret:" << ret << " rank:" << rankId);
 
     ret = aclrtMemcpy(hostSrc, COPY_2D_HEIGHT, deviceSrc, COPY_2D_HEIGHT, ACL_MEMCPY_DEVICE_TO_HOST);

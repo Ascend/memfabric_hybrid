@@ -82,44 +82,46 @@ TEST_F(TestHybmOp, hybm_data_copy)
     uint64_t seed = 0;
     DT_FUZZ_START(seed, CAPI_FUZZ_COUNT, fuzzName, 0)
     {
-        auto ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize,
+        hybm_copy_params copyParams = {g_reservedMem, g_reservedMem, g_allocSize};
+        auto ret = hybm_data_copy(g_entity, &copyParams,
                                   HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
+        ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
                              nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
+        ret = hybm_data_copy(g_entity, &copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
                              nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST,
+        ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST,
                              nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
+        ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
                              nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
         // copy_2d
-        ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+        hybm_copy_2d_params copy2DParams = {g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1};
+        ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+        ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+        ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+        ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
 
-        ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+        ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
     }

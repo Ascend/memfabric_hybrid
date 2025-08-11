@@ -256,7 +256,8 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     }
 
     for (auto i = 0U; i < batchSize; i++) {
-        ret = hybm_data_copy(entity_, srcAddresses[i], mappedAddress[i], dataSizes[i], HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+        hybm_copy_params copyParams = {srcAddresses[i], mappedAddress[i], dataSizes[i]};
+        ret = hybm_data_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         if (ret != 0) {
             SM_LOG_ERROR("copy data failed:" << ret);
             return ret;

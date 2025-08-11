@@ -70,51 +70,62 @@ protected:
 
 TEST_F(HybmDataOpEntryTest, hybm_data_copy_ShouldReturnOK)
 {
-    auto ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize,
+    hybm_copy_params copyParams = {g_reservedMem, g_reservedMem, g_allocSize};
+    auto ret = hybm_data_copy(g_entity, &copyParams,
                          HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 }
 
 TEST_F(HybmDataOpEntryTest, hybm_data_copy_ShouldReturnInvalidParam)
 {
-    auto ret = hybm_data_copy(nullptr, nullptr, nullptr, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    hybm_copy_params copyParams = {nullptr, nullptr, 0};
+    auto ret = hybm_data_copy(nullptr, &copyParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, nullptr, nullptr, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, g_reservedMem, nullptr, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    copyParams = {g_reservedMem, nullptr, 0};
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    copyParams = {g_reservedMem, g_reservedMem, 0};
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    copyParams = {g_reservedMem, g_reservedMem, g_allocSize};
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     auto startAddr = g_reservedMem;
     auto endAddr = g_reservedMem + g_localMemSize * g_rankSize;
-    ret = hybm_data_copy(g_entity, startAddr - 1, startAddr - 1, g_allocSize,
+    copyParams = {startAddr - 1, startAddr - 1, g_allocSize};
+    ret = hybm_data_copy(g_entity, &copyParams,
                          HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, endAddr, endAddr, g_allocSize, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
+    copyParams = {endAddr, endAddr, g_allocSize};
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, endAddr, endAddr, g_allocSize, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, startAddr - 1, startAddr - 1, g_allocSize,
+    copyParams = {startAddr - 1, startAddr - 1, g_allocSize};
+    ret = hybm_data_copy(g_entity, &copyParams,
                          HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, endAddr, endAddr, g_allocSize, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
+    copyParams = {endAddr, endAddr, g_allocSize};
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy(g_entity, endAddr, endAddr, g_allocSize, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = hybm_data_copy(g_entity, &copyParams, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     auto localEntity = hybm_create_entity(g_localEntityId, &g_options, 0);
     hybm_destroy_entity(localEntity, 0);
-    ret = hybm_data_copy(localEntity, g_reservedMem, g_reservedMem, g_allocSize, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE,
+    copyParams = {g_reservedMem, g_reservedMem, g_allocSize};
+    ret = hybm_data_copy(localEntity, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE,
                          nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmDataOpEntryTest, hybm_data_copy_2d_ShouldReturnOK)
 {
-    auto ret = hybm_data_copy_2d(g_entity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+    hybm_copy_2d_params copy2DParams = {g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1};
+    auto ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                                 HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 }
@@ -124,50 +135,63 @@ TEST_F(HybmDataOpEntryTest, hybm_data_copy_2d_ShouldReturnInvalidParam)
     auto startAddr = g_reservedMem;
     auto endAddr = g_reservedMem + g_localMemSize * g_rankSize;
 
-    auto ret = hybm_data_copy_2d(nullptr, nullptr, 0, nullptr, 0, 0, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    hybm_copy_2d_params copy2DParams = {nullptr, 0, nullptr, 0, 0, 0};
+    auto ret = hybm_data_copy_2d(nullptr, &copy2DParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, nullptr, 0, nullptr, 0, 0, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, 0, nullptr, 0, 0, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    copy2DParams = {startAddr, 0, nullptr, 0, 0, 0};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, g_allocSize, nullptr, 0, 0, 0,
+    copy2DParams = {startAddr, g_allocSize, nullptr, 0, 0, 0};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, g_allocSize, startAddr, 0, 0, 0,
+    copy2DParams = {startAddr, g_allocSize, startAddr, 0, 0, 0};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, g_allocSize, startAddr, g_allocSize, 0, 0,
+    copy2DParams = {startAddr, g_allocSize, startAddr, g_allocSize, 0, 0};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, g_allocSize, startAddr, g_allocSize, g_allocSize, 0,
+    copy2DParams = {startAddr, g_allocSize, startAddr, g_allocSize, g_allocSize, 0};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr, g_allocSize, startAddr, g_allocSize, g_allocSize, 1,
+    copy2DParams = {startAddr, g_allocSize, startAddr, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-    ret = hybm_data_copy_2d(g_entity, startAddr - 1, g_allocSize, startAddr - 1, g_allocSize, g_allocSize, 1,
+    copy2DParams = {startAddr - 1, g_allocSize, startAddr - 1, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1,
+
+    copy2DParams = {endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1,
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, startAddr - 1, g_allocSize, startAddr - 1, g_allocSize, g_allocSize, 1,
+    copy2DParams = {startAddr - 1, g_allocSize, startAddr - 1, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1,
+    copy2DParams = {endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    ret = hybm_data_copy_2d(g_entity, endAddr, g_allocSize, endAddr, g_allocSize, g_allocSize, 1,
+    ret = hybm_data_copy_2d(g_entity, &copy2DParams,
                             HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     auto localEntity = hybm_create_entity(g_localEntityId, &g_options, 0);
     hybm_destroy_entity(localEntity, 0);
-    ret = hybm_data_copy_2d(localEntity, g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1,
+    copy2DParams = {g_reservedMem, g_allocSize, g_reservedMem, g_allocSize, g_allocSize, 1};
+    ret = hybm_data_copy_2d(localEntity, &copy2DParams,
                             HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }

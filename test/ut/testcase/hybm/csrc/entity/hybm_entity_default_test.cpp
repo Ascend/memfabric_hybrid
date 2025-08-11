@@ -145,9 +145,11 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     std::vector<uint32_t> ranks;
     EXPECT_EQ(entity.RemoveImported(ranks), BM_NOT_INITIALIZED);
 
-    EXPECT_EQ(entity.CopyData(nullptr, nullptr, 0, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
+    hybm_copy_params params = {nullptr, nullptr, 0};
+    EXPECT_EQ(entity.CopyData(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
 
-    EXPECT_EQ(entity.CopyData2d(nullptr, 0, nullptr, 0, 0, 0, HYBM_DATA_COPY_DIRECTION_BUTT,
+    hybm_copy_2d_params params2D = {nullptr, 0, nullptr, 0, 0, 0};
+    EXPECT_EQ(entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT,
                                 nullptr, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.CheckAddressInEntity(nullptr, 0), false);

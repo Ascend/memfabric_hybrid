@@ -51,7 +51,7 @@ int32_t MemEntityDefault::CreateDataOperator()
 int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
     if (initialized) {
-        BM_LOG_WARN("the object is already initialized.");
+        BM_LOG_WARN("The MemEntity has already been initialized, no action needs.");
         return BM_OK;
     }
 
@@ -349,7 +349,7 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
     return segment_->RemoveImported(ranks);
 }
 
-int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length, hybm_data_copy_direction direction,
+int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_direction direction,
                                    void *stream, uint32_t flags) noexcept
 {
     if (!initialized || dataOperator_ == nullptr) {
@@ -357,11 +357,10 @@ int32_t MemEntityDefault::CopyData(const void *src, void *dest, uint64_t length,
         return BM_NOT_INITIALIZED;
     }
 
-    return dataOperator_->DataCopy(src, dest, length, direction, stream, flags);
+    return dataOperator_->DataCopy(params, direction, stream, flags);
 }
 
-int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
-                                     uint64_t height, hybm_data_copy_direction direction, void *stream,
+int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
                                      uint32_t flags) noexcept
 {
     if (!initialized || dataOperator_ == nullptr) {
@@ -369,7 +368,7 @@ int32_t MemEntityDefault::CopyData2d(const void *src, uint64_t spitch, void *des
         return BM_NOT_INITIALIZED;
     }
 
-    return dataOperator_->DataCopy2d(src, spitch, dest, dpitch, width, height, direction, stream, flags);
+    return dataOperator_->DataCopy2d(params, direction, stream, flags);
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept

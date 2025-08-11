@@ -72,4 +72,4 @@ private:
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
+#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H

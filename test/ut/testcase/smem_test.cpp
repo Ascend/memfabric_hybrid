@@ -235,7 +235,8 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
         memset(hostSrc, rank + 1, UT_COPY_MEM_SIZE);
         memset(hostDst, 0, UT_COPY_MEM_SIZE);
 
-        ret = smem_bm_copy(handle, hostSrc, remote, UT_COPY_MEM_SIZE, SMEMB_COPY_H2G, 0);
+        smem_copy_params params = {hostSrc, remote, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_H2G, 0);
         if (ret != 0) {
             exit(11);
         }
@@ -244,7 +245,8 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
             exit(12);
         }
 
-        ret = smem_bm_copy(handle, remote, hostDst, UT_COPY_MEM_SIZE, SMEMB_COPY_G2H, 0);
+        params = {remote, hostDst, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2H, 0);
         if (ret != 0) {
             exit(13);
         }
@@ -1376,9 +1378,10 @@ TEST_F(TestSmem, smem_bm_copy_failed_invalid_params)
 {
     char tmp[] = "test";
     smem_bm_t handle = reinterpret_cast<smem_bm_t>(tmp);
-    auto ret = smem_bm_copy(nullptr, nullptr, nullptr, 0, SMEMB_COPY_L2G, 0);
+    smem_copy_params params = {nullptr, nullptr, 0};
+    auto ret = smem_bm_copy(nullptr, &params, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
-    ret = smem_bm_copy(handle, nullptr, nullptr, 0, SMEMB_COPY_L2G, 0);
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
 }
 
@@ -1396,9 +1399,10 @@ TEST_F(TestSmem, smem_bm_copy_failed_manager_error)
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     ASSERT_EQ(ret, 0);
 
-    ret = smem_bm_copy(handle, nullptr, nullptr, 0, SMEMB_COPY_L2G, 0);
+    smem_copy_params params = {nullptr, nullptr, 0};
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
-    ret = smem_bm_copy(handle, nullptr, nullptr, 0, SMEMB_COPY_L2G, 0);
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
 
     smem_bm_uninit(0);
@@ -1409,9 +1413,10 @@ TEST_F(TestSmem, smem_bm_copy_2d_failed_invalid_params)
 {
     char tmp[] = "test";
     smem_bm_t handle = reinterpret_cast<smem_bm_t>(tmp);
-    auto ret = smem_bm_copy_2d(nullptr, nullptr, 0, nullptr, 0, 0, 0, SMEMB_COPY_L2G, 0);
+    smem_copy_2d_params copyParams = {nullptr, 0, nullptr, 0, 0, 0};
+    auto ret = smem_bm_copy_2d(nullptr, &copyParams, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
-    ret = smem_bm_copy_2d(handle, nullptr, 0, nullptr, 0, 0, 0, SMEMB_COPY_L2G, 0);
+    ret = smem_bm_copy_2d(handle, &copyParams, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
 }
 
@@ -1429,9 +1434,10 @@ TEST_F(TestSmem, smem_bm_copy_2d_failed_manager_error)
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     ASSERT_EQ(ret, 0);
 
-    ret = smem_bm_copy_2d(handle, nullptr, 0, nullptr, 0, 0, 0, SMEMB_COPY_L2G, 0);
+    smem_copy_2d_params copyParams = {nullptr, 0, nullptr, 0, 0, 0};
+    ret = smem_bm_copy_2d(handle, &copyParams, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
-    ret = smem_bm_copy_2d(handle, nullptr, 0, nullptr, 0, 0, 0, SMEMB_COPY_L2G, 0);
+    ret = smem_bm_copy_2d(handle, &copyParams, SMEMB_COPY_L2G, 0);
     EXPECT_NE(ret, 0);
 
     smem_bm_uninit(0);

@@ -194,36 +194,28 @@
 
 1. 拷贝数据对象
     ```c
-    int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, 
+    int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params,  
         smem_bm_copy_type t, uint32_t flags);
     ```
 
     |参数/返回值|含义|
     |-|-|
     |handle|BM handle|
-    |src|源gva地址|
-    |dest|目的gva地址|
-    |size|拷贝数据大小，单位字节|
+    |params|拷贝数据的相关参数|
     |t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
 
 1. 2D数据拷贝
     ```c
-    int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch,
-        void *dest, uint64_t dpitch, uint64_t width, uint64_t heigth,
-        smem_bm_copy_type t, uint32_t flags)
+    int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, 
+        smem_bm_copy_type t, uint32_t flags);
     ```
 
     |参数/返回值|含义|
     |-|-|
     |handle|BM handle|
-    |src|源gva地址|
-    |spitch|源数据拷贝间距|
-    |dest|目的gva地址|
-    |dpitch|目的数据拷贝间距|
-    |width|拷贝数据宽度|
-    |height|拷贝数据高度|
+    |params|拷贝数据的相关参数|
     |t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|

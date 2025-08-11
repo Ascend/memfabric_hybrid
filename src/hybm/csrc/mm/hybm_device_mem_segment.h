@@ -63,6 +63,7 @@ public:
 private:
     Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
+    Result ValidateExportSlice(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept;
 
 private:
     uint8_t *globalVirtualAddress_{nullptr};
