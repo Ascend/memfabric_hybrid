@@ -44,7 +44,7 @@ int HybmMapShareMemory(const char *name, void *expectAddr, uint64_t size, uint64
     }
 
     DevmmCommandMessage arg{};
-    arg.head.devId = gDeviceId;
+    arg.head.devId = static_cast<uint32_t>(gDeviceId);
     std::copy_n(name, strlen(name), arg.data.queryParam.name);
 
     auto ret = ioctl(gDeviceFd, DEVMM_SVM_IPC_MEM_QUERY, &arg);

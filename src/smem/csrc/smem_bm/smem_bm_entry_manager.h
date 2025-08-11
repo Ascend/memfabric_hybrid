@@ -1,5 +1,5 @@
 /*
-* Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+* Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
 #define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
@@ -72,4 +72,4 @@ private:
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
+#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
 #define MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
@@ -64,4 +64,4 @@ inline const char *SmLastError::GetAndClear(bool clear)
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
+#endif  // MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_SMEM_DEFINE_H
 #define MEM_FABRIC_HYBRID_SMEM_DEFINE_H
@@ -43,4 +43,4 @@ namespace smem {
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEM_FABRIC_HYBRID_SMEM_DEFINE_H
+#endif  // MEM_FABRIC_HYBRID_SMEM_DEFINE_H

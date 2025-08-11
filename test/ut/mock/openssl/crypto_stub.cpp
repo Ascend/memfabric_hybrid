@@ -2,7 +2,7 @@
 #include <ctime>
 
 /*
-Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 */
 constexpr int RETURN_OK = 1;
 constexpr int RETURN_ERROR = -1;

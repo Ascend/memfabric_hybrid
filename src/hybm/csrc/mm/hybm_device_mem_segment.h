@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
 #define MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+* Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEMFABRIC_HYBRID_MONOTONIC_H
 #define MEMFABRIC_HYBRID_MONOTONIC_H
@@ -157,4 +157,4 @@ inline uint64_t MonoPerfTrace::PeriodMs() const noexcept
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_MONOTONIC_H
+#endif  // MEMFABRIC_HYBRID_MONOTONIC_H
