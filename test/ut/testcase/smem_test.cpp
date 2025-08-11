@@ -124,6 +124,99 @@ TEST_F(TestSmem, two_card_shm_create_success)
         if (handle == nullptr) {
             exit(4);
         }
+
+
+        smem_shm_destroy(handle, 0);
+        smem_shm_uninit(0);
+        smem_uninit();
+    };
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            func(i, rankSize);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        FinalizeUTShareMem(shmFd);
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        if (needKillOthers) {
+            kill(pids[i], SIGKILL);
+        }
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0) {
+                needKillOthers = true;
+            }
+        } else {
+            needKillOthers = true;
+        }
+    }
+    FinalizeUTShareMem(shmFd);
+}
+
+TEST_F(TestSmem, two_card_shm_allgather_success)
+{
+    int shmFd = -1;
+    auto shmCreateRet = InitUTShareMem(shmFd);
+    ASSERT_EQ(shmCreateRet, true);
+    smem_set_log_level(0);
+    uint32_t rankSize = 2;
+    std::thread ts[rankSize];
+    auto func = [](uint32_t rank, uint32_t rankCount) {
+        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
+        void *gva;
+        int32_t ret = smem_init(0);
+        if (ret != 0) {
+            exit(1);
+        }
+
+        smem_shm_config_t config;
+        ret = smem_shm_config_init(&config);
+        if (ret != 0) {
+            exit(2);
+        }
+        ret = smem_shm_init(UT_IP_PORT, rankCount, rank, rank, &config);
+        if (ret != 0) {
+            exit(3);
+        }
+
+        auto handle = smem_shm_create(UT_SMEM_ID, rankCount, rank, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+        if (handle == nullptr) {
+            exit(4);
+        }
+        char send[] = "test";
+        uint32_t len = sizeof(send) - 1;
+        char recv[rankCount * len + 1];
+        ret = smem_shm_control_allgather(handle, send, len, recv, rankCount * len);
+        EXPECT_EQ(ret, 0);
+        char checkResult[rankCount * len + 1];
+        for (int i = 0; i < rankCount; ++i) {
+            std::strcat(checkResult, send);
+        }
+        EXPECT_EQ(std::strcmp(recv, checkResult), 0);
         smem_shm_destroy(handle, 0);
         smem_shm_uninit(0);
         smem_uninit();
