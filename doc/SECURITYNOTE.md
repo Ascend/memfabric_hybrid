@@ -25,7 +25,7 @@
 配置关闭tls:
 export SMEM_CONF_STORE_TLS_ENABLE=0
 配置打开tls:
-export SMEM_CONF_STORE_TLS_ENABLE=1(或者不设置MEMFABRIC_HYBRID_TLS_ENABLE环境变量)
+export SMEM_CONF_STORE_TLS_ENABLE=1(或者不设置SMEM_CONF_STORE_TLS_ENABLE环境变量)
 export SMEM_CONF_STORE_TLS_INFO=$'\
 {
     "tlsCaPath": "/etc/ssl/certs/",
