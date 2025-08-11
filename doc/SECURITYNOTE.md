@@ -18,7 +18,7 @@
 |特殊场景|无|
 
 说明：
-支持通过环境变量 `SMEM_CONF_STORE_TLS_ENABLE`和`SMEM_CONF_STORE_TLS_INFO` 配置TLS秘钥证书等，进行tls安全连接。系统启动后，建议删除本地秘钥证书等信息敏感文件。
+支持通过环境变量 `SMEM_CONF_STORE_TLS_ENABLE`和`SMEM_CONF_STORE_TLS_INFO` 配置TLS秘钥证书等，进行tls安全连接，建议用户开启TLS加密配置，保证通信通信安全。系统启动后，建议删除本地秘钥证书等信息敏感文件。
 用户通过json字符串形式从环境变量 SMEM_CONF_STORE_TLS_INFO 传入tlsOption相关参数。
 例如，在终端输入：
 ```
