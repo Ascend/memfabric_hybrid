@@ -168,5 +168,57 @@ Result MmcBmProxy::Get(mmc_buffer *buf, uint64_t bmAddr, uint64_t size)
         return MMC_ERROR;
     }
 }
+
+Result MmcBmProxy::Put(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob) const
+{
+    if (handle_ == nullptr) {
+        MMC_LOG_ERROR("Failed to get data to smem bm, handle is null");
+        return MMC_ERROR;
+    }
+    smem_bm_copy_type type = bufArr.Type() == 0 ? SMEMB_COPY_H2G : SMEMB_COPY_L2G;
+
+    // MmcBufferArray only support oneDim buffers
+    if (bufArr.TotalSize() != blob.size_) {
+        MMC_LOG_ERROR("Failed to put data to smem bm, total buffer size : " << bufArr.TotalSize()
+                << " is not equal to bm block size: " << blob.size_);
+        return MMC_ERROR;
+    }
+
+    size_t shift = 0;
+    for (const auto &buffer : bufArr.Buffers()) {
+        MMC_RETURN_ERROR(smem_bm_copy(handle_, reinterpret_cast<void *>(buffer.addr),
+            reinterpret_cast<void *>(blob.gva_ + shift), buffer.oneDim.len, type, 0),
+            "Failed to put data to smem bm");
+        shift += buffer.oneDim.len;
+    }
+
+    return MMC_OK;
+}
+
+Result MmcBmProxy::Get(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob) const
+{
+    if (handle_ == nullptr) {
+        MMC_LOG_ERROR("Failed to get data to smem bm, handle is null");
+        return MMC_ERROR;
+    }
+    smem_bm_copy_type type = bufArr.Type() == 0 ? SMEMB_COPY_G2H : SMEMB_COPY_G2L;
+
+    // MmcBufferArray only support oneDim buffers
+    if (bufArr.TotalSize() != blob.size_) {
+        MMC_LOG_ERROR("Failed to get data from smem bm, total buffer size : " << bufArr.TotalSize()
+                << " is not equal to bm block size: " << blob.size_);
+        return MMC_ERROR;
+    }
+
+    size_t shift = 0;
+    for (const auto &buffer : bufArr.Buffers()) {
+        MMC_RETURN_ERROR(smem_bm_copy(handle_, reinterpret_cast<void *>(blob.gva_ + shift),
+            reinterpret_cast<void *>(buffer.addr), buffer.oneDim.len, type, 0),
+            "Failed to get data from smem bm");
+        shift += buffer.oneDim.len;
+    }
+
+    return MMC_OK;
+}
 }
 }

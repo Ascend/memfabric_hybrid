@@ -11,7 +11,9 @@
 #include <string>
 #include <unordered_set>
 #include <sstream>
+
 #include "mmc_def.h"
+#include "mmc_types.h"
 
 
 class DistributedObjectStore;
@@ -282,6 +284,23 @@ public:
 
 private:
     bool is2D(const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes);
+
+    int CheckInputAndIsAll2D(size_t batchSize,
+                             const std::vector<std::vector<uint8_t*>>& buffers,
+                             const std::vector<std::vector<size_t>>& sizes,
+                             bool& result);
+
+    void getBuffersIn2D(size_t batchSize,
+                        uint32_t type,
+                        const std::vector<std::vector<uint8_t*>>& bufferLists,
+                        const std::vector<std::vector<size_t>>& sizeLists,
+                        std::vector<mmc_buffer>& buffersIn2D);
+
+    void getBufferArrays(size_t batchSize,
+                         uint32_t type,
+                         const std::vector<std::vector<uint8_t*>>& bufferLists,
+                         const std::vector<std::vector<size_t>>& sizeLists,
+                         std::vector<ock::mmc::MmcBufferArray>& bufferArrays);
 };
 
 #endif

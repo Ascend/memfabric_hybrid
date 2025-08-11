@@ -11,13 +11,13 @@
 #include "mmc.h"
 #include "mmc_logger.h"
 #include "mmc_types.h"
-#include "mmc_last_error.h"
 #include "smem_bm_def.h"
 
 namespace py = pybind11;
 using namespace ock::mmc;
 
 constexpr int MAX_LAYER_NUM = 255;
+constexpr int MAX_BATCH_SIZE = 512;
 
 // ResourceTracker implementation using singleton pattern
 ResourceTracker &ResourceTracker::getInstance() {
@@ -482,7 +482,7 @@ int DistributedObjectStore::put_from_layers(const std::string& key, const std::v
     } else if (direct == SMEMB_COPY_H2G) {
         type = 0;
     } else {
-        MMC_LOG_ERROR("Invalid direct, only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
+        MMC_LOG_ERROR("Invalid direct(" << direct << "), only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
         return MMC_INVALID_PARAM;
     }
 
@@ -515,7 +515,7 @@ int DistributedObjectStore::put_from_layers(const std::string& key, const std::v
         return mmcc_put(key.c_str(), &buffer, options, 0);
     } else {
         std::vector<mmc_buffer> mmc_buffers;
-        for (size_t i = 0; i < layerNum; i+=1) {
+        for (size_t i = 0; i < layerNum; i += 1) {
             mmc_buffers.push_back({
                 .addr=reinterpret_cast<uint64_t>(buffers[i]),
                 .type=type,
@@ -523,7 +523,8 @@ int DistributedObjectStore::put_from_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        return MmcClientDefault::GetInstance()->Put(key, mmc_buffers, options, 0);
+        MmcBufferArray bufArr(mmc_buffers, type);
+        return MmcClientDefault::GetInstance()->Put(key, bufArr, options, 0);
     }
 }
 
@@ -532,7 +533,51 @@ std::vector<int> DistributedObjectStore::batch_put_from_layers(const std::vector
                                                                const std::vector<std::vector<size_t>>& sizes,
                                                                const int32_t& direct)
 {
-    return {};
+    const size_t batchSize = keys.size();
+    std::vector<int> results(batchSize, MMC_INVALID_PARAM);
+
+    uint32_t type;
+    if (direct == SMEMB_COPY_L2G) {
+        type = 1;
+    } else if (direct == SMEMB_COPY_H2G) {
+        type = 0;
+    } else {
+        MMC_LOG_ERROR("Invalid direct(" << direct << "), only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
+        return results;
+    }
+
+    if (batchSize != buffers.size() || batchSize != sizes.size()) {
+        MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size()
+                      << ", buffers=" << buffers.size()
+                      << ", sizes=" << sizes.size());
+        return results;
+    }
+
+    if (batchSize == 0 || batchSize > MAX_BATCH_SIZE) {
+        MMC_LOG_ERROR("Batch size is 0 or exceeds the limit of " << MAX_BATCH_SIZE);
+        return results;
+    }
+
+    bool all2D;
+    auto res = CheckInputAndIsAll2D(batchSize, buffers, sizes, all2D);
+    if (res != MMC_OK) {
+        MMC_LOG_ERROR("Failed to check if all layers are 2D");
+        return results;
+    }
+
+    mmc_put_options options{};
+    options.policy = NATIVE_AFFINITY;
+    if (all2D) {
+        std::vector<mmc_buffer> buffersIn2D;
+        getBuffersIn2D(batchSize, type, buffers, sizes, buffersIn2D);
+        MmcClientDefault::GetInstance()->BatchPut(keys, buffersIn2D, options, 0, results);
+    } else {
+        std::vector<MmcBufferArray> bufferArrays;
+        getBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
+        MmcClientDefault::GetInstance()->BatchPut(keys, bufferArrays, options, 0, results);
+    }
+
+    return results;
 }
 
 int DistributedObjectStore::get_into_layers(const std::string& key, const std::vector<uint8_t*>& buffers,
@@ -544,7 +589,7 @@ int DistributedObjectStore::get_into_layers(const std::string& key, const std::v
     } else if (direct == SMEMB_COPY_G2H) {
         type = 0;
     } else {
-        MMC_LOG_ERROR("Invalid direct, only 0 (SMEMB_COPY_L2G) and 3 (SMEMB_COPY_H2G) is supported");
+        MMC_LOG_ERROR("Invalid direct(" << direct << "), only 1 (SMEMB_COPY_G2L) and 2 (SMEMB_COPY_G2H) is supported");
         return MMC_INVALID_PARAM;
     }
 
@@ -575,7 +620,7 @@ int DistributedObjectStore::get_into_layers(const std::string& key, const std::v
         return mmcc_get(key.c_str(), &buffer, 0);
     } else {
         std::vector<mmc_buffer> mmc_buffers;
-        for (size_t i = 0; i < layerNum; i+=1) {
+        for (size_t i = 0; i < layerNum; i += 1) {
             mmc_buffers.push_back({
                 .addr=reinterpret_cast<uint64_t>(buffers[i]),
                 .type=type,
@@ -583,7 +628,8 @@ int DistributedObjectStore::get_into_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        return MmcClientDefault::GetInstance()->Get(key, mmc_buffers, 0);
+        MmcBufferArray bufArr(mmc_buffers, type);
+        return MmcClientDefault::GetInstance()->Get(key, bufArr, 0);
     }
 }
 
@@ -592,7 +638,49 @@ std::vector<int> DistributedObjectStore::batch_get_into_layers(const std::vector
                                                                const std::vector<std::vector<size_t>>& sizes,
                                                                const int32_t& direct)
 {
-    return {};
+    const size_t batchSize = keys.size();
+    std::vector<int> results(batchSize, MMC_INVALID_PARAM);
+
+    uint32_t type;
+    if (direct == SMEMB_COPY_G2L) {
+        type = 1;
+    } else if (direct == SMEMB_COPY_G2H) {
+        type = 0;
+    } else {
+        MMC_LOG_ERROR("Invalid direct(" << direct << "), only 1 (SMEMB_COPY_G2L) and 2 (SMEMB_COPY_G2H) is supported");
+        return results;
+    }
+
+    if (batchSize != buffers.size() || batchSize != sizes.size()) {
+        MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size()
+                      << ", buffers=" << buffers.size()
+                      << ", sizes=" << sizes.size());
+        return results;
+    }
+
+    if (batchSize == 0 || batchSize > MAX_BATCH_SIZE) {
+        MMC_LOG_ERROR("Batch size (" << batchSize << ") is 0 or exceeds the limit of " << MAX_BATCH_SIZE);
+        return results;
+    }
+
+    bool isAll2D;
+    auto res = CheckInputAndIsAll2D(batchSize, buffers, sizes, isAll2D);
+    if (res != MMC_OK) {
+        MMC_LOG_ERROR("Failed to check if all layers are 2D");
+        return results;
+    }
+
+    if (isAll2D) {
+        std::vector<mmc_buffer> buffersIn2D;
+        getBuffersIn2D(batchSize, type, buffers, sizes, buffersIn2D);
+        MmcClientDefault::GetInstance()->BatchGet(keys, buffersIn2D, 0, results);
+    } else {
+        std::vector<MmcBufferArray> bufferArrays;
+        getBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
+        MmcClientDefault::GetInstance()->BatchGet(keys, bufferArrays, 0, results);
+    }
+
+    return results;
 }
 
 bool DistributedObjectStore::is2D(const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes)
@@ -617,6 +705,81 @@ bool DistributedObjectStore::is2D(const std::vector<uint8_t*>& buffers, const st
     }
 
     return true;
+}
+
+int DistributedObjectStore::CheckInputAndIsAll2D(const size_t batchSize,
+                                                 const std::vector<std::vector<uint8_t*>>& buffers,
+                                                 const std::vector<std::vector<size_t>>& sizes,
+                                                 bool& result)
+{
+    for (size_t i = 0; i < batchSize; i += 1) {
+        const auto layerNum = buffers[i].size();
+        if (layerNum == 0 || layerNum > MAX_LAYER_NUM) {
+            MMC_LOG_ERROR("Layer number is 0 or exceeds the limit of " << MAX_LAYER_NUM);
+            return MMC_INVALID_PARAM;
+        }
+        if (sizes[i].size() != layerNum) {
+            MMC_LOG_ERROR("Unmatched number of layers and sizes");
+            return MMC_INVALID_PARAM;
+        }
+    }
+
+    result = true;
+    for (size_t i = 0; i < batchSize; i += 1) {
+        if (!is2D(buffers[i], sizes[i])) {
+            result = false;
+            break;
+        }
+    }
+    return MMC_OK;
+}
+
+void DistributedObjectStore::getBuffersIn2D(const size_t batchSize, const uint32_t type,
+                                            const std::vector<std::vector<uint8_t*>>& bufferLists,
+                                            const std::vector<std::vector<size_t>>& sizeLists,
+                                            std::vector<mmc_buffer>& buffersIn2D)
+{
+    for (size_t i = 0; i < batchSize; i += 1) {
+        const auto& buffers = bufferLists[i];
+        const auto& sizes = sizeLists[i];
+        const auto layerNum = buffers.size();
+        buffersIn2D.push_back({
+            .addr = reinterpret_cast<uint64_t>(buffers[0]),
+            .type = type,
+            .dimType = 1,
+            .twoDim = {
+                .dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                .layerOffset = 0,
+                .width = static_cast<uint32_t>(sizes[0]),
+                .layerNum = static_cast<uint16_t>(layerNum),
+                .layerCount = static_cast<uint16_t>(layerNum)
+            }
+        });
+    }
+}
+
+void DistributedObjectStore::getBufferArrays(const size_t batchSize, const uint32_t type,
+                                             const std::vector<std::vector<uint8_t*>>& bufferLists,
+                                             const std::vector<std::vector<size_t>>& sizeLists,
+                                             std::vector<MmcBufferArray>& bufferArrays)
+{
+    for (size_t i = 0; i < batchSize; i += 1) {
+        const auto& buffers = bufferLists[i];
+        const auto& sizes = sizeLists[i];
+        const auto layerNum = buffers.size();
+
+        std::vector<mmc_buffer> mmc_buffers;
+        for (size_t l = 0; l < layerNum; l+=1) {
+            mmc_buffers.push_back({
+                .addr=reinterpret_cast<uint64_t>(buffers[l]),
+                .type=type,
+                .dimType=0,
+                .oneDim = {.offset=0, .len=sizes[l]}
+            });
+        }
+        MmcBufferArray bufArr(mmc_buffers, type);
+        bufferArrays.push_back(bufArr);
+    }
 }
 
 void DefineMmcStructModule(py::module_& m)

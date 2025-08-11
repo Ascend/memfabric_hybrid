@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <atomic>
 
+#include <mmc_def.h>
+
 namespace ock {
 namespace mmc {
 using Result = int32_t;
@@ -60,6 +62,7 @@ enum MediaType : uint8_t {
     MEDIA_HBM,
     MEDIA_NONE,
 };
+
 struct MmcLocation {
     uint32_t rank_;
     MediaType mediaType_;
@@ -115,6 +118,29 @@ inline uint64_t GetSequenceByOperateId(uint64_t operateId)
     requestUnion.operateId_ = operateId;
     return requestUnion.sequence_;
 }
+
+class MmcBufferArray {
+public:
+    MmcBufferArray() : type_(0), totalSize_(0) {}
+
+    MmcBufferArray(const std::vector<mmc_buffer>& buffers, const uint32_t type)
+        : buffers_(buffers), type_(type)
+    {
+        totalSize_ = 0;
+        for (const auto &buf : buffers_) {
+            totalSize_ += buf.oneDim.len;
+        }
+    }
+
+    const std::vector<mmc_buffer>& Buffers() const { return buffers_; }
+    uint32_t Type() const { return type_; }
+    size_t TotalSize() const { return totalSize_; }
+
+private:
+    std::vector<mmc_buffer> buffers_; // only support dimType=0
+    uint32_t type_; // 0 dram, 1 hbm
+    size_t totalSize_; // cached total size
+};
 
 }  // namespace mmc
 }  // namespace ock

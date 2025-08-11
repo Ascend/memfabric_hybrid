@@ -26,15 +26,21 @@ public:
 
     Result Get(const char *key, mmc_buffer *buf, uint32_t flags);
 
-    Result Put(const std::string &key, std::vector<mmc_buffer>& buffers, mmc_put_options &options, uint32_t flags);
+    Result Put(const std::string &key, const MmcBufferArray& bufArr, mmc_put_options &options, uint32_t flags);
 
-    Result Get(const std::string &key, std::vector<mmc_buffer>& buffers, uint32_t flags);
+    Result Get(const std::string &key, const MmcBufferArray& bufArr, uint32_t flags);
 
     Result BatchPut(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs, mmc_put_options& options,
                     uint32_t flags, std::vector<int>& batchResult);
 
     Result BatchGet(const std::vector<std::string>& keys, std::vector<mmc_buffer>& bufs, uint32_t flags,
                     std::vector<int>& batchResult);
+
+    Result BatchPut(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufArrs,
+                    mmc_put_options& options, uint32_t flags, std::vector<int>& batchResult);
+
+    Result BatchGet(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufArrs,
+                    uint32_t flags, std::vector<int>& batchResult);
 
     mmc_location_t GetLocation(const char *key, uint32_t flags);
 
@@ -90,11 +96,13 @@ private:
 
     inline uint32_t RankId(const affinity_policy &policy);
 
-    Result ValidateBatchPutInputs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs);
-
     Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
                                const mmc_put_options& options, uint32_t flags, uint64_t operateId,
                                std::vector<int>& batchResult);
+
+    Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufs,
+                               const mmc_put_options& options, uint32_t flags, uint64_t operateId,
+                               std::vector<int>& batchResult, BatchAllocResponse& allocResponse);
 
     static std::mutex gClientHandlerMtx;
     static MmcClientDefault *gClientHandler;

@@ -9,9 +9,9 @@
 #include "smem.h"
 #include "smem_bm.h"
 #include "mmc_def.h"
+#include "mmc_mem_blob.h"
 #include "mmc_types.h"
 #include "mmc_ref.h"
-#include "mmc_meta_common.h"
 
 typedef struct {
     uint32_t deviceId;
@@ -48,6 +48,8 @@ public:
     void DestroyBm();
     Result Put(mmc_buffer *buf, uint64_t bmAddr, uint64_t size);
     Result Get(mmc_buffer *buf, uint64_t bmAddr, uint64_t size);
+    Result Put(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob) const;
+    Result Get(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob) const;
     uint64_t GetGva() const { return reinterpret_cast<uint64_t>(gva_); }
     MediaType GetMediaType() const {return mediaType_; }
     inline uint32_t RankId() const;
