@@ -47,6 +47,21 @@ typedef struct {
     uint32_t flags;                   /* other flag, default 0 */
 } smem_bm_config_t;
 
+typedef struct {
+    const void *src;
+    uint64_t spitch;
+    void *dest;
+    uint64_t dpitch;
+    uint64_t width;
+    uint64_t height;
+} smem_copy_2d_params;
+
+typedef struct {
+    const void *src;
+    void *dest;
+    size_t count;
+} smem_copy_params;
+
 #ifdef __cplusplus
 }
 #endif

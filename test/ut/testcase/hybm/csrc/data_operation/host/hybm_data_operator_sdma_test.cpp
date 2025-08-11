@@ -47,25 +47,26 @@ protected:
 TEST_F(HybmDataOpSdmaTest, DataCopy_ShouldReturnSuccess)
 {
     int ret = 0;
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    hybm_copy_params params = {g_srcVA, g_dstVA, g_size};
+    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(g_srcVA, g_dstVA, g_size, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-    ret = g_dataOperator.DataCopyAsync(g_srcVA, g_dstVA, g_size, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopyAsync(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_ERROR);
 
     EXPECT_EQ(g_dataOperator.Wait(0), BM_ERROR);
@@ -74,27 +75,22 @@ TEST_F(HybmDataOpSdmaTest, DataCopy_ShouldReturnSuccess)
 TEST_F(HybmDataOpSdmaTest, DataCopy2D_ShouldReturnSuccess)
 {
     int ret = 0;
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    hybm_copy_2d_params params = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
+    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
-    EXPECT_EQ(ret, BM_OK);
-
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1,
-                                    HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = g_dataOperator.DataCopy2d(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
@@ -148,44 +144,45 @@ TEST_F(HybmDataOpSdmaTest, CopyHost2Gva2d_ShouldReturnFail_WhenAclApiFailed)
 {
     int ret = 0;
     MOCKER_CPP(&DlAclApi::AclrtMalloc, int (*)(void **, size_t, uint32_t)).stubs().will(returnValue(-1));
-    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    hybm_copy_2d_params params = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
+    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 
-    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyGva2Host2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
     GlobalMockObject::verify();
 
     MOCKER_CPP(&DlAclApi::AclrtMemcpy2d, int (*)(void *, size_t, const void *, size_t, size_t, size_t, uint32_t))
         .stubs().will(returnValue(-1));
-    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 
-    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyGva2Host2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
     GlobalMockObject::verify();
 
     MOCKER_CPP(&DlAclApi::AclrtMemcpyAsync, int (*)(void *, size_t, void *, size_t, uint32_t, void *))
         .stubs().will(returnValue(-1));
-    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 
-    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyGva2Host2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
     GlobalMockObject::verify();
 
     MOCKER_CPP(&DlAclApi::AclrtSynchronizeStream, int (*)(void *)).stubs().will(returnValue(-1));
-    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 
-    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyGva2Host2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
     GlobalMockObject::verify();
 
     MOCKER_CPP(&DlAclApi::AclrtFree, int (*)(void *)).stubs().will(returnValue(-1));
-    ret = g_dataOperator.CopyHost2Gva2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.CopyGva2Host2d(g_srcVA, g_size, g_dstVA, g_size, g_size, 1, nullptr);
+    ret = g_dataOperator.CopyGva2Host2d(params, nullptr);
     EXPECT_EQ(ret, BM_OK);
     GlobalMockObject::verify();
 }

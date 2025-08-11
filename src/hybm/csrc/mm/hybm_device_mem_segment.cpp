@@ -118,8 +118,7 @@ Result MemSegmentDevice::Export(std::string &exInfo) noexcept
     return BM_ERROR;
 }
 
-// export不可重入
-Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result MemSegmentDevice::ValidateExportSlice(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");
@@ -136,7 +135,13 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
         BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
         return BM_INVALID_PARAM;
     }
+    return BM_OK;
+}
 
+Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+{
+    Result status = ValidateExportSlice(slice, exInfo);
+    BM_ASSERT_RETURN(status == BM_OK, status);
     auto exp = exportMap_.find(slice->index_);
     if (exp != exportMap_.end()) {  // RtIpcSetMemoryName不支持重复调用
         exInfo = exp->second;

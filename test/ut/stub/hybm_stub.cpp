@@ -161,21 +161,20 @@ int32_t hybm_set_extra_context_stub(hybm_entity_t e, const void *context, uint32
     return 0;
 }
 
-int32_t hybm_data_copy_stub(hybm_entity_t e, const void *src, void *dest, size_t count, hybm_data_copy_direction direction,
+int32_t hybm_data_copy_stub(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
                        void *stream, uint32_t flags)
 {
-    memcpy(dest, src, count);
+    memcpy(params->dest, params->src, params->count);
     return 0;
 }
 
-int32_t hybm_data_copy_2d_stub(hybm_entity_t e, const void *src, uint64_t spitch,
-                          void *dest, uint64_t dpitch, uint64_t width, uint64_t height,
+int32_t hybm_data_copy_2d_stub(hybm_entity_t e, hybm_copy_2d_params *params,
                           hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
-    auto srcAddr = (uint64_t)src;
-    auto destAddr = (uint64_t)dest;
-    for (uint64_t i = 0; i < height; i++) {
-        memcpy((void *)(destAddr + i * dpitch), (const void *)(srcAddr + i * spitch), width);
+    auto srcAddr = (uint64_t)params->src;
+    auto destAddr = (uint64_t)params->dest;
+    for (uint64_t i = 0; i < params->height; i++) {
+        memcpy((void *)(destAddr + i * params->dpitch), (const void *)(srcAddr + i * params->spitch), params->width);
     }
     return 0;
 }

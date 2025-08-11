@@ -217,10 +217,11 @@ SMEM_API void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId)
     return reinterpret_cast<uint8_t *>(gvaAddress) + coreOption.singleRankVASpace * peerRankId;
 }
 
-SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t,
+SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t,
                               uint32_t flags)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;
@@ -230,11 +231,10 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
         return SM_INVALID_PARAM;
     }
 
-    return entry->DataCopy(src, dest, size, t, flags);
+    return entry->DataCopy(params->src, params->dest, params->count, t, flags);
 }
 
-SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spitch, void *dest, uint64_t dpitch,
-                                 uint64_t width, uint64_t heigth, smem_bm_copy_type t, uint32_t flags)
+SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
@@ -246,5 +246,6 @@ SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spi
         return SM_INVALID_PARAM;
     }
 
-    return entry->DataCopy2d(src, spitch, dest, dpitch, width, heigth, t, flags);
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
+    return entry->DataCopy2d(*params, t, flags);
 }

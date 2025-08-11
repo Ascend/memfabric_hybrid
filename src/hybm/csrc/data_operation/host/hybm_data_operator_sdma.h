@@ -15,12 +15,11 @@ public:
     int32_t Initialize() noexcept override;
     void UnInitialize() noexcept override;
 
-    int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction, void *stream,
+    int32_t DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,
                      uint32_t flags) noexcept override;
-    int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch, uint64_t width,
-                       uint64_t height, hybm_data_copy_direction direction, void *stream,
+    int32_t DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
                        uint32_t flags) noexcept override;
-    int32_t DataCopyAsync(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
+    int32_t DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                           void *stream, uint32_t flags) noexcept override;
 
     int32_t Wait(int32_t waitId) noexcept override;
@@ -31,14 +30,11 @@ private:
     int CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t count, void *stream) noexcept;
     int CopyGva2Device(void *deviceAddr, const void *gvaAddr, size_t count, void *stream) noexcept;
 
-    int CopyHost2Gva2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch, size_t width,
-                       uint64_t height, void *stream) noexcept;
-    int CopyDevice2Gva2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch, size_t width,
-                         uint64_t height, void *stream) noexcept;
-    int CopyGva2Host2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch, size_t width,
-                       uint64_t height, void *stream) noexcept;
-    int CopyGva2Device2d(void *gvaAddr, uint64_t dpitch, const void *hostAddr, uint64_t spitch, size_t width,
-                         uint64_t height, void *stream) noexcept;
+    int CopyHost2Gva2d(hybm_copy_2d_params &params, void *stream) noexcept;
+    int CopyDevice2Gva2d(hybm_copy_2d_params &params, void *stream) noexcept;
+    int CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) noexcept;
+    int CopyGva2Device2d(hybm_copy_2d_params &params, void *stream) noexcept;
+    int CheckDevice2Gva2dStatus(hybm_copy_2d_params &params) noexcept;
 
 private:
     bool inited_ = false;
