@@ -138,7 +138,7 @@ Result MmcBmProxy::Get(const mmc_buffer* buf, uint64_t bmAddr, uint64_t size)
     }
     smem_bm_copy_type type = buf->type == 0 ? SMEMB_COPY_G2H : SMEMB_COPY_G2L;
     if (buf->dimType == 0) {
-        if (buf->oneDim.len != size) {
+        if (buf->oneDim.len > size) {
             MMC_LOG_ERROR("Failed to get data to smem bm, buf length: " << buf->oneDim.len
                           << " not equal data length: " << size);
             return MMC_ERROR;

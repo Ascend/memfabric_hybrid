@@ -219,7 +219,7 @@ TEST_F(TestMmcBmProxy, Get_OneDimSuccess)
 TEST_F(TestMmcBmProxy, Get_OneDimSizeMismatch)
 {
     InitBmWithConfig();
-    oneDimBuffer.oneDim.len = 512;
+    oneDimBuffer.oneDim.len = 2048;
     Result ret = proxy->Get(&oneDimBuffer, 0x2000, 1024);
     EXPECT_EQ(ret, MMC_ERROR);
 }
