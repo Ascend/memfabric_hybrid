@@ -106,6 +106,16 @@ struct AccTcpServerOptions {
 };
 
 /**
+ * @brief Callback function of private key password decryptor, see @RegisterDecryptHandler
+ *
+ * @param cipherText       [in] the encrypted text(private key password)
+ * @param plainText        [out] the decrypted text(private key password)
+ * @param plaintextLen     [in] the length of plainText
+ */
+using AccDecryptHandler =
+    std::function<int(const std::string &cipherText, char *plainText, int32_t &plainTextLen)>;
+
+/**
  * @brief Tls related option, required if TLS enabled
  */
 struct AccTlsOption {
@@ -117,7 +127,7 @@ struct AccTlsOption {
     std::set<std::string> tlsCaFile;  /* paths of ca */
     std::set<std::string> tlsCrlFile; /* path of crl file */
     std::string tlsPk;                /* private key */
-    std::string tlsPkPwd;             /* private key加密文件->可选传入 */
+    std::string tlsPkPwd;             /* private key的加密密码->可选传入 */
 
     AccTlsOption() : enableTls(false)
     {

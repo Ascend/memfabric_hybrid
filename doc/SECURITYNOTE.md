@@ -93,6 +93,7 @@ export SMEM_CONF_STORE_TLS_INFO=$'\
 | 注册处理新请求事件函数              | `void RegisterNewRequestHandler(int16_t msgType, const AccNewReqHandler &h);` |
 | 注册处理断链事件函数            | `void RegisterLinkBrokenHandler(const AccLinkBrokenHandler &h);` |
 | 注册处理新链接事件函数              | `void RegisterNewLinkHandler(const AccNewLinkHandler &h);` |
+| 注册密码解密的函数 | `void RegisterDecryptHandler(const AccDecryptHandler &h);` |
 | 加载安全认证所需动态库          | `int32_t LoadDynamicLib(const std::string &dynLibPath);` |
 
 

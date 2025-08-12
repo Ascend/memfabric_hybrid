@@ -117,6 +117,14 @@ public:
     virtual void RegisterNewRequestHandler(int16_t msgType, const AccClientReqHandler &h) = 0;
 
     /**
+     * @brief Register the handler for decryption of private key password.
+     * If the private key is encrypted, this handler is needed to be set.
+     *
+     * @param h            [in] handler
+     */
+    virtual void RegisterDecryptHandler(const AccDecryptHandler &h) = 0;
+
+    /**
      * @brief Get ip and port string
      *
      * @return str

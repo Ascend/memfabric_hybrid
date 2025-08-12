@@ -14,9 +14,9 @@ extern "C" {
 /**
  * @brief Callback function of private key password decryptor, see smem_register_decrypt_handler
  *
- * @param cipherText       [in] the encrypted text(private password)
+ * @param cipherText       [in] the encrypted text(private key password)
  * @param cipherTextLen    [in] the length of encrypted text
- * @param plainText        [out] the decrypted text(private password)
+ * @param plainText        [out] the decrypted text(private key password)
  * @param plaintextLen     [in] the length of plainText
  */
 typedef int (*smem_decrypt_handler)(const char *cipherText, int *cipherTextLen, char *plainText, int *plainTextLen);

@@ -42,6 +42,8 @@ public:
 
     void RegisterNewRequestHandler(int16_t msgType, const AccClientReqHandler &h) override;
 
+    void RegisterDecryptHandler(const AccDecryptHandler &h) override;
+
     std::string IpAndPort() const override;
 
     void SetServerIpAndPort(std::string serverIp, uint16_t serverPort) override;
@@ -73,6 +75,7 @@ protected:
 
 protected:
     AccClientReqHandler newRequestHandle_[UNO_48]{};
+    AccDecryptHandler decryptHandler_ = nullptr;
     AccTcpLinkPtr link_ = nullptr;
     AccConnReq reqforReConn_{};
     uint32_t seqNo_ = 0;
@@ -159,6 +162,13 @@ inline void AccTcpClientDefault::RegisterNewRequestHandler(int16_t msgType, cons
     ASSERT_RET_VOID(h != nullptr);
     ASSERT_RET_VOID(newRequestHandle_[msgType] == nullptr);
     newRequestHandle_[msgType] = h;
+}
+
+inline void AccTcpClientDefault::RegisterDecryptHandler(const AccDecryptHandler &h)
+{
+    ASSERT_RET_VOID(h != nullptr);
+    ASSERT_RET_VOID(decryptHandler_ == nullptr);
+    decryptHandler_ = h;
 }
 }  // namespace acc
 }  // namespace ock

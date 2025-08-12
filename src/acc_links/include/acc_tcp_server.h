@@ -44,16 +44,6 @@ using AccReqSentHandler =
 using AccLinkBrokenHandler = std::function<int32_t(const AccTcpLinkComplexPtr &link)>;
 
 /**
- * @brief Callback function of private key password decryptor, see @AccTcpServer::RegisterDecryptHandler
- *
- * @param cipherText       [in] the encrypted text(private password)
- * @param plainText        [out] the decrypted text(private password)
- * @param plaintextLen     [in] the length of plainText
- */
-using AccDecryptHandler =
-    std::function<int(const std::string &cipherText, char *plainText, int32_t &plainTextLen)>;
-
-/**
  * @brief Tcp Server for p2p communication, can be two mode:
  * 1) AccTcpServer <-> AccTcpClient
  * 2) AccTcpServer <-> AccTcpServer
@@ -153,7 +143,7 @@ public:
     
     /**
      * @brief Register the handler for decryption of private key password.
-     * If the private key is encrypted, this hanlder is needed to be set.
+     * If the private key is encrypted, this handler is needed to be set.
      *
      * @param h            [in] handler
      */

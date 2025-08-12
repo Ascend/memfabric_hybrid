@@ -224,6 +224,10 @@ Result AccTcpClientDefault::GenerateSslCtx()
         tmpHelperPtr = sslHelper_;
     }
 
+    if (!tlsOption_.tlsPkPwd.empty()) { // if private key is encrypted, register decrypt handler
+        tmpHelperPtr->RegisterDecryptHandler(decryptHandler_);
+    }
+
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     if (tmpSslCtx == nullptr) {
         LOG_ERROR("Failed to create client ssl ctx");

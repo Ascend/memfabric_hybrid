@@ -70,10 +70,10 @@
     ```
     |参数/返回值|含义|
     |-|-|
-    |cipherText|密文（加密的密钥）|
+    |cipherText|密文（加密的用来加密私钥的密码）|
     |cipherTextLen|密文的长度|
-    |plainText|解密后的密钥（出参）|
-    |plainTextLen|解密后的密钥长度|
+    |plainText|解密后的密码（出参）|
+    |plainTextLen|解密后的密码长度|
     |返回值|错误信息|
 
 ##### BM接口列表
