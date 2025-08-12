@@ -30,6 +30,7 @@ typedef struct {
     char tlsCrlPath[PATH_MAX_SIZE];
     char tlsCertPath[PATH_MAX_SIZE];
     char tlsKeyPath[PATH_MAX_SIZE];
+    char tlsKeyPassPath[PATH_MAX_SIZE];
     char packagePath[PATH_MAX_SIZE];
 } mmc_tls_config;
 

@@ -116,10 +116,14 @@ Result NetEngineAcc::StartInner()
     tlsOpt.tlsCrlFile.insert(options_.tlsOption.tlsCrlPath);
     tlsOpt.tlsCert = options_.tlsOption.tlsCertPath;
     tlsOpt.tlsPk = options_.tlsOption.tlsKeyPath;
+    tlsOpt.tlsPkPwd = options_.tlsOption.tlsKeyPassPath;
 
     if (tlsOpt.enableTls) {
         MMC_RETURN_ERROR(server_->LoadDynamicLib(options_.tlsOption.packagePath),
             "Failed to load openssl dynamic library");
+        if (!tlsOpt.tlsPkPwd.empty()) {
+            server_->RegisterDecryptHandler(DecryptHandler);
+        }
     }
 
     /* start server, listen and thread will be started */
@@ -312,7 +316,7 @@ Result NetEngineAcc::HandleNewLink(const TcpConnReq &req, const TcpLinkPtr &link
 
     auto newLinkAcc = MmcMakeRef<NetLinkAcc>(peerId, link);
     MMC_ASSERT_RETURN(newLinkAcc != nullptr, MMC_NEW_OBJECT_FAILED);
-    MMC_LOG_INFO("NEW Link " << newLinkAcc.Get());
+    MMC_LOG_INFO("NEW Link");
 
     /* add into peer link map */
     peerLinkMap_->Add(peerId, newLinkAcc);
@@ -463,6 +467,12 @@ Result NetEngineAcc::HandleAllRequests4Response(const TcpReqContext &context)
     }
 
     return MMC_OK;
+}
+
+int32_t NetEngineAcc::DecryptHandler(const std::string &cipherText, char *plainText, int32_t &plainTextLen)
+{
+    std::copy_n(cipherText.c_str(), plainTextLen, plainText);
+    return 0;
 }
 }
 }

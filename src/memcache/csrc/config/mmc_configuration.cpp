@@ -445,12 +445,13 @@ void Configuration::LoadConfigurations()
 void Configuration::GetTlsConfig(mmc_tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_TLS_ENABLE);
-    strncpy(tlsConfig.tlsTopPath, GetString(ConfConstant::OCK_MMC_TLS_TOP_PATH).c_str(), PATH_MAX_SIZE);
-    strncpy(tlsConfig.tlsCaPath, GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_SIZE);
-    strncpy(tlsConfig.tlsCrlPath, GetString(ConfConstant::OCK_MMC_TLS_CRL_PATH).c_str(), PATH_MAX_SIZE);
-    strncpy(tlsConfig.tlsCertPath, GetString(ConfConstant::OCK_MMC_TLS_CERT_PATH).c_str(), PATH_MAX_SIZE);
-    strncpy(tlsConfig.tlsKeyPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PATH).c_str(), PATH_MAX_SIZE);
-    strncpy(tlsConfig.packagePath, GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_SIZE);
+    strncpy(tlsConfig.tlsTopPath, GetString(ConfConstant::OCK_MMC_TLS_TOP_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.tlsCaPath, GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.tlsCrlPath, GetString(ConfConstant::OCK_MMC_TLS_CRL_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.tlsCertPath, GetString(ConfConstant::OCK_MMC_TLS_CERT_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.tlsKeyPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.tlsKeyPassPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PASS_PATH).c_str(), PATH_MAX_LEN);
+    strncpy(tlsConfig.packagePath, GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_LEN);
 }
 
 int Configuration::ValidateTLSConfig(const mmc_tls_config &tlsConfig)
@@ -460,9 +461,9 @@ int Configuration::ValidateTLSConfig(const mmc_tls_config &tlsConfig)
     }
 
     const std::map<std::string, std::string> compulsoryMap{
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCaPath), "ca path"},
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCertPath), "cert path"},
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsKeyPath), "key path"},
+        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCaPath), "CA(Certificate Authority) file"},
+        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCertPath), "certificate file"},
+        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsKeyPath), "private key file"},
         {std::string(tlsConfig.packagePath), "package path"},
     };
 
@@ -473,7 +474,12 @@ int Configuration::ValidateTLSConfig(const mmc_tls_config &tlsConfig)
     if (!std::string(tlsConfig.tlsCrlPath).empty()) {
         MMC_RETURN_ERROR(ValidatePathNotSymlink(
             (std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCrlPath)).c_str()),
-            "crl path does not exist or is a symlink");
+            "CRL(Certificate Revocation List) file does not exist or is a symlink");
+    }
+    if (!std::string(tlsConfig.tlsKeyPassPath).empty()) {
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(
+            (std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsKeyPassPath)).c_str()),
+            "private key passphrase file does not exist or is a symlink");
     }
 
     return MMC_OK;

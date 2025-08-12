@@ -100,12 +100,7 @@ public:
     {
         std::lock_guard<Spinlock> guard(obj.spinlock_);
         os << "MmcMemObjMeta{numBlobs=" << static_cast<int>(obj.numBlobs_) << ",size=" << obj.size_
-           << ",priority=" << obj.priority_ << ",prot=" << obj.prot_ << ", blobs: ";
-        std::vector<MmcMemBlobPtr> blobs = obj.GetBlobs();
-        for (auto &blob : blobs) {
-            os << *(blob.Get()) << ",";
-        }
-        os << "}";
+           << ",priority=" << obj.priority_ << ",prot=" << obj.prot_ << "}";
         return os;
     }
 

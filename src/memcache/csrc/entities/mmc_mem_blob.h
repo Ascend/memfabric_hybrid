@@ -171,8 +171,8 @@ inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobA
         return MMC_UNMATCHED_RET;
     }
 
-    MMC_LOG_INFO("update [" << this << "] state from " << std::to_string(state_) << " to ("
-                            << std::to_string(retIter->second.state_) << ")");
+    MMC_LOG_INFO("update blob state from " << std::to_string(state_) << " to ("
+        << std::to_string(retIter->second.state_) << ")");
 
     state_ = retIter->second.state_;
     if (retIter->second.action_) {

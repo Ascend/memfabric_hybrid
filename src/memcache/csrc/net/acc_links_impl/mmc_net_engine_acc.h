@@ -40,6 +40,8 @@ private:
     Result HandleLinkBroken(const TcpLinkPtr &link) const;
     Result HandleAllRequests4Response(const TcpReqContext &context);
 
+    static int32_t DecryptHandler(const std::string &cipherText, char *plainText, int32_t &plainTextLen);
+
 private:
     /* hot used variables */
     TcpServerPtr server_;

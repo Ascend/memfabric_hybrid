@@ -2,9 +2,11 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption, load_pem_private_key
+from cryptography.hazmat.primitives.serialization import (Encoding, PrivateFormat, NoEncryption, load_pem_private_key,
+                                                          BestAvailableEncryption)
 from datetime import datetime, timedelta
 import argparse
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ca_cert_path', type=str, help='The path to load the certificate of ca',
@@ -15,6 +17,9 @@ parser.add_argument('--client_cert_path', type=str, help='The path to save the c
                     default='/opt/ock/security/certs/client.cert.pem')
 parser.add_argument('--client_key_path', type=str, help='The path to save the private key of the client',
                     default='/opt/ock/security/certs/client.private.key.pem')
+parser.add_argument('--passphrase', type=str, help='Passphrase for encrypting the private key', default=None)
+parser.add_argument('--passphrase_file', type=str, help='File to save the passphrase', 
+                    default='/opt/ock/security/certs/client.passphrase')
 args = parser.parse_args()
 
 
@@ -55,12 +60,24 @@ client_cert = x509.CertificateBuilder().subject_name(
     datetime.utcnow() + timedelta(days=365)
 ).sign(root_private_key, hashes.SHA256())
 
+# 确定私钥加密方式
+if args.passphrase:
+    encryption = BestAvailableEncryption(args.passphrase.encode())
+    # 保存passphrase到文件（如果指定了文件路径）
+    if args.passphrase_file:
+        with open(args.passphrase_file, "w") as f:
+            f.write(args.passphrase)
+        # 设置密码文件权限为600 (仅所有者可读写)
+        os.chmod(args.passphrase_file, 0o600)
+else:
+    encryption = NoEncryption()
+
 # 保存客户端证书的私钥和证书
 with open(args.client_key_path, "wb") as f:
     f.write(client_private_key.private_bytes(
         encoding=Encoding.PEM,
         format=PrivateFormat.PKCS8,
-        encryption_algorithm=NoEncryption()
+        encryption_algorithm=encryption
     ))
 
 with open(args.client_cert_path, "wb") as f:
