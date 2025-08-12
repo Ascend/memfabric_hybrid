@@ -99,7 +99,13 @@ public:
         return MMC_UNMATCHED_KEY;
     }
 
-    Result Erase(const Key &key) override
+    Result Erase(const Key& key) override
+    {
+        Value value;
+        return Erase(key, value);
+    }
+
+    Result Erase(const Key& key, Value& value) override
     {
         std::lock_guard<std::mutex> guard(mutex_);
         auto iter = metaMap_.find(key);
@@ -108,6 +114,7 @@ public:
             return MMC_UNMATCHED_KEY;
         }
         auto lruIter = iter->second.lruIter_;
+        value = iter->second.value_;
         if (metaMap_.erase(key) > 0) {
             lruList_.erase(lruIter);
             return MMC_OK;

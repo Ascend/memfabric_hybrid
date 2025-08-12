@@ -96,10 +96,6 @@ private:
 
     inline uint32_t RankId(const affinity_policy &policy);
 
-    Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<mmc_buffer>& bufs,
-                               const mmc_put_options& options, uint32_t flags, uint64_t operateId,
-                               std::vector<int>& batchResult);
-
     Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufs,
                                const mmc_put_options& options, uint32_t flags, uint64_t operateId,
                                std::vector<int>& batchResult, BatchAllocResponse& allocResponse);

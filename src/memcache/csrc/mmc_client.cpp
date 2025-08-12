@@ -292,11 +292,12 @@ MMC_API int32_t mmcc_batch_put(const char** keys, uint32_t keys_count, const mmc
     // remove invalid keys, bufs
     for (size_t i = 0; i < keys_count; ++i) {
         if (keys[i] == nullptr || strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
-            MMC_LOG_WARN("Remove invalid key: " << keys[i]);
+            MMC_LOG_ERROR("Remove invalid key: " << keys[i]);
             return MMC_INVALID_PARAM;  // 这个错误属于入参不合法，直接给调用者返回错误
         }
         if (bufs == nullptr || bufs[i].addr == 0 || bufs[i].type >= 2 || bufs[i].dimType >= 2) {
-            MMC_LOG_WARN("Remove invalid buf with key: " << keys[i]);
+            MMC_LOG_ERROR("Remove invalid buf with key: " << keys[i] << ", type: " << bufs[i].type
+                                                          << ", dim:" << bufs[i].dimType);
             return MMC_INVALID_PARAM;
         }
         keys_vector.emplace_back(keys[i]);

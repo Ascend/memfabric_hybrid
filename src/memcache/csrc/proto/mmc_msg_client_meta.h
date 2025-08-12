@@ -231,7 +231,7 @@ struct BatchAllocResponse : MsgBase {
     std::vector<uint16_t> prots_;             
     std::vector<uint8_t> priorities_;        
     std::vector<uint64_t> leases_;
-    std::vector<Result> results_;              
+    std::vector<Result> results_;
 
     BatchAllocResponse() : MsgBase{0, ML_BATCH_ALLOC_RESP, 0} {}
     BatchAllocResponse(

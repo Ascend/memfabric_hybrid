@@ -291,8 +291,8 @@ TEST_F(TestMmcMetaService, BatchQueryRequest)
     reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
     for (uint16_t i = 0U; i < 3U; ++i) {
         reqAlloc.key_ = "test_" + std::to_string(i);
-        reqAlloc.options_.numBlobs_ = i + 1;
-        keyMap.insert({reqAlloc.key_, {SIZE_32K, static_cast<uint8_t>(i + 1)}});
+        reqAlloc.options_.numBlobs_ = 1;
+        keyMap.insert({reqAlloc.key_, {SIZE_32K, static_cast<uint8_t>(reqAlloc.options_.numBlobs_)}});
         AllocResponse respAlloc;
         ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
 

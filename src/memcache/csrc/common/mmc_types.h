@@ -119,27 +119,35 @@ inline uint64_t GetSequenceByOperateId(uint64_t operateId)
     return requestUnion.sequence_;
 }
 
+inline uint64_t MmcBufSize(const mmc_buffer& buf)
+{
+    return buf.dimType == 0 ? buf.oneDim.len : buf.twoDim.width * buf.twoDim.layerNum;
+}
+
 class MmcBufferArray {
 public:
-    MmcBufferArray() : type_(0), totalSize_(0) {}
+    MmcBufferArray() : totalSize_(0) {}
 
-    MmcBufferArray(const std::vector<mmc_buffer>& buffers, const uint32_t type)
-        : buffers_(buffers), type_(type)
+    MmcBufferArray(const std::vector<mmc_buffer>& buffers) : buffers_(buffers)
     {
         totalSize_ = 0;
-        for (const auto &buf : buffers_) {
-            totalSize_ += buf.oneDim.len;
+        for (const auto& buf : buffers_) {
+            totalSize_ += MmcBufSize(buf);
         }
     }
 
+    void AddBuffer(const mmc_buffer& buf)
+    {
+        buffers_.push_back(buf);
+        totalSize_ += MmcBufSize(buf);
+    }
+
     const std::vector<mmc_buffer>& Buffers() const { return buffers_; }
-    uint32_t Type() const { return type_; }
     size_t TotalSize() const { return totalSize_; }
 
 private:
-    std::vector<mmc_buffer> buffers_; // only support dimType=0
-    uint32_t type_; // 0 dram, 1 hbm
-    size_t totalSize_; // cached total size
+    std::vector<mmc_buffer> buffers_{};
+    size_t totalSize_{0};
 };
 
 }  // namespace mmc

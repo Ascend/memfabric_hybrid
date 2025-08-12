@@ -121,6 +121,7 @@ int DistributedObjectStore::tearDownAll() {
 
 int DistributedObjectStore::put(const std::string &key, mmc_buffer &buffer) {
     mmc_put_options options{};
+    options.mediaType = 0; // will set by client proxy
     options.policy = NATIVE_AFFINITY;
     return mmcc_put(key.c_str(), &buffer, options, 0);
 }
@@ -246,7 +247,7 @@ std::vector<int> DistributedObjectStore::batchIsExist(const std::vector<std::str
 
     int32_t res = mmcc_batch_exist(c_keys, keys.size(), results.data(), 0);
     if (res != 0) {
-        MMC_LOG_ERROR("batch_exist failed");
+        MMC_LOG_ERROR("batch_exist failed:" << res);
         std::fill(results.begin(), results.end(), res);
         delete[] c_keys;
         return results;  // Return vector filled with error code
@@ -370,22 +371,12 @@ int DistributedObjectStore::register_buffer(void *buffer, size_t size) {
 }
 
 int DistributedObjectStore::get_into(const std::string &key, mmc_buffer &buffer) {
-    mmc_data_info info;
-    auto res = mmcc_query(key.c_str(), &info, 0);
-    if (res != MMC_OK) {
-        MMC_LOG_ERROR("Failed to query key " << key << ", error code: " << res);
-        py::gil_scoped_acquire acquire_gil;
-        return res;
-    }
-
-    res = mmcc_get(key.c_str(), &buffer, 0);
+    auto res = mmcc_get(key.c_str(), &buffer, 0);
     if (res != MMC_OK) {
         MMC_LOG_ERROR("Failed to get key " << key << ", error code: " << res);
-        py::gil_scoped_acquire acquire_gil;
-        return res;
     }
     py::gil_scoped_acquire acquire_gil;
-    return 0;
+    return res;
 }
 
 std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::string> &keys,
@@ -425,6 +416,7 @@ std::vector<int> DistributedObjectStore::batch_put_from(const std::vector<std::s
     }
 
     mmc_put_options options{};
+    options.mediaType = 0;
     options.policy = NATIVE_AFFINITY;
     mmcc_batch_put(keyArray, count, bufferArray, options, 0, results.data());
     return results;
@@ -523,7 +515,7 @@ int DistributedObjectStore::put_from_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        MmcBufferArray bufArr(mmc_buffers, type);
+        MmcBufferArray bufArr(mmc_buffers);
         return MmcClientDefault::GetInstance()->Put(key, bufArr, options, 0);
     }
 }
@@ -628,7 +620,7 @@ int DistributedObjectStore::get_into_layers(const std::string& key, const std::v
                 .oneDim = {.offset=0, .len=static_cast<uint64_t>(sizes[i])}
             });
         }
-        MmcBufferArray bufArr(mmc_buffers, type);
+        MmcBufferArray bufArr(mmc_buffers);
         return MmcClientDefault::GetInstance()->Get(key, bufArr, 0);
     }
 }
@@ -777,7 +769,7 @@ void DistributedObjectStore::getBufferArrays(const size_t batchSize, const uint3
                 .oneDim = {.offset=0, .len=sizes[l]}
             });
         }
-        MmcBufferArray bufArr(mmc_buffers, type);
+        MmcBufferArray bufArr(mmc_buffers);
         bufferArrays.push_back(bufArr);
     }
 }

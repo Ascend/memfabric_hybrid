@@ -10,6 +10,7 @@
 #include "mmc_msg_base.h"
 #include "mmc_msg_packer.h"
 #include <vector>
+#include <set>
 
 namespace ock {
 namespace mmc {
@@ -39,6 +40,10 @@ public:
     static Result ArrangeLocality(const MmcAllocators &allocators, const AllocOptions &allocReq,
                                   std::vector<MmcMemBlobPtr> &blobs)
     {
+        if (allocators.empty()) {
+            MMC_LOG_ERROR("Cannot allocate blob, allocators empty");
+            return MMC_ERROR;
+        }
         MmcLocation location{};
         location.mediaType_ = static_cast<MediaType>(allocReq.mediaType_);
         location.rank_ = allocReq.preferredRank_;
@@ -47,13 +52,16 @@ public:
             itPrefer = allocators.begin();
         }
         auto it = itPrefer;
+
+        std::set<MmcLocation> visited;
         for (uint32_t i = 0; i < allocReq.numBlobs_; i++) {
             while (true) {
-                if (it->first.mediaType_ == allocReq.mediaType_) {
+                if (!(visited.find(it->first) != visited.end()) && it->first.mediaType_ == allocReq.mediaType_) {
                     auto allocator = it->second;
                     MmcMemBlobPtr blob = allocator->Alloc(allocReq.blobSize_);
                     if (blob != nullptr) {
                         blobs.push_back(blob);
+                        visited.insert(it->first);  // 防止一个alloctor分配两个blob
                         break;
                     }
                 }

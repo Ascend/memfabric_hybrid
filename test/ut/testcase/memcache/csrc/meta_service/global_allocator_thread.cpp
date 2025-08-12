@@ -55,30 +55,31 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
     std::vector<MmcMemBlobPtr> blobs;
 
     allocReq.blobSize_ = SIZE_32K - 10000;
-    allocReq.numBlobs_ = 6;
+    allocReq.numBlobs_ = 1;
     allocReq.preferredRank_ = (rankId + 1) % worldSize;
-    allocReq.mediaType_ = 0;
+    allocReq.mediaType_ = MEDIA_DRAM;
 
     result = allocator->Alloc(allocReq, blobs);
     if (result != MMC_OK || blobs.size() != allocReq.numBlobs_) {
-        std::cout << "allocator alloc failed in rank: "<< rankId << std::endl;
+        std::cout << "allocator alloc failed in rank: " << rankId << ", ret:" << result << ", size:" << blobs.size()
+                  << std::endl;
         return -2;
     }
 
     std::vector<MmcMemBlobPtr> blobs1;
     allocReq.blobSize_ = SIZE_32K + 5000;
-    allocReq.numBlobs_ = 4;
+    allocReq.numBlobs_ = 1;
 
     result = allocator->Alloc(allocReq, blobs1);
     if (result != MMC_OK || blobs1.size() != allocReq.numBlobs_) {
-        std::cout << "allocator alloc failed in rank: "<< rankId << std::endl;
+        std::cout << "2 allocator alloc failed in rank: "<< rankId << std::endl;
         return -2;
     }
 
     for (auto &blob : blobs) {
         result = allocator->Free(blob);
         if (result != MMC_OK) {
-            std::cout << "allocator free failed in rank: "<< rankId << std::endl;
+            std::cout << "1 allocator free failed in rank: "<< rankId << std::endl;
             return -3;
         }
     }
@@ -86,7 +87,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
     for (auto &blob : blobs1) {
         result = allocator->Free(blob);
         if (result != MMC_OK) {
-            std::cout << "allocator free failed in rank: "<< rankId << std::endl;
+            std::cout << "2 allocator free failed in rank: "<< rankId << std::endl;
             return -3;
         }
     }

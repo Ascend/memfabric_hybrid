@@ -185,9 +185,7 @@ Result MmcMetaManager::BatchUpdateState(const std::vector<std::string>& keys, co
 Result MmcMetaManager::Remove(const std::string &key)
 {
     MmcMemObjMetaPtr objMeta;
-    // todo 优化为Erase接口返回meta
-    MMC_RETURN_ERROR(metaContainer_->Get(key, objMeta), "remove: Cannot find memObjMeta!");
-    MMC_RETURN_ERROR(metaContainer_->Erase(key), "remove: Fail to erase from container!");
+    MMC_RETURN_ERROR(metaContainer_->Erase(key, objMeta), "remove: Fail to erase from container!");
     {
         std::lock_guard<std::mutex> lg(removeListLock_);
         removeList_.push_back(objMeta);
