@@ -72,10 +72,6 @@ void MmcMetaMgrProxyDefault::ProcessAllocatedObject(size_t index, const MmcMemOb
     for (size_t j = 0; j < blobs.size(); ++j) {
         const MmcMemBlobDesc& blobDesc = blobs[j]->GetDesc();
         resp.blobs_[index][j] = blobDesc;
-
-        if (req.options_[index].preferredRank_ != blobDesc.rank_) {
-            HandleBlobReplication(index, j, blobDesc, objMeta, req);
-        }
     }
 }
 
