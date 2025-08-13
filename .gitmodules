@@ -8,4 +8,4 @@
 	branch = tags/v2.7
 [submodule "3rdparty/rapidjson"]
 	path = 3rdparty/rapidjson
-	url = https://github.com/Tencent/rapidjson.git
+	url = https://gitee.com/Tencent/RapidJSON.git

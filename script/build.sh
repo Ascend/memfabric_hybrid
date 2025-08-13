@@ -21,13 +21,30 @@ if [ -z "$BUILD_PYTHON" ]; then
     BUILD_PYTHON="ON"
 fi
 
+readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
+git submodule init
+git submodule update --recursive 3rdparty/rapidjson
+
 if [ "${BUILD_TESTS}" == "ON" ]; then
     echo "BUILD_TESTS, NO BUILD PYTHON"
     BUILD_PYTHON="OFF"
+
+    git submodule update --recursive test/3rdparty/googletest
+    git submodule update --recursive test/3rdparty/mockcpp
+
+    PROJECT_FULL_PATH=$(dirname "$ROOT_PATH")
+    MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
+    dos2unix "$MOCKCPP_PATH/include/mockcpp/JmpCode.h"
+    dos2unix "$MOCKCPP_PATH/include/mockcpp/mockcpp.h"
+    dos2unix "$MOCKCPP_PATH/src/JmpCode.cpp"
+    dos2unix "$MOCKCPP_PATH/src/JmpCodeArch.h"
+    dos2unix "$MOCKCPP_PATH/src/JmpCodeX64.h"
+    dos2unix "$MOCKCPP_PATH/src/JmpCodeX86.h"
+    dos2unix "$MOCKCPP_PATH/src/JmpOnlyApiHook.cpp"
+    dos2unix "$MOCKCPP_PATH/src/UnixCodeModifier.cpp"
 fi
 
 set -e
-readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
 
 cd ${ROOT_PATH}/..
