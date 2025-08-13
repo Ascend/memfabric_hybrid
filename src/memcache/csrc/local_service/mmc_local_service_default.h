@@ -7,6 +7,7 @@
 #include "mmc_meta_net_client.h"
 #include "mmc_local_service.h"
 #include "mmc_bm_proxy.h"
+#include "mmc_blob_common.h"
 #include "mmc_def.h"
 
 namespace ock {
@@ -23,9 +24,15 @@ public:
 
     Result RegisterBm();
 
+    Result BuildMeta();
+
     Result InitBm();
 
     Result DestroyBm();
+
+    Result Replicate(const std::string &key, const MmcMemBlobDesc &blobDesc);
+
+    Result ReplicateRemove(const std::string &key);
 
     const std::string &Name() const override;
 
@@ -44,9 +51,11 @@ private:
     MmcBmProxyPtr bmProxyPtr_;
     int32_t pid_ = 0;
     std::mutex mutex_;
+    std::mutex blobMutex_;
     bool started_ = false;
     std::string name_;
     mmc_local_service_config_t options_;
+    std::map<std::string, MmcMemBlobDesc> blobMap_;
 };
 
 inline const std::string &MmcLocalServiceDefault::Name() const

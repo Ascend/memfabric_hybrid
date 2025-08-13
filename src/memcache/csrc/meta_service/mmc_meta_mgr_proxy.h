@@ -30,7 +30,8 @@ public:
 
     virtual Result Remove(const RemoveRequest &req, Response &resp) = 0;
 
-    virtual Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo) = 0;
+    virtual Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo,
+        std::map<std::string, MmcMemBlobDesc> &blobMap) = 0;
 
     virtual Result Unmount(const MmcLocation &loc) = 0;
 

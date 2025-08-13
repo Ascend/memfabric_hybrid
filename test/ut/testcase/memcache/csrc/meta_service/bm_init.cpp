@@ -55,6 +55,7 @@ TEST_F(TestBmInit, Init)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");

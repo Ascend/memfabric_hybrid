@@ -14,7 +14,7 @@ std::mutex MmcBmProxyFactory::instanceMutex_;
 Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_create_config_t &createConfig)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (started_ || handle_ != nullptr) {
+    if (started_ && handle_ != nullptr) {
         MMC_LOG_INFO("MmcBmProxy " << name_ << " already init");
         return MMC_OK;
     }

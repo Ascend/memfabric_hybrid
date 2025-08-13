@@ -43,7 +43,9 @@ TEST_F(TestMmcGlobalAllocator, AllocOne)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -52,7 +54,9 @@ TEST_F(TestMmcGlobalAllocator, AllocOne)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -83,7 +87,9 @@ TEST_F(TestMmcGlobalAllocator, AllocMulti)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -92,7 +98,9 @@ TEST_F(TestMmcGlobalAllocator, AllocMulti)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -126,7 +134,9 @@ TEST_F(TestMmcGlobalAllocator, AllocCrossRank)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -135,7 +145,9 @@ TEST_F(TestMmcGlobalAllocator, AllocCrossRank)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -175,7 +187,9 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -184,7 +198,9 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -227,7 +243,9 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -236,7 +254,9 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -292,7 +312,9 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
     for (int i = 0; i < 5; i++) {
         MmcLocation loc;
@@ -301,7 +323,9 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
         loc.rank_ = i;
         info.bmAddr_ = size * i;
         info.capacity_ = size;
+        std::map<std::string, MmcMemBlobDesc> blobMap;
         allocator->Mount(loc, info);
+        allocator->BuildFromBlobs(loc, blobMap);
     }
 
     AllocOptions allocReq;
@@ -357,7 +381,10 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
     loc.rank_ = 6;
     info.bmAddr_ = size * 6;
     info.capacity_ = size;
+    std::map<std::string, MmcMemBlobDesc> blobMap;
     ret = allocator->Mount(loc, info);
+    EXPECT_EQ(ret, MMC_OK);
+    ret = allocator->BuildFromBlobs(loc, blobMap);
     EXPECT_EQ(ret, MMC_OK);
 
     std::vector<MmcMemBlobPtr> blobs2;
@@ -430,7 +457,10 @@ TEST_F(TestMmcGlobalAllocator, MountDuplicateLocation)
     loc.mediaType_ = MEDIA_DRAM;
     loc.rank_ = 0;
     info.capacity_ = size;
+    std::map<std::string, MmcMemBlobDesc> blobMap;
     Result ret = allocator->Mount(loc, info);
+    EXPECT_EQ(ret, MMC_OK);
+    ret = allocator->BuildFromBlobs(loc, blobMap);
     EXPECT_EQ(ret, MMC_OK);
 
     ret = allocator->Mount(loc, info);
@@ -447,7 +477,9 @@ TEST_F(TestMmcGlobalAllocator, UnmountInUseLocation)
     loc.rank_ = 0;
     MmcLocalMemlInitInfo info;
     info.capacity_ = size;
+    std::map<std::string, MmcMemBlobDesc> blobMap;
     allocator->Mount(loc, info);
+    allocator->BuildFromBlobs(loc, blobMap);
 
     AllocOptions allocReq;
     std::vector<MmcMemBlobPtr> blobs;
@@ -474,4 +506,74 @@ TEST_F(TestMmcGlobalAllocator, StopInvalidLocation)
     loc.rank_ = 0;
     Result ret = allocator->Stop(loc);
     EXPECT_EQ(ret, MMC_INVALID_PARAM);
+}
+
+TEST_F(TestMmcGlobalAllocator, ReBuild)
+{
+    MmcGlobalAllocatorPtr allocator = MmcMakeRef<MmcGlobalAllocator>();
+    uint64_t size = SIZE_32K * 10;
+
+    MmcLocation loc;
+    MmcLocalMemlInitInfo info;
+    loc.mediaType_ = MEDIA_DRAM;
+    loc.rank_ = 0;
+    info.bmAddr_ = 0;
+    info.capacity_ = size;
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    allocator->Mount(loc, info);
+    allocator->BuildFromBlobs(loc, blobMap);
+
+    AllocOptions allocReq;
+    std::vector<MmcMemBlobPtr> blobs;
+
+
+    allocReq.blobSize_ = SIZE_32K;
+    allocReq.numBlobs_ = 1;
+    allocReq.preferredRank_ = 5;
+    allocReq.mediaType_ = MEDIA_DRAM;
+
+    Result ret;
+    for (size_t i = 0; i < 10; i++) {
+        ret = allocator->Alloc(allocReq, blobs);
+        EXPECT_EQ(ret, MMC_OK);
+
+    }
+    EXPECT_EQ(blobs.size(), 10U);
+    for (size_t i = 0; i < blobs.size(); i++) {
+        EXPECT_EQ(blobs[i]->Rank(), 0);
+        EXPECT_EQ(blobs[i]->Size(), allocReq.blobSize_);
+        EXPECT_EQ(blobs[i]->Type(), allocReq.mediaType_);
+        EXPECT_EQ(blobs[i]->Gva(), i * allocReq.blobSize_);
+    }
+
+    for (size_t i = 0; i < blobs.size(); i++) {
+        ret = allocator->Free(blobs[i]);
+        EXPECT_EQ(ret, MMC_OK);
+    }
+    allocator->Stop(loc);
+
+    blobMap["1"] = blobs[1]->GetDesc();
+    blobMap["4"] = blobs[4]->GetDesc();
+    blobMap["7"] = blobs[7]->GetDesc();
+
+    blobs.erase(blobs.begin() + 7);
+    blobs.erase(blobs.begin() + 4);
+    blobs.erase(blobs.begin() + 1);
+
+    ret = allocator->BuildFromBlobs(loc, blobMap);
+    EXPECT_EQ(ret, MMC_OK);
+
+    std::vector<MmcMemBlobPtr> blobsCompare;
+    for (size_t i = 0; i < 7; i++) {
+        ret = allocator->Alloc(allocReq, blobsCompare);
+        EXPECT_EQ(ret, MMC_OK);
+    }
+    EXPECT_EQ(blobs.size(), 7U);
+    for (size_t i = 0; i < blobs.size(); i++) {
+        EXPECT_EQ(blobs[i]->Rank(), 0);
+        EXPECT_EQ(blobs[i]->Size(), blobsCompare[i]->Size());
+        EXPECT_EQ(blobs[i]->Type(), blobsCompare[i]->Type());
+        EXPECT_EQ(blobs[i]->Gva(), blobsCompare[i]->Gva());
+    }
+
 }

@@ -54,7 +54,9 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     metaBackUpMgrPtr_ = MMCMetaBackUpMgrFactory::GetInstance("DefaultMetaBackup");
     MMCMetaBackUpConfPtr defaultPtr = MmcMakeRef<MMCMetaBackUpConfDefault>(metaNetServer_).Get();
     MMC_ASSERT_RETURN(metaBackUpMgrPtr_ != nullptr, MMC_MALLOC_FAILED);
-    MMC_RETURN_ERROR(metaBackUpMgrPtr_->Start(defaultPtr), "metaBackUpMgr start failed");
+    if (options.metaRebuildEnable) {
+        MMC_RETURN_ERROR(metaBackUpMgrPtr_->Start(defaultPtr), "metaBackUpMgr start failed");
+    }
 
     metaMgrProxy_ = MmcMakeRef<MmcMetaMgrProxyDefault>(metaNetServer_).Get();
     MMC_RETURN_ERROR(metaMgrProxy_->Start(MMC_DATA_TTL_MS, options.evictThresholdHigh, options.evictThresholdLow),
@@ -65,7 +67,8 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     return MMC_OK;
 }
 
-Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint64_t bm, uint64_t capacity)
+Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint64_t bm, uint64_t capacity,
+    std::map<std::string, MmcMemBlobDesc> &blobMap)
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (!started_) {
@@ -75,7 +78,7 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
 
     MmcLocation loc{rank, static_cast<MediaType>(mediaType)};
     MmcLocalMemlInitInfo locInfo{bm, capacity};
-    MMC_RETURN_ERROR(metaMgrProxy_->Mount(loc, locInfo), "Mount loc { " << rank << ", " << mediaType << " } failed");
+    MMC_RETURN_ERROR(metaMgrProxy_->Mount(loc, locInfo, blobMap), "Mount loc { " << rank << ", " << mediaType << " } failed");
     MMC_LOG_INFO("Mount loc {rank:" << rank << ", media:" << mediaType << ", cap:" << capacity << "} finish");
     registerRank_++;
     if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {

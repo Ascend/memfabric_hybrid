@@ -8,14 +8,14 @@ namespace ock {
 namespace mmc {
 bool MmcBlobAllocator::CanAlloc(uint64_t blobSize)
 {
-    if (isStop_ == true) {
+    if (!started_) {
         MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
         return false;
     }
     SpaceRange anchor{0, AllocSizeAlignUp(blobSize)};
 
     spinlock_.lock();
-    if (isStop_ == true) {
+    if (!started_) {
         spinlock_.unlock();
         MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
         return false;
@@ -28,7 +28,7 @@ bool MmcBlobAllocator::CanAlloc(uint64_t blobSize)
 
 MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
 {
-    if (isStop_ == true) {
+    if (!started_) {
         MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
         return nullptr;
     }
@@ -36,7 +36,7 @@ MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
     SpaceRange anchor{0, alignedSize};
 
     spinlock_.lock();
-    if (isStop_ == true) {
+    if (!started_) {
         spinlock_.unlock();
         MMC_LOG_WARN("Allocator rank: " << rank_ << " mediaType: " << mediaType_ << " is stopped");
         return nullptr;
@@ -69,7 +69,7 @@ MmcMemBlobPtr MmcBlobAllocator::Alloc(uint64_t blobSize)
     allocatedSize_ += alignedSize;
     spinlock_.unlock();
 
-    return MmcMakeRef<MmcMemBlob>(rank_, bm_ + targetOffset, blobSize, mediaType_, ALLOCATED);
+    return MmcMakeRef<MmcMemBlob>(rank_, bmAddr_ + targetOffset, blobSize, mediaType_, ALLOCATED);
 }
 
 Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
@@ -80,12 +80,12 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
     }
     auto alignedSize = AllocSizeAlignUp(blob->Size());
     auto blobAddr = blob->Gva();
-    if (blobAddr < bm_ || blobAddr + alignedSize > bm_ + capacity_) {
+    if (blobAddr < bmAddr_ || blobAddr + alignedSize > bmAddr_ + capacity_) {
         MMC_LOG_ERROR("blob address not in allocator");
         return MMC_ERROR;
     }
 
-    auto offset = blobAddr - bm_;
+    auto offset = blobAddr - bmAddr_;
     uint64_t finalOffset = offset;
     uint64_t finalSize = alignedSize;
 
@@ -125,6 +125,96 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
     allocatedSize_ -= alignedSize;
 
     spinlock_.unlock();
+    return MMC_OK;
+}
+
+Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &blobMap)
+{
+    spinlock_.lock();
+    if (started_ || allocatedSize_ != 0) {
+        spinlock_.unlock();
+        MMC_LOG_ERROR("rebuild allocator failed, rank: " << rank_ << " mediaType: " << mediaType_
+            << ", allocator must not started and empty");
+        return MMC_ERROR;
+    }
+    
+    // 处理每个已分配的blob
+    for (auto it = blobMap.begin(); it != blobMap.end();) {
+        if (it->second.rank_ != rank_ || it->second.mediaType_ != mediaType_) {
+            MMC_LOG_WARN("rebuild blob not match, allocator rank: " << rank_ << " mediaType: " << mediaType_
+                << ", blob rank: " << it->second.rank_ << " mediaType: " << it->second.mediaType_);
+            it = blobMap.erase(it);
+            continue;
+        }
+        uint64_t gva = it->second.gva_;
+        uint64_t size = it->second.size_;
+        uint64_t offset = gva - bmAddr_;  // 转换为分配器内部偏移
+
+        Result res = ValidateAndAddAllocation(offset, size);
+        if (res != MMC_OK) {
+            MMC_LOG_WARN("rebuild allocator failed, rank: " << rank_ << " mediaType: " << mediaType_
+                << ", blob add allocation error");
+            it = blobMap.erase(it);
+            continue;
+        }
+        ++it;
+    }
+    
+    started_ = true;
+    spinlock_.unlock();
+    return MMC_OK;
+}
+
+Result MmcBlobAllocator::ValidateAndAddAllocation(uint64_t offset, uint64_t size)
+{
+    // 验证地址范围有效性
+    if (offset >= capacity_ || (offset + size) > capacity_) {
+        MMC_LOG_ERROR("Blob out of range: offset: " << offset
+                   << ", size: " << size << ", capacity: " << capacity_);
+        return MMC_ERROR;
+    }
+    
+    // 计算对齐后的大小
+    uint64_t alignedSize = AllocSizeAlignUp(size);
+    
+    // 查找包含该分配的空闲块
+    auto it = addressTree_.upper_bound(offset);
+    if (it != addressTree_.begin()) {
+        --it;  // 回退到可能包含offset的块
+    }
+    
+    if (it == addressTree_.end() || it->first > offset ||
+        (it->first + it->second) < (offset + alignedSize)) {
+        MMC_LOG_ERROR("No matching free block for blob: offset=" << offset
+                   << ", size=" << size);
+        return MMC_ERROR;
+    }
+    
+    // 从空闲树中移除该块
+    uint64_t blockOffset = it->first;
+    uint64_t blockSize = it->second;
+    sizeTree_.erase(SpaceRange{blockOffset, blockSize});
+    addressTree_.erase(it);
+    
+    // 分割剩余空间（前部）
+    if (blockOffset < offset) {
+        uint64_t frontSize = offset - blockOffset;
+        SpaceRange left{blockOffset, frontSize};
+        addressTree_.emplace(left.offset_, left.size_);
+        sizeTree_.emplace(left);
+    }
+    
+    // 分割剩余空间（后部）
+    uint64_t endOffset = offset + alignedSize;
+    uint64_t remainingSize = (blockOffset + blockSize) - endOffset;
+    if (remainingSize > 0) {
+        SpaceRange left{endOffset, remainingSize};
+        addressTree_.emplace(left.offset_, left.size_);
+        sizeTree_.emplace(left);
+    }
+    
+    // 更新已分配大小
+    allocatedSize_ += alignedSize;
     return MMC_OK;
 }
 

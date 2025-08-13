@@ -71,9 +71,10 @@ public:
         return metaMangerPtr_->BatchRemove(req.keys_, resp.results_);
     }
 
-    Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo) override
+    Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo,
+        std::map<std::string, MmcMemBlobDesc> &blobMap) override
     {
-        return metaMangerPtr_->Mount(loc, localMemInitInfo);
+        return metaMangerPtr_->Mount(loc, localMemInitInfo, blobMap);
     }
 
     Result Unmount(const MmcLocation &loc) override

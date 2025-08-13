@@ -81,6 +81,7 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     metaServiceConfig.tlsConfig.tlsEnable = false;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
@@ -388,6 +389,8 @@ protected:
             reinterpret_cast<uint64_t>(baseMem),
             CAPACITY
         );
+        std::map<std::string, ock::mmc::MmcMemBlobDesc> blobMap;
+        allocator->BuildFromBlobs(blobMap);
     }
 
     void TearDown() override

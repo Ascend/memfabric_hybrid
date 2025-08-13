@@ -190,9 +190,64 @@ Result MmcMetaManager::BatchRemove(const std::vector<std::string> &keys, std::ve
     return MMC_OK;
 }
 
-Result MmcMetaManager::Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo)
+Result MmcMetaManager::Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo,
+    std::map<std::string, MmcMemBlobDesc> &blobMap)
 {
-    return globalAllocator_->Mount(loc, localMemInitInfo);
+    Result ret = globalAllocator_->Mount(loc, localMemInitInfo);
+    if (ret != MMC_OK) {
+        MMC_LOG_ERROR("allocator mount failed, loc rank: " << loc.rank_ << " mediaType_: " << loc.mediaType_);
+        return ret;
+    }
+
+    ret = globalAllocator_->BuildFromBlobs(loc, blobMap);
+    if (ret != MMC_OK) {
+        MMC_LOG_ERROR("build from blobs failed, loc rank: " << loc.rank_ << " mediaType_: " << loc.mediaType_);
+        return ret;
+    }
+
+    if (!blobMap.empty()) {
+        ret = RebuildMeta(blobMap);
+        if (ret != MMC_OK) {
+            MMC_LOG_ERROR("rebuild meta failed, loc rank: " << loc.rank_ << " mediaType_: " << loc.mediaType_);
+            return ret;
+        }
+    }
+    return MMC_OK;
+}
+
+Result MmcMetaManager::RebuildMeta(std::map<std::string, MmcMemBlobDesc> &blobMap)
+{
+    Result ret;
+    for (auto &blob : blobMap) {
+        std::string key = blob.first;
+        MmcMemBlobDesc desc = blob.second;
+        MmcMemBlobPtr blobPtr = MmcMakeRef<MmcMemBlob>(desc.rank_, desc.gva_, desc.size_,
+            static_cast<MediaType>(desc.mediaType_), READABLE);
+        MmcMemObjMetaPtr objMeta;
+
+        if (metaContainer_->Get(key, objMeta) == MMC_OK) {
+            if (objMeta->AddBlob(blobPtr) != MMC_OK) {
+                globalAllocator_->Free(blobPtr);
+            }
+            continue;
+        }
+
+        objMeta = MmcMakeRef<MmcMemObjMeta>();
+        objMeta->AddBlob(blobPtr);
+        ret = metaContainer_->Insert(key, objMeta);
+        if (ret == MMC_OK) {
+            continue;
+        }
+
+        if (metaContainer_->Get(key, objMeta) == MMC_OK) {
+            if (objMeta->AddBlob(blobPtr) != MMC_OK) {
+                globalAllocator_->Free(blobPtr);
+            }
+        } else {
+            globalAllocator_->Free(blobPtr);
+        }
+    }
+    return MMC_OK;
 }
 
 Result MmcMetaManager::Unmount(const MmcLocation &loc)

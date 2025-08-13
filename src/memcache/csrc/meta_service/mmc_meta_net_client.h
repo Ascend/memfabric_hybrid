@@ -6,10 +6,13 @@
 #define SMEM_MMC_META_NET_CLIENT_H
 #include "mmc_local_common.h"
 #include "mmc_net_engine.h"
+#include "mmc_blob_common.h"
 namespace ock {
 namespace mmc {
 #define NET_RETRY_COUNT 3
 using ClientRetryHandler = std::function<int32_t(void)>;
+using ClientReplicateHandler = std::function<int32_t(const std::string &key, const MmcMemBlobDesc &blobDesc)>;
+using ClientReplicateRemoveHandler = std::function<int32_t(const std::string &key)>;
 class MetaNetClient : public MmcReferable {
 public:
     explicit MetaNetClient(const std::string &serverUrl, const std::string &inputName = "");
@@ -67,9 +70,12 @@ public:
      */
     bool Status();
 
-    void RegisterRetryHandler(const ClientRetryHandler &handler)
+    void RegisterRetryHandler(const ClientRetryHandler &retryHandler, const ClientReplicateHandler &replicateHandler,
+        const ClientReplicateRemoveHandler &replicateRemoveHandler)
     {
-        retryHandler_ = handler;
+        retryHandler_ = retryHandler;
+        replicateHandler_ = replicateHandler;
+        replicateRemoveHandler_ = replicateRemoveHandler;
     }
 
 private:
@@ -85,6 +91,8 @@ private:
     uint64_t port_ = 5000U;
     const uint32_t retryCount_ = NET_RETRY_COUNT;
     ClientRetryHandler retryHandler_ = nullptr;
+    ClientReplicateHandler replicateHandler_ = nullptr;
+    ClientReplicateRemoveHandler replicateRemoveHandler_ = nullptr;
     std::string serverUrl_;
 
     /* not hot used variables */

@@ -157,6 +157,7 @@ public:
             VIntRange::Create(OKC_MMC_EVICT_THRESHOLD_HIGH.first, MIN_EVICT_THRESHOLD, MAX_EVICT_THRESHOLD));
         AddIntConf(OKC_MMC_EVICT_THRESHOLD_LOW,
             VIntRange::Create(OKC_MMC_EVICT_THRESHOLD_LOW.first, MIN_EVICT_THRESHOLD, MAX_EVICT_THRESHOLD - 1));
+        AddBoolConf(OCK_MMC_META_REBUILD_ENABLE, VNoCheck::Create());
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
         AddStrConf(OCK_MMC_TLS_TOP_PATH, VStrLength::Create(OCK_MMC_TLS_TOP_PATH.first, PATH_MAX_LEN));
@@ -178,6 +179,7 @@ public:
         config.evictThresholdLow = GetInt(ConfConstant::OKC_MMC_EVICT_THRESHOLD_LOW);
         config.logRotationFileSize = GetInt(ConfConstant::OCK_MMC_LOG_ROTATION_FILE_SIZE) * MB_NUM;
         config.logRotationFileCount = GetInt(ConfConstant::OCK_MMC_LOG_ROTATION_FILE_COUNT);
+        config.metaRebuildEnable = GetBool(ConfConstant::OCK_MMC_META_REBUILD_ENABLE);
         GetTlsConfig(config.tlsConfig);
     }
 };

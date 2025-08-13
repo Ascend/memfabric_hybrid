@@ -36,7 +36,8 @@ TEST_F(TestMmcMetaManager, Init)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
     ASSERT_TRUE(metaMng != nullptr);
     metaMng->Stop();
 }
@@ -49,7 +50,8 @@ TEST_F(TestMmcMetaManager, AllocAndFree)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     MmcMemObjMetaPtr objMeta;
@@ -73,7 +75,8 @@ TEST_F(TestMmcMetaManager, AllocAndFreeMulti)
     uint64_t defaultTtl = 200;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     uint16_t numKeys = 10U;
     std::vector<std::string> keys;
@@ -108,7 +111,8 @@ TEST_F(TestMmcMetaManager, GetAndUpdate)
     uint64_t defaultTtl = 200;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     uint16_t numKeys = 20U;
     std::vector<std::string> keys;
@@ -148,7 +152,8 @@ TEST_F(TestMmcMetaManager, LRU)
 
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 50);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     uint16_t numKeys = 8U;
     std::vector<std::string> keys;
@@ -193,7 +198,8 @@ TEST_F(TestMmcMetaManager, AllocAndExistKey)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta;
@@ -215,7 +221,8 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     uint16_t numKeys = 5U;
     std::vector<std::string> keys;
@@ -266,7 +273,8 @@ TEST_F(TestMmcMetaManager, Remove)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta;
@@ -296,7 +304,8 @@ TEST_F(TestMmcMetaManager, BatchRemove)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     std::vector<std::string> keys = {"key1", "key2", "key3"};
     std::vector<Result> results;
@@ -344,7 +353,8 @@ TEST_F(TestMmcMetaManager, BatchGet)
     MmcLocalMemlInitInfo locInfo{0, 1000000};
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(2000, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     const uint16_t numKeys = 20U;
     std::vector<std::string> keys;
@@ -407,7 +417,8 @@ TEST_F(TestMmcMetaManager, Get_NotAllBlobsReady)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta;
@@ -429,7 +440,8 @@ TEST_F(TestMmcMetaManager, Alloc_ThresholdEviction)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     std::vector<std::string> keys = {"key1", "key2"};
     for (const auto& key : keys) {
@@ -462,7 +474,8 @@ TEST_F(TestMmcMetaManager, BatchGet_MixedResults)
     MmcLocalMemlInitInfo locInfo{0, 1000000};
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(2000, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
     MmcMemObjMetaPtr objMeta1;

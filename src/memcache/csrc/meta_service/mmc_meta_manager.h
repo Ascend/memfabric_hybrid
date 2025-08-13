@@ -127,8 +127,10 @@ public:
      * @brief unmount new mem pool contributor
      * @param loc               [in] location of the new mem pool contributor
      * @param localMemInitInfo  [in] info of the new mem pool contributor
+     * @param blobMap           [in] if not empty, the allocator will be rebuild from blobMap
      */
-    Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo);
+    Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo,
+        std::map<std::string, MmcMemBlobDesc> &blobMap);
 
     /**
      * @brief unmount the mempool contributor at given location
@@ -162,6 +164,8 @@ public:
     }
 
 private:
+    Result RebuildMeta(std::map<std::string, MmcMemBlobDesc> &blobMap);
+
     void AsyncRemoveThreadFunc();
 
     void CheckAndEvict();

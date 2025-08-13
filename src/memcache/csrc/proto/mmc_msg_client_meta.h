@@ -491,6 +491,7 @@ struct BmRegisterRequest : MsgBase {
     uint16_t mediaType_{UINT16_MAX};
     uint64_t addr_{UINT64_MAX};
     uint64_t capacity_{UINT64_MAX};
+    std::map<std::string, MmcMemBlobDesc> blobMap_;
 
     BmRegisterRequest() : MsgBase{0, ML_BM_REGISTER_REQ, 0} {}
 
@@ -503,6 +504,7 @@ struct BmRegisterRequest : MsgBase {
         packer.Serialize(mediaType_);
         packer.Serialize(addr_);
         packer.Serialize(capacity_);
+        packer.Serialize(blobMap_);
         return MMC_OK;
     }
 
@@ -515,6 +517,7 @@ struct BmRegisterRequest : MsgBase {
         packer.Deserialize(mediaType_);
         packer.Deserialize(addr_);
         packer.Deserialize(capacity_);
+        packer.Deserialize(blobMap_);
         return MMC_OK;
     }
 };

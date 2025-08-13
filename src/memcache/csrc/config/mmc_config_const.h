@@ -16,6 +16,7 @@ constexpr auto OKC_MMC_EVICT_THRESHOLD_LOW = std::make_pair("ock.mmc.evict_thres
 constexpr auto OCK_MMC_LOG_LEVEL = std::make_pair("ock.mmc.log_level", "info");
 constexpr auto OCK_MMC_LOG_ROTATION_FILE_SIZE = std::make_pair("ock.mmc.log_rotation_file_size", 20);
 constexpr auto OCK_MMC_LOG_ROTATION_FILE_COUNT = std::make_pair("ock.mmc.log_rotation_file_count", 50);
+constexpr auto OCK_MMC_META_REBUILD_ENABLE = std::make_pair("ock.mmc.meta.ha.meta_rebuild", false);
 
 constexpr auto OCK_MMC_TLS_ENABLE = std::make_pair("ock.mmc.tls.enable", true);
 constexpr auto OCK_MMC_TLS_TOP_PATH = std::make_pair("ock.mmc.tls.top.path", "");

@@ -41,6 +41,7 @@ typedef struct {
     int32_t logRotationFileCount;
     uint16_t evictThresholdHigh;
     uint16_t evictThresholdLow;
+    bool metaRebuildEnable;
     mmc_tls_config tlsConfig;
 } mmc_meta_service_config_t;
 

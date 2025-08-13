@@ -108,6 +108,23 @@ public:
         return MMC_OK;
     }
 
+    Result BuildFromBlobs(const MmcLocation &location, std::map<std::string, MmcMemBlobDesc> &blobMap)
+    {
+        globalAllocLock_.LockRead();
+        const auto iter = allocators_.find(location);
+        if (iter == allocators_.end()) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("Build from blobs failed, location not found, rank: "
+                << location.rank_ << ", mediaType: " << location.mediaType_);
+            return MMC_INVALID_PARAM;
+        }
+
+        const auto &allocator = iter->second;
+        Result ret = allocator->BuildFromBlobs(blobMap);
+        globalAllocLock_.UnlockRead();
+        return ret;
+    }
+
     uint64_t GetUsageRate()
     {
         uint64_t totalSize = 0;

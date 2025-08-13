@@ -55,6 +55,7 @@ TEST_F(TestMmcMetaService, Init)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
@@ -99,6 +100,7 @@ TEST_F(TestMmcMetaService, ExistRequest)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
@@ -150,6 +152,7 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
@@ -218,6 +221,7 @@ TEST_F(TestMmcMetaService, QueryRequest)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");
@@ -272,6 +276,7 @@ TEST_F(TestMmcMetaService, BatchQueryRequest)
     metaServiceConfig.logRotationFileCount = 20;
     metaServiceConfig.evictThresholdHigh = 70;
     metaServiceConfig.evictThresholdLow = 60;
+    metaServiceConfig.metaRebuildEnable = true;
     metaServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, metaServiceConfig.discoveryURL);
     auto metaServiceDefault = MmcMakeRef<MmcMetaServiceDefault>("testMetaService");

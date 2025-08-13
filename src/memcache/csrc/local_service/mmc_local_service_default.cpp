@@ -50,7 +50,11 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     pid_ = getpid();
 
     MMC_RETURN_ERROR(RegisterBm(),  "Failed to register bm, name=" << name_ << ", bmRankId=" << options_.rankId);
-    metaNetClient_->RegisterRetryHandler(std::bind(&MmcLocalServiceDefault::RegisterBm, this));
+    metaNetClient_->RegisterRetryHandler(
+        std::bind(&MmcLocalServiceDefault::RegisterBm, this),
+        std::bind(&MmcLocalServiceDefault::Replicate, this, std::placeholders::_1, std::placeholders::_2),
+        std::bind(&MmcLocalServiceDefault::ReplicateRemove, this, std::placeholders::_1)
+    );
     started_ = true;
     MMC_LOG_INFO("Started LocalService (" << name_ << ") server " << options_.discoveryURL);
     return MMC_OK;
@@ -111,6 +115,7 @@ Result MmcLocalServiceDefault::RegisterBm()
     req.mediaType_ = bmProxyPtr_->GetMediaType();
     req.addr_ = bmProxyPtr_->GetGva();
     req.capacity_ = options_.localDRAMSize + options_.localHBMSize;
+    req.blobMap_ = blobMap_;
 
     Response resp;
     MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
@@ -118,6 +123,28 @@ Result MmcLocalServiceDefault::RegisterBm()
                      "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
     MMC_LOG_INFO("bm register succeed, bmRankId=" << req.rank_ << ", media=" << req.mediaType_
                                                   << ", cap=" << req.capacity_);
+    return MMC_OK;
+}
+
+Result MmcLocalServiceDefault::Replicate(const std::string &key, const MmcMemBlobDesc &blobDesc)
+{
+    std::lock_guard<std::mutex> guard(blobMutex_);
+    auto result = blobMap_.insert(std::make_pair(key, blobDesc));
+    if (!result.second) {
+        MMC_LOG_ERROR("Local service replicate fail, key: " << key << " already exists");
+        return MMC_ERROR;
+    }
+    return MMC_OK;
+}
+
+Result MmcLocalServiceDefault::ReplicateRemove(const std::string &key)
+{
+    std::lock_guard<std::mutex> guard(blobMutex_);
+    auto result = blobMap_.erase(key);
+    if (result == 0) {
+        MMC_LOG_ERROR("Local service dereplicate fail, key: " << key << " not exists");
+        return MMC_ERROR;
+    }
     return MMC_OK;
 }
 }

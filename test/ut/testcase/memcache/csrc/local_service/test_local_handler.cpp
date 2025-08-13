@@ -42,7 +42,8 @@ TEST_F(TestLocalHandler, Init)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
     ASSERT_TRUE(metaMng != nullptr);
     metaMng->Stop();
 }
@@ -55,7 +56,8 @@ TEST_F(TestLocalHandler, Alloc)
     uint64_t defaultTtl = 2000;
     MmcRef<MmcMetaManager> metaMng = MmcMakeRef<MmcMetaManager>(defaultTtl, 70, 60);
     metaMng->Start();
-    metaMng->Mount(loc, locInfo);
+    std::map<std::string, MmcMemBlobDesc> blobMap;
+    metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     MmcMemObjMetaPtr objMeta;

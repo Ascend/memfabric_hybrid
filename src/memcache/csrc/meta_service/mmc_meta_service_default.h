@@ -23,7 +23,8 @@ public:
 
     void Stop() override;
 
-    Result BmRegister(uint32_t rank, uint16_t mediaType, uint64_t bm, uint64_t capacity);
+    Result BmRegister(uint32_t rank, uint16_t mediaType, uint64_t bm, uint64_t capacity,
+        std::map<std::string, MmcMemBlobDesc> &blobMap);
 
     Result BmUnregister(uint32_t rank, uint16_t mediaType);
 

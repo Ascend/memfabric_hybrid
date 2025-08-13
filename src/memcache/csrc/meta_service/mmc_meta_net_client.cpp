@@ -86,9 +86,24 @@ Result MetaNetClient::HandleMetaReplicate(const NetContextPtr &context)
     context->GetRequest<MetaReplicateRequest>(req);
 
     MMC_LOG_INFO("HandleMetaReplicate key " << req.key_);
-    // do
-    resp.ret_ = MMC_OK;
-    MMC_LOG_INFO("HandleMetaReplicate key " << req.key_);
+    if (req.op_ == 0) {
+        if (replicateHandler_ != nullptr) {
+            resp.ret_ = replicateHandler_(req.key_, req.blob_);
+        } else {
+            MMC_LOG_ERROR("replicateHandler_ is nullptr");
+            resp.ret_ = MMC_ERROR;
+        }
+    } else if (req.op_ == 1) {
+        if (replicateRemoveHandler_ != nullptr) {
+            resp.ret_ = replicateRemoveHandler_(req.key_);
+        } else {
+            MMC_LOG_ERROR("replicateRemoveHandler_ is nullptr");
+            resp.ret_ = MMC_ERROR;
+        }
+    } else {
+        MMC_LOG_ERROR("HandleMetaReplicate unknown op: " << req.op_);
+        resp.ret_ = MMC_ERROR;
+    }
 
     return context->Reply(req.msgId, resp);
 }
