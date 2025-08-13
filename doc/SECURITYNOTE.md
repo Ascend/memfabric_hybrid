@@ -20,6 +20,7 @@
 说明：
 支持通过环境变量 `SMEM_CONF_STORE_TLS_ENABLE`和`SMEM_CONF_STORE_TLS_INFO` 配置TLS秘钥证书等，进行tls安全连接，建议用户开启TLS加密配置，保证通信通信安全。系统启动后，建议删除本地秘钥证书等信息敏感文件。
 用户通过json字符串形式从环境变量 SMEM_CONF_STORE_TLS_INFO 传入tlsOption相关参数。
+支持通过环境变量 `ACCLINK_CHECK_PERIOD_HOURS`和`ACCLINK_CERT_CHECK_AHEAD_DAYS` 配置证书检查周期与证书过期预警时间
 例如，在终端输入：
 ```
 配置关闭tls:
@@ -37,11 +38,17 @@ export SMEM_CONF_STORE_TLS_INFO=$'\
     "tlsCaFile": [ "ca.pem" ]，
     "packagePath": "/etc/lib"
 }'
+配置每七天检查一次证书:
+export ACCLINK_CHECK_PERIOD_HOURS=168
+配置剩余十四天过期时警告:
+export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 ```
 | 环境变量 | 说明                                         |
-|------|--------------------------------------------|
-| SMEM_CONF_STORE_TLS_ENABLE  | 只支持配置0和1。其中0代表关闭tls，1代表打开tls。不配置的时候默认打开tls |
-| SMEM_CONF_STORE_TLS_INFO  | tls相关参数配置，json格式字符串。当tls打开时，必须配置MEMFABRIC_HYBRID_TLS_INFO           |
+|------|-----------------------------------------------------------|
+| SMEM_CONF_STORE_TLS_ENABLE  | 只支持配置0和1。其中0代表关闭tls，1代表打开tls。不配置的时候默认打开tls                |
+| SMEM_CONF_STORE_TLS_INFO  | tls相关参数配置，json格式字符串。当tls打开时，必须配置MEMFABRIC_HYBRID_TLS_INFO |
+| ACCLINK_CHECK_PERIOD_HOURS  | 指定证书检查周期（单位：小时），超出范围 [ 24, 24 * 30 ] 或不是整数，则设置默认值7 * 24   |
+| ACCLINK_CERT_CHECK_AHEAD_DAYS  | 指定证书预警时间（单位：天），超出范围 [ 7, 180 ] 或不是整数或换算成小时小于检查周期，则设置默认值30 |
 
 ### 运行用户建议
 

@@ -514,17 +514,17 @@ AccResult AccTcpSslHelper::HandleCertExpiredCheck()
 
 void AccTcpSslHelper::ReadCheckCertParams()
 {
-    uint32_t tempCheckPeriod = AccCommonUtil::GetEnvValue2Uint32("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    uint32_t tempCheckPeriod = AccCommonUtil::GetEnvValue2Uint32("ACCLINK_CHECK_PERIOD_HOURS");
     if (tempCheckPeriod < CHECK_PERIOD_HOURS_RANGE.first || tempCheckPeriod > CHECK_PERIOD_HOURS_RANGE.second) {
-        LOG_WARN("TTP_ACCLINK_CHECK_PERIOD_HOURS exceeds safe range, use default value:" << CHECK_PERIOD_HOURS);
+        LOG_WARN("ACCLINK_CHECK_PERIOD_HOURS exceeds safe range, use default value:" << CHECK_PERIOD_HOURS);
         tempCheckPeriod = CHECK_PERIOD_HOURS;
     }
     this->checkPeriodHours = static_cast<int32_t>(tempCheckPeriod);
 
-    uint32_t tempAheadDays = AccCommonUtil::GetEnvValue2Uint32("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    uint32_t tempAheadDays = AccCommonUtil::GetEnvValue2Uint32("ACCLINK_CERT_CHECK_AHEAD_DAYS");
     if (tempAheadDays < CERT_CHECK_AHEAD_DAYS_RANGE.first || tempAheadDays > CERT_CHECK_AHEAD_DAYS_RANGE.second ||
         tempAheadDays * HOURS_OF_ONE_DAY < static_cast<uint32_t>(this->checkPeriodHours)) {
-        LOG_WARN("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS exceeds safe range, use default value:" << CERT_CHECK_AHEAD_DAYS);
+        LOG_WARN("ACCLINK_CERT_CHECK_AHEAD_DAYS exceeds safe range, use default value:" << CERT_CHECK_AHEAD_DAYS);
         tempAheadDays = CERT_CHECK_AHEAD_DAYS;
     }
     this->certCheckAheadDays = static_cast<int32_t>(tempAheadDays);

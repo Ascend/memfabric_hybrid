@@ -147,14 +147,14 @@ TEST_F(TestAccTcpSslHelper, start)
 
     const char *days = "9";
     const char *checkPeriod = "24";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
 
     auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
     ASSERT_TRUE(result == ACC_OK);
 
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
 
     std::string invalidIpv4 = "2666.6666.6666.6666";
     bool ipCheck = AccCommonUtil::IsValidIPv4(invalidIpv4);
@@ -197,11 +197,11 @@ TEST_F(TestAccTcpSslHelper, load_crl)
 
     const char *days = "2";
     const char *checkPeriod = "33";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
     auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
     ASSERT_TRUE(result == ACC_OK);
 
     tmpHelperPtr->Stop();
@@ -240,8 +240,8 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
 
     const char *days = "error_val";
     const char *checkPeriod = "illegal_val";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
     tmpHelperPtr->RegisterDecryptHandler(
         [&](const std::string &cipherText, char *plainText, int32_t &plainTextLen) -> int {
             const char* decryptText = "Hello World";
@@ -254,8 +254,8 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
             return ACC_OK;
         });
     auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
 
     ASSERT_TRUE(result == ACC_ERROR);
     tmpHelperPtr->EraseDecryptData();
