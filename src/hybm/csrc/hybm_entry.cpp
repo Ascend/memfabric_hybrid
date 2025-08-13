@@ -83,7 +83,7 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
     char realFile[PATH_MAX] = {0};
-    if (realpath(realName.c_str(), realFile) == nullptr) {
+    if (ock::FileUtil::IsSymlink(realName) || realpath(realName.c_str(), realFile) == nullptr) {
         BM_LOG_WARN("driver version path " << realName << " is not a valid real path");
         return "";
     }
