@@ -51,8 +51,6 @@ public:
 
     Result BatchAlloc(const BatchAllocRequest &req, BatchAllocResponse &resp) override;
 
-    void ProcessAllocatedObject(size_t index, const MmcMemObjMetaPtr& objMeta, BatchAllocResponse &resp);
-
     Result UpdateState(const UpdateRequest &req, Response &resp) override;
 
     Result BatchUpdateState(const BatchUpdateRequest &req, BatchUpdateResponse &resp) override;
@@ -66,9 +64,13 @@ public:
         return resp.ret_ = metaMangerPtr_->Remove(req.key_);
     }
 
-    Result BatchRemove(const BatchRemoveRequest &req, BatchRemoveResponse &resp) override
+    Result BatchRemove(const BatchRemoveRequest& req, BatchRemoveResponse& resp) override
     {
-        return metaMangerPtr_->BatchRemove(req.keys_, resp.results_);
+        resp.results_.reserve(req.keys_.size());
+        for (const std::string& key : req.keys_) {
+            resp.results_.emplace_back(metaMangerPtr_->Remove(key));
+        }
+        return MMC_OK;
     }
 
     Result Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo,
@@ -87,10 +89,7 @@ public:
         return resp.ret_ = metaMangerPtr_->ExistKey(req.key_);
     }
 
-    Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) override
-    {
-        return metaMangerPtr_->BatchExistKey(req.keys_, resp.results_);
-    }
+    Result BatchExistKey(const BatchIsExistRequest &req, BatchIsExistResponse &resp) override;
 
     Result Query(const QueryRequest &req, QueryResponse &resp) override
     {

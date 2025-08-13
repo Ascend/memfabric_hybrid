@@ -19,6 +19,45 @@ namespace mmc {
 
 static const uint16_t NUM_BUCKETS = 29;
 
+struct MmcMemMetaDesc {
+    uint16_t prot_{0};
+    uint8_t priority_{0};
+    uint8_t numBlobs_{0};
+    uint64_t size_{0};
+    std::vector<MmcMemBlobDesc> blobs_;
+
+    MmcMemMetaDesc() = default;
+    MmcMemMetaDesc(const uint16_t& prot, const uint8_t& priority, const uint8_t& numBlobs, const uint64_t& size)
+        : prot_(prot), priority_(priority), numBlobs_(numBlobs), size_(size)
+    {}
+
+    MmcMemMetaDesc(const uint16_t& prot, const uint8_t& priority, const uint8_t& numBlobs, const uint64_t& size,
+                   const std::vector<MmcMemBlobPtr>& blobs)
+        : prot_(prot), priority_(priority), numBlobs_(numBlobs), size_(size)
+    {
+        for (const auto& blob : blobs) {
+            AddBlob(blob);
+        }
+    }
+
+    void AddBlob(const MmcMemBlobPtr& blob) { blobs_.push_back(blob->GetDesc()); }
+
+    void AddBlobs(const std::vector<MmcMemBlobPtr>& blobs)
+    {
+        for (const auto& blob : blobs) {
+            AddBlob(blob);
+        }
+    }
+
+    uint16_t Prot() { return prot_; };
+
+    uint8_t Priority() { return priority_; };
+
+    uint8_t NumBlobs() { return numBlobs_; };
+
+    uint64_t Size() { return size_; };
+};
+
 class MmcMetaManager : public MmcReferable {
 public:
     explicit MmcMetaManager(uint64_t defaultTtl, uint16_t evictThresholdHigh, uint16_t evictThresholdLow)
@@ -69,31 +108,14 @@ public:
      * @param key          [in] key of the meta object
      * @param objMeta      [out] the meta object obtained
      */
-    Result Get(const std::string& key, MmcMemObjMetaPtr& objMeta);
-
-    /**
-     * @brief Get multiple meta objects and extend their leases
-     * @param keys          [in] List of keys for the meta objects to retrieve
-     * @param objMetas      [out] Vector of pointers to the retrieved meta objects, corresponding to the keys in order
-     * @param getResults    [out] Vector of results indicating the success/failure of retrieving each key's meta object
-     */
-    Result BatchGet(const std::vector<std::string> &keys, std::vector<MmcMemObjMetaPtr> &objMetas,
-                    std::vector<Result> &getResults);
+    Result Get(const std::string& key, uint64_t operateId, MmcBlobFilterPtr filterPtr, MmcMemMetaDesc& objMeta);
 
     /**
      * @brief Alloc the global memory space and create the meta object
      * @param key          [in] key of the meta object
      * @param metaInfo     [out] the meta object created
      */
-    Result Alloc(const std::string& key, const AllocOptions& allocOpt, uint64_t requestId, MmcMemObjMetaPtr& objMeta);
-
-    /**
-     * @brief Alloc the global memory space and create the meta object
-     * @param key          [in] key of the meta object
-     * @param metaInfo     [out] the meta object created
-     */
-    Result BatchAlloc(const std::vector<std::string>& keys, const std::vector<AllocOptions>& allocOpts,
-                      uint64_t requestId, std::vector<MmcMemObjMetaPtr>& objMetas, std::vector<Result>& allocResults);
+    Result Alloc(const std::string& key, const AllocOptions& allocOpt, uint64_t operateId, MmcMemMetaDesc& objMeta);
 
     /**
      * @brief Update the state
@@ -103,25 +125,10 @@ public:
                        uint64_t operateId);
 
     /**
-     * @brief Update the state
-     * @param req          [in] update state request
-     */
-    Result BatchUpdateState(const std::vector<std::string>& keys, const std::vector<MmcLocation>& locs,
-                            const std::vector<BlobActionResult>& actRets, uint64_t operateId,
-                            std::vector<Result>& updateResults);
-
-    /**
      * @brief remove the meta object
      * @param key          [in] key of the to-be-removed meta object
      */
     Result Remove(const std::string &key);
-
-    /**
-     * @brief Batch remove multiple meta objects
-     * @param keys          [in] List of keys of the to-be-removed meta objects
-     * @param results       [out] Results of each removal operation
-     */
-    Result BatchRemove(const std::vector<std::string> &keys, std::vector<Result> &results);
 
     /**
      * @brief unmount new mem pool contributor
@@ -143,13 +150,6 @@ public:
      * @param key          [in] key of the meta object
      */
     Result ExistKey(const std::string &key);
-
-    /**
-     * @brief Check if a list of meta objects (keys) is in memory
-     * @param keys          [in] keys of the meta objects
-     * @param results       [out] the accessible state corresponding to each key
-     */
-    Result BatchExistKey(const std::vector<std::string> &keys, std::vector<Result> &results);
 
     /**
      * @brief Get blob query info with key

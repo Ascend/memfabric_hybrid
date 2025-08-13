@@ -60,11 +60,11 @@ TEST_F(TestLocalHandler, Alloc)
     metaMng->Mount(loc, locInfo, blobMap);
 
     AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
-    MmcMemObjMetaPtr objMeta;
+    MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);
-    ASSERT_TRUE(objMeta->NumBlobs() == 1);
-    ASSERT_TRUE(objMeta->Size() == SIZE_32K);
+    ASSERT_TRUE(objMeta.NumBlobs() == 1);
+    ASSERT_TRUE(objMeta.Size() == SIZE_32K);
 
     metaMng->UpdateState("test_string", loc, MMC_WRITE_OK, 1);
 

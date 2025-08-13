@@ -106,7 +106,6 @@ private:
     MmcMemBlobPtr blobs_[MAX_NUM_BLOB_CHAINS]; /* pointers of blobs */
     uint64_t size_{0};                         /* byteSize of each blob */
     std::recursive_mutex mtx_;            // classic 40 bytes
-    uint32_t placeholder_{0};
 };
 
 using MmcMemObjMetaPtr = MmcRef<MmcMemObjMeta>;
