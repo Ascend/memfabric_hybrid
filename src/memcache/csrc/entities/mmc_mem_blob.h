@@ -131,13 +131,14 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os, MmcMemBlob &blob)
     {
-        std::lock_guard<Spinlock> guard(blob.spinlock_);
         os << "MmcMemBlob{rank=" << blob.rank_ << ",gva=" << blob.gva_ << ",size=" << blob.size_
            << ",mediaType=" << static_cast<int>(blob.mediaType_) << ",state=" << static_cast<int>(blob.state_)
            << ",prot=" << blob.prot_ << ",metaLeaseManager=" << blob.metaLeaseManager_ << "}";
         return os;
     }
-
+    /**
+     * 原则：blob由 MmcMemObjMeta 维护生命周期及锁的保护
+     */
 private:
     const uint32_t rank_;              /* rank id of the blob located */
     const uint64_t gva_;               /* global virtual address */
@@ -146,17 +147,12 @@ private:
     BlobState state_{BlobState::NONE}; /* state of the blob */
     uint16_t prot_{0};                 /* prot, i.e. access */
     MmcMetaLeaseManager metaLeaseManager_;
-
     MmcMemBlobPtr nextBlob_;
-
-    Spinlock spinlock_;
-
     static const StateTransTable stateTransTable_;
 };
 
 inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobActionResult ret)
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     auto curStateIter = stateTransTable_.find(state_);
     if (curStateIter == stateTransTable_.end()) {
         MMC_LOG_ERROR("Cannot update state! The current state is not in the stateTransTable!");
@@ -188,7 +184,6 @@ inline Result MmcMemBlob::UpdateState(uint32_t rankId, uint32_t operateId, BlobA
 
 inline Result MmcMemBlob::Next(const MmcMemBlobPtr &nextBlob)
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     if (nextBlob_ == nullptr) {
         nextBlob_ = nextBlob;
         return MMC_OK;
@@ -219,19 +214,16 @@ inline uint16_t MmcMemBlob::Type() const
 
 inline BlobState MmcMemBlob::State()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return state_;
 }
 
 inline MmcMemBlobPtr MmcMemBlob::Next()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return nextBlob_;
 }
 
 inline uint16_t MmcMemBlob::Prot()
 {
-    std::lock_guard<Spinlock> guard(spinlock_);
     return prot_;
 }
 

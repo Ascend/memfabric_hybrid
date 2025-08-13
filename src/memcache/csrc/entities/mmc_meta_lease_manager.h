@@ -42,6 +42,8 @@ private:
     std::condition_variable cv_;
 };
 
+using MmcMetaLeaseManagerPtr = MmcRef<MmcMetaLeaseManager>;
+
 inline uint32_t MmcMetaLeaseManager::UseCount()
 {
     return useClient.size();

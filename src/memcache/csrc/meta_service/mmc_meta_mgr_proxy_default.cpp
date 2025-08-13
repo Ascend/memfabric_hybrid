@@ -13,19 +13,7 @@ Result MmcMetaMgrProxyDefault::Alloc(const AllocRequest &req, AllocResponse &res
     resp.numBlobs_ = objMeta->NumBlobs();
     resp.prot_ = objMeta->Prot();
     resp.priority_ = objMeta->Priority();
-
-    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
-    for (size_t i = 0; i < blobs.size(); i++) {
-        MmcMemBlobDesc blobDesc = blobs[i]->GetDesc();
-        resp.blobs_.push_back(blobDesc);
-        if (req.options_.preferredRank_ != blobDesc.rank_) {
-            MetaReplicateRequest request{req.key_, blobDesc, objMeta->Prot(), objMeta->Priority()};
-            Response response;
-            netServerPtr_->SyncCall(blobDesc.rank_, request, response, timeOut_);
-        }
-    }
-
-    // TODO: send a copy of the meta data to local service
+    objMeta->GetBlobsDesc(resp.blobs_);
     return MMC_OK;
 }
 
@@ -65,14 +53,7 @@ void MmcMetaMgrProxyDefault::ProcessAllocatedObject(size_t index, const MmcMemOb
     resp.prots_.push_back(objMeta->Prot());
     resp.priorities_.push_back(objMeta->Priority());
     resp.leases_.push_back(0);
-
-    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
-    resp.blobs_[index].resize(blobs.size());
-    
-    for (size_t j = 0; j < blobs.size(); ++j) {
-        const MmcMemBlobDesc& blobDesc = blobs[j]->GetDesc();
-        resp.blobs_[index][j] = blobDesc;
-    }
+    objMeta->GetBlobsDesc(resp.blobs_[index]);
 }
 
 void MmcMetaMgrProxyDefault::HandleBlobReplication(size_t objIndex, size_t blobIndex,
@@ -125,9 +106,9 @@ Result MmcMetaMgrProxyDefault::Get(const GetRequest &req, AllocResponse &resp)
 {
     MmcMemObjMetaPtr objMeta;
     MMC_RETURN_ERROR(metaMangerPtr_->Get(req.key_, objMeta), "failed to get objMeta for key " << req.key_);
-    objMeta->Lock();
+    // 涉及操作meta的blob，加锁
+    std::lock_guard<std::recursive_mutex> guard(objMeta->GetLock());
     if (objMeta->NumBlobs() == 0) {
-        objMeta->Unlock();
         MMC_LOG_ERROR("key " << req.key_ << " already released ");
         return MMC_ERROR;
     }
@@ -147,13 +128,10 @@ Result MmcMetaMgrProxyDefault::Get(const GetRequest &req, AllocResponse &resp)
     resp.numBlobs_ = resp.blobs_.size();
     if (resp.numBlobs_ == 0) {
         MMC_LOG_ERROR("key " << req.key_ << " blob num is 0");
-        objMeta->Unlock();
         return MMC_ERROR;
     }
     resp.prot_ = objMeta->Prot();
     resp.priority_ = objMeta->Priority();
-
-    objMeta->Unlock();
     return MMC_OK;
 }
 
@@ -182,10 +160,10 @@ Result MmcMetaMgrProxyDefault::BatchGet(const BatchGetRequest &req, BatchAllocRe
     for (size_t i = 0; i < req.keys_.size(); ++i) {
         if (getResults[i] == MMC_OK && objMetas[i] != nullptr) {
             const MmcMemObjMetaPtr &objMeta = objMetas[i];
-            objMeta->Lock();
+            // 涉及操作meta的blob，加锁
+            std::lock_guard<std::recursive_mutex> guard(objMeta->GetLock());
             if (objMeta->NumBlobs() == 0) {
                 getResults[i] = MMC_OBJECT_NOT_EXISTS;
-                objMeta->Unlock();
                 continue;
             }
 
@@ -211,7 +189,6 @@ Result MmcMetaMgrProxyDefault::BatchGet(const BatchGetRequest &req, BatchAllocRe
             resp.prots_[i] = objMeta->Prot();
             resp.priorities_[i] = objMeta->Priority();
             resp.leases_[i] = 0;
-            objMeta->Unlock();
         } else {
             getResults[i] = getResults[i] == MMC_OK ? MMC_OBJECT_NOT_EXISTS : getResults[i];
             resp.numBlobs_[i] = 0;

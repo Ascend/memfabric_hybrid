@@ -161,13 +161,6 @@ public:
     }
 
 private:
-    /**
-     * @brief force remove the blobs and object meta(if all its blobs are removed)
-     * @param key          [in] key of the to-be-removed meta object
-     * @param filter       [in] filter used to choose the to-be-removed blobs
-     */
-    Result ForceRemoveBlobs(const MmcMemObjMetaPtr &objMeta, const MmcBlobFilterPtr &filter = nullptr);
-
     void AsyncRemoveThreadFunc();
 
     void CheckAndEvict();

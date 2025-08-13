@@ -17,10 +17,7 @@ namespace mmc {
 #define OBJ_MAX_LOG_FILE_NUM 50
 class MmcMetaServiceDefault : public MmcMetaService {
 public:
-    explicit MmcMetaServiceDefault(const std::string &name) : name_(name)
-    {
-        metaMgrProxy_ = MmcMakeRef<MmcMetaMgrProxyDefault>(metaNetServer_).Get();
-    }
+    explicit MmcMetaServiceDefault(const std::string& name) : name_(name) {}
 
     Result Start(const mmc_meta_service_config_t &options) override;
 

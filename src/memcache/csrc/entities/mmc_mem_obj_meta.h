@@ -12,6 +12,7 @@
 #include "mmc_spinlock.h"
 #include "mmc_global_allocator.h"
 #include <vector>
+#include <mutex>
 
 namespace ock {
 namespace mmc {
@@ -40,21 +41,12 @@ public:
     Result AddBlob(const MmcMemBlobPtr &blob);
 
     /**
-     * @brief Remove blobs from the mem object by filter
-     *
-     * @param filter remove filter
-     * @param revert false: remove those matching the filter; true: remove those not matching the filter
-     * @return 0 if removed
-     */
-    Result RemoveBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
-
-    /**
      * @brief Free blobs from the mem object by filter
      *
      * @param allocator allocator ptr
      * @return 0 if removed
      */
-    Result FreeBlobs(MmcGlobalAllocatorPtr &allocator);
+    Result FreeBlobs(MmcGlobalAllocatorPtr &allocator, const MmcBlobFilterPtr &filter = nullptr);
 
     /**
      * @brief Get the prot
@@ -78,7 +70,12 @@ public:
      * @brief Get blobs with filter
      * @return blobs passing the filter
      */
-    std::vector<MmcMemBlobPtr> GetBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false) const;
+    std::vector<MmcMemBlobPtr> GetBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
+
+    void GetBlobsDesc(std::vector<MmcMemBlobDesc>& blobsDesc, const MmcBlobFilterPtr& filter = nullptr,
+                      bool revert = false);
+
+    Result UpdateBlobsState(const MmcBlobFilterPtr& filter, uint64_t operateId, BlobActionResult actRet);
 
     /**
      * @brief Get the size
@@ -86,23 +83,18 @@ public:
      */
     uint64_t Size();
 
-    void Lock()
-    {
-        spinlock_.lock();
-    }
-
-    void Unlock()
-    {
-        spinlock_.unlock();
-    }
+    std::recursive_mutex& GetLock() { return mtx_; }
 
     friend std::ostream &operator<<(std::ostream &os, MmcMemObjMeta &obj)
     {
-        std::lock_guard<Spinlock> guard(obj.spinlock_);
+        std::lock_guard<std::recursive_mutex> guard(obj.mtx_);
         os << "MmcMemObjMeta{numBlobs=" << static_cast<int>(obj.numBlobs_) << ",size=" << obj.size_
            << ",priority=" << obj.priority_ << ",prot=" << obj.prot_ << "}";
         return os;
     }
+
+private:
+    Result RemoveBlobs(const MmcBlobFilterPtr &filter = nullptr, bool revert = false);
 
 private:
     /* make sure the size of this class is 64 bytes */
@@ -111,7 +103,7 @@ private:
     uint8_t numBlobs_{0};                      /* number of blob that the memory object, i.e. replica count */
     MmcMemBlobPtr blobs_[MAX_NUM_BLOB_CHAINS]; /* pointers of blobs */
     uint64_t size_{0};                         /* byteSize of each blob */
-    Spinlock spinlock_;                        /* 4 bytes */
+    std::recursive_mutex mtx_;            // classic 40 bytes
     uint32_t placeholder_{0};
 };
 
@@ -119,21 +111,25 @@ using MmcMemObjMetaPtr = MmcRef<MmcMemObjMeta>;
 
 inline uint16_t MmcMemObjMeta::Prot()
 {
+    std::lock_guard<std::recursive_mutex> guard(mtx_);
     return prot_;
 }
 
 inline uint8_t MmcMemObjMeta::Priority()
 {
+    std::lock_guard<std::recursive_mutex> guard(mtx_);
     return priority_;
 }
 
 inline uint16_t MmcMemObjMeta::NumBlobs()
 {
+    std::lock_guard<std::recursive_mutex> guard(mtx_);
     return numBlobs_;
 }
 
 inline uint64_t MmcMemObjMeta::Size()
 {
+    std::lock_guard<std::recursive_mutex> guard(mtx_);
     return size_;
 }
 

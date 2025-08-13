@@ -35,10 +35,6 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     MMC_VALIDATE_RETURN(options.evictThresholdHigh > options.evictThresholdLow,
         "invalid param, evictThresholdHigh must large than evictThresholdLow", MMC_INVALID_PARAM);
 
-    uint64_t defaultTtl = MMC_DATA_TTL_MS;
-    MMC_RETURN_ERROR(metaMgrProxy_->Start(defaultTtl, options.evictThresholdHigh, options.evictThresholdLow),
-        "Failed to start meta mgr proxy of meta service " << name_);
-
     metaNetServer_ = MmcMakeRef<MetaNetServer>(this, name_ + "_MetaServer").Get();
     MMC_ASSERT_RETURN(metaNetServer_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     /* init engine */
@@ -54,6 +50,9 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     netOptions.logLevel = options_.logLevel;
     MMC_RETURN_ERROR(metaNetServer_->Start(netOptions), "Failed to start net server of meta service " << name_);
 
+    metaMgrProxy_ = MmcMakeRef<MmcMetaMgrProxyDefault>(metaNetServer_).Get();
+    MMC_RETURN_ERROR(metaMgrProxy_->Start(MMC_DATA_TTL_MS, options.evictThresholdHigh, options.evictThresholdLow),
+                     "Failed to start meta mgr proxy of meta service " << name_);
     started_ = true;
     MMC_LOG_INFO("Started MetaService (" << name_ << ") at " << options_.discoveryURL);
     return MMC_OK;

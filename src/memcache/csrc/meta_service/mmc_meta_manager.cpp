@@ -144,24 +144,8 @@ Result MmcMetaManager::UpdateState(const std::string& key, const MmcLocation& lo
         MMC_LOG_ERROR("UpdateState: Cannot find " << key << " memObjMeta! ret:" << ret);
         return MMC_UNMATCHED_KEY;
     }
-
-    metaObj->Lock();
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
-    MMC_ASSERT(filter != nullptr);
-    std::vector<MmcMemBlobPtr> blobs = metaObj->GetBlobs(filter);
-
-    uint32_t opRankId = GetRankIdByOperateId(operateId);
-    uint32_t opSeq = GetSequenceByOperateId(operateId);
-    Result result = MMC_OK;
-    for (auto blob : blobs) {
-        ret = blob->UpdateState(opRankId, opSeq, actRet);
-        if (ret != MMC_OK) {
-            MMC_LOG_ERROR("Update " << key << " blob state by " << std::to_string(actRet) << " Fail!");
-            result = MMC_ERROR;
-        }
-    }
-    metaObj->Unlock();
-    return result;
+    return metaObj->UpdateBlobsState(filter, operateId, actRet);
 }
 
 Result MmcMetaManager::BatchUpdateState(const std::vector<std::string>& keys, const std::vector<MmcLocation>& locs,
@@ -206,19 +190,6 @@ Result MmcMetaManager::BatchRemove(const std::vector<std::string> &keys, std::ve
     return MMC_OK;
 }
 
-Result MmcMetaManager::ForceRemoveBlobs(const MmcMemObjMetaPtr &objMeta, const MmcBlobFilterPtr &filter)
-{
-    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs(filter);
-    for (size_t i = 0; i < blobs.size(); i++) {
-        blobs[i]->UpdateState(0, 0, MMC_REMOVE_START);
-        Result ret = globalAllocator_->Free(blobs[i]);
-        if (ret != MMC_OK) {
-            MMC_LOG_ERROR("Error in free blobs!");
-        }
-    }
-    return objMeta->RemoveBlobs(filter);
-}
-
 Result MmcMetaManager::Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo &localMemInitInfo)
 {
     return globalAllocator_->Mount(loc, localMemInitInfo);
@@ -241,17 +212,14 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
         auto kv = **it;
         std::string key = kv.first;
         MmcMemObjMetaPtr objMeta = kv.second;
-        objMeta->Lock();
-        ret = ForceRemoveBlobs(objMeta, filter);
+        ret = objMeta->FreeBlobs(globalAllocator_, filter);
         if (ret != MMC_OK) {
             MMC_LOG_ERROR("Fail to force remove key:" << key << " blobs in when unmount!");
-            objMeta->Unlock();
             return MMC_ERROR;
         }
         if (objMeta->NumBlobs() == 0) {
             tempKeys.push_back(key);
         }
-        objMeta->Unlock();
         ++(*it);
     }
 
@@ -303,14 +271,15 @@ Result MmcMetaManager::Query(const std::string &key, MemObjQueryInfo &queryInfo)
         return MMC_UNMATCHED_KEY;
     }
 
-    std::vector<MmcMemBlobPtr> blobs = objMeta->GetBlobs();
+    std::vector<MmcMemBlobDesc> blobs;
+    objMeta->GetBlobsDesc(blobs);
     uint32_t i = 0;
     for (auto blob : blobs) {
         if (i >= MAX_BLOB_COPIES) {
             break;
         }
-        queryInfo.blobRanks_[i] = blob->Rank();
-        queryInfo.blobTypes_[i] = blob->Type();
+        queryInfo.blobRanks_[i] = blob.rank_;
+        queryInfo.blobTypes_[i] = blob.mediaType_;
         i++;
     }
     queryInfo.numBlobs_ = i;
