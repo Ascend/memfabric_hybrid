@@ -36,7 +36,7 @@ public:
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
     Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;
-    Result Remove(const std::string &key) noexcept override;
+    Result Remove(const std::string &key, bool printKeyNotExist) noexcept override;
     Result Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override;
     Result Cas(const std::string &key, const std::vector<uint8_t> &expect, const std::vector<uint8_t> &value,
                std::vector<uint8_t> &exists) noexcept override;
