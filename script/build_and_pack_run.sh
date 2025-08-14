@@ -16,11 +16,6 @@ if [ -z "$BUILD_PYTHON" ]; then
 fi
 
 cd ${ROOT_PATH}
-JSON_INC=${ROOT_PATH}/../3rdparty/rapidjson/include/
-if [ ! -d "${JSON_INC}" ]; then
-    git submodule init
-    git submodule update
-fi
 
 bash build.sh ${BUILD_MODE} OFF OFF ${BUILD_PYTHON}
 

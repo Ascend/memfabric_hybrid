@@ -68,7 +68,7 @@
     |-|-|
     |返回值|错误信息|
 
-1. 设置私钥解密的函数，仅在开启Tls，并且使用的是加密私钥时（在配置MEMFABRIC_HYBRID_TLS_INFO环境变量时，有传入tlsPkPwd参数），需要调用该接口进行设置。
+1. 设置私钥解密的函数，仅在开启Tls，并且使用的是加密私钥时（在配置SMEM_CONF_STORE_TLS_INFO环境变量时，有传入tlsPkPwd参数），需要调用该接口进行设置。
     ```c
     int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
     ```

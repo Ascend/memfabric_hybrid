@@ -34,7 +34,6 @@ set_target_properties(test_mf_hy PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_hy PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
 target_link_libraries(test_mf_hy dl rt acc_tcp_net_static gcov pthread)
 target_include_directories(test_mf_hy PRIVATE
-        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
 
         stub/
         ${CMAKE_CURRENT_SOURCE_DIR}
