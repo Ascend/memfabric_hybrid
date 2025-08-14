@@ -438,6 +438,10 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
 
 int MemEntityDefault::UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept
 {
+    if (options_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE) {
+        return BM_OK;
+    }
+
     HybmDeviceMeta info;
     auto addr = HYBM_DEVICE_META_ADDR + HYBM_DEVICE_GLOBAL_META_SIZE + id_ * HYBM_DEVICE_PRE_META_SIZE;
 
