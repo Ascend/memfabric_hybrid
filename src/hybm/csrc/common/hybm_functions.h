@@ -7,6 +7,7 @@
 #include "hybm_define.h"
 #include "hybm_types.h"
 #include "hybm_logger.h"
+#include "hybm_str_helper.h"
 
 namespace ock {
 namespace mf {
@@ -17,6 +18,30 @@ public:
 
     static uint64_t MakeObjectMagic(uint64_t srcAddress);
     static uint64_t ValidateObjectMagic(void *ptr, uint64_t magic);
+
+    static inline int32_t GetLogicDeviceId(const int &deviceId)
+    {
+        int logicDeviceId = -1;
+        auto visibleDevStr = std::getenv("ASCEND_RT_VISIBLE_DEVICES");
+        if (visibleDevStr == nullptr) {
+            BM_LOG_INFO("Not set rt visible env return deviceId: " << deviceId);
+            return deviceId;
+        } else {
+            auto devList = StrHelper::Split(visibleDevStr, ',');
+            if (devList.size() <= static_cast<uint32_t>(deviceId)) {
+                BM_LOG_ERROR("Failed to get visible dev: " << visibleDevStr << " deviceId: " << deviceId);
+                return BM_ERROR;
+            } else {
+                try {
+                    logicDeviceId = std::stoi(devList[deviceId]);
+                } catch (...) {
+                    BM_LOG_ERROR("Failed to get visible dev: " << visibleDevStr << " deviceId: " << deviceId);
+                    return BM_ERROR;
+                }
+            }
+        }
+        return logicDeviceId;
+    }
 
 private:
     const static uint64_t gMagicBits = 0xFFFFFFFFFF; /* get lower 40bits */

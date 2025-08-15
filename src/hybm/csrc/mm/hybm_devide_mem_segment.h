@@ -59,7 +59,6 @@ public:
 
 public:
     static int GetDeviceId(int deviceId) noexcept;
-    static int GetLogicDeviceId(const int &deviceId) noexcept;
     static int FillDeviceSuperPodInfo() noexcept;
     static bool CanMapRemote(const HbmExportInfo &rmi) noexcept;
 
