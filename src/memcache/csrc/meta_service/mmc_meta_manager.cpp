@@ -137,7 +137,9 @@ Result MmcMetaManager::Mount(const MmcLocation &loc, const MmcLocalMemlInitInfo 
         MMC_LOG_ERROR("allocator mount failed, loc rank: " << loc.rank_ << " mediaType_: " << loc.mediaType_);
         return ret;
     }
-
+    if (blobMap.empty()) {
+        return globalAllocator_->Start(loc);
+    }
     ret = globalAllocator_->BuildFromBlobs(loc, blobMap);
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("build from blobs failed, loc rank: " << loc.rank_ << " mediaType_: " << loc.mediaType_);
@@ -203,7 +205,7 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
 
     auto matchFunc = [&](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
-        auto ret = objMeta->FreeBlobs(key, globalAllocator_, filter);
+        auto ret = objMeta->FreeBlobs(key, globalAllocator_, filter, false);
         if (ret != MMC_OK) {
             MMC_LOG_ERROR("Fail to force remove key:" << key << " blobs in when unmount! ret:" << ret);
             return false;

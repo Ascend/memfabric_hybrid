@@ -58,6 +58,7 @@ private:
     std::string name_;
     mmc_local_service_config_t options_;
     std::map<std::string, MmcMemBlobDesc> blobMap_;
+    const int32_t blobRebuildSendMaxCount = 10240;
 };
 
 inline const std::string &MmcLocalServiceDefault::Name() const

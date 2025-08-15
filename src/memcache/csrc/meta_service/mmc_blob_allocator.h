@@ -47,6 +47,12 @@ public:
     MmcMemBlobPtr Alloc(uint64_t blobSize);
     Result Release(const MmcMemBlobPtr& blob);
     Result BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &blobMap);
+    void Start()
+    {
+        spinlock_.lock();
+        started_ = true;
+        spinlock_.unlock();
+    }
     void Stop()
     {
         spinlock_.lock();

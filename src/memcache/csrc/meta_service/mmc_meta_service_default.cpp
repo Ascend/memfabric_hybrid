@@ -80,11 +80,13 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, uint16_t mediaType, uint
     MmcLocalMemlInitInfo locInfo{bm, capacity};
     MMC_RETURN_ERROR(metaMgrProxy_->Mount(loc, locInfo, blobMap), "Mount loc { " << rank << ", " << mediaType << " } failed");
     MMC_LOG_INFO("Mount loc {rank:" << rank << ", media:" << mediaType << ", cap:" << capacity << "} finish");
-    registerRank_++;
-    if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {
-        rankMediaTypeMap_.insert({rank, {}});
+    if (blobMap.size() == 0) {
+        registerRank_++;
+        if (rankMediaTypeMap_.find(rank) == rankMediaTypeMap_.end()) {
+            rankMediaTypeMap_.insert({rank, {}});
+        }
+        rankMediaTypeMap_[rank].insert(mediaType);
     }
-    rankMediaTypeMap_[rank].insert(mediaType);
     return MMC_OK;
 }
 
@@ -125,6 +127,7 @@ Result MmcMetaServiceDefault::ClearResource(uint32_t rank) {
         }
         mediaTypes = rankMediaTypeMap_[rank];
     }
+
     for (const auto& mediaType : mediaTypes) {
         MMC_LOG_INFO("Clear resource {rank, mediaType} -> { " << rank << ", " << mediaType << " }");
         BmUnregister(rank, mediaType);

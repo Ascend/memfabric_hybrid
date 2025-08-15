@@ -131,7 +131,7 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
 Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &blobMap)
 {
     spinlock_.lock();
-    if (started_ || allocatedSize_ != 0) {
+    if (started_) {
         spinlock_.unlock();
         MMC_LOG_ERROR("rebuild allocator failed, rank: " << rank_ << " mediaType: " << mediaType_
             << ", allocator must not started and empty");
@@ -159,8 +159,6 @@ Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &b
         }
         ++it;
     }
-    
-    started_ = true;
     spinlock_.unlock();
     return MMC_OK;
 }

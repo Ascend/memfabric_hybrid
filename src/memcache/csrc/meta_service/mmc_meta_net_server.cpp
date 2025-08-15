@@ -91,7 +91,7 @@ Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
     context->GetRequest<BmRegisterRequest>(req);
     auto result = metaServiceDefaultPtr->BmRegister(req.rank_, req.mediaType_, req.addr_, req.capacity_, req.blobMap_);
     MMC_LOG_INFO("HandleBmRegister rank:" << req.rank_ << ", capacity:" << req.capacity_ << ", media:" << req.mediaType_
-                                          << ", ret:" << result);
+                                          << " rebuild blob size " << req.blobMap_.size() << ", ret:" << result);
     Response resp;
     resp.ret_ = result;
     return context->Reply(req.msgId, resp);

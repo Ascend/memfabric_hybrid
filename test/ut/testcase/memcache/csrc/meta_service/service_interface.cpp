@@ -391,6 +391,7 @@ protected:
         );
         std::map<std::string, ock::mmc::MmcMemBlobDesc> blobMap;
         allocator->BuildFromBlobs(blobMap);
+        allocator->Start();
     }
 
     void TearDown() override

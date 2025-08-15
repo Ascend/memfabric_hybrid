@@ -195,6 +195,8 @@ TEST_F(TestMmcServiceError, metaService)
     mmcs_meta_service_stop(meta_service);
 }
 
+#define  MF_SIZE 1048576000
+
 TEST_F(TestMmcServiceError, metaServiceRebuild)
 {
     std::string metaUrl = "tcp://127.0.0.1:5868";
@@ -213,7 +215,7 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
 
-    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, 0, "sdma", 0, 104857600, 0};
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, 0, "sdma", 0, MF_SIZE, 0};
     localServiceConfig.logLevel = 0;
     localServiceConfig.tlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
@@ -263,11 +265,15 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     mmc_location_t location = mmcc_get_location(test.c_str(), 0);
     EXPECT_TRUE(location.xx == 0);
 
-    const char* keys[] = {"test1", "test2"};
-    uint32_t keys_count = sizeof(keys) / sizeof(keys[0]);
-    void* hostSrcs[keys_count];
-    void* hostDests[keys_count];
-    mmc_buffer bufs[keys_count];
+    uint32_t keys_count = MF_SIZE / SIZE_32K / 2;
+    const char **keys = static_cast<const char**>(malloc(keys_count * sizeof(char*)));
+    for (uint32_t i = 0; i < keys_count; i++) {
+        keys[i] = static_cast<char*>(malloc(16));
+        sprintf(const_cast<char *>(keys[i]), "test_%d", i);
+    }
+    void** hostSrcs = new void * [keys_count];
+    void** hostDests = new void * [keys_count];
+    auto *bufs = new mmc_buffer [keys_count];
 
     for (uint32_t i = 0; i < keys_count; ++i) {
         hostSrcs[i] = malloc(SIZE_32K);

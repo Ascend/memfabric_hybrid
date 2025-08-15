@@ -104,6 +104,7 @@ public:
         }
         return MMC_OK;
     }
+
 private:
     MetaNetServerPtr metaNetServer_;
     std::mutex mutex_;

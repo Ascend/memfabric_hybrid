@@ -27,7 +27,7 @@ void MMCMetaBackUpMgrDefault::BackupThreadFunc()
         Response response;
         uint32_t haveCount = 1;
         MetaBackUpOperate opInfo;
-        while (haveCount) {
+        while (haveCount && started_) {
             {
                 std::lock_guard<std::mutex> lg(backupListLock_);
                 if (backupList_.size() == 0) {

@@ -52,6 +52,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
         std::cout << "allocator mount failed in rank: "<< rankId << std::endl;
         return -1;
     }
+    allocator->Start(loc);
 
     AllocOptions allocReq;
     std::vector<MmcMemBlobPtr> blobs;

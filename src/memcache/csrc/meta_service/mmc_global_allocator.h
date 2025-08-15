@@ -61,13 +61,29 @@ public:
         auto iter = allocators_.find(loc);
         if (iter != allocators_.end()) {
             globalAllocLock_.UnlockWrite();
-            MMC_LOG_ERROR("Cannot mount at the existing position");
-            return MMC_INVALID_PARAM;
+            MMC_LOG_INFO("not need mount at the existing position");
+            return MMC_OK;
         }
 
         allocators_[loc] =
             MmcMakeRef<MmcBlobAllocator>(loc.rank_, loc.mediaType_, localMemInitInfo.bmAddr_, localMemInitInfo.capacity_);
         globalAllocLock_.UnlockWrite();
+        return MMC_OK;
+    }
+
+    Result Start(const MmcLocation &loc)
+    {
+        globalAllocLock_.LockRead();
+        const auto iter = allocators_.find(loc);
+        if (iter == allocators_.end()) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("location not found, rank: " << loc.rank_ << ", mediaType: " << loc.mediaType_);
+            return MMC_INVALID_PARAM;
+        }
+
+        const auto &allocator = iter->second;
+        allocator->Start();
+        globalAllocLock_.UnlockRead();
         return MMC_OK;
     }
 

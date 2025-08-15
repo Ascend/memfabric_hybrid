@@ -69,6 +69,8 @@ void MmcLocalServiceDefault::Stop()
     }
     DestroyBm();
     metaNetClient_->Stop();
+    std::lock_guard<std::mutex> guardBlob(blobMutex_);
+    blobMap_.clear();
     MMC_LOG_INFO("Stop MmcClientDefault (" << name_ << ") server " << options_.discoveryURL);
     started_ = false;
 }
@@ -117,9 +119,25 @@ Result MmcLocalServiceDefault::RegisterBm()
     req.mediaType_ = bmProxyPtr_->GetMediaType();
     req.addr_ = bmProxyPtr_->GetGva();
     req.capacity_ = options_.localDRAMSize + options_.localHBMSize;
-    req.blobMap_ = blobMap_;
+    req.blobMap_.clear();
 
     Response resp;
+    auto chunk_start = blobMap_.begin();
+    const auto end = blobMap_.end();
+
+    while (chunk_start != end) {
+        auto chunk_end = chunk_start;
+        std::advance(chunk_end, std::min(blobRebuildSendMaxCount,
+                                         static_cast<int>(std::distance(chunk_start, end))));
+
+        req.blobMap_.insert(chunk_start, chunk_end);
+        MMC_LOG_INFO("mmc meta blob rebuild count " << req.blobMap_.size());
+        MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
+        MMC_RETURN_ERROR(resp.ret_,
+                         "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
+        chunk_start = chunk_end;
+        req.blobMap_.clear();
+    }
     MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
     MMC_RETURN_ERROR(resp.ret_,
                      "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
