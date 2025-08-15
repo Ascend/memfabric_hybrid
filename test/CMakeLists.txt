@@ -12,3 +12,9 @@ link_directories(${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib)
 
 add_subdirectory(ut)
 add_subdirectory(ut/mock)
+
+set(ENABLE_FUZZ $ENV{ENABLE_FUZZ})
+if (ENABLE_FUZZ STREQUAL "ON")
+    message(STATUS "Fuzz enabled.")
+    add_subdirectory(fuzz)
+endif()
