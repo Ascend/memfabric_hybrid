@@ -6,7 +6,6 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_ACCLINKS_SRC_BASE}/include
-        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
 )
 
 file(GLOB_RECURSE PLATFORM_SRC

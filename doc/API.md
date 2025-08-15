@@ -12,6 +12,17 @@
     |flags|预留参数|
     |返回值|成功返回0，其他为错误码|
 
+1. 创建config store对象
+    ```c
+    int32_t smem_create_config_store(const char *storeUrl);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |storeUrl|业务面地址，格式tcp:://ip:port|
+    |返回值|成功返回0，其他为错误码|
+
+
 1. 设置自定义日志函数
     ```c
     int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
@@ -57,7 +68,7 @@
     |-|-|
     |返回值|错误信息|
 
-1. 设置私钥解密的函数，仅在开启Tls，并且使用的是加密私钥时（在配置MEMFABRIC_HYBRID_TLS_INFO环境变量时，有传入tlsPkPwd参数），需要调用该接口进行设置。
+1. 设置私钥解密的函数，仅在开启Tls，并且使用的是加密私钥时（在配置SMEM_CONF_STORE_TLS_INFO环境变量时，有传入tlsPkPwd参数），需要调用该接口进行设置。
     ```c
     int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
     ```
@@ -220,9 +231,9 @@
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
 
-##### SHM接口列表
+##### SMEM接口列表
 
-1. SHM配置初始化
+1. SMEM配置初始化
     ```c
     int32_t smem_shm_config_init(smem_shm_config_t *config);
     ```
@@ -232,7 +243,7 @@
     |config|初始化配置|
     |返回值|成功返回0，失败返回错误码|
 
-1. SHM初始化
+1. SMEM初始化
     ```c
     int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, 
         uint16_t deviceId, smem_shm_config_t *config);
@@ -241,13 +252,13 @@
     |参数/返回值|含义|
     |-|-|
     |configStoreIpPort|config store的IP和端口，格式tcp://ip:port|
-    |worldSize|参与SHM初始化rank数量，最大支持1024|
+    |worldSize|参与SMEM初始化rank数量，最大支持1024|
     |rankId|当前rank id|
     |deviceId|当前rank的device id|
-    |config|初始化SHM配置|
+    |config|初始化SMEM配置|
     |返回值|成功返回0，失败返回错误码|
 
-1. SHM退出
+1. SMEM退出
     ```c
     void smem_shm_uninit(uint32_t flags);
     ```
@@ -265,7 +276,7 @@
     |-|-|
     |返回值|参考smem_shm_data_op_type类型定义|
 
-1. 创建SHM
+1. 创建SMEM
     ```c
     smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
         smem_shm_data_op_type dataOpType, uint32_t flags, void **gva);
@@ -273,23 +284,23 @@
 
     |参数/返回值|含义|
     |-|-|
-    |id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
-    |rankSize|参与创建SHM的rank数量，最大支持1024|
+    |id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
+    |rankSize|参与创建SMEM的rank数量，最大支持1024|
     |rankId|当前rank id|
-    |symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
+    |symmetricSize|每个rank贡献到创建SMEM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
     |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
     |flags|预留参数|
     |gva|出参，gva空间地址|
-    |返回值|SHM对象handle|
+    |返回值|SMEM对象handle|
 
-1. 销毁SHM
+1. 销毁SMEM
     ```c
     int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags);
     ```
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
+    |handle|SMEM对象handle|
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
 
@@ -300,7 +311,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
+    |handle|SMEM对象handle|
     |context|用户context指针|
     |size|用户context大小，最大64K，单位字节|
     |返回值|成功返回0，失败返回错误码|
@@ -312,8 +323,8 @@
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
-    |返回值|在SHM里的rank id|
+    |handle|SMEM对象handle|
+    |返回值|在SMEM里的rank id|
 
 1. 获取rank数量
     ```c
@@ -322,20 +333,20 @@
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
-    |返回值|在SHM里的rank个数|
+    |handle|SMEM对象handle|
+    |返回值|在SMEM里的rank个数|
 
-1. 在SHM对象执行barrier
+1. 在SMEM对象执行barrier
     ```c
     int32_t smem_shm_control_barrier(smem_shm_t handle);
     ```
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
+    |handle|SMEM对象handle|
     |返回值|成功返回0，失败返回错误码|
 
-1. 在SHM对象执行allgather
+1. 在SMEM对象执行allgather
     ```c
     int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, 
         char *recvBuf, uint32_t recvSize);
@@ -343,7 +354,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
+    |handle|SMEM对象handle|
     |sendBuf|发送数据buffer|
     |sendSize|发送数据大小，单位字节|
     |recvBuf|接收数据buffer|
@@ -357,10 +368,31 @@
 
     |参数/返回值|含义|
     |-|-|
-    |handle|SHM对象handle|
+    |handle|SMEM对象handle|
     |remoteRank|待检查rank id|
     |reachInfo|连通信息类型，参考smem_shm_data_op_type定义|
     |返回值|成功返回0，失败返回错误码|
+
+1. 注册退出回调函数
+    ```
+    int32_t smem_shm_register_exit(smem_shm_t handle, void (*exit)(int));
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|SMEM对象handle|
+    |exit|退出函数|
+    |返回值|成功返回0，失败返回错误码|
+
+1. PE主动退出接口
+    ```
+    void smem_shm_global_exit(smem_shm_t handle, int status);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|SMEM对象handle|
+    |status|退出状态|
 
 ##### 环境变量
 

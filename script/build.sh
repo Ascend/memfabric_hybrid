@@ -22,13 +22,13 @@ if [ -z "$BUILD_PYTHON" ]; then
 fi
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
-git submodule init
-git submodule update --recursive 3rdparty/rapidjson
+
 
 if [ "${BUILD_TESTS}" == "ON" ]; then
     echo "BUILD_TESTS, NO BUILD PYTHON"
     BUILD_PYTHON="OFF"
 
+    git submodule init
     git submodule update --recursive test/3rdparty/googletest
     git submodule update --recursive test/3rdparty/mockcpp
 

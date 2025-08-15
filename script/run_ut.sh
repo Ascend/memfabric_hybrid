@@ -11,6 +11,8 @@ readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
 readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
 readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 
+TEST_FILTER="*$1*"
+
 cd ${PROJECT_FULL_PATH}
 rm -rf ${COVERAGE_PATH}
 rm -rf ${BUILD_PATH}
@@ -34,7 +36,7 @@ export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_P
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 
-cd "$OUTPUT_PATH/bin" && ./test_mf_hy --gtest_output=xml:gcover_report/test_detail.xml
+cd "$OUTPUT_PATH/bin" && ./test_mf_hy --gtest_output=xml:gcover_report/test_detail.xml --gtest_filter=${TEST_FILTER}
 
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"

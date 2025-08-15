@@ -46,7 +46,6 @@ set_target_properties(test_mf_fuzz PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(test_mf_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_PATH}/bin)
 target_link_libraries(test_mf_fuzz dl rt acc_tcp_net_static gcov pthread libSecodefuzz.a)
 target_include_directories(test_mf_fuzz PRIVATE
-        ${PROJECT_3RDPARTY_SRC_DIR}/rapidjson/include/
 
         ../ut/stub/
         ${CMAKE_CURRENT_SOURCE_DIR}
