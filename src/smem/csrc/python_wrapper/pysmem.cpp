@@ -332,6 +332,7 @@ whether to start config store, default true)")
 void DefineBmCopyData2DParams(py::module_ &m)
 {
     py::class_<BigMemory::CopyData2DParams>(m, "CopyData2DParams")
+        .def(py::init<>())
         .def_readwrite("src", &BigMemory::CopyData2DParams::src, R"(
             source src of data.)")
         .def_readwrite("spitch", &BigMemory::CopyData2DParams::spitch, R"(

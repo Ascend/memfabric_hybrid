@@ -208,7 +208,7 @@ int HostDataOpSDMA::CopyHost2Gva2d(hybm_copy_2d_params &params, void *stream) no
         }
         return BM_DL_FUNCTION_FAILED;
     }
-
+    params.src = copyDevice;
     auto result = CopyDevice2Gva2d(params, stream);
     if (result != BM_OK) {
         int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
@@ -297,7 +297,8 @@ int HostDataOpSDMA::CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) no
         BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
-
+    void *dest = params.dest;
+    params.dest = copyDevice;
     auto result = CopyGva2Device2d(params, stream);
     if (result != BM_OK) {
         int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
@@ -307,7 +308,7 @@ int HostDataOpSDMA::CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) no
         return result;
     }
 
-    ret = DlAclApi::AclrtMemcpy2d(params.dest, params.dpitch, params.src,
+    ret = DlAclApi::AclrtMemcpy2d(dest, params.dpitch, copyDevice,
         params.width, params.width, params.height, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
         BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: " << params.width
