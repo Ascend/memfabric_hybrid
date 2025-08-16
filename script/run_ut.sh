@@ -6,12 +6,16 @@ readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
 readonly BUILD_PATH="$PROJECT_FULL_PATH/build"
 readonly OUTPUT_PATH="$PROJECT_FULL_PATH/output"
 readonly HYBM_LIB_PATH="$OUTPUT_PATH/hybm/lib64"
+readonly SMEM_LIB_PATH="$OUTPUT_PATH/smem/lib64"
 readonly COVERAGE_PATH="$OUTPUT_PATH/coverage"
 readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
 readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
 readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 
 TEST_FILTER="*$1*"
+
+git submodule init
+git submodule update --recursive
 
 cd ${PROJECT_FULL_PATH}
 rm -rf ${COVERAGE_PATH}
@@ -32,7 +36,7 @@ dos2unix $TEST_3RD_PATCH_PATH/*.patch
 
 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -DBUILD_PYTHON=OFF -S . -B ${BUILD_PATH}
 make install -j5 -C ${BUILD_PATH}
-export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$SMEM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 

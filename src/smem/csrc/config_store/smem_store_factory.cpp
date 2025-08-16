@@ -145,7 +145,7 @@ Result ParseStr2KV(const std::string &token, char splitter, std::pair<std::strin
     return StoreErrorCode::ERROR;
 }
 
-void SetTlsOptionValue(AcclinkTlsOption &tlsOption, const std::string &key, const std::string &value)
+bool SetTlsOptionValue(AcclinkTlsOption &tlsOption, const std::string &key, const std::string &value)
 {
     if (key == "tlsCaPath") {
         tlsOption.tlsCaPath = value;
@@ -159,16 +159,22 @@ void SetTlsOptionValue(AcclinkTlsOption &tlsOption, const std::string &key, cons
         tlsOption.tlsCrlPath = value;
     } else if (key == "packagePath") {
         tlsOption.packagePath = value;
+    } else {
+        return false;
     }
+    return true;
 }
 
-void SetTlsOptionValues(AcclinkTlsOption &tlsOption, const std::string &key, std::set<std::string> &values)
+bool SetTlsOptionValues(AcclinkTlsOption &tlsOption, const std::string &key, std::set<std::string> &values)
 {
     if (key == "tlsCrlFile") {
         tlsOption.tlsCrlFile = values;
     } else if (key == "tlsCaFile") {
         tlsOption.tlsCaFile = values;
+    } else {
+        return false;
     }
+    return true;
 }
 
 Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption)
@@ -191,6 +197,7 @@ Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption)
             continue;
         }
 
+        bool res = true;
         auto key = pair.first;
         std::set<std::string> paths;
         if (pair.first == "tlsCrlFile" || pair.first == "tlsCaFile") {
@@ -199,9 +206,13 @@ Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption)
                 continue;
             }
 
-            SetTlsOptionValues(tlsOption, pair.first, paths);
+            res = SetTlsOptionValues(tlsOption, pair.first, paths);
         } else {
-            SetTlsOptionValue(tlsOption, pair.first, pair.second);
+            res = SetTlsOptionValue(tlsOption, pair.first, pair.second);
+        }
+
+        if (!res) {
+            SM_LOG_WARN("un-match tls info key " << pair.first);
         }
     }
 
@@ -251,13 +262,11 @@ Result StoreFactory::InitTlsOption() noexcept
     return StoreErrorCode::SUCCESS;
 }
 
-std::function<int(const std::string&, char*, int&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, int*, char*, int*)) noexcept
+std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t&)) noexcept
 {
-    return [rawFunc](const std::string &cipherText, char *plainText, int32_t &plainTextLen) {
-        int tmpCipherLen = static_cast<int>(cipherText.size());
-        int tmpPlainLen = plainTextLen;
-        int ret = rawFunc(cipherText.c_str(), &tmpCipherLen, plainText, &tmpPlainLen);
-        plainTextLen = tmpPlainLen;
+    return [rawFunc](const std::string &cipherText, char *plainText, size_t &plainTextLen) {
+        auto tmpCipherLen = cipherText.size();
+        int ret = rawFunc(cipherText.c_str(), tmpCipherLen, plainText, plainTextLen);
         return ret;
     };
 }

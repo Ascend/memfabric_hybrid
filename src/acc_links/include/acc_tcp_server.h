@@ -50,8 +50,7 @@ using AccLinkBrokenHandler = std::function<int32_t(const AccTcpLinkComplexPtr &l
  * @param plainText        [out] the decrypted text(private password)
  * @param plaintextLen     [in] the length of plainText
  */
-using AccDecryptHandler =
-    std::function<int(const std::string &cipherText, char *plainText, int32_t &plainTextLen)>;
+using AccDecryptHandler = std::function<int(const std::string &cipherText, char *plainText, size_t &plainTextLen)>;
 
 /**
  * @brief Tcp Server for p2p communication, can be two mode:

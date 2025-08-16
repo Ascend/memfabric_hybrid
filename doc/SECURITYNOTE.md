@@ -42,6 +42,19 @@ export ACCLINK_CHECK_PERIOD_HOURS=168
 配置剩余十四天过期时警告:
 export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 ```
+
+|字段|含义|Required|
+|-|-|-|
+| tlsCaPath | ca证书存储路径 | 是 |
+| tlsCert | server证书 | 是 |
+| tlsPk | 私钥，为了安全，建议不使用明文保存 | 是 |
+| tlsPkPwd | 私钥口令，可以是明文或密文，密文时需通过 c 接口 smem_register_decrypt_handler 或 python 接口 register_decrypt_handler 注册解密函数 | 是 |
+| tlsCrlPath | 证书吊销列表存储路径 | 否 |
+| tlsCrlFile | 证书吊销列表 | 否 |
+| tlsCaFile | ca证书列表 | 是 |
+| packagePath | OpenSSL lib库路径 | 否 |
+
+
 | 环境变量 | 说明                                         |
 |------|-----------------------------------------------------------|
 | SMEM_CONF_STORE_TLS_ENABLE  | 只支持配置0和1。其中0代表关闭tls，1代表打开tls。不配置的时候默认打开tls                |

@@ -117,7 +117,7 @@ struct AccTlsOption {
     std::set<std::string> tlsCaFile;  /* paths of ca */
     std::set<std::string> tlsCrlFile; /* path of crl file */
     std::string tlsPk;                /* private key */
-    std::string tlsPkPwd;             /* private key加密文件->可选传入 */
+    std::string tlsPkPwd;             /* private key password, required, encrypt or plain both allowed */
 
     AccTlsOption() : enableTls(false)
     {

@@ -143,8 +143,8 @@ SMEM_API const char *smem_get_and_clear_last_err_msg()
 SMEM_API int32_t smem_register_decrypt_handler(const smem_decrypt_handler h)
 {
     if (h == nullptr) {
-        SM_LOG_ERROR("decrypt handler is nullptr");
-        return ock::smem::SM_ERROR;
+        SM_LOG_WARN("decrypt handler is nullptr");
+        return ock::smem::SM_INVALID_PARAM;
     }
     ock::smem::StoreFactory::RegisterDecryptHandler(h);
     return ock::smem::SM_OK;
