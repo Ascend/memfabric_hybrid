@@ -81,11 +81,9 @@ protected:
 
         initConfig = {
             .deviceId = 0,
-            .rankId = 0,
             .worldSize = 4,
             .ipPort = "127.0.0.1:5000",
             .hcomUrl = "tcp://127.0.0.1:5001",
-            .autoRanking = 1,
             .logLevel = 0,
             .logFunc = nullptr
         };

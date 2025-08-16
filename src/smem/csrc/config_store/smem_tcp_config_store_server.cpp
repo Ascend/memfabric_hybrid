@@ -10,9 +10,10 @@
 namespace ock {
 namespace smem {
 std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
-AccStoreServer::AccStoreServer(std::string ip, uint16_t port) noexcept
+AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept
     : listenIp_{std::move(ip)},
       listenPort_{port},
+      worldSize_{worldSize},
       requestHandlers_{
           {MessageType::SET, &AccStoreServer::SetHandler},       {MessageType::GET, &AccStoreServer::GetHandler},
           {MessageType::ADD, &AccStoreServer::AddHandler},       {MessageType::REMOVE, &AccStoreServer::RemoveHandler},
@@ -127,6 +128,12 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
 Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     SM_LOG_INFO("link broken, linkId: " << link->Id());
+    std::string autoRankingStr = AutoRankingStr + std::to_string(link->Id());
+    std::unique_lock<std::mutex> lockGuard{storeMutex_};
+    auto pos = kvStore_.find(autoRankingStr);
+    if (pos != kvStore_.end()) {
+        kvStore_.erase(pos);
+    }
     return SM_OK;
 }
 
@@ -171,6 +178,52 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
     return SM_OK;
 }
 
+Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
+{
+    auto &key = request.keys[0];
+    auto linkId = context.Link()->Id();
+    auto rankingKey = key + std::to_string(linkId);
+    SM_LOG_DEBUG("GET rankingKey(" << rankingKey << ") success.");
+    SmemMessage responseMessage{request.mt};
+    std::unique_lock<std::mutex> lockGuard{storeMutex_};
+    auto pos = kvStore_.find(rankingKey);
+    if (pos != kvStore_.end()) {
+        responseMessage.values.emplace_back(pos->second);
+        lockGuard.unlock();
+        SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") success.");
+        auto response = SmemMessagePacker::Pack(responseMessage);
+        ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
+        return SM_OK;
+    }
+    if (aliveRankSet.size() >= worldSize_) {
+        SM_LOG_ERROR("Failed to insert rank, rank count:" << aliveRankSet.size() << " equal worldSize: " << worldSize_);
+        ReplyWithMessage(context, StoreErrorCode::ERROR, "error: worldSize rankSize bigger than worldSize.");
+        return SM_ERROR;
+    }
+    while (true) {
+        rankIndex_ %= worldSize_;
+        if (aliveRankSet.find(rankIndex_) == aliveRankSet.end()) {
+            aliveRankSet.insert(rankIndex_);
+            break;
+        }
+        rankIndex_++;
+    }
+    union Transfer {
+        uint32_t rankId;
+        uint8_t date[4];
+    } trans{};
+    trans.rankId = rankIndex_;
+    std::vector<uint8_t> data{trans.date, trans.date + sizeof(trans.date)};
+    kvStore_.emplace(rankingKey, std::move(data));
+    lockGuard.unlock();
+
+    responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
+    SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") success.");
+    auto response = SmemMessagePacker::Pack(responseMessage);
+    ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
+    return 0;
+}
+
 Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || !request.values.empty()) {
@@ -183,6 +236,10 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     if (key.length() > MAX_KEY_LEN_SERVER) {
         SM_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
+    }
+
+    if (key.compare(0, AutoRankingStr.size(), AutoRankingStr) == 0) {
+        return FindOrInsertRank(context, request);
     }
 
     SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");

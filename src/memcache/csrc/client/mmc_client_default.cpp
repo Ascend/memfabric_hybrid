@@ -26,11 +26,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
         ock::mmc::MmcOutLogger::Instance().SetExternalLogFunction(config.logFunc);
     }
     bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
-    if (config.autoRanking == 1) {
-        rankId_ = bmProxy_->RankId();
-    } else {
-        rankId_ = config.rankId;
-    }
+    rankId_ = bmProxy_->RankId();
 
     auto tmpNetClient  = MetaNetClientFactory::GetInstance(config.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(tmpNetClient != nullptr, MMC_NEW_OBJECT_FAILED);
@@ -38,7 +34,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
         NetEngineOptions options;
         options.name = name_;
         options.threadCount = 2;
-        options.rankId = config.rankId;
+        options.rankId = rankId_;
         options.startListener = false;
         options.tlsOption = config.tlsConfig;
         options.logLevel = config.logLevel;

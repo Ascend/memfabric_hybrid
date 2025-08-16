@@ -54,7 +54,6 @@ typedef struct {
     uint32_t worldSize;
     std::string bmIpPort;
     std::string bmHcomUrl;
-    int32_t autoRanking;
     uint32_t createId;
     std::string dataOpType;
     uint64_t localDRAMSize;
@@ -69,7 +68,6 @@ typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE];
     uint32_t rankId;
     uint32_t timeOut;
-    int32_t autoRanking;
     int32_t logLevel;
     ExternalLog logFunc;
     mmc_tls_config tlsConfig;

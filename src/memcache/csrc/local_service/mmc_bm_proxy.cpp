@@ -27,17 +27,12 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
 
     smem_bm_config_t config;
     MMC_RETURN_ERROR(smem_bm_config_init(&config), "Failed to init smem bm config");
-    if (initConfig.autoRanking == 1) {
-        config.autoRanking = true;
-    } else {
-        config.rankId = initConfig.rankId;
-    }
 
     (void) std::copy_n(initConfig.hcomUrl.c_str(), initConfig.hcomUrl.size(), config.hcomUrl);
     MMC_RETURN_ERROR(smem_bm_init(initConfig.ipPort.c_str(), initConfig.worldSize, initConfig.deviceId, &config),
                      "Failed to init smem bm");
 
-    bmRankId_ = (initConfig.autoRanking == 1) ? smem_bm_get_rank_id() : initConfig.rankId;
+    bmRankId_ = smem_bm_get_rank_id();
 
     auto ret = InternalCreateBm(createConfig);
     if (ret != MMC_OK) {

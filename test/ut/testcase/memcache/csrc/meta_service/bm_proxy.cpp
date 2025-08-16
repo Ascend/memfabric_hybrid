@@ -34,7 +34,6 @@ void TestBmProxy::SetUp()
     cout << "this is NetEngine TEST_F setup:" << endl;
 
     initConfig_.logLevel = 0;
-    initConfig_.autoRanking = 1;
     initConfig_.ipPort = "127.0.0.1:12345";
     initConfig_.worldSize = 1;
     initConfig_.deviceId = 0;
@@ -93,8 +92,6 @@ TEST_F(TestBmProxy, Copy)
 
     mmc_bm_init_config_t initConfig;
     initConfig.logLevel = 0;
-    initConfig.autoRanking = 1;
-    initConfig.rankId = 0;
     initConfig.ipPort = bmUrl;
     initConfig.worldSize = 1;
     initConfig.deviceId = 0;

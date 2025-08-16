@@ -40,11 +40,9 @@
 | ock.mmc.tls.package.path               | string     | /opt/ock/security/libs/      | 0 <= len < 1024       | openssl dynamic lib absolute path                           |
 |                                        |            |                              |                       |                                                             |
 | ock.mmc.local_service.device_id        | integer    | 0                            | [0, 383]              |                                                             |
-| ock.mmc.local_service.bm_rank_id       | integer    | 0                            | [0, 1023]             |                                                             |
 | ock.mmc.local_service.world_size       | integer    | 1                            | [1, 1024]             |                                                             |
 | ock.mmc.local_service.config_store_url | string     | tcp://127.0.0.1:6000         | tcp://\<ip>\<port>    | port in [1025, 65535]                                       |
 | ock.mmc.local_service.hcom_url         | string     | tcp://127.0.0.1:7000         | tcp://\<ip>\<port>    | used in dram pool, port in [1, 65535]                       |
-| ock.mmc.local_service.auto_ranking     | integer    | 1                            | [0, 1]                |                                                             |
 | ock.mmc.local_service.protocol         | string     | sdma                         | sdma/roce             |                                                             |
 | ock.mmc.local_service.dram.size        | integer    | 0                            | [0, 1099511627776]    | unit: byte, max: 1TB                                        |
 | ock.mmc.local_service.hbm.size         | integer    | 2097152                      | [0, 1099511627776]    | unit: byte, max: 1TB                                        |

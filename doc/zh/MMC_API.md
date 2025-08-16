@@ -526,7 +526,6 @@ results = store.batch_is_exist(keys)
 - `discoveryURL`: 发现服务URL
 - `rankId`: Rank ID
 - `timeOut`: 超时时间
-- `autoRanking`: 自动排名
 - `logLevel`: 日志级别
 - `logFunc`: 外部日志函数
 - `tlsConfig`: TLS配置
@@ -547,7 +546,6 @@ results = store.batch_is_exist(keys)
 - `worldSize`: 世界大小
 - `bmIpPort`: BM IP端口
 - `bmHcomUrl`: BM HCOM URL
-- `autoRanking`: 自动排名
 - `createId`: 创建ID
 - `dataOpType`: 数据操作类型
 - `localDRAMSize`: 本地DRAM大小

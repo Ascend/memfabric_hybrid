@@ -221,7 +221,7 @@ static int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags)
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE;  // 申请meta空间
     drv::HybmInitialize(initedLogicDeviceId, DlHalApi::GetDevmmFd());
-    ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, (int32_t)deviceId, flags);
+    ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, initedLogicDeviceId, flags);
     if (ret != 0) {
         DlApi::CleanupLibrary();
         BM_LOG_ERROR("initialize mete memory with size: " << allocSize << ", flag: " << flags << " failed: " << ret);

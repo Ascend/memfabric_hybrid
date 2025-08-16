@@ -63,7 +63,7 @@ private:
 
 class AccStoreServer : public SmReferable {
 public:
-    AccStoreServer(std::string ip, uint16_t port) noexcept;
+    AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept;
     ~AccStoreServer() override = default;
 
     Result Startup() noexcept;
@@ -89,6 +89,7 @@ private:
     void ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
                           const std::vector<uint8_t> &message) noexcept;
     void TimerThreadTask() noexcept;
+    Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
 
 private:
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;
@@ -109,6 +110,9 @@ private:
     const std::string listenIp_;
     const uint16_t listenPort_;
     std::mutex mutex_;
+    const uint32_t worldSize_;
+    uint32_t rankIndex_{0};
+    std::unordered_set<uint32_t> aliveRankSet;
 };
 using AccStoreServerPtr = SmRef<AccStoreServer>;
 }  // namespace smem

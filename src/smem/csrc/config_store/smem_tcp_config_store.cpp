@@ -110,10 +110,12 @@ private:
 };
 
 std::atomic<uint32_t> TcpConfigStore::reqSeqGen_{0};
-TcpConfigStore::TcpConfigStore(std::string ip, uint16_t port, bool isServer, int32_t rankId) noexcept
+TcpConfigStore::TcpConfigStore(std::string ip, uint16_t port, bool isServer,
+                               uint32_t worldSize, int32_t rankId) noexcept
     : serverIp_{std::move(ip)},
       serverPort_{port},
       isServer_{isServer},
+      worldSize_{worldSize},
       rankId_{rankId}
 {
 }
@@ -141,7 +143,7 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
     }
 
     if (isServer_) {
-        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_);
+        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_);
         if (accServer_ == nullptr) {
             Shutdown();
             return SM_NEW_OBJECT_FAILED;

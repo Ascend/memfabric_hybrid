@@ -25,6 +25,9 @@ enum StoreErrorCode : int16_t {
     IO_ERROR = -602
 };
 
+
+const std::string AutoRankingStr = "AutoRanking#";
+
 class ConfigStore : public SmReferable {
 public:
     ~ConfigStore() override = default;

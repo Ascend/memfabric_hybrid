@@ -13,8 +13,8 @@ static __thread int failedReason_ = 0;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 
-StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
-                                   int32_t connMaxRetry) noexcept
+StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer,
+                                   uint32_t worldSize, int32_t rankId, int32_t connMaxRetry) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
 
@@ -24,7 +24,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
         return pos->second;
     }
 
-    auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, worldSize, rankId);
     SM_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(connMaxRetry);

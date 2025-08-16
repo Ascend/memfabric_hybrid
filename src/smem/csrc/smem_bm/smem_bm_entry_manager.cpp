@@ -8,6 +8,7 @@
 #include "smem_net_group_engine.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_store_factory.h"
+#include "smem_tcp_config_store.h"
 
 namespace ock {
 namespace smem {
@@ -70,11 +71,12 @@ int32_t SmemBmEntryManager::PrepareStore()
     if (!config_.autoRanking) {
         SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
         if (config_.rankId == 0 && config_.startConfigStore) {
-            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true, 0);
+            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true,
+                                                   worldSize_, 0);
             SM_LOG_INFO("smem bm start store server success, rk: " << config_.rankId);
         } else {
             confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false,
-                static_cast<int>(config_.rankId));
+                                                   worldSize_, static_cast<int>(config_.rankId));
         }
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
 
@@ -85,7 +87,7 @@ int32_t SmemBmEntryManager::PrepareStore()
         }
 
         if (confStore_ == nullptr) {
-            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false);
+            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false, worldSize_);
             SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
         }
     }
@@ -103,7 +105,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
         return SM_OK;
     }
 
-    confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true);
+    confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true, worldSize_);
     if (confStore_ != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE) {
         return SM_OK;
     }
@@ -121,43 +123,23 @@ int32_t SmemBmEntryManager::AutoRanking()
         SM_LOG_ERROR("get local ip address connect to target ip: " << storeUrlExtraction_.ip << " failed: " << ret);
         return ret;
     }
-
-    std::string rankTableKey = std::string("AutoRanking#RankTables");
-    std::string sortedRankTableKey = std::string("AutoRanking#SortedRankTables");
-    RankTable rt{localIpv4, deviceId_};
-    uint64_t size;
-    std::vector<uint8_t> rtv{(uint8_t *)&rt, (uint8_t *)&rt + sizeof(rt)};
-    ret = confStore_->Append(rankTableKey, rtv, size);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "append key: " << rankTableKey << " failed: " << ret);
-
-    std::vector<RankTable> ranks;
-    if (size == sizeof(rt) * worldSize_) {
-        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
-
-        ret = confStore_->Remove(rankTableKey);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "remove key: " << rankTableKey << " failed: " << ret);
-
-        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
-        std::sort(ranks.begin(), ranks.end(), RankTable::Less);
-
-        rtv = std::vector<uint8_t>{(uint8_t *)ranks.data(), (uint8_t *)ranks.data() + sizeof(RankTable) * worldSize_};
-        ret = confStore_->Set(sortedRankTableKey, rtv);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
-    } else {
-        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
-        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
-    }
-
-    for (auto i = 0U; i < ranks.size(); ++i) {
-        if (ranks[i].ipv4 == localIpv4 && ranks[i].deviceId == deviceId_) {
-            config_.rankId = i;
-            break;
+    do {
+        std::vector<uint8_t> rankIdDate;
+        ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+        if (ret == SM_OK && rankIdDate.size() == sizeof(uint32_t)) {
+            union Transfer {
+                uint32_t rankId;
+                uint8_t date[4];
+            } trans{};
+            std::copy(rankIdDate.begin(), rankIdDate.end(), trans.date);
+            config_.rankId = trans.rankId;
+            SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: "
+                                                           << localIp << " deviceId: " << deviceId_);
+            return SM_OK;
         }
-    }
-
-    return SM_OK;
+    } while (0);
+    SM_LOG_ERROR("Failed to auto ranking, localIp: " << localIp << " deviceId: " << deviceId_);
+    return SM_ERROR;
 }
 
 Result SmemBmEntryManager::CreateEntryById(uint32_t id, SmemBmEntryPtr &entry /* out */)

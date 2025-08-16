@@ -77,8 +77,8 @@ void MmcLocalServiceDefault::Stop()
 
 Result MmcLocalServiceDefault::InitBm()
 {
-    mmc_bm_init_config_t initConfig = {options_.deviceId, options_.rankId, options_.worldSize, options_.bmIpPort,
-                                       options_.bmHcomUrl, options_.autoRanking, options_.logLevel, options_.logFunc};
+    mmc_bm_init_config_t initConfig = {options_.deviceId, options_.worldSize, options_.bmIpPort,
+                                       options_.bmHcomUrl, options_.logLevel, options_.logFunc};
     mmc_bm_create_config_t createConfig = {options_.createId, options_.worldSize, options_.dataOpType,
                                            options_.localDRAMSize, options_.localHBMSize, options_.flags};
 
@@ -87,9 +87,7 @@ Result MmcLocalServiceDefault::InitBm()
     if (ret != MMC_OK) {
         return ret;
     }
-    if (options_.autoRanking == 1) {
-        options_.rankId = bmProxy->RankId();
-    }
+    options_.rankId = bmProxy->RankId();
     bmProxyPtr_ = bmProxy;
     return ret;
 }
