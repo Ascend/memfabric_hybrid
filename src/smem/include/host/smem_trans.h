@@ -68,7 +68,7 @@ int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capac
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_trans_register_mems(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count, uint32_t flags);
+int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count, uint32_t flags);
 
 /**
  * @brief De-register contiguous memory spaces that registered by smem_trans_register_mem(s)
