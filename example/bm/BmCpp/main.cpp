@@ -2,12 +2,14 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <iostream>
+#include <algorithm>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include "acl/acl.h"
 #include "smem.h"
+#include "smem_security.h"
 #include "smem_bm.h"
 #include "barrier_util.h"
 
@@ -64,6 +66,28 @@ bool CheckData(void *base, void *ptr)
     return true;
 }
 
+int decrypt_handler_example(const char *cipherText, size_t cipherTextLen, char *plainText, size_t &plainTextLen)
+{
+    if (cipherText == nullptr || plainText == nullptr) {
+        return -1;
+    }
+
+    // do decrypt here
+    // check out length < plainTextLen
+
+    size_t outPlainTextLen = cipherTextLen;
+
+    std::copy_n(cipherText, cipherTextLen, plainText);
+    plainText[cipherTextLen] = '\0';
+    plainTextLen = outPlainTextLen;
+    return 0;
+}
+
+void extern_logger_example(int level, const char *msg)
+{
+    std::cout << "level:" << level << ":" << (msg == nullptr ? "" : msg) << std::endl;
+}
+
 int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort, int autoRank, aclrtStream *stream)
 {
     auto ret = aclInit(nullptr);
@@ -77,6 +101,12 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string
 
     ret = smem_init(0);
     CHECK_RET_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId);
+
+    ret = smem_register_decrypt_handler(decrypt_handler_example);
+    CHECK_RET_ERR(ret, "smem register decrypt handler failed, ret:" << ret << " rank:" << rankId);
+
+    ret = smem_set_extern_logger(extern_logger_example);
+    CHECK_RET_ERR(ret, "smem set extern logger failed, ret:" << ret << " rank:" << rankId);
 
     smem_bm_config_t config;
     (void)smem_bm_config_init(&config);

@@ -130,7 +130,7 @@ Result TcpConfigStore::AccClientStart(const AcclinkTlsOption &tlsOption) noexcep
     ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
     Result result;
     if (tlsOpt.enableTls) {
-        if (!tlsOpt.tlsPkPwd.empty()) {
+        if (tlsOption.decryptHandler_ != nullptr) {
             accClient_->RegisterDecryptHandler(tlsOption.decryptHandler_);
         }
         result = accClient_->Start(options, tlsOpt);

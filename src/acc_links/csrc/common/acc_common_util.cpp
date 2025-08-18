@@ -91,7 +91,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
 #define CHECK_FILE_PATH(key, required)                                           \
     do {                                                                         \
         if (!tlsOption.key.empty()) {                                            \
-            std::string path = tlsOption.tlsTopPath + tlsOption.key;             \
+            std::string path = tlsOption.tlsTopPath + "/" + tlsOption.key;       \
             if (FileUtil::IsSymlink(path) || !FileUtil::Realpath(path)           \
                 || !FileUtil::IsFile(path) || !FileUtil::CheckFileSize(path)) {  \
                 LOG_ERROR("TLS " #key " check failed");                          \
@@ -144,7 +144,7 @@ Result AccCommonUtil::CheckTlsOptions(const AccTlsOption &tlsOption)
     CHECK_DIR_PATH(tlsCrlPath, false);
     CHECK_FILE_PATH(tlsCert, true);
     CHECK_FILE_PATH(tlsPk, true);
-    CHECK_FILE_PATH(tlsPkPwd, false);
+    CHECK_FILE_PATH(tlsPkPwd, true);    // private key must be encrypted, so the password of private key is required
     CHECK_FILE_SET(tlsCaFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCaPath, true);
     CHECK_FILE_SET(tlsCrlFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCrlPath, false);
     return ACC_OK;

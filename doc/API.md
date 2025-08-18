@@ -394,9 +394,130 @@
     |handle|SMEM对象handle|
     |status|退出状态|
 
+##### TRANS接口列表
+1. TRANS配置初始化
+    ```c
+    int32_t smem_trans_config_init(smem_trans_config_t *config);
+    ```
+    
+    |参数/返回值|含义|
+    |-|-|
+    |config|初始化参数|
+    |返回值|成功返回0，其他为错误码|
+
+1. 创建TRANS实例
+
+    ```c
+    int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, const smem_trans_config_t *config)
+    ```
+
+    |参数/返回值|含义|
+    |-|--|
+    |storeURL|config store地址，格式tcp://ip:port|
+    |sessionId|该TRANS实例的唯一标识，格式ip:port|
+    |config|TRANS初始化配置|
+    |返回值|成功返回0，其他为错误码|
+
+1. 销毁TRANS实例
+
+    ```c
+    void smem_trans_destroy(smem_trans_t handle, uint32_t flags)
+    ```
+
+    |参数/返回值|含义|
+    |-|--|
+    |handle|TRANS对象handle|
+    |flags|预留参数|
+
+1. TRANS退出
+
+    ```c
+    void smem_trans_uninit(uint32_t flags)
+    ```
+
+    |参数/返回值|含义|
+    |-|--|
+    |flags|预留参数|
+
+1. 注册内存
+
+    ```c
+    int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capacity, uint32_t flags)
+    ```
+
+    |参数/返回值|含义|
+    |-|--|
+    |handle|TRANS对象handle|
+    |address|注册地址的起始地址指针|
+    |capacity|注册地址大小|
+    |flags|预留参数|
+    |返回值|成功返回0，其他为错误码|
+
+1. 批量注册内存
+
+    ```c
+    int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count,
+                                          uint32_t flags)
+    ```
+
+    |参数/返回值| 含义|
+    |-|----|
+    |handle|TRANS对象handle|
+    |addresses[]|批量注册地址的起始地址指针列表|
+    |capacities[]|批量注册地址大小列表|
+    |count|批量注册地址数量|
+    |flags|预留参数|
+    |返回值|成功返回0，其他为错误码|
+
+1. 注销内存
+
+    ```c
+    int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address)
+    ```
+
+    |参数/返回值|含义|
+    |-|-----------|
+    |handle|TRANS对象handle|
+    |address|注销地址的起始地址指针|
+    |返回值|成功返回0，其他为错误码|
+
+1. 同步写接口
+
+    ```c
+    int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destSession,
+                                  void *destAddress, size_t dataSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|---------|
+    |handle|TRANS对象handle|
+    |srcAddress|源地址的起始地址指针|
+    |destSession|目的TRANS实例对应的标识|
+    |destAddress|目的地址的起始地址指针|
+    |dataSize|传输数据大小|
+    |返回值|成功返回0，其他为错误码|
+
+
+1. 批量同步写接口
+
+    ```c
+    int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destSession,
+                                        void *destAddresses[], size_t dataSizes[], uint32_t batchSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|--------|
+    |handle|TRANS对象handle|
+    |srcAddresses[]|批量源地址的起始地址指针列表|
+    |destSession|目的TRANS实例对应的标识|
+    |destAddresses[]|批量目的地址的起始地址指针列表|
+    |dataSizes[]|批量传输数据大小列表|
+    |batchSize|批量传输数据数量|
+    |返回值|成功返回0，其他为错误码|
+
+> 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/mooncake_adapter/csrc/transfer/pytransfer.cpp`。
+
 ##### 环境变量
-
-
 |环境变量|含义|
 |-|-|
 |LD_LIBRARY_PATH|动态链接库搜索路径|

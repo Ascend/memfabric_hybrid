@@ -185,20 +185,20 @@ AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
             LOG_ERROR("Read private key file failed");
             return ACC_ERROR;
         }
-        auto buffer = new (std::nothrow) char[encryptedText.length()];
+        auto buffer = new (std::nothrow) char[encryptedText.length() * UNO_2];  // make sure buffer is long enough
         if (buffer == nullptr) {
             LOG_ERROR("allocate memory for buffer failed");
             return ACC_ERROR;
         }
-        auto dataLength = static_cast<int>(encryptedText.length());
-        ret = static_cast<AccResult>(mDecryptHandler_(encryptedText, buffer, dataLength));
+        size_t bufferLen = encryptedText.length() * UNO_2;
+        ret = static_cast<AccResult>(mDecryptHandler_(encryptedText, buffer, bufferLen));
         if (ret != ACC_OK) {
             LOG_ERROR("Failed to decrypt private key password");
             delete[] buffer;
             buffer = nullptr;
             return ret;
         }
-        mKeyPass = std::make_pair(buffer, dataLength);
+        mKeyPass = std::make_pair(buffer, bufferLen);
         OpenSslApiWrapper::SslCtxSetDefaultPasswdCbUserdata(sslCtx, mKeyPass.first);
     }
 

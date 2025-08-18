@@ -86,7 +86,7 @@ enum OpCode : int32_t {
 
 static std::unordered_map<int32_t, AccTcpLinkComplexPtr> g_rankLinkMap;
 static void *g_cbCtx = nullptr;
-class TestAccTcpSslClient : public testing::Test {
+class TestAccTcpSslClientFuzz : public testing::Test {
 
 public:
     void SetUp() override;
@@ -140,9 +140,9 @@ protected:
     static AccTcpServerPtr mServer;
 };
 
-AccTcpServerPtr TestAccTcpSslClient::mServer = nullptr;
+AccTcpServerPtr TestAccTcpSslClientFuzz::mServer = nullptr;
 
-void TestAccTcpSslClient::SetUp()
+void TestAccTcpSslClientFuzz::SetUp()
 {
     DT_Enable_Leak_Check(0, 0);
     DT_Set_Running_Time_Second(DT_RUNNING_TIME);
@@ -191,26 +191,19 @@ void TestAccTcpSslClient::SetUp()
     dynLibPath.append("/../../../output/3rdparty/openssl/lib/");
     OpenSslApiWrapper::Load(dynLibPath);
 
-    std::string certPath;
-    GetCertPath(certPath);
     AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
+    tslOption.enableTls = false;
     (void)mServer->Start(opts, tslOption);
 }
 
-void TestAccTcpSslClient::TearDown()
+void TestAccTcpSslClientFuzz::TearDown()
 {
     mServer->Stop();
     g_rankLinkMap.clear();
     GlobalMockObject::verify();
 }
 
-TEST_F(TestAccTcpSslClient, test_client_set_ssl)
+TEST_F(TestAccTcpSslClientFuzz, test_client_set_ssl)
 {
     char fuzzName[] = "test_client_set_ssl";
     uint64_t seed = 0;
@@ -223,15 +216,8 @@ TEST_F(TestAccTcpSslClient, test_client_set_ssl)
         AccTcpClientPtr mClient = AccTcpClient::Create("127.0.0.1", 8100);
         ASSERT_TRUE(mClient != nullptr);
 
-        std::string certPath;
-        GetCertPath(certPath);
         AccTlsOption tslOption;
-        tslOption.enableTls = true;
-        tslOption.tlsTopPath = certPath;
-        tslOption.tlsCert = "/cert/cert.pem";
-        tslOption.tlsPk = "/cert/key.pem";
-        tslOption.tlsCaPath = "/CA/";
-        tslOption.tlsCaFile.insert("ca_cert.pem");
+        tslOption.enableTls = false;
         mClient->SetSslOption(tslOption);
 
         int32_t result = mClient->Connect(req);

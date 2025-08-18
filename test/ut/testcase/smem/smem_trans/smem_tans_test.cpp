@@ -168,7 +168,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             exit(1);
         }
 
-        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 1, 0);
+        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
             exit(2);
         }
@@ -338,7 +338,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &trans_options);
 
-        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
         if (ret != SM_OK) {
             flag = 1;
             goto cleanup;
