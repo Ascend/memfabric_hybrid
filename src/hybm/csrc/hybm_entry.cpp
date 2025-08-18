@@ -91,7 +91,7 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
     // realFile转str,然后open这个str
     std::ifstream infile(realFile, std::ifstream::in);
     if (!infile.is_open()) {
-        BM_LOG_WARN("driver version file " << realFile << " does not exist");
+        BM_LOG_WARN("driver version file does not exist");
         return "";
     }
 
@@ -241,7 +241,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         return BM_ERROR;
     }
     auto ret = DlApi::LoadLibrary(libPath);
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path: " << libPath << " failed: " << ret);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
 
     ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {

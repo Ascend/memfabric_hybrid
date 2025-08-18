@@ -6,6 +6,7 @@
 #include "acc_common_util.h"
 #include "file_util.h"
 #include "openssl_api_wrapper.h"
+#include "string_util.h"
 
 namespace {
 constexpr uint32_t CERT_CHECK_AHEAD_DAYS = 30;
@@ -107,7 +108,7 @@ AccResult AccTcpSslHelper::LoadCaFileList(std::vector<std::string> &caFileList)
     for (auto &file : tlsCaFile) {
         auto tmpPath = path + "/" + file;
         if (!FileUtil::Realpath(tmpPath)) {
-            LOG_ERROR("Failed to check ca path with ca file " << file);
+            LOG_ERROR("Failed to check ca path with ca file");
             return ACC_ERROR;
         }
         caFileList.emplace_back(tmpPath);
@@ -128,7 +129,7 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
         for (auto &file : tlsCrlFile) {
             std::string tmpPath = crlDirPath + "/" + file;
             if (!FileUtil::Realpath(tmpPath)) {
-                LOG_ERROR("Failed to check crl path with crl file " << file);
+                LOG_ERROR("Failed to check crl path with crl file");
                 return ACC_ERROR;
             }
             if (!isFirstFile) {
@@ -185,6 +186,7 @@ AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
             LOG_ERROR("Read private key file failed");
             return ACC_ERROR;
         }
+        encryptedText = ock::StringUtil::TrimString(encryptedText);
         auto buffer = new (std::nothrow) char[encryptedText.length() * UNO_2];  // make sure buffer is long enough
         if (buffer == nullptr) {
             LOG_ERROR("allocate memory for buffer failed");
@@ -537,7 +539,7 @@ AccResult AccTcpSslHelper::CertExpiredCheck(std::string path, std::string type)
 {
     FILE *fp = fopen(path.c_str(), "r");
     if (fp == nullptr) {
-        LOG_ERROR("check " << type << " expired failed by unable to open cert file, " << path);
+        LOG_ERROR("check " << type << " expired failed by unable to open cert file");
         return ACC_ERROR;
     }
     X509 *cert = OpenSslApiWrapper::PemReadX509(fp, nullptr, nullptr, nullptr);
@@ -581,7 +583,7 @@ AccResult AccTcpSslHelper::CertExpiredCheck(std::string path, std::string type)
 
     OpenSslApiWrapper::X509Free(cert);
     if (fclose(fp) != 0) {
-        LOG_ERROR("check " << type << " expired failed by unable to close cert file, " << path);
+        LOG_ERROR("check " << type << " expired failed by unable to close cert file");
     }
     return ACC_OK;
 }

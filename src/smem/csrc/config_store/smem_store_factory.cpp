@@ -9,6 +9,7 @@
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
 #include "smem_store_factory.h"
+#include "string_util.h"
 
 namespace ock {
 namespace smem {
@@ -93,27 +94,12 @@ int StoreFactory::GetFailedReason() noexcept
     return failedReason_;
 }
 
-std::string TrimString(const std::string &input)
-{
-    auto start = input.begin();
-    while (start != input.end() && std::isspace(*start)) {
-        start++;
-    }
-
-    auto end = input.end();
-    do {
-        end--;
-    } while (std::distance(start, end) > 0 && std::isspace(*end));
-
-    return std::string(start, end + 1);
-}
-
 Result ParseStr2Array(const std::string &token, char splitter, std::set<std::string> &parts)
 {
     std::istringstream tokenSteam(token);
     std::string part;
     while (std::getline(tokenSteam, part, splitter)) {
-        part = TrimString(part);
+        part = ock::StringUtil::TrimString(part);
         if (!part.empty()) {
             parts.insert(part);
         }
@@ -132,8 +118,8 @@ Result ParseStr2KV(const std::string &token, char splitter, std::pair<std::strin
     std::string key;
     std::string value;
     if (std::getline(stm, key, splitter) && std::getline(stm, value, splitter)) {
-        key = TrimString(key);
-        value = TrimString(value);
+        key = ock::StringUtil::TrimString(key);
+        value = ock::StringUtil::TrimString(value);
         if (!key.empty() && !value.empty()) {
             pair.first = key;
             pair.second = value;
@@ -185,7 +171,7 @@ Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption)
     std::string token;
 
     while (std::getline(tokenSteam, token, ';')) {
-        if (!TrimString(token).empty()) {
+        if (!ock::StringUtil::TrimString(token).empty()) {
             tokens.push_back(token);
         }
     }
