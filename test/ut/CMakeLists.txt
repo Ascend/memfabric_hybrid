@@ -57,6 +57,8 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
 
         ${PROJECT_ACCLINKS_SRC_BASE}/include

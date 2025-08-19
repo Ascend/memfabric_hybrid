@@ -8,6 +8,8 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
 )
 
@@ -19,6 +21,8 @@ aux_source_directory(driver/userspace SRC_FILES_DRIVER)
 aux_source_directory(entity SRC_FILES_ENTITY)
 aux_source_directory(mm SRC_FILES_MEM_MANAGER)
 aux_source_directory(transport SRC_FILES_TRANSPORT)
+aux_source_directory(transport/device SRC_FILES_TRANSPORT_DEVICE)
+aux_source_directory(transport/host SRC_FILES_TRANSPORT_HOST)
 aux_source_directory(under_api SRC_FILES_CANN)
 
 # set whole source for hybmm src files
@@ -29,6 +33,8 @@ set(HYBMM_SRC_FILES
         ${SRC_FILES_ENTITY}
         ${SRC_FILES_CANN}
         ${SRC_FILES_TRANSPORT}
+        ${SRC_FILES_TRANSPORT_DEVICE}
+        ${SRC_FILES_TRANSPORT_HOST}
         ${SRC_FILES_MEM_MANAGER}
         hybm_entry.cpp
         hybm_big_mem_entry.cpp

@@ -25,7 +25,8 @@ const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE,
                                 0,
                                 1024 * 1024 * 1024,
                                 0,
-                                true};
+                                true,
+                                HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }  // namespace
 

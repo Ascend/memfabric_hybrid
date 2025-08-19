@@ -59,7 +59,6 @@ int32_t HalGvaClose(uint64_t address, uint64_t flags)
 {
     return 0;
 }
-
 }
 }
 }

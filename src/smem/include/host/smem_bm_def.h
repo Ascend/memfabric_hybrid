@@ -20,6 +20,8 @@ typedef void *smem_bm_t;
 typedef enum {
     SMEMB_DATA_OP_SDMA = 1U << 0,
     SMEMB_DATA_OP_ROCE = 1U << 1,
+    SMEMB_DATA_OP_TCP = 1U << 2,
+    SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 
 /**
@@ -30,6 +32,11 @@ typedef enum {
     SMEMB_COPY_G2L = 1,              /* copy data from global space to local space */
     SMEMB_COPY_G2H = 2,              /* copy data from global space to host memory */
     SMEMB_COPY_H2G = 3,              /* copy data from host memory to global space */
+
+    SMEMB_COPY_L2GH = 4,              /* copy data from local space to global host space */
+    SMEMB_COPY_GH2L = 5,              /* copy data from global host space to local space */
+    SMEMB_COPY_GH2H = 6,              /* copy data from global host space to host memory */
+    SMEMB_COPY_H2GH = 7,              /* copy data from host memory to global host space */
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
@@ -45,6 +52,7 @@ typedef struct {
     bool autoRanking;                 /* automatically allocate rank IDs, default is false. */
     uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
+    char hcomUrl[64];
 } smem_bm_config_t;
 
 typedef struct {

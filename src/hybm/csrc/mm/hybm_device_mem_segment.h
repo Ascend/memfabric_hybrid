@@ -19,6 +19,8 @@ struct HbmExportInfo {
     uint64_t mappingOffset{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
+    uint32_t serverId{0};
+    uint32_t superPodId{0};
     int pid{0};
     uint32_t rankId{0};
     uint64_t size{0};
@@ -28,12 +30,6 @@ struct HbmExportInfo {
     MemSegInfoExchangeType exchangeType;
     uint8_t deviceId{0};
     char shmName[DEVICE_SHM_NAME_SIZE + 1U]{};
-};
-
-struct MemSliceStatus {
-    std::shared_ptr<MemSlice> slice;
-
-    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)} {}
 };
 
 class MemSegmentDevice : public MemSegment {
@@ -59,9 +55,19 @@ public:
     Result Unmap() noexcept override;
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
+    void GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
+    hybm_mem_type GetMemoryType() const noexcept override
+    {
+        return HYBM_MEM_TYPE_DEVICE;
+    }
+    bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
+
+public:
+    static int GetDeviceInfo(int deviceId) noexcept;
+    static int FillDeviceSuperPodInfo() noexcept;
+    static bool CanMapRemote(const HbmExportInfo &rmi) noexcept;
 
 private:
-    Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
     Result ValidateExportSlice(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept;
 
@@ -74,6 +80,15 @@ private:
     std::map<uint16_t, std::string> exportMap_;
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;
+    std::map<uint16_t, HbmExportInfo> importMap_;
+
+private:
+    static bool deviceInfoReady;
+    static int deviceId_;
+    static uint32_t pid_;
+    static uint32_t sdid_;
+    static uint32_t serverId_;
+    static uint32_t superPodId_;
 };
 }
 }

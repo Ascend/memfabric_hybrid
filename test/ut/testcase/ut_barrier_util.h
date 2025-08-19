@@ -18,12 +18,12 @@ public:
         }
     }
 
-    int32_t Init(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort, uint64_t memSize)
+    int32_t Init(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, const char* ipPort, uint64_t memSize)
     {
         smem_shm_config_t config2;
         (void)smem_shm_config_init(&config2);
         config2.startConfigStore = false;
-        auto ret = smem_shm_init(ipPort.c_str(), rkSize, rankId, deviceId, &config2);
+        auto ret = smem_shm_init(ipPort, rkSize, rankId, deviceId, &config2);
         if (ret != 0) {
             return ret;
         }

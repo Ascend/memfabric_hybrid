@@ -59,12 +59,14 @@ private:
     SmemGroupEnginePtr globalGroup_ = nullptr;
     hybm_entity_t entity_ = nullptr;
     void *gva_ = nullptr;
+    hybm_mem_slice_t slice_ = nullptr;
 
     /* non-hot used variables */
     SmemBmEntryOptions options_;
     hybm_options coreOptions_{};
     StorePtr _configStore;
     hybm_exchange_info exInfo_{};
+    hybm_exchange_info entityInfo_;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

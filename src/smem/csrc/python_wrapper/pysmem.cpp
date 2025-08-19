@@ -425,7 +425,13 @@ whether to start config store, default true)")
         .def_readwrite("auto_ranking", &smem_bm_config_t::autoRanking, R"(
 automatically allocate rank IDs, default is false)")
         .def_readwrite("rank_id", &smem_bm_config_t::rankId, "user specified rank ID, valid for autoRanking is False")
-        .def_readwrite("flags", &smem_bm_config_t::flags, "other flags, default 0");
+        .def_readwrite("flags", &smem_bm_config_t::flags, "other flags, default 0")
+        .def_property("hcom_url",
+                      [](const smem_bm_config_t &self) {return std::string(self.hcomUrl);},
+                      [](smem_bm_config_t &self, const std::string &value) {
+                            std::copy_n(value.c_str(), sizeof(self.hcomUrl) - 1, self.hcomUrl);
+                            self.hcomUrl[sizeof(self.hcomUrl) - 1] = '\0';
+                        }, "hcom url info");
 }
 
 void DefineShmClass(py::module_ &m)

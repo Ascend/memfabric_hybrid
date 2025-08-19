@@ -1,11 +1,13 @@
 /*
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
+#include <algorithm>
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_bm.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
+#include "smem_hybm_helper.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED
@@ -29,6 +31,7 @@ SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
     config->autoRanking = false;
     config->rankId = std::numeric_limits<uint16_t>::max();
     config->flags = 0;
+    bzero(config->hcomUrl, sizeof(config->hcomUrl));
     return SM_OK;
 }
 
@@ -114,14 +117,18 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_HOST_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_SDMA;
+    options.bmType = SmemHybmHelper::TransHybmType(localDRAMSize, localHBMSize);
+    options.bmDataOpType = (dataOpType == SMEMB_DATA_OP_SDMA) ? HYBM_DOP_TYPE_SDMA : HYBM_DOP_TYPE_ROCE;
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
-    options.singleRankVASpace = localHBMSize;
+    options.devId = manager.GetDeviceId();
+    options.singleRankVASpace = (localDRAMSize == 0) ? localHBMSize : localDRAMSize;
     options.preferredGVA = 0;
+    options.role = HYBM_ROLE_PEER;
+    bzero(options.nic, sizeof(options.nic));
+    (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
     if (options.singleRankVASpace == 0) {
         SM_LOG_AND_SET_LAST_ERROR("options.singleRankVASpace is 0, cannot be divided.");

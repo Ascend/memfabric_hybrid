@@ -48,25 +48,28 @@ TEST_F(HybmDataOpSdmaTest, DataCopy_ShouldReturnSuccess)
 {
     int ret = 0;
     hybm_copy_params params = {g_srcVA, g_dstVA, g_size};
-    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ExtOptions options{};
+    options.flags = 0;
+    options.stream = nullptr;
+    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-    ret = g_dataOperator.DataCopyAsync(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopyAsync(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
     EXPECT_EQ(ret, BM_ERROR);
 
     EXPECT_EQ(g_dataOperator.Wait(0), BM_ERROR);
@@ -76,21 +79,24 @@ TEST_F(HybmDataOpSdmaTest, DataCopy2D_ShouldReturnSuccess)
 {
     int ret = 0;
     hybm_copy_2d_params params = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
-    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ExtOptions options{};
+    options.flags = 0;
+    options.stream = nullptr;
+    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
-    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
-    EXPECT_EQ(ret, BM_OK);
-
-    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
-    EXPECT_EQ(ret, BM_OK);
-
-    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 
-    ret = g_dataOperator.DataCopy2d(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = g_dataOperator.DataCopy2d(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = g_dataOperator.DataCopy2d(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 

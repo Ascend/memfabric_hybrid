@@ -3,11 +3,18 @@
  */
 #include "dl_acl_api.h"
 #include "hybm_ex_info_transfer.h"
-#include "hbym_device_user_mem_seg.h"
+#include "hybm_device_user_mem_seg.h"
 
 namespace ock {
 namespace mf {
 constexpr uint8_t MAX_DEVICE_COUNT = 16;
+
+bool MemSegmentDeviceUseMem::deviceInfoReady{false};
+int MemSegmentDeviceUseMem::deviceId_{-1};
+uint32_t MemSegmentDeviceUseMem::pid_{0};
+uint32_t MemSegmentDeviceUseMem::sdid_{0};
+uint32_t MemSegmentDeviceUseMem::serverId_{0};
+uint32_t MemSegmentDeviceUseMem::superPodId_{0};
 
 MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
     : MemSegment{options, eid}
@@ -158,11 +165,6 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
         return BM_OK;
     }
 
-    if (addresses == nullptr) {
-        BM_LOG_ERROR("Import addresses is null, please check.");
-        return BM_INVALID_PARAM;
-    }
-
     Result ret = BM_ERROR;
     auto index = 0;
     for (auto &info : allExInfo) {
@@ -175,7 +177,9 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
             BM_LOG_ERROR("invalid import info size : " << info.length());
             ret = BM_INVALID_PARAM;
         }
-
+        if (addresses == nullptr) {
+            continue;
+        }
         if (ret != BM_OK) {
             // rollback
             for (auto j = 0; j < index; j++) {
@@ -326,9 +330,26 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
 
 Result MemSegmentDeviceUseMem::GetDeviceInfo() noexcept
 {
-    if (InitDeviceInfo() != BM_OK) {
-        return BM_ERROR;
+    auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
+    if (ret != 0) {
+        BM_LOG_ERROR("get device id failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
     }
+
+    ret = DlAclApi::RtDeviceGetBareTgid(&pid_);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get bare tgid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    constexpr auto sdidInfo = 26;
+    int64_t value = 0;
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, sdidInfo, &value);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get sdid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    sdid_ = static_cast<uint32_t>(value);
     return BM_OK;
 }
 
@@ -342,6 +363,15 @@ void MemSegmentDeviceUseMem::CloseMemory() noexcept
     }
     registerAddrs_.clear();
     BM_LOG_INFO("close memory finish.");
+}
+
+bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
+{
+    return false;
+}
+
+void MemSegmentDeviceUseMem::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+{
 }
 }
 }

@@ -1021,7 +1021,7 @@ TEST_F(TestSmem, smem_shm_topology_can_reach_falied_manager_error)
     ret = smem_shm_topology_can_reach(handle, rank, &rank);
     EXPECT_NE(ret, 0);
     ret = smem_shm_topology_can_reach(handle, rank, &rank);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
 
     smem_shm_uninit(0);
     smem_uninit();

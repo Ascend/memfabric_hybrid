@@ -117,6 +117,27 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
                     uint32_t flags);
 
 /**
+ * @brief Export exchange info for peer to import
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param flags            [in] HYBM_EXPORT_SINGLE_SLICE | HYBM_EXPORT_ALL_SLICE
+ * @param exInfo           [out] exchange info to be filled in
+ * @return 0 if successful, error code if failed
+ */
+int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo);
+
+/**
+ * @brief Import batch of exchange info of other HyBM entities
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param allExInfo        [in] ptr of entities array
+ * @param count            [in] count of entities
+ * @param flags            [in] optional flags, default value 0
+ * @return 0 if successful
+ */
+int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
+
+/**
  * @brief mmap all memory which is imported
  *
  * @param e                [in] entity created by hybm_create_entity
@@ -124,6 +145,17 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
  * @return 0 if successful, error code if failed
  */
 int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
+
+/**
+ * @brief Determine whether various channels from local rank to the remote is reachable.
+ * @param e                [in] entity created by hybm_create_entity
+ * @param rank             [in] remote rank
+ * @param reaches          [out] array of size HYBM_DOP_TYPE_BUTT, for storing reachable results of various channels.
+ *                               0 means unreachable, otherwise means reachable.
+ * @param flags            [in] optional flags, default value 0
+ * @return 0 if successful, error code if failed
+ */
+int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, int32_t reaches[HYBM_DOP_TYPE_BUTT], uint32_t flags);
 
 /**
  * @brief join one rank after start

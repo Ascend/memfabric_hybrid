@@ -22,7 +22,7 @@ rm -rf ${COVERAGE_PATH}
 rm -rf ${BUILD_PATH}
 mkdir -p ${BUILD_PATH}
 
-set -e
+set -ex
 
 dos2unix "$MOCKCPP_PATH/include/mockcpp/JmpCode.h"
 dos2unix "$MOCKCPP_PATH/include/mockcpp/mockcpp.h"

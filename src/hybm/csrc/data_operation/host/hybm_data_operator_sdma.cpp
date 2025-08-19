@@ -46,25 +46,25 @@ void HostDataOpSDMA::UnInitialize() noexcept
 }
 
 int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                                 void *stream, uint32_t flags) noexcept
+                                 const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva(params.dest, params.src, params.count, stream);
+            ret = CopyDevice2Gva(params.dest, params.src, params.count, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device(params.dest, params.src, params.count, stream);
+            ret = CopyGva2Device(params.dest, params.src, params.count, options.stream);
             break;
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
-            ret = CopyHost2Gva(params.dest, params.src, params.count, stream);
+            ret = CopyHost2Gva(params.dest, params.src, params.count, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
-            ret = CopyGva2Host(params.dest, params.src, params.count, stream);
+            ret = CopyGva2Host(params.dest, params.src, params.count, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva(params.dest, params.src, params.count, stream);
+            ret = CopyDevice2Gva(params.dest, params.src, params.count, options.stream);
             break;
 
         default:
@@ -356,26 +356,26 @@ int HostDataOpSDMA::CopyGva2Device2d(hybm_copy_2d_params &params, void *stream) 
     return ret;
 }
 
-int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
-                               uint32_t flags) noexcept
+int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
+                               const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva2d(params, stream);
+            ret = CopyDevice2Gva2d(params, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device2d(params, stream);
+            ret = CopyGva2Device2d(params, options.stream);
             break;
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
-            ret = CopyHost2Gva2d(params, stream);
+            ret = CopyHost2Gva2d(params, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
-            ret = CopyGva2Host2d(params, stream);
+            ret = CopyGva2Host2d(params, options.stream);
             break;
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
-            ret = CopyDevice2Gva2d(params, stream);
+            ret = CopyDevice2Gva2d(params, options.stream);
             break;
 
         default:
@@ -386,7 +386,7 @@ int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direc
 }
 
 int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
-                                      void *stream, uint32_t flags) noexcept
+                                      const ExtOptions &options) noexcept
 {
     BM_LOG_ERROR("not supported data copy async!");
     return BM_ERROR;

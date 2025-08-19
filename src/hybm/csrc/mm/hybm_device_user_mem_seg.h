@@ -2,8 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#ifndef MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
-#define MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
+#ifndef MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
+#define MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
 
 #include <bitset>
 #include "hybm_mem_segment.h"
@@ -51,6 +51,12 @@ public:
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     void CloseMemory() noexcept;
+    hybm_mem_type GetMemoryType() const noexcept override
+    {
+        return HYBM_MEM_TYPE_DEVICE;
+    }
+    bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
+    void GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
 
 private:
     Result GetDeviceInfo() noexcept;
@@ -67,8 +73,16 @@ private:
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
     std::vector<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
+
+private:
+    static bool deviceInfoReady;
+    static int deviceId_;
+    static uint32_t pid_;
+    static uint32_t sdid_;
+    static uint32_t serverId_;
+    static uint32_t superPodId_;
 };
 }
 }
 
-#endif  // MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
+#endif  // MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
