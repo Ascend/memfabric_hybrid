@@ -178,6 +178,10 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
             ret = BM_INVALID_PARAM;
         }
         if (addresses == nullptr) {
+            if (ret != BM_OK) {
+                break;
+            }
+            // kv trans addresses is null need continue
             continue;
         }
         if (ret != BM_OK) {
