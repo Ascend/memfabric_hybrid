@@ -3,7 +3,7 @@
  */
 #include "dl_acl_api.h"
 #include "hybm_ex_info_transfer.h"
-#include "hbym_device_user_mem_seg.h"
+#include "hybm_device_user_mem_seg.h"
 
 namespace ock {
 namespace mf {
@@ -158,11 +158,6 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
         return BM_OK;
     }
 
-    if (addresses == nullptr) {
-        BM_LOG_ERROR("Import addresses is null, please check.");
-        return BM_INVALID_PARAM;
-    }
-
     Result ret = BM_ERROR;
     auto index = 0;
     for (auto &info : allExInfo) {
@@ -175,7 +170,13 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
             BM_LOG_ERROR("invalid import info size : " << info.length());
             ret = BM_INVALID_PARAM;
         }
-
+        if (addresses == nullptr) {
+            if (ret != BM_OK) {
+                break;
+            }
+            // kv trans addresses is null need continue
+            continue;
+        }
         if (ret != BM_OK) {
             // rollback
             for (auto j = 0; j < index; j++) {

@@ -3,7 +3,7 @@
  */
 #include "dl_acl_api.h"
 #include "hybm_mem_segment.h"
-#include "hbym_device_user_mem_seg.h"
+#include "hybm_device_user_mem_seg.h"
 #include "hybm_device_mem_segment.h"
 #include "hybm_types.h"
 

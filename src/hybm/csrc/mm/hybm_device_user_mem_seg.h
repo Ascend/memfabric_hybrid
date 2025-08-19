@@ -2,8 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#ifndef MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
-#define MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
+#ifndef MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
+#define MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
 
 #include <bitset>
 #include "hybm_mem_segment.h"
@@ -71,4 +71,4 @@ private:
 }
 }
 
-#endif  // MF_HYBRID_HBYM_DEVICE_USER_MEM_SEG_H
+#endif  // MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
