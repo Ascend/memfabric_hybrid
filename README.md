@@ -168,7 +168,7 @@ help(mf_smem.shm)   #查看share memory接口介绍
 
 #### 运行样例
 
-具体流程参考example目录下各个样例中对应的README.md
+具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
 
 ### 软件硬件配套说明
 - 硬件型号支持
