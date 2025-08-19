@@ -359,6 +359,8 @@ int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direc
                                uint32_t flags) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_RETURN(params.dest != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params.src != nullptr, BM_INVALID_PARAM);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:

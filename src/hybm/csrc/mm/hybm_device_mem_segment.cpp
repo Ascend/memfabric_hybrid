@@ -250,6 +250,10 @@ Result MemSegmentDevice::Mmap() noexcept
             continue;
         }
 
+        if (im.rankId >= options_.rankCnt) {
+            BM_LOG_ERROR("import info rank(" << im.rankId << ") invalid, rank size = " << options_.rankCnt);
+            return BM_INVALID_PARAM;
+        }
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") already mapped.");
