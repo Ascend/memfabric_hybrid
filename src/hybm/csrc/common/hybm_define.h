@@ -6,6 +6,7 @@
 
 #include <netinet/in.h>
 #include <cstdint>
+#include "mf_out_logger.h"
 
 namespace ock {
 namespace mf {

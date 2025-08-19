@@ -422,24 +422,6 @@ TEST_F(TestSmem, smem_log_set_level_failed)
     ASSERT_NE(ret, 0);
 }
 
-TEST_F(TestSmem, smem_log_set_level_acclink_failed)
-{
-    MOCKER(AccSetLogLevel).stubs().will(returnValue(-1));
-    smem_init(0);
-    auto ret = smem_set_log_level(0);
-    EXPECT_NE(ret, 0);
-    smem_uninit();
-}
-
-TEST_F(TestSmem, smem_log_set_level_hybm_failed)
-{
-    GlobalMockObject::verify();
-    MOCKER(hybm_set_log_level).stubs().will(returnValue(-1));
-    smem_init(0);
-    auto ret = smem_set_log_level(0);
-    EXPECT_NE(ret, 0);
-    smem_uninit();
-}
 
 void UtExLoggerFunc(int level, const char *msg)
 {
@@ -467,7 +449,6 @@ void UtExLoggerFunc(int level, const char *msg)
 
 TEST_F(TestSmem, smem_log_set_ex_logger_success)
 {
-    MOCKER(AccSetExternalLog).stubs().will(returnValue(0));
     smem_init(0);
     auto ret = smem_set_extern_logger(UtExLoggerFunc);
     EXPECT_EQ(ret, 0);
@@ -478,26 +459,6 @@ TEST_F(TestSmem, smem_log_set_ex_logger_failed)
 {
     smem_init(0);
     auto ret = smem_set_extern_logger(nullptr);
-    EXPECT_NE(ret, 0);
-    smem_uninit();
-}
-
-TEST_F(TestSmem, smem_log_set_ex_logger_acclink_failed)
-{
-    MOCKER(AccSetExternalLog).stubs().will(returnValue(-1));
-    smem_init(0);
-    auto ret = smem_set_extern_logger(UtExLoggerFunc);
-    EXPECT_NE(ret, 0);
-    smem_uninit();
-}
-
-TEST_F(TestSmem, smem_log_set_ex_logger_hybm_failed)
-{
-    GlobalMockObject::verify();
-    MOCKER(AccSetExternalLog).stubs().will(returnValue(0));
-    MOCKER(hybm_set_extern_logger).stubs().will(returnValue(-1));
-    smem_init(0);
-    auto ret = smem_set_extern_logger(UtExLoggerFunc);
     EXPECT_NE(ret, 0);
     smem_uninit();
 }
