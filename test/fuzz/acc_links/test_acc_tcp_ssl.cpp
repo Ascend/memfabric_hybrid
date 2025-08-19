@@ -100,7 +100,7 @@ public:
         }
         std::cout << "receive data len match" << std::endl;
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(0);
-        if (buffer == nullptr || buffer->data_ == nullptr) {
+        if (buffer == nullptr || buffer->DataPtr() == nullptr) {
             std::cout << "data buffer is nullptr" << std::endl;
             return 1;
         }

@@ -16,7 +16,7 @@ Result AccTcpLinkComplexDefault::Initialize(uint16_t sendQueueCap, int32_t workI
 
     data_ = AccMakeRef<AccDataBuffer>(UNO_1024);
     ASSERT_RETURN(data_.Get() != nullptr, ACC_NEW_OBJECT_FAIL);
-    ASSERT_RETURN(data_->data_ != nullptr, ACC_NEW_OBJECT_FAIL);
+    ASSERT_RETURN(data_->DataPtr() != nullptr, ACC_NEW_OBJECT_FAIL);
 
     header_ = AccMsgHeader();
     receiveState_ = AccLinkReceiveState();
