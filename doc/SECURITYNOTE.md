@@ -118,3 +118,13 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 ### 依赖软件声明
 
 当前项目运行依赖 cann 和 Ascend HDK，安装使用及注意事项参考[CANN](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1beta1/index/index.html)和[Ascend HDK](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)并选择对应版本。
+
+### 源码内公网地址
+
+| 类型   | 开源代码地址      | 文件名      | 公网IP地址/公网URL地址/域名/邮箱地址 | 用途说明            |
+|------  |-----------------|-------------|---------------------               |-------------------|
+| 依赖三方库  |  https://github.com/google/googletest.git | .gitmodules |  https://github.com/google/googletest.git | 单元测试框架依赖 |
+| 依赖三方库  | https://github.com/sinojelly/mockcpp.git  | .gitmodules |  https://github.com/sinojelly/mockcpp.git | 单元测试框架依赖 |
+| license 地址 | 不涉及  | LICENSE |  http://www.apache.org/licenses/ | license文件 |
+| license 地址 |  不涉及 |  LICENSE | http://www.apache.org/licenses/LICENSE-2.0  | license文件  |
+| 代码仓地址 |  https://gitee.com/ascend/memfabric_hybrid.git | setup.py | https://gitee.com/ascend/memfabric_hybrid  | whl 包仓库地址信息 |
