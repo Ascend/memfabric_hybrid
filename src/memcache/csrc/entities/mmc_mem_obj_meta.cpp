@@ -117,7 +117,7 @@ MediaType MmcMemObjMeta::MoveTo()
         }
     }
 
-    return MoveDown(mediaType);
+    return MediaType::MEDIA_NONE;
 }
 
 }  // namespace mmc
