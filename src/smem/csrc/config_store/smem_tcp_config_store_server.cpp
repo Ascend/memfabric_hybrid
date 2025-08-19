@@ -132,7 +132,15 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(autoRankingStr);
     if (pos != kvStore_.end()) {
+        union Transfer {
+            uint32_t rankId;
+            uint8_t date[4];
+        } trans{};
+        std::copy(pos->second.begin(), pos->second.end(), trans.date);
+        uint32_t rankId = trans.rankId;
+        aliveRankSet.erase(rankId);
         kvStore_.erase(pos);
+        SM_LOG_INFO("link broken, linkId: " << link->Id() << " remove rankId: " << rankId);
     }
     return SM_OK;
 }

@@ -10,7 +10,7 @@ class TestExample(unittest.TestCase):
 
     def setUp(self):
         self._distributed_object_store = DistributedObjectStore()
-        res = self._distributed_object_store.init()
+        res = self._distributed_object_store.init(0)
         self.assertEqual(res, 0)
 
     def test_1(self):

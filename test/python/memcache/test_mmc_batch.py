@@ -14,7 +14,7 @@ class TestExample(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self._distributed_object_store = DistributedObjectStore()
-        self._distributed_object_store.init()
+        self._distributed_object_store.init(0)
         print("object store initialized")
 
     def test_batch_exist_batch_remove(self):

@@ -388,9 +388,12 @@ class MmcTest(TestServer):
 if __name__ == "__main__":
     if len(sys.argv) == 3:
         _, ip, port = sys.argv
+    elif len(sys.argv) == 4:
+        _, ip, port, device_id_str = sys.argv
+        DEVICE_ID = int(device_id_str)
     else:
         print("Please input ip and port when starting the process.")
         sys.exit(1)
-    print(f"Start app_id: {ip}:{port}")
+    print(f"Start app_id: {ip}:{port} device({DEVICE_ID})")
     server = MmcTest(ip, port)
     server.start()

@@ -22,7 +22,7 @@ class TestExample(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.store = DistributedObjectStore()
-        res = cls.store.init()
+        res = cls.store.init(0)
         print(f"object store init res: {res}")
 
         cls.cpu_tensor = torch.empty(
