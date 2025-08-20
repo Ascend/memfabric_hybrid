@@ -240,7 +240,7 @@ void StoreFactory::RegisterDecryptHandler(const smem_decrypt_handler &h) noexcep
 
 int32_t StoreFactory::SetTlsInfo(bool enable, const char *tlsInfo, const size_t tlsInfoLen) noexcept
 {
-    StoreFactory::enableTls = enable;
+    enableTls = enable;
     if (!enable) {
         return StoreErrorCode::SUCCESS;
     }
