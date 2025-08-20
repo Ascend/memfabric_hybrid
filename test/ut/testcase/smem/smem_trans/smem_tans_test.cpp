@@ -124,7 +124,6 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
         int* address = new int[10];
         size_t size = 10 * sizeof(int);
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
         int ret = smem_trans_init(&g_trans_options);
@@ -167,8 +166,6 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
 TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 {
-    setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
-
     uint32_t rankSize = 2;
     int* sender_buffer = new int[500];
     int* recv_buffer = new int[500];
@@ -220,6 +217,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
         }
         if (pids[i] == 0) {
             if (i == 0) {
+                smem_set_conf_store_tls(false, nullptr, 0);
                 smem_create_config_store(STORE_URL);
             }
             func(i, rankSize, trans_options[i], addrPtrs[i], capacities, session_ids[i]);
@@ -278,7 +276,6 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         std::vector<void*> destAddrPtrs = {destPtr1, destPtr2};
         std::vector<size_t> dataSizes = {128U, 128U};
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
         int ret = smem_trans_init(&g_trans_options);
@@ -356,8 +353,8 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         std::vector<void*> addrPtrs = {address1, address2};
         std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
+        smem_set_conf_store_tls(false, nullptr, 0);
         smem_create_config_store(STORE_URL);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
