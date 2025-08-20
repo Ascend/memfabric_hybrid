@@ -324,6 +324,8 @@ static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *
     va = heap->ops->heap_alloc(heap, treeNode->data.va, mapSize, advise);
     if (va < DEVMM_SVM_MEM_START) {
         BM_LOG_ERROR("Can not alloc address.");
+        (void)DlHalApi::HalInsertIdleSizeTree(node, &heap->rbtree_queue);
+        (void)DlHalApi::HalInsertIdleVaTree(node, &heap->rbtree_queue);
         return -1;
     }
     heap->sys_mem_alloced += node->data.total;

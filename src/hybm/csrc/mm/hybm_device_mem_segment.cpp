@@ -239,11 +239,23 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void 
     return BM_OK;
 }
 
+void UnmapAddresses(const std::vector<uint64_t>& addresses) noexcept
+{
+    for (auto va : addresses) {
+        int32_t ret = drv::HalGvaClose(va, 0);
+        if (ret != 0) {
+            BM_LOG_ERROR("HalGvaClose memory failed: " << ret);
+        }
+    }
+}
+
 Result MemSegmentDevice::Mmap() noexcept
 {
     if (imports_.empty()) {
         return BM_OK;
     }
+
+    std::vector<uint64_t> successfullyMapped;
 
     for (auto &im : imports_) {
         if (im.rankId == options_.rankId) {
@@ -252,6 +264,7 @@ Result MemSegmentDevice::Mmap() noexcept
 
         if (im.rankId >= options_.rankCnt) {
             BM_LOG_ERROR("import info rank(" << im.rankId << ") invalid, rank size = " << options_.rankCnt);
+            UnmapAddresses(successfullyMapped);
             return BM_INVALID_PARAM;
         }
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
@@ -264,9 +277,15 @@ Result MemSegmentDevice::Mmap() noexcept
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
+            UnmapAddresses(successfullyMapped);
             return BM_DL_FUNCTION_FAILED;
         }
-        mappedMem_.insert((uint64_t)remoteAddress);
+
+        successfullyMapped.push_back((uint64_t)remoteAddress);
+    }
+
+    for (auto addr : successfullyMapped) {
+        mappedMem_.insert(addr);
     }
     imports_.clear();
     return BM_OK;

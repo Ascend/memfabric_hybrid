@@ -272,17 +272,21 @@ int OPENSSLAPIDL::LoadOpensslAPI(const std::string &libPath)
 
     if (LoadCryptoSymbols(cryptoHandle) == -1) {
         LOG_ERROR("Failed to dlopen libcrypto.so err: " << dlerror());
+        dlclose(cryptoHandle);
         return -1;
     }
 
     auto sslHandle = dlopen(libSslPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (sslHandle == nullptr) {
         LOG_ERROR("Failed to dlopen libssl.so err: " << dlerror());
+        dlclose(cryptoHandle);
         return -1;
     }
 
     if (LoadSSLSymbols(sslHandle) == -1) {
         LOG_ERROR("Failed to dlopen libssl.so err: " << dlerror());
+        dlclose(cryptoHandle);
+        dlclose(sslHandle);
         return -1;
     }
 

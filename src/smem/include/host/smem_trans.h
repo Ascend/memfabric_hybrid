@@ -22,6 +22,22 @@ extern "C" {
 int32_t smem_trans_config_init(smem_trans_config_t *config);
 
 /**
+ * @brief Initialize transfer
+ * all processes need to call this function before creating a trans object
+ *
+ * @param config           [in] the config for config
+ * @return 0 if successful
+ */
+int32_t smem_trans_init(const smem_trans_config_t *config);
+
+/**
+ * @brief Un-initialize transfer
+ *
+ * @param flags            [in] optional flags
+ */
+void smem_trans_uninit(uint32_t flags);
+
+/**
  * @brief Create a transfer object with config, this transfer need to connect to global config store to exchange
  * inner information for various protocols on different hardware
  *
@@ -39,13 +55,6 @@ smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, cons
  * @param flags            [in] optional flags
  */
 void smem_trans_destroy(smem_trans_t handle, uint32_t flags);
-
-/**
- * @brief Un-initialize transfer
- *
- * @param flags            [in] optional flags
- */
-void smem_trans_uninit(uint32_t flags);
 
 /**
  * @brief Register a contiguous memory space to be transferred

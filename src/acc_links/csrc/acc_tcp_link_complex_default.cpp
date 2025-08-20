@@ -11,7 +11,7 @@ Result AccTcpLinkComplexDefault::Initialize(uint16_t sendQueueCap, int32_t workI
     ASSERT_RETURN(sendQueueCap < UNO_256, ACC_INVALID_PARAM);
     ASSERT_RETURN(worker != nullptr, ACC_INVALID_PARAM);
 
-    queue_ = new (std::nothrow) AccLinkedMessageQueue(sendQueueCap);
+    queue_ = AccMakeRef<AccLinkedMessageQueue>(sendQueueCap);
     ASSERT_RETURN(queue_.Get() != nullptr, ACC_NEW_OBJECT_FAIL);
 
     data_ = AccMakeRef<AccDataBuffer>(UNO_1024);

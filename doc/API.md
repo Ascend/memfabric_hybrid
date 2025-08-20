@@ -406,6 +406,26 @@
     |config|初始化参数|
     |返回值|成功返回0，其他为错误码|
 
+1. TRANS初始化
+    ```c
+    int32_t smem_trans_init(const smem_trans_config_t *config)
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |config|TRANS初始化配置|
+    |返回值|成功返回0，失败返回错误码|
+
+1. TRANS退出
+
+    ```c
+    void smem_trans_uninit(uint32_t flags)
+    ```
+
+    |参数/返回值|含义|
+    |-|--|
+    |flags|预留参数|
+
 1. 创建TRANS实例
 
     ```c
@@ -428,16 +448,6 @@
     |参数/返回值|含义|
     |-|--|
     |handle|TRANS对象handle|
-    |flags|预留参数|
-
-1. TRANS退出
-
-    ```c
-    void smem_trans_uninit(uint32_t flags)
-    ```
-
-    |参数/返回值|含义|
-    |-|--|
     |flags|预留参数|
 
 1. 注册内存

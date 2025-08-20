@@ -40,6 +40,11 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *sessionId, c
     }
     config.role = (strcmp(role, "Prefill") == 0) ? SMEM_TRANS_SENDER : SMEM_TRANS_RECEIVER;
     config.deviceId = deviceId;
+    ret = smem_trans_init(&config);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("Failed to init smem_trans, ret=" << ret);
+        return ret;
+    }
     handle_ = smem_trans_create(storeUrl, sessionId, &config);
     if (handle_ == nullptr) {
         ADAPTER_LOG_ERROR("smem trans create failed.");
