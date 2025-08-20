@@ -27,7 +27,7 @@ spec:
           args:
             - |
               sleep 20 && \
-              /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/bin/mmc_meta_service
+              exec /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/bin/mmc_meta_service
           ports:
             - containerPort: 5000
               name: meta

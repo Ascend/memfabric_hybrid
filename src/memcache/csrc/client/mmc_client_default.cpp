@@ -98,6 +98,9 @@ Result MmcClientDefault::Put(const std::string &key, const MmcBufferArray& bufAr
     AllocResponse response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcTimeOut_),
                      "client " << name_ << " alloc " << key << " failed");
+    if (response.result_ == MMC_DUPLICATED_OBJECT) {
+        return response.result_;
+    }
     MMC_RETURN_ERROR(response.result_, "client " << name_ << " alloc " << key << " failed");
     if (response.numBlobs_ == 0 || response.numBlobs_ != response.blobs_.size()) {
         MMC_LOG_ERROR("client " << name_ << " alloc " << key << " failed, blobs size:" << response.blobs_.size()
@@ -521,7 +524,9 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
 
         if (allocResponse.results_[i] != MMC_OK) {
             // alloc has error, reserve alloc error code
-            MMC_LOG_ERROR("Alloc blob failed for key " << key << ", error code=" << allocResponse.results_[i]);
+            if (allocResponse.results_[i] != MMC_DUPLICATED_OBJECT) {
+                MMC_LOG_ERROR("Alloc blob failed for key " << key << ", error code=" << allocResponse.results_[i]);
+            }
             batchResult[i] = allocResponse.results_[i];
             continue;
         } else if (numBlobs == 0 || blobs.size() != numBlobs) {

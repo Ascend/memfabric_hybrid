@@ -223,7 +223,7 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
         default:
             break;
     }
-    SM_LOG_INFO("Get srcMemType: " << srcMemType << " destMemType: " << destMemType);
+
     return directMap[srcMemType][destMemType];
 }
 

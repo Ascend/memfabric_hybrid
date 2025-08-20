@@ -106,6 +106,10 @@ public:
     }
 
 private:
+    uint32_t PopMetas2Backup(
+        std::vector<uint32_t>& ops, std::vector<std::string>& keys, std::vector<MmcMemBlobDesc>& blobs);
+    void SendBackup2Local();
+
     MetaNetServerPtr metaNetServer_;
     std::mutex mutex_;
     bool started_ = false;

@@ -52,8 +52,8 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     MMC_RETURN_ERROR(RegisterBm(),  "Failed to register bm, name=" << name_ << ", bmRankId=" << options_.rankId);
     metaNetClient_->RegisterRetryHandler(
         std::bind(&MmcLocalServiceDefault::RegisterBm, this),
-        std::bind(&MmcLocalServiceDefault::Replicate, this, std::placeholders::_1, std::placeholders::_2),
-        std::bind(&MmcLocalServiceDefault::ReplicateRemove, this, std::placeholders::_1),
+        std::bind(&MmcLocalServiceDefault::UpdateMetaBackup, this,
+                  std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         std::bind(&MmcLocalServiceDefault::CopyBlob, this, std::placeholders::_1, std::placeholders::_2)
     );
     started_ = true;
@@ -153,24 +153,34 @@ Result MmcLocalServiceDefault::RegisterBm()
     return MMC_OK;
 }
 
-Result MmcLocalServiceDefault::Replicate(const std::string &key, const MmcMemBlobDesc &blobDesc)
+Result MmcLocalServiceDefault::UpdateMetaBackup(
+    const std::vector<uint32_t> &ops, const std::vector<std::string> &keys, const std::vector<MmcMemBlobDesc> &blobs)
 {
     std::lock_guard<std::mutex> guard(blobMutex_);
-    auto result = blobMap_.insert(std::make_pair(key, blobDesc));
-    if (!result.second) {
-        MMC_LOG_ERROR("Local service replicate fail, key: " << key << " already exists");
-        return MMC_ERROR;
-    }
-    return MMC_OK;
-}
 
-Result MmcLocalServiceDefault::ReplicateRemove(const std::string &key)
-{
-    std::lock_guard<std::mutex> guard(blobMutex_);
-    auto result = blobMap_.erase(key);
-    if (result == 0) {
-        MMC_LOG_ERROR("Local service dereplicate fail, key: " << key << " not exists");
-        return MMC_ERROR;
+    const auto opCount = ops.size();
+    const auto keyCount = keys.size();
+    const auto blobCount = blobs.size();
+    auto length = keyCount;
+    // 检查keys和blobs大小是否一致，避免越界访问
+    if (keyCount != blobCount) {
+        MMC_LOG_ERROR("Local service replicate warning, length is not equal: opSize=" << opCount
+            << ", keySize=" << keyCount << ", blobSize=" << blobCount);
+        length = std::min({opCount, keyCount, blobCount});
+    }
+
+    for (size_t i = 0; i < length; i++) {
+        if (ops[i] == 0) {
+            auto result = blobMap_.emplace(keys[i], blobs[i]);
+            if (!result.second) {
+                MMC_LOG_WARN("Local service replicate fail, key: " << keys[i] << " already exists");
+            }
+        } else if (ops[i] == 1) {
+            blobMap_.erase(keys[i]);
+        } else {
+            // 永远走不到这里
+            MMC_LOG_ERROR("UpdateMetaBackup error, key: " << keys[i]);
+        }
     }
     return MMC_OK;
 }

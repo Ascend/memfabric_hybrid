@@ -107,9 +107,9 @@ int InitLogger(const mmc_meta_service_config_t &options)
     std::string logPath = std::string(options.logPath) + "/logs/mmc-meta.log";
     std::string logAuditPath = std::string(options.logPath) + "/logs/mmc-meta-audit.log";
 
-    std::cout << "Meta service log path " << logPath
+    std::cout << "Meta service log level " << options.logLevel
+              << ", log path: " << logPath
               << ", audit log path: " << logAuditPath
-              << ", log level: " << options.logLevel
               << ", log rotation file size: " << options.logRotationFileSize
               << ", log rotation file count: " << options.logRotationFileCount
               << std::endl;
@@ -125,13 +125,15 @@ int InitLogger(const mmc_meta_service_config_t &options)
         std::cerr << "Failed to init spdlog, error: " << SPDLOG_GetLastErrorMessage() << std::endl;
         return -1;
     }
-
     ock::mmc::MmcOutLogger::Instance().SetExternalLogFunction(SPDLOG_LogMessage);
-    ret = SPDLOG_AuditInit(logAuditPath.c_str(), OBJ_MAX_LOG_FILE_SIZE, OBJ_MAX_LOG_FILE_NUM);
+
+    ret = SPDLOG_AuditInit(logAuditPath.c_str(), options.logRotationFileSize, options.logRotationFileCount);
     if (ret != 0) {
         std::cerr << "Failed to init audit spdlog, error: " << SPDLOG_GetLastErrorMessage() << std::endl;
         return -1;
     }
+    ock::mmc::MmcOutLogger::Instance().SetExternalAuditLogFunction(SPDLOG_AuditLogMessage);
+
     return 0;
 }
 
@@ -180,6 +182,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    MMC_AUDIT_LOG("Meta Service launched successfully");
     std::unique_lock<std::mutex> lock(g_exitMtx);
     g_exitCv.wait(lock, []() { return g_processExit; });
 
@@ -187,5 +190,7 @@ int main(int argc, char* argv[])
     if (leaderElection != nullptr) {
         leaderElection->Stop();
     }
+
+    MMC_AUDIT_LOG("Meta Service stopped");
     return 0;
 }

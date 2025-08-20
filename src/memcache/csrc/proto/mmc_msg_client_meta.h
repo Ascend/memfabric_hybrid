@@ -554,25 +554,27 @@ struct BmUnregisterRequest : public MsgBase {
 };
 
 struct MetaReplicateRequest : public MsgBase {
-    std::string key_;
-    uint32_t op_;
-    MmcMemBlobDesc blob_; /* pointers of blobs */
+    std::vector<uint32_t> ops_;
+    std::vector<std::string> keys_;
+    std::vector<MmcMemBlobDesc> blobs_; /* pointers of blobs */
 
     MetaReplicateRequest() : MsgBase{0, LM_META_REPLICATE_REQ, 0} {}
-    MetaReplicateRequest(const std::string &key, const uint32_t op, const MmcMemBlobDesc &blobDesc)
+    MetaReplicateRequest(const std::vector<uint32_t> &ops,
+                         const std::vector<std::string> &keys,
+                         const std::vector<MmcMemBlobDesc> &blobs)
         : MsgBase{0, LM_META_REPLICATE_REQ, 0},
-          key_(key),
-          op_(op),
-          blob_(blobDesc) {}
+          ops_(ops),
+          keys_(keys),
+          blobs_(blobs) {}
 
     Result Serialize(NetMsgPacker &packer) const override
     {
         packer.Serialize(msgVer);
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
-        packer.Serialize(key_);
-        packer.Serialize(op_);
-        packer.Serialize(blob_);
+        packer.Serialize(ops_);
+        packer.Serialize(keys_);
+        packer.Serialize(blobs_);
         return MMC_OK;
     }
 
@@ -581,10 +583,24 @@ struct MetaReplicateRequest : public MsgBase {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
-        packer.Deserialize(key_);
-        packer.Deserialize(op_);
-        packer.Deserialize(blob_);
+        packer.Deserialize(ops_);
+        packer.Deserialize(keys_);
+        packer.Deserialize(blobs_);
         return MMC_OK;
+    }
+
+    std::string KeysString()
+    {
+        std::stringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < keys_.size(); ++i) {
+            ss << keys_[i];
+            if (i != keys_.size() - 1) {
+                ss << ", ";
+            }
+        }
+        ss << "]";
+        return ss.str();
     }
 };
 

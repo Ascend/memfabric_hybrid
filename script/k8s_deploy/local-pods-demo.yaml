@@ -31,15 +31,19 @@ spec:
           resources:
             requests:
               memory: "2Gi"
-              hugepages-2Mi: 500Mi  # 容器需要500MB的大页内存，请提前在宿主机上创建大页
+              hugepages-2Mi: 2Gi  # 修改容器需要的大页内存，请提前在宿主机上创建大页
             limits:
               memory: "4Gi"
-              hugepages-2Mi: 500Mi  # 容器需要500MB的大页内存，请提前在宿主机上创建大页
+              hugepages-2Mi: 2Gi  # 修改容器需要的大页内存，请提前在宿主机上创建大页
           command: ["/bin/sh", "-c"]
           args:
             - |
+              # 加载ascend环境变量
               . /usr/local/Ascend/ascend-toolkit/set_env.sh && \
-              python3 /home/meta/bin/mmc-local-test.py
+              # 确保日志目录存在，避免日志重定向失败
+              mkdir -p /home/memcache/logs && \
+              # 启动local测试，同时重定向日志
+              exec python3 /home/meta/bin/mmc-local-test.py > /home/memcache/logs/mmc-local.log 2>&1
           env:
             - name: LD_LIBRARY_PATH  # 追加lib库：python3.11 lib， libhcom.so lib
               value: "/usr/local/python3.11/lib:/home/meta/lib:$(LD_LIBRARY_PATH)"

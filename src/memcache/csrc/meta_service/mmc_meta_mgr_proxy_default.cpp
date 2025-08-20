@@ -27,7 +27,9 @@ Result MmcMetaMgrProxyDefault::BatchAlloc(const BatchAllocRequest &req, BatchAll
         MmcMemMetaDesc objMeta{};
         Result ret = metaMangerPtr_->Alloc(req.keys_[i], req.options_[i], req.operateId_, objMeta);
         if (ret != MMC_OK) {
-            MMC_LOG_ERROR("Allocation failed for key: " << req.keys_[i] << ", error: " << ret);
+            if (ret != MMC_DUPLICATED_OBJECT) {
+                MMC_LOG_ERROR("Allocation failed for key: " << req.keys_[i] << ", error: " << ret);
+            }
             resp.numBlobs_.push_back(0);
             resp.prots_.push_back(0);
             resp.priorities_.push_back(0);

@@ -42,7 +42,7 @@ using MmcBlobFilterPtr = MmcRef<MmcBlobFilter>;
 class MmcMemBlob final : public MmcReferable {
 public:
     MmcMemBlob() = delete;
-    MmcMemBlob(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const MediaType &mediaType,
+    MmcMemBlob(const uint32_t &rank, const uint64_t &gva, const uint64_t &size, const MediaType &mediaType,
                const BlobState &state)
         : rank_(rank), gva_(gva), size_(size), mediaType_(mediaType), state_(state), nextBlob_(nullptr)
     {
@@ -132,7 +132,7 @@ public:
 private:
     const uint32_t rank_;              /* rank id of the blob located */
     const uint64_t gva_;               /* global virtual address */
-    const uint32_t size_;              /* data size of the blob */
+    const uint64_t size_;              /* data size of the blob */
     const enum MediaType mediaType_;   /* media type where blob located */
     BlobState state_{BlobState::NONE}; /* state of the blob */
     uint16_t prot_{0};                 /* prot, i.e. access */

@@ -41,9 +41,12 @@ MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options optio
     MMC_VALIDATE_RETURN((void *)buf->addr != nullptr, "invalid param, buf addr is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
-    MMC_RETURN_ERROR(MmcClientDefault::GetInstance()->Put(key, buf, options, flags),
-                     MmcClientDefault::GetInstance()->Name() << " put key " << key << " failed!");
-    return MMC_OK;
+    auto ret = MmcClientDefault::GetInstance()->Put(key, buf, options, flags);
+    if (ret != MMC_DUPLICATED_OBJECT && ret != MMC_OK) {
+        MMC_RETURN_ERROR(ret, MmcClientDefault::GetInstance()->Name() << " put key " << key << " failed!");
+    }
+
+    return ret;
 }
 
 MMC_API int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags)

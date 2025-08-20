@@ -30,9 +30,8 @@ public:
 
     Result DestroyBm();
 
-    Result Replicate(const std::string &key, const MmcMemBlobDesc &blobDesc);
-
-    Result ReplicateRemove(const std::string &key);
+    Result UpdateMetaBackup(const std::vector<uint32_t> &ops,
+        const std::vector<std::string> &keys, const std::vector<MmcMemBlobDesc> &blobs);
 
     Result CopyBlob(const MmcMemBlobDesc &src, const MmcMemBlobDesc &dst);
 

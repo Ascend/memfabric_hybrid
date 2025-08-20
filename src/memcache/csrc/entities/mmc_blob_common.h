@@ -18,7 +18,7 @@ struct MmcMemBlobDesc {
     uint16_t mediaType_ = UINT16_MAX; /* media type where blob located */
 
     MmcMemBlobDesc() = default;
-    MmcMemBlobDesc(const uint32_t &rank, const uint64_t &gva, const uint32_t &size, const uint16_t &mediaType)
+    MmcMemBlobDesc(const uint32_t &rank, const uint64_t &gva, const uint64_t &size, const uint16_t &mediaType)
         : rank_(rank), size_(size), gva_(gva), mediaType_(mediaType)
     {
     }

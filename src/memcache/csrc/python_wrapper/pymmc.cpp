@@ -788,7 +788,7 @@ int DistributedObjectStore::returnWrapper(const int result, const std::string& k
 {
     if (result != MMC_OK) {
         if (result == MMC_DUPLICATED_OBJECT) {
-            MMC_LOG_WARN("Duplicated key " << key << ", put operation skipped");
+            MMC_LOG_DEBUG("Duplicated key " << key << ", put operation skipped");
             return MMC_OK;
         } else {
             MMC_LOG_ERROR("Failed to put key " << key << ", error code=" << result);

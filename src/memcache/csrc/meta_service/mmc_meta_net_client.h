@@ -11,8 +11,9 @@ namespace ock {
 namespace mmc {
 #define NET_RETRY_COUNT 180
 using ClientRetryHandler = std::function<int32_t(void)>;
-using ClientReplicateHandler = std::function<int32_t(const std::string &key, const MmcMemBlobDesc &blobDesc)>;
-using ClientReplicateRemoveHandler = std::function<int32_t(const std::string &key)>;
+using ClientReplicateHandler = std::function<int32_t(const std::vector<uint32_t> &ops,
+                                                     const std::vector<std::string> &keys,
+                                                     const std::vector<MmcMemBlobDesc> &blobs)>;
 using ClientBlobCopyHandler = std::function<int32_t(const MmcMemBlobDesc &src, const MmcMemBlobDesc &dst)>;
 class MetaNetClient : public MmcReferable {
 public:
@@ -72,11 +73,10 @@ public:
     bool Status();
 
     void RegisterRetryHandler(const ClientRetryHandler &retryHandler, const ClientReplicateHandler &replicateHandler,
-        const ClientReplicateRemoveHandler &replicateRemoveHandler, const ClientBlobCopyHandler &blobCopyHandler)
+        const ClientBlobCopyHandler &blobCopyHandler)
     {
         retryHandler_ = retryHandler;
         replicateHandler_ = replicateHandler;
-        replicateRemoveHandler_ = replicateRemoveHandler;
         blobCopyHandler_ = blobCopyHandler;
     }
 
@@ -95,7 +95,6 @@ private:
     const uint32_t retryCount_ = NET_RETRY_COUNT;
     ClientRetryHandler retryHandler_ = nullptr;
     ClientReplicateHandler replicateHandler_ = nullptr;
-    ClientReplicateRemoveHandler replicateRemoveHandler_ = nullptr;
     ClientBlobCopyHandler blobCopyHandler_ = nullptr;
     std::string serverUrl_;
 

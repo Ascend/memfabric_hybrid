@@ -69,7 +69,7 @@ public:
         std::lock_guard<std::mutex> guard(mutex_);
         auto iter = metaMap_.find(key);
         if (iter != metaMap_.end()) {
-            MMC_LOG_ERROR("Fail to insert "
+            MMC_LOG_WARN("Fail to insert "
                           << key << " into MmcMetaContainer. Key already exists. ErrCode: " << MMC_DUPLICATED_OBJECT);
             return MMC_DUPLICATED_OBJECT;
         }

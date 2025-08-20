@@ -104,7 +104,9 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
     ret = metaContainer_->Insert(key, tempMetaObj);
     if (ret != MMC_OK) {
         tempMetaObj->FreeBlobs(key, globalAllocator_);
-        MMC_LOG_ERROR("Fail to insert " << key << " into MmcMetaContainer. ret:" << ret);
+        if (ret != MMC_DUPLICATED_OBJECT) {
+            MMC_LOG_ERROR("Fail to insert " << key << " into MmcMetaContainer. ret:" << ret);
+        }
     } else {
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(tempMetaObj)]);
         objMeta.prot_ = tempMetaObj->Prot();
