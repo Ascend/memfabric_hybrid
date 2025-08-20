@@ -6,20 +6,12 @@
 
 namespace ock {
 namespace smem {
-// macro for gcc optimization for prediction of if/else
-#ifndef LIKELY
-#define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
-#endif
-
-#ifndef UNLIKELY
-#define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
-#endif
 
 #define SM_LOG_AND_SET_LAST_ERROR(msg)  \
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        ock::smem::SmLastError::Set(tmpStr.str()); \
         SM_LOG_ERROR(tmpStr.str());     \
     } while (0)
 
@@ -27,14 +19,14 @@ namespace smem {
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        ock::smem::SmLastError::Set(tmpStr.str()); \
     } while (0)
 
 #define SM_COUT_AND_SET_LAST_ERROR(msg) \
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        ock::smem::SmLastError::Set(tmpStr.str()); \
         std::cout << msg << std::endl;  \
     } while (0)
 

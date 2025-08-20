@@ -297,28 +297,18 @@ HYBM_API void hybm_uninit()
 
 HYBM_API int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
 {
-    auto instance = HyBMOutLogger::Instance();
-    if (instance == nullptr) {
-        return -1;
+    if (ock::mf::OutLogger::Instance().GetLogExtraFunc() != nullptr) {
+        BM_LOG_WARN("logFunc will be rewriting");
     }
-
-    instance->SetExternalLogFunction(logger);
+    ock::mf::OutLogger::Instance().SetExternalLogFunction(logger);
     return 0;
 }
 
 HYBM_API int32_t hybm_set_log_level(int level)
 {
-    auto instance = HyBMOutLogger::Instance();
-    if (instance == nullptr) {
-        return -1;
-    }
-
-    if (level < 0 || level >= BUTT_LEVEL) {
-        BM_LOG_ERROR("Set log level error, invalid param level: " << level);
-        return -1;
-    }
-
-    instance->SetLogLevel(static_cast<LogLevel>(level));
+    BM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
+                       "set log level failed, invalid param, level should be 0~3", -1);
+    ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
     return 0;
 }
 

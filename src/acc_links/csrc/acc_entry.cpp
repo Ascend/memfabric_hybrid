@@ -7,37 +7,16 @@
 
 ACC_API int32_t AccSetExternalLog(void (*func)(int level, const char* msg))
 {
-    using namespace ock::acc;
-
-    auto instance = AccOutLogger::Instance();
-    if (instance == nullptr) {
-        std::cout << "Failed to get logger instance" << std::endl;
-        return ACC_ERROR;
-    }
-
-    instance->SetExternalLogFunction(func);
-
-    return ACC_OK;
+    ock::mf::OutLogger::Instance().SetExternalLogFunction(func);
+    return ock::acc::ACC_OK;
 }
 
 ACC_API int32_t AccSetLogLevel(int level)
 {
-    using namespace ock::acc;
-
-    if (level < AccLogLevel::DEBUG_LEVEL || level >= AccLogLevel::BUTT_LEVEL) {
-        std::cout << "Failed to set log level to " << level << "which should be 0,1,2,3" << std::endl;
-        return ACC_INVALID_PARAM;
-    }
-
-    auto instance = AccOutLogger::Instance();
-    if (instance == nullptr) {
-        std::cout << "Failed to get logger instance" << std::endl;
-        return ACC_ERROR;
-    }
-
-    instance->SetLogLevel(static_cast<AccLogLevel>(level));
-
+    VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
+                    "set log level failed, invalid param, level should be 0~3", ock::acc::ACC_INVALID_PARAM);
+    ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
     LOG_INFO("Log level set to " << level);
 
-    return ACC_OK;
+    return ock::acc::ACC_OK;
 }

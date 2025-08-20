@@ -5,6 +5,7 @@
 #define MEM_FABRIC_HYBRID_HYBM_DEFINE_H
 
 #include <cstdint>
+#include "mf_out_logger.h"
 
 namespace ock {
 namespace mf {
