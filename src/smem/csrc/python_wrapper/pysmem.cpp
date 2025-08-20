@@ -243,7 +243,8 @@ static void cpp_logger_adapter(int level, const char* msg) {
 static py::function g_py_decrypt_func;
 static constexpr size_t MAX_CIPHER_LEN = 10 * 1024 * 1024;
 
-static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextLen, char *plainText, size_t &plainTextLen)
+static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextLen, char *plainText,
+                                      size_t &plainTextLen)
 {
     if (cipherTextLen > MAX_CIPHER_LEN || !g_py_decrypt_func || g_py_decrypt_func.is_none()) {
         std::cerr << "input cipher len is too long or decrypt func invalid." << std::endl;
