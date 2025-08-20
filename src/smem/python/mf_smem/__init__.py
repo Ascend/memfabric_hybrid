@@ -21,6 +21,7 @@ from _pymf_smem import (
     set_log_level,
     set_extern_logger,
     get_last_err_msg,
+    set_conf_store_tls,
     register_decrypt_handler,
     get_and_clear_last_err_msg
 )
@@ -33,6 +34,7 @@ __all__ = [
     'set_log_level',
     'set_extern_logger',
     'get_last_err_msg',
+    'set_conf_store_tls',
     'register_decrypt_handler',
     'get_and_clear_last_err_msg'
 ]

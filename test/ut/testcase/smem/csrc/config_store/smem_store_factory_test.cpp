@@ -10,7 +10,7 @@ using namespace ock::smem;
 
 namespace ock{
     namespace smem{
-        extern Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption);
+        extern Result ParseTlsInfo(const std::string &tlsInput, AcclinkTlsOption &tlsOption);
     }
 }
 
@@ -46,7 +46,7 @@ TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test1)
         "tlsCaFile: ca.pem1,ca.pem2;"
         "packagePath: a";
     AcclinkTlsOption option;
-    auto ret = ParseTlsInfo(info.c_str(), option);
+    auto ret = ParseTlsInfo(info, option);
     EXPECT_EQ(ret, 0);
     EXPECT_EQ(option.tlsCaPath.length(), 15);
     EXPECT_EQ(option.packagePath.length(), 1);
@@ -68,7 +68,7 @@ TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test2)
         "tlsCaFile: ca.pem1,ca.pem2;"
         "packagePath: /etc/lib";
     AcclinkTlsOption option;
-    auto ret = ParseTlsInfo(info.c_str(), option);
+    auto ret = ParseTlsInfo(info, option);
     EXPECT_EQ(ret, 0);
     EXPECT_TRUE(option.tlsCaPath.empty());
 }
@@ -85,7 +85,7 @@ TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test3)
         "tlsCaFile:,,;"
         "packagePath: /etc/lib";
     AcclinkTlsOption option;
-    auto ret = ParseTlsInfo(info.c_str(), option);
+    auto ret = ParseTlsInfo(info, option);
     EXPECT_EQ(ret, 0);
     EXPECT_TRUE(option.tlsCaFile.empty());
 }

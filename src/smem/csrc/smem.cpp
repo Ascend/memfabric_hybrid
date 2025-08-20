@@ -89,6 +89,11 @@ SMEM_API int32_t smem_set_log_level(int level)
     return ock::smem::SM_OK;
 }
 
+SMEM_API int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len)
+{
+    return ock::smem::StoreFactory::SetTlsInfo(enable, tls_info, tls_info_len);
+}
+
 SMEM_API const char *smem_get_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(false);

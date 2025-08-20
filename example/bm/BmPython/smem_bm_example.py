@@ -44,12 +44,18 @@ def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_rank
         logging.error(f'rank: {rank_id}, rank_size: {rank_size}, url: {url} initialize failed: {ret}')
         return ret
 
+    ret = mf_smem.set_conf_store_tls(False, "")
+    if ret != 0:
+        logging.error("set conf store tls result {ret}")
+        return ret
     ret = mf_smem.register_decrypt_handler(decrypt_handler_example)
     if ret != 0:
         logging.info("register decrypt handler result {ret}")
+        return ret
     ret = mf_smem.set_extern_logger(extern_logger_example)
     if ret != 0:
         logging.info("set extern logger result {ret}")
+        return ret
 
     config = bm.BmConfig()
     config.auto_ranking = auto_ranking
