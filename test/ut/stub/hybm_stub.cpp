@@ -179,6 +179,17 @@ int32_t hybm_data_copy_2d_stub(hybm_entity_t e, hybm_copy_2d_params *params,
     return 0;
 }
 
+int32_t hybm_entity_export_stub(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo)
+{
+    return 0;
+}
+
+int32_t hybm_entity_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
+                                uint32_t flags)
+{
+    return 0;
+}
+
 void mock_hybm_api()
 {
     MOCKER(hybm_init).stubs().will(invoke(hybm_init_stub));
@@ -198,4 +209,6 @@ void mock_hybm_api()
     MOCKER(hybm_set_extra_context).stubs().will(invoke(hybm_set_extra_context_stub));
     MOCKER(hybm_data_copy).stubs().will(invoke(hybm_data_copy_stub));
     MOCKER(hybm_data_copy_2d).stubs().will(invoke(hybm_data_copy_2d_stub));
+    MOCKER(hybm_entity_export).stubs().will(invoke(hybm_entity_export_stub));
+    MOCKER(hybm_entity_import).stubs().will(invoke(hybm_entity_import_stub));
 }

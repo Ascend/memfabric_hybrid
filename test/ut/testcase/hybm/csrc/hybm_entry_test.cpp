@@ -10,6 +10,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 
+using namespace ock;
 using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
@@ -151,20 +152,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMMallocFailed_WhenAllocMemoryFails)
     hybm_uninit();
     // 验证未初始化分支
     hybm_uninit();
-}
-
-/**
-* @tc.name  : hybm_set_log_level_ShouldReturnMinusOne_WhenInstanceIsNull
-* @tc.desc  : 测试当日志实例为空时，hybm_set_log_level函数应返回-1
-*/
-TEST_F(HybmEntryTest, hybm_set_log_level_ShouldReturnMinusOne_WhenInstanceIsNull)
-{
-    // 模拟日志实例为空
-    HyBMOutLogger *logger = nullptr;
-    MOCKER_CPP(&HyBMOutLogger::Instance, HyBMOutLogger *(*)()).stubs().will(returnValue(logger));
-
-    EXPECT_EQ(hybm_set_log_level(INFO_LEVEL), -1);
-    EXPECT_EQ(hybm_set_extern_logger(nullptr), -1);
 }
 
 /**

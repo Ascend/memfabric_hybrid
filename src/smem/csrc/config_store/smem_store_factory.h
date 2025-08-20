@@ -51,7 +51,7 @@ public:
 
 private:
     static Result InitTlsOption() noexcept;
-    static std::function<int(const std::string&, char*, int&)> ConvertFunc(int (*rawFunc)(const char*, int*, char*, int*)) noexcept;
+    static std::function<int(const std::string&, char*, size_t&)> ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t &)) noexcept;
 
 private:
     static std::mutex storesMutex_;

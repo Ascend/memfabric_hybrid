@@ -100,7 +100,16 @@ public:
      * @param key          [in] key to be removed
      * @return 0 if successfully done
      */
-    virtual Result Remove(const std::string &key) noexcept = 0;
+    Result Remove(const std::string &key) noexcept;
+
+    /**
+     * @brief Remove a key
+     *
+     * @param key               [in] key to be removed
+     * @param printKeyNotExist  [in] whether to print non exist key
+     * @return 0 if successfully done
+     */
+    virtual Result Remove(const std::string &key, bool printKeyNotExist) noexcept = 0;
 
     /**
      * @brief Append string to a key with string value
@@ -220,6 +229,11 @@ inline Result ConfigStore::Get(const std::string &key, std::string &value, int64
 inline Result ConfigStore::Get(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept
 {
     return GetReal(key, value, timeoutMs);
+}
+
+inline Result ConfigStore::Remove(const std::string &key) noexcept
+{
+    return Remove(key, false);
 }
 
 inline Result ConfigStore::Append(const std::string &key, const std::string &value, uint64_t &newSize) noexcept

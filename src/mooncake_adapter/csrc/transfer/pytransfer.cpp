@@ -140,7 +140,7 @@ int TransferAdapterPy::BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs,
         registerAddrs[i] = reinterpret_cast<void*>(buffer_addrs[i]);
     }
 
-    return smem_trans_register_mems(handle_, registerAddrs.data(), capacities.data(), count, 0);
+    return smem_trans_batch_register_mem(handle_, registerAddrs.data(), capacities.data(), count, 0);
 }
 
 void TransferAdapterPy::TransferDestroy()

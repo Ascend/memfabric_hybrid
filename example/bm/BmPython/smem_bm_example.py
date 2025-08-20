@@ -23,12 +23,33 @@ def generate_host_tensor(seed: int):
             t[i] = base
     return t
 
+def decrypt_handler_example(inputs):
+    return inputs
+
+def extern_logger_example(level, msg):
+    if level == 0:
+        logging.debug(msg)
+    elif level == 1:
+        logging.info(msg)
+    elif level == 2:
+        logging.warning(msg)
+    elif level == 3:
+        logging.error(msg)
+    else:
+        logging.error("unknown level:{level} {msg}")
 
 def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool):
     ret = mf_smem.initialize()
     if ret != 0:
         logging.error(f'rank: {rank_id}, rank_size: {rank_size}, url: {url} initialize failed: {ret}')
         return ret
+
+    ret = mf_smem.register_decrypt_handler(decrypt_handler_example)
+    if ret != 0:
+        logging.info("register decrypt handler result {ret}")
+    ret = mf_smem.set_extern_logger(extern_logger_example)
+    if ret != 0:
+        logging.info("set extern logger result {ret}")
 
     config = bm.BmConfig()
     config.auto_ranking = auto_ranking

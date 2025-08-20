@@ -26,6 +26,9 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
         return SM_OK;
     }
 
+    SM_VALIDATE_RETURN(config != nullptr, "invalid param, config is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(configStoreIpPort != nullptr, "invalid param, ipPort is NULL", SM_INVALID_PARAM);
+
     UrlExtraction option;
     std::string url(configStoreIpPort);
     SM_ASSERT_RETURN(option.ExtractIpPortFromUrl(url) == SM_OK, SM_INVALID_PARAM);
@@ -128,6 +131,13 @@ Result SmemShmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 
     return SM_OK;
 }
+
+struct TransportAddressExchange {
+    uint32_t rankId;
+    uint64_t address;
+    TransportAddressExchange() : TransportAddressExchange{0, 0} {}
+    TransportAddressExchange(uint32_t rk, uint64_t addr) : rankId{rk}, address{addr} {}
+};
 
 void SmemShmEntryManager::Destroy()
 {

@@ -42,6 +42,34 @@ public:
     void TearDown() override;
 };
 
+int decrypt_handler_for_test(const std::string &cipherText, char *plainText, size_t &plainTextLen)
+{
+    const char* decryptText = cipherText.c_str();   // pk pwd is empty, copy cipher directy
+    if (cipherText.length() >= plainTextLen) {
+        return ACC_ERROR;
+    }
+    strncpy(plainText, decryptText, cipherText.length());
+    plainText[cipherText.length()] = '\0';
+    return ACC_OK;
+}
+
+void print_tls_option(AccTlsOption &tlsOption)
+{
+    std::cout << "enableTls:" << tlsOption.enableTls << std::endl;
+    std::cout << "tlsTopPath:" << tlsOption.tlsTopPath << std::endl;
+    std::cout << "tlsCert:" << tlsOption.tlsCert << std::endl;
+    std::cout << "tlsCrlPath:" << tlsOption.tlsCrlPath << std::endl;
+    std::cout << "tlsCaPath:" << tlsOption.tlsCaPath << std::endl;
+    if (!tlsOption.tlsCaFile.empty()) {
+        std::cout << "tlsCaFile:" << *tlsOption.tlsCaFile.begin() << std::endl;
+    }
+    if (!tlsOption.tlsCrlFile.empty()) {
+        std::cout << "tlsCrlFile:" << *tlsOption.tlsCrlFile.begin() << std::endl;
+    }
+    std::cout << "tlsPk:" << tlsOption.tlsPk << std::endl;
+    std::cout << "tlsPkPwd:" << tlsOption.tlsPkPwd << std::endl;
+}
+
 void TestAccTcpSslHelper::SetUpTestSuite() {}
 
 void TestAccTcpSslHelper::TearDownTestSuite()
@@ -125,36 +153,48 @@ TEST_F(TestAccTcpSslHelper, start)
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
 
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
     std::string errStr;
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
-    tslOption.tlsTopPath = certPath;
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    tlsOption.tlsTopPath = certPath;
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
-    tslOption.tlsCert = "/cert/cert.pem";
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    tlsOption.tlsCert = "/cert/cert.pem";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
-    tslOption.tlsCaPath = "/CA/";
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    tlsOption.tlsCaPath = "/CA/";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
-    tslOption.tlsPk = "/cert/key.pem";
-    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    tlsOption.tlsPk = "/cert/key.pem";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCrlFile.insert("crl.pem");
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCrlPath = "/crl/";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    print_tls_option(tlsOption);
 
     const char *days = "9";
     const char *checkPeriod = "24";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
 
-    auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
     ASSERT_TRUE(result == ACC_OK);
 
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
 
     std::string invalidIpv4 = "2666.6666.6666.6666";
     bool ipCheck = AccCommonUtil::IsValidIPv4(invalidIpv4);
@@ -183,25 +223,28 @@ TEST_F(TestAccTcpSslHelper, load_crl)
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
 
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsCrlFile.insert("crl.pem");
-    tslOption.tlsCrlPath = "/crl/";
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsCrlFile.insert("crl.pem");
+    tlsOption.tlsCrlPath = "/crl/";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
     std::string errStr;
-    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     const char *days = "2";
     const char *checkPeriod = "33";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
-    auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
     ASSERT_TRUE(result == ACC_OK);
 
     tmpHelperPtr->Stop();
@@ -227,23 +270,24 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
 
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsPkPwd = "/key_pwd.txt";
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
     std::string errStr;
-    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     const char *days = "error_val";
     const char *checkPeriod = "illegal_val";
-    ::setenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
-    ::setenv("TTP_ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
     tmpHelperPtr->RegisterDecryptHandler(
-        [&](const std::string &cipherText, char *plainText, int32_t &plainTextLen) -> int {
+        [&](const std::string &cipherText, char *plainText, size_t &plainTextLen) -> int {
             const char* decryptText = "Hello World";
             size_t required_len = strlen(decryptText) + 1;
             if (required_len < plainTextLen) {
@@ -253,9 +297,9 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
             plainText[plainTextLen - 1] = '\0';
             return ACC_OK;
         });
-    auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
-    unsetenv("TTP_ACCLINK_CERT_CHECK_AHEAD_DAYS");
-    unsetenv("TTP_ACCLINK_CHECK_PERIOD_HOURS");
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
 
     ASSERT_TRUE(result == ACC_ERROR);
     tmpHelperPtr->EraseDecryptData();
@@ -283,18 +327,21 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_zero)
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
 
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    tslOption.tlsPk = "/cert/key.pem";
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
     std::string errStr;
-    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
     double diff = -100.0;
     MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(diff));
-    auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
     ASSERT_TRUE(result == ACC_ERROR);
 
     tmpHelperPtr->Stop();
@@ -320,18 +367,21 @@ TEST_F(TestAccTcpSslHelper, difftime_less_than_required)
     auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
     ASSERT_TRUE(tmpSslCtx != nullptr);
 
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    tslOption.tlsPk = "/cert/key.pem";
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
     std::string errStr;
-    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tslOption) == ACC_OK);
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(1.0));
-    auto result = tmpHelperPtr->Start(tmpSslCtx, tslOption);
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
     ASSERT_TRUE(result == ACC_OK);
 
     tmpHelperPtr->Stop();
@@ -474,14 +524,9 @@ void TestAccTcpSslClient::SetUp()
 
     std::string certPath;
     GetCertPath(certPath);
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    (void)mServer->Start(opts, tslOption);
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = false;
+    (void)mServer->Start(opts, tlsOption);
 }
 
 void TestAccTcpSslClient::TearDown()
@@ -504,14 +549,9 @@ TEST_F(TestAccTcpSslClient, test_client_connect_send_should_return_ok)
 
     std::string certPath;
     GetCertPath(certPath);
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    mClient->SetSslOption(tslOption);
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = false;
+    mClient->SetSslOption(tlsOption);
 
     int32_t result = mClient->Connect(req);
     ASSERT_EQ(ACC_OK, result);
@@ -525,35 +565,6 @@ TEST_F(TestAccTcpSslClient, test_client_connect_send_should_return_ok)
     mClient->Disconnect();
 }
 
-TEST_F(TestAccTcpSslClient, bad_crl)
-{
-    AccConnReq req{};
-    req.rankId = 0;
-    req.magic = 0;
-    req.version = 1;
-    AccTcpClientPtr mClient = AccTcpClient::Create("127.0.0.1", 8100);
-    ASSERT_TRUE(mClient != nullptr);
-
-    std::string certPath;
-    GetCertPath(certPath);
-    AccTlsOption tslOption;
-    tslOption.enableTls = true;
-    tslOption.tlsTopPath = certPath;
-    tslOption.tlsCert = "/cert/cert.pem";
-    tslOption.tlsPk = "/cert/key.pem";
-    tslOption.tlsCaPath = "/CA/";
-    tslOption.tlsCaFile.insert("ca_cert.pem");
-    tslOption.tlsCrlFile.insert("crl.pem");
-    tslOption.tlsCrlPath = "/crl/";
-    mClient->SetSslOption(tslOption);
-
-    MOCKER(connect).stubs().will(returnValue(0));
-    int32_t result = mClient->Connect(req);
-    ASSERT_EQ(ACC_ERROR, result);
-
-    sleep(1);
-    mClient->Disconnect();
-}
 // **********************************************************
 
 class TestOPENSSLAPIDL : public testing::Test {

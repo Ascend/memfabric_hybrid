@@ -531,7 +531,7 @@ Result AccTcpServerDefault::GenerateSslCtx()
         tmpHelperPtr = sslHelper_;
     }
 
-    if (!tlsOption_.tlsPkPwd.empty()) { // if private key is encrypted, register decrypt handler
+    if (decryptHandler_) { // decryptHandler_ not null means private key password is encrypted
         tmpHelperPtr->RegisterDecryptHandler(decryptHandler_);
     }
 

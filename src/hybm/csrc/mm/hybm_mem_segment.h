@@ -9,11 +9,23 @@
 #include "hybm_common_include.h"
 #include "hybm_mem_common.h"
 #include "hybm_mem_slice.h"
+#include "hybm_transport_common.h"
 
 namespace ock {
 namespace mf {
+struct TransportExtraInfo {
+    uint32_t rankId;
+    transport::TransportMemoryKey memKey;
+};
+
 class MemSegment;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;
+
+struct MemSliceStatus {
+    std::shared_ptr<MemSlice> slice;
+
+    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)} {}
+};
 
 class MemSegment {
 public:
@@ -92,17 +104,22 @@ public:
      */
     virtual bool MemoryInRange(const void *begin, uint64_t size) const noexcept = 0;
 
-protected:
-    static Result InitDeviceInfo();
+    /*
+     * check memery area in this segment
+     * @return true if in range
+    */
+    virtual void GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept = 0;
+
+    /*
+     * get memory type
+     */
+    virtual hybm_mem_type GetMemoryType() const noexcept = 0;
+
+    virtual bool CheckSmdaReaches(uint32_t rankId) const noexcept;
 
 protected:
     const MemSegmentOptions options_;
     const int entityId_;
-
-    static bool deviceInfoReady;
-    static int deviceId_;
-    static uint32_t pid_;
-    static uint32_t sdid_;
 };
 }
 }

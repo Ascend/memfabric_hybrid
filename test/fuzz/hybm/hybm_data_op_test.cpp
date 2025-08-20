@@ -27,7 +27,8 @@ const hybm_options g_options = {HYBM_TYPE_HBM_HOST_INITIATE,
                                 0,
                                 g_localMemSize,
                                 0,
-                                true};
+                                true,
+                                HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 hybm_entity_t g_entity = nullptr;
 hybm_mem_slice_t g_slice = nullptr;

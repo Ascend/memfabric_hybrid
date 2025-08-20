@@ -35,7 +35,8 @@ SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServ
             SM_LOG_ERROR("Load openssl failed");
             return SM_ERROR;
         }
-        if (!tlsOpt.tlsPkPwd.empty()) {
+        if (tlsOption.decryptHandler_) {
+            // pk must be encrypt, decrypt handler not null means pk password encyrpted
             accTcpServer->RegisterDecryptHandler(tlsOption.decryptHandler_);
         }
         result = accTcpServer->Start(options, tlsOpt);

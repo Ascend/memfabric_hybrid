@@ -1,6 +1,7 @@
 ﻿/*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
+#include <algorithm>
 #include "hybm_big_mem.h"
 #include "smem_shm.h"
 #include "smem_logger.h"
@@ -46,7 +47,10 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.rankId = rankId;
     options.singleRankVASpace = symmetricSize;
     options.preferredGVA = 0;
+    options.role = HYBM_ROLE_PEER;
     options.globalUniqueAddress = true;
+    std::string defaultNic = "tcp://0.0.0.0/0:10002";
+    std::copy_n(defaultNic.c_str(), defaultNic.size() + 1, options.nic);
 
     ret = entry->Initialize(options);
     if (ret != 0) {
@@ -168,9 +172,7 @@ SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteR
         return SM_INVALID_PARAM;
     }
 
-    // 当前仅支持MTE
-    *reachInfo = SMEMS_DATA_OP_MTE;
-    return SM_OK;
+    return entry->GetReachInfo(remoteRank, *reachInfo);
 }
 
 SMEM_API int32_t smem_shm_config_init(smem_shm_config_t *config)

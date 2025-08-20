@@ -2,8 +2,9 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
+#include <iostream>
+#include <vector>
+#include <sstream>
 #include "smem_logger.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
@@ -12,7 +13,7 @@
 namespace ock {
 namespace smem {
 static __thread int failedReason_ = 0;
-static constexpr size_t MAX_TLS_JSON_LEN = 10 * 1024U;
+static constexpr size_t MAX_TLS_INFO_LEN = 10 * 1024U;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 AcclinkTlsOption StoreFactory::tlsOption_;
@@ -92,47 +93,129 @@ int StoreFactory::GetFailedReason() noexcept
     return failedReason_;
 }
 
-#define GET_STRING_PATH(key)                                    \
-    do {                                                        \
-        if (doc.HasMember(#key) && doc[#key].IsString()) {      \
-            std::string path = doc[#key].GetString();           \
-            tlsOption.key = path;                               \
-        }                                                       \
-    } while (0)
-
-#define GET_ARRAY_FILE(key)                                                       \
-    do {                                                                          \
-        if (doc.HasMember(#key) && doc[#key].IsArray()) {                         \
-            std::set<std::string> tlsFileSet;                                     \
-            for (rapidjson::SizeType i = 0; i < doc[#key].Size(); i++) {          \
-                if (!doc[#key].IsString()) {                                      \
-                    SM_LOG_ERROR("tlsFiles array contains non-stirng element");   \
-                    return StoreErrorCode::ERROR;                                 \
-                }                                                                 \
-                tlsFileSet.insert(doc[#key][i].GetString());                      \
-            }                                                                     \
-            tlsOption.key = tlsFileSet;                                           \
-        }                                                                         \
-    } while (0)
-
-Result ParseSSLFromJson(const char* tlsJsonInfo, AcclinkTlsOption &tlsOption)
+std::string TrimString(const std::string &input)
 {
-    rapidjson::Document doc;
-    if (doc.Parse(tlsJsonInfo).HasParseError()) {
-        rapidjson::ParseErrorCode errorCode = doc.GetParseError();
-        size_t errorOffset = doc.GetErrorOffset();
-        const char *errorMsg = rapidjson::GetParseError_En(errorCode);
-        SM_LOG_ERROR("Failed to parse TLS config JSON with error: " << errorMsg << " at offset " << errorOffset);
+    auto start = input.begin();
+    while (start != input.end() && std::isspace(*start)) {
+        start++;
+    }
+
+    auto end = input.end();
+    do {
+        end--;
+    } while (std::distance(start, end) > 0 && std::isspace(*end));
+
+    return std::string(start, end + 1);
+}
+
+Result ParseStr2Array(const std::string &token, char splitter, std::set<std::string> &parts)
+{
+    std::istringstream tokenSteam(token);
+    std::string part;
+    while (std::getline(tokenSteam, part, splitter)) {
+        part = TrimString(part);
+        if (!part.empty()) {
+            parts.insert(part);
+        }
+    }
+
+    if (parts.empty()) {
+        SM_LOG_WARN("parse token to array failed");
         return StoreErrorCode::ERROR;
     }
-    GET_STRING_PATH(tlsCert);
-    GET_STRING_PATH(tlsCrlPath);
-    GET_STRING_PATH(tlsCaPath);
-    GET_STRING_PATH(tlsPk);
-    GET_STRING_PATH(tlsPkPwd);
-    GET_STRING_PATH(packagePath);
-    GET_ARRAY_FILE(tlsCaFile);
-    GET_ARRAY_FILE(tlsCrlFile);
+    return StoreErrorCode::SUCCESS;
+}
+
+Result ParseStr2KV(const std::string &token, char splitter, std::pair<std::string, std::string> &pair)
+{
+    std::istringstream stm(token);
+    std::string key;
+    std::string value;
+    if (std::getline(stm, key, splitter) && std::getline(stm, value, splitter)) {
+        key = TrimString(key);
+        value = TrimString(value);
+        if (!key.empty() && !value.empty()) {
+            pair.first = key;
+            pair.second = value;
+            return StoreErrorCode::SUCCESS;
+        }
+    }
+
+    SM_LOG_WARN("parse token to kv failed");
+    return StoreErrorCode::ERROR;
+}
+
+bool SetTlsOptionValue(AcclinkTlsOption &tlsOption, const std::string &key, const std::string &value)
+{
+    if (key == "tlsCaPath") {
+        tlsOption.tlsCaPath = value;
+    } else if (key == "tlsCert") {
+        tlsOption.tlsCert = value;
+    } else if (key == "tlsPk") {
+        tlsOption.tlsPk = value;
+    } else if (key == "tlsPkPwd") {
+        tlsOption.tlsPkPwd = value;
+    } else if (key == "tlsCrlPath") {
+        tlsOption.tlsCrlPath = value;
+    } else if (key == "packagePath") {
+        tlsOption.packagePath = value;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+bool SetTlsOptionValues(AcclinkTlsOption &tlsOption, const std::string &key, std::set<std::string> &values)
+{
+    if (key == "tlsCrlFile") {
+        tlsOption.tlsCrlFile = values;
+    } else if (key == "tlsCaFile") {
+        tlsOption.tlsCaFile = values;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption)
+{
+    std::string inputStr(tlsInput);
+    std::istringstream tokenSteam(inputStr);
+    std::vector<std::string> tokens;
+    std::string token;
+
+    while (std::getline(tokenSteam, token, ';')) {
+        if (!TrimString(token).empty()) {
+            tokens.push_back(token);
+        }
+    }
+
+    for (std::string &t : tokens) {
+        std::pair<std::string, std::string> pair;
+        auto ret = ParseStr2KV(t, ':', pair);
+        if (ret != StoreErrorCode::SUCCESS) {
+            continue;
+        }
+
+        bool res = true;
+        auto key = pair.first;
+        std::set<std::string> paths;
+        if (pair.first == "tlsCrlFile" || pair.first == "tlsCaFile") {
+            ret = ParseStr2Array(pair.second, ',', paths);
+            if (ret != StoreErrorCode::SUCCESS) {
+                continue;
+            }
+
+            res = SetTlsOptionValues(tlsOption, pair.first, paths);
+        } else {
+            res = SetTlsOptionValue(tlsOption, pair.first, pair.second);
+        }
+
+        if (!res) {
+            SM_LOG_WARN("un-match tls info key " << pair.first);
+        }
+    }
+
     return StoreErrorCode::SUCCESS;
 }
 
@@ -158,20 +241,20 @@ Result StoreFactory::InitTlsOption() noexcept
         return StoreErrorCode::SUCCESS;
     }
 
-    const char* tlsJsonInfo = std::getenv("SMEM_CONF_STORE_TLS_INFO");
-    if (tlsJsonInfo == nullptr) {
+    const char* tlsInfo = std::getenv("SMEM_CONF_STORE_TLS_INFO");
+    if (tlsInfo == nullptr) {
         SM_LOG_ERROR("set ssl option failed, environment SMEM_CONF_STORE_TLS_INFO not set. ");
         return StoreErrorCode::ERROR;
     }
 
-    size_t jsonLen = std::strlen(tlsJsonInfo);
-    if (jsonLen > MAX_TLS_JSON_LEN) {
-        SM_LOG_ERROR("SMEM_CONF_STORE_TLS_INFO is too long (" << jsonLen << " bytes)");
+    size_t infoLen = std::strlen(tlsInfo);
+    if (infoLen > MAX_TLS_INFO_LEN) {
+        SM_LOG_ERROR("SMEM_CONF_STORE_TLS_INFO is too long (" << infoLen << " bytes)");
         return StoreErrorCode::ERROR;
     }
 
-    if (ParseSSLFromJson(tlsJsonInfo, tlsOption_) != StoreErrorCode::SUCCESS) {
-        SM_LOG_ERROR("extract ssl info from json failed.");
+    if (ParseTlsInfo(tlsInfo, tlsOption_) != StoreErrorCode::SUCCESS) {
+        SM_LOG_ERROR("extract ssl info from input failed.");
         return StoreErrorCode::ERROR;
     }
 
@@ -179,13 +262,11 @@ Result StoreFactory::InitTlsOption() noexcept
     return StoreErrorCode::SUCCESS;
 }
 
-std::function<int(const std::string&, char*, int&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, int*, char*, int*)) noexcept
+std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t&)) noexcept
 {
-    return [rawFunc](const std::string &cipherText, char *plainText, int32_t &plainTextLen) {
-        int tmpCipherLen = static_cast<int>(cipherText.size());
-        int tmpPlainLen = plainTextLen;
-        int ret = rawFunc(cipherText.c_str(), &tmpCipherLen, plainText, &tmpPlainLen);
-        plainTextLen = tmpPlainLen;
+    return [rawFunc](const std::string &cipherText, char *plainText, size_t &plainTextLen) {
+        auto tmpCipherLen = cipherText.size();
+        int ret = rawFunc(cipherText.c_str(), tmpCipherLen, plainText, plainTextLen);
         return ret;
     };
 }

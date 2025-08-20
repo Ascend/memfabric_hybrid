@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ */
+#ifndef MF_HYBRID_DEVICE_RDMA_COMMON_H
+#define MF_HYBRID_DEVICE_RDMA_COMMON_H
+
+#include <arpa/inet.h>
+#include <ostream>
+#include <sstream>
+#include "hybm_define.h"
+#include "hybm_transport_common.h"
+
+namespace ock::mf::transport::device {
+
+// 注册内存结果结构体
+struct RegMemResult {
+    uint32_t type{static_cast<uint32_t>(TransportType::TT_HCCP)};
+    uint32_t reserved{0};
+    uint64_t address{0};
+    uint64_t size{0};
+    void* mrHandle{nullptr};
+    uint32_t lkey{0};
+    uint32_t rkey{0};
+
+    RegMemResult() = default;
+
+    RegMemResult(uint64_t addr, uint64_t sz, void* hd, uint32_t lk, uint32_t rk)
+        : address(addr), size(sz), mrHandle(hd), lkey(lk), rkey(rk) {}
+};
+
+union RegMemKeyUnion {
+    TransportMemoryKey commonKey;
+    RegMemResult deviceKey;
+};
+
+inline std::ostream& operator<<(std::ostream& output, const RegMemResult& mr)
+{
+    output << "RegMemResult(size=" << mr.size
+           << ", mrHandle=" << mr.mrHandle
+           << ", lkey=" << mr.lkey
+           << ", rkey=" << mr.rkey << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const HccpRaInitConfig& config)
+{
+    output << "HccpRaInitConfig(phyId=" << config.phyId
+           << ", nicPosition=" << config.nicPosition
+           << ", hdcType=" << config.hdcType << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const HccpRdevInitInfo& info)
+{
+    output << "HccpRdevInitInfo(mode=" << info.mode
+           << ", notify=" << info.notifyType
+           << ", enabled910aLite=" << info.enabled910aLite
+           << ", disabledLiteThread=" << info.disabledLiteThread
+           << ", enabled2mbLite=" << info.enabled2mbLite << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const HccpRdev& rdev)
+{
+    output << "HccpRdev(phyId=" << rdev.phyId
+           << ", family=" << rdev.family
+           << ", rdev.ip=" << inet_ntoa(rdev.localIp.addr) << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const ai_data_plane_wq& info)
+{
+    output << "ai_data_plane_wq(wqn=" << info.wqn
+           << ", buff_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.buf_addr))
+           << ", wqebb_size=" << info.wqebb_size
+           << ", depth=" << info.depth
+           << ", head=" << static_cast<void*>(reinterpret_cast<void*>(info.head_addr))
+           << ", tail=" << static_cast<void*>(reinterpret_cast<void*>(info.tail_addr))
+           << ", swdb_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.swdb_addr))
+           << ", db_reg=" << info.db_reg << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const ai_data_plane_cq& info)
+{
+    output << "ai_data_plane_cq(cqn=" << info.cqn
+           << ", buff_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.buf_addr))
+           << ", cqe_size=" << info.cqe_size
+           << ", depth=" << info.depth
+           << ", head=" << static_cast<void*>(reinterpret_cast<void*>(info.head_addr))
+           << ", tail=" << static_cast<void*>(reinterpret_cast<void*>(info.tail_addr))
+           << ", swdb_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.swdb_addr))
+           << ", db_reg=" << info.db_reg << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const HccpAiQpInfo& info)
+{
+    output << "HccpAiQpInfo(addr=" << static_cast<void*>(reinterpret_cast<void*>(info.aiQpAddr))
+           << ", sq_index=" << info.sqIndex
+           << ", db_index=" << info.dbIndex
+           << ", ai_scq_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.ai_scq_addr))
+           << ", ai_rcq_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.ai_rcq_addr))
+           << ", data_plane_info:<sq=" << info.data_plane_info.sq
+           << ", rq=" << info.data_plane_info.rq
+           << ", scq=" << info.data_plane_info.scq
+           << ", rcq=" << info.data_plane_info.rcq << ">)";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const AiQpRMAWQ& info)
+{
+    output << "AiQpRMAWQ(wqn=" << info.wqn
+           << ", buff_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.bufAddr))
+           << ", wqe_size=" << info.wqeSize
+           << ", depth=" << info.depth
+           << ", head=" << static_cast<void*>(reinterpret_cast<void*>(info.headAddr))
+           << ", tail=" << static_cast<void*>(reinterpret_cast<void*>(info.tailAddr))
+           << ", db_mode=" << static_cast<int>(info.dbMode)
+           << ", db_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.dbAddr))
+           << ", sl=" << info.sl << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const AiQpRMACQ& info)
+{
+    output << "AiQpRMACQ(cqn=" << info.cqn
+           << ", buff_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.bufAddr))
+           << ", cqe_size=" << info.cqeSize
+           << ", depth=" << info.depth
+           << ", head=" << static_cast<void*>(reinterpret_cast<void*>(info.headAddr))
+           << ", tail=" << static_cast<void*>(reinterpret_cast<void*>(info.tailAddr))
+           << ", db_mode=" << static_cast<int>(info.dbMode)
+           << ", db_addr=" << static_cast<void*>(reinterpret_cast<void*>(info.dbAddr)) << ")";
+    return output;
+}
+
+inline std::ostream& operator<<(std::ostream& output, const RdmaMemRegionInfo& info)
+{
+    output << "RdmaMemRegionInfo(size=" << info.size
+           << ", addr=" << static_cast<void*>(reinterpret_cast<void*>(info.addr))
+           << ", lkey=" << info.lkey
+           << ", rkey=" << info.rkey << ")";
+    return output;
+}
+
+inline std::string AiQpInfoToString(const AiQpRMAQueueInfo& info, uint32_t rankCount)
+{
+    std::stringstream ss;
+    ss << "QiQpInfo(rankCount=" << rankCount << ", mq_count=" << info.count << ")={\n";
+
+    for (uint32_t i = 0; i < rankCount; ++i) {
+        ss << "  rank" << i << "={\n";
+
+        for (uint32_t j = 0; j < info.count; ++j) {
+            const uint32_t idx = i * info.count + j;
+            ss << "    qp" << j << "_info={\n";
+            ss << "      sq=<" << info.sq[idx] << ">\n";
+            ss << "      rq=<" << info.rq[idx] << ">\n";
+            ss << "      scq=<" << info.scq[idx] << ">\n";
+            ss << "      rcq=<" << info.rcq[idx] << ">\n";
+            ss << "    }\n";
+        }
+        
+        ss << "    MR-rank-" << i << "=<" << info.mr[i] << ">\n";
+        ss << "  }\n";
+    }
+
+    ss << "}";
+    return ss.str();
+}
+
+inline std::ostream& operator<<(std::ostream& output, const HccpSocketConnectInfo& info)
+{
+    output << "HccpSocketConnectInfo(socketHandle=" << info.handle
+           << ", remoteIp=" << inet_ntoa(info.remoteIp.addr)
+           << ", port=" << info.port << ")";
+    return output;
+}
+
+}  // namespace ock::mf::transport::device
+
+#endif  // MF_HYBRID_DEVICE_RDMA_COMMON_H

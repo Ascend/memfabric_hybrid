@@ -18,9 +18,12 @@ using namespace ock::mf;
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
 const hybm_options g_options_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true};
+                                             HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true,
+                                             HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
 const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE,
-                                HYBM_SCOPE_CROSS_NODE, HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, false};
+                                                 HYBM_SCOPE_CROSS_NODE, HYBM_RANK_TYPE_STATIC, 8, 0, 0,
+                                                 1024 * 1024 * 1024, 0, false, HYBM_ROLE_PEER,
+                                                 "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }
 

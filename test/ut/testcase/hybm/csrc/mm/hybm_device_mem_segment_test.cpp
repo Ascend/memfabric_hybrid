@@ -22,9 +22,8 @@ using namespace ock::mf;
 namespace {
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 MemSegmentOptions g_options = {0, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, g_allocSize, 0, 8};
-const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
-const uint64_t EXPORT_INFO_VERSION = 0x1UL;
-HbmExportInfo g_exportInfo = {EXPORT_INFO_MAGIC, EXPORT_INFO_VERSION, 0, 0, 0, 0, 0, g_allocSize, 0,
+
+HbmExportInfo g_exportInfo = {EXPORT_INFO_MAGIC, EXPORT_INFO_VERSION, 0, 0, 0, 0, 0, 0, 0, g_allocSize, 0,
                               MEM_PT_TYPE_SVM, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE};
 const MemSegmentOptions g_seg_options = {0, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, 2UL * 1024UL * 1024UL, 0, 2};
 }
@@ -62,7 +61,7 @@ TEST_F(HybmDevideMemSegmentTest, CreateMemSeg_ShouldReturnNullptr_WhenOptionsInv
 
     options = g_seg_options;
     options.segType = HYBM_MST_DRAM;
-    EXPECT_EQ(MemSegment::Create(options, 0), nullptr);
+    EXPECT_NE(MemSegment::Create(options, 0), nullptr);
 }
 
 TEST_F(HybmDevideMemSegmentTest, ValidateOptions_ShouldReturnInvalidParam)

@@ -130,7 +130,7 @@ Result TcpConfigStore::AccClientStart(const AcclinkTlsOption &tlsOption) noexcep
     ock::acc::AccTlsOption tlsOpt = ConvertTlsOption(tlsOption);
     Result result;
     if (tlsOpt.enableTls) {
-        if (!tlsOpt.tlsPkPwd.empty()) {
+        if (tlsOption.decryptHandler_ != nullptr) {
             accClient_->RegisterDecryptHandler(tlsOption.decryptHandler_);
         }
         result = accClient_->Start(options, tlsOpt);
@@ -315,7 +315,7 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
     return StoreErrorCode::SUCCESS;
 }
 
-Result TcpConfigStore::Remove(const std::string &key) noexcept
+Result TcpConfigStore::Remove(const std::string &key, bool printKeyNotExist) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
         SM_LOG_ERROR("key length is invalid");
@@ -334,8 +334,10 @@ Result TcpConfigStore::Remove(const std::string &key) noexcept
 
     auto responseCode = response->Header().result;
     if (responseCode == StoreErrorCode::NOT_EXIST) {
-        // Do not need to print ERROR message when sending remove key which is already not exist.
-        SM_LOG_WARN("send remove for key: " << key << ", is already not exist");
+        if (printKeyNotExist) {
+            // Do not need to print ERROR message when sending remove key which is already not exist.
+            SM_LOG_INFO("send remove for key: " << key << ", is already not exist");
+        }
     } else if (responseCode != 0) {
         SM_LOG_ERROR("send remove for key: " << key << ", get response code: " << responseCode);
     }

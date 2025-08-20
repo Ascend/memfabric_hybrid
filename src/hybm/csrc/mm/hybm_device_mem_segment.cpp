@@ -8,14 +8,21 @@
 #include "dl_acl_api.h"
 #include "devmm_svm_gva.h"
 #include "hybm_logger.h"
+#include "hybm_networks_common.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_device_mem_segment.h"
 
 namespace ock {
 namespace mf {
+static constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
+static constexpr uint32_t invalidServerId = 0x3FFU;
 
-static const uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
-static const uint64_t EXPORT_INFO_VERSION = 0x1UL;
+bool MemSegmentDevice::deviceInfoReady{false};
+int MemSegmentDevice::deviceId_{-1};
+uint32_t MemSegmentDevice::pid_{0};
+uint32_t MemSegmentDevice::sdid_{0};
+uint32_t MemSegmentDevice::serverId_{0};
+uint32_t MemSegmentDevice::superPodId_{0};
 
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
@@ -153,7 +160,7 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
                                             sizeof(info.shmName));
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
 
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(options_.devId), "get device info failed.");
     info.magic = EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.mappingOffset =
@@ -165,6 +172,8 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     info.size = slice->size_;
     info.entityId = entityId_;
     info.sdid = sdid_;
+    info.serverId = serverId_;
+    info.superPodId = superPodId_;
     info.pageTblType = MEM_PT_TYPE_SVM;
     info.memSegType = HYBM_MST_HBM;
     info.exchangeType = HYBM_INFO_EXG_IN_NODE;
@@ -188,6 +197,7 @@ Result MemSegmentDevice::GetExportSliceSize(size_t &size) noexcept
 // import可重入
 Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
+    std::map<uint16_t, HbmExportInfo> importMap;
     LiteralExInfoTranslater<HbmExportInfo> translator;
     std::vector<HbmExportInfo> deserializedInfos{allExInfo.size()};
     for (auto i = 0U; i < allExInfo.size(); i++) {
@@ -196,7 +206,9 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void 
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
+        importMap.emplace(deserializedInfos[i].rankId, deserializedInfos[i]);
     }
+    importMap_ = std::move(importMap);
 
     uint32_t localIdx = UINT32_MAX;
     for (auto i = 0U; i < deserializedInfos.size(); i++) {
@@ -252,11 +264,17 @@ Result MemSegmentDevice::Mmap() noexcept
 
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
-            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") already mapped.");
+            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped: " << (void *)remoteAddress);
             continue;
         }
 
-        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") prepare to map, size = " << im.size);
+        if (!CanMapRemote(im)) {
+            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") SDMA cannot reaches.");
+            continue;
+        }
+
+        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
+                                             << ", size = " << im.size);
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
@@ -355,16 +373,117 @@ void MemSegmentDevice::FreeMemory() noexcept
     }
 }
 
-Result MemSegmentDevice::GetDeviceInfo() noexcept
+int MemSegmentDevice::GetDeviceInfo(int deviceId) noexcept
 {
-    if (options_.devId < 0) {
+    if (deviceId < 0) {
         return BM_INVALID_PARAM;
     }
 
-    if (InitDeviceInfo() != BM_OK) {
-        return BM_ERROR;
+    if (deviceId_ >= 0) {
+        if (deviceId == deviceId_) {
+            return 0;
+        }
+
+        return BM_INVALID_PARAM;
     }
+
+    uint32_t tgid = 0;
+    auto ret = DlAclApi::RtDeviceGetBareTgid(&tgid);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get bare tgid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    deviceId_ = deviceId;
+    pid_ = static_cast<int>(tgid);
+    ret = FillDeviceSuperPodInfo();
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("FillDeviceSuperPodInfo() failed: " << ret);
+        return ret;
+    }
+
     return BM_OK;
+}
+
+int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
+{
+    int64_t value = 0;
+
+    auto ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SDID),
+                                         &value);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get sdid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    sdid_ = static_cast<uint32_t>(value);
+
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SERVER_ID),
+                                    &value);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get server id failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    serverId_ = static_cast<uint32_t>(value);
+    BM_LOG_DEBUG("local server=0x" << std::hex << serverId_);
+
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SUPER_POD_ID),
+                                    &value);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get super pod id failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    superPodId_ = static_cast<uint32_t>(value);
+
+    if (superPodId_ == invalidSuperPodId && serverId_ == invalidServerId) {
+        auto networks = NetworkGetIpAddresses();
+        if (networks.empty()) {
+            BM_LOG_ERROR("get local host ip address empty.");
+            return BM_ERROR;
+        }
+
+        serverId_ = networks[0];
+    }
+
+    BM_LOG_DEBUG("local sdid=0x" << std::hex << sdid_ << ", local server=0x" << std::hex << serverId_
+                                 << ", spid=" << superPodId_);
+
+    return BM_OK;
+}
+
+bool MemSegmentDevice::CanMapRemote(const HbmExportInfo &rmi) noexcept
+{
+    if (rmi.serverId == serverId_) {
+        BM_LOG_DEBUG("map from rank(" << rmi.rankId << ") on sample host, can map.");
+        return true;
+    }
+
+    if (rmi.superPodId == invalidSuperPodId || superPodId_ == invalidSuperPodId) {
+        BM_LOG_INFO("map from rank(" << rmi.rankId << ") spid: " << rmi.superPodId << ", local: " << superPodId_
+                                     << " cannot map.");
+        return false;
+    }
+
+    return rmi.superPodId == superPodId_;
+}
+
+void MemSegmentDevice::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept {}
+
+bool MemSegmentDevice::CheckSmdaReaches(uint32_t rankId) const noexcept
+{
+    auto pos = importMap_.find(static_cast<uint16_t>(rankId));
+    if (pos == importMap_.end()) {
+        return false;
+    }
+
+    if (pos->second.serverId == serverId_) {
+        return true;
+    }
+
+    if (pos->second.superPodId == invalidSuperPodId || superPodId_ == invalidSuperPodId) {
+        return false;
+    }
+
+    return pos->second.superPodId == superPodId_;
 }
 }  // namespace mf
 }  // namespace ock

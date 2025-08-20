@@ -71,7 +71,6 @@ int32_t PyTransferSetLogLevel(int level)
         ADAPTER_LOG_ERROR("SMEM API smem_set_log_level happen error, ret=" << ret);
         return ret;
     }
-    ock::adapter::AdapterOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
     return 0;
 }
 

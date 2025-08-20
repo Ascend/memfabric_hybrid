@@ -50,6 +50,11 @@ public:
         return deviceId_;
     }
 
+    inline std::string GetHcomUrl() const
+    {
+        return config_.hcomUrl;
+    }
+
 private:
     int32_t PrepareStore();
     int32_t RacingForStoreServer();

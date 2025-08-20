@@ -6,6 +6,3 @@
 	path = test/3rdparty/mockcpp
 	url = https://github.com/sinojelly/mockcpp.git
 	branch = tags/v2.7
-[submodule "3rdparty/rapidjson"]
-	path = 3rdparty/rapidjson
-	url = https://github.com/Tencent/rapidjson.git

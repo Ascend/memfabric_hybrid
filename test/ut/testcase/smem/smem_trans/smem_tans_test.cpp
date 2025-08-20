@@ -5,13 +5,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <mockcpp/mockcpp.hpp>
 #include <array>
 #include <thread>
 #include <chrono>
+#include "hybm_device_mem_segment.h"
 #include "smem_types.h"
 #include "smem_trans.h"
 #include "dl_acl_api.h"
 #include "dl_api.h"
+
+#define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
 using namespace ock::smem;
 using namespace ock::mf;
@@ -22,24 +26,28 @@ const char SESSION_ID[] = "127.0.0.1:5321";
 const smem_trans_config_t g_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
 
 class SmemTransTest : public testing::Test {
-protected:
-    static void SetUpTestSuite()
-    {
-        auto path = std::getenv("ASCEND_HOME_PATH");
-        EXPECT_NE(path, nullptr);
-        auto libPath = std::string(path).append("/lib64");
-        EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
-        smem_set_log_level(0);
-    }
-    static void TearDownTestSuite()
-    {
-        DlApi::CleanupLibrary();
-    }
-    void SetUp() override {}
-    void TearDown() override
-    {}
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
 
 };
+
+void SmemTransTest::SetUpTestCase() {}
+
+void SmemTransTest::TearDownTestCase() {}
+
+void SmemTransTest::SetUp()
+{
+    smem_set_log_level(0);
+}
+
+void SmemTransTest::TearDown()
+{
+    GlobalMockObject::verify();
+    GlobalMockObject::reset();
+}
 
 TEST_F(SmemTransTest, smem_trans_config_init_success)
 {
@@ -150,6 +158,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
 TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 {
+    MOCKER_CPP(&MemSegmentDevice::GetDeviceInfo, int (*)(int)).stubs().will(returnValue(0));
     setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
     uint32_t rankSize = 2;
@@ -168,7 +177,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             exit(1);
         }
 
-        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 1, 0);
+        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
             exit(2);
         }
@@ -338,7 +347,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &trans_options);
 
-        auto ret = smem_trans_register_mems(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
         if (ret != SM_OK) {
             flag = 1;
             goto cleanup;
