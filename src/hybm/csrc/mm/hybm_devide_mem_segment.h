@@ -20,6 +20,7 @@ struct HbmExportInfo {
     uint32_t sdid{0};
     uint32_t serverId{0};
     uint32_t superPodId{0};
+    int32_t logicDeviceId{0};
     int pid{0};
     uint32_t rankId{0};
     uint64_t size{0};

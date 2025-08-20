@@ -28,6 +28,8 @@ using rtGetDeviceInfoFunc = int32_t (*)(uint32_t, int32_t, int32_t, int64_t *val
 using rtIpcSetMemoryNameFunc = int32_t (*)(const void *, uint64_t, char *, uint32_t);
 using rtSetIpcMemorySuperPodPidFunc = int32_t (*)(const char *, uint32_t, int32_t *, int32_t);
 using rtIpcDestroyMemoryNameFunc = int32_t (*)(const char *);
+using rtEnableP2PFunc = int32_t (*)(uint32_t, uint32_t, uint32_t);
+using rtDisableP2PFunc = int32_t (*)(uint32_t, uint32_t);
 
 class DlAclApi {
 public:
@@ -181,6 +183,22 @@ public:
         return pRtIpcDestroyMemoryName(name);
     }
 
+    static inline Result RtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t flag)
+    {
+        if (pRtEnableP2P == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pRtEnableP2P(devIdDes, phyIdSrc, flag);
+    }
+
+    static inline Result RtDisableP2P(uint32_t devIdDes, uint32_t phyIdSrc)
+    {
+        if (pRtDisableP2P == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pRtDisableP2P(devIdDes, phyIdSrc);
+    }
+
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -205,6 +223,8 @@ private:
     static rtSetIpcMemorySuperPodPidFunc pRtSetIpcMemorySuperPodPid;
     static rtIpcSetMemoryNameFunc pRtIpcSetMemoryName;
     static rtIpcDestroyMemoryNameFunc pRtIpcDestroyMemoryName;
+    static rtEnableP2PFunc pRtEnableP2P;
+    static rtDisableP2PFunc pRtDisableP2P;
 
 };
 }

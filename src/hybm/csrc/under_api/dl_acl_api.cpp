@@ -29,6 +29,8 @@ rtGetDeviceInfoFunc DlAclApi::pRtGetDeviceInfo = nullptr;
 rtSetIpcMemorySuperPodPidFunc DlAclApi::pRtSetIpcMemorySuperPodPid = nullptr;
 rtIpcDestroyMemoryNameFunc DlAclApi::pRtIpcDestroyMemoryName = nullptr;
 rtIpcSetMemoryNameFunc DlAclApi::pRtIpcSetMemoryName = nullptr;
+rtEnableP2PFunc DlAclApi::pRtEnableP2P = nullptr;
+rtDisableP2PFunc DlAclApi::pRtDisableP2P = nullptr;
 
 Result DlAclApi::LoadLibrary(const std::string &libDirPath)
 {
@@ -70,6 +72,8 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pRtSetIpcMemorySuperPodPid, rtSetIpcMemorySuperPodPidFunc, rtHandle, "rtSetIpcMemorySuperPodPid");
     DL_LOAD_SYM(pRtIpcSetMemoryName, rtIpcSetMemoryNameFunc, rtHandle, "rtIpcSetMemoryName");
     DL_LOAD_SYM(pRtIpcDestroyMemoryName, rtIpcDestroyMemoryNameFunc, rtHandle, "rtIpcDestroyMemoryName");
+    DL_LOAD_SYM(pRtEnableP2P, rtEnableP2PFunc, rtHandle, "rtEnableP2P");
+    DL_LOAD_SYM(pRtDisableP2P, rtDisableP2PFunc, rtHandle, "rtDisableP2P");
 
     gLoaded = true;
     return BM_OK;
@@ -100,6 +104,8 @@ void DlAclApi::CleanupLibrary()
     pRtSetIpcMemorySuperPodPid = nullptr;
     pRtIpcDestroyMemoryName = nullptr;
     pRtIpcSetMemoryName = nullptr;
+    pRtEnableP2P = nullptr;
+    pRtDisableP2P = nullptr;
 
     if (rtHandle != nullptr) {
         dlclose(rtHandle);

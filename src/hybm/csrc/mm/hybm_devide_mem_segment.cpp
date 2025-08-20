@@ -128,6 +128,7 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
     info.sdid = sdid_;
     info.serverId = serverId_;
     info.superPodId = superPodId_;
+    info.logicDeviceId = logicDeviceId_;
     info.pageTblType = MEM_PT_TYPE_SVM;
     info.memSegType = HYBM_MST_HBM;
     info.exchangeType = HYBM_INFO_EXG_IN_NODE;
@@ -176,11 +177,13 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
             continue;
         }
 
-        if (deserializedInfos[i].deviceId != deviceId_) {
-            auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(deserializedInfos[i].deviceId, 0);
+        if (deserializedInfos[i].logicDeviceId != logicDeviceId_) {
+            auto ret = DlAclApi::RtEnableP2P(deviceId_, deserializedInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                                                            << " remote_device:" << (int)deserializedInfos[i].deviceId);
+                             << " remote_device:" << (int)deserializedInfos[i].deviceId
+                             << " logic_device:" << logicDeviceId_
+                             << " remote_logic_device:" << deserializedInfos[i].logicDeviceId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
