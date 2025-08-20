@@ -122,7 +122,7 @@ private:
     }
 
 private:
-    LogLevel logLevel_ = INFO_LEVEL;
+    LogLevel logLevel_ = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error"};

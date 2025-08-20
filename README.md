@@ -103,9 +103,9 @@ default ${INSTALL_PATH} is /usr/local/
 
 在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
 
-memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要启动前手动设置环境变量：
-```
-export SMEM_CONF_STORE_TLS_ENABLE=0
+memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要主动调用`smem_set_conf_store_tls`接口关闭：
+```c
+int32_t ret = smem_set_conf_store_tls(false, nullptr, 0);
 ```
 具体细节详见安全声明章节
 

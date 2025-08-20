@@ -12,6 +12,7 @@
 #include "smem_trans.h"
 #include "dl_acl_api.h"
 #include "dl_api.h"
+#include "smem_store_factory.h"
 
 using namespace ock::smem;
 using namespace ock::mf;
@@ -58,9 +59,12 @@ TEST_F(SmemTransTest, smem_trans_create_success)
     EXPECT_NE(pid, -1);
 
     if (pid == 0) {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
+        int32_t ret = ock::smem::StoreFactory::SetTlsInfo(false, nullptr, 0);
+        if (ret != 0) {
+            exit(1);
+        }
 
-        int ret = smem_create_config_store(STORE_URL);
+        ret = smem_create_config_store(STORE_URL);
         if (ret != 0) {
             exit(1);
         }
