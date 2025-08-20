@@ -216,8 +216,8 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             break;
         }
         if (pids[i] == 0) {
+            smem_set_conf_store_tls(false, nullptr, 0);
             if (i == 0) {
-                smem_set_conf_store_tls(false, nullptr, 0);
                 smem_create_config_store(STORE_URL);
             }
             func(i, rankSize, trans_options[i], addrPtrs[i], capacities, session_ids[i]);
