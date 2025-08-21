@@ -43,11 +43,11 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
         errMsg = "The file path basedir is empty.";
         return false;
     }
-    if (filePath.size() >= PATH_MAX) {
+    if (filePath.size() >= ock::FileUtil::GetSafePathMax()) {
         errMsg = "The file path exceeds the maximum value set by PATH_MAX.";
         return false;
     }
-    if (baseDir.size() >= PATH_MAX) {
+    if (baseDir.size() >= ock::FileUtil::GetSafePathMax()) {
         errMsg = "The file path basedir exceeds the maximum value set by PATH_MAX.";
         return false;
     }
@@ -56,8 +56,8 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
         return false;
     }
 
-    char path[PATH_MAX + UNO_1];
-    bzero(path, PATH_MAX + UNO_1);
+    char path[ock::FileUtil::GetSafePathMax() + UNO_1];
+    bzero(path, ock::FileUtil::GetSafePathMax() + UNO_1);
 
     char* ret = realpath(filePath.c_str(), path);
     if (ret == nullptr) {

@@ -137,11 +137,8 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
     }
 
     for (auto ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == nullptr) {
-            continue;
-        }
-
-        if (ifa->ifa_addr->sa_family != AF_INET) { // only IPV4
+        if ((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET) ||
+          (ifa->ifa_netmask == nullptr)) {
             continue;
         }
 

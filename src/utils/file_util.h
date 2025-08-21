@@ -10,10 +10,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define PATH_MAX_LIMIT 4096
 namespace ock {
 class FileUtil {
     static constexpr uint32_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 public:
+    /**
+       * @brief Get the lengthiest of path
+       *
+       * @return the lengthiest of path
+     */
+    static constexpr size_t GetSafePathMax();
 
     /**
      * @brief Check if file or dir exists
@@ -229,7 +236,7 @@ inline bool FileUtil::Realpath(std::string &path)
     }
 
     /* It will allocate memory to store path */
-    char tmp[PATH_MAX + 1] = {0x00};
+    char tmp[FileUtil::GetSafePathMax() + 1] = {0x00};
     char* realPath = realpath(path.c_str(), tmp);
     if (realPath == nullptr) {
         return false;
@@ -342,6 +349,15 @@ inline bool FileUtil::CheckFileSize(const std::string &path, uint32_t maxSize)
     }
 
     return GetFileSize(path) <= static_cast<size_t>(maxSize);
+}
+
+inline constexpr size_t FileUtil::GetSafePathMax()
+{
+#ifdef PATH_MAX
+    return (PATH_MAX < PATH_MAX_LIMIT) ? PATH_MAX : PATH_MAX_LIMIT;
+#else
+    return SAFE_PATH_LIMIT;
+#endif
 }
 }  // namespace ock
 

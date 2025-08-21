@@ -379,6 +379,10 @@ void SmemTransEntry::WatchTaskFindNewSlices()
     std::vector<void *> addresses(increment);
     std::vector<const ReceiverSliceInfo *> recvSs(increment);
     auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * static_cast<uint64_t>(slicesLastTime_);
+    if (itemOffsetBytes + increment * (sizeof(ReceiverSliceInfo) + sliceInfoSize_) > values.size()) {
+        SM_LOG_ERROR("Buffer overflow detected in RECEIVER_SLICES_INFO_KEY");
+        return;
+    }
     for (auto i = 0U; i < increment; i++) {
         recvSs[i] = (const ReceiverSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
         std::copy_n(values.data() + itemOffsetBytes + sizeof(ReceiverSliceInfo), sliceInfoSize_, info[i].desc);
