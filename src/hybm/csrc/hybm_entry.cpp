@@ -295,13 +295,12 @@ HYBM_API void hybm_uninit()
     initialized = 0;
 }
 
-HYBM_API int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
+HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
 {
-    if (ock::mf::OutLogger::Instance().GetLogExtraFunc() != nullptr) {
-        BM_LOG_WARN("logFunc will be rewriting");
+    if (logger == nullptr) {
+        return;
     }
-    ock::mf::OutLogger::Instance().SetExternalLogFunction(logger);
-    return 0;
+    ock::mf::OutLogger::Instance().SetExternalLogFunction(logger, true);
 }
 
 HYBM_API int32_t hybm_set_log_level(int level)

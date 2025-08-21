@@ -37,9 +37,9 @@ int32_t hybm_set_log_level_stub(int level)
     return 0;
 }
 
-int32_t hybm_set_extern_logger_stub(void (*logger)(int level, const char *msg))
+void hybm_set_extern_logger_stub(void (*logger)(int level, const char *msg))
 {
-    return 0;
+    
 }
 
 const char *hybm_get_error_string_stub(int32_t errCode)

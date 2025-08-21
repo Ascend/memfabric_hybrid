@@ -30,7 +30,7 @@ void hybm_uninit();
  * @param logger           [in] logger function
  * @return 0 if successful
  */
-int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg));
+void hybm_set_extern_logger(void (*logger)(int level, const char *msg));
 
 /**
  * @brief Set log print level
