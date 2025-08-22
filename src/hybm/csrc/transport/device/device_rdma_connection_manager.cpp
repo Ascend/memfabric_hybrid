@@ -379,6 +379,7 @@ int RdmaConnectionManager::WaitConnectionsReady(std::unordered_map<std::string, 
         }
 
         uint32_t successCount = 0;
+        uint32_t cnt = 0;
         std::vector<HccpSocketInfo> socketInfos;
         for (auto it = connections.begin(); it != connections.end(); ++it) {
             if (it->second.socketFd != nullptr) {
@@ -396,13 +397,27 @@ int RdmaConnectionManager::WaitConnectionsReady(std::unordered_map<std::string, 
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         auto role = (&connections == &clientConnections_) ? 1 : 0;
-        auto ret = DlHccpApi::RaGetSockets(role, socketInfos.data(), socketInfos.size(), successCount);
+        auto ret = DlHccpApi::RaGetSockets(role, socketInfos.data(), socketInfos.size(), cnt);
         if (ret != 0) {
             BM_LOG_ERROR("role(" << role << ") side get sockets failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
         }
 
-        for (auto i = 0U; i < successCount; i++) {
+        if (cnt == 0) {
+            /* fast path */
+            continue;
+        }
+
+        for (auto i = 0U; i < socketInfos.size(); i++) {
+            /*
+             * Successful connections returned by RaGetSockets are not in order,
+             * so it is necessary to use status to determine
+             * which connections have been successfully established,
+             * status == 1 means connected.
+             */
+            if (socketInfos[i].status != 1) {
+                continue;
+            }
             std::string ip{inet_ntoa(socketInfos[i].remoteIp.addr)};
             auto pos = connections.find(ip);
             if (pos == connections.end()) {
@@ -421,6 +436,7 @@ int RdmaConnectionManager::WaitConnectionsReady(std::unordered_map<std::string, 
             }
 
             pos->second.socketFd = socketInfos[i].fd;
+            successCount++;
             BM_LOG_INFO("connect to (" << ip << ") ready.");
         }
 
