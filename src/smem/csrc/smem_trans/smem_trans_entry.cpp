@@ -537,6 +537,7 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
     ret = store_->Add(RECEIVER_TOTAL_SLICE_COUNT_KEY, 1L, nowCount);
     if (ret != 0) {
         SM_LOG_ERROR("store add count for slice info failed: " << ret);
+        hybm_free_local_memory(entity_, slice, size, 0);
         return SM_ERROR;
     }
 

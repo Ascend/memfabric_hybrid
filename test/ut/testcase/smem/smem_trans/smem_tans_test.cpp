@@ -10,8 +10,6 @@
 #include <chrono>
 #include "smem_types.h"
 #include "smem_trans.h"
-#include "dl_acl_api.h"
-#include "dl_api.h"
 #include "smem_store_factory.h"
 
 using namespace ock::smem;
@@ -26,20 +24,11 @@ class SmemTransTest : public testing::Test {
 protected:
     static void SetUpTestSuite()
     {
-        auto path = std::getenv("ASCEND_HOME_PATH");
-        EXPECT_NE(path, nullptr);
-        auto libPath = std::string(path).append("/lib64");
-        EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
         smem_set_log_level(0);
     }
-    static void TearDownTestSuite()
-    {
-        DlApi::CleanupLibrary();
-    }
+    static void TearDownTestSuite() {}
     void SetUp() override {}
-    void TearDown() override
-    {}
-
+    void TearDown() override {}
 };
 
 TEST_F(SmemTransTest, smem_trans_config_init_success)
