@@ -245,6 +245,10 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
         return SM_ERROR;
     }
 
+    if (request.userDef > std::numeric_limits<int>::max()) {
+        SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << "): invalid timeout.");
+        return SM_ERROR;
+    }
     SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") waiting timeout=" << request.userDef);
     auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(request.userDef);
     auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(timeout.time_since_epoch()).count();

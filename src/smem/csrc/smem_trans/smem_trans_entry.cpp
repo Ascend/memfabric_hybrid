@@ -477,8 +477,13 @@ std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
     auto current = input[0];
     for (auto i = 1U; i < input.size(); i++) {
         if ((const uint8_t *)current.first + current.second >= (const uint8_t *)input[i].first) {
-            current.second = std::max(
-                current.second, (const uint8_t *)input[i].first - (const uint8_t *)current.first + input[i].second);
+            ptrdiff_t diff = ((const uint8_t *)input[i].first - (const uint8_t *)current.first);
+            if (static_cast<size_t>(diff) > std::numeric_limits<size_t>::max() - input[i].second) {
+                result.emplace_back(current);
+                current = input[i];
+                continue;
+            }
+            current.second = std::max(current.second, diff + input[i].second);
         } else {
             result.emplace_back(current);
             current = input[i];
