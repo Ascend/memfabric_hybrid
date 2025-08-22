@@ -304,9 +304,12 @@ store = DistributedObjectStore()
 
 #### init
 ```python
-result = store.init()
+result = store.init(device_id)
 ```
 **功能**: 初始化分布式内存缓存客户端
+
+**参数**:
+- `device_id`: 使用HBM时的NPU卡用户ID（支持ASCEND_RT_VISIBLE_DEVICES映射）
 
 **返回值**:
 - `0`: 成功
@@ -387,6 +390,25 @@ result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 - `0`: 成功
 - 其他: 失败
 
+#### batch_put_from_layers
+```python
+result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_H2G)
+```
+**功能**: 从多个预分配的缓冲区中批量写入分层数据
+
+**参数**:
+- `keys`: 数据键列表，每个键对应一个分层数据对象
+- `buffer_ptrs_list`: 缓冲区指针二维列表，外层列表对应每个键，内层列表对应每个键的各个数据层指针
+- `sizes_list`: 数据大小二维列表，外层列表对应每个键，内层列表对应每个键的各个数据层大小
+- `direct`: 数据拷贝方向，可选值：
+  - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
+  - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+
+**返回值**:
+- 结果列表，每个元素表示对应写入操作的结果
+  - `0`: 成功
+  - 其他: 错误
+
 #### get
 ```python
 data = store.get(key)
@@ -454,6 +476,25 @@ result = store.get_into_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_G2H)
 **返回值**:
 - `0`: 成功
 - 其他: 失败
+
+#### batch_get_into_layers
+```python
+results = store.batch_get_into_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_G2H)
+```
+**功能**: 批量将分层数据获取到预分配的缓冲区中
+
+**参数**:
+- `keys`: 数据键列表，每个键对应一个分层数据对象
+- `buffer_ptrs_list`: 缓冲区指针二维列表，外层列表对应每个键，内层列表对应每个键的各个目标数据层指针
+- `sizes_list`: 缓冲区大小二维列表，外层列表对应每个键，内层列表对应每个键的各个数据层大小
+- `direct`: 数据拷贝方向，可选值：
+  - `SMEMB_COPY_G2H`: 从全局内存到主机内存（默认）
+  - `SMEMB_COPY_G2L`: 从全局内存到卡上内存
+
+**返回值**:
+- 结果列表，每个元素表示对应操作的结果
+  - `0`: 成功
+  - 其他: 错误
 
 #### remove
 ```python
