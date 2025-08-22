@@ -1,6 +1,7 @@
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-find_package(pybind11 REQUIRED)
-
+if(BUILD_PYTHON STREQUAL "ON")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    find_package(pybind11 REQUIRED)
+endif()
 include_directories(
         ${PROJECT_MMC_SRC_BASE}/include/
         ${PROJECT_MMC_SRC_BASE}/csrc/common
@@ -21,9 +22,13 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/3rdparty/net/acc_links/src/net/include
         ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/include/
         ${PROJECT_SOURCE_DIR}/3rdparty/log/spdlog/include/
-        ${PYTHON_HOME}/include/python3.11/
-        ${PYTHON_HOME}/lib/python3.11/site-packages/pybind11/include/
 )
+if(BUILD_PYTHON STREQUAL "ON")
+    include_directories(
+         ${PYTHON_INCLUDE_DIR}
+         ${PYTHON_PYBIND11_HOME}/include/
+    )
+endif()
 
 ## define src variables
 set(MMC_SRC_COMMON "")
@@ -76,7 +81,9 @@ target_link_libraries(mmc_static PUBLIC pthread libacc_tcp_net.a)
 target_link_directories(mmc_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib)
 target_link_directories(mmc_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib64)
 
+if(BUILD_PYTHON STREQUAL "ON")
 target_link_libraries(mmc_static PRIVATE pybind11::module Python3::Python)
+endif()
 
 if (x${CMAKE_BUILD_TYPE} STREQUAL "xDEBUG")
     target_link_libraries(mmc_static PUBLIC pthread libspdlogd.a)

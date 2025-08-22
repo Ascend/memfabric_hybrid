@@ -153,31 +153,33 @@ message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 #set(PROJECT_PLATFORM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/platform)
 #set(PROJECT_PLATFORM_OUTPUT ${PROJECT_SOURCE_DIR}/output/platform)
 
-# 判断环境变量 PYTHON_HOME 是否存在
-if(DEFINED ENV{PYTHON_HOME})
-    # 如果环境变量存在，将其值赋给 CMake 变量
-    set(PYTHON_HOME "$ENV{PYTHON_HOME}")
-    message(STATUS "Already set python home to ${PYTHON_HOME}")
-else()
-    # 如果环境变量不存在，设置 CMake 变量的默认值
-    set(CHECK_DIR "/usr/local/python3.11")
-    if(EXISTS ${CHECK_DIR})
-        if(IS_DIRECTORY ${CHECK_DIR})
-            set(PYTHON_HOME "/usr/local/python3.11")
-        else()
-            set(PYTHON_HOME "/usr/local")
-        endif()
-    else()
-        set(PYTHON_HOME "/usr/local")
+if(BUILD_PYTHON STREQUAL "ON")
+    # 获取Python头文件路径
+    find_program(PYTHON_EXECUTABLE NAMES python3 python)
+    if(NOT PYTHON_EXECUTABLE)
+        message(FATAL_ERROR "Python not found")
     endif()
-    message(STATUS "No set python home, set default python home to ${PYTHON_HOME}")
-endif()
 
-set(pybind11_cmake_dir "${PYTHON_HOME}/lib/python3.11/site-packages/pybind11/share/cmake/pybind11")
+    execute_process(
+            COMMAND ${PYTHON_EXECUTABLE} -c
+            "import sysconfig; print(sysconfig.get_path('include'))"
+            OUTPUT_VARIABLE PYTHON_INCLUDE_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 
-# 检查路径是否存在且是目录
-if(NOT EXISTS "${pybind11_cmake_dir}" OR NOT IS_DIRECTORY "${pybind11_cmake_dir}")
-    message(SEND_ERROR "Can not find pybind11 directory: ${pybind11_cmake_dir}\nPlease 'pip3 install pybind11 or pybind11-dev'")
+    execute_process(
+            COMMAND ${PYTHON_EXECUTABLE} -c
+            "import sys; import os; import pybind11; print(os.path.dirname(pybind11.__file__))"
+            OUTPUT_VARIABLE PYTHON_PYBIND11_HOME
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    set(pybind11_cmake_dir "${PYTHON_PYBIND11_HOME}/share/cmake/pybind11")
+
+    # 检查路径是否存在且是目录
+    if(NOT EXISTS "${pybind11_cmake_dir}" OR NOT IS_DIRECTORY "${pybind11_cmake_dir}")
+        message(SEND_ERROR "Can not find pybind11 directory: ${pybind11_cmake_dir}\nPlease 'pip3 install pybind11 or pybind11-dev'")
+    endif()
 endif()
 
 # 判断环境变量 CMAKE_PREFIX_PATH 是否存在
