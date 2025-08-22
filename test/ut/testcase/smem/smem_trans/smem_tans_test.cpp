@@ -91,12 +91,12 @@ TEST_F(SmemTransTest, smem_trans_create_failed_invalid_param)
 
     // storeUrl == nullptr
     EXPECT_EQ(smem_trans_create(nullptr, SESSION_ID, &g_trans_options), nullptr);
-    // sessionId == nullptr
+    // uniqueId == nullptr
     EXPECT_EQ(smem_trans_create(STORE_URL, nullptr, &g_trans_options), nullptr);
     // config == nullptr
     EXPECT_EQ(smem_trans_create(STORE_URL, SESSION_ID, nullptr), nullptr);
 
-    // storeUrl or sessionId is empty
+    // storeUrl or uniqueId is empty
     const char STORE_URL_TEST1[] = "";
     const char SESSION_ID_TEST[] = "";
     EXPECT_EQ(smem_trans_create(STORE_URL_TEST1, SESSION_ID, &g_trans_options), nullptr);

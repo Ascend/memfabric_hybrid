@@ -429,13 +429,13 @@
 1. 创建TRANS实例
 
     ```c
-    int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, const smem_trans_config_t *config)
+    int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config)
     ```
 
     |参数/返回值|含义|
     |-|--|
     |storeURL|config store地址，格式tcp://ip:port|
-    |sessionId|该TRANS实例的唯一标识，格式ip:port|
+    |uniqueId|该TRANS实例的唯一标识，格式ip:port|
     |config|TRANS初始化配置|
     |返回值|成功返回0，其他为错误码|
 

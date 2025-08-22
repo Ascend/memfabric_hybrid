@@ -42,11 +42,11 @@ void smem_trans_uninit(uint32_t flags);
  * inner information for various protocols on different hardware
  *
  * @param storeUrl         [in] the url of config store, the store is created by <i>smem_create_config_store</i>
- * @param sessionId        [in] session id for data transfer, which should be unique, a better practice is using ip:port
+ * @param uniqueId        [in] session id for data transfer, which should be unique, a better practice is using ip:port
  * @param config           [in] the config for config
  * @return transfer object created if successful
  */
-smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, const smem_trans_config_t *config);
+smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config);
 
 /**
  * @brief Destroy the transfer created by <i>smem_trans_create</i>
@@ -93,7 +93,7 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  *
  * @param handle           [in] transfer object handle
  * @param srcAddress       [in] address of src data to be written to peer
- * @param destSession      [in] sessionId of dst
+ * @param destSession      [in] uniqueId of dst
  * @param destAddress      [in] address of dst
  * @param dataSize         [in] data size to be transfered
  * @return 0 if successful
@@ -106,7 +106,7 @@ int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char
  *
  * @param handle           [in] transfer object handle
  * @param srcAddresses     [in] addresses of src data to be written to peer
- * @param destSession      [in] sessionId of dst
+ * @param destSession      [in] uniqueId of dst
  * @param destAddresses    [in] addresses of data
  * @param dataSizes        [in] sizes of data
  * @param batchSize        [in] batch size

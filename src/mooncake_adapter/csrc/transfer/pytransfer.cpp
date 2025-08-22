@@ -25,7 +25,7 @@ TransferAdapterPy::TransferAdapterPy() {
 TransferAdapterPy::~TransferAdapterPy() {
 }
 
-int TransferAdapterPy::Initialize(const char *storeUrl, const char *sessionId, const char *role, uint32_t deviceId)
+int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId)
 {
     if (strcmp(role, "Prefill") != 0 && strcmp(role, "Decode") != 0) {
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
@@ -45,7 +45,7 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *sessionId, c
         ADAPTER_LOG_ERROR("Failed to init smem_trans, ret=" << ret);
         return ret;
     }
-    handle_ = smem_trans_create(storeUrl, sessionId, &config);
+    handle_ = smem_trans_create(storeUrl, uniqueId, &config);
     if (handle_ == nullptr) {
         ADAPTER_LOG_ERROR("smem trans create failed.");
         return -1;

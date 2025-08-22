@@ -225,7 +225,7 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
                                  const size_t dataSizes[], uint32_t batchSize)
 {
     uint64_t session;
-    auto ret = ParseNameToSessionId(remoteName, session);
+    auto ret = ParseNameToUniqueId(remoteName, session);
     if (ret != 0) {
         return ret;
     }
@@ -442,7 +442,7 @@ Result SmemTransEntry::StoreDeviceInfo()
     return SM_OK;
 }
 
-Result SmemTransEntry::ParseNameToSessionId(const std::string &name, uint64_t &session)
+Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &session)
 {
     WorkerSession workerSession;
     auto success = ParseTransName(name, workerSession.address, workerSession.port);

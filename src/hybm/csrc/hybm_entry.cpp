@@ -58,7 +58,7 @@ static std::string GetDriverVersionPath(const std::string &driverEnvStr, const s
         }
         // 对存放driver版本文件的路径进行搜索
         if (driverEnvStr[i] == ':' || i == driverEnvStr.length() - 1) {
-            if (!ock::FileUtil::Realpath(tempPath)) {
+            if (!ock::mf::FileUtil::Realpath(tempPath)) {
                 tempPath.clear();
                 continue;
             }
@@ -82,8 +82,8 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
 {
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
-    char realFile[ock::FileUtil::GetSafePathMax()] = {0};
-    if (ock::FileUtil::IsSymlink(realName) || realpath(realName.c_str(), realFile) == nullptr) {
+    char realFile[ock::mf::FileUtil::GetSafePathMax()] = {0};
+    if (ock::mf::FileUtil::IsSymlink(realName) || realpath(realName.c_str(), realFile) == nullptr) {
         BM_LOG_WARN("driver version path " << realName << " is not a valid real path");
         return "";
     }
@@ -236,7 +236,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
 
     auto libPath = std::string(path).append("/lib64");
-    if (!ock::FileUtil::Realpath(libPath) || !ock::FileUtil::IsDir(libPath)) {
+    if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
         BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
         return BM_ERROR;
     }

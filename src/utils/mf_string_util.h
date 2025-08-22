@@ -7,6 +7,7 @@
 #include <string>
 
 namespace ock {
+namespace mf {
 class StringUtil {
     
 public:
@@ -27,6 +28,7 @@ inline std::string StringUtil::TrimString(const std::string &input)
     } while (std::distance(start, end) > 0 && std::isspace(*end));
 
     return std::string(start, end + 1);
+}
 }
 }
 #endif

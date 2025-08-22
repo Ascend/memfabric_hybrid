@@ -92,8 +92,8 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     do {                                                                         \
         if (!tlsOption.key.empty()) {                                            \
             std::string path = tlsOption.tlsTopPath + "/" + tlsOption.key;       \
-            if (FileUtil::IsSymlink(path) || !FileUtil::Realpath(path)           \
-                || !FileUtil::IsFile(path) || !FileUtil::CheckFileSize(path)) {  \
+            if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)           \
+                || !ock::mf::FileUtil::IsFile(path) || !ock::mf::FileUtil::CheckFileSize(path)) {  \
                 LOG_ERROR("TLS " #key " check failed");                          \
                 return ACC_ERROR;                                                \
             }                                                                    \
@@ -107,7 +107,8 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     do {                                                                                                            \
         if (!tlsOption.key.empty()) {                                                                               \
             std::string path = (#key == "tlsTopPath") ? tlsOption.key : tlsOption.tlsTopPath + "/" + tlsOption.key; \
-            if (FileUtil::IsSymlink(path) || !FileUtil::Realpath(path) || !FileUtil::IsDir(path)) {                 \
+            if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)                            \
+                || !ock::mf::FileUtil::IsDir(path)) {                                                               \
                 LOG_ERROR("TLS " #key " check failed");                                                             \
                 return ACC_ERROR;                                                                                   \
             }                                                                                                       \
@@ -122,8 +123,8 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         if (!tlsOption.key.empty()) {                                                        \
             for (const std::string &file : tlsOption.key) {                                  \
                 std::string filePath = (topPath) + "/" + (file);                             \
-                if (FileUtil::IsSymlink(filePath) || !FileUtil::Realpath(filePath)           \
-                    || !FileUtil::IsFile(filePath) || !FileUtil::CheckFileSize(filePath)) {  \
+                if (ock::mf::FileUtil::IsSymlink(filePath) || !ock::mf::FileUtil::Realpath(filePath)           \
+                    || !ock::mf::FileUtil::IsFile(filePath) || !ock::mf::FileUtil::CheckFileSize(filePath)) {  \
                     LOG_ERROR("TLS " #key " check failed");                                  \
                     return ACC_ERROR;                                                        \
                 }                                                                            \

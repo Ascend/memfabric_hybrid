@@ -114,12 +114,12 @@ const char *OPENSSLAPIDL::gSep = "/";
 
 int OPENSSLAPIDL::GetLibPath(std::string &libDir, std::string &libSslPath, std::string &libCryptoPath)
 {
-    if (FileUtil::IsSymlink(libDir)) {
+    if (ock::mf::FileUtil::IsSymlink(libDir)) {
         LOG_ERROR("Path for openssl library un-support symlink.");
         return -1;
     }
 
-    if (!FileUtil::Realpath(libDir)) {
+    if (!ock::mf::FileUtil::Realpath(libDir)) {
         LOG_ERROR("Path for openssl library is invalid.");
         return -1;
     }

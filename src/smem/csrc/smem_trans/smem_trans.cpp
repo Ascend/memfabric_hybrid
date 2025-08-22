@@ -48,17 +48,17 @@ SMEM_API int32_t smem_trans_init(const smem_trans_config_t *config)
     return SM_OK;
 }
 
-SMEM_API smem_trans_t smem_trans_create(const char *storeUrl, const char *sessionId, const smem_trans_config_t *config)
+SMEM_API smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config)
 {
     SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", nullptr);
     SM_VALIDATE_RETURN(storeUrl != nullptr, "invalid storeUrl, which is null", nullptr);
-    SM_VALIDATE_RETURN(sessionId != nullptr, "invalid sessionId, which is null", nullptr);
+    SM_VALIDATE_RETURN(uniqueId != nullptr, "invalid uniqueId, which is null", nullptr);
     SM_VALIDATE_RETURN(config != nullptr, "invalid config, which is null", nullptr);
     SM_VALIDATE_RETURN(strlen(storeUrl) != 0, "invalid storeUrl, which is empty", nullptr);
-    SM_VALIDATE_RETURN(strlen(sessionId) != 0, "invalid engineId, which is empty", nullptr);
+    SM_VALIDATE_RETURN(strlen(uniqueId) != 0, "invalid engineId, which is empty", nullptr);
 
     /* create entry */
-    auto entry = SmemTransEntry::Create(sessionId, storeUrl, *config);
+    auto entry = SmemTransEntry::Create(uniqueId, storeUrl, *config);
     if (entry == nullptr) {
         SM_LOG_ERROR("create entity happen error.");
         return nullptr;

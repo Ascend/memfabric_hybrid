@@ -9,7 +9,7 @@
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
 #include "smem_store_factory.h"
-#include "string_util.h"
+#include "mf_string_util.h"
 
 namespace ock {
 namespace smem {
@@ -101,7 +101,7 @@ Result ParseStr2Array(const std::string &token, char splitter, std::set<std::str
     std::istringstream tokenSteam(token);
     std::string part;
     while (std::getline(tokenSteam, part, splitter)) {
-        part = ock::StringUtil::TrimString(part);
+        part = ock::mf::StringUtil::TrimString(part);
         if (!part.empty()) {
             parts.insert(part);
         }
@@ -120,8 +120,8 @@ Result ParseStr2KV(const std::string &token, char splitter, std::pair<std::strin
     std::string key;
     std::string value;
     if (std::getline(stm, key, splitter) && std::getline(stm, value, splitter)) {
-        key = ock::StringUtil::TrimString(key);
-        value = ock::StringUtil::TrimString(value);
+        key = ock::mf::StringUtil::TrimString(key);
+        value = ock::mf::StringUtil::TrimString(value);
         if (!key.empty() && !value.empty()) {
             pair.first = key;
             pair.second = value;
@@ -172,7 +172,7 @@ Result ParseTlsInfo(const std::string &inputStr, AcclinkTlsOption &tlsOption)
     std::string token;
 
     while (std::getline(tokenSteam, token, ';')) {
-        if (!ock::StringUtil::TrimString(token).empty()) {
+        if (!ock::mf::StringUtil::TrimString(token).empty()) {
             tokens.push_back(token);
         }
     }

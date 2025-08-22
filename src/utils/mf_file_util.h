@@ -10,8 +10,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define PATH_MAX_LIMIT 4096
+#define PATH_MAX_LIMIT 4096L
 namespace ock {
+namespace mf {
 class FileUtil {
     static constexpr uint32_t MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 public:
@@ -180,7 +181,7 @@ inline bool FileUtil::MakeDirRecursive(const std::string &path, uint32_t mode)
 
 inline bool FileUtil::Remove(const std::string &path, bool canonicalPath)
 {
-    if (path.empty() || path.size() > 4096L) {
+    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -194,7 +195,7 @@ inline bool FileUtil::Remove(const std::string &path, bool canonicalPath)
 
 inline bool FileUtil::RemoveDirRecursive(const std::string &path)
 {
-    if (path.empty() || path.size() > 4096L) {
+    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -231,7 +232,7 @@ inline bool FileUtil::RemoveDirRecursive(const std::string &path)
 
 inline bool FileUtil::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > 4096L) {
+    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -359,6 +360,7 @@ inline constexpr size_t FileUtil::GetSafePathMax()
     return SAFE_PATH_LIMIT;
 #endif
 }
+}  // namespace mf
 }  // namespace ock
 
 #endif
