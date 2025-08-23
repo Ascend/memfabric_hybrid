@@ -5,16 +5,17 @@
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_bm.h"
+#include "smem_lock.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED
-thread_local std::mutex g_smemBmMutex_;
+thread_local ReadWriteLock g_smemBmMutex_;
 thread_local bool g_smemBmInited = false;
 #else
-std::mutex g_smemBmMutex_;
+ReadWriteLock g_smemBmMutex_;
 bool g_smemBmInited = false;
 #endif
 
@@ -60,7 +61,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     SM_VALIDATE_RETURN(storeURL != nullptr, "invalid param, storeURL is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(SmemBmConfigCheck(config) == 0, "config is invalid", SM_INVALID_PARAM);
 
-    std::lock_guard<std::mutex> guard(g_smemBmMutex_);
+    WriteGuard locker(g_smemBmMutex_);
     if (g_smemBmInited) {
         SM_LOG_INFO("smem bm initialized already");
         return SM_OK;
@@ -84,6 +85,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
 
 SMEM_API void smem_bm_uninit(uint32_t flags)
 {
+    WriteGuard locker(g_smemBmMutex_);
     if (!g_smemBmInited) {
         SM_LOG_WARN("smem bm not initialized yet");
         return;

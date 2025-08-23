@@ -82,7 +82,8 @@ Result AccTcpServerDefault::Start(const AccTcpServerOptions &opt, const AccTlsOp
 Result AccTcpServerDefault::LoadDynamicLib(const std::string &dynLibPath)
 {
     std::string libPath = dynLibPath;
-    if (FileUtil::IsSymlink(libPath) || !FileUtil::Realpath(libPath) || !FileUtil::IsDir(libPath)) {
+    if (ock::mf::FileUtil::IsSymlink(libPath) || !ock::mf::FileUtil::Realpath(libPath)
+        || !ock::mf::FileUtil::IsDir(libPath)) {
         LOG_ERROR("dynLibPath check failed");
         return ACC_ERROR;
     }

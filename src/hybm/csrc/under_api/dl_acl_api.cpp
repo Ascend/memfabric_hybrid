@@ -40,7 +40,7 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     }
 
     std::string realPath;
-    if (!FileUtil::LibraryRealPath(libDirPath, std::string(gAscendAclLibName), realPath)) {
+    if (!ock::mf::FileUtil::LibraryRealPath(libDirPath, std::string(gAscendAclLibName), realPath)) {
         BM_LOG_ERROR(libDirPath << " get lib path failed.");
         return BM_DL_FUNCTION_FAILED;
     }
@@ -48,7 +48,7 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     /* dlopen library */
     rtHandle = dlopen(realPath.c_str(), RTLD_NOW);
     if (rtHandle == nullptr) {
-        BM_LOG_ERROR("Failed to open library [" << realPath << "], error: " << dlerror());
+        BM_LOG_ERROR("Failed to open library error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;
     }
 

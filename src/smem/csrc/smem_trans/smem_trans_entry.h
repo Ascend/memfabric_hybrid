@@ -82,7 +82,7 @@ private:
     void WatchTaskFindNewSenders();
     void WatchTaskFindNewSlices();
     Result StoreDeviceInfo();
-    Result ParseNameToSessionId(const std::string &name, uint64_t &session);
+    Result ParseNameToUniqueId(const std::string &name, uint64_t &session);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);

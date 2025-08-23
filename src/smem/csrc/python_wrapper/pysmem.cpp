@@ -277,6 +277,11 @@ int32_t register_python_decrypt_handler(py::function py_decrypt_func)
     return smem_register_decrypt_handler(py_decrypt_handler_wrapper);
 }
 
+int32_t smem_set_conf_store_tls_adapt(bool enable, std::string &tls_info)
+{
+    return smem_set_conf_store_tls(enable, tls_info.c_str(), tls_info.size());
+}
+
 void DefineSmemFunctions(py::module_ &m)
 {
     m.def("initialize", &smem_init, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
@@ -353,6 +358,16 @@ Parameters:
         plain_text: the decrypted text (private key password)
 Returns:
     None
+)");
+
+    m.def("set_conf_store_tls", &smem_set_conf_store_tls_adapt, py::call_guard<py::gil_scoped_release>(),
+          py::arg("enable"), py::arg("tls_info"), R"(
+set the config store tls info.
+Parameters:
+    enable (boolean): enable config store tls or not
+        tls_info (string): tls config string
+Returns:
+    returns zero on success. On error, none-zero is returned.
 )");
 
     m.doc() = LIB_VERSION;

@@ -225,7 +225,7 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
                                  const size_t dataSizes[], uint32_t batchSize)
 {
     uint64_t session;
-    auto ret = ParseNameToSessionId(remoteName, session);
+    auto ret = ParseNameToUniqueId(remoteName, session);
     if (ret != 0) {
         return ret;
     }
@@ -379,6 +379,10 @@ void SmemTransEntry::WatchTaskFindNewSlices()
     std::vector<void *> addresses(increment);
     std::vector<const ReceiverSliceInfo *> recvSs(increment);
     auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * static_cast<uint64_t>(slicesLastTime_);
+    if (itemOffsetBytes + increment * (sizeof(ReceiverSliceInfo) + sliceInfoSize_) > values.size()) {
+        SM_LOG_ERROR("Buffer overflow detected in RECEIVER_SLICES_INFO_KEY");
+        return;
+    }
     for (auto i = 0U; i < increment; i++) {
         recvSs[i] = (const ReceiverSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
         std::copy_n(values.data() + itemOffsetBytes + sizeof(ReceiverSliceInfo), sliceInfoSize_, info[i].desc);
@@ -438,7 +442,7 @@ Result SmemTransEntry::StoreDeviceInfo()
     return SM_OK;
 }
 
-Result SmemTransEntry::ParseNameToSessionId(const std::string &name, uint64_t &session)
+Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &session)
 {
     WorkerSession workerSession;
     auto success = ParseTransName(name, workerSession.address, workerSession.port);
@@ -473,8 +477,13 @@ std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
     auto current = input[0];
     for (auto i = 1U; i < input.size(); i++) {
         if ((const uint8_t *)current.first + current.second >= (const uint8_t *)input[i].first) {
-            current.second = std::max(
-                current.second, (const uint8_t *)input[i].first - (const uint8_t *)current.first + input[i].second);
+            ptrdiff_t diff = ((const uint8_t *)input[i].first - (const uint8_t *)current.first);
+            if (static_cast<size_t>(diff) > std::numeric_limits<size_t>::max() - input[i].second) {
+                result.emplace_back(current);
+                current = input[i];
+                continue;
+            }
+            current.second = std::max(current.second, diff + input[i].second);
         } else {
             result.emplace_back(current);
             current = input[i];
@@ -528,6 +537,7 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
     ret = store_->Add(RECEIVER_TOTAL_SLICE_COUNT_KEY, 1L, nowCount);
     if (ret != 0) {
         SM_LOG_ERROR("store add count for slice info failed: " << ret);
+        hybm_free_local_memory(entity_, slice, size, 0);
         return SM_ERROR;
     }
 
