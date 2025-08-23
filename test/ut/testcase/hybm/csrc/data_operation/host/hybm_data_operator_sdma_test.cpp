@@ -153,8 +153,6 @@ TEST_F(HybmDataOpSdmaTest, CopyHost2Gva2d_ShouldReturnFail_WhenAclApiFailed)
     MOCKER_CPP(&DlAclApi::AclrtMalloc, int (*)(void **, size_t, uint32_t)).stubs().will(returnValue(-1));
     hybm_copy_2d_params params = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
     ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
-    hybm_copy_2d_params params = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
-    ret = g_dataOperator.CopyHost2Gva2d(params, nullptr);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
 
     ret = g_dataOperator.CopyGva2Host2d(params, nullptr);

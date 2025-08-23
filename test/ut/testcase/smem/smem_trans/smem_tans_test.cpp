@@ -12,6 +12,7 @@
 #include <chrono>
 #include "hybm_device_mem_segment.h"
 #include "smem_types.h"
+#include "smem_store_factory.h"
 #include "smem_trans.h"
 #include "dl_acl_api.h"
 #include "dl_api.h"
@@ -197,7 +198,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             exit(2);
         }
 
-        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
+        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
             exit(3);
         }
@@ -373,7 +374,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &trans_options);
 
-        auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
         if (ret != SM_OK) {
             flag = 2;
             goto cleanup;

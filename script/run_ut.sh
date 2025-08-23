@@ -14,13 +14,17 @@ readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 
 TEST_FILTER="*$1*"
 
-git submodule init
-git submodule update --recursive
+cd ${PROJECT_FULL_PATH}/test/3rdparty/
+[[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://github.com/google/googletest.git
+[[ ! -d "mockcpp" ]] && git clone --branch v2.7 --depth 1 https://github.com/sinojelly/mockcpp.git
+cd -
 
 cd ${PROJECT_FULL_PATH}
 rm -rf ${COVERAGE_PATH}
 rm -rf ${BUILD_PATH}
+rm -rf ${OUTPUT_PATH}
 mkdir -p ${BUILD_PATH}
+mkdir -p ${OUTPUT_PATH}
 
 set -ex
 
