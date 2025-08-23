@@ -8,10 +8,7 @@ BUILD_PYTHON=$1
 cd ${BASH_PATH}
 
 # get commit id
-rm -rf ../git_last_commit.txt
-bash ../gen_last_git_commit.sh
-GIT_COMMIT=$(cat ../git_last_commit.txt)
-rm -rf ../git_last_commit.txt
+GIT_COMMIT=`git rev-parse HEAD`
 
 # get arch
 if [ $( uname -i | grep -c -i "x86_64" ) -ne 0 ]; then

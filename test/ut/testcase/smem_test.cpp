@@ -103,13 +103,15 @@ TEST_F(TestSmem, two_card_shm_create_success)
     uint32_t rankSize = 2;
     std::thread ts[rankSize];
     auto func = [](uint32_t rank, uint32_t rankCount) {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         void *gva;
         int32_t ret = smem_init(0);
         if (ret != 0) {
             exit(1);
         }
-
+        ret = smem_set_conf_store_tls(false, nullptr, 0);
+        if (ret != 0) {
+            exit(1);
+        }
         smem_shm_config_t config;
         ret = smem_shm_config_init(&config);
         if (ret != 0) {
@@ -276,12 +278,14 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
     smem_set_log_level(0);
     uint32_t rankSize = 2;
     auto func = [](uint32_t rank, uint32_t rankCount) {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         int32_t ret = smem_init(0);
         if (ret != 0) {
             exit(1);
         }
-
+        ret = smem_set_conf_store_tls(false, nullptr, 0);
+        if (ret != 0) {
+            exit(1);
+        }
         smem_bm_config_t config;
         ret = smem_bm_config_init(&config);
         if (ret != 0) {

@@ -43,21 +43,21 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
         errMsg = "The file path basedir is empty.";
         return false;
     }
-    if (filePath.size() >= PATH_MAX) {
+    if (filePath.size() >= ock::mf::FileUtil::GetSafePathMax()) {
         errMsg = "The file path exceeds the maximum value set by PATH_MAX.";
         return false;
     }
-    if (baseDir.size() >= PATH_MAX) {
+    if (baseDir.size() >= ock::mf::FileUtil::GetSafePathMax()) {
         errMsg = "The file path basedir exceeds the maximum value set by PATH_MAX.";
         return false;
     }
-    if (FileUtil::IsSymlink(filePath)) {
+    if (ock::mf::FileUtil::IsSymlink(filePath)) {
         errMsg = "The file is a link.";
         return false;
     }
 
-    char path[PATH_MAX + UNO_1];
-    bzero(path, PATH_MAX + UNO_1);
+    char path[ock::mf::FileUtil::GetSafePathMax() + UNO_1];
+    bzero(path, ock::mf::FileUtil::GetSafePathMax() + UNO_1);
 
     char* ret = realpath(filePath.c_str(), path);
     if (ret == nullptr) {
@@ -78,12 +78,12 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
 
 bool FileValidator::IsFileValid(const std::string &configFile, std::string &errMsg)
 {
-    if (!FileUtil::Exist(configFile)) {
+    if (!ock::mf::FileUtil::Exist(configFile)) {
         errMsg = "The input file is not a regular file or not exists";
         return false;
     }
 
-    size_t fileSize = FileUtil::GetFileSize(configFile);
+    size_t fileSize = ock::mf::FileUtil::GetFileSize(configFile);
     if (fileSize == 0) {
         errMsg = "The input file is empty";
     } else if (!CheckDataSize(fileSize)) {

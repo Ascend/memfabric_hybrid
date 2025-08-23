@@ -33,6 +33,7 @@ enum LogLevel : int {
     INFO_LEVEL,
     WARN_LEVEL,
     ERROR_LEVEL,
+    FATAL_LEVEL,
     BUTT_LEVEL  // no use
 };
 
@@ -122,10 +123,10 @@ private:
     }
 
 private:
-    LogLevel logLevel_ = INFO_LEVEL;
+    LogLevel logLevel_ = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
 
-    const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error"};
+    const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error", "fatal"};
 };
 }  // namespace mf
 }  // namespace ock

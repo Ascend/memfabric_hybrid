@@ -164,7 +164,7 @@ TEST_F(HybmEntryTest, hybm_set_log_level_ShouldReturnMinusOne_WhenLevelIsInvalid
     EXPECT_EQ(hybm_set_log_level(BUTT_LEVEL), -1);
 
     EXPECT_EQ(hybm_set_log_level(INFO_LEVEL), 0);
-    EXPECT_EQ(hybm_set_extern_logger(nullptr), 0);
+    hybm_set_extern_logger(nullptr);
 
     EXPECT_NE(hybm_get_error_string(0), nullptr);
 

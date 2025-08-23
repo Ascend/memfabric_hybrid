@@ -17,17 +17,7 @@ SMEM_API int32_t smem_init(uint32_t flags)
 {
     using namespace ock::smem;
 
-    /* create logger instance */
-    ock::mf::OutLogger::Instance();
-
     g_smemInited = true;
-
-    // 未init时不能给hybm更新log配置,所以在init后延迟更新
-    auto func = ock::mf::OutLogger::Instance().GetLogExtraFunc();
-    if (func != nullptr) {
-        (void)smem_set_extern_logger(func);
-    }
-    (void)smem_set_log_level(ock::mf::OutLogger::Instance().GetLogLevel());
 
     SM_LOG_INFO("smem init successfully, " << LIB_VERSION);
 	
@@ -78,6 +68,7 @@ SMEM_API int32_t smem_set_extern_logger(void (*func)(int, const char *))
     SM_VALIDATE_RETURN(func != nullptr, "set extern logger failed, invalid func which is NULL",
                        ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetExternalLogFunction(func, true);
+    hybm_set_extern_logger(func);
     return ock::smem::SM_OK;
 }
 
@@ -86,7 +77,12 @@ SMEM_API int32_t smem_set_log_level(int level)
     SM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
                        "set log level failed, invalid param, level should be 0~3", ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
-    return ock::smem::SM_OK;
+    return hybm_set_log_level(level);
+}
+
+SMEM_API int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len)
+{
+    return ock::smem::StoreFactory::SetTlsInfo(enable, tls_info, tls_info_len);
 }
 
 SMEM_API const char *smem_get_last_err_msg()

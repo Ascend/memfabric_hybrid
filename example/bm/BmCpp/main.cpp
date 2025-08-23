@@ -99,6 +99,9 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string
     ret = aclrtCreateStream(&ss);
     CHECK_RET_ERR(ret, "acl create stream failed, ret:" << ret << " rank:" << rankId);
 
+    ret = smem_set_conf_store_tls(false, nullptr, 0);
+    CHECK_RET_ERR(ret, "set tls info failed, ret:" << ret << " rank:" << rankId);
+
     ret = smem_init(0);
     CHECK_RET_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId);
 

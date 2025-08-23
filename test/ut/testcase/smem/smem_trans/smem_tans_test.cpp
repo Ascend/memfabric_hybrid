@@ -1,5 +1,6 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -66,16 +67,24 @@ TEST_F(SmemTransTest, smem_trans_create_success)
     EXPECT_NE(pid, -1);
 
     if (pid == 0) {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
-
-        int ret = smem_create_config_store(STORE_URL);
+        int32_t ret = ock::smem::StoreFactory::SetTlsInfo(false, nullptr, 0);
         if (ret != 0) {
             exit(1);
         }
 
+        ret = smem_create_config_store(STORE_URL);
+        if (ret != 0) {
+            exit(1);
+        }
+
+        ret = smem_trans_init(&g_trans_options);
+        if (ret != 0) {
+            exit(2);
+        }
+
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
         if (handle == nullptr) {
-            exit(2);
+            exit(3);
         }
 
         smem_trans_destroy(handle, 0);
@@ -93,14 +102,20 @@ TEST_F(SmemTransTest, smem_trans_create_success)
 
 TEST_F(SmemTransTest, smem_trans_create_failed_invalid_param)
 {
+    // not initialized
+    EXPECT_EQ(smem_trans_create(nullptr, SESSION_ID, &g_trans_options), nullptr);
+
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, 0);
+
     // storeUrl == nullptr
     EXPECT_EQ(smem_trans_create(nullptr, SESSION_ID, &g_trans_options), nullptr);
-    // sessionId == nullptr
+    // uniqueId == nullptr
     EXPECT_EQ(smem_trans_create(STORE_URL, nullptr, &g_trans_options), nullptr);
     // config == nullptr
     EXPECT_EQ(smem_trans_create(STORE_URL, SESSION_ID, nullptr), nullptr);
 
-    // storeUrl or sessionId is empty
+    // storeUrl or uniqueId is empty
     const char STORE_URL_TEST1[] = "";
     const char SESSION_ID_TEST[] = "";
     EXPECT_EQ(smem_trans_create(STORE_URL_TEST1, SESSION_ID, &g_trans_options), nullptr);
@@ -117,14 +132,15 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
         int* address = new int[10];
         size_t size = 10 * sizeof(int);
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
+        int ret = smem_trans_init(&g_trans_options);
+        EXPECT_EQ(ret, 0);
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
 
         // handle = nullptr
-        auto ret = smem_trans_register_mem(nullptr, address, size, 0);
+        ret = smem_trans_register_mem(nullptr, address, size, 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 1;
             goto cleanup;
@@ -172,14 +188,18 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
         std::vector<void*> addrPtrs, std::vector<size_t> capacities, const char* session_id) {
+        int ret = smem_trans_init(&trans_options);
+        if (ret != 0) {
+            exit(1);
+        }
         auto handle = smem_trans_create(STORE_URL, session_id, &trans_options);
         if (handle == nullptr) {
-            exit(1);
+            exit(2);
         }
 
         auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
-            exit(2);
+            exit(3);
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -207,6 +227,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             break;
         }
         if (pids[i] == 0) {
+            smem_set_conf_store_tls(false, nullptr, 0);
             if (i == 0) {
                 smem_create_config_store(STORE_URL);
             }
@@ -266,47 +287,49 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         std::vector<void*> destAddrPtrs = {destPtr1, destPtr2};
         std::vector<size_t> dataSizes = {128U, 128U};
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
         smem_create_config_store(STORE_URL);
+        int ret = smem_trans_init(&g_trans_options);
+        EXPECT_EQ(ret, 0);
+
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
 
         // handle = nullptr
-        auto ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(),
+        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(),
             dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
-            flag = 1;
+            flag = 2;
             goto cleanup;
         }
         // srcAddresses = nullptr
         ret = smem_trans_batch_write(handle, nullptr, SESSION_ID, destAddrPtrs.data(), dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
-            flag = 2;
+            flag = 3;
             goto cleanup;
         }
         // destSession = nullptr
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
-            flag = 3;
+            flag = 4;
             goto cleanup;
         }
         // destAddresses = nullptr
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, nullptr, dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
-            flag = 4;
+            flag = 5;
             goto cleanup;
         }
         // dataSizes = nullptr
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(), nullptr, 2);
         if (ret != SM_INVALID_PARAM) {
-            flag = 5;
+            flag = 6;
             goto cleanup;
         }
         // batchSize = 0
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(), dataSizes.data(), 0);
         if (ret != SM_INVALID_PARAM) {
-            flag = 6;
+            flag = 7;
             goto cleanup;
         }
 
@@ -341,15 +364,18 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         std::vector<void*> addrPtrs = {address1, address2};
         std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         // first create server
+        smem_set_conf_store_tls(false, nullptr, 0);
         smem_create_config_store(STORE_URL);
+        int ret = smem_trans_init(&g_trans_options);
+        EXPECT_EQ(ret, 0);
+
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, SESSION_ID, &trans_options);
 
         auto ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
         if (ret != SM_OK) {
-            flag = 1;
+            flag = 2;
             goto cleanup;
         }
 

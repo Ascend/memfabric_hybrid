@@ -52,6 +52,16 @@ int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
 int32_t smem_set_log_level(int level);
 
 /**
+ * @brief set config store tls info.
+ *
+ * @param enable whether to enable tls
+ * @param tls_info the format describle in memfabric SECURITYNOTE.md, if disabled tls_info won't be use
+ * @param tls_info_len length of tls_info, if disabled tls_info_len won't be use
+ * @return Returns 0 on success or an error code on failure
+ */
+int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len);
+
+/**
  * @brief Un-Initialize the smem running environment
  */
 void smem_uninit();

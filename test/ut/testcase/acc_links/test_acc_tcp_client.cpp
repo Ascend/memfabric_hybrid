@@ -69,7 +69,7 @@ public:
         }
         std::cout << "receive data len match" << std::endl;
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(0);
-        if (buffer == nullptr) {
+        if (buffer == nullptr || buffer->DataPtr() == nullptr) {
             std::cout << "data buffer is nullptr" << std::endl;
             return 1;
         }
@@ -1254,7 +1254,7 @@ TEST_F(TestAccTcpClient, fileUtils_checkDataSize)
 TEST_F(TestAccTcpClient, fileUtils_file_not_exist)
 {
     std::string invalidPath = "/path/with/invalid*chars";
-    auto ret = ock::FileUtil::GetFileSize(invalidPath);
+    auto ret = ock::mf::FileUtil::GetFileSize(invalidPath);
     ASSERT_EQ(ret, 0);
 }
 

@@ -313,6 +313,8 @@ int HostDataOpSDMA::CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) no
     if (ret != 0) {
         BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: " << params.width
                                                                 << " height:" << params.height);
+        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: " << params.width
+                                                                << " height:" << params.height);
         int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);
@@ -360,6 +362,8 @@ int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direc
                                const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_RETURN(params.dest != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params.src != nullptr, BM_INVALID_PARAM);
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:

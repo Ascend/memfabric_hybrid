@@ -9,14 +9,12 @@ option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
 option(BUILD_GIT_COMMIT "build library version with commit" ON)
-option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 
 message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
 message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
 message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
 message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
-message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
@@ -64,51 +62,31 @@ endif()
 
 if (ENABLE_CPU_MONOTONIC STREQUAL "ON")
     add_compile_options(-DENABLE_CPU_MONOTONIC)
-endif ()
+endif()
 
 # set log commit into compile definition
 if (BUILD_GIT_COMMIT STREQUAL "ON")
-    if (BUILD_GIT_COMMIT_GEN_FILE STREQUAL "ON")
-        # find dos2unix command
-        find_program(DOS2UNIX_CMD dos2unix)
-        if (NOT EXISTS ${DOS2UNIX_CMD})
-            message(FATAL_ERROR "no dos2unix found, please install")
-        else ()
-            message(STATUS "dos2unix found at ${DOS2UNIX_CMD}")
-        endif ()
-
-        # covert file from dos format to unix format
-        set(COMMIT_GEN_FILE ${PROJECT_SOURCE_DIR}/script/gen_last_git_commit.sh)
-        execute_process(COMMAND ${DOS2UNIX_CMD} ${COMMIT_GEN_FILE}
-                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-                RESULT_VARIABLE DOS2UNIX_RESULT)
-        if (${DOS2UNIX_RESULT} EQUAL 1)
-            message(FATAL_ERROR "failed to dos2unix script file ${COMMIT_GEN_FILE}")
-        endif ()
-
-        # generate file
-        execute_process(COMMAND sh ${COMMIT_GEN_FILE}
-                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-                RESULT_VARIABLE GET_GEN_COMMIT_RESULT)
-        if (${GET_GEN_COMMIT_RESULT} EQUAL 1)
-            message(FATAL_ERROR "generate last commit file failed")
-        endif ()
-    endif ()
-
-    # get commit id from file
-    execute_process(COMMAND head -n 1 ${PROJECT_SOURCE_DIR}/script/git_last_commit.txt
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-            RESULT_VARIABLE GET_COMMIT_RESULT
-            OUTPUT_VARIABLE GIT_LAST_COMMIT)
-    if (${GET_COMMIT_RESULT} EQUAL 1)
-        set(GIT_LAST_COMMIT "empty")
-    endif ()
-    add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
-    message(STATUS "add gcc definition for last commit: ${GIT_LAST_COMMIT}")
-else ()
+    find_program(GIT_EXECUTABLE NAMES git)
+    if (EXISTS ${GIT_EXECUTABLE})
+        # get commit id from file
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+            RESULT_VARIABLE GIT_COMMIT_RESULT
+            OUTPUT_VARIABLE GIT_LAST_COMMIT
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if (${GIT_COMMIT_RESULT} EQUAL 1)
+            set(GIT_LAST_COMMIT "empty")
+        endif()
+        add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
+        message(STATUS "add gcc definition for last commit: ${GIT_LAST_COMMIT}")
+    else()
+        add_definitions(-DGIT_LAST_COMMIT=empty)
+        message(STATUS "Failed to find git command, not GIT_LAST_COMMIT will be set")
+    endif()
+else()
     add_definitions(-DGIT_LAST_COMMIT=empty)
     message(STATUS "add gcc definition for last commit: empty")
-endif ()
+endif()
 
 if (ENABLE_TRACE_L0G)
     add_definitions(-DLOG_TRACE_INFO_ENABLED)

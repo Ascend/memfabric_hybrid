@@ -116,7 +116,13 @@ int32_t main(int32_t argc, char* argv[])
     aclrtStream stream = nullptr;
     CHECK_ACL(aclrtCreateStream(&stream));
 
-    auto ret = smem_init(0);
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    if (ret != 0) {
+        ERROR_LOG("[TEST] smem set tls failed, ret:%d, rank:%d", ret, rankId);
+        return -1;
+    }
+
+    ret = smem_init(0);
     if (ret != 0) {
         ERROR_LOG("[TEST] smem init failed, ret:%d, rank:%d", ret, rankId);
         return -1;
