@@ -33,6 +33,6 @@ setuptools.setup(
     url="https://gitee.com/ascend/memfabric_hybrid",
     license="Apache License Version 2.0",
     python_requires=">=3.7",
-    package_data={"pymmc": ["_pymmc.cpython*.so", "VERSION"]},
+    package_data={"pymmc": ["_pymmc.cpython*.so", "lib/**", "VERSION"]},
     distclass=BinaryDistribution
 )
