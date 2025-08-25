@@ -12,16 +12,11 @@ MemFabric Hybrid面向昇腾NPU服务器和超节点，提供了构建基于HCCS
 
 memfabric_hybrid编译不依赖CANN和HDK.
 
-1. 下载代码并更新submodule
+1. 下载代码
 ```
 git clone git@gitee.com:ascend/memfabric_hybrid.git
 
 cd memfabric_hybrid
-
-git submodule init
-
-git submodule update --recursive
-
 ```
 
 2. 编译
