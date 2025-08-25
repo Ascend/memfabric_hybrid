@@ -18,6 +18,7 @@ const char *DlHccpApi::gTsdLibName = "libtsdclient.so";
 raRdevGetHandleFunc DlHccpApi::gRaRdevGetHandle;
 
 raInitFunc DlHccpApi::gRaInit;
+raDeInitFunc DlHccpApi::gRaDeInit;
 raGetInterfaceVersionFunc DlHccpApi::gRaGetInterfaceVersion;
 raSocketInitFunc DlHccpApi::gRaSocketInit;
 raSocketDeinitFunc DlHccpApi::gRaSocketDeinit;
@@ -45,6 +46,7 @@ raMrRegFunc DlHccpApi::gRaMrReg;
 raMrDeregFunc DlHccpApi::gRaMrDereg;
 
 tsdOpenFunc DlHccpApi::gTsdOpen;
+tsdCloseFunc DlHccpApi::gTsdClose;
 
 Result DlHccpApi::LoadLibrary()
 {
@@ -79,6 +81,7 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaGetInterfaceVersion, raGetInterfaceVersionFunc, raHandle, "ra_get_interface_version");
     DL_LOAD_SYM(gRaSocketInit, raSocketInitFunc, raHandle, "ra_socket_init");
     DL_LOAD_SYM(gRaInit, raInitFunc, raHandle, "ra_init");
+    DL_LOAD_SYM(gRaDeInit, raDeInitFunc, raHandle, "ra_deinit");
     DL_LOAD_SYM(gRaSocketDeinit, raSocketDeinitFunc, raHandle, "ra_socket_deinit");
     DL_LOAD_SYM(gRaRdevInitV2, raRdevInitV2Func, raHandle, "ra_rdev_init_v2");
     DL_LOAD_SYM(gRaRdevGetHandle, raRdevGetHandleFunc, raHandle, "ra_rdev_get_handle");
@@ -105,6 +108,7 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaMrDereg, raMrDeregFunc, raHandle, "ra_mr_dereg");
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
+    DL_LOAD_SYM(gTsdClose, tsdCloseFunc, tsdHandle, "TsdClose");
 
     gLoaded = true;
     return BM_OK;
@@ -119,6 +123,7 @@ void DlHccpApi::CleanupLibrary()
 
     gRaRdevGetHandle = nullptr;
     gRaInit = nullptr;
+    gRaDeInit = nullptr;
     gRaGetInterfaceVersion = nullptr;
     gRaSocketInit = nullptr;
     gRaSocketDeinit = nullptr;
@@ -145,6 +150,7 @@ void DlHccpApi::CleanupLibrary()
     gRaMrReg = nullptr;
     gRaMrDereg = nullptr;
     gTsdOpen = nullptr;
+    gTsdClose = nullptr;
 
     if (raHandle != nullptr) {
         raHandle = nullptr;
