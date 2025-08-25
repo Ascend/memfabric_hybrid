@@ -72,7 +72,7 @@ set(PLATFORM_SRC ${MMC_SRC_COMMON}
 ## build the static and shared library
 add_library(mmc_objects OBJECT ${PLATFORM_SRC})
 target_link_libraries(mmc_objects PUBLIC smem)
-target_compile_options(mmc_objects PRIVATE -fPIC)
+target_compile_options(mmc_objects PRIVATE -fPIC -Wno-float-equal)
 
 add_library(mmc_static STATIC $<TARGET_OBJECTS:mmc_objects>)
 set_target_properties(mmc_static PROPERTIES OUTPUT_NAME "mf_memcache")

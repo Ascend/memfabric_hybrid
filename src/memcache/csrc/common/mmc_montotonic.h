@@ -10,6 +10,7 @@
 #include <string>
 #ifdef __x86_64__
 #include <cmath>
+#include <vector>
 #include <x86intrin.h>
 #endif
 

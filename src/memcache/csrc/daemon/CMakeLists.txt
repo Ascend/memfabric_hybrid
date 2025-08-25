@@ -2,6 +2,8 @@ file(GLOB_RECURSE DAEMON_SRCS *.cc *.cpp *.h)
 
 add_executable(mmc_meta_service ${DAEMON_SRCS} $<TARGET_OBJECTS:htracer_object>)
 
+target_compile_options(mmc_meta_service PRIVATE -fPIC -Wno-float-equal)
+
 target_link_libraries(mmc_meta_service PUBLIC mmc_static pthread libacc_tcp_net.a)
 
 install(TARGETS mmc_meta_service

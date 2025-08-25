@@ -138,6 +138,11 @@ set(PROJECT_MMC_OUTPUT ${PROJECT_SOURCE_DIR}/output/memcache)
 # set src base dir and output dir of smem
 set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
+
+# set src base dir and output dir of hybm driver
+set(PROJECT_DRIVER_BASE ${PROJECT_SOURCE_DIR}/src/driver)
+set(PROJECT_DRIVER_OUTPUT ${PROJECT_SOURCE_DIR}/output/driver)
+
 # set install target top dir
 message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")

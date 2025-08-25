@@ -4,3 +4,8 @@
 /output/
 /build/
 /script/git_last_commit.txt
+
+*.so
+*.whl
+*.egg-info
+VERSION

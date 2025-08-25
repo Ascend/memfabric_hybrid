@@ -13,6 +13,7 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/utils
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+        ${PROJECT_DRIVER_BASE}/userspace/include
         ${PROJECT_UTIL_SRC_BASE}/htracer
 )
 
