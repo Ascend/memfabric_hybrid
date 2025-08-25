@@ -8,13 +8,9 @@ obj-m := hybm_gvm_host.o
 
 hybm_gvm_host-objs += init/hybm_gvm_init.o init/hybm_gvm_symbol_get.o
 hybm_gvm_host-objs += message/hybm_gvm_p2p.o message/hybm_gvm_s2a.o
-hybm_gvm_host-objs += manager/hybm_gvm_proc.o manager/hybm_gvm_phy_page.o
+hybm_gvm_host-objs += manager/hybm_gvm_proc.o manager/hybm_gvm_phy_page.o manager/hybm_gvm_ioctl.o
 
 ccflags-y :=$(INCLUDE_PATH) -DTARGET_LINUX -Wall -Wno-unused-function -O2
-
-export ARCH           # pass to kbuild
-export CROSS_COMPILE  # pass to kbuild
-export CC             # pass to kbuild
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
 MOUT ?= $(PWD)/../build/host

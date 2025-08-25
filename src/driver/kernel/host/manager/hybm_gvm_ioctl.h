@@ -21,6 +21,6 @@ struct gvm_ioctl_handlers_st {
     int (*ioctl_handler)(struct file *file, struct hybm_gvm_process *gvm_proc, struct hybm_gvm_ioctl_arg *);
 };
 
-struct gvm_ioctl_handlers_st gvm_ioctl_handlers[HYBM_GVM_CMD_MAX_CMD];
+extern struct gvm_ioctl_handlers_st gvm_ioctl_handlers[HYBM_GVM_CMD_MAX_CMD];
 
 #endif // MF_HYBRID_HYBM_GVM_IOCTL_H
