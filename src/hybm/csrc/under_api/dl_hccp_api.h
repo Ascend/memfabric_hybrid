@@ -14,7 +14,6 @@ using raRdevGetHandleFunc = int (*)(uint32_t, void **);
 
 using raGetInterfaceVersionFunc = int (*)(uint32_t, uint32_t, uint32_t *);
 using raInitFunc = int (*)(const HccpRaInitConfig *);
-using raDeInitFunc = int (*)(const HccpRaInitConfig *);
 using raSocketInitFunc = int (*)(HccpNetworkMode, HccpRdev, void **);
 using raSocketDeinitFunc = int (*)(void *);
 using raRdevInitV2Func = int (*)(HccpRdevInitInfo, HccpRdev, void **);
@@ -41,7 +40,6 @@ using raMrRegFunc = int (*)(void *, HccpMrInfo *);
 using raMrDeregFunc = int (*)(void *, HccpMrInfo *);
 
 using tsdOpenFunc = uint32_t (*)(uint32_t, uint32_t);
-using tsdCloseFunc = uint32_t (*)(uint32_t);
 
 class DlHccpApi {
 public:
@@ -61,11 +59,6 @@ public:
     static inline int RaInit(const HccpRaInitConfig &config)
     {
         return gRaInit(&config);
-    }
-
-    static inline int RaDeInit(const HccpRaInitConfig &config)
-    {
-        return gRaDeInit(&config);
     }
 
     static inline int RaSocketDeinit(void *socketHandle)
@@ -193,11 +186,6 @@ public:
         return gTsdOpen(deviceId, rankSize);
     }
 
-    static inline uint32_t TsdClose(uint32_t deviceId)
-    {
-        return gTsdClose(deviceId);
-    }
-
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -210,7 +198,6 @@ private:
 
     static raGetInterfaceVersionFunc gRaGetInterfaceVersion;
     static raInitFunc gRaInit;
-    static raDeInitFunc gRaDeInit;
     static raSocketInitFunc gRaSocketInit;
     static raSocketDeinitFunc gRaSocketDeinit;
     static raRdevInitV2Func gRaRdevInitV2;
@@ -237,7 +224,6 @@ private:
     static raMrDeregFunc gRaMrDereg;
 
     static tsdOpenFunc gTsdOpen;
-    static tsdCloseFunc gTsdClose;
 };
 
 }
