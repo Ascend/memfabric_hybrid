@@ -10,7 +10,7 @@ using namespace ock::smem;
 
 namespace ock {
 namespace smem {
-    extern Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption);
+    extern Result ParseTlsInfo(const std::string &tlsInput, AcclinkTlsOption &tlsOption);
 }
 }
 
