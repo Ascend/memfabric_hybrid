@@ -19,27 +19,27 @@ int32_t HostDataOpSDMA::Initialized() noexcept
         return BM_OK;
     }
 
-    uint32_t devId = HybmGetInitDeviceId();
-    hybmStream_ = std::make_shared<HybmStream>(devId, 0, 0);
-    BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_MALLOC_FAILED);
-
-    auto ret = hybmStream_->Initialize();
-    if (ret != 0) {
-        BM_LOG_ERROR("create stream failed, dev:" << devId << " ret:" << ret);
-        hybmStream_ = nullptr;
-        return BM_ERROR;
-    }
-
-    sdmaSwapMemAddr_ = nullptr;
-    ret = DlAclApi::AclrtMalloc(&sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE, 0);
-    if (ret != 0 || !sdmaSwapMemAddr_) {
-        hybmStream_->Destroy();
-        hybmStream_ = nullptr;
-        BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    sdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *) sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE);
     if (HybmGvmHasInited()) {
+        uint32_t devId = HybmGetInitDeviceId();
+        hybmStream_ = std::make_shared<HybmStream>(devId, 0, 0);
+        BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_MALLOC_FAILED);
+
+        auto ret = hybmStream_->Initialize();
+        if (ret != 0) {
+            BM_LOG_ERROR("create stream failed, dev:" << devId << " ret:" << ret);
+            hybmStream_ = nullptr;
+            return BM_ERROR;
+        }
+
+        ret = DlAclApi::AclrtMalloc(&sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE, 0);
+        if (ret != 0 || !sdmaSwapMemAddr_) {
+            hybmStream_->Destroy();
+            hybmStream_ = nullptr;
+            BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
+            return BM_DL_FUNCTION_FAILED;
+        }
+
+        sdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *) sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE);
         ret = hybm_gvm_mem_fetch((uint64_t)sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE);
         if (ret != BM_OK) {
             DlAclApi::AclrtFree(&sdmaSwapMemAddr_);
@@ -50,6 +50,7 @@ int32_t HostDataOpSDMA::Initialized() noexcept
             return BM_DL_FUNCTION_FAILED;
         }
     }
+
     inited_ = true;
     return BM_OK;
 }
@@ -417,6 +418,7 @@ int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
 
 int HostDataOpSDMA::CopyGD2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGD2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // HBM池拷贝到HOST池
     BM_LOG_INFO("Copy global device to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -424,6 +426,7 @@ int HostDataOpSDMA::CopyGD2GH(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyGH2GD(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2GD hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // HOST池到HBM池的拷贝
     BM_LOG_INFO("Copy global host to global device, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -431,6 +434,7 @@ int HostDataOpSDMA::CopyGH2GD(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyGH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // HOST池到HOST池的拷贝
     BM_LOG_INFO("Copy global host to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -438,6 +442,7 @@ int HostDataOpSDMA::CopyGH2GH(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyLD2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyLD2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // local device到dram池的拷贝
     BM_LOG_INFO("Copy local device to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     // LD2GD
@@ -465,6 +470,7 @@ int HostDataOpSDMA::CopyLD2GH(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyLH2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // local host到dram池的拷贝
     BM_LOG_INFO("Copy local host to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     // LH2GD
@@ -492,6 +498,7 @@ int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyGH2LD(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2LD hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // dram池的拷贝到local device
     BM_LOG_INFO("Copy global host to local device, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     // GH2GD
@@ -519,6 +526,7 @@ int HostDataOpSDMA::CopyGH2LD(void *destVA, const void *srcVA, uint64_t length, 
 
 int HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2LH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
     // dram池的拷贝到local host
     BM_LOG_INFO("Copy global host to local host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     // GH2GD

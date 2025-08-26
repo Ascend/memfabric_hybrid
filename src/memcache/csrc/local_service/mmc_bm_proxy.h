@@ -20,6 +20,7 @@ typedef struct {
     std::string hcomUrl;
     int32_t logLevel;
     ExternalLog logFunc;
+    uint32_t flags;
 } mmc_bm_init_config_t;
 
 typedef struct {

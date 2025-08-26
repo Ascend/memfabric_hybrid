@@ -29,10 +29,7 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
     smem_bm_config_t config;
     MMC_RETURN_ERROR(smem_bm_config_init(&config), "Failed to init smem bm config");
 
-    smem_bm_data_op_type opType = MmcSmemBmHelper::TransSmemBmDataOpType(createConfig.dataOpType);
-    if (opType == SMEMB_DATA_OP_SDMA) {
-        config.flags |= SMEM_BM_INIT_GVM_FLAG;
-    }
+    config.flags = initConfig.flags;
     (void) std::copy_n(initConfig.hcomUrl.c_str(), initConfig.hcomUrl.size(), config.hcomUrl);
     MMC_RETURN_ERROR(smem_bm_init(initConfig.ipPort.c_str(), initConfig.worldSize, initConfig.deviceId, &config),
                      "Failed to init smem bm");

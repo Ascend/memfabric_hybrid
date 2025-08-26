@@ -34,6 +34,7 @@ constexpr auto OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL = std::make_pair("ock.mmc.local
 constexpr auto OKC_MMC_LOCAL_SERVICE_PROTOCOL = std::make_pair("ock.mmc.local_service.protocol", "sdma");
 constexpr auto OKC_MMC_LOCAL_SERVICE_DRAM_SIZE = std::make_pair("ock.mmc.local_service.dram.size", "128MB");
 constexpr auto OKC_MMC_LOCAL_SERVICE_HBM_SIZE = std::make_pair("ock.mmc.local_service.hbm.size", "2097152");
+constexpr auto OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA = std::make_pair("ock.mmc.local_service.dram_by_sdma", false);
 
 constexpr auto OKC_MMC_CLIENT_RETRY_MILLISECONDS = std::make_pair("ock.mmc.client.retry_milliseconds", 0);
 constexpr auto OCK_MMC_CLIENT_TIMEOUT_SECONDS = std::make_pair("ock.mmc.client.timeout.seconds", 60);

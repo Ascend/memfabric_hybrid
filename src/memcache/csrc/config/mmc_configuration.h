@@ -17,6 +17,7 @@
 #include "mmc_def.h"
 #include "mmc_logger.h"
 #include "mmc_types.h"
+#include "smem_bm_def.h"
 
 namespace ock {
 namespace mmc {
@@ -238,6 +239,7 @@ public:
         AddStrConf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
         AddIntConf(OKC_MMC_CLIENT_RETRY_MILLISECONDS,
                    VIntRange::Create(OKC_MMC_CLIENT_RETRY_MILLISECONDS.first, 0, 600000));
+        AddBoolConf(OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA, VNoCheck::Create());
         AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS,
             VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, 1, 600));
     }
@@ -255,6 +257,9 @@ public:
         config.dataOpType = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_PROTOCOL);
         config.localDRAMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_SIZE.first, MEM_128MB_BYTES);
         config.localHBMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_HBM_SIZE.first, MEM_2MB_BYTES);
+        if (GetBool(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA)) {
+            config.flags |= SMEM_BM_INIT_GVM_FLAG;
+        }
         std::string logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         StringToLower(logLevelStr);
         config.logLevel = ock::mmc::MmcOutLogger::Instance().GetLogLevel(logLevelStr);

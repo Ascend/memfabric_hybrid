@@ -43,7 +43,7 @@
 | ock.mmc.local_service.protocol           | string     | sdma                         | sdma/roce             |                                                                                                       |
 | ock.mmc.local_service.dram.size          | integer    | 128MB                        | [0, 1TB]              | Supports formats such as 134217728, 2048KB, 200mb, 2.5G or 1TB, <br/> and automatic alignment to 2MB. |
 | ock.mmc.local_service.hbm.size           | integer    | 0                            | [0, 1TB]              | Supports formats such as 134217728, 2048KB, 200mb, 2.5G or 1TB, <br/> and automatic alignment to 2MB. |
-|                                          |            |                              |                       |                                                                                                       |
+| ock.mmc.local_service.dram_by_sdma       | bool       | false                        | true/false/1/0        | Use dram pool by sdma protocol                                                                        |
 | ock.mmc.local_service.retry_milliseconds | integer    | 0                            | [0, 600000]           | The total retry time when the meta service connection does not exist                                  |
 |                                          |            |                              |                       |                                                                                                       |
 | ock.mmc.client.timeout.seconds           | integer    | 60                           | [1, 600]              |                                                                                                       |

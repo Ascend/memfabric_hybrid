@@ -78,7 +78,7 @@ void MmcLocalServiceDefault::Stop()
 Result MmcLocalServiceDefault::InitBm()
 {
     mmc_bm_init_config_t initConfig = {options_.deviceId, options_.worldSize, options_.bmIpPort,
-                                       options_.bmHcomUrl, options_.logLevel, options_.logFunc};
+                                       options_.bmHcomUrl, options_.logLevel, options_.logFunc, options_.flags};
     mmc_bm_create_config_t createConfig = {options_.createId, options_.worldSize, options_.dataOpType,
                                            options_.localDRAMSize, options_.localHBMSize, options_.flags};
 
