@@ -47,6 +47,10 @@ Result NetEngineAcc::Start(const NetEngineOptions &options)
     /* call start inner */
     MMC_RETURN_ERROR(StartInner(), "NetEngineAcc " << options.name << " start error");
 
+    threadPool_ = MmcMakeRef<MmcThreadPool>("net_pool", 4);
+    MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
+    MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
+
     started_ = true;
     return MMC_OK;
 }
@@ -58,6 +62,7 @@ void NetEngineAcc::Stop()
         MMC_LOG_WARN("NetEngineAcc has not been started");
         return;
     }
+    threadPool_->Shutdown();
 
     MMC_ASSERT(StopInner() == MMC_OK);
 
@@ -333,7 +338,7 @@ Result NetEngineAcc::HandleNeqRequest(const TcpReqContext &context)
 {
     /* use result variable for real opcode */
     MMC_LOG_DEBUG("HandleNeqRequest Header " << context.Header().ToString());
-    NetContextPtr contextPtr = MmcMakeRef<NetContextAcc>(&context).Get();
+    NetContextPtr contextPtr = MmcMakeRef<NetContextAcc>(context).Get();
     MMC_ASSERT_RETURN(contextPtr != nullptr, MMC_NEW_OBJECT_FAILED);
     int16_t opCode = contextPtr->OpCode();
     MMC_ASSERT_RETURN(opCode < gHandlerSize, MMC_NET_REQ_HANDLE_NO_FOUND);
@@ -342,7 +347,13 @@ Result NetEngineAcc::HandleNeqRequest(const TcpReqContext &context)
         MMC_ASSERT_RETURN(HandleAllRequests4Response(context) == MMC_OK, MMC_ERROR);
     } else {
         /* server do function */
-        MMC_ASSERT_RETURN(reqReceivedHandlers_[opCode](contextPtr) == MMC_OK, MMC_ERROR);
+        auto future = threadPool_->Enqueue(
+            [&](int16_t opCode, NetContextPtr contextPtr) { return reqReceivedHandlers_[opCode](contextPtr); }, opCode,
+            contextPtr);
+        if (!future.valid()) {
+            MMC_LOG_ERROR("req: " << context.SeqNo() << " add thread pool failed.");
+            return MMC_ERROR;
+        }
     }
     return MMC_OK;
 }

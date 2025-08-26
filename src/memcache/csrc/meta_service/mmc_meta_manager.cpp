@@ -138,7 +138,8 @@ Result MmcMetaManager::UpdateState(const std::string& key, const MmcLocation& lo
     // when update state, do not update the lru
     Result ret = metaContainer_->Get(key, metaObj);
     if (ret != MMC_OK || metaObj == nullptr) {
-        MMC_LOG_ERROR("UpdateState: Cannot find " << key << " memObjMeta! ret:" << ret);
+        MMC_LOG_ERROR("UpdateState: Cannot find " << key << " memObjMeta! ret:" << ret
+                                                  << ", action:" << static_cast<uint32_t>(actRet));
         return MMC_UNMATCHED_KEY;
     }
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
@@ -148,9 +149,10 @@ Result MmcMetaManager::UpdateState(const std::string& key, const MmcLocation& lo
 
 void MmcMetaManager::PushRemoveList(const std::string& key, const MmcMemObjMetaPtr& meta)
 {
-    auto future = threadPool_->Enqueue([&](const std::string& key, const MmcMemObjMetaPtr& meta,
-                                           MmcGlobalAllocatorPtr allocator) { return meta->FreeBlobs(key, allocator); },
-                                       key, meta, globalAllocator_);
+    auto future =
+        threadPool_->Enqueue([&](const std::string keyL, const MmcMemObjMetaPtr metaL,
+                                 MmcGlobalAllocatorPtr allocator) { return metaL->FreeBlobs(keyL, allocator); },
+                             key, meta, globalAllocator_);
     if (!future.valid()) {
         meta->FreeBlobs(key, globalAllocator_);
     }

@@ -8,15 +8,16 @@ if __name__ == "__main__":
     client = TestClient('61.47.1.122', 5004)
     client.init_mmc()
 
-    count = 15
+    size = 1048576
+    count = 10000
     keys = []
     for i in range(count):
         key = 'test_evict_' + str(i)
-        client.put_from(key, 10485760, 0)
+        client.put_from(key, size, 0)
         keys.append(key)
 
-        if i == 6:
-            client.get_into(keys[0], 10485760, 0) 
+        if i % 29 == 0 and i > 0:
+            client.get_into(keys[i - 29], size, 0) 
         
 
     client.batch_is_exit(keys)

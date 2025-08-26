@@ -194,8 +194,17 @@ private:
 
     inline std::size_t GetIndex(const MmcMemObjMetaPtr& meta) const
     {
-        static std::hash<MmcMemObjMeta*> keyHasher_;
-        return keyHasher_(meta.Get()) % META_MAMAGER_MTX_NUM;
+        const MmcMemObjMeta* objPtr = meta.Get();
+        // FNV-1a 哈希算法
+        constexpr std::size_t FNV_PRIME = 16777619u;
+        constexpr std::size_t FNV_OFFSET = 2166136261u;
+        std::size_t hash = FNV_OFFSET;
+        const char* ptr = reinterpret_cast<const char*>(objPtr);
+        for (size_t i = 0; i < sizeof(objPtr); ++i) {
+            hash ^= ptr[i];
+            hash *= FNV_PRIME;
+        }
+        return hash % META_MAMAGER_MTX_NUM;
     }
 
 private:

@@ -6,6 +6,7 @@
 
 #include "mmc_net_engine.h"
 #include "mmc_net_common_acc.h"
+#include "mmc_thread_pool.h"
 #include "mmc_net_ctx_store.h"
 
 namespace ock {
@@ -54,6 +55,7 @@ private:
     bool inited_ = false;
     std::mutex connectMutex_;
     int32_t timeoutInSecond_ = 0;
+    MmcThreadPoolPtr threadPool_;
 };
 }
 }

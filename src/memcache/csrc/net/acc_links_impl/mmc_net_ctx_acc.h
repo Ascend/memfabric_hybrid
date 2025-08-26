@@ -11,7 +11,7 @@ namespace ock {
 namespace mmc {
 class NetContextAcc final : public NetContext {
 public:
-    explicit NetContextAcc(const TcpReqContext *ctx) : realContext(ctx) {}
+    explicit NetContextAcc(const TcpReqContext &ctx) : realContext(ctx) {}
 
     int32_t Reply(int16_t responseCode, char *respData, uint32_t &respDataLen) override;
 
@@ -26,7 +26,7 @@ public:
     void *Data() const override;
 
 private:
-    const TcpReqContext *realContext;
+    const TcpReqContext realContext;
 };
 using NetContextAccPtr = MmcRef<NetContextAcc>;
 
@@ -38,17 +38,17 @@ inline int32_t NetContextAcc::Reply(int16_t responseCode, char *respData, uint32
     MMC_ASSERT_RETURN(dataBuf->AllocIfNeed(), MMC_NEW_OBJECT_FAILED);
     memcpy(dataBuf->DataPtrVoid(), static_cast<void *>(const_cast<char *>(respData)), respDataLen);
     dataBuf->SetDataSize(respDataLen);
-    return realContext->Reply(responseCode, dataBuf);
+    return realContext.Reply(responseCode, dataBuf);
 }
 
 inline uint32_t NetContextAcc::SeqNo() const
 {
-    return realContext->Header().seqNo;
+    return realContext.Header().seqNo;
 }
 
 inline int16_t NetContextAcc::OpCode() const
 {
-    return realContext->Header().result;
+    return realContext.Header().result;
 }
 
 inline int16_t NetContextAcc::SrcRankId() const
@@ -59,12 +59,12 @@ inline int16_t NetContextAcc::SrcRankId() const
 
 inline uint32_t NetContextAcc::DataLen() const
 {
-    return realContext->DataLen();
+    return realContext.DataLen();
 }
 
 inline void *NetContextAcc::Data() const
 {
-    return realContext->DataPtr();
+    return realContext.DataPtr();
 }
 }
 }
