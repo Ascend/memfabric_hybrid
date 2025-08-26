@@ -1,7 +1,7 @@
 import json
-import os
 import socket
 import time
+from typing import List
 
 
 class TestClient:
@@ -27,7 +27,7 @@ class TestClient:
         return self.execute("init_mmc")
 
     def close_mmc(self):
-        self.execute("close_mmc")
+        return self.execute("close_mmc")
 
     def put(self, key, value):
         return self.execute("put", [key, value.decode('utf-8')])
@@ -35,38 +35,47 @@ class TestClient:
     def get(self, key):
         return self.execute("get", [key]).encode('utf-8')
 
-    def put_from(self, key, index: int, media: int):
-        return self.execute("put_from", [key, index, media])
+    def put_from(self, key, size: int, media: int):
+        return self.execute("put_from", [key, size, media])
 
-    def get_into(self, key, index: int, media: int):
-        return self.execute("get_into", [key, index, media])
+    def get_into(self, key, size: int, media: int):
+        return self.execute("get_into", [key, size, media])
 
-    def batch_get_into(self, keys: list, indexes: list, media: int):
-        return self.execute("batch_get_into", [keys, indexes, media])
+    def batch_get_into(self, keys: List[str], sizes: List[int], media: int):
+        return self.execute("batch_get_into", [keys, sizes, media])
 
-    def batch_put_from(self, keys: list, indexes: list, media: int):
-        return self.execute("batch_put_from", [keys, indexes, media])
+    def batch_put_from(self, keys: List[str], sizes: List[int], media: int):
+        return self.execute("batch_put_from", [keys, sizes, media])
 
-    def tensor_sum(self, index: int, media: int):
-        return self.execute("tensor_sum", [index, media])
+    def put_from_layers(self, key: str, sizes: List[int], media: int):
+        return self.execute("put_from_layers", [key, sizes, media])
+
+    def get_into_layers(self, key: str, sizes: List[int], media: int):
+        return self.execute("get_into_layers", [key, sizes, media])
+
+    def batch_put_from_layers(self, keys: List[str], sizes: List[List[int]], media: int):
+        return self.execute("batch_put_from_layers", [keys, sizes, media])
+
+    def batch_get_into_layers(self, keys: List[str], sizes: List[List[int]], media: int):
+        return self.execute("batch_get_into_layers", [keys, sizes, media])
 
     def is_exist(self, key):
         return self.execute("is_exist", [key])
 
+    def batch_is_exit(self, keys: list):
+        return self.execute("batch_is_exist", [keys])
+
     def remove(self, key):
         return self.execute("remove", [key])
+
+    def batch_remove(self, keys: list):
+        return self.execute("remove_batch", [keys])
 
     def get_key_info(self, key):
         return self.execute("get_key_info", [key])
 
     def batch_get_key_info(self, keys: list):
         return self.execute("batch_get_key_info", [keys])
-
-    def batch_remove(self, keys: list):
-        return self.execute("remove_batch", [keys])
-
-    def batch_is_exit(self, keys: list):
-        return self.execute("batch_is_exist", [keys])
 
     def _send_request(self, request: str):
         self._client.sendall(f"{request}\0".encode('utf-8'))

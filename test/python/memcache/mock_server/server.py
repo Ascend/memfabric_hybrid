@@ -8,23 +8,28 @@ import inspect
 import json
 import socket
 import sys
-import acl
-import torch
-import torch_npu
 import threading
 import traceback
 from functools import wraps
 from typing import Callable, Dict, List
+from enum import Enum
+
+import torch
 
 from pymmc import DistributedObjectStore
 
-DEVICE_ID: int = 0
+
+class MmcDirect(Enum):
+    COPY_L2G = 0
+    COPY_G2L = 1
+    COPY_G2H = 2
+    COPY_H2G = 3
 
 
 @dataclasses.dataclass
 class CliCommand:
     cmd_name: str
-    cmd_description: str
+    cmd_desc: str
     func: Callable
     args_num: int
 
@@ -157,7 +162,7 @@ class TestServer:
         col_widths = max(len(item) for item in self._commands.keys()) + 1
         self.cli_print("Available commands:")
         for cmd in self._commands.values():
-            self.cli_print(f":  {cmd.cmd_name: >{col_widths}}: {cmd.cmd_description}")
+            self.cli_print(f":  {cmd.cmd_name: >{col_widths}}: {cmd.cmd_desc}")
 
     def _get_server_commands(self):
         msg = ",".join(self._commands.keys())
@@ -174,71 +179,27 @@ def result_handler(func):
 
     return wrapper
 
-from enum import Enum
-
-class MmcDirect(Enum):
-    COPY_L2G = 0
-    COPY_G2L = 1
-    COPY_G2H = 2
-    COPY_H2G = 3
-
-
-
-def acl_set_device():
-    acl.init()
-    global DEVICE_ID
-    ret = acl.rt.set_device(DEVICE_ID)
-    if ret != 0:
-        raise RuntimeError("acl set device failed")
-
-def malloc_npu(layer_num: int = 1, block_num: int = 1, min_block_size: int = 1024):
-    if min_block_size <= 0:
-        return None
-    acl_set_device()
-    raw_blocks = torch.rand(
-        size=(layer_num, block_num, min_block_size // 2),  # torch.float16占两个字节所以除以2
-        dtype=torch.float16,
-        device=torch.device('npu')
-    )
-    return raw_blocks
-
-def malloc_cpu(layer_num: int = 1, block_num: int = 1, min_block_size: int = 1024):
-    if min_block_size <= 0:
-        return None
-    raw_blocks = torch.rand(
-        size=(layer_num, block_num, min_block_size // 2),  # torch.float16占两个字节所以除以2
-        dtype=torch.float16,
-        device=torch.device('cpu')
-    )
-    return raw_blocks
-
-
 def tensor_sum(tensor):
     if tensor is None:
         return 0
-    acl_set_device()
-    ret = torch.sum(tensor, dtype=torch.float32)
+    ret = torch.sum(tensor, dtype=torch.uint8)
     return ret.item()
 
 class MmcTest(TestServer):
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, device_id=0):
         super().__init__(ip, port)
-        acl_set_device()
+        self._device_id = device_id
         self._init_cmds()
-        self.__distributed_store_object = None
-        self._npu_addr = 0
-        self._npu_blocks: dict[int, list[torch.Tensor]] = {}
-        self._cpu_addr = 0
-        self._cpu_blocks: dict[int, list[torch.Tensor]] = {}
+        self._store = None
 
     def _init_cmds(self):
         cmds = [
             CliCommand("init_mmc", "initialize memcache", self.init_mmc, 0),
             CliCommand("close_mmc", "destruct memcache", self.close_mmc, 0),
             CliCommand("put", "put data in bytes format: [key] [data]", self.put, 2),
-            CliCommand("put_from", "put data in bytes format: [key] [index] [media(0:cpu 1:npu)]", self.put_from, 3),
             CliCommand("get", "get data in bytes format: [key]", self.get, 1),
-            CliCommand("get_into", "put data in bytes format: [key] [index] [media(0:cpu 1:npu)]", self.get_into, 3),
+            CliCommand("put_from", "put data from a buffer: [key] [size] [media(0:cpu 1:npu)]", self.put_from, 3),
+            CliCommand("get_into", "get data into a buffer: [key] [size] [media(0:cpu 1:npu)]", self.get_into, 3),
             CliCommand("batch_get_into", "batch put data: [keys] [sizes] [media(0:cpu 1:npu)]", self.batch_get_into, 3),
             CliCommand("batch_put_from", "batch get data: [keys] [sizes] [media(0:cpu 1:npu)]", self.batch_put_from, 3),
             CliCommand("is_exist", "check if a key exist: [key]", self.is_exist, 1),
@@ -247,6 +208,14 @@ class MmcTest(TestServer):
             CliCommand("remove_batch", "remove a batch of data: [keys]", self.remove_batch, 1),
             CliCommand("get_key_info", "get data info of: [key]", self.get_key_info, 1),
             CliCommand("batch_get_key_info", "batch get data info of: [keys]", self.batch_get_key_info, 1),
+            CliCommand("put_from_layers", "put data from multiple buffers [key] [sizes] [media(0:cpu 1:npu)]",
+                       self.put_from_layers, 3),
+            CliCommand("get_into_layers", "get data into multiple buffers [key] [sizes] [media(0:cpu 1:npu)]",
+                       self.get_into_layers, 3),
+            CliCommand("batch_put_from_layers", func=self.batch_put_from_layers, args_num=3,
+                       cmd_desc="batch put data from multiple buffers [keys] [sizes] [media(0:cpu 1:npu)]"),
+            CliCommand("batch_get_into_layers", func=self.batch_get_into_layers, args_num=3,
+                       cmd_desc="batch get data into multiple buffers [keys] [sizes] [media(0:cpu 1:npu)]")
         ]
         self.register_command(cmds)
 
@@ -256,55 +225,54 @@ class MmcTest(TestServer):
 
     @result_handler
     def init_mmc(self):
-        self.__distributed_store_object = DistributedObjectStore()
-        global DEVICE_ID
-        res = self.__distributed_store_object.init(DEVICE_ID)
+        self._store = DistributedObjectStore()
+        res = self._store.init(self._device_id)
         self.cli_return(res)
 
     @result_handler
     def close_mmc(self):
-        res = self.__distributed_store_object.close()
+        res = self._store.close()
         self.cli_return(res)
 
     @result_handler
     def put(self, key: str, data: bytes):
-        res = self.__distributed_store_object.put(key, data)
+        res = self._store.put(key, data)
         self.cli_return(res)
 
     @result_handler
     def put_from(self, key: str, size: int, media: int):
         if media == 0:
             direct = int(MmcDirect.COPY_H2G.value)
-            tensor = malloc_cpu(min_block_size=size)
+            tensor = self.malloc_tensor(mini_block_size=size, device='cpu')
         else:
             direct = int(MmcDirect.COPY_L2G.value)
-            tensor = malloc_npu(min_block_size=size)
+            tensor = self.malloc_tensor(mini_block_size=size, device='npu')
         if size <= 0:
-            res = self.__distributed_store_object.put_from(key, 0, 0, direct)
+            res = self._store.put_from(key, 0, 0, direct)
             value = 0
         else:
-            res = self.__distributed_store_object.put_from(key, tensor.data_ptr(), size, direct)
+            res = self._store.put_from(key, tensor.data_ptr(), size, direct)
             value = tensor_sum(tensor)
         self.cli_return(str([res, value]))
 
     @result_handler
     def get(self, key: str):
-        res = self.__distributed_store_object.get(key)
+        res = self._store.get(key)
         self.cli_return(res)
 
     @result_handler
     def get_into(self, key: str, size: int, media: int):
         if media == 0:
             direct = int(MmcDirect.COPY_G2H.value)
-            tensor = malloc_cpu(min_block_size=size)
+            tensor = self.malloc_tensor(mini_block_size=size, device='cpu')
         else:
             direct = int(MmcDirect.COPY_G2L.value)
-            tensor = malloc_npu(min_block_size=size)
+            tensor = self.malloc_tensor(mini_block_size=size, device='npu')
         if size <= 0:
-            res = self.__distributed_store_object.get_into(key, 0, 0, direct)
+            res = self._store.get_into(key, 0, 0, direct)
             value = 0
         else:
-            res = self.__distributed_store_object.get_into(key, tensor[0].data_ptr(), size, direct)
+            res = self._store.get_into(key, tensor[0].data_ptr(), size, direct)
             value = tensor_sum(tensor)
         self.cli_return(str([res, value]))
 
@@ -315,17 +283,17 @@ class MmcTest(TestServer):
         if media == 0:
             direct = int(MmcDirect.COPY_G2H.value)
             for i in range(len(sizes)):
-                blocks.append(malloc_cpu(min_block_size=sizes[i]))
+                blocks.append(self.malloc_tensor(mini_block_size=sizes[i], device='cpu'))
         else:
             direct = int(MmcDirect.COPY_G2L.value)
             for i in range(len(sizes)):
-                blocks.append(malloc_npu(min_block_size=sizes[i]))
+                blocks.append(self.malloc_tensor(mini_block_size=sizes[i], device='npu'))
         for i in range(len(sizes)):
             if blocks[i] is None:
                 data_ptrs.append(0)
             else:
                 data_ptrs.append(blocks[i].data_ptr())
-        res = self.__distributed_store_object.batch_get_into(keys, data_ptrs, sizes, direct)
+        res = self._store.batch_get_into(keys, data_ptrs, sizes, direct)
         values = []
         for i in range(len(sizes)):
             values.append(tensor_sum(blocks[i]))
@@ -338,17 +306,17 @@ class MmcTest(TestServer):
         if media == 0:
             direct = int(MmcDirect.COPY_H2G.value)
             for i in range(len(sizes)):
-                blocks.append(malloc_cpu(min_block_size=sizes[i]))
+                blocks.append(self.malloc_tensor(mini_block_size=sizes[i], device='cpu'))
         else:
             direct = int(MmcDirect.COPY_L2G.value)
             for i in range(len(sizes)):
-                blocks.append(malloc_npu(min_block_size=sizes[i]))
+                blocks.append(self.malloc_tensor(mini_block_size=sizes[i], device='npu'))
         for i in range(len(sizes)):
             if blocks[i] is None:
                 data_ptrs.append(0)
             else:
                 data_ptrs.append(blocks[i].data_ptr())
-        res = self.__distributed_store_object.batch_put_from(keys, data_ptrs, sizes, direct)
+        res = self._store.batch_put_from(keys, data_ptrs, sizes, direct)
         values = []
         for i in range(len(sizes)):
             values.append(tensor_sum(blocks[i]))
@@ -356,44 +324,146 @@ class MmcTest(TestServer):
 
     @result_handler
     def is_exist(self, key: str):
-        res = self.__distributed_store_object.is_exist(key)
+        res = self._store.is_exist(key)
         self.cli_return(res)
 
     @result_handler
     def batch_is_exist(self, keys: list[str]):
-        res = self.__distributed_store_object.batch_is_exist(keys)
+        res = self._store.batch_is_exist(keys)
         self.cli_return(res)
 
     @result_handler
     def remove(self, key: str):
-        res = self.__distributed_store_object.remove(key)
+        res = self._store.remove(key)
         self.cli_return(res)
 
     @result_handler
     def remove_batch(self, keys: list[str]):
-        res = self.__distributed_store_object.remove_batch(keys)
+        res = self._store.remove_batch(keys)
         self.cli_return(res)
     
     @result_handler
     def get_key_info(self, key: str):
-        res = self.__distributed_store_object.get_key_info(key)
+        res = self._store.get_key_info(key)
         self.cli_return(res)
 
     @result_handler
     def batch_get_key_info(self, keys: list[str]):
-        res = self.__distributed_store_object.batch_get_key_info(keys)
+        res = self._store.batch_get_key_info(keys)
         self.cli_return(res)
+
+    @result_handler
+    def put_from_layers(self, key: str, sizes: List[int], media: int):
+        layers_num = len(sizes)
+        mini_block_size = max(sizes)
+        if media == 0:
+            direct = MmcDirect.COPY_H2G.value
+            device = 'cpu'
+        else:
+            direct = MmcDirect.COPY_L2G.value
+            device = 'npu'
+        tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
+        res = self._store.put_from_layers(key,
+                                          [layer.data_ptr() for layer in tensor],
+                                          sizes,
+                                          direct)
+        value = tensor_sum(tensor)
+        self.cli_return(str([res, value]))
+
+    @result_handler
+    def get_into_layers(self, key: str, sizes: List[int], media: int):
+        layers_num = len(sizes)
+        mini_block_size = max(sizes)
+        if media == 0:
+            direct = MmcDirect.COPY_G2H.value
+            device = 'cpu'
+        else:
+            direct = MmcDirect.COPY_G2L.value
+            device = 'npu'
+        tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
+        res = self._store.get_into_layers(key,
+                                          [layer.data_ptr() for layer in tensor],
+                                          sizes,
+                                          direct)
+        value = tensor_sum(tensor)
+        self.cli_return(str([res, value]))
+
+    @result_handler
+    def batch_put_from_layers(self, keys: List[str], sizes: List[List[int]], media: int):
+        if media == 0:
+            direct = MmcDirect.COPY_H2G.value
+            device = 'cpu'
+        else:
+            direct = MmcDirect.COPY_L2G.value
+            device = 'npu'
+        blocks = []
+        for sizes_ in sizes:
+            tensor = self.malloc_tensor(layer_num=len(sizes_), mini_block_size=max(sizes_), device=device)
+            blocks.append(tensor)
+        results = self._store.batch_put_from_layers(
+            keys,
+            [[layer.data_ptr() for layer in block] for block in blocks],
+            sizes,
+            direct
+        )
+        tensor_sums = [tensor_sum(tensor) for tensor in blocks]
+        self.cli_return(str([results, tensor_sums]))
+
+    @result_handler
+    def batch_get_into_layers(self, keys: List[str], sizes: List[List[int]], media: int):
+        if media == 0:
+            direct = MmcDirect.COPY_G2H.value
+            device = 'cpu'
+        else:
+            direct = MmcDirect.COPY_G2L.value
+            device = 'npu'
+        blocks = []
+        for sizes_ in sizes:
+            tensor = self.malloc_tensor(layer_num=len(sizes_), mini_block_size=max(sizes_), device=device)
+            blocks.append(tensor)
+        results = self._store.batch_get_into_layers(
+            keys,
+            [[layer.data_ptr() for layer in block] for block in blocks],
+            sizes,
+            direct
+        )
+        tensor_sums = [tensor_sum(tensor) for tensor in blocks]
+        self.cli_return(str([results, tensor_sums]))
+
+    def set_device(self):
+        import acl
+        acl.init()
+        ret = acl.rt.set_device(self._device_id)
+        if ret != 0:
+            raise RuntimeError("acl set device failed")
+
+    def malloc_tensor(self, layer_num: int = 1, block_num: int = 1, mini_block_size: int = 1024, device='cpu'):
+        if device not in ('cpu', 'npu'):
+            raise RuntimeError(f"invalid device: {device}")
+        if mini_block_size <= 0:
+            return None
+
+        if device == 'npu':
+            import torch_npu
+            self.set_device()
+        raw_blocks = torch.randint(
+            low=0, high=256,
+            size=(layer_num, block_num, mini_block_size),
+            dtype=torch.uint8,
+            device=torch.device(device)
+        )
+        return raw_blocks
 
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:
-        _, ip, port = sys.argv
+        _, ip_str, port_str = sys.argv
+        server = MmcTest(ip_str, port_str)
     elif len(sys.argv) == 4:
-        _, ip, port, device_id_str = sys.argv
-        DEVICE_ID = int(device_id_str)
+        _, ip_str, port_str, device_id_str = sys.argv
+        server = MmcTest(ip_str, port_str, int(device_id_str))
     else:
         print("Please input ip and port when starting the process.")
         sys.exit(1)
-    print(f"Start app_id: {ip}:{port} device({DEVICE_ID})")
-    server = MmcTest(ip, port)
+    print(f"Start app_id: {ip_str}:{port_str}")
     server.start()

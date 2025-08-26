@@ -26,6 +26,9 @@ class TestExample(unittest.TestCase):
         exist_res = self._distributed_object_store.is_exist(self.key_1)
         self.assertEqual(exist_res, 1)
 
+        key_info = self._distributed_object_store.get_key_info(self.key_1)
+        print(key_info)
+
         retrieved_data = self._distributed_object_store.get(self.key_1)
         print(retrieved_data)
         self.assertEqual(retrieved_data, self.original_data)
