@@ -119,8 +119,8 @@ SMEM_API int32_t smem_trans_register_mem(smem_trans_t handle, void *address, siz
     return SM_OK;
 }
 
-SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count,
-                                          uint32_t flags)
+SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[],
+                                               uint32_t count, uint32_t flags)
 {
     SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);

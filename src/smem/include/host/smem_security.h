@@ -19,7 +19,8 @@ extern "C" {
  * @param plainText        [out] the decrypted text(private key password)
  * @param plaintextLen     [out] the length of plainText
  */
-typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen, char *plainText, size_t &plainTextLen);
+typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen, char *plainText,
+                                    size_t &plainTextLen);
 
 /**
  * @brief Register the handler for decryption of private key password.

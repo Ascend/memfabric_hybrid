@@ -8,12 +8,11 @@
 
 using namespace ock::smem;
 
-namespace ock{
-    namespace smem{
-        extern Result ParseTlsInfo(const std::string &tlsInput, AcclinkTlsOption &tlsOption);
-    }
+namespace ock {
+namespace smem {
+    extern Result ParseTlsInfo(const char* tlsInput, AcclinkTlsOption &tlsOption);
 }
-
+}
 
 class SmemStoreFactoryTest : public testing::Test {
 public:
@@ -36,7 +35,7 @@ public:
 
 TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test1)
 {
-    std::string info = 
+    std::string info =
         "tlsCaPath: /etc/ssl/certs/;"
         "tlsCert:    ;"
         "tlsPk:;"
@@ -58,7 +57,7 @@ TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test1)
 
 TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test2)
 {
-    std::string info = 
+    std::string info =
         "tlsCaPath /etc/ssl/certs/;"
         "tlsCert: /etc/ssl/certs/server.crt;"
         "tlsPk: /etc/ssl/private/server.key;"
@@ -75,7 +74,7 @@ TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test2)
 
 TEST_F(SmemStoreFactoryTest, ParseTlsInfo_test3)
 {
-    std::string info = 
+    std::string info =
         "tlsCaPath: /etc/ssl/certs/;"
         "tlsCert: /etc/ssl/certs/server.crt;"
         "tlsPk: /etc/ssl/private/server.key;"

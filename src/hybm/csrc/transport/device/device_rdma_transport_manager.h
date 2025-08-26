@@ -44,6 +44,7 @@ private:
     static bool PrepareOpenDevice(uint32_t device, uint32_t rankCount, in_addr &deviceIp, void *&rdmaHandle);
     static bool OpenTsd(uint32_t deviceId, uint32_t rankCount);
     static bool RaInit(uint32_t deviceId);
+    static bool RaDeInit(uint32_t deviceId);
     static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
     static bool RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle);
     void ClearAllRegisterMRs();
@@ -55,6 +56,10 @@ private:
     in_addr deviceIp_{0};
     uint16_t devicePort_{0};
     void *rdmaHandle_{nullptr};
+    static void *storedRdmaHandle_;
+    static bool tsdOpened_;
+    static bool raInitialized_;
+    static bool deviceIpRetired_;
     std::string nicInfo_;
     std::mutex mrsMutex_;
     std::map<uint64_t, RegMemResult, std::greater<uint64_t>> registerMRS_;
