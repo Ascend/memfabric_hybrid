@@ -39,12 +39,9 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(InitSegment(), "InitSegment failed.");
 
-    auto ret = InitTransManager();
-    if (ret != BM_OK) {
-        /* Maybe we should skip transport init */
-        if (options->bmDataOpType != HYBM_DOP_TYPE_ROCE) {
-            BM_LOG_INFO("skip transport manager");
-        } else {
+    if (options_.bmDataOpType == HYBM_DOP_TYPE_ROCE) {
+        auto ret = InitTransManager();
+        if (ret != BM_OK) {
             BM_LOG_ERROR("init transport manager failed");
             return ret;
         }
@@ -185,24 +182,30 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_exchange_info &desc, uint32_t 
         return BM_NOT_INITIALIZED;
     }
 
+    if (!transportManager_) {
+        BM_LOG_DEBUG("no need to export dev exchange info, because no transport manager");
+        desc.descLen = 0;
+        return BM_OK;
+    }
+
     std::string info;
     EntityExportInfo exportInfo;
     exportInfo.magic = EXPORT_INFO_MAGIC;
     exportInfo.version = EXPORT_INFO_VERSION;
     exportInfo.rankId = options_.rankId;
-    if (transportManager_ != nullptr) {
-        auto &nic = transportManager_->GetNic();
-        if (nic.size() >= sizeof(exportInfo.nic)) {
-            BM_LOG_ERROR("transport get nic(" << nic << ") too long.");
-            return BM_ERROR;
-        }
-        std::copy_n(nic.c_str(), nic.size(), exportInfo.nic);
-        auto ret = LiteralExInfoTranslater<EntityExportInfo>{}.Serialize(exportInfo, info);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("export info failed: " << ret);
-            return BM_ERROR;
-        }
+
+    auto &nic = transportManager_->GetNic();
+    if (nic.size() >= sizeof(exportInfo.nic)) {
+        BM_LOG_ERROR("transport get nic(" << nic << ") too long.");
+        return BM_ERROR;
     }
+    std::copy_n(nic.c_str(), nic.size(), exportInfo.nic);
+    auto ret = LiteralExInfoTranslater<EntityExportInfo>{}.Serialize(exportInfo, info);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("export info failed: " << ret);
+        return BM_ERROR;
+    }
+
     if (info.size() > sizeof(desc.desc)) {
         BM_LOG_ERROR("export to string wrong size: " << info.size() << ", the correct size is: " << sizeof(desc.desc));
         return BM_ERROR;
@@ -223,6 +226,9 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchan
     int ret = BM_ERROR;
     std::string info;
     if (slice == nullptr) {
+        /*
+         * This branch is just for smem_trans and no transport_manager
+         */
         ret = segment_->Export(info);
         if (ret != 0) {
             BM_LOG_ERROR("export to string failed: " << ret);
@@ -634,6 +640,7 @@ Result MemEntityDefault::InitTransManager()
         BM_LOG_ERROR("Failed to open device, ret: " << ret);
         transportManager_ = nullptr;
     }
+    BM_LOG_DEBUG("init transport manager successfully.");
     return ret;
 }
 
@@ -643,8 +650,6 @@ Result MemEntityDefault::InitDataOperator()
         return BM_OK;
     }
     switch (options_.bmDataOpType) {
-        case HYBM_DOP_TYPE_TCP:
-        case HYBM_DOP_TYPE_MTE:
         case HYBM_DOP_TYPE_ROCE:
             dataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
             break;
@@ -652,6 +657,8 @@ Result MemEntityDefault::InitDataOperator()
             dataOperator_ = std::make_shared<HostDataOpSDMA>();
             break;
         default:
+            /* no support for mte */
+            BM_LOG_ERROR("invalid bm dataOpType " << options_.bmDataOpType);
             return BM_ERROR;
     }
 

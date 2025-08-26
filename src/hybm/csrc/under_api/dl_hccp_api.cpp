@@ -106,6 +106,7 @@ Result DlHccpApi::LoadLibrary()
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
 
+    BM_LOG_DEBUG("load hccp library done");
     gLoaded = true;
     return BM_OK;
 }

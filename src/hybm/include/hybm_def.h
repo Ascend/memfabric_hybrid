@@ -107,6 +107,11 @@ typedef enum {
     HYBM_DATA_COPY_DIRECTION_BUTT
 } hybm_data_copy_direction;
 
+typedef enum {
+    HYBM_LOAD_FLAG_NEED_HOST_RDMA  = 1U << 16,      /* ref SMEM_INIT_FLAG_NEED_HOST_RDMA */
+    HYBM_LOAD_FLAG_NEED_DEVICE_RDMA  = 1U << 17,    /* ref SMEM_INIT_FLAG_NEED_DEVICE_RDMA */
+} hybm_load_flag;
+
 typedef struct {
     const void *src;
     uint64_t spitch;

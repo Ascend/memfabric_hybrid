@@ -245,6 +245,10 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
         return ret;
     }
 
+    if (exInfo.descLen == 0) {
+        return SM_OK;
+    }
+
     hybm_exchange_info allExInfo[options_.rankCount];
     ret = globalGroup_->GroupAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
                                        sizeof(hybm_exchange_info) * options_.rankCount);

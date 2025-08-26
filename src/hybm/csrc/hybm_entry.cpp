@@ -216,6 +216,21 @@ int32_t HalGvaPrecheck(void)
     return BM_ERROR;
 }
 
+static inline int hybm_load_library(uint64_t flags)
+{
+    char *path = std::getenv("ASCEND_HOME_PATH");
+    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
+
+    std::string libPath = std::string(path).append("/lib64");
+    if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
+        BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
+        return BM_ERROR;
+    }
+    auto ret = DlApi::LoadLibrary(libPath, flags);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret << " flags " << flags);
+    return 0;
+}
+
 HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
@@ -226,24 +241,21 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
             return BM_ERROR;
         }
 
+        /*
+         * hybm_init will be accessed multiple times when bm/shm/trans init
+         * incremental loading is required here.
+         */
+        BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(flags), "load library failed");
+
         initialized++;
         return 0;
     }
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
 
-    auto path = std::getenv("ASCEND_HOME_PATH");
-    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(flags), "load library failed");
 
-    auto libPath = std::string(path).append("/lib64");
-    if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
-        BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
-        return BM_ERROR;
-    }
-    auto ret = DlApi::LoadLibrary(libPath);
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
-
-    ret = DlAclApi::AclrtSetDevice(deviceId);
+    auto ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);

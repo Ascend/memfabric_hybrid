@@ -132,6 +132,7 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gServiceGetMessageDataLen, serviceGetMessageDataLenFunc, hcomHandle, "Service_GetMessageDataLen");
     DL_LOAD_SYM(gServiceSetExternalLogger, serviceSetExternalLoggerFunc, hcomHandle, "Service_SetExternalLogger");
 
+    BM_LOG_DEBUG("load hcom library done");
     gLoaded = true;
     return BM_OK;
 }

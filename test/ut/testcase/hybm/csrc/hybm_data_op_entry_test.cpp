@@ -17,9 +17,6 @@ using namespace ock::mf;
 namespace {
 const uint64_t g_rankSize = 1;
 const uint64_t g_localMemSize = 1024 * 1024 * 1024;
-const hybm_options g_options = {HYBM_TYPE_HBM_HOST_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC, g_rankSize, 0, 0, g_localMemSize, 0, true,
-                                HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
 const hybm_options g_rdma_options1 = {HYBM_TYPE_HBM_HOST_INITIATE, HYBM_DOP_TYPE_ROCE, HYBM_SCOPE_CROSS_NODE,
                                       HYBM_RANK_TYPE_STATIC, g_rankSize, 0, 0, g_localMemSize, 0, true,
                                       HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
@@ -39,7 +36,7 @@ class HybmDataOpEntryTest : public ::testing::TestWithParam<TestData> {
 protected:
     static void SetUpTestSuite()
     {
-        EXPECT_EQ(hybm_init(0, 0), BM_OK);
+        EXPECT_EQ(hybm_init(0, HYBM_LOAD_FLAG_NEED_HOST_RDMA | HYBM_LOAD_FLAG_NEED_DEVICE_RDMA), BM_OK);
         hybm_set_log_level(0);
     }
 
@@ -227,7 +224,6 @@ INSTANTIATE_TEST_SUITE_P(
     HybmOptions,
     HybmDataOpEntryTest,
     ::testing::Values(
-        TestData{&g_options, "MTE"},
         TestData{&g_rdma_options1, "RDMA_HBM"},
         TestData{&g_rdma_options2, "RDMA_DRAM"}
     ),

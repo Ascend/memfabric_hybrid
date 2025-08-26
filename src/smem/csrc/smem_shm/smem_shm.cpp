@@ -17,6 +17,16 @@ std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
 #endif
 
+static inline int32_t SmemShmOpCheck(SmemShmEntryManager &manager, smem_shm_data_op_type dataOpType)
+{
+    if (dataOpType == SMEMS_DATA_OP_ROCE && !manager.NeedDeviceRdma()) {
+        SM_LOG_AND_SET_LAST_ERROR(
+            "smem shm op type is roce, but SMEM_INIT_FLAG_NEED_DEVICE_RDMA not set when smem_shm_init.");
+        return 0;
+    }
+    return 1;
+}
+
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                                     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
@@ -25,14 +35,15 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
                                                    << " input rank: " << rankId,
                        nullptr);
     SM_VALIDATE_RETURN(!(id > SMEM_ID_MAX), "invalid id, id range is: [0, " << SMEM_ID_MAX << "]", nullptr);
-    SM_VALIDATE_RETURN(dataOpType == SMEMS_DATA_OP_MTE, "only support SMEMS_DATA_OP_MTE now", nullptr);
     SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", nullptr);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", nullptr);
     SM_VALIDATE_RETURN(symmetricSize <= SMEM_LOCAL_SIZE_MAX, "symmetric size exceeded", nullptr);
 
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     SmemShmEntryPtr entry = nullptr;
-    auto ret = SmemShmEntryManager::Instance().CreateEntryById(id, entry);
+    auto &manager = SmemShmEntryManager::Instance();
+    SM_ASSERT_RETURN_NOLOG(SmemShmOpCheck(manager, dataOpType), nullptr);
+    auto ret = manager.CreateEntryById(id, entry);
     if (ret != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("malloc entry failed, id: " << id << ", result: " << ret);
         return nullptr;
@@ -40,7 +51,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
 
     hybm_options options;
     options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmDataOpType = (dataOpType == SMEMS_DATA_OP_MTE) ? HYBM_DOP_TYPE_MTE : HYBM_DOP_TYPE_ROCE;
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = rankSize;
@@ -55,7 +66,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
-        SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
+        manager.RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return nullptr;
     }
 

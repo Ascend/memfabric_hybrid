@@ -10,7 +10,7 @@
 namespace ock {
 namespace mf {
 
-Result DlApi::LoadLibrary(const std::string &libDirPath)
+Result DlApi::LoadLibrary(const std::string &libDirPath, uint64_t flags)
 {
     auto result = DlAclApi::LoadLibrary(libDirPath);
     if (result != BM_OK) {
@@ -24,14 +24,24 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
         return result;
     }
 
-    result = DlHccpApi::LoadLibrary();
-    if (result != BM_OK) {
-        DlHalApi::CleanupLibrary();
-        DlAclApi::CleanupLibrary();
-        return result;
+    if (flags & HYBM_LOAD_FLAG_NEED_DEVICE_RDMA) {
+        result = DlHccpApi::LoadLibrary();
+        if (result != BM_OK) {
+            DlHalApi::CleanupLibrary();
+            DlAclApi::CleanupLibrary();
+            return result;
+        }
     }
 
-    result = DlHcomApi::LoadLibrary();
+    if (flags & HYBM_LOAD_FLAG_NEED_HOST_RDMA) {
+        result = DlHcomApi::LoadLibrary();
+        if (result != BM_OK) {
+            DlHccpApi::CleanupLibrary();
+            DlHalApi::CleanupLibrary();
+            DlAclApi::CleanupLibrary();
+            return result;
+        }
+    }
     return BM_OK;
 }
 

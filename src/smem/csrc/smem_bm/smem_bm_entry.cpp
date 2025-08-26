@@ -135,17 +135,19 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = globalGroup_->GroupAllGather((char *)&entityInfo_, sizeof(hybm_exchange_info), (char *)allExInfo,
-                                       sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm gather export failed, result: " << ret);
-        return SM_ERROR;
-    }
+    if (entityInfo_.descLen != 0) {
+        ret = globalGroup_->GroupAllGather((char *)&entityInfo_, sizeof(hybm_exchange_info), (char *)allExInfo,
+                                           sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
+        if (ret != 0) {
+            SM_LOG_ERROR("hybm gather export failed, result: " << ret);
+            return SM_ERROR;
+        }
 
-    ret = hybm_entity_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm import failed, result: " << ret);
-        return SM_ERROR;
+        ret = hybm_entity_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
+        if (ret != 0) {
+            SM_LOG_ERROR("hybm import failed, result: " << ret);
+            return SM_ERROR;
+        }
     }
 
     ret = globalGroup_->GroupBarrier();

@@ -33,7 +33,7 @@ class HybmDataOpRdmaTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
-        EXPECT_EQ(hybm_init(0, 0), BM_OK);
+        EXPECT_EQ(hybm_init(0, HYBM_LOAD_FLAG_NEED_HOST_RDMA), BM_OK);
         hybm_set_log_level(0);
 
         transport::TransportOptions options;

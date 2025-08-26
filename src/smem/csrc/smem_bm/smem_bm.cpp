@@ -102,6 +102,31 @@ SMEM_API uint32_t smem_bm_get_rank_id()
     return SmemBmEntryManager::Instance().GetRankId();
 }
 
+/* return 1 means check ok */
+static inline int32_t SmemBmOpCheck(SmemBmEntryManager &manager, smem_bm_data_op_type dataOpType,
+                                    uint64_t localDRAMSize, uint64_t localHBMSize)
+{
+    hybm_type type = SmemHybmHelper::TransHybmType(localDRAMSize, localHBMSize);
+    if (type == HYBM_TYPE_BUTT) {
+        SM_LOG_AND_SET_LAST_ERROR("smem bm type invalid.");
+        return 0;
+    }
+    if (dataOpType == SMEMB_DATA_OP_ROCE) {
+        if ((type == HYBM_TYPE_DRAM_HOST_INITIATE || HYBM_TYPE_HBM_DRAM_HOST_INITIATE) &&
+            !manager.NeedHostRdma()) {
+            SM_LOG_AND_SET_LAST_ERROR(
+                "smem bm op type is roce, but SMEM_INIT_FLAG_NEED_HOST_RDMA not set when smem_bm_init.");
+            return 0;
+        }
+        if (type == HYBM_TYPE_HBM_HOST_INITIATE && !manager.NeedDeviceRdma()) {
+            SM_LOG_AND_SET_LAST_ERROR(
+                "smem bm op type is roce, but SMEM_INIT_FLAG_NEED_DEVICE_RDMA not set when smem_bm_init.");
+            return 0;
+        }
+    }
+    return 1;
+}
+
 SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
                                   uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
@@ -112,6 +137,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
+    SM_ASSERT_RETURN_NOLOG(SmemBmOpCheck(manager, dataOpType, localDRAMSize, localHBMSize), nullptr);
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);

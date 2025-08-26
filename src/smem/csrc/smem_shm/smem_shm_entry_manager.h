@@ -34,6 +34,8 @@ public:
 
     StorePtr GetStoreClient() const;
 
+    bool NeedDeviceRdma() const;
+
     void Destroy();
 
 private:
@@ -57,6 +59,11 @@ inline uint16_t SmemShmEntryManager::GetDeviceId() const
 inline StorePtr SmemShmEntryManager::GetStoreClient() const
 {
     return store_;
+}
+
+inline bool SmemShmEntryManager::NeedDeviceRdma() const
+{
+    return config_.flags & HYBM_LOAD_FLAG_NEED_DEVICE_RDMA;
 }
 
 }  // namespace smem
