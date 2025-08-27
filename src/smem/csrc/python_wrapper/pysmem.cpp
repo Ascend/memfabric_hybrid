@@ -403,7 +403,8 @@ void DefineBmConfig(py::module_ &m)
         .value("L2G", SMEMB_COPY_L2G, "copy data from local space to global space")
         .value("G2L", SMEMB_COPY_G2L, "copy data from global space to local space")
         .value("G2H", SMEMB_COPY_G2H, "copy data from global space to host memory")
-        .value("H2G", SMEMB_COPY_H2G, "copy data from host memory to global space");
+        .value("H2G", SMEMB_COPY_H2G, "copy data from host memory to global space")
+        .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
@@ -585,7 +586,7 @@ Arguments:
     src_ptr(int): source gva of data
     dst_ptr(int): destination gva of data
     size(int): size of data to be copied
-    type(BmCopyType): copy type, L2G, G2L, G2H, H2G
+    type(BmCopyType): copy type, L2G, G2L, G2H, H2G, G2G
     flags(int): optional flags
 Returns:
     0 if successful)")
@@ -595,7 +596,7 @@ Returns:
 
 Arguments:
     params(CopyData2DParams): parameters of 2D copy
-    type(BmCopyType): copy type, L2G, G2L, G2H, H2G
+    type(BmCopyType): copy type, L2G, G2L, G2H, H2G, G2G
     flags(int): optional flags
 Returns:
     0 if successful)");

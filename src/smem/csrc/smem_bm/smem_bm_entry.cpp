@@ -199,6 +199,7 @@ static hybm_data_copy_direction directMap[SMEMB_COPY_BUTT] = {
     HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
     HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
     HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
+    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 static hybm_data_copy_direction dramDirectMap[SMEMB_COPY_BUTT] = {
@@ -206,6 +207,7 @@ static hybm_data_copy_direction dramDirectMap[SMEMB_COPY_BUTT] = {
     HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
     HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
     HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
+    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
@@ -226,7 +228,7 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
                 << size << " invalid.", SM_INVALID_PARAM);
             break;
         default:
-            SM_VALIDATE_RETURN(AddressInRange(src, size), "dest address: " << dest << ", size: " << size << " invalid.",
+            SM_VALIDATE_RETURN(AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
                                SM_INVALID_PARAM);
             break;
     }
