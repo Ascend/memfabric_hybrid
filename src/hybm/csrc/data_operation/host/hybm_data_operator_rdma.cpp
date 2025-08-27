@@ -78,19 +78,19 @@ int32_t HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
     int ret;
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyHost2Gva(params.src, params.dest, params.count, options);
+            ret = CopyHost2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
-            ret = CopyDevice2Gva(params.src, params.dest, params.count, options);
+            ret = CopyDevice2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyGva2Gva(params.src, params.dest, params.count, options);
+            ret = CopyGva2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_HOST:
-            ret = CopyGva2Host(params.src, params.dest, params.count, options);
+            ret = CopyGva2Host(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device(params.src, params.dest, params.count, options);
+            ret = CopyGva2Device(params.src, params.dest, params.dataSize, options);
             break;
         default:
             BM_LOG_ERROR("data copy invalid direction: " << direction);
@@ -130,6 +130,13 @@ int32_t HostDataOpRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_d
             ret = BM_INVALID_PARAM;
     }
     return ret;
+}
+
+int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                                      const ExtOptions &options) noexcept
+{
+    BM_LOG_ERROR("not supported batch data copy!");
+    return BM_ERROR;
 }
 
 int32_t HostDataOpRDMA::DataCopyAsync(hybm_copy_params &params,

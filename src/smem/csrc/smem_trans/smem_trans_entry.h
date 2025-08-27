@@ -110,6 +110,7 @@ private:
 
     ReadWriteLock remoteSliceRwMutex_;
     std::unordered_map<uint64_t, std::map<const void *, LocalMapAddress, std::greater<const void *>>> remoteSlices_;
+    std::map<std::string, uint64_t> nameToWorkerId;     /* To accelerate name parsed */
 };
 
 inline const std::string &SmemTransEntry::Name() const

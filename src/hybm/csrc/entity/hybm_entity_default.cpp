@@ -461,9 +461,24 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
-    segment_->GetRankIdByAddr(params.src, params.count, options.srcRankId);
-    segment_->GetRankIdByAddr(params.dest, params.count, options.destRankId);
+    segment_->GetRankIdByAddr(params.src, params.dataSize, options.srcRankId);
+    segment_->GetRankIdByAddr(params.dest, params.dataSize, options.destRankId);
     return dataOperator_->DataCopy(params, direction, options);
+}
+
+int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                                        void *stream, uint32_t flags) noexcept
+{
+    if (!initialized || dataOperator_ == nullptr) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+    ExtOptions options{};
+    options.flags = flags;
+    options.stream = stream;
+    segment_->GetRankIdByAddr(params.sources[0], params.dataSizes[0], options.srcRankId);
+    segment_->GetRankIdByAddr(params.destinations[0], params.dataSizes[0], options.destRankId);
+    return dataOperator_->BatchDataCopy(params, direction, options);
 }
 
 int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,

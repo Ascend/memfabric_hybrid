@@ -22,12 +22,14 @@ public:
     virtual int32_t UnReserveMemorySpace() noexcept = 0;
 
     virtual int32_t AllocLocalMemory(uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept = 0;
-    virtual int32_t RegisterLocalMemory(const void *ptr, uint64_t size, uint32_t flags, hybm_mem_slice_t &slice) noexcept = 0;
+    virtual int32_t RegisterLocalMemory(const void *ptr, uint64_t size, uint32_t flags,
+                                        hybm_mem_slice_t &slice) noexcept = 0;
     virtual int32_t FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept = 0;
 
     virtual int32_t ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
     virtual int32_t ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
-    virtual int32_t ImportExchangeInfo(const hybm_exchange_info desc[], uint32_t count, void *addresses[], uint32_t flags) noexcept = 0;
+    virtual int32_t ImportExchangeInfo(const hybm_exchange_info desc[], uint32_t count, void *addresses[],
+                                       uint32_t flags) noexcept = 0;
     virtual int32_t ImportEntityExchangeInfo(const hybm_exchange_info desc[],
                                              uint32_t count, uint32_t flags) noexcept = 0;
     virtual int32_t GetExportSliceInfoSize(size_t &size) noexcept = 0;
@@ -40,8 +42,12 @@ public:
     virtual bool SdmaReaches(uint32_t remoteRank) const noexcept = 0;
 
     virtual bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept = 0;
-    virtual int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept = 0;
-    virtual int32_t CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept = 0;
+    virtual int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,
+                             uint32_t flags) noexcept = 0;
+    virtual int32_t CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
+                               uint32_t flags) noexcept = 0;
+    virtual int32_t BatchCopyData(hybm_batch_copy_params &params, hybm_data_copy_direction direction, void *stream,
+                                  uint32_t flags) noexcept = 0;
 
     virtual ~MemEntity() noexcept = default;
 };

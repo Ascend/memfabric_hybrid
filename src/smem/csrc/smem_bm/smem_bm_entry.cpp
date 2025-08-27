@@ -238,6 +238,20 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
 }
 
+Result SmemBmEntry::DataCopyBatch(const void **src, void **dest, const size_t* size,
+                                  uint32_t count, smem_bm_copy_type t, uint32_t flags)
+{
+    SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(count != 0, "invalid param, size is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+
+    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    hybm_batch_copy_params copyParams = {src, dest, size, count};
+    return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
+}
+
 Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(params.src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
@@ -288,7 +302,7 @@ bool SmemBmEntry::AddressInRange(const void *address, uint64_t size)
     }
 
     auto totalSize = coreOptions_.singleRankVASpace * coreOptions_.rankCount;
-    if ((const uint8_t *)address + size >= (const uint8_t *)gva_ + totalSize) {
+    if ((const uint8_t *)address + size > (const uint8_t *)gva_ + totalSize) {
         return false;
     }
 

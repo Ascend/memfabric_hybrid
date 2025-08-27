@@ -69,8 +69,15 @@ typedef struct {
 typedef struct {
     const void *src;
     void *dest;
-    size_t count;
+    size_t dataSize;
 } smem_copy_params;
+
+typedef struct {
+    const void** sources;
+    void** destinations;
+    const size_t* dataSizes;
+    uint32_t batchSize;
+} smem_batch_copy_params;
 
 #ifdef __cplusplus
 }

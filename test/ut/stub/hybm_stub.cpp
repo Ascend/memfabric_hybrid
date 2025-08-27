@@ -164,7 +164,7 @@ int32_t hybm_set_extra_context_stub(hybm_entity_t e, const void *context, uint32
 int32_t hybm_data_copy_stub(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
                        void *stream, uint32_t flags)
 {
-    memcpy(params->dest, params->src, params->count);
+    memcpy(params->dest, params->src, params->dataSize);
     return 0;
 }
 

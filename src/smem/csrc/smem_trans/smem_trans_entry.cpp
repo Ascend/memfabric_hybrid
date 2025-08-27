@@ -254,14 +254,12 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
         mappedAddress[i] =
             (uint8_t *)pos->second.address + ((const uint8_t *)destAddresses[i] - (const uint8_t *)(pos->first));
     }
-
-    for (auto i = 0U; i < batchSize; i++) {
-        hybm_copy_params copyParams = {srcAddresses[i], mappedAddress[i], dataSizes[i]};
-        ret = hybm_data_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
-        if (ret != 0) {
-            SM_LOG_ERROR("copy data failed:" << ret);
-            return ret;
-        }
+    hybm_batch_copy_params copyParams = {srcAddresses, mappedAddress.data(), dataSizes, batchSize};
+    ret = hybm_data_batch_copy(entity_, &copyParams,
+                               HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    if (ret != 0) {
+        SM_LOG_ERROR("batch copy data failed:" << ret);
+        return ret;
     }
 
     return SM_OK;
@@ -445,6 +443,12 @@ Result SmemTransEntry::StoreDeviceInfo()
 Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &session)
 {
     WorkerSession workerSession;
+    auto it = nameToWorkerId.find(name);
+    if (it != nameToWorkerId.end()) {
+        /* fast path */
+        session = it->second;
+        return SM_OK;
+    }
     auto success = ParseTransName(name, workerSession.address, workerSession.port);
     if (!success) {
         SM_LOG_ERROR("parse name failed.");
@@ -453,6 +457,7 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &se
 
     WorkerIdUnion workerId{workerSession};
     session = workerId.workerId;
+    nameToWorkerId.emplace(name, workerId.workerId);
     return SM_OK;
 }
 

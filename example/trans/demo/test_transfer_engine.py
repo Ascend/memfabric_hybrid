@@ -4,7 +4,7 @@ import time
 import torch
 import torch_npu
 from mf_adapter import TransferEngine, create_config_store, set_log_level
-
+from mf_smem import set_conf_store_tls
 
 def main():
     # 解析命令行参数
@@ -23,7 +23,7 @@ def main():
     # 初始化引擎
     engine = TransferEngine()
     set_log_level(args.log_level)
-
+    set_conf_store_tls(False, "")
     # 根据角色执行不同的初始化和逻辑
     if args.role == "Decode":
         run_decode_role(engine, args, args.src_session_id)

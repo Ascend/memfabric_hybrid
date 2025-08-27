@@ -21,7 +21,8 @@ public:
                        const ExtOptions &options) noexcept override;
     int32_t DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                           const ExtOptions &options) noexcept override;
-
+    int32_t BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                          const ExtOptions &options) noexcept override;
     int32_t Wait(int32_t waitId) noexcept override;
 
 private:
@@ -29,6 +30,15 @@ private:
     int CopyDevice2Gva(void *gvaAddr, const void *deviceAddr, size_t count, void *stream) noexcept;
     int CopyGva2Host(void *hostAddr, const void *gvaAddr, size_t count, void *stream) noexcept;
     int CopyGva2Device(void *deviceAddr, const void *gvaAddr, size_t count, void *stream) noexcept;
+
+    int BatchCopyDevice2Gva(void *gvaAddrs[], const void *deviceAddrs[], const size_t counts[],
+                            uint32_t batchSize, void *stream) noexcept;
+    int BatchCopyGva2Device(void *deviceAddrs[], const void *gvaAddrs[], const size_t counts[],
+                            uint32_t batchSize, void *stream) noexcept;
+    int BatchCopyHost2Gva(void *gvaAddrs[], const void *deviceAddrs[], const size_t counts[],
+                          uint32_t batchSize, void *stream) noexcept;
+    int BatchCopyGva2Host(void *deviceAddrs[], const void *gvaAddrs[], const size_t counts[],
+                          uint32_t batchSize, void *stream) noexcept;
 
     int CopyHost2Gva2d(hybm_copy_2d_params &params, void *stream) noexcept;
     int CopyDevice2Gva2d(hybm_copy_2d_params &params, void *stream) noexcept;
