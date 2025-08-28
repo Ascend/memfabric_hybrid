@@ -85,6 +85,24 @@ install(
 )
 
 install(
+        TARGETS tsd_shared
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver/lib64
+        PERMISSIONS OWNER_READ GROUP_READ
+)
+
+install(
+        TARGETS ra_shared
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver/lib64
+        PERMISSIONS OWNER_READ GROUP_READ
+)
+
+install(
+        TARGETS hcom_shared
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver/lib64
+        PERMISSIONS OWNER_READ GROUP_READ
+)
+
+install(
         FILES version.info
         DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver
         PERMISSIONS OWNER_READ GROUP_READ

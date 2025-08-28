@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 #define MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
@@ -35,6 +35,7 @@ typedef enum {
     HYBM_DOP_TYPE_MTE = 0,
     HYBM_DOP_TYPE_ROCE,
     HYBM_DOP_TYPE_SDMA,
+    HYBM_DOP_TYPE_DEVICE_RDMA,
     HYBM_DOP_TYPE_TCP,
 
     HYBM_DOP_TYPE_BUTT

@@ -23,7 +23,7 @@ SMEM_API int32_t smem_trans_config_init(smem_trans_config_t *config)
     SM_VALIDATE_RETURN(config != nullptr, "Invalid config", SM_INVALID_PARAM);
 
     config->initTimeout = SMEM_DEFAUT_WAIT_TIME;
-    config->role = SMEM_TRANS_NONE;
+    config->role = SMEM_TRANS_SENDER;
     config->deviceId = UINT32_MAX;
     config->flags = 0;
 
@@ -38,7 +38,8 @@ SMEM_API int32_t smem_trans_init(const smem_trans_config_t *config)
         SM_LOG_INFO("smem trans initialized already");
         return SM_OK;
     }
-    auto ret = hybm_init(config->deviceId, config->flags);
+
+    auto ret = hybm_init(config->deviceId, config->flags | HYBM_LOAD_FLAG_NEED_DEVICE_RDMA);
     if (ret != 0) {
         SM_LOG_ERROR("hybm core init failed: " << ret);
         return ret;

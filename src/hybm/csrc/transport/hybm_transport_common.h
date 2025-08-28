@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 #include <ostream>
+#include <iomanip>
 #include <unordered_map>
+#include "hybm_def.h"
 
 namespace ock {
 namespace mf {
@@ -23,7 +25,7 @@ constexpr int32_t REG_MR_ACCESS_FLAG_REMOTE_WRITE = 0x2;
 constexpr int32_t REG_MR_ACCESS_FLAG_REMOTE_READ = 0x4;
 constexpr int32_t REG_MR_ACCESS_FLAG_BOTH_READ_WRITE = 0x7;
 
-enum class TransportType : uint32_t {
+enum TransportType {
     TT_HCCP = 0,
     TT_HCOM,
     TT_COMPOSE,
@@ -34,6 +36,7 @@ struct TransportOptions {
     uint32_t rankId;
     uint32_t rankCount;
     uint32_t protocol;
+    hybm_role_type role;
     std::string nic;
 
     friend std::ostream& operator<<(std::ostream& output, const TransportOptions& options)
@@ -41,6 +44,7 @@ struct TransportOptions {
         output << "TransportOptions(rankId=" << options.rankId
                << ", count=" << options.rankCount
                << ", protocol=" << options.protocol
+               << ", role=" << options.role
                << ", nid=" << options.nic << ")";
         return output;
     }
@@ -65,29 +69,57 @@ struct TransportMemoryKey {
 
     friend std::ostream &operator<<(std::ostream &output, const TransportMemoryKey &key)
     {
-        output << "MemoryKey";
+        output << "MemoryKey" << std::hex;
         for (auto i = 0U; i < sizeof(key.keys) / sizeof(key.keys[0]); i++) {
             output << "-" << key.keys[i];
         }
+        output << std::dec;
         return output;
     }
 };
 
 struct TransportRankPrepareInfo {
     std::string nic;
+    hybm_role_type role{HYBM_ROLE_PEER};
     std::vector<TransportMemoryKey> memKeys;
 
     TransportRankPrepareInfo() {}
 
     TransportRankPrepareInfo(std::string n, TransportMemoryKey k)
-        : nic{std::move(n)}, memKeys{k} {}
+        : nic{std::move(n)}, role{HYBM_ROLE_PEER}, memKeys{k} {}
+
+    TransportRankPrepareInfo(std::string n, hybm_role_type r, TransportMemoryKey k)
+            : nic{std::move(n)}, role{r}, memKeys{k} {}
 
     TransportRankPrepareInfo(std::string n, std::vector<TransportMemoryKey> ks)
-        : nic{std::move(n)}, memKeys{std::move(ks)} {}
+        : nic{std::move(n)}, role{HYBM_ROLE_PEER}, memKeys{std::move(ks)} {}
+
+    TransportRankPrepareInfo(std::string n, hybm_role_type r, std::vector<TransportMemoryKey> ks)
+            : nic{std::move(n)}, role{r}, memKeys{std::move(ks)} {}
+
+    friend std::ostream &operator<<(std::ostream &output, const TransportRankPrepareInfo &info)
+    {
+        output << "PrepareInfo(nic=" << info.nic << ", role=" << info.role << ", memKeys=[";
+        for (auto &key : info.memKeys) {
+            output << key << " ";
+        }
+        output << "])";
+        return output;
+    }
 };
 
 struct HybmTransPrepareOptions {
     std::unordered_map<uint32_t, TransportRankPrepareInfo> options;
+
+    friend std::ostream &operator<<(std::ostream &output, const HybmTransPrepareOptions &info)
+    {
+        output << "PrepareOptions(";
+        for (auto &op : info.options) {
+            output << op.first << " => " << op.second << ", ";
+        }
+        output << ")";
+        return output;
+    }
 };
 
 }  // namespace transport

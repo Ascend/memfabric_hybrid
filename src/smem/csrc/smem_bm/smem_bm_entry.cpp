@@ -52,8 +52,8 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     hybm_mem_slice_t slice = nullptr;
     Result ret = SM_ERROR;
 
-    SM_LOG_INFO(
-        "SmemBmEntry initialize with options.bmType:" << options.bmType << ", bmDataOpType=" << options.bmDataOpType);
+    SM_LOG_INFO("SmemBmEntry initialize with options.bmType:" << options.bmType
+                                                              << ", bmDataOpType=" << options.bmDataOpType);
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
 
     do {
@@ -84,7 +84,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
 
         bzero(&entityInfo_, sizeof(hybm_exchange_info));
-        ret = hybm_entity_export(entity, flags, &entityInfo_);
+        ret = hybm_export(entity, nullptr, flags, &entityInfo_);
         if (ret != 0) {
             SM_LOG_ERROR("hybm entity export failed, result: " << ret);
             break;
@@ -135,19 +135,17 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    if (entityInfo_.descLen != 0) {
-        ret = globalGroup_->GroupAllGather((char *)&entityInfo_, sizeof(hybm_exchange_info), (char *)allExInfo,
-                                           sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
-        if (ret != 0) {
-            SM_LOG_ERROR("hybm gather export failed, result: " << ret);
-            return SM_ERROR;
-        }
+    ret = globalGroup_->GroupAllGather((char *)&entityInfo_, sizeof(hybm_exchange_info), (char *)allExInfo,
+                                       sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
+    if (ret != 0) {
+        SM_LOG_ERROR("hybm gather export failed, result: " << ret);
+        return SM_ERROR;
+    }
 
-        ret = hybm_entity_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
-        if (ret != 0) {
-            SM_LOG_ERROR("hybm import failed, result: " << ret);
-            return SM_ERROR;
-        }
+    ret = hybm_import(entity_, allExInfo, globalGroup_->GetRankSize(), nullptr, 0);
+    if (ret != 0) {
+        SM_LOG_ERROR("hybm import failed, result: " << ret);
+        return SM_ERROR;
     }
 
     ret = globalGroup_->GroupBarrier();
@@ -197,19 +195,15 @@ Result SmemBmEntry::Leave(uint32_t flags)
 }
 
 static hybm_data_copy_direction directMap[SMEMB_COPY_BUTT] = {
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
+    HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST,
+    HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,   HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST,   HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+    HYBM_GLOBAL_HOST_TO_LOCAL_HOST,     HYBM_LOCAL_HOST_TO_GLOBAL_HOST,     HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 static hybm_data_copy_direction dramDirectMap[SMEMB_COPY_BUTT] = {
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
+    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, HYBM_GLOBAL_HOST_TO_LOCAL_HOST,
+    HYBM_LOCAL_HOST_TO_GLOBAL_HOST,   HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+    HYBM_GLOBAL_HOST_TO_LOCAL_HOST,   HYBM_LOCAL_HOST_TO_GLOBAL_HOST,   HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
@@ -225,23 +219,22 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
         case SMEMB_COPY_H2G:
         case SMEMB_COPY_L2GH:
         case SMEMB_COPY_H2GH:
-            SM_VALIDATE_RETURN(
-                AddressInRange(dest, size), "dest address: " << dest << ",size: "
-                << size << " invalid.", SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(AddressInRange(dest, size),
+                               "dest address: " << dest << ", size: " << size << " invalid.", SM_INVALID_PARAM);
             break;
         default:
             SM_VALIDATE_RETURN(AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
                                SM_INVALID_PARAM);
             break;
     }
-    hybm_copy_params copyParams = {src, dest, size};
 
+    hybm_copy_params copyParams = {src, dest, size};
     auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
     return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
 }
 
-Result SmemBmEntry::DataCopyBatch(const void **src, void **dest, const size_t* size,
-                                  uint32_t count, smem_bm_copy_type t, uint32_t flags)
+Result SmemBmEntry::DataCopyBatch(const void **src, void **dest, const size_t *size, uint32_t count,
+                                  smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
@@ -270,16 +263,22 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
         case SMEMB_COPY_H2GH:
             SM_VALIDATE_RETURN(AddressInRange(params.dest, params.dpitch * (params.height - 1) + params.width),
                                "dest address: " << params.dest << " dpitch: " << params.dpitch << " width: "
-                               << params.width << " height: " << params.height << " invalid.", SM_INVALID_PARAM);
+                                                << params.width << " height: " << params.height << " invalid.",
+                               SM_INVALID_PARAM);
             break;
         default:
-            SM_VALIDATE_RETURN(AddressInRange(params.src,  params.spitch * (params.height - 1) + params.width),
+            SM_VALIDATE_RETURN(AddressInRange(params.src, params.spitch * (params.height - 1) + params.width),
                                "src address: " << params.src << ", spitch: " << params.spitch << " width: "
-                               << params.width << " height: " << params.height << " invalid.", SM_INVALID_PARAM);
+                                               << params.width << " height: " << params.height << " invalid.",
+                               SM_INVALID_PARAM);
             break;
     }
-    hybm_copy_2d_params copy2dparams = {.src = params.src, .spitch = params.spitch, .dest = params.dest,
-        .dpitch = params.dpitch, .width = params.width, .height = params.height};
+    hybm_copy_2d_params copy2dparams = {.src = params.src,
+                                        .spitch = params.spitch,
+                                        .dest = params.dest,
+                                        .dpitch = params.dpitch,
+                                        .width = params.width,
+                                        .height = params.height};
     auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
     return hybm_data_copy_2d(entity_, &copy2dparams, direct, nullptr, flags);
 }
@@ -304,7 +303,7 @@ bool SmemBmEntry::AddressInRange(const void *address, uint64_t size)
     }
 
     auto totalSize = coreOptions_.singleRankVASpace * coreOptions_.rankCount;
-    if ((const uint8_t *)address + size > (const uint8_t *)gva_ + totalSize) {
+    if ((const uint8_t *)address + size >= (const uint8_t *)gva_ + totalSize) {
         return false;
     }
 

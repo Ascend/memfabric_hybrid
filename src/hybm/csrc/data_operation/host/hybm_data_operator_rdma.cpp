@@ -132,13 +132,6 @@ int32_t HostDataOpRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_d
     return ret;
 }
 
-int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                                      const ExtOptions &options) noexcept
-{
-    BM_LOG_ERROR("not supported batch data copy!");
-    return BM_ERROR;
-}
-
 int32_t HostDataOpRDMA::DataCopyAsync(hybm_copy_params &params,
                                       hybm_data_copy_direction direction, const ExtOptions &options) noexcept
 {

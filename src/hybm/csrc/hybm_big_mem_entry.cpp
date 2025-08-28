@@ -4,6 +4,8 @@
 #include "hybm_logger.h"
 #include "hybm_entity_factory.h"
 #include "hybm_big_mem.h"
+#include "dl_hal_api.h"
+#include "hybm_ex_info_transfer.h"
 
 using namespace ock::mf;
 
@@ -101,7 +103,9 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(exInfo != nullptr, BM_INVALID_PARAM);
-    auto ret = entity->ExportExchangeInfo(slice, *exInfo, flags);
+
+    ExchangeInfoWriter writer(exInfo);
+    auto ret = entity->ExportExchangeInfo(slice, writer, flags);
     if (ret != 0) {
         BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
         return ret;
@@ -128,29 +132,12 @@ HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(allExInfo != nullptr, BM_INVALID_PARAM);
-    return entity->ImportExchangeInfo(allExInfo, count, addresses, flags);
-}
-
-HYBM_API int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo)
-{
-    auto entity = (MemEntity *)e;
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    auto ret = entity->ExportExchangeInfo(*exInfo, flags);
-    if (ret != 0) {
-        BM_LOG_ERROR("export entity data failed: " << ret);
-        return ret;
+    std::vector<ExchangeInfoReader> readers(count);
+    for (auto i = 0U; i < count; i++) {
+        readers[i].Reset(allExInfo + i);
     }
 
-    return BM_OK;
-}
-
-HYBM_API int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
-                                    uint32_t flags)
-{
-    auto entity = (MemEntity *)e;
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(allExInfo != nullptr, BM_INVALID_PARAM);
-    return entity->ImportEntityExchangeInfo(allExInfo, count, flags);
+    return entity->ImportExchangeInfo(readers.data(), count, addresses, flags);
 }
 
 HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)

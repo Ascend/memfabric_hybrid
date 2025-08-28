@@ -56,6 +56,7 @@ enum MemSegInfoExchangeType : uint8_t {
 
 struct MemSegmentOptions {
     int32_t devId = 0;
+    hybm_role_type role = HYBM_ROLE_PEER;
     MemSegType segType = HYBM_MST_HBM;
     MemSegInfoExchangeType infoExType = HYBM_INFO_EXG_IN_NODE;
     uint64_t size = 0;

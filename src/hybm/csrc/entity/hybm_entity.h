@@ -9,6 +9,7 @@
 #include <type_traits>
 #include "hybm_big_mem.h"
 #include "hybm_common_include.h"
+#include "hybm_ex_info_transfer.h"
 #include "hybm_mem_slice.h"
 
 namespace ock {
@@ -26,14 +27,13 @@ public:
                                         hybm_mem_slice_t &slice) noexcept = 0;
     virtual int32_t FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept = 0;
 
-    virtual int32_t ExportExchangeInfo(hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
-    virtual int32_t ExportExchangeInfo(hybm_mem_slice_t slice, hybm_exchange_info &desc, uint32_t flags) noexcept = 0;
-    virtual int32_t ImportExchangeInfo(const hybm_exchange_info desc[], uint32_t count, void *addresses[],
+    virtual int32_t ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept = 0;
+    virtual int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept = 0;
+    virtual int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
                                        uint32_t flags) noexcept = 0;
-    virtual int32_t ImportEntityExchangeInfo(const hybm_exchange_info desc[],
-                                             uint32_t count, uint32_t flags) noexcept = 0;
+
     virtual int32_t GetExportSliceInfoSize(size_t &size) noexcept = 0;
-    virtual int32_t RemoveImported(const std::vector<uint32_t>& ranks) noexcept = 0;
+    virtual int32_t RemoveImported(const std::vector<uint32_t> &ranks) noexcept = 0;
 
     virtual int32_t SetExtraContext(const void *context, uint32_t size) noexcept = 0;
 

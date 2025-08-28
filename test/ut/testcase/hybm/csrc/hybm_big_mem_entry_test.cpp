@@ -26,7 +26,7 @@ class HybmBigMemEntryTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
-        EXPECT_EQ(hybm_init(0, 0), 0);
+        EXPECT_EQ(hybm_init(0, HYBM_LOAD_FLAG_NEED_DEVICE_RDMA), 0);
     }
     static void TearDownTestSuite()
     {
@@ -46,7 +46,7 @@ TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNull_WhenSystemNotIni
     hybm_entity_t entity = hybm_create_entity(g_id, &g_options, g_flags);
     EXPECT_EQ(entity, nullptr);
 
-    EXPECT_EQ(hybm_init(0, 0), 0);
+    EXPECT_EQ(hybm_init(0, HYBM_LOAD_FLAG_NEED_DEVICE_RDMA), 0);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNull_WhenGetOrCreateEngineFailed)

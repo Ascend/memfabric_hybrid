@@ -175,7 +175,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
 TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
 {
-    MOCKER_CPP(&MemSegmentDevice::GetDeviceInfo, int (*)(int)).stubs().will(returnValue(0));
+    MOCKER(MemSegmentDevice::SetDeviceInfo).stubs().will(returnValue(0));
     setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
     uint32_t rankSize = 2;

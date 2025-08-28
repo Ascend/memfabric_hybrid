@@ -6,6 +6,7 @@
 #define MF_HYBM_CORE_DL_HAL_API_H
 
 #include "hybm_common_include.h"
+#include "dl_hal_api_def.h"
 
 namespace ock {
 namespace mf {
@@ -33,6 +34,18 @@ using halGetAllocedNodeInRangeFunc = void *(*)(uint64_t va, void *rbtree_queue);
 using halGetIdleVaNodeInRangeFunc = void *(*)(uint64_t va, void *rbtree_queue);
 using halInsertAllocedTreeFunc = int32_t (*)(void *RbtreeNode, void *rbtree_queue);
 using halFreeRbtreeNodeFunc = void (*)(void *RbNode, void *rbtree_queue);
+
+using halSqTaskSendFunc = int (*)(uint32_t, halTaskSendInfo *);
+using halCqReportRecvFunc = int (*)(uint32_t, halReportRecvInfo *);
+using halSqCqAllocateFunc = int(*)(uint32_t, halSqCqInputInfo *, halSqCqOutputInfo *);
+using halSqCqFreeFunc = int(*)(uint32_t, halSqCqFreeInfo *);
+using halResourceIdAllocFunc = int(*)(uint32_t, struct halResourceIdInputInfo *, struct halResourceIdOutputInfo *);
+using halResourceIdFreeFunc = int(*)(uint32_t, struct halResourceIdInputInfo *);
+using halGetSsidFunc = int(*)(uint32_t, uint32_t *);
+using halResourceConfigFunc = int(*)(uint32_t, struct halResourceIdInputInfo *, struct halResourceConfigInfo *);
+using halSqCqQueryFunc = int(*)(uint32_t devId, struct halSqCqQueryInfo *info);
+using halHostRegisterFunc = int(*)(void *, uint64_t, uint32_t, uint32_t, void **);
+using halHostUnregisterFunc = int(*)(void *, uint32_t);
 
 class DlHalApi {
 public:
@@ -199,6 +212,61 @@ public:
         return pFreeRbtreeNode(RbtreeNode, rbtree_queue);
     }
 
+    static inline int HalSqTaskSend(uint32_t devId, struct halTaskSendInfo *info)
+    {
+        return pHalSqTaskSend(devId, info);
+    }
+
+    static inline int HalCqReportRecv(uint32_t devId, struct halReportRecvInfo *info)
+    {
+        return pHalCqReportRecv(devId, info);
+    }
+
+    static inline int HalSqCqAllocate(uint32_t devId, struct halSqCqInputInfo *in, struct halSqCqOutputInfo *out)
+    {
+        return pHalSqCqAllocate(devId, in, out);
+    }
+
+    static inline int HalSqCqFree(uint32_t devId, struct halSqCqFreeInfo *info)
+    {
+        return pHalSqCqFree(devId, info);
+    }
+
+    static inline int HalResourceIdAlloc(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceIdOutputInfo *out)
+    {
+        return pHalResourceIdAlloc(devId, in, out);
+    }
+
+    static inline int HalResourceIdFree(uint32_t devId, struct halResourceIdInputInfo *in)
+    {
+        return pHalResourceIdFree(devId, in);
+    }
+
+    static inline int HalGetSsid(uint32_t devId, uint32_t *ssid)
+    {
+        return pHalGetSsid(devId, ssid);
+    }
+
+    static inline int HalResourceConfig(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceConfigInfo *para)
+    {
+        return pHalResourceConfig(devId, in, para);
+    }
+
+    static inline int HalSqCqQuery(uint32_t devId, struct halSqCqQueryInfo *info)
+    {
+        return pHalSqCqQuery(devId, info);
+    }
+
+    static inline int HalHostRegister(void *srcPtr, uint64_t size, uint32_t flag, uint32_t devid, void **dstPtr)
+    {
+        return pHalHostRegister(srcPtr, size, flag, devid, dstPtr);
+    }
+
+    static inline int HalHostUnregister(void *srcPtr, uint32_t devid)
+    {
+        return pHalHostUnregister(srcPtr, devid);
+    }
+
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -230,6 +298,18 @@ private:
     static halGetIdleVaNodeInRangeFunc pGetIdleVaNodeInRange;
     static halInsertAllocedTreeFunc pInsertAllocedTree;
     static halFreeRbtreeNodeFunc pFreeRbtreeNode;
+
+    static halSqTaskSendFunc pHalSqTaskSend;
+    static halCqReportRecvFunc pHalCqReportRecv;
+    static halSqCqAllocateFunc pHalSqCqAllocate;
+    static halSqCqFreeFunc pHalSqCqFree;
+    static halResourceIdAllocFunc pHalResourceIdAlloc;
+    static halResourceIdFreeFunc pHalResourceIdFree;
+    static halGetSsidFunc pHalGetSsid;
+    static halResourceConfigFunc pHalResourceConfig;
+    static halSqCqQueryFunc pHalSqCqQuery;
+    static halHostRegisterFunc pHalHostRegister;
+    static halHostUnregisterFunc pHalHostUnregister;
 };
 
 }

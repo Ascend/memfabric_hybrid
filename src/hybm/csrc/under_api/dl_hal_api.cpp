@@ -39,6 +39,18 @@ halGetIdleVaNodeInRangeFunc DlHalApi::pGetIdleVaNodeInRange = nullptr;
 halInsertAllocedTreeFunc DlHalApi::pInsertAllocedTree = nullptr;
 halFreeRbtreeNodeFunc DlHalApi::pFreeRbtreeNode = nullptr;
 
+halSqTaskSendFunc DlHalApi::pHalSqTaskSend = nullptr;
+halCqReportRecvFunc DlHalApi::pHalCqReportRecv = nullptr;
+halSqCqAllocateFunc DlHalApi::pHalSqCqAllocate = nullptr;
+halSqCqFreeFunc DlHalApi::pHalSqCqFree = nullptr;
+halResourceIdAllocFunc DlHalApi::pHalResourceIdAlloc = nullptr;
+halResourceIdFreeFunc DlHalApi::pHalResourceIdFree = nullptr;
+halGetSsidFunc DlHalApi::pHalGetSsid = nullptr;
+halResourceConfigFunc DlHalApi::pHalResourceConfig = nullptr;
+halSqCqQueryFunc DlHalApi::pHalSqCqQuery = nullptr;
+halHostRegisterFunc DlHalApi::pHalHostRegister = nullptr;
+halHostUnregisterFunc DlHalApi::pHalHostUnregister = nullptr;
+
 Result DlHalApi::LoadLibrary()
 {
     std::lock_guard<std::mutex> guard(gMutex);
@@ -91,6 +103,18 @@ Result DlHalApi::LoadLibrary()
         DL_LOAD_SYM(pVirtDestroyHeapV2, halVirtDestroyHeapV2Func, halHandle, "devmm_virt_destroy_heap");
     }
 
+    DL_LOAD_SYM(pHalSqTaskSend, halSqTaskSendFunc, halHandle, "halSqTaskSend");
+    DL_LOAD_SYM(pHalCqReportRecv, halCqReportRecvFunc, halHandle, "halCqReportRecv");
+    DL_LOAD_SYM(pHalSqCqAllocate, halSqCqAllocateFunc, halHandle, "halSqCqAllocate");
+    DL_LOAD_SYM(pHalSqCqFree, halSqCqFreeFunc, halHandle, "halSqCqFree");
+    DL_LOAD_SYM(pHalResourceIdAlloc, halResourceIdAllocFunc, halHandle, "halResourceIdAlloc");
+    DL_LOAD_SYM(pHalResourceIdFree, halResourceIdFreeFunc, halHandle, "halResourceIdFree");
+    DL_LOAD_SYM(pHalGetSsid, halGetSsidFunc, halHandle, "drvMemSmmuQuery");
+    DL_LOAD_SYM(pHalResourceConfig, halResourceConfigFunc, halHandle, "halResourceConfig");
+    DL_LOAD_SYM(pHalSqCqQuery, halSqCqQueryFunc, halHandle, "halSqCqQuery");
+    DL_LOAD_SYM(pHalHostRegister, halHostRegisterFunc, halHandle, "halHostRegister");
+    DL_LOAD_SYM(pHalHostUnregister, halHostUnregisterFunc, halHandle, "halHostUnregister");
+
     gLoaded = true;
     return BM_OK;
 }
@@ -127,6 +151,17 @@ void DlHalApi::CleanupLibrary()
     pGetIdleVaNodeInRange = nullptr;
     pInsertAllocedTree = nullptr;
     pFreeRbtreeNode = nullptr;
+
+    pHalSqTaskSend = nullptr;
+    pHalCqReportRecv = nullptr;
+    pHalSqCqAllocate = nullptr;
+    pHalSqCqFree = nullptr;
+    pHalResourceIdAlloc = nullptr;
+    pHalResourceIdFree = nullptr;
+    pHalGetSsid = nullptr;
+    pHalSqCqQuery = nullptr;
+    pHalHostRegister = nullptr;
+    pHalHostUnregister = nullptr;
 
     if (halHandle != nullptr) {
         dlclose(halHandle);

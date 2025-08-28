@@ -16,6 +16,7 @@ file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api/*
 )
 message(STATUS "llt build")
@@ -60,6 +61,7 @@ target_include_directories(test_mf_hy PRIVATE
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
 
         ${PROJECT_ACCLINKS_SRC_BASE}/include
         ${PROJECT_ACCLINKS_SRC_BASE}/csrc

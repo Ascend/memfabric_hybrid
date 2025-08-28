@@ -43,6 +43,8 @@ raRegisterMrFunc DlHccpApi::gRaRegisterMR;
 raDeregisterMrFunc DlHccpApi::gRaDeregisterMR;
 raMrRegFunc DlHccpApi::gRaMrReg;
 raMrDeregFunc DlHccpApi::gRaMrDereg;
+raSendWrFunc DlHccpApi::gRaSendWr;
+raPollCqFunc DlHccpApi::gRaPollCq;
 
 tsdOpenFunc DlHccpApi::gTsdOpen;
 
@@ -103,10 +105,11 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaDeregisterMR, raDeregisterMrFunc, raHandle, "ra_deregister_mr");
     DL_LOAD_SYM(gRaMrReg, raMrRegFunc, raHandle, "ra_mr_reg");
     DL_LOAD_SYM(gRaMrDereg, raMrDeregFunc, raHandle, "ra_mr_dereg");
+    DL_LOAD_SYM(gRaSendWr, raSendWrFunc, raHandle, "ra_send_wr");
+    DL_LOAD_SYM(gRaPollCq, raPollCqFunc , raHandle, "ra_poll_cq");
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
 
-    BM_LOG_DEBUG("load hccp library done");
     gLoaded = true;
     return BM_OK;
 }
@@ -146,8 +149,11 @@ void DlHccpApi::CleanupLibrary()
     gRaMrReg = nullptr;
     gRaMrDereg = nullptr;
     gTsdOpen = nullptr;
+    gRaSendWr = nullptr;
+    gRaPollCq = nullptr;
 
     if (raHandle != nullptr) {
+        dlclose(raHandle);
         raHandle = nullptr;
     }
 

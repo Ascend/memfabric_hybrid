@@ -17,6 +17,7 @@ using namespace ock::mf;
 namespace {
 const std::string ASCEND_HOME_PATH = std::string(getenv("ASCEND_HOME_PATH"));
 const std::string LD_LIBRARY_PATH = std::string(getenv("LD_LIBRARY_PATH"));
+const uint64_t flags = HYBM_LOAD_FLAG_NEED_DEVICE_RDMA;
 }
 class HybmEntryTest : public ::testing::Test {
 protected:
@@ -34,8 +35,6 @@ protected:
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnZero_WhenAllConditionsMet)
 {
     uint16_t deviceId = 0;
-    uint64_t flags = 0;
-
     int32_t result = hybm_init(deviceId, flags);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(HybmHasInited(), true);
@@ -51,7 +50,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnZero_WhenAllConditionsMet)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenDeviceIdNotEqual)
 {
     uint16_t deviceId = 0;
-    uint64_t flags = 0;
 
     int32_t result = hybm_init(deviceId, flags);
     EXPECT_EQ(result, 0);
@@ -74,7 +72,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenDeviceIdNotEqual)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenHalGvaPrecheckFails)
 {
     uint16_t deviceId = 1;
-    uint64_t flags = 0;
 
     (void) unsetenv("LD_LIBRARY_PATH");
     int32_t result = hybm_init(deviceId, flags);
@@ -91,7 +88,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenHalGvaPrecheckFails)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenAscendHomePathNotSet)
 {
     uint16_t deviceId = 1;
-    uint64_t flags = 0;
 
     (void) unsetenv("ASCEND_HOME_PATH");
     int32_t result = hybm_init(deviceId, flags);
@@ -108,7 +104,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenAscendHomePathNotSet)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenSetDeviceFails)
 {
     uint16_t deviceId = 1;
-    uint64_t flags = 0;
 
     MOCKER_CPP(&DlAclApi::AclrtSetDevice, int32_t (*)(int32_t)).stubs().will(returnValue(-1));
 
@@ -125,7 +120,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenSetDeviceFails)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnMinusOne_WhenReserveMemoryFails)
 {
     uint16_t deviceId = 1;
-    uint64_t flags = 0;
 
     MOCKER_CPP(&drv::HalGvaReserveMemory, int32_t (*)(uint64_t *, size_t, int32_t, uint64_t))
         .stubs().will(returnValue(-1));
@@ -142,7 +136,6 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnMinusOne_WhenReserveMemoryFails)
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMMallocFailed_WhenAllocMemoryFails)
 {
     uint16_t deviceId = 1;
-    uint64_t flags = 0;
 
     MOCKER_CPP(&drv::HalGvaAlloc, int32_t (*)(uint64_t, size_t, uint64_t))
         .stubs().will(returnValue(-1));

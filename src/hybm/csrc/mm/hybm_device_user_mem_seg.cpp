@@ -2,6 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 #include "dl_acl_api.h"
+#include "hybm_networks_common.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_device_user_mem_seg.h"
 
@@ -9,15 +10,8 @@ namespace ock {
 namespace mf {
 constexpr uint8_t MAX_DEVICE_COUNT = 16;
 
-bool MemSegmentDeviceUseMem::deviceInfoReady{false};
-int MemSegmentDeviceUseMem::deviceId_{-1};
-uint32_t MemSegmentDeviceUseMem::pid_{0};
-uint32_t MemSegmentDeviceUseMem::sdid_{0};
-uint32_t MemSegmentDeviceUseMem::serverId_{0};
-uint32_t MemSegmentDeviceUseMem::superPodId_{0};
-
 MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
-    : MemSegment{options, eid}
+    : MemSegmentDevice{options, eid}
 {
 }
 
@@ -74,7 +68,10 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
     }
 
     for (auto &remoteDev : importedDeviceInfo_) {
-        ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.first, (int *)&remoteDev.second.pid, 1);
+        if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId)) {
+            continue;
+        }
+        ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.second.sdid, (int *)&remoteDev.second.pid, 1);
         if (ret != 0) {
             BM_LOG_ERROR("set shm(" << name << ") for sdid=" << remoteDev.first << " pid=" << remoteDev.second.pid
                                     << " failed: " << ret);
@@ -115,9 +112,10 @@ Result MemSegmentDeviceUseMem::Export(std::string &exInfo) noexcept
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
 
     HbmExportDeviceInfo info;
-    info.sdid = sdid_;
-    info.pid = pid_;
     info.deviceId = deviceId_;
+    info.rankId = options_.rankId;
+    info.pid = MemSegmentDevice::pid_;
+    MemSegmentDevice::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
 
     auto ret = LiteralExInfoTranslater<HbmExportDeviceInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
@@ -137,10 +135,13 @@ Result MemSegmentDeviceUseMem::Export(const std::shared_ptr<MemSlice> &slice, st
         return BM_INVALID_PARAM;
     }
 
+    uint32_t sdId;
     HbmExportSliceInfo info;
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.deviceId = static_cast<uint32_t>(deviceId_);
+    info.rankId = static_cast<uint16_t>(options_.rankId);
+    MemSegmentDevice::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
 
     auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);
@@ -287,7 +288,7 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
                                               << ", pid=" << deviceInfo.pid);
     }
 
-    importedDeviceInfo_.emplace(deviceInfo.sdid, deviceInfo);
+    importedDeviceInfo_.emplace(deviceInfo.rankId, deviceInfo);
     return BM_OK;
 }
 
@@ -317,10 +318,17 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     }
 
     void *address = nullptr;
-    ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
-    if (ret != 0) {
-        BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_ << ",pid=" << pid_);
-        return BM_DL_FUNCTION_FAILED;
+    if (CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId)) {
+        ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
+        if (ret != 0) {
+            BM_LOG_ERROR(
+                    "IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_ << ",pid=" << pid_);
+            return BM_DL_FUNCTION_FAILED;
+        }
+    } else {
+        address = (void *)(ptrdiff_t)sliceInfo.address;
+        auto value = (uint64_t)(ptrdiff_t)address | ((sliceInfo.rankId + 1UL) << 48);
+        address = (void *)(ptrdiff_t)value;
     }
     registerAddrs_.emplace_back(address);
 
@@ -329,31 +337,6 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
-    return BM_OK;
-}
-
-Result MemSegmentDeviceUseMem::GetDeviceInfo() noexcept
-{
-    auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
-    if (ret != 0) {
-        BM_LOG_ERROR("get device id failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    ret = DlAclApi::RtDeviceGetBareTgid(&pid_);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get bare tgid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    constexpr auto sdidInfo = 26;
-    int64_t value = 0;
-    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, sdidInfo, &value);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get sdid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    sdid_ = static_cast<uint32_t>(value);
     return BM_OK;
 }
 
@@ -369,13 +352,39 @@ void MemSegmentDeviceUseMem::CloseMemory() noexcept
     BM_LOG_INFO("close memory finish.");
 }
 
-bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
-{
-    return false;
-}
-
 void MemSegmentDeviceUseMem::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
 {
+    auto value = (uint64_t)(ptrdiff_t)addr;
+    auto rankIdBits = (uint16_t)(value >> 48);
+    if (rankIdBits == 0U) {
+        rankId = options_.rankId;
+        return;
+    }
+
+    rankId = rankIdBits - 1U;
+}
+
+bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
+{
+    auto pos = importedDeviceInfo_.find(rankId);
+    if (pos == importedDeviceInfo_.end()) {
+        return false;
+    }
+
+    uint32_t sdId;
+    uint32_t serverId;
+    uint32_t superPodId;
+    MemSegmentDevice::GetDeviceInfo(sdId, serverId, superPodId);
+
+    if (pos->second.serverId == serverId) {
+        return true;
+    }
+
+    if (pos->second.superPodId == invalidSuperPodId || superPodId == invalidSuperPodId) {
+        return false;
+    }
+
+    return pos->second.superPodId == superPodId;
 }
 }
 }

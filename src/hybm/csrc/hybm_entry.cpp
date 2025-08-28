@@ -24,7 +24,7 @@ namespace {
 const std::string DRIVER_VER_V2 = "V100R001C21B035";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
 
-uint64_t g_baseAddr = 0ULL;
+static uint64_t g_baseAddr = 0ULL;
 int64_t initialized = 0;
 uint16_t initedDeviceId = 0;
 HybmGvaVersion checkVer = HYBM_GVA_UNKNOWN;

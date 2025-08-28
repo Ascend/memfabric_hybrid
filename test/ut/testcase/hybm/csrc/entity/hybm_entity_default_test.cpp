@@ -34,7 +34,7 @@ protected:
         auto path = std::getenv("ASCEND_HOME_PATH");
         EXPECT_NE(path, nullptr);
         auto libPath = std::string(path).append("/lib64");
-        EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
+        EXPECT_EQ(DlApi::LoadLibrary(libPath, HYBM_LOAD_FLAG_NEED_DEVICE_RDMA), BM_OK);
     }
     static void TearDownTestSuite()
     {
@@ -132,12 +132,15 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     EXPECT_EQ(entity.AllocLocalMemory(g_allocSize, 0, slice), BM_NOT_INITIALIZED);
 
     hybm_exchange_info info;
-    EXPECT_EQ(entity.ExportExchangeInfo(info, 0), BM_NOT_INITIALIZED);
+    ExchangeInfoWriter writer1(&info);
+    EXPECT_EQ(entity.ExportExchangeInfo(writer1, 0), BM_NOT_INITIALIZED);
 
-    EXPECT_EQ(entity.ExportExchangeInfo(slice, info, 0), BM_NOT_INITIALIZED);
+    ExchangeInfoWriter writer2(&info);
+    EXPECT_EQ(entity.ExportExchangeInfo(slice, writer2, 0), BM_NOT_INITIALIZED);
 
     void* addresses[1] = { nullptr };
-    EXPECT_EQ(entity.ImportExchangeInfo(&info, 1, addresses, 0), BM_NOT_INITIALIZED);
+    ExchangeInfoReader reader(&info);
+    EXPECT_EQ(entity.ImportExchangeInfo(&reader, 1, addresses, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.SetExtraContext(&info, 1), BM_NOT_INITIALIZED);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include <cstring>
 #include <iomanip>
@@ -10,12 +10,10 @@
 #include "hybm_logger.h"
 #include "hybm_networks_common.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_device_mem_segment.h"
+#include "hybm_device_user_mem_seg.h"
 
 namespace ock {
 namespace mf {
-static constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
-static constexpr uint32_t invalidServerId = 0x3FFU;
 
 bool MemSegmentDevice::deviceInfoReady{false};
 int MemSegmentDevice::deviceId_{-1};
@@ -121,11 +119,12 @@ Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &sli
 
 Result MemSegmentDevice::Export(std::string &exInfo) noexcept
 {
-    BM_LOG_ERROR("MemSegmentDevice not supported export device info.");
-    return BM_ERROR;
+    BM_LOG_INFO("MemSegmentDevice not supported export device info.");
+    return BM_NOT_SUPPORTED;
 }
 
-Result MemSegmentDevice::ValidateExportSlice(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+// export不可重入
+Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");
@@ -142,13 +141,7 @@ Result MemSegmentDevice::ValidateExportSlice(const std::shared_ptr<MemSlice> &sl
         BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
         return BM_INVALID_PARAM;
     }
-    return BM_OK;
-}
 
-Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
-{
-    Result status = ValidateExportSlice(slice, exInfo);
-    BM_ASSERT_RETURN(status == BM_OK, status);
     auto exp = exportMap_.find(slice->index_);
     if (exp != exportMap_.end()) {  // RtIpcSetMemoryName不支持重复调用
         exInfo = exp->second;
@@ -160,14 +153,12 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
                                             sizeof(info.shmName));
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
 
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(options_.devId), "get device info failed.");
-    info.magic = EXPORT_INFO_MAGIC;
-    info.version = EXPORT_INFO_VERSION;
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(SetDeviceInfo(options_.devId), "get device info failed.");
     info.mappingOffset =
         slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.deviceId = options_.devId;
-    info.pid = static_cast<int>(pid_);
+    info.pid = pid_;
     info.rankId = options_.rankId;
     info.size = slice->size_;
     info.entityId = entityId_;
@@ -251,34 +242,17 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void 
     return BM_OK;
 }
 
-void UnmapAddresses(const std::vector<uint64_t>& addresses) noexcept
-{
-    for (auto va : addresses) {
-        int32_t ret = drv::HalGvaClose(va, 0);
-        if (ret != 0) {
-            BM_LOG_ERROR("HalGvaClose memory failed: " << ret);
-        }
-    }
-}
-
 Result MemSegmentDevice::Mmap() noexcept
 {
     if (imports_.empty()) {
         return BM_OK;
     }
 
-    std::vector<uint64_t> successfullyMapped;
-
     for (auto &im : imports_) {
         if (im.rankId == options_.rankId) {
             continue;
         }
 
-        if (im.rankId >= options_.rankCnt) {
-            BM_LOG_ERROR("import info rank(" << im.rankId << ") invalid, rank size = " << options_.rankCnt);
-            UnmapAddresses(successfullyMapped);
-            return BM_INVALID_PARAM;
-        }
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped: " << (void *)remoteAddress);
@@ -295,15 +269,9 @@ Result MemSegmentDevice::Mmap() noexcept
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
-            UnmapAddresses(successfullyMapped);
             return BM_DL_FUNCTION_FAILED;
         }
-
-        successfullyMapped.push_back((uint64_t)remoteAddress);
-    }
-
-    for (auto addr : successfullyMapped) {
-        mappedMem_.insert(addr);
+        mappedMem_.insert((uint64_t)remoteAddress);
     }
     imports_.clear();
     return BM_OK;
@@ -396,7 +364,19 @@ void MemSegmentDevice::FreeMemory() noexcept
     }
 }
 
-int MemSegmentDevice::GetDeviceInfo(int deviceId) noexcept
+Result MemSegmentDevice::GetDeviceInfo() noexcept
+{
+    if (options_.devId < 0) {
+        return BM_INVALID_PARAM;
+    }
+
+    if (InitDeviceInfo() != BM_OK) {
+        return BM_ERROR;
+    }
+    return BM_OK;
+}
+
+int MemSegmentDevice::SetDeviceInfo(int deviceId) noexcept
 {
     if (deviceId < 0) {
         return BM_INVALID_PARAM;
@@ -432,16 +412,14 @@ int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
 {
     int64_t value = 0;
 
-    auto ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SDID),
-                                         &value);
+    auto ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SDID, &value);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get sdid failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
     sdid_ = static_cast<uint32_t>(value);
 
-    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SERVER_ID),
-                                    &value);
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SERVER_ID, &value);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get server id failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -449,8 +427,7 @@ int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
     serverId_ = static_cast<uint32_t>(value);
     BM_LOG_DEBUG("local server=0x" << std::hex << serverId_);
 
-    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, static_cast<int32_t>(DeviceSystemInfoType::INFO_TYPE_SUPER_POD_ID),
-                                    &value);
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SUPER_POD_ID, &value);
     if (ret != BM_OK) {
         BM_LOG_ERROR("get super pod id failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
@@ -475,21 +452,43 @@ int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
 
 bool MemSegmentDevice::CanMapRemote(const HbmExportInfo &rmi) noexcept
 {
-    if (rmi.serverId == serverId_) {
-        BM_LOG_DEBUG("map from rank(" << rmi.rankId << ") on sample host, can map.");
+    return CanSdmaReaches(rmi.superPodId, rmi.serverId);
+}
+
+bool MemSegmentDevice::CanSdmaReaches(uint32_t superPodId, uint32_t serverId) noexcept
+{
+    if (serverId == serverId_) {
+        BM_LOG_DEBUG("on sample host, can reach.");
         return true;
     }
 
-    if (rmi.superPodId == invalidSuperPodId || superPodId_ == invalidSuperPodId) {
-        BM_LOG_INFO("map from rank(" << rmi.rankId << ") spid: " << rmi.superPodId << ", local: " << superPodId_
-                                     << " cannot map.");
+    if (superPodId == invalidSuperPodId || superPodId_ == invalidSuperPodId) {
+        BM_LOG_INFO("spid: " << superPodId << ", local: " << superPodId_ << " cannot reach.");
         return false;
     }
 
-    return rmi.superPodId == superPodId_;
+    return superPodId == superPodId_;
 }
 
-void MemSegmentDevice::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept {}
+void MemSegmentDevice::GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept
+{
+    sdId = sdid_;
+    serverId = serverId_;
+    superPodId = superPodId_;
+}
+
+void MemSegmentDevice::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+{
+    auto end = (const uint8_t *)addr + size;
+    if (addr >= globalVirtualAddress_ && end < globalVirtualAddress_ + totalVirtualSize_) {
+        auto offset = (const uint8_t *)addr - (const uint8_t *)globalVirtualAddress_;
+        rankId = offset / options_.size;
+        return;
+    }
+
+    BM_LOG_ERROR("input address: " << addr << ", size: " << size << " cannot matches rankId.");
+    rankId = std::numeric_limits<uint32_t>::max();
+}
 
 bool MemSegmentDevice::CheckSmdaReaches(uint32_t rankId) const noexcept
 {

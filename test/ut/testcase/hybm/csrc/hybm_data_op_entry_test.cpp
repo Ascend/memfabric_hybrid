@@ -17,10 +17,10 @@ using namespace ock::mf;
 namespace {
 const uint64_t g_rankSize = 1;
 const uint64_t g_localMemSize = 1024 * 1024 * 1024;
-const hybm_options g_rdma_options1 = {HYBM_TYPE_HBM_HOST_INITIATE, HYBM_DOP_TYPE_ROCE, HYBM_SCOPE_CROSS_NODE,
+const hybm_options g_rdma_options1 = {HYBM_TYPE_HBM_HOST_INITIATE, HYBM_DOP_TYPE_SDMA, HYBM_SCOPE_CROSS_NODE,
                                       HYBM_RANK_TYPE_STATIC, g_rankSize, 0, 0, g_localMemSize, 0, true,
                                       HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
-const hybm_options g_rdma_options2 = {HYBM_TYPE_DRAM_HOST_INITIATE, HYBM_DOP_TYPE_ROCE, HYBM_SCOPE_CROSS_NODE,
+const hybm_options g_rdma_options2 = {HYBM_TYPE_HBM_HOST_INITIATE, HYBM_DOP_TYPE_ROCE, HYBM_SCOPE_CROSS_NODE,
                                       HYBM_RANK_TYPE_STATIC, g_rankSize, 0, 0, g_localMemSize, 0, true,
                                       HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
@@ -63,13 +63,13 @@ protected:
         hybm_exchange_info entityInfo;
         bzero(&entityInfo, sizeof(hybm_exchange_info));
         EXPECT_EQ(hybm_export(entity, slice, 0, &exInfo), BM_OK);
-        EXPECT_EQ(hybm_entity_export(entity, 0, &entityInfo), BM_OK);
+        EXPECT_EQ(hybm_export(entity, nullptr, 0, &entityInfo), BM_OK);
         void* addresses[1] = { nullptr };
         hybm_exchange_info allInfo = exInfo;
         EXPECT_EQ(hybm_import(entity, &allInfo, 1, addresses, 0), BM_OK);
         EXPECT_EQ(hybm_mmap(entity, 0), BM_OK);
         allInfo = entityInfo;
-        EXPECT_EQ(hybm_entity_import(entity, &allInfo, 1, 0), BM_OK);
+        EXPECT_EQ(hybm_import(entity, &allInfo, 1, nullptr, 0), BM_OK);
     }
 
     void TearDown() override
@@ -91,15 +91,15 @@ protected:
     void DataCopyOk()
     {
         hybm_copy_params copy_params = {reservedMem, reservedMem, g_allocSize};
-        auto ret = hybm_data_copy(entity, &copy_params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+        auto ret = hybm_data_copy(entity, &copy_params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy(entity, &copy_params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, nullptr, 0);
+        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+        ret = hybm_data_copy(entity, &copy_params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, nullptr, 0);
+        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, nullptr, 0);
+        ret = hybm_data_copy(entity, &copy_params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
     }
 
@@ -107,15 +107,15 @@ protected:
     {
         hybm_copy_2d_params copy_2d_params = {reservedMem, g_copy2dSize, reservedMem,
                                               g_copy2dSize, g_copy2dSize, g_copy2dSize};
-        auto ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+        auto ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, nullptr, 0);
+        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, nullptr, 0);
+        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
-        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, nullptr, 0);
+        ret = hybm_data_copy_2d(entity, &copy_2d_params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);
     }
 
@@ -136,8 +136,8 @@ protected:
         ret = hybm_data_copy(entity, &copy_params4, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
         EXPECT_EQ(ret, BM_INVALID_PARAM);
 
-        auto startAddr = reservedMem;
-        auto endAddr = reservedMem + g_localMemSize * g_rankSize;
+        auto startAddr = (uint8_t *)reservedMem;
+        auto endAddr = startAddr + g_localMemSize * g_rankSize;
         hybm_copy_params copy_params5 = {startAddr - 1, startAddr - 1, g_allocSize};
         ret = hybm_data_copy(entity, &copy_params5, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_INVALID_PARAM);
@@ -156,8 +156,8 @@ protected:
 
     void DataCopy2dReturnInvalidParam()
     {
-        auto startAddr = reservedMem;
-        auto endAddr = reservedMem + g_localMemSize * g_rankSize;
+        auto startAddr = (uint8_t *)reservedMem;
+        auto endAddr = (uint8_t *)reservedMem + g_localMemSize * g_rankSize;
 
         hybm_copy_2d_params copy_2d_params1 = {nullptr, 0, nullptr, 0, 0, 0 };
         auto ret = hybm_data_copy_2d(nullptr, &copy_2d_params1, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);

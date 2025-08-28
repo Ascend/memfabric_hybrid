@@ -19,7 +19,8 @@ SmemTransEntryManager &SmemTransEntryManager::Instance()
     return instance;
 }
 
-Result SmemTransEntryManager::CreateEntryByName(const std::string &name, SmemTransEntryPtr &entry)
+Result SmemTransEntryManager::CreateEntryByName(const std::string &name, const std::string &storeUrl,
+                                                const smem_trans_config_t &config, SmemTransEntryPtr &entry)
 {
     std::lock_guard<std::mutex> guard(entryMutex_);
     /* look up the shm entry exists or not with lock */
@@ -30,7 +31,8 @@ Result SmemTransEntryManager::CreateEntryByName(const std::string &name, SmemTra
     }
 
     /* create new shm entry */
-    auto tmpEntry = SmMakeRef<SmemTransEntry>(name);
+    SmemStoreHelper storeHelper{name, storeUrl, config.role};
+    auto tmpEntry = SmMakeRef<SmemTransEntry>(name, storeHelper);
     SM_ASSERT_RETURN(tmpEntry != nullptr, SM_NEW_OBJECT_FAILED);
 
     /* add into set and map */

@@ -13,7 +13,7 @@ namespace mf {
 namespace transport {
 namespace host {
 struct RegMemoryKey {
-    uint32_t type{static_cast<uint32_t>(TransportType::TT_HCCP)};
+    uint32_t type{TT_HCCP};
     uint32_t reserved{0};
     Service_MemoryRegionInfo hcomInfo;
 };
