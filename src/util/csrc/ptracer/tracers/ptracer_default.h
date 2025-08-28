@@ -63,7 +63,7 @@ private:
     void OverrideWrite(std::stringstream &ss);
 
     DefaultTracer() = default;
-    ~DefaultTracer() = default;
+    ~DefaultTracer();
 
 private:
     off_t writePos_{0};
@@ -75,8 +75,8 @@ private:
     std::condition_variable dumpCond_{};
 
 private:
-    static constexpr int32_t DUMP_PERIOD_SECOND = 10;         /* dump every 10 seconds */
-    static constexpr size_t MAX_DUMP_SIZE = 10 * 1024 * 1024; /* 10MB */
+    int32_t DUMP_PERIOD_SECOND = 10;         /* dump every 10 seconds */
+    size_t MAX_DUMP_SIZE = 10 * 1024 * 1024; /* 10MB */
 };
 }  // namespace tracer
 }  // namespace mf

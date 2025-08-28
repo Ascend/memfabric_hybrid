@@ -5,7 +5,7 @@
 
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
-#include "htracer.h"
+#include "hybm_ptracer.h"
 #include "hybm_gvm_user.h"
 
 namespace ock {
@@ -79,75 +79,75 @@ int32_t HostDataOpSDMA::DataCopy(const void *srcVA, void *destVA, uint64_t lengt
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
             ret = CopyLD2GD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_LD_TO_GD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
             ret = CopyGD2LD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GD_TO_LD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LD, ret);
             break;
         }
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_LH_TO_GD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_LH_TO_GD);
             ret = CopyLH2GD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_LH_TO_GD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_LH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GD_TO_LH);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LH);
             ret = CopyGD2LH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GD_TO_LH, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LH, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
             ret = CopyGD2GD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GD_TO_GD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
             ret = CopyGD2GH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GD_TO_GH, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
             ret = CopyGH2GD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GH_TO_GD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
             ret = CopyGH2GH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GH_TO_GD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_LD_TO_GH);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GH);
             ret = CopyLD2GH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_LD_TO_GH, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GH, ret);
             break;
         }
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_LH_TO_GH);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_LH_TO_GH);
             ret = CopyLH2GH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_LH_TO_GH, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_LH_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GH_TO_LH);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LH);
             ret = CopyGH2LH(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GH_TO_LH, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
-            TP_DELAY_BEGIN(TP_HYBM_SDMA_GH_TO_LD);
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LD);
             ret = CopyGH2LD(destVA, srcVA, length, options.stream);
-            TP_DELAY_END(TP_HYBM_SDMA_GH_TO_LD, ret);
+            TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LD, ret);
             break;
         }
         default:

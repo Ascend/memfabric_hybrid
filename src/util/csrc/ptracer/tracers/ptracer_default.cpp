@@ -2,6 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include "ptracer_default.h"
+#include "ptracer_utils.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -13,6 +14,11 @@ namespace ock {
 namespace mf {
 namespace tracer {
 thread_local std::string LastError::msg_;
+
+DefaultTracer::~DefaultTracer()
+{
+    ShutDown();
+}
 
 int32_t DefaultTracer::StartUp(const std::string &dumpDir)
 {
@@ -33,12 +39,14 @@ int32_t DefaultTracer::StartUp(const std::string &dumpDir)
 
 void DefaultTracer::ShutDown()
 {
-    {
-        std::unique_lock<std::mutex> lock(dumpLock_);
-        running_ = false;
-        dumpCond_.notify_all();
+    if (dumpThread_.joinable()) {
+        {
+            std::unique_lock<std::mutex> lock(dumpLock_);
+            running_ = false;
+            dumpCond_.notify_all();
+        }
+        dumpThread_.join();
     }
-    dumpThread_.join();
 }
 
 void DefaultTracer::OverrideWrite(std::stringstream &ss)

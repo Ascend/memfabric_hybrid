@@ -5,10 +5,7 @@
 #include "smem_common_includes.h"
 #include "smem_version.h"
 #include "hybm.h"
-#include "htracer.h"
 #include "acc_links/net/acc_log.h"
-
-using namespace ock::mf;
 
 namespace {
 bool g_smemInited = false;

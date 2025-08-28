@@ -15,7 +15,7 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
         ${PROJECT_DRIVER_BASE}/userspace/include
-        ${PROJECT_UTIL_SRC_BASE}/htracer
+        ${PROJECT_UTIL_SRC_BASE}/ptracer/include
 )
 
 set(HYBM_PUBLIC_INCLUDE_DIR "${PROJECT_HYBM_SRC_BASE}/include")
@@ -54,12 +54,12 @@ set(HYBMM_SRC_FILES
 add_library(hybmm_objects OBJECT ${HYBMM_SRC_FILES})
 target_compile_options(hybmm_objects PRIVATE -fPIC)
 
-add_library(hybmm_static STATIC $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:htracer_object>)
+add_library(hybmm_static STATIC $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:ptracer_object>)
 set_target_properties(hybmm_static PROPERTIES OUTPUT_NAME "mf_hybm_core")
 target_link_libraries(hybmm_static PUBLIC pthread dl hybm_gvm_static)
 target_include_directories(hybmm_static INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
-add_library(hybmm_shared SHARED $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:htracer_object>)
+add_library(hybmm_shared SHARED $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:ptracer_object>)
 set_target_properties(hybmm_shared PROPERTIES OUTPUT_NAME "mf_hybm_core")
 target_link_libraries(hybmm_shared PUBLIC pthread dl hybm_gvm_shared)
 target_include_directories(hybmm_shared INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})

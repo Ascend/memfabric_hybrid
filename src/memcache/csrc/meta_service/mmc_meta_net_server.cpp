@@ -6,7 +6,7 @@
 #include "mmc_msg_base.h"
 #include "mmc_msg_client_meta.h"
 #include "mmc_meta_service_default.h"
-#include "htracer.h"
+#include "mmc_ptracer.h"
 
 namespace ock {
 namespace mmc {
@@ -90,9 +90,9 @@ Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
     auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
     BmRegisterRequest req;
     context->GetRequest<BmRegisterRequest>(req);
-    TP_DELAY_BEGIN(TP_MMC_META_BM_REGISTER);
+    TP_TRACE_BEGIN(TP_MMC_META_BM_REGISTER);
     auto result = metaServiceDefaultPtr->BmRegister(req.rank_, req.mediaType_, req.addr_, req.capacity_, req.blobMap_);
-    TP_DELAY_END(TP_MMC_META_BM_REGISTER, result);
+    TP_TRACE_END(TP_MMC_META_BM_REGISTER, result);
     MMC_LOG_INFO("HandleBmRegister rank:" << req.rank_ << ", rebuild blob size " << req.blobMap_.size()
                                           << ", ret:" << result);
     Response resp;
@@ -108,9 +108,9 @@ Result MetaNetServer::HandleBmUnregister(const NetContextPtr &context)
     resp.ret_ = MMC_OK;
     context->GetRequest<BmUnregisterRequest>(req);
     for (auto type : req.mediaType_) {
-        TP_DELAY_BEGIN(TP_MMC_META_BM_UNREGISTER);
+        TP_TRACE_BEGIN(TP_MMC_META_BM_UNREGISTER);
         auto result = metaServiceDefaultPtr->BmUnregister(req.rank_, type);
-        TP_DELAY_END(TP_MMC_META_BM_UNREGISTER, result);
+        TP_TRACE_END(TP_MMC_META_BM_UNREGISTER, result);
         MMC_LOG_INFO("HandleBmUnregister rank:" << req.rank_ << ", media:" << type << ", ret:" << result);
         if (result != MMC_OK) {
             MMC_LOG_ERROR("HandleBmUnregister rank:" << req.rank_ << ", media:" << type << ", ret:" << result);
@@ -147,9 +147,9 @@ Result MetaNetServer::HandleLinkBroken(const NetLinkPtr &link)
     MMC_LOG_INFO(name_ << " link broken");
     auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
     int32_t rankId = link->Id();
-    TP_DELAY_BEGIN(TP_MMC_META_CLEAR_RESOURCE);
+    TP_TRACE_BEGIN(TP_MMC_META_CLEAR_RESOURCE);
     auto ret = metaServiceDefaultPtr->ClearResource(rankId);
-    TP_DELAY_END(TP_MMC_META_CLEAR_RESOURCE, ret);
+    TP_TRACE_END(TP_MMC_META_CLEAR_RESOURCE, ret);
     return ret;
 }
 
@@ -159,9 +159,9 @@ Result MetaNetServer::HandleAlloc(const NetContextPtr &context)
     AllocResponse resp;
     context->GetRequest<AllocRequest>(req);
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_PUT);
+    TP_TRACE_BEGIN(TP_MMC_META_PUT);
     const auto result = metaMgrProxy->Alloc(req, resp);
-    TP_DELAY_END(TP_MMC_META_PUT, result);
+    TP_TRACE_END(TP_MMC_META_PUT, result);
     if (result != MMC_OK) {
         if (result != MMC_DUPLICATED_OBJECT) {
             MMC_LOG_ERROR("HandleAlloc key " << req.key_ << " failed, error code=" << result);
@@ -190,9 +190,9 @@ Result MetaNetServer::HandleBatchAlloc(const NetContextPtr &context)
                  << ", Flags: " << req.flags_);
     
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_PUT);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_PUT);
     Result batchResult = metaMgrProxy->BatchAlloc(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_PUT, batchResult);
+    TP_TRACE_END(TP_MMC_META_BATCH_PUT, batchResult);
     if (batchResult != MMC_OK) {
         MMC_LOG_ERROR("BatchAlloc failed. Keys count: " << req.keys_.size()
                      << ", Error: " << batchResult);
@@ -207,9 +207,9 @@ Result MetaNetServer::HandleUpdate(const NetContextPtr &context)
     context->GetRequest<UpdateRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_UPDATE);
+    TP_TRACE_BEGIN(TP_MMC_META_UPDATE);
     metaMgrProxy->UpdateState(req, resp);
-    TP_DELAY_END(TP_MMC_META_UPDATE, resp.ret_);
+    TP_TRACE_END(TP_MMC_META_UPDATE, resp.ret_);
     MMC_LOG_DEBUG("HandleUpdate key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
@@ -222,9 +222,9 @@ Result MetaNetServer::HandleBatchUpdate(const NetContextPtr &context)
     context->GetRequest<BatchUpdateRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_UPDATE);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_UPDATE);
     auto ret = metaMgrProxy->BatchUpdateState(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_UPDATE, ret);
+    TP_TRACE_END(TP_MMC_META_BATCH_UPDATE, ret);
     MMC_LOG_INFO("HandleBatchUpdate keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
@@ -237,9 +237,9 @@ Result MetaNetServer::HandleGet(const NetContextPtr &context)
     context->GetRequest<GetRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_GET);
+    TP_TRACE_BEGIN(TP_MMC_META_GET);
     metaMgrProxy->Get(req, resp);
-    TP_DELAY_END(TP_MMC_META_GET, resp.result_);
+    TP_TRACE_END(TP_MMC_META_GET, resp.result_);
     MMC_LOG_DEBUG("HandleGet key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
@@ -252,9 +252,9 @@ Result MetaNetServer::HandleBatchGet(const NetContextPtr &context)
     context->GetRequest<BatchGetRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_GET);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_GET);
     auto ret = metaMgrProxy->BatchGet(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_GET, ret);
+    TP_TRACE_END(TP_MMC_META_BATCH_GET, ret);
     MMC_LOG_DEBUG("HandleBatchGet keys (size  " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
@@ -267,9 +267,9 @@ Result MetaNetServer::HandleRemove(const NetContextPtr &context)
     context->GetRequest<RemoveRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_REMOVE);
+    TP_TRACE_BEGIN(TP_MMC_META_REMOVE);
     metaMgrProxy->Remove(req, resp);
-    TP_DELAY_END(TP_MMC_META_REMOVE, resp.ret_);
+    TP_TRACE_END(TP_MMC_META_REMOVE, resp.ret_);
     MMC_LOG_DEBUG("HandleRemove key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
@@ -282,9 +282,9 @@ Result MetaNetServer::HandleBatchRemove(const NetContextPtr &context)
     context->GetRequest<BatchRemoveRequest>(req);
 
     MmcMetaMgrProxyPtr metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_REMOVE);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_REMOVE);
     auto ret = metaMgrProxy->BatchRemove(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_REMOVE, ret);
+    TP_TRACE_END(TP_MMC_META_BATCH_REMOVE, ret);
     MMC_LOG_DEBUG("HandleBatchRemove keys (size  " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
@@ -297,9 +297,9 @@ Result MetaNetServer::HandleIsExist(const NetContextPtr &context)
     context->GetRequest<IsExistRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_EXIST);
+    TP_TRACE_BEGIN(TP_MMC_META_EXIST);
     metaMgrProxy->ExistKey(req, resp);
-    TP_DELAY_END(TP_MMC_META_EXIST, resp.ret_);
+    TP_TRACE_END(TP_MMC_META_EXIST, resp.ret_);
     MMC_LOG_DEBUG("HandleIsExist key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
@@ -312,9 +312,9 @@ Result MetaNetServer::HandleBatchIsExist(const NetContextPtr &context)
     context->GetRequest<BatchIsExistRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_EXIST);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_EXIST);
     auto ret = metaMgrProxy->BatchExistKey(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_EXIST, ret);
+    TP_TRACE_END(TP_MMC_META_BATCH_EXIST, ret);
     MMC_LOG_DEBUG("HandleBatchIsExist keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);
@@ -327,9 +327,9 @@ Result MetaNetServer::HandleQuery(const NetContextPtr &context)
     context->GetRequest<QueryRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_QUERY);
+    TP_TRACE_BEGIN(TP_MMC_META_QUERY);
     auto ret = metaMgrProxy->Query(req, resp);
-    TP_DELAY_END(TP_MMC_META_QUERY, ret);
+    TP_TRACE_END(TP_MMC_META_QUERY, ret);
     MMC_LOG_DEBUG("HandleQuery key " << req.key_ << " finish.");
 
     return context->Reply(req.msgId, resp);
@@ -342,9 +342,9 @@ Result MetaNetServer::HandleBatchQuery(const NetContextPtr &context)
     context->GetRequest<BatchQueryRequest>(req);
 
     auto &metaMgrProxy = metaService_->GetMetaMgrProxy();
-    TP_DELAY_BEGIN(TP_MMC_META_BATCH_QUERY);
+    TP_TRACE_BEGIN(TP_MMC_META_BATCH_QUERY);
     auto ret = metaMgrProxy->BatchQuery(req, resp);
-    TP_DELAY_END(TP_MMC_META_BATCH_QUERY, ret);
+    TP_TRACE_END(TP_MMC_META_BATCH_QUERY, ret);
     MMC_LOG_INFO("HandleBatchQuery keys (size " << req.keys_.size() << ") finish: " << Join(req.keys_));
 
     return context->Reply(req.msgId, resp);

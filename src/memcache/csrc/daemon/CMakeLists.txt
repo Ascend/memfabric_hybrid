@@ -1,6 +1,6 @@
 file(GLOB_RECURSE DAEMON_SRCS *.cc *.cpp *.h)
 
-add_executable(mmc_meta_service ${DAEMON_SRCS} $<TARGET_OBJECTS:htracer_object>)
+add_executable(mmc_meta_service ${DAEMON_SRCS} $<TARGET_OBJECTS:ptracer_object>)
 
 target_compile_options(mmc_meta_service PRIVATE -fPIC -Wno-float-equal)
 

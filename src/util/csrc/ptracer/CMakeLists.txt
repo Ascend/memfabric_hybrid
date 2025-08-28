@@ -5,7 +5,7 @@ include_directories(
 )
 
 aux_source_directory(. PTRACER_SRCS)
-aux_source_directory(default PTRACER_SRCS)
+aux_source_directory(tracers PTRACER_SRCS)
 
 add_library(ptracer_object OBJECT ${PTRACER_SRCS})
 

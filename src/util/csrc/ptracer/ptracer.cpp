@@ -16,6 +16,7 @@
 static std::mutex g_mutex;
 static bool g_inited = false;
 static int32_t g_tracerType = 0;
+ptracer g_tracer = {};
 
 namespace ock {
 namespace mf {

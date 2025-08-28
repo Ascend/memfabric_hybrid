@@ -9,10 +9,8 @@
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
-#include "htracer.h"
 
 using namespace ock::smem;
-using namespace ock::mf;
 #ifdef UT_ENABLED
 thread_local std::mutex g_smemBmMutex_;
 thread_local bool g_smemBmInited = false;
@@ -89,7 +87,6 @@ SMEM_API uint32_t smem_bm_get_rank_id()
 SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
                                   uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
-    TP_DELAY_BEGIN(TP_SMEM_BM_CREATE_ENTITY)
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", nullptr);
     SM_PARAM_VALIDATE(localDRAMSize == 0UL && localHBMSize == 0UL, "localMemorySize is 0", nullptr);
 
@@ -122,8 +119,6 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
         return nullptr;
     }
-    TP_DELAY_END(TP_SMEM_BM_CREATE_ENTITY, ret)
-
     return reinterpret_cast<void *>(entry.Get());
 }
 

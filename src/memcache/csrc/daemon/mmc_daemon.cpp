@@ -17,7 +17,7 @@
 #include "mmc_logger.h"
 #include "mmc_leader_election.h"
 #include "mmc_meta_service_default.h"
-#include "htracer.h"
+#include "mmc_ptracer.h"
 
 using namespace ock::mmc;
 
@@ -156,9 +156,10 @@ int main(int argc, char* argv[])
     }
     RegisterSignal();
 
-    auto result = ock::mf::HTracerInit();
+    ptracer_config_t ptraceConfig{.tracerType = 1, .dumpFilePath = "/var/log/mxc/memfabric_hybrid"};
+    auto result = ptracer_init(&ptraceConfig);
     if (result != MMC_OK) {
-        std::cerr << "init htracer module failed, result: " << result << std::endl;
+        std::cerr << "init ptracer module failed, result: " << result << std::endl;
         return -1;
     }
 
@@ -198,7 +199,7 @@ int main(int argc, char* argv[])
         leaderElection->Stop();
     }
 
-    ock::mf::HTracerExit();
+    ptracer_uninit();
 
     MMC_AUDIT_LOG("Meta Service stopped");
     return 0;

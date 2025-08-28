@@ -78,5 +78,4 @@ const char *ptracer_get_last_err_msg();
 #ifdef __cplusplus
 }
 #endif
-
 #endif  // MEM_FABRIC_PTRACER_H

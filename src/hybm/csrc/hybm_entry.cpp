@@ -9,8 +9,8 @@
 #include <string>
 
 #include "devmm_svm_gva.h"
-#include "htracer.h"
 #include "hybm.h"
+#include "hybm_ptracer.h"
 #include "hybm_cmd.h"
 #include "hybm_common_include.h"
 #include "hybm_gvm_user.h"
@@ -275,9 +275,10 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         return 0;
     }
 
-    auto result = ock::mf::HTracerInit();
+    ptracer_config_t config{.tracerType = 1, .dumpFilePath = "/var/log/mxc/memfabric_hybrid"};
+    auto result = ptracer_init(&config);
     if (result != BM_OK) {
-        BM_LOG_ERROR("init htracer module failed, result: " << result);
+        BM_LOG_ERROR("init ptracer module failed, result: " << result);
         return result;
     }
 
@@ -312,7 +313,7 @@ HYBM_API void hybm_uninit()
         return;
     }
 
-    ock::mf::HTracerExit();
+    ptracer_uninit();
 
     if (--initialized > 0L) {
         return;

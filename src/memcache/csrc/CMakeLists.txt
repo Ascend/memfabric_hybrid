@@ -17,7 +17,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/under_api/mf_smem
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_UTIL_SRC_BASE}
-        ${PROJECT_UTIL_SRC_BASE}/htracer
+        ${PROJECT_UTIL_SRC_BASE}/ptracer/include
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
         ${PROJECT_SOURCE_DIR}/3rdparty/net/acc_links/src/net/include
         ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/include/

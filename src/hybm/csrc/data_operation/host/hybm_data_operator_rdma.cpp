@@ -5,7 +5,6 @@
 #include "dl_acl_api.h"
 #include "space_allocator.h"
 #include "rbtree_range_pool.h"
-#include "htracer.h"
 
 using namespace ock::mf;
 
