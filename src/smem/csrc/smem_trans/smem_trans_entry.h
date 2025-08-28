@@ -36,10 +36,10 @@ struct WorkerSession {
 };
 
 union WorkerIdUnion {
-    WorkerSession session;
+    WorkerSession unique;
     uint64_t workerId;
 
-    explicit WorkerIdUnion(WorkerSession ws) : session(ws) {}
+    explicit WorkerIdUnion(WorkerSession ws) : unique(ws) {}
     explicit WorkerIdUnion(uint64_t id) : workerId{id} {}
 };
 
@@ -82,7 +82,7 @@ private:
     void WatchTaskFindNewSenders();
     void WatchTaskFindNewSlices();
     Result StoreDeviceInfo();
-    Result ParseNameToUniqueId(const std::string &name, uint64_t &session);
+    Result ParseNameToUniqueId(const std::string &name, uint64_t &unique);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);

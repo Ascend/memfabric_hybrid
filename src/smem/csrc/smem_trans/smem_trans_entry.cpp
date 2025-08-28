@@ -28,13 +28,13 @@ static const std::string RECEIVER_TOTAL_SLICE_COUNT_KEY = "receivers_total_slice
 static const std::string RECEIVER_SLICES_INFO_KEY = "receivers_all_slices_info";
 
 struct ReceiverSliceInfo {
-    WorkerSession session;
+    WorkerSession unique;
     const void *address;
     uint64_t size;
     uint8_t info[0];
 
     ReceiverSliceInfo(WorkerSession ws, const void *a, uint64_t s) noexcept
-        : session(std::move(ws)),
+        : unique(std::move(ws)),
           address{a},
           size{s}
     {
@@ -224,8 +224,8 @@ Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remo
 Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
                                  const size_t dataSizes[], uint32_t batchSize)
 {
-    uint64_t session;
-    auto ret = ParseNameToUniqueId(remoteName, session);
+    uint64_t unique;
+    auto ret = ParseNameToUniqueId(remoteName, unique);
     if (ret != 0) {
         return ret;
     }
@@ -233,9 +233,9 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     std::vector<void *> mappedAddress(batchSize);
 
     ReadGuard locker(remoteSliceRwMutex_);
-    auto it = remoteSlices_.find(session);
+    auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
-        SM_LOG_ERROR("session not found.");
+        SM_LOG_ERROR("unique not found.");
         return SM_INVALID_PARAM;
     }
 
@@ -399,7 +399,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
 
     WriteGuard locker(remoteSliceRwMutex_);
     for (auto i = 0U; i < increment; i++) {
-        WorkerIdUnion workerId{recvSs[i]->session};
+        WorkerIdUnion workerId{recvSs[i]->unique};
         remoteSlices_[workerId.workerId].emplace(recvSs[i]->address, LocalMapAddress{addresses[i], recvSs[i]->size});
     }
 
@@ -442,7 +442,7 @@ Result SmemTransEntry::StoreDeviceInfo()
     return SM_OK;
 }
 
-Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &session)
+Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &unique)
 {
     WorkerSession workerSession;
     auto success = ParseTransName(name, workerSession.address, workerSession.port);
@@ -452,7 +452,7 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &se
     }
 
     WorkerIdUnion workerId{workerSession};
-    session = workerId.workerId;
+    unique = workerId.workerId;
     return SM_OK;
 }
 

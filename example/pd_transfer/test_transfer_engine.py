@@ -11,10 +11,10 @@ def main():
     parser = argparse.ArgumentParser(description='Transfer Engine with role selection')
     parser.add_argument('--role', type=str, required=True, choices=['Decode', 'Prefill'],
                         help='Role of this instance: Decode or Prefill')
-    parser.add_argument('--src-session-id', type=str, help='Source session ID')
+    parser.add_argument('--src-unique-id', type=str, help='Source unique ID')
     parser.add_argument('--store-url', type=str, required=True, help='URL for the store (e.g., tcp://xx.xx.xx.xx:xxxx)')
     parser.add_argument('--npu-id', type=int, default=0, help='NPU device ID')
-    parser.add_argument('--dst-session-id', type=str, help='Destination session ID')
+    parser.add_argument('--dst-unique-id', type=str, help='Destination unique ID')
     parser.add_argument('--log-level', type=int, default=0, choices=[0,1,2,3],
                         help='Log level: 0 debug, 1 info, 2 warn, 3 error')
     
@@ -29,7 +29,7 @@ def main():
         run_decode_role(engine, args, args.src_session_id)
     elif args.role == "Prefill":
         if not args.dst_session_id:
-            raise ValueError("dst-session-id is required for Prefill role")
+            raise ValueError("dst-unique-id is required for Prefill role")
         run_prefill_role(engine, args, args.src_session_id)
 
 
