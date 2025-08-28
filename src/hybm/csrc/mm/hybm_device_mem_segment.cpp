@@ -72,7 +72,7 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     }
 
     if (HybmGvmHasInited()) {
-        ret = hybm_gvm_mem_fetch((uint64_t)(localVirtualBase + allocatedSize_), size);
+        ret = hybm_gvm_mem_fetch((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
@@ -241,6 +241,13 @@ Result MemSegmentDevice::Mmap() noexcept
             return -1;
         }
         mappedMem_.insert((uint64_t)remoteAddress);
+
+        if (HybmGvmHasInited()) {
+            ret = hybm_gvm_mem_fetch((uint64_t)remoteAddress, im.size, im.sdid);
+            if (ret != BM_OK) {
+                BM_LOG_WARN("hybm_gvm_mem_fetch memory failed: " << ret);
+            }
+        }
     }
     imports_.clear();
     return BM_OK;

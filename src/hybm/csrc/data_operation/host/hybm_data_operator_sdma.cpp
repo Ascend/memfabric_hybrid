@@ -40,7 +40,7 @@ int32_t HostDataOpSDMA::Initialized() noexcept
         }
 
         sdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *) sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE);
-        ret = hybm_gvm_mem_fetch((uint64_t)sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE);
+        ret = hybm_gvm_mem_fetch((uint64_t)sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE, 0);
         if (ret != BM_OK) {
             DlAclApi::AclrtFree(&sdmaSwapMemAddr_);
             sdmaSwapMemAddr_ = nullptr;

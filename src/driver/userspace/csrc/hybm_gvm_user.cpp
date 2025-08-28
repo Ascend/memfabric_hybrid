@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include "hybm_gva_user_def.h"
+#include "hybm_gvm_user_def.h"
 #include "hybm_gvm_cmd.h"
 #include "hybm_gvm_vir_page_manager.h"
 #include "hybm_user_logger.h"
@@ -16,6 +16,7 @@ using namespace ock::mf;
 
 static int g_hybm_fd = -1;
 static uint32_t g_svspid = 0;
+static uint32_t g_sdid = 0;
 
 static void hybm_davinci_close(int fd, const char *davinci_sub_name)
 {
@@ -77,8 +78,8 @@ int32_t hybm_gvm_init(uint64_t device_id)
         return HYBM_GVM_FAILURE;
     }
 
-    arg.data.proc_create_para.start = HYBM_GVA_START_ADDR;
-    arg.data.proc_create_para.end = HYBM_GVA_START_ADDR + HYBM_GVA_RESERVE_SIZE;
+    arg.data.proc_create_para.start = HYBM_GVM_START_ADDR;
+    arg.data.proc_create_para.end = HYBM_GVM_START_ADDR + HYBM_GVM_RESERVE_SIZE;
     arg.data.proc_create_para.devid = device_id;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_PROC_CREATE, &arg);
     if (ret < 0) {
@@ -87,13 +88,14 @@ int32_t hybm_gvm_init(uint64_t device_id)
         return HYBM_GVM_FAILURE;
     }
 
-    ret = HybmGvmVirPageManager::Instance()->Initialize(HYBM_GVA_START_ADDR, HYBM_GVA_RESERVE_SIZE, g_hybm_fd);
+    ret = HybmGvmVirPageManager::Instance()->Initialize(HYBM_GVM_START_ADDR, HYBM_GVM_RESERVE_SIZE, g_hybm_fd);
     if (ret != 0) {
         BM_USER_LOG_ERROR("init virtual page manager failed, ret:" << ret);
         hybm_gvm_deinit();
         return HYBM_GVM_FAILURE;
     }
     g_svspid = arg.data.proc_create_para.svspid;
+    g_sdid = arg.data.proc_create_para.sdid;
     BM_USER_LOG_INFO("hybm gvm module init success.");
     return HYBM_GVM_SUCCESS;
 }
@@ -124,7 +126,7 @@ int32_t hybm_gvm_get_device_info(uint32_t *ssid)
     return HYBM_GVM_SUCCESS;
 }
 
-int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size)
+int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size, bool shared)
 {
     if (g_hybm_fd < 0) {
         BM_USER_LOG_ERROR("hybm gvm module has not been initialized");
@@ -134,7 +136,7 @@ int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size)
         BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
         return HYBM_GVM_FAILURE;
     }
-    auto ret = HybmGvmVirPageManager::Instance()->ReserveMemory(addr, size);
+    auto ret = HybmGvmVirPageManager::Instance()->ReserveMemory(addr, size, shared);
     if (ret != 0) {
         BM_USER_LOG_ERROR("Failed to reserve memory, size:" << std::hex << size);
         return HYBM_GVM_FAILURE;
@@ -147,7 +149,39 @@ int32_t hybm_gvm_unreserve_memory()
     return HYBM_GVM_SUCCESS;
 }
 
-int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size)
+int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
+{
+    int ret;
+    struct hybm_gvm_ioctl_arg arg = {};
+    if (g_hybm_fd < 0) {
+        BM_USER_LOG_ERROR("hybm gvm module has not been initialized");
+        return HYBM_GVM_FAILURE;
+    }
+    if (addr == 0 || size % SIZE_1G) {
+        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
+        return HYBM_GVM_FAILURE;
+    }
+
+    if (sdid == 0) {
+        sdid = g_sdid;
+    }
+
+    for (uint64_t i = 0; i < size; i += SIZE_1G) {
+        arg.data.mem_fetch_para.addr = addr + i;
+        arg.data.mem_fetch_para.size = SIZE_1G;
+        arg.data.mem_fetch_para.sdid = sdid;
+        ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FETCH, &arg);
+        if (ret < 0) {
+            BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " addr:" << std::hex << addr
+                                                                          << " size:" << size);
+            return HYBM_GVM_FAILURE;
+        }
+    }
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH success, addr:" << std::hex << addr << " size:" << size);
+    return HYBM_GVM_SUCCESS;
+}
+
+int32_t hybm_gvm_mem_alloc(uint64_t addr, uint64_t size)
 {
     int ret;
     struct hybm_gvm_ioctl_arg arg = {};
@@ -156,48 +190,20 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || size == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
-        return HYBM_GVM_FAILURE;
-    }
-    arg.data.mem_fetch_para.addr = addr;
-    arg.data.mem_fetch_para.size = size;
-    ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FETCH, &arg);
-    if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " addr:" << std::hex << addr
-                                                                      << " size:" << size);
-        return HYBM_GVM_FAILURE;
-    }
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH success, addr:" << std::hex << addr << " size:" << size);
-    return HYBM_GVM_SUCCESS;
-}
-
-int32_t hybm_gvm_mem_alloc(uint64_t *addr, uint64_t size)
-{
-    int ret;
-    struct hybm_gvm_ioctl_arg arg = {};
-    if (g_hybm_fd < 0) {
-        BM_USER_LOG_ERROR("hybm gvm module has not been initialized");
-        return HYBM_GVM_FAILURE;
-    }
-    if (addr == nullptr || size == 0) {
         BM_USER_LOG_ERROR("Invalid param addr:" << addr << " size:" << size);
         return HYBM_GVM_FAILURE;
     }
-    arg.data.mem_alloc_para.addr = *addr;
+    arg.data.mem_alloc_para.addr = addr;
     arg.data.mem_alloc_para.size = size;
+    arg.data.mem_alloc_para.dma_flag = (addr < HYBM_GVM_SDMA_START_ADDR);
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_ALLOC, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_ALLOC failed, ret:" << ret << " addr:" << std::hex << (*addr)
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_ALLOC failed, ret:" << ret << " addr:" << std::hex << addr
                                                                       << " size:" << size);
         return HYBM_GVM_FAILURE;
     }
 
-    if (*addr != 0ULL && *addr != arg.data.mem_alloc_para.ret_addr) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_ALLOC failed, input:" << std::hex << (*addr)
-                                                                        << " ret:" << arg.data.mem_alloc_para.ret_addr);
-    }
-    *addr = arg.data.mem_alloc_para.ret_addr;
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_ALLOC success, addr:" << std::hex << (*addr) << " size:" << size);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_ALLOC success, addr:" << std::hex << addr << " size:" << size);
     return HYBM_GVM_SUCCESS;
 }
 

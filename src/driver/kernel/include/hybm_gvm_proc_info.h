@@ -12,8 +12,13 @@
 #define HYBM_GVM_PAGE_SIZE   (1024UL * 1024UL * 1024UL)                 // 1G
 #define HYBM_HPAGE_SIZE      (2UL * 1024UL * 1024UL)                    // 2M
 #define HYBM_GVM_PAGE_NUM    (HYBM_GVM_PAGE_SIZE / HYBM_HPAGE_SIZE)     // 512
-#define HYBM_GVM_MAX_VA_SIZE (16UL * 1024UL * 1024UL * 1024UL * 1024UL) // 2T
 #define HYBM_MAX_DEVICE_NUM  64
+
+#define HYBM_SVM_START  0x100000000000ULL
+#define HYBM_SVM_END    0x180000000000ULL
+
+#define HYBM_SVSP_START 0x800000000000ULL
+#define HYBM_SVSP_END   0xD00000000000ULL
 
 #ifndef GVM_ALIGN_DOWN
 #define GVM_ALIGN_DOWN(val, al) ((val) & ~((al) - 1))
@@ -24,6 +29,10 @@
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
 #ifndef UINT64_MAX
@@ -37,6 +46,7 @@ struct gvm_private_data {
 
 struct mem_node {
     u64 pa;
+    u64 *dma_list;
     void *head_node;
 };
 
@@ -54,7 +64,6 @@ struct hybm_gvm_process {
     struct mem_node *mem_array;
     struct rb_root key_tree;
     struct list_head fetch_head;         // TODO: 使用树记录,可以支持提前删除
-    struct list_head dev_allocated_head; // TODO: 使用树记录,可以支持提前删除
     struct rw_semaphore ioctl_rwsem;     // proc所有ioctl都有加锁,避免并发
 
     struct vm_area_struct *vma;
@@ -72,16 +81,17 @@ struct gvm_node {
     u64 size;
     u64 shm_key;
     u64 flag;
-
     struct list_head wlist_head;
     struct rb_node tree_node;
 };
 
 struct gvm_dev_mem_node {
     u64 va;
-    u64 pa;
     u64 size;
+    u32 page_size;
+    u32 num;
     struct list_head node;
+    u64 pa[HYBM_GVM_PAGE_NUM];
 };
 
 #endif // SMEM_HYBM_GVM_PROC_INFO_H

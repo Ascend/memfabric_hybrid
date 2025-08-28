@@ -51,7 +51,7 @@ int hybm_gvm_dispatch_ioctl(struct file *file, u32 cmd, struct hybm_gvm_ioctl_ar
         return -EOPNOTSUPP;
     }
 
-    if (cmd == HYBM_GVM_CMD_PROC_CREATE) { // 初始化操作未创建gvm_proc,不加锁
+    if (cmd_id == _IOC_NR(HYBM_GVM_CMD_PROC_CREATE)) { // 初始化操作未创建gvm_proc,不加锁
         return gvm_ioctl_handlers[cmd_id].ioctl_handler(file, NULL, buffer);
     }
 

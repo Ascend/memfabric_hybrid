@@ -33,7 +33,7 @@ Result MemSegmentHostSDMA::ReserveMemorySpace(void **address) noexcept
 
     uint64_t base = 0;
     totalVirtualSize_ = options_.rankCnt * options_.size;
-    auto ret = hybm_gvm_reserve_memory(&base, totalVirtualSize_);
+    auto ret = hybm_gvm_reserve_memory(&base, totalVirtualSize_, true);
     if (ret != 0 || base == 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -66,7 +66,7 @@ Result MemSegmentHostSDMA::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSl
 
     auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
     uint64_t allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
-    auto ret = hybm_gvm_mem_alloc(&allocAddr, size);
+    auto ret = hybm_gvm_mem_alloc(allocAddr, size);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
         return BM_DL_FUNCTION_FAILED;

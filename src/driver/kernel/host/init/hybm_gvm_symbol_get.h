@@ -6,6 +6,7 @@
 
 #include <linux/fs.h>
 #include <linux/kernel.h>
+#include <linux/dma-mapping.h>
 
 int gvm_symbol_get(void);
 void gvm_symbol_put(void);
@@ -58,8 +59,12 @@ struct sdid_parse_info {
 
 int dbl_get_spod_info(unsigned int udevid, struct spod_info *s);
 int dbl_parse_sdid(unsigned int sdid, struct sdid_parse_info *s);
+struct device *uda_get_device(u32 udevid);
 
 void *obmm_alloc(int numaid, unsigned long len, int flags);
 void obmm_free(void *p, int flags);
+
+dma_addr_t devdrv_dma_map_page(struct device *dev, struct page *page,
+                               size_t offset, size_t size, enum dma_data_direction dir);
 
 #endif // MF_HYBRID_HYBM_GVM_SYMBOL_GET_H

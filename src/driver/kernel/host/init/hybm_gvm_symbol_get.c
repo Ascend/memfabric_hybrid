@@ -20,6 +20,9 @@ struct gvm_symbol_manager {
     int (*common_send_func)(u32 devid, void *data, u32 in_data_len, u32 out_data_len, u32 *real_out_len, int msg_type);
     void *(*obmm_alloc_func)(int numaid, unsigned long len, int flags);
     void (*obmm_free_func)(void *p, int flags);
+    struct device *(*uda_get_device_func)(u32 udevid);
+    dma_addr_t (*dma_map_page_func)(struct device *dev, struct page *page,
+                                    size_t offset, size_t size, enum dma_data_direction dir);
 };
 struct gvm_symbol_manager *g_mgr = NULL;
 
@@ -91,6 +94,18 @@ int gvm_symbol_get(void)
         goto failed;
     }
 
+    g_mgr->uda_get_device_func = __symbol_get("uda_get_device");
+    if (g_mgr->uda_get_device_func == NULL) {
+        hybm_gvm_err("get symbol uda_get_device fail.");
+        goto failed;
+    }
+
+    g_mgr->dma_map_page_func = __symbol_get("devdrv_dma_map_page");
+    if (g_mgr->dma_map_page_func == NULL) {
+        hybm_gvm_err("get symbol devdrv_dma_map_page fail.");
+        goto failed;
+    }
+
     return 0;
 failed:
     gvm_symbol_put();
@@ -132,6 +147,12 @@ void gvm_symbol_put(void)
     }
     if (g_mgr->obmm_free_func != NULL) {
         __symbol_put("obmm_free");
+    }
+    if (g_mgr->uda_get_device_func != NULL) {
+        __symbol_put("uda_get_device");
+    }
+    if (g_mgr->dma_map_page_func != NULL) {
+        __symbol_put("devdrv_dma_map_page");
     }
 
     kfree(g_mgr);
@@ -237,4 +258,25 @@ void obmm_free(void *p, int flags)
     }
 
     return g_mgr->obmm_free_func(p, flags);
+}
+
+struct device *uda_get_device(u32 udevid)
+{
+    if (g_mgr == NULL || g_mgr->uda_get_device_func == NULL) {
+        hybm_gvm_err("symbol uda_get_device not get.");
+        return NULL;
+    }
+
+    return g_mgr->uda_get_device_func(udevid);
+}
+
+dma_addr_t devdrv_dma_map_page(struct device *dev, struct page *page,
+                               size_t offset, size_t size, enum dma_data_direction dir)
+{
+    if (g_mgr == NULL || g_mgr->dma_map_page_func == NULL) {
+        hybm_gvm_err("symbol devdrv_dma_map_page not get.");
+        return 0;
+    }
+
+    return g_mgr->dma_map_page_func(dev, page, offset, size, dir);
 }

@@ -16,10 +16,10 @@ extern "C" {
 int32_t hybm_gvm_init(uint64_t device_id);
 void hybm_gvm_deinit(void);
 int32_t hybm_gvm_get_device_info(uint32_t *ssid);
-int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size);
+int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size, bool shared);
 int32_t hybm_gvm_unreserve_memory();
-int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size);
-int32_t hybm_gvm_mem_alloc(uint64_t *addr, uint64_t size);
+int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid);
+int32_t hybm_gvm_mem_alloc(uint64_t addr, uint64_t size);
 int32_t hybm_gvm_mem_free(uint64_t addr);
 int32_t hybm_gvm_get_key(uint64_t addr, uint64_t *key);
 int32_t hybm_gvm_set_whitelist(uint64_t key, uint32_t sdid);

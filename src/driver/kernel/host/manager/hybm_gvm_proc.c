@@ -5,6 +5,8 @@
 
 #include <linux/mm.h>
 #include <linux/slab.h>
+#include <linux/version.h>
+#include <linux/dma-mapping.h>
 
 #include "hybm_gvm_ioctl.h"
 #include "hybm_gvm_log.h"
@@ -15,6 +17,8 @@
 
 #define GVM_NODE_FLAG_ALLOCATED 1ULL
 #define GVM_NODE_FLAG_REMOTE    2ULL
+#define GVM_NODE_FLAG_NO_SHARE  3ULL
+#define GVM_NODE_FLAG_DMA       4ULL
 
 #define GVM_KEY_SDID_OFFSET    32
 #define GVM_SDID_SERVER_OFFSET 22
@@ -59,8 +63,8 @@ static inline u32 gvm_get_server_id_by_sdid(u32 sdid)
 }
 
 static u64 g_global_pa_offset[48] = {
-    [4] = 0xb76e00000000ULL,
-    [5] = 0xb99580000000ULL,
+    [3] = 0xb94000000000ULL,
+    [18] = 0xb84000000000ULL,
 };
 
 static u64 gvm_get_local_pa_from_global(u64 pa, u32 sdid)
@@ -183,7 +187,6 @@ static int hybm_init_gvm_proc(struct hybm_gvm_process *gvm_proc, u64 start, u64 
     gvm_proc->va_page_num = num;
     gvm_proc->key_tree = RB_ROOT;
     INIT_LIST_HEAD(&gvm_proc->fetch_head);
-    INIT_LIST_HEAD(&gvm_proc->dev_allocated_head);
     init_rwsem(&gvm_proc->ioctl_rwsem);
     return 0;
 }
@@ -259,8 +262,7 @@ static int hybm_gvm_proc_create(struct file *file, struct hybm_gvm_process *proc
         return -EALREADY;
     }
 
-    if (arg->start >= arg->end || (arg->end - arg->start) % HYBM_GVM_PAGE_SIZE ||
-        (arg->end - arg->start) > HYBM_GVM_MAX_VA_SIZE) {
+    if (arg->start >= arg->end || (arg->end - arg->start) % HYBM_GVM_PAGE_SIZE) {
         hybm_gvm_err("input va range is invalid. st(0x%llx),ed(0x%llx)", arg->start, arg->end);
         return -EINVAL;
     }
@@ -279,6 +281,7 @@ static int hybm_gvm_proc_create(struct file *file, struct hybm_gvm_process *proc
     gvm_proc->initialized = true;
     ((struct gvm_private_data *)file->private_data)->process = gvm_proc;
     arg->svspid = gvm_proc->svspid;
+    arg->sdid = gvm_proc->sdid;
     hybm_gvm_debug("hybm_gvm_proc_create success. pasid:%d", gvm_proc->pasid);
     return 0;
 }
@@ -332,7 +335,7 @@ static struct gvm_node *hybm_gvm_get_node(struct hybm_gvm_process *proc, u64 va)
 static int hybm_gvm_map_phys_to_user(struct hybm_gvm_process *proc, u64 virt_addr, u64 phys_addr, u64 size)
 {
     struct vm_area_struct *vma;
-    u64 pfn = phys_addr / PAGE_SIZE;
+    u64 pfn = PFN_DOWN(phys_addr);
     int ret;
 
     if (proc->vma == NULL || proc->mm == NULL) {
@@ -358,9 +361,68 @@ static int hybm_gvm_map_phys_to_user(struct hybm_gvm_process *proc, u64 virt_add
 
 static void hybm_gvm_unmap_phys(struct mm_struct *mm, u64 virt_addr, u64 size)
 {
-    // zap_pte_range(mm, virt_addr, size, NULL);
-    // zap_pmd_range(mm, virt_addr, size);
-    return;
+    // TODO
+}
+
+static void hybm_gvm_dma_unmap(struct hybm_gvm_process *proc, u64 *pa_list, u32 num)
+{
+    u32 i;
+    struct device *dev = uda_get_device(proc->devid);
+
+    for (i = 0; i < num; i++) {
+        if (dma_mapping_error(dev, pa_list[i]) == 0) {
+            dma_unmap_page(dev, pa_list[i], HYBM_HPAGE_SIZE, DMA_BIDIRECTIONAL);
+        }
+    }
+    hybm_gvm_debug("hybm_gvm_dma_unmap, pa:0x%llx", pa_list[0]);
+}
+
+static int hybm_gvm_dma_map(struct hybm_gvm_process *proc, u64 pa, u64 *pa_list, u32 num)
+{
+    u32 i;
+    struct device *dev = uda_get_device(proc->devid);
+    struct page *pg;
+    int ret;
+
+    for (i = 0; i < num; i++) {
+        pg = pfn_to_page(PFN_DOWN(pa + HYBM_HPAGE_SIZE * i));
+        pa_list[i] = devdrv_dma_map_page(dev, pg, 0, HYBM_HPAGE_SIZE, DMA_BIDIRECTIONAL);
+        ret = dma_mapping_error(dev, pa_list[i]);
+        if (ret != 0) {
+            hybm_gvm_err("dma map failed, pa:0x%llx,ret:%d", pa + HYBM_HPAGE_SIZE * i, ret);
+            hybm_gvm_dma_unmap(proc, pa_list, i);
+            return -EINVAL;
+        }
+    }
+
+    hybm_gvm_debug("hybm_gvm_dma_map, pa:0x%llx ret_pa:0x%llx", pa, pa_list[0]);
+    return 0;
+}
+
+static int hybm_gvm_mem_add_dma(struct hybm_gvm_process *proc, u32 idx)
+{
+    u64 *pa_list = NULL;
+    int ret;
+
+    if (idx >= proc->va_page_num || proc->mem_array[idx].pa == 0 || proc->mem_array[idx].dma_list) {
+        hybm_gvm_err("input idx is invalid.");
+        return -EINVAL;
+    }
+
+    pa_list = kzalloc(sizeof(u64) * HYBM_GVM_PAGE_NUM, GFP_KERNEL | __GFP_ACCOUNT);
+    if (pa_list == NULL) {
+        hybm_gvm_err("kzalloc pa_list fail.");
+        return -ENOMEM;
+    }
+
+    ret = hybm_gvm_dma_map(proc, proc->mem_array[idx].pa, pa_list, HYBM_GVM_PAGE_NUM);
+    if (ret != 0) {
+        kfree(pa_list);
+        return ret;
+    }
+
+    proc->mem_array[idx].dma_list = pa_list;
+    return 0;
 }
 
 static void hybm_gvm_mem_free_inner(struct hybm_gvm_process *proc, struct gvm_node *node, u64 skip_id)
@@ -379,11 +441,17 @@ static void hybm_gvm_mem_free_inner(struct hybm_gvm_process *proc, struct gvm_no
         if (proc->mem_array[st].pa != 0 && st != skip_id) {
             hybm_gvm_to_agent_unmap(proc->devid, proc->pasid, proc->va_start + st * HYBM_GVM_PAGE_SIZE,
                                     HYBM_GVM_PAGE_SIZE, HYBM_GVM_PAGE_SIZE);
-            hybm_gvm_unmap_phys(current->mm, proc->va_start + st * HYBM_GVM_PAGE_SIZE, HYBM_GVM_PAGE_SIZE);
+            hybm_gvm_unmap_phys(proc->mm, proc->va_start + st * HYBM_GVM_PAGE_SIZE, HYBM_GVM_PAGE_SIZE);
         }
         if (proc->mem_array[st].pa != 0 && !gvm_check_flag(&node->flag, GVM_NODE_FLAG_REMOTE)) {
             hybm_gvm_free_pg(proc->mem_array[st].pa);
         }
+        if (gvm_check_flag(&node->flag, GVM_NODE_FLAG_DMA) && proc->mem_array[st].dma_list) {
+            hybm_gvm_dma_unmap(proc, proc->mem_array[st].dma_list, HYBM_GVM_PAGE_NUM);
+            kfree(proc->mem_array[st].dma_list);
+            proc->mem_array[st].dma_list = NULL;
+        }
+
         proc->mem_array[st].pa = 0;
         proc->mem_array[st].head_node = NULL;
         st++;
@@ -405,82 +473,47 @@ static int hybm_gvm_mem_alloc_inner(struct hybm_gvm_process *proc, struct gvm_no
         proc->mem_array[st].pa = hybm_gvm_alloc_pg();
         if (proc->mem_array[st].pa == 0) {
             hybm_gvm_err("alloc pa failed.");
-            hybm_gvm_mem_free_inner(proc, node, UINT64_MAX);
-            return -EBUSY;
+            ret = -EBUSY;
+            goto failed_return;
         }
 
         proc->mem_array[st].head_node = (void *)node;
-        ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, proc->va_start + st * HYBM_GVM_PAGE_SIZE,
-                                     proc->mem_array[st].pa, HYBM_GVM_PAGE_SIZE);
-        if (ret != 0) {
-            hybm_gvm_err("map device sdma failed. ret:%d", ret);
-            hybm_gvm_mem_free_inner(proc, node, st);
-            return ret;
-        }
-
         ret = hybm_gvm_map_phys_to_user(proc, proc->va_start + st * HYBM_GVM_PAGE_SIZE, proc->mem_array[st].pa,
                                         HYBM_GVM_PAGE_SIZE);
         if (ret != 0) {
             hybm_gvm_err("map host mem failed. ret:%d", ret);
-            hybm_gvm_mem_free_inner(proc, node, UINT64_MAX);
-            return ret;
+            goto failed_return;
         }
+
+        if (gvm_check_flag(&node->flag, GVM_NODE_FLAG_DMA)) {
+            ret = hybm_gvm_mem_add_dma(proc, st);
+            if (ret != 0) {
+                hybm_gvm_err("dma host mem failed. ret:%d", ret);
+                hybm_gvm_unmap_phys(proc->mm, proc->va_start + st * HYBM_GVM_PAGE_SIZE, HYBM_GVM_PAGE_SIZE);
+                goto failed_return;
+            }
+
+            ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, proc->va_start + st * HYBM_GVM_PAGE_SIZE,
+                                         HYBM_GVM_PAGE_SIZE, proc->mem_array[st].dma_list, HYBM_GVM_PAGE_NUM);
+        } else {
+            ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, proc->va_start + st * HYBM_GVM_PAGE_SIZE,
+                                         HYBM_GVM_PAGE_SIZE, &proc->mem_array[st].pa, 1U);
+        }
+        if (ret != 0) {
+            hybm_gvm_err("map device sdma failed. ret:%d", ret);
+            hybm_gvm_unmap_phys(proc->mm, proc->va_start + st * HYBM_GVM_PAGE_SIZE, HYBM_GVM_PAGE_SIZE);
+            goto failed_return;
+        }
+
         st++;
     }
 
     gvm_set_flag(&node->flag, GVM_NODE_FLAG_ALLOCATED);
     return 0;
-}
 
-static int hybm_gvm_alloc_from_device(struct hybm_gvm_process *proc, u64 size, u64 *addr)
-{
-    struct gvm_dev_mem_node *node = NULL;
-    u64 va = 0ULL;
-    u64 pa;
-    int ret;
-    if (size != HYBM_GVM_PAGE_SIZE) {
-        hybm_gvm_err("size must is 1G,size(0x%llx)", size);
-        return -EINVAL;
-    }
-
-    node = kzalloc(sizeof(struct gvm_dev_mem_node), GFP_KERNEL | __GFP_ACCOUNT);
-    if (node == NULL) {
-        hybm_gvm_err("kzalloc gvm node fail.");
-        return -ENOMEM;
-    }
-
-    pa = hybm_gvm_alloc_pg();
-    if (pa == 0) {
-        hybm_gvm_err("alloc pa failed.");
-        kfree(node);
-        return -EBUSY;
-    }
-
-    ret = hybm_gvm_to_agent_alloc(proc->devid, proc->pasid, pa, size, &va);
-    if (ret != 0) {
-        hybm_gvm_err("alloc dev failed! size(0x%llx)ret(%d)", size, ret);
-        kfree(node);
-        hybm_gvm_free_pg(pa);
-        return ret;
-    }
-
-    ret = hybm_gvm_map_phys_to_user(proc, va, pa, HYBM_GVM_PAGE_SIZE);
-    if (ret != 0) {
-        hybm_gvm_err("map host mem failed. ret:%d", ret);
-        hybm_gvm_to_agent_unmap(proc->devid, proc->pasid, va, size, size);
-        kfree(node);
-        hybm_gvm_free_pg(pa);
-        return ret;
-    }
-
-    node->va = va;
-    node->pa = pa;
-    node->size = size;
-    INIT_LIST_HEAD(&node->node);
-    list_add_tail(&node->node, &proc->dev_allocated_head);
-    *addr = va;
-    hybm_gvm_debug("allce dev mem success. va(0x%llx),size(0x%llx)", va, size);
-    return 0;
+failed_return:
+    hybm_gvm_mem_free_inner(proc, node, st);
+    return ret;
 }
 
 static int hybm_gvm_mem_alloc(struct file *file, struct hybm_gvm_process *proc, struct hybm_gvm_ioctl_arg *args)
@@ -496,47 +529,40 @@ static int hybm_gvm_mem_alloc(struct file *file, struct hybm_gvm_process *proc, 
         return -EINVAL;
     }
 
-    if (va == 0ULL) {
-        ret = hybm_gvm_alloc_from_device(proc, size, &va);
-        if (ret != 0) {
-            hybm_gvm_err("alloc mem from device failed, ret:%d", ret);
-            return -ENOMEM;
-        }
-    } else {
-        if (va < proc->va_start || va + size > proc->va_end) {
-            hybm_gvm_err(
-                "input param is out of va range. input:va(0x%llx),size(0x%llx) range:va(0x%llx),size(0x%llx)\n", va,
-                size, proc->va_start, proc->va_end);
-            return -EINVAL;
-        }
-
-        node = hybm_gvm_search_in_range(proc, va, size);
-        if (node != NULL) {
-            hybm_gvm_err("input range has already been allocated. input:va(0x%llx),size(0x%llx) "
-                         "allocated:va(0x%llx),size(0x%llx)",
-                         va, size, node->va, node->size);
-            return -EBUSY;
-        }
-
-        node = kzalloc(sizeof(struct gvm_node), GFP_KERNEL | __GFP_ACCOUNT);
-        if (node == NULL) {
-            hybm_gvm_err("kzalloc gvm node fail.");
-            return -ENOMEM;
-        }
-
-        node->va = va;
-        node->size = size;
-        INIT_LIST_HEAD(&node->wlist_head);
-        ret = hybm_gvm_mem_alloc_inner(proc, node);
-        if (ret != 0) {
-            hybm_gvm_err("alloc mem failed, ret:%d. input:va(0x%llx),size(0x%llx)", ret, va, size);
-            kfree(node);
-            return -EBUSY;
-        }
+    if (va < proc->va_start || va + size > proc->va_end) {
+        hybm_gvm_err("input param is out of va range. input:va(0x%llx),size(0x%llx) range:va(0x%llx),size(0x%llx)\n",
+                     va, size, proc->va_start, proc->va_end);
+        return -EINVAL;
     }
 
-    arg->ret_addr = va;
-    hybm_gvm_debug("alloc mem success. input:va(0x%llx),size(0x%llx)", va, size);
+    node = hybm_gvm_search_in_range(proc, va, size);
+    if (node != NULL) {
+        hybm_gvm_err("input range has already been allocated. input:va(0x%llx),size(0x%llx) "
+                     "allocated:va(0x%llx),size(0x%llx)", va, size, node->va, node->size);
+        return -EBUSY;
+    }
+
+    node = kzalloc(sizeof(struct gvm_node), GFP_KERNEL | __GFP_ACCOUNT);
+    if (node == NULL) {
+        hybm_gvm_err("kzalloc gvm node fail.");
+        return -ENOMEM;
+    }
+
+    node->va = va;
+    node->size = size;
+    if (arg->dma_flag) {
+        gvm_set_flag(&node->flag, GVM_NODE_FLAG_NO_SHARE);
+        gvm_set_flag(&node->flag, GVM_NODE_FLAG_DMA);
+    }
+    INIT_LIST_HEAD(&node->wlist_head);
+    ret = hybm_gvm_mem_alloc_inner(proc, node);
+    if (ret != 0) {
+        hybm_gvm_err("alloc mem failed, ret:%d. input:va(0x%llx),size(0x%llx)", ret, va, size);
+        kfree(node);
+        return -EBUSY;
+    }
+
+    hybm_gvm_debug("alloc mem success. input:va(0x%llx),size(0x%llx)flag(0x%llx)", va, size, node->flag);
     return 0;
 }
 
@@ -615,6 +641,11 @@ static int hybm_gvm_get_key(struct file *file, struct hybm_gvm_process *proc, st
 
     node = hybm_gvm_get_node(proc, va);
     if (node == NULL) {
+        return -EINVAL;
+    }
+
+    if (gvm_check_flag(&node->flag, GVM_NODE_FLAG_NO_SHARE)) {
+        hybm_gvm_err("set key failed, this mem can't share. va(0x%llx)", va);
         return -EINVAL;
     }
 
@@ -755,9 +786,16 @@ static int hybm_gvm_mem_fetch(struct file *file, struct hybm_gvm_process *proc, 
         return -ENOMEM;
     }
 
-    ret = hybm_gvm_to_agent_fetch(proc->devid, proc->pasid, va, size);
+    if (proc->sdid == arg->sdid) {
+        ret = hybm_gvm_to_agent_fetch(proc->devid, proc->pasid, va, size, node->pa, HYBM_GVM_PAGE_NUM);
+    } else {
+        ret = hybm_gvm_p2p_fetch(proc->sdid, proc->devid, arg->sdid, va, node->pa);
+        if (ret == 0) {
+            ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, va, size, node->pa, HYBM_GVM_PAGE_NUM);
+        }
+    }
     if (ret != 0) {
-        hybm_gvm_err("map hbm failed! va(0x%llx),size(0x%llx)", va, size);
+        hybm_gvm_err("fetch mem failed! va(0x%llx),size(0x%llx)", va, size);
         kfree(node);
         return ret;
     }
@@ -795,18 +833,6 @@ void hybm_gvm_proc_destroy(struct gvm_private_data *priv)
         if (ret != 0) {
             hybm_gvm_err("unmap fetch mem failed! va(0x%llx),size(0x%llx),ret:%d", node->va, node->size, ret);
         }
-        list_del_init(&node->node);
-        kfree(node);
-    }
-
-    list_for_each_safe(pos, n, &proc->dev_allocated_head)
-    {
-        node = list_entry(pos, struct gvm_dev_mem_node, node);
-        ret = hybm_gvm_to_agent_unmap(proc->devid, proc->pasid, node->va, node->size, node->size);
-        if (ret != 0) {
-            hybm_gvm_err("unmap fetch mem failed! va(0x%llx),size(0x%llx),ret:%d", node->va, node->size, ret);
-        }
-        hybm_gvm_free_pg(node->pa);
         list_del_init(&node->node);
         kfree(node);
     }
@@ -910,20 +936,13 @@ int hybm_gvm_proc_set_pa(struct hybm_gvm_process *proc, u32 sdid, struct gvm_nod
             lpa = gvm_get_local_pa_from_global(lpa, sdid);
         }
 
-        ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, proc->va_start + (i + st) * HYBM_GVM_PAGE_SIZE, lpa,
-                                     HYBM_GVM_PAGE_SIZE);
+        ret = hybm_gvm_to_agent_mmap(proc->devid, proc->pasid, proc->va_start + (i + st) * HYBM_GVM_PAGE_SIZE,
+                                     HYBM_GVM_PAGE_SIZE, &lpa, 1U);
         if (ret != 0) {
             hybm_gvm_err("map device sdma failed. ret:%d", ret);
             hybm_gvm_mem_free_inner(proc, node, i + st);
             return ret;
         }
-
-        // ret = hybm_gvm_map_phys_to_user(proc, proc->va_start + (i + st) * HYBM_GVM_PAGE_SIZE, lpa,
-        // HYBM_GVM_PAGE_SIZE); if (ret != 0) {
-        //     hybm_gvm_err("map host mem failed. ret:%d", ret);
-        //     hybm_gvm_mem_free_inner(proc, node, UINT64_MAX);
-        //     return ret;
-        // }
     }
 
     gvm_set_flag(&node->flag, GVM_NODE_FLAG_ALLOCATED);
@@ -1017,4 +1036,30 @@ int hybm_gvm_unset_remote(u32 sdid, u64 key, struct hybm_gvm_process *rp)
     }
     hybm_gvm_debug("hybm_gvm_unset_remote key:0x%llx sdid:%u", key, sdid);
     return 0;
+}
+
+int hybm_gvm_fetch_remote(u32 sdid, u64 va, u64 *pa_list)
+{
+    struct hybm_gvm_process *proc = hybm_gvm_get_proc_by_sdid(sdid);
+    struct list_head *pos = NULL, *n = NULL;
+    struct gvm_dev_mem_node *node = NULL;
+    u32 i;
+    if (proc == NULL) {
+        hybm_gvm_err("not found proc, sdid(0x%x)", sdid);
+        return -EINVAL;
+    }
+
+    list_for_each_safe(pos, n, &proc->fetch_head)
+    {
+        node = list_entry(pos, struct gvm_dev_mem_node, node);
+        if (node->va == va) {
+            for (i = 0; i < HYBM_GVM_PAGE_NUM; i++) {
+                pa_list[i] = node->pa[i];
+            }
+            return 0;
+        }
+    }
+
+    hybm_gvm_err("not found va, maybe not fetch, va(0x%llx)", va);
+    return -EINVAL;
 }

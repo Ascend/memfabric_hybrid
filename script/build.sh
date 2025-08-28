@@ -102,15 +102,15 @@ do
         export CMAKE_PREFIX_PATH=$PYTHON_HOME
         export LD_LIBRARY_PATH=$PYTHON_HOME/lib
         export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
+
+        rm -rf build/
+        mkdir -p build/
+        cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_ASAN="${BUILD_ASAN}" -S . -B build/
+        make -j5 -C build _pysmem _pymmc
     fi
 
     rm -f "${PROJ_DIR}"/src/smem/python/mf_smem/_pymf_smem.cpython*.so
     rm -f "${PROJ_DIR}"/src/memcache/python/pymmc/pymmc.cpython*.so
-
-    rm -rf build/
-    mkdir build/
-    cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_ASAN="${BUILD_ASAN}" -S . -B build/
-    make -j5 -C build _pysmem _pymmc
 
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/_pymf_smem.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_smem
     \cp -v "${PROJ_DIR}"/build/src/memcache/csrc/python_wrapper/_pymmc.cpython*.so "${PROJ_DIR}"/src/memcache/python/pymmc

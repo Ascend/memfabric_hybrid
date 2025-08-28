@@ -6,6 +6,8 @@ ccflags-y := $(INCLUDE_PATH) -DTARGET_LINUX -Wall -Wno-unused-function -O2
 
 ARCH := arm64
 
+KDIR := /home/l30029286/hybm_driver/kernel/output/agent-kernel/output/
+
 export ARCH           # pass to kbuild
 export CROSS_COMPILE  # pass to kbuild
 export CC             # pass to kbuild

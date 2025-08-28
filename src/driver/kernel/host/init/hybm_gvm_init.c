@@ -98,6 +98,11 @@ static int hybm_gvm_mmap(struct file *file, struct vm_area_struct *vma)
         return -EINVAL;
     }
 
+    if (vma == NULL) {
+        hybm_gvm_err("vma is null!");
+        return -EINVAL;
+    }
+
     gvm_proc = (struct hybm_gvm_process *)(((struct gvm_private_data *)file->private_data)->process);
     if (gvm_proc == NULL || gvm_proc->initialized != true) {
         hybm_gvm_err("gvm_proc has not been initialized.");
@@ -109,14 +114,20 @@ static int hybm_gvm_mmap(struct file *file, struct vm_area_struct *vma)
         return -EINVAL;
     }
 
+    if (vma->vm_start != gvm_proc->va_start || vma->vm_end != gvm_proc->va_end) {
+        hybm_gvm_err("mapped addr is different with gvm inited addr. gvm:st:0x%llx,ed:0x%llx "
+                     "vma:st:0x%lx,ed:0x%lx", gvm_proc->va_start, gvm_proc->va_end, vma->vm_start, vma->vm_end);
+        return -EINVAL;
+    }
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
     vm_flags_set(vma, VM_DONTEXPAND | VM_DONTDUMP | VM_DONTCOPY | VM_PFNMAP | VM_LOCKED | VM_WRITE | VM_IO);
 #else
     vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_DONTCOPY | VM_PFNMAP | VM_LOCKED | VM_WRITE | VM_IO;
 #endif
     gvm_proc->vma = vma;
-    gvm_proc->mm = (current->mm);
-    hybm_gvm_err("gvm_proc map success. va:0x%lx,size:0x%lx", vma->vm_start, vma->vm_end - vma->vm_start);
+    gvm_proc->mm = vma->vm_mm;
+    hybm_gvm_info("gvm_proc map success. va:0x%lx,size:0x%lx", vma->vm_start, vma->vm_end - vma->vm_start);
     return 0;
 }
 

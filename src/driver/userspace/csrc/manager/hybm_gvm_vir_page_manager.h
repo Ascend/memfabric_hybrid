@@ -10,20 +10,25 @@
 namespace ock {
 namespace mf {
 
+struct HGM_MemInfo {
+    uint64_t start;
+    uint64_t reserved;
+    uint64_t used;
+};
+
 class HybmGvmVirPageManager {
 public:
     static HybmGvmVirPageManager *Instance();
     int32_t Initialize(uint64_t startAddr, uint64_t size, int fd);
-    int32_t ReserveMemory(uint64_t *addr, uint64_t size);
+    int32_t ReserveMemory(uint64_t *addr, uint64_t size, bool shared);
 
 private:
     HybmGvmVirPageManager() = default;
     ~HybmGvmVirPageManager();
 
 private:
-    uint64_t startAddr_{0};
-    uint64_t totalSize_{0};
-    uint64_t reservedSize_{0};
+    HGM_MemInfo local_{};
+    HGM_MemInfo global_{};
     std::mutex mutex_;
 };
 }

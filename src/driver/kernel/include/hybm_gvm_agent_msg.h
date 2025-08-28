@@ -27,9 +27,10 @@ struct hybm_gvm_agent_init_msg {
 
 struct hybm_gvm_agent_mmap_msg {
     u64 va;
-    u64 pa;
     u64 size;
     u32 pasid;
+    u32 page_num;
+    u64 pa_list[];
 };
 
 struct hybm_gvm_agent_unmap_msg {
@@ -44,19 +45,14 @@ struct hybm_gvm_agent_fetch_msg {
     u64 size;
     int hostpid;
     u32 pasid;
+    u64 pa_list[];
 };
 
 struct hybm_gvm_agent_msg {
     int type;
     u16 valid;
     s16 result;
-
-    union {
-        struct hybm_gvm_agent_init_msg init;
-        struct hybm_gvm_agent_mmap_msg mmap;
-        struct hybm_gvm_agent_unmap_msg unmap;
-        struct hybm_gvm_agent_fetch_msg fetch;
-    };
+    u64 body[];
 };
 
 #endif // MF_HYBRID_HYBM_GVM_AGENT_MSG_H

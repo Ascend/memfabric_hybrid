@@ -1,13 +1,16 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
  */
-#ifndef MEMFABRIC_HYBM_GVA_USER_DEF_H
-#define MEMFABRIC_HYBM_GVA_USER_DEF_H
+#ifndef MEMFABRIC_HYBM_GVM_USER_DEF_H
+#define MEMFABRIC_HYBM_GVM_USER_DEF_H
 
 #include <unistd.h>
 
-#define HYBM_GVA_START_ADDR   0x800000000000ULL // 128T
-#define HYBM_GVA_RESERVE_SIZE 0x50000000000ULL  // 5T
+#define HYBM_GVM_START_ADDR         0x700000000000ULL // 112T
+#define HYBM_GVM_SDMA_START_ADDR    0x800000000000ULL // 128T
+#define HYBM_GVM_RESERVE_SIZE       0x300000000000ULL  // 16T(RDMA)+32T(SDMA)
+
+#define SIZE_1G (1ULL << 30)
 
 #define DAVINIC_MODULE_NAME_MAX 256
 #define DAVINCI_INTF_DEV_PATH   "/dev/davinci_manager"
@@ -32,4 +35,4 @@ static inline const char *davinci_intf_get_dev_path(void)
     return DAVINCI_INTF_DEV_PATH;
 }
 
-#endif // MEMFABRIC_HYBM_GVA_USER_DEF_H
+#endif // MEMFABRIC_HYBM_GVM_USER_DEF_H

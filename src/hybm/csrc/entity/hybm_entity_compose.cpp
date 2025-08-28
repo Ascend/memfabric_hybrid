@@ -454,8 +454,8 @@ int HybmEntityCompose::CheckOptions(const hybm_options *options) noexcept
 
     if (options->hostVASpace == 0UL || (options->hostVASpace % DEVICE_LARGE_PAGE_SIZE) != 0UL ||
         options->deviceVASpace == 0UL || (options->deviceVASpace % DEVICE_LARGE_PAGE_SIZE) != 0UL) {
-        BM_LOG_ERROR("invalid local memory size(" << options->deviceVASpace << ") should be times of "
-                                                  << DEVICE_LARGE_PAGE_SIZE);
+        BM_LOG_ERROR("invalid local memory size(D:" << options->deviceVASpace << ",H:" << options->hostVASpace <<
+            ") should be times of " << DEVICE_LARGE_PAGE_SIZE << " and large than 0");
         return BM_INVALID_PARAM;
     }
 

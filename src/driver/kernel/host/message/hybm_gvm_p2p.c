@@ -37,6 +37,12 @@ struct hybm_gvm_p2p_unset_msg {
     u32 dst_sdid;
 };
 
+struct hybm_gvm_p2p_fetch_msg {
+    u64 va;
+    u32 dst_sdid;
+    u64 pa_list[HYBM_GVM_PAGE_NUM];
+};
+
 #define HYBM_GVM_P2P_MSG_SEND_MAGIC 0x5A5A
 #define HYBM_GVM_P2P_MSG_RCV_MAGIC  0xA5A5
 
@@ -44,6 +50,7 @@ enum hybm_gvm_p2p_msg_cmd {
     HYBM_GVM_P2P_MSG_SET_WL,
     HYBM_GVM_P2P_MSG_GET_ADDR,
     HYBM_GVM_P2P_MSG_DESTROY,
+    HYBM_GVM_P2P_MSG_FETCH,
     HYBM_GVM_P2P_MSG_MAX
 };
 
@@ -110,10 +117,22 @@ static int hybm_gvm_p2p_unset_recv(u32 send_sdid, struct hybm_gvm_p2p_msg_head *
     return hybm_gvm_unset_remote(nmsg->dst_sdid, nmsg->key, nmsg->rproc);
 }
 
+static int hybm_gvm_p2p_fetch_recv(u32 send_sdid, struct hybm_gvm_p2p_msg_head *msg, u32 len)
+{
+    struct hybm_gvm_p2p_fetch_msg *nmsg = (struct hybm_gvm_p2p_fetch_msg *)msg->msg_body;
+    u32 expect_len = sizeof(struct hybm_gvm_p2p_msg_head) + sizeof(struct hybm_gvm_p2p_fetch_msg);
+    if (len < expect_len) {
+        hybm_gvm_err("get_addr msg size is error. expect(%u)real(%u)", expect_len, len);
+        return -EINVAL;
+    }
+    return hybm_gvm_fetch_remote(nmsg->dst_sdid, nmsg->va, nmsg->pa_list);
+}
+
 static const hybm_gvm_p2p_msg_rcv_func_t rcv_ops[HYBM_GVM_P2P_MSG_MAX] = {
     [HYBM_GVM_P2P_MSG_SET_WL] = hybm_gvm_p2p_set_wl_recv,
     [HYBM_GVM_P2P_MSG_GET_ADDR] = hybm_gvm_p2p_get_addr_recv,
     [HYBM_GVM_P2P_MSG_DESTROY] = hybm_gvm_p2p_unset_recv,
+    [HYBM_GVM_P2P_MSG_FETCH] = hybm_gvm_p2p_fetch_recv,
 };
 
 static int hybm_gvm_p2p_msg_check(u32 devid, u32 sdid, struct data_input_info *data)
@@ -303,6 +322,45 @@ int hybm_gvm_p2p_get_addr(struct hybm_gvm_process *proc, u32 src_sdid, u32 src_d
     }
 
 result:
+    kfree(msg);
+    return ret;
+}
+
+int hybm_gvm_p2p_fetch(u32 src_sdid, u32 src_devid, u32 dst_sdid, u64 va, u64 *pa_list)
+{
+    u64 msg_len = sizeof(struct hybm_gvm_p2p_msg_head) + sizeof(struct hybm_gvm_p2p_fetch_msg);
+    struct hybm_gvm_p2p_msg_head *msg = NULL;
+    struct hybm_gvm_p2p_fetch_msg *nmsg = NULL;
+    u32 i;
+    int ret;
+
+    msg = kzalloc(msg_len, GFP_KERNEL | __GFP_ACCOUNT);
+    if (msg == NULL) {
+        hybm_gvm_err("kzalloc hybm_gvm_p2p_msg_head fail.");
+        return -ENOMEM;
+    }
+
+    msg->src_sdid = src_sdid;
+    msg->cmdtype = HYBM_GVM_P2P_MSG_FETCH;
+    msg->result = 0;
+    msg->valid = HYBM_GVM_P2P_MSG_SEND_MAGIC;
+    nmsg = (struct hybm_gvm_p2p_fetch_msg *)msg->msg_body;
+
+    nmsg->va = va;
+    nmsg->dst_sdid = dst_sdid;
+    ret = hybm_gvm_p2p_msg_sync_send(src_devid, dst_sdid, msg, msg_len);
+    if ((ret != 0) || (msg->result < 0) || (msg->valid != HYBM_GVM_P2P_MSG_RCV_MAGIC)) {
+        hybm_gvm_err("msg send fail. (ret=%d; result=%d; valid=0x%x; devid=%u; sdid=%u)", ret, msg->result, msg->valid,
+                     src_devid, dst_sdid);
+        ret = -EFAULT;
+        goto free_and_return;
+    }
+
+    for (i = 0; i < HYBM_GVM_PAGE_NUM; i++) {
+        pa_list[i] = nmsg->pa_list[i];
+    }
+    ret = msg->result;
+free_and_return:
     kfree(msg);
     return ret;
 }
