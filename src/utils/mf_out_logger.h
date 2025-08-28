@@ -12,6 +12,7 @@
 #include <mutex>
 #include <unistd.h>
 #include <sstream>
+#include <algorithm>
 #include <sys/time.h>
 #include <sys/syscall.h>
 
@@ -75,8 +76,11 @@ public:
     inline void Log(int level, const std::ostringstream &oss)
     {
         // LCOV_EXCL_START
+        std::string logMsg = oss.str();
+        logMsg.erase(std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }),
+                     logMsg.end());
         if (logFunc_ != nullptr) {
-            logFunc_(level, oss.str().c_str());
+            logFunc_(level, logMsg.c_str());
             return;
         }
 
@@ -92,18 +96,18 @@ public:
         }
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", result) != 0) {
             std::cout << strTime << std::setw(6) << std::setfill('0') << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " " << oss.str() << std::endl;
+                      << syscall(SYS_gettid) << " " << logMsg << std::endl;
         } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
+            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << logMsg
                       << std::endl;
         }
-      // LCOV_EXCL_STOP
+        // LCOV_EXCL_STOP
     }
 
-    OutLogger(const OutLogger &) = delete;
-    OutLogger(OutLogger &&) = delete;
-    OutLogger& operator=(const OutLogger&) = delete;
-    OutLogger& operator=(OutLogger&&) = delete;
+    OutLogger(const OutLogger &)            = delete;
+    OutLogger(OutLogger &&)                 = delete;
+    OutLogger &operator=(const OutLogger &) = delete;
+    OutLogger &operator=(OutLogger &&)      = delete;
 
     ~OutLogger()
     {
@@ -123,7 +127,7 @@ private:
     }
 
 private:
-    LogLevel logLevel_ = ERROR_LEVEL;
+    LogLevel logLevel_   = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error", "fatal"};
@@ -139,14 +143,14 @@ private:
 #define MF_LOG_FILENAME_SHORT (__FILE__)
 #endif
 #endif
-#define MF_OUT_LOG(TAG, LEVEL, ARGS)                                                        \
-    do {                                                                                    \
-        if (static_cast<int>(LEVEL) < ock::mf::OutLogger::Instance().GetLogLevel()) {       \
-            break;                                                                          \
-        }                                                                                   \
-        std::ostringstream oss;                                                             \
-        oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;           \
-        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss);                   \
+#define MF_OUT_LOG(TAG, LEVEL, ARGS)                                                  \
+    do {                                                                              \
+        if (static_cast<int>(LEVEL) < ock::mf::OutLogger::Instance().GetLogLevel()) { \
+            break;                                                                    \
+        }                                                                             \
+        std::ostringstream oss;                                                       \
+        oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
+        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss);             \
     } while (0)
 
-#endif // MEMFABRIC_HYBRID_LOGGER_H
+#endif  // MEMFABRIC_HYBRID_LOGGER_H
