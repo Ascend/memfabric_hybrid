@@ -17,15 +17,32 @@ using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
-const hybm_options g_options_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                             HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true,
-                                             HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
-const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE,
-                                                 HYBM_SCOPE_CROSS_NODE, HYBM_RANK_TYPE_STATIC, 8, 0, 0,
-                                                 1024 * 1024 * 1024, 0, false, HYBM_ROLE_PEER,
+const hybm_options g_options_unified_addr = {HYBM_TYPE_HOST_INITIATE,
+                                             HYBM_MEM_TYPE_DEVICE,
+                                             HYBM_DOP_TYPE_DEVICE_RDMA,
+                                             HYBM_SCOPE_CROSS_NODE,
+                                             8,
+                                             0,
+                                             0,
+                                             1024 * 1024 * 1024,
+                                             0,
+                                             true,
+                                             HYBM_ROLE_PEER,
+                                             "tcp://127.0.0.1:10002"};
+const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
+                                                 HYBM_MEM_TYPE_HOST,
+                                                 HYBM_DOP_TYPE_HOST_RDMA,
+                                                 HYBM_SCOPE_CROSS_NODE,
+                                                 8,
+                                                 0,
+                                                 0,
+                                                 1024 * 1024 * 1024,
+                                                 0,
+                                                 false,
+                                                 HYBM_ROLE_PEER,
                                                  "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
-}
+}  // namespace
 
 class HybmEntityDefaultTest : public ::testing::Test {
 protected:
@@ -34,7 +51,7 @@ protected:
         auto path = std::getenv("ASCEND_HOME_PATH");
         EXPECT_NE(path, nullptr);
         auto libPath = std::string(path).append("/lib64");
-        EXPECT_EQ(DlApi::LoadLibrary(libPath, HYBM_LOAD_FLAG_NEED_DEVICE_RDMA), BM_OK);
+        EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
     }
     static void TearDownTestSuite()
     {
@@ -138,7 +155,7 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     ExchangeInfoWriter writer2(&info);
     EXPECT_EQ(entity.ExportExchangeInfo(slice, writer2, 0), BM_NOT_INITIALIZED);
 
-    void* addresses[1] = { nullptr };
+    void *addresses[1] = {nullptr};
     ExchangeInfoReader reader(&info);
     EXPECT_EQ(entity.ImportExchangeInfo(&reader, 1, addresses, 0), BM_NOT_INITIALIZED);
 

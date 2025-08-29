@@ -17,7 +17,6 @@ using namespace ock::mf;
 namespace {
 const std::string ASCEND_HOME_PATH = std::string(getenv("ASCEND_HOME_PATH"));
 const std::string LD_LIBRARY_PATH = std::string(getenv("LD_LIBRARY_PATH"));
-const uint64_t flags = HYBM_LOAD_FLAG_NEED_DEVICE_RDMA;
 }
 class HybmEntryTest : public ::testing::Test {
 protected:
@@ -35,7 +34,7 @@ protected:
 TEST_F(HybmEntryTest, hybm_init_ShouldReturnZero_WhenAllConditionsMet)
 {
     uint16_t deviceId = 0;
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(HybmHasInited(), true);
     EXPECT_EQ(HybmGetInitDeviceId(), deviceId);
@@ -51,15 +50,15 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenDeviceIdNotEqual)
 {
     uint16_t deviceId = 0;
 
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, 0);
 
-    result = hybm_init(deviceId, flags);
+    result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, 0);
     hybm_uninit();
 
     deviceId = 1;
-    result = hybm_init(deviceId, flags);
+    result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_ERROR);
 
     hybm_uninit();
@@ -74,7 +73,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenHalGvaPrecheckFails)
     uint16_t deviceId = 1;
 
     (void) unsetenv("LD_LIBRARY_PATH");
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_ERROR);
     (void) setenv("LD_LIBRARY_PATH", LD_LIBRARY_PATH.c_str(), 1);
 
@@ -90,7 +89,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenAscendHomePathNotSet)
     uint16_t deviceId = 1;
 
     (void) unsetenv("ASCEND_HOME_PATH");
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_ERROR);
     (void) setenv("ASCEND_HOME_PATH", ASCEND_HOME_PATH.c_str(), 1);
 
@@ -107,7 +106,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMError_WhenSetDeviceFails)
 
     MOCKER_CPP(&DlAclApi::AclrtSetDevice, int32_t (*)(int32_t)).stubs().will(returnValue(-1));
 
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_ERROR);
 
     hybm_uninit();
@@ -123,7 +122,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnMinusOne_WhenReserveMemoryFails)
 
     MOCKER_CPP(&drv::HalGvaReserveMemory, int32_t (*)(uint64_t *, size_t, int32_t, uint64_t))
         .stubs().will(returnValue(-1));
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_ERROR);
 
     hybm_uninit();
@@ -139,7 +138,7 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMMallocFailed_WhenAllocMemoryFails)
 
     MOCKER_CPP(&drv::HalGvaAlloc, int32_t (*)(uint64_t, size_t, uint64_t))
         .stubs().will(returnValue(-1));
-    int32_t result = hybm_init(deviceId, flags);
+    int32_t result = hybm_init(deviceId, 0);
     EXPECT_EQ(result, BM_MALLOC_FAILED);
 
     hybm_uninit();

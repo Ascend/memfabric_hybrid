@@ -289,7 +289,7 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
         return SM_NOT_STARTED;
     }
 
-    int32_t reachesTypes[HYBM_DOP_TYPE_BUTT];
+    hybm_data_op_type reachesTypes;
     auto ret = hybm_entity_reach_types(entity_, remoteRank, reachesTypes, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm_entity_reach_types() failed: " << ret);
@@ -297,15 +297,15 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
     }
 
     reachInfo = 0U;
-    if (reachesTypes[HYBM_DOP_TYPE_MTE] != 0) {
+    if (reachesTypes & HYBM_DOP_TYPE_MTE) {
         reachInfo |= SMEMS_DATA_OP_MTE;
     }
 
-    if (reachesTypes[HYBM_DOP_TYPE_ROCE] != 0) {
-        reachInfo |= SMEMS_DATA_OP_ROCE;
+    if (reachesTypes & HYBM_DOP_TYPE_SDMA) {
+        reachInfo |= SMEMS_DATA_OP_RDMA;
     }
 
-    if (reachesTypes[HYBM_DOP_TYPE_SDMA] != 0) {
+    if (reachesTypes & HYBM_DOP_TYPE_DEVICE_RDMA) {
         reachInfo |= SMEMS_DATA_OP_SDMA;
     }
 

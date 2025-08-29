@@ -12,13 +12,12 @@ constexpr uint8_t MAX_DEVICE_COUNT = 16;
 
 MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
     : MemSegmentDevice{options, eid}
-{
-}
+{}
 
 MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem()
 {
     if (!memNames_.empty()) {
-        for (auto& name: memNames_) {
+        for (auto &name : memNames_) {
             DlAclApi::RtIpcDestroyMemoryName(name.c_str());
         }
         BM_LOG_INFO("Finish to destroy memory names.");
@@ -82,7 +81,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
 
     memNames_.emplace_back(name);
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
-                                    reinterpret_cast<uint64_t>(addr), size);
+                                       reinterpret_cast<uint64_t>(addr), size);
     registerSlices_.emplace(slice->index_, RegisterSlice{slice, name});
     addressedSlices_.emplace(slice->vAddress_, slice->size_);
     return BM_OK;
@@ -307,33 +306,39 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
         return BM_ERROR;
     }
 
-    if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
-        ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.deviceId, 0);
-        if (ret != 0) {
-            BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.deviceId << " failed: " << ret);
-            return BM_DL_FUNCTION_FAILED;
-        }
-        enablePeerDevices_.set(sliceInfo.deviceId);
-        BM_LOG_DEBUG("enable peer access for : " << sliceInfo.deviceId);
-    }
-
     void *address = nullptr;
-    if (CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId)) {
+    if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) && CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId)) {
+        if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
+            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.deviceId, 0);
+            if (ret != 0) {
+                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.deviceId << " failed: " << ret);
+                return BM_DL_FUNCTION_FAILED;
+            }
+            enablePeerDevices_.set(sliceInfo.deviceId);
+            BM_LOG_DEBUG("enable peer access for : " << sliceInfo.deviceId);
+        }
+
         ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
         if (ret != 0) {
-            BM_LOG_ERROR(
-                    "IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_ << ",pid=" << pid_);
+            BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_
+                                          << ",pid=" << pid_);
             return BM_DL_FUNCTION_FAILED;
         }
-    } else {
+    } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         address = (void *)(ptrdiff_t)sliceInfo.address;
-        auto value = (uint64_t)(ptrdiff_t)address | ((sliceInfo.rankId + 1UL) << 48);
-        address = (void *)(ptrdiff_t)value;
     }
+
+    if (address == nullptr) {
+        BM_LOG_ERROR("import slice failed, sdma not reaches, rdma not opened.");
+        return BM_ERROR;
+    }
+
+    auto value = (uint64_t)(ptrdiff_t)address | ((sliceInfo.rankId + 1UL) << 48);
+    address = (void *)(ptrdiff_t)value;
     registerAddrs_.emplace_back(address);
 
     remoteSlice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
-                                            reinterpret_cast<uint64_t>(address), sliceInfo.size);
+                                             reinterpret_cast<uint64_t>(address), sliceInfo.size);
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
@@ -342,7 +347,7 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
 
 void MemSegmentDeviceUseMem::CloseMemory() noexcept
 {
-    for (auto& addr: registerAddrs_) {
+    for (auto &addr : registerAddrs_) {
         if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
             BM_LOG_WARN("Failed to close memory. This may affect future memory registration.");
         }
@@ -386,5 +391,5 @@ bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
 
     return pos->second.superPodId == superPodId;
 }
-}
-}
+}  // namespace mf
+}  // namespace ock

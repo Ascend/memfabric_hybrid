@@ -17,16 +17,6 @@ std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
 #endif
 
-static inline int32_t SmemShmOpCheck(SmemShmEntryManager &manager, smem_shm_data_op_type dataOpType)
-{
-    if (dataOpType == SMEMS_DATA_OP_ROCE && !manager.NeedDeviceRdma()) {
-        SM_LOG_AND_SET_LAST_ERROR(
-            "smem shm op type is roce, but SMEM_INIT_FLAG_NEED_DEVICE_RDMA not set when smem_shm_init.");
-        return 0;
-    }
-    return 1;
-}
-
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                                     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
@@ -42,18 +32,22 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     SmemShmEntryPtr entry = nullptr;
     auto &manager = SmemShmEntryManager::Instance();
-    SM_ASSERT_RETURN_NOLOG(SmemShmOpCheck(manager, dataOpType), nullptr);
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("malloc entry failed, id: " << id << ", result: " << ret);
         return nullptr;
     }
 
+
     hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = (dataOpType == SMEMS_DATA_OP_MTE) ? HYBM_DOP_TYPE_MTE : HYBM_DOP_TYPE_DEVICE_RDMA;
+    options.bmType = HYBM_TYPE_AI_CORE_INITIATE;
+    options.memType = HYBM_MEM_TYPE_DEVICE;
+    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
+    if (dataOpType & SMEMS_DATA_OP_RDMA) {
+        auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
+        options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
+    }
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = rankSize;
     options.rankId = rankId;
     options.singleRankVASpace = symmetricSize;

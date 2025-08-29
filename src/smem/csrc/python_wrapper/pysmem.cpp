@@ -9,7 +9,6 @@
 #include <mutex>
 
 #include "smem.h"
-#include "smem_security.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
 #include "smem_version.h"
@@ -457,7 +456,7 @@ void DefineShmClass(py::module_ &m)
     py::enum_<smem_shm_data_op_type>(m, "ShmDataOpType")
         .value("MTE", SMEMS_DATA_OP_MTE)
         .value("SDMA", SMEMS_DATA_OP_SDMA)
-        .value("ROCE", SMEMS_DATA_OP_ROCE);
+        .value("RDMA", SMEMS_DATA_OP_RDMA);
 
     m.def("initialize", &ShareMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),
           py::arg("world_size"), py::arg("rank_id"), py::arg("device_id"), py::arg("config"));
@@ -529,7 +528,7 @@ void DefineBmClass(py::module_ &m)
 {
     py::enum_<smem_bm_data_op_type>(m, "BmDataOpType")
         .value("SDMA", SMEMB_DATA_OP_SDMA)
-        .value("ROCE", SMEMB_DATA_OP_ROCE);
+        .value("HOST_RDMA", SMEMB_DATA_OP_HOST_RDMA);
 
     // module method
     m.def("initialize", &BigMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),

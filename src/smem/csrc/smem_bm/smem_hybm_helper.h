@@ -13,35 +13,42 @@ namespace ock {
 namespace smem {
 class SmemHybmHelper {
 public:
-    static inline hybm_type TransHybmType(const uint64_t &localDRAMSize, const uint64_t &localHBMSize)
+    static inline hybm_mem_type TransHybmMemType(uint64_t localDRAMSize, uint64_t localHBMSize)
     {
-        if (localDRAMSize == 0 && localHBMSize > 0) {
-            return HYBM_TYPE_HBM_HOST_INITIATE;
+        uint32_t resultMemType = 0;
+        if (localDRAMSize > 0) {
+            resultMemType |= HYBM_MEM_TYPE_HOST;
         }
-        if (localDRAMSize > 0 && localHBMSize == 0) {
-            return HYBM_TYPE_DRAM_HOST_INITIATE;
+        if (localHBMSize > 0) {
+            resultMemType |= HYBM_MEM_TYPE_DEVICE;
         }
-        if (localDRAMSize > 0 && localHBMSize > 0) {
-            return HYBM_TYPE_HBM_DRAM_HOST_INITIATE;
-        }
-        return HYBM_TYPE_BUTT;
+
+        return static_cast<hybm_mem_type>(resultMemType);
     }
 
     static inline hybm_data_op_type TransHybmDataOpType(smem_bm_data_op_type smemBmDataOpType)
     {
-        switch (smemBmDataOpType) {
-            case SMEMB_DATA_OP_SDMA:
-                return HYBM_DOP_TYPE_SDMA;
-            case SMEMB_DATA_OP_ROCE:
-                return HYBM_DOP_TYPE_ROCE;
-            case SMEMB_DATA_OP_TCP:
-                return HYBM_DOP_TYPE_TCP;
-            default:
-                return HYBM_DOP_TYPE_BUTT;
+        uint32_t resultOpType = 0;
+        if (smemBmDataOpType & SMEMB_DATA_OP_SDMA) {
+            resultOpType |= (HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
         }
+
+        if (smemBmDataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
+            resultOpType |= HYBM_DOP_TYPE_DEVICE_RDMA;
+        }
+
+        if (smemBmDataOpType & SMEMB_DATA_OP_HOST_RDMA) {
+            resultOpType |= HYBM_DOP_TYPE_HOST_RDMA;
+        }
+
+        if (smemBmDataOpType & SMEMB_DATA_OP_HOST_TCP) {
+            resultOpType |= HYBM_DOP_TYPE_HOST_TCP;
+        }
+
+        return static_cast<hybm_data_op_type>(resultOpType);
     }
 };
-}
-}
+}  // namespace smem
+}  // namespace ock
 
-#endif // MF_HYBRID_SMEM_HYBM_HELPER_H
+#endif  // MF_HYBRID_SMEM_HYBM_HELPER_H

@@ -103,28 +103,11 @@ SMEM_API uint32_t smem_bm_get_rank_id()
 }
 
 /* return 1 means check ok */
-static inline int32_t SmemBmOpCheck(SmemBmEntryManager &manager, smem_bm_data_op_type dataOpType,
-                                    uint64_t localDRAMSize, uint64_t localHBMSize)
+static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
 {
-    hybm_type type = SmemHybmHelper::TransHybmType(localDRAMSize, localHBMSize);
-    if (type == HYBM_TYPE_BUTT) {
-        SM_LOG_AND_SET_LAST_ERROR("smem bm type invalid.");
-        return 0;
-    }
-    if (dataOpType == SMEMB_DATA_OP_ROCE) {
-        if ((type == HYBM_TYPE_DRAM_HOST_INITIATE || HYBM_TYPE_HBM_DRAM_HOST_INITIATE) &&
-            !manager.NeedHostRdma()) {
-            SM_LOG_AND_SET_LAST_ERROR(
-                "smem bm op type is roce, but SMEM_INIT_FLAG_NEED_HOST_RDMA not set when smem_bm_init.");
-            return 0;
-        }
-        if (type == HYBM_TYPE_HBM_HOST_INITIATE && !manager.NeedDeviceRdma()) {
-            SM_LOG_AND_SET_LAST_ERROR(
-                "smem bm op type is roce, but SMEM_INIT_FLAG_NEED_DEVICE_RDMA not set when smem_bm_init.");
-            return 0;
-        }
-    }
-    return 1;
+    constexpr auto dataOpTypeMask =
+        SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+    return (dataOpType & dataOpTypeMask) != 0;
 }
 
 SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
@@ -137,7 +120,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
-    SM_ASSERT_RETURN_NOLOG(SmemBmOpCheck(manager, dataOpType, localDRAMSize, localHBMSize), nullptr);
+    SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(dataOpType), nullptr);
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
@@ -145,10 +128,10 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = SmemHybmHelper::TransHybmType(localDRAMSize, localHBMSize);
-    options.bmDataOpType = (dataOpType == SMEMB_DATA_OP_SDMA) ? HYBM_DOP_TYPE_SDMA : HYBM_DOP_TYPE_ROCE;
+    options.bmType = HYBM_TYPE_HOST_INITIATE;
+    options.memType = SmemHybmHelper::TransHybmMemType(localDRAMSize, localHBMSize);
+    options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(dataOpType);
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
@@ -156,7 +139,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
-    (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
+    (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.nic);
 
     if (options.singleRankVASpace == 0) {
         SM_LOG_AND_SET_LAST_ERROR("options.singleRankVASpace is 0, cannot be divided.");
@@ -252,8 +235,7 @@ SMEM_API void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId)
     return reinterpret_cast<uint8_t *>(gvaAddress) + coreOption.singleRankVASpace * peerRankId;
 }
 
-SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t,
-                              uint32_t flags)
+SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);

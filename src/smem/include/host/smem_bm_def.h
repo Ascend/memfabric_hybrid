@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <smem_common_def.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,8 +19,9 @@ typedef void *smem_bm_t;
  */
 typedef enum {
     SMEMB_DATA_OP_SDMA = 1U << 0,
-    SMEMB_DATA_OP_ROCE = 1U << 1,
-    SMEMB_DATA_OP_TCP = 1U << 2,
+    SMEMB_DATA_OP_HOST_RDMA = 1U << 1,
+    SMEMB_DATA_OP_HOST_TCP = 1U << 2,
+    SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3,
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 

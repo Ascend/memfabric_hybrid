@@ -39,7 +39,7 @@ SMEM_API int32_t smem_trans_init(const smem_trans_config_t *config)
         return SM_OK;
     }
 
-    auto ret = hybm_init(config->deviceId, config->flags | HYBM_LOAD_FLAG_NEED_DEVICE_RDMA);
+    auto ret = hybm_init(config->deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_ERROR("hybm core init failed: " << ret);
         return ret;

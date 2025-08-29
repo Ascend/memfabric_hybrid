@@ -148,16 +148,12 @@ HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
     return entity->Mmap();
 }
 
-HYBM_API int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, int32_t reaches[HYBM_DOP_TYPE_BUTT],
-                                         uint32_t flags)
+HYBM_API int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, hybm_data_op_type &reachTypes, uint32_t flags)
 {
     auto entity = (MemEntity *)e;
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(reaches != nullptr, BM_INVALID_PARAM);
 
-    reaches[HYBM_DOP_TYPE_ROCE] = 1;
-    reaches[HYBM_DOP_TYPE_MTE] = reaches[HYBM_DOP_TYPE_SDMA] = entity->SdmaReaches(rank) ? 1 : 0;
-
+    reachTypes = entity->CanReachDataOperators(rank);
     return BM_OK;
 }
 
@@ -167,7 +163,7 @@ HYBM_API int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t f
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
 
-    std::vector<uint32_t> ranks = { rank };
+    std::vector<uint32_t> ranks = {rank};
     return entity->RemoveImported(ranks);
 }
 

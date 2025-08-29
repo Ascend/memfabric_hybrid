@@ -10,38 +10,19 @@
 namespace ock {
 namespace mf {
 
-Result DlApi::LoadLibrary(const std::string &libDirPath, uint64_t flags)
+Result DlApi::LoadLibrary(const std::string &libDirPath)
 {
     auto result = DlAclApi::LoadLibrary(libDirPath);
     if (result != BM_OK) {
-        DlApi::CleanupLibrary();
         return result;
     }
 
     result = DlHalApi::LoadLibrary();
     if (result != BM_OK) {
-        DlApi::CleanupLibrary();
+        DlAclApi::CleanupLibrary();
         return result;
     }
 
-    if (flags & HYBM_LOAD_FLAG_NEED_DEVICE_RDMA) {
-        result = DlHccpApi::LoadLibrary();
-        if (result != BM_OK) {
-            DlHalApi::CleanupLibrary();
-            DlAclApi::CleanupLibrary();
-            return result;
-        }
-    }
-
-    if (flags & HYBM_LOAD_FLAG_NEED_HOST_RDMA) {
-        result = DlHcomApi::LoadLibrary();
-        if (result != BM_OK) {
-            DlHccpApi::CleanupLibrary();
-            DlHalApi::CleanupLibrary();
-            DlAclApi::CleanupLibrary();
-            return result;
-        }
-    }
     return BM_OK;
 }
 
@@ -51,6 +32,19 @@ void DlApi::CleanupLibrary()
     DlAclApi::CleanupLibrary();
     DlHalApi::CleanupLibrary();
     DlHcomApi::CleanupLibrary();
+}
+
+Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)
+{
+    if (libraryType == DL_EXT_LIB_DEVICE_RDMA) {
+        return DlHccpApi::LoadLibrary();
+    }
+
+    if (libraryType == DL_EXT_LIB_HOST_RDMA) {
+        return DlHcomApi::LoadLibrary();
+    }
+
+    return BM_OK;
 }
 
 }

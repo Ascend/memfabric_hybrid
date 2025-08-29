@@ -229,7 +229,7 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     }
 
     hybm_copy_params copyParams = {src, dest, size};
-    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t];
     return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
 }
 
@@ -242,7 +242,7 @@ Result SmemBmEntry::DataCopyBatch(const void **src, void **dest, const size_t *s
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t];
     hybm_batch_copy_params copyParams = {src, dest, size, count};
     return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
 }
@@ -279,7 +279,7 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
                                         .dpitch = params.dpitch,
                                         .width = params.width,
                                         .height = params.height};
-    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t]; // TODO: liuqzh : 两种介质同时存在怎么办？
     return hybm_data_copy_2d(entity_, &copy2dparams, direct, nullptr, flags);
 }
 

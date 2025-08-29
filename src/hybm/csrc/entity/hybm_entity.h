@@ -40,6 +40,7 @@ public:
     virtual void Unmap() noexcept = 0;
     virtual int32_t Mmap() noexcept = 0;
     virtual bool SdmaReaches(uint32_t remoteRank) const noexcept = 0;
+    virtual hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept = 0;
 
     virtual bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept = 0;
     virtual int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,

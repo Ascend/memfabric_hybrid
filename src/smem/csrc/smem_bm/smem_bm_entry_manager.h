@@ -55,16 +55,6 @@ public:
         return config_.hcomUrl;
     }
 
-    inline bool NeedHostRdma() const
-    {
-        return config_.flags & HYBM_LOAD_FLAG_NEED_HOST_RDMA;
-    }
-
-    inline bool NeedDeviceRdma() const
-    {
-        return config_.flags & HYBM_LOAD_FLAG_NEED_DEVICE_RDMA;
-    }
-
 private:
     int32_t PrepareStore();
     int32_t RacingForStoreServer();

@@ -7,8 +7,6 @@
 
 #include <stdint.h>
 
-#include <smem_common_def.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

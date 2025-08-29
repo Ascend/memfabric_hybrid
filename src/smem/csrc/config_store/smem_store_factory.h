@@ -10,6 +10,8 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
+
+#include "smem.h"
 #include "smem_config_store.h"
 
 namespace ock {

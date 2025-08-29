@@ -23,22 +23,19 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_IMPORT_WITH_ADDRESS        0x01U
 
 typedef enum {
-    HYBM_TYPE_HBM_AI_CORE_INITIATE = 0,
-    HYBM_TYPE_HBM_HOST_INITIATE,
-    HYBM_TYPE_DRAM_HOST_INITIATE,
-    HYBM_TYPE_HBM_DRAM_HOST_INITIATE,
-
+    HYBM_TYPE_AI_CORE_INITIATE = 0,
+    HYBM_TYPE_HOST_INITIATE,
     HYBM_TYPE_BUTT
 } hybm_type;
 
 typedef enum {
-    HYBM_DOP_TYPE_MTE = 0,
-    HYBM_DOP_TYPE_ROCE,
-    HYBM_DOP_TYPE_SDMA,
-    HYBM_DOP_TYPE_DEVICE_RDMA,
-    HYBM_DOP_TYPE_TCP,
+  HYBM_DOP_TYPE_MTE = 1 << 0,
+  HYBM_DOP_TYPE_SDMA = 1 << 1,
+  HYBM_DOP_TYPE_DEVICE_RDMA = 1 << 2,
+  HYBM_DOP_TYPE_HOST_RDMA = 1 << 3,
+  HYBM_DOP_TYPE_HOST_TCP = 1 << 4,
 
-    HYBM_DOP_TYPE_BUTT
+  HYBM_DOP_TYPE_BUTT
 } hybm_data_op_type;
 
 typedef enum {
@@ -47,12 +44,6 @@ typedef enum {
 
     HYBM_SCOPE_BUTT
 } hybm_scope;
-
-typedef enum {
-    HYBM_RANK_TYPE_STATIC = 0,
-
-    HYBM_RANK_TYPE_BUTT
-} hybm_rank_type;
 
 typedef enum {
     HYBM_MEM_TYPE_DEVICE = 0,
@@ -69,23 +60,23 @@ typedef enum {
 } hybm_role_type;
 
 typedef struct {
-    uint8_t desc[512L]{};
-    uint32_t descLen{0};
+    uint8_t desc[512L];
+    uint32_t descLen;
 } hybm_exchange_info;
 
 typedef struct {
-    hybm_type bmType{HYBM_TYPE_BUTT};
-    hybm_data_op_type bmDataOpType{HYBM_DOP_TYPE_BUTT};
-    hybm_scope bmScope{HYBM_SCOPE_BUTT};
-    hybm_rank_type bmRankType{HYBM_RANK_TYPE_STATIC};
-    uint16_t rankCount{0};
-    uint16_t rankId{0};
-    uint16_t devId{0};
-    uint64_t singleRankVASpace{0};
-    uint64_t preferredGVA{0};
-    bool globalUniqueAddress{true}; // 是否使用全局统一内存地址
-    hybm_role_type role{HYBM_ROLE_PEER};
-    char nic[64]{};
+    hybm_type bmType;
+    hybm_mem_type memType;
+    hybm_data_op_type bmDataOpType;
+    hybm_scope bmScope;
+    uint16_t rankCount;
+    uint16_t rankId;
+    uint16_t devId;
+    uint64_t singleRankVASpace;
+    uint64_t preferredGVA;
+    bool globalUniqueAddress; // 是否使用全局统一内存地址
+    hybm_role_type role;
+    char nic[64];
 } hybm_options;
 
 typedef enum {
@@ -107,11 +98,6 @@ typedef enum {
 
     HYBM_DATA_COPY_DIRECTION_BUTT
 } hybm_data_copy_direction;
-
-typedef enum {
-    HYBM_LOAD_FLAG_NEED_HOST_RDMA  = 1U << 16,      /* ref SMEM_INIT_FLAG_NEED_HOST_RDMA */
-    HYBM_LOAD_FLAG_NEED_DEVICE_RDMA  = 1U << 17,    /* ref SMEM_INIT_FLAG_NEED_DEVICE_RDMA */
-} hybm_load_flag;
 
 typedef struct {
     const void *src;

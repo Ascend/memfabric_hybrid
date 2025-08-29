@@ -216,7 +216,7 @@ int32_t HalGvaPrecheck(void)
     return BM_ERROR;
 }
 
-static inline int hybm_load_library(uint64_t flags)
+static inline int hybm_load_library()
 {
     char *path = std::getenv("ASCEND_HOME_PATH");
     BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
@@ -226,8 +226,8 @@ static inline int hybm_load_library(uint64_t flags)
         BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
         return BM_ERROR;
     }
-    auto ret = DlApi::LoadLibrary(libPath, flags);
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret << " flags " << flags);
+    auto ret = DlApi::LoadLibrary(libPath);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
     return 0;
 }
 
@@ -245,7 +245,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
          * hybm_init will be accessed multiple times when bm/shm/trans init
          * incremental loading is required here.
          */
-        BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(flags), "load library failed");
+        BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
 
         initialized++;
         return 0;
@@ -253,7 +253,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
 
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(flags), "load library failed");
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
 
     auto ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {

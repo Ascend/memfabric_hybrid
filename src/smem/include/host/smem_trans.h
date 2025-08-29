@@ -5,7 +5,6 @@
 #ifndef MF_HYBRID_SMEM_TRANS_H
 #define MF_HYBRID_SMEM_TRANS_H
 
-#include <stddef.h>
 #include "smem.h"
 #include "smem_trans_def.h"
 

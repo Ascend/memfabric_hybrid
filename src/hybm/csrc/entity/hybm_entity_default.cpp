@@ -3,6 +3,7 @@
  */
 #include <algorithm>
 #include "hybm_logger.h"
+#include "dl_api.h"
 #include "dl_acl_api.h"
 #include "hybm_device_mem_segment.h"
 #include "hybm_data_operator_sdma.h"
@@ -39,20 +40,16 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 
     options_ = *options;
 
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(LoadExtendLibrary(), "LoadExtendLibrary failed.");
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(InitSegment(), "InitSegment failed.");
 
     auto ret = InitTransManager();
     if (ret != BM_OK) {
-        /* Maybe we should skip transport init */
-        if (options->bmDataOpType != HYBM_DOP_TYPE_ROCE) {
-            BM_LOG_INFO("skip transport manager");
-        } else {
-            BM_LOG_ERROR("init transport manager failed");
-            return ret;
-        }
+        BM_LOG_ERROR("init transport manager failed");
+        return ret;
     }
 
-    if (options_.bmType != HYBM_TYPE_HBM_AI_CORE_INITIATE) {
+    if (options_.bmType != HYBM_TYPE_AI_CORE_INITIATE) {
         ret = InitDataOperator();
         if (ret != 0) {
             return ret;
@@ -127,8 +124,8 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, uint32_t flags, hybm_m
     info.size = realSlice->size_;
     info.addr = realSlice->vAddress_;
     info.access = transport::REG_MR_ACCESS_FLAG_BOTH_READ_WRITE;
-    info.flags = segment_->GetMemoryType() == HYBM_MEM_TYPE_DEVICE ? transport::REG_MR_FLAG_HBM :
-                                                                     transport::REG_MR_FLAG_DRAM;
+    info.flags =
+        segment_->GetMemoryType() == HYBM_MEM_TYPE_DEVICE ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM;
     if (transportManager_ != nullptr) {
         ret = transportManager_->RegisterMemoryRegion(info);
         if (ret != 0) {
@@ -358,7 +355,7 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
 int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,
                                    uint32_t flags) noexcept
 {
-    if (!initialized || dataOperator_ == nullptr) {
+    if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
@@ -371,18 +368,40 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
 
     params.src = Valid48BitsAddress(params.src);
     params.dest = Valid48BitsAddress(params.dest);
-    if ((options.srcRankId == options.destRankId && options.srcRankId == options_.rankId) ||
-        SdmaReaches(options.destRankId)) {
-        return sdmaDataOperator_->DataCopy(params, direction, options);
+
+    int32_t ret = BM_ERROR;
+    auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
+    if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
+        ret = sdmaDataOperator_->DataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+
+        BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
     }
 
-    return dataOperator_->DataCopy(params, direction, options);
+    if (devRdmaDataOperator_ != nullptr) {
+        ret = devRdmaDataOperator_->DataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+
+    if (hostRdmaDataOperator_ != nullptr) {
+        ret = hostRdmaDataOperator_->DataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+    return ret;
 }
 
 int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         void *stream, uint32_t flags) noexcept
 {
-    if (!initialized || dataOperator_ == nullptr) {
+    if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
@@ -396,18 +415,39 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
     }
 
-    if ((options.srcRankId == options.destRankId && options.srcRankId == options_.rankId) ||
-        SdmaReaches(options.destRankId)) {
-        return sdmaDataOperator_->BatchDataCopy(params, direction, options);
+    int32_t ret = BM_ERROR;
+    auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
+    if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
+        ret = sdmaDataOperator_->BatchDataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+
+        BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
     }
 
-    return dataOperator_->BatchDataCopy(params, direction, options);
+    if (devRdmaDataOperator_ != nullptr) {
+        ret = devRdmaDataOperator_->BatchDataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+
+    if (hostRdmaDataOperator_ != nullptr) {
+        ret = hostRdmaDataOperator_->BatchDataCopy(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+    return ret;
 }
 
 int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
                                      uint32_t flags) noexcept
 {
-    if (!initialized || dataOperator_ == nullptr) {
+    if (!initialized) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
@@ -419,12 +459,34 @@ int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy
     segment_->GetRankIdByAddr(params.dest, params.dpitch * params.height, options.destRankId);
     params.src = Valid48BitsAddress(params.src);
     params.dest = Valid48BitsAddress(params.dest);
-    if ((options.srcRankId == options.destRankId && options.srcRankId == options_.rankId) ||
-        SdmaReaches(options.destRankId)) {
-        return sdmaDataOperator_->DataCopy2d(params, direction, options);
+
+    int32_t ret = BM_ERROR;
+    auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
+    if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
+        ret = sdmaDataOperator_->DataCopy2d(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+
+        BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
     }
 
-    return dataOperator_->DataCopy2d(params, direction, options);
+    if (devRdmaDataOperator_ != nullptr) {
+        ret = devRdmaDataOperator_->DataCopy2d(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+
+    if (hostRdmaDataOperator_ != nullptr) {
+        ret = hostRdmaDataOperator_->DataCopy2d(params, direction, options);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
+    }
+    return ret;
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept
@@ -457,6 +519,27 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
         BM_LOG_ERROR("invalid local memory size(" << options->singleRankVASpace << ") should be times of "
                                                   << DEVICE_LARGE_PAGE_SIZE);
         return BM_INVALID_PARAM;
+    }
+
+    return BM_OK;
+}
+
+int MemEntityDefault::LoadExtendLibrary() noexcept
+{
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        auto ret = DlApi::LoadExtendLibrary(DL_EXT_LIB_DEVICE_RDMA);
+        if (ret != 0) {
+            BM_LOG_ERROR("LoadExtendLibrary for DEVICE RDMA failed: " << ret);
+            return ret;
+        }
+    }
+
+    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
+        auto ret = DlApi::LoadExtendLibrary(DL_EXT_LIB_HOST_RDMA);
+        if (ret != 0) {
+            BM_LOG_ERROR("LoadExtendLibrary for DEVICE RDMA failed: " << ret);
+            return ret;
+        }
     }
 
     return BM_OK;
@@ -631,14 +714,10 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
 
 Result MemEntityDefault::InitSegment()
 {
-    switch (options_.bmType) {
-        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
-        case HYBM_TYPE_HBM_HOST_INITIATE:
-            return InitHbmSegment();
-        case HYBM_TYPE_DRAM_HOST_INITIATE:
-            return InitDramSegment();
-        default:
-            return BM_INVALID_PARAM;
+    switch (options_.memType) {
+        case HYBM_MEM_TYPE_DEVICE: return InitHbmSegment();
+        case HYBM_MEM_TYPE_HOST: return InitDramSegment();
+        default: return BM_INVALID_PARAM;
     }
 }
 
@@ -660,6 +739,7 @@ Result MemEntityDefault::InitHbmSegment()
 
     segmentOptions.devId = HybmGetInitDeviceId();
     segmentOptions.role = options_.role;
+    segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
     segment_ = MemSegment::Create(segmentOptions, id_);
@@ -692,27 +772,25 @@ Result MemEntityDefault::InitDramSegment()
 
 Result MemEntityDefault::InitTransManager()
 {
-    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA) {
-        BM_LOG_DEBUG("HYBM_DOP_TYPE_SDMA transport skip init transportManager.");
+    auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP;
+    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags;
+    if ((options_.bmDataOpType & composeTransFlags) == 0) {
+        BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
         return BM_OK;
     }
-    switch (options_.bmType) {
-        case HYBM_TYPE_HBM_AI_CORE_INITIATE:
-        case HYBM_TYPE_HBM_HOST_INITIATE:
-            transportManager_ = transport::TransportManager::Create(TransportType::TT_HCCP);
-            break;
-        case HYBM_TYPE_DRAM_HOST_INITIATE:
-            transportManager_ = transport::TransportManager::Create(TransportType::TT_HCOM);
-            break;
-        case HYBM_TYPE_HBM_DRAM_HOST_INITIATE:
-            BM_LOG_DEBUG("HYBM_TYPE_HBM_DRAM_HOST_INITIATE not support now.");
-            return BM_NOT_SUPPORTED;
-        default:
-            return BM_INVALID_PARAM;
+
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) && (options_.bmDataOpType & hostTransFlags)) {
+        transportManager_ = transport::TransportManager::Create(TransportType::TT_COMPOSE);
+    } else if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        transportManager_ = transport::TransportManager::Create(TransportType::TT_HCCP);
+    } else {
+        transportManager_ = transport::TransportManager::Create(TransportType::TT_HCOM);
     }
+
     transport::TransportOptions options;
     options.rankId = options_.rankId;
     options.rankCount = options_.rankCount;
+    options.protocol = options_.bmDataOpType;
     options.role = options_.role;
     options.nic = options_.nic;
     auto ret = transportManager_->OpenDevice(options);
@@ -725,49 +803,32 @@ Result MemEntityDefault::InitTransManager()
 
 Result MemEntityDefault::InitDataOperator()
 {
-    if (options_.bmType == HYBM_TYPE_HBM_AI_CORE_INITIATE) {
-        return BM_OK;
-    }
-    switch (options_.bmDataOpType) {
-        case HYBM_DOP_TYPE_TCP:
-        case HYBM_DOP_TYPE_MTE:
-        case HYBM_DOP_TYPE_ROCE:
-            dataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
-            sdmaDataOperator_ = std::make_shared<HostDataOpSDMA>();
-            break;
-        case HYBM_DOP_TYPE_DEVICE_RDMA:
-            dataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
-            sdmaDataOperator_ = std::make_shared<HostDataOpSDMA>();
-            break;
-        case HYBM_DOP_TYPE_SDMA:
-            sdmaDataOperator_ = dataOperator_ = std::make_shared<HostDataOpSDMA>();
-            break;
-        default:
-            return BM_ERROR;
-    }
-
-    if (dataOperator_ == nullptr || sdmaDataOperator_ == nullptr) {
-        BM_LOG_ERROR("create data operator failed");
-        return BM_INVALID_PARAM;
-    }
-
-    if (options_.bmType == HYBM_TYPE_HBM_AI_CORE_INITIATE) {
+    if (options_.bmType == HYBM_TYPE_AI_CORE_INITIATE) {
         return BM_OK;
     }
 
-    auto ret = dataOperator_->Initialize();
-    if (ret != 0) {
-        BM_LOG_ERROR("data operator init failed, ret:" << ret);
-        dataOperator_ = nullptr;
-        return ret;
-    }
-
-    if (sdmaDataOperator_ != dataOperator_) {
-        ret = sdmaDataOperator_->Initialize();
-        if (ret != 0) {
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) {
+        sdmaDataOperator_ = std::make_shared<HostDataOpSDMA>();
+        auto ret = sdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
             BM_LOG_ERROR("SDMA data operator init failed, ret:" << ret);
-            dataOperator_ = nullptr;
-            sdmaDataOperator_ = nullptr;
+            return ret;
+        }
+    }
+
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
+        auto ret = devRdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
+            return ret;
+        }
+    }
+    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
+        hostRdmaDataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
+        auto ret = hostRdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Host RDMA data operator init failed, ret:" << ret);
             return ret;
         }
     }
@@ -785,6 +846,24 @@ bool MemEntityDefault::SdmaReaches(uint32_t remoteRank) const noexcept
     return segment_->CheckSmdaReaches(remoteRank);
 }
 
+hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) const noexcept
+{
+    uint32_t supportDataOp = 0U;
+    if (sdmaDataOperator_ != nullptr && SdmaReaches(remoteRank)) {
+        supportDataOp |= (HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
+    }
+
+    if (devRdmaDataOperator_ != nullptr) {
+        supportDataOp |= HYBM_DOP_TYPE_DEVICE_RDMA;
+    }
+
+    if (hostRdmaDataOperator_ != nullptr) {
+        supportDataOp |= HYBM_DOP_TYPE_HOST_RDMA;
+    }
+
+    return static_cast<hybm_data_op_type>(supportDataOp);
+}
+
 void MemEntityDefault::ReleaseResources()
 {
     if (!initialized) {
@@ -795,9 +874,11 @@ void MemEntityDefault::ReleaseResources()
         transportManager_ = nullptr;
     }
     segment_.reset();
-    dataOperator_.reset();
+    sdmaDataOperator_.reset();
+    devRdmaDataOperator_.reset();
+    hostRdmaDataOperator_.reset();
     initialized = false;
 }
 
-}
-}
+}  // namespace mf
+}  // namespace ock

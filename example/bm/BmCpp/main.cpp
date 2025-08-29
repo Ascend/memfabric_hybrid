@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 #include "acl/acl.h"
 #include "smem.h"
-#include "smem_security.h"
 #include "smem_bm.h"
 #include "barrier_util.h"
 
