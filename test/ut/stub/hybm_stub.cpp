@@ -119,7 +119,8 @@ int32_t hybm_export_stub(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags
     }
 }
 
-int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[], uint32_t flags)
+int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
+                         void *addresses[], uint32_t flags)
 {
     HybmMgrStub *mgr = reinterpret_cast<HybmMgrStub *>(e);
     if (mgr == nullptr || allExInfo == nullptr) {
@@ -162,14 +163,14 @@ int32_t hybm_set_extra_context_stub(hybm_entity_t e, const void *context, uint32
 }
 
 int32_t hybm_data_copy_stub(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
-                       void *stream, uint32_t flags)
+                            void *stream, uint32_t flags)
 {
     memcpy(params->dest, params->src, params->dataSize);
     return 0;
 }
 
 int32_t hybm_data_copy_2d_stub(hybm_entity_t e, hybm_copy_2d_params *params,
-                          hybm_data_copy_direction direction, void *stream, uint32_t flags)
+                               hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
     auto srcAddr = (uint64_t)params->src;
     auto destAddr = (uint64_t)params->dest;

@@ -301,7 +301,7 @@ TEST_F(TestAccTcpClient, send_reconnect_times_match)
     ASSERT_EQ(1, connectCnt);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     MOCKER_CPP(&AccTcpLinkDefault::BlockSend, int32_t(*)(AccTcpLinkDefault *, void *, uint32_t))
         .expects(atLeast(1))
@@ -341,7 +341,7 @@ TEST_F(TestAccTcpClient, recv_reconnect_times_match)
 
     void *data = malloc(BUFF_SIZE);
     ASSERT_TRUE(data != nullptr);
-    memset(data, 0, BUFF_SIZE);
+    bzero(data, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
     ASSERT_TRUE(buffer != nullptr);
 
@@ -370,7 +370,7 @@ TEST_F(TestAccTcpClient, test_client_connect_send_should_return_ok)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
     ASSERT_EQ(ACC_OK, result);
@@ -390,7 +390,7 @@ TEST_F(TestAccTcpClient, test_client_connect_send_should_return_error)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     mClient->Disconnect();
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
@@ -409,7 +409,7 @@ TEST_F(TestAccTcpClient, test_client_connect_31_send_should_return_error)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, 31);
     ASSERT_TRUE(result != true);
@@ -428,7 +428,7 @@ TEST_F(TestAccTcpClient, test_client_connect_0_send_should_return_error)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, 0);
     ASSERT_TRUE(result != true);
@@ -447,7 +447,7 @@ TEST_F(TestAccTcpClient, test_client_connect_send_1_should_return_error)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     mServer->Stop();
     sleep(1);
@@ -507,7 +507,8 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
         }
 
         char buf[bodyLength];
-        memset(buf, 0, bodyLength);
+        bzero(buf, bodyLength);
+        
         uint8_t *data = reinterpret_cast<uint8_t *>(buf);
         if (bodyLength != 0) {
             result = mClient->ReceiveRaw(data, bodyLength);
@@ -519,7 +520,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
 
     void *data = malloc(BUFF_SIZE);
     ASSERT_TRUE(data != nullptr);
-    memset(data, 0, BUFF_SIZE);
+    bzero(data, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
     ASSERT_TRUE(buffer != nullptr);
 
@@ -547,7 +548,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_error)
 
     void *data = malloc(BUFF_SIZE);
     ASSERT_TRUE(data != nullptr);
-    memset(data, 0, BUFF_SIZE);
+    bzero(data, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
     ASSERT_TRUE(buffer != nullptr);
 
@@ -561,61 +562,6 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_error)
     free(data);
     std::cout << "server send msg" << std::endl;
 }
-
-// TEST_F(TestAccTcpClient, test_server_send_ok_check_cb)
-// {
-//     AccConnReq req{};
-//     req.rankId = 0;
-//     req.magic = 0;
-//     req.version = 1;
-//     AccTcpClientPtr mClient = AccTcpClient::Create("127.0.0.1", 8100);
-//     ASSERT_TRUE(mClient != nullptr);
-//     int32_t result = mClient->Connect(req);
-//     ASSERT_EQ(ACC_OK, result);
-
-//     std::thread recvThread([&result, mClient]() {
-//         int16_t msgType;
-//         int16_t msgRet;
-//         uint32_t bodyLength;
-//         result = mClient->Receive(nullptr, 0, msgType, msgRet, bodyLength);
-//         std::cout << "client recevie msg header" << std::endl;
-//         if (result != ACC_OK) {
-//             return;
-//         }
-//         char buf[bodyLength];
-//         memset(buf, 0, bodyLength);
-//         uint8_t *data = reinterpret_cast<uint8_t *>(buf);
-//         if (bodyLength != 0) {
-//             result = mClient->ReceiveRaw(data, bodyLength);
-//             std::cout << "client recevie msg body" << std::endl;
-//         }
-//     });
-//     recvThread.detach();
-//     ASSERT_EQ(result, 0);
-
-//     void *data = malloc(BUFF_SIZE);
-//     ASSERT_TRUE(data != nullptr);
-//     memset(data, 0, BUFF_SIZE);
-//     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
-//     if (buffer == nullptr) {
-//         free(data);
-//         ASSERT_TRUE(buffer != nullptr);
-//     }
-
-//     void *ctx = malloc(BUFF_SIZE);
-//     ASSERT_TRUE(ctx != nullptr);
-//     AccDataBufferPtr cbCtx = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(ctx), BUFF_SIZE);
-
-//     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
-//         AccTcpLinkComplexPtr link = it->second;
-//         result = link->NonBlockSend(TTP_OP_CTRL_NOTIFY, buffer, nullptr);
-//         ASSERT_EQ(ACC_OK, result);
-//     }
-//     std::cout << "server send msg" << std::endl;
-//     sleep(2);
-//     ASSERT_NE(g_cbCtx, ctx);
-//     mClient->Disconnect();
-// }
 
 TEST_F(TestAccTcpClient, test_client_recv_by_polling)
 {
@@ -636,7 +582,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
 
     void *data = malloc(BUFF_SIZE);
     ASSERT_TRUE(data != nullptr);
-    memset(data, 0, BUFF_SIZE);
+    bzero(data, BUFF_SIZE);
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
     ASSERT_TRUE(buffer != nullptr);
 
@@ -1149,7 +1095,7 @@ TEST_F(TestAccTcpClient, test_AccLinkedMessageQueue_EnqueueBack_nullptr_should_r
 TEST_F(TestAccTcpClient, test_tcp_link_connect_send_fd_should_return_error)
 {
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     AccTcpLinkDefaultPtr linnk = AccMakeRef<AccTcpLinkDefault>(-1, "127.0.0.1:8100", AccTcpLinkDefault::NewId());
     int32_t ret = linnk->BlockSend(data, BUFF_SIZE);
@@ -1167,7 +1113,7 @@ TEST_F(TestAccTcpClient, test_tcp_link_connect_send_data_should_return_error)
 TEST_F(TestAccTcpClient, test_tcp_link_connect_send_len_should_return_error)
 {
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     int tFd = ::socket(AF_INET, SOCK_STREAM, 0);
     AccTcpLinkDefaultPtr linnk = AccMakeRef<AccTcpLinkDefault>(tFd, "127.0.0.1:8100", AccTcpLinkDefault::NewId());
@@ -1178,7 +1124,7 @@ TEST_F(TestAccTcpClient, test_tcp_link_connect_send_len_should_return_error)
 TEST_F(TestAccTcpClient, test_tcp_link_connect_receive_fd_should_return_error)
 {
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     AccTcpLinkDefaultPtr linnk = AccMakeRef<AccTcpLinkDefault>(-1, "127.0.0.1:8100", AccTcpLinkDefault::NewId());
     int32_t ret = linnk->BlockRecv(data, BUFF_SIZE);
@@ -1196,7 +1142,7 @@ TEST_F(TestAccTcpClient, test_tcp_link_connect_receive_data_should_return_error)
 TEST_F(TestAccTcpClient, test_tcp_link_connect_receive_len_should_return_error)
 {
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     int tFd = ::socket(AF_INET, SOCK_STREAM, 0);
     AccTcpLinkDefaultPtr linnk = AccMakeRef<AccTcpLinkDefault>(tFd, "127.0.0.1:8100", AccTcpLinkDefault::NewId());
@@ -1286,7 +1232,7 @@ TEST_F(TestAccTcpClient, LoadDynamicLib)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
     ASSERT_EQ(ACC_OK, result);

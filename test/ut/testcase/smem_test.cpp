@@ -41,7 +41,6 @@ public:
     static void TearDownTestCase();
     void SetUp() override;
     void TearDown() override;
-
 };
 
 void TestSmem::SetUpTestCase() {}
@@ -73,7 +72,7 @@ bool InitUTShareMem(int &shmFd)
     if (fd < 0) {
         return false;
     }
-    int ret = ftruncate(fd, (off_t)UT_SHM_SIZE);
+    int ret = ftruncate(fd, static_cast<off_t>(UT_SHM_SIZE));
     if (ret != 0) {
         FinalizeUTShareMem(fd);
         return false;
@@ -126,7 +125,6 @@ TEST_F(TestSmem, two_card_shm_create_success)
         if (handle == nullptr) {
             exit(4);
         }
-
 
         smem_shm_destroy(handle, 0);
         smem_shm_uninit(0);

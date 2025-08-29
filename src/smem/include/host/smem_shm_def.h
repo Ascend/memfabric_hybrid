@@ -29,8 +29,10 @@ typedef enum {
  * controlOperationTimeout: control operation timeout in second, i.e. barrier, allgather, topology_can_reach etc
  */
 typedef struct {
-    uint32_t shmInitTimeout;          /* func smem_shm_init timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
-    uint32_t shmCreateTimeout;        /* func smem_shm_create timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t shmInitTimeout;          /* func smem_shm_init timeout, default 120 second
+                                         (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t shmCreateTimeout;        /* func smem_shm_create timeout, default 120 second
+                                         (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
     uint32_t controlOperationTimeout; /* control operation timeout, i.e. barrier, allgather,topology_can_reach etc,
                                          default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
     bool startConfigStore;            /* whether to start config store, default true */

@@ -144,6 +144,11 @@ SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addres
         return result;
     }
 
+    if (entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("entry is null");
+        return SM_ERROR;
+    }
+
     /* register memory to entry */
     result = entry->RegisterLocalMemories(regMemories, flags);
     if (result != SM_OK) {

@@ -59,7 +59,7 @@ bool InitUTShareMem(int &shmFd)
     if (fd < 0) {
         return false;
     }
-    int ret = ftruncate(fd, (off_t)UT_SHM_SIZE);
+    int ret = ftruncate(fd, static_cast<off_t>(UT_SHM_SIZE));
     if (ret != 0) {
         FinalizeUTShareMem(fd);
         return false;

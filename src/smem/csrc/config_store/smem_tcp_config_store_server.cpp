@@ -20,7 +20,8 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port) noexcept
 {
 }
 
-SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer, const AcclinkTlsOption &tlsOption) noexcept
+SMErrorCode AccStoreServer::AccServerStart(ock::acc::AccTcpServerPtr &accTcpServer,
+                                           const AcclinkTlsOption &tlsOption) noexcept
 {
     ock::acc::AccTcpServerOptions options;
     options.listenIp = listenIp_;
@@ -407,7 +408,9 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
 Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
                                   ock::smem::SmemMessage &request) noexcept
 {
-    if (request.keys.size() != 1 || request.values.size() != 2) {
+    const size_t EXPECTED_KEYS_SIZE = 1;
+    const size_t EXPECTED_VALUES_SIZE = 2;
+    if (request.keys.size() != EXPECTED_KEYS_SIZE || request.values.size() != EXPECTED_VALUES_SIZE) {
         SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: count(key)=1 & count(value)=2");
         return SM_INVALID_PARAM;

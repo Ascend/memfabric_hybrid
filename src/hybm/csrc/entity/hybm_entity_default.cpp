@@ -209,7 +209,8 @@ int32_t MemEntityDefault::ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t 
             BM_LOG_ERROR("transport get nic(" << nic << ") too long.");
             return BM_ERROR;
         }
-        std::copy_n(nic.c_str(), nic.size(), exportInfo.nic);
+        size_t copyLen = std::min(nic.size(), sizeof(exportInfo.nic));
+        std::copy_n(nic.c_str(), copyLen, exportInfo.nic);
         auto ret = LiteralExInfoTranslater<EntityExportInfo>{}.Serialize(exportInfo, info);
         if (ret != BM_OK) {
             BM_LOG_ERROR("export info failed: " << ret);

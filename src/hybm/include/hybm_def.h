@@ -69,23 +69,23 @@ typedef enum {
 } hybm_role_type;
 
 typedef struct {
-    uint8_t desc[512L];
-    uint32_t descLen;
+    uint8_t desc[512L]{};
+    uint32_t descLen{0};
 } hybm_exchange_info;
 
 typedef struct {
-    hybm_type bmType;
-    hybm_data_op_type bmDataOpType;
-    hybm_scope bmScope;
-    hybm_rank_type bmRankType;
-    uint16_t rankCount;
-    uint16_t rankId;
-    uint16_t devId;
-    uint64_t singleRankVASpace;
-    uint64_t preferredGVA;
-    bool globalUniqueAddress; // 是否使用全局统一内存地址
-    hybm_role_type role;
-    char nic[64];
+    hybm_type bmType{HYBM_TYPE_BUTT};
+    hybm_data_op_type bmDataOpType{HYBM_DOP_TYPE_BUTT};
+    hybm_scope bmScope{HYBM_SCOPE_BUTT};
+    hybm_rank_type bmRankType{HYBM_RANK_TYPE_STATIC};
+    uint16_t rankCount{0};
+    uint16_t rankId{0};
+    uint16_t devId{0};
+    uint64_t singleRankVASpace{0};
+    uint64_t preferredGVA{0};
+    bool globalUniqueAddress{true}; // 是否使用全局统一内存地址
+    hybm_role_type role{HYBM_ROLE_PEER};
+    char nic[64]{};
 } hybm_options;
 
 typedef enum {

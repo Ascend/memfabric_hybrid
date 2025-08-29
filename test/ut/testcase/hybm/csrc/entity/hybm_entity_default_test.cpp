@@ -155,8 +155,7 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     EXPECT_EQ(entity.CopyData(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
 
     hybm_copy_2d_params params2D = {nullptr, 0, nullptr, 0, 0, 0};
-    EXPECT_EQ(entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT,
-                                nullptr, 0), BM_NOT_INITIALIZED);
+    EXPECT_EQ(entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.CheckAddressInEntity(nullptr, 0), false);
 

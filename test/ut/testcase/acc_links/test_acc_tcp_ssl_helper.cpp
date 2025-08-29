@@ -48,7 +48,7 @@ int decrypt_handler_for_test(const std::string &cipherText, char *plainText, siz
     if (cipherText.length() >= plainTextLen) {
         return ACC_ERROR;
     }
-    strncpy(plainText, decryptText, cipherText.length());
+    std::copy_n(decryptText, cipherText.length(), plainText);
     plainText[cipherText.length()] = '\0';
     return ACC_OK;
 }
@@ -293,7 +293,7 @@ TEST_F(TestAccTcpSslHelper, bad_PkPwd)
             if (required_len < plainTextLen) {
                 return ACC_ERROR;
             }
-            strncpy(plainText, decryptText, plainTextLen - 1);
+            std::copy_n(decryptText, plainTextLen - 1, plainText);
             plainText[plainTextLen - 1] = '\0';
             return ACC_OK;
         });
@@ -557,7 +557,7 @@ TEST_F(TestAccTcpSslClient, test_client_connect_send_should_return_ok)
     ASSERT_EQ(ACC_OK, result);
 
     char buf[BUFF_SIZE];
-    memset(buf, 0, BUFF_SIZE);
+    bzero(buf, BUFF_SIZE);
     uint8_t *data = reinterpret_cast<uint8_t *>(buf);
     result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
     ASSERT_EQ(ACC_OK, result);

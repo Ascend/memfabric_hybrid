@@ -15,8 +15,8 @@
 #include "hybm_data_op.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
-#include "smem_trans_entry.h"
 #include "smem_trans_entry_manager.h"
+#include "smem_trans_entry.h"
 
 namespace ock {
 namespace smem {
@@ -239,9 +239,10 @@ Result SmemTransEntry::StartWatchThread()
     SM_LOG_DEBUG("start background thread");
     watchThread_ = std::thread([this]() {
         std::unique_lock<std::mutex> locker{watchMutex_};
+        const std::chrono::seconds WATCH_INTERVAL(3);
         while (watchRunning_) {
             WatchTaskOneLoop();
-            watchCond_.wait_for(locker, std::chrono::seconds(3));
+            watchCond_.wait_for(locker, WATCH_INTERVAL);
         }
     });
     return 0;

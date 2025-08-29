@@ -398,7 +398,7 @@ int MemSegmentDevice::SetDeviceInfo(int deviceId) noexcept
     }
 
     deviceId_ = deviceId;
-    pid_ = static_cast<int>(tgid);
+    pid_ = tgid;
     ret = FillDeviceSuperPodInfo();
     if (ret != BM_OK) {
         BM_LOG_ERROR("FillDeviceSuperPodInfo() failed: " << ret);

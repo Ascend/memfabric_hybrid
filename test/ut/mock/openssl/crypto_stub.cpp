@@ -1,9 +1,9 @@
-#include <cstdio>
-#include <ctime>
-
 /*
 Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 */
+#include <cstdio>
+#include <ctime>
+
 constexpr int RETURN_OK = 1;
 constexpr int RETURN_ERROR = -1;
 constexpr int EVP_KEY_LENGTH = 4096;

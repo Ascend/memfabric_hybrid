@@ -98,18 +98,6 @@ StorePtr UtBmCreateStoreStub(StoreFactory *fac, const std::string &ip, uint16_t 
     return tcpStore.Get();
 }
 
-// TEST_F(TestSmemBmEntryManager, init_auto_ranking_success)
-// {
-//     smem_bm_config_t config;
-//     smem_bm_config_init(&config);
-//     config.autoRanking = true;
-//     MOCKER_CPP(&StoreFactory::CreateStore, StorePtr(*)(StoreFactory *, const std::string &,
-//         uint16_t, bool, int32_t, int32_t)).stubs().will(invoke(UtBmCreateStoreStub));
-//     MOCKER_CPP(&StoreFactory::GetFailedReason, int(*)(StoreFactory *)).stubs().will(returnValue(0));
-//     auto ret = SmemBmEntryManager::Instance().Initialize(UT_BM_IP_PORT, 2, 0, config);
-//     EXPECT_EQ(ret, 0);
-// }
-
 TEST_F(TestSmemBmEntryManager, get_entry_by_id_success)
 {
     uint32_t id = 10;

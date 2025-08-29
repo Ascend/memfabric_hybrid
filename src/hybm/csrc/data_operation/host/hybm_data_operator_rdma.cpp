@@ -3,8 +3,8 @@
  */
 #include "hybm_data_operator_rdma.h"
 #include "dl_acl_api.h"
-#include "space_allocator.h"
-#include "rbtree_range_pool.h"
+#include "hybm_space_allocator.h"
+#include "hybm_rbtree_range_pool.h"
 
 using namespace ock::mf;
 

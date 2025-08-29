@@ -224,7 +224,7 @@ TEST_F(TestAccTcpSslClientFuzz, test_client_set_ssl)
         ASSERT_EQ(ACC_OK, result);
 
         char buf[BUFF_SIZE];
-        memset(buf, 0, BUFF_SIZE);
+        bzero(buf, BUFF_SIZE);
         uint8_t *data = reinterpret_cast<uint8_t *>(buf);
         result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
         ASSERT_EQ(ACC_OK, result);

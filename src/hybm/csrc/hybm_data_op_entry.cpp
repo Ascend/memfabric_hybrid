@@ -67,8 +67,8 @@ HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params,
     }
 
     if (!addressValid) {
-        BM_LOG_ERROR("input copy address out of entity range, size: " << std::oct << params->dataSize << ", direction: "
-                                                                      << direction);
+        BM_LOG_ERROR("input copy address out of entity range, size: "
+                     << std::oct << params->dataSize << ", direction: " << direction);
         return BM_INVALID_PARAM;
     }
 

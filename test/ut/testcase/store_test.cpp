@@ -153,7 +153,7 @@ TEST_F(AccConfigStoreTest, get_when_server_exit)
     std::string key = "store_check_key_for_server_exit";
     std::string value;
 
-    std::thread child{[&finished, &ret, &store, &key, &value](){
+    std::thread child{[&finished, &ret, &store, &key, &value]() {
         ret = store->Get(key, value);
         finished = true;
     }};

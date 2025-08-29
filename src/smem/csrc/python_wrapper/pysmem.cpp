@@ -177,8 +177,9 @@ public:
 
     void CopyData2D(CopyData2DParams &params, smem_bm_copy_type type, uint32_t flags)
     {
-        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch, (void *)(ptrdiff_t)params.dest,
-            params.dpitch, params.width, params.height};
+        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch,
+                                          (void *)(ptrdiff_t)params.dest,
+                                          params.dpitch, params.width, params.height};
         auto ret = smem_bm_copy_2d(handle_, &copyParams, type, flags);
         if (ret != 0) {
             throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));

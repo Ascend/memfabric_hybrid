@@ -406,7 +406,7 @@ Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uin
     BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx << " payLoad: " << payLoad);
     uint32_t rankId = UINT32_MAX;
     try {
-        rankId = std::stoi(payLoad);
+        rankId = static_cast<uint32_t>(std::stoul(payLoad));
     } catch (...) {
         BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
         return BM_ERROR;

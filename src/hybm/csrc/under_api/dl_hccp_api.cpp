@@ -109,7 +109,7 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaPollCq, raPollCqFunc , raHandle, "ra_poll_cq");
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
-
+    BM_LOG_INFO("LoadLibrary for DlHccpApi success");
     gLoaded = true;
     return BM_OK;
 }
