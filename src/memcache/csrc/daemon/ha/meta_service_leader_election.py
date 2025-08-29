@@ -3,43 +3,34 @@
 import os
 import time
 import threading
-import logging
+from ctypes import cdll
 from datetime import datetime, timedelta, UTC
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 from kubernetes.client.rest import ApiException
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+
+class MmcLogger:
+    def __init__(self):
+        self.lib_ = cdll.LoadLibrary("libmmc_leader.so")
+
+    def log(self, level: int, msg: str):
+        self.lib_.mmc_logger(level, msg.encode('utf-8'))
+
+    def debug(self, msg: str):
+        self.log(0, msg)
+
+    def info(self, msg: str):
+        self.log(1, msg)
+
+    def warning(self, msg: str):
+        self.log(2, msg)
+
+    def error(self, msg: str):
+        self.log(3, msg)
 
 
-def _initLogger(log_level=1, log_path="/home/memcache"):
-    logs_dir = os.path.join(log_path, "logs")
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir, exist_ok=True)
-    log_file = os.path.join(logs_dir, "mmc-meta.log")
-    file_handler = logging.FileHandler(log_file)
-
-    level = logging.INFO
-    if log_level == 0:
-        level = logging.DEBUG
-    elif log_level == 1:
-        level = logging.INFO
-    elif log_level == 2:
-        level = logging.WARN
-    elif log_level == 3:
-        level = logging.ERROR
-    file_handler.setLevel(level)
-
-    pattern = (
-        f"%(asctime)s "
-        f"%(levelname)s "
-        f"[%(filename)s:%(lineno)d] "
-        f"%(message)s"
-    )
-    formatter = logging.Formatter(pattern, datefmt='%Y-%m-%d %H:%M:%S.%03d%z')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+logger = MmcLogger()
 
 
 class MetaServiceLeaderElection:
@@ -60,9 +51,6 @@ class MetaServiceLeaderElection:
         :param pod_name: 当前Pod名称（用于标识竞选者）
         :param retry_period: 重试间隔（秒）
         """
-        # 初始化日志
-        _initLogger(log_level, log_path)
-
         # 加载K8s配置
         try:
             config.load_incluster_config()  # 集群内使用

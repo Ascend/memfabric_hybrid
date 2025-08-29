@@ -8,7 +8,7 @@
 
 namespace ock {
 namespace mmc {
-std::string g_defaultMemCacheWhlName = "pymmc";
+std::string g_defaultMemCacheWhlName = "meta_service_leader_election";
 constexpr uint32_t LEASE_RETRY_PERIOD = 3;
 
 MmcMetaServiceLeaderElection::MmcMetaServiceLeaderElection(
@@ -16,7 +16,7 @@ MmcMetaServiceLeaderElection::MmcMetaServiceLeaderElection(
     : name_(name), podName_(pod), leaseName_(lease), ns_(ns)
 {}
 
-Result MmcMetaServiceLeaderElection::Start(const mmc_meta_service_config_t &options)
+Result MmcMetaServiceLeaderElection::Start()
 {
     try {
         if (running_) {
@@ -35,8 +35,8 @@ Result MmcMetaServiceLeaderElection::Start(const mmc_meta_service_config_t &opti
                         "The class named MetaServiceLeaderElection was not found.");
 
         pybind11::object metaServiceLeaderElection = modelModule.attr("MetaServiceLeaderElection");
-        leaderElection_ = metaServiceLeaderElection(this->leaseName_, this->ns_, this->podName_, LEASE_RETRY_PERIOD,
-                                                    options.logLevel, options.logPath);
+        leaderElection_ =
+            metaServiceLeaderElection(this->leaseName_, this->ns_, this->podName_, LEASE_RETRY_PERIOD, 1, "");
         MMC_FALSE_ERROR(!leaderElection_.is_none(),
                         "Can not start election before MetaServiceLeaderElection initialized");
         MMC_FALSE_ERROR(pybind11::hasattr(leaderElection_, "update_lease"),

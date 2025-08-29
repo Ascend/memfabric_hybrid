@@ -514,6 +514,28 @@ int Configuration::ValidateTLSConfig(const mmc_tls_config &tlsConfig)
     return MMC_OK;
 }
 
+const std::string Configuration::GetBinDir()
+{
+    // 处理相对路径：获取当前可执行文件所在目录的父目录
+    // 第一步：获取mmc_meta_service路径
+    char pathBuf[PATH_MAX] = {0};
+    ssize_t count = readlink("/proc/self/exe", pathBuf, PATH_MAX - 1);  // 预留终止符空间
+    if (count == -1) {
+        MMC_LOG_ERROR("mmc meta service not found bin path");
+        return "";  // 错误时返回空字符串，避免后续错误
+    }
+    pathBuf[count] = '\0';  // 确保字符串终止
+
+    // 第二步：获取可执行文件所在目录
+    std::string binPath(pathBuf);
+    size_t lastSlash = binPath.find_last_of('/');
+    if (lastSlash == std::string::npos) {
+        return "";  // 无效路径
+    }
+    std::string exeDir = binPath.substr(0, lastSlash);
+    return exeDir;
+}
+
 const std::string Configuration::GetLogPath(const std::string &logPath)
 {
     if (!logPath.empty() && logPath[0] == '/') {
@@ -521,24 +543,7 @@ const std::string Configuration::GetLogPath(const std::string &logPath)
         return logPath;
     }
 
-    // 处理相对路径：获取当前可执行文件所在目录的父目录
-    // 第一步：获取mmc_meta_service路径
-    char pathBuf[PATH_MAX] = {0};
-    ssize_t count = readlink("/proc/self/exe", pathBuf, PATH_MAX - 1); // 预留终止符空间
-    if (count == -1) {
-        MMC_LOG_ERROR("mmc meta service not found bin path");
-        return ""; // 错误时返回空字符串，避免后续错误
-    }
-    pathBuf[count] = '\0'; // 确保字符串终止
-
-    // 第二步：获取可执行文件所在目录
-    std::string binPath(pathBuf);
-    size_t lastSlash = binPath.find_last_of('/');
-    if (lastSlash == std::string::npos) {
-        return ""; // 无效路径
-    }
-    std::string exeDir = binPath.substr(0, lastSlash);
-
+    std::string exeDir = GetBinDir();
     // 第三步：获取该目录的父目录
     size_t parentLastSlash = exeDir.find_last_of('/');
     if (parentLastSlash == std::string::npos) {

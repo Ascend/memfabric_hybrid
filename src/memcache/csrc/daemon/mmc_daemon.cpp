@@ -9,13 +9,16 @@
 #include <iostream>
 #include <mutex>
 #include <unistd.h>
+#include <pybind11/embed.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 #include "spdlogger4c.h"
 #include "spdlogger.h"
 
 #include "mmc_configuration.h"
 #include "mmc_env.h"
 #include "mmc_logger.h"
-#include "mmc_leader_election.h"
+#include "mmc_leader_api.h"
 #include "mmc_meta_service_default.h"
 #include "mmc_ptracer.h"
 
@@ -175,13 +178,26 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    MmcMetaServiceLeaderElection *leaderElection = nullptr;
     if (config.haEnable) {
-        leaderElection = new(std::nothrow)MmcMetaServiceLeaderElection("leader_election", META_POD_NAME, META_NAMESPACE, META_LEASE_NAME);
-        if (leaderElection == nullptr || leaderElection->Start(config) != MMC_OK) {
-            std::cerr << "Error, failed to start meta service leader election." << std::endl;
+        std::string binPath = g_config->GetBinDir();
+        pybind11::gil_scoped_acquire acquire;
+        pybind11::module_ sys = pybind11::module_::import("sys");
+        sys.attr("path").attr("insert")(0, binPath);
+        std::cout << "add " << binPath << " to sys.path" << std::endl;
+
+        result = MmcLeaderApi::LoadLibrary(binPath);
+        if (result != MMC_OK) {
+            std::cerr << "Error, load leader api so from:" << binPath << " failed." << std::endl;
             return -1;
         }
+
+        MmcLeaderApi::MmcLeaderSetLogger(SPDLOG_LogMessage);
+        result = MmcLeaderApi::MmcLeaderInit();
+        if (result != MMC_OK) {
+            std::cerr << "Error, init leader failed." << std::endl;
+            return -1;
+        }
+        pybind11::gil_scoped_release release;
     }
 
     MmcMetaService *serviceDefault = new (std::nothrow)MmcMetaServiceDefault("meta_service");
@@ -195,10 +211,9 @@ int main(int argc, char* argv[])
     g_exitCv.wait(lock, []() { return g_processExit; });
 
     serviceDefault->Stop();
-    if (leaderElection != nullptr) {
-        leaderElection->Stop();
+    if (config.haEnable) {
+        MmcLeaderApi::MmcLeaderUninit();
     }
-
     ptracer_uninit();
 
     MMC_AUDIT_LOG("Meta Service stopped");

@@ -100,6 +100,7 @@ public:
 
     static int ValidateTLSConfig(const mmc_tls_config &tlsConfig);
 
+    const std::string GetBinDir();
     const std::string GetLogPath(const std::string &logPath);
     static int ValidateLogPathConfig(const std::string &logPath);
 

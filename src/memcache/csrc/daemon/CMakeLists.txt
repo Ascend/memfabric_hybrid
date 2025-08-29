@@ -1,4 +1,9 @@
-file(GLOB_RECURSE DAEMON_SRCS *.cc *.cpp *.h)
+aux_source_directory(. DAEMON_SRCS)
+aux_source_directory(ha_api DAEMON_SRCS)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ha_api)
+
+add_subdirectory(ha)
 
 add_executable(mmc_meta_service ${DAEMON_SRCS} $<TARGET_OBJECTS:ptracer_object>)
 

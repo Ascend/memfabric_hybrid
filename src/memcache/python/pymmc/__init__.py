@@ -15,6 +15,5 @@ for lib_source in lib_list:
     ctypes.CDLL(os.path.join(lib_dir, lib_source))
 
 from _pymmc import SliceBuffer, DistributedObjectStore, KeyInfo
-from .meta_service_leader_election import MetaServiceLeaderElection
 
-__all__ = ['SliceBuffer', 'DistributedObjectStore', 'KeyInfo', 'MetaServiceLeaderElection']
+__all__ = ['SliceBuffer', 'DistributedObjectStore', 'KeyInfo']

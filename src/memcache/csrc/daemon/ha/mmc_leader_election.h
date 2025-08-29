@@ -26,7 +26,7 @@ public:
 
     ~MmcMetaServiceLeaderElection();
 
-    Result Start(const mmc_meta_service_config_t &options);
+    Result Start();
 
     void Stop();
 
