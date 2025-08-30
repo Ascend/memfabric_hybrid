@@ -51,11 +51,12 @@ private:
                               uint32_t kind, const ExtOptions &options);
     int32_t RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                                 uint64_t width, uint64_t height,  uint32_t kind, const ExtOptions &options);
+    int PrepareThreadLocalStream() noexcept;
 
 private:
     uint32_t rankId_{0};
     bool inited_ = false;
-    void *stream_{nullptr};
+    static thread_local void *stream_;
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<transport::TransportManager> transportManager_;
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;

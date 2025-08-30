@@ -359,7 +359,10 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-
+    auto ret = SetThreadAclDevice();
+    if (ret != BM_OK) {
+        return ret;
+    }
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
@@ -369,7 +372,6 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     params.src = Valid48BitsAddress(params.src);
     params.dest = Valid48BitsAddress(params.dest);
 
-    int32_t ret = BM_ERROR;
     auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
     if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
         ret = sdmaDataOperator_->DataCopy(params, direction, options);
@@ -405,6 +407,10 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
+    auto ret = SetThreadAclDevice();
+    if (ret != BM_OK) {
+        return ret;
+    }
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
@@ -415,7 +421,6 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
     }
 
-    int32_t ret = BM_ERROR;
     auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
     if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
         ret = sdmaDataOperator_->BatchDataCopy(params, direction, options);
@@ -451,7 +456,10 @@ int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-
+    auto ret = SetThreadAclDevice();
+    if (ret != BM_OK) {
+        return ret;
+    }
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
@@ -460,7 +468,6 @@ int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy
     params.src = Valid48BitsAddress(params.src);
     params.dest = Valid48BitsAddress(params.dest);
 
-    int32_t ret = BM_ERROR;
     auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
     if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
         ret = sdmaDataOperator_->DataCopy2d(params, direction, options);

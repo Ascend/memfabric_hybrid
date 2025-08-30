@@ -45,10 +45,11 @@ private:
     int CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) noexcept;
     int CopyGva2Device2d(hybm_copy_2d_params &params, void *stream) noexcept;
     int CheckDevice2Gva2dStatus(hybm_copy_2d_params &params) noexcept;
+    int PrepareThreadLocalStream() noexcept;
 
 private:
     bool inited_ = false;
-    void *stream_ = nullptr;
+    static thread_local void *stream_;
 };
 }  // namespace mf
 }  // namespace ock

@@ -8,6 +8,8 @@
 namespace ock {
 namespace mf {
 
+thread_local void *HostDataOpSDMA::stream_ = nullptr;
+
 HostDataOpSDMA::~HostDataOpSDMA()
 {
     HostDataOpSDMA::UnInitialize();
@@ -45,11 +47,28 @@ void HostDataOpSDMA::UnInitialize() noexcept
     inited_ = false;
 }
 
+int HostDataOpSDMA::PrepareThreadLocalStream() noexcept
+{
+    if (stream_ != nullptr) {
+        return BM_OK;
+    }
+
+    auto ret = DlAclApi::AclrtCreateStream(&stream_);
+    if (ret != 0) {
+        BM_LOG_ERROR("create thread local stream failed: " << ret);
+        return ret;
+    }
+    return BM_OK;
+}
+
 int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                  const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
-    int ret;
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        return ret;
+    }
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
             ret = CopyDevice2Gva(params.dest, params.src, params.dataSize, options.stream);
@@ -77,7 +96,10 @@ int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
 int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                       const ExtOptions &options) noexcept
 {
-    int ret = BM_OK;
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        return ret;
+    }
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
             ret = BatchCopyDevice2Gva(params.destinations, params.sources, params.dataSizes,
@@ -397,7 +419,10 @@ int HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direc
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     BM_ASSERT_RETURN(params.dest != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(params.src != nullptr, BM_INVALID_PARAM);
-    int ret;
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        return ret;
+    }
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
             ret = CopyDevice2Gva2d(params, options.stream);
