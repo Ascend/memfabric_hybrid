@@ -856,11 +856,16 @@ bool MemEntityDefault::SdmaReaches(uint32_t remoteRank) const noexcept
 hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) const noexcept
 {
     uint32_t supportDataOp = 0U;
-    if (sdmaDataOperator_ != nullptr && SdmaReaches(remoteRank)) {
-        supportDataOp |= (HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
+    bool sdmaReach = SdmaReaches(remoteRank);   // SDMA reaches mean MTE reaches too
+    if (sdmaReach) {
+        supportDataOp |= HYBM_DOP_TYPE_MTE;
     }
 
-    if (devRdmaDataOperator_ != nullptr) {
+    if (sdmaDataOperator_ != nullptr && sdmaReach) {
+        supportDataOp |= HYBM_DOP_TYPE_SDMA;
+    }
+
+    if (devRdmaDataOperator_ != nullptr || (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0) {
         supportDataOp |= HYBM_DOP_TYPE_DEVICE_RDMA;
     }
 
