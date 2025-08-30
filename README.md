@@ -166,6 +166,8 @@ help(mf_smem.bm)    #查看big memory接口介绍
 help(mf_smem.shm)   #查看share memory接口介绍
 ```
 
+[python接口API列表](./doc/pythonAPI.md)
+
 #### 运行样例
 
 具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
