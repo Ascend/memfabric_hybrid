@@ -162,14 +162,23 @@ void TransferAdapterPy::UnInitialize()
 
 void DefineAdapterFunctions(py::module_ &m)
 {
-    m.def("create_config_store", &PyTransferConfigStore, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"));
+    m.def("create_config_store", &pytransfer_create_config_store, py::call_guard<py::gil_scoped_release>(),
+          py::arg("store_url"));
 
-    m.def("set_log_level", &PyTransferSetLogLevel, py::call_guard<py::gil_scoped_release>(), py::arg("level"), R"(
+    m.def("set_log_level", &pytransfer_set_log_level, py::call_guard<py::gil_scoped_release>(), py::arg("level"), R"(
 set log print level.
 
 Arguments:
     level(int): log level, 0:debug 1:info 2:warn 3:error)");
-
+    m.def("set_conf_store_tls", &pytransfer_set_conf_store_tls, py::call_guard<py::gil_scoped_release>(),
+          py::arg("enable"), py::arg("tls_info"), R"(
+set the config store tls info.
+Parameters:
+    enable (boolean): enable config store tls or not
+        tls_info (string): tls config string
+Returns:
+    returns zero on success. On error, none-zero is returned.
+)");
     m.doc() = PY_TRANSFER_LIB_VERSION;
 }
 

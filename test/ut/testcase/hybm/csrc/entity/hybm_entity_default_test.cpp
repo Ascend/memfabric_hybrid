@@ -51,10 +51,12 @@ protected:
         auto path = std::getenv("ASCEND_HOME_PATH");
         EXPECT_NE(path, nullptr);
         auto libPath = std::string(path).append("/lib64");
+        hybm_init(0, 0);
         EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
     }
     static void TearDownTestSuite()
     {
+        hybm_uninit();
         DlApi::CleanupLibrary();
     }
     void SetUp() override {}
