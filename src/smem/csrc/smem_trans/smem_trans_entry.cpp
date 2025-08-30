@@ -182,7 +182,7 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     ReadGuard locker(remoteSliceRwMutex_);
     auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
-        SM_LOG_ERROR("session:(" << remoteName << ")(" << session << ") not found.");
+        SM_LOG_ERROR("session:(" << remoteName << ")(" << unique << ") not found.");
         return SM_INVALID_PARAM;
     }
 

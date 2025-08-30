@@ -159,9 +159,9 @@ Result MemSegmentDeviceUseMem::GetExportSliceSize(size_t &size) noexcept
     return BM_OK;
 }
 
-void FreeMemory(void *addresses[], uint32_t index)
+void MemSegmentDeviceUseMem::RollbackIpcMemory(void *addresses[], uint32_t count)
 {
-    for (uint32_t j = 0; j < index; j++) {
+    for (uint32_t j = 0; j < count; j++) {
         if (addresses[j] != nullptr) {
             DlAclApi::RtIpcCloseMemory(addresses[j]);
         }
@@ -175,7 +175,7 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
     }
 
     Result ret = BM_ERROR;
-    auto index = 0;
+    uint32_t index = 0u;
     for (auto &info : allExInfo) {
         std::shared_ptr<MemSlice> rms;
         if (info.length() == sizeof(HbmExportDeviceInfo)) {
@@ -195,7 +195,7 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
         }
         if (ret != BM_OK) {
             // rollback
-            FreeMemory(addresses, index);
+            RollbackIpcMemory(addresses, index);
             break;
         }
 

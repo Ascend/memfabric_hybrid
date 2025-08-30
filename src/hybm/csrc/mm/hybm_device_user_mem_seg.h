@@ -69,6 +69,7 @@ public:
 private:
     Result ImportDeviceInfo(const std::string &info) noexcept;
     Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
+    static void RollbackIpcMemory(void *addresses[], uint32_t count);
 
 private:
     uint16_t sliceCount_{0};

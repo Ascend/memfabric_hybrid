@@ -256,24 +256,30 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
     SM_VALIDATE_RETURN(params.height != 0, "invalid param, height is 0", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch, params.height - 1, UINT64_MAX, '*'),
-        "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
-        << ", height=" << params.height, SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch * (params.height - 1), params.width,
-        UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
-        << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
 
     switch (t) {
         case SMEMB_COPY_L2G:
         case SMEMB_COPY_H2G:
         case SMEMB_COPY_L2GH:
         case SMEMB_COPY_H2GH:
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch, params.height - 1, UINT64_MAX, '*'),
+                "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+                << ", height=" << params.height, SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch * (params.height - 1), params.width,
+                UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+                << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
             SM_VALIDATE_RETURN(AddressInRange(params.dest, params.dpitch * (params.height - 1) + params.width),
                                "dest address: " << params.dest << " dpitch: " << params.dpitch << " width: "
                                                 << params.width << " height: " << params.height << " invalid.",
                                SM_INVALID_PARAM);
             break;
         default:
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch, params.height - 1, UINT64_MAX, '*'),
+                "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+                << ", height=" << params.height, SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch * (params.height - 1), params.width,
+                UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+                << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
             SM_VALIDATE_RETURN(AddressInRange(params.src, params.spitch * (params.height - 1) + params.width),
                                "src address: " << params.src << ", spitch: " << params.spitch << " width: "
                                                << params.width << " height: " << params.height << " invalid.",
