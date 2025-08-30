@@ -187,11 +187,17 @@ public:
 
     static inline Result RtIpcOpenMemory(void **ptr, const char *name)
     {
+        if (pRtIpcOpenMemory == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pRtIpcOpenMemory(ptr, name);
     }
 
     static inline Result RtIpcCloseMemory(const void *ptr)
     {
+        if (pRtIpcCloseMemory == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
         return pRtIpcCloseMemory(ptr);
     }
 

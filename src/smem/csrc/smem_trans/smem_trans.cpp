@@ -74,10 +74,10 @@ SMEM_API void smem_trans_destroy(smem_trans_t handle, uint32_t flags)
     /* remove entry by ptr */
     auto result = SmemTransEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
     if (result == SM_OBJECT_NOT_EXISTS) {
-        SM_LOG_AND_SET_LAST_ERROR("not found handle " << handle);
+        SM_LOG_AND_SET_LAST_ERROR("not found handle ");
         return;
     } else if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("failed to erase entry by handle " << handle);
+        SM_LOG_AND_SET_LAST_ERROR("failed to erase entry by handle ");
         return;
     }
 }
@@ -105,7 +105,7 @@ SMEM_API int32_t smem_trans_register_mem(smem_trans_t handle, void *address, siz
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
     if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("get entry by handle " << handle << " failed ");
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
 
@@ -139,7 +139,7 @@ SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addres
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
     if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("get entry by handle " << handle << " failed ");
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
 
@@ -176,7 +176,7 @@ SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, c
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
     if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("get entry by handle " << handle << " failed ");
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
 
@@ -203,7 +203,7 @@ SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddr
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
     if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("get entry by handle " << handle << " failed ");
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
 

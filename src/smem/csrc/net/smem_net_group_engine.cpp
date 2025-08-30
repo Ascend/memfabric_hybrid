@@ -177,9 +177,16 @@ Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
 void SmemNetGroupEngine::RankExit(int result, const std::string &key, const std::string &value)
 {
     if (result == SUCCESS && globalExitHandler_ != nullptr) {
-        globalExitHandler_(std::stoi(value));
+        int val = 0;
+        try {
+            val = std::stoi(value);
+        } catch (...) {
+            SM_LOG_WARN("convert string to int failed");
+            return;
+        }
+        globalExitHandler_(val);
     } else {
-        SM_LOG_DEBUG("global exit failed");
+        SM_LOG_WARN("global exit failed");
     }
 }
 

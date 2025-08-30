@@ -155,8 +155,9 @@ private:
 
 template <class Src, class Des> SmRef<Des> inline Convert(const SmRef<Src> &child)
 {
-    if (child.Get() != nullptr) {
-        return SmRef<Des>(static_cast<Des *>(child.Get()));
+    Des *converted = dynamic_cast<Des *>(child.Get());
+    if (converted) {
+        return SmRef<Des>(converted);
     }
     return nullptr;
 }

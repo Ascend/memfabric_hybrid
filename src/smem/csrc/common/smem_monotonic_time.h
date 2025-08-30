@@ -77,7 +77,7 @@ inline uint64_t MonotonicTime::InitTickUs()
     /* calculate */
     freq = freq / 1000ULL / 1000ULL;
     if (freq == 0) {
-        printf("Failed to get tick as freq is %lu\n", freq);
+        printf("Failed to get tick as freq is %llu\n", freq);
         return FAILURE_RET;
     }
 

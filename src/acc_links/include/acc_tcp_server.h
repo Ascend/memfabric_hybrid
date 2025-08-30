@@ -53,9 +53,8 @@ using AccLinkBrokenHandler = std::function<int32_t(const AccTcpLinkComplexPtr &l
 using AccDecryptHandler = std::function<int(const std::string &cipherText, char *plainText, size_t &plainTextLen)>;
 
 /**
- * @brief Tcp Server for p2p communication, can be two mode:
- * 1) AccTcpServer <-> AccTcpClient
- * 2) AccTcpServer <-> AccTcpServer
+ * @brief Tcp Server for p2p communication, can be one mode:
+ * 1) AccTcpServer <-> AccTcpServer
  *
  * A typical AccTcpServer major contains 3 internal parts:
  * a) socket listener, accepting connection from peer, listener can be disabled as well

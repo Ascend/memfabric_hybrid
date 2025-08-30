@@ -103,7 +103,7 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     BM_ASSERT_RETURN(exInfo != nullptr, BM_INVALID_PARAM);
     auto ret = entity->ExportExchangeInfo(slice, *exInfo, flags);
     if (ret != 0) {
-        BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
+        BM_LOG_ERROR("export slices failed: " << ret);
         return ret;
     }
 

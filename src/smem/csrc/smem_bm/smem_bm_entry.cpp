@@ -3,6 +3,7 @@
  */
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "mf_num_util.h"
 #include "smem_store_factory.h"
 #include "smem_bm_entry.h"
 
@@ -192,16 +193,26 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
 
     hybm_data_copy_direction direction;
     if (t == SMEMB_COPY_L2G || t == SMEMB_COPY_H2G) {
+        SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch, params.height - 1, UINT64_MAX, '*'),
+            "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+            << ", height=" << params.height, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch * (params.height - 1), params.width,
+            UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+            << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
         SM_VALIDATE_RETURN(AddressInRange(params.dest, params.dpitch * (params.height - 1) + params.width),
-                           "copy target range invalid (dpitch: " << params.dpitch << " width: " << params.width
-                                          << " height: " << params.height << ").",
-                           SM_INVALID_PARAM);
+            "copy target range invalid (dpitch: " << params.dpitch << " width: " << params.width << " height: "
+            << params.height << ").", SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_L2G ? HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE : HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE;
     } else {
+        SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch, params.height - 1, UINT64_MAX, '*'),
+            "copy target range invalid: spitch * (height - 1) would overflow: spitch=" << params.spitch
+            << ", height=" << params.height, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch * (params.height - 1), params.width,
+            UINT64_MAX, '+'), "copy target range invalid: spitch * (height - 1) +  would width: spitch="
+            << params.spitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
         SM_VALIDATE_RETURN(AddressInRange(params.src, params.spitch * (params.height - 1) + params.width),
-                           "copy source range invalid (spitch: " << params.spitch << " width: " << params.width
-                                        << " height: " << params.height << ")",
-                           SM_INVALID_PARAM);
+            "copy source range invalid (spitch: " << params.spitch << " width: " << params.width << " height: "
+            << params.height << ")", SM_INVALID_PARAM);
         direction = t == SMEMB_COPY_G2L ? HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE : HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST;
     }
 
