@@ -170,7 +170,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
+    INFO_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
     TestGetQPInfo(stream, (uint8_t *)gva, rankId, rankSize);
     sleep(1);
     TestRDMAWrite(stream, (uint8_t *)gva, rankId, rankSize);
