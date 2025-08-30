@@ -19,7 +19,7 @@ int32_t pytransfer_create_config_store(const char *storeUrl);
 
 int32_t pytransfer_set_log_level(int level);
 
-int32_t pytransfer_create_config_store(const char *storeUrl)
+int32_t pytransfer_set_conf_store_tls(bool enable, std::string &tls_info);
 
 }  // namespace adapter
 }  // namespace ock
