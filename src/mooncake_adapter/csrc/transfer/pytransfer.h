@@ -41,10 +41,10 @@ public:
 
     int GetRpcPort();
 
-    int TransferSyncWrite(const char *destSession, uintptr_t buffer,
+    int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer,
                             uintptr_t peer_buffer_address, size_t length);
 
-    int BatchTransferSyncWrite(const char *destSession,
+    int BatchTransferSyncWrite(const char *destUniqueId,
                             std::vector<uintptr_t> buffers,
                             std::vector<uintptr_t> peer_buffer_addresses,
                             std::vector<size_t> lengths);

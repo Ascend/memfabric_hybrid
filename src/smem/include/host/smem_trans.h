@@ -93,12 +93,12 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  *
  * @param handle           [in] transfer object handle
  * @param srcAddress       [in] address of src data to be written to peer
- * @param destSession      [in] uniqueId of dst
+ * @param destUniqueId     [in] uniqueId of dst
  * @param destAddress      [in] address of dst
  * @param dataSize         [in] data size to be transfered
  * @return 0 if successful
  */
-int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destSession, void *destAddress,
+int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId, void *destAddress,
                          size_t dataSize);
 
 /**
@@ -106,13 +106,13 @@ int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char
  *
  * @param handle           [in] transfer object handle
  * @param srcAddresses     [in] addresses of src data to be written to peer
- * @param destSession      [in] uniqueId of dst
+ * @param destUniqueId     [in] uniqueId of dst
  * @param destAddresses    [in] addresses of data
  * @param dataSizes        [in] sizes of data
  * @param batchSize        [in] batch size
  * @return 0 if successful
  */
-int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destSession,
+int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
                                void *destAddresses[], size_t dataSizes[], uint32_t batchSize);
 
 #ifdef __cplusplus

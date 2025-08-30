@@ -176,7 +176,6 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 TEST_F(SmemTransTest, smem_trans_write)
 {
     MOCKER(MemSegmentDevice::SetDeviceInfo).stubs().will(returnValue(0));
-    setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
     uint32_t rankSize = 2;
     int* sender_buffer = new int[500];
@@ -285,7 +284,6 @@ TEST_F(SmemTransTest, smem_trans_write)
 TEST_F(SmemTransTest, smem_trans_batch_write)
 {
     MOCKER(MemSegmentDevice::SetDeviceInfo).stubs().will(returnValue(0));
-    setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
 
     uint32_t rankSize = 2;
     int* sender_buffer = new int[500];
