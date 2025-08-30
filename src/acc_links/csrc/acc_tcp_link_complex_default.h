@@ -345,12 +345,12 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
         if (LIKELY((result) > 0)) {
             if (receiveState_.HeaderSatisfied(result)) { /* header is full, continue to receive body */
                 // validate header
-                receiveState_.bodyToBeReceived = header_.bodyLen; /* expand memory size */
                 if (UNLIKELY(!data_->AllocIfNeed(header_.bodyLen))) {
                     LOG_ERROR("Failed to expand receive buffer to " << header_.bodyLen << ", probably out of memory");
                     receiveState_.ResetHeader();
                     return ACC_MALLOC_FAIL;
                 }
+                receiveState_.bodyToBeReceived = header_.bodyLen; /* expand memory size */
                 data_->SetDataSize(0);
             } else { /* header is not fully, need to continue to receive */
                 return ACC_LINK_EAGAIN;
@@ -402,6 +402,7 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
 
 inline Result AccTcpLinkComplexDefault::HandlePollOut(AccMsgHeader &header, AccDataBufferPtr &cbCtx) noexcept
 {
+    ASSERT_RETURN(queue_.Get() != nullptr, ACC_NOT_INITIALIZED);
     AccLinkedMessageNode *oneMsg = queue_->DequeueFront();
     if (UNLIKELY(oneMsg == nullptr)) {
         return ACC_OK;

@@ -24,7 +24,7 @@ namespace {
 const std::string DRIVER_VER_V2 = "V100R001C21B035";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
 
-uint64_t g_baseAddr = 0ULL;
+static uint64_t g_baseAddr = 0ULL;
 int64_t initialized = 0;
 uint16_t initedDeviceId = 0;
 HybmGvaVersion checkVer = HYBM_GVA_UNKNOWN;
@@ -58,7 +58,7 @@ static std::string GetDriverVersionPath(const std::string &driverEnvStr, const s
         }
         // 对存放driver版本文件的路径进行搜索
         if (driverEnvStr[i] == ':' || i == driverEnvStr.length() - 1) {
-            if (!ock::FileUtil::Realpath(tempPath)) {
+            if (!ock::mf::FileUtil::Realpath(tempPath)) {
                 tempPath.clear();
                 continue;
             }
@@ -82,16 +82,16 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
 {
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
-    char realFile[PATH_MAX] = {0};
-    if (ock::FileUtil::IsSymlink(realName) || realpath(realName.c_str(), realFile) == nullptr) {
-        BM_LOG_WARN("driver version path " << realName << " is not a valid real path");
+    char realFile[ock::mf::FileUtil::GetSafePathMax()] = {0};
+    if (ock::mf::FileUtil::IsSymlink(realName) || realpath(realName.c_str(), realFile) == nullptr) {
+        BM_LOG_WARN("driver version path is not a valid real path");
         return "";
     }
 
     // realFile转str,然后open这个str
     std::ifstream infile(realFile, std::ifstream::in);
     if (!infile.is_open()) {
-        BM_LOG_WARN("driver version file " << realFile << " does not exist");
+        BM_LOG_WARN("driver version file does not exist");
         return "";
     }
 
@@ -216,6 +216,21 @@ int32_t HalGvaPrecheck(void)
     return BM_ERROR;
 }
 
+static inline int hybm_load_library()
+{
+    char *path = std::getenv("ASCEND_HOME_PATH");
+    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
+
+    std::string libPath = std::string(path).append("/lib64");
+    if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
+        BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
+        return BM_ERROR;
+    }
+    auto ret = DlApi::LoadLibrary(libPath);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
+    return 0;
+}
+
 HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
@@ -226,24 +241,21 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
             return BM_ERROR;
         }
 
+        /*
+         * hybm_init will be accessed multiple times when bm/shm/trans init
+         * incremental loading is required here.
+         */
+        BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
+
         initialized++;
         return 0;
     }
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
 
-    auto path = std::getenv("ASCEND_HOME_PATH");
-    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
 
-    auto libPath = std::string(path).append("/lib64");
-    if (!ock::FileUtil::Realpath(libPath) || !ock::FileUtil::IsDir(libPath)) {
-        BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
-        return BM_ERROR;
-    }
-    auto ret = DlApi::LoadLibrary(libPath);
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path: " << libPath << " failed: " << ret);
-
-    ret = DlAclApi::AclrtSetDevice(deviceId);
+    auto ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
@@ -295,13 +307,15 @@ HYBM_API void hybm_uninit()
     initialized = 0;
 }
 
-HYBM_API int32_t hybm_set_extern_logger(void (*logger)(int level, const char *msg))
+HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
 {
+    if (logger == nullptr) {
+        return;
+    }
     if (ock::mf::OutLogger::Instance().GetLogExtraFunc() != nullptr) {
         BM_LOG_WARN("logFunc will be rewriting");
     }
-    ock::mf::OutLogger::Instance().SetExternalLogFunction(logger);
-    return 0;
+    ock::mf::OutLogger::Instance().SetExternalLogFunction(logger, true);
 }
 
 HYBM_API int32_t hybm_set_log_level(int level)

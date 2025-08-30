@@ -88,7 +88,13 @@ int32_t main(int32_t argc, char* argv[])
     aclrtStream stream = nullptr;
     CHECK_ACL(aclrtCreateStream(&stream));
 
-    auto ret = smem_init(0);
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    if (ret != 0) {
+        ERROR_LOG("[TEST] smem set tls info failed, ret:%d, rank:%d", ret, rankId);
+        return -1;
+    }
+
+    ret = smem_init(0);
     if (ret != 0) {
         ERROR_LOG("[TEST] smem init failed, ret:%d, rank:%d", ret, rankId);
         return -1;
@@ -108,7 +114,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create, size %lu, rank:%d", gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", gNpuMallocSpace, rankId);
     TestContext(handle);
     TestAllShift(stream, (uint8_t *)gva, rankId, rankSize);
 

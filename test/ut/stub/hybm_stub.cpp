@@ -37,9 +37,9 @@ int32_t hybm_set_log_level_stub(int level)
     return 0;
 }
 
-int32_t hybm_set_extern_logger_stub(void (*logger)(int level, const char *msg))
+void hybm_set_extern_logger_stub(void (*logger)(int level, const char *msg))
 {
-    return 0;
+    
 }
 
 const char *hybm_get_error_string_stub(int32_t errCode)
@@ -119,7 +119,8 @@ int32_t hybm_export_stub(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags
     }
 }
 
-int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[], uint32_t flags)
+int32_t hybm_import_stub(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
+                         void *addresses[], uint32_t flags)
 {
     HybmMgrStub *mgr = reinterpret_cast<HybmMgrStub *>(e);
     if (mgr == nullptr || allExInfo == nullptr) {
@@ -162,14 +163,14 @@ int32_t hybm_set_extra_context_stub(hybm_entity_t e, const void *context, uint32
 }
 
 int32_t hybm_data_copy_stub(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
-                       void *stream, uint32_t flags)
+                            void *stream, uint32_t flags)
 {
-    memcpy(params->dest, params->src, params->count);
+    memcpy(params->dest, params->src, params->dataSize);
     return 0;
 }
 
 int32_t hybm_data_copy_2d_stub(hybm_entity_t e, hybm_copy_2d_params *params,
-                          hybm_data_copy_direction direction, void *stream, uint32_t flags)
+                               hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
     auto srcAddr = (uint64_t)params->src;
     auto destAddr = (uint64_t)params->dest;
@@ -209,6 +210,4 @@ void mock_hybm_api()
     MOCKER(hybm_set_extra_context).stubs().will(invoke(hybm_set_extra_context_stub));
     MOCKER(hybm_data_copy).stubs().will(invoke(hybm_data_copy_stub));
     MOCKER(hybm_data_copy_2d).stubs().will(invoke(hybm_data_copy_2d_stub));
-    MOCKER(hybm_entity_export).stubs().will(invoke(hybm_entity_export_stub));
-    MOCKER(hybm_entity_import).stubs().will(invoke(hybm_entity_import_stub));
 }

@@ -264,7 +264,9 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send get for key: " << key << ", response code: " << responseCode << " timeout:" << timeoutMs);
+        if (responseCode != NOT_EXIST) {
+            SM_LOG_ERROR("send get for key: " << key << ", resp code: " << responseCode << " timeout:" << timeoutMs);
+        }
         return responseCode;
     }
 

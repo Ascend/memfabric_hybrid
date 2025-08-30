@@ -4,7 +4,8 @@
 #ifndef __MEMFABRIC_SMEM_BM_H__
 #define __MEMFABRIC_SMEM_BM_H__
 
-#include <smem_bm_def.h>
+#include "smem.h"
+#include "smem_bm_def.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +126,8 @@ void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId);
  * @return 0 if successful
  */
 int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+
+int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
 /**
  * @brief Data copy on Big Memory object, several copy types supported:

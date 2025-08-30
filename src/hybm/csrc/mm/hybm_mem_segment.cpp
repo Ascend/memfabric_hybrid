@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #include "dl_acl_api.h"
 #include "hybm_mem_segment.h"
@@ -11,10 +11,21 @@
 namespace ock {
 namespace mf {
 
+bool MemSegment::deviceInfoReady{false};
+int MemSegment::deviceId_{-1};
+uint32_t MemSegment::pid_{0};
+uint32_t MemSegment::sdid_{0};
+
 MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
 {
     if (options.rankId >= options.rankCnt) {
         BM_LOG_ERROR("rank(" << options.rankId << ") but total " << options.rankCnt);
+        return nullptr;
+    }
+
+    auto ret = MemSegmentDevice::SetDeviceInfo(options.devId);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("MemSegmentDevice::GetDeviceId with devId: " << options.devId << " failed: " << ret);
         return nullptr;
     }
 
@@ -38,6 +49,37 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
 bool MemSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
 {
     return false;
+}
+
+Result MemSegment::InitDeviceInfo()
+{
+    if (deviceInfoReady) {
+        return BM_OK;
+    }
+
+    auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
+    if (ret != 0) {
+        BM_LOG_ERROR("get device id failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    ret = DlAclApi::RtDeviceGetBareTgid(&pid_);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get bare tgid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    constexpr auto sdidInfo = 26;
+    int64_t value = 0;
+    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, sdidInfo, &value);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get sdid failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+
+    sdid_ = static_cast<uint32_t>(value);
+    deviceInfoReady = true;
+    return BM_OK;
 }
 }
 }

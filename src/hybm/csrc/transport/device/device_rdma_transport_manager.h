@@ -14,9 +14,11 @@
 #include <memory>
 
 #include "hybm_define.h"
+#include "hybm_stream_manager.h"
 #include "hybm_transport_manager.h"
+#include "device_chip_info.h"
 #include "device_rdma_common.h"
-#include "device_rdma_connection_manager.h"
+#include "device_qp_manager.h"
 
 namespace ock {
 namespace mf {
@@ -30,6 +32,7 @@ public:
     Result RegisterMemoryRegion(const TransportMemoryRegion &mr) override;
     Result UnregisterMemoryRegion(uint64_t addr) override;
     Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) override;
+    Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) override;
     Result Prepare(const HybmTransPrepareOptions &options) override;
     Result Connect() override;
     Result AsyncConnect() override;
@@ -47,11 +50,19 @@ private:
     static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
     static bool RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle);
     void ClearAllRegisterMRs();
+    int CheckPrepareOptions(const HybmTransPrepareOptions &options);
+    int RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write);
+
+private: // RDMA HOST STARS
+    void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command);
+    uint64_t GetRoceDbAddrForRdmaDbSendTask();
 
 private:
+    bool started_{false};
     uint32_t rankId_{0};
     uint32_t rankCount_{1};
     uint32_t deviceId_{0};
+    hybm_role_type role_{HYBM_ROLE_PEER};
     in_addr deviceIp_{0};
     uint16_t devicePort_{0};
     void *rdmaHandle_{nullptr};
@@ -60,9 +71,10 @@ private:
     static bool raInitialized_;
     static bool deviceIpRetired_;
     std::string nicInfo_;
-    std::mutex mrsMutex_;
-    std::map<uint64_t, RegMemResult, std::greater<uint64_t>> registerMRS_;
-    std::shared_ptr<RdmaConnectionManager> connectionManager_;
+    MemoryRegionMap registerMRS_;
+    std::shared_ptr<DeviceQpManager> qpManager_;
+    HybmStreamPtr stream_;
+    std::shared_ptr<DeviceChipInfo> deviceChipInfo_;
 };
 }
 }

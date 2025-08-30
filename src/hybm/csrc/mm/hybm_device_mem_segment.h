@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
 #define MEM_FABRIC_HYBRID_HYBM_DEVICE_MEM_SEGMENT_H
@@ -12,10 +12,12 @@
 
 namespace ock {
 namespace mf {
+static constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
+static constexpr uint32_t invalidServerId = 0x3FFU;
 
 struct HbmExportInfo {
-    uint64_t magic;
-    uint64_t version;
+    uint64_t magic{EXPORT_INFO_MAGIC};
+    uint64_t version{EXPORT_INFO_VERSION};
     uint64_t mappingOffset{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
@@ -35,7 +37,7 @@ struct HbmExportInfo {
 class MemSegmentDevice : public MemSegment {
 public:
     explicit MemSegmentDevice(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
-    ~MemSegmentDevice()
+    ~MemSegmentDevice() override
     {
         FreeMemory();
     }
@@ -63,26 +65,29 @@ public:
     bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
 
 public:
-    static int GetDeviceInfo(int deviceId) noexcept;
+    static int SetDeviceInfo(int deviceId) noexcept;
     static int FillDeviceSuperPodInfo() noexcept;
     static bool CanMapRemote(const HbmExportInfo &rmi) noexcept;
+    static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId) noexcept;
+    static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;
 
-private:
+protected:
+    Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
-    Result ValidateExportSlice(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept;
 
-private:
+protected:
     uint8_t *globalVirtualAddress_{nullptr};
     uint64_t totalVirtualSize_{0UL};
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
+    std::map<uint16_t, MemSliceStatus> regSlices_;
     std::map<uint16_t, std::string> exportMap_;
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;
     std::map<uint16_t, HbmExportInfo> importMap_;
 
-private:
+protected:
     static bool deviceInfoReady;
     static int deviceId_;
     static uint32_t pid_;

@@ -2,12 +2,13 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <string>
+#include "hybm_define.h"
 
 namespace ock {
 namespace mf {
 namespace drv {
 
-constexpr uint64_t baseAddr = 0x10000000000;
+constexpr uint64_t baseAddr = HYBM_DEVICE_VA_START;
 
 void HybmInitialize(int deviceId, int fd)
 {

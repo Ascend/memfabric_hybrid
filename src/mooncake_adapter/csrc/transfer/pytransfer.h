@@ -33,7 +33,7 @@ public:
 
     ~TransferAdapterPy();
 
-    int Initialize(const char *storeUrl, const char *sessionId, const char *role, uint32_t deviceId);
+    int Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId);
 
     int GetRpcPort();
 

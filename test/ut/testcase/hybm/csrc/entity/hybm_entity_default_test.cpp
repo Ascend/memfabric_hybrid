@@ -17,15 +17,32 @@ using namespace ock::mf;
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
-const hybm_options g_options_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                             HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true,
-                                             HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
-const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE,
-                                                 HYBM_SCOPE_CROSS_NODE, HYBM_RANK_TYPE_STATIC, 8, 0, 0,
-                                                 1024 * 1024 * 1024, 0, false, HYBM_ROLE_PEER,
+const hybm_options g_options_unified_addr = {HYBM_TYPE_HOST_INITIATE,
+                                             HYBM_MEM_TYPE_DEVICE,
+                                             HYBM_DOP_TYPE_DEVICE_RDMA,
+                                             HYBM_SCOPE_CROSS_NODE,
+                                             8,
+                                             0,
+                                             0,
+                                             1024 * 1024 * 1024,
+                                             0,
+                                             true,
+                                             HYBM_ROLE_PEER,
+                                             "tcp://127.0.0.1:10002"};
+const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
+                                                 HYBM_MEM_TYPE_HOST,
+                                                 HYBM_DOP_TYPE_SDMA,
+                                                 HYBM_SCOPE_CROSS_NODE,
+                                                 8,
+                                                 0,
+                                                 0,
+                                                 1024 * 1024 * 1024,
+                                                 0,
+                                                 false,
+                                                 HYBM_ROLE_PEER,
                                                  "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
-}
+}  // namespace
 
 class HybmEntityDefaultTest : public ::testing::Test {
 protected:
@@ -34,10 +51,12 @@ protected:
         auto path = std::getenv("ASCEND_HOME_PATH");
         EXPECT_NE(path, nullptr);
         auto libPath = std::string(path).append("/lib64");
+        hybm_init(0, 0);
         EXPECT_EQ(DlApi::LoadLibrary(libPath), BM_OK);
     }
     static void TearDownTestSuite()
     {
+        hybm_uninit();
         DlApi::CleanupLibrary();
     }
     void SetUp() override {}
@@ -132,12 +151,15 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     EXPECT_EQ(entity.AllocLocalMemory(g_allocSize, 0, slice), BM_NOT_INITIALIZED);
 
     hybm_exchange_info info;
-    EXPECT_EQ(entity.ExportExchangeInfo(info, 0), BM_NOT_INITIALIZED);
+    ExchangeInfoWriter writer1(&info);
+    EXPECT_EQ(entity.ExportExchangeInfo(writer1, 0), BM_NOT_INITIALIZED);
 
-    EXPECT_EQ(entity.ExportExchangeInfo(slice, info, 0), BM_NOT_INITIALIZED);
+    ExchangeInfoWriter writer2(&info);
+    EXPECT_EQ(entity.ExportExchangeInfo(slice, writer2, 0), BM_NOT_INITIALIZED);
 
-    void* addresses[1] = { nullptr };
-    EXPECT_EQ(entity.ImportExchangeInfo(&info, 1, addresses, 0), BM_NOT_INITIALIZED);
+    void *addresses[1] = {nullptr};
+    ExchangeInfoReader reader(&info);
+    EXPECT_EQ(entity.ImportExchangeInfo(&reader, 1, addresses, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.SetExtraContext(&info, 1), BM_NOT_INITIALIZED);
 
@@ -152,8 +174,7 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     EXPECT_EQ(entity.CopyData(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
 
     hybm_copy_2d_params params2D = {nullptr, 0, nullptr, 0, 0, 0};
-    EXPECT_EQ(entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT,
-                                nullptr, 0), BM_NOT_INITIALIZED);
+    EXPECT_EQ(entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0), BM_NOT_INITIALIZED);
 
     EXPECT_EQ(entity.CheckAddressInEntity(nullptr, 0), false);
 

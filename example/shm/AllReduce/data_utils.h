@@ -43,6 +43,10 @@ typedef enum {
     BF16 = 27
 } printDataType;
 
+#ifndef LOG_FILENAME_SHORT
+#define LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
 #define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
 #define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
 #define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
@@ -50,7 +54,7 @@ typedef enum {
     do {                                                                                    \
         aclError __ret = x;                                                                 \
         if (__ret != ACL_ERROR_NONE) {                                                      \
-            std::cerr << __FILE__ << ":" << __LINE__ << " aclError:" << __ret << std::endl; \
+            std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " aclError:" << __ret << std::endl; \
         }                                                                                   \
     } while (0);
 
@@ -78,14 +82,14 @@ bool ReadFile(const std::string &filePath, size_t &fileSize, void *buffer, size_
         return false;
     }
     if (S_ISREG(sBuf.st_mode) == 0) {
-        ERROR_LOG("%s is not a file, please enter a file", filePath.c_str());
+        ERROR_LOG("filePath is not a file, please enter a file");
         return false;
     }
 
     std::ifstream file;
     file.open(filePath, std::ios::binary);
     if (!file.is_open()) {
-        ERROR_LOG("Open file failed. path = %s", filePath.c_str());
+        ERROR_LOG("Open file failed");
         return false;
     }
 
@@ -124,7 +128,7 @@ bool WriteFile(const std::string &filePath, const void *buffer, size_t size)
 
     int fd = open(filePath.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWRITE);
     if (fd < 0) {
-        ERROR_LOG("Open file failed. path = %s", filePath.c_str());
+        ERROR_LOG("Open file failed");
         return false;
     }
 

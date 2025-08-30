@@ -9,6 +9,8 @@
 #include "smem_types.h"
 
 constexpr uint64_t SECOND_TO_MILLSEC = 1000U;
+constexpr uint64_t MILLSEC_TO_NANOSSEC = 1000000U;
+constexpr uint64_t SECOND_TO_NANOSSEC = 1000000000U;
 
 namespace ock {
 namespace smem {
@@ -20,13 +22,31 @@ public:
     Result Initialize()
     {
         signalFlag = false;
+
         int32_t attrInitRet = pthread_condattr_init(&cattr_);
-        int32_t setLockRet = pthread_condattr_setclock(&cattr_, CLOCK_MONOTONIC);
-        int32_t condInitRet = pthread_cond_init(&condTimeChecker_, &cattr_);
-        int32_t mutexInitRet = pthread_mutex_init(&timeCheckerMutex_, nullptr);
-        if (attrInitRet || setLockRet || condInitRet || mutexInitRet) {
+        if (attrInitRet != 0) {
             return SM_ERROR;
         }
+
+        int32_t setClockRet = pthread_condattr_setclock(&cattr_, CLOCK_MONOTONIC);
+        if (setClockRet != 0) {
+            pthread_condattr_destroy(&cattr_);
+            return SM_ERROR;
+        }
+
+        int32_t condInitRet = pthread_cond_init(&condTimeChecker_, &cattr_);
+        if (condInitRet != 0) {
+            pthread_condattr_destroy(&cattr_);
+            return SM_ERROR;
+        }
+
+        int32_t mutexInitRet = pthread_mutex_init(&timeCheckerMutex_, nullptr);
+        if (mutexInitRet != 0) {
+            pthread_cond_destroy(&condTimeChecker_);
+            pthread_condattr_destroy(&cattr_);
+            return SM_ERROR;
+        }
+
         return SM_OK;
     }
 
@@ -38,12 +58,14 @@ public:
         pthread_mutex_lock(&this->timeCheckerMutex_);
         clock_gettime(CLOCK_MONOTONIC, &ts);
 
-        // avoid ts.tv_nsec overflow
-        long secs = msecs / SECOND_TO_MILLSEC;
-        msecs = (msecs % SECOND_TO_MILLSEC) * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC + ts.tv_nsec;
-        long add = msecs / (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
-        ts.tv_sec += (add + secs);
-        ts.tv_nsec = msecs % (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
+        ts.tv_sec += msecs / SECOND_TO_MILLSEC;
+        ts.tv_nsec += (msecs % SECOND_TO_MILLSEC) * MILLSEC_TO_NANOSSEC;
+
+        if (ts.tv_nsec >= static_cast<long>(SECOND_TO_NANOSSEC)) {
+            ts.tv_sec += ts.tv_nsec / SECOND_TO_NANOSSEC;
+            ts.tv_nsec %= SECOND_TO_NANOSSEC;
+        }
+
         while (!this->signalFlag) {    // avoid spurious wakeup
             ret = pthread_cond_timedwait(&this->condTimeChecker_, &this->timeCheckerMutex_, &ts);
             if (ret == ETIMEDOUT) {    // avoid infinite loop

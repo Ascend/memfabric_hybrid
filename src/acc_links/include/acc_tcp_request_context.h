@@ -28,6 +28,11 @@ public:
     {
     }
 
+    AccTcpRequestContext(const AccTcpRequestContext &b): header_(b.header_), link_(b.link_)
+    {
+        data_ = AccDataBuffer::Create(b.DataPtr(), b.DataLen());
+    }
+
     /**
      * @brief Reply a message to peer with result
      *
@@ -74,8 +79,8 @@ public:
 
 private:
     const AccMsgHeader header_;
-    const AccDataBufferPtr data_;
     const AccTcpLinkComplexPtr link_;
+    AccDataBufferPtr data_;
 };
 
 inline int16_t AccTcpRequestContext::MsgType() const

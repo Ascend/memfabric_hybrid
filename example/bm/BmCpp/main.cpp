@@ -9,13 +9,16 @@
 #include <sys/wait.h>
 #include "acl/acl.h"
 #include "smem.h"
-#include "smem_security.h"
 #include "smem_bm.h"
 #include "barrier_util.h"
 
-#define LOG_INFO(msg) std::cout << __FILE__ << ":" << __LINE__ << "[INFO]" << msg << std::endl;
-#define LOG_WARN(msg) std::cout << __FILE__ << ":" << __LINE__ << "[WARN]" << msg << std::endl;
-#define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << msg << std::endl;
+#ifndef LOG_FILENAME_SHORT
+#define LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
+#define LOG_INFO(msg) std::cout << LOG_FILENAME_SHORT << ":" << __LINE__ << "[INFO]" << msg << std::endl;
+#define LOG_WARN(msg) std::cout << LOG_FILENAME_SHORT << ":" << __LINE__ << "[WARN]" << msg << std::endl;
+#define LOG_ERROR(msg) std::cout << LOG_FILENAME_SHORT << ":" << __LINE__ << "[ERR]" << msg << std::endl;
 
 #define CHECK_RET_ERR(x, msg)   \
 do {                            \
@@ -98,6 +101,9 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string
     aclrtStream ss = nullptr;
     ret = aclrtCreateStream(&ss);
     CHECK_RET_ERR(ret, "acl create stream failed, ret:" << ret << " rank:" << rankId);
+
+    ret = smem_set_conf_store_tls(false, nullptr, 0);
+    CHECK_RET_ERR(ret, "set tls info failed, ret:" << ret << " rank:" << rankId);
 
     ret = smem_init(0);
     CHECK_RET_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId);

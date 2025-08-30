@@ -7,40 +7,18 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/compose
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+        ${PROJECT_DRIVER_BASE}/hybm/userspace
 )
 
-## add files into src variables
-aux_source_directory(common SRC_FILES_COMMON)
-aux_source_directory(data_operation SRC_FILES_DATA_OP)
-aux_source_directory(data_operation/host SRC_FILES_DATA_OP)
-aux_source_directory(driver/userspace SRC_FILES_DRIVER)
-aux_source_directory(entity SRC_FILES_ENTITY)
-aux_source_directory(mm SRC_FILES_MEM_MANAGER)
-aux_source_directory(transport SRC_FILES_TRANSPORT)
-aux_source_directory(transport/device SRC_FILES_TRANSPORT_DEVICE)
-aux_source_directory(transport/host SRC_FILES_TRANSPORT_HOST)
-aux_source_directory(under_api SRC_FILES_CANN)
-
-# set whole source for hybmm src files
-set(HYBMM_SRC_FILES
-        ${SRC_FILES_COMMON}
-        ${SRC_FILES_DATA_OP}
-        ${SRC_FILES_DRIVER}
-        ${SRC_FILES_ENTITY}
-        ${SRC_FILES_CANN}
-        ${SRC_FILES_TRANSPORT}
-        ${SRC_FILES_TRANSPORT_DEVICE}
-        ${SRC_FILES_TRANSPORT_HOST}
-        ${SRC_FILES_MEM_MANAGER}
-        hybm_entry.cpp
-        hybm_big_mem_entry.cpp
-        hybm_data_op_entry.cpp
+file(GLOB_RECURSE HYBMM_SRC_FILES
+        ${PROJECT_HYBM_SRC_BASE}/csrc/*.cpp
 )
-
 set(HYBM_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../include")
 
 ## build the static and shared library

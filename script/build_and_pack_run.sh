@@ -17,8 +17,8 @@ fi
 
 cd ${ROOT_PATH}
 
-bash build.sh ${BUILD_MODE} OFF OFF ${BUILD_PYTHON}
+bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}"
 
-bash run_pkg_maker/make_run.sh ${BUILD_PYTHON}
+bash run_pkg_maker/make_run.sh "${BUILD_PYTHON}"
 
 cd ${CURRENT_DIR}

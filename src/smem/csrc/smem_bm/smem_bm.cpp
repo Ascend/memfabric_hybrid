@@ -5,16 +5,17 @@
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_bm.h"
+#include "smem_lock.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED
-thread_local std::mutex g_smemBmMutex_;
+thread_local ReadWriteLock g_smemBmMutex_;
 thread_local bool g_smemBmInited = false;
 #else
-std::mutex g_smemBmMutex_;
+ReadWriteLock g_smemBmMutex_;
 bool g_smemBmInited = false;
 #endif
 
@@ -60,7 +61,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     SM_VALIDATE_RETURN(storeURL != nullptr, "invalid param, storeURL is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(SmemBmConfigCheck(config) == 0, "config is invalid", SM_INVALID_PARAM);
 
-    std::lock_guard<std::mutex> guard(g_smemBmMutex_);
+    WriteGuard locker(g_smemBmMutex_);
     if (g_smemBmInited) {
         SM_LOG_INFO("smem bm initialized already");
         return SM_OK;
@@ -84,6 +85,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
 
 SMEM_API void smem_bm_uninit(uint32_t flags)
 {
+    WriteGuard locker(g_smemBmMutex_);
     if (!g_smemBmInited) {
         SM_LOG_WARN("smem bm not initialized yet");
         return;
@@ -100,6 +102,14 @@ SMEM_API uint32_t smem_bm_get_rank_id()
     return SmemBmEntryManager::Instance().GetRankId();
 }
 
+/* return 1 means check ok */
+static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
+{
+    constexpr auto dataOpTypeMask =
+        SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+    return (dataOpType & dataOpTypeMask) != 0;
+}
+
 SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
                                   uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
@@ -110,6 +120,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
+    SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(dataOpType), nullptr);
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
@@ -117,10 +128,10 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     }
 
     hybm_options options;
-    options.bmType = SmemHybmHelper::TransHybmType(localDRAMSize, localHBMSize);
-    options.bmDataOpType = (dataOpType == SMEMB_DATA_OP_SDMA) ? HYBM_DOP_TYPE_SDMA : HYBM_DOP_TYPE_ROCE;
+    options.bmType = HYBM_TYPE_HOST_INITIATE;
+    options.memType = SmemHybmHelper::TransHybmMemType(localDRAMSize, localHBMSize);
+    options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(dataOpType);
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
@@ -128,7 +139,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
-    (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
+    (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.nic);
 
     if (options.singleRankVASpace == 0) {
         SM_LOG_AND_SET_LAST_ERROR("options.singleRankVASpace is 0, cannot be divided.");
@@ -224,8 +235,7 @@ SMEM_API void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId)
     return reinterpret_cast<uint8_t *>(gvaAddress) + coreOption.singleRankVASpace * peerRankId;
 }
 
-SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t,
-                              uint32_t flags)
+SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
@@ -238,7 +248,24 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_b
         return SM_INVALID_PARAM;
     }
 
-    return entry->DataCopy(params->src, params->dest, params->count, t, flags);
+    return entry->DataCopy(params->src, params->dest, params->dataSize, t, flags);
+}
+
+SMEM_API int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,
+                                    uint32_t flags)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->DataCopyBatch(params->sources, params->destinations, params->dataSizes, params->batchSize, t, flags);
 }
 
 SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)

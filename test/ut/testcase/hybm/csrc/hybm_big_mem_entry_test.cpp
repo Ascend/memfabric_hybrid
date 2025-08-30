@@ -16,11 +16,21 @@ using namespace ock::mf;
 namespace {
 const uint16_t g_id = 1;
 const uint32_t g_flags = 1;
-const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE, HYBM_DOP_TYPE_MTE, HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC, 8, 0, 0, 1024 * 1024 * 1024, 0, true,
-                                HYBM_ROLE_PEER, "tcp://127.0.0.1:10002"};
+const hybm_options g_options = {
+    HYBM_TYPE_HOST_INITIATE,
+    HYBM_MEM_TYPE_DEVICE,
+    static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA | HYBM_DOP_TYPE_DEVICE_RDMA),
+    HYBM_SCOPE_CROSS_NODE,
+    8,
+    0,
+    0,
+    1024 * 1024 * 1024,
+    0,
+    true,
+    HYBM_ROLE_PEER,
+    "tcp://127.0.0.1:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
-}
+}  // namespace
 
 class HybmBigMemEntryTest : public ::testing::Test {
 protected:
@@ -53,16 +63,16 @@ TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNull_WhenGetOrCreateE
 {
     EngineImplPtr ptr = nullptr;
 
-    MOCKER_CPP(&MemEntityFactory::GetOrCreateEngine, EngineImplPtr (*)(uint16_t, uint32_t))
-        .stubs().will(returnValue(ptr));
+    MOCKER_CPP(&MemEntityFactory::GetOrCreateEngine, EngineImplPtr(*)(uint16_t, uint32_t))
+        .stubs()
+        .will(returnValue(ptr));
     hybm_entity_t entity = hybm_create_entity(g_id, &g_options, g_flags);
     EXPECT_EQ(entity, nullptr);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNull_WhenEntityInitializeFailed)
 {
-    MOCKER_CPP(&MemEntityDefault::Initialize, int32_t (*)(const hybm_options *))
-            .stubs().will(returnValue(-1));
+    MOCKER_CPP(&MemEntityDefault::Initialize, int32_t(*)(const hybm_options *)).stubs().will(returnValue(-1));
     hybm_entity_t entity = hybm_create_entity(g_id, &g_options, g_flags);
     EXPECT_EQ(entity, nullptr);
 }
@@ -80,7 +90,7 @@ TEST_F(HybmBigMemEntryTest, hybm_create_entity_ShouldReturnNotNull_WhenSuccess)
 
     hybm_exchange_info info = {};
     EXPECT_EQ(hybm_export(entity, slice, 0, &info), BM_OK);
-    void* addresses[1] = { nullptr };
+    void *addresses[1] = {nullptr};
     EXPECT_EQ(hybm_import(entity, &info, 1, addresses, 0), BM_OK);
     EXPECT_EQ(hybm_mmap(entity, 0), BM_OK);
 

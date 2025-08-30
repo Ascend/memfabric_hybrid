@@ -6,6 +6,7 @@
 #define MF_HYBM_CORE_DL_HCCP_API_H
 
 #include "hybm_common_include.h"
+#include "dl_hccp_def.h"
 
 namespace ock {
 namespace mf {
@@ -38,8 +39,9 @@ using raRegisterMrFunc = int (*)(const void *, HccpMrInfo *, void **);
 using raDeregisterMrFunc = int (*)(const void *, void *);
 using raMrRegFunc = int (*)(void *, HccpMrInfo *);
 using raMrDeregFunc = int (*)(void *, HccpMrInfo *);
-
+using raSendWrFunc = int (*)(void *, send_wr *, send_wr_rsp *);
 using tsdOpenFunc = uint32_t (*)(uint32_t, uint32_t);
+using raPollCqFunc = int (*)(void *, bool, uint32_t, void *);
 
 class DlHccpApi {
 public:
@@ -181,6 +183,16 @@ public:
         return gRaMrDereg(qpHandle, &info);
     }
 
+    static inline int RaSendWr(void *qp_handle, struct send_wr *wr, struct send_wr_rsp *op_rsp)
+    {
+        return gRaSendWr(qp_handle, wr, op_rsp);
+    }
+
+    static inline int RaPollCq(void *qp_handle, bool is_send_cq, unsigned int num_entries, void *wc)
+    {
+        return gRaPollCq(qp_handle, is_send_cq, num_entries, wc);
+    }
+
     static inline uint32_t TsdOpen(uint32_t deviceId, uint32_t rankSize)
     {
         return gTsdOpen(deviceId, rankSize);
@@ -222,6 +234,8 @@ private:
     static raDeregisterMrFunc gRaDeregisterMR;
     static raMrRegFunc gRaMrReg;
     static raMrDeregFunc gRaMrDereg;
+    static raSendWrFunc gRaSendWr;
+    static raPollCqFunc gRaPollCq;
 
     static tsdOpenFunc gTsdOpen;
 };

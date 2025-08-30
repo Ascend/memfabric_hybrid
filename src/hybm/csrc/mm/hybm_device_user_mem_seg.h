@@ -7,6 +7,7 @@
 
 #include <bitset>
 #include "hybm_mem_segment.h"
+#include "hybm_device_mem_segment.h"
 
 namespace ock {
 namespace mf {
@@ -20,6 +21,9 @@ struct RegisterSlice {
 struct HbmExportDeviceInfo {
     uint32_t sdid{0};
     uint32_t pid{0};
+    uint32_t serverId{0};
+    uint32_t superPodId{0};
+    uint32_t rankId{0};
     uint16_t deviceId{0};
     uint16_t reserved{0};
 };
@@ -27,14 +31,18 @@ struct HbmExportDeviceInfo {
 struct HbmExportSliceInfo {
     uint64_t address{0};
     uint64_t size{0};
+    uint32_t serverId{0};
+    uint32_t superPodId{0};
+    uint16_t rankId{0};
+    uint16_t reserved{0};
     uint32_t deviceId{0};
     char name[DEVICE_SHM_NAME_SIZE]{};
 };
 
-class MemSegmentDeviceUseMem : public MemSegment {
+class MemSegmentDeviceUseMem : public MemSegmentDevice {
 public:
     MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept;
-    ~MemSegmentDeviceUseMem() noexcept;
+    ~MemSegmentDeviceUseMem() override;
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
     Result UnreserveMemorySpace() noexcept override;
@@ -59,9 +67,9 @@ public:
     void GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
 
 private:
-    Result GetDeviceInfo() noexcept;
     Result ImportDeviceInfo(const std::string &info) noexcept;
     Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
+    static void RollbackIpcMemory(void *addresses[], uint32_t count);
 
 private:
     uint16_t sliceCount_{0};
@@ -73,14 +81,6 @@ private:
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
     std::vector<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
-
-private:
-    static bool deviceInfoReady;
-    static int deviceId_;
-    static uint32_t pid_;
-    static uint32_t sdid_;
-    static uint32_t serverId_;
-    static uint32_t superPodId_;
 };
 }
 }

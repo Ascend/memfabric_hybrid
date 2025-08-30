@@ -45,6 +45,10 @@ int HybmMapShareMemory(const char *name, void *expectAddr, uint64_t size, uint64
 
     DevmmCommandMessage arg{};
     arg.head.devId = static_cast<uint32_t>(gDeviceId);
+    if (strlen(name) > DEVMM_MAX_NAME_SIZE) {
+        BM_LOG_ERROR("name is too long:" << strlen(name) << ", max is " << DEVMM_MAX_NAME_SIZE);
+        return -1;
+    }
     std::copy_n(name, strlen(name), arg.data.queryParam.name);
 
     auto ret = ioctl(gDeviceFd, DEVMM_SVM_IPC_MEM_QUERY, &arg);

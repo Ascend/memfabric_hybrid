@@ -25,258 +25,7 @@
     |level|日志级别，0-debug 1-info 2-warn 3-error|
     |返回值|成功返回0，其他为错误码|
 
-### 2. 客户端接口
-**对应文件：** acc_tcp_client.h
-
-#### 类：AccTcpClient
-**功能：** TCP客户端操作。
-
-1. 创建客户端
-    ```cpp
-    static AccTcpClientPtr Create(const std::string &serverIp, uint16_t serverPort);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |serverIp|服务端IP|
-    |serverPort|服务端端口|
-    |返回值|成功返回客户端对象的智能指针，失败返回空指针|
-
-1. 在重试次数内连接服务端
-    ```cpp
-    int32_t Connect(const AccConnReq &connReq, uint32_t maxConnRetryTimes);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |connReq|连接服务端的请求头|
-    |maxConnRetryTimes|最大重连尝试次数|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 以最大重试5次连接服务端
-    ```cpp
-    int32_t Connect(const AccConnReq &connReq);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |connReq|连接服务端的请求头|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 与服务端断开连接
-    ```cpp
-    void Disconnect();
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |返回值|无|
-
-1. 设置消息接收超时阈值
-    ```cpp
-    int32_t SetReceiveTimeout(uint32_t timeoutInUs);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |timeoutInUs|超时时间, 单位us|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 设置消息发送超时阈值
-    ```cpp
-    int32_t SetSendTimeout(uint32_t timeoutInUs);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |timeoutInUs|超时时间, 单位us|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 发送数据
-    ```cpp
-    int32_t SendRaw(uint8_t *data, uint32_t len);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |data|源数据地址|
-    |len|数据长度|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 接收数据
-    ```cpp
-    int32_t ReceiveRaw(uint8_t *data, uint32_t len);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |data|目标数据地址|
-    |len|数据长度|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 轮询接收数据
-    ```cpp
-    int32_t PollAndReceiveRaw(uint8_t *data, uint32_t len, int32_t timeoutInUs);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |data|接收缓冲区地址|
-    |len|数据长度|
-    |timeoutInUs|超时时间, 单位us|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 发送数据并附带消息类型
-    ```cpp
-    int32_t Send(int16_t msgType, uint8_t *data, uint32_t len);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |msgType|消息类型, 最小值0， 最大值47|
-    |data|源数据地址|
-    |len|数据长度|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 接收数据与消息类型
-    ```cpp
-    int32_t Receive(uint8_t *data, uint32_t len, int16_t &msgType, int16_t &result, uint32_t &acLen);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |data|接收缓冲区地址|
-    |len|数据长度|
-    |msgType|出参, 消息类型|
-    |result|出参, 响应结果|
-    |acLen|出参, 响应的数据长度|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 轮询接收数据与消息类型
-    ```cpp
-    int32_t PollAndReceive(uint8_t *data, uint32_t len, int32_t timeoutInUs, int16_t &msgType, int16_t &result, uint32_t &acLen);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |data|接收缓冲区地址|
-    |len|数据长度|
-    |timeoutInUs|超时时间, 单位us|
-    |msgType|出参, 消息类型|
-    |result|出参, 接收的响应结果|
-    |acLen|出参, 接收的响应的数据长度|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 注册处理新请求的事件函数
-    ```cpp
-    void RegisterNewRequestHandler(int16_t msgType, const AccClientReqHandler &h);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |msgType|处理函数对应的消息类型, 最小值0， 最大值47|
-    |h|处理新请求的函数|
-    |返回值|无|
-
-1. 获取服务端IP和端口
-    ```cpp
-    std::string IpAndPort() const;
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |返回值|服务端IP和端口的字符串|
-
-1. 设置服务端IP和端口
-    ```cpp
-    void SetServerIpAndPort(std::string serverIp, uint16_t serverPort);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |serverIp|服务端IP字符串|
-    |serverPort|服务端端口|
-    |返回值|无|
-
-1. 设置本地IP
-    ```cpp
-    void SetLocalIp(std::string localIp);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |localIp|本地IP字符串|
-    |返回值|无|
-
-1. 初始化连接
-    ```cpp
-    int32_t ConnectInit(int &fd);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |fd|出参, 连接成功后的文件描述符|
-    |返回值|成功返回0，失败返回错误码|
-
-1. 设置SSL配置
-    ```cpp
-    void SetSslOption(const AccTlsOption &tlsOption);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |tlsOption|tls安全认证相关配置|
-    |返回值|无|
-
-1. 设置最大重连次数
-    ```cpp
-    void SetMaxReconnCnt(uint32_t maxReconnCnt);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |maxReconnCnt|最大重连次数|
-    |返回值|无|
-
-1. 启动轮询线程
-    ```cpp
-    void StartPolling();
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |返回值|无|
-
-1. 异步执行销毁客户端
-    ```cpp
-    void Destroy(bool needWait);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |needWait|是否异步执行|
-    |返回值|无|
-
-1. 同步执行销毁客户端
-    ```cpp
-    void Destroy();
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |返回值|无|
-
-1. 加载安全认证功能所需的动态库
-    ```cpp
-    int32_t LoadDynamicLib(const std::string &dynLibPath);
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |dynLibPath|动态库目录路径|
-    |返回值|成功返回0，失败返回错误码|
-
-### 3. 服务端接口
+### 2. 服务端接口
 **对应文件：** acc_tcp_server.h
 
 #### 类：AccTcpServer
@@ -486,7 +235,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |data|源数据地址|
+    |data|源数据地址，指向至少len个字节的内存空间|
     |len|数据长度|
     |返回值|成功返回0，失败返回错误码|
 
@@ -500,7 +249,7 @@
     |参数/返回值|含义|
     |-|-|
     |iov|源数据数组地址|
-    |len|数据数组长度|
+    |len|数据数组长度,len必须与iov数组的实际长度一致|
     |totalDataLen|总数据长度|
     |返回值|成功返回0，失败返回错误码|
 
@@ -525,7 +274,7 @@
     |参数/返回值|含义|
     |-|-|
     |iov|目标缓冲区地址|
-    |len|数据数组长度|
+    |len|数据数组长度,len必须与iov数组的实际长度一致|
     |totalDataLen|总数据长度|
     |返回值|成功返回0，失败返回错误码|
 

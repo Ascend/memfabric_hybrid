@@ -15,8 +15,8 @@
 #include "hybm_data_op.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
-#include "smem_trans_entry.h"
 #include "smem_trans_entry_manager.h"
+#include "smem_trans_entry.h"
 
 namespace ock {
 namespace smem {
@@ -27,33 +27,22 @@ static const std::string RECEIVER_DEVICE_INFO_KEY = "devices_info_for_receivers"
 static const std::string RECEIVER_TOTAL_SLICE_COUNT_KEY = "receivers_total_slices_count";
 static const std::string RECEIVER_SLICES_INFO_KEY = "receivers_all_slices_info";
 
-struct ReceiverSliceInfo {
-    WorkerSession session;
-    const void *address;
-    uint64_t size;
-    uint8_t info[0];
-
-    ReceiverSliceInfo(WorkerSession ws, const void *a, uint64_t s) noexcept
-        : session(std::move(ws)),
-          address{a},
-          size{s}
-    {
-    }
-};
+static const std::string SENDER_TOTAL_SLICE_COUNT_KEY = "senders_total_slices_count";
+static const std::string SENDER_SLICES_INFO_KEY = "senders_all_slices_info";
 
 SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::string &storeUrl,
                                          const smem_trans_config_t &config)
 {
     /* create entry and initialize */
     SmemTransEntryPtr transEntry;
-    auto result = SmemTransEntryManager::Instance().CreateEntryByName(name, transEntry);
+    auto result = SmemTransEntryManager::Instance().CreateEntryByName(name, storeUrl, config, transEntry);
     if (result != SM_OK) {
         SM_LOG_AND_SET_LAST_ERROR("create trans entry failed, probably out of memory");
         return nullptr;
     }
 
     /* initialize */
-    result = transEntry->Initialize(storeUrl, config);
+    result = transEntry->Initialize(config);
     if (result != SM_OK) {
         SmemTransEntryManager::Instance().RemoveEntryByName(name);
         SM_LOG_AND_SET_LAST_ERROR("initialize trans entry failed, result " << result);
@@ -72,67 +61,35 @@ SmemTransEntry::~SmemTransEntry()
     }
 }
 
-int32_t SmemTransEntry::Initialize(const std::string &storeUrl, const smem_trans_config_t &config)
+int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 {
-    /* create store */
-    UrlExtraction option;
-    uint16_t entityId = (16U << 3) + 1U;
-    if (option.ExtractIpPortFromUrl(storeUrl) != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("invalid store url. ");
-        return SM_INVALID_PARAM;
-    }
-
+    entityId_ = (16U << 3) + 1U;
     if (!ParseTransName(name_, workerSession_.address, workerSession_.port)) {
         return SM_INVALID_PARAM;
     }
 
+    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout));
+    SM_VALIDATE_RETURN(ret == SM_OK, "store helper initialize failed: " << ret, ret);
+
+    ret = storeHelper_.GenerateRankId(config, rankId_);
+    SM_VALIDATE_RETURN(ret == SM_OK, "store helper generate rankId failed: " << ret, ret);
+
     config_ = config;
-    auto tmpStore =
-        StoreFactory::CreateStore(option.ip, option.port, false, 0, static_cast<int32_t>(config.initTimeout));
-    if (tmpStore == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("create store client with url failed.");
-        return SM_NEW_OBJECT_FAILED;
-    }
+    auto options = GenerateHybmOptions();
+    entity_ = hybm_create_entity(entityId_, &options, 0);
+    SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
 
-    storeUrlExtraction_ = option;
-    /* init hybm entity */
-    hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_HOST_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_SDMA;
-    options.bmScope = HYBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HYBM_RANK_TYPE_STATIC;
-    options.rankCount = 1;
-    options.rankId = 0;
-    options.devId = config_.deviceId;
-    options.singleRankVASpace = 0;
-    options.preferredGVA = 0;
-    options.globalUniqueAddress = false;
-    entity_ = hybm_create_entity(entityId, &options, 0);
-    if (entity_ == nullptr) {
-        SM_LOG_ERROR("create new entity failed.");
-        return SM_ERROR;
-    }
-
-    auto ret = hybm_export(entity_, nullptr, 0, &deviceInfo_);
-    if (ret != 0) {
-        SM_LOG_ERROR("HybmExport device info failed: " << ret);
-        return SM_ERROR;
-    }
+    ret = hybm_export(entity_, nullptr, 0, &deviceInfo_);
+    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
 
     size_t outputSize;
     ret = hybm_export_slice_size(entity_, &outputSize);
-    if (ret != 0) {
-        SM_LOG_ERROR("HybmExportSliceSize failed: " << ret);
-        return SM_ERROR;
-    }
+    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
+    sliceInfoSize_ = outputSize;
+    storeHelper_.SetSliceExportSize(outputSize);
 
-    sliceInfoSize_ = static_cast<uint32_t>(outputSize);
-    store_ = StoreFactory::PrefixStore(tmpStore, std::string("/trans/").append(std::to_string(entityId).append("/")));
-    SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
-    ret = StoreDeviceInfo();
-    if (ret != SM_OK) {
-        return ret;
-    }
+    ret = storeHelper_.StoreDeviceInfo(deviceInfo_);
+    SM_VALIDATE_RETURN(ret == SM_OK, "store device info failed: " << ret, ret);
 
     StartWatchThread();
     return SM_OK;
@@ -148,11 +105,11 @@ void SmemTransEntry::UnInitialize()
     if (watchThread_.joinable()) {
         try {
             watchThread_.join();
-        } catch (const std::system_error& e) {
+        } catch (const std::system_error &e) {
             SM_LOG_ERROR("watch thread join failed: " << e.what());
         }
     }
-    StoreFactory::DestroyStore(storeUrlExtraction_.ip, storeUrlExtraction_.port);
+    storeHelper_.Destroy();
 }
 
 Result SmemTransEntry::RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags)
@@ -165,11 +122,6 @@ Result SmemTransEntry::RegisterLocalMemory(const void *address, uint64_t size, u
     if (address == nullptr || size == 0) {
         SM_LOG_ERROR("input address or size is invalid.");
         return SM_INVALID_PARAM;
-    }
-
-    if (config_.role != SMEM_TRANS_RECEIVER && config_.role != SMEM_TRANS_BOTH) {
-        SM_LOG_INFO("sender side skip register memory.");
-        return SM_OK;
     }
 
     AlignMemory(address, size);
@@ -193,11 +145,6 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
             SM_LOG_ERROR("input address or size is invalid.");
             return SM_INVALID_PARAM;
         }
-    }
-
-    if (config_.role != SMEM_TRANS_RECEIVER && config_.role != SMEM_TRANS_BOTH) {
-        SM_LOG_INFO("sender side skip register memory.");
-        return SM_OK;
     }
 
     auto alignedMemories = regMemories;
@@ -224,8 +171,8 @@ Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remo
 Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
                                  const size_t dataSizes[], uint32_t batchSize)
 {
-    uint64_t session;
-    auto ret = ParseNameToSessionId(remoteName, session);
+    uint64_t unique;
+    auto ret = ParseNameToUniqueId(remoteName, unique);
     if (ret != 0) {
         return ret;
     }
@@ -233,9 +180,9 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     std::vector<void *> mappedAddress(batchSize);
 
     ReadGuard locker(remoteSliceRwMutex_);
-    auto it = remoteSlices_.find(session);
+    auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
-        SM_LOG_ERROR("session not found.");
+        SM_LOG_ERROR("session:(" << remoteName << ")(" << unique << ") not found.");
         return SM_INVALID_PARAM;
     }
 
@@ -255,13 +202,12 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
             (uint8_t *)pos->second.address + ((const uint8_t *)destAddresses[i] - (const uint8_t *)(pos->first));
     }
 
-    for (auto i = 0U; i < batchSize; i++) {
-        hybm_copy_params copyParams = {srcAddresses[i], mappedAddress[i], dataSizes[i]};
-        ret = hybm_data_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
-        if (ret != 0) {
-            SM_LOG_ERROR("copy data failed:" << ret);
-            return ret;
-        }
+    hybm_batch_copy_params copyParams = {srcAddresses, mappedAddress.data(), dataSizes, batchSize};
+    ret = hybm_data_batch_copy(entity_, &copyParams,
+                               HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    if (ret != 0) {
+        SM_LOG_ERROR("batch copy data failed:" << ret);
+        return ret;
     }
 
     return SM_OK;
@@ -293,9 +239,10 @@ Result SmemTransEntry::StartWatchThread()
     SM_LOG_DEBUG("start background thread");
     watchThread_ = std::thread([this]() {
         std::unique_lock<std::mutex> locker{watchMutex_};
+        const std::chrono::seconds WATCH_INTERVAL(3);
         while (watchRunning_) {
             WatchTaskOneLoop();
-            watchCond_.wait_for(locker, std::chrono::seconds(3));
+            watchCond_.wait_for(locker, WATCH_INTERVAL);
         }
     });
     return 0;
@@ -304,143 +251,58 @@ Result SmemTransEntry::StartWatchThread()
 void SmemTransEntry::WatchTaskOneLoop()
 {
     static int64_t times = 0;
-    if (config_.role == SMEM_TRANS_RECEIVER || config_.role == SMEM_TRANS_BOTH) {
-        WatchTaskFindNewSenders();
-    }
+    WatchTaskFindNewRanks();
 
-    if (config_.role == SMEM_TRANS_SENDER || config_.role == SMEM_TRANS_BOTH) {
-        if (times >= 2) {
-            WatchTaskFindNewSlices();
-        }
+    if (times >= 2) {
+        WatchTaskFindNewSlices();
     }
     times++;
 }
 
-void SmemTransEntry::WatchTaskFindNewSenders()
+void SmemTransEntry::WatchTaskFindNewRanks()
 {
-    int64_t totalValue = 0;
-    auto ret = store_->Add(SENDER_COUNT_KEY, 0L, totalValue);
-    if (ret != 0) {
-        SM_LOG_ERROR("store add(0) sender count failed: " << ret);
-        return;
-    }
-
-    if (totalValue > sendersLastTime_) {
-        SM_LOG_DEBUG("find new sender workers from " << sendersLastTime_ << " to " << totalValue);
-
-        std::vector<uint8_t> values;
-        ret = store_->Get(SENDER_DEVICE_INFO_KEY, values);
+    auto importNewRanks = [this](const std::vector<hybm_exchange_info> &info) {
+        auto ret = hybm_import(entity_, info.data(), info.size(), nullptr, 0);
         if (ret != 0) {
-            SM_LOG_ERROR("store get devices info for sender failed: " << ret);
-            return;
+            SM_LOG_ERROR("import new ranks failed: " << ret);
         }
-
-        auto increment = static_cast<uint32_t>(totalValue - sendersLastTime_);
-        std::vector<hybm_exchange_info> info(increment);
-        for (auto i = 0U; i < increment; i++) {
-            std::copy_n(values.data() + (sendersLastTime_ + i) * deviceInfo_.descLen, deviceInfo_.descLen,
-                        info[i].desc);
-            info[i].descLen = deviceInfo_.descLen;
-        }
-
-        ret = hybm_import(entity_, info.data(), increment, nullptr, 0);
-        if (ret != 0) {
-            SM_LOG_ERROR("import sender info failed count from " << sendersLastTime_ << " to " << totalValue);
-            return;
-        }
-
-        sendersLastTime_ = totalValue;
-    }
+        return ret;
+    };
+    storeHelper_.FindNewRemoteRanks(importNewRanks);
 }
 
 void SmemTransEntry::WatchTaskFindNewSlices()
 {
-    int64_t totalValue = 0;
-    auto ret = store_->Add(RECEIVER_TOTAL_SLICE_COUNT_KEY, 0L, totalValue);
-    if (ret != 0) {
-        SM_LOG_ERROR("store add(0) receivers slices total count failed: " << ret);
-        return;
-    }
+    auto importNewSlices = [this](const std::vector<hybm_exchange_info> &info,
+                                  const std::vector<const StoredSliceInfo *> &ss) {
+        std::vector<void *> addresses(info.size());
+        auto ret = hybm_import(entity_, info.data(), info.size(), addresses.data(), 0);
+        if (ret != 0) {
+            SM_LOG_ERROR("import new slices failed: " << ret);
+            return ret;
+        }
+        SM_LOG_DEBUG("import slices count=" << info.size());
 
-    if (totalValue <= slicesLastTime_) {
-        return;
-    }
-    SM_LOG_DEBUG("find new slices from " << slicesLastTime_ << " to " << totalValue);
-
-    std::vector<uint8_t> values;
-    ret = store_->Get(RECEIVER_SLICES_INFO_KEY, values);
-    if (ret != 0) {
-        SM_LOG_ERROR("store get receivers all slices failed: " << ret);
-        return;
-    }
-
-    auto increment = static_cast<uint32_t>(totalValue - slicesLastTime_);
-    std::vector<hybm_exchange_info> info(increment);
-    std::vector<void *> addresses(increment);
-    std::vector<const ReceiverSliceInfo *> recvSs(increment);
-    auto itemOffsetBytes = (sizeof(ReceiverSliceInfo) + sliceInfoSize_) * static_cast<uint64_t>(slicesLastTime_);
-    for (auto i = 0U; i < increment; i++) {
-        recvSs[i] = (const ReceiverSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
-        std::copy_n(values.data() + itemOffsetBytes + sizeof(ReceiverSliceInfo), sliceInfoSize_, info[i].desc);
-        info[i].descLen = sliceInfoSize_;
-        itemOffsetBytes += (sizeof(ReceiverSliceInfo) + sliceInfoSize_);
-    }
-
-    ret = hybm_import(entity_, info.data(), increment, addresses.data(), 0);
-    if (ret != 0) {
-        SM_LOG_ERROR("import sender info failed count from " << slicesLastTime_ << " to " << totalValue);
-        return;
-    }
-    SM_LOG_DEBUG("import slices count=" << info.size());
-
-    WriteGuard locker(remoteSliceRwMutex_);
-    for (auto i = 0U; i < increment; i++) {
-        WorkerIdUnion workerId{recvSs[i]->session};
-        remoteSlices_[workerId.workerId].emplace(recvSs[i]->address, LocalMapAddress{addresses[i], recvSs[i]->size});
-    }
-
-    slicesLastTime_ = totalValue;
+        WriteGuard locker(remoteSliceRwMutex_);
+        for (auto i = 0U; i < info.size(); i++) {
+            WorkerIdUnion workerId{ss[i]->session};
+            SM_LOG_DEBUG("add remote slice for : " << workerId.workerId);
+            remoteSlices_[workerId.workerId].emplace(ss[i]->address, LocalMapAddress{addresses[i], ss[i]->size});
+        }
+        return 0;
+    };
+    storeHelper_.FindNewRemoteSlices(importNewSlices);
 }
 
-Result SmemTransEntry::StoreDeviceInfo()
-{
-    int64_t totalValue = 0;
-    uint64_t totalSize = 0;
-    std::vector<uint8_t> value(deviceInfo_.desc, deviceInfo_.desc + deviceInfo_.descLen);
-    if (config_.role == SMEM_TRANS_SENDER || config_.role == SMEM_TRANS_BOTH) {
-        auto ret = store_->Append(SENDER_DEVICE_INFO_KEY, value, totalSize);
-        if (ret != 0) {
-            SM_LOG_ERROR("store append device info for sender failed: " << ret);
-            return SM_ERROR;
-        }
-
-        ret = store_->Add(SENDER_COUNT_KEY, 1L, totalValue);
-        if (ret != 0) {
-            SM_LOG_ERROR("store add sender count failed: " << ret);
-            return SM_ERROR;
-        }
-    }
-
-    if (config_.role == SMEM_TRANS_RECEIVER || config_.role == SMEM_TRANS_BOTH) {
-        auto ret = store_->Append(RECEIVER_DEVICE_INFO_KEY, value, totalSize);
-        if (ret != 0) {
-            SM_LOG_ERROR("store append device info for receiver failed: " << ret);
-            return SM_ERROR;
-        }
-
-        ret = store_->Add(RECEIVER_COUNT_KEY, 1L, totalValue);
-        if (ret != 0) {
-            SM_LOG_ERROR("store add sender count failed: " << ret);
-            return SM_ERROR;
-        }
-    }
-
-    return SM_OK;
-}
-
-Result SmemTransEntry::ParseNameToSessionId(const std::string &name, uint64_t &session)
+Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId)
 {
     WorkerSession workerSession;
+    auto it = nameToWorkerId.find(name);
+    if (it != nameToWorkerId.end()) {
+        /* fast path */
+        uniqueId = it->second;
+        return SM_OK;
+    }
     auto success = ParseTransName(name, workerSession.address, workerSession.port);
     if (!success) {
         SM_LOG_ERROR("parse name failed.");
@@ -448,7 +310,8 @@ Result SmemTransEntry::ParseNameToSessionId(const std::string &name, uint64_t &s
     }
 
     WorkerIdUnion workerId{workerSession};
-    session = workerId.workerId;
+    uniqueId = workerId.workerId;
+    nameToWorkerId.emplace(name, workerId.workerId);
     return SM_OK;
 }
 
@@ -462,7 +325,7 @@ void SmemTransEntry::AlignMemory(const void *&address, uint64_t &size)
     auto diff = pointer - alignPtr;
     size += diff;
     size = ((size + NPU_PAGE_SIZE - 1) & NPU_PAGE_MASK);
-    address = reinterpret_cast<const void*>(alignPtr);
+    address = reinterpret_cast<const void *>(alignPtr);
 }
 
 std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
@@ -473,8 +336,13 @@ std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
     auto current = input[0];
     for (auto i = 1U; i < input.size(); i++) {
         if ((const uint8_t *)current.first + current.second >= (const uint8_t *)input[i].first) {
-            current.second = std::max(
-                current.second, (const uint8_t *)input[i].first - (const uint8_t *)current.first + input[i].second);
+            ptrdiff_t diff = ((const uint8_t *)input[i].first - (const uint8_t *)current.first);
+            if (static_cast<size_t>(diff) > std::numeric_limits<size_t>::max() - input[i].second) {
+                result.emplace_back(current);
+                current = input[i];
+                continue;
+            }
+            current.second = std::max(current.second, diff + input[i].second);
         } else {
             result.emplace_back(current);
             current = input[i];
@@ -508,31 +376,35 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
         return SM_ERROR;
     }
 
-    ReceiverSliceInfo sliceInfo(workerSession_, address, size);
-    std::vector<uint8_t> value(sizeof(sliceInfo) + sliceInfoSize_);
-    std::copy_n(reinterpret_cast<const uint8_t*>(&sliceInfo), sizeof(sliceInfo), value.data());
-    std::copy_n(info.desc, sliceInfoSize_, value.data() + sizeof(sliceInfo));
-
-    uint64_t totalSize = 0;
-    SM_LOG_DEBUG("begin append(key=" << RECEIVER_SLICES_INFO_KEY << ", value_size=" << value.size() << ")");
-    ret = store_->Append(RECEIVER_SLICES_INFO_KEY, value, totalSize);
+    StoredSliceInfo sliceInfo(workerSession_, address, size);
+    ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
     if (ret != 0) {
-        SM_LOG_ERROR("store append slice info failed: " << ret);
-        hybm_free_local_memory(entity_, slice, size, 0);
+        SM_LOG_ERROR("store for slice info failed: " << ret);
         return SM_ERROR;
     }
 
-    SM_LOG_DEBUG("success append(key=" << RECEIVER_SLICES_INFO_KEY << ", value_size=" << value.size()
-                                       << "), total_size=" << totalSize);
-    int64_t nowCount = 0;
-    ret = store_->Add(RECEIVER_TOTAL_SLICE_COUNT_KEY, 1L, nowCount);
-    if (ret != 0) {
-        SM_LOG_ERROR("store add count for slice info failed: " << ret);
-        return SM_ERROR;
-    }
-
-    SM_LOG_DEBUG("now slice total count = " << nowCount);
     return SM_OK;
+}
+
+hybm_options SmemTransEntry::GenerateHybmOptions()
+{
+    hybm_options options;
+    options.bmType = HYBM_TYPE_HOST_INITIATE;
+    options.memType = HYBM_MEM_TYPE_DEVICE;
+    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA | HYBM_DOP_TYPE_DEVICE_RDMA);
+    options.bmScope = HYBM_SCOPE_CROSS_NODE;
+    options.rankCount = 512U;
+    options.rankId = rankId_;
+    options.devId = config_.deviceId;
+    options.singleRankVASpace = 0;
+    options.preferredGVA = 0;
+    options.globalUniqueAddress = false;
+    options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
+    options.nic[0] = '\0';
+    uint16_t port = 11000 + entityId_;
+    auto url = std::string("tcp://0.0.0.0/0:").append(std::to_string(port));
+    strcpy(options.nic, url.c_str());
+    return std::move(options);
 }
 
 }

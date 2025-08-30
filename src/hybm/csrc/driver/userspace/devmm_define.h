@@ -12,9 +12,12 @@
 #define DEVMM_SVM_MEM_SIZE (1UL << 43UL) /* 8T */
 #define DEVMM_SVM_MEM_START 0x100000000000ULL
 #define DEVMM_MAX_HEAP_NUM (DEVMM_SVM_MEM_SIZE >> 30)
+#define DEVMM_GIANT_PAGE_SIZE   0x40000000ULL
 
+#define DV_ADVISE_DDR 0x0001
 #define DV_ADVISE_HBM 0x0002
 #define DV_ADVISE_HUGEPAGE 0x0004
+#define DV_ADVISE_GIANTPAGE 0x8000
 #define DV_ADVISE_POPULATE 0x0008
 #define DV_ADVISE_LOCK_DEV 0x0080
 #define DV_ADVISE_MODULE_ID_BIT 24
@@ -40,6 +43,14 @@
 #define ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
 #endif
 
+#define MEM_SVM_VAL            0X0
+#define MEM_DEV_VAL            0X1
+#define MEM_HOST_VAL           0X2
+#define MEM_DVPP_VAL           0X3
+#define MEM_HOST_AGENT_VAL     0X4
+#define MEM_RESERVE_VAL        0X5
+#define MEM_MAX_VAL            0X6
+
 enum DevHeapSubType {
     SUB_SVM_TYPE = 0x0,     /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */
     SUB_DEVICE_TYPE = 0x1,  /* user mode page is same as kernel page, just huge. the same as MEM_DEV_VAL */
@@ -59,7 +70,6 @@ enum DevMemType {
     DEVMM_TS_DDR_MEM,
     DEVMM_MEM_TYPE_MAX
 };
-
 
 enum DevPageType {
     DEVMM_NORMAL_PAGE_TYPE = 0x0,

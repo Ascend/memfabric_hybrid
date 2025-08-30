@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBM_MEM_SEGMENT_H
 #define MEM_FABRIC_HYBRID_HYBM_MEM_SEGMENT_H
@@ -33,6 +33,7 @@ public:
 
 public:
     explicit MemSegment(const MemSegmentOptions &options, int eid) : options_{options}, entityId_{eid} {}
+    virtual ~MemSegment() = default;
 
     /*
      * Validate options
@@ -118,8 +119,16 @@ public:
     virtual bool CheckSmdaReaches(uint32_t rankId) const noexcept;
 
 protected:
+    static Result InitDeviceInfo();
+
+protected:
     const MemSegmentOptions options_;
     const int entityId_;
+
+    static bool deviceInfoReady;
+    static int deviceId_;
+    static uint32_t pid_;
+    static uint32_t sdid_;
 };
 }
 }

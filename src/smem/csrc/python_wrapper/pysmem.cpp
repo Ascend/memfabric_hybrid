@@ -9,7 +9,6 @@
 #include <mutex>
 
 #include "smem.h"
-#include "smem_security.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
 #include "smem_version.h"
@@ -177,8 +176,9 @@ public:
 
     void CopyData2D(CopyData2DParams &params, smem_bm_copy_type type, uint32_t flags)
     {
-        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch, (void *)(ptrdiff_t)params.dest,
-            params.dpitch, params.width, params.height};
+        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch,
+                                          (void *)(ptrdiff_t)params.dest,
+                                          params.dpitch, params.width, params.height};
         auto ret = smem_bm_copy_2d(handle_, &copyParams, type, flags);
         if (ret != 0) {
             throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
@@ -250,18 +250,18 @@ static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextL
         std::cerr << "input cipher len is too long or decrypt func invalid." << std::endl;
         return -1;
     }
-
+    std::string plain;
     try {
-        py::str py_cipher = py::str(cipherText, cipherTextLen);
-        std::string plain = py::cast<std::string>(g_py_decrypt_func(py_cipher).cast<py::str>());
         if (plain.size() >= plainTextLen) {
             std::cerr << "output cipher len is too long" << std::endl;
+            std::fill(plain.begin(), plain.end(), 0);
             return -1;
         }
 
         std::copy(plain.begin(), plain.end(), plainText);
         plainText[plain.size()] = '\0';
         plainTextLen = plain.size();
+        std::fill(plain.begin(), plain.end(), 0);
         return 0;
     } catch (const py::error_already_set &e) {
         return -1;
@@ -276,6 +276,11 @@ int32_t register_python_decrypt_handler(py::function py_decrypt_func)
 
     g_py_decrypt_func = py_decrypt_func;
     return smem_register_decrypt_handler(py_decrypt_handler_wrapper);
+}
+
+int32_t smem_set_conf_store_tls_adapt(bool enable, std::string &tls_info)
+{
+    return smem_set_conf_store_tls(enable, tls_info.c_str(), tls_info.size());
 }
 
 void DefineSmemFunctions(py::module_ &m)
@@ -354,6 +359,16 @@ Parameters:
         plain_text: the decrypted text (private key password)
 Returns:
     None
+)");
+
+    m.def("set_conf_store_tls", &smem_set_conf_store_tls_adapt, py::call_guard<py::gil_scoped_release>(),
+          py::arg("enable"), py::arg("tls_info"), R"(
+set the config store tls info.
+Parameters:
+    enable (boolean): enable config store tls or not
+        tls_info (string): tls config string
+Returns:
+    returns zero on success. On error, none-zero is returned.
 )");
 
     m.doc() = LIB_VERSION;
@@ -441,7 +456,7 @@ void DefineShmClass(py::module_ &m)
     py::enum_<smem_shm_data_op_type>(m, "ShmDataOpType")
         .value("MTE", SMEMS_DATA_OP_MTE)
         .value("SDMA", SMEMS_DATA_OP_SDMA)
-        .value("ROCE", SMEMS_DATA_OP_ROCE);
+        .value("RDMA", SMEMS_DATA_OP_RDMA);
 
     m.def("initialize", &ShareMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),
           py::arg("world_size"), py::arg("rank_id"), py::arg("device_id"), py::arg("config"));
@@ -513,7 +528,7 @@ void DefineBmClass(py::module_ &m)
 {
     py::enum_<smem_bm_data_op_type>(m, "BmDataOpType")
         .value("SDMA", SMEMB_DATA_OP_SDMA)
-        .value("ROCE", SMEMB_DATA_OP_ROCE);
+        .value("HOST_RDMA", SMEMB_DATA_OP_HOST_RDMA);
 
     // module method
     m.def("initialize", &BigMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),

@@ -161,4 +161,4 @@ private:
 };
 }  // namespace shm
 
-#endif  //SHMEM_MF_HYBRID_API_H
+#endif  // SHMEM_MF_HYBRID_API_H

@@ -17,6 +17,10 @@ const std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):
 const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
 }
 
+const int MIN_PORT = 1024;
+const int MAX_PORT = 65535;
+const int MAX_MASK_VALUE = 32;
+
 Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, int32_t &port)
 {
     if (std::regex_match(nic, ipPortMaskPattern)) {
@@ -32,7 +36,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     ipStr = match[2].str();
     std::string portStr = match[3].str();
     port = std::stoi(portStr);
-    if (port < 1 || port > 65535) {
+    if (port < MIN_PORT || port > MAX_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
         return BM_INVALID_PARAM;
     }
@@ -44,8 +48,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     return BM_OK;
 }
 
-Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol,
-                                           std::string &ipStr, int32_t &port)
+Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol, std::string &ipStr, int32_t &port)
 {
     std::smatch match;
     if (!std::regex_match(nic, match, ipPortMaskPattern)) {
@@ -62,13 +65,13 @@ Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &
     std::string token;
 
     int mask = std::stoi(maskStr);
-    if (mask < 0 || mask > 32) {
+    if (mask < 0 || mask > MAX_MASK_VALUE) {
         BM_LOG_ERROR("Failed to analysis nic mask is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
 
     port = std::stoi(portStr);
-    if (port < 1 || port > 65535) {
+    if (port < MIN_PORT || port > MAX_PORT) {
         BM_LOG_ERROR("Failed to analysis nic port is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
@@ -84,7 +87,7 @@ Result HostHcomHelper::SelectLocalIpByIpMask(const std::string &ipStr, const int
         return BM_INVALID_PARAM;
     }
 
-    uint32_t netMask = htonl((0xFFFFFFFF << (32 - mask)) & 0xFFFFFFFF);
+    uint32_t netMask = htonl((0xFFFFFFFF << (MAX_MASK_VALUE - mask)) & 0xFFFFFFFF);
     uint32_t targetNetwork = targetNet & netMask;
 
     struct ifaddrs* ifAddsPtr = nullptr;

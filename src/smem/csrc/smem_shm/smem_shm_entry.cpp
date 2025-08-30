@@ -4,10 +4,10 @@
 
 #include <algorithm>
 #include "smem_common_includes.h"
-#include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
 #include "hybm_big_mem.h"
 #include "smem_store_factory.h"
+#include "smem_shm_entry.h"
 
 namespace ock {
 namespace smem {
@@ -239,10 +239,14 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
 {
     hybm_exchange_info exInfo;
     bzero(&exInfo, sizeof(exInfo));
-    auto ret = hybm_entity_export(entity_, 0, &exInfo);
+    auto ret = hybm_export(entity_, nullptr, 0, &exInfo);
     if (ret != 0) {
         SM_LOG_ERROR("hybm export entity failed, result: " << ret);
         return ret;
+    }
+
+    if (exInfo.descLen == 0) {
+        return SM_OK;
     }
 
     hybm_exchange_info allExInfo[options_.rankCount];
@@ -253,7 +257,7 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
         return ret;
     }
 
-    ret = hybm_entity_import(entity_, allExInfo, options_.rankCount, 0);
+    ret = hybm_import(entity_, allExInfo, options_.rankCount, nullptr, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import entity failed, result: " << ret);
         return ret;
@@ -285,7 +289,7 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
         return SM_NOT_STARTED;
     }
 
-    int32_t reachesTypes[HYBM_DOP_TYPE_BUTT];
+    hybm_data_op_type reachesTypes;
     auto ret = hybm_entity_reach_types(entity_, remoteRank, reachesTypes, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm_entity_reach_types() failed: " << ret);
@@ -293,15 +297,15 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
     }
 
     reachInfo = 0U;
-    if (reachesTypes[HYBM_DOP_TYPE_MTE] != 0) {
+    if (reachesTypes & HYBM_DOP_TYPE_MTE) {
         reachInfo |= SMEMS_DATA_OP_MTE;
     }
 
-    if (reachesTypes[HYBM_DOP_TYPE_ROCE] != 0) {
-        reachInfo |= SMEMS_DATA_OP_ROCE;
+    if (reachesTypes & HYBM_DOP_TYPE_SDMA) {
+        reachInfo |= SMEMS_DATA_OP_RDMA;
     }
 
-    if (reachesTypes[HYBM_DOP_TYPE_SDMA] != 0) {
+    if (reachesTypes & HYBM_DOP_TYPE_DEVICE_RDMA) {
         reachInfo |= SMEMS_DATA_OP_SDMA;
     }
 

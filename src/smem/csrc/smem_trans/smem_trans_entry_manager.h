@@ -17,7 +17,8 @@ public:
     SmemTransEntryManager() = default;
     ~SmemTransEntryManager() = default;
 
-    Result CreateEntryByName(const std::string &name, SmemTransEntryPtr &entry);
+    Result CreateEntryByName(const std::string &name, const std::string &storeUrl, const smem_trans_config_t &config,
+                             SmemTransEntryPtr &entry);
     Result GetEntryByPtr(uintptr_t ptr, SmemTransEntryPtr &entry);
     Result GetEntryByName(const std::string &name, SmemTransEntryPtr &entry);
     Result RemoveEntryByPtr(uintptr_t ptr);

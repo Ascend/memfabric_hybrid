@@ -16,10 +16,10 @@
 using namespace ock::mf;
 
 namespace {
-const hybm_options g_options = {HYBM_TYPE_HBM_AI_CORE_INITIATE,
+const hybm_options g_options = {HYBM_TYPE_AI_CORE_INITIATE,
+                                HYBM_MEM_TYPE_DEVICE,
                                 HYBM_DOP_TYPE_MTE,
                                 HYBM_SCOPE_CROSS_NODE,
-                                HYBM_RANK_TYPE_STATIC,
                                 8,
                                 0,
                                 0,

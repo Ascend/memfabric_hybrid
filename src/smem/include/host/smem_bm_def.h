@@ -19,8 +19,9 @@ typedef void *smem_bm_t;
  */
 typedef enum {
     SMEMB_DATA_OP_SDMA = 1U << 0,
-    SMEMB_DATA_OP_ROCE = 1U << 1,
-    SMEMB_DATA_OP_TCP = 1U << 2,
+    SMEMB_DATA_OP_HOST_RDMA = 1U << 1,
+    SMEMB_DATA_OP_HOST_TCP = 1U << 2,
+    SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3,
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 
@@ -68,8 +69,15 @@ typedef struct {
 typedef struct {
     const void *src;
     void *dest;
-    size_t count;
+    size_t dataSize;
 } smem_copy_params;
+
+typedef struct {
+    const void** sources;
+    void** destinations;
+    const size_t* dataSizes;
+    uint32_t batchSize;
+} smem_batch_copy_params;
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,7 @@
  */
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "mf_num_util.h"
 #include "smem_store_factory.h"
 #include "smem_bm_entry.h"
 
@@ -52,8 +53,8 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     hybm_mem_slice_t slice = nullptr;
     Result ret = SM_ERROR;
 
-    SM_LOG_INFO(
-        "SmemBmEntry initialize with options.bmType:" << options.bmType << ", bmDataOpType=" << options.bmDataOpType);
+    SM_LOG_INFO("SmemBmEntry initialize with options.bmType:" << options.bmType
+                                                              << ", bmDataOpType=" << options.bmDataOpType);
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
 
     do {
@@ -84,7 +85,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
 
         bzero(&entityInfo_, sizeof(hybm_exchange_info));
-        ret = hybm_entity_export(entity, flags, &entityInfo_);
+        ret = hybm_export(entity, nullptr, flags, &entityInfo_);
         if (ret != 0) {
             SM_LOG_ERROR("hybm entity export failed, result: " << ret);
             break;
@@ -142,7 +143,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
-    ret = hybm_entity_import(entity_, allExInfo, globalGroup_->GetRankSize(), 0);
+    ret = hybm_import(entity_, allExInfo, globalGroup_->GetRankSize(), nullptr, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import failed, result: " << ret);
         return SM_ERROR;
@@ -195,19 +196,15 @@ Result SmemBmEntry::Leave(uint32_t flags)
 }
 
 static hybm_data_copy_direction directMap[SMEMB_COPY_BUTT] = {
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
+    HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST,
+    HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,   HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST,   HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+    HYBM_GLOBAL_HOST_TO_LOCAL_HOST,     HYBM_LOCAL_HOST_TO_GLOBAL_HOST,     HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 static hybm_data_copy_direction dramDirectMap[SMEMB_COPY_BUTT] = {
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-    HYBM_GLOBAL_HOST_TO_LOCAL_HOST, HYBM_LOCAL_HOST_TO_GLOBAL_HOST,
-    HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
+    HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, HYBM_GLOBAL_HOST_TO_LOCAL_HOST,
+    HYBM_LOCAL_HOST_TO_GLOBAL_HOST,   HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+    HYBM_GLOBAL_HOST_TO_LOCAL_HOST,   HYBM_LOCAL_HOST_TO_GLOBAL_HOST,   HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE,
 };
 
 Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
@@ -223,19 +220,32 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
         case SMEMB_COPY_H2G:
         case SMEMB_COPY_L2GH:
         case SMEMB_COPY_H2GH:
-            SM_VALIDATE_RETURN(
-                AddressInRange(dest, size), "dest address: " << dest << ",size: "
-                << size << " invalid.", SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(AddressInRange(dest, size),
+                               "dest address: " << dest << ", size: " << size << " invalid.", SM_INVALID_PARAM);
             break;
         default:
             SM_VALIDATE_RETURN(AddressInRange(src, size), "src address: " << src << ", size: " << size << " invalid.",
                                SM_INVALID_PARAM);
             break;
     }
-    hybm_copy_params copyParams = {src, dest, size};
 
-    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    hybm_copy_params copyParams = {src, dest, size};
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t];
     return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
+}
+
+Result SmemBmEntry::DataCopyBatch(const void **src, void **dest, const size_t *size, uint32_t count,
+                                  smem_bm_copy_type t, uint32_t flags)
+{
+    SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(count != 0, "invalid param, size is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t];
+    hybm_batch_copy_params copyParams = {src, dest, size, count};
+    return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
 }
 
 Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags)
@@ -252,19 +262,37 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
         case SMEMB_COPY_H2G:
         case SMEMB_COPY_L2GH:
         case SMEMB_COPY_H2GH:
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch, params.height - 1, UINT64_MAX, '*'),
+                "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+                << ", height=" << params.height, SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch * (params.height - 1), params.width,
+                UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+                << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
             SM_VALIDATE_RETURN(AddressInRange(params.dest, params.dpitch * (params.height - 1) + params.width),
                                "dest address: " << params.dest << " dpitch: " << params.dpitch << " width: "
-                               << params.width << " height: " << params.height << " invalid.", SM_INVALID_PARAM);
+                                                << params.width << " height: " << params.height << " invalid.",
+                               SM_INVALID_PARAM);
             break;
         default:
-            SM_VALIDATE_RETURN(AddressInRange(params.src,  params.spitch * (params.height - 1) + params.width),
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch, params.height - 1, UINT64_MAX, '*'),
+                "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+                << ", height=" << params.height, SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.spitch * (params.height - 1), params.width,
+                UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+                << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
+            SM_VALIDATE_RETURN(AddressInRange(params.src, params.spitch * (params.height - 1) + params.width),
                                "src address: " << params.src << ", spitch: " << params.spitch << " width: "
-                               << params.width << " height: " << params.height << " invalid.", SM_INVALID_PARAM);
+                                               << params.width << " height: " << params.height << " invalid.",
+                               SM_INVALID_PARAM);
             break;
     }
-    hybm_copy_2d_params copy2dparams = {.src = params.src, .spitch = params.spitch, .dest = params.dest,
-        .dpitch = params.dpitch, .width = params.width, .height = params.height};
-    auto direct = coreOptions_.bmType == HYBM_TYPE_DRAM_HOST_INITIATE ? dramDirectMap[t] : directMap[t];
+    hybm_copy_2d_params copy2dparams = {.src = params.src,
+                                        .spitch = params.spitch,
+                                        .dest = params.dest,
+                                        .dpitch = params.dpitch,
+                                        .width = params.width,
+                                        .height = params.height};
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t]; // TODO: liuqzh : 两种介质同时存在怎么办？
     return hybm_data_copy_2d(entity_, &copy2dparams, direct, nullptr, flags);
 }
 
