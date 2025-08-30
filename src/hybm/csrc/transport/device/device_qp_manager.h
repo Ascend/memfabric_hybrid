@@ -39,8 +39,8 @@ protected:
     const uint32_t deviceId_;
     const uint32_t rankId_;
     const uint32_t rankCount_;
-    const sockaddr_in deviceAddress_;
     const hybm_role_type rankRole_;
+    sockaddr_in deviceAddress_;
     void *serverSocketHandle_{nullptr};
 };
 }

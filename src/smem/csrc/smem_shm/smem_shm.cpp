@@ -54,7 +54,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     options.globalUniqueAddress = true;
-    std::string defaultNic = "tcp://0.0.0.0/0:10002";
+    std::string defaultNic = "10002";
     std::copy_n(defaultNic.c_str(), defaultNic.size() + 1, options.nic);
 
     ret = entry->Initialize(options);
