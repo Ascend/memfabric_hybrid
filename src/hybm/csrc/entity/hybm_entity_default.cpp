@@ -141,7 +141,7 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
                                               hybm_mem_slice_t &slice) noexcept
 {
     if (ptr == nullptr || size == 0) {
-        BM_LOG_ERROR("input ptr(" << ptr << ") size(" << size << ") invalid");
+        BM_LOG_ERROR("input ptr or size(" << size << ") is invalid");
         return BM_INVALID_PARAM;
     }
 

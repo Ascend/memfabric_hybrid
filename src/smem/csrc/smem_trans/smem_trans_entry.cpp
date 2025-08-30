@@ -171,8 +171,8 @@ Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remo
 Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
                                  const size_t dataSizes[], uint32_t batchSize)
 {
-    uint64_t session;
-    auto ret = ParseNameToUniqueId(remoteName, session);
+    uint64_t unique;
+    auto ret = ParseNameToUniqueId(remoteName, unique);
     if (ret != 0) {
         return ret;
     }
@@ -180,7 +180,7 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     std::vector<void *> mappedAddress(batchSize);
 
     ReadGuard locker(remoteSliceRwMutex_);
-    auto it = remoteSlices_.find(session);
+    auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
         SM_LOG_ERROR("session:(" << remoteName << ")(" << session << ") not found.");
         return SM_INVALID_PARAM;

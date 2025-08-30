@@ -3,6 +3,7 @@
  */
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "mf_num_util.h"
 #include "smem_store_factory.h"
 #include "smem_bm_entry.h"
 
@@ -255,6 +256,12 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
     SM_VALIDATE_RETURN(params.height != 0, "invalid param, height is 0", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch, params.height - 1, UINT64_MAX, '*'),
+        "copy target range invalid: dpitch * (height - 1) would overflow: dpitch=" << params.dpitch
+        << ", height=" << params.height, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(!ock::mf::NumUtil::IsOverflowCheck(params.dpitch * (params.height - 1), params.width,
+        UINT64_MAX, '+'), "copy target range invalid: dpitch * (height - 1) +  would width: dpitch="
+        << params.dpitch << ", height=" << params.height << ", width=" << params.width, SM_INVALID_PARAM);
 
     switch (t) {
         case SMEMB_COPY_L2G:

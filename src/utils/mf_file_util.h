@@ -7,6 +7,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <string>
+#include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -357,7 +358,7 @@ inline constexpr size_t FileUtil::GetSafePathMax()
 #ifdef PATH_MAX
     return (PATH_MAX < PATH_MAX_LIMIT) ? PATH_MAX : PATH_MAX_LIMIT;
 #else
-    return SAFE_PATH_LIMIT;
+    return PATH_MAX_LIMIT;
 #endif
 }
 }  // namespace mf

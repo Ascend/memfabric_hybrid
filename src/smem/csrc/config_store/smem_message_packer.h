@@ -53,8 +53,6 @@ struct SmemMessage {
                             reinterpret_cast<const uint8_t *>(&value) + sizeof(int64_t));
     }
 
-    SmemMessage(MessageType type, std::vector<std::vector<uint8_t>> vs) noexcept : mt{type}, values{std::move(vs)} {}
-
     MessageType mt;
     int64_t userDef{-1L};
     std::vector<std::string> keys;
