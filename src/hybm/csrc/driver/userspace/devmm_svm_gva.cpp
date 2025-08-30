@@ -363,7 +363,8 @@ static uint64_t VirtAllocGvaMemInner(DevVirtHeapMgmt *mgmt, uint64_t bytesize, u
     int32_t ret;
 
     if ((heap == nullptr) || (bytesize > heap->heap_size) || (bytesize == 0)) {
-        BM_LOG_ERROR("Heap is nullptr or alloc memory too large. " << bytesize);
+        BM_LOG_ERROR("Heap is nullptr or alloc memory too large bytesize:" << bytesize
+                     << " heap_size:" << heap->heap_size);
         return 1;
     }
 

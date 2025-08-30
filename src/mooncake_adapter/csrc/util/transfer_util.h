@@ -15,9 +15,11 @@ namespace adapter {
 
 uint16_t findAvailableTcpPort();
 
-int32_t PyTransferConfigStore(const char *storeUrl);
+int32_t pytransfer_create_config_store(const char *storeUrl);
 
-int32_t PyTransferSetLogLevel(int level);
+int32_t pytransfer_set_log_level(int level);
+
+int32_t pytransfer_create_config_store(const char *storeUrl)
 
 }  // namespace adapter
 }  // namespace ock

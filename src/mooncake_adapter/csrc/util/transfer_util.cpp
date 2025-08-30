@@ -55,7 +55,7 @@ uint16_t findAvailableTcpPort()
     return 0;
 }
 
-int32_t PyTransferConfigStore(const char *storeUrl)
+int32_t pytransfer_create_config_store(const char *storeUrl)
 {
     int ret = smem_create_config_store(storeUrl);
     if (ret != 0) {
@@ -64,7 +64,7 @@ int32_t PyTransferConfigStore(const char *storeUrl)
     return ret;
 }
 
-int32_t PyTransferSetLogLevel(int level)
+int32_t pytransfer_set_log_level(int level)
 {
     int ret = smem_set_log_level(level);
     if (ret != 0) {
@@ -74,6 +74,10 @@ int32_t PyTransferSetLogLevel(int level)
     return 0;
 }
 
+int32_t pytransfer_set_conf_store_tls(bool enable, std::string &tls_info)
+{
+    return smem_set_conf_store_tls(enable, tls_info.c_str(), tls_info.size());
+}
 
 }  // namespace adapter
 }  // namespace ock
