@@ -60,9 +60,18 @@ int DeviceQpManager::CreateServerSocket() noexcept
     HccpSocketListenInfo listenInfo{};
     listenInfo.handle = socketHandle;
     listenInfo.port = deviceAddress_.sin_port;
-    auto ret = DlHccpApi::RaSocketListenStart(&listenInfo, 1);
-    if (ret != 0) {
-        BM_LOG_ERROR("start to listen on port: " << listenInfo.port << " failed: " << ret);
+    bool successListen = false;
+    while (listenInfo.port <= std::numeric_limits<uint16_t>::max()) {
+        auto ret = DlHccpApi::RaSocketListenStart(&listenInfo, 1);
+        if (ret == 0) {
+            deviceAddress_.sin_port = listenInfo.port;
+            successListen = true;
+            break;
+        }
+        listenInfo.port++;
+    }
+    if (!successListen) {
+        BM_LOG_ERROR("start to listen server socket failed.");
         DlHccpApi::RaSocketDeinit(socketHandle);
         return BM_DL_FUNCTION_FAILED;
     }
