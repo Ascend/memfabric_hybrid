@@ -152,4 +152,14 @@ int ra_mr_dereg(void *qpHandle, HccpMrInfo *info)
 {
     return 0;
 }
+
+int ra_send_wr(void *qp_handle, void *wr, void *op_rsp)
+{
+    return 0;
+}
+
+int ra_poll_cq(void *qp_handle, bool is_send_cq, unsigned int num_entries, void *wc)
+{
+    return 0;
+}
 }

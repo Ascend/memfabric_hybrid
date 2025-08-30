@@ -3,14 +3,16 @@
  */
 #include "hybm_data_operator_rdma.h"
 #include "dl_acl_api.h"
-#include "space_allocator.h"
-#include "rbtree_range_pool.h"
+#include "hybm_space_allocator.h"
+#include "hybm_rbtree_range_pool.h"
 
 using namespace ock::mf;
 
 namespace {
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 }
+
+thread_local void *HostDataOpRDMA::stream_ = nullptr;
 
 int32_t HostDataOpRDMA::Initialize() noexcept
 {
@@ -75,22 +77,25 @@ int32_t HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
                                  const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
-    int ret;
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        return ret;
+    }
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyHost2Gva(params.src, params.dest, params.count, options);
+            ret = CopyHost2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
-            ret = CopyDevice2Gva(params.src, params.dest, params.count, options);
+            ret = CopyDevice2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyGva2Gva(params.src, params.dest, params.count, options);
+            ret = CopyGva2Gva(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_HOST:
-            ret = CopyGva2Host(params.src, params.dest, params.count, options);
+            ret = CopyGva2Host(params.src, params.dest, params.dataSize, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device(params.src, params.dest, params.count, options);
+            ret = CopyGva2Device(params.src, params.dest, params.dataSize, options);
             break;
         default:
             BM_LOG_ERROR("data copy invalid direction: " << direction);
@@ -99,11 +104,28 @@ int32_t HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
     return ret;
 }
 
+int HostDataOpRDMA::PrepareThreadLocalStream() noexcept
+{
+    if (stream_ != nullptr) {
+        return BM_OK;
+    }
+
+    auto ret = DlAclApi::AclrtCreateStream(&stream_);
+    if (ret != 0) {
+        BM_LOG_ERROR("create thread local stream failed: " << ret);
+        return ret;
+    }
+    return BM_OK;
+}
+
 int32_t HostDataOpRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
                                    const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
-    int ret;
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        return ret;
+    }
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
             ret = CopyHost2Gva2d(params.src, params.spitch, params.dest, params.dpitch, params.width,

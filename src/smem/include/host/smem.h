@@ -5,6 +5,7 @@
 #define __MEMFABRIC_SMEM_H__
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,37 @@ int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
  * @return 0 if successful
  */
 int32_t smem_set_log_level(int level);
+
+/**
+ * @brief set config store tls info.
+ *
+ * @param enable whether to enable tls
+ * @param tls_info the format describle in memfabric SECURITYNOTE.md, if disabled tls_info won't be use
+ * @param tls_info_len length of tls_info, if disabled tls_info_len won't be use
+ * @return Returns 0 on success or an error code on failure
+ */
+int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len);
+
+
+/**
+ * @brief Callback function of private key password decryptor, see smem_register_decrypt_handler
+ *
+ * @param cipherText       [in] the encrypted text(private key password)
+ * @param cipherTextLen    [in] the length of encrypted text
+ * @param plainText        [out] the decrypted text(private key password)
+ * @param plaintextLen     [out] the length of plainText
+ */
+typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen, char *plainText,
+                                    size_t &plainTextLen);
+
+/**
+ * @brief Register the handler for decryption of private key password.
+ * If the private key is encrypted, this hanlder is needed to be set.
+ *
+ * @param h                [in] handler
+ */
+int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
+
 
 /**
  * @brief Un-Initialize the smem running environment

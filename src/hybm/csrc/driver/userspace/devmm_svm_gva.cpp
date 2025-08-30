@@ -217,13 +217,28 @@ static inline void VirtListDel(struct DVirtListHead *entry)
     entry->prev = entry;
 }
 
+static inline uint32_t HeapSubTypeToMemVal(uint32_t type)
+{
+    static uint32_t memVal[SUB_MAX_TYPE] = {
+        [SUB_SVM_TYPE] = MEM_SVM_VAL,
+        [SUB_DEVICE_TYPE] = MEM_DEV_VAL,
+        [SUB_HOST_TYPE] = MEM_HOST_VAL,
+        [SUB_DVPP_TYPE] = MEM_DEV_VAL,
+        [SUB_READ_ONLY_TYPE] = MEM_DEV_VAL,
+        [SUB_RESERVE_TYPE] = MEM_RESERVE_VAL,
+        [SUB_DEV_READ_ONLY_TYPE]= MEM_DEV_VAL
+    };
+
+    return memVal[type];
+}
+
 static void PrimaryHeapModuleMemStatsInc(struct DevVirtComHeap *heap,
     uint32_t moduleId, uint64_t size)
 {
-    uint32_t memVal = 0; // MEM_SVM_VAL
+    uint32_t memVal = HeapSubTypeToMemVal(heap->heap_sub_type);
     uint32_t pageType = (heap->heap_type == DEVMM_HEAP_HUGE_PAGE) ? DEVMM_HUGE_PAGE_TYPE : DEVMM_NORMAL_PAGE_TYPE;
     uint32_t phyMemtype = heap->heap_mem_type;
-    uint32_t devid = 0; // memVal=MEM_SVM_VAL, devid must 0
+    uint32_t devid = (heap->heap_list_type - DEVICE_AGENT0_LIST);
     struct MemStatsType type;
 
     type.mem_val = memVal;
@@ -324,6 +339,8 @@ static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *
     va = heap->ops->heap_alloc(heap, treeNode->data.va, mapSize, advise);
     if (va < DEVMM_SVM_MEM_START) {
         BM_LOG_ERROR("Can not alloc address.");
+        (void)DlHalApi::HalInsertIdleSizeTree(node, &heap->rbtree_queue);
+        (void)DlHalApi::HalInsertIdleVaTree(node, &heap->rbtree_queue);
         return -1;
     }
     heap->sys_mem_alloced += node->data.total;
@@ -487,6 +504,7 @@ int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, ui
     }
 
     advise |= DV_ADVISE_HUGEPAGE;
+    advise |= (flags & GVA_GIANT_FLAG) ? (DV_ADVISE_GIANTPAGE | DV_ADVISE_DDR) : (DV_ADVISE_HBM);
     SetModuleId2Advise(HCCL_HAL_MODULE_ID, &advise);
     FillSvmHeapType(advise, &heap_type);
 
@@ -537,9 +555,8 @@ int32_t HalGvaAlloc(uint64_t address, size_t size, uint64_t flags)
         return -1;
     }
 
-    uint32_t advise = 0;
-    advise |= DV_ADVISE_HUGEPAGE | DV_ADVISE_HBM;
-    advise |= DV_ADVISE_POPULATE | DV_ADVISE_LOCK_DEV;
+    uint32_t advise = DV_ADVISE_HUGEPAGE | DV_ADVISE_POPULATE | DV_ADVISE_LOCK_DEV;
+    advise |= (flags & GVA_GIANT_FLAG) ? (DV_ADVISE_GIANTPAGE | DV_ADVISE_DDR) : (DV_ADVISE_HBM);
     SetModuleId2Advise(APP_MODULE_ID, &advise);
     int32_t ret = HybmIoctlAllocAnddAdvice(va, size, g_gvaHeapMgr.deviceId, advise);
     if (ret != 0) {
@@ -561,7 +578,7 @@ int32_t HalGvaFree(uint64_t address, size_t size)
     }
 }
 
-static int32_t OpenGvaMalloc(uint64_t va, size_t len)
+static int32_t OpenGvaMalloc(uint64_t va, size_t len, uint64_t flags)
 {
     if ((va % DEVMM_MAP_ALIGN_SIZE != 0) || (len % DEVMM_MAP_ALIGN_SIZE != 0)) {
         BM_LOG_ERROR("open gva va check failed, size must the align of 2M. (size=0x" <<
@@ -573,8 +590,8 @@ static int32_t OpenGvaMalloc(uint64_t va, size_t len)
         return -1;
     }
 
-    uint32_t advise = 0;
-    advise |= DV_ADVISE_HUGEPAGE;
+    uint32_t advise = DV_ADVISE_HUGEPAGE;
+    advise |= (flags & GVA_GIANT_FLAG) ? (DV_ADVISE_GIANTPAGE | DV_ADVISE_DDR) : (DV_ADVISE_HBM);
     SetModuleId2Advise(HCCL_HAL_MODULE_ID, &advise);
     int32_t ret = HybmIoctlAllocAnddAdvice(va, len, g_gvaHeapMgr.deviceId, advise);
     if (ret != 0) {
@@ -589,7 +606,7 @@ static int32_t OpenGvaMalloc(uint64_t va, size_t len)
 
 int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t flags)
 {
-    if (OpenGvaMalloc(address, size) != 0) {
+    if (OpenGvaMalloc(address, size, flags) != 0) {
         BM_LOG_ERROR("HalGvaOpen malloc gva error. (size=0x" << std::hex << size << ")");
         return -1;
     }

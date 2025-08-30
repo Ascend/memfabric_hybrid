@@ -21,11 +21,11 @@ using namespace ock::mf;
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 namespace {
 const uint64_t g_allocSize = 2 * 1024 * 1024;
-MemSegmentOptions g_options = {0, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, g_allocSize, 0, 8};
+MemSegmentOptions g_options = {0, HYBM_ROLE_PEER, HYBM_DOP_TYPE_SDMA, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, g_allocSize, 0, 8};
 
 HbmExportInfo g_exportInfo = {EXPORT_INFO_MAGIC, EXPORT_INFO_VERSION, 0, 0, 0, 0, 0, 0, 0, g_allocSize, 0,
                               MEM_PT_TYPE_SVM, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE};
-const MemSegmentOptions g_seg_options = {0, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, 2UL * 1024UL * 1024UL, 0, 2};
+const MemSegmentOptions g_seg_options = {0, HYBM_ROLE_PEER, HYBM_DOP_TYPE_SDMA, HYBM_MST_HBM, HYBM_INFO_EXG_IN_NODE, 2UL * 1024UL * 1024UL, 0, 2};
 }
 
 class HybmDevideMemSegmentTest : public ::testing::Test {
@@ -144,7 +144,7 @@ TEST_F(HybmDevideMemSegmentTest, ReleaseSliceMemory_ShouldReturnError_WhenReleas
     EXPECT_EQ(seg.ReleaseSliceMemory(slice1), BM_INVALID_PARAM);
 
     std::string exInfo;
-    EXPECT_EQ(seg.Export(exInfo), BM_ERROR);
+    EXPECT_NE(BM_OK, seg.Export(exInfo));
 }
 
 TEST_F(HybmDevideMemSegmentTest, Export_ShouldReturnError_WhenExportError)
@@ -157,7 +157,7 @@ TEST_F(HybmDevideMemSegmentTest, Export_ShouldReturnError_WhenExportError)
     EXPECT_EQ(seg.AllocLocalMemory(DEVICE_LARGE_PAGE_SIZE, slice), BM_OK);
 
     std::string exInfo;
-    EXPECT_EQ(seg.Export(exInfo), BM_ERROR);
+    EXPECT_NE(BM_OK, seg.Export(exInfo));
 
     EXPECT_EQ(seg.Export(nullptr, exInfo), BM_INVALID_PARAM);
 

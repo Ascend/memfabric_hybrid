@@ -50,9 +50,10 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_get_extra_context_size(uint32_t shmemId
  * @param dstGva            [in] global virtual address of destination data in hbm
  * @param srcUb             [in] address of source data in ub
  * @param size              [in] copy size
+ * @param enableL2          [in] whether to enable L2 cache hint
  */
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb, uint32_t size);
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb, uint32_t size, bool enableL2);
 
 /**
  * @brief Copy data from ub to gva(global virtual address) in Tensor, executed by MTE engine
@@ -71,9 +72,10 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(const AscendC::GlobalTensor<T> &
  * @param dstUb             [in] address of destination data in ub
  * @param srcGva            [in] global virtual address of source data in hbm
  * @param size              [in] copy size
+ * @param enableL2          [in] whether to enable L2 cache hint
  */
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva, uint32_t size);
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva, uint32_t size, bool enableL2);
 
 /**
  * @brief Copy data from gva(global virtual address) to ub in Tensor, executed by MTE engine

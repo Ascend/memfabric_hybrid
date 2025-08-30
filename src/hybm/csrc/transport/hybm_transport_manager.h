@@ -30,6 +30,8 @@ public:
 
     virtual Result CloseDevice() = 0;
 
+    virtual Result ConnectWithOptions(const HybmTransPrepareOptions &options);
+
     /*
      * 2、注册内存
      * @return 0 if successful
@@ -39,6 +41,8 @@ public:
     virtual Result UnregisterMemoryRegion(uint64_t addr) = 0;
 
     virtual Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) = 0;
+
+    virtual Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) = 0;
 
     /*
      * 3、建链前的准备工作
@@ -82,6 +86,9 @@ public:
     virtual Result ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) = 0;
 
     virtual Result WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) = 0;
+
+protected:
+    bool connected_{false};
 };
 
 using TransManagerPtr = std::shared_ptr<TransportManager>;

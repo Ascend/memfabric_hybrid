@@ -14,6 +14,7 @@
 #include "hybm_def.h"
 #include "smem_lock.h"
 #include "smem_trans.h"
+#include "smem_trans_store_helper.h"
 
 namespace ock {
 namespace smem {
@@ -27,20 +28,6 @@ using PeerEntryKey = std::pair<std::string, uint32_t>;
  */
 struct PeerEntryValue {
     void *address = nullptr;
-};
-
-struct WorkerSession {
-    uint32_t address{0};
-    uint16_t port{0};
-    uint16_t reserved{0};
-};
-
-union WorkerIdUnion {
-    WorkerSession session;
-    uint64_t workerId;
-
-    explicit WorkerIdUnion(WorkerSession ws) : session(ws) {}
-    explicit WorkerIdUnion(uint64_t id) : workerId{id} {}
 };
 
 struct LocalMapAddress {
@@ -59,14 +46,18 @@ public:
                                     const smem_trans_config_t &config);
 
 public:
-    explicit SmemTransEntry(const std::string &name) : name_(name) {}
+    explicit SmemTransEntry(const std::string &name, SmemStoreHelper helper)
+        : name_(name),
+          storeHelper_{std::move(helper)}
+    {
+    }
 
     ~SmemTransEntry() override;
 
     const std::string &Name() const;
     const smem_trans_config_t &Config() const;
 
-    Result Initialize(const std::string &storeUrl, const smem_trans_config_t &config);
+    Result Initialize(const smem_trans_config_t &config);
     void UnInitialize();
 
     Result RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags);
@@ -79,19 +70,21 @@ private:
     bool ParseTransName(const std::string &name, uint32_t &ip, uint16_t &port);
     Result StartWatchThread();
     void WatchTaskOneLoop();
-    void WatchTaskFindNewSenders();
+    void WatchTaskFindNewRanks();
     void WatchTaskFindNewSlices();
-    Result StoreDeviceInfo();
-    Result ParseNameToSessionId(const std::string &name, uint64_t &session);
+    Result ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);
+    hybm_options GenerateHybmOptions();
 
 private:
     hybm_entity_t entity_ = nullptr;                     /* local hybm entity */
     std::map<PeerEntryKey, PeerEntryValue> peerEntries_; /* peer transfer entry look up map */
 
-    StorePtr store_ = nullptr;
+    uint16_t rankId_ = 0;
+    uint16_t entityId_ = 0;
+    SmemStoreHelper storeHelper_;
 
     std::mutex entryMutex_;
     bool inited_ = false;
@@ -105,11 +98,10 @@ private:
     std::mutex watchMutex_;
     std::condition_variable watchCond_;
     bool watchRunning_{true};
-    int64_t slicesLastTime_ = 0;
-    int64_t sendersLastTime_ = 0;
 
     ReadWriteLock remoteSliceRwMutex_;
     std::unordered_map<uint64_t, std::map<const void *, LocalMapAddress, std::greater<const void *>>> remoteSlices_;
+    std::map<std::string, uint64_t> nameToWorkerId;     /* To accelerate name parsed */
 };
 
 inline const std::string &SmemTransEntry::Name() const

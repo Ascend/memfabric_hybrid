@@ -402,6 +402,7 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
 
 inline Result AccTcpLinkComplexDefault::HandlePollOut(AccMsgHeader &header, AccDataBufferPtr &cbCtx) noexcept
 {
+    ASSERT_RETURN(queue_.Get() != nullptr, ACC_NOT_INITIALIZED);
     AccLinkedMessageNode *oneMsg = queue_->DequeueFront();
     if (UNLIKELY(oneMsg == nullptr)) {
         return ACC_OK;

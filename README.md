@@ -12,16 +12,11 @@ MemFabric Hybrid面向昇腾NPU服务器和超节点，提供了构建基于HCCS
 
 memfabric_hybrid编译不依赖CANN和HDK.
 
-1. 下载代码并更新submodule
+1. 下载代码
 ```
 git clone git@gitee.com:ascend/memfabric_hybrid.git
 
 cd memfabric_hybrid
-
-git submodule init
-
-git submodule update --recursive
-
 ```
 
 2. 编译
@@ -103,9 +98,9 @@ default ${INSTALL_PATH} is /usr/local/
 
 在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
 
-memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要启动前手动设置环境变量：
-```
-export SMEM_CONF_STORE_TLS_ENABLE=0
+memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要主动调用`smem_set_conf_store_tls`接口关闭：
+```c
+int32_t ret = smem_set_conf_store_tls(false, nullptr, 0);
 ```
 具体细节详见安全声明章节
 
@@ -168,7 +163,7 @@ help(mf_smem.shm)   #查看share memory接口介绍
 
 #### 运行样例
 
-具体流程参考example目录下各个样例中对应的README.md
+具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
 
 ### 软件硬件配套说明
 - 硬件型号支持

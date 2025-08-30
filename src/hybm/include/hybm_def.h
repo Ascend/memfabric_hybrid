@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 #define MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
@@ -23,21 +23,19 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_IMPORT_WITH_ADDRESS        0x01U
 
 typedef enum {
-    HYBM_TYPE_HBM_AI_CORE_INITIATE = 0,
-    HYBM_TYPE_HBM_HOST_INITIATE,
-    HYBM_TYPE_DRAM_HOST_INITIATE,
-    HYBM_TYPE_HBM_DRAM_HOST_INITIATE,
-
+    HYBM_TYPE_AI_CORE_INITIATE = 0,
+    HYBM_TYPE_HOST_INITIATE,
     HYBM_TYPE_BUTT
 } hybm_type;
 
 typedef enum {
-    HYBM_DOP_TYPE_MTE = 0,
-    HYBM_DOP_TYPE_ROCE,
-    HYBM_DOP_TYPE_SDMA,
-    HYBM_DOP_TYPE_TCP,
+  HYBM_DOP_TYPE_MTE = 1 << 0,
+  HYBM_DOP_TYPE_SDMA = 1 << 1,
+  HYBM_DOP_TYPE_DEVICE_RDMA = 1 << 2,
+  HYBM_DOP_TYPE_HOST_RDMA = 1 << 3,
+  HYBM_DOP_TYPE_HOST_TCP = 1 << 4,
 
-    HYBM_DOP_TYPE_BUTT
+  HYBM_DOP_TYPE_BUTT
 } hybm_data_op_type;
 
 typedef enum {
@@ -46,12 +44,6 @@ typedef enum {
 
     HYBM_SCOPE_BUTT
 } hybm_scope;
-
-typedef enum {
-    HYBM_RANK_TYPE_STATIC = 0,
-
-    HYBM_RANK_TYPE_BUTT
-} hybm_rank_type;
 
 typedef enum {
     HYBM_MEM_TYPE_DEVICE = 0,
@@ -74,9 +66,9 @@ typedef struct {
 
 typedef struct {
     hybm_type bmType;
+    hybm_mem_type memType;
     hybm_data_op_type bmDataOpType;
     hybm_scope bmScope;
-    hybm_rank_type bmRankType;
     uint16_t rankCount;
     uint16_t rankId;
     uint16_t devId;
@@ -119,8 +111,15 @@ typedef struct {
 typedef struct {
     const void *src;
     void *dest;
-    size_t count;
+    size_t dataSize;
 } hybm_copy_params;
+
+typedef struct {
+    const void** sources;
+    void** destinations;
+    const size_t* dataSizes;
+    uint32_t batchSize;
+} hybm_batch_copy_params;
 
 #ifndef __cplusplus
 }

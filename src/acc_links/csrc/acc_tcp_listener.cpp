@@ -60,22 +60,43 @@ Result AccTcpListener::Start() noexcept
         return ACC_ERROR;
     }
 
-    listenFd_ = tmpFD;
-    threadStarted_.store(false);
-
-    /* start oob accept thread */
-    std::thread tmpThread(&AccTcpListener::RunInThread, this);
-    acceptThread_ = std::move(tmpThread);
-    std::string thrName = "AccListener";
-    if (pthread_setname_np(acceptThread_.native_handle(), thrName.c_str()) != 0) {
-        LOG_WARN("Failed to set thread name of oob tcp server");
+    auto ret = StartAcceptThread();
+    if (ret != ACC_OK) {
+        SafeCloseFd(tmpFD);
+        return ret;
     }
+
+    listenFd_ = tmpFD;
 
     while (!threadStarted_.load()) {
         usleep(100L);
     }
 
     started_ = true;
+    return ACC_OK;
+}
+
+Result AccTcpListener::StartAcceptThread() noexcept
+{
+    threadStarted_.store(false);
+
+    try {
+        acceptThread_ = std::thread([this]() {
+            this->RunInThread();
+        });
+    } catch (const std::system_error& e) {
+        LOG_ERROR("Failed to create accept thread: " << e.what());
+        return ACC_ERROR;
+    } catch (...) {
+        LOG_ERROR("Unknown error creating accept thread");
+        return ACC_ERROR;
+    }
+
+    std::string thrName = "AccListener";
+    if (pthread_setname_np(acceptThread_.native_handle(), thrName.c_str()) != 0) {
+        LOG_WARN("Failed to set thread name of oob tcp server");
+    }
+
     return ACC_OK;
 }
 

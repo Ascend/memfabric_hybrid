@@ -25,8 +25,9 @@ TransferAdapterPy::TransferAdapterPy() {
 TransferAdapterPy::~TransferAdapterPy() {
 }
 
-int TransferAdapterPy::Initialize(const char *storeUrl, const char *sessionId, const char *role, uint32_t deviceId)
+int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId)
 {
+    const std::chrono::seconds WAIT_TIME(10);
     if (strcmp(role, "Prefill") != 0 && strcmp(role, "Decode") != 0) {
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
@@ -40,12 +41,17 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *sessionId, c
     }
     config.role = (strcmp(role, "Prefill") == 0) ? SMEM_TRANS_SENDER : SMEM_TRANS_RECEIVER;
     config.deviceId = deviceId;
-    handle_ = smem_trans_create(storeUrl, sessionId, &config);
+    ret = smem_trans_init(&config);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("Failed to init smem_trans, ret=" << ret);
+        return ret;
+    }
+    handle_ = smem_trans_create(storeUrl, uniqueId, &config);
     if (handle_ == nullptr) {
         ADAPTER_LOG_ERROR("smem trans create failed.");
         return -1;
     }
-    std::this_thread::sleep_for(std::chrono::seconds(10));  // 等待初始化完成
+    std::this_thread::sleep_for(WAIT_TIME);  // 等待初始化完成
     return 0;
 }
 
@@ -179,15 +185,22 @@ PYBIND11_MODULE(_pymf_transfer, m) {
     auto adaptor_cls =
         py::class_<TransferAdapterPy>(m, "TransferEngine")
             .def(py::init<>())
-            .def("initialize", &TransferAdapterPy::Initialize)
-            .def("get_rpc_port", &TransferAdapterPy::GetRpcPort)
-            .def("transfer_sync_write", &TransferAdapterPy::TransferSyncWrite)
-            .def("batch_transfer_sync_write", &TransferAdapterPy::BatchTransferSyncWrite)
-            .def("register_memory", &TransferAdapterPy::RegisterMemory)
-            .def("unregister_memory", &TransferAdapterPy::UnregisterMemory)
-            .def("batch_register_memory", &TransferAdapterPy::BatchRegisterMemory)
-            .def("destroy", &TransferAdapterPy::TransferDestroy)
-            .def("unInitialize", &TransferAdapterPy::UnInitialize);
+            .def("initialize", &TransferAdapterPy::Initialize, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("store_url"), py::arg("session_id"), py::arg("role"), py::arg("device_id"))
+            .def("get_rpc_port", &TransferAdapterPy::GetRpcPort, py::call_guard<py::gil_scoped_release>())
+            .def("transfer_sync_write", &TransferAdapterPy::TransferSyncWrite, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("dest_session"), py::arg("buffer"), py::arg("peer_buffer"), py::arg("length"))
+            .def("batch_transfer_sync_write", &TransferAdapterPy::BatchTransferSyncWrite,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
+                 py::arg("peer_buffers"), py::arg("lengths"))
+            .def("register_memory", &TransferAdapterPy::RegisterMemory, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("buffer_addr"), py::arg("capacity"))
+            .def("unregister_memory", &TransferAdapterPy::UnregisterMemory, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("buffer_addr"))
+            .def("batch_register_memory", &TransferAdapterPy::BatchRegisterMemory,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("buffer_addrs"), py::arg("capacities"))
+            .def("destroy", &TransferAdapterPy::TransferDestroy, py::call_guard<py::gil_scoped_release>())
+            .def("unInitialize", &TransferAdapterPy::UnInitialize, py::call_guard<py::gil_scoped_release>());
 
     adaptor_cls.attr("TransferOpcode") = transfer_opcode;
 }

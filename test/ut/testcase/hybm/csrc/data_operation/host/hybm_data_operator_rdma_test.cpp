@@ -7,6 +7,7 @@
 #include "hybm.h"
 #include "hybm_big_mem.h"
 #include "hybm_types.h"
+#include "dl_api.h"
 #include "dl_acl_api.h"
 
 #define private public
@@ -33,13 +34,17 @@ class HybmDataOpRdmaTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite()
     {
-        EXPECT_EQ(hybm_init(0, 0), BM_OK);
+        auto ret = hybm_init(0, 0);
+        ASSERT_EQ(BM_OK, ret);
         hybm_set_log_level(0);
+
+        ret = DlApi::LoadExtendLibrary(DL_EXT_LIB_HOST_RDMA);
+        ASSERT_EQ(BM_OK, ret);
 
         transport::TransportOptions options;
         options.rankId = g_srcRankId;
         options.rankCount = g_rankCount;
-        options.protocol = HYBM_DOP_TYPE_ROCE;
+        options.protocol = HYBM_DOP_TYPE_HOST_RDMA;
         options.nic = "tcp://127.0.0.1:10002";
         EXPECT_EQ(g_transportManager->OpenDevice(options), BM_OK);
         EXPECT_EQ(g_dataOperator->Initialize(), BM_OK);

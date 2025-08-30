@@ -4,7 +4,7 @@
 #ifndef __MEMFABRIC_SMEM_DEF_H__
 #define __MEMFABRIC_SMEM_DEF_H__
 
-#include "stdint.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +19,7 @@ typedef void *smem_shm_t;
 typedef enum {
     SMEMS_DATA_OP_MTE  = 1U << 0,
     SMEMS_DATA_OP_SDMA = 1U << 1,
-    SMEMS_DATA_OP_ROCE = 1U << 2,
+    SMEMS_DATA_OP_RDMA = 1U << 2,
 } smem_shm_data_op_type;
 
 /**
@@ -27,8 +27,10 @@ typedef enum {
  * controlOperationTimeout: control operation timeout in second, i.e. barrier, allgather, topology_can_reach etc
  */
 typedef struct {
-    uint32_t shmInitTimeout;          /* func smem_shm_init timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
-    uint32_t shmCreateTimeout;        /* func smem_shm_create timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t shmInitTimeout;          /* func smem_shm_init timeout, default 120 second
+                                         (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t shmCreateTimeout;        /* func smem_shm_create timeout, default 120 second
+                                         (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
     uint32_t controlOperationTimeout; /* control operation timeout, i.e. barrier, allgather,topology_can_reach etc,
                                          default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
     bool startConfigStore;            /* whether to start config store, default true */

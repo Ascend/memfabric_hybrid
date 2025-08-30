@@ -399,6 +399,7 @@ Result AccTcpClientDefault::Receive(uint8_t* data, uint32_t len, int16_t &msgTyp
         result = header.result;
         acLen = header.bodyLen;
         if (len != 0) {
+            ASSERT_RETURN(acLen <= len, ACC_LINK_MSG_INVALID);
             callResult = link_->BlockRecv(data, len);
         }
         if (callResult == ACC_OK) {

@@ -1,14 +1,14 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#ifndef MEMORYFABRIC_RBTREE_RANGEALLOC_H
-#define MEMORYFABRIC_RBTREE_RANGEALLOC_H
+#ifndef MF_HYBM_RBTREE_RANGEALLOC_H
+#define MF_HYBM_RBTREE_RANGEALLOC_H
 
 #include <pthread.h>
 #include <map>
 #include <set>
-#include "space_allocator.h"
+#include "hybm_space_allocator.h"
 
 namespace ock::mf {
 struct SpaceRange {
@@ -44,4 +44,4 @@ private:
 };
 }
 
-#endif  // MEMORYFABRIC_RBTREE_RANGEALLOC_H
+#endif  // MF_HYBM_RBTREE_RANGEALLOC_H

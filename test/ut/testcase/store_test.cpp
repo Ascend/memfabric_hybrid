@@ -13,7 +13,7 @@ class AccConfigStoreTest : public testing::Test {
 public:
     void SetUp() override
     {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
+        ock::smem::StoreFactory::SetTlsInfo(false, nullptr, 0);
         std::cout << "port is : " << port << std::endl;
         server = ock::smem::StoreFactory::CreateStore("0.0.0.0", port, true, 0);
         client = ock::smem::StoreFactory::CreateStore("127.0.0.1", port, false, 1);
@@ -153,7 +153,7 @@ TEST_F(AccConfigStoreTest, get_when_server_exit)
     std::string key = "store_check_key_for_server_exit";
     std::string value;
 
-    std::thread child{[&finished, &ret, &store, &key, &value](){
+    std::thread child{[&finished, &ret, &store, &key, &value]() {
         ret = store->Get(key, value);
         finished = true;
     }};

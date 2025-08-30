@@ -14,24 +14,15 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
 {
     auto result = DlAclApi::LoadLibrary(libDirPath);
     if (result != BM_OK) {
-        DlApi::CleanupLibrary();
         return result;
     }
 
     result = DlHalApi::LoadLibrary();
     if (result != BM_OK) {
-        DlApi::CleanupLibrary();
-        return result;
-    }
-
-    result = DlHccpApi::LoadLibrary();
-    if (result != BM_OK) {
-        DlHalApi::CleanupLibrary();
         DlAclApi::CleanupLibrary();
         return result;
     }
 
-    result = DlHcomApi::LoadLibrary();
     return BM_OK;
 }
 
@@ -41,6 +32,19 @@ void DlApi::CleanupLibrary()
     DlAclApi::CleanupLibrary();
     DlHalApi::CleanupLibrary();
     DlHcomApi::CleanupLibrary();
+}
+
+Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)
+{
+    if (libraryType == DL_EXT_LIB_DEVICE_RDMA) {
+        return DlHccpApi::LoadLibrary();
+    }
+
+    if (libraryType == DL_EXT_LIB_HOST_RDMA) {
+        return DlHcomApi::LoadLibrary();
+    }
+
+    return BM_OK;
 }
 
 }

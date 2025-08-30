@@ -1,8 +1,8 @@
 /*
 * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 */
-#include "dl_hcom_api.h"
 #include <dlfcn.h>
+#include "dl_hcom_api.h"
 
 using namespace ock::mf;
 
@@ -132,6 +132,7 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gServiceGetMessageDataLen, serviceGetMessageDataLenFunc, hcomHandle, "Service_GetMessageDataLen");
     DL_LOAD_SYM(gServiceSetExternalLogger, serviceSetExternalLoggerFunc, hcomHandle, "Service_SetExternalLogger");
 
+    BM_LOG_DEBUG("load hcom library done");
     gLoaded = true;
     return BM_OK;
 }

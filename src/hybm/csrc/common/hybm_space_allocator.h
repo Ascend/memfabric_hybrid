@@ -1,9 +1,9 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#ifndef MEMORYFABRIC_SPACE_ALLOCATOR_H
-#define MEMORYFABRIC_SPACE_ALLOCATOR_H
+#ifndef MF_HYBM_SPACE_ALLOCATOR_H
+#define MF_HYBM_SPACE_ALLOCATOR_H
 
 #include <cstdint>
 #include <memory>
@@ -54,4 +54,4 @@ public:
 using SpaceAllocatorPtr = std::shared_ptr<SpaceAllocator>;
 }
 
-#endif  // MEMORYFABRIC_SPACE_ALLOCATOR_H
+#endif  // MF_HYBM_SPACE_ALLOCATOR_H

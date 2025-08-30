@@ -13,8 +13,8 @@
 
 namespace shm {
 
-#define LOG_ERROR(ARGS) std::cout << "[SHM][ERROR] " << ARGS << std::endl;
-#define LOG_INFO(ARGS) std::cout << "[SHM][INFO] " << ARGS << std::endl;
+#define LOG_ERROR(ARGS) std::cout << "[SHM][ERROR] " << ARGS << std::endl
+#define LOG_INFO(ARGS) std::cout << "[SHM][INFO] " << ARGS << std::endl
 
 class Func {
 public:
@@ -58,7 +58,7 @@ inline bool Func::Realpath(std::string &path)
 }
 
 inline bool Func::LibraryRealPath(const std::string &libDirPath, const std::string &libName,
-                                        std::string &realPath)
+                                  std::string &realPath)
 {
     std::string tmpFullPath = libDirPath;
     if (!Realpath(tmpFullPath)) {
@@ -91,4 +91,4 @@ inline bool Func::LibraryRealPath(const std::string &libDirPath, const std::stri
     } while (0)
 }  // namespace shm
 
-#endif  //SHMEM_SHM_DEFINE_H
+#endif  // SHMEM_SHM_DEFINE_H

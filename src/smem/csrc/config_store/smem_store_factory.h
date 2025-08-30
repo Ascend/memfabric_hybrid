@@ -10,6 +10,8 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
+
+#include "smem.h"
 #include "smem_config_store.h"
 
 namespace ock {
@@ -49,9 +51,19 @@ public:
 
     static void RegisterDecryptHandler(const smem_decrypt_handler &h) noexcept;
 
+    /**
+     * @brief init and set tls info.
+     * @param enable whether to enable tls
+     * @param tlsInfo the tls config info
+     * @return Returns 0 on success or an error code on failure
+     */
+    static int32_t SetTlsInfo(bool enable, const char *tlsInfo, const size_t tlsInfoLen) noexcept;
+
 private:
     static Result InitTlsOption() noexcept;
     static std::function<int(const std::string&, char*, size_t&)> ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t &)) noexcept;
+    static bool enableTls;
+    static std::string tlsInfo;
 
 private:
     static std::mutex storesMutex_;

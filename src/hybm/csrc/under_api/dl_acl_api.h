@@ -92,13 +92,12 @@ public:
         return pAclrtMalloc(ptr, count, type);
     }
 
-    static inline Result AclrtFree(void *&ptr)
+    static inline Result AclrtFree(void *ptr)
     {
         if (pAclrtFree == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
         auto ret = pAclrtFree(ptr);
-        ptr = nullptr;
         return ret;
     }
 

@@ -28,9 +28,10 @@ if [ "${BUILD_TESTS}" == "ON" ]; then
     echo "BUILD_TESTS, NO BUILD PYTHON"
     BUILD_PYTHON="OFF"
 
-    git submodule init
-    git submodule update --recursive test/3rdparty/googletest
-    git submodule update --recursive test/3rdparty/mockcpp
+    cd test/3rdparty/
+    [[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://github.com/google/googletest.git
+    [[ ! -d "mockcpp" ]] && git clone --branch v2.7 --depth 1 https://github.com/sinojelly/mockcpp.git
+    cd -
 
     PROJECT_FULL_PATH=$(dirname "$ROOT_PATH")
     MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
@@ -49,7 +50,6 @@ CURRENT_DIR=$(pwd)
 
 cd ${ROOT_PATH}/..
 PROJ_DIR=$(pwd)
-bash script/gen_last_git_commit.sh
 
 rm -rf ./build ./output
 
@@ -66,7 +66,7 @@ fi
 mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 
-GIT_COMMIT=$(cat script/git_last_commit.txt)
+GIT_COMMIT=`git rev-parse HEAD`
 {
   echo "smem version info:"
   echo "smem version: 1.0.0"

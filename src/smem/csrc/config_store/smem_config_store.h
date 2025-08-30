@@ -12,7 +12,6 @@
 
 #include "acc_def.h"
 #include "acc_tcp_server.h"
-#include "smem_security.h"
 #include "smem_common_includes.h"
 
 struct AcclinkTlsOption {

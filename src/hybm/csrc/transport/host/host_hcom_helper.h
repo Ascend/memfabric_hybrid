@@ -23,17 +23,15 @@ public:
 
     static inline Service_Type HybmDopTransHcomProtocol(uint32_t hybmDop)
     {
-        switch (hybmDop) {
-            case HYBM_DOP_TYPE_TCP:
-                return C_SERVICE_TCP;
-            case HYBM_DOP_TYPE_MTE:
-            case HYBM_DOP_TYPE_ROCE:
-                return C_SERVICE_RDMA;
-            default:
-                BM_LOG_ERROR("Failed to trans hcom protocol, invalid hybmDop: " << hybmDop
-                    << " use default protocol rdma: " << C_SERVICE_RDMA);
-                return C_SERVICE_RDMA;
+        if (hybmDop & HYBM_DOP_TYPE_HOST_TCP) {
+            return C_SERVICE_TCP;
         }
+        if (hybmDop & HYBM_DOP_TYPE_HOST_RDMA) {
+            return C_SERVICE_RDMA;
+        }
+        BM_LOG_ERROR("Failed to trans hcom protocol, invalid hybmDop: " << hybmDop << " use default protocol rdma: "
+                                                                        << C_SERVICE_RDMA);
+        return C_SERVICE_RDMA;
     }
 
 private:
@@ -45,4 +43,4 @@ private:
 }
 }
 }
-#endif // MF_HYBRID_HOST_HCOM_HELPER_H
+#endif  // MF_HYBRID_HOST_HCOM_HELPER_H

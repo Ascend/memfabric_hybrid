@@ -69,7 +69,7 @@ public:
         }
         std::cout << "receive data len match" << std::endl;
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(0);
-        if (buffer == nullptr) {
+        if (buffer == nullptr || buffer->DataPtr() == nullptr) {
             std::cout << "data buffer is nullptr" << std::endl;
             return 1;
         }
@@ -287,7 +287,7 @@ TEST_F(TestAccTcpClient, test_client_connect_send_should_return_ok)
         ASSERT_EQ(ACC_OK, result);
 
         char buf[BUFF_SIZE];
-        memset(buf, 0, BUFF_SIZE);
+        bzero(buf, BUFF_SIZE);
         uint8_t *data = reinterpret_cast<uint8_t *>(buf);
         result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
         ASSERT_EQ(ACC_OK, result);
@@ -326,7 +326,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
             }
 
             char buf[bodyLength];
-            memset(buf, 0, bodyLength);
+            bzero(buf, bodyLength);
             uint8_t *data = reinterpret_cast<uint8_t *>(buf);
             if (bodyLength != 0) {
                 result = mClient->ReceiveRaw(data, bodyLength);
@@ -338,7 +338,7 @@ TEST_F(TestAccTcpClient, test_server_send_should_return_ok)
 
         void *data = malloc(BUFF_SIZE);
         ASSERT_TRUE(data != nullptr);
-        memset(data, 0, BUFF_SIZE);
+        bzero(data, BUFF_SIZE);
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
         ASSERT_TRUE(buffer != nullptr);
 
@@ -383,7 +383,7 @@ TEST_F(TestAccTcpClient, test_client_recv_by_polling)
 
         void *data = malloc(BUFF_SIZE);
         ASSERT_TRUE(data != nullptr);
-        memset(data, 0, BUFF_SIZE);
+        bzero(data, BUFF_SIZE);
         AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(reinterpret_cast<uint8_t *>(data), BUFF_SIZE);
         ASSERT_TRUE(buffer != nullptr);
 
@@ -471,7 +471,7 @@ TEST_F(TestAccTcpClient, test_client_LoadDynamicLib)
         ASSERT_EQ(ACC_OK, result);
 
         char buf[BUFF_SIZE];
-        memset(buf, 0, BUFF_SIZE);
+        bzero(buf, BUFF_SIZE);
         uint8_t *data = reinterpret_cast<uint8_t *>(buf);
         result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
         ASSERT_EQ(ACC_OK, result);

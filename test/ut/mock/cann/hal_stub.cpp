@@ -73,4 +73,58 @@ int32_t devmm_virt_destroy_heap(void *mgmt, void *heap, bool need_mem_stats_dec)
     return 0;
 }
 
+int halSqTaskSend(uint32_t devId, void *info)
+{
+    return 0;
+}
+
+int halCqReportRecv(uint32_t devId, void *info)
+{
+    return 0;
+}
+
+int halSqCqAllocate(uint32_t devId, void *in, void *out)
+{
+    return 0;
+}
+
+int halSqCqFree(uint32_t devId, void *info)
+{
+    return 0;
+}
+
+int halResourceIdAlloc(uint32_t devId, void *in, void *out)
+{
+    return 0;
+}
+
+int halResourceIdFree(uint32_t devId, void *in)
+{
+    return 0;
+}
+
+int drvMemSmmuQuery(uint32_t device, uint32_t *SSID)
+{
+    return 0;
+}
+
+int halResourceConfig(uint32_t devId, void *in, void *para)
+{
+    return 0;
+}
+
+int halSqCqQuery(uint32_t devId, void *info)
+{
+    return 0;
+}
+
+int halHostRegister(void *srcPtr, uint64_t size, uint32_t flag, uint32_t devid, void **dstPtr)
+{
+    return 0;
+}
+
+int halHostUnregister(void *srcPtr, uint32_t devid)
+{
+    return 0;
+}
 }

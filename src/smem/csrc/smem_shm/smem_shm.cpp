@@ -3,10 +3,10 @@
  */
 #include <algorithm>
 #include "hybm_big_mem.h"
-#include "smem_shm.h"
 #include "smem_logger.h"
 #include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
+#include "smem_shm.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED
@@ -25,24 +25,29 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
                                                    << " input rank: " << rankId,
                        nullptr);
     SM_VALIDATE_RETURN(!(id > SMEM_ID_MAX), "invalid id, id range is: [0, " << SMEM_ID_MAX << "]", nullptr);
-    SM_VALIDATE_RETURN(dataOpType == SMEMS_DATA_OP_MTE, "only support SMEMS_DATA_OP_MTE now", nullptr);
     SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", nullptr);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", nullptr);
     SM_VALIDATE_RETURN(symmetricSize <= SMEM_LOCAL_SIZE_MAX, "symmetric size exceeded", nullptr);
 
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     SmemShmEntryPtr entry = nullptr;
-    auto ret = SmemShmEntryManager::Instance().CreateEntryById(id, entry);
+    auto &manager = SmemShmEntryManager::Instance();
+    auto ret = manager.CreateEntryById(id, entry);
     if (ret != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("malloc entry failed, id: " << id << ", result: " << ret);
         return nullptr;
     }
 
+
     hybm_options options;
-    options.bmType = HYBM_TYPE_HBM_AI_CORE_INITIATE;
-    options.bmDataOpType = HYBM_DOP_TYPE_MTE;
+    options.bmType = HYBM_TYPE_AI_CORE_INITIATE;
+    options.memType = HYBM_MEM_TYPE_DEVICE;
+    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
+    if (dataOpType & SMEMS_DATA_OP_RDMA) {
+        auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
+        options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
+    }
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
-    options.bmRankType = HYBM_RANK_TYPE_STATIC;
     options.rankCount = rankSize;
     options.rankId = rankId;
     options.singleRankVASpace = symmetricSize;
@@ -55,7 +60,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
-        SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
+        manager.RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return nullptr;
     }
 

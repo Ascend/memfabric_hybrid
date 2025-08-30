@@ -159,13 +159,28 @@ Result HcomTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
         return BM_ERROR;
     }
     RegMemoryKeyUnion hostKey{};
-    hostKey.hostKey.type = static_cast<uint32_t>(TransportType::TT_HCOM);
+    hostKey.hostKey.type = TT_HCOM;
     hostKey.hostKey.hcomInfo.lAddress = mrInfo.addr;
     std::copy_n(mrInfo.lKey.keys, sizeof(hostKey.hostKey.hcomInfo.lKey.keys) /
                 sizeof(hostKey.hostKey.hcomInfo.lKey.keys[0]), hostKey.hostKey.hcomInfo.lKey.keys);
     hostKey.hostKey.hcomInfo.size = mrInfo.size;
     key = hostKey.commonKey;
     return BM_OK;
+}
+
+Result HcomTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size)
+{
+    RegMemoryKeyUnion keyUnion{};
+    keyUnion.commonKey = key;
+    if (keyUnion.hostKey.type != TT_HCOM) {
+        BM_LOG_ERROR("parse key type invalid: " << keyUnion.hostKey.type);
+        return BM_ERROR;
+    }
+
+    addr = keyUnion.hostKey.hcomInfo.lAddress;
+    size = keyUnion.hostKey.hcomInfo.size;
+    return BM_OK;
+
 }
 
 Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)
@@ -391,7 +406,7 @@ Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uin
     BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx << " payLoad: " << payLoad);
     uint32_t rankId = UINT32_MAX;
     try {
-        rankId = std::stoi(payLoad);
+        rankId = static_cast<uint32_t>(std::stoul(payLoad));
     } catch (...) {
         BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
         return BM_ERROR;
