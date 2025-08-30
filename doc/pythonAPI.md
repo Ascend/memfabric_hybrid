@@ -94,7 +94,7 @@
 
 1. 退出运行环境
     ```python
-    def uninitialize(flags) -> None
+    def uninitialize(flags = 0) -> None
     ```
 
     |参数/返回值|含义|
@@ -103,7 +103,7 @@
 
 1. 创建SMEM
     ```python
-    def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags) -> int
+    def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
     ```
 
     |参数/返回值|含义|
@@ -136,7 +136,7 @@
     ```python
     class ShareMemory:
         def set_context(context) -> int:
-        def destroy(flags:int) -> int:
+        def destroy(flags:int = 0) -> int:
         def query_support_data_operation() -> int:
         def barrier() -> None:
         def all_gather(local_data) -> bytes:
@@ -170,14 +170,13 @@
 ##### bm子模块函数
 1. 初始化运行环境
     ```python
-    def initialize(store_url, world_size, rank_id, device_id, config) -> int
+    def initialize(store_url, world_size, device_id, config) -> int
     ```
 
     |参数/返回值|含义|
     |-|-|
     |store_url|config store的IP和端口，格式tcp://ip:port|
     |world_size|参与SMEM初始化rank数量，最大支持1024|
-    |rank_id|当前rank id|
     |device_id|当前rank的device id|
     |config|初始化SMEM配置|
     |返回值|成功返回0，其他为错误码|
