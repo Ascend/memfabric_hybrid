@@ -391,7 +391,7 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     hybm_options options;
     options.bmType = HYBM_TYPE_HOST_INITIATE;
     options.memType = HYBM_MEM_TYPE_DEVICE;
-    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA | HYBM_DOP_TYPE_DEVICE_RDMA);
+    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA);
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = 512U;
     options.rankId = rankId_;
