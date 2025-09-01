@@ -143,11 +143,9 @@ class MetaServiceLeaderElection:
             self.__update_lease(is_renew, lease, current_time)
             return True
 
-        logger.debug(
-            "Lease=%s is not expired: curHolder=%s, leaseDuration=%s, renewTime=%s, currentTime=%s, "
-            "retry_period=%s, my_pod_name=%s",
-            self.lease_name, holder, self.lease_duration,
-            renew_time, current_time, self.retry_period, self.pod_name)
+        logger.debug(f"Lease={self.lease_name} is not expired: curHolder={holder}, "
+                     f"leaseDuration={self.lease_duration}, renewTime={renew_time}, currentTime={current_time}, "
+                     f"retry_period={self.retry_period}, my_pod_name={self.pod_name}")
         return False
 
     def __update_lease(self, is_renew, lease, current_time):
@@ -163,11 +161,9 @@ class MetaServiceLeaderElection:
             namespace=self.namespace,
             body=lease
         )
-        logger.debug(
-            "Succeed in updating lease=%s: curHolder=%s, leaseDuration=%s, renewTime=%s, currentTime=%s, "
-            "retry_period=%s, my_pod_name=%s",
-            self.lease_name, self.pod_name, self.lease_duration,
-            current_time, current_time, self.retry_period, self.pod_name)
+        logger.debug(f"Succeed in updating lease={self.lease_name}: curHolder={self.pod_name}, "
+                     f"leaseDuration={self.lease_duration}, renewTime={current_time}, currentTime={current_time}, "
+                     f"retry_period={self.retry_period}, my_pod_name={self.pod_name}")
 
     def check_leader_status(self):
         """检查当前主节点状态"""
