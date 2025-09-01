@@ -52,6 +52,10 @@ private:
                     uint64_t height, void* stream) noexcept;
     int CopyGD2LD2d(void* gvaAddr, uint64_t dpitch, const void* hostAddr, uint64_t spitch, size_t width,
                     uint64_t height, void* stream) noexcept;
+    int CopyLD2GH2d(void* gvaAddr, uint64_t dpitch, const void* deviceAddr, uint64_t spitch, size_t width,
+                    uint64_t height, void* stream) noexcept;
+    int CopyGH2LD2d(void* deviceAddr, uint64_t dpitch, const void* gvaAddr, uint64_t spitch, size_t width,
+                    uint64_t height, void* stream) noexcept;
 
 private:
     void *stream_;

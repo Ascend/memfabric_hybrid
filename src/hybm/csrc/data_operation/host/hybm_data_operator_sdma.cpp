@@ -397,6 +397,12 @@ int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA,
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
             ret = CopyLD2GD2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
             break;
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
+            ret = CopyLD2GH2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
+            break;
+        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE:
+            ret = CopyGH2LD2d(destVA, dpitch, srcVA, spitch, width, height, options.stream);
+            break;
 
         default:
             BM_LOG_ERROR("data copy invalid direction: " << direction);
@@ -618,6 +624,70 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexc
     ret = hybmStream_->Synchronize();
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
+}
+
+int HostDataOpSDMA::CopyGH2LD2d(void *deviceAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch, size_t width,
+                                uint64_t height, void *stream) noexcept
+{
+    if (spitch != width) {
+        BM_LOG_ERROR("Invalid param spitch: " << spitch << " width: " << width);
+        return BM_INVALID_PARAM;
+    }
+    uint64_t length = height * width;
+    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(length);
+    void *tmpHbm = tmpSdmaMemory.Address();
+    if (tmpHbm == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << length << " width: " << width << " height: " << height);
+        return BM_MALLOC_FAILED;
+    }
+    auto ret = CopyG2G(tmpHbm, gvaAddr, length);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to CopyG2G ret: " << ret << " dest:"<< tmpHbm << " srcVa:" << gvaAddr
+                                               << " length:" << length);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+        return ret;
+    }
+
+    ret = CopyGD2LD2d(deviceAddr, dpitch, tmpHbm, spitch, width, height, stream);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to CopyGD2LD2d ret: " << ret << " dest:"<< deviceAddr << " srcVa:" << tmpHbm
+                     << " spitch: " << spitch << " dpitch: " << dpitch << " width: " << width
+                     << " height:" << height << " stream:" << stream);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+    }
+    return ret;
+}
+
+int HostDataOpSDMA::CopyLD2GH2d(void *gvaAddr, uint64_t dpitch, const void *deviceAddr, uint64_t spitch, size_t width,
+                                uint64_t height, void *stream) noexcept
+{
+    if (dpitch != width) {
+        BM_LOG_ERROR("Invalid param dpitch: " << dpitch << " width: " << width);
+        return BM_INVALID_PARAM;
+    }
+    uint64_t length = height * width;
+    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(length);
+    void *tmpHbm = tmpSdmaMemory.Address();
+    if (tmpHbm == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << length << " width: " << width << " height: " << height);
+        return BM_MALLOC_FAILED;
+    }
+
+    auto ret = CopyLD2GD2d(tmpHbm, dpitch, deviceAddr, spitch, width, height, stream);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to CopyGD2LD2d ret: " << ret << " dest:"<< deviceAddr << " srcVa:" << tmpHbm
+                     << " spitch: " << spitch << " dpitch: " << dpitch << " width: " << width
+                     << " height:" << height << " stream:" << stream);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+        return ret;
+    }
+    ret = CopyG2G(gvaAddr, tmpHbm, length);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to CopyG2G ret: " << ret << " dest:"<< gvaAddr << " srcVa:" << tmpHbm
+                                               << " length:" << length);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+    }
+    return ret;
 }
 }
 }
