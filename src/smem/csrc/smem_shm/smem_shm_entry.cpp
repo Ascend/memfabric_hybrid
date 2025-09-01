@@ -302,11 +302,11 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
     }
 
     if (reachesTypes & HYBM_DOP_TYPE_SDMA) {
-        reachInfo |= SMEMS_DATA_OP_RDMA;
+        reachInfo |= SMEMS_DATA_OP_SDMA;
     }
 
     if (reachesTypes & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        reachInfo |= SMEMS_DATA_OP_SDMA;
+        reachInfo |= SMEMS_DATA_OP_RDMA;
     }
 
     return SM_OK;
