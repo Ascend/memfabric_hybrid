@@ -3,46 +3,11 @@
  */
 #include <type_traits>
 #include "hybm_logger.h"
+#include "mf_num_util.h"
 #include "hybm_entity_factory.h"
 #include "hybm_data_op.h"
 
 using namespace ock::mf;
-template <typename T>
-struct is_unsigned_number {
-    static constexpr bool value =
-        std::is_same<T, unsigned short>::value ||
-        std::is_same<T, unsigned int>::value ||
-        std::is_same<T, unsigned long>::value ||
-        std::is_same<T, unsigned long long>::value;
-};
-
-/**
- * @brief Check whether an arithmetic operation will overflow
- *
- * checks potential overflow in addition and multiplication
- *
- * @tparam T      Numeric type (integral)
- * @param a       [in] first operand
- * @param b       [in] second operand
- * @param calc    [in] operation type: '+' for addition, '*' for multiplication
- * @return true if the operation does not overflow, false otherwise
- */
-template <typename T>
-bool is_overflow_check(T a, T b, T max, char calc)
-{
-    if (!(is_unsigned_number<T>::value)) {
-        return false;
-    }
-    switch (calc) {
-        case '+':
-            return (a > max - b);
-        case '*':
-            return ((b != 0) && (a > max / b));
-        default:
-            return true;
-    }
-}
-
 HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params,
                                 hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
@@ -130,11 +95,11 @@ HYBM_API int32_t hybm_data_copy_2d(hybm_entity_t e, hybm_copy_2d_params *params,
     BM_ASSERT_RETURN(params->width != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(params->height != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(!is_overflow_check(params->dpitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(!is_overflow_check(params->dpitch * (params->height - 1), params->width, UINT64_MAX, '+'),
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->dpitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->dpitch * (params->height - 1), params->width, UINT64_MAX, '+'),
                      BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(!is_overflow_check(params->spitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(!is_overflow_check(params->spitch * (params->height - 1), params->width, UINT64_MAX, '+'),
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->spitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->spitch * (params->height - 1), params->width, UINT64_MAX, '+'),
                      BM_INVALID_PARAM);
 
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);

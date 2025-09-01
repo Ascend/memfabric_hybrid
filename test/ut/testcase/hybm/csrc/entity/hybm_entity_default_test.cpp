@@ -31,7 +31,7 @@ const hybm_options g_options_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                              "tcp://127.0.0.1:10002"};
 const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                                  HYBM_MEM_TYPE_HOST,
-                                                 HYBM_DOP_TYPE_HOST_RDMA,
+                                                 HYBM_DOP_TYPE_SDMA,
                                                  HYBM_SCOPE_CROSS_NODE,
                                                  8,
                                                  0,

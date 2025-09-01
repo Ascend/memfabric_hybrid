@@ -66,6 +66,10 @@ private:
     in_addr deviceIp_{0};
     uint16_t devicePort_{0};
     void *rdmaHandle_{nullptr};
+    static void *storedRdmaHandle_;
+    static bool tsdOpened_;
+    static bool raInitialized_;
+    static bool deviceIpRetired_;
     std::string nicInfo_;
     MemoryRegionMap registerMRS_;
     std::shared_ptr<DeviceQpManager> qpManager_;

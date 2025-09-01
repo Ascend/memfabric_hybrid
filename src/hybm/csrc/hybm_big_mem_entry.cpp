@@ -107,7 +107,7 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     ExchangeInfoWriter writer(exInfo);
     auto ret = entity->ExportExchangeInfo(slice, writer, flags);
     if (ret != 0) {
-        BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
+        BM_LOG_ERROR("export slices failed: " << ret);
         return ret;
     }
 

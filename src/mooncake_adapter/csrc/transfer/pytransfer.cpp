@@ -86,8 +86,8 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destSession,
 {
     // 检查向量大小是否一致
     if (buffers.size() != peer_buffer_addresses.size() ||
-        buffers.size() != lengths.size()) {
-        ADAPTER_LOG_ERROR("Buffers, peer_buffer_addresses and lengths is not equal.");
+        buffers.size() != lengths.size() || buffers.size() > UINT32_MAX) {
+        ADAPTER_LOG_ERROR("Buffers, peer_buffer_addresses and lengths is not equal or too long.");
         return -1;
     }
     

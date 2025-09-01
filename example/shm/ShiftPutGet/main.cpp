@@ -114,7 +114,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create, size %lu, rank:%d", gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", gNpuMallocSpace, rankId);
     TestContext(handle);
     TestAllShift(stream, (uint8_t *)gva, rankId, rankSize);
 

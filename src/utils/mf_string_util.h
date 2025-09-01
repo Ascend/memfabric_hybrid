@@ -19,6 +19,9 @@ public:
 
 inline std::string StringUtil::TrimString(const std::string &input)
 {
+    if (input.empty()) {
+        return "";
+    }
     auto start = input.begin();
     while (start != input.end() && std::isspace(*start)) {
         start++;

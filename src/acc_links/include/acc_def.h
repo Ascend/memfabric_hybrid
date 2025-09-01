@@ -163,12 +163,10 @@ class AccTcpServer;
 class AccTcpLink;
 class AccTcpRequestContext;
 class AccTcpLinkComplex;
-class AccTcpClient;
 using AccDataBufferPtr = AccRef<AccDataBuffer>;
 using AccTcpServerPtr = AccRef<AccTcpServer>;
 using AccTcpLinkPtr = AccRef<AccTcpLink>;
 using AccTcpLinkComplexPtr = AccRef<AccTcpLinkComplex>;
-using AccTcpClientPtr = AccRef<AccTcpClient>;
 
 #define ACC_API __attribute__((visibility("default")))
 }  // namespace acc

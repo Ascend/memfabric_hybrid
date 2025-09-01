@@ -9,6 +9,8 @@
 #include "smem_types.h"
 
 constexpr uint64_t SECOND_TO_MILLSEC = 1000U;
+constexpr uint64_t MILLSEC_TO_NANOSSEC = 1000000U;
+constexpr uint64_t SECOND_TO_NANOSSEC = 1000000000U;
 
 namespace ock {
 namespace smem {
@@ -56,12 +58,14 @@ public:
         pthread_mutex_lock(&this->timeCheckerMutex_);
         clock_gettime(CLOCK_MONOTONIC, &ts);
 
-        // avoid ts.tv_nsec overflow
-        long secs = msecs / SECOND_TO_MILLSEC;
-        msecs = (msecs % SECOND_TO_MILLSEC) * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC + ts.tv_nsec;
-        long add = msecs / (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
-        ts.tv_sec += (add + secs);
-        ts.tv_nsec = msecs % (SECOND_TO_MILLSEC * SECOND_TO_MILLSEC * SECOND_TO_MILLSEC);
+        ts.tv_sec += msecs / SECOND_TO_MILLSEC;
+        ts.tv_nsec += (msecs % SECOND_TO_MILLSEC) * MILLSEC_TO_NANOSSEC;
+
+        if (ts.tv_nsec >= static_cast<long>(SECOND_TO_NANOSSEC)) {
+            ts.tv_sec += ts.tv_nsec / SECOND_TO_NANOSSEC;
+            ts.tv_nsec %= SECOND_TO_NANOSSEC;
+        }
+
         while (!this->signalFlag) {    // avoid spurious wakeup
             ret = pthread_cond_timedwait(&this->condTimeChecker_, &this->timeCheckerMutex_, &ts);
             if (ret == ETIMEDOUT) {    // avoid infinite loop

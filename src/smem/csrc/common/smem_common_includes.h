@@ -15,7 +15,6 @@
 #include "smem_types.h"
 #include "smem_ref.h"
 #include "smem_timedwait.h"
-#include "smem_common_func.h"
 #include "mf_file_util.h"
 #include "smem_net_common.h"
 

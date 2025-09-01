@@ -40,12 +40,14 @@ AccResult AccTcpSslHelper::Start(SSL_CTX* sslCtx, AccTlsOption &param)
     auto ret = StartCheckCertExpired();
     if (ret != ACC_OK) {
         LOG_ERROR("check cert expired failed");
+        Stop();
         return ACC_ERROR;
     }
 
     ret = InitSSL(sslCtx);
     if (ret != ACC_OK) {
         LOG_ERROR("load init ssl failed");
+        Stop();
         return ACC_ERROR;
     }
 
@@ -148,6 +150,16 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
     SSL_LAYER_CHECK_RET(LoadCaFileList(caFileList) != ACC_OK, "Failed to load ca file list");
 
     for (auto &caFile : caFileList) {
+        FILE *fp = fopen(caFile.c_str(), "r");
+        if (!fp) {
+            LOG_ERROR("Failed to open ca file");
+            return ACC_ERROR;
+        }
+        X509 *ca = OpenSslApiWrapper::PemReadX509(fp, NULL, NULL, NULL);
+        fclose(fp);
+        if (CertVerify(ca) != ACC_OK) {
+            return ACC_ERROR;
+        }
         auto ret = OpenSslApiWrapper::SslCtxLoadVerifyLocations(sslCtx, caFile.c_str(), nullptr);
         SSL_LAYER_CHECK_RET(ret <= 0, "TLS load verify file failed");
     }

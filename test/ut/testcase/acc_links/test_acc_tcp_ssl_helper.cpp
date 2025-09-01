@@ -15,7 +15,6 @@
 #include "acc_common_util.h"
 #include "openssl_api_wrapper.h"
 #include "openssl_api_dl.cpp"
-#include "acc_tcp_client.h"
 #include "acc_tcp_worker.h"
 #include "acc_tcp_link_complex_default.h"
 #include "acc_tcp_ssl_helper.h"
@@ -534,35 +533,6 @@ void TestAccTcpSslClient::TearDown()
     mServer->Stop();
     g_rankLinkMap.clear();
     GlobalMockObject::verify();
-}
-
-
-// *********************************TEST_F*************************
-TEST_F(TestAccTcpSslClient, test_client_connect_send_should_return_ok)
-{
-    AccConnReq req{};
-    req.rankId = 0;
-    req.magic = 0;
-    req.version = 1;
-    AccTcpClientPtr mClient = AccTcpClient::Create("127.0.0.1", 8100);
-    ASSERT_TRUE(mClient != nullptr);
-
-    std::string certPath;
-    GetCertPath(certPath);
-    AccTlsOption tlsOption;
-    tlsOption.enableTls = false;
-    mClient->SetSslOption(tlsOption);
-
-    int32_t result = mClient->Connect(req);
-    ASSERT_EQ(ACC_OK, result);
-
-    char buf[BUFF_SIZE];
-    bzero(buf, BUFF_SIZE);
-    uint8_t *data = reinterpret_cast<uint8_t *>(buf);
-    result = mClient->Send(TTP_OP_HEARTBEAT_SEND, data, BUFF_SIZE);
-    ASSERT_EQ(ACC_OK, result);
-    sleep(1);
-    mClient->Disconnect();
 }
 
 // **********************************************************

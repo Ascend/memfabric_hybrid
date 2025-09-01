@@ -13,7 +13,6 @@ namespace mf {
 class Func {
 public:
     static uint64_t MakeObjectMagic(uint64_t srcAddress);
-    static uint64_t ValidateObjectMagic(void *ptr, uint64_t magic);
 
 private:
     const static uint64_t gMagicBits = 0xFFFFFFFFFF; /* get lower 40bits */
@@ -22,12 +21,6 @@ private:
 inline uint64_t Func::MakeObjectMagic(uint64_t srcAddress)
 {
     return (srcAddress & gMagicBits) + UN40;
-}
-
-inline uint64_t Func::ValidateObjectMagic(void *ptr, uint64_t magic)
-{
-    auto tmp = reinterpret_cast<uint64_t>(ptr);
-    return magic == ((tmp & gMagicBits) + UN40);
 }
 }
 }

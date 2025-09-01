@@ -15,9 +15,17 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+bool RdmaTransportManager::tsdOpened_ = false;
+bool RdmaTransportManager::deviceIpRetired_ = false;
+bool RdmaTransportManager::raInitialized_ = false;
+void* RdmaTransportManager::storedRdmaHandle_ = nullptr;
+
 RdmaTransportManager::~RdmaTransportManager()
 {
     ClearAllRegisterMRs();
+    tsdOpened_ = false;
+    raInitialized_ = false;
+    deviceIpRetired_ = false;
 }
 
 Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
@@ -307,6 +315,18 @@ Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
 
 bool RdmaTransportManager::PrepareOpenDevice(uint32_t device, uint32_t rankCount, in_addr &deviceIp, void *&rdmaHandle)
 {
+    // If can get rdmaHanle, maybe the device has beed opened, can try get rdmaHanle directly.
+    if (DlHccpApi::RaRdevGetHandle(device, rdmaHandle) == 0) {
+        if (rdmaHandle != nullptr) {
+            if (!RetireDeviceIp(device, deviceIp)) {
+                BM_LOG_ERROR("RetireDeviceIp failed.");
+                return false;
+            }
+            BM_LOG_DEBUG("Had prepared device and get rdmaHandle success.");
+            return true;
+        }
+        BM_LOG_INFO("Had prepared device, but RdmaHadle is null, need init again.");
+    }
     if (!OpenTsd(device, rankCount)) {
         BM_LOG_ERROR("open tsd failed.");
         return false;
@@ -326,14 +346,12 @@ bool RdmaTransportManager::PrepareOpenDevice(uint32_t device, uint32_t rankCount
         BM_LOG_ERROR("RaRdevInit failed.");
         return false;
     }
-
     return true;
 }
 
 bool RdmaTransportManager::OpenTsd(uint32_t deviceId, uint32_t rankCount)
 {
-    static bool tsdOpened = false;
-    if (tsdOpened) {
+    if (tsdOpened_) {
         BM_LOG_INFO("tsd already opened.");
         return true;
     }
@@ -345,14 +363,13 @@ bool RdmaTransportManager::OpenTsd(uint32_t deviceId, uint32_t rankCount)
     }
 
     BM_LOG_DEBUG("open tsd for device id: " << deviceId << ", rank count: " << rankCount << " success.");
-    tsdOpened = true;
+    tsdOpened_ = true;
     return true;
 }
 
 bool RdmaTransportManager::RaInit(uint32_t deviceId)
 {
-    static bool raInitialized = false;
-    if (raInitialized) {
+    if (raInitialized_) {
         BM_LOG_INFO("ra already initialized.");
         return true;
     }
@@ -369,16 +386,15 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
     }
 
     BM_LOG_DEBUG("ra init for device id: " << deviceId << " success.");
-    raInitialized = true;
+    raInitialized_ = true;
     return true;
 }
 
 bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
 {
-    static bool deviceIpRetired = false;
     static in_addr retiredIp{};
 
-    if (deviceIpRetired) {
+    if (deviceIpRetired_) {
         BM_LOG_INFO("device ip already retired : " << inet_ntoa(retiredIp));
         deviceIp = retiredIp;
         return true;
@@ -408,7 +424,7 @@ bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
     for (auto &info : infos) {
         if (info.family == AF_INET) {
             deviceIp = retiredIp = info.ifaddr.ip.addr;
-            deviceIpRetired = true;
+            deviceIpRetired_ = true;
             BM_LOG_DEBUG("retire device ip success : " << inet_ntoa(deviceIp));
             return true;
         }
@@ -420,10 +436,9 @@ bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
 
 bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle)
 {
-    static void *storedRdmaHandle = nullptr;
-    if (storedRdmaHandle != nullptr) {
+    if (storedRdmaHandle_ != nullptr) {
         BM_LOG_INFO("ra rdev already initialized.");
-        rdmaHandle = storedRdmaHandle;
+        rdmaHandle = storedRdmaHandle_;
         return true;
     }
 
@@ -443,7 +458,7 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
         return false;
     }
 
-    storedRdmaHandle = rdmaHandle;
+    storedRdmaHandle_ = rdmaHandle;
     BM_LOG_INFO("initialize RDev success.");
     return true;
 }
