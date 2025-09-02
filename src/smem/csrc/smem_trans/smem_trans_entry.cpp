@@ -77,7 +77,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
     config_ = config;
     auto options = GenerateHybmOptions();
     options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA);
-    if (config.dataOpType & SMEMB_DATA_OP_SDMA) {
+    if (config.dataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
