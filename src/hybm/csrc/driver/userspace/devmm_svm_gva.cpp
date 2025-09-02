@@ -245,7 +245,7 @@ static void PrimaryHeapModuleMemStatsInc(struct DevVirtComHeap *heap,
     type.page_type = pageType;
     type.phy_memtype = phyMemtype;
     if (heap->heap_sub_type != SUB_RESERVE_TYPE) {
-        if (HybmGetGvaVersion() == HYBM_GVA_V2) {
+        if (HybmGetGvaVersion() == HYBM_GVA_V3) {
             DlHalApi::HalSvmModuleAllocedSizeInc((void *)&type, devid, moduleId, size);
         }
         heap->module_id = moduleId;
@@ -353,10 +353,10 @@ static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *
     return 0;
 }
 
-static uint64_t VirtAllocGvaMemInner(DevVirtHeapMgmt *mgmt, uint64_t bytesize, uint32_t advise, uint64_t allocPtr)
+static uint64_t VirtAllocGvaMemInnerCommon(struct DevVirtComHeap *heap, uint64_t bytesize,
+                                           uint32_t advise, uint64_t allocPtr)
 {
     uint64_t va = ALIGN_DOWN(allocPtr, DEVMM_HEAP_SIZE);
-    struct DevVirtComHeap *heap = &mgmt->heap_queue.base_heap;
     struct DevRbtreeNode *node = nullptr;
     uint32_t memtype = DEVMM_MEM_NORMAL;
     uint64_t allocSize;
@@ -393,11 +393,29 @@ alloc_out:
     return va;
 }
 
+static uint64_t VirtAllocGvaMemInner(DevVirtHeapMgmt *mgmt, uint64_t bytesize, uint32_t advise, uint64_t allocPtr)
+{
+    if (mgmt == nullptr) {
+        BM_LOG_ERROR("Invalid mgmt pointer for V1 alloc");
+        return 1;
+    }
+    return VirtAllocGvaMemInnerCommon(&mgmt->heap_queue.base_heap, bytesize, advise, allocPtr);
+}
+
+static uint64_t VirtAllocGvaMemInnerV2(DevVirtHeapMgmtV2 *mgmt, uint64_t bytesize, uint32_t advise, uint64_t allocPtr)
+{
+    if (mgmt == nullptr) {
+        BM_LOG_ERROR("Invalid mgmt pointer for V2 alloc");
+        return 1;
+    }
+    return VirtAllocGvaMemInnerCommon(&mgmt->heap_queue.base_heap, bytesize, advise, allocPtr);
+}
+
 static int32_t VirtDestroyHeap(void *mgmt, void *heap)
 {
     if (HybmGetGvaVersion() == HYBM_GVA_V1) {
         return DlHalApi::HalVirtDestroyHeapV1(mgmt, heap);
-    } else if (HybmGetGvaVersion() == HYBM_GVA_V2) {
+    } else if (HybmGetGvaVersion() == HYBM_GVA_V2 or HybmGetGvaVersion() == HYBM_GVA_V3) {
         return DlHalApi::HalVirtDestroyHeapV2(mgmt, heap, true);
     } else {
         return 0;
@@ -415,6 +433,8 @@ static uint64_t VirtAllocGvaMem(void *mgmt, uint64_t allocPtr,
 
     if (HybmGetGvaVersion() == HYBM_GVA_V1) {
         retPtr = VirtAllocGvaMemInner((DevVirtHeapMgmt *) mgmt, allocSize, 0, allocPtr);
+    } else if (HybmGetGvaVersion() == HYBM_GVA_V2) {
+        retPtr = VirtAllocGvaMemInnerV2((DevVirtHeapMgmtV2 *) mgmt, allocSize, 0, allocPtr);
     } else {
         retPtr = DlHalApi::HalVirtAllocMemFromBase(mgmt, allocSize, 0, allocPtr);
     }

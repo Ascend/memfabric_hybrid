@@ -236,6 +236,7 @@ void SmemStoreHelper::FindNewRemoteSlices(const FindSlicesCbFunc &cb) noexcept
         storeSs[i] = (const StoredSliceInfo *)(const void *)(values.data() + itemOffsetBytes);
         std::copy_n(values.data() + itemOffsetBytes + sizeof(StoredSliceInfo), sliceExpSize_, deltaInfo[i].desc);
         deltaInfo[i].descLen = sliceExpSize_;
+        itemOffsetBytes += (sliceExpSize_ + sizeof(StoredSliceInfo));
     }
 
     ret = cb(deltaInfo, storeSs);

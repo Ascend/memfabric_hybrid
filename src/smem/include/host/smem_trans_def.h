@@ -6,6 +6,7 @@
 #define MF_HYBRID_SMEM_TRANS_DEF_H
 
 #include <stdint.h>
+#include "smem_bm_def.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +33,7 @@ typedef struct {
     uint32_t initTimeout;   /* func timeout, default 120 seconds */
     uint32_t deviceId;      /* npu device id */
     uint32_t flags;         /* optional flags */
+    smem_bm_data_op_type dataOpType;  /* data operation type */
 } smem_trans_config_t;
 
 #ifdef __cplusplus

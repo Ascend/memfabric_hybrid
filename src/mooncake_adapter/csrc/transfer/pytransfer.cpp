@@ -25,7 +25,8 @@ TransferAdapterPy::TransferAdapterPy() {
 TransferAdapterPy::~TransferAdapterPy() {
 }
 
-int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId)
+int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
+                                  TransDataOpType dataOpType)
 {
     const std::chrono::seconds WAIT_TIME(10);
     if (strcmp(role, "Prefill") != 0 && strcmp(role, "Decode") != 0) {
@@ -41,6 +42,7 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
     }
     config.role = (strcmp(role, "Prefill") == 0) ? SMEM_TRANS_SENDER : SMEM_TRANS_RECEIVER;
     config.deviceId = deviceId;
+    config.dataOpType = static_cast<smem_bm_data_op_type>(dataOpType);
     ret = smem_trans_init(&config);
     if (ret != 0) {
         ADAPTER_LOG_ERROR("Failed to init smem_trans, ret=" << ret);
@@ -188,6 +190,10 @@ PYBIND11_MODULE(_pymf_transfer, m) {
     transfer_opcode.value("Read", TransferAdapterPy::TransferOpcode::READ)
         .value("Write", TransferAdapterPy::TransferOpcode::WRITE)
         .export_values();
+    py::enum_<TransferAdapterPy::TransDataOpType> transfer_type(m, "TransDataOpType", py::arithmetic());
+    transfer_type.value("SDMA", TransferAdapterPy::TransDataOpType::SDMA)
+        .value("DEVICE_RDMA", TransferAdapterPy::TransDataOpType::DEVICE_RDMA)
+        .export_values();
 
     DefineAdapterFunctions(m);
 
@@ -195,7 +201,8 @@ PYBIND11_MODULE(_pymf_transfer, m) {
         py::class_<TransferAdapterPy>(m, "TransferEngine")
             .def(py::init<>())
             .def("initialize", &TransferAdapterPy::Initialize, py::call_guard<py::gil_scoped_release>(),
-                 py::arg("store_url"), py::arg("session_id"), py::arg("role"), py::arg("device_id"))
+                 py::arg("store_url"), py::arg("session_id"), py::arg("role"), py::arg("device_id"),
+                 py::arg("data_op_type") = TransferAdapterPy::TransDataOpType::SDMA)
             .def("get_rpc_port", &TransferAdapterPy::GetRpcPort, py::call_guard<py::gil_scoped_release>())
             .def("transfer_sync_write", &TransferAdapterPy::TransferSyncWrite, py::call_guard<py::gil_scoped_release>(),
                  py::arg("dest_session"), py::arg("buffer"), py::arg("peer_buffer"), py::arg("length"))
@@ -212,4 +219,5 @@ PYBIND11_MODULE(_pymf_transfer, m) {
             .def("unInitialize", &TransferAdapterPy::UnInitialize, py::call_guard<py::gil_scoped_release>());
 
     adaptor_cls.attr("TransferOpcode") = transfer_opcode;
+    adaptor_cls.attr("TransDataOpType") = transfer_type;
 }

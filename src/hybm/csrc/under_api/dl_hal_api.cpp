@@ -80,8 +80,13 @@ Result DlHalApi::LoadLibrary()
                 "devmm_virt_normal_heap_update_info");
     DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
 
-    if (HybmGetGvaVersion() == HYBM_GVA_V1) {
-        DL_LOAD_SYM(pVirtDestroyHeapV1, halVirtDestroyHeapV1Func, halHandle, "devmm_virt_destroy_heap");
+    if (HybmGetGvaVersion() == HYBM_GVA_V1 or HybmGetGvaVersion() == HYBM_GVA_V2) {
+        if (HybmGetGvaVersion() == HYBM_GVA_V1) {
+            DL_LOAD_SYM(pVirtDestroyHeapV1, halVirtDestroyHeapV1Func, halHandle, "devmm_virt_destroy_heap");
+        } else {
+            DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle,
+                        "svm_module_alloced_size_inc");
+        }
         DL_LOAD_SYM(pAssignNodeData, halAssignNodeDataFunc, halHandle, "devmm_assign_rbtree_node_data");
         DL_LOAD_SYM(pInsertIdleSizeTree, halInsertIdleSizeTreeFunc, halHandle,
                     "devmm_rbtree_insert_idle_size_tree");
@@ -98,7 +103,7 @@ Result DlHalApi::LoadLibrary()
         DL_LOAD_SYM(pInsertAllocedTree, halInsertAllocedTreeFunc, halHandle,
                     "devmm_rbtree_insert_alloced_tree");
         DL_LOAD_SYM(pFreeRbtreeNode, halFreeRbtreeNodeFunc, halHandle, "devmm_free_rbtree_node");
-    } else { // HYBM_GVA_V2
+    } else { // HYBM_GVA_V3
         DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle, "svm_module_alloced_size_inc");
         DL_LOAD_SYM(pVirtDestroyHeapV2, halVirtDestroyHeapV2Func, halHandle, "devmm_virt_destroy_heap");
     }

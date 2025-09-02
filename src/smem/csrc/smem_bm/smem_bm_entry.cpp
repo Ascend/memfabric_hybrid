@@ -314,7 +314,6 @@ bool SmemBmEntry::AddressInRange(const void *address, uint64_t size)
     if (address < gva_) {
         return false;
     }
-
     auto totalSize = coreOptions_.singleRankVASpace * coreOptions_.rankCount;
     if ((const uint8_t *)address + size >= (const uint8_t *)gva_ + totalSize) {
         return false;

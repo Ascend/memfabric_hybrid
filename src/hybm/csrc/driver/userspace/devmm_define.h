@@ -34,6 +34,7 @@
 #define DEVMM_HEAP_CHUNK_PAGE (0xEFEF0003UL)   // page_size is exchanged svm page_size
 
 #define DEVMM_MAX_PHY_DEVICE_NUM 64
+const int SVM_MAX_AGENT_NUM = 65;
 
 #ifndef ALIGN_DOWN
 #define ALIGN_DOWN(val, al) ((val) & ~((al) - 1))
@@ -261,6 +262,42 @@ struct DevVirtHeapMgmt {
     bool host_support_pin_user_pages_interface;
     bool support_host_rw_dev_ro;
     uint64_t double_pgtable_offset[DEVMM_MAX_PHY_DEVICE_NUM];
+
+    struct DHeapQueue heap_queue;
+    struct DevHeapList huge_list[HEAP_MAX_LIST][SUB_MAX_TYPE][DEVMM_MEM_TYPE_MAX];
+    struct DevHeapList normal_list[HEAP_MAX_LIST][SUB_MAX_TYPE][DEVMM_MEM_TYPE_MAX];
+};
+
+struct DevVirtHeapMgmtV2 {
+    uint32_t inited;
+    pid_t pid;
+
+    uint64_t max_conti_size; /* eq heap size */
+
+    uint64_t start; /* svm page_size aligned */
+    uint64_t end;   /* svm page_size aligned */
+
+    uint64_t dvpp_start;  /* dvpp vaddr start */
+    uint64_t dvpp_end;    /* dvpp vaddr end */
+    uint64_t dvpp_mem_size[DEVMM_MAX_PHY_DEVICE_NUM];
+
+    uint64_t read_only_start;  /* read vaddr start */
+    uint64_t read_only_end;    /* read vaddr end */
+
+    uint32_t svm_page_size;
+    uint32_t local_page_size;
+    uint32_t huge_page_size;
+    bool support_bar_mem[DEVMM_MAX_PHY_DEVICE_NUM];
+    bool support_dev_read_only[DEVMM_MAX_PHY_DEVICE_NUM];
+    bool support_dev_mem_map_host[DEVMM_MAX_PHY_DEVICE_NUM];
+    bool support_bar_huge_mem[DEVMM_MAX_PHY_DEVICE_NUM];
+    bool host_support_pin_user_pages_interface;
+    bool support_host_rw_dev_ro;
+    uint64_t double_pgtable_offset[DEVMM_MAX_PHY_DEVICE_NUM];
+
+    bool support_host_pin_pre_register;
+    bool support_host_mem_pool;
+    bool is_dev_inited[SVM_MAX_AGENT_NUM];
 
     struct DHeapQueue heap_queue;
     struct DevHeapList huge_list[HEAP_MAX_LIST][SUB_MAX_TYPE][DEVMM_MEM_TYPE_MAX];

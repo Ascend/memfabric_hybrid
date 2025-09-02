@@ -518,6 +518,7 @@ typedef void *HcclComm;
 enum HybmGvaVersion : uint32_t {
     HYBM_GVA_V1 = 0,
     HYBM_GVA_V2 = 1,
+    HYBM_GVA_V3 = 2,
     HYBM_GVA_UNKNOWN
 };
 

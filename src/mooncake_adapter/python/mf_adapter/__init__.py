@@ -13,7 +13,7 @@ for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
     ctypes.CDLL(lib)
 
 
-from _pymf_transfer import TransferEngine, set_log_level, create_config_store
+from _pymf_transfer import TransferEngine, set_log_level, create_config_store, set_conf_store_tls
 
 
-__all__ = ['TransferEngine', 'set_log_level', 'create_config_store']
+__all__ = ['TransferEngine', 'set_log_level', 'create_config_store', 'set_conf_store_tls']

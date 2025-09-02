@@ -76,6 +76,11 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 
     config_ = config;
     auto options = GenerateHybmOptions();
+    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA);
+    if (config.dataOpType & SMEMB_DATA_OP_SDMA) {
+        auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
+        options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
+    }
     entity_ = hybm_create_entity(entityId_, &options, 0);
     SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
 
@@ -391,7 +396,6 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     hybm_options options;
     options.bmType = HYBM_TYPE_HOST_INITIATE;
     options.memType = HYBM_MEM_TYPE_DEVICE;
-    options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_SDMA);
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = 512U;
     options.rankId = rankId_;

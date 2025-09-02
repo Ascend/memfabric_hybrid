@@ -21,7 +21,8 @@
 using namespace ock::mf;
 
 namespace {
-const std::string DRIVER_VER_V2 = "V100R001C21B035";
+const std::string DRIVER_VER_V3 = "V100R001C21B035";
+const std::string DRIVER_VER_V2 = "V100R001C19SPC109B220";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
 
 static uint64_t g_baseAddr = 0ULL;
@@ -205,6 +206,10 @@ static bool DriverVersionCheck(const std::string &ver)
 
 int32_t HalGvaPrecheck(void)
 {
+    if (DriverVersionCheck(DRIVER_VER_V3)) {
+        checkVer = HYBM_GVA_V3;
+        return BM_OK;
+    }
     if (DriverVersionCheck(DRIVER_VER_V2)) {
         checkVer = HYBM_GVA_V2;
         return BM_OK;
