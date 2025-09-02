@@ -33,7 +33,7 @@ spec:
               name: meta
           env:
             - name: LD_LIBRARY_PATH
-              value: "/usr/local/python3.11/lib:$(LD_LIBRARY_PATH)"
+              value: "/usr/local/python3.11/lib:/usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/lib64:$(LD_LIBRARY_PATH)"
             - name: MMC_META_CONFIG_PATH
               value: /home/meta/config/mmc-meta.conf
             - name: META_POD_NAME

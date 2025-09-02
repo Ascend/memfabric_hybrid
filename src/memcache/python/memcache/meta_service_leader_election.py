@@ -12,7 +12,7 @@ from kubernetes.client.rest import ApiException
 
 class MmcLogger:
     def __init__(self):
-        self.lib_ = cdll.LoadLibrary("libmmc_leader.so")
+        self.lib_ = cdll.LoadLibrary("libmf_memcache.so")
 
     def log(self, level: int, msg: str):
         self.lib_.mmc_logger(level, msg.encode('utf-8'))

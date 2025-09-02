@@ -279,14 +279,14 @@ function install_to_path()
         print "WARNING" "not found mf_smem package for python-${python_version}, skip install wheel."
         return
     fi
-    pymmc=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "pymmc-${version1}-cp${python_version}*")
-    if [ -z "${pymmc}" ]; then
-        print "WARNING" "not found pymmc package for python-${python_version}, skip install wheel."
+    memcache=$(find "${install_dir}"/"${pkg_arch}"-"${os1}"/wheel -name "memcache-${version1}-cp${python_version}*")
+    if [ -z "${memcache}" ]; then
+        print "WARNING" "not found memcache package for python-${python_version}, skip install wheel."
         return
     fi
 
     pip3 install "${mf_smem}" --force-reinstall
-    pip3 install "${pymmc}" --force-reinstall
+    pip3 install "${memcache}" --force-reinstall
 }
 
 function generate_set_env()

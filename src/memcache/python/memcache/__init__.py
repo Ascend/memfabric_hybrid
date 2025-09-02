@@ -2,6 +2,8 @@
 # coding=utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
 
+__all__ = ['SliceBuffer', 'DistributedObjectStore', 'KeyInfo', 'start_meta_service']
+
 import os
 import sys
 import ctypes
@@ -14,6 +16,5 @@ lib_list = ['libhybm_gvm.so', 'libmf_hybm_core.so', 'libmf_smem.so', 'libmf_memc
 for lib_source in lib_list:
     ctypes.CDLL(os.path.join(lib_dir, lib_source))
 
-from _pymmc import SliceBuffer, DistributedObjectStore, KeyInfo
-
-__all__ = ['SliceBuffer', 'DistributedObjectStore', 'KeyInfo']
+from _pymmc import SliceBuffer, DistributedObjectStore, KeyInfo, start_meta_service
+from .meta_service_leader_election import MetaServiceLeaderElection

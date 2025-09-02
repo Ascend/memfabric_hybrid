@@ -5,7 +5,7 @@ import torch
 import uuid
 import acl
 from enum import Enum
-from pymmc import DistributedObjectStore
+from memcache import DistributedObjectStore
 
 """
 This py is used for testing leader election in k8s cluster

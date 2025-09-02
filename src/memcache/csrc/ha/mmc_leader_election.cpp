@@ -8,7 +8,7 @@
 
 namespace ock {
 namespace mmc {
-std::string g_defaultMemCacheWhlName = "meta_service_leader_election";
+std::string g_defaultMemCacheWhlName = "memcache";
 constexpr uint32_t LEASE_RETRY_PERIOD = 3;
 
 MmcMetaServiceLeaderElection::MmcMetaServiceLeaderElection(
@@ -16,7 +16,7 @@ MmcMetaServiceLeaderElection::MmcMetaServiceLeaderElection(
     : name_(name), podName_(pod), leaseName_(lease), ns_(ns)
 {}
 
-Result MmcMetaServiceLeaderElection::Start()
+Result MmcMetaServiceLeaderElection::Start(const mmc_meta_service_config_t &options)
 {
     try {
         if (running_) {
@@ -36,7 +36,8 @@ Result MmcMetaServiceLeaderElection::Start()
 
         pybind11::object metaServiceLeaderElection = modelModule.attr("MetaServiceLeaderElection");
         leaderElection_ =
-            metaServiceLeaderElection(this->leaseName_, this->ns_, this->podName_, LEASE_RETRY_PERIOD, 1, "");
+            metaServiceLeaderElection(this->leaseName_, this->ns_, this->podName_, LEASE_RETRY_PERIOD,
+                options.logLevel, options.logPath);
         MMC_FALSE_ERROR(!leaderElection_.is_none(),
                         "Can not start election before MetaServiceLeaderElection initialized");
         MMC_FALSE_ERROR(pybind11::hasattr(leaderElection_, "update_lease"),
@@ -93,8 +94,8 @@ void MmcMetaServiceLeaderElection::ElectionLoop()
 
 void MmcMetaServiceLeaderElection::CheckLeaderStatus()
 {
-    pybind11::object result = leaderElection_.attr("check_leader_status")();
-    std::string currentLeader = result.cast<std::string>();
+    pybind11::object leaderResult = leaderElection_.attr("check_leader_status")();
+    std::string currentLeader = leaderResult.cast<std::string>();
     if (currentLeader == this->podName_) {
         if (!this->isLeader_) {
             MMC_LOG_WARN("Pod " << this->podName_ << " became the leader");

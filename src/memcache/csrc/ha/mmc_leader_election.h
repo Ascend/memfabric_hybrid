@@ -9,8 +9,6 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
-#include <pybind11/embed.h>
-#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 #include "mmc_types.h"
@@ -26,7 +24,7 @@ public:
 
     ~MmcMetaServiceLeaderElection();
 
-    Result Start();
+    Result Start(const mmc_meta_service_config_t &options);
 
     void Stop();
 

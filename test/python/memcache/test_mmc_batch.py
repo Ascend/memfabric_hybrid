@@ -1,7 +1,7 @@
 import time
 import unittest
 
-from pymmc import DistributedObjectStore
+from memcache import DistributedObjectStore
 
 
 class TestExample(unittest.TestCase):

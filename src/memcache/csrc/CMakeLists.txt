@@ -9,6 +9,7 @@ include_directories(
         ${PROJECT_MMC_SRC_BASE}/csrc/client
         ${PROJECT_MMC_SRC_BASE}/csrc/local_service
         ${PROJECT_MMC_SRC_BASE}/csrc/entities
+        ${PROJECT_MMC_SRC_BASE}/csrc/ha
         ${PROJECT_MMC_SRC_BASE}/csrc/meta_service
         ${PROJECT_MMC_SRC_BASE}/csrc/log
         ${PROJECT_MMC_SRC_BASE}/csrc/net
@@ -35,6 +36,7 @@ set(MMC_SRC_COMMON "")
 set(MMC_SRC_CLIENT "")
 set(MMC_SRC_LOCAL_SERVICE "")
 set(MMC_SRC_ENTITIES "")
+set(MMC_SRC_HA "")
 set(MMC_SRC_META_SERVICE "")
 set(MMC_SRC_NET "")
 set(MMC_SRC_PROTO "")
@@ -46,6 +48,7 @@ aux_source_directory(config MMC_SRC_CONFIG)
 aux_source_directory(client MMC_SRC_CLIENT)
 aux_source_directory(local_service MMC_SRC_LOCAL_SERVICE)
 aux_source_directory(entities MMC_SRC_ENTITIES)
+aux_source_directory(ha MMC_SRC_HA)
 aux_source_directory(meta_service MMC_SRC_META_SERVICE)
 aux_source_directory(net MMC_SRC_NET)
 aux_source_directory(log MMC_SRC_LOG)
@@ -59,6 +62,7 @@ set(PLATFORM_SRC ${MMC_SRC_COMMON}
         ${MMC_SRC_CLIENT}
         ${MMC_SRC_LOCAL_SERVICE}
         ${MMC_SRC_ENTITIES}
+        ${MMC_SRC_HA}
         ${MMC_SRC_META_SERVICE}
         ${MMC_SRC_NET}
         ${MMC_SRC_LOG}
@@ -80,11 +84,9 @@ target_link_directories(mmc_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/
 target_link_libraries(mmc_static PUBLIC pthread libacc_tcp_net.a)
 target_link_directories(mmc_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib)
 target_link_directories(mmc_static PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib64)
-
 if(BUILD_PYTHON STREQUAL "ON")
-target_link_libraries(mmc_static PRIVATE pybind11::module Python3::Python)
+    target_link_libraries(mmc_static PRIVATE pybind11::module Python3::Python)
 endif()
-
 if (x${CMAKE_BUILD_TYPE} STREQUAL "xDEBUG")
     target_link_libraries(mmc_static PUBLIC pthread libspdlogd.a)
 else (

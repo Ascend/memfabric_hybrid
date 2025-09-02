@@ -45,7 +45,7 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
         return MMC_INVALID_PARAM;
     }
 
-    mmc_local_service_config_t localServiceConfig;
+    mmc_local_service_config_t localServiceConfig{};
     localServiceConfig.deviceId = config.deviceId;
     g_clientConfig->GetLocalServiceConfig(localServiceConfig);
     MMC_VALIDATE_RETURN(g_clientConfig->ValidateLocalServiceConfig(localServiceConfig) == MMC_OK,
@@ -56,7 +56,7 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
     g_localService = mmcs_local_service_start(&localServiceConfig);
     MMC_VALIDATE_RETURN(g_localService != nullptr, "failed to create or start local service", MMC_ERROR);
 
-    mmc_client_config_t clientConfig;
+    mmc_client_config_t clientConfig{};
     g_clientConfig->GetClientConfig(clientConfig);
     clientConfig.logFunc = nullptr;
     auto ret = mmcc_init(&clientConfig);

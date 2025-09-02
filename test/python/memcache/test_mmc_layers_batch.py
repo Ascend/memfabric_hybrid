@@ -4,7 +4,7 @@ import unittest
 import torch
 import torch_npu
 
-from pymmc import DistributedObjectStore
+from memcache import DistributedObjectStore
 
 
 class MmcDirect(Enum):

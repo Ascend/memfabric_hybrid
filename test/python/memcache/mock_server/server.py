@@ -16,7 +16,7 @@ from enum import Enum
 
 import torch
 
-from pymmc import DistributedObjectStore
+from memcache import DistributedObjectStore
 
 
 class MmcDirect(Enum):

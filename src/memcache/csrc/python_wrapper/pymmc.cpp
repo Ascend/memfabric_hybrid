@@ -11,8 +11,9 @@
 #include "mmc.h"
 #include "mmc_logger.h"
 #include "mmc_types.h"
-#include "smem_bm_def.h"
 #include "mmc_ptracer.h"
+#include "mmc_meta_service_process.h"
+#include "smem_bm_def.h"
 
 namespace py = pybind11;
 using namespace ock::mmc;
@@ -864,6 +865,12 @@ void DefineMmcStructModule(py::module_& m)
 
 PYBIND11_MODULE(_pymmc, m) {
     DefineMmcStructModule(m);
+
+    // Support starting the meta service from python
+    m.def("start_meta_service", []() {
+        return MmcMetaServiceProcess::getInstance().MainForPython();
+    }, "Start the meta service process directly. This is a blocking call.");
+
     // Define the SliceBuffer class
     py::class_<SliceBuffer, std::shared_ptr<SliceBuffer>>(m, "SliceBuffer",
                                                           py::buffer_protocol())

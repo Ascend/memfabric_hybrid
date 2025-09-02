@@ -65,14 +65,24 @@ chmod +x mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
 ```
 
 ##### 4. Run
-**1. Start MetaService**
+1. Start MetaService
+
+- Method 1: Start from executable file
+```shell
+source /usr/local/mxc/memfabric_hybrid/set_env.sh
+export MMC_META_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-meta.conf
+
+/usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/bin/mmc_meta_service
+```
+
+- Method 2: Start using a [Python script](test/python/memcache/test_mmc_meta_service.py)
 ```shell
 export MMC_META_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-meta.conf
 
-/usr/local/mxc/memfabric_hybrid/1.0.0/aarch64-linux/bin/mmc_meta_service
+python3 test_mmc_meta_service.py
 ```
 
-**2. Start LocalService&Client in a demo Python program**
+2. Start LocalService & Client in a demo [Python program](test/python/memcache/test_mmc_demo.py)
 ```shell
 export MMC_LOCAL_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-local.conf
 
