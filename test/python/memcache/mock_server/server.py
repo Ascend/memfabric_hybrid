@@ -344,7 +344,7 @@ class MmcTest(TestServer):
     def remove_batch(self, keys: list[str]):
         res = self._store.remove_batch(keys)
         self.cli_return(res)
-    
+
     @result_handler
     def get_key_info(self, key: str):
         res = self._store.get_key_info(key)
@@ -446,6 +446,11 @@ class MmcTest(TestServer):
         if ret != 0:
             raise RuntimeError("acl set device failed")
 
+    def sync_stream(self):
+        import torch_npu
+        torch_npu.npu.current_stream().synchronize()
+
+
     def malloc_tensor(self, layer_num: int = 1, mini_block_size: int = 1024, device='cpu'):
         if device not in ('cpu', 'npu'):
             raise RuntimeError(f"invalid device: {device}")
@@ -461,6 +466,8 @@ class MmcTest(TestServer):
             dtype=torch.uint8,
             device=torch.device(device)
         )
+        if device == 'npu':
+            self.sync_stream()
         return raw_blocks
 
 
