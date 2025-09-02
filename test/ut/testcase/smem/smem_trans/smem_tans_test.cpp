@@ -24,7 +24,7 @@ using namespace ock::mf;
 
 const int32_t UT_SMEM_ID = 1;
 const char STORE_URL[] = "tcp://127.0.0.1:5432";
-const char SESSION_ID[] = "127.0.0.1:5321";
+const char UNIQUE_ID[] = "127.0.0.1:5321";
 const smem_trans_config_t g_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
 
 class SmemTransTest : public testing::Test {
@@ -83,7 +83,7 @@ TEST_F(SmemTransTest, smem_trans_create_success)
             exit(2);
         }
 
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
+        auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
         if (handle == nullptr) {
             exit(3);
         }
@@ -104,23 +104,23 @@ TEST_F(SmemTransTest, smem_trans_create_success)
 TEST_F(SmemTransTest, smem_trans_create_failed_invalid_param)
 {
     // not initialized
-    EXPECT_EQ(smem_trans_create(nullptr, SESSION_ID, &g_trans_options), nullptr);
+    EXPECT_EQ(smem_trans_create(nullptr, UNIQUE_ID, &g_trans_options), nullptr);
 
     int ret = smem_trans_init(&g_trans_options);
     EXPECT_EQ(ret, 0);
 
     // storeUrl == nullptr
-    EXPECT_EQ(smem_trans_create(nullptr, SESSION_ID, &g_trans_options), nullptr);
+    EXPECT_EQ(smem_trans_create(nullptr, UNIQUE_ID, &g_trans_options), nullptr);
     // uniqueId == nullptr
     EXPECT_EQ(smem_trans_create(STORE_URL, nullptr, &g_trans_options), nullptr);
     // config == nullptr
-    EXPECT_EQ(smem_trans_create(STORE_URL, SESSION_ID, nullptr), nullptr);
+    EXPECT_EQ(smem_trans_create(STORE_URL, UNIQUE_ID, nullptr), nullptr);
 
     // storeUrl or uniqueId is empty
     const char STORE_URL_TEST1[] = "";
-    const char SESSION_ID_TEST[] = "";
-    EXPECT_EQ(smem_trans_create(STORE_URL_TEST1, SESSION_ID, &g_trans_options), nullptr);
-    EXPECT_EQ(smem_trans_create(STORE_URL, SESSION_ID_TEST, &g_trans_options), nullptr);
+    const char UNIQUE_ID_TEST[] = "";
+    EXPECT_EQ(smem_trans_create(STORE_URL_TEST1, UNIQUE_ID, &g_trans_options), nullptr);
+    EXPECT_EQ(smem_trans_create(STORE_URL, UNIQUE_ID_TEST, &g_trans_options), nullptr);
 }
 
 TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
@@ -138,7 +138,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
         // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
+        auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
 
         // handle = nullptr
         ret = smem_trans_register_mem(nullptr, address, size, 0);
@@ -173,7 +173,116 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
     EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
-TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
+TEST_F(SmemTransTest, smem_trans_write)
+{
+    MOCKER(MemSegmentDevice::SetDeviceInfo).stubs().will(returnValue(0));
+    setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
+
+    uint32_t rankSize = 2;
+    int* sender_buffer = new int[500];
+    int* recv_buffer = new int[500];
+    size_t capacities = 500 * sizeof(int);
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
+
+    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
+        std::vector<int*> addrPtrs, size_t capacities, const std::array<const char*, 2> unique_ids) {
+        int ret = smem_trans_init(&trans_options);
+        if (ret != 0) {
+            exit(1);
+        }
+        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
+        if (handle == nullptr) {
+            exit(2);
+        }
+
+        ret = smem_trans_register_mem(handle, addrPtrs[rank], capacities, 0);
+        if (ret != SM_OK) {
+            exit(3);
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(8));
+        if (rank == 0) {
+            ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities);
+            if (ret != SM_OK) {
+                exit(4);
+            }
+        }
+
+        ret = smem_trans_deregister_mem(handle, addrPtrs[rank]);
+        if (ret != SM_OK) {
+            exit(5);
+        }
+
+        smem_trans_destroy(handle, 0);
+        smem_trans_uninit(0);
+    };
+
+    const std::array<const char*, 2> unique_ids = {{
+        "127.0.0.1:5321",
+        "127.0.0.1:5322"
+    }};
+    std::vector<int*> addrPtrs = {sender_buffer, recv_buffer};
+    std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            smem_set_conf_store_tls(false, nullptr, 0);
+            if (i == 0) {
+                smem_create_config_store(STORE_URL);
+            }
+            func(i, rankSize, trans_options[i], addrPtrs, capacities, unique_ids);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
+                needKillOthers = true;
+                for (uint32_t j = 0; j < rankSize; ++j) {
+                    if (i != j && pids[j] > 0) {
+                        kill(pids[j], SIGKILL);
+                    }
+                }
+            }
+        } else {
+            needKillOthers = true;
+            for (uint32_t j = 0; j < rankSize; ++j) {
+                if (i != j && pids[j] > 0) {
+                    kill(pids[j], SIGKILL);
+                }
+            }
+        }
+    }
+    delete[] sender_buffer;
+    delete[] recv_buffer;
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write)
 {
     MOCKER(MemSegmentDevice::SetDeviceInfo).stubs().will(returnValue(0));
     setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
@@ -188,28 +297,37 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-        std::vector<void*> addrPtrs, std::vector<size_t> capacities, const char* session_id) {
+        std::vector<std::vector<void*>> addrPtrs, std::vector<size_t> capacities,
+        const std::array<const char*, 2> unique_ids) {
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
             exit(1);
         }
-        auto handle = smem_trans_create(STORE_URL, session_id, &trans_options);
+        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
         if (handle == nullptr) {
             exit(2);
         }
 
-        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 1, 0);
+        ret = smem_trans_batch_register_mem(handle, addrPtrs[rank].data(), capacities.data(), 1, 0);
         if (ret != SM_OK) {
             exit(3);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(8));
+        if (rank == 0) {
+            const void *srcAddr[] = {addrPtrs[0][0]};
+            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(),
+                capacities.data(), 1);
+            if (ret != SM_OK) {
+                exit(4);
+            }
+        }
 
         smem_trans_destroy(handle, 0);
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> session_ids = {{
+    const std::array<const char*, 2> unique_ids = {{
         "127.0.0.1:5321",
         "127.0.0.1:5322"
     }};
@@ -232,7 +350,7 @@ TEST_F(SmemTransTest, smem_trans_sender_receiver_register_mems)
             if (i == 0) {
                 smem_create_config_store(STORE_URL);
             }
-            func(i, rankSize, trans_options[i], addrPtrs[i], capacities, session_ids[i]);
+            func(i, rankSize, trans_options[i], addrPtrs, capacities, unique_ids);
             exit(0);
         }
     }
@@ -294,41 +412,41 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         EXPECT_EQ(ret, 0);
 
         // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &g_trans_options);
+        auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
 
         // handle = nullptr
-        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(),
+        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(),
             dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 2;
             goto cleanup;
         }
         // srcAddresses = nullptr
-        ret = smem_trans_batch_write(handle, nullptr, SESSION_ID, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, nullptr, UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 3;
             goto cleanup;
         }
-        // destSession = nullptr
+        // destUniqueId = nullptr
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 4;
             goto cleanup;
         }
         // destAddresses = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, nullptr, dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, nullptr, dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 5;
             goto cleanup;
         }
         // dataSizes = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(), nullptr, 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), nullptr, 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 6;
             goto cleanup;
         }
         // batchSize = 0
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), SESSION_ID, destAddrPtrs.data(), dataSizes.data(), 0);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 7;
             goto cleanup;
@@ -372,7 +490,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         EXPECT_EQ(ret, 0);
 
         // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL, SESSION_ID, &trans_options);
+        auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &trans_options);
 
         ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
         if (ret != SM_OK) {
