@@ -115,6 +115,7 @@ int32_t rtIpcDestroyMemoryName(const char *name)
 
 int32_t rtIpcOpenMemory(void **ptr, const char *name)
 {
+    *ptr = reinterpret_cast<void*>(0x3200);
     return RETURN_OK;
 }
 

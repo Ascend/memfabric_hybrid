@@ -15,10 +15,6 @@
 namespace ock {
 namespace mf {
 
-bool MemSegmentDevice::deviceInfoReady{false};
-int MemSegmentDevice::deviceId_{-1};
-uint32_t MemSegmentDevice::pid_{0};
-uint32_t MemSegmentDevice::sdid_{0};
 uint32_t MemSegmentDevice::serverId_{0};
 uint32_t MemSegmentDevice::superPodId_{0};
 

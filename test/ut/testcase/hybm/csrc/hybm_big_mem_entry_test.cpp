@@ -28,7 +28,7 @@ const hybm_options g_options = {
     0,
     true,
     HYBM_ROLE_PEER,
-    "tcp://127.0.0.1:10002"};
+    "10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }  // namespace
 

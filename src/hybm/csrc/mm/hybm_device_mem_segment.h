@@ -88,10 +88,6 @@ protected:
     std::map<uint16_t, HbmExportInfo> importMap_;
 
 protected:
-    static bool deviceInfoReady;
-    static int deviceId_;
-    static uint32_t pid_;
-    static uint32_t sdid_;
     static uint32_t serverId_;
     static uint32_t superPodId_;
 };
