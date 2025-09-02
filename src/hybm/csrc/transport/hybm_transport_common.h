@@ -89,13 +89,13 @@ struct TransportRankPrepareInfo {
         : nic{std::move(n)}, role{HYBM_ROLE_PEER}, memKeys{k} {}
 
     TransportRankPrepareInfo(std::string n, hybm_role_type r, TransportMemoryKey k)
-            : nic{std::move(n)}, role{r}, memKeys{k} {}
+        : nic{std::move(n)}, role{r}, memKeys{k} {}
 
     TransportRankPrepareInfo(std::string n, std::vector<TransportMemoryKey> ks)
         : nic{std::move(n)}, role{HYBM_ROLE_PEER}, memKeys{std::move(ks)} {}
 
     TransportRankPrepareInfo(std::string n, hybm_role_type r, std::vector<TransportMemoryKey> ks)
-            : nic{std::move(n)}, role{r}, memKeys{std::move(ks)} {}
+        : nic{std::move(n)}, role{r}, memKeys{std::move(ks)} {}
 
     friend std::ostream &operator<<(std::ostream &output, const TransportRankPrepareInfo &info)
     {

@@ -77,6 +77,8 @@ void SmemStoreHelper::SetSliceExportSize(size_t sliceExportSize) noexcept
 
 int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &rankId) noexcept
 {
+    const uint16_t BIT_SHIFT = 8;
+    const size_t RANK_ID_SIZE = 2;
     std::string key = AUTO_RANK_KEY_PREFIX + name_;
     std::vector<uint8_t> rankIdValue(2);
     auto ret = store_->Get(key, rankIdValue, 0);
@@ -92,7 +94,7 @@ int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &ra
 
         rankId = static_cast<uint16_t>(currentSize / sizeof(cfg)) - 1U;
         rankIdValue[0] = static_cast<uint8_t>(rankId & 0xff);
-        rankIdValue[1] = static_cast<uint8_t>(rankId >> 8);
+        rankIdValue[1] = static_cast<uint8_t>(rankId >> BIT_SHIFT);
         ret = store_->Set(key, rankIdValue);
         if (ret != SUCCESS) {
             SM_LOG_ERROR("set for key(" << key << ") failed: " << ret);
@@ -102,12 +104,12 @@ int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &ra
     }
 
     if (ret == SUCCESS) {
-        if (rankIdValue.size() != 2) {
+        if (rankIdValue.size() != RANK_ID_SIZE) {
             SM_LOG_ERROR("exist for key(" << key << ") value size = " << rankIdValue.size());
             return SM_ERROR;
         }
 
-        rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << 8));
+        rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << BIT_SHIFT));
         return SM_OK;
     }
 

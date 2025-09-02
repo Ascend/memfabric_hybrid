@@ -1,4 +1,5 @@
 #include "kernel_operator.h"
+#include "shm_all_shift.h"
 #include "smem_shm_aicore_base_api.h"
 
 constexpr int32_t RANK_SIZE_MAX = 32;

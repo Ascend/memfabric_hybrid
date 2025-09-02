@@ -355,8 +355,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* d
  */
 
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_quiet(uint32_t remoteRankId, uint32_t qpIdx,
-                                        AscendC::LocalTensor<uint64_t> ubLocal64,
-                                        AscendC::LocalTensor<uint32_t> ubLocal32)
+                                                AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                AscendC::LocalTensor<uint32_t> ubLocal32)
 {
     __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
                                                                 SMEM_SHM_DEVICE_GLOBAL_META_SIZE);

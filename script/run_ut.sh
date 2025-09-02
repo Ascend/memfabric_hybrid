@@ -26,7 +26,7 @@ rm -rf ${OUTPUT_PATH}
 mkdir -p ${BUILD_PATH}
 mkdir -p ${OUTPUT_PATH}
 
-set -ex
+set -e
 
 dos2unix "$MOCKCPP_PATH/include/mockcpp/JmpCode.h"
 dos2unix "$MOCKCPP_PATH/include/mockcpp/mockcpp.h"

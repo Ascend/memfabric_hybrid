@@ -251,7 +251,9 @@ int HostDataOpSDMA::CopyHost2Gva2d(hybm_copy_2d_params &params, void *stream) no
         return ret;
     }
 
-    ret = DlAclApi::AclrtMemcpy2d(copyDevice, params.width, params.src, params.spitch, params.width, params.height, ACL_MEMCPY_HOST_TO_DEVICE);
+    ret = DlAclApi::AclrtMemcpy2d(copyDevice, params.width, params.src,
+                                  params.spitch, params.width,
+                                  params.height, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
         BM_LOG_ERROR("copy2d host data to temp copy memory on local device failed: "
                      << ret << " spitch: " << params.spitch << " dpitch: " << params.width
@@ -329,7 +331,7 @@ int HostDataOpSDMA::CopyDevice2Gva2d(hybm_copy_2d_params &params, void *stream) 
             params.width, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
         if (asyncRet != 0) {
             BM_LOG_ERROR("copy2d memory on gva to device failed:: "
-                         << asyncRet << " dpitch: " << params.dpitch << " spitch: " << params.spitch 
+                         << asyncRet << " dpitch: " << params.dpitch << " spitch: " << params.spitch
                          << " width: " << params.width << " height:" << params.height);
             ret = asyncRet;
             break;

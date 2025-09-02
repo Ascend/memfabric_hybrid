@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import multiprocessing
 import logging
 import argparse
@@ -23,8 +24,10 @@ def generate_host_tensor(seed: int):
             t[i] = base
     return t
 
+
 def decrypt_handler_example(inputs):
     return inputs
+
 
 def extern_logger_example(level, msg):
     if level == 0:
@@ -37,6 +40,7 @@ def extern_logger_example(level, msg):
         logging.error(msg)
     else:
         logging.error("unknown level:{level} {msg}")
+
 
 def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool):
     ret = mf_smem.initialize()

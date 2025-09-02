@@ -442,6 +442,7 @@ int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
         return BM_OK;
     }
 
+    const uint32_t slevel = 4;
     std::vector<uint8_t> qpInfoBuffer(qpInfoSize_);
     auto copyInfo = (AiQpRMAQueueInfo *)(void *)qpInfoBuffer.data();
     copyInfo->count = 1;
@@ -476,8 +477,8 @@ int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
             return BM_ERROR;
         }
 
-        CopyAiWQInfo(copyInfo->sq[it->first], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 4);
-        CopyAiWQInfo(copyInfo->rq[it->first], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 4);
+        CopyAiWQInfo(copyInfo->sq[it->first], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, slevel);
+        CopyAiWQInfo(copyInfo->rq[it->first], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, slevel);
         CopyAiCQInfo(copyInfo->scq[it->first], pos->second.aiQpInfo.data_plane_info.scq, DBMode::HW_DB);
         CopyAiCQInfo(copyInfo->rcq[it->first], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }

@@ -11,9 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
-
-extern void shm_all_reduce_do(uint32_t coreDim, void *stream, uint8_t *gva, uint64_t spaceOffset,
-    uint64_t flagOffset, uint32_t rankId, uint32_t rankSize);
+#include "shm_all_reduce.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
@@ -21,7 +19,8 @@ static uint64_t gFlagOffset = 1024UL * 1024UL; // 前1M作为flag空间
 static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t);   // uint16_t represent half
 
 // FNV-1a 32-bit hash function
-uint32_t fnv1a_32(const void *data, size_t length) {
+uint32_t fnv1a_32(const void *data, size_t length)
+{
     const unsigned char *p = static_cast<const unsigned char *>(data);
     uint32_t hash = 0x811c9dc5; // FNV offset basis for 32-bit
 
@@ -34,9 +33,11 @@ uint32_t fnv1a_32(const void *data, size_t length) {
 }
 
 // 将哈希值转换为十六进制字符串表示
-std::string hashToHexString(uint32_t hash) {
+std::string hashToHexString(uint32_t hash)
+{
+    const int HASH_STRING_WIDTH = 8;
     std::ostringstream hexStream;
-    hexStream << std::hex << std::setw(8) << std::setfill('0') << hash;
+    hexStream << std::hex << std::setw(HASH_STRING_WIDTH) << std::setfill('0') << hash;
     return hexStream.str();
 }
 

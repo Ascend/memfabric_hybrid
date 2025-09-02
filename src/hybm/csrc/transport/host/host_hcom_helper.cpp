@@ -48,7 +48,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     return BM_OK;
 }
 
-Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol, 
+Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol,
     std::string &ipStr, int32_t &port)
 {
     std::smatch match;

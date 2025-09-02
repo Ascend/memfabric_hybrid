@@ -279,7 +279,7 @@ int main(int32_t argc, char* argv[])
     int rankStart = atoi(argv[3]);
     std::string ipport = argv[4];
     int autoRank = 0;
-    if (argc >5) autoRank = atoi(argv[5]);
+    if (argc > 5) autoRank = atoi(argv[5]);
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
         " input_ip:" << ipport << " autoRank:" << autoRank);

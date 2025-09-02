@@ -38,7 +38,6 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
         return nullptr;
     }
 
-
     hybm_options options;
     options.bmType = HYBM_TYPE_AI_CORE_INITIATE;
     options.memType = HYBM_MEM_TYPE_DEVICE;

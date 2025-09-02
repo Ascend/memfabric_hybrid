@@ -348,7 +348,7 @@ static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *
 
     NodeFlagSetValue(&treeNode->data.flag, DEVMM_NODE_MEMTYPE_SHIFT, DEVMM_NODE_MEMTYPE_WID, 0);
     treeNode->data.flag |= DEVMM_NODE_MAPPED_FLG;
-    heap->cur_alloc_cache_mem[memtype] += 
+    heap->cur_alloc_cache_mem[memtype] +=
         (treeNode->data.size <= heap->need_cache_thres[memtype]) ? treeNode->data.size : 0;
     (void)DlHalApi::HalInsertAllocedTree(treeNode, &heap->rbtree_queue);
     return 0;

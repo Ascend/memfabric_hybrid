@@ -308,7 +308,6 @@ HYBM_API void hybm_uninit()
     auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
     g_baseAddr = 0ULL;
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
-    //DlApi::CleanupLibrary();
     initialized = 0;
 }
 

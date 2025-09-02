@@ -350,23 +350,27 @@ public:
         return ACC_ERROR;
     }
 
-    Result NonBlockSend(int16_t msgType, uint32_t seqNo, const AccDataBufferPtr &d, const AccDataBufferPtr &cbCtx) override
+    Result NonBlockSend(int16_t msgType, uint32_t seqNo, const AccDataBufferPtr &d,
+                        const AccDataBufferPtr &cbCtx) override
     {
         LOG_DEBUG("Not support non-blocking send, msgType " << msgType << ", seqNo" << seqNo << ", dataBuffer "
             << d.Get() << ", cbCtx " << cbCtx.Get());
         return ACC_ERROR;
     }
 
-    Result NonBlockSend(int16_t msgType, int16_t opCode, uint32_t seqNo, const AccDataBufferPtr &d, const AccDataBufferPtr &cbCtx) override
+    Result NonBlockSend(int16_t msgType, int16_t opCode, uint32_t seqNo,
+                        const AccDataBufferPtr &d, const AccDataBufferPtr &cbCtx) override
     {
         LOG_DEBUG("Not support non-blocking send, msgType " << msgType << ", opCode " << opCode<<", seqNo" << seqNo
             << ", dataBuffer " << d.Get() << ", cbCtx " << cbCtx.Get());
         return ACC_ERROR;
     }
 
-    Result EnqueueAndModifyEpoll(const AccMsgHeader &h, const AccDataBufferPtr &d, const AccDataBufferPtr &cbCtx) override
+    Result EnqueueAndModifyEpoll(const AccMsgHeader &h, const AccDataBufferPtr &d,
+                                 const AccDataBufferPtr &cbCtx) override
     {
-        LOG_DEBUG("Not support non-blocking send, header " << h.ToString() << ", dataBuffer " << d.Get() << ", cbCtx " << cbCtx.Get());
+        LOG_DEBUG("Not support non-blocking send, header " << h.ToString()
+            << ", dataBuffer " << d.Get() << ", cbCtx " << cbCtx.Get());
         return ACC_ERROR;
     }
 

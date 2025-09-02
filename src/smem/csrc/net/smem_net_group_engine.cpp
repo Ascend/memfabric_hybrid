@@ -34,7 +34,7 @@ static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
 {
     auto unsignedVer = static_cast<uint32_t>(ver);
     auto unsignedSize = static_cast<uint32_t>(size);
-    return ((1LL * unsignedVer) << GROUP_DYNAMIC_SIZE_BIT_LEN | unsignedSize);
+    return ((1LL * unsignedVer) << GROUP_DYNAMIC_SIZE_BIT_LEN) | unsignedSize;
 }
 
 SmemNetGroupEngine::~SmemNetGroupEngine()
@@ -165,7 +165,7 @@ Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
     globalExitHandler_ = exit;
     uint32_t wid;
     auto ret = store_->Watch(SMEM_GROUP_EXIT_KEY, std::bind(&SmemNetGroupEngine::RankExit, this,
-                                                            std::placeholders::_1, std::placeholders::_2, 
+                                                            std::placeholders::_1, std::placeholders::_2,
                                                             std::placeholders::_3), wid);
     if (ret != SM_OK) {
         SM_LOG_WARN("group watch failed, maybe link down, ret: " << ret);

@@ -144,9 +144,10 @@ bool WriteFile(const std::string &filePath, const void *buffer, size_t size)
 
 template <typename T> void DoPrintData(const T *data, size_t count, size_t elementsPerRow)
 {
+    const int OUTPUT_WIDTH = 10;
     ASSERT(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << data[i];
+        std::cout << std::setw(OUTPUT_WIDTH) << data[i];
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }
