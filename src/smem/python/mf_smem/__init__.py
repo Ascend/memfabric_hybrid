@@ -4,6 +4,15 @@
 import os
 import sys
 import ctypes
+
+current_path = os.path.abspath(__file__)
+current_dir = os.path.dirname(current_path)
+sys.path.append(current_dir)
+
+for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
+    ctypes.CDLL(lib)
+
+
 from _pymf_smem import (
     bm,
     shm,
@@ -16,13 +25,6 @@ from _pymf_smem import (
     register_decrypt_handler,
     get_and_clear_last_err_msg
 )
-
-
-current_path = os.path.abspath(__file__)
-current_dir = os.path.dirname(current_path)
-sys.path.append(current_dir)
-for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
-    ctypes.CDLL(lib)
 
 
 __all__ = [
