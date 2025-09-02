@@ -19,6 +19,8 @@ public:
         static MmcMetaServiceProcess meta;
         return meta;
     }
+    MmcMetaServiceProcess() = default;
+    ~MmcMetaServiceProcess() = default;
     MmcMetaServiceProcess(const MmcMetaServiceProcess&) = delete;
     MmcMetaServiceProcess& operator=(const MmcMetaServiceProcess&) = delete;
 
@@ -26,9 +28,6 @@ public:
     int MainForPython();
 
 private:
-    MmcMetaServiceProcess() = default;
-    ~MmcMetaServiceProcess() = default;
-
     static bool CheckIsRunning();
     int LoadConfig();
     static void RegisterSignal();

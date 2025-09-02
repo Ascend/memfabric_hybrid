@@ -867,9 +867,10 @@ PYBIND11_MODULE(_pymmc, m) {
     DefineMmcStructModule(m);
 
     // Support starting the meta service from python
-    m.def("start_meta_service", []() {
-        return MmcMetaServiceProcess::getInstance().MainForPython();
-    }, "Start the meta service process directly. This is a blocking call.");
+    py::class_<MmcMetaServiceProcess> (m, "MetaService")
+        .def_static("main", []() {
+            return MmcMetaServiceProcess::getInstance().MainForPython();
+        }, "Start the meta service process directly. This is a blocking call.");
 
     // Define the SliceBuffer class
     py::class_<SliceBuffer, std::shared_ptr<SliceBuffer>>(m, "SliceBuffer",

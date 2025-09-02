@@ -1,6 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
-from memcache import start_meta_service
+from memcache import MetaService
 
 
-start_meta_service()
+MetaService.main()
