@@ -28,7 +28,7 @@ const hybm_options g_options_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                              0,
                                              true,
                                              HYBM_ROLE_PEER,
-                                             "tcp://127.0.0.1:10002"};
+                                             "10002"};
 const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                                  HYBM_MEM_TYPE_HOST,
                                                  HYBM_DOP_TYPE_SDMA,
@@ -40,7 +40,7 @@ const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                                  0,
                                                  false,
                                                  HYBM_ROLE_PEER,
-                                                 "tcp://127.0.0.1:10002"};
+                                                 "10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 }  // namespace
 

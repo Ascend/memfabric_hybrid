@@ -15,16 +15,7 @@ namespace transport {
 namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port)
 {
-    static std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://[0-9./]{0,24}:(\d{1,5})$)");
-
-    std::smatch match;
-    if (!std::regex_search(nic, match, pattern)) {
-        BM_LOG_ERROR("input nic(" << nic << ") not matches.");
-        return BM_INVALID_PARAM;
-    }
-
-    auto caught = match[1].str();
-    auto parsePort = std::atol(caught.c_str());
+    auto parsePort = std::atol(nic.c_str());
     if (parsePort <= 0 || parsePort > std::numeric_limits<uint16_t>::max()) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches, port(" << parsePort << ") too large.");
         return BM_INVALID_PARAM;
