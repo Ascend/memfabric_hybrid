@@ -191,7 +191,8 @@ void SmemStoreHelper::FindNewRemoteRanks(const FindRanksCbFunc &cb) noexcept
         std::copy_n(values.data() + (remoteRankLastTime_ + i) * deviceExpSize_, deviceExpSize_, deltaInfo[i].desc);
         deltaInfo[i].descLen = deviceExpSize_;
     }
-
+    SM_LOG_DEBUG("FindNewRemoteRanks deal key(" << remoteKeys_.deviceCount << ") count, increment: " << increment
+                 << ", total: " << totalValue << ", last: " << remoteRankLastTime_<< ", role: " << transRole_);
     ret = cb(deltaInfo);
     if (ret != 0) {
         SM_LOG_ERROR("find new ranks callback failed: " << ret);
@@ -238,7 +239,8 @@ void SmemStoreHelper::FindNewRemoteSlices(const FindSlicesCbFunc &cb) noexcept
         deltaInfo[i].descLen = sliceExpSize_;
         itemOffsetBytes += (sliceExpSize_ + sizeof(StoredSliceInfo));
     }
-
+    SM_LOG_DEBUG("FindNewRemoteSlices key(" << remoteKeys_.sliceInfo << ") count, increment: " << increment
+                 << ", total: " << totalValue << ", last: " << remoteSliceLastTime_<< ", role: " << transRole_);
     ret = cb(deltaInfo, storeSs);
     if (ret != 0) {
         SM_LOG_ERROR("find new slices callback failed: " << ret);

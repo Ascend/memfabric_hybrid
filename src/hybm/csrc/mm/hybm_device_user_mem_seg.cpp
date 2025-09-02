@@ -328,9 +328,13 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
         ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
         if (ret != 0) {
             BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_
-                                          << ",pid=" << pid_);
+                         << ", pid=" << pid_ << ", deviceId=" << deviceId_
+                         << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
             return BM_DL_FUNCTION_FAILED;
         }
+        BM_LOG_DEBUG("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
+                     << ", pid=" << pid_ << ", deviceId=" << deviceId_
+                     << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         address = (void *)(ptrdiff_t)sliceInfo.address;
     }
