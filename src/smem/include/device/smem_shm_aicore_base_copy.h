@@ -7,7 +7,8 @@
 #include "smem_shm_aicore_base_define.h"
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb, uint32_t size, bool enableL2 = true)
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb,
+    uint32_t size, bool enableL2 = true)
 {
     ASCENDC_ASSERT((dstGva != nullptr), "input gva is null");
 
@@ -32,7 +33,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(const AscendC::GlobalTensor<T> &
 }
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb, AscendC::DataCopyExtParams &copyParams)
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb,
+    AscendC::DataCopyExtParams &copyParams)
 {
     ASCENDC_ASSERT((dstGva != nullptr), "input gva is null");
 
@@ -52,7 +54,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(const AscendC::GlobalTensor<T> &
 }
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva, uint32_t size, bool enableL2 = true)
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva,
+    uint32_t size, bool enableL2 = true)
 {
     ASCENDC_ASSERT((srcGva != nullptr), "input gva is null");
     AscendC::LocalTensor<T> ubTensor;
@@ -78,7 +81,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(const AscendC::LocalTensor<T> &d
 }
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva, AscendC::DataCopyExtParams &copyParams)
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva,
+    AscendC::DataCopyExtParams &copyParams)
 {
     ASCENDC_ASSERT((srcGva != nullptr), "input gva is null");
     AscendC::LocalTensor<T> ubTensor;

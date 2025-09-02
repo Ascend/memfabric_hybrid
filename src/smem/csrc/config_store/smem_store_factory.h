@@ -61,7 +61,8 @@ public:
 
 private:
     static Result InitTlsOption() noexcept;
-    static std::function<int(const std::string&, char*, size_t&)> ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t &)) noexcept;
+    static std::function<int(const std::string&, char*, size_t&)> ConvertFunc(int (*rawFunc)(const char*,
+        size_t, char*, size_t &)) noexcept;
     static bool enableTls;
     static std::string tlsInfo;
 

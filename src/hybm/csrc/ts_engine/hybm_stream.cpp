@@ -28,7 +28,7 @@ int HybmStream::Initialize() noexcept
     ret = AllocLogicCq();
     BM_ASSERT_RETURN(ret == 0, ret);
 
-    BM_LOG_INFO("[TEST] init stream ok, stream:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_ << " logic:" << logicCq_);
+    BM_LOG_INFO("[TEST] init st ok, st:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_ << " logic:" << logicCq_);
     runningTaskCount_.store(0L);
     taskList_.resize(HYBM_SQCQ_DEPTH);
     inited_ = true;
@@ -234,23 +234,23 @@ int32_t HybmStream::GetSqHead(uint32_t &head)
 static std::string GetCqeErrorStr(rtLogicCqReport_t &cqe)
 {
     static std::string sdmaCqeError[] = {
-            "normal",                                      // 0
-            "read response error or sqe invalid opcode",   // 1
-            "bit ecc",                                     // 2
-            "transfer page error, smmu return terminate",  // 3
-            "meeting TLBI",                                // 4
-            "non safe access",                             // 5
-            "DAW, MSD or address error",                   // 6
-            "operation fail",                              // 7
-            "sdma move DDRC ERROR",                        // 8
-            "sdma move COMPERR ERROR",                     // 9
-            "sdma move COMPDATAERR ERROR",                 // 10
-            "reduce overflow",                             // 11
-            "reduce float infinity",                       // 12
-            "reduce source data NaN",                      // 13
-            "reduce dest data NaN",                        // 14
-            "reduce both source and dest data NaN",        // 15
-            "data is not equal"                            // 16
+        "normal",                                      // 0
+        "read response error or sqe invalid opcode",   // 1
+        "bit ecc",                                     // 2
+        "transfer page error, smmu return terminate",  // 3
+        "meeting TLBI",                                // 4
+        "non safe access",                             // 5
+        "DAW, MSD or address error",                   // 6
+        "operation fail",                              // 7
+        "sdma move DDRC ERROR",                        // 8
+        "sdma move COMPERR ERROR",                     // 9
+        "sdma move COMPDATAERR ERROR",                 // 10
+        "reduce overflow",                             // 11
+        "reduce float infinity",                       // 12
+        "reduce source data NaN",                      // 13
+        "reduce dest data NaN",                        // 14
+        "reduce both source and dest data NaN",        // 15
+        "data is not equal"                            // 16
     };
 
     if (cqe.sqeType == RT_STARS_SQE_TYPE_SDMA) {
@@ -316,7 +316,8 @@ int HybmStream::Synchronize() noexcept
 
         if (!GetCqeStatus()) { // no cqe
             while (sqHead_ != head) {
-                BM_LOG_DEBUG("finished task, task_Id:" << sqHead_ << " task_type:" << static_cast<int32_t>(taskList_[sqHead_].type));
+                auto printType = static_cast<int32_t>(taskList_[sqHead_].type);
+                BM_LOG_DEBUG("finished task, task_Id:" << sqHead_ << " task_type:" << printType);
                 sqHead_ = (sqHead_ + 1U) % HYBM_SQCQ_DEPTH;
             }
         } else {

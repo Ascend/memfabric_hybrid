@@ -224,7 +224,8 @@ Result StoreFactory::InitTlsOption() noexcept
     return StoreErrorCode::SUCCESS;
 }
 
-std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t&)) noexcept
+std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc(int (*rawFunc)(const char*,
+    size_t, char*, size_t&)) noexcept
 {
     return [rawFunc](const std::string &cipherText, char *plainText, size_t &plainTextLen) {
         auto tmpCipherLen = cipherText.size();

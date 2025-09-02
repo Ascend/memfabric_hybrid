@@ -165,7 +165,8 @@ Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
     globalExitHandler_ = exit;
     uint32_t wid;
     auto ret = store_->Watch(SMEM_GROUP_EXIT_KEY, std::bind(&SmemNetGroupEngine::RankExit, this,
-                                                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), wid);
+                                                            std::placeholders::_1, std::placeholders::_2, 
+                                                            std::placeholders::_3), wid);
     if (ret != SM_OK) {
         SM_LOG_WARN("group watch failed, maybe link down, ret: " << ret);
         globalExitHandler_ = nullptr;
@@ -215,9 +216,9 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
-        uint32_t removeAllGatherGroupSn_ = allGatherGroupSn_- REMOVE_INTERVAL;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GW";
+        uint32_t rmAllGatherGroupSn_ = allGatherGroupSn_- REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn_) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn_) + "_GW";
         /* There is no need to return ERROR, when the removed key is already not exist.
         The WARNING LOG is contained in the remove func itself, no need to print more log. */
         (void)store_->Remove(removeAddIdx);
@@ -531,9 +532,9 @@ void SmemNetGroupEngine::GroupSnClean()
         if (allGatherGroupSn_ < i) {
             break;
         }
-        uint32_t removeAllGatherGroupSn_ = allGatherGroupSn_ - i;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeAllGatherGroupSn_) + "_GW";
+        uint32_t rmAllGatherGroupSn_ = allGatherGroupSn_ - i;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn_) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn_) + "_GW";
         (void)store_->Remove(removeAddIdx);
         (void)store_->Remove(removeWaitIdx);
     }

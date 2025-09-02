@@ -345,7 +345,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* d
 }
 
 /**
- * @brief RDMA Quiet function. This synchronous function ensures all previous RDMA WQEs are completed (data has arrived at the destination NIC).
+ * @brief RDMA Quiet function. This synchronous function ensures all previous RDMA WQEs are 
+ *        completed (data has arrived at the destination NIC).
  *
  * @param remoteRankId           [in] destination rank ID
  * @param qpIdx                  [in] QP index in multi-QP scenario (default 0 for single QP)

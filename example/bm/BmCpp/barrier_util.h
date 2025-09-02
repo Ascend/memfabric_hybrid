@@ -10,7 +10,8 @@
 class BarrierUtil {
 public:
     BarrierUtil() {}
-    ~BarrierUtil() {
+    ~BarrierUtil()
+    {
         if (barrierHandle != nullptr) {
             smem_shm_destroy(barrierHandle, 0);
             smem_shm_uninit(0);
@@ -23,11 +24,15 @@ public:
         (void)smem_shm_config_init(&config2);
         config2.startConfigStore = false;
         auto ret = smem_shm_init(ipPort.c_str(), rkSize, rankId, deviceId, &config2);
-        if (ret != 0) return ret;
+        if (ret != 0) {
+            return ret;
+        }
 
         void *gva = nullptr;
         smem_shm_t handle = smem_shm_create(0, rkSize, rankId, 1024ULL * 1024 * 1024, SMEMS_DATA_OP_MTE, 0, &gva);
-        if(handle == nullptr || gva == nullptr) return -1;
+        if (handle == nullptr || gva == nullptr) {
+            return -1;
+        }
         barrierHandle = handle;
         return 0;
     }

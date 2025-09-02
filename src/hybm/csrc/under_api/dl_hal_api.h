@@ -232,7 +232,8 @@ public:
         return pHalSqCqFree(devId, info);
     }
 
-    static inline int HalResourceIdAlloc(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceIdOutputInfo *out)
+    static inline int HalResourceIdAlloc(uint32_t devId, struct halResourceIdInputInfo *in,
+        struct halResourceIdOutputInfo *out)
     {
         return pHalResourceIdAlloc(devId, in, out);
     }
@@ -247,7 +248,8 @@ public:
         return pHalGetSsid(devId, ssid);
     }
 
-    static inline int HalResourceConfig(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceConfigInfo *para)
+    static inline int HalResourceConfig(uint32_t devId, struct halResourceIdInputInfo *in,
+        struct halResourceConfigInfo *para)
     {
         return pHalResourceConfig(devId, in, para);
     }

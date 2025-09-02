@@ -292,7 +292,8 @@ Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t,
                                         .dpitch = params.dpitch,
                                         .width = params.width,
                                         .height = params.height};
-    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t]; // TODO: liuqzh : 两种介质同时存在怎么办？
+    // liuqzh : 两种介质同时存在怎么办？
+    auto direct = coreOptions_.memType == HYBM_MEM_TYPE_HOST ? dramDirectMap[t] : directMap[t];
     return hybm_data_copy_2d(entity_, &copy2dparams, direct, nullptr, flags);
 }
 

@@ -49,11 +49,11 @@ static int32_t InitGvaHeapMgmt(uint64_t st, uint64_t ed, int32_t deviceId)
 {
     if (g_gvaHeapMgr.inited) {
         if (ed != g_gvaHeapMgr.start) {
-            BM_LOG_ERROR("init gva manager error. input_ed:0x" << std::hex << ed << " pre_st:0x" << g_gvaHeapMgr.start);
+            BM_LOG_ERROR("init gva mgr error. input_ed:0x" << std::hex << ed << " pre_st:0x" << g_gvaHeapMgr.start);
             return -1;
         }
         if (deviceId != g_gvaHeapMgr.deviceId) {
-            BM_LOG_ERROR("init gva manager error. input_device:" << deviceId << " pre_device:" << g_gvaHeapMgr.deviceId);
+            BM_LOG_ERROR("init gva mgr error. input_device:" << deviceId << " pre_device:" << g_gvaHeapMgr.deviceId);
             return -1;
         }
         g_gvaHeapMgr.start = st;
@@ -348,7 +348,8 @@ static int32_t AllocFromNode(struct DevVirtComHeap *heap, struct DevRbtreeNode *
 
     NodeFlagSetValue(&treeNode->data.flag, DEVMM_NODE_MEMTYPE_SHIFT, DEVMM_NODE_MEMTYPE_WID, 0);
     treeNode->data.flag |= DEVMM_NODE_MAPPED_FLG;
-    heap->cur_alloc_cache_mem[memtype] += (treeNode->data.size <= heap->need_cache_thres[memtype]) ? treeNode->data.size : 0;
+    heap->cur_alloc_cache_mem[memtype] += 
+        (treeNode->data.size <= heap->need_cache_thres[memtype]) ? treeNode->data.size : 0;
     (void)DlHalApi::HalInsertAllocedTree(treeNode, &heap->rbtree_queue);
     return 0;
 }

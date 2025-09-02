@@ -325,11 +325,12 @@ int HostDataOpSDMA::CopyDevice2Gva2d(hybm_copy_2d_params &params, void *stream) 
     for (uint64_t i = 0; i < params.height; ++i) {
         void *dstAddr = reinterpret_cast<void *>((uint64_t)params.dest + i * params.dpitch);
         void *srcAddr = reinterpret_cast<void *>((uint64_t)params.src + i * params.spitch);
-        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, params.width, srcAddr, params.width, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+        auto asyncRet = DlAclApi::AclrtMemcpyAsync(dstAddr, params.width, srcAddr,
+            params.width, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
         if (asyncRet != 0) {
             BM_LOG_ERROR("copy2d memory on gva to device failed:: "
-                         << asyncRet << " dpitch: " << params.dpitch << " spitch: " << params.spitch << " width: " << params.width
-                         << " height:" << params.height);
+                         << asyncRet << " dpitch: " << params.dpitch << " spitch: " << params.spitch 
+                         << " width: " << params.width << " height:" << params.height);
             ret = asyncRet;
             break;
         }
@@ -365,10 +366,10 @@ int HostDataOpSDMA::CopyGva2Host2d(hybm_copy_2d_params &params, void *stream) no
     ret = DlAclApi::AclrtMemcpy2d(dest, params.dpitch, copyDevice,
         params.width, params.width, params.height, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != 0) {
-        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: " << params.width
-                                                                << " height:" << params.height);
-        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: " << params.width
-                                                                << " height:" << params.height);
+        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: "
+                                                                << params.width << " height:" << params.height);
+        BM_LOG_ERROR("copy data on temp DEVICE to GVA failed: " << ret << " spitch: " << params.spitch << " width: "
+                                                                << params.width << " height:" << params.height);
         int32_t free_ret = DlAclApi::AclrtFree(copyDevice);
         if (free_ret != 0) {
             BM_LOG_ERROR("device memory free failed, ret: " << free_ret);

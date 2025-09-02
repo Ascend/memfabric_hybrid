@@ -44,9 +44,9 @@ typedef enum {
 } smem_bm_copy_type;
 
 typedef struct {
-    uint32_t initTimeout;             /* func smem_bm_init timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
-    uint32_t createTimeout;           /* func smem_bm_create timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
-    uint32_t controlOperationTimeout; /* control operation timeout, default 120 second (min is 1, max is SMEM_BM_TIMEOUT_MAX) */
+    uint32_t initTimeout;             /* func smem_bm_init timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
+    uint32_t createTimeout;           /* func smem_bm_create timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
+    uint32_t controlOperationTimeout; /* control operation timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
     bool startConfigStore;            /* whether to start config store, default true */
     bool startConfigStoreOnly;        /* only start the config store */
     bool dynamicWorldSize;            /* member cannot join dynamically */
