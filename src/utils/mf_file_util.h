@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "mf_out_logger.h"
 
 #define PATH_MAX_LIMIT 4096L
 namespace ock {
@@ -83,6 +84,11 @@ public:
      * @brief Get size of a file
      */
     static size_t GetFileSize(const std::string &filePath);
+    
+    /**
+     * @brief Close file
+     */
+    static void CloseFile(FILE* fp);
 
     /**
      * @brief Check if the file or dir is symbol link
@@ -270,6 +276,18 @@ inline bool FileUtil::LibraryRealPath(const std::string &libDirPath, const std::
     return true;
 }
 
+inline void FileUtil::CloseFile(FILE* fp)
+{
+    if (fp == nullptr) {
+        return;
+    }
+    
+    auto ret = fclose(fp);
+    if (ret != 0) {
+        MF_OUT_LOG("util", WARN_LEVEL, "fclose failed, ret = " << ret);
+    }
+}
+
 inline size_t FileUtil::GetFileSize(const std::string &path)
 {
     if (!Exist(path)) {
@@ -287,17 +305,17 @@ inline size_t FileUtil::GetFileSize(const std::string &path)
     }
 
     if (fseek(fp, 0, SEEK_END) != 0) {
-        fclose(fp);
+       CloseFile(fp);
         return 0;
     }
 
     size_t fileSize = static_cast<size_t>(ftell(fp));
     if (fseek(fp, 0, SEEK_END) != 0) {
-        fclose(fp);
+        CloseFile(fp);
         return 0;
     }
 
-    fclose(fp);
+    CloseFile(fp);
 
     return fileSize;
 }

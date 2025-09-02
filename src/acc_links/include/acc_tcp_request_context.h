@@ -10,8 +10,8 @@
 namespace ock {
 namespace acc {
 /**
- * @brief Context information passed by Handler functions, i.e. AccNewReqHandler which is triggered when server got a request from peer,
- * this is context is created by server, should be used created by user.
+ * @brief Context information passed by Handler functions, i.e. AccNewReqHandler which is triggered 
+ * when server got a request from peer, this is context is created by server, should be used created by user.
  *
  * In the handler (callback function), user can get many request information from context,
  * for example, messageType, dataLen, seqNo etc,

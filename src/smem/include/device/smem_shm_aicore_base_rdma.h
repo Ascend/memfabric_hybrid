@@ -345,7 +345,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* d
 }
 
 /**
- * @brief RDMA Quiet function. This synchronous function ensures all previous RDMA WQEs are 
+ * @brief RDMA Quiet function. This synchronous function ensures all previous RDMA WQEs are
  *        completed (data has arrived at the destination NIC).
  *
  * @param remoteRankId           [in] destination rank ID
@@ -354,11 +354,11 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* d
  * @param ubLocal32              [in] temporary UB local tensor of uint32_t used as workspace
  */
 
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_quiet(uint32_t remoteRankId, uint32_t qpIdx, 
-                                        AscendC::LocalTensor<uint64_t> ubLocal64, 
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_quiet(uint32_t remoteRankId, uint32_t qpIdx,
+                                        AscendC::LocalTensor<uint64_t> ubLocal64,
                                         AscendC::LocalTensor<uint32_t> ubLocal32)
 {
-    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR + 
+    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
                                                                 SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     uint32_t qpNum = RDMAInfo->qpNum;

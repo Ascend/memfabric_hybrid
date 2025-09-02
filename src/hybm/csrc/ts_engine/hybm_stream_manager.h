@@ -16,4 +16,4 @@ public:
 }
 }
 
-#endif  //MF_HYBRID_HYBM_STREAM_MANAGER_H
+#endif  // MF_HYBRID_HYBM_STREAM_MANAGER_H

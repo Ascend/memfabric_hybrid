@@ -70,7 +70,8 @@ typedef enum {
 #define CHECK_EQUALS(x, y) \
     do {                   \
         if ((x) != (y)) {  \
-            std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " check not equal:" << (x) << " " << (y) << std::endl;  \
+            std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " check not equal:" \
+                << (x) << " " << (y) << std::endl;  \
         }   \
     } while (0)
 

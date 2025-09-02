@@ -35,7 +35,7 @@ int32_t devmm_virt_set_heap_idle(void *mgmt, void *heap)
 
 void *devmm_virt_get_heap_mgmt(void)
 {
-    return NULL;
+    return nullptr;
 }
 
 int32_t devmm_ioctl_free_pages(uint64_t ptr)
@@ -50,12 +50,12 @@ uint32_t devmm_va_to_heap_idx(const void *mgmt, uint64_t va)
 
 void *devmm_va_to_heap(uint64_t va)
 {
-    return NULL;
+    return nullptr;
 }
 
 void *devmm_virt_get_heap_from_queue(void *mgmt, uint32_t heap_idx, size_t heap_size)
 {
-    return NULL;
+    return nullptr;
 }
 
 void devmm_virt_normal_heap_update_info(void *mgmt, void *heap, void *heap_type, void *ops, uint64_t alloc_size)

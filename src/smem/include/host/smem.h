@@ -86,21 +86,21 @@ int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
 /**
  * @brief Un-Initialize the smem running environment
  */
-void smem_uninit();
+void smem_uninit(void);
 
 /**
  * @brief Get the last error message
  *
  * @return last error message
  */
-const char *smem_get_last_err_msg();
+const char *smem_get_last_err_msg(void);
 
 /**
  * @brief Get the last error message and clear
  *
  * @return last error message
  */
-const char *smem_get_and_clear_last_err_msg();
+const char *smem_get_and_clear_last_err_msg(void);
 
 #ifdef __cplusplus
 }

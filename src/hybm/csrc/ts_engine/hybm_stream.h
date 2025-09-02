@@ -17,7 +17,7 @@ namespace mf {
 class HybmStream {
 public:
     HybmStream(uint32_t deviceId, uint32_t prio, uint32_t flags) noexcept;
-    virtual ~HybmStream() = default; // TODO: 合理设计析构流程，避免sq和streamId资源泄漏
+    virtual ~HybmStream() = default; // 合理设计析构流程，避免sq和streamId资源泄漏
 
     int Initialize() noexcept;
     void Destroy();
@@ -61,4 +61,4 @@ using HybmStreamPtr = std::shared_ptr<HybmStream>;
 }
 }
 
-#endif  //MF_HYBRID_HYBM_STREAM_H
+#endif  // MF_HYBRID_HYBM_STREAM_H

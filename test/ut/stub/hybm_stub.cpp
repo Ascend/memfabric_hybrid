@@ -6,6 +6,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -38,8 +39,7 @@ int32_t hybm_set_log_level_stub(int level)
 }
 
 void hybm_set_extern_logger_stub(void (*logger)(int level, const char *msg))
-{
-    
+{   
 }
 
 const char *hybm_get_error_string_stub(int32_t errCode)
@@ -81,7 +81,7 @@ int32_t hybm_reserve_mem_space_stub(hybm_entity_t e, uint32_t flags, void **rese
     if (fd < 0) {
         return -1;
     }
-    *reservedMem = mmap(NULL, UT_SHM_SIZE2, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    *reservedMem = mmap(nullptr, UT_SHM_SIZE2, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (*reservedMem == MAP_FAILED) {
         close(fd);
         return -1;

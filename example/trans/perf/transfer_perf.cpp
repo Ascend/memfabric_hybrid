@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <iomanip>
+#include <algorithm>
 #include <sys/time.h>
 #include <unistd.h>
 #include <random>
@@ -293,7 +294,7 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
         memcpy(config.hcomUrl, s1.c_str(), s1.length());
     } else {
         std::string s1 = "tcp://192.168.0.1/16:12006";
-        memcpy(config.hcomUrl, s1.c_str(), s1.length());
+        std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
     }
     if (!useSdma) {
         config.flags |= SMEM_INIT_FLAG_NEED_DEVICE_RDMA;

@@ -173,7 +173,7 @@ struct RtRdmaDbIndexStars {
     uint32_t qpnEn : 1;
 };
 
-union rtRdmaDbIndex_t{
+union rtRdmaDbIndex_t {
     uint32_t value; // for ts module
     RtRdmaDbIndexStars dbIndexStars; // new define for stars
 };
@@ -207,13 +207,13 @@ struct rtFftsPlusTaskErrInfo_t {
 };
 
 struct rtBarrierTaskCmoInfo_t {
-    uint16_t cmoType; // // 0 is barrier, 1 is invalid, Prefetch is 2, Write_back is 3, FE/GE only use invalid type.
+    uint16_t cmoType; // 0 is barrier, 1 is invalid, Prefetch is 2, Write_back is 3, FE/GE only use invalid type.
     uint16_t cmoId;
 };
 
 struct rtBarrierTaskMsg_t {
-    uint8_t cmoIdNum;   //cmoIdNum max is 6
-    rtBarrierTaskCmoInfo_t cmoInfo[6U]; //6U, BarrierTask support max 6 cmoid in barrier
+    uint8_t cmoIdNum;   // cmoIdNum max is 6
+    rtBarrierTaskCmoInfo_t cmoInfo[6U]; // 6U, BarrierTask support max 6 cmoid in barrier
 };
 
 struct rtPkgDesc {

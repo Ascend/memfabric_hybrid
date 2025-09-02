@@ -86,7 +86,6 @@ enum OpCode : int32_t {
 static std::unordered_map<int32_t, AccTcpLinkComplexPtr> g_rankLinkMap;
 static void *g_cbCtx = nullptr;
 class TestAccTcpSslClientFuzz : public testing::Test {
-
 public:
     void SetUp() override;
     void TearDown() override;

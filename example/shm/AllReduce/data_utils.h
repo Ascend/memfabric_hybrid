@@ -144,7 +144,7 @@ bool WriteFile(const std::string &filePath, const void *buffer, size_t size)
 
 template <typename T> void DoPrintData(const T *data, size_t count, size_t elementsPerRow)
 {
-    assert(elementsPerRow != 0);
+    ASSERT(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
         std::cout << std::setw(10) << data[i];
         if (i % elementsPerRow == elementsPerRow - 1) {
@@ -155,7 +155,7 @@ template <typename T> void DoPrintData(const T *data, size_t count, size_t eleme
 
 void DoPrintHalfData(const aclFloat16 *data, size_t count, size_t elementsPerRow)
 {
-    assert(elementsPerRow != 0);
+    ASSERT(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
         std::cout << std::setw(10) << std::setprecision(6) << aclFloat16ToFloat(data[i]);
         if (i % elementsPerRow == elementsPerRow - 1) {
