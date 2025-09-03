@@ -21,7 +21,7 @@ inline void Split(const std::string &src, const std::string &sep, std::vector<st
     std::string::size_type pos2 = src.find(sep);
 
     std::string tmpStr;
-    while (std::string::npos != pos2) {
+    while (pos2 != std::string::npos) {
         tmpStr = src.substr(pos1, pos2 - pos1);
         out.emplace_back(tmpStr);
         pos1 = pos2 + sep.size();

@@ -63,7 +63,7 @@ SmemTransEntry::~SmemTransEntry()
 
 int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 {
-    entityId_ = (16U << 3) + 1U;
+    entityId_ = (16U << 3U) + 1U;
     if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port)) {
         return SM_INVALID_PARAM;
     }
@@ -258,7 +258,7 @@ void SmemTransEntry::WatchTaskOneLoop()
     static int64_t times = 0;
     WatchTaskFindNewRanks();
 
-    if (times >= 2) {
+    if (times >= 2U) {
         WatchTaskFindNewSlices();
     }
     times++;
@@ -407,7 +407,11 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.nic[0] = '\0';
     uint16_t port = 11000 + entityId_;
     auto url = std::to_string(port);
-    strcpy(options.nic, url.c_str());
+
+    constexpr size_t NIC_SIZE = sizeof(options.nic);
+    size_t max_chars = std::min(url.length(), NIC_SIZE - 1);
+    std::copy_n(url.c_str(), max_chars, options.nic);
+    options.nic[max_chars] = '\0';
     return std::move(options);
 }
 

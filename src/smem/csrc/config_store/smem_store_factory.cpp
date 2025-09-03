@@ -8,8 +8,8 @@
 #include "smem_logger.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
-#include "smem_store_factory.h"
 #include "mf_string_util.h"
+#include "smem_store_factory.h"
 
 namespace ock {
 namespace smem {

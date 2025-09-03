@@ -31,13 +31,16 @@ smem_set_conf_store_tls(false, nullptr, 0);
 char *tls_info ="                               \
     tlsCaPath: /etc/ssl/certs/;                 \
     tlsCert: /etc/ssl/certs/server.crt;         \
-    tlsPk: /etc/ssl/private/server.key;         \
-    tlsPkPwd: /etc/ssl/private/key_pwd.txt;     \
     tlsCrlPath: /etc/ssl/crl/;                  \
     tlsCrlFile: server_crl1.pem,server_crl2.pem;\
     tlsCaFile: ca.pem1,ca.pem2;                 \
-    packagePath: /etc/lib"
+    packagePath: /etc/lib";
 int32_t ret = smem_set_conf_store_tls(true, tls_info, strlen(tls_info));
+
+char *tls_pk = "xxx";
+char *tls_pk_pw = "xxx";
+int32_t ret = smem_set_config_store_tls_key(tls_pk, strlen(tls_pk), tls_pk_pw, strlen(tls_pk_pw), nullptr);
+其中，若口令为密文，则需将解密函数作为第五个入参传入smem_set_config_store_tls_key
 
 // 配置每七天检查一次证书:
 export ACCLINK_CHECK_PERIOD_HOURS=168
@@ -49,8 +52,6 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 |-|-|-|
 | tlsCaPath | ca证书存储路径 | 是 |
 | tlsCert | server证书 | 是 |
-| tlsPk | 私钥，为了安全，建议不使用明文保存 | 是 |
-| tlsPkPwd | 私钥口令，可以是明文或密文，密文时需通过 c 接口 smem_register_decrypt_handler 或 python 接口 register_decrypt_handler 注册解密函数 | 是 |
 | tlsCrlPath | 证书吊销列表存储路径 | 否 |
 | tlsCrlFile | 证书吊销列表 | 否 |
 | tlsCaFile | ca证书列表 | 是 |

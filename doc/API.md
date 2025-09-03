@@ -68,14 +68,24 @@
     |-|-|
     |返回值|错误信息|
 
-1. 设置私钥口令解密的函数，在开启Tls并使用的是加密私钥口令时，需要调用该接口进行住注册。
+1. 设置私钥、口令和解密的函数，在开启Tls时，需要调用该接口。
     ```c
-    int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
+    int32_t smem_set_config_store_tls_key(
+        const char *tls_pk,
+        const uint32_t tls_pk_len,
+        const char *tls_pk_pw,
+        const uint32_t tls_pk_pw_len,
+        const smem_decrypt_handler h
+    );
     ```
-    |参数/返回值|含义|
-    |-|-|
-    |h|密钥解密函数|
-    |返回值|错误信息|
+    |参数/返回值| 含义     |
+    |-|--------|
+    |tls_pk| 密钥内容   |
+    |tls_pk_len| 密钥内容长度 |
+    |tls_pk_pw| 口令内容   |
+    |tls_pk_pw_len| 口令内容长度 |
+    |h| 密钥解密函数 |
+    |返回值| 错误信息   |
     ```c
     typedef int (*smem_decrypt_handler)(const char *cipherText, int *cipherTextLen, char *plainText, int *plainTextLen);
     ```

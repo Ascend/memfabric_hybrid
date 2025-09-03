@@ -305,7 +305,7 @@ inline size_t FileUtil::GetFileSize(const std::string &path)
     }
 
     if (fseek(fp, 0, SEEK_END) != 0) {
-       CloseFile(fp);
+        CloseFile(fp);
         return 0;
     }
 

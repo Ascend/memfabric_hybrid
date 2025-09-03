@@ -8,11 +8,11 @@
 namespace ock {
 namespace mf {
 
-#define SQCQ_RTS_INFO_LENGTH 5
-#define SQCQ_RESV_LENGTH 8
-#define SQCQ_QUERY_INFO_LENGTH 8
-#define RESOURCE_CONFIG_INFO_LENGTH 7
-#define RESOURCEID_RESV_LENGTH  8
+constexpr uint32_t SQCQ_RTS_INFO_LENGTH = 5;
+constexpr uint32_t SQCQ_RESV_LENGTH = 8;
+constexpr uint32_t SQCQ_QUERY_INFO_LENGTH = 8;
+constexpr uint32_t RESOURCE_CONFIG_INFO_LENGTH = 7;
+constexpr uint32_t RESOURCEID_RESV_LENGTH = 8;
 
 typedef enum tagDrvSqCqType {
     DRV_NORMAL_TYPE = 0,

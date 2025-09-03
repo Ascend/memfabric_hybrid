@@ -28,15 +28,15 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize)); // size = 32
     CHECK_ACL(aclrtMallocHost((void **)(&yHost), outputSize)); // size = 48
     CHECK_ACL(aclrtMalloc((void **)&xDevice, inputSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    xHost[0] = rankId;
-    xHost[1] = rankSize;
-    xHost[2] = gInputLen;
-    xHost[3] = gNpuMallocSpace;
+    xHost[0U] = rankId;
+    xHost[1U] = rankSize;
+    xHost[2U] = gInputLen;
+    xHost[3U] = gNpuMallocSpace;
 
     uint64_t metaAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(yHost[0], 0);
-    CHECK_EQUALS(yHost[1], rankId);
+    CHECK_EQUALS(yHost[0U], 0);
+    CHECK_EQUALS(yHost[1U], rankId);
     CHECK_EQUALS(yHost[2U], rankSize);
     CHECK_EQUALS(yHost[3U], ctxSize);
 

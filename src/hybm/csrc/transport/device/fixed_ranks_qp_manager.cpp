@@ -15,6 +15,7 @@ static constexpr uint32_t SEND_CQ_DEPTH = 8192;
 static constexpr uint32_t RECV_CQ_DEPTH = 128;
 static constexpr uint32_t MAX_SEND_WR = 8192;
 static constexpr uint32_t MAX_RECV_WR = 128;
+static constexpr uint32_t QP_MODE = 2;
 FixedRanksQpManager::FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                          sockaddr_in devNet) noexcept
     : DeviceQpManager(deviceId, rankId, rankCount, devNet, HYBM_ROLE_PEER)
@@ -435,7 +436,7 @@ int FixedRanksQpManager::CreateOneQp(ConnQpType qpType, ConnectionChannel &chann
         attr.data_plane_flag.bs.cq_cstm = 1;
         ret = DlHccpApi::RaQpAiCreate(rdmaHandle_, attr, channel.aiQpInfo, channel.qpHandles[qpType]);
     } else {
-        ret = DlHccpApi::RaQpCreate(rdmaHandle_, 0, 2, channel.qpHandles[qpType]);
+        ret = DlHccpApi::RaQpCreate(rdmaHandle_, 0, QP_MODE, channel.qpHandles[qpType]);
     }
     return ret;
 }

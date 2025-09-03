@@ -28,7 +28,7 @@ static int32_t TestRDMAPollCQ(aclrtStream stream, uint8_t *gva, uint32_t rankId,
     }
 
     CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize,
-              xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+        xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_pollcq_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -64,7 +64,7 @@ static int32_t TestRDMAWrite(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     }
 
     CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize,
-              messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+        messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_write_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -88,7 +88,7 @@ static int32_t TestRDMARead(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     }
 
     CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize,
-              messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+        messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_write_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -106,8 +106,9 @@ static int32_t TestGetQPInfo(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 {
     uint64_t *xHost;
     size_t totalSize = 120;
+    size_t elementCount = totalBytes / sizeof(uint64_t);
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), totalSize));
-    memset(xHost, 0, totalSize);
+    std::fill(xHost, xHost + elementCount, 0);
 
     for (uint32_t curRank = 0; curRank < rankSize; curRank++) {
         if (curRank == rankId) {

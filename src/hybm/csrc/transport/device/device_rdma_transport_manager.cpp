@@ -553,7 +553,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
     const uint8_t RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND = 2;
 
     auto taskId = taskIdGenerator.fetch_add(1);
-    memset(sqe, 0, sizeof(rtStarsSqe_t));
+    std::fill(reinterpret_cast<unsigned char*>(sqe), reinterpret_cast<unsigned char*>(sqe) + sizeof(rtStarsSqe_t), 0);
     sqe->header.type = RT_STARS_SQE_TYPE_WRITE_VALUE;
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
@@ -564,13 +564,13 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
 
     sqe->va = 0U;
     sqe->kernel_credit = RT_STARS_DEFAULT_KERNEL_CREDIT;
-    sqe->awsize = 3;    // RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
+    sqe->awsize = 3U;    // RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
     sqe->sub_type = RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND;
 
     uint64_t dbVal = rspInfo.db.db_info;
     uint64_t dbAddr = GetRoceDbAddrForRdmaDbSendTask();
     if (dbAddr == 0ULL) {
-        sqe->header.type = 63;  // RT_STARS_SQE_TYPE_INVALID;
+        sqe->header.type = 63U;  // RT_STARS_SQE_TYPE_INVALID;
         BM_LOG_ERROR("generate db address is zero.");
         return;
     }

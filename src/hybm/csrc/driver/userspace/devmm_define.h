@@ -7,23 +7,22 @@
 
 #include <cstdint>
 
-#define DEVMM_MAP_ALIGN_SIZE 0x200000U /* 2M */
-#define DEVMM_HEAP_SIZE (1UL << 30UL) /* 1G */
-#define DEVMM_SVM_MEM_SIZE (1UL << 43UL) /* 8T */
-#define DEVMM_SVM_MEM_START 0x100000000000ULL
-#define DEVMM_MAX_HEAP_NUM (DEVMM_SVM_MEM_SIZE >> 30)
-#define DEVMM_GIANT_PAGE_SIZE   0x40000000ULL
+constexpr uint64_t DEVMM_MAP_ALIGN_SIZE = 0x200000U;
+constexpr uint64_t DEVMM_HEAP_SIZE = (1UL << 30UL);
+constexpr size_t DEVMM_SVM_MEM_SIZE = (1UL << 43UL);
+constexpr uint64_t DEVMM_SVM_MEM_START = 0x100000000000ULL;
+constexpr uint32_t DEVMM_MAX_HEAP_NUM = (DEVMM_SVM_MEM_SIZE >> 30);
 
-#define DV_ADVISE_DDR 0x0001
-#define DV_ADVISE_HBM 0x0002
-#define DV_ADVISE_HUGEPAGE 0x0004
-#define DV_ADVISE_GIANTPAGE 0x8000
-#define DV_ADVISE_POPULATE 0x0008
-#define DV_ADVISE_LOCK_DEV 0x0080
-#define DV_ADVISE_MODULE_ID_BIT 24
-#define DV_ADVISE_MODULE_ID_MASK 0xff
-#define HCCL_HAL_MODULE_ID 3
-#define APP_MODULE_ID 33
+constexpr uint32_t DV_ADVISE_DDR = 0x0001;
+constexpr uint32_t DV_ADVISE_HBM = 0x0002;
+constexpr uint32_t DV_ADVISE_HUGEPAGE = 0x0004;
+constexpr uint32_t DV_ADVISE_GIANTPAGE = 0x8000;
+constexpr uint32_t DV_ADVISE_POPULATE = 0x0008;
+constexpr uint32_t DV_ADVISE_LOCK_DEV = 0x0080;
+constexpr uint32_t DV_ADVISE_MODULE_ID_BIT = 24;
+constexpr uint32_t DV_ADVISE_MODULE_ID_MASK = 0xff;
+constexpr uint32_t HCCL_HAL_MODULE_ID = 3;
+constexpr uint32_t APP_MODULE_ID = 33;
 
 constexpr uint32_t DEVMM_NODE_MAPPED_BIT = 1;
 constexpr uint32_t DEVMM_NODE_MEMTYPE_SHIFT = 2;

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file constains code of cpu debug and npu code.We read data from bin file
+ * and write result to file.
+ */
 #include "kernel_operator.h"
 #include "shm_all_shift.h"
 #include "smem_shm_aicore_base_api.h"
@@ -109,7 +114,7 @@ public:
         smem_shm_put_int64(gvaSt, inputGm, (rank + 1) % rankSize, BLOCK_LEN);
         buf[0] = rank;
         buf[1] = rankSize;
-        smem_shm_uput_int64(gvaSt + BLOCK_LEN, buf, rank, 2);
+        smem_shm_uput_int64(gvaSt + BLOCK_LEN, buf, rank, 2U);
         bufQueue.FreeTensor(bufTensor);
     }
 

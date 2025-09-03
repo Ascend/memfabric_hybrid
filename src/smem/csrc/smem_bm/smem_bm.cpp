@@ -4,11 +4,11 @@
 #include <algorithm>
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
-#include "smem_bm.h"
 #include "smem_lock.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
+#include "smem_bm.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED

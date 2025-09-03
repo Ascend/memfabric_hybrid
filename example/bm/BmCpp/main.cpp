@@ -64,7 +64,9 @@ bool CheckData(void *base, void *ptr)
     int32_t *arr1 = (int32_t *)base;
     int32_t *arr2 = (int32_t *)ptr;
     for (uint32_t i = 0; i < COPY_SIZE / sizeof(int); i++) {
-        if (arr1[i] != arr2[i]) return false;
+        if (arr1[i] != arr2[i]) {
+            return false;
+        }
     }
     return true;
 }
@@ -91,7 +93,8 @@ void extern_logger_example(int level, const char *msg)
     std::cout << "level:" << level << ":" << (msg == nullptr ? "" : msg) << std::endl;
 }
 
-int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort, int autoRank, aclrtStream *stream)
+int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort, int autoRank,
+    aclrtStream *stream)
 {
     auto ret = aclInit(nullptr);
     CHECK_RET_ERR(ret, "acl init failed, ret:" << ret << " rank:" << rankId);
@@ -107,9 +110,6 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string
 
     ret = smem_init(0);
     CHECK_RET_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId);
-
-    ret = smem_register_decrypt_handler(decrypt_handler_example);
-    CHECK_RET_ERR(ret, "smem register decrypt handler failed, ret:" << ret << " rank:" << rankId);
 
     ret = smem_set_extern_logger(extern_logger_example);
     CHECK_RET_ERR(ret, "smem set extern logger failed, ret:" << ret << " rank:" << rankId);
@@ -279,7 +279,9 @@ int main(int32_t argc, char* argv[])
     int rankStart = atoi(argv[3]);
     std::string ipport = argv[4];
     int autoRank = 0;
-    if (argc > 5) autoRank = atoi(argv[5]);
+    if (argc > 5) {
+        autoRank = atoi(argv[5]);
+    }
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
         " input_ip:" << ipport << " autoRank:" << autoRank);

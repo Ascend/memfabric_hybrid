@@ -57,7 +57,7 @@ static inline std::string calculateRate(uint64_t data_bytes,
     const uint64_t MEGABYTES_PER_BYTE = 1000000;
     std::string report_unit = "GB";
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2)
+    oss << std::fixed << std::setprecision(2U)
         << 1.0 * data_bytes * MEGABYTES_PER_BYTE / duration / RATE_UNIT_MP.at(report_unit)
         << " " << report_unit << "/s";
     return oss.str();
@@ -185,7 +185,7 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
 
     /* gather peer addr */
     ret = smem_shm_control_allgather(shm_handle, (char *)&dev_addr,
-                                     sizeof(void *), (char *)gather_addr, sizeof(void *) * 2);
+                                     sizeof(void *), (char *)gather_addr, sizeof(void *) * 2U);
     CHECK_GOTO_ERR(ret, "failed to allgather dev memory, ret:" << ret, out);
 
     if (rankId == 0) {
@@ -298,7 +298,7 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
     config.rankId = rankId;
     if (rankId == 0) {
         std::string s1 = "tcp://192.168.0.1/16:12005";
-        memcpy(config.hcomUrl, s1.c_str(), s1.length());
+        std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
     } else {
         std::string s1 = "tcp://192.168.0.1/16:12006";
         std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);

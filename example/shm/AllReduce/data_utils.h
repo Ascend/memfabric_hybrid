@@ -159,7 +159,7 @@ void DoPrintHalfData(const aclFloat16 *data, size_t count, size_t elementsPerRow
 {
     ASSERT(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << std::setprecision(6) << aclFloat16ToFloat(data[i]);
+        std::cout << std::setw(10U) << std::setprecision(6) << aclFloat16ToFloat(data[i]);
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }
