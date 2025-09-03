@@ -64,7 +64,7 @@ int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_
 
 
 /**
- * @brief Callback function of private key password decryptor, see smem_register_decrypt_handler
+ * @brief Callback function of private key password decryptor, see smem_set_config_store_tls_key
  *
  * @param cipherText       [in] the encrypted text(private key password)
  * @param cipherTextLen    [in] the length of encrypted text
@@ -75,12 +75,16 @@ typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen
                                     size_t &plainTextLen);
 
 /**
- * @brief Register the handler for decryption of private key password.
- * If the private key is encrypted, this hanlder is needed to be set.
+ * @brief Set the TLS private key and password.
  *
- * @param h                [in] handler
+ * @param tls_pk          [in] content of tls private key
+ * @param tls_pk_len      [in] size of tls private key
+ * @param tls_pk_pw       [in] content of tls private key password
+ * @param tls_pk_pw_len   [in] size of tls private key password
+ * @param h               [in] handler
  */
-int32_t smem_register_decrypt_handler(const smem_decrypt_handler h);
+int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len, const char *tls_pk_pw,
+    const uint32_t tls_pk_pw_len, const smem_decrypt_handler h);
 
 
 /**
