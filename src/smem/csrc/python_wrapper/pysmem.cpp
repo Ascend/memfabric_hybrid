@@ -268,15 +268,19 @@ static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextL
     }
 }
 
-int32_t register_python_decrypt_handler(py::function py_decrypt_func)
+int32_t smem_set_conf_store_tls_key(std::string &tls_pk, std::string &tls_pk_pw,
+    py::function py_decrypt_func)
 {
     if (!py_decrypt_func || py_decrypt_func.is_none()) {
-        return smem_register_decrypt_handler(nullptr);
+        return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(),
+            tls_pk_pw.size(), nullptr);
     }
 
     g_py_decrypt_func = py_decrypt_func;
-    return smem_register_decrypt_handler(py_decrypt_handler_wrapper);
+    return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(),
+        tls_pk_pw.size(), py_decrypt_handler_wrapper);
 }
+
 
 int32_t smem_set_conf_store_tls_adapt(bool enable, std::string &tls_info)
 {
@@ -350,10 +354,13 @@ Returns:
     error message string
 )");
 
-    m.def("register_decrypt_handler", &register_python_decrypt_handler, py::call_guard<py::gil_scoped_release>(),
+    m.def("set_conf_store_tls_key", &smem_set_conf_store_tls_key,
+          py::call_guard<py::gil_scoped_release>(), py::arg("tls_pk"), py::arg("tls_pk_pw"),
           py::arg("py_decrypt_func"), R"(
 Register a Python decrypt handler.
 Parameters:
+    tls_pk (string): the content of tls private key string
+    tls_pk_pw (string): the content of tls private key password string
     py_decrypt_func (callable): Python function that accepts (str cipher_text) and returns (str plain_text)
         cipher_text: the encrypted text (private key password)
         plain_text: the decrypted text (private key password)

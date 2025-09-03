@@ -17,10 +17,16 @@ static __thread int failedReason_ = 0;
 static constexpr size_t MAX_TLS_INFO_LEN = 10 * 1024U;
 bool StoreFactory::enableTls = true;
 std::string StoreFactory::tlsInfo;
+std::string StoreFactory::tlsPkInfo;
+std::string StoreFactory::tlsPkPwdInfo;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 AcclinkTlsOption StoreFactory::tlsOption_;
 bool StoreFactory::isTlsInitialized_ = false;
+std::thread StoreFactory::cleanerThread_;
+std::atomic<bool> StoreFactory::timerRunning_{false};
+std::condition_variable StoreFactory::cv_;
+std::atomic<bool> StoreFactory::stop_{false};
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, int32_t rankId,
                                    int32_t connMaxRetry) noexcept
@@ -64,6 +70,8 @@ void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
     storesMap_.erase(storeKey);
+    TlsCleanUp();
+    ShutDownCleanupThread();
 }
 
 void StoreFactory::DestroyStoreAll(bool afterFork) noexcept
@@ -79,6 +87,16 @@ void StoreFactory::DestroyStoreAll(bool afterFork) noexcept
         }
     }
     storesMap_.clear();
+    TlsCleanUp();
+    ShutDownCleanupThread();
+}
+
+void StoreFactory::TlsCleanUp() noexcept
+{
+    StoreFactory::tlsPkInfo = "";
+    StoreFactory::tlsPkPwdInfo = "";
+    tlsOption_.tlsPk = "";
+    tlsOption_.tlsPkPwd = "";
 }
 
 StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::string &prefix) noexcept
@@ -139,10 +157,6 @@ bool SetTlsOptionValue(AcclinkTlsOption &tlsOption, const std::string &key, cons
         tlsOption.tlsCaPath = value;
     } else if (key == "tlsCert") {
         tlsOption.tlsCert = value;
-    } else if (key == "tlsPk") {
-        tlsOption.tlsPk = value;
-    } else if (key == "tlsPkPwd") {
-        tlsOption.tlsPkPwd = value;
     } else if (key == "tlsCrlPath") {
         tlsOption.tlsCrlPath = value;
     } else if (key == "packagePath") {
@@ -215,6 +229,8 @@ Result StoreFactory::InitTlsOption() noexcept
         return StoreErrorCode::SUCCESS;
     }
 
+    tlsOption_.tlsPk = StoreFactory::tlsPkInfo;
+    tlsOption_.tlsPkPwd = StoreFactory::tlsPkPwdInfo;
     if (ParseTlsInfo(StoreFactory::tlsInfo, tlsOption_) != StoreErrorCode::SUCCESS) {
         SM_LOG_ERROR("extract ssl info from input failed.");
         return StoreErrorCode::ERROR;
@@ -234,11 +250,6 @@ std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc
     };
 }
 
-void StoreFactory::RegisterDecryptHandler(const smem_decrypt_handler &h) noexcept
-{
-    tlsOption_.decryptHandler_ = ConvertFunc(h);
-}
-
 int32_t StoreFactory::SetTlsInfo(bool enable, const char *tlsInfo, const size_t tlsInfoLen) noexcept
 {
     enableTls = enable;
@@ -253,6 +264,61 @@ int32_t StoreFactory::SetTlsInfo(bool enable, const char *tlsInfo, const size_t 
 
     StoreFactory::tlsInfo = std::string(tlsInfo, tlsInfoLen);
     return StoreErrorCode::SUCCESS;
+}
+
+int32_t StoreFactory::SetTlsPkInfo(const char *tlsPk, const uint32_t tlsPkLen, const char *tlsPkPwd,
+    const uint32_t tlsPkPwLen, const smem_decrypt_handler &h) noexcept
+{
+    if (timerRunning_.exchange(true)) {
+        SM_LOG_WARN("TLS private key has been set multiple times");
+        return StoreErrorCode::SUCCESS;
+    }
+    if (tlsPk == nullptr || tlsPkLen > MAX_TLS_INFO_LEN) {
+        SM_LOG_ERROR("tls private key is null or len invalid.");
+        return StoreErrorCode::ERROR;
+    }
+
+    if (tlsPkPwd == nullptr) {
+        SM_LOG_INFO("tls private key password is null.");
+        StoreFactory::tlsPkPwdInfo = "";
+    } else {
+        if (tlsPkPwLen > MAX_TLS_INFO_LEN) {
+            SM_LOG_ERROR("tls private key password len invalid.");
+            return StoreErrorCode::ERROR;
+        }
+        StoreFactory::tlsPkPwdInfo = std::string(tlsPkPwd, tlsPkPwLen);
+    }
+    StoreFactory::tlsPkInfo = std::string(tlsPk, tlsPkLen);
+
+    if (h != nullptr) {
+        tlsOption_.decryptHandler_ = ConvertFunc(h);
+    }
+
+    stop_ = false;
+    cleanerThread_ = std::thread([]() {
+        std::unique_lock<std::mutex> lockGuard{storesMutex_};
+        // after one hour of the TLS private key being set, clean up the sensitive information stored in memory.
+        if (!cv_.wait_for(lockGuard, std::chrono::hours(1), [] { return stop_.load(); })) {
+            TlsCleanUp();
+        }
+    });
+
+    return StoreErrorCode::SUCCESS;
+}
+
+void StoreFactory::ShutDownCleanupThread() noexcept
+{
+    if (timerRunning_) {
+        {
+            std::lock_guard<std::mutex> lockGuard{storesMutex_};
+            stop_ = true;
+        }
+        cv_.notify_one();
+        if (cleanerThread_.joinable()) {
+            cleanerThread_.join();
+        }
+        timerRunning_ = false;
+    }
 }
 }  // namespace smem
 }  // namespace ock

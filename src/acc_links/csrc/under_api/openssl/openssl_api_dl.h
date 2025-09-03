@@ -48,6 +48,7 @@ using FuncSslGetCurrentCipher = const SSL_CIPHER *(*)(const SSL *);
 using FuncSslGetVersion = const char *(*)(const SSL *);
 using FuncSslIsServer = int (*)(SSL *);
 
+using FuncUsePrivKey = int (*)(SSL_CTX *ctx, EVP_PKEY *pkey);
 using FuncUsePrivKeyFile = int (*)(SSL_CTX *ctx, const char *, int);
 using FuncUseCertFile = int (*)(SSL_CTX *, const char *, int);
 using FuncPemReadX509 = X509 *(*)(FILE *fp, X509 **x, pem_password_cb *cb, void *u);
@@ -83,8 +84,10 @@ using FuncX509VerifyCert = int (*)(X509_STORE_CTX *ctx);
 using FuncX509VerifyCertErrorString = const char *(*)(long n);
 using FuncX509StoreCtxGetError = int (*)(const X509_STORE_CTX *ctx);
 using FuncPemReadBioX509Crl = X509_CRL *(*)(BIO *bp, X509_CRL **x, PEM_PASSWORD_CB *cb, void *u);
+using FuncPemReadBioPk = EVP_PKEY *(*)(BIO *bp, EVP_PKEY **x, PEM_PASSWORD_CB *cb, void *u);
 using FuncBioSFile = const BIO_METHOD *(*)(void);
 using FuncBioNew = BIO *(*)(const BIO_METHOD *);
+using FuncBioNewMemBuf = BIO *(*)(const void *buf, int len);
 using FuncBioFree = void (*)(BIO *b);
 using FuncBioCtrl = long (*)(BIO *bp, int cmd, long larg, void *parg);
 using FuncX509StoreCtxGet0Store = X509_STORE *(*)(const X509_STORE_CTX *ctx);
@@ -130,6 +133,7 @@ public:
     static FuncSslGetVersion sslGetVersion;
     static FuncSslIsServer sslIsServer;
     static FuncSetCipherSuites setCipherSuites;
+    static FuncUsePrivKey usePrivKey;
     static FuncUsePrivKeyFile usePrivKeyFile;
     static FuncUseCertFile useCertFile;
     static FuncPemReadX509 pemReadX509;
@@ -168,8 +172,10 @@ public:
     static FuncX509VerifyCertErrorString x509VerifyCertErrorString;
     static FuncX509StoreCtxGetError x509StoreCtxGetError;
     static FuncPemReadBioX509Crl pemReadBioX509Crl;
+    static FuncPemReadBioPk pemReadBioPk;
     static FuncBioSFile bioSFile;
     static FuncBioNew bioNew;
+    static FuncBioNewMemBuf bioNewMemBuf;
     static FuncBioFree bioFree;
     static FuncBioCtrl bioCtrl;
     static FuncX509StoreCtxGet0Store x509StoreCtxGet0Store;

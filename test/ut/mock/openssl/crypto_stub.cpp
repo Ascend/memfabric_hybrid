@@ -129,6 +129,12 @@ X509_CRL *PEM_read_bio_X509_CRL(BIO *bp, X509_CRL **x, PEM_PASSWORD_CB *cb, void
     return nullptr;
 }
 
+EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, PEM_PASSWORD_CB *cb, void *u)
+{
+    auto *mockPkey = reinterpret_cast<EVP_PKEY*>(0x1200);
+    return mockPkey;
+}
+
 BIO_METHOD *BIO_s_file(void)
 {
     return nullptr;
@@ -137,6 +143,12 @@ BIO_METHOD *BIO_s_file(void)
 BIO *BIO_new(const BIO_METHOD *bioMethod)
 {
     return nullptr;
+}
+
+BIO *BIO_new_mem_buf(const void *buf, int len)
+{
+    auto *mockBio = reinterpret_cast<BIO*>(0x2200);
+    return mockBio;
 }
 
 int BIO_ctrl(BIO *bp, int cmd, long larg, void *parg)

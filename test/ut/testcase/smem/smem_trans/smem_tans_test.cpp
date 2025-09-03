@@ -133,6 +133,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
         size_t size = 10 * sizeof(int);
 
         // first create server
+        smem_set_conf_store_tls(false, nullptr, 0);
         smem_create_config_store(STORE_URL);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
@@ -406,6 +407,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         std::vector<size_t> dataSizes = {128U, 128U};
 
         // first create server
+        smem_set_conf_store_tls(false, nullptr, 0);
         smem_create_config_store(STORE_URL);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);

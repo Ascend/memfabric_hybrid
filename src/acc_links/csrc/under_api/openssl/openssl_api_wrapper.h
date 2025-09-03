@@ -164,6 +164,11 @@ public:
         OPENSSLAPIDL::sslCtxSetVerify(ctx, mode, cb);
     }
 
+    static inline int SslCtxUsePrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey)
+    {
+        return OPENSSLAPIDL::usePrivKey(ctx, pkey);
+    }
+
     static inline int SslCtxUsePrivateKeyFile(SSL_CTX *ctx, const char *file, int type)
     {
         return OPENSSLAPIDL::usePrivKeyFile(ctx, file, type);
@@ -323,9 +328,19 @@ public:
         return OPENSSLAPIDL::bioSFile();
     }
 
+    static inline EVP_PKEY *PemReadBioPk(BIO *bp, EVP_PKEY **x, PEM_PASSWORD_CB *cb, void *u)
+    {
+        return OPENSSLAPIDL::pemReadBioPk(bp, x, cb, u);
+    }
+
     static inline BIO *BioNew(const BIO_METHOD *bioMethod)
     {
         return OPENSSLAPIDL::bioNew(bioMethod);
+    }
+
+    static inline BIO *BioNewMemBuf(const void *buf, int len)
+    {
+        return OPENSSLAPIDL::bioNewMemBuf(buf, len);
     }
 
     static inline int BioCtrl(BIO *bp, int cmd, long larg, void *parg)

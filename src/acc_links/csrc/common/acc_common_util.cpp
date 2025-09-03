@@ -144,8 +144,6 @@ Result AccCommonUtil::CheckTlsOptions(const AccTlsOption &tlsOption)
     CHECK_DIR_PATH(tlsCaPath, true);
     CHECK_DIR_PATH(tlsCrlPath, false);
     CHECK_FILE_PATH(tlsCert, true);
-    CHECK_FILE_PATH(tlsPk, true);
-    CHECK_FILE_PATH(tlsPkPwd, true);    // private key must be encrypted, so the password of private key is required
     CHECK_FILE_SET(tlsCaFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCaPath, true);
     CHECK_FILE_SET(tlsCrlFile, tlsOption.tlsTopPath + "/" + tlsOption.tlsCrlPath, false);
     return ACC_OK;

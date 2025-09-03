@@ -1,7 +1,6 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
  */
-
 #include "acc_tcp_ssl_helper.h"
 #include "acc_common_util.h"
 #include "mf_file_util.h"
@@ -31,10 +30,6 @@ namespace acc {
 AccResult AccTcpSslHelper::Start(SSL_CTX* sslCtx, AccTlsOption &param)
 {
     InitTlsPath(param);
-    if (mDecryptHandler_ == nullptr && !tlsPkPwd.empty()) {
-        LOG_ERROR("with private key password, decrypt handler must be set");
-        return ACC_ERROR;
-    }
 
     ReadCheckCertParams();
     auto ret = StartCheckCertExpired();
@@ -181,31 +176,24 @@ AccResult AccTcpSslHelper::LoadServerCert(SSL_CTX *sslCtx)
     return CertVerify(cert);
 }
 
-AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
+AccResult AccTcpSslHelper::GetPkPass()
 {
-    auto tmpPath = tlsTopPath + "/" + tlsPk;
-    if (!ock::mf::FileUtil::Realpath(tmpPath)) {
-        LOG_ERROR("Failed to get private key path");
-        return ACC_ERROR;
-    }
-
-    int ret = 0;
-    auto tmpTlsPriKeyPwdPath = tlsTopPath + "/" + tlsPkPwd;
-    if (!tlsPkPwd.empty()) {
-        std::string encryptedText;
-        auto ret = ReadFile(tmpTlsPriKeyPwdPath, encryptedText);
-        if (ret != ACC_OK) {
-            LOG_ERROR("Read private key file failed");
-            return ACC_ERROR;
-        }
-        encryptedText = ock::mf::StringUtil::TrimString(encryptedText);
+    std::string encryptedText = ock::mf::StringUtil::TrimString(tlsPkPwd);
+    if (mDecryptHandler_ == nullptr) {
+        LOG_INFO("user employs a plaintext password, which does not require a decryption function.");
+        size_t len = encryptedText.length();
+        mKeyPass = std::make_pair(new char[len + 1], len);
+        std::copy(encryptedText.begin(), encryptedText.end(), mKeyPass.first);
+        mKeyPass.first[len] = '\0';
+    } else {
+        LOG_INFO("user employs a ciphertext password, which requires a decryption function.");
         auto buffer = new (std::nothrow) char[encryptedText.length() * UNO_2];  // make sure buffer is long enough
         if (buffer == nullptr) {
             LOG_ERROR("allocate memory for buffer failed");
             return ACC_ERROR;
         }
         size_t bufferLen = encryptedText.length() * UNO_2;
-        ret = static_cast<AccResult>(mDecryptHandler_(encryptedText, buffer, bufferLen));
+        auto ret = static_cast<AccResult>(mDecryptHandler_(encryptedText, buffer, bufferLen));
         if (ret != ACC_OK) {
             LOG_ERROR("Failed to decrypt private key password");
             delete[] buffer;
@@ -213,21 +201,51 @@ AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
             return ret;
         }
         mKeyPass = std::make_pair(buffer, bufferLen);
+    }
+    return ACC_OK;
+}
+
+AccResult AccTcpSslHelper::LoadPrivateKey(SSL_CTX *sslCtx)
+{
+    if (!tlsPkPwd.empty()) {
+        if (GetPkPass() != ACC_OK) {
+            LOG_ERROR("Failed to get mKeyPass");
+            return ACC_ERROR;
+        }
         OpenSslApiWrapper::SslCtxSetDefaultPasswdCbUserdata(sslCtx, mKeyPass.first);
     }
 
-    /* load private key */
-    ret = OpenSslApiWrapper::SslCtxUsePrivateKeyFile(sslCtx, tmpPath.c_str(), OpenSslApiWrapper::SSL_FILETYPE_PEM);
-    if (ret <= 0) {
-        LOG_ERROR("Failed to set use private key file");
+    BIO* bio = nullptr;
+    EVP_PKEY* pkey = nullptr;
+
+    bio = OpenSslApiWrapper::BioNewMemBuf(tlsPk.c_str(), static_cast<int>(tlsPk.size()));
+    if (bio == nullptr) {
+        LOG_ERROR("Failed to create BIO for private key in memory");
         EraseDecryptData();
         return ACC_ERROR;
     }
 
-    /* check private key */
+    pkey = OpenSslApiWrapper::PemReadBioPk(bio, nullptr, nullptr, (void*)mKeyPass.first);
+    OpenSslApiWrapper::BioFree(bio);
+
+    if (pkey == nullptr) {
+        LOG_ERROR("Failed to parse private key from memory. Check format and password.");
+        EraseDecryptData();
+        return ACC_ERROR;
+    }
+
+    auto ret = OpenSslApiWrapper::SslCtxUsePrivateKey(sslCtx, pkey);
+    OpenSslApiWrapper::EvpPkeyFree(pkey);
+
+    if (ret <= 0) {
+        LOG_ERROR("Failed to set private key to SSL_CTX");
+        EraseDecryptData();
+        return ACC_ERROR;
+    }
+
     ret = OpenSslApiWrapper::SslCtxCheckPrivateKey(sslCtx);
     if (ret <= 0) {
-        LOG_ERROR("Failed to set use private key file");
+        LOG_ERROR("Private key does not match the certificate");
         EraseDecryptData();
         return ACC_ERROR;
     }
