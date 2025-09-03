@@ -25,16 +25,16 @@
 #define HCCL_HAL_MODULE_ID 3
 #define APP_MODULE_ID 33
 
-#define DEVMM_NODE_MAPPED_BIT           1
-#define DEVMM_NODE_MEMTYPE_SHIFT        2
-#define DEVMM_NODE_MEMTYPE_WID          4
+constexpr uint32_t DEVMM_NODE_MAPPED_BIT = 1;
+constexpr uint32_t DEVMM_NODE_MEMTYPE_SHIFT = 2;
+constexpr uint32_t DEVMM_NODE_MEMTYPE_WID = 4;
 
-#define DEVMM_NODE_MAPPED_FLG       (1UL << DEVMM_NODE_MAPPED_BIT)
-#define DEVMM_HEAP_HUGE_PAGE (0xEFEF0002UL)
-#define DEVMM_HEAP_CHUNK_PAGE (0xEFEF0003UL)   // page_size is exchanged svm page_size
+constexpr uint32_t DEVMM_NODE_MAPPED_FLG = (1UL << DEVMM_NODE_MAPPED_BIT);
+constexpr uint32_t DEVMM_HEAP_HUGE_PAGE = 0xEFEF0002UL;
+constexpr uint32_t DEVMM_HEAP_CHUNK_PAGE = 0xEFEF0003UL;
 
-#define DEVMM_MAX_PHY_DEVICE_NUM 64
-const int SVM_MAX_AGENT_NUM = 65;
+constexpr uint32_t DEVMM_MAX_PHY_DEVICE_NUM = 64;
+constexpr uint32_t SVM_MAX_AGENT_NUM = 65;
 
 #ifndef ALIGN_DOWN
 #define ALIGN_DOWN(val, al) ((val) & ~((al) - 1))
@@ -44,13 +44,13 @@ const int SVM_MAX_AGENT_NUM = 65;
 #define ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
 #endif
 
-#define MEM_SVM_VAL            0X0
-#define MEM_DEV_VAL            0X1
-#define MEM_HOST_VAL           0X2
-#define MEM_DVPP_VAL           0X3
-#define MEM_HOST_AGENT_VAL     0X4
-#define MEM_RESERVE_VAL        0X5
-#define MEM_MAX_VAL            0X6
+constexpr uint32_t MEM_SVM_VAL = 0X0;
+constexpr uint32_t MEM_DEV_VAL = 0X1;
+constexpr uint32_t MEM_HOST_VAL = 0X2;
+constexpr uint32_t MEM_DVPP_VAL = 0X3;
+constexpr uint32_t MEM_HOST_AGENT_VAL = 0X4;
+constexpr uint32_t MEM_RESERVE_VAL = 0x5;
+constexpr uint32_t MEM_MAX_VAL = 0X6;
 
 enum DevHeapSubType {
     SUB_SVM_TYPE = 0x0,     /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */

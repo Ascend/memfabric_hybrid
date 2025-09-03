@@ -12,6 +12,7 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(5);
 DynamicRanksQpManager::DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
                                              bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
@@ -230,7 +231,7 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
         return 0;
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(WAIT_DELAY_TIME);
     auto remotes = std::move(currTask.remoteAddress);
     currTask.status.exist = false;
     uniqueLock.unlock();

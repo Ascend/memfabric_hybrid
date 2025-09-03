@@ -11,6 +11,10 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+static constexpr uint32_t SEND_CQ_DEPTH = 8192;
+static constexpr uint32_t RECV_CQ_DEPTH = 128;
+static constexpr uint32_t MAX_SEND_WR = 8192;
+static constexpr uint32_t MAX_RECV_WR = 128;
 FixedRanksQpManager::FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                          sockaddr_in devNet) noexcept
     : DeviceQpManager(deviceId, rankId, rankCount, devNet, HYBM_ROLE_PEER)
@@ -421,13 +425,13 @@ int FixedRanksQpManager::CreateOneQp(ConnQpType qpType, ConnectionChannel &chann
         HccpQpExtAttrs attr{};
         attr.qpMode = NETWORK_OFFLINE;
         attr.version = 1;
-        attr.cqAttr.sendCqDepth = 8192;
-        attr.cqAttr.recvDqDepth = 128;
+        attr.cqAttr.sendCqDepth = SEND_CQ_DEPTH;
+        attr.cqAttr.recvDqDepth = RECV_CQ_DEPTH;
         attr.qp_attr.cap.max_recv_sge = 1;
-        attr.qp_attr.cap.max_recv_wr = 128;
+        attr.qp_attr.cap.max_recv_wr = MAX_RECV_WR;
         attr.qp_attr.cap.max_recv_sge = 1;
         attr.qp_attr.qp_type = IBV_QPT_RC;
-        attr.qp_attr.cap.max_send_wr = 8192;
+        attr.qp_attr.cap.max_send_wr = MAX_SEND_WR;
         attr.data_plane_flag.bs.cq_cstm = 1;
         ret = DlHccpApi::RaQpAiCreate(rdmaHandle_, attr, channel.aiQpInfo, channel.qpHandles[qpType]);
     } else {

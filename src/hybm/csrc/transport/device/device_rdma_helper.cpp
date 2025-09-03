@@ -3,10 +3,12 @@
  */
 #include <arpa/inet.h>
 #include <cstdlib>
+#include <cerrno>
 #include <sstream>
 #include <regex>
 #include <limits>
 #include "hybm_logger.h"
+#include "mf_string_util.h"
 #include "device_rdma_helper.h"
 
 namespace ock {
@@ -15,13 +17,10 @@ namespace transport {
 namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port)
 {
-    auto parsePort = std::atol(nic.c_str());
-    if (parsePort <= 0 || parsePort > std::numeric_limits<uint16_t>::max()) {
-        BM_LOG_ERROR("input nic(" << nic << ") not matches, port(" << parsePort << ") too large.");
+    if (!StringUtil::String2Uint(nic, port) || port == 0) {
+        BM_LOG_ERROR("failed to convert nic : " << nic << " to uint16_t, or port is 0.");
         return BM_INVALID_PARAM;
     }
-
-    port = static_cast<uint16_t>(parsePort);
     return BM_OK;
 }
 
@@ -41,13 +40,11 @@ Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
     }
 
     auto caught = match[2].str();
-    auto parsePort = std::atol(caught.c_str());
-    if (parsePort <= 0 || parsePort > std::numeric_limits<uint16_t>::max()) {
-        BM_LOG_ERROR("input nic(" << nic << ") not matches, port(" << parsePort << ") too large.");
+    if (!StringUtil::String2Uint(caught, address.sin_port)) {
+        BM_LOG_ERROR("failed to convert str : " << caught << " to uint16_t, or sin_port is 0.");
         return BM_INVALID_PARAM;
     }
 
-    address.sin_port = static_cast<uint16_t>(parsePort);
     address.sin_family = AF_INET;
     return BM_OK;
 }

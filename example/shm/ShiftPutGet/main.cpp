@@ -3,15 +3,14 @@
  * This file constains code of cpu debug and npu code.We read data from bin file
  * and write result to file.
  */
-#include "data_utils.h"
-#include "acl/acl.h"
-
-#include "smem.h"
-#include "smem_shm.h"
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
+#include "data_utils.h"
+#include "acl/acl.h"
+#include "smem.h"
+#include "smem_shm.h"
 #include "shm_all_shift.h"
 
 static uint32_t gNpuNum = 16;
@@ -21,7 +20,8 @@ static uint32_t ctxSize = 16;
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
-    int64_t *xHost, *xDevice;
+    int64_t *xHost;
+    int64_t *xDevice;
     uint32_t *yHost;
     size_t inputSize = (gInputLen + 2) * sizeof(int64_t);
     size_t outputSize = (gInputLen + 2) * sizeof(int64_t);
@@ -37,8 +37,8 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
     CHECK_EQUALS(yHost[0], 0);
     CHECK_EQUALS(yHost[1], rankId);
-    CHECK_EQUALS(yHost[2], rankSize);
-    CHECK_EQUALS(yHost[3], ctxSize);
+    CHECK_EQUALS(yHost[2U], rankSize);
+    CHECK_EQUALS(yHost[3U], ctxSize);
 
     CHECK_ACL(aclrtMemcpy(xDevice, inputSize, xHost, inputSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_all_shift_do(stream, gva, xDevice);

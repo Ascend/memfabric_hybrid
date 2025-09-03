@@ -365,7 +365,7 @@ static uint64_t VirtAllocGvaMemInnerCommon(struct DevVirtComHeap *heap, uint64_t
 
     if ((heap == nullptr) || (bytesize > heap->heap_size) || (bytesize == 0)) {
         BM_LOG_ERROR("Heap is nullptr or alloc memory too large bytesize:" << bytesize
-                     << " heap_size:" << heap->heap_size);
+                     << " heap_size:" << (heap != nullptr ? std::to_string(heap->heap_size) : "nullptr"));
         return 1;
     }
 
@@ -374,20 +374,21 @@ static uint64_t VirtAllocGvaMemInnerCommon(struct DevVirtComHeap *heap, uint64_t
     (void)pthread_mutex_lock(&heap->tree_lock);
     node = GetNodeFromIdleVaTree(heap, allocSize, va);
     if (node == nullptr) {
-        va = 1;
-        goto alloc_out;
+        (void)pthread_mutex_unlock(&heap->tree_lock);
+        (void)pthread_rwlock_unlock(&heap->heap_rw_lock);
+        return 1;
     }
 
     va = node->data.va;
     ret = AllocFromNode(heap, node, advise, memtype);
     if (ret != 0) {
         BM_LOG_ERROR("Can not alloc memory. bytesize=" << bytesize << " allocSize=" << allocSize);
-        va = 1;
-        goto alloc_out;
+        (void)pthread_mutex_unlock(&heap->tree_lock);
+        (void)pthread_rwlock_unlock(&heap->heap_rw_lock);
+        return 1;
     }
     UpdatePeakCacheMem(heap, memtype);
 
-alloc_out:
     (void)pthread_mutex_unlock(&heap->tree_lock);
     (void)pthread_rwlock_unlock(&heap->heap_rw_lock);
 

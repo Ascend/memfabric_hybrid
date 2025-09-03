@@ -3,15 +3,14 @@
  * This file constains code of cpu debug and npu code.We read data from bin file
  * and write result to file.
  */
-#include "data_utils.h"
-#include "acl/acl.h"
-
-#include "smem.h"
-#include "smem_shm.h"
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
+#include "data_utils.h"
+#include "acl/acl.h"
+#include "smem.h"
+#include "smem_shm.h"
 #include "shm_rdma_test_dev.h"
 
 static uint32_t gNpuNum = 16;

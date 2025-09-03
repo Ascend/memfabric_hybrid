@@ -293,7 +293,8 @@ int HostDataOpSDMA::CheckDevice2Gva2dStatus(hybm_copy_2d_params &params) noexcep
         return BM_INVALID_PARAM;
     }
 
-    if (params.height > std::numeric_limits<uint64_t>::max() / params.dpitch || params.height > std::numeric_limits<uint64_t>::max() / params.spitch) {
+    if (params.height > std::numeric_limits<uint64_t>::max() / params.dpitch ||
+        params.height > std::numeric_limits<uint64_t>::max() / params.spitch) {
         BM_LOG_ERROR("length of dst or src address cannot exceed max value of uint64_t.");
         return BM_INVALID_PARAM;
     }

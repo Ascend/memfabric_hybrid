@@ -46,22 +46,13 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                                       void* stream,
                                       uint32_t flags)
 {
-    if (e == nullptr || params == nullptr ||
-        params->sources == nullptr || params->destinations == nullptr ||
-        params->dataSizes == nullptr) {
-        BM_LOG_ERROR("input parameter invalid, e: 0x" << std::hex << e
-                     << ", params: 0x" << params
-                     << ", src array: 0x" << params->sources
-                     << ", dest array: 0x" << params->destinations
-                     << ", dataSizes array: 0x" << params->dataSizes);
-        return BM_INVALID_PARAM;
-    }
-
-    if (params->batchSize == 0 || direction >= HYBM_DATA_COPY_DIRECTION_BUTT) {
-        BM_LOG_ERROR("input parameter invalid, batchSize: " << params->batchSize
-                     << ", direction: " << direction);
-        return BM_INVALID_PARAM;
-    }
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->sources != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->destinations != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
 
     bool addressValid = true;
     auto entity = (MemEntity *)e;

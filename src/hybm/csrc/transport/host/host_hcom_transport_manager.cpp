@@ -180,7 +180,6 @@ Result HcomTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint6
     addr = keyUnion.hostKey.hcomInfo.lAddress;
     size = keyUnion.hostKey.hcomInfo.size;
     return BM_OK;
-
 }
 
 Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)

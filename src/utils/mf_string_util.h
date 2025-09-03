@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <limits>
 
 namespace ock {
 namespace mf {
@@ -15,6 +16,8 @@ public:
     static std::string TrimString(const std::string &str);
     static inline std::vector<std::string> Split(const std::string &str, char delimiter);
     static inline bool StartsWith(const std::string &str, const std::string &prefix);
+    template <typename UIntType>
+    static inline bool String2Uint(const std::string& str, UIntType& val);
 };
 
 inline std::string StringUtil::TrimString(const std::string &input)
@@ -51,6 +54,41 @@ inline std::vector<std::string> StringUtil::Split(const std::string &str, char d
 inline bool StringUtil::StartsWith(const std::string &str, const std::string &prefix)
 {
     return str.length() >= prefix.length() && str.compare(0, prefix.length(), prefix) == 0;
+}
+
+template <typename UIntType>
+inline bool StringUtil::String2Uint(const std::string& str, UIntType& val)
+{
+    if (str.empty()) {
+        return false;
+    }
+
+    if (str[0] == '-') {
+        return false;
+    }
+
+    char* end = nullptr;
+    errno = 0;
+
+    unsigned long long result = std::strtoull(str.c_str(), &end, 10);
+
+    if (end == str.c_str()) {
+        return false;
+    }
+
+    while (*end != '\0' && std::isspace(*end)) {
+        ++end;
+    }
+    if (*end != '\0') {
+        return false;
+    }
+
+    if (errno == ERANGE || result > static_cast<unsigned long long>(std::numeric_limits<UIntType>::max())) {
+        return false;
+    }
+
+    val = static_cast<UIntType>(result);
+    return true;
 }
 }  // namespace mf
 }  // namespace ock

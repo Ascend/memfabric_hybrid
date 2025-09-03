@@ -3,6 +3,7 @@
  */
 #include <unistd.h>
 
+#include "mf_string_util.h"
 #include "acc_includes.h"
 #include "acc_common_util.h"
 
@@ -62,20 +63,15 @@ uint32_t AccCommonUtil::GetEnvValue2Uint32(const char *envName)
     constexpr uint32_t maxUint32Len = 35;
     const char *tmpEnvValue = std::getenv(envName);
     if (tmpEnvValue != nullptr && strlen(tmpEnvValue) <= maxUint32Len && IsAllDigits(tmpEnvValue)) {
-        uint32_t envValue = String2Uint(tmpEnvValue);
+        uint32_t envValue = 0;
+        std::string str(tmpEnvValue);
+        if (!ock::mf::StringUtil::String2Uint(str, envValue)) {
+            LOG_ERROR("failed to convert str : " << str << " to uint32_t");
+            return 0;
+        }
         return envValue;
     }
     return 0;
-}
-
-uint32_t AccCommonUtil::String2Uint(const char *str)    // avoid throwing ex during converting to std::string
-{
-    try {
-        auto num = static_cast<uint32_t>(std::stoi(str));
-        return num;
-    } catch (...) {
-        return 0;
-    }
 }
 
 bool AccCommonUtil::IsAllDigits(const std::string &str)

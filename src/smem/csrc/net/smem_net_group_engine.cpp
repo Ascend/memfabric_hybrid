@@ -5,8 +5,8 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
-#include "smem_net_group_engine.h"
 #include "smem_store_factory.h"
+#include "smem_net_group_engine.h"
 
 namespace ock {
 namespace smem {

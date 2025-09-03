@@ -82,6 +82,7 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
     char *warmup_data = NULL;
     int32_t ret;
     const uint32_t KB_SIZE = 1024;
+    const uint32_t LOG_LEVEL_WARNING = 2;
 
     if (rankId == 0) {
         uint32_t block_iteration = 10;
@@ -216,7 +217,8 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
         std::cout << "Test Start" << std::endl;
         for (uint32_t i = 0; i < block_iteration; i++) {
             uint32_t block_size = base_block_size * (1 << i);
-            struct timeval start_tv, stop_tv;
+            struct timeval start_tv;
+            struct timeval stop_tv;
             gettimeofday(&start_tv, nullptr);
             /* latency test */
             for (uint32_t j = 0; j < times; j++) {
@@ -431,7 +433,7 @@ int32_t main(int32_t argc, char* argv[])
     CHECK_ACL(aclInit(nullptr));
     CHECK_ACL(aclrtSetDevice(deviceId));
 
-    smem_set_log_level(2);
+    smem_set_log_level(LOG_LEVEL_WARNING);
     smem_set_conf_store_tls(0, "", 0);
     auto ret = smem_init(0);
     CHECK_GOTO_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId, err1);

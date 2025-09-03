@@ -11,6 +11,7 @@
 
 namespace ock {
 namespace mf {
+static constexpr size_t MAX_PEER_DEVICES = 16;
 struct RegisterSlice {
     std::shared_ptr<MemSlice> slice;
     std::string name;
@@ -73,7 +74,7 @@ private:
 
 private:
     uint16_t sliceCount_{0};
-    std::bitset<16> enablePeerDevices_;
+    std::bitset<MAX_PEER_DEVICES> enablePeerDevices_;
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;
     std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
