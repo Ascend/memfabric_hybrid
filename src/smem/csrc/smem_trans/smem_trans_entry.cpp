@@ -406,7 +406,7 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.nic[0] = '\0';
     uint16_t port = 11000 + entityId_;
-    auto url = std::string("tcp://0.0.0.0/0:").append(std::to_string(port));
+    auto url = std::to_string(port);
     strcpy(options.nic, url.c_str());
     return std::move(options);
 }
