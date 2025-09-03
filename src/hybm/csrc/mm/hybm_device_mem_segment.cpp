@@ -482,7 +482,7 @@ void MemSegmentDevice::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t
         return;
     }
 
-    BM_LOG_ERROR("input address: " << addr << ", size: " << size << " cannot matches rankId.");
+    BM_LOG_ERROR("input address, size: " << size << " cannot matches rankId.");
     rankId = std::numeric_limits<uint32_t>::max();
 }
 

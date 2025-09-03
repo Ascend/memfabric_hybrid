@@ -495,7 +495,7 @@
 1. 同步写接口
 
     ```c
-    int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destSession,
+    int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
                                   void *destAddress, size_t dataSize)
     ```
 
@@ -503,7 +503,7 @@
     |-|---------|
     |handle|TRANS对象handle|
     |srcAddress|源地址的起始地址指针|
-    |destSession|目的TRANS实例对应的标识|
+    |destUniqueId|目的TRANS实例对应的标识|
     |destAddress|目的地址的起始地址指针|
     |dataSize|传输数据大小|
     |返回值|成功返回0，其他为错误码|
@@ -511,7 +511,7 @@
 1. 批量同步写接口
 
     ```c
-    int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destSession,
+    int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
                                         void *destAddresses[], size_t dataSizes[], uint32_t batchSize)
     ```
 
@@ -519,7 +519,7 @@
     |-|--------|
     |handle|TRANS对象handle|
     |srcAddresses[]|批量源地址的起始地址指针列表|
-    |destSession|目的TRANS实例对应的标识|
+    |destUniqueId|目的TRANS实例对应的标识|
     |destAddresses[]|批量目的地址的起始地址指针列表|
     |dataSizes[]|批量传输数据大小列表|
     |batchSize|批量传输数据数量|

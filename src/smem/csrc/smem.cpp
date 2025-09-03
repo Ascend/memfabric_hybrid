@@ -95,12 +95,8 @@ SMEM_API const char *smem_get_and_clear_last_err_msg()
     return ock::smem::SmLastError::GetAndClear(true);
 }
 
-SMEM_API int32_t smem_register_decrypt_handler(const smem_decrypt_handler h)
+SMEM_API int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len,
+    const char *tls_pk_pw, const uint32_t tls_pk_pw_len, const smem_decrypt_handler h)
 {
-    if (h == nullptr) {
-        SM_LOG_WARN("decrypt handler is nullptr");
-        return ock::smem::SM_INVALID_PARAM;
-    }
-    ock::smem::StoreFactory::RegisterDecryptHandler(h);
-    return ock::smem::SM_OK;
+    return ock::smem::StoreFactory::SetTlsPkInfo(tls_pk, tls_pk_len, tls_pk_pw, tls_pk_pw_len, h);
 }

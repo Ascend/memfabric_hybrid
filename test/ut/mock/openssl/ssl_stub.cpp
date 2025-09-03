@@ -162,6 +162,11 @@ void SSL_CTX_set_verify(SSL_CTX *ctx, int mode, int (*cb)(int, X509_STORE_CTX *)
 {
 }
 
+int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey)
+{
+    return RETURN_OK;
+}
+
 int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file, int type)
 {
     return RETURN_OK;

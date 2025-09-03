@@ -167,18 +167,12 @@ TEST_F(TestAccTcpSslHelper, start)
     ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     tlsOption.tlsCaFile.insert("ca_cert.pem");
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
-
-    tlsOption.tlsPk = "/cert/key.pem";
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     tlsOption.tlsCrlFile.insert("crl.pem");
     ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     tlsOption.tlsCrlPath = "/crl/";
-    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
-
-    tlsOption.tlsPkPwd = "/key_pwd.txt";
     ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
 
     print_tls_option(tlsOption);

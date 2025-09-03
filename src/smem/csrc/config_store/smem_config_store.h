@@ -22,8 +22,8 @@ struct AcclinkTlsOption {
     std::string tlsCaPath;                        /* ca file path */
     std::set<std::string> tlsCaFile;              /* paths of ca */
     std::set<std::string> tlsCrlFile;             /* path of crl file */
-    std::string tlsPk;                            /* private key */
-    std::string tlsPkPwd;                         /* private key加密文件->可选传入 */
+    std::string tlsPk;                            /* content of private key */
+    std::string tlsPkPwd;                         /* content of private key加密文件->可选传入 */
     ock::acc::AccDecryptHandler decryptHandler_;  /* private key decryptor */
     std::string packagePath;                      /* lib库路径 */
 };

@@ -56,6 +56,7 @@ private:
     AccResult HandleCertExpiredCheck();
     AccResult CertExpiredCheck(std::string path, std::string type);
     void ReadCheckCertParams();
+    AccResult GetPkPass();
 
 private:
     AccDecryptHandler mDecryptHandler_ = nullptr; // 解密回调

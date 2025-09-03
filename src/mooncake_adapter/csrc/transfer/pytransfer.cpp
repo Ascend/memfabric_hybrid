@@ -64,7 +64,7 @@ int TransferAdapterPy::GetRpcPort()
     return rpcPort;
 }
 
-int TransferAdapterPy::TransferSyncWrite(const char *destSession,
+int TransferAdapterPy::TransferSyncWrite(const char *destUniqueId,
                                          uintptr_t buffer,
                                          uintptr_t peer_buffer_address,
                                          size_t length)
@@ -74,14 +74,14 @@ int TransferAdapterPy::TransferSyncWrite(const char *destSession,
     void *destAddress = reinterpret_cast<void*>(peer_buffer_address);
     
     // 调用底层SMEM API
-    int ret = smem_trans_write(handle_, srcAddress, destSession, destAddress, length);
+    int ret = smem_trans_write(handle_, srcAddress, destUniqueId, destAddress, length);
     if (ret != 0) {
         ADAPTER_LOG_ERROR("SMEM API smem_trans_write happen error, ret=" << ret);
     }
     return ret;
 }
 
-int TransferAdapterPy::BatchTransferSyncWrite(const char *destSession,
+int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
                                               std::vector<uintptr_t> buffers,
                                               std::vector<uintptr_t> peer_buffer_addresses,
                                               std::vector<size_t> lengths)
@@ -110,7 +110,7 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destSession,
     int ret = smem_trans_batch_write(
         handle_,
         srcAddresses.data(),
-        destSession,
+        destUniqueId,
         destAddresses.data(),
         dataSizes.data(),
         static_cast<uint32_t>(batchSize)

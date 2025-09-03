@@ -168,12 +168,12 @@ SMEM_API int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address)
     return SM_OK;
 }
 
-SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destSession,
+SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
                                   void *destAddress, size_t dataSize)
 {
     SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(destSession != nullptr, "invalid destSession, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(destUniqueId != nullptr, "invalid destUniqueId, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(srcAddress != nullptr, "invalid srcAddress, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(destAddress != nullptr, "invalid destAddress, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dataSize != 0, "invalid dataSize, which is 0", SM_INVALID_PARAM);
@@ -186,16 +186,16 @@ SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, c
         return result;
     }
 
-    return entry->SyncWrite(srcAddress, destSession, destAddress, dataSize);
+    return entry->SyncWrite(srcAddress, destUniqueId, destAddress, dataSize);
 }
 
-SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destSession,
+SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
                                         void *destAddresses[], size_t dataSizes[], uint32_t batchSize)
 {
     SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(srcAddresses != nullptr, "invalid srcAddresses, which is null", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(destSession != nullptr, "invalid srcAddress, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(destUniqueId != nullptr, "invalid srcAddress, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(destAddresses != nullptr, "invalid destAddress, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dataSizes != nullptr, "invalid destAddress, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(batchSize != 0, "invalid batchSize, which is 0", SM_INVALID_PARAM);
@@ -213,5 +213,5 @@ SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddr
         return result;
     }
 
-    return entry->SyncWrite(srcAddresses, destSession, destAddresses, dataSizes, batchSize);
+    return entry->SyncWrite(srcAddresses, destUniqueId, destAddresses, dataSizes, batchSize);
 }

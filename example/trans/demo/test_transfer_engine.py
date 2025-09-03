@@ -28,18 +28,18 @@ def main():
     set_conf_store_tls(False, "")
     # 根据角色执行不同的初始化和逻辑
     if args.role == "Decode":
-        run_decode_role(engine, args, args.src_session_id)
+        run_decode_role(engine, args, args.src_unique_id)
     elif args.role == "Prefill":
-        if not args.dst_session_id:
+        if not args.dst_unique_id:
             raise ValueError("dst-unique-id is required for Prefill role")
-        run_prefill_role(engine, args, args.src_session_id)
+        run_prefill_role(engine, args, args.src_unique_id)
 
 
-def run_decode_role(engine, args, session_id):
+def run_decode_role(engine, args, unique_id):
     # 初始化引擎
     ret_value = engine.initialize(
         args.store_url,
-        session_id,
+        unique_id,
         args.role,
         args.npu_id,
     )
@@ -48,7 +48,7 @@ def run_decode_role(engine, args, session_id):
         print("Ascend Transfer Engine initialization failed.")
         raise RuntimeError("Ascend Transfer Engine initialization failed.")
     
-    print(f"AscendTransferEngine init success {args.store_url=} {session_id=} {args.role=} {args.npu_id=}")
+    print(f"AscendTransferEngine init success {args.store_url=} {unique_id=} {args.role=} {args.npu_id=}")
     
     # 创建缓冲区
     total_buffer = torch.zeros(
@@ -72,7 +72,7 @@ def run_decode_role(engine, args, session_id):
             print(f"get buffer success {i}, {torch.sum(total_buffer[i])=}")
 
 
-def run_prefill_role(engine, args, session_id):
+def run_prefill_role(engine, args, unique_id):
     # 创建缓冲区
     total_buffer = torch.randn(
         (10, 50, 40, 20, 60),
@@ -86,7 +86,7 @@ def run_prefill_role(engine, args, session_id):
     # 初始化引擎
     ret_value = engine.initialize(
         args.store_url,
-        session_id,
+        unique_id,
         args.role,
         args.npu_id,
     )
@@ -109,7 +109,7 @@ def run_prefill_role(engine, args, session_id):
         time.sleep(10)
         peer_address = buffer.data_ptr()  # 对端目的地址信息和buffer应该相同
         # 同步写入数据
-        engine.transfer_sync_write(args.dst_session_id, buffer.data_ptr(), peer_address, total_bytes)
+        engine.transfer_sync_write(args.dst_unique_id, buffer.data_ptr(), peer_address, total_bytes)
         print(f"write success peer_address={hex(peer_address)}")
     
     # 等待解码完成
