@@ -91,7 +91,7 @@ private:
     const std::string name_;
     UrlExtraction storeUrlExtraction_;
     smem_trans_config_t config_; /* config of transfer entry */
-    WorkerSession workerSession_;
+    WorkerUniqueId workerUniqueId_;
     uint32_t sliceInfoSize_{0};
     hybm_exchange_info deviceInfo_;
     std::thread watchThread_;

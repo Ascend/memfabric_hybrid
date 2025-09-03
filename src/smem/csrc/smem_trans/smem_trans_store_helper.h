@@ -30,27 +30,27 @@ struct StoreKeys {
     }
 };
 
-struct WorkerSession {
+struct WorkerUniqueId {
     uint32_t address{0};
     uint16_t port{0};
     uint16_t reserved{0};
 };
 
 union WorkerIdUnion {
-    WorkerSession session;
+    WorkerUniqueId session;
     uint64_t workerId;
 
-    explicit WorkerIdUnion(WorkerSession ws) : session(ws) {}
+    explicit WorkerIdUnion(WorkerUniqueId ws) : session(ws) {}
     explicit WorkerIdUnion(uint64_t id) : workerId{id} {}
 };
 
 struct StoredSliceInfo {
-    WorkerSession session;
+    WorkerUniqueId session;
     const void *address;
     uint64_t size;
     uint8_t info[0];
 
-    StoredSliceInfo(WorkerSession ws, const void *a, uint64_t s) noexcept : session(std::move(ws)), address{a}, size{s}
+    StoredSliceInfo(WorkerUniqueId ws, const void *a, uint64_t s) noexcept : session(std::move(ws)), address{a}, size{s}
     {
     }
 };

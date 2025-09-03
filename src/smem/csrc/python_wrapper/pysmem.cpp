@@ -12,6 +12,7 @@
 #include "smem_shm.h"
 #include "smem_bm.h"
 #include "smem_version.h"
+#include "smem_security.h"
 
 namespace py = pybind11;
 

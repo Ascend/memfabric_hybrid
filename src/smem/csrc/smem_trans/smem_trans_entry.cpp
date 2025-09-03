@@ -64,7 +64,7 @@ SmemTransEntry::~SmemTransEntry()
 int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 {
     entityId_ = (16U << 3) + 1U;
-    if (!ParseTransName(name_, workerSession_.address, workerSession_.port)) {
+    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port)) {
         return SM_INVALID_PARAM;
     }
 
@@ -301,20 +301,20 @@ void SmemTransEntry::WatchTaskFindNewSlices()
 
 Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId)
 {
-    WorkerSession workerSession;
+    WorkerUniqueId workerUniqueId;
     auto it = nameToWorkerId.find(name);
     if (it != nameToWorkerId.end()) {
         /* fast path */
         uniqueId = it->second;
         return SM_OK;
     }
-    auto success = ParseTransName(name, workerSession.address, workerSession.port);
+    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port);
     if (!success) {
         SM_LOG_ERROR("parse name failed.");
         return -1;
     }
 
-    WorkerIdUnion workerId{workerSession};
+    WorkerIdUnion workerId{workerUniqueId};
     uniqueId = workerId.workerId;
     nameToWorkerId.emplace(name, workerId.workerId);
     return SM_OK;
@@ -381,7 +381,7 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
         return SM_ERROR;
     }
 
-    StoredSliceInfo sliceInfo(workerSession_, address, size);
+    StoredSliceInfo sliceInfo(workerUniqueId_, address, size);
     ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
     if (ret != 0) {
         SM_LOG_ERROR("store for slice info failed: " << ret);
