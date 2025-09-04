@@ -316,7 +316,6 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
         return BM_OK;
     }
 
-    BM_LOG_INFO("=========== transport manager is not null =======================");
     std::vector<EntityExportInfo> deserializedInfos(count);
     for (auto i = 0U; i < count; i++) {
         auto ret = desc[i].Read(deserializedInfos[i]);
