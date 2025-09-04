@@ -17,7 +17,7 @@ namespace mf {
 namespace drv {
 
 namespace {
-#define DEVMM_SVM_MAGIC 'M'
+const char DEVMM_SVM_MAGIC = 'M';
 #define DEVMM_SVM_IPC_MEM_OPEN _IOW(DEVMM_SVM_MAGIC, 21, DevmmCommandMessage)
 #define DEVMM_SVM_PREFETCH _IOW(DEVMM_SVM_MAGIC, 14, DevmmMemAdvisePara)
 #define DEVMM_SVM_IPC_MEM_QUERY _IOWR(DEVMM_SVM_MAGIC, 29, DevmmMemQuerySizePara)

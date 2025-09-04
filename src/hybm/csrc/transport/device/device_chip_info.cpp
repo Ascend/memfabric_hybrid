@@ -27,7 +27,6 @@ int DeviceChipInfo::Init() noexcept
     }
     dieId_ = static_cast<uint32_t>(infoValue);
 
-
     chipDieOffset_ = 0x10000000000UL; // RT_ASCEND910B1_DIE_ADDR_OFFSET;
     chipOffset_ = 0x80000000000UL; // RT_ASCEND910B1_CHIP_ADDR_OFFSET;
     chipBaseAddr_ = 0UL;

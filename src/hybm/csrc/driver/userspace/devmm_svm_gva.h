@@ -11,7 +11,7 @@ namespace ock {
 namespace mf {
 namespace drv {
 
-#define GVA_GIANT_FLAG      (1ULL << 0)
+const uint64_t GVA_GIANT_FLAG = (1ULL << 0);
 
 int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, uint64_t flags);
 

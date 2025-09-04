@@ -7,6 +7,16 @@
 #include <type_traits>
 #include <limits>
 
+enum MfIndex : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+    INDEX_4 = 4U,
+    INDEX_5 = 5U,
+    INDEX_6 = 6U,
+};
+
 namespace ock {
 namespace mf {
 template <typename T>

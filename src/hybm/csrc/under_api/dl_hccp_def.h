@@ -17,7 +17,7 @@
 namespace ock {
 namespace mf {
 
-#define HOST_LITE_RESERVED 4
+const int HOST_LITE_RESERVED = 4;
 const int RA_MR_MAX_NUM = 8;
 
 struct ra_rdma_ops;

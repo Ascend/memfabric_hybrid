@@ -25,7 +25,7 @@ int32_t hybm_init_stub(uint16_t deviceId, uint64_t flags)
     return 0;
 }
 
-void hybm_uninit_stub()
+void hybm_uninit_stub(void)
 {
     return;
 }
@@ -175,7 +175,8 @@ int32_t hybm_data_copy_2d_stub(hybm_entity_t e, hybm_copy_2d_params *params,
     auto srcAddr = (uint64_t)params->src;
     auto destAddr = (uint64_t)params->dest;
     for (uint64_t i = 0; i < params->height; i++) {
-        memcpy((void *)(destAddr + i * params->dpitch), (const void *)(srcAddr + i * params->spitch), params->width);
+        memcpy((void *)(destAddr + i * params->dpitch),
+            (const void *)(srcAddr + i * params->spitch), params->width);
     }
     return 0;
 }

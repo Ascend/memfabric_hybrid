@@ -230,7 +230,7 @@ int32_t HybmStream::GetSqHead(uint32_t &head)
     return (head != 0xffff ? BM_OK : BM_ERROR);
 }
 
-#define SDMA_CQE_ERROR_MAX  16
+const int SDMA_CQE_ERROR_MAX = 16;
 static std::string GetCqeErrorStr(rtLogicCqReport_t &cqe)
 {
     static std::string sdmaCqeError[] = {

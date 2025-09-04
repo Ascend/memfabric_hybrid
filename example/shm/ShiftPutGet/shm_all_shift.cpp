@@ -1,11 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- * This file constains code of cpu debug and npu code.We read data from bin file
+ * This file constains code of cpu debug and npu code. We read data from bin file
  * and write result to file.
  */
 #include "kernel_operator.h"
-#include "shm_all_shift.h"
 #include "smem_shm_aicore_base_api.h"
+#include "shm_all_shift.h"
 
 constexpr int32_t RANK_SIZE_MAX = 32;
 constexpr int32_t BLOCK_LEN = SMEM_SHM_ALIGN_SIZE / sizeof(int64_t);
@@ -110,7 +110,7 @@ public:
 
         uint32_t rank = smem_shm_get_global_rank();
         uint32_t rankSize = smem_shm_get_global_rank_size();
-	    uint64_t ss = smem_shm_get_symmetric_size();
+        uint64_t ss = smem_shm_get_symmetric_size();
         smem_shm_put_int64(gvaSt, inputGm, (rank + 1) % rankSize, BLOCK_LEN);
         buf[0] = rank;
         buf[1] = rankSize;

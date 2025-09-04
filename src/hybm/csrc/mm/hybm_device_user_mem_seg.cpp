@@ -9,7 +9,6 @@
 namespace ock {
 namespace mf {
 constexpr uint8_t MAX_DEVICE_COUNT = 16;
-
 MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
     : MemSegmentDevice{options, eid}
 {}

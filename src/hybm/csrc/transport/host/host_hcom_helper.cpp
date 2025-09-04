@@ -8,6 +8,7 @@
 #include <ifaddrs.h>
 
 #include "hybm_logger.h"
+#include "mf_num_util.h"
 
 using namespace ock::mf;
 using namespace ock::mf::transport::host;
@@ -32,9 +33,9 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
         BM_LOG_ERROR("Failed to match nic, nic: " << nic);
         return BM_INVALID_PARAM;
     }
-    protocol = match[1].str();
-    ipStr = match[2].str();
-    std::string portStr = match[3].str();
+    protocol = match[INDEX_1].str();
+    ipStr = match[INDEX_2].str();
+    std::string portStr = match[INDEX_3].str();
     port = std::stoi(portStr);
     if (port < MIN_PORT || port > MAX_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
@@ -57,10 +58,10 @@ Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &
         return BM_INVALID_PARAM;
     }
 
-    protocol = match[1].str();
-    std::string ip = match[2].str();
-    std::string maskStr = match[3].str();
-    std::string portStr = match[4].str();
+    protocol = match[INDEX_1].str();
+    std::string ip = match[INDEX_2].str();
+    std::string maskStr = match[INDEX_3].str();
+    std::string portStr = match[INDEX_4].str();
 
     std::istringstream iss(ipStr);
     std::string token;

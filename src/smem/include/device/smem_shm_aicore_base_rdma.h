@@ -138,10 +138,11 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uin
     uint32_t curTail = *(__gm__ uint32_t*)(curHardwareTailAddr);
 
     AscendC::DataCopyExtParams copyParamsTail{1, 1 * sizeof(uint32_t), 0, 0, 0};
+    const uint8_t bitShift = 7U;
     while (curTail != idx) {
         __gm__ cqeCtx* cqeAddr = (__gm__ cqeCtx*)(cqBaseAddr + cqeSize * (curTail & (depth - 1)));
         uint32_t cqeByte4 = *(__gm__ uint32_t*)cqeAddr;
-        while (((cqeByte4 & (1 << 7U)) != 0) == ((curTail & depth) != 0)) {
+        while (((cqeByte4 & (1 << bitShift)) != 0) == ((curTail & depth) != 0)) {
             int64_t tmp = AscendC::GetSystemCycle();
             cacheWriteThrough((__gm__ uint8_t*)cqeAddr, 32);
             cqeByte4 = *(__gm__ uint32_t*)cqeAddr;

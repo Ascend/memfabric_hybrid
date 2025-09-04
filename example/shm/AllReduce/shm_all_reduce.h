@@ -1,6 +1,6 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- * This file constains code of cpu debug and npu code.We read data from bin file
+ * This file constains code of cpu debug and npu code. We read data from bin file
  * and write result to file.
  */
 #ifndef SHM_ALL_REDUCE_H

@@ -25,7 +25,7 @@ struct HostExportInfo {
 class MemSegmentHost : public MemSegment {
 public:
     explicit MemSegmentHost(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
-    ~MemSegmentHost()
+    ~MemSegmentHost() override
     {
         FreeMemory();
     }

@@ -250,19 +250,19 @@ std::function<int(const std::string&, char*, size_t&)> StoreFactory::ConvertFunc
     };
 }
 
-int32_t StoreFactory::SetTlsInfo(bool enable, const char *tlsInfo, const size_t tlsInfoLen) noexcept
+int32_t StoreFactory::SetTlsInfo(bool enable, const char *tlsData, const size_t tlsInfoLen) noexcept
 {
     enableTls = enable;
     if (!enable) {
         return StoreErrorCode::SUCCESS;
     }
 
-    if (tlsInfo == nullptr || tlsInfoLen > MAX_TLS_INFO_LEN) {
+    if (tlsData == nullptr || tlsInfoLen > MAX_TLS_INFO_LEN) {
         SM_LOG_ERROR("tls info null or len invalid.");
         return StoreErrorCode::ERROR;
     }
 
-    StoreFactory::tlsInfo = std::string(tlsInfo, tlsInfoLen);
+    StoreFactory::tlsInfo = std::string(tlsData, tlsInfoLen);
     return StoreErrorCode::SUCCESS;
 }
 

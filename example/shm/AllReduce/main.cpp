@@ -6,11 +6,12 @@
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
-#include "data_utils.h"
-#include "acl/acl.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "shm_all_reduce.h"
+#include "data_utils.h"
+#include "acl/acl.h"
+#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
@@ -45,7 +46,8 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     uint32_t blockDim = 8;
 
     // 申请本地主机内存 和 device内存
-    uint8_t *inputHost, *outputHost;
+    uint8_t *inputHost;
+    uint8_t *outputHost;
     CHECK_ACL(aclrtMallocHost((void**)(&inputHost), gDataByteSize));
     CHECK_ACL(aclrtMallocHost((void**)(&outputHost), gDataByteSize));
 
@@ -100,9 +102,9 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 
 int32_t main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    std::string ipport = argv[3];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankId = atoi(argv[INDEX_2]);
+    std::string ipport = argv[INDEX_3];
     std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {

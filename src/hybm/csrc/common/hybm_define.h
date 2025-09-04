@@ -47,7 +47,7 @@ static inline bool IsVirtualAddressNpu(uint64_t address)
 
 static inline bool IsVirtualAddressNpu(const void *address)
 {
-    return IsVirtualAddressNpu((uint64_t)(ptrdiff_t)address);
+    return IsVirtualAddressNpu((uint64_t)(uintptr_t)address);
 }
 
 static inline uint64_t Valid48BitsAddress(uint64_t address)
@@ -57,12 +57,12 @@ static inline uint64_t Valid48BitsAddress(uint64_t address)
 
 static inline const void *Valid48BitsAddress(const void *address)
 {
-    return (const void *)(ptrdiff_t)Valid48BitsAddress((uint64_t)(ptrdiff_t)address);
+    return (const void *)(uintptr_t)Valid48BitsAddress((uint64_t)(uintptr_t)address);
 }
 
 static inline void *Valid48BitsAddress(void *address)
 {
-    return (void *)(ptrdiff_t)Valid48BitsAddress((uint64_t)(ptrdiff_t)address);
+    return (void *)(uintptr_t)Valid48BitsAddress((uint64_t)(uintptr_t)address);
 }
 
 enum DeviceSystemInfoType {

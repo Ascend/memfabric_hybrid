@@ -7,11 +7,12 @@
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
-#include "data_utils.h"
-#include "acl/acl.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "shm_all_shift.h"
+#include "data_utils.h"
+#include "acl/acl.h"
+#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
@@ -28,17 +29,17 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize)); // size = 32
     CHECK_ACL(aclrtMallocHost((void **)(&yHost), outputSize)); // size = 48
     CHECK_ACL(aclrtMalloc((void **)&xDevice, inputSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    xHost[0U] = rankId;
-    xHost[1U] = rankSize;
-    xHost[2U] = gInputLen;
-    xHost[3U] = gNpuMallocSpace;
+    xHost[INDEX_0] = rankId;
+    xHost[INDEX_1] = rankSize;
+    xHost[INDEX_2] = gInputLen;
+    xHost[INDEX_3] = gNpuMallocSpace;
 
     uint64_t metaAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(yHost[0U], 0);
-    CHECK_EQUALS(yHost[1U], rankId);
-    CHECK_EQUALS(yHost[2U], rankSize);
-    CHECK_EQUALS(yHost[3U], ctxSize);
+    CHECK_EQUALS(yHost[INDEX_0], 0);
+    CHECK_EQUALS(yHost[INDEX_1], rankId);
+    CHECK_EQUALS(yHost[INDEX_2], rankSize);
+    CHECK_EQUALS(yHost[INDEX_3], ctxSize);
 
     CHECK_ACL(aclrtMemcpy(xDevice, inputSize, xHost, inputSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_all_shift_do(stream, gva, xDevice);
@@ -46,8 +47,8 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     sleep(1);
 
     CHECK_ACL(aclrtMemcpy(xHost, outputSize, gva + rankId * gNpuMallocSpace, outputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(xHost[0], (rankId + rankSize - 1) % rankSize);
-    CHECK_EQUALS(xHost[4], rankId);
+    CHECK_EQUALS(xHost[INDEX_0], (rankId + rankSize - 1) % rankSize);
+    CHECK_EQUALS(xHost[INDEX_4], rankId);
 
     CHECK_ACL(aclrtFree(xDevice));
     CHECK_ACL(aclrtFreeHost(xHost));
@@ -71,9 +72,9 @@ static void TestContext(smem_shm_t handle)
 
 int32_t main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    std::string ipport = argv[3];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankId = atoi(argv[INDEX_2]);
+    std::string ipport = argv[INDEX_3];
     std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {

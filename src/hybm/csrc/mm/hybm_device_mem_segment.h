@@ -12,7 +12,7 @@
 
 namespace ock {
 namespace mf {
-static constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
+constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
 static constexpr uint32_t invalidServerId = 0x3FFU;
 
 struct HbmExportInfo {

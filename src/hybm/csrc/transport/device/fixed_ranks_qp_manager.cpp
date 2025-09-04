@@ -370,6 +370,7 @@ int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, Conne
 int FixedRanksQpManager::CreateQpWaitingReady(std::unordered_map<uint32_t, ConnectionChannel> &connections,
                                               ConnQpType qpType) noexcept
 {
+    const int accessLevel = 7;
     for (auto it = connections.begin(); it != connections.end(); ++it) {
         auto ret = CreateOneQp(qpType, it->second);
         if (ret != 0) {
@@ -381,7 +382,7 @@ int FixedRanksQpManager::CreateQpWaitingReady(std::unordered_map<uint32_t, Conne
             HccpMrInfo info{};
             info.addr = (void *)(ptrdiff_t)pos->second.address;
             info.size = pos->second.size;
-            info.access = 7;
+            info.access = accessLevel;
             ret = DlHccpApi::RaMrReg(it->second.qpHandles[qpType], info);
             if (ret != 0) {
                 BM_LOG_ERROR("register MR failed: " << ret);

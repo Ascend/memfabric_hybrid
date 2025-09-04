@@ -7,11 +7,12 @@
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
-#include "data_utils.h"
-#include "acl/acl.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "shm_rdma_test_dev.h"
+#include "data_utils.h"
+#include "acl/acl.h"
+#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
@@ -130,9 +131,9 @@ static int32_t TestGetQPInfo(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 
 int32_t main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    std::string ipport = argv[3];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankId = atoi(argv[INDEX_2]);
+    std::string ipport = argv[INDEX_3];
     std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {

@@ -14,7 +14,6 @@
 
 namespace ock {
 namespace mf {
-
 uint32_t MemSegmentDevice::serverId_{0};
 uint32_t MemSegmentDevice::superPodId_{0};
 

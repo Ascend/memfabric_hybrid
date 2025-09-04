@@ -95,8 +95,10 @@ public:
             return;
         }
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", result) != 0) {
-            std::cout << strTime << std::setw(6U) << std::setfill('0') << tv.tv_usec << " "
-                      <<LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << logMsg << std::endl;
+            const uint8_t TIME_WIDTH = 6U;
+            std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0')
+                      << tv.tv_usec << " " << LogLevelDesc(level) << " "
+                      << syscall(SYS_gettid) << " " << logMsg << std::endl;
         } else {
             std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << logMsg
                       << std::endl;

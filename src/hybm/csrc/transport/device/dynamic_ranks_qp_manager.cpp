@@ -12,7 +12,8 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
-static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(5);
+const int delay = 5;
+static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(delay);
 DynamicRanksQpManager::DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
                                              bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
@@ -168,6 +169,7 @@ void DynamicRanksQpManager::BackgroundProcess() noexcept
 
 int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
 {
+    const uint32_t MAX_CONNECTIONS = 1024;
     if (rankRole_ != HYBM_ROLE_RECEIVER) {
         return 0;
     }
@@ -190,7 +192,7 @@ int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
 
         HccpSocketWhiteListInfo info{};
         info.remoteIp.addr = it->second;
-        info.connLimit = 1024;
+        info.connLimit = MAX_CONNECTIONS;
         bzero(info.tag, sizeof(info.tag));
         whitelist.emplace_back(info);
         auto res = connections_.emplace(it->first, ConnectionChannel{info.remoteIp.addr, serverSocketHandle_});
@@ -300,7 +302,7 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     currTask.status.exist = false;
     auto ip2rank = std::move(currTask.ip2rank);
     if (currTask.status.failedTimes > 0L) {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(delay));
     }
 
     uint32_t successCount = 0;

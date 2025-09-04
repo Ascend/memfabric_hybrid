@@ -11,8 +11,8 @@
 #include <cerrno>
 
 #include "adapter_logger.h"
-#include "transfer_util.h"
 #include "smem.h"
+#include "transfer_util.h"
 
 namespace ock {
 namespace adapter {

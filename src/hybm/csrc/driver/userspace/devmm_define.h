@@ -43,13 +43,15 @@ constexpr uint32_t SVM_MAX_AGENT_NUM = 65;
 #define ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
 #endif
 
-constexpr uint32_t MEM_SVM_VAL = 0X0;
-constexpr uint32_t MEM_DEV_VAL = 0X1;
-constexpr uint32_t MEM_HOST_VAL = 0X2;
-constexpr uint32_t MEM_DVPP_VAL = 0X3;
-constexpr uint32_t MEM_HOST_AGENT_VAL = 0X4;
-constexpr uint32_t MEM_RESERVE_VAL = 0x5;
-constexpr uint32_t MEM_MAX_VAL = 0X6;
+enum MemVal {
+    MEM_SVM_VAL          = 0X0,
+    MEM_DEV_VAL          = 0X1,
+    MEM_HOST_VAL         = 0X2,
+    MEM_DVPP_VAL         = 0X3,
+    MEM_HOST_AGENT_VAL   = 0X4,
+    MEM_RESERVE_VAL      = 0X5,
+    MEM_MAX_VAL          = 0X6
+};
 
 enum DevHeapSubType {
     SUB_SVM_TYPE = 0x0,     /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */

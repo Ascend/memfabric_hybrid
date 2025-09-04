@@ -99,15 +99,20 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         }                                                                        \
     } while (0)
 
+#define CHECK_DIR_TLS_PATH(key, path)                                                    \
+    do {                                                                                 \
+        if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)     \
+            || !ock::mf::FileUtil::IsDir(path)) {                                        \
+            LOG_ERROR("TLS " #key " check failed");                                      \
+            return ACC_ERROR;                                                            \
+        }                                                                                \
+    } while (0)
+
 #define CHECK_DIR_PATH(key, required)                                                                               \
     do {                                                                                                            \
         if (!tlsOption.key.empty()) {                                                                               \
             std::string path = (#key == "tlsTopPath") ? tlsOption.key : tlsOption.tlsTopPath + "/" + tlsOption.key; \
-            if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)                            \
-                || !ock::mf::FileUtil::IsDir(path)) {                                                               \
-                LOG_ERROR("TLS " #key " check failed");                                                             \
-                return ACC_ERROR;                                                                                   \
-            }                                                                                                       \
+            CHECK_DIR_TLS_PATH(key, path);                                                                          \
         } else if (required) {                                                                                      \
             LOG_ERROR("TLS check failed, " #key " is required");                                                    \
             return ACC_ERROR;                                                                                       \

@@ -9,6 +9,7 @@
 #include <limits>
 #include "hybm_logger.h"
 #include "mf_string_util.h"
+#include "mf_num_util.h"
 #include "device_rdma_helper.h"
 
 namespace ock {
@@ -34,12 +35,12 @@ Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
         return BM_INVALID_PARAM;
     }
 
-    if (inet_aton(match[1].str().c_str(), &address.sin_addr) == 0) {
+    if (inet_aton(match[INDEX_1].str().c_str(), &address.sin_addr) == 0) {
         BM_LOG_ERROR("parse ip for nic: " << nic << " failed.");
         return BM_INVALID_PARAM;
     }
 
-    auto caught = match[2].str();
+    auto caught = match[INDEX_2].str();
     if (!StringUtil::String2Uint(caught, address.sin_port)) {
         BM_LOG_ERROR("failed to convert str : " << caught << " to uint16_t, or sin_port is 0.");
         return BM_INVALID_PARAM;

@@ -80,7 +80,7 @@ int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &ra
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;
     std::string key = AUTO_RANK_KEY_PREFIX + name_;
-    std::vector<uint8_t> rankIdValue(2);
+    std::vector<uint8_t> rankIdValue(RANK_ID_SIZE);
     auto ret = store_->Get(key, rankIdValue, 0);
     if (LIKELY(ret == NOT_EXIST)) {
         std::vector<uint8_t> value((const uint8_t *)(const void *)&cfg,

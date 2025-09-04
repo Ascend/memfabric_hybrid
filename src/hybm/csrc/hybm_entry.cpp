@@ -292,7 +292,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     return 0;
 }
 
-HYBM_API void hybm_uninit()
+HYBM_API void hybm_uninit(void)
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
     if (initialized <= 0L) {
@@ -332,7 +332,7 @@ HYBM_API int32_t hybm_set_log_level(int level)
 
 HYBM_API const char *hybm_get_error_string(int32_t errCode)
 {
-    static thread_local std::string info;
-    info = std::string("error(").append(std::to_string(errCode)).append(")");
+    static thread_local std::string info =
+        std::string("error(").append(std::to_string(errCode)).append(")");
     return info.c_str();
 }

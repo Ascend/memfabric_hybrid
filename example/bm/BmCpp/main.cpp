@@ -11,6 +11,7 @@
 #include "smem.h"
 #include "smem_bm.h"
 #include "barrier_util.h"
+#include "mf_num_util.h"
 
 #ifndef LOG_FILENAME_SHORT
 #define LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -46,11 +47,13 @@ BarrierUtil *g_barrier = nullptr;
 
 void GenerateData(void *ptr, int32_t rank)
 {
+    const int32_t FACTOR = 23;
+    const int32_t INCREMENT = 17; // 23, 17 are primes
     int32_t *arr = (int32_t *)ptr;
     static int32_t mod = INT16_MAX;
     int32_t base = rank;
     for (uint32_t i = 0; i < COPY_SIZE / sizeof(int); i++) {
-        base = (base * 23 + 17) % mod;
+        base = (base * FACTOR + INCREMENT) % mod;
         if ((i + rank) % 3 == 0) {
             arr[i] = -base; // 构造三分之一的负数
         } else {
@@ -274,13 +277,13 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
 
 int main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankNum = atoi(argv[2]);
-    int rankStart = atoi(argv[3]);
-    std::string ipport = argv[4];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankNum = atoi(argv[INDEX_2]);
+    int rankStart = atoi(argv[INDEX_3]);
+    std::string ipport = argv[INDEX_4];
     int autoRank = 0;
     if (argc > 5) {
-        autoRank = atoi(argv[5]);
+        autoRank = atoi(argv[INDEX_5]);
     }
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
