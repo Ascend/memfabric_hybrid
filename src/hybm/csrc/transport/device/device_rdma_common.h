@@ -75,8 +75,7 @@ struct ConnectRankInfo {
 
 inline std::ostream &operator<<(std::ostream &output, const RegMemResult &mr)
 {
-    output << "RegMemResult(size=" << mr.size << ", mrHandle=" << mr.mrHandle << ", lkey=" << mr.lkey
-           << ", rkey=" << mr.rkey << ")";
+    output << "RegMemResult(size=" << mr.size << ")";
     return output;
 }
 
@@ -171,9 +170,7 @@ inline std::ostream &operator<<(std::ostream &output, const AiQpRMACQ &info)
 
 inline std::ostream &operator<<(std::ostream &output, const RdmaMemRegionInfo &info)
 {
-    output << "RdmaMemRegionInfo(size=" << info.size
-           << ", addr=" << static_cast<void *>(reinterpret_cast<void *>(info.addr)) << ", lkey=" << info.lkey
-           << ", rkey=" << info.rkey << ")";
+    output << "RdmaMemRegionInfo(size=" << info.size << ")";
     return output;
 }
 

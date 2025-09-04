@@ -106,7 +106,7 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
 
     RegMemResult result{mr.addr, mr.size, mrHandle, info.lkey, info.rkey};
-    BM_LOG_DEBUG("register MR address=" << info.addr << ", result=" << result);
+    BM_LOG_DEBUG("register MR result=" << result);
 
     registerMRS_.emplace(mr.addr, result);
     ret = qpManager_->SetLocalMemories(registerMRS_);
@@ -146,7 +146,7 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     RegMemKeyUnion keyUnion{};
     auto pos = registerMRS_.lower_bound(addr);
     if (pos == registerMRS_.end() || pos->first + pos->second.size <= addr) {
-        BM_LOG_ERROR("input address not register: " << (void *)addr);
+        BM_LOG_ERROR("input address not register");
         return BM_INVALID_PARAM;
     }
 
@@ -287,8 +287,7 @@ const void *RdmaTransportManager::GetQpInfo() const
 
 Result RdmaTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_DEBUG("=========== read remote for rankId=" << rankId << ", size=" << size << ", laddr=" << std::hex << lAddr
-                                                       << ", raddr=" << rAddr);
+    BM_LOG_DEBUG("=========== read remote for rankId=" << rankId << ", size=" << size);
     auto ret = RemoteIO(rankId, lAddr, rAddr, size, false);
     if (ret != BM_OK) {
         BM_LOG_ERROR("ReadRemote() failed: " << ret);
@@ -301,8 +300,7 @@ Result RdmaTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_
 
 Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_DEBUG("=========== write remote for rankId=" << rankId << ", size=" << size << ", laddr=" << std::hex
-                                                        << lAddr << ", raddr=" << rAddr);
+    BM_LOG_DEBUG("=========== write remote for rankId=" << rankId << ", size=" << size);
     auto ret = RemoteIO(rankId, lAddr, rAddr, size, true);
     if (ret != BM_OK) {
         BM_LOG_ERROR("WriteRemote() failed: " << ret);
