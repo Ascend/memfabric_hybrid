@@ -62,8 +62,8 @@ kubectl apply -f local-pods-demo.yaml
 ```
 
 注意:
-* mmc-meta.conf中meta_service_url为<PodIP>:<ClusterIP#targetPort>。
-* mmc-meta.conf中meta_service_url为<ClusterIP>:<ClusterIP#Port>。
+* mmc-meta.conf中meta_service_url为\<PodIP:targetPort\>
+* mmc-meta.conf中meta_service_url为\<ClusterIP:Port\>
 * 为了方便测试，在样例yaml文件中，均采用了host网络启动Pod；在生产环境中需要修改，但是要保证客户端的PodIP可以互相访问。
 * 所有K8S资源均需要置于同一命名空间中
 
