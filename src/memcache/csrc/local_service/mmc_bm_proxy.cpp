@@ -65,7 +65,7 @@ Result MmcBmProxy::InternalCreateBm(const mmc_bm_create_config_t &createConfig)
         MMC_LOG_INFO("dram and hbm hybrid pool");
     }
 
-    smem_bm_data_op_type opType = MmcSmemBmHelper::TransSmemBmDataOpType(createConfig.dataOpType);
+    smem_bm_data_op_type opType = MmcSmemBmHelper::TransSmemBmDataOpType(createConfig);
     if (opType == SMEMB_DATA_OP_BUTT) {
         MMC_LOG_ERROR("MmcBmProxy unknown data op type " << createConfig.dataOpType);
         return MMC_ERROR;
