@@ -127,24 +127,19 @@ int32_t HostDataOpRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_d
     }
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyHost2Gva2d(params.src, params.spitch, params.dest, params.dpitch, params.width,
-                                 params.height, options);
+            ret = CopyHost2Gva2d(params, options);
             break;
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
-            ret = CopyDevice2Gva2d(params.src, params.spitch, params.dest, params.dpitch, params.width,
-                                   params.height, options);
+            ret = CopyDevice2Gva2d(params, options);
             break;
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST:
-            ret = CopyGva2Gva2d(params.src, params.spitch, params.dest, params.dpitch, params.width,
-                                params.height, options);
+            ret = CopyGva2Gva2d(params, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_HOST:
-            ret = CopyGva2Host2d(params.src, params.spitch, params.dest, params.dpitch, params.width,
-                                 params.height, options);
+            ret = CopyGva2Host2d(params, options);
             break;
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE:
-            ret = CopyGva2Device2d(params.src, params.spitch, params.dest, params.dpitch, params.width,
-                                   params.height, options);
+            ret = CopyGva2Device2d(params, options);
             break;
         default:
             BM_LOG_ERROR("data copy invalid direction: " << direction);
@@ -286,39 +281,37 @@ int32_t HostDataOpRDMA::CopyGva2Gva(const void *srcVA, void *destVA, uint64_t le
     return BM_INVALID_PARAM;
 }
 
-int32_t HostDataOpRDMA::CopyHost2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                       uint64_t width, uint64_t height, const ExtOptions &options)
+int32_t HostDataOpRDMA::CopyHost2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options)
 {
-    if (spitch != width || dpitch != width) {
+    if (params.spitch != params.width || params.dpitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
-    uint64_t size = width * height;
-    return CopyHost2Gva(srcVA, destVA, size, options);
+    uint64_t size = params.width * params.height;
+    return CopyHost2Gva(params.src, params.dest, size, options);
 }
 
-int32_t HostDataOpRDMA::CopyGva2Host2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                       uint64_t width, uint64_t height, const ExtOptions &options)
+int32_t HostDataOpRDMA::CopyGva2Host2d(hybm_copy_2d_params &params, const ExtOptions &options)
 {
-    if (spitch != width || dpitch != width) {
+    if (params.spitch != params.width || params.dpitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
-    uint64_t size = width * height;
-    return CopyGva2Host(srcVA, destVA, size, options);
+    uint64_t size = params.width * params.height;
+    return CopyGva2Host(params.src, params.dest, size, options);
 }
 
-int32_t HostDataOpRDMA::CopyDevice2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                         uint64_t width, uint64_t height, const ExtOptions &options)
+int32_t HostDataOpRDMA::CopyDevice2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options)
 {
-    if (dpitch != width) {
+    if (params.dpitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
 
-    uint64_t size = width * height;
+    uint64_t size = params.width * params.height;
     if (options.destRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy2d(destVA, dpitch, srcVA, spitch, width, height, ACL_MEMCPY_DEVICE_TO_HOST);
+        return DlAclApi::AclrtMemcpy2d(params.dest, params.dpitch, params.src, params.spitch,
+                                       params.width, params.height, ACL_MEMCPY_DEVICE_TO_HOST);
     }
 
     auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(size);
@@ -327,13 +320,14 @@ int32_t HostDataOpRDMA::CopyDevice2Gva2d(const void *srcVA, uint64_t spitch, voi
         BM_LOG_ERROR("Failed to malloc host, length: " << size);
         return BM_MALLOC_FAILED;
     }
-    auto ret = DlAclApi::AclrtMemcpy2d(tmpHost, dpitch, srcVA, spitch, width, height, ACL_MEMCPY_DEVICE_TO_HOST);
+    auto ret = DlAclApi::AclrtMemcpy2d(tmpHost, params.dpitch, params.src, params.spitch,
+                                       params.width, params.height, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to copy device data to host ret: " << ret);
         rdmaSwapMemoryAllocator_->Release(tmpRdmaMemory);
         return ret;
     }
-    ret = transportManager_->WriteRemote(options.destRankId, (uint64_t) tmpHost, (uint64_t) destVA, size);
+    ret = transportManager_->WriteRemote(options.destRankId, (uint64_t) tmpHost, (uint64_t) params.dest, size);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to copy host data to remote host memory ret: " << ret);
     }
@@ -341,17 +335,17 @@ int32_t HostDataOpRDMA::CopyDevice2Gva2d(const void *srcVA, uint64_t spitch, voi
     return ret;
 }
 
-int32_t HostDataOpRDMA::CopyGva2Device2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                         uint64_t width, uint64_t height, const ExtOptions &options)
+int32_t HostDataOpRDMA::CopyGva2Device2d(hybm_copy_2d_params &params, const ExtOptions &options)
 {
-    if (spitch != width) {
+    if (params.spitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
 
-    uint64_t size = width * height;
+    uint64_t size = params.width * params.height;
     if (options.srcRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy2d(destVA, dpitch, srcVA, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE);
+        return DlAclApi::AclrtMemcpy2d(params.dest, params.dpitch, params.src, params.spitch,
+                                       params.width, params.height, ACL_MEMCPY_HOST_TO_DEVICE);
     }
 
     auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(size);
@@ -360,13 +354,14 @@ int32_t HostDataOpRDMA::CopyGva2Device2d(const void *srcVA, uint64_t spitch, voi
         BM_LOG_ERROR("Failed to malloc host, length: " << size);
         return BM_MALLOC_FAILED;
     }
-    auto ret = transportManager_->ReadRemote(options.srcRankId, (uint64_t) tmpHost, (uint64_t) srcVA, size);
+    auto ret = transportManager_->ReadRemote(options.srcRankId, (uint64_t) tmpHost, (uint64_t) params.src, size);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to copy host data to remote host memory ret: " << ret);
         rdmaSwapMemoryAllocator_->Release(tmpRdmaMemory);
         return ret;
     }
-    ret = DlAclApi::AclrtMemcpy2d(destVA, dpitch, tmpHost, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE);
+    ret = DlAclApi::AclrtMemcpy2d(params.dest, params.dpitch, tmpHost, params.spitch,
+                                  params.width, params.height, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to copy device data to host ret: " << ret);
     }
@@ -374,15 +369,14 @@ int32_t HostDataOpRDMA::CopyGva2Device2d(const void *srcVA, uint64_t spitch, voi
     return ret;
 }
 
-int32_t HostDataOpRDMA::CopyGva2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                      uint64_t width, uint64_t height, const ExtOptions &options)
+int32_t HostDataOpRDMA::CopyGva2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options)
 {
-    if (spitch != width || dpitch != width) {
+    if (params.spitch != params.width || params.dpitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
-    uint64_t size = width * height;
-    return CopyGva2Gva(srcVA, destVA, size, options);
+    uint64_t size = params.width * params.height;
+    return CopyGva2Gva(params.src, params.dest, size, options);
 }
 
 int32_t HostDataOpRDMA::RtMemoryCopyAsync(const void *srcVA, void *destVA, uint64_t length,
@@ -407,18 +401,19 @@ int32_t HostDataOpRDMA::RtMemoryCopyAsync(const void *srcVA, void *destVA, uint6
     return BM_OK;
 }
 
-int32_t HostDataOpRDMA::RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                            uint64_t width, uint64_t height, uint32_t kind, const ExtOptions &options)
+int32_t HostDataOpRDMA::RtMemoryCopy2dAsync(hybm_copy_2d_params &params, uint32_t kind, const ExtOptions &options)
 {
     void *st = stream_;
     if (options.stream != nullptr) {
         st = options.stream;
     }
 
-    auto ret = DlAclApi::AclrtMemcpy2dAsync(destVA, dpitch, srcVA, spitch, width, height, kind, st);
+    auto ret = DlAclApi::AclrtMemcpy2dAsync(params.dest, params.dpitch, params.src,
+                                            params.spitch, params.width, params.height, kind, st);
     if (ret != 0) {
-        BM_LOG_ERROR("Failed to add aclrt memory copy2d async task, width: " << width << " height: " << height
-                                                                             << " kind: " << kind << " ret: " << ret);
+        BM_LOG_ERROR("Failed to add aclrt memory copy2d async task, width: " << params.width
+            << " height: " << params.height
+            << " kind: " << kind << " ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 

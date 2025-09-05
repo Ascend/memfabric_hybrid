@@ -84,22 +84,27 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     });
 }
 
+#define CHECK_FILE_PATH_TLS(key, path)                                                         \
+    do {                                                                                       \
+        if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)           \
+            || !ock::mf::FileUtil::IsFile(path) || !ock::mf::FileUtil::CheckFileSize(path)) {  \
+            LOG_ERROR("TLS " #key " check failed");                                            \
+            return ACC_ERROR;                                                                  \
+        }                                                                                      \
+    } while (0)
+
 #define CHECK_FILE_PATH(key, required)                                           \
     do {                                                                         \
         if (!tlsOption.key.empty()) {                                            \
             std::string path = tlsOption.tlsTopPath + "/" + tlsOption.key;       \
-            if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)           \
-                || !ock::mf::FileUtil::IsFile(path) || !ock::mf::FileUtil::CheckFileSize(path)) {  \
-                LOG_ERROR("TLS " #key " check failed");                          \
-                return ACC_ERROR;                                                \
-            }                                                                    \
+            CHECK_FILE_PATH_TLS(key, path);                                      \
         } else if (required) {                                                   \
             LOG_ERROR("TLS check failed, " #key " is required");                 \
             return ACC_ERROR;                                                    \
         }                                                                        \
     } while (0)
 
-#define CHECK_DIR_TLS_PATH(key, path)                                                    \
+#define CHECK_DIR_PATH_TLS(key, path)                                                    \
     do {                                                                                 \
         if (ock::mf::FileUtil::IsSymlink(path) || !ock::mf::FileUtil::Realpath(path)     \
             || !ock::mf::FileUtil::IsDir(path)) {                                        \
@@ -112,7 +117,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
     do {                                                                                                            \
         if (!tlsOption.key.empty()) {                                                                               \
             std::string path = (#key == "tlsTopPath") ? tlsOption.key : tlsOption.tlsTopPath + "/" + tlsOption.key; \
-            CHECK_DIR_TLS_PATH(key, path);                                                                          \
+            CHECK_DIR_PATH_TLS(key, path);                                                                          \
         } else if (required) {                                                                                      \
             LOG_ERROR("TLS check failed, " #key " is required");                                                    \
             return ACC_ERROR;                                                                                       \
@@ -124,11 +129,7 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         if (!tlsOption.key.empty()) {                                                        \
             for (const std::string &file : tlsOption.key) {                                  \
                 std::string filePath = (topPath) + "/" + (file);                             \
-                if (ock::mf::FileUtil::IsSymlink(filePath) || !ock::mf::FileUtil::Realpath(filePath)           \
-                    || !ock::mf::FileUtil::IsFile(filePath) || !ock::mf::FileUtil::CheckFileSize(filePath)) {  \
-                    LOG_ERROR("TLS " #key " check failed");                                  \
-                    return ACC_ERROR;                                                        \
-                }                                                                            \
+                CHECK_FILE_PATH_TLS(key, filePath);                                               \
             }                                                                                \
         } else if (required) {                                                               \
             LOG_ERROR("TLS check failed, " #key " is required");                             \

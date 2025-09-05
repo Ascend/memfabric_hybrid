@@ -45,6 +45,9 @@ int32_t aclrtSynchronizeStream(void *stream)
 
 int32_t aclrtMalloc(void **ptr, size_t count, uint32_t type)
 {
+    if (ptr == nullptr) {
+        return RETURN_ERROR;
+    }
     *ptr = (void *) START_ADDR;
     return RETURN_OK;
 }
@@ -115,6 +118,9 @@ int32_t rtIpcDestroyMemoryName(const char *name)
 
 int32_t rtIpcOpenMemory(void **ptr, const char *name)
 {
+    if (ptr == nullptr) {
+        return RETURN_ERROR;
+    }
     *ptr = reinterpret_cast<void*>(0x3200);
     return RETURN_OK;
 }

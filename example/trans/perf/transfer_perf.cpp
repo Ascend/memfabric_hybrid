@@ -79,7 +79,7 @@ static inline void init_warmup_data(char *&warmup_data, size_t length)
 
 int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
 {
-    char *warmup_data = NULL;
+    char *warmup_data = nullptr;
     int32_t ret;
     const uint32_t KB_SIZE = 1024;
 

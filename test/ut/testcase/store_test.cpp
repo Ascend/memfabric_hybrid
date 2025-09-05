@@ -51,9 +51,9 @@ TEST_F(AccConfigStoreTest, get_block_check)
 {
     std::string key = "get_block_check_key1";
     std::string value = "get_block_check_value1";
-    int getRet = -1;
+    volatile int getRet = -1;
     std::vector<uint8_t> valueOut;
-    auto task = [&]() {
+    auto task = [this, &getRet, &valueOut, &key]() {
         getRet = client->Get(key, valueOut);
     };
 

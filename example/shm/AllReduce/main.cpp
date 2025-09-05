@@ -145,7 +145,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", (unsigned long long)gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", static_cast<unsigned long long>(gNpuMallocSpace), rankId);
     TestAllReduce(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;

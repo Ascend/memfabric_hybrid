@@ -11,7 +11,7 @@
 
 namespace ock {
 namespace mf {
-static constexpr size_t MAX_PEER_DEVICES = 16;
+constexpr size_t MAX_PEER_DEVICES = 16;
 struct RegisterSlice {
     std::shared_ptr<MemSlice> slice;
     std::string name;

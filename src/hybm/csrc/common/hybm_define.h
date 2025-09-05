@@ -40,27 +40,27 @@ constexpr uint64_t EXPORT_INFO_MAGIC = 0xAABB1234FFFFEEEEUL;
 constexpr uint64_t EXPORT_SLICE_MAGIC = 0xAABB1234FFFFBBBBUL;
 constexpr uint64_t EXPORT_INFO_VERSION = 0x1UL;
 
-static inline bool IsVirtualAddressNpu(uint64_t address)
+inline bool IsVirtualAddressNpu(uint64_t address)
 {
     return (address >= HYBM_DEVICE_VA_START && address < (HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE));
 }
 
-static inline bool IsVirtualAddressNpu(const void *address)
+inline bool IsVirtualAddressNpu(const void *address)
 {
     return IsVirtualAddressNpu((uint64_t)(uintptr_t)address);
 }
 
-static inline uint64_t Valid48BitsAddress(uint64_t address)
+inline uint64_t Valid48BitsAddress(uint64_t address)
 {
     return address & 0xffffffffffffUL;
 }
 
-static inline const void *Valid48BitsAddress(const void *address)
+inline const void *Valid48BitsAddress(const void *address)
 {
     return (const void *)(uintptr_t)Valid48BitsAddress((uint64_t)(uintptr_t)address);
 }
 
-static inline void *Valid48BitsAddress(void *address)
+inline void *Valid48BitsAddress(void *address)
 {
     return (void *)(uintptr_t)Valid48BitsAddress((uint64_t)(uintptr_t)address);
 }

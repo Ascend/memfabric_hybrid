@@ -37,20 +37,14 @@ private:
     int32_t CopyGva2Device(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
     int32_t CopyGva2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
 
-    int32_t CopyHost2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                           uint64_t width, uint64_t height, const ExtOptions &options);
-    int32_t CopyGva2Host2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                           uint64_t width, uint64_t height, const ExtOptions &options);
-    int32_t CopyDevice2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                             uint64_t width, uint64_t height, const ExtOptions &options);
-    int32_t CopyGva2Device2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                             uint64_t width, uint64_t height, const ExtOptions &options);
-    int32_t CopyGva2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                          uint64_t width, uint64_t height, const ExtOptions &options);
+    int32_t CopyHost2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options);
+    int32_t CopyGva2Host2d(hybm_copy_2d_params &params, const ExtOptions &options);
+    int32_t CopyDevice2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options);
+    int32_t CopyGva2Device2d(hybm_copy_2d_params &params, const ExtOptions &options);
+    int32_t CopyGva2Gva2d(hybm_copy_2d_params &params, const ExtOptions &options);
     int32_t RtMemoryCopyAsync(const void *srcVA, void *destVA, uint64_t length,
                               uint32_t kind, const ExtOptions &options);
-    int32_t RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                uint64_t width, uint64_t height,  uint32_t kind, const ExtOptions &options);
+    int32_t RtMemoryCopy2dAsync(hybm_copy_2d_params &params, uint32_t kind, const ExtOptions &options);
     int PrepareThreadLocalStream() noexcept;
 
 private:

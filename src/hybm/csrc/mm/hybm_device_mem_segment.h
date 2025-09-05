@@ -13,7 +13,7 @@
 namespace ock {
 namespace mf {
 constexpr uint32_t invalidSuperPodId = 0xFFFFFFFFU;
-static constexpr uint32_t invalidServerId = 0x3FFU;
+constexpr uint32_t invalidServerId = 0x3FFU;
 
 struct HbmExportInfo {
     uint64_t magic{EXPORT_INFO_MAGIC};
