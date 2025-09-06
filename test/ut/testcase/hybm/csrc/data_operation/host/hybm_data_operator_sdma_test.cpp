@@ -201,3 +201,31 @@ TEST_F(HybmDataOpSdmaTest, CopyHost2Gva2d_ShouldReturnFail_WhenAclApiFailed)
     EXPECT_EQ(ret, BM_OK);
     GlobalMockObject::verify();
 }
+
+TEST_F(HybmDataOpSdmaTest, DataOperator_BatchDataCopy)
+{
+    int ret = 0;
+    ExtOptions options{};
+    options.flags = 0;
+    options.stream = nullptr;
+    options.srcRankId = 0;
+    options.destRankId = 1;
+    hybm_batch_copy_params params{};
+    ret = g_dataOperator.DataOperator::BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+    params.batchSize = 1;
+    const void **sources = new const void *[params.batchSize];
+    void **destinations = new void *[params.batchSize];
+    size_t *dataSizes = new size_t[params.batchSize];
+    sources[0] = g_srcVA;
+    destinations[0] = g_dstVA;
+    dataSizes[0] = g_size;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+    ret = g_dataOperator.DataOperator::BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    delete[] sources;
+    delete[] destinations;
+    delete[] dataSizes;
+}

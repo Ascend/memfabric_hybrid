@@ -143,7 +143,7 @@ ${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/sm
 #### C接口
 安装完成run包并source安装路径下的set_env.sh后，会添加memfabric_hybrid安装路径的环境变量MEMFABRIC_HYBRID_HOME_PATH
 
-使用memfabric_hybrid相关接口时，需要include相关头文件(在${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/include/smem/host路径下)，并且在**链接时需要添加libmf_smem.so**(在${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/lib64路径下)依赖
+使用memfabric_hybrid相关接口时，需要include相关头文件(在\${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/include/smem/host路径下)，并且在**链接时需要添加libmf_smem.so**(在${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/lib64路径下)依赖
 
 可以通过MEMFABRIC_HYBRID_HOME_PATH环境变量指定头文件和lib库依赖路径，从而完成代码构建
 

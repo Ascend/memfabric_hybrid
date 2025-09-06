@@ -42,6 +42,9 @@ const hybm_options g_options_non_unified_addr = {HYBM_TYPE_HOST_INITIATE,
                                                  HYBM_ROLE_PEER,
                                                  "10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
+void *g_srcVA = reinterpret_cast<void *>(0x100000000000ULL);
+void *g_dstVA = reinterpret_cast<void *>(0x100000000000ULL);
+const uint64_t g_size = 1024;
 }  // namespace
 
 class HybmEntityDefaultTest : public ::testing::Test {
@@ -179,4 +182,36 @@ TEST_F(HybmEntityDefaultTest, AllocLocalMemory_ShouldReturnNotInitialized_WhenNo
     EXPECT_EQ(entity.CheckAddressInEntity(nullptr, 0), false);
 
     entity.ReleaseResources();
+}
+
+TEST_F(HybmEntityDefaultTest, DevRdmaDataOperator_Copydata)
+{
+    int ret = 0;
+    MemEntityDefault entity(0);
+    ret = entity.Initialize(&g_options_unified_addr);
+    EXPECT_EQ(ret, BM_OK);
+    hybm_copy_params params = {nullptr, nullptr, 0};
+    ret = entity.CopyData(params, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    hybm_copy_2d_params params2D = {nullptr, 0, nullptr, 0, 0, 0};
+    ret = entity.CopyData2d(params2D, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    hybm_batch_copy_params paramsbatch{};
+    paramsbatch.batchSize = 1;
+    const void **sources = new const void *[paramsbatch.batchSize];
+    void **destinations = new void *[paramsbatch.batchSize];
+    size_t *dataSizes = new size_t[paramsbatch.batchSize];
+    sources[0] = g_srcVA;
+    destinations[0] = g_dstVA;
+    dataSizes[0] = g_size;
+    paramsbatch.sources = sources;
+    paramsbatch.destinations = destinations;
+    paramsbatch.dataSizes = dataSizes;
+    ret = entity.BatchCopyData(paramsbatch, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    delete[] sources;
+    delete[] destinations;
+    delete[] dataSizes;
 }

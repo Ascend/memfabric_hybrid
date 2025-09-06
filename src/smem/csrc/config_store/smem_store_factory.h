@@ -14,6 +14,8 @@
 #include <functional>
 #include <condition_variable>
 #include <atomic>
+#include <condition_variable>
+#include <atomic>
 #include "smem.h"
 #include "smem_config_store.h"
 
@@ -55,11 +57,11 @@ public:
     /**
      * @brief Init and set tls info.
      * @param enable whether to enable tls
-     * @param tlsInfo the tls config info
-     * @param tlsInfoLen the length of tls config info
+     * @param tlsData the tls config info
+     * @param tlsDataLen the length of tls config info
      * @return Returns 0 on success or an error code on failure
      */
-    static int32_t SetTlsInfo(bool enable, const char *tlsData, const size_t tlsInfoLen) noexcept;
+    static int32_t SetTlsInfo(bool enable, const char *tlsData, const size_t tlsDataLen) noexcept;
 
     /**
      * @brief Set the TLS private key and password.
@@ -77,9 +79,9 @@ public:
 
 private:
     static Result InitTlsOption() noexcept;
-    static std::function<int(const std::string&, char*, size_t&)> ConvertFunc(int (*rawFunc)(const char*,
-        size_t, char*, size_t &)) noexcept;
     static void TlsCleanUp() noexcept;
+    static std::function<int(const std::string&, char*, size_t&)>
+        ConvertFunc(int (*rawFunc)(const char*, size_t, char*, size_t &)) noexcept;
     static bool enableTls;
     static std::string tlsInfo;
     static std::string tlsPkInfo;

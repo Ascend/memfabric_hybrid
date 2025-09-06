@@ -125,3 +125,31 @@ TEST_F(HybmDataOpRdmaTest, DataCopy2d_ShouldReturnSuccess)
     ret = g_dataOperator->DataCopy2d(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
 }
+
+TEST_F(HybmDataOpRdmaTest, CopyAsync)
+{
+    EXPECT_EQ(g_dataOperator->Initialize(), BM_OK);
+    int ret = 0;
+    ExtOptions options{};
+    options.flags = 0;
+    options.stream = nullptr;
+    options.srcRankId = g_srcRankId;
+    options.destRankId = g_desRankId;
+    hybm_copy_params params = {g_srcVA, g_dstVA, g_size};
+    ret = g_dataOperator->DataCopyAsync(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator->Wait(1);
+    EXPECT_EQ(ret, BM_ERROR);
+    auto g_hostDataOperator = std::dynamic_pointer_cast<HostDataOpRDMA>(g_dataOperator);
+    ret = g_hostDataOperator->RtMemoryCopyAsync(g_srcVA, g_dstVA, g_size, 0, options);
+    EXPECT_EQ(ret, BM_OK);
+    hybm_copy_2d_params params2d;
+    params2d.src = g_srcVA;
+    params2d.spitch = g_size;
+    params2d.dest = g_dstVA;
+    params2d.dpitch = g_size;
+    params2d.width = g_size;
+    params2d.height = 1;
+    ret = g_hostDataOperator->RtMemoryCopy2dAsync(params2d, 0, options);
+    EXPECT_EQ(ret, BM_OK);
+}
