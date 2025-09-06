@@ -173,7 +173,8 @@ void CheckSmemCopy(bm_context context, std::string ipPort, int autoRank,
 
     void *deviceSrc = nullptr;
     ret = aclrtMalloc((void**)(&deviceSrc), COPY_SIZE, ACL_MEM_MALLOC_HUGE_FIRST);
-    CHECK_RET_VOID((ret != 0 || deviceSrc == nullptr), "malloc device failed, ret:" << ret << " rank:" << context.rankId);
+    CHECK_RET_VOID((ret != 0 || deviceSrc == nullptr), "malloc device failed, ret:"
+        << ret << " rank:" << context.rankId);
 
     GenerateData(hostSrc, context.rankId);
     ret = aclrtMemcpy(deviceSrc, COPY_SIZE, hostSrc, COPY_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
@@ -225,7 +226,8 @@ void CheckSmemCopy2D(bm_context context, std::string ipPort, int autoRank,
 
     void *deviceSrc = nullptr;
     ret = aclrtMalloc((void**)(&deviceSrc), COPY_2D_SIZE, ACL_MEM_MALLOC_HUGE_FIRST);
-    CHECK_RET_VOID((ret != 0 || deviceSrc == nullptr), "malloc device failed, ret:" << ret << " rank:" << context.rankId);
+    CHECK_RET_VOID((ret != 0 || deviceSrc == nullptr), "malloc device failed, ret:"
+        << ret << " rank:" << context.rankId);
 
     GenerateData(hostSrc, context.rankId);
     ret = aclrtMemcpy(deviceSrc, COPY_2D_SIZE, hostSrc, COPY_2D_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
