@@ -8,6 +8,7 @@
 #include "mmc_meta_net_client.h"
 #include "mmc_def.h"
 #include "mmc_bm_proxy.h"
+#include "mmc_thread_pool.h"
 #include "mmc_msg_client_meta.h"
 
 namespace ock {
@@ -110,6 +111,7 @@ private:
     uint32_t rankId_{UINT32_MAX};
     uint32_t rpcRetryTimeOut_ = 0;
     uint64_t defaultTtlMs_ = MMC_DATA_TTL_MS;
+    MmcThreadPoolPtr threadPool_;
 };
 
 uint32_t MmcClientDefault::RankId(const affinity_policy &policy)

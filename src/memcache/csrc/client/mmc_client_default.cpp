@@ -24,6 +24,10 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
     bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
     rankId_ = bmProxy_->RankId();
 
+    threadPool_ = MmcMakeRef<MmcThreadPool>("client_pool", 1);
+    MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
+    MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
+
     auto tmpNetClient  = MetaNetClientFactory::GetInstance(config.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(tmpNetClient != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!tmpNetClient->Status()) {
@@ -54,6 +58,7 @@ void MmcClientDefault::Stop()
         MMC_LOG_WARN("MmcClientDefault has not been started");
         return;
     }
+    threadPool_->Shutdown();
 
     if (metaNetClient_ != nullptr) {
         metaNetClient_->Stop();
@@ -165,7 +170,7 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys, const st
     }
 
     options.mediaType = bmProxy_->GetMediaType();
-    uint32_t operateId = GenerateOperateId(rankId_);
+    uint64_t operateId = GenerateOperateId(rankId_);
     batchResult.resize(keys.size(), MMC_ERROR);
 
     BatchAllocResponse allocResponse;
@@ -233,12 +238,19 @@ Result MmcClientDefault::Get(const std::string &key, const MmcBufferArray& bufAr
     auto& blob = response.blobs_[0];
     auto ret = bmProxy_->Get(bufArr, blob);
 
-    UpdateRequest updateRequest{MMC_READ_FINISH, key, blob.rank_, blob.mediaType_, operateId};
-    Response updateResponse;
-    auto updateRet = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcRetryTimeOut_);
-    if (updateRet != MMC_OK || updateResponse.ret_ != MMC_OK) {
-        MMC_LOG_WARN("client" << name_ << " update " << key << " update state failed, ret:" << updateRet << ", "
-                              << updateResponse.ret_);
+    auto future = threadPool_->Enqueue(
+        [&](const std::string keyL, uint32_t rankL, uint16_t mediaTypeL, uint64_t operateIdL) {
+            UpdateRequest updateRequest{MMC_READ_FINISH, keyL, rankL, mediaTypeL, operateIdL};
+            Response updateResponse;
+            auto updateRet = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcRetryTimeOut_);
+            if (updateRet != MMC_OK || updateResponse.ret_ != MMC_OK) {
+                MMC_LOG_WARN("client" << name_ << " update " << key << " update state failed, ret:" << updateRet << ", "
+                                      << updateResponse.ret_);
+            }
+        },
+        key, blob.rank_, blob.mediaType_, operateId);
+    if (!future.valid()) {
+        MMC_LOG_WARN("get update enqueue failed");
     }
 
     if (ret != MMC_OK) {
@@ -283,7 +295,7 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
 
     batchResult.resize(keys.size(), MMC_ERROR);
 
-    const uint32_t operateId = GenerateOperateId(rankId_);
+    const uint64_t operateId = GenerateOperateId(rankId_);
     BatchGetRequest request{keys, rankId_, operateId};
     BatchAllocResponse response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcRetryTimeOut_),
@@ -327,21 +339,28 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
         mediaTypes.push_back(blobs[0].mediaType_);
     }
 
-    BatchUpdateRequest updateRequest{actionResults, keys, ranks, mediaTypes, operateId};
-    BatchUpdateResponse updateResponse;
-    Result updateResult = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcRetryTimeOut_);
-    if (updateResult != MMC_OK || updateResponse.results_.size() != keys.size()) {
-        MMC_LOG_ERROR("client " << name_ << " batch get update failed:" << updateResult << ", key size:" << keys.size()
-                                << ", ret size:" << updateResponse.results_.size());
-    } else {
-        for (size_t i = 0; i < keys.size(); ++i) {
-            if (updateResponse.results_[i] != MMC_OK) {
-                MMC_LOG_ERROR("client " << name_ << " batch put update for key " << keys[i]
-                                        << " failed:" << updateResponse.results_[i]);
+    auto future = threadPool_->Enqueue(
+        [&](std::vector<BlobActionResult> actionResultsL, const std::vector<std::string> keysL,
+            std::vector<uint32_t> ranksL, std::vector<uint16_t> mediaTypesL, uint64_t operateIdL) {
+            BatchUpdateRequest updateRequest{actionResultsL, keysL, ranksL, mediaTypesL, operateIdL};
+            BatchUpdateResponse updateResponse;
+            Result updateResult = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcRetryTimeOut_);
+            if (updateResult != MMC_OK || updateResponse.results_.size() != keys.size()) {
+                MMC_LOG_ERROR("client " << name_ << " batch get update failed:" << updateResult << ", key size:"
+                                        << keys.size() << ", ret size:" << updateResponse.results_.size());
+            } else {
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    if (updateResponse.results_[i] != MMC_OK) {
+                        MMC_LOG_ERROR("client " << name_ << " batch put update for key " << keys[i]
+                                                << " failed:" << updateResponse.results_[i]);
+                    }
+                }
             }
-        }
+        },
+        actionResults, keys, ranks, mediaTypes, operateId);
+    if (!future.valid()) {
+        MMC_LOG_WARN("get batch update enqueue failed");
     }
-
     return MMC_OK;
 }
 
