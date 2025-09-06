@@ -224,6 +224,9 @@ X509 *X509_free(X509 *cert)
 
 int ASN1_TIME_to_tm(const ASN1_TIME *s, struct tm *tm)
 {
+    if (tm == nullptr) {
+        return RETURN_ERROR;
+    }
     time_t now = time(nullptr) + 60 * 60 * 24 * 30;
     *tm = *gmtime(&now);
     return RETURN_OK;

@@ -11,12 +11,17 @@
 #include "shm_all_reduce.h"
 #include "data_utils.h"
 #include "acl/acl.h"
-#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
 static uint64_t gFlagOffset = 1024UL * 1024UL; // 前1M作为flag空间
 static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t);   // uint16_t represent half
+enum Index : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+};
 
 // FNV-1a 32-bit hash function
 uint32_t fnv1a_32(const void *data, size_t length)

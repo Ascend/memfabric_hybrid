@@ -12,12 +12,17 @@
 #include "shm_rdma_test_dev.h"
 #include "data_utils.h"
 #include "acl/acl.h"
-#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t messageSize = 64;
 constexpr uint32_t DEBUG_PRINT_SIZE = 120;
+enum Index : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+};
 
 static int32_t TestRDMAPollCQ(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {

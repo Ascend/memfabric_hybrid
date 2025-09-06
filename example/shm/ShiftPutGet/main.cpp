@@ -12,12 +12,18 @@
 #include "shm_all_shift.h"
 #include "data_utils.h"
 #include "acl/acl.h"
-#include "mf_num_util.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
 static uint32_t ctxSize = 16;
+enum Index : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+    INDEX_4 = 4U,
+};
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {

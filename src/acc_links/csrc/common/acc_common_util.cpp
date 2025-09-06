@@ -124,13 +124,18 @@ bool AccCommonUtil::IsAllDigits(const std::string &str)
         }                                                                                                           \
     } while (0)
 
+#define CHECK_FILE_SET_TLS(key, topPath)                                                 \
+    do {                                                                                 \
+        for (const std::string &file : tlsOption.key) {                                  \
+            std::string filePath = (topPath) + "/" + (file);                             \
+            CHECK_FILE_PATH_TLS(key, filePath);                                          \
+        }                                                                                \
+    } while (0)
+
 #define CHECK_FILE_SET(key, topPath, required)                                               \
     do {                                                                                     \
         if (!tlsOption.key.empty()) {                                                        \
-            for (const std::string &file : tlsOption.key) {                                  \
-                std::string filePath = (topPath) + "/" + (file);                             \
-                CHECK_FILE_PATH_TLS(key, filePath);                                               \
-            }                                                                                \
+            CHECK_FILE_SET_TLS(key, topPath);                                                \
         } else if (required) {                                                               \
             LOG_ERROR("TLS check failed, " #key " is required");                             \
             return ACC_ERROR;                                                                \

@@ -59,7 +59,7 @@ public:
      * @param tlsInfoLen the length of tls config info
      * @return Returns 0 on success or an error code on failure
      */
-    static int32_t SetTlsInfo(bool enable, const char *tlsInfo, const size_t tlsInfoLen) noexcept;
+    static int32_t SetTlsInfo(bool enable, const char *tlsData, const size_t tlsInfoLen) noexcept;
 
     /**
      * @brief Set the TLS private key and password.

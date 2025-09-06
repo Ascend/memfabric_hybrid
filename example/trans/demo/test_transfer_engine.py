@@ -17,7 +17,7 @@ def main():
     parser.add_argument('--store-url', type=str, required=True, help='URL for the store (e.g., tcp://xx.xx.xx.xx:xxxx)')
     parser.add_argument('--npu-id', type=int, default=0, help='NPU device ID')
     parser.add_argument('--dst-unique-id', type=str, help='Destination unique ID')
-    parser.add_argument('--log-level', type=int, default=0, choices=[0,1,2,3], 
+    parser.add_argument('--log-level', type=int, default=0, choices=[0, 1, 2, 3], 
                         help='Log level: 0 debug, 1 info, 2 warn, 3 error')
     
     args = parser.parse_args()
