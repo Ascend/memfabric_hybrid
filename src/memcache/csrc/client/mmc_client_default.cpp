@@ -328,10 +328,10 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
             continue;
         }
 
-        auto ret = bmProxy_->Get(bufArrs[i], blobs[0]);
-//        TP_TRACE_BEGIN(TP_MMC_CLIENT_BATCH_GET);
-//        auto ret = bmProxy_->BatchGet(bufArrs[i], blobs[0]);
-//        TP_TRACE_END(TP_MMC_CLIENT_BATCH_GET, ret);
+//        auto ret = bmProxy_->Get(bufArrs[i], blobs[0]);
+        TP_TRACE_BEGIN(TP_MMC_CLIENT_BATCH_GET);
+        auto ret = bmProxy_->BatchGet(bufArrs[i], blobs[0]);
+        TP_TRACE_END(TP_MMC_CLIENT_BATCH_GET, ret);
         if (ret != MMC_OK) {
             MMC_LOG_ERROR("client " << name_ << " batch get failed:" << ret << " for key " << keys[i]);
             batchResult[i] = MMC_ERROR;
@@ -349,13 +349,13 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
             BatchUpdateRequest updateRequest{actionResultsL, keysL, ranksL, mediaTypesL, operateIdL};
             BatchUpdateResponse updateResponse;
             Result updateResult = metaNetClient_->SyncCall(updateRequest, updateResponse, rpcRetryTimeOut_);
-            if (updateResult != MMC_OK || updateResponse.results_.size() != keys.size()) {
+            if (updateResult != MMC_OK || updateResponse.results_.size() != keysL.size()) {
                 MMC_LOG_ERROR("client " << name_ << " batch get update failed:" << updateResult << ", key size:"
-                                        << keys.size() << ", ret size:" << updateResponse.results_.size());
+                                        << keysL.size() << ", ret size:" << updateResponse.results_.size());
             } else {
-                for (size_t i = 0; i < keys.size(); ++i) {
+                for (size_t i = 0; i < keysL.size(); ++i) {
                     if (updateResponse.results_[i] != MMC_OK) {
-                        MMC_LOG_ERROR("client " << name_ << " batch put update for key " << keys[i]
+                        MMC_LOG_ERROR("client " << name_ << " batch put update for key " << keysL[i]
                                                 << " failed:" << updateResponse.results_[i]);
                     }
                 }
@@ -558,10 +558,10 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
 
         batchResult[i] = MMC_OK;
         for (uint8_t j = 0; j < numBlobs; ++j) {
-            Result putResult = bmProxy_->Put(bufArr, blobs[j]);
-//            TP_TRACE_BEGIN(TP_MMC_CLIENT_BATCH_PUT);
-//            Result putResult = bmProxy_->BatchPut(bufArr, blobs[j]);
-//            TP_TRACE_END(TP_MMC_CLIENT_BATCH_PUT, putResult);
+//            Result putResult = bmProxy_->Put(bufArr, blobs[j]);
+            TP_TRACE_BEGIN(TP_MMC_CLIENT_BATCH_PUT);
+            Result putResult = bmProxy_->BatchPut(bufArr, blobs[j]);
+            TP_TRACE_END(TP_MMC_CLIENT_BATCH_PUT, putResult);
             if (putResult != MMC_OK) {
                 MMC_LOG_ERROR("client " << name_ << " batch put " << key << " failed, get error code " << putResult);
                 batchResult[i] = putResult;

@@ -502,13 +502,10 @@ int32_t HostDataOpSDMA::DataCopyAsync(const void* srcVA, void* destVA, uint64_t 
 int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
 {
     if (hybmStream_ != nullptr) {
-        auto ret = hybmStream_->Synchronize();
-        if (ret != 0) {
-            BM_LOG_ERROR("G2g synchronize failed: " << ret << " stream:" << stream_);
-            return ret;
-        }
+        return hybmStream_->Synchronize();
     }
-    return BM_OK;
+    BM_LOG_ERROR("Failed to wait hybmStream is null");
+    return BM_ERROR;
 }
 
 int HostDataOpSDMA::CopyGD2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
@@ -784,6 +781,7 @@ int HostDataOpSDMA::CopyG2G2d(void* destVA, uint64_t dpitch, const void* srcVA, 
 
 int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) noexcept
 {
+    BM_LOG_DEBUG("[TEST] CopyG2GAsync srcVA:" << srcVA << " destVA:" << destVA << " count:" << count);
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -797,6 +795,9 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
     sqe->dst_addr_high = static_cast<uint32_t>(
             (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
+    BM_LOG_DEBUG("[TEST] submit task"<< " src:" << task.sqe.memcpyAsyncSqe.src_addr_low << "~" << task.sqe.memcpyAsyncSqe.src_addr_high
+                << " dest:" << task.sqe.memcpyAsyncSqe.dst_addr_low << "~" << task.sqe.memcpyAsyncSqe.dst_addr_high
+                << " length:" << task.sqe.memcpyAsyncSqe.length);
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
     auto ret = hybmStream_->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);

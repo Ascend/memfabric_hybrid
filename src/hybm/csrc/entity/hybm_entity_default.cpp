@@ -552,7 +552,7 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    int32_t ret = BM_OK;
+    int32_t ret = BM_ERROR;
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
@@ -564,6 +564,7 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         }
 
         BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
+        return ret;
     }
 
     if (devRdmaDataOperator_ != nullptr) {
@@ -593,7 +594,8 @@ int32_t MemEntityDefault::Wait() noexcept
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0 && sdmaDataOperator_ != nullptr) {
         return sdmaDataOperator_->Wait(0);
     }
-    return BM_OK;
+    BM_LOG_ERROR("Not wait type:" << options_.bmDataOpType);
+    return BM_ERROR;
 }
 
 bool MemEntityDefault::CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept

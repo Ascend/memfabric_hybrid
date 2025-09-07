@@ -310,7 +310,7 @@ Result MmcBmProxy::BatchPut(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
             return MMC_ERROR;
         }
         destinations[i] = reinterpret_cast<void *>(blob.gva_ + shift);
-        dataSizes[i] = blob.size_ - shift;
+        dataSizes[i] = buf->oneDim.len;
         shift += MmcBufSize(*buf);
     }
     smem_batch_copy_params batch_params = {sources, destinations, dataSizes, count};
@@ -345,7 +345,7 @@ Result MmcBmProxy::BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
             return MMC_ERROR;
         }
         sources[i] = reinterpret_cast<void *>(blob.gva_ + shift);
-        dataSizes[i] = blob.size_ - shift;
+        dataSizes[i] = buf->oneDim.len;
         shift += MmcBufSize(*buf);
     }
     smem_batch_copy_params batch_params = {sources, destinations, dataSizes, count};

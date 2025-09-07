@@ -206,13 +206,21 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
     info.tsId = tsId_;
     info.sqId = sqId_;
 
+    BM_LOG_DEBUG("[TEST] submit task, task_Id:" << taskId << " task_type:" << static_cast<int32_t>(tasks.type)
+                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.src_addr_high
+                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.dst_addr_high
+                                                << " length:" << tasks.sqe.memcpyAsyncSqe.length);
+
     auto ret = DlHalApi::HalSqTaskSend(deviceId_, &info);
     if (ret != 0) {
         BM_LOG_ERROR("SQ send task failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
-    BM_LOG_DEBUG("[TEST] submit task, task_Id:" << taskId << " task_type:" << static_cast<int32_t>(tasks.type));
+    BM_LOG_DEBUG("[TEST] submit task, task_Id:" << taskId << " task_type:" << static_cast<int32_t>(tasks.type)
+                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.src_addr_high
+                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.dst_addr_high
+                                                << " length:" << tasks.sqe.memcpyAsyncSqe.length);
     return BM_OK;
 }
 
@@ -336,7 +344,7 @@ int HybmStream::Synchronize() noexcept
 
         if (!GetCqeStatus()) { // no cqe
             while (sqHead_ != head) {
-                BM_LOG_DEBUG("finished task, task_Id:" << sqHead_ << " task_type:"
+                BM_LOG_DEBUG("finished task, task_Id:" << sqHead_ << " sqTail:" << sqTail_ << " task_type:"
                                                        << static_cast<int32_t>(taskList_[sqHead_].type));
                 sqHead_ = (sqHead_ + 1U) % HYBM_SQCQ_DEPTH;
             }

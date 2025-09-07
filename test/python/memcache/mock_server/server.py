@@ -402,6 +402,7 @@ class MmcTest(TestServer):
         blocks = []
         for sizes_ in sizes:
             tensor = self.malloc_tensor(layer_num=len(sizes_), mini_block_size=max(sizes_, default=0), device=device)
+            self._store.register_buffer(tensor.data_ptr(), max(sizes_, default=0) * len(sizes_))
             blocks.append(tensor)
         results = self._store.batch_put_from_layers(
             keys,
@@ -412,6 +413,8 @@ class MmcTest(TestServer):
             sizes,
             direct
         )
+        if device == 'npu':
+            self.sync_stream()
         tensor_sums = [tensor_sum(block, sizes_) for block, sizes_ in zip(blocks, sizes)]
         self.cli_return(str([results, tensor_sums]))
 
@@ -426,6 +429,7 @@ class MmcTest(TestServer):
         blocks = []
         for sizes_ in sizes:
             tensor = self.malloc_tensor(layer_num=len(sizes_), mini_block_size=max(sizes_, default=0), device=device)
+            self._store.register_buffer(tensor.data_ptr(), max(sizes_, default=0) * len(sizes_))
             blocks.append(tensor)
         results = self._store.batch_get_into_layers(
             keys,
@@ -436,6 +440,8 @@ class MmcTest(TestServer):
             sizes,
             direct
         )
+        if device == 'npu':
+            self.sync_stream()
         tensor_sums = [tensor_sum(block, sizes_) for block, sizes_ in zip(blocks, sizes)]
         self.cli_return(str([results, tensor_sums]))
 
