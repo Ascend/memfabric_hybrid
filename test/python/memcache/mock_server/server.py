@@ -366,6 +366,7 @@ class MmcTest(TestServer):
             direct = MmcDirect.COPY_L2G.value
             device = 'npu'
         tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
+        self._store.register_buffer(tensor.data_ptr(), mini_block_size * layers_num)
         res = self._store.put_from_layers(key,
                                           [] if tensor is None else [layer.data_ptr() for layer in tensor],
                                           sizes,
@@ -384,10 +385,13 @@ class MmcTest(TestServer):
             direct = MmcDirect.COPY_G2L.value
             device = 'npu'
         tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
+        self._store.register_buffer(tensor.data_ptr(), mini_block_size * layers_num)
         res = self._store.get_into_layers(key,
                                           [] if tensor is None else [layer.data_ptr() for layer in tensor],
                                           sizes,
                                           direct)
+        if device == 'npu':
+            self.sync_stream()
         value = tensor_sum(tensor, sizes)
         self.cli_return(str([res, value]))
 
