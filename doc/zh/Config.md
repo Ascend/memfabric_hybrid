@@ -47,12 +47,3 @@
 |                                        |            |                              |                       |                                                                                                       |
 | ock.mmc.client.retry_milliseconds      | integer    | 0                            | [0, 600000]           | The total retry time when the meta service connection does not exist                                  |
 | ock.mmc.client.timeout.seconds         | integer    | 60                           | [1, 600]              |                                                                                                       |
-
-
-#### Communication Port Matrix(通信矩阵)
-
-| 原设备             | 源IP地址     | 源端口             | 目的设备            | 目的IP地址                 | 目的端口（侦听）                 | 协议            | 端口说明                     | 侦听端口是否可更改 | 认证方式 |
-|-----------------|-----------|-----------------|-----------------|------------------------|--------------------------|---------------|:-------------------------|-----------|------|
-| Local/Client客户端 | 客户端通信IP地址 | 随机端口（由操作系统自动分配） | meta service    | meta_service_url中的<ip> | meta_service_url中的<port> | TCP           | 用于元数据对象管理                | 是         | TLS  |
-| memory fabric实例 | 客户端通信IP地址 | 随机端口（由操作系统自动分配） | memory fabric实例 | config_store_url中的<ip> | config_store_url中的<port> | TCP           | 用于memory fabric中BM信息交换同步 | 是         | TLS  |
-| 参与hcom通信的实例     | 客户端通信IP地址 | 随机端口（由操作系统自动分配） | 参与hcom通信的实例     | hcom_url中的<ip>         | hcom_url中的<port>         | TCP/RDMA/SDMA | 用于hcom通信                 | 是         | TLS  |

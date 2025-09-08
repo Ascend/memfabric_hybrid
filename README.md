@@ -89,6 +89,13 @@ export MMC_LOCAL_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-l
 python3 test_mmc_demo.py
 ```
 
-### 5. Detailed Documentations
+### Detailed Documentations
 - How to use: [Introduction for Use](doc/zh/使用说明.md)
 - API Doc: [MMC_API](doc/zh/MMC_API.md)
+
+### Security Statement
+
+[Security Statement](./doc/SECURITYNOTE.md)
+
+### License
+memfabric_hybrid uses Apache License, see [LICENSE](./LICENSE).
