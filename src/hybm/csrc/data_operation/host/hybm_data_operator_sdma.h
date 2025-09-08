@@ -49,6 +49,7 @@ private:
     int CopyG2G(void *destVA, const void *srcVA, size_t count) noexcept;
     int CopyG2G2d(void* destVA, uint64_t dpitch, const void* srcVA, uint64_t spitch,
                   size_t width, uint64_t height) noexcept;
+    int BatchCopyG2G(void *destVAs[], const void *srcVAs[], const uint32_t counts[], uint32_t batchSize) noexcept;
 
     int CopyLD2GHAsync(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept;
     int CopyGH2LDAsync(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept;

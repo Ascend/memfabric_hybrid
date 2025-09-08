@@ -805,6 +805,33 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
     return BM_OK;
 }
 
+int
+HostDataOpSDMA::BatchCopyG2G(void **destVAs, const void **srcVAs, const uint32_t *counts, uint32_t batchSize) noexcept
+{
+    auto ret = 0;
+    auto asyncRet = 0;
+    for (auto i = 0U; i < batchSize; i++) {
+        auto srcAddr = srcVAs[i];
+        auto destAddr = destVAs[i];
+        auto count = counts[i];
+        asyncRet = CopyG2GAsync(destAddr, srcAddr, count);
+        if (asyncRet !=  0) {
+            BM_LOG_ERROR("BatchCopyLD2GH failed:" << asyncRet << " index:" << i << " src:" << srcAddr
+                                                  << " dest:" << destAddr << " length:" << count);
+            ret = asyncRet;
+        }
+    }
+
+    TP_TRACE_BEGIN(TP_HYBM_SDMA_GET_WAIT);
+    asyncRet = Wait(0);
+    TP_TRACE_END(TP_HYBM_SDMA_GET_WAIT, ret);
+    if (asyncRet != 0) {
+        BM_LOG_ERROR("BatchCopyLD2GH wait copy failed:" << asyncRet);
+        ret = asyncRet;
+    }
+    return ret;
+}
+
 int HostDataOpSDMA::CopyGH2LD2d(void *deviceAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch, size_t width,
                                 uint64_t height, void *stream) noexcept
 {
@@ -922,28 +949,47 @@ int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, const void **deviceAddrs, co
     if (stream != nullptr) {
         st = stream;
     }
+    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
+        return BatchCopyG2G(gvaAddrs, deviceAddrs, counts, batchSize);
+    }
     auto ret = 0;
-    auto asyncRet = 0;
-    for (auto i = 0U; i < batchSize; i++) {
+    uint64_t totalSize = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        totalSize += counts[i];
+    }
+    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(totalSize);
+    void *tmpHbm = tmpSdmaMemory.Address();
+    if (tmpHbm == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
+        return BM_MALLOC_FAILED;
+    }
+    uint64_t offset = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
         auto srcAddr = deviceAddrs[i];
-        auto destAddr = gvaAddrs[i];
+        auto destAddr = (void *)((uint64_t) tmpHbm + offset);
         auto count = counts[i];
-        asyncRet = CopyLD2GHAsync(destAddr, srcAddr, count, stream);
-        if (asyncRet !=  0) {
-            BM_LOG_ERROR("BatchCopyLD2GH failed:" << asyncRet << " index:" << i << " src:" << srcAddr
-                                                                    << " dest:" << destAddr << " length:" << count);
-            ret = asyncRet;
+        offset += count;
+        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
+            sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+            return BM_DL_FUNCTION_FAILED;
         }
     }
 
-    TP_TRACE_BEGIN(TP_HYBM_SDMA_PUT_WAIT);
-    asyncRet = Wait(0);
-    TP_TRACE_END(TP_HYBM_SDMA_PUT_WAIT, ret);
-    if (asyncRet != 0) {
-        BM_LOG_ERROR("BatchCopyLD2GH wait copy failed:" << asyncRet);
-        ret = asyncRet;
+    ret  = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+        return ret;
     }
-    return BM_OK;
+    ret = CopyG2G(gvaAddrs[0], tmpHbm, totalSize);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" <<  gvaAddrs[0]
+                                          << " tmpHbm:" << tmpHbm << " length: " << totalSize);
+    }
+    sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+    return ret;
 }
 
 int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, const void **gvaAddrs, const uint32_t *counts,
@@ -953,28 +999,48 @@ int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, const void **gvaAddrs, co
     if (stream != nullptr) {
         st = stream;
     }
+    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
+        return BatchCopyG2G(deviceAddrs, gvaAddrs, counts, batchSize);
+    }
     auto ret = 0;
-    auto asyncRet = 0;
-    for (auto i = 0U; i < batchSize; i++) {
-        auto srcAddr = gvaAddrs[i];
+    uint64_t totalSize = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        totalSize += counts[i];
+    }
+    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(totalSize);
+    void *tmpHbm = tmpSdmaMemory.Address();
+    if (tmpHbm == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
+        return BM_MALLOC_FAILED;
+    }
+    ret = CopyG2G(tmpHbm, gvaAddrs[0], totalSize);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" <<  gvaAddrs[0]
+            << " tmpHbm:" << tmpHbm << " length: " << totalSize);
+        sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+        return ret;
+    }
+
+    uint64_t offset = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
         auto destAddr = deviceAddrs[i];
+        auto srcAddr = (void *)((uint64_t) tmpHbm + offset);
         auto count = counts[i];
-        asyncRet = CopyGH2LDAsync(destAddr, srcAddr, count, stream);
-        if (asyncRet !=  0) {
-            BM_LOG_ERROR("BatchCopyLD2GH failed:" << asyncRet << " index:" << i << " src:" << srcAddr
-                                                  << " dest:" << destAddr << " length:" << count);
-            ret = asyncRet;
+        offset += count;
+        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
+            sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+            return BM_DL_FUNCTION_FAILED;
         }
     }
 
-    TP_TRACE_BEGIN(TP_HYBM_SDMA_GET_WAIT);
-    asyncRet = Wait(0);
-    TP_TRACE_END(TP_HYBM_SDMA_GET_WAIT, ret);
-    if (asyncRet != 0) {
-        BM_LOG_ERROR("BatchCopyLD2GH wait copy failed:" << asyncRet);
-        ret = asyncRet;
+    ret  = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
     }
-    return BM_OK;
+    sdmaSwapMemoryAllocator_->Release(tmpSdmaMemory);
+    return ret;
 }
 
 int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, const void **deviceAddrs, const uint32_t *counts,
