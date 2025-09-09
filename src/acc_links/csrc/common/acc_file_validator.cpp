@@ -56,13 +56,12 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
         return false;
     }
 
-    char* path = new char[ock::mf::FileUtil::GetSafePathMax() + UNO_1];
+    char path[ock::mf::FileUtil::GetSafePathMax() + UNO_1];
     bzero(path, ock::mf::FileUtil::GetSafePathMax() + UNO_1);
 
     char* ret = realpath(filePath.c_str(), path);
     if (ret == nullptr) {
         errMsg = "The path realpath parsing failed.";
-        delete[] path;
         return false;
     }
 
@@ -71,11 +70,9 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
     std::string dir = baseDir.back() == '/' ? baseDir : baseDir + "/";
     if (realFilePath.rfind(dir, 0) != 0) {
         errMsg = "The file is invalid, it's not in baseDir directory.";
-        delete[] path;
         return false;
     }
 
-    delete[] path;
     return true;
 }
 

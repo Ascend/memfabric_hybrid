@@ -13,7 +13,7 @@ MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options,
     : MemSegmentDevice{options, eid}
 {}
 
-MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem() noexcept
+MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem()
 {
     if (!memNames_.empty()) {
         for (auto &name : memNames_) {

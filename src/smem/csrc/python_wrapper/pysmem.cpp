@@ -504,7 +504,7 @@ Do barrier on a shm object, using control network.)")
                 auto outputSize = str.size() * shm.RankSize();
                 std::string output;
                 output.resize(outputSize);
-                shm.AllGather(str.c_str(), str.size(), const_cast<char*>(output.data()), outputSize);
+                shm.AllGather(str.c_str(), str.size(), output.data(), outputSize);
                 return py::bytes(output.c_str(), outputSize);
             },
             py::call_guard<py::gil_scoped_release>(), py::arg("local_data"), R"(
