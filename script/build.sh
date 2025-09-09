@@ -4,6 +4,7 @@ BUILD_MODE=$1
 BUILD_TESTS=$2
 BUILD_OPEN_ABI=$3
 BUILD_PYTHON=$4
+BUILD_COMPILER=$5
 
 if [ -z "$BUILD_MODE" ]; then
     BUILD_MODE="RELEASE"
@@ -19,6 +20,10 @@ fi
 
 if [ -z "$BUILD_PYTHON" ]; then
     BUILD_PYTHON="ON"
+fi
+
+if [ -z "$BUILD_COMPILER" ]; then
+    BUILD_COMPILER="gcc"
 fi
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
@@ -54,7 +59,7 @@ PROJ_DIR=$(pwd)
 rm -rf ./build ./output
 
 mkdir build/
-cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -S . -B build/
+cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DBUILD_COMPILER="${BUILD_COMPILER}" -S . -B build/
 make install -j5 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then

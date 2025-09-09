@@ -25,12 +25,13 @@ cd memfabric_hybrid
 ```
 bash script/build.sh
 
-build.sh支持4个参数,按顺序分别是<build_mode> <need_build_ut> <open_abi> <build_whl>
+build.sh支持5个参数,按顺序分别是<build_mode> <need_build_ut> <open_abi> <build_whl> <BUILD_COMPILER>
 build_mode:编译类型,可填RELEASE或DEBUG
 need_build_ut:是否编译uttest,可填ON或OFF
 open_abi:编译时是否添加-D_GLIBCXX_USE_CXX11_ABI=1宏,可填ON或OFF
 build_whl:是否编译python的whl包,可填ON或OFF
-不填入参数情况下,默认执行build.sh RELEASE OFF ON ON
+build_compiler:编译器选择，输入bisheng可手动指定编译器为bisheng。
+不填入参数情况下,默认执行build.sh RELEASE OFF ON ON gcc
 ```
 
 3. ut运行
