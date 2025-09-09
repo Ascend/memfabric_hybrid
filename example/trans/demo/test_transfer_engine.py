@@ -4,8 +4,7 @@ import argparse
 import time
 import torch
 import torch_npu
-from mf_adapter import TransferEngine, create_config_store, set_log_level
-from mf_smem import set_conf_store_tls
+from mf_adapter import TransferEngine, create_config_store, set_log_level, set_conf_store_tls
 
 
 def main():

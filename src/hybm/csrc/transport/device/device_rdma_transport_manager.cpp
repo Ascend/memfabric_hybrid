@@ -20,12 +20,29 @@ bool RdmaTransportManager::deviceIpRetired_ = false;
 bool RdmaTransportManager::raInitialized_ = false;
 void* RdmaTransportManager::storedRdmaHandle_ = nullptr;
 
+thread_local HybmStreamPtr RdmaTransportManager::stream_ = nullptr;
+
 RdmaTransportManager::~RdmaTransportManager()
 {
     ClearAllRegisterMRs();
     tsdOpened_ = false;
     raInitialized_ = false;
     deviceIpRetired_ = false;
+}
+
+int RdmaTransportManager::PrepareThreadLocalStream()
+{
+    if (stream_ != nullptr) {
+        return BM_OK;
+    }
+
+    stream_ = HybmStreamManager::CreateStream(deviceId_, 0, 0);
+    auto ret = stream_->Initialize();
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("HybmStream init failed: " << ret);
+        return ret;
+    }
+    return BM_OK;
 }
 
 Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
@@ -64,13 +81,6 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
     } else {
         qpManager_ = std::make_shared<DynamicRanksQpManager>(deviceId_, rankId_, rankCount_, deviceAddr,
                                                              role_ == HYBM_ROLE_RECEIVER);
-    }
-
-    stream_ = HybmStreamManager::CreateStream(deviceId, 0, 0);
-    ret = stream_->Initialize();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HybmStream init failed: " << ret);
-        return ret;
     }
 
     deviceChipInfo_ = std::make_shared<DeviceChipInfo>(deviceId_);
@@ -371,16 +381,20 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
         BM_LOG_INFO("ra already initialized.");
         return true;
     }
-
+    const std::chrono::seconds WAIT_TIME(3);
     HccpRaInitConfig initConfig{};
     initConfig.phyId = deviceId;
     initConfig.nicPosition = NETWORK_OFFLINE;
     initConfig.hdcType = 6;  // HDC_SERVICE_TYPE_RDMA = 6
     BM_LOG_DEBUG("RaInit=" << initConfig);
+    std::this_thread::sleep_for(WAIT_TIME); // avoid hccl init conflict
     auto ret = DlHccpApi::RaInit(initConfig);
     if (ret != 0) {
-        BM_LOG_ERROR("Hccp Init RA failed: " << ret);
-        return false;
+        BM_LOG_WARN("Hccp Init RA failed: " << ret);
+        // maybe hccl have already initialized ra, wait 3s then return true.
+        std::this_thread::sleep_for(WAIT_TIME);
+        raInitialized_ = true;
+        return true;
     }
 
     BM_LOG_DEBUG("ra init for device id: " << deviceId << " success.");
@@ -505,11 +519,15 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
         BM_LOG_ERROR("ReadRemote(): connection manager not created.");
         return BM_ERROR;
     }
-
     auto qpHandle = qpManager_->GetQpHandleWithRankId(rankId);
     if (qpHandle == nullptr) {
         BM_LOG_ERROR("no qp to rankId: " << rankId);
         return BM_ERROR;
+    }
+    auto ret = PrepareThreadLocalStream();
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("prepare stream error rankId: " << rankId);
+        return ret;
     }
 
     struct send_wr wr = {};
@@ -520,7 +538,7 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     wr.op = write ? 0 : 4; /* RDMA_WRITE: 0  RDMA_READ: 4 */
     wr.send_flag = RA_SEND_SIGNALED;
     send_wr_rsp rspInfo{};
-    auto ret = DlHccpApi::RaSendWr(qpHandle, &wr, &rspInfo);
+    ret = DlHccpApi::RaSendWr(qpHandle, &wr, &rspInfo);
     if (ret != 0) {
         BM_LOG_ERROR("DlHccpApi::RaSendWr(handle, &wr, &opRsp) failed: " << ret);
         return ret;
@@ -530,10 +548,6 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     task.type = STREAM_TASK_TYPE_RDMA;
     ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe);
     ret = stream_->SubmitTasks(task);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("stream_->SubmitTasks(task) failed: " << ret);
-        return ret;
-    }
 
     ret = stream_->Synchronize();
     if (ret != BM_OK) {
@@ -556,7 +570,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.post_p = RT_STARS_SQE_INT_DIR_NO;
-    sqe->header.wr_cqe = 1;  // stream->GetStarsWrCqeFlag();
+    sqe->header.wr_cqe = 0;  // stream->GetStarsWrCqeFlag();
     sqe->header.rt_stream_id = static_cast<uint16_t>(stream_->GetId());
     sqe->header.task_id = taskId;
 

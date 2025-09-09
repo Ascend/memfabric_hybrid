@@ -52,6 +52,7 @@ private:
     void ClearAllRegisterMRs();
     int CheckPrepareOptions(const HybmTransPrepareOptions &options);
     int RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write);
+    int PrepareThreadLocalStream();
 
 private: // RDMA HOST STARS
     void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command);
@@ -73,7 +74,7 @@ private:
     std::string nicInfo_;
     MemoryRegionMap registerMRS_;
     std::shared_ptr<DeviceQpManager> qpManager_;
-    HybmStreamPtr stream_;
+    static thread_local HybmStreamPtr stream_;
     std::shared_ptr<DeviceChipInfo> deviceChipInfo_;
 };
 }

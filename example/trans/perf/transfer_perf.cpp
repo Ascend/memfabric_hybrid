@@ -303,9 +303,6 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
         std::string s1 = "tcp://192.168.0.1/16:12006";
         std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
     }
-    if (!useSdma) {
-        config.flags |= SMEM_INIT_FLAG_NEED_DEVICE_RDMA;
-    }
     auto ret = smem_bm_init(ipPort.c_str(), rankSize, deviceId, &config);
     CHECK_GOTO_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rankId, err2);
 
@@ -318,7 +315,7 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
     if (useSdma) {
         bm_handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, GVA_SIZE, 0);
     } else {
-        bm_handle = smem_bm_create(0, 0, SMEMB_DATA_OP_ROCE, GVA_SIZE, 0, 0);
+        bm_handle = smem_bm_create(0, 0, SMEMB_DATA_OP_DEVICE_RDMA, GVA_SIZE, 0, 0);
     }
     CHECK_GOTO_ERR((bm_handle == nullptr), "smem_bm_create failed, rank:" << rankId, err4);
     std::cout << "[" << rankId << "]" << " smem bm create done sdma_flag " << useSdma << std::endl;

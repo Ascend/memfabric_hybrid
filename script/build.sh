@@ -109,7 +109,9 @@ do
 
     rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter/_pymf_transfer.cpython*.so
     \cp -v "${PROJ_DIR}"/build/src/mooncake_adapter/csrc/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter
-
+    mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
+    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
+    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
     cd "${PROJ_DIR}/src/mooncake_adapter/python"
     rm -rf build mf_adapter.egg-info
     python3 setup.py bdist_wheel

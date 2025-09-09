@@ -273,12 +273,20 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
         return 0;
     }
 
-    auto ret = DlHccpApi::RaSocketBatchConnect(connectInfos.data(), connectInfos.size());
-    if (ret != 0) {
-        auto failedCount = currTask.Failed(remotes);
-        BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
-                                                       << ", failed times: " << failedCount);
-        return 1;
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < connectInfos.size(); i += batchSize) {
+        size_t currentBatchSize = (connectInfos.size() - i) >= batchSize ? batchSize : (connectInfos.size() - i);
+        auto batchStart = connectInfos.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketConnectInfo> currentBatch(batchStart, batchEnd);
+
+        auto ret = DlHccpApi::RaSocketBatchConnect(currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            auto failedCount = currTask.Failed(remotes);
+            BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
+                                                        << ", failed times: " << failedCount);
+            return 1;
+        }
     }
 
     currTask.Success();
@@ -306,6 +314,7 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     }
 
     uint32_t successCount = 0;
+    uint32_t cnt = 0;
     std::vector<HccpSocketInfo> socketInfos;
     for (auto &pair : ip2rank) {
         struct in_addr ip;
@@ -321,33 +330,55 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
             socketInfos.emplace_back(info);
         }
     }
-    auto socketRole = rankRole_ == HYBM_ROLE_SENDER ? 1 : 0;
-    auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), socketInfos.size(), successCount);
-    if (ret != 0) {
-        auto failedCount = currTask.Failed(ip2rank);
-        BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: " << ret << ", count: " << failedCount);
-        return 1;
-    }
 
     std::unordered_set<uint32_t> connectedRanks;
-    for (auto i = 0U; i < successCount; i++) {
-        auto pos = ip2rank.find(socketInfos[i].remoteIp.addr.s_addr);
-        if (pos == ip2rank.end()) {
-            BM_LOG_ERROR("get non-expected socket remote ip: " << inet_ntoa(socketInfos[i].remoteIp.addr));
-            continue;
+    uint32_t batchCnt = 16;
+    do {
+        auto socketRole = rankRole_ == HYBM_ROLE_SENDER ? 1 : 0;
+        uint32_t getSize = socketInfos.size() < batchCnt ? socketInfos.size() : batchCnt;
+        auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), getSize, cnt);
+        if (ret != 0) {
+            auto failedCount = currTask.Failed(ip2rank);
+            BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: "
+                         << ret << ", count: " << failedCount);
+            return 1;
         }
 
-        auto rankId = pos->second;
-        auto nPos = connections_.find(rankId);
-        if (nPos == connections_.end()) {
-            BM_LOG_ERROR("get non-expected ip: " << inet_ntoa(socketInfos[i].remoteIp.addr) << ", rank: " << rankId);
+        if (cnt == 0) {
             continue;
         }
+        for (auto i = 0U; i < getSize; i++) {
+            if (socketInfos[i].status != 1) {
+                continue;
+            }
+            auto pos = ip2rank.find(socketInfos[i].remoteIp.addr.s_addr);
+            if (pos == ip2rank.end()) {
+                BM_LOG_ERROR("get non-expected socket remote ip: " << inet_ntoa(socketInfos[i].remoteIp.addr));
+                continue;
+            }
 
-        nPos->second.socketFd = socketInfos[i].fd;
-        connectedRanks.emplace(pos->second);
-        ip2rank.erase(pos);
-    }
+            auto rankId = pos->second;
+            auto nPos = connections_.find(rankId);
+            if (nPos == connections_.end()) {
+                BM_LOG_ERROR("get non-expected ip: " << inet_ntoa(socketInfos[i].remoteIp.addr)
+                             << ", rank: " << rankId);
+                continue;
+            }
+
+            nPos->second.socketFd = socketInfos[i].fd;
+            connectedRanks.emplace(pos->second);
+            ip2rank.erase(pos);
+            successCount++;
+        }
+        std::vector<HccpSocketInfo>::iterator it = socketInfos.begin();
+        for (; it != socketInfos.end();) {
+            if (it->status == 1) {
+                it = socketInfos.erase(it);
+            } else {
+                it++;
+            }
+        }
+    } while (socketInfos.size() > 0);
 
     if (!ip2rank.empty()) {
         currTask.Failed(ip2rank);

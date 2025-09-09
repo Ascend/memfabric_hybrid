@@ -162,7 +162,6 @@ int32_t main(int32_t argc, char* argv[])
     }
     smem_shm_config_t config;
     (void)smem_shm_config_init(&config);
-    config.flags |= SMEM_INIT_FLAG_NEED_DEVICE_RDMA;
     ret = smem_shm_init(ipport.c_str(), rankSize, rankId, deviceId, &config);
     if (ret != 0) {
         ERROR_LOG("[TEST] shm init failed, ret:%d, rank:%d", ret, rankId);
@@ -171,7 +170,7 @@ int32_t main(int32_t argc, char* argv[])
 
     uint32_t flags = 0;
     void *gva = nullptr;
-    smem_shm_t handle = smem_shm_create(0, rankSize, rankId, gNpuMallocSpace, SMEMS_DATA_OP_ROCE, flags, &gva);
+    smem_shm_t handle = smem_shm_create(0, rankSize, rankId, gNpuMallocSpace, SMEMS_DATA_OP_RDMA, flags, &gva);
     if (handle == nullptr || gva == nullptr) {
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
