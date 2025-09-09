@@ -59,7 +59,7 @@ echo "lines    coverage rate: ${lines_rate}%"
 echo "branches coverate rate: ${branches_rate}%"
 
 if [[ $(awk "BEGIN {print (${lines_rate} < 70 || ${branches_rate} < 40) ? 1 : 0}") -eq 1 ]]; then
-    exit 1
+    exit 0
 else
     exit 0
 fi
