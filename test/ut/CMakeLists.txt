@@ -25,6 +25,9 @@ add_executable(test_mf_hy ${UT_SOURCE_FILES})
 TARGET_GTEST_HEADER(test_mf_hy)
 TARGET_MOCKCPP_HEADER(test_mf_hy)
 
+set(CMAKE_C_COMPILER gcc)
+set(CMAKE_CXX_COMPILER g++)
+set(BUILD_OPEN_ABI "ON")
 add_definitions(-DOUT_LIB_PATH="${TARGET_INSTALL_DIR}")
 
 add_link_options(-lgcov --coverage)

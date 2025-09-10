@@ -84,7 +84,7 @@ public:
      * @brief Get size of a file
      */
     static size_t GetFileSize(const std::string &filePath);
-    
+
     /**
      * @brief Close file
      */
@@ -244,14 +244,16 @@ inline bool FileUtil::Realpath(std::string &path)
     }
 
     /* It will allocate memory to store path */
-    char tmp[FileUtil::GetSafePathMax() + 1] = {0x00};
+    char* tmp = new char[ock::mf::FileUtil::GetSafePathMax() + 1];
     char* realPath = realpath(path.c_str(), tmp);
     if (realPath == nullptr) {
+        delete[] tmp;
         return false;
     }
 
     path = realPath;
     realPath = nullptr;
+    delete[] tmp;
     return true;
 }
 
@@ -281,7 +283,7 @@ inline void FileUtil::CloseFile(FILE* fp)
     if (fp == nullptr) {
         return;
     }
-    
+
     auto ret = fclose(fp);
     if (ret != 0) {
         MF_OUT_LOG("util", WARN_LEVEL, "fclose failed, ret = " << ret);
