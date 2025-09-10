@@ -56,14 +56,14 @@
 
 1. 注册Python解密处理程序
     ```python
-    def register_decrypt_handler(py_decrypt_func:Callable[str, str], str) -> int
+    def set_conf_store_tls_key(tls_pk, tls_pk_pw, py_decrypt_func:Callable[str, str], str) -> int
     ```
 
     |参数/返回值|含义|
     |-|-|
-    |py_decrypt_func|函数指针|
-    |cipher_text|密文|
-    |plain_text|解密后的文本|
+    |tls_pk|私钥|
+    |tls_pk_pw|私钥口令|
+    |py_decrypt_func|口令解密函数|
     |返回值|错误信息|
 
 1. 设置配置存储的TLS信息
@@ -288,7 +288,7 @@
     |copy_data_2d参数params(CopyData2DParams)|parameters of 2D copy|
     |copy_data_2d参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
     |copy_data_2d参数flags(int)|optional flags|
-    
+
 
 ##### 辅助类
 1. CopyData2DParams类
@@ -316,7 +316,7 @@
     |store_url|业务面地址，格式tcp:://ip:port|
     |返回值|成功返回0，其他为错误码|
 
-1. 
+1.
     ```python
     def set_log_level(level: int) -> int
     ```

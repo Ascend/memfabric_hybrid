@@ -90,7 +90,7 @@ public:
         if (handle == nullptr) {
             throw std::runtime_error("create shm failed!");
         }
- 
+
         return new (std::nothrow)ShareMemory(handle, gva);
     }
 
@@ -195,7 +195,7 @@ public:
     {
         smem_bm_uninit(flags);
     }
- 
+
     static uint32_t GetRankId() noexcept
     {
         return smem_bm_get_rank_id();
@@ -252,6 +252,8 @@ static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextL
     }
     std::string plain;
     try {
+        py::str py_cipher = py::str(cipherText, cipherTextLen);
+        plain = py::cast<std::string>(g_py_decrypt_func(py_cipher).cast<py::str>());
         if (plain.size() >= plainTextLen) {
             std::cerr << "output cipher len is too long" << std::endl;
             std::fill(plain.begin(), plain.end(), 0);
@@ -303,7 +305,7 @@ Un-Initialize the smem running environment)");
 
     m.def("set_log_level", &smem_set_log_level, py::call_guard<py::gil_scoped_release>(), py::arg("level"), R"(
 set log print level.
- 
+
 Arguments:
     level(int): log level, 0:debug 1:info 2:warn 3:error)");
     m.def(
@@ -587,7 +589,7 @@ Arguments:
     flags(int): optional flags)")
         .def("local_mem_size", &BigMemory::LocalMemSize, py::call_guard<py::gil_scoped_release>(), R"(
 Get size of local memory that contributed to global space.
- 
+
 Returns:
     local memory size in bytes)")
         .def("peer_rank_ptr", &BigMemory::GetPtrByRank, py::call_guard<py::gil_scoped_release>(), py::arg("peer_rank"),
