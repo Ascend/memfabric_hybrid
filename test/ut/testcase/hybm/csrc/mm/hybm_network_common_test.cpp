@@ -1,21 +1,19 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#include "gtest/gtest.h"
-#include "mockcpp/mockcpp.hpp"
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <ifaddrs.h>
 
+#include "gtest/gtest.h"
+#include "mockcpp/mockcpp.hpp"
 #include "hybm.h"
 #include "hybm_types.h"
 #include "hybm_networks_common.h"
 
 using namespace ock::mf;
-
-#define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
 class HybmNetworkCommonTest : public ::testing::Test {
 protected:
@@ -56,12 +54,12 @@ int getifaddrs_ok_stub(struct ifaddrs **ifap)
     // 设置 lo 的地址 (127.0.0.1)
     lo_addr.sin_family = AF_INET;
     inet_pton(AF_INET, "127.0.0.1", &lo_addr.sin_addr);
-    mock_lo.ifa_addr = (struct sockaddr *)&lo_addr;
+    mock_lo.ifa_addr = reinterpret_cast<struct sockaddr *>(&lo_addr);
 
     // 设置 lo 的子网掩码 (255.0.0.0)
     lo_netmask.sin_family = AF_INET;
     inet_pton(AF_INET, "255.0.0.0", &lo_netmask.sin_addr);
-    mock_lo.ifa_netmask = (struct sockaddr *)&lo_netmask;
+    mock_lo.ifa_netmask = reinterpret_cast<struct sockaddr *>(&lo_netmask);
     mock_lo.ifa_ifu.ifu_broadaddr = nullptr; // 回环接口无广播地址
     mock_lo.ifa_data = nullptr;
 
@@ -73,18 +71,18 @@ int getifaddrs_ok_stub(struct ifaddrs **ifap)
     // 设置 eth0 的地址 (192.168.1.100)
     eth0_addr.sin_family = AF_INET;
     inet_pton(AF_INET, "192.168.1.100", &eth0_addr.sin_addr);   // ip in res
-    mock_eth0.ifa_addr = (struct sockaddr *)&eth0_addr;
+    mock_eth0.ifa_addr = reinterpret_cast<struct sockaddr *>(&eth0_addr);
 
     // 设置 eth0 的子网掩码 (255.255.255.0)
     eth0_netmask.sin_family = AF_INET;
     inet_pton(AF_INET, "255.255.255.0", &eth0_netmask.sin_addr);
-    mock_eth0.ifa_netmask = (struct sockaddr *)&eth0_netmask;
+    mock_eth0.ifa_netmask = reinterpret_cast<struct sockaddr *>(&eth0_netmask);
 
     // 设置 eth0 的广播地址 (192.168.1.255)
     struct sockaddr_in eth0_broadaddr;
     eth0_broadaddr.sin_family = AF_INET;
     inet_pton(AF_INET, "192.168.1.255", &eth0_broadaddr.sin_addr);
-    mock_eth0.ifa_ifu.ifu_broadaddr = (struct sockaddr *)&eth0_broadaddr;
+    mock_eth0.ifa_ifu.ifu_broadaddr = reinterpret_cast<struct sockaddr *>(&eth0_broadaddr);
     mock_eth0.ifa_data = nullptr;
 
     *ifap = &mock_lo;
