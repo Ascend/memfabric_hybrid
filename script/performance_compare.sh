@@ -44,52 +44,55 @@ function get_average()
     fi
 }
 
-if [ ! -d ${PROJECT_PATH} ]; then
-        mkdir -p ${PROJECT_PATH}
-        cd ${PROJECT_PATH}
-        git clone https://gitee.com/ascend/shmem.git
-        bash $COMPARE_PATH/scripts/build.sh -examples
-    
-        cd ${ALLREDUCE_PATH}
+# obtain shmem, compile shmem
+mkdir -p ${PROJECT_PATH}
+cd ${PROJECT_PATH}
+git clone https://gitee.com/ascend/shmem.git
+bash $COMPARE_PATH/scripts/build.sh -examples
 
-        if [ -d ${ALLREDUCE_PATH}/output ]; then
-            rm -rf ${ALLREDUCE_PATH}/output
-        fi
-        
-        bash ./scripts/run.sh -ranks ${RANK_SIZE} -M ${M} -K ${K} -N ${N}
-        if [[ $? != 0 ]]; then
-            echo "[ERROR] origin run.sh error.."
-        fi
-        get_average "origin"
-
-        rm -rf ./output
-
-        \cp -rf $PROJECT_FULL_PATH/output/smem/include/smem $COMPARE_PATH/install/memfabric_hybrid/include
-        \cp -f $PROJECT_FULL_PATH/output/hybm/lib64/* $COMPARE_PATH/install/memfabric_hybrid/lib
-        \cp -f $PROJECT_FULL_PATH/output/smem/lib64/* $COMPARE_PATH/install/memfabric_hybrid/lib
-        cd $ALLREDUCE_PATH
-        bash ./scripts/run.sh -ranks ${RANK_SIZE} -M ${M} -K ${K} -N ${N}
-        if [[ $? != 0 ]]; then
-            echo "[ERROR] new run.sh error.."
-        fi
-        get_average "new"
-
-        rm -rf ${PROJECT_PATH}
-
-        diff=$(echo "scale=6;${AVE_NEW} - ${AVE_ORIGIN}" | bc)
-        echo "----------------------------------------------------"
-        echo "        [AVE_ORIGIN is ${AVE_ORIGIN}]"
-        echo "        [AVE_NEW is ${AVE_NEW}]"
-
-        if [[ $(echo "${diff} < 0" | bc -l) -eq 1 ]]; then
-            echo "        Performance Optimization After Modification"
-        elif [[ $(echo "${diff} <= ${RANGE}" | bc -l) -eq 1 ]]; then
-            echo "        The performance gap after modification is not significant."
-        elif [[ $(echo "${diff} > ${RANGE}" | bc -l) -eq 1 ]]; then
-            echo "        Performance Degradation after modification"
-            echo "----------------------------------------------------"
-            exit 1
-        fi
-        echo "----------------------------------------------------"
-        exit 0
+# obtain original avg.
+cd ${ALLREDUCE_PATH}
+if [ -d ${ALLREDUCE_PATH}/output ]; then
+    rm -rf ${ALLREDUCE_PATH}/output
 fi
+
+bash ./scripts/run.sh -ranks ${RANK_SIZE} -M ${M} -K ${K} -N ${N}
+if [[ $? != 0 ]]; then
+    echo "[ERROR] origin run.sh error.."
+fi
+get_average "origin"
+
+# obtain new avg.
+rm -rf ./output
+if [ -d ${PROJECT_FULL_PATH}/output ]; then
+    bash script/build.sh RELEASE OFF OFF OFF
+fi
+
+\cp -rf $PROJECT_FULL_PATH/output/smem/include/smem $COMPARE_PATH/install/memfabric_hybrid/include
+\cp -f $PROJECT_FULL_PATH/output/hybm/lib64/* $COMPARE_PATH/install/memfabric_hybrid/lib
+\cp -f $PROJECT_FULL_PATH/output/smem/lib64/* $COMPARE_PATH/install/memfabric_hybrid/lib
+cd $ALLREDUCE_PATH
+bash ./scripts/run.sh -ranks ${RANK_SIZE} -M ${M} -K ${K} -N ${N}
+if [[ $? != 0 ]]; then
+    echo "[ERROR] new run.sh error.."
+fi
+get_average "new"
+
+# echo
+rm -rf ${PROJECT_PATH}
+diff=$(echo "scale=6;${AVE_NEW} - ${AVE_ORIGIN}" | bc)
+echo "----------------------------------------------------"
+echo "        [AVE_ORIGIN is ${AVE_ORIGIN}]"
+echo "        [AVE_NEW is ${AVE_NEW}]"
+
+if [[ $(echo "${diff} < 0" | bc -l) -eq 1 ]]; then
+    echo "        Performance Optimization After Modification"
+elif [[ $(echo "${diff} <= ${RANGE}" | bc -l) -eq 1 ]]; then
+    echo "        The performance gap after modification is not significant."
+elif [[ $(echo "${diff} > ${RANGE}" | bc -l) -eq 1 ]]; then
+    echo "        Performance Degradation after modification"
+    echo "----------------------------------------------------"
+    exit 1
+fi
+echo "----------------------------------------------------"
+exit 0
