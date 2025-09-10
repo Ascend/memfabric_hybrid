@@ -272,6 +272,7 @@ Result MmcBmProxy::Get(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob)
 
 Result MmcBmProxy::BatchPut(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (handle_ == nullptr) {
         MMC_LOG_ERROR("Failed to get data to smem bm, handle is null");
         return MMC_ERROR;
@@ -307,6 +308,7 @@ Result MmcBmProxy::BatchPut(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
 
 Result MmcBmProxy::BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (handle_ == nullptr) {
         MMC_LOG_ERROR("Failed to get data to smem bm, handle is null");
         return MMC_ERROR;
@@ -342,6 +344,7 @@ Result MmcBmProxy::BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
 
 Result MmcBmProxy::CopyWait()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     auto ret = smem_bm_wait(handle_);
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("Failed to wait copy task ret:" << ret);
