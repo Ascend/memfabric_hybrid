@@ -471,44 +471,46 @@ void Configuration::LoadConfigurations()
     mInitialized = true;
 }
 
-void Configuration::GetTlsConfig(mmc_tls_config &tlsConfig)
+void Configuration::GetTlsConfig(mf::tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_TLS_ENABLE);
-    strncpy(tlsConfig.tlsTopPath, GetString(ConfConstant::OCK_MMC_TLS_TOP_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.tlsCaPath, GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.tlsCrlPath, GetString(ConfConstant::OCK_MMC_TLS_CRL_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.tlsCertPath, GetString(ConfConstant::OCK_MMC_TLS_CERT_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.tlsKeyPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.tlsKeyPassPath, GetString(ConfConstant::OCK_MMC_TLS_KEY_PASS_PATH).c_str(), PATH_MAX_LEN);
-    strncpy(tlsConfig.packagePath, GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_LEN);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_CRL_PATH).c_str(), PATH_MAX_LEN, tlsConfig.crlPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_CERT_PATH).c_str(), PATH_MAX_LEN, tlsConfig.certPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_KEY_PATH).c_str(), PATH_MAX_LEN, tlsConfig.keyPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_KEY_PASS_PATH).c_str(), PATH_MAX_LEN, tlsConfig.keyPassPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_LEN, tlsConfig.packagePath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_DECRYPTER_PATH).c_str(), PATH_MAX_LEN, tlsConfig.decrypterLibPath);
 }
 
-int Configuration::ValidateTLSConfig(const mmc_tls_config &tlsConfig)
+int Configuration::ValidateTLSConfig(const mf::tls_config &tlsConfig)
 {
     if (tlsConfig.tlsEnable == false) {
         return MMC_OK;
     }
 
-    const std::map<std::string, std::string> compulsoryMap{
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCaPath), "CA(Certificate Authority) file"},
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCertPath), "certificate file"},
-        {std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsKeyPath), "private key file"},
-        {std::string(tlsConfig.packagePath), "package path"},
+    const std::map<const char *, std::string> compulsoryMap{
+        {tlsConfig.caPath, "CA(Certificate Authority) file"},
+        {tlsConfig.certPath, "certificate file"},
+        {tlsConfig.keyPath, "private key file"},
+        {tlsConfig.packagePath, "package path"},
     };
 
     for (const auto &item : compulsoryMap) {
-        MMC_RETURN_ERROR(ValidatePathNotSymlink(item.first.c_str()), item.second << " does not exist or is a symlink");
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(item.first), item.second << " does not exist or is a symlink");
     }
 
-    if (!std::string(tlsConfig.tlsCrlPath).empty()) {
-        MMC_RETURN_ERROR(ValidatePathNotSymlink(
-            (std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsCrlPath)).c_str()),
+    if (!std::string(tlsConfig.crlPath).empty()) {
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.crlPath),
             "CRL(Certificate Revocation List) file does not exist or is a symlink");
     }
-    if (!std::string(tlsConfig.tlsKeyPassPath).empty()) {
-        MMC_RETURN_ERROR(ValidatePathNotSymlink(
-            (std::string(tlsConfig.tlsTopPath) + std::string(tlsConfig.tlsKeyPassPath)).c_str()),
+    if (!std::string(tlsConfig.keyPassPath).empty()) {
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.keyPassPath),
             "private key passphrase file does not exist or is a symlink");
+    }
+    if (!std::string(tlsConfig.decrypterLibPath).empty()) {
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.decrypterLibPath),
+            "decrypter library file does not exist or is a symlink");
     }
 
     return MMC_OK;

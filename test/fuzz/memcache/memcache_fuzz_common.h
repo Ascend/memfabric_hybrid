@@ -14,14 +14,13 @@ class TestMmcFuzzBase : public testing::Test {
 public:
     TestMmcFuzzBase() : localService{nullptr}, metaService{nullptr}
     {
-        mmc_tls_config tlsConfig {
+        ock::mf::tls_config tlsConfig {
             .tlsEnable = false,
-            .tlsTopPath = "/opt/ock/security/\0",
-            .tlsCaPath = "certs/ca.cert.pem\0",
-            .tlsCrlPath = "certs/ca_crl.pem\0",
-            .tlsCertPath = "certs/server.cert.pem\0",
-            .tlsKeyPath = "certs/server.private.key.pem\0",
-            .tlsKeyPassPath = "certs/server.passphrase\0",
+            .caPath = "certs/ca.cert.pem\0",
+            .crlPath = "certs/ca_crl.pem\0",
+            .certPath = "certs/server.cert.pem\0",
+            .keyPath = "certs/server.private.key.pem\0",
+            .keyPassPath = "certs/server.passphrase\0",
             .packagePath = "/opt/ock/security/libs/\0"
         };
 

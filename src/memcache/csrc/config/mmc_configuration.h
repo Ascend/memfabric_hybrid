@@ -96,9 +96,9 @@ public:
     void AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
     std::vector<std::string> ValidateConf();
-    void GetTlsConfig(mmc_tls_config &tlsConfig);
+    void GetTlsConfig(mf::tls_config &tlsConfig);
 
-    static int ValidateTLSConfig(const mmc_tls_config &tlsConfig);
+    static int ValidateTLSConfig(const mf::tls_config &tlsConfig);
 
     const std::string GetBinDir();
     const std::string GetLogPath(const std::string &logPath);
@@ -182,13 +182,13 @@ public:
             VIntRange::Create(OKC_MMC_EVICT_THRESHOLD_LOW.first, MIN_EVICT_THRESHOLD, MAX_EVICT_THRESHOLD - 1));
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_TOP_PATH, VStrLength::Create(OCK_MMC_TLS_TOP_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CA_PATH, VStrLength::Create(OCK_MMC_TLS_CA_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CRL_PATH, VStrLength::Create(OCK_MMC_TLS_CRL_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CERT_PATH, VStrLength::Create(OCK_MMC_TLS_CERT_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_KEY_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_KEY_PASS_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PASS_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VStrLength::Create(OCK_MMC_TLS_PACKAGE_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_DECRYPTER_PATH, VStrLength::Create(OCK_MMC_TLS_DECRYPTER_PATH.first, PATH_MAX_LEN));
     }
 
     void GetMetaServiceConfig(mmc_meta_service_config_t &config) {
@@ -223,13 +223,13 @@ public:
         AddStrConf(OCK_MMC_LOG_LEVEL, VNoCheck::Create());
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
-        AddStrConf(OCK_MMC_TLS_TOP_PATH, VStrLength::Create(OCK_MMC_TLS_TOP_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CA_PATH, VStrLength::Create(OCK_MMC_TLS_CA_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CRL_PATH, VStrLength::Create(OCK_MMC_TLS_CRL_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_CERT_PATH, VStrLength::Create(OCK_MMC_TLS_CERT_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_KEY_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_KEY_PASS_PATH, VStrLength::Create(OCK_MMC_TLS_KEY_PASS_PATH.first, PATH_MAX_LEN));
         AddStrConf(OCK_MMC_TLS_PACKAGE_PATH, VStrLength::Create(OCK_MMC_TLS_PACKAGE_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_TLS_DECRYPTER_PATH, VStrLength::Create(OCK_MMC_TLS_DECRYPTER_PATH.first, PATH_MAX_LEN));
 
         AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE,
             VIntRange::Create(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE.first, MIN_WORLD_SIZE, MAX_WORLD_SIZE));

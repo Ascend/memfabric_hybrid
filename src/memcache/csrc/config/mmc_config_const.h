@@ -20,13 +20,13 @@ constexpr auto OCK_MMC_LOG_ROTATION_FILE_SIZE = std::make_pair("ock.mmc.log_rota
 constexpr auto OCK_MMC_LOG_ROTATION_FILE_COUNT = std::make_pair("ock.mmc.log_rotation_file_count", 50);
 
 constexpr auto OCK_MMC_TLS_ENABLE = std::make_pair("ock.mmc.tls.enable", true);
-constexpr auto OCK_MMC_TLS_TOP_PATH = std::make_pair("ock.mmc.tls.top.path", "");
 constexpr auto OCK_MMC_TLS_CA_PATH = std::make_pair("ock.mmc.tls.ca.path", "");
 constexpr auto OCK_MMC_TLS_CRL_PATH = std::make_pair("ock.mmc.tls.ca.crl.path", "");
 constexpr auto OCK_MMC_TLS_CERT_PATH = std::make_pair("ock.mmc.tls.cert.path", "");
 constexpr auto OCK_MMC_TLS_KEY_PATH = std::make_pair("ock.mmc.tls.key.path", "");
 constexpr auto OCK_MMC_TLS_KEY_PASS_PATH = std::make_pair("ock.mmc.tls.key.pass.path", "");
 constexpr auto OCK_MMC_TLS_PACKAGE_PATH = std::make_pair("ock.mmc.tls.package.path", "");
+constexpr auto OCK_MMC_TLS_DECRYPTER_PATH = std::make_pair("ock.mmc.tls.decrypter.path", "");
 
 constexpr auto OKC_MMC_LOCAL_SERVICE_WORLD_SIZE = std::make_pair("ock.mmc.local_service.world_size", 1);
 constexpr auto OKC_MMC_LOCAL_SERVICE_BM_IP_PORT = std::make_pair("ock.mmc.local_service.config_store_url", "tcp://127.0.0.1:6000");

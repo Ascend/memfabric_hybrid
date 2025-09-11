@@ -41,7 +41,7 @@ private:
     Result HandleLinkBroken(const TcpLinkPtr &link) const;
     Result HandleAllRequests4Response(const TcpReqContext &context);
 
-    static int32_t DecryptHandler(const std::string &cipherText, char *plainText, int32_t &plainTextLen);
+    Result RegisterDecryptHandler(const std::string &decryptLibPath) const;
 
 private:
     /* hot used variables */
@@ -50,7 +50,7 @@ private:
     NetContextStorePtr ctxStore_;
 
     /* not hot used variables */
-    NetEngineOptions options_;
+    NetEngineOptions options_{};
     bool started_ = false;
     bool inited_ = false;
     std::mutex connectMutex_;

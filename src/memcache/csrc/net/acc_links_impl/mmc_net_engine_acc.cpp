@@ -1,6 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
  */
+#include "mf_tls_util.h"
+
 #include "acc_def.h"
 #include "acc_tcp_server.h"
 
@@ -114,25 +116,25 @@ Result NetEngineAcc::StartInner()
     serverOptions.workerCount = options_.threadCount;
     serverOptions.linkSendQueueSize = UN32;
 
-    TcpTlsOption tlsOpt;
+    TcpTlsOption tlsOpt{};
     tlsOpt.enableTls = options_.tlsOption.tlsEnable;
-    tlsOpt.tlsTopPath = options_.tlsOption.tlsTopPath;
-    tlsOpt.tlsCaPath = "/";
-    tlsOpt.tlsCaFile.insert(options_.tlsOption.tlsCaPath);
-    tlsOpt.tlsCrlPath = "/";
-    std::string crlFile = options_.tlsOption.tlsCrlPath;
-    if (!crlFile.empty()) {
-        tlsOpt.tlsCrlFile.insert(crlFile);
-    }
-    tlsOpt.tlsCert = options_.tlsOption.tlsCertPath;
-    tlsOpt.tlsPk = options_.tlsOption.tlsKeyPath;
-    tlsOpt.tlsPkPwd = options_.tlsOption.tlsKeyPassPath;
-
     if (tlsOpt.enableTls) {
+        tlsOpt.tlsTopPath = "/";
+        tlsOpt.tlsCaPath = "/";
+        tlsOpt.tlsCaFile.insert(options_.tlsOption.caPath);
+        tlsOpt.tlsCrlPath = "/";
+        std::string crlFile = options_.tlsOption.crlPath;
+        if (!crlFile.empty()) {
+            tlsOpt.tlsCrlFile.insert(crlFile);
+        }
+        tlsOpt.tlsCert = options_.tlsOption.certPath;
+        tlsOpt.tlsPk = options_.tlsOption.keyPath;
+        tlsOpt.tlsPkPwd = options_.tlsOption.keyPassPath;
         MMC_RETURN_ERROR(server_->LoadDynamicLib(options_.tlsOption.packagePath),
             "Failed to load openssl dynamic library");
         if (!tlsOpt.tlsPkPwd.empty()) {
-            server_->RegisterDecryptHandler(DecryptHandler);
+            MMC_RETURN_ERROR(RegisterDecryptHandler(options_.tlsOption.decrypterLibPath),
+                "Failed to register decrypt handler");
         }
     }
 
@@ -535,10 +537,22 @@ Result NetEngineAcc::HandleAllRequests4Response(const TcpReqContext &context)
     return MMC_OK;
 }
 
-int32_t NetEngineAcc::DecryptHandler(const std::string &cipherText, char *plainText, int32_t &plainTextLen)
+Result NetEngineAcc::RegisterDecryptHandler(const std::string &decryptLibPath) const
 {
-    std::copy_n(cipherText.c_str(), plainTextLen, plainText);
-    return 0;
+    if (decryptLibPath.empty()) {
+        MMC_LOG_WARN("No decrypter provided, using default decrypter handler");
+        server_->RegisterDecryptHandler(mf::DefaultDecrypter);
+        return MMC_OK;
+    }
+
+    const auto decrypter = mf::LoadDecryptFunction(decryptLibPath.c_str());
+    if (decrypter == nullptr) {
+        MMC_LOG_ERROR("failed to load customized decrypt function");
+        return MMC_ERROR;
+    }
+    server_->RegisterDecryptHandler(decrypter);
+
+    return MMC_OK;
 }
 }
 }

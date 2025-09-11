@@ -608,15 +608,16 @@ results = store.batch_is_exist(keys)
 ### mmc_location_t
 位置信息结构体，表示数据在内存中的位置。
 
-### mmc_tls_config
+### tls_config
 TLS配置结构体，包含以下字段：
 - `tlsEnable`: TLS启用标志
-- `tlsTopPath`: TLS顶级路径
-- `tlsCaPath`: TLS CA路径
-- `tlsCrlPath`: TLS CRL路径
-- `tlsCertPath`: TLS证书路径
-- `tlsKeyPath`: TLS密钥路径
-- `packagePath`: 包路径
+- `caPath`: 根证书文件路径
+- `crlPath`: 证书吊销列表文件路径
+- `certPath`: 证书文件路径
+- `keyPath`: 私钥文件路径
+- `keyPassPath`: 私钥加密密码（口令）文件路径
+- `packagePath`: openssl动态库路径
+- `decrypterLibPath`: 自定义口令解密算法动态库路径
 
 ## 错误码
 
