@@ -21,7 +21,6 @@ void DataOpDeviceRDMA::UnInitialize() noexcept {}
 int32_t DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_INFO("DataCopy local rank:" << rankId_ << ", srcId: " << options.srcRankId << ", dstId: " << options.destRankId);
     auto src = (uint64_t)(ptrdiff_t)params.src;
     auto dest = (uint64_t)(ptrdiff_t)params.dest;
     int ret;

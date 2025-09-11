@@ -32,6 +32,8 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
     }
+    // default: disable tls
+    smem_set_conf_store_tls(false, nullptr, 0);
     smem_trans_config_t config;
     ADAPTER_LOG_INFO("Begin to initialize trans");
     int32_t ret = smem_trans_config_init(&config);

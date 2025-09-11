@@ -57,6 +57,8 @@ uint16_t findAvailableTcpPort()
 
 int32_t pytransfer_create_config_store(const char *storeUrl)
 {
+    // default: disable tls
+    smem_set_conf_store_tls(false, nullptr, 0);
     int ret = smem_create_config_store(storeUrl);
     if (ret != 0) {
         ADAPTER_LOG_ERROR("SMEM API smem_create_config_store happen error, ret=" << ret);

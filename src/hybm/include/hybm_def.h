@@ -29,6 +29,7 @@ typedef enum {
 } hybm_type;
 
 typedef enum {
+    HYBM_DOP_TYPE_DEFAULT = 0,
     HYBM_DOP_TYPE_MTE = 1 << 0,
     HYBM_DOP_TYPE_SDMA = 1 << 1,
     HYBM_DOP_TYPE_DEVICE_RDMA = 1 << 2,

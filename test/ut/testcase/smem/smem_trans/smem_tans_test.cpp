@@ -186,6 +186,7 @@ TEST_F(SmemTransTest, smem_trans_write)
 
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
         std::vector<int*> addrPtrs, size_t capacities, const std::array<const char*, 2> unique_ids) {
+        trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
             exit(1);
@@ -297,6 +298,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write)
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
         std::vector<std::vector<void*>> addrPtrs, std::vector<size_t> capacities,
         const std::array<const char*, 2> unique_ids) {
+        trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
             exit(1);
