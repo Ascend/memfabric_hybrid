@@ -10,10 +10,12 @@
 #include <mockcpp/mockcpp.hpp>
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "hybm_entity_default.h"
 #include "acc_log.h"
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
+#include "smem_tcp_config_store.h"
 #include "ut_barrier_util.h"
 #include "hybm_stub.h"
 #include "smem_shm_entry_manager.h"
@@ -1174,6 +1176,118 @@ TEST_F(TestSmem, smem_bm_create_failed_entry_error)
     MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
         .stubs().will(returnValue(0));
     auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_create_entry_failed)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    MOCKER_CPP(&SmemBmEntryManager::PrepareStore, int32_t(*)(SmemBmEntryManager *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    // mock hybm_create_entity fail
+    MOCKER(hybm_create_entity).stubs().will(returnValue(nullptr));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_alloc_memory_failed)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    MOCKER_CPP(&SmemBmEntryManager::PrepareStore, int32_t(*)(SmemBmEntryManager *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&ock::mf::MemEntityDefault::Initialize, int32_t(*)(ock::mf::MemEntityDefault *, const hybm_options *))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    // mock hybm_reserve_mem_space fail
+    MOCKER(hybm_reserve_mem_space).stubs().will(returnValue(-1));
+    auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_export_fail)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    MOCKER_CPP(&SmemBmEntryManager::PrepareStore, int32_t(*)(SmemBmEntryManager *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&ock::mf::MemEntityDefault::Initialize, int32_t(*)(ock::mf::MemEntityDefault *, const hybm_options *))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    MOCKER(hybm_export).stubs().will(returnValue(-1));
+    auto ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_with_initialize)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    config.rankId = 0;
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    ASSERT_EQ(ret, 0);
+    ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_with_initialize_2)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    config.rankId = 0;
+    config.autoRanking = true;
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(static_cast<int32_t(TcpConfigStore::*)(const std::string &, std::vector<uint8_t> &, int64_t)>
+        (&TcpConfigStore::Get), int32_t(*)(TcpConfigStore *, const std::string &,
+        std::vector<uint8_t> &, int64_t)).stubs().will(returnValue(0));
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    ASSERT_EQ(ret, 0);
+    ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
     ASSERT_EQ(ret, 0);
     auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
     EXPECT_EQ(handle, nullptr);

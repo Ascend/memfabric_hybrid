@@ -6,6 +6,8 @@
 
 #include <type_traits>
 #include <limits>
+#include <string>
+#include <cctype>
 
 enum MfIndex : uint8_t {
     INDEX_0 = 0U,
@@ -43,6 +45,14 @@ public:
      */
     template <typename T>
     static bool IsOverflowCheck(T a, T b, T max, char calc);
+
+    /**
+     * @brief Check whether the input string is all digits
+     *
+     * @param str input string
+     * @return true if the input is all digits else false
+     */
+    static bool IsDigit(const std::string& str);
 };
 
 template <typename T>
@@ -59,6 +69,24 @@ inline bool NumUtil::IsOverflowCheck(T a, T b, T max, char calc)
         default:
             return true;
     }
+}
+
+inline bool NumUtil::IsDigit(const std::string& str)
+{
+    if (str.empty()) {
+        return false;
+    }
+    size_t start = str.find_first_not_of(" \t");
+    if (start == std::string::npos) {
+        return false;
+    }
+
+    for (size_t i = start; i < str.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(str[i]))) {
+            return false;
+        }
+    }
+    return true;
 }
 }
 }

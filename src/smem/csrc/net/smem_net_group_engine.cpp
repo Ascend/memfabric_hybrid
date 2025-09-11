@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include "mf_num_util.h"
 #include "smem_store_factory.h"
 #include "smem_net_group_engine.h"
 
@@ -266,28 +267,10 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     return SM_OK;
 }
 
-bool SmemNetGroupEngine::IsDigit(const std::string& str)
-{
-    if (str.empty()) {
-        return false;
-    }
-    size_t start = str.find_first_not_of(" \t");
-    if (start == std::string::npos) {
-        return false;
-    }
-
-    for (size_t i = start; i < str.size(); ++i) {
-        if (!std::isdigit(static_cast<unsigned char>(str[i]))) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool SmemNetGroupEngine::DealWithListenEvent(std::string& getVal, std::string& prevEvent)
 {
     char opt = getVal[0];
-    if (!IsDigit(getVal.substr(1))) {
+    if (!mf::NumUtil::IsDigit(getVal.substr(1))) {
         SM_LOG_WARN("value is not digit");
         return false;
     }
@@ -308,7 +291,7 @@ bool SmemNetGroupEngine::DealWithListenEvent(std::string& getVal, std::string& p
         SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
         return false;
     }
-    if (!IsDigit(getVal)) {
+    if (!mf::NumUtil::IsDigit(getVal)) {
         SM_LOG_WARN("value is not digit");
         return false;
     }
@@ -502,7 +485,7 @@ Result SmemNetGroupEngine::GroupLeave()
     if (ret != SM_OK) {
         SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
     }
-    
+
     GroupSnClean();
     UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
 

@@ -39,7 +39,7 @@ dos2unix "$MOCKCPP_PATH/src/UnixCodeModifier.cpp"
 dos2unix $TEST_3RD_PATCH_PATH/*.patch
 
 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -DBUILD_PYTHON=OFF -DBUILD_COMPILER=gcc -S . -B ${BUILD_PATH}
-make install -j5 -C ${BUILD_PATH}
+make install -j17 -C ${BUILD_PATH}
 export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$SMEM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
