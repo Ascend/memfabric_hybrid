@@ -87,4 +87,4 @@ private:
 }
 }
 
-#endif  //MMC_NET_LINK_H
+#endif  // MMC_NET_LINK_H

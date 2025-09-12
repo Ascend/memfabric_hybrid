@@ -19,4 +19,4 @@
 #include "mmc_ref.h"
 #include "mmc_spinlock.h"
 
-#endif //MEM_FABRIC_MMC_COMMON_INCLUDES_H
+#endif // MEM_FABRIC_MMC_COMMON_INCLUDES_H

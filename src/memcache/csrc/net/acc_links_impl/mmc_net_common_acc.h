@@ -85,4 +85,4 @@ inline bool NetSeqNo::IsResp() const
 }
 }
 
-#endif  //MEM_FABRIC_MMC_NET_COMMON_ACC_H
+#endif  // MEM_FABRIC_MMC_NET_COMMON_ACC_H

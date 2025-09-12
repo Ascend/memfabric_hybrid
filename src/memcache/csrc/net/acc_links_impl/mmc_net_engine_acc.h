@@ -60,4 +60,4 @@ private:
 }
 }
 
-#endif  //MEM_FABRIC_MMC_NET_ENGINE_ACC_LINKS_H
+#endif  // MEM_FABRIC_MMC_NET_ENGINE_ACC_LINKS_H

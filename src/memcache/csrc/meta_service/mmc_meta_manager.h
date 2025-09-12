@@ -215,7 +215,7 @@ private:
     MmcRef<MmcMetaContainer<std::string, MmcMemObjMetaPtr>> metaContainer_;
     MmcGlobalAllocatorPtr globalAllocator_;
 
-    uint64_t defaultTtlMs_; /* defult ttl in miliseconds*/
+    uint64_t defaultTtlMs_; /* defult ttl in miliseconds */
     uint16_t evictThresholdHigh_;
     uint16_t evictThresholdLow_;
     MetaNetServerPtr metaNetServer_;

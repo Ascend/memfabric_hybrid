@@ -446,4 +446,4 @@ typedef uintptr_t Hcom_MemoryAllocator;
 #ifdef __cplusplus
 }
 #endif
-#endif //MF_HYBRID_HCOM_DEFINE_H
+#endif // MF_HYBRID_HCOM_DEFINE_H

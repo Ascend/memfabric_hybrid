@@ -120,4 +120,4 @@ inline void *SmemBmEntry::GetDeviceGvaAddress() const
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
+#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H

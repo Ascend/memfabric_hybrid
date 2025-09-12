@@ -53,4 +53,4 @@ namespace smem {
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEM_FABRIC_HYBRID_SMEM_DEFINE_H
+#endif  // MEM_FABRIC_HYBRID_SMEM_DEFINE_H

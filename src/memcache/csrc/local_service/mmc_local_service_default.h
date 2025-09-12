@@ -77,4 +77,4 @@ inline MetaNetClientPtr MmcLocalServiceDefault::GetMetaClient() const
 }
 }
 
-#endif  //MEM_FABRIC_MMC_LOCAL_SERVICE_DEFAULT_H
+#endif  // MEM_FABRIC_MMC_LOCAL_SERVICE_DEFAULT_H

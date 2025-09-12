@@ -118,4 +118,4 @@ private:
 }
 }
 
-#endif  //MEM_FABRIC_MMC_BM_PROXY_H
+#endif  // MEM_FABRIC_MMC_BM_PROXY_H

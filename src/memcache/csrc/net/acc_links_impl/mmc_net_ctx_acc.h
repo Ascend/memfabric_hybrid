@@ -69,4 +69,4 @@ inline void *NetContextAcc::Data() const
 }
 }
 
-#endif  //MMC_NET_CTX_ACC_H
+#endif  // MMC_NET_CTX_ACC_H

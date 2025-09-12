@@ -22,4 +22,4 @@ public:
 } // namespace mmc
 } // namespace ock
 
-#endif //MEM_FABRIC_MMC_LOCAL_SERVICE_H
+#endif // MEM_FABRIC_MMC_LOCAL_SERVICE_H

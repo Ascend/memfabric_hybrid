@@ -33,4 +33,4 @@ inline const TcpLinkPtr &NetLinkAcc::RealLink() const
 }
 }
 
-#endif  //MEM_FABRIC_MMC_NET_LINK_ACC_H
+#endif  // MEM_FABRIC_MMC_NET_LINK_ACC_H

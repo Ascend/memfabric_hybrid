@@ -141,4 +141,4 @@ private:
 }
 }
 
-#endif  //MEM_FABRIC_MMC_NET_WAIT_HANDLE_H
+#endif  // MEM_FABRIC_MMC_NET_WAIT_HANDLE_H

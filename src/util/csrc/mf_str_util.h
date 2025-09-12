@@ -157,4 +157,4 @@ inline void StrUtil::Replace(std::string &src, const std::string &regex, const s
 
 #endif // KVS_STR_COMP_H
 
-#endif //MEMFABRIC_HYBRID_STR_UTIL_H
+#endif // MEMFABRIC_HYBRID_STR_UTIL_H

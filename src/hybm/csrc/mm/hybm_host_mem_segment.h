@@ -64,4 +64,4 @@ private:
 }
 }
 
-#endif  //MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
+#endif  // MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H

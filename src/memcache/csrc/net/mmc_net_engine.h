@@ -374,4 +374,4 @@ inline void NetEngine::RegLinkBrokenHandler(const NetLinkBrokenHandler &h)
 }
 }
 
-#endif  //MEM_FABRIC_MMC_NET_ENGINE_H
+#endif  // MEM_FABRIC_MMC_NET_ENGINE_H

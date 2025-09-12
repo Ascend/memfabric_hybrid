@@ -56,4 +56,4 @@ private:
 }
 }
 
-#endif  //MF_HYBM_CORE_DEVICE_CHIP_INFO_H
+#endif  // MF_HYBM_CORE_DEVICE_CHIP_INFO_H

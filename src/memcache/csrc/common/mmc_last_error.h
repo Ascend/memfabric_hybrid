@@ -64,4 +64,4 @@ inline const char *MmcLastError::GetAndClear(bool clear)
 }  // namespace mmc
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_MMC_LAST_ERROR_H
+#endif  // MEMFABRIC_HYBRID_MMC_LAST_ERROR_H

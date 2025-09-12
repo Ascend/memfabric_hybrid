@@ -234,4 +234,4 @@ private:
 }
 }
 
-#endif //MEM_FABRIC_MMC_NET_CTX_STORE_H
+#endif // MEM_FABRIC_MMC_NET_CTX_STORE_H

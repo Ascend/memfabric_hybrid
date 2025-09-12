@@ -124,4 +124,4 @@ inline bool RESULT_FAIL(const HRESULT hr)
 }  // namespace mmc
 }  // namespace ock
 
-#endif  //MEM_FABRIC_HYBRID_MMC_DEFINE_H
+#endif  // MEM_FABRIC_HYBRID_MMC_DEFINE_H

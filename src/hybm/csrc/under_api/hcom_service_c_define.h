@@ -299,4 +299,4 @@ typedef struct {
 }
 #endif
 
-#endif //MF_HYBRID_HCOM_SERVICE_C_DEFINE_H
+#endif // MF_HYBRID_HCOM_SERVICE_C_DEFINE_H

@@ -178,4 +178,4 @@ private:
 }
 }
 
-#endif  //MEMFABRIC_MMC_MSG_PACKER_H
+#endif  // MEMFABRIC_MMC_MSG_PACKER_H

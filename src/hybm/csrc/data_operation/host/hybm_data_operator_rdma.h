@@ -65,4 +65,4 @@ private:
 };
 }
 }
-#endif //MF_HYBRID_HYBM_DATA_OPERATOR_RDMA_H
+#endif // MF_HYBRID_HYBM_DATA_OPERATOR_RDMA_H

@@ -91,4 +91,4 @@ inline bool Func::LibraryRealPath(const std::string &libDirPath, const std::stri
     } while (0)
 }  // namespace shm
 
-#endif  //SHMEM_SHM_DEFINE_H
+#endif  // SHMEM_SHM_DEFINE_H

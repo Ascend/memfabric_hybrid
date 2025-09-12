@@ -157,4 +157,4 @@ inline uint64_t MonoPerfTrace::PeriodMs() const noexcept
 }  // namespace smem
 }  // namespace ock
 
-#endif  //MEMFABRIC_HYBRID_MONOTONIC_H
+#endif  // MEMFABRIC_HYBRID_MONOTONIC_H

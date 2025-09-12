@@ -30,7 +30,7 @@ struct NetEngineOptions {
     std::string ip;               /* ip */
     uint16_t port = 9980L;        /* listen port */
     uint16_t threadCount = 2;     /* worker thread count */
-    uint16_t rankId = UINT16_MAX; /* rank id*/
+    uint16_t rankId = UINT16_MAX; /* rank id */
     bool startListener = false;   /* start listener or not */
     mf::tls_config tlsOption;     /* TLS communication options */
     int32_t logLevel = 3;
@@ -160,4 +160,4 @@ inline Result NetEngineOptions::ExtractTcpURL(const std::string &url, NetProtoco
 }
 }
 
-#endif  //MEM_FABRIC_MOBS_NET_COMMON_H
+#endif  // MEM_FABRIC_MOBS_NET_COMMON_H

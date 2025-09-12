@@ -412,4 +412,4 @@ private:
 };
 }
 }
-#endif //MF_HYBRID_DLHCOMAPI_H
+#endif // MF_HYBRID_DLHCOMAPI_H
