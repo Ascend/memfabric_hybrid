@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEMFABRIC_MMC_CONFIG_CONVERTOR_H
 #define MEMFABRIC_MMC_CONFIG_CONVERTOR_H

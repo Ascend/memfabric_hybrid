@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MEM_FABRIC_MMC_NET_CTX_STORE_H
 #define MEM_FABRIC_MMC_NET_CTX_STORE_H

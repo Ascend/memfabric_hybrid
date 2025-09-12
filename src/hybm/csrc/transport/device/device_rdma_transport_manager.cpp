@@ -675,7 +675,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
     auto sqe = &command.writeValueSqe;
 
     auto taskId = taskIdGenerator.fetch_add(1);
-    memset(sqe, 0, sizeof(rtStarsSqe_t));
+    memset_s(sqe, 0, sizeof(rtStarsSqe_t));
     sqe->header.type = 8;  // RT_STARS_SQE_TYPE_WRITE_VALUE;
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;

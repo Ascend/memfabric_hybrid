@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #ifndef MF_HYBRID_MMC_META_CONTAINER_H
 #define MF_HYBRID_MMC_META_CONTAINER_H
