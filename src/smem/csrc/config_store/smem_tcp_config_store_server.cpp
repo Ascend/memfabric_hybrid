@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 #include <algorithm>
-#include "smem_logger.h"
+#include "config_store_log.h"
 #include "smem_message_packer.h"
 #include "smem_config_store.h"
 #include "smem_tcp_config_store_server.h"
@@ -25,13 +25,13 @@ Result AccStoreServer::Startup() noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {
-        SM_LOG_WARN("tcp store server already startup");
+        STORE_LOG_WARN("tcp store server already startup");
         return SM_OK;
     }
 
     auto tmpAccTcpServer = ock::acc::AccTcpServer::Create();
     if (tmpAccTcpServer == nullptr) {
-        SM_LOG_ERROR("create acc tcp server failed");
+        STORE_LOG_ERROR("create acc tcp server failed");
         return SM_NEW_OBJECT_FAILED;
     }
 
@@ -51,11 +51,11 @@ Result AccStoreServer::Startup() noexcept
     options.linkSendQueueSize = ock::acc::UNO_48;
     auto result = tmpAccTcpServer->Start(options);
     if (result == ock::acc::ACC_LINK_ADDRESS_IN_USE) {
-        SM_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
+        STORE_LOG_INFO("startup acc tcp server on port: " << listenPort_ << " already in use.");
         return SM_RESOURCE_IN_USE;
     }
     if (result != SM_OK) {
-        SM_LOG_ERROR("startup acc tcp server on port: " << listenPort_ << " failed: " << result);
+        STORE_LOG_ERROR("startup acc tcp server on port: " << listenPort_ << " failed: " << result);
         return SM_ERROR;
     }
 
@@ -72,7 +72,7 @@ Result AccStoreServer::Startup() noexcept
 
 void AccStoreServer::Shutdown() noexcept
 {
-    SM_LOG_INFO("start to shutdown Acc Store Server");
+    STORE_LOG_INFO("start to shutdown Acc Store Server");
     if (accTcpServer_ == nullptr) {
         return;
     }
@@ -85,14 +85,14 @@ void AccStoreServer::Shutdown() noexcept
     lockGuard.unlock();
     storeCond_.notify_one();
     timerThread_.join();
-    SM_LOG_INFO("finished shutdown Acc Store Server");
+    STORE_LOG_INFO("finished shutdown Acc Store Server");
 }
 
 Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept
 {
     auto data = reinterpret_cast<const uint8_t *>(context.DataPtr());
     if (data == nullptr) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle get null request body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle get null request body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "request no body");
         return SM_INVALID_PARAM;
     }
@@ -101,14 +101,14 @@ Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContex
     SmemMessage requestMessage;
     auto size = SmemMessagePacker::Unpack(body, requestMessage);
     if (size < 0) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request");
         return SM_ERROR;
     }
 
     auto pos = requestHandlers_.find(requestMessage.mt);
     if (pos == requestHandlers_.end()) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid message type: " << requestMessage.mt);
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid message type: " << requestMessage.mt);
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request message type");
         return SM_ERROR;
     }
@@ -119,7 +119,7 @@ Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContex
 Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
                                             const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    SM_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << req.rankId);
+    STORE_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << req.rankId);
     if (req.rankId >= std::numeric_limits<uint32_t>::max()) {
         return SM_OK;
     }
@@ -139,7 +139,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
 
 Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    SM_LOG_INFO("link broken, linkId: " << link->Id());
+    STORE_LOG_INFO("link broken, linkId: " << link->Id());
     uint32_t rankId = std::numeric_limits<uint32_t>::max();
     uint32_t linkId = link->Id();
 
@@ -155,12 +155,12 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         rankId = trans.rankId;
         aliveRankSet_.erase(rankId);
         kvStore_.erase(pos);
-        SM_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
+        STORE_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
     }
     lockGuard.unlock();
 
     if (rankId == std::numeric_limits<uint32_t>::max()) {
-        SM_LOG_ERROR("broken link id: " << linkId << ", cannot find rank id.");
+        STORE_LOG_ERROR("broken link id: " << linkId << ", cannot find rank id.");
         return SM_ERROR;
     }
 
@@ -174,7 +174,7 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     responseMessage.values.push_back(value);
     auto response = SmemMessagePacker::Pack(responseMessage);
     for (auto it = copyWaiters.begin(); it != copyWaiters.end(); ++it) {
-        SM_LOG_INFO("rankId: " << rankId << " down notify to channel: " << it->first);
+        STORE_LOG_INFO("rankId: " << rankId << " down notify to channel: " << it->first);
         ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
     }
 
@@ -184,7 +184,7 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
 Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || request.values.size() != 1) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key value should be one");
         return SM_INVALID_PARAM;
     }
@@ -192,11 +192,11 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
     auto &key = request.keys[0];
     auto &value = request.values[0];
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
-    SM_LOG_DEBUG("SET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    STORE_LOG_DEBUG("SET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
     std::vector<uint8_t> reqVal;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
@@ -231,20 +231,20 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     auto &key = request.keys[0];
     auto linkId = context.Link()->Id();
     auto rankingKey = key + std::to_string(linkId);
-    SM_LOG_INFO("GET rankingKey(" << rankingKey << ") success.");
+    STORE_LOG_INFO("GET rankingKey(" << rankingKey << ") success.");
     SmemMessage responseMessage{request.mt};
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(rankingKey);
     if (pos != kvStore_.end()) {
         responseMessage.values.emplace_back(pos->second);
         lockGuard.unlock();
-        SM_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") success.");
+        STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") success.");
         auto response = SmemMessagePacker::Pack(responseMessage);
         ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
         return SM_OK;
     }
     if (aliveRankSet_.size() >= worldSize_) {
-        SM_LOG_ERROR("Failed to insert rank, rank count:" << aliveRankSet_.size()
+        STORE_LOG_ERROR("Failed to insert rank, rank count:" << aliveRankSet_.size()
                                                           << " equal worldSize: " << worldSize_);
         ReplyWithMessage(context, StoreErrorCode::ERROR, "error: worldSize rankSize bigger than worldSize.");
         return SM_ERROR;
@@ -267,7 +267,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     lockGuard.unlock();
 
     responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
-    SM_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") rankId:" << trans.rankId
+    STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") rankId:" << trans.rankId
                                << " rankId_:" << rankIndex_);
     auto response = SmemMessagePacker::Pack(responseMessage);
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
@@ -277,14 +277,14 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
 Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || !request.values.empty()) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key should be one and no values.");
         return SM_INVALID_PARAM;
     }
 
     auto &key = request.keys[0];
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -292,7 +292,7 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
         return FindOrInsertRank(context, request);
     }
 
-    SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     SmemMessage responseMessage{request.mt};
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(key);
@@ -300,7 +300,7 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
         responseMessage.values.push_back(pos->second);
         lockGuard.unlock();
 
-        SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") success.");
+        STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") success.");
         auto response = SmemMessagePacker::Pack(responseMessage);
         ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
         return SM_OK;
@@ -309,15 +309,16 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     if (request.userDef == 0) {
         lockGuard.unlock();
 
-        SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") not exist.");
+        STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") not exist.");
         ReplyWithMessage(context, StoreErrorCode::NOT_EXIST, "<not exist>");
         return SM_ERROR;
     }
 
-    SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") waiting timeout=" << request.userDef);
+    STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key
+        << ") waiting timeout=" << request.userDef);
     auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(request.userDef);
     auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(timeout.time_since_epoch()).count();
-    SM_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") waiting timeout=" << timeoutMs);
+    STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") waiting timeout=" << timeoutMs);
     StoreWaitContext waitContext{timeoutMs, key, context};
     auto pair = waitCtx_.emplace(waitContext.Id(), std::move(waitContext));
     auto wPos = keyWaiters_.find(key);
@@ -343,7 +344,7 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
 Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || request.values.size() != 1) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key value should be one.");
         return SM_INVALID_PARAM;
     }
@@ -351,15 +352,15 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
     auto &key = request.keys[0];
     auto &value = request.values[0];
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
     std::string valueStr{value.begin(), value.end()};
-    SM_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << valueStr << ") start.");
+    STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << valueStr << ") start.");
     auto valueNum = strtol(valueStr.c_str(), nullptr, 10);
     if (valueStr != std::to_string(valueNum)) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") add for key(" << key << ") value is not a number");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") add for key(" << key << ") value is not a number");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: value should be a number.");
         return SM_ERROR;
     }
@@ -390,7 +391,8 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         responseValue = storedValueNum;
     }
     lockGuard.unlock();
-    SM_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << responseValue << ") end.");
+    STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key
+        << ") value(" << responseValue << ") end.");
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, std::to_string(responseValue));
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, reqVal);
@@ -401,18 +403,18 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
 Result AccStoreServer::RemoveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || !request.values.empty()) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key should be one and no values.");
         return SM_INVALID_PARAM;
     }
 
     auto &key = request.keys[0];
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
-    SM_LOG_DEBUG("REMOVE REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    STORE_LOG_DEBUG("REMOVE REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     bool removed = false;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(key);
@@ -430,7 +432,7 @@ Result AccStoreServer::RemoveHandler(const ock::acc::AccTcpRequestContext &conte
 Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || request.values.size() != 1) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key & value should be one.");
         return SM_INVALID_PARAM;
     }
@@ -438,11 +440,11 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
     auto &key = request.keys[0];
     auto &value = request.values[0];
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
-    SM_LOG_DEBUG("APPEND REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    STORE_LOG_DEBUG("APPEND REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     uint64_t newSize;
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
     std::vector<uint8_t> reqVal;
@@ -478,7 +480,7 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
                                   ock::smem::SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || request.values.size() != 2) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: count(key)=1 & count(value)=2");
         return SM_INVALID_PARAM;
     }
@@ -488,14 +490,14 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
     auto &exchange = request.values[1];
     auto newValue = exchange;
     if (key.length() > MAX_KEY_LEN_SERVER) {
-        SM_LOG_ERROR("key length too large, length: " << key.length());
+        STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
 
     std::vector<uint8_t> exists;
     SmemMessage responseMessage{request.mt};
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
-    SM_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(key);
@@ -521,7 +523,7 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
         }
     }
     lockGuard.unlock();
-    SM_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") finished.");
+    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") finished.");
 
     responseMessage.values.push_back(exists);
     auto response = SmemMessagePacker::Pack(responseMessage);
@@ -535,7 +537,7 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
 Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     if (request.keys.size() != 1 || request.keys[0] != WATCH_RANK_DOWN_KEY) {
-        SM_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
+        STORE_LOG_ERROR("request(" << context.SeqNo() << ") handle invalid body");
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key should be");
         return SM_INVALID_PARAM;
     }
@@ -546,7 +548,7 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
     auto pair = rankStateWaiters_.emplace(linkId, waitContext);
     if (!pair.second) {
         uniqueLock.unlock();
-        SM_LOG_ERROR("link id : " << linkId << ", already watched for rank state.");
+        STORE_LOG_ERROR("link id : " << linkId << ", already watched for rank state.");
         return SM_REPEAT_CALL;
     }
 
@@ -558,7 +560,7 @@ AccStoreServer::GetOutWaitersInLock(const std::unordered_set<uint64_t> &ids) noe
 {
     std::list<ock::acc::AccTcpRequestContext> reqCtx;
     for (auto id : ids) {
-        SM_LOG_DEBUG("GetOutWaitersInLock id:" << id);
+        STORE_LOG_DEBUG("GetOutWaitersInLock id:" << id);
         auto it = waitCtx_.find(id);
         if (it != waitCtx_.end()) {
             reqCtx.emplace_back(std::move(it->second.ReqCtx()));
@@ -582,7 +584,7 @@ void AccStoreServer::WakeupWaiters(const std::list<ock::acc::AccTcpRequestContex
     responseMessage.values.push_back(value);
     auto response = SmemMessagePacker::Pack(responseMessage);
     for (auto &context : waiters) {
-        SM_LOG_DEBUG("WAKEUP REQUEST(" << context.SeqNo() << ").");
+        STORE_LOG_DEBUG("WAKEUP REQUEST(" << context.SeqNo() << ").");
         ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
     }
 }
@@ -592,7 +594,7 @@ void AccStoreServer::ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx,
 {
     auto response = ock::acc::AccDataBuffer::Create(message.c_str(), message.size());
     if (response == nullptr) {
-        SM_LOG_ERROR("create response message failed");
+        STORE_LOG_ERROR("create response message failed");
         return;
     }
 
@@ -604,7 +606,7 @@ void AccStoreServer::ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx,
 {
     auto response = ock::acc::AccDataBuffer::Create(message.data(), message.size());
     if (response == nullptr) {
-        SM_LOG_ERROR("create response message failed");
+        STORE_LOG_ERROR("create response message failed");
         return;
     }
 
@@ -632,7 +634,7 @@ void AccStoreServer::TimerThreadTask() noexcept
 
         timeoutIds.clear();
         for (auto &ctx : timeoutContexts) {
-            SM_LOG_DEBUG("reply timeout response for : " << ctx.SeqNo());
+            STORE_LOG_DEBUG("reply timeout response for : " << ctx.SeqNo());
             ReplyWithMessage(ctx, StoreErrorCode::TIMEOUT, "<timeout>");
         }
 

@@ -50,6 +50,8 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
 
     NetEngineOptions configStoreOpt{};
     NetEngineOptions::ExtractIpPortFromUrl(options_.configStoreURL, configStoreOpt);
+    ock::smem::StoreFactory::SetLogLevel(options_.logLevel);
+    ock::smem::StoreFactory::SetExternalLogFunction(SPDLOG_LogMessage);
     confStore_ = ock::smem::StoreFactory::CreateStore(configStoreOpt.ip, configStoreOpt.port, true, UN16);
     MMC_VALIDATE_RETURN(confStore_ != nullptr, "Failed to start config store server", MMC_ERROR);
 

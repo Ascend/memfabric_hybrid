@@ -6,6 +6,7 @@
 #include "smem_version.h"
 #include "hybm.h"
 #include "acc_links/net/acc_log.h"
+#include "smem_store_factory.h"
 
 namespace {
 bool g_smemInited = false;
@@ -36,6 +37,7 @@ SMEM_API int32_t smem_set_extern_logger(void (*fun)(int, const char *))
 
     /* set my out logger */
     SMOutLogger::Instance().SetExternalLogFunction(fun, true);
+    ock::smem::StoreFactory::SetExternalLogFunction(fun);
 
     /* set dependent acc_links log function */
     auto result = AccSetExternalLog(fun);
@@ -63,6 +65,7 @@ SMEM_API int32_t smem_set_log_level(int level)
 
     /* set my logger's level */
     SMOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
+    ock::smem::StoreFactory::SetLogLevel(level);
 
     /* set acc_links log level */
     auto result = AccSetLogLevel(level);

@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#include "smem_logger.h"
+#include "config_store_log.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
 #include "smem_store_factory.h"
@@ -25,17 +25,17 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     }
 
     auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, worldSize, rankId);
-    SM_ASSERT_RETURN(store != nullptr, nullptr);
+    STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        SM_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
+        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
                                              << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        SM_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
+        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
                                               << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;
@@ -56,10 +56,10 @@ void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
 
 StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::string &prefix) noexcept
 {
-    SM_PARAM_VALIDATE(base == nullptr, "invalid param, base is nullptr", nullptr);
+    STORE_PARAM_VALIDATE(base == nullptr, "invalid param, base is nullptr", nullptr);
 
     auto store = SmMakeRef<PrefixConfigStore>(base, prefix);
-    SM_ASSERT_RETURN(store != nullptr, nullptr);
+    STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     return store.Get();
 }
@@ -67,6 +67,16 @@ StorePtr StoreFactory::PrefixStore(const ock::smem::StorePtr &base, const std::s
 int StoreFactory::GetFailedReason() noexcept
 {
     return failedReason_;
+}
+
+void StoreFactory::SetExternalLogFunction(void (*func)(int, const char *)) noexcept
+{
+    ock::smem::StoreOutLogger::Instance().SetExternalLogFunction(func);
+}
+
+void StoreFactory::SetLogLevel(int level) noexcept
+{
+    ock::smem::StoreOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
 }
 }  // namespace smem
 }  // namespace ock

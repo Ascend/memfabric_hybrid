@@ -2,25 +2,26 @@
 
 #### MetaService Config
 
-| key                             | value type | default                 | valid range               | description                                                                          |
-|---------------------------------|------------|-------------------------|---------------------------|--------------------------------------------------------------------------------------|
-| ock.mmc.meta_service_url        | string     | tcp://127.0.0.1:5000    | tcp://\<ip>\<port>        | port in [1025, 65535]                                                                |
-| ock.mmc.meta.ha.enable          | bool       | false                   | true/false                | enable meta service master/backup HA in k8s cluster                                  |
-| ock.mmc.log_level               | string     | info                    | debug/info/warn/error     | log level                                                                            |
-| ock.mmc.log_path                | string     | .                       | relative or absolute path | log path, the absolute path is start with '/'                                        |
-| ock.mmc.log_rotation_file_size  | int        | 20                      | 1 <= n <= 500             | log rotation file size(MB)                                                           |
-| ock.mmc.log_rotation_file_count | int        | 50                      | 1 <= n <= 50              | log rotation file num                                                                |
-| ock.mmc.evict_threshold_high    | int        | 70                      | 1 <= n <= 100             | evict threshold, 70 mean 70%                                                         |
-| ock.mmc.evict_threshold_low     | int        | 60                      | 0 <= n <= 99              | after evict threshold                                                                |
-|                                 |            |                         |                           |                                                                                      |
-| ock.mmc.tls.enable              | bool       | true                    | true/false/1/0            | use TLS to secure communication or not                                               |
-| ock.mmc.tls.ca.path             | string     |                         | 0 <= len < 1024           | Root Certificate path                                                                |
-| ock.mmc.tls.ca.crl.path         | string     |                         | 0 <= len < 1024           | Certificate Revocation List path                                                     |
-| ock.mmc.tls.cert.path           | string     |                         | 0 <= len < 1024           | server certificate path                                                              |
-| ock.mmc.tls.key.path            | string     |                         | 0 <= len < 1024           | server private key path                                                              |
-| ock.mmc.tls.key.pass.path       | string     |                         | 0 <= len < 1024           | server private key passphrase path (leave empty if the private key is not encrypted) |
-| ock.mmc.tls.package.path        | string     | /opt/ock/security/libs/ | 0 <= len < 1024           | openssl dynamic libraries path                                                       |
-| ock.mmc.tls.decrypter.path      | string     |                         | 0 <= len < 1024           | the keypass decrypter library path (leave empty if the password is not encrypted)    |
+| key                                   | value type | default                 | valid range               | description                                                                          |
+|---------------------------------------|------------|-------------------------|---------------------------|--------------------------------------------------------------------------------------|
+| ock.mmc.meta_service_url              | string     | tcp://127.0.0.1:5000    | tcp://\<ip>\<port>        | port in [1025, 65535]                                                                |
+| ock.mmc.meta_service.config_store_url | string     | tcp://127.0.0.1:6000    | tcp://\<ip>\<port>        | port in [1025, 65535]                                                                |
+| ock.mmc.meta.ha.enable                | bool       | false                   | true/false                | enable meta service master/backup HA in k8s cluster                                  |
+| ock.mmc.log_level                     | string     | info                    | debug/info/warn/error     | log level                                                                            |
+| ock.mmc.log_path                      | string     | .                       | relative or absolute path | log path, the absolute path is start with '/'                                        |
+| ock.mmc.log_rotation_file_size        | int        | 20                      | 1 <= n <= 500             | log rotation file size(MB)                                                           |
+| ock.mmc.log_rotation_file_count       | int        | 50                      | 1 <= n <= 50              | log rotation file num                                                                |
+| ock.mmc.evict_threshold_high          | int        | 70                      | 1 <= n <= 100             | evict threshold, 70 mean 70%                                                         |
+| ock.mmc.evict_threshold_low           | int        | 60                      | 0 <= n <= 99              | after evict threshold                                                                |
+|                                       |            |                         |                           |                                                                                      |
+| ock.mmc.tls.enable                    | bool       | true                    | true/false/1/0            | use TLS to secure communication or not                                               |
+| ock.mmc.tls.ca.path                   | string     |                         | 0 <= len < 1024           | Root Certificate path                                                                |
+| ock.mmc.tls.ca.crl.path               | string     |                         | 0 <= len < 1024           | Certificate Revocation List path                                                     |
+| ock.mmc.tls.cert.path                 | string     |                         | 0 <= len < 1024           | server certificate path                                                              |
+| ock.mmc.tls.key.path                  | string     |                         | 0 <= len < 1024           | server private key path                                                              |
+| ock.mmc.tls.key.pass.path             | string     |                         | 0 <= len < 1024           | server private key passphrase path (leave empty if the private key is not encrypted) |
+| ock.mmc.tls.package.path              | string     | /opt/ock/security/libs/ | 0 <= len < 1024           | openssl dynamic libraries path                                                       |
+| ock.mmc.tls.decrypter.path            | string     |                         | 0 <= len < 1024           | the keypass decrypter library path (leave empty if the password is not encrypted)    |
 
 #### LocalService Config
 

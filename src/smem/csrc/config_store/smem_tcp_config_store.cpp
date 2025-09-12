@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 
-#include "smem_logger.h"
+#include "config_store_log.h"
 #include "smem_message_packer.h"
 #include "smem_tcp_config_store.h"
 
@@ -76,18 +76,18 @@ public:
         SmemMessage responseBody;
         auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
         if (ret < 0) {
-            SM_LOG_ERROR("unpack response body failed, result: " << ret);
+            STORE_LOG_ERROR("unpack response body failed, result: " << ret);
             notify_(IO_ERROR, std::vector<uint8_t>{});
             return;
         }
 
         if (responseBody.values.empty()) {
-            SM_LOG_ERROR("response body has no value");
+            STORE_LOG_ERROR("response body has no value");
             notify_(IO_ERROR, std::vector<uint8_t>{});
             return;
         }
 
-        SM_LOG_DEBUG("watch end, id: " << response.SeqNo());
+        STORE_LOG_DEBUG("watch end, id: " << response.SeqNo());
         notify_(SUCCESS, responseBody.values[0]);
     }
 
@@ -129,13 +129,13 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
 
     std::lock_guard<std::mutex> guard(mutex_);
     if (accClient_ != nullptr) {
-        SM_LOG_WARN("TcpConfigStore already startup");
+        STORE_LOG_WARN("TcpConfigStore already startup");
         return SM_OK;
     }
 
     accClient_ = ock::acc::AccTcpServer::Create();
     if (accClient_ == nullptr) {
-        SM_LOG_ERROR("create acc tcp client failed");
+        STORE_LOG_ERROR("create acc tcp client failed");
         return SM_ERROR;
     }
 
@@ -160,7 +160,7 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
     ock::acc::AccTcpServerOptions options;
     options.linkSendQueueSize = ock::acc::UNO_48;
     if ((result = accClient_->Start(options)) != SM_OK) {
-        SM_LOG_ERROR("start acc client failed, result: " << result);
+        STORE_LOG_ERROR("start acc client failed, result: " << result);
         Shutdown();
         return result;
     }
@@ -169,7 +169,7 @@ Result TcpConfigStore::Startup(int reconnectRetryTimes) noexcept
     connReq.rankId = rankId_ >= 0 ? static_cast<uint64_t>(rankId_) : std::numeric_limits<uint64_t>::max();
     result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
-        SM_LOG_ERROR("connect to server failed, result: " << result);
+        STORE_LOG_ERROR("connect to server failed, result: " << result);
         Shutdown();
         return result;
     }
@@ -195,7 +195,7 @@ void TcpConfigStore::Shutdown() noexcept
 Result TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &value) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -206,13 +206,13 @@ Result TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &v
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send set for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send set for key: " << key << ", get null response");
         return IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send set for key: " << key << ", get response code: " << responseCode);
+        STORE_LOG_ERROR("send set for key: " << key << ", get response code: " << responseCode);
     }
 
     return responseCode;
@@ -221,7 +221,7 @@ Result TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &v
 Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -232,13 +232,13 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send get for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send get for key: " << key << ", get null response");
         return IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send get for key: " << key << ", response code: " << responseCode << " timeout:" << timeoutMs);
+        STORE_LOG_ERROR("send get for key: " << key << ", response code: " << responseCode << " timeout:" << timeoutMs);
         return responseCode;
     }
 
@@ -247,12 +247,12 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     SmemMessage responseBody;
     auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
     if (ret < 0) {
-        SM_LOG_ERROR("unpack response body failed, result: " << ret);
+        STORE_LOG_ERROR("unpack response body failed, result: " << ret);
         return -1;
     }
 
     if (responseBody.values.empty()) {
-        SM_LOG_ERROR("response body has no value");
+        STORE_LOG_ERROR("response body has no value");
         return -1;
     }
 
@@ -263,7 +263,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
 Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &value) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -275,13 +275,13 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send add for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send add for key: " << key << ", get null response");
         return StoreErrorCode::IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send add for key: " << key << ", get response code: " << responseCode);
+        STORE_LOG_ERROR("send add for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
 
@@ -293,7 +293,7 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
 Result TcpConfigStore::Remove(const std::string &key) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -303,13 +303,13 @@ Result TcpConfigStore::Remove(const std::string &key) noexcept
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send remove for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send remove for key: " << key << ", get null response");
         return StoreErrorCode::IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send remove for key: " << key << ", get response code: " << responseCode);
+        STORE_LOG_ERROR("send remove for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
 
@@ -319,7 +319,7 @@ Result TcpConfigStore::Remove(const std::string &key) noexcept
 Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -330,13 +330,13 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send append for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send append for key: " << key << ", get null response");
         return StoreErrorCode::IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send append for key: " << key << ", get response code: " << responseCode);
+        STORE_LOG_ERROR("send append for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
 
@@ -350,7 +350,7 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
                            const std::vector<uint8_t> &value, std::vector<uint8_t> &exists) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -362,13 +362,13 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto response = SendMessageBlocked(packedRequest);
     if (response == nullptr) {
-        SM_LOG_ERROR("send CAS for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send CAS for key: " << key << ", get null response");
         return StoreErrorCode::IO_ERROR;
     }
 
     auto responseCode = response->Header().result;
     if (responseCode != 0) {
-        SM_LOG_ERROR("send CAS for key: " << key << ", get response code: " << responseCode);
+        STORE_LOG_ERROR("send CAS for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
 
@@ -377,12 +377,12 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
     SmemMessage responseBody;
     auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
     if (ret < 0) {
-        SM_LOG_ERROR("unpack response body failed, result: " << ret);
+        STORE_LOG_ERROR("unpack response body failed, result: " << ret);
         return -1;
     }
 
     if (responseBody.values.empty()) {
-        SM_LOG_ERROR("response body has no value");
+        STORE_LOG_ERROR("response body has no value");
         return -1;
     }
 
@@ -396,7 +396,7 @@ TcpConfigStore::Watch(const std::string &key,
                       uint32_t &wid) noexcept
 {
     if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
-        SM_LOG_ERROR("key length is invalid");
+        STORE_LOG_ERROR("key length is invalid");
         return StoreErrorCode::INVALID_KEY;
     }
 
@@ -407,11 +407,11 @@ TcpConfigStore::Watch(const std::string &key,
     auto ret = SendWatchRequest(
         packedRequest, [key, notify](int res, const std::vector<uint8_t> &value) { notify(res, key, value); }, wid);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("send get for key: " << key << ", get null response");
+        STORE_LOG_ERROR("send get for key: " << key << ", get null response");
         return ret;
     }
 
-    SM_LOG_DEBUG("watch for key: " << key << ", id: " << wid);
+    STORE_LOG_DEBUG("watch for key: " << key << ", id: " << wid);
     return SM_OK;
 }
 
@@ -419,7 +419,7 @@ Result TcpConfigStore::Watch(WatchRankType type, const std::function<void(WatchR
                              uint32_t &wid) noexcept
 {
     if (type != WATCH_RANK_LINK_DOWN) {
-        SM_LOG_ERROR("invalid watch rank type: " << type);
+        STORE_LOG_ERROR("invalid watch rank type: " << type);
         return SM_INVALID_PARAM;
     }
 
@@ -435,11 +435,11 @@ Result TcpConfigStore::Watch(WatchRankType type, const std::function<void(WatchR
         },
         wid);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("send watch for rank down get null response");
+        STORE_LOG_ERROR("send watch for rank down get null response");
         return ret;
     }
 
-    SM_LOG_DEBUG("send watch for rank down success, id: " << wid);
+    STORE_LOG_DEBUG("send watch for rank down success, id: " << wid);
     return SM_OK;
 }
 
@@ -456,11 +456,11 @@ Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
     msgCtxLocker.unlock();
 
     if (watchContext == nullptr) {
-        SM_LOG_WARN("unwatch for id: " << wid << ", not exist.");
+        STORE_LOG_WARN("unwatch for id: " << wid << ", not exist.");
         return NOT_EXIST;
     }
 
-    SM_LOG_INFO("unwatch for id: " << wid << " success.");
+    STORE_LOG_INFO("unwatch for id: " << wid << " success.");
     return SM_OK;
 }
 
@@ -471,7 +471,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("send message failed, result: " << ret);
+        STORE_LOG_ERROR("send message failed, result: " << ret);
         return nullptr;
     }
 
@@ -489,7 +489,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
 
 Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    SM_LOG_INFO("link broken, linkId: " << link->Id());
+    STORE_LOG_INFO("link broken, linkId: " << link->Id());
     std::unordered_map<uint32_t, std::shared_ptr<ClientCommonContext>> tempContext;
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     tempContext.swap(msgClientContext_);
@@ -504,7 +504,7 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
 
 Result TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestContext &context) noexcept
 {
-    SM_LOG_DEBUG("client received message: " << context.SeqNo());
+    STORE_LOG_DEBUG("client received message: " << context.SeqNo());
     std::shared_ptr<ClientCommonContext> clientContext;
 
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
@@ -520,7 +520,7 @@ Result TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestConte
     msgCtxLocker.unlock();
 
     if (clientContext == nullptr) {
-        SM_LOG_ERROR("receive response(" << context.SeqNo() << ") not sent request.");
+        STORE_LOG_ERROR("receive response(" << context.SeqNo() << ") not sent request.");
         return SM_ERROR;
     }
 
@@ -536,7 +536,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("send message failed, result: " << ret);
+        STORE_LOG_ERROR("send message failed, result: " << ret);
         return ret;
     }
 

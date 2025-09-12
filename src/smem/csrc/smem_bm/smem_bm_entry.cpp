@@ -164,7 +164,7 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
 
 Result SmemBmEntry::ExchangeSliceForJoin(const hybm_exchange_info &sliceInfo)
 {
-    if (dramSliceInfo_.descLen == 0) {
+    if (sliceInfo.descLen == 0) {
         return SM_OK;
     }
 

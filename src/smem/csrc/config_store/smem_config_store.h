@@ -11,7 +11,8 @@
 #include <memory>
 #include <functional>
 
-#include "smem_common_includes.h"
+#include "smem_types.h"
+#include "smem_ref.h"
 
 namespace ock {
 namespace smem {

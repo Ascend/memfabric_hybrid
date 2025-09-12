@@ -43,6 +43,10 @@ public:
 
     static int GetFailedReason() noexcept;
 
+    static void SetExternalLogFunction(void (* func)(int, const char *)) noexcept;
+
+    static void SetLogLevel(int level) noexcept;
+
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
