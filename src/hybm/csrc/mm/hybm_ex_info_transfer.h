@@ -44,7 +44,7 @@ public:
             return -1;
         }
 
-        memcpy_s(&d, info.data(), sizeof(DataType));
+        memcpy(&d, info.data(), sizeof(DataType));
         return 0;
     }
 };

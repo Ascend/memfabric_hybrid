@@ -214,9 +214,6 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
 
-    // bool result = CheckData(hostSrc, hostDest);
-    // EXPECT_TRUE(result);
-
     mmc_location_t location = mmcc_get_location(test.c_str(), 0);
     ASSERT_TRUE(location.xx == 0);
 
@@ -254,9 +251,6 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         ASSERT_TRUE(ret == 0);
-
-        // bool result = CheckData(hostSrcs[i], hostDests[i]);
-        // EXPECT_TRUE(result);
     }
 
     for (uint32_t i = 0; i < keys_count; ++i) {

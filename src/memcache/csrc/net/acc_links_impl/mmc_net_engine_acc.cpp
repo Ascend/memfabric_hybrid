@@ -206,8 +206,6 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     MMC_ASSERT_RETURN(opCode != -1, MMC_INVALID_PARAM);
 
     /* step1: do serialization */
-//    auto result = request->Serialize();
-//    KVS_ASSERT_RETURN(result == K_OK, result);
 
     /* step2: get the link to send */
     NetLinkAccPtr link;
@@ -257,14 +255,9 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     auto& data = waiter->Data();
     MMC_ASSERT_RETURN(data.Get() != nullptr, MMC_ERROR);
     /* set response code */
-    // userResult = waiter->GetResult();
+
     /* deserialize */
-//    result = response->Deserialize(data->DataIntPtr(), data->DataLen());
-//    if (result != K_OK) {
-//        KVS_LOG_ERROR("Failed to deserialize response data for " << request->OpCode() << " from service " <<
-//                                                                 targetId.ToString());
-//        return result;
-//    }
+
     if (*respData == nullptr) {
         *respData = (char*) malloc(data->DataLen());
     }

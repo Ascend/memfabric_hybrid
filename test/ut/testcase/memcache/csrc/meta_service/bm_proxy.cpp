@@ -155,12 +155,6 @@ TEST_F(TestBmProxy, Copy)
     ret = bmProxy->Get(&buffer4, bmAddr, SIZE_32K);
     EXPECT_EQ(ret, MMC_OK);
 
-    // mock后无法验证
-    // bool result = CheckData(hostSrc1, hostDest2);
-    // EXPECT_TRUE(result);
-    // result = CheckData(hostSrc2, hostDest1);
-    // EXPECT_TRUE(result);
-
     free(hostSrc1);
     free(hostSrc2);
     free(hostDest1);

@@ -128,8 +128,6 @@ TEST_F(TestMmcMetaManager, GetAndUpdate)
     ASSERT_TRUE(memMetaObjs[0].NumBlobs() == 1);
     ASSERT_TRUE(memMetaObjs[0].Size() == SIZE_32K);
 
-    // ret = metaMng->UpdateState(keys[2], loc, 0, 1, MMC_WRITE_FAIL);
-    // ASSERT_TRUE(ret == MMC_OK);
     ret = metaMng->UpdateState(keys[2], loc, MMC_WRITE_OK, 1);
     ASSERT_TRUE(ret == MMC_OK);
 

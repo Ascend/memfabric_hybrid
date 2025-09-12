@@ -46,14 +46,6 @@ Result MemSegmentHostSDMA::ReserveMemorySpace(void **address) noexcept
     return BM_OK;
 }
 
-// TODO: 这个分支的基类未定义此接口，先注释掉
-// Result MemSegmentHostSDMA::UnreserveMemorySpace() noexcept
-// {
-//     BM_LOG_INFO("un-reserve memory space.");
-//     FreeMemory();
-//     return BM_OK;
-// }
-
 Result MemSegmentHostSDMA::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
     if ((size % DEVICE_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
@@ -82,33 +74,6 @@ Result MemSegmentHostSDMA::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSl
 
     return BM_OK;
 }
-
-// TODO: 这个分支的基类未定义此接口，先注释掉
-// Result MemSegmentHostSDMA::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
-// {
-//     if (slice == nullptr) {
-//         BM_LOG_ERROR("input slice is nullptr");
-//         return BM_INVALID_PARAM;
-//     }
-
-//     auto pos = slices_.find(slice->index_);
-//     if (pos == slices_.end()) {
-//         BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
-//         return BM_INVALID_PARAM;
-//     }
-
-//     if (pos->second.slice != slice) {
-//         BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
-//         return BM_INVALID_PARAM;
-//     }
-
-//     auto res = hybm_gvm_mem_free(slice->vAddress_);
-//     BM_LOG_INFO("free slice(idx:" << slice->index_ << ") address: " << (void *)(ptrdiff_t)slice->vAddress_
-//                                   << ", size: " << slice->size_ << " return:" << res);
-
-//     slices_.erase(pos);
-//     return BM_OK;
-// }
 
 Result MemSegmentHostSDMA::Export(std::string &exInfo) noexcept
 {
@@ -291,17 +256,3 @@ bool MemSegmentHostSDMA::MemoryInRange(const void *begin, uint64_t size) const n
 
     return true;
 }
-
-// TODO: 这个分支的基类未定义此接口，先注释掉
-// Result MemSegmentHostSDMA::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
-// {
-//     BM_LOG_ERROR("MemSegmentDevice NOT SUPPORT RegisterMemory");
-//     return BM_NOT_SUPPORTED;
-// }
-
-// TODO: 这个分支的基类未定义此接口，先注释掉
-// Result MemSegmentHostSDMA::GetExportSliceSize(size_t &size) noexcept
-// {
-//     size = sizeof(HostSdmaExportInfo);
-//     return BM_OK;
-// }

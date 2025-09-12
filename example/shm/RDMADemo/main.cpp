@@ -172,8 +172,6 @@ int32_t main(int32_t argc, char* argv[])
     TestGetQPInfo(stream, (uint8_t *)gva, rankId, rankSize);
     sleep(1);
     TestRDMAWrite(stream, (uint8_t *)gva, rankId, rankSize);
-    // TestRDMARead(stream, (uint8_t *)gva, rankId, rankSize);
-    // TestRDMAPollCQ(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;
     smem_shm_destroy(handle, flags);

@@ -135,9 +135,6 @@ TEST_F(TestMmcServiceError, metaService)
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
 
-    // bool result = CheckData(hostSrc, hostDest);
-    // EXPECT_TRUE(result);
-
     mmc_location_t location = mmcc_get_location(test.c_str(), 0);
     ASSERT_TRUE(location.xx == 0);
 
@@ -175,8 +172,6 @@ TEST_F(TestMmcServiceError, metaService)
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         ASSERT_TRUE(ret == 0);
-
-        // EXPECT_TRUE(CheckData(hostSrcs[i], hostDests[i]));
     }
 
     for (uint32_t i = 0; i < keys_count; ++i) {
@@ -261,9 +256,6 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     EXPECT_TRUE(ret == 0);
 
-    // bool result = CheckData(hostSrc, hostDest);
-    // EXPECT_TRUE(result);
-
     mmc_location_t location = mmcc_get_location(test.c_str(), 0);
     EXPECT_TRUE(location.xx == 0);
 
@@ -302,8 +294,6 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         EXPECT_TRUE(ret == 0);
-
-        // EXPECT_TRUE(CheckData(hostSrcs[i], hostDests[i]));
     }
 
     ret = mmcc_remove(keys[0], 0);
@@ -319,9 +309,6 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
 
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     EXPECT_TRUE(ret == 0);
-
-    // bool result = CheckData(hostSrc, hostDest);
-    // EXPECT_TRUE(result);
 
     location = mmcc_get_location(test.c_str(), 0);
     EXPECT_TRUE(location.xx == 0);
@@ -343,8 +330,6 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
         } else {
             EXPECT_TRUE(ret == 0);
         }
-
-        // EXPECT_TRUE(CheckData(hostSrcs[i], hostDests[i]));
     }
 
     ret = mmcc_remove(keys[1], 0);
