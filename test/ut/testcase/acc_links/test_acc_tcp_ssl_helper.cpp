@@ -31,6 +31,10 @@ const int LISTEN_PORT = 8100;
 const int LINK_SEND_QUEUE_SIZE = 100;
 const int WORK_COUNT = 4;
 const int PATH_MAX_TEST = 248;
+const void *src = reinterpret_cast<void *>(0x000000000000ULL);
+const void *dst = reinterpret_cast<void *>(0x000000010000ULL);
+const uint64_t size = 1;
+const size_t MAX_SIZE = std::numeric_limits<size_t>::max() - 1;
 class TestAccTcpSslHelper : public testing::Test {
 public:
     static void SetUpTestSuite();
@@ -814,5 +818,138 @@ TEST_F(TestOPENSSLAPIDL, LoadCryptoSymbols_return_error)
         ret = OPENSSLAPIDL::LoadCryptoSymbols(cryptoHandle);
         ASSERT_EQ(ret, -1);
     }
+}
+
+class TestAccTcpLinks : public testing::Test {
+public:
+    static void SetUpTestSuite();
+    static void TearDownTestSuite();
+
+public:
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void TestAccTcpLinks::SetUpTestSuite() {}
+
+void TestAccTcpLinks::TearDownTestSuite()
+{
+    GlobalMockObject::verify();
+}
+
+void TestAccTcpLinks::SetUp() {}
+
+void TestAccTcpLinks::TearDown()
+{
+    GlobalMockObject::verify();
+}
+
+// ******************** TEST_F *************************
+
+TEST_F(TestAccTcpLinks, accTcpLinkDefault_coverAllofTheFunctions)
+{
+    AccTcpLinkDefault accLinkError1(-1, "0.0.0.0:8080", 0, nullptr);
+    int ret = accLinkError1.SetSendTimeout(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.SetReceiveTimeout(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.BlockSend(nullptr, 0);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.BlockRecv(nullptr, 0);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.PollingInput(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    bool result = accLinkError1.IsConnected();
+    EXPECT_EQ(result, false);
+
+    AccTcpLinkDefault accLinkNoSsl(0, "0.0.0.0:8080", 0, nullptr);
+    ret = accLinkNoSsl.SetSendTimeout(10);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkNoSsl.SetReceiveTimeout(10);
+    EXPECT_EQ(ret, ACC_ERROR);
+
+    ret = accLinkNoSsl.BlockSend(nullptr, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    ret = accLinkNoSsl.BlockRecv(nullptr, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    
+    ret = accLinkNoSsl.BlockSend(dst, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    ret = accLinkNoSsl.BlockRecv(dst, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+
+    ret = accLinkNoSsl.BlockSend(dst, size);
+    EXPECT_EQ((ret < 0), true);
+    ret = accLinkNoSsl.BlockRecv(dst, size);
+    EXPECT_EQ((ret < 0), true);
+
+    ret = accLinkNoSsl.PollingInput(10);
+    result = accLinkNoSsl.IsConnected();
+    EXPECT_EQ(result, false);
+    
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+    auto tmpSsl = OpenSslApiWrapper::SslNew(tmpSslCtx);
+    AccTcpLinkDefault accLinkWithSsl(0, "0.0.0.0:8080", 0, tmpSsl);
+    ret = accLinkWithSsl.BlockSend(dst, size);
+    EXPECT_EQ(ret, ACC_OK);
+    ret = accLinkWithSsl.BlockRecv(dst, size);
+    EXPECT_EQ(ret, ACC_OK);
+
+    AccDataBufferPtr data = AccMakeRef<ock::acc::AccDataBuffer>(src, 0);
+    ock::acc::AccMsgHeader msg;
+    ret = accLinkWithSsl.NonBlockSend(0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.NonBlockSend(0, 0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.NonBlockSend(0, 0, 0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.EnqueueAndModifyEpoll(msg, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd != -1) {
+        AccTcpLinkDefault accLinkWithFd(sockfd, "0.0.0.0:8080", 0, tmpSsl);
+        ret = accLinkWithFd.PollingInput(10);
+        EXPECT_EQ(ret, ACC_OK);
+    }
+
+    accLinkWithSsl.Close();
+    OpenSslApiWrapper::SslCtxFree(tmpSslCtx);
+}
+
+TEST_F(TestAccTcpLinks, testForMsgNode)
+{
+    struct ock::acc::AccLinkedMessageNode node1;
+    bool result = node1.Sent();
+    EXPECT_EQ(result, false);
+    result = node1.HeaderAllSent(MAX_SIZE);
+    EXPECT_EQ(result, true);
+    result = node1.Sent();
+    EXPECT_EQ(result, true);
+
+    struct AccMsgHeader head;
+    AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(1);
+    buffer->SetDataSize(1);
+    struct ock::acc::AccLinkedMessageNode node2(head, buffer, buffer);
+    result = node2.HeaderAllSent(0);
+    EXPECT_EQ(result, false);
+    result = node2.Sent();
+    EXPECT_EQ(result, false);
+    result = node2.HeaderAllSent(MAX_SIZE);
+    EXPECT_EQ(result, true);
+    result = node2.Sent();
+    EXPECT_EQ(result, false);
+    result = node2.DataAllSent(0);
+    EXPECT_EQ(result, false);
 }
 }
