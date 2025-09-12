@@ -9,6 +9,7 @@
 #include "hybm_types.h"
 #include "dl_api.h"
 #include "dl_acl_api.h"
+#include "host_hcom_transport_manager.h"
 
 #define private public
 #include "hybm_data_operator_rdma.h"
@@ -152,4 +153,83 @@ TEST_F(HybmDataOpRdmaTest, CopyAsync)
     params2d.height = 1;
     ret = g_hostDataOperator->RtMemoryCopy2dAsync(params2d, 0, options);
     EXPECT_EQ(ret, BM_OK);
+
+    options.stream = malloc(1024);
+    ret = g_hostDataOperator->RtMemoryCopyAsync(g_srcVA, g_dstVA, g_size, 0, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_hostDataOperator->RtMemoryCopy2dAsync(params2d, 0, options);
+    EXPECT_EQ(ret, BM_OK);
+    MOCKER_CPP(&DlAclApi::AclrtMemcpyAsync, int32_t(*)(void *, size_t, const void *, size_t, uint32_t,
+        void *)).stubs().will(returnValue(1));
+    MOCKER_CPP(&DlAclApi::AclrtMemcpy2dAsync, int32_t(*)(void *, size_t, const void *, size_t,
+        size_t, size_t, uint32_t, void *)).stubs().will(returnValue(1));
+    ret = g_hostDataOperator->RtMemoryCopyAsync(g_srcVA, g_dstVA, g_size, 0, options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    ret = g_hostDataOperator->RtMemoryCopy2dAsync(params2d, 0, options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+    MOCKER_CPP(&DlAclApi::AclrtSynchronizeStream, int32_t(*)(void *)).stubs().will(returnValue(1));
+    ret = g_hostDataOperator->RtMemoryCopyAsync(g_srcVA, g_dstVA, g_size, 0, options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    ret = g_hostDataOperator->RtMemoryCopy2dAsync(params2d, 0, options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HybmDataOpRdmaTest, DataCopyErrorBranch)
+{
+    int ret = 0;
+    ExtOptions options{};
+    options.flags = 0;
+    options.stream = nullptr;
+    options.srcRankId = 3;
+    options.destRankId = g_desRankId;
+    hybm_copy_params params = {g_srcVA, g_dstVA, g_size};
+    ret = g_dataOperator->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    ret = g_dataOperator->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    ret = g_dataOperator->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    ret = g_dataOperator->DataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    hybm_copy_2d_params params2d = {g_srcVA, g_size, g_dstVA, g_size, g_size, 1};
+    ret = g_dataOperator->DataCopy2d(params2d, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    ret = g_dataOperator->DataCopy2d(params2d, HYBM_DATA_COPY_DIRECTION_BUTT, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    hybm_copy_2d_params params2d_error = {g_srcVA, g_size, g_dstVA, g_size, 0, 1};
+    ret = g_dataOperator->DataCopy2d(params2d_error, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator->DataCopy2d(params2d_error, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator->DataCopy2d(params2d_error, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator->DataCopy2d(params2d_error, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator->DataCopy2d(params2d_error, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    MOCKER_CPP(&DlAclApi::AclrtCreateStream, int32_t(*)(void **)).stubs().will(returnValue(-1));
+    ret = g_dataOperator->DataCopy2d(params2d, HYBM_DATA_COPY_DIRECTION_BUTT, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HybmDataOpRdmaTest, ErrorBranch)
+{
+    g_dataOperator->UnInitialize();
+    MOCKER_CPP(&DlAclApi::AclrtCreateStream, int32_t(*)(void **)).stubs().will(returnValue(1));
+    int ret = g_dataOperator->Initialize();
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+    GlobalMockObject::verify();
+
+    g_dataOperator->UnInitialize();
+    MOCKER_CPP(&transport::host::HcomTransportManager::RegisterMemoryRegion,
+        int32_t(*)(const transport::TransportMemoryRegion &)).stubs().will(returnValue(4));
+    ret = g_dataOperator->Initialize();
+    EXPECT_EQ(ret, BM_MALLOC_FAILED);
+    GlobalMockObject::verify();
 }

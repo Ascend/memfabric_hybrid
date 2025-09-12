@@ -211,8 +211,19 @@ TEST_F(HybmDataOpSdmaTest, DataOperator_BatchDataCopy)
     options.srcRankId = 0;
     options.destRankId = 1;
     hybm_batch_copy_params params{};
-    ret = g_dataOperator.DataOperator::BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
     EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
     params.batchSize = 1;
     const void **sources = new const void *[params.batchSize];
     void **destinations = new void *[params.batchSize];
@@ -223,8 +234,73 @@ TEST_F(HybmDataOpSdmaTest, DataOperator_BatchDataCopy)
     params.sources = sources;
     params.destinations = destinations;
     params.dataSizes = dataSizes;
-    ret = g_dataOperator.DataOperator::BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_DATA_COPY_DIRECTION_BUTT, options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    MOCKER_CPP(&DlAclApi::AclrtMemcpyAsync, int (*)(void *, size_t, void *, size_t, uint32_t, void *))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtSynchronizeStream, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&DlAclApi::AclrtFree, int (*)(void *)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+
+    MOCKER_CPP(&HostDataOpSDMA::CopyDevice2Gva, int (*)(void *, const void *, size_t, void *))
+        .stubs().will(returnValue(-1));
+    MOCKER_CPP(&HostDataOpSDMA::CopyGva2Device, int (*)(void *, const void *, size_t, void *))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    MOCKER_CPP(&DlAclApi::AclrtMemcpy, int (*)(void *, size_t, void *, size_t, uint32_t))
+        .stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    MOCKER_CPP(&DlAclApi::AclrtMalloc, int (*)(void **, size_t, uint32_t)).stubs().will(returnValue(-1));
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    dataSizes[0] = 0;
+    params.dataSizes = dataSizes;
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = g_dataOperator.BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    EXPECT_EQ(ret, BM_OK);
+
     delete[] sources;
     delete[] destinations;
     delete[] dataSizes;
