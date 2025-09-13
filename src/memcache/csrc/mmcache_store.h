@@ -62,28 +62,28 @@ public:
 
     int RegisterBuffer(void *buffer, size_t size) override;
 
-    int GetInto(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct) override;
+    int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct) override;
 
     std::vector<int> BatchGetInto(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
                                   const std::vector<size_t> &sizes, const int32_t direct) override;
 
-    int GetIntoLayers(const std::string &key, const std::vector<uint8_t *> &buffers, const std::vector<size_t> &sizes,
+    int GetIntoLayers(const std::string &key, const std::vector<void *> &buffers, const std::vector<size_t> &sizes,
                       const int32_t direct) override;
 
     std::vector<int> BatchGetIntoLayers(const std::vector<std::string> &keys,
-                                        const std::vector<std::vector<uint8_t *>> &buffers,
+                                        const std::vector<std::vector<void *>> &buffers,
                                         const std::vector<std::vector<size_t>> &sizes, const int32_t direct) override;
 
-    int PutFrom(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct) override;
+    int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct) override;
 
     std::vector<int> BatchPutFrom(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
                                   const std::vector<size_t> &sizes, const int32_t direct) override;
 
-    int PutFromLayers(const std::string &key, const std::vector<uint8_t *> &buffers, const std::vector<size_t> &sizes,
+    int PutFromLayers(const std::string &key, const std::vector<void *> &buffers, const std::vector<size_t> &sizes,
                       const int32_t direct) override;
 
     std::vector<int> BatchPutFromLayers(const std::vector<std::string> &keys,
-                                        const std::vector<std::vector<uint8_t *>> &buffers,
+                                        const std::vector<std::vector<void *>> &buffers,
                                         const std::vector<std::vector<size_t>> &sizes, const int32_t direct) override;
 
     int Remove(const std::string &key) override;
@@ -104,15 +104,15 @@ public:
     int Put(const std::string &key, mmc_buffer &buffer);
 
 private:
-    bool Is2D(const std::vector<uint8_t *> &buffers, const std::vector<size_t> &sizes);
+    bool Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes);
 
-    int CheckInputAndIsAll2D(size_t batchSize, const std::vector<std::vector<uint8_t *>> &buffers,
+    int CheckInputAndIsAll2D(size_t batchSize, const std::vector<std::vector<void *>> &buffers,
                              const std::vector<std::vector<size_t>> &sizes, bool &result);
 
-    void GetBuffersIn2D(size_t batchSize, uint32_t type, const std::vector<std::vector<uint8_t *>> &bufferLists,
+    void GetBuffersIn2D(size_t batchSize, uint32_t type, const std::vector<std::vector<void *>> &bufferLists,
                         const std::vector<std::vector<size_t>> &sizeLists, std::vector<mmc_buffer> &buffersIn2D);
 
-    void GetBufferArrays(size_t batchSize, uint32_t type, const std::vector<std::vector<uint8_t *>> &bufferLists,
+    void GetBufferArrays(size_t batchSize, uint32_t type, const std::vector<std::vector<void *>> &bufferLists,
                          const std::vector<std::vector<size_t>> &sizeLists,
                          std::vector<ock::mmc::MmcBufferArray> &bufferArrays);
 

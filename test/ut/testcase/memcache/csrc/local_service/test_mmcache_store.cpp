@@ -113,15 +113,15 @@ TEST_F(TestMmcacheStore, Init)
     ASSERT_EQ(ret, 0);
 
     std::string key = "test1";
-    std::vector<uint8_t *> buffers;
+    std::vector<void *> buffers;
     std::vector<size_t> sizes;
-    buffers.push_back((uint8_t *)malloc(1024));
+    buffers.push_back((void *)malloc(1024));
     sizes.push_back(1024);
-    buffers.push_back((uint8_t *)malloc(4096));
+    buffers.push_back((void *)malloc(4096));
     sizes.push_back(4096);
-    buffers.push_back((uint8_t *)malloc(1024));
+    buffers.push_back((void *)malloc(1024));
     sizes.push_back(1024);
-    buffers.push_back((uint8_t *)malloc(4096));
+    buffers.push_back((void *)malloc(4096));
     sizes.push_back(4096);
     ret = store->PutFromLayers(key, buffers, sizes, 3);
     EXPECT_EQ(ret, 0);

@@ -125,7 +125,7 @@ public:
      * @param direct direct indicate the location of the buffer, for detailed meanings, refer to smem_bm_copy_type
      * @return zero on success, other on error
      */
-    virtual int GetInto(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct) = 0;
+    virtual int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct) = 0;
 
     /**
      * @brief Get object data directly into pre-allocated buffers for multiple
@@ -148,7 +148,7 @@ public:
      * @param direct direct indicate the location of the data, for detailed meanings, refer to smem_bm_copy_type
      * @return zero on success, other on error
      */
-    virtual int GetIntoLayers(const std::string &key, const std::vector<uint8_t *> &buffers,
+    virtual int GetIntoLayers(const std::string &key, const std::vector<void *> &buffers,
                               const std::vector<size_t> &sizes, const int32_t direct) = 0;
 
     /**
@@ -162,7 +162,7 @@ public:
      * read on success, or a negative value on error
      */
     virtual std::vector<int> BatchGetIntoLayers(const std::vector<std::string> &keys,
-                                                const std::vector<std::vector<uint8_t *>> &buffers,
+                                                const std::vector<std::vector<void *>> &buffers,
                                                 const std::vector<std::vector<size_t>> &sizes,
                                                 const int32_t direct) = 0;
 
@@ -174,7 +174,7 @@ public:
      * @param direct direct indicate the location of the buffer, for detailed meanings, refer to smem_bm_copy_type
      * @return 0 on success, negative value on error
      */
-    virtual int PutFrom(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct) = 0;
+    virtual int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct) = 0;
 
     /**
      * @brief Put object data directly from pre-allocated buffers for multiple
@@ -197,7 +197,7 @@ public:
      * @param direct direct indicate the location of the data, for detailed meanings, refer to smem_bm_copy_type
      * @return 0 on success, negative value on error
      */
-    virtual int PutFromLayers(const std::string &key, const std::vector<uint8_t *> &buffers,
+    virtual int PutFromLayers(const std::string &key, const std::vector<void *> &buffers,
                               const std::vector<size_t> &sizes, const int32_t direct) = 0;
 
     /**
@@ -211,7 +211,7 @@ public:
      * negative value on error
      */
     virtual std::vector<int> BatchPutFromLayers(const std::vector<std::string> &keys,
-                                                const std::vector<std::vector<uint8_t *>> &buffers,
+                                                const std::vector<std::vector<void *>> &buffers,
                                                 const std::vector<std::vector<size_t>> &sizes,
                                                 const int32_t direct) = 0;
 

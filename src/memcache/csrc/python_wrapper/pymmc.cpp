@@ -122,7 +122,7 @@ PYBIND11_MODULE(_pymmc, m)
             "get_into",
             [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
                 py::gil_scoped_release release;
-                return self.GetInto(key, reinterpret_cast<uint8_t *>(buffer_ptr), size, direct);
+                return self.GetInto(key, reinterpret_cast<void *>(buffer_ptr), size, direct);
             },
             py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_G2H,
             "Get object data directly into a pre-allocated buffer")
@@ -146,10 +146,10 @@ PYBIND11_MODULE(_pymmc, m)
             [](MmcacheStore &self, const std::string &key, const std::vector<uintptr_t> &buffer_ptrs,
                const std::vector<size_t> &sizes, const int32_t &direct) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_GET_LAYERS);
-                std::vector<uint8_t *> buffers;
+                std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
-                    buffers.push_back(reinterpret_cast<uint8_t *>(ptr));
+                    buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
                 auto ret = self.GetIntoLayers(key, buffers, sizes, direct);
@@ -163,12 +163,12 @@ PYBIND11_MODULE(_pymmc, m)
                const std::vector<std::vector<uintptr_t>> &buffer_ptrs, const std::vector<std::vector<size_t>> &sizes,
                const int32_t &direct) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_BATCH_GET_LAYERS);
-                std::vector<std::vector<uint8_t *>> buffers;
+                std::vector<std::vector<void *>> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (auto vec : buffer_ptrs) {
-                    std::vector<uint8_t *> tmp;
+                    std::vector<void *> tmp;
                     for (uintptr_t ptr : vec) {
-                        tmp.push_back(reinterpret_cast<uint8_t *>(ptr));
+                        tmp.push_back(reinterpret_cast<void *>(ptr));
                     }
                     buffers.push_back(tmp);
                 }
@@ -182,7 +182,7 @@ PYBIND11_MODULE(_pymmc, m)
             "put_from",
             [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
                 py::gil_scoped_release release;
-                return self.PutFrom(key, reinterpret_cast<uint8_t *>(buffer_ptr), size, direct);
+                return self.PutFrom(key, reinterpret_cast<void *>(buffer_ptr), size, direct);
             },
             py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_H2G,
             "Put object data directly from a pre-allocated buffer")
@@ -206,10 +206,10 @@ PYBIND11_MODULE(_pymmc, m)
             [](MmcacheStore &self, const std::string &key, const std::vector<uintptr_t> &buffer_ptrs,
                const std::vector<size_t> &sizes, const int32_t &direct) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_PUT_LAYERS);
-                std::vector<uint8_t *> buffers;
+                std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
-                    buffers.push_back(reinterpret_cast<uint8_t *>(ptr));
+                    buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
                 auto ret = self.PutFromLayers(key, buffers, sizes, direct);
@@ -223,12 +223,12 @@ PYBIND11_MODULE(_pymmc, m)
                const std::vector<std::vector<uintptr_t>> &buffer_ptrs, const std::vector<std::vector<size_t>> &sizes,
                const int32_t &direct) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_BATCH_PUT_LAYERS);
-                std::vector<std::vector<uint8_t *>> buffers;
+                std::vector<std::vector<void *>> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (auto vec : buffer_ptrs) {
-                    std::vector<uint8_t *> tmp;
+                    std::vector<void *> tmp;
                     for (uintptr_t ptr : vec) {
-                        tmp.push_back(reinterpret_cast<uint8_t *>(ptr));
+                        tmp.push_back(reinterpret_cast<void *>(ptr));
                     }
                     buffers.push_back(tmp);
                 }

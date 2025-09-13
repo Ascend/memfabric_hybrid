@@ -131,7 +131,7 @@ int MmcacheStore::RegisterBuffer(void *buffer, size_t size)
     return mmcc_register_buffer(reinterpret_cast<uint64_t>(buffer), size);
 }
 
-int MmcacheStore::GetInto(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct)
+int MmcacheStore::GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct)
 {
     uint32_t type = 0;
     switch (direct) {
@@ -150,7 +150,7 @@ int MmcacheStore::GetInto(const std::string &key, uint8_t *buffer, size_t size, 
     return res;
 }
 
-int MmcacheStore::PutFrom(const std::string &key, uint8_t *buffer, size_t size, const int32_t direct)
+int MmcacheStore::PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct)
 {
     uint32_t type = 0;
     switch (direct) {
@@ -417,7 +417,7 @@ std::vector<int> MmcacheStore::BatchGetInto(const std::vector<std::string> &keys
     return results;
 }
 
-int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<uint8_t *> &buffers,
+int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *> &buffers,
                                 const std::vector<size_t> &sizes, const int32_t direct)
 {
     if (direct != SMEMB_COPY_L2G && direct != SMEMB_COPY_H2G) {
@@ -449,7 +449,7 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<uint8_
         mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
                              .type = type,
                              .dimType = 1,
-                             .twoDim = {.dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
                                         .layerOffset = 0,
                                         .width = static_cast<uint32_t>(sizes[0]),
                                         .layerNum = static_cast<uint16_t>(layerNum),
@@ -474,7 +474,7 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<uint8_
 }
 
 std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string> &keys,
-                                                  const std::vector<std::vector<uint8_t *>> &buffers,
+                                                  const std::vector<std::vector<void *>> &buffers,
                                                   const std::vector<std::vector<size_t>> &sizes, const int32_t direct)
 {
     const size_t batchSize = keys.size();
@@ -534,7 +534,7 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
     return results;
 }
 
-int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<uint8_t *> &buffers,
+int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<void *> &buffers,
                                 const std::vector<size_t> &sizes, const int32_t direct)
 {
     if (direct != SMEMB_COPY_G2L && direct != SMEMB_COPY_G2H) {
@@ -563,7 +563,7 @@ int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<uint8_
         mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
                              .type = type,
                              .dimType = 1,
-                             .twoDim = {.dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
                                         .layerOffset = 0,
                                         .width = static_cast<uint32_t>(sizes[0]),
                                         .layerNum = static_cast<uint16_t>(layerNum),
@@ -589,7 +589,7 @@ int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<uint8_
 }
 
 std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string> &keys,
-                                                  const std::vector<std::vector<uint8_t *>> &buffers,
+                                                  const std::vector<std::vector<void *>> &buffers,
                                                   const std::vector<std::vector<size_t>> &sizes, const int32_t direct)
 {
     const size_t batchSize = keys.size();
@@ -643,16 +643,16 @@ std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string>
     return results;
 }
 
-bool MmcacheStore::Is2D(const std::vector<uint8_t *> &buffers, const std::vector<size_t> &sizes)
+bool MmcacheStore::Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes)
 {
     const auto layerNum = buffers.size();
     if (layerNum < 2) {
         return false;
     }
 
-    const auto interval = buffers[1] - buffers[0];
+    const auto interval = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]);
     for (size_t i = 2; i < layerNum; i += 1) {
-        if (buffers[i] - buffers[i - 1] != interval) {
+        if (reinterpret_cast<uint64_t>(buffers[i]) - reinterpret_cast<uint64_t>(buffers[i - 1]) != interval) {
             return false;
         }
     }
@@ -667,7 +667,7 @@ bool MmcacheStore::Is2D(const std::vector<uint8_t *> &buffers, const std::vector
     return true;
 }
 
-int MmcacheStore::CheckInputAndIsAll2D(const size_t batchSize, const std::vector<std::vector<uint8_t *>> &buffers,
+int MmcacheStore::CheckInputAndIsAll2D(const size_t batchSize, const std::vector<std::vector<void *>> &buffers,
                                        const std::vector<std::vector<size_t>> &sizes, bool &result)
 {
     for (size_t i = 0; i < batchSize; i += 1) {
@@ -693,7 +693,7 @@ int MmcacheStore::CheckInputAndIsAll2D(const size_t batchSize, const std::vector
 }
 
 void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
-                                  const std::vector<std::vector<uint8_t *>> &bufferLists,
+                                  const std::vector<std::vector<void *>> &bufferLists,
                                   const std::vector<std::vector<size_t>> &sizeLists,
                                   std::vector<mmc_buffer> &buffersIn2D)
 {
@@ -704,7 +704,7 @@ void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
         buffersIn2D.push_back({.addr = reinterpret_cast<uint64_t>(buffers[0]),
                                .type = type,
                                .dimType = 1,
-                               .twoDim = {.dpitch = static_cast<uint64_t>(buffers[1] - buffers[0]),
+                               .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
                                           .layerOffset = 0,
                                           .width = static_cast<uint32_t>(sizes[0]),
                                           .layerNum = static_cast<uint16_t>(layerNum),
@@ -713,7 +713,7 @@ void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
 }
 
 void MmcacheStore::GetBufferArrays(const size_t batchSize, const uint32_t type,
-                                   const std::vector<std::vector<uint8_t *>> &bufferLists,
+                                   const std::vector<std::vector<void *>> &bufferLists,
                                    const std::vector<std::vector<size_t>> &sizeLists,
                                    std::vector<MmcBufferArray> &bufferArrays)
 {
