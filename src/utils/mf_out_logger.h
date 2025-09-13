@@ -98,9 +98,10 @@ public:
             const uint8_t TIME_WIDTH = 6U;
             std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0')
                       << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " " << logMsg << std::endl;
+                      << syscall(SYS_gettid) << " pid[" << getpid() << "] " << logMsg << std::endl;
         } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << logMsg
+            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid)
+                      << " pid[" << getpid() << "] " << " " << logMsg
                       << std::endl;
         }
         // LCOV_EXCL_STOP

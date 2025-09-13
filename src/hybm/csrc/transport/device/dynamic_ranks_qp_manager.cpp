@@ -51,7 +51,8 @@ int DynamicRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t, 
     if (backGroundThread_ == nullptr) {
         return BM_OK;
     }
-
+    BM_LOG_DEBUG("SetRemoteRankInfo currentRanksInfo_.size=: " << currentRanksInfo_.size()
+                 << ", lastTimeRanksInfo.size=" << lastTimeRanksInfo.size());
     GenDiffInfoChangeRanks(lastTimeRanksInfo, addedRanks, addMrRanks);
     uniqueLock.unlock();
 
@@ -330,7 +331,9 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
             socketInfos.emplace_back(info);
         }
     }
-
+    if (socketInfos.size() == 0) {
+        BM_LOG_DEBUG("ProcessQueryConnectionStateTask socketInfos.size is 0.");
+    }
     std::unordered_set<uint32_t> connectedRanks;
     uint32_t batchCnt = 16;
     do {
@@ -343,7 +346,7 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
                          << ret << ", count: " << failedCount);
             return 1;
         }
-
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         if (cnt == 0) {
             continue;
         }
@@ -356,7 +359,6 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
                 BM_LOG_ERROR("get non-expected socket remote ip: " << inet_ntoa(socketInfos[i].remoteIp.addr));
                 continue;
             }
-
             auto rankId = pos->second;
             auto nPos = connections_.find(rankId);
             if (nPos == connections_.end()) {
@@ -387,7 +389,7 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     }
 
     auto &nextTask = connectionTasks_.connectQpTask;
-    nextTask.ranks = connectedRanks;
+    nextTask.ranks.insert(connectedRanks.begin(), connectedRanks.end());
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return !ip2rank.empty();
@@ -441,7 +443,7 @@ int DynamicRanksQpManager::ProcessConnectQpTask() noexcept
     }
 
     auto &nextTask = connectionTasks_.queryQpStateTask;
-    nextTask.ranks = std::move(connectedQpRanks);
+    nextTask.ranks.insert(connectedQpRanks.begin(), connectedQpRanks.end());
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return failedCount > 0;
@@ -480,7 +482,6 @@ int DynamicRanksQpManager::ProcessQueryQpStateTask() noexcept
             currTask.ranks.emplace(rank);
             continue;
         }
-
         auto remoteMrs = GenerateRemoteLiteMrs(rank);
         SetQpHandleRegisterMr(pos->second.qpHandle, localMrs, true);
         SetQpHandleRegisterMr(pos->second.qpHandle, remoteMrs, false);
@@ -524,7 +525,6 @@ void DynamicRanksQpManager::ProcessUpdateRemoteMrTask() noexcept
     currTask.status.exist = false;
     auto addedMrRanks = std::move(currTask.addedMrRanks);
     uniqueLock.unlock();
-
     for (auto remoteRank : addedMrRanks) {
         auto mrs = GenerateRemoteLiteMrs(remoteRank);
         auto pos = connections_.find(remoteRank);
@@ -646,7 +646,6 @@ void DynamicRanksQpManager::GenTaskFromChangeRanks(
     if (rankRole_ == HYBM_ROLE_RECEIVER) {
         auto &task = connectionTasks_.whitelistTask;
         std::unique_lock<std::mutex> taskLocker{task.locker};
-        task.remoteIps.clear();
         for (auto it = addedRanks.begin(); it != addedRanks.end(); ++it) {
             task.remoteIps.emplace(it->first, it->second.sin_addr);
         }
@@ -655,7 +654,6 @@ void DynamicRanksQpManager::GenTaskFromChangeRanks(
     } else {
         auto &task = connectionTasks_.clientConnectTask;
         std::unique_lock<std::mutex> taskLocker{task.locker};
-        task.remoteAddress.clear();
         for (auto it = addedRanks.begin(); it != addedRanks.end(); ++it) {
             task.remoteAddress.emplace(it->first, it->second);
         }
@@ -665,7 +663,7 @@ void DynamicRanksQpManager::GenTaskFromChangeRanks(
 
     auto &task = connectionTasks_.updateRemoteMrTask;
     std::unique_lock<std::mutex> taskLocker{task.locker};
-    task.addedMrRanks = addMrRanks;
+    task.addedMrRanks.insert(addMrRanks.begin(), addMrRanks.end());
     task.status.exist = !task.addedMrRanks.empty();
     task.status.failedTimes = 0;
     taskLocker.unlock();

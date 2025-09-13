@@ -324,11 +324,11 @@ int HybmStream::Synchronize() noexcept
             uint32_t lastTask = UINT16_MAX;
             ret = ReceiveCqe(lastTask);
             if (lastTask != UINT16_MAX) {
-                sqHead_ = lastTask;
+                sqHead_ = (lastTask + 1U) % HYBM_SQCQ_DEPTH;
             }
             BM_VALIDATE_RETURN(ret == 0, "ReceiveCqe failed! ret:" << ret, ret);
         }
-        usleep(1000U); // 1ms
+        usleep(20U);
     }
 
     return ret;

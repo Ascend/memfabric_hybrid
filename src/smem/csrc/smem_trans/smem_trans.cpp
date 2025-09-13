@@ -155,7 +155,6 @@ SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addres
         SM_LOG_AND_SET_LAST_ERROR("register local failed, result: " << result);
         return result;
     }
-
     return SM_OK;
 }
 

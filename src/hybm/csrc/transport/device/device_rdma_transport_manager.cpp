@@ -199,6 +199,7 @@ Result RdmaTransportManager::Prepare(const HybmTransPrepareOptions &options)
 
         rankInfo.emplace(it->first, ConnectRankInfo{it->second.role, deviceNetwork, it->second.memKeys});
     }
+    BM_LOG_DEBUG("SetRemoteRankInfo rankInfo.size=" << rankInfo.size());
 
     ret = qpManager_->SetRemoteRankInfo(rankInfo);
     if (ret != BM_OK) {
@@ -269,8 +270,10 @@ Result RdmaTransportManager::UpdateRankOptions(const HybmTransPrepareOptions &op
             BM_LOG_ERROR("update rank network(" << it->second.nic << ") invalid.");
             return BM_INVALID_PARAM;
         }
+        BM_LOG_INFO("UpdateRankOptions update rank: " << it->first);
         ranksInfo.emplace(it->first, ConnectRankInfo{it->second.role, deviceNetwork, it->second.memKeys});
     }
+    BM_LOG_DEBUG("UpdateRankOptions ranksInfo.size=" << ranksInfo.size());
 
     auto ret = qpManager_->SetRemoteRankInfo(ranksInfo);
     if (ret != BM_OK) {
