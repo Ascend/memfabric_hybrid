@@ -32,6 +32,8 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
         ${PROJECT_MMC_SRC_BASE}/include
+        ${PROJECT_MMC_SRC_BASE}/include/cpp
+        ${PROJECT_MMC_SRC_BASE}/csrc/
         ${PROJECT_MMC_SRC_BASE}/csrc/common
         ${PROJECT_MMC_SRC_BASE}/csrc/client
         ${PROJECT_MMC_SRC_BASE}/csrc/config

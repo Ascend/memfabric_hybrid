@@ -14,45 +14,13 @@
 
 #include "mmc_def.h"
 #include "mmc_types.h"
+#include "mmcache.h"
+#include "mmcache_store.h"
 
-
-class DistributedObjectStore;
+using namespace ock::mmc;
 
 // Forward declarations
 class SliceBuffer;
-
-// Global resource tracker to handle cleanup on abnormal termination
-class ResourceTracker {
-public:
-    // Get the singleton instance
-    static ResourceTracker &getInstance();
-
-    // Prevent copying
-    ResourceTracker(const ResourceTracker &) = delete;
-    ResourceTracker &operator=(const ResourceTracker &) = delete;
-
-    // Register a DistributedObjectStore instance for cleanup
-    void registerInstance(DistributedObjectStore *instance);
-
-    // Unregister a DistributedObjectStore instance
-    void unregisterInstance(DistributedObjectStore *instance);
-
-private:
-    ResourceTracker();
-    ~ResourceTracker();
-
-    // Cleanup all registered resources
-    void cleanupAllResources();
-
-    // Signal handler function
-    static void signalHandler(int signal);
-
-    // Exit handler function
-    static void exitHandler();
-
-    std::mutex mutex_;
-    std::unordered_set<DistributedObjectStore *> instances_;
-};
 
 /**
  * @brief A class that holds a contiguous buffer of data
@@ -62,15 +30,14 @@ class SliceBuffer {
 public:
     /**
      * @brief Construct a new SliceBuffer object with contiguous memory
-     * @param store Reference to the DistributedObjectStore that owns the
+     * @param store Reference to the MmcacheStore that owns the
      * allocator
      * @param buffer Pointer to the contiguous buffer
      * @param size Size of the buffer in bytes
      * @param use_allocator_free If true, use SimpleAllocator to free the
      * buffer, otherwise use delete[]
      */
-    SliceBuffer(DistributedObjectStore &store, void *buffer, uint64_t size,
-                bool use_allocator_free = true);
+    SliceBuffer(MmcacheStore &store, void *buffer, uint64_t size, bool use_allocator_free = true);
 
     /**
      * @brief Destructor that frees the buffer
@@ -90,219 +57,10 @@ public:
     uint64_t size() const;
 
 private:
-    DistributedObjectStore &store_;
+    MmcacheStore &store_;
     void *buffer_;
     uint64_t size_;
     bool use_allocator_free_;  // Flag to control deallocation method
-};
-
-class KeyInfo {
-public:
-    KeyInfo(uint64_t size, uint32_t blobNum) : size_(size), blobNum_(blobNum) {};
-
-    ~KeyInfo() = default;
-
-    uint64_t Size() { return size_; }
-
-    uint32_t GetBlobNum() { return blobNum_; }
-
-    std::vector<int>& GetLocs() { return loc_; }
-
-    std::vector<int>& GetTypes() { return type_; }
-
-    void AddType(int type) { return type_.emplace_back(type); }
-
-    void AddLoc(int loc) { return loc_.emplace_back(loc); }
-
-    std::string ToString()
-    {
-        std::stringstream desc;
-        desc << "loc:";
-        for (auto loc : loc_) {
-            desc << std::to_string(loc) << ",";
-        }
-        desc << " type:";
-        for (auto type : type_) {
-            desc << std::to_string(type) << ",";
-        }
-        desc << " blobNum:" << blobNum_;
-        desc << ", size:" << size_;
-        return desc.str();
-    }
-
-private:
-    uint64_t size_{};
-    uint32_t blobNum_{};
-    std::vector<int> loc_{};   // 所有blob的rank信息
-    std::vector<int> type_{};  // 所有blob的介质信息
-};
-
-class DistributedObjectStore {
-public:
-    friend class SliceBuffer;  // Allow SliceBuffer to access private members
-    DistributedObjectStore();
-    ~DistributedObjectStore();
-
-    int init(const uint32_t &deviceId);
-
-    int setup(const std::string &local_hostname,
-              const std::string &metadata_server,
-              size_t global_segment_size = 1024 * 1024 * 16,
-              size_t local_buffer_size = 1024 * 1024 * 16,
-              const std::string &protocol = "tcp",
-              const std::string &rdma_devices = "",
-              const std::string &master_server_addr = "127.0.0.1:50051");
-
-    int initAll(const std::string &protocol, const std::string &device_name,
-                size_t mount_segment_size = 1024 * 1024 * 16);  // Default 16MB
-
-    int put(const std::string &key, mmc_buffer &buffer);
-
-    int register_buffer(void *buffer, size_t size);
-
-    /**
-     * @brief Get object data directly into a pre-allocated buffer
-     * @param key Key of the object to get
-     * @param buffer Pointer to the pre-allocated buffer (must be registered
-     * with register_buffer)
-     * @return Number of bytes read on success, negative value on error
-     * @note The buffer address must be previously registered with
-     * register_buffer() for zero-copy operations
-     */
-    int get_into(const std::string &key, mmc_buffer &buffer);
-
-    /**
-     * @brief Get object data directly into pre-allocated buffers for multiple
-     * keys (batch version)
-     * @param keys Vector of keys of the objects to get
-     * @param buffers Vector of pointers to the pre-allocated buffers
-     * @param sizes Vector of sizes of the buffers
-     * @return Vector of integers, where each element is the number of bytes
-     * read on success, or a negative value on error
-     * @note The buffer addresses must be previously registered with
-     * register_buffer() for zero-copy operations
-     */
-    std::vector<int> batch_get_into(const std::vector<std::string> &keys,
-                                    const std::vector<void *> &buffers,
-                                    const std::vector<size_t> &sizes, const int32_t &direct);
-
-    /**
-     * @brief Put object data directly from a pre-allocated buffer
-     * @param key Key of the object to put
-     * @param buffer Pointer to the buffer containing data (must be registered
-     * with register_buffer)
-     * @return 0 on success, negative value on error
-     * @note The buffer address must be previously registered with
-     * register_buffer() for zero-copy operations
-     */
-    int put_from(const std::string &key, mmc_buffer &buffer);
-
-    /**
-     * @brief Put object data directly from pre-allocated buffers for multiple
-     * keys (batch version)
-     * @param keys Vector of keys of the objects to put
-     * @param buffers Vector of pointers to the pre-allocated buffers
-     * @param sizes Vector of sizes of the buffers
-     * @return Vector of integers, where each element is 0 on success, or a
-     * negative value on error
-     * @note The buffer addresses must be previously registered with
-     * register_buffer() for zero-copy operations
-     */
-    std::vector<int> batch_put_from(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                    const std::vector<size_t> &sizes, const int32_t &direct);
-
-    int put_from_layers(const std::string& key, const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes,
-                        const int32_t& direct);
-
-    std::vector<int> batch_put_from_layers(const std::vector<std::string>& keys,
-                                           const std::vector<std::vector<uint8_t*>>& buffers,
-                                           const std::vector<std::vector<size_t>>& sizes, const int32_t& direct);
-
-    int get_into_layers(const std::string& key, const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes,
-                        const int32_t& direct);
-
-    std::vector<int> batch_get_into_layers(const std::vector<std::string>& keys,
-                                           const std::vector<std::vector<uint8_t*>>& buffers,
-                                           const std::vector<std::vector<size_t>>& sizes, const int32_t& direct);
-
-    int put_parts(const std::string &key, std::vector<mmc_buffer> values);
-
-    int put_batch(const std::vector<std::string> &keys, const std::vector<mmc_buffer> &values);
-
-    pybind11::bytes get(const std::string &key);
-
-    std::vector<pybind11::bytes> get_batch(const std::vector<std::string> &keys);
-
-    /**
-     * @brief Get a buffer containing the data for a key
-     * @param key Key to get data for
-     * @return std::shared_ptr<SliceBuffer> Buffer containing the data, or
-     * nullptr if error
-     */
-    std::shared_ptr<SliceBuffer> get_buffer(const std::string &key);
-
-    int remove(const std::string &key);
-
-    /**
-     * @brief Remove objects with keys
-     * @param keys Keys of the objects
-     * @return std::vector<int> Remove status for each keys, 1 if success, -1 if error
-     * exist
-     */
-    std::vector<int> removeBatch(const std::vector<std::string> &keys);
-
-    long removeAll();
-
-    int tearDownAll();
-
-    /**
-     * @brief Check if an object exists
-     * @param key Key to check
-     * @return 1 if exists, 0 if not exists, -1 if error
-     */
-    int isExist(const std::string &key);
-
-    /**
-     * @brief Check if multiple objects exist
-     * @param keys Vector of keys to check
-     * @return Vector of existence results: 1 if exists, 0 if not exists, -1 if
-     * error
-     */
-    std::vector<int> batchIsExist(const std::vector<std::string> &keys);
-
-    KeyInfo getKeyInfo(const std::string& key);
-
-    std::vector<KeyInfo> batchGetKeyInfo(const std::vector<std::string>& keys);
-
-    /**
-     * @brief Get the size of an object
-     * @param key Key of the object
-     * @return Size of the object in bytes, or -1 if error or object doesn't
-     * exist
-     */
-    int64_t getSize(const std::string &key);
-
-private:
-    bool is2D(const std::vector<uint8_t*>& buffers, const std::vector<size_t>& sizes);
-
-    int CheckInputAndIsAll2D(size_t batchSize,
-                             const std::vector<std::vector<uint8_t*>>& buffers,
-                             const std::vector<std::vector<size_t>>& sizes,
-                             bool& result);
-
-    void getBuffersIn2D(size_t batchSize,
-                        uint32_t type,
-                        const std::vector<std::vector<uint8_t*>>& bufferLists,
-                        const std::vector<std::vector<size_t>>& sizeLists,
-                        std::vector<mmc_buffer>& buffersIn2D);
-
-    void getBufferArrays(size_t batchSize,
-                         uint32_t type,
-                         const std::vector<std::vector<uint8_t*>>& bufferLists,
-                         const std::vector<std::vector<size_t>>& sizeLists,
-                         std::vector<ock::mmc::MmcBufferArray>& bufferArrays);
-
-    static int returnWrapper(int result, const std::string& keyval);
 };
 
 #endif

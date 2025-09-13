@@ -4,6 +4,8 @@ if(BUILD_PYTHON STREQUAL "ON")
 endif()
 include_directories(
         ${PROJECT_MMC_SRC_BASE}/include/
+        ${PROJECT_MMC_SRC_BASE}/include/cpp/
+        ${PROJECT_MMC_SRC_BASE}/csrc/
         ${PROJECT_MMC_SRC_BASE}/csrc/common
         ${PROJECT_MMC_SRC_BASE}/csrc/config
         ${PROJECT_MMC_SRC_BASE}/csrc/client
@@ -73,6 +75,7 @@ set(PLATFORM_SRC ${MMC_SRC_COMMON}
         ${MMC_SRC_UNDER_API_MF_SMEM}
         mmc.cpp
         mmc_client.cpp
+        mmcache_store.cpp
         mmc_service.cpp)
 
 ## build the static and shared library
