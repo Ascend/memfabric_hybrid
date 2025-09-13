@@ -118,9 +118,14 @@ PYBIND11_MODULE(_pymmc, m)
                 return self.RegisterBuffer(buffer, size);
             },
             py::arg("buffer_ptr"), py::arg("size"), "Register a memory buffer for direct access operations")
-        .def("get_into", &MmcacheStore::GetInto, py::call_guard<py::gil_scoped_release>(), py::arg("key"),
-             py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_G2H,
-             "Get object data directly into a pre-allocated buffer")
+        .def(
+            "get_into",
+            [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
+                py::gil_scoped_release release;
+                return self.GetInto(key, reinterpret_cast<void *>(buffer_ptr), size, direct);
+            },
+            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_G2H,
+            "Get object data directly into a pre-allocated buffer")
         .def(
             "batch_get_into",
             [](MmcacheStore &self, const std::vector<std::string> &keys, const std::vector<uintptr_t> &buffer_ptrs,
@@ -173,9 +178,14 @@ PYBIND11_MODULE(_pymmc, m)
                 return ret;
             },
             py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_G2H)
-        .def("put_from", &MmcacheStore::PutFrom, py::call_guard<py::gil_scoped_release>(), py::arg("key"),
-             py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_H2G,
-             "Put object data directly from a pre-allocated buffer")
+        .def(
+            "put_from",
+            [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
+                py::gil_scoped_release release;
+                return self.PutFrom(key, reinterpret_cast<void *>(buffer_ptr), size, direct);
+            },
+            py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_H2G,
+            "Put object data directly from a pre-allocated buffer")
         .def(
             "batch_put_from",
             [](MmcacheStore &self, const std::vector<std::string> &keys, const std::vector<uintptr_t> &buffer_ptrs,

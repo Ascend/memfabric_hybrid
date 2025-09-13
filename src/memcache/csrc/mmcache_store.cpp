@@ -360,7 +360,7 @@ std::vector<int> MmcacheStore::BatchPutFrom(const std::vector<std::string> &keys
     switch (direct) {
         case SMEMB_COPY_L2G: type = 1; break;
         case SMEMB_COPY_H2G: type = 0; break;
-        default: throw std::invalid_argument("direct is invalid");
+        default: MMC_LOG_ERROR("Failed to batch put by type " << direct); return results;
     }
 
     const char *keyArray[count];
@@ -399,7 +399,7 @@ std::vector<int> MmcacheStore::BatchGetInto(const std::vector<std::string> &keys
     switch (direct) {
         case SMEMB_COPY_G2L: type = 1; break;
         case SMEMB_COPY_G2H: type = 0; break;
-        default: throw std::invalid_argument("direct is invalid");
+        default: MMC_LOG_ERROR("Failed to batch get by type " << direct); return results;
     }
 
     const char *keyArray[count];
