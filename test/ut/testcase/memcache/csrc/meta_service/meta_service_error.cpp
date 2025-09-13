@@ -86,7 +86,7 @@ TEST_F(TestMmcServiceError, metaService)
 
     mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "sdma", 0, 104857600, 0};
     localServiceConfig.logLevel = 0;
-    localServiceConfig.tlsConfig.tlsEnable = false;
+    localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);
@@ -214,7 +214,7 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
 
     mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "sdma", 0, MF_SIZE, 0};
     localServiceConfig.logLevel = 0;
-    localServiceConfig.tlsConfig.tlsEnable = false;
+    localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);

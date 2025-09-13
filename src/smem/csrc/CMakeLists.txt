@@ -6,6 +6,7 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_UTIL_SRC_BASE}/ptracer/include
+        ${PROJECT_UTIL_SRC_BASE}
         ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/include/
 )
 

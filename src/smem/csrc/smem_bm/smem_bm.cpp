@@ -98,7 +98,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
         return nullptr;
     }
 
-    hybm_options options;
+    hybm_options options{};
     options.bmType = HYBM_TYPE_HOST_INITIATE;
     options.memType = SmemHybmHelper::TransHybmMemType(localDRAMSize, localHBMSize);
     options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(dataOpType);
@@ -112,6 +112,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
+    options.tlsOption = manager.GetHcomTlsOption();
     (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
     ret = entry->Initialize(options);

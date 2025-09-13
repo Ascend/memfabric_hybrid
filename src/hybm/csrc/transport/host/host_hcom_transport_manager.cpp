@@ -2,6 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
 #include "host_hcom_transport_manager.h"
+
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <regex>
@@ -10,6 +12,7 @@
 #include "dl_hcom_api.h"
 #include "host_hcom_common.h"
 #include "host_hcom_helper.h"
+#include "mf_tls_util.h"
 
 using namespace ock::mf;
 using namespace ock::mf::transport;
@@ -23,6 +26,10 @@ constexpr uint64_t HCOM_QUEUE_PRE_POST_SIZE = 256UL;
 constexpr uint8_t HCOM_TRANS_EP_SIZE = 16;
 const char *HCOM_RPC_SERVICE_NAME = "hybm_hcom_service";
 }
+
+tls_config HcomTransportManager::tlsConfig_ = {};
+char HcomTransportManager::keyPass_[KEYPASS_MAX_LEN] = {0};
+std::mutex HcomTransportManager::keyPassMutex = {};
 
 Result HcomTransportManager::OpenDevice(const TransportOptions &options)
 {
@@ -38,6 +45,11 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         BM_LOG_ERROR("Failed to create hcom service, nic: " << options.nic << " type: " << enumProtocolType
                                                             << " ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
+    }
+    if (options.tlsOption.tlsEnable) {
+        tlsConfig_ = options.tlsOption;
+        DlHcomApi::ServiceSetTlsOptions(rpcService_, true, C_SERVICE_TLS_1_3, C_SERVICE_AES_GCM_256,
+            GetCertCallBack, GetPrivateKeyCallBack, GetCACallBack);
     }
 
     DlHcomApi::ServiceSetSendQueueSize(rpcService_, HCOM_SEND_QUEUE_SIZE);
@@ -496,4 +508,83 @@ Result HcomTransportManager::GetMemoryRegionByAddr(const uint32_t &rankId, const
         }
     }
     return BM_ERROR;
+}
+
+int HcomTransportManager::GetCACallBack(const char *name, char **caPath, char **crlPath,
+    Hcom_PeerCertVerifyType *verifyType, Hcom_TlsCertVerify *verify)
+{
+    if (caPath == nullptr || crlPath == nullptr || verifyType == nullptr || verify == nullptr) {
+        BM_LOG_ERROR("Invalid input");
+        return 1;
+    }
+    *caPath = tlsConfig_.caPath;
+    *crlPath = tlsConfig_.crlPath;
+    *verifyType = C_VERIFY_BY_CUSTOM_FUNC;
+    *verify = CertVerifyCallBack;
+    return 0;
+}
+
+int HcomTransportManager::GetCertCallBack(const char *name, char **certPath)
+{
+    if (certPath == nullptr) {
+        BM_LOG_ERROR("certPath is nullptr");
+        return 1;
+    }
+    *certPath = tlsConfig_.certPath;
+    return 0;
+}
+
+int HcomTransportManager::GetPrivateKeyCallBack(const char *name, char **priKeyPath, char **keyPass,
+    Hcom_TlsKeyPassErase *erase)
+{
+    std::lock_guard<std::mutex> lock(keyPassMutex);
+
+    if (priKeyPath == nullptr || keyPass == nullptr || erase == nullptr) {
+        BM_LOG_ERROR("Invalid input");
+        return 1;
+    }
+
+    *priKeyPath = tlsConfig_.keyPath;
+
+    std::ifstream fileStream;
+    fileStream.open(tlsConfig_.keyPassPath);
+    if (!fileStream.is_open()) {
+        BM_LOG_ERROR("Failed to open keyPassFile");
+        return 1;
+    }
+    char encryptedKeyPass[KEYPASS_MAX_LEN] = {};
+    fileStream.getline(encryptedKeyPass, KEYPASS_MAX_LEN);
+    fileStream.close();
+    DecryptFunc func;
+    if (std::string(tlsConfig_.decrypterLibPath).empty()) {
+        BM_LOG_WARN("No decrypter provided, using default decrypter handler");
+        func = static_cast<DecryptFunc>(DefaultDecrypter);
+    } else {
+        func = LoadDecryptFunction(tlsConfig_.decrypterLibPath);
+        if (func == nullptr) {
+            BM_LOG_ERROR("failed to load customized decrypt function");
+            return 1;
+        }
+    }
+    if (func(encryptedKeyPass, KEYPASS_MAX_LEN, keyPass_, KEYPASS_MAX_LEN) != 0) {
+        BM_LOG_ERROR("failed to decrypt key pass");
+        return 1;
+    }
+
+    *keyPass = keyPass_;
+    *erase = KeyPassEraseCallBack;
+
+    return 0;
+}
+
+int HcomTransportManager::CertVerifyCallBack(void *x509, const char *crlPath)
+{
+    return 0;
+}
+
+void HcomTransportManager::KeyPassEraseCallBack(char *keyPass, int len)
+{
+    for (int i = 0; i < len; i++) {
+        keyPass[i] = 0;
+    }
 }

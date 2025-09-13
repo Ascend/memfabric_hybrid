@@ -50,9 +50,10 @@ typedef struct {
     uint64_t localDRAMSize;
     uint64_t localHBMSize;
     uint32_t flags;
-    ock::mf::tls_config tlsConfig;
+    ock::mf::tls_config accTlsConfig;
     int32_t logLevel;
     ExternalLog logFunc;
+    ock::mf::tls_config hcomTlsConfig;
 } mmc_local_service_config_t;
 
 typedef struct {

@@ -21,6 +21,8 @@ struct HcomMemoryRegion {
     Service_MemoryRegion mr;
 };
 
+constexpr size_t KEYPASS_MAX_LEN = 1024 * 10;
+
 class HcomTransportManager : public TransportManager {
 public:
     static std::shared_ptr<HcomTransportManager> GetInstance()
@@ -82,6 +84,17 @@ private:
 
     Result UpdateRankConnectInfos(const std::unordered_map<uint32_t, TransportRankPrepareInfo> &options);
 
+    static int GetCACallBack(const char *name, char **caPath, char **crlPath, Hcom_PeerCertVerifyType *verifyType,
+        Hcom_TlsCertVerify *verify);
+
+    static int GetCertCallBack(const char *name, char **certPath);
+
+    static int GetPrivateKeyCallBack(const char *name, char **priKeyPath, char **keyPass, Hcom_TlsKeyPassErase *erase);
+
+    static int CertVerifyCallBack(void *x509, const char *crlPath);
+
+    static void KeyPassEraseCallBack(char *keyPass, int len);
+
 private:
     std::string localNic_{};
     std::string protocol{};
@@ -95,6 +108,9 @@ private:
     std::vector<std::mutex> channelMutex_;
     std::vector<std::string> nics_;
     std::vector<Hcom_Channel> channels_;
+    static tls_config tlsConfig_;
+    static char keyPass_[KEYPASS_MAX_LEN];
+    static std::mutex keyPassMutex;
 };
 }
 }

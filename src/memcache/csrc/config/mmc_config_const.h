@@ -32,11 +32,18 @@ constexpr auto OCK_MMC_TLS_DECRYPTER_PATH = std::make_pair("ock.mmc.tls.decrypte
 
 constexpr auto OKC_MMC_LOCAL_SERVICE_WORLD_SIZE = std::make_pair("ock.mmc.local_service.world_size", 1);
 constexpr auto OKC_MMC_LOCAL_SERVICE_BM_IP_PORT = std::make_pair("ock.mmc.local_service.config_store_url", "tcp://127.0.0.1:6000");
-constexpr auto OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL = std::make_pair("ock.mmc.local_service.hcom_url", "tcp://127.0.0.1:7000");
 constexpr auto OKC_MMC_LOCAL_SERVICE_PROTOCOL = std::make_pair("ock.mmc.local_service.protocol", "sdma");
 constexpr auto OKC_MMC_LOCAL_SERVICE_DRAM_SIZE = std::make_pair("ock.mmc.local_service.dram.size", "128MB");
 constexpr auto OKC_MMC_LOCAL_SERVICE_HBM_SIZE = std::make_pair("ock.mmc.local_service.hbm.size", "2097152");
 constexpr auto OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA = std::make_pair("ock.mmc.local_service.dram_by_sdma", false);
+constexpr auto OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL = std::make_pair("ock.mmc.local_service.hcom_url", "tcp://127.0.0.1:7000");
+constexpr auto OCK_MMC_HCOM_TLS_ENABLE = std::make_pair("ock.mmc.local_service.hcom.tls.enable", true);
+constexpr auto OCK_MMC_HCOM_TLS_CA_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.ca.path", "");
+constexpr auto OCK_MMC_HCOM_TLS_CRL_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.ca.crl.path", "");
+constexpr auto OCK_MMC_HCOM_TLS_CERT_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.cert.path", "");
+constexpr auto OCK_MMC_HCOM_TLS_KEY_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.key.path", "");
+constexpr auto OCK_MMC_HCOM_TLS_KEY_PASS_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.key.pass.path", "");
+constexpr auto OCK_MMC_HCOM_TLS_DECRYPTER_PATH = std::make_pair("ock.mmc.local_service.hcom.tls.decrypter.path", "");
 
 constexpr auto OKC_MMC_CLIENT_RETRY_MILLISECONDS = std::make_pair("ock.mmc.client.retry_milliseconds", 0);
 constexpr auto OCK_MMC_CLIENT_TIMEOUT_SECONDS = std::make_pair("ock.mmc.client.timeout.seconds", 60);

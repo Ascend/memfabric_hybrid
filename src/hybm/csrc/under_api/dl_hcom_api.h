@@ -29,6 +29,8 @@ using serviceRegisterHandlerFunc = void (*)(Hcom_Service, Service_HandlerType, S
 using serviceAddWorkerGroupFunc = void (*)(Hcom_Service, int8_t, uint16_t, uint32_t, const char *);
 using serviceAddListenerFunc = void (*)(Hcom_Service, const char *, uint16_t);
 using serviceSetConnectLBPolicyFunc = void (*)(Hcom_Service, Service_LBPolicy);
+using serviceSetTlsOptionsFunc = void (*)(Hcom_Service service, bool enableTls, Service_TlsVersion version,
+    Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb, Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb);
 using serviceSetSecureOptionsFunc = void (*)(Hcom_Service, Service_SecType, Hcom_SecInfoProvider,
                                              Hcom_SecInfoValidator, uint16_t, uint8_t);
 using serviceSetTcpUserTimeOutSecFunc = void (*)(Hcom_Service, uint16_t);
@@ -169,6 +171,14 @@ public:
     {
         BM_ASSERT_RET_VOID(gServiceSetConnectLBPolicy != nullptr);
         gServiceSetConnectLBPolicy(service, lbPolicy);
+    }
+
+    static inline void ServiceSetTlsOptions(Hcom_Service service, bool enableTls, Service_TlsVersion version,
+                                            Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb,
+                                            Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb)
+    {
+        BM_ASSERT_RET_VOID(gServiceSetConnectLBPolicy != nullptr);
+        gServiceSetTlsOptions(service, enableTls, version, cipherSuite, certCb, priKeyCb, caCb);
     }
 
     static inline void
@@ -379,6 +389,7 @@ private:
     static serviceAddWorkerGroupFunc gServiceAddWorkerGroup;
     static serviceAddListenerFunc gServiceAddListener;
     static serviceSetConnectLBPolicyFunc gServiceSetConnectLBPolicy;
+    static serviceSetTlsOptionsFunc gServiceSetTlsOptions;
     static serviceSetSecureOptionsFunc gServiceSetSecureOptions;
     static serviceSetTcpUserTimeOutSecFunc gServiceSetTcpUserTimeOutSec;
     static serviceSetTcpSendZCopyFunc gServiceSetTcpSendZCopy;

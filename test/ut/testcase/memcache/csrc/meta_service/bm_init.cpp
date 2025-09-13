@@ -65,7 +65,7 @@ TEST_F(TestBmInit, Init)
 
     mmc_local_service_config_t localServiceConfig1 = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "sdma", 0, 104857600, 0};
     localServiceConfig1.logLevel = 0;
-    localServiceConfig1.tlsConfig.tlsEnable = false;
+    localServiceConfig1.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig1.discoveryURL);
     auto localServiceDefault1 = MmcMakeRef<MmcLocalServiceDefault>("testLocalService1");
     MmcLocalServicePtr localServicePtr1 = Convert<MmcLocalServiceDefault, MmcLocalService>(localServiceDefault1);

@@ -471,7 +471,7 @@ void Configuration::LoadConfigurations()
     mInitialized = true;
 }
 
-void Configuration::GetTlsConfig(mf::tls_config &tlsConfig)
+void Configuration::GetAccTlsConfig(mf::tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_TLS_ENABLE);
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
@@ -481,6 +481,18 @@ void Configuration::GetTlsConfig(mf::tls_config &tlsConfig)
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_KEY_PASS_PATH).c_str(), PATH_MAX_LEN, tlsConfig.keyPassPath);
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_PACKAGE_PATH).c_str(), PATH_MAX_LEN, tlsConfig.packagePath);
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_DECRYPTER_PATH).c_str(), PATH_MAX_LEN, tlsConfig.decrypterLibPath);
+}
+
+void Configuration::GetHcomTlsConfig(mf::tls_config &tlsConfig)
+{
+    tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_HCOM_TLS_ENABLE);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_CRL_PATH).c_str(), PATH_MAX_LEN, tlsConfig.crlPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_CERT_PATH).c_str(), PATH_MAX_LEN, tlsConfig.certPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_KEY_PATH).c_str(), PATH_MAX_LEN, tlsConfig.keyPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_KEY_PASS_PATH).c_str(), PATH_MAX_LEN, tlsConfig.keyPassPath);
+    std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_DECRYPTER_PATH).c_str(),
+        PATH_MAX_LEN, tlsConfig.decrypterLibPath);
 }
 
 int Configuration::ValidateTLSConfig(const mf::tls_config &tlsConfig)
@@ -493,7 +505,6 @@ int Configuration::ValidateTLSConfig(const mf::tls_config &tlsConfig)
         {tlsConfig.caPath, "CA(Certificate Authority) file"},
         {tlsConfig.certPath, "certificate file"},
         {tlsConfig.keyPath, "private key file"},
-        {tlsConfig.packagePath, "package path"},
     };
 
     for (const auto &item : compulsoryMap) {
@@ -507,6 +518,10 @@ int Configuration::ValidateTLSConfig(const mf::tls_config &tlsConfig)
     if (!std::string(tlsConfig.keyPassPath).empty()) {
         MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.keyPassPath),
             "private key passphrase file does not exist or is a symlink");
+    }
+    if (!std::string(tlsConfig.packagePath).empty()) {
+        MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.packagePath),
+            "openssl dynamic library directory does not exist or is a symlink");
     }
     if (!std::string(tlsConfig.decrypterLibPath).empty()) {
         MMC_RETURN_ERROR(ValidatePathNotSymlink(tlsConfig.decrypterLibPath),

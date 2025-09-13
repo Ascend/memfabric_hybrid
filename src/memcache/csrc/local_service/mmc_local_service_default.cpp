@@ -31,15 +31,12 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     metaNetClient_ = MetaNetClientFactory::GetInstance(this->options_.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(metaNetClient_.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!metaNetClient_->Status()) {
-        mmc_client_config_t clientConfig;
-        clientConfig.rankId = options_.rankId;
-        clientConfig.tlsConfig = options_.tlsConfig;
         NetEngineOptions options;
         options.name = name_;
         options.threadCount = 2;
         options.rankId = options_.rankId;
         options.startListener = false;
-        options.tlsOption = options_.tlsConfig;
+        options.tlsOption = options_.accTlsConfig;
         options.logLevel = options_.logLevel;
         options.logFunc = options_.logFunc;
         MMC_RETURN_ERROR(metaNetClient_->Start(options),
@@ -78,7 +75,7 @@ void MmcLocalServiceDefault::Stop()
 Result MmcLocalServiceDefault::InitBm()
 {
     mmc_bm_init_config_t initConfig = {options_.deviceId, options_.worldSize, options_.bmIpPort,
-                                       options_.bmHcomUrl, options_.logLevel, options_.logFunc, options_.flags};
+        options_.bmHcomUrl, options_.logLevel, options_.logFunc, options_.flags, options_.hcomTlsConfig};
     mmc_bm_create_config_t createConfig = {options_.createId, options_.worldSize, options_.dataOpType,
                                            options_.localDRAMSize, options_.localHBMSize, options_.flags};
 

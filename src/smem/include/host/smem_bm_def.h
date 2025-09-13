@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "mf_tls_def.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,6 +65,7 @@ typedef struct {
     uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
     char hcomUrl[64];
+    ock::mf::tls_config hcomTlsOption;
 } smem_bm_config_t;
 
 typedef struct {

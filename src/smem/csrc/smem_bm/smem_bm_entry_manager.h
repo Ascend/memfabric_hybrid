@@ -9,6 +9,7 @@
 #include "smem_bm.h"
 #include "smem_bm_entry.h"
 #include "smem_config_store.h"
+#include "mf_tls_def.h"
 
 namespace ock {
 namespace smem {
@@ -51,6 +52,11 @@ public:
     inline std::string GetHcomUrl() const
     {
         return config_.hcomUrl;
+    }
+
+    inline mf::tls_config GetHcomTlsOption() const
+    {
+        return config_.hcomTlsOption;
     }
 
 private:

@@ -93,7 +93,7 @@ TEST_F(TestMmcServiceInterface, MultiLevelEvict)
 
     mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "sdma", totalSize, totalSize, 0};
     localServiceConfig.logLevel = 0;
-    localServiceConfig.tlsConfig.tlsEnable = false;
+    localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);
@@ -174,7 +174,7 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
 
     mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "sdma", 104857600, 104857600, 0};
     localServiceConfig.logLevel = 0;
-    localServiceConfig.tlsConfig.tlsEnable = false;
+    localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
     mmc_local_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);

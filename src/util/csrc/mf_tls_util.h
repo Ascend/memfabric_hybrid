@@ -17,7 +17,7 @@ namespace mf {
 using DecryptFunc = int (*)(const char* cipherText, const size_t cipherTextLen, char* plainText, size_t plainTextLen);
 
 inline int32_t DefaultDecrypter(const char* cipherText, const size_t cipherTextLen,
-                                char* plainText, const int32_t plainTextLen)
+                                char* plainText, const size_t plainTextLen)
 {
     std::copy_n(cipherText, plainTextLen, plainText);
     return 0;

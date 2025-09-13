@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include "mf_tls_def.h"
+
 #ifndef __cplusplus
 extern "C" {
 #endif
@@ -71,6 +73,7 @@ typedef struct {
     uint64_t preferredGVA;
     hybm_role_type role;
     char nic[64];
+    ock::mf::tls_config tlsOption;
 } hybm_options;
 
 typedef enum {

@@ -96,7 +96,8 @@ public:
     void AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
     std::vector<std::string> ValidateConf();
-    void GetTlsConfig(mf::tls_config &tlsConfig);
+    void GetAccTlsConfig(mf::tls_config &tlsConfig);
+    void GetHcomTlsConfig(mf::tls_config &tlsConfig);
 
     static int ValidateTLSConfig(const mf::tls_config &tlsConfig);
 
@@ -217,7 +218,7 @@ public:
         config.evictThresholdLow = GetInt(ConfConstant::OKC_MMC_EVICT_THRESHOLD_LOW);
         config.logRotationFileSize = GetInt(ConfConstant::OCK_MMC_LOG_ROTATION_FILE_SIZE) * MB_NUM;
         config.logRotationFileCount = GetInt(ConfConstant::OCK_MMC_LOG_ROTATION_FILE_COUNT);
-        GetTlsConfig(config.tlsConfig);
+        GetAccTlsConfig(config.tlsConfig);
     }
 };
 
@@ -240,7 +241,6 @@ public:
         AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE,
             VIntRange::Create(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE.first, MIN_WORLD_SIZE, MAX_WORLD_SIZE));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_IP_PORT, VNoCheck::Create());
-        AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
@@ -249,6 +249,21 @@ public:
         AddBoolConf(OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA, VNoCheck::Create());
         AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS,
             VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, 1, 600));
+
+        AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL, VNoCheck::Create());
+        AddBoolConf(OCK_MMC_HCOM_TLS_ENABLE, VNoCheck::Create());
+        AddStrConf(OCK_MMC_HCOM_TLS_CA_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_CA_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_HCOM_TLS_CRL_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_CRL_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_HCOM_TLS_CERT_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_CERT_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_HCOM_TLS_KEY_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_KEY_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_HCOM_TLS_KEY_PASS_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_KEY_PASS_PATH.first, PATH_MAX_LEN));
+        AddStrConf(OCK_MMC_HCOM_TLS_DECRYPTER_PATH,
+            VStrLength::Create(OCK_MMC_HCOM_TLS_DECRYPTER_PATH.first, PATH_MAX_LEN));
     }
 
     void GetLocalServiceConfig(mmc_local_service_config_t &config) {
@@ -270,7 +285,8 @@ public:
         std::string logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         StringToLower(logLevelStr);
         config.logLevel = MmcOutLogger::Instance().GetLogLevel(logLevelStr);
-        GetTlsConfig(config.tlsConfig);
+        GetAccTlsConfig(config.accTlsConfig);
+        GetHcomTlsConfig(config.hcomTlsConfig);
     }
 
     void GetClientConfig(mmc_client_config_t &config) {
@@ -284,7 +300,7 @@ public:
         std::string logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         StringToLower(logLevelStr);
         config.logLevel = MmcOutLogger::Instance().GetLogLevel(logLevelStr);
-        GetTlsConfig(config.tlsConfig);
+        GetAccTlsConfig(config.tlsConfig);
     }
 
     static Result ValidateLocalServiceConfig(mmc_local_service_config_t &config)

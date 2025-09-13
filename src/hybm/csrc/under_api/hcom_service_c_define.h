@@ -295,6 +295,103 @@ typedef struct {
     Channel_FlowCtrlLevel flowCtrlLevel;
 } Channel_FlowCtrlOptions;
 
+int Service_Create(Service_Type t, const char *name, Service_Options options, Hcom_Service *service);
+
+int Service_Bind(Hcom_Service service, const char *listenerUrl, Service_ChannelHandler h);
+
+int Service_Start(Hcom_Service service);
+
+int Service_Destroy(Hcom_Service service, const char *name);
+
+int Service_Connect(Hcom_Service service, const char *serverUrl, Hcom_Channel *channel, Service_ConnectOptions options);
+
+int Service_DisConnect(Hcom_Service service, Hcom_Channel channel);
+
+int Service_RegisterMemoryRegion(Hcom_Service service, uint64_t size, Service_MemoryRegion *mr);
+
+int Service_GetMemoryRegionInfo(Service_MemoryRegion mr, Service_MemoryRegionInfo *info);
+
+int Service_RegisterAssignMemoryRegion(
+    Hcom_Service service, uintptr_t address, uint64_t size, Service_MemoryRegion *mr);
+
+int Service_DestroyMemoryRegion(Hcom_Service service, Service_MemoryRegion mr);
+
+void Service_RegisterChannelBrokerHandler(Hcom_Service service, Service_ChannelHandler h,
+    Service_ChannelPolicy policy, uint64_t usrCtx);
+
+void Service_RegisterIdleHandler(Hcom_Service service, Service_IdleHandler h, uint64_t usrCtx);
+
+void Service_RegisterHandler(Hcom_Service service, Service_HandlerType t, Service_RequestHandler h,
+    uint64_t usrCtx);
+
+void Service_AddWorkerGroup(Hcom_Service service, int8_t priority, uint16_t workerGroupId, uint32_t threadCount,
+    const char *cpuIdsRange);
+
+void Service_AddListener(Hcom_Service service, const char *url, uint16_t workerCount);
+
+void Service_SetConnectLBPolicy(Hcom_Service service, Service_LBPolicy lbPolicy);
+
+void Service_SetTlsOptions(Hcom_Service service, bool enableTls, Service_TlsVersion version,
+    Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb, Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb);
+
+void Service_SetSecureOptions(Hcom_Service service, Service_SecType secType, Hcom_SecInfoProvider provider,
+    Hcom_SecInfoValidator validator, uint16_t magic, uint8_t version);
+
+void Service_SetTcpUserTimeOutSec(Hcom_Service service, uint16_t timeOutSec);
+
+void Service_SetTcpSendZCopy(Hcom_Service service, bool tcpSendZCopy);
+
+void Service_SetDeviceIpMask(Hcom_Service service, const char *ipMask);
+
+void Service_SetDeviceIpGroup(Hcom_Service service, const char *ipGroup);
+
+void Service_SetCompletionQueueDepth(Hcom_Service service, uint16_t depth);
+
+void Service_SetSendQueueSize(Hcom_Service service, uint32_t sqSize);
+
+void Service_SetRecvQueueSize(Hcom_Service service, uint32_t rqSize);
+
+void Service_SetQueuePrePostSize(Hcom_Service service, uint32_t prePostSize);
+
+void Service_SetPollingBatchSize(Hcom_Service service, uint16_t pollSize);
+
+void Service_SetEventPollingTimeOutUs(Hcom_Service service, uint16_t pollTimeout);
+
+void Service_SetTimeOutDetectionThreadNum(Hcom_Service service, uint32_t threadNum);
+
+void Service_SetMaxConnectionCount(Hcom_Service service, uint32_t maxConnCount);
+
+void Service_SetHeartBeatOptions(Hcom_Service service, uint16_t idleSec, uint16_t probeTimes, uint16_t intervalSec);
+
+void Service_SetMultiRailOptions(Hcom_Service service, bool enable, uint32_t threshold);
+
+void Channel_Refer(Hcom_Channel channel);
+void Channel_DeRefer(Hcom_Channel channel);
+int Channel_Send(Hcom_Channel channel, Channel_Request req, Channel_Callback *cb);
+int Channel_Call(Hcom_Channel channel, Channel_Request req, Channel_Response *rsp, Channel_Callback *cb);
+int Channel_Reply(Hcom_Channel channel, Channel_Request req, Channel_ReplyContext ctx, Channel_Callback *cb);
+int Channel_Put(Hcom_Channel channel, Channel_OneSideRequest req, Channel_Callback *cb);
+int Channel_Get(Hcom_Channel channel, Channel_OneSideRequest req, Channel_Callback *cb);
+int Channel_SetFlowControlConfig(Hcom_Channel channel, Channel_FlowCtrlOptions opt);
+void Channel_SetChannelTimeOut(Hcom_Channel channel, int16_t oneSideTimeout, int16_t twoSideTimeout);
+void Channel_Close(Hcom_Channel channel);
+uint64_t Channel_GetId(Hcom_Channel channel);
+
+int Service_GetRspCtx(Service_Context context, Channel_ReplyContext *rspCtx);
+int Service_GetChannel(Service_Context context, Hcom_Channel *channel);
+int Service_GetContextType(Service_Context context, Service_ContextType *type);
+int Service_GetResult(Service_Context context, int *result);
+uint16_t Service_GetOpCode(Service_Context context);
+void *Service_GetMessageData(Service_Context context);
+uint32_t Service_GetMessageDataLen(Service_Context context);
+
+/*
+ * @brief Set external logger function
+ *
+ * @param h                [in] the log function ptr
+ */
+void Service_SetExternalLogger(Service_LogHandler h);
+
 #ifdef __cplusplus
 }
 #endif

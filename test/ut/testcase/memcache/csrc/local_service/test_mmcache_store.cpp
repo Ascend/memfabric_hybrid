@@ -65,11 +65,20 @@ static int GenerateLocalConf(std::string confPath)
 
     outFile << "ock.mmc.local_service.world_size = 1" << std::endl;
     outFile << "ock.mmc.local_service.config_store_url = tcp://127.0.0.1:5882" << std::endl;
-    outFile << "ock.mmc.local_service.hcom_url = tcp://127.0.0.1:7000" << std::endl;
     outFile << "ock.mmc.local_service.protocol = sdma" << std::endl;
     outFile << "ock.mmc.local_service.dram.size = 32MB" << std::endl;
     outFile << "ock.mmc.local_service.hbm.size = 32MB" << std::endl;
     outFile << "ock.mmc.local_service.dram_by_sdma = true" << std::endl;
+
+    outFile << "ock.mmc.local_service.hcom_url = tcp://127.0.0.1:7000" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.enable = false" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.ca.path = /opt/ock/security/certs/ca.cert.pem" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.ca.crl.path = /opt/ock/security/certs/ca.crl.pem" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.cert.path = /opt/ock/security/certs/client.cert.pem" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.key.path = /opt/ock/security/certs/client.private.key.pem" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.key.pass.path = /opt/ock/security/certs/client.passphrase" << std::endl;
+    outFile << "ock.mmc.local_service.hcom.tls.decrypter.path =" << std::endl;
+
     outFile << "ock.mmc.client.retry_milliseconds = 0" << std::endl;
     outFile << "ock.mmc.client.timeout.seconds = 60" << std::endl;
 

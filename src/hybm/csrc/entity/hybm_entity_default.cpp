@@ -825,13 +825,14 @@ Result MemEntityDefault::InitTransManager()
         transportManager_ = transport::TransportManager::Create(transport::TT_HCOM);
     }
 
-    transport::TransportOptions options;
+    transport::TransportOptions options{};
     options.rankId = options_.rankId;
     options.rankCount = options_.rankCount;
     options.protocol = options_.bmDataOpType;
     options.role = options_.role;
     options.initialType = options_.bmType;
     options.nic = options_.nic;
+    options.tlsOption = options_.tlsOption;
     auto ret = transportManager_->OpenDevice(options);
     if (ret != 0) {
         BM_LOG_ERROR("Failed to open device, ret: " << ret);

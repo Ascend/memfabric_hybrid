@@ -16,6 +16,7 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
         ${PROJECT_DRIVER_BASE}/userspace/include
         ${PROJECT_UTIL_SRC_BASE}/ptracer/include
+        ${PROJECT_UTIL_SRC_BASE}
 )
 
 set(HYBM_PUBLIC_INCLUDE_DIR "${PROJECT_HYBM_SRC_BASE}/include")

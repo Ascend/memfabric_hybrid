@@ -47,7 +47,7 @@ public:
             .localDRAMSize = 104857600,
             .localHBMSize = 104857600,
             .flags = 0,
-            .tlsConfig = tlsConfig,
+            .accTlsConfig = tlsConfig,
             .logLevel = 0,
             .logFunc = nullptr
         };
