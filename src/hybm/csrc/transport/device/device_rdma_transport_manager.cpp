@@ -28,6 +28,7 @@ RdmaTransportManager::~RdmaTransportManager()
     tsdOpened_ = false;
     raInitialized_ = false;
     deviceIpRetired_ = false;
+    storedRdmaHandle_ = nullptr;
 }
 
 int RdmaTransportManager::PrepareThreadLocalStream()
