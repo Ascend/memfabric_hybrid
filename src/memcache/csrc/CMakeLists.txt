@@ -119,9 +119,11 @@ add_subdirectory(daemon)
 
 #install
 file(GLOB HEADER_FILES ../include/*.h)
+file(GLOB CPP_HEADER_FILES ../include/cpp/*.h)
 
 #install head files
-install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/memcache/include/memcache)
+install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/memcache/include)
+install(FILES ${CPP_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/memcache/include/cpp)
 
 # install library
 install(TARGETS mmc_shared

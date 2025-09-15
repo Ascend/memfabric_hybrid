@@ -35,7 +35,7 @@ public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
-    Result Startup(const mf::tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result Startup(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
     void Shutdown() noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;

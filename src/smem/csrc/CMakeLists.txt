@@ -56,8 +56,8 @@ file(GLOB HEADER_FILES ../include/host/*.h)
 file(GLOB DEVICE_HEADER_FILES ../include/device/*.h)
 
 #install head files
-install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/host)
-install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/smem/device/)
+install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/host)
+install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/device/)
 
 # install library
 install(TARGETS smem_shared

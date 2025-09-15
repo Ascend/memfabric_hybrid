@@ -32,7 +32,7 @@ struct NetEngineOptions {
     uint16_t threadCount = 2;     /* worker thread count */
     uint16_t rankId = UINT16_MAX; /* rank id */
     bool startListener = false;   /* start listener or not */
-    mf::tls_config tlsOption;     /* TLS communication options */
+    tls_config tlsOption;         /* TLS communication options */
     int32_t logLevel = 3;
     ExternalLog logFunc = nullptr;
 

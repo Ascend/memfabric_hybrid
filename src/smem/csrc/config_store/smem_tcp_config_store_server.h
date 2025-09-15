@@ -67,7 +67,7 @@ public:
     AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept;
     ~AccStoreServer() override = default;
 
-    Result Startup(const mf::tls_config& tlsConfig) noexcept;
+    Result Startup(const tls_config& tlsConfig) noexcept;
     void Shutdown() noexcept;
 
 private:

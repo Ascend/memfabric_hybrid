@@ -97,11 +97,11 @@ public:
     void AddPathConf(const std::pair<std::string, std::string> &pair, const ValidatorPtr &validator = nullptr,
         uint32_t flag = CONF_MUST);
     std::vector<std::string> ValidateConf();
-    void GetAccTlsConfig(mf::tls_config &tlsConfig);
-    void GetHcomTlsConfig(mf::tls_config &tlsConfig);
-    void GetConfigStoreTlsConfig(mf::tls_config &tlsConfig);
+    void GetAccTlsConfig(tls_config &tlsConfig);
+    void GetHcomTlsConfig(tls_config &tlsConfig);
+    void GetConfigStoreTlsConfig(tls_config &tlsConfig);
 
-    static int ValidateTLSConfig(const mf::tls_config &tlsConfig);
+    static int ValidateTLSConfig(const tls_config &tlsConfig);
 
     const std::string GetBinDir();
     const std::string GetLogPath(const std::string &logPath);

@@ -14,7 +14,7 @@
 namespace ock {
 namespace smem {
 
-inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, mf::tls_config config)
+inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, tls_config config)
 {
     if (server == nullptr) {
         STORE_LOG_ERROR("Invalid input");
@@ -46,7 +46,7 @@ inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, mf::tls
     return SM_OK;
 }
 
-inline acc::AccTlsOption GetAccTlsOption(const mf::tls_config& config)
+inline acc::AccTlsOption GetAccTlsOption(const tls_config& config)
 {
     acc::AccTlsOption option{};
     option.enableTls = config.tlsEnable;

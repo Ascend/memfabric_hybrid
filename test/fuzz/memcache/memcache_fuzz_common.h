@@ -14,7 +14,7 @@ class TestMmcFuzzBase : public testing::Test {
 public:
     TestMmcFuzzBase() : localService{nullptr}, metaService{nullptr}
     {
-        ock::mf::tls_config tlsConfig {
+        tls_config tlsConfig {
             .tlsEnable = false,
             .caPath = "certs/ca.cert.pem\0",
             .crlPath = "certs/ca_crl.pem\0",

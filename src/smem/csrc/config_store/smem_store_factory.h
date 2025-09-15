@@ -48,12 +48,12 @@ public:
 
     static void SetLogLevel(int level) noexcept;
 
-    static void SetTlsInfo(const mf::tls_config& tlsOption) noexcept;
+    static void SetTlsInfo(const tls_config& tlsOption) noexcept;
 
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
-    static mf::tls_config tlsOption_;
+    static tls_config tlsOption_;
 };
 } // namespace smem
 } // namespace ock

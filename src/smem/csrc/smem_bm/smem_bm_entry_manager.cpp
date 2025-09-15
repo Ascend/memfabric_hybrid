@@ -68,7 +68,7 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
 int32_t SmemBmEntryManager::PrepareStore()
 {
     SM_ASSERT_RETURN(storeUrlExtraction_.ExtractIpPortFromUrl(storeURL_) == SM_OK, SM_INVALID_PARAM);
-    StoreFactory::SetTlsInfo(config_.configStoreTlsOpt);
+    StoreFactory::SetTlsInfo(config_.storeTlsConfig);
     if (!config_.autoRanking) {
         SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
         if (config_.rankId == 0 && config_.startConfigStore) {

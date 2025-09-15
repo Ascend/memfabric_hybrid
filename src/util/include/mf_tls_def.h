@@ -1,14 +1,14 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-
-#ifndef MEMFABRIC_HYBRID_TLS_DEF_H
-#define MEMFABRIC_HYBRID_TLS_DEF_H
+#ifndef __MF_TLS_DEF_H__
+#define __MF_TLS_DEF_H__
 
 #define PATH_MAX_SIZE 1024
 
-namespace ock {
-namespace mf {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct {
     bool tlsEnable;
@@ -21,7 +21,7 @@ typedef struct {
     char decrypterLibPath[PATH_MAX_SIZE];
 } tls_config;
 
+#ifdef __cplusplus
 }
-}
-
-#endif // MEMFABRIC_HYBRID_TLS_DEF_H
+#endif
+#endif  // __MF_TLS_DEF_H__

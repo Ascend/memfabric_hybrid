@@ -35,8 +35,8 @@ typedef struct {
     int32_t logRotationFileCount;
     uint16_t evictThresholdHigh;
     uint16_t evictThresholdLow;
-    ock::mf::tls_config accTlsConfig;
-    ock::mf::tls_config configStoreTlsConfig;
+    tls_config accTlsConfig;
+    tls_config configStoreTlsConfig;
 } mmc_meta_service_config_t;
 
 typedef struct {
@@ -51,11 +51,11 @@ typedef struct {
     uint64_t localDRAMSize;
     uint64_t localHBMSize;
     uint32_t flags;
-    ock::mf::tls_config accTlsConfig;
+    tls_config accTlsConfig;
     int32_t logLevel;
     ExternalLog logFunc;
-    ock::mf::tls_config hcomTlsConfig;
-    ock::mf::tls_config configStoreTlsConfig;
+    tls_config hcomTlsConfig;
+    tls_config configStoreTlsConfig;
 } mmc_local_service_config_t;
 
 typedef struct {
@@ -65,7 +65,7 @@ typedef struct {
     uint32_t timeOut;
     int32_t logLevel;
     ExternalLog logFunc;
-    ock::mf::tls_config tlsConfig;
+    tls_config tlsConfig;
 } mmc_client_config_t;
 
 typedef struct {

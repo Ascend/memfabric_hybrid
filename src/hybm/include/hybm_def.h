@@ -73,7 +73,7 @@ typedef struct {
     uint64_t preferredGVA;
     hybm_role_type role;
     char nic[64];
-    ock::mf::tls_config tlsOption;
+    tls_config tlsOption;
 } hybm_options;
 
 typedef enum {

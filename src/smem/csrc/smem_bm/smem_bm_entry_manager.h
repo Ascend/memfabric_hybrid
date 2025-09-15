@@ -54,9 +54,9 @@ public:
         return config_.hcomUrl;
     }
 
-    inline mf::tls_config GetHcomTlsOption() const
+    inline tls_config GetHcomTlsOption() const
     {
-        return config_.hcomTlsOption;
+        return config_.hcomTlsConfig;
     }
 
 private:

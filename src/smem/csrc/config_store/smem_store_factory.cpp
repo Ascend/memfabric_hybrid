@@ -12,7 +12,7 @@ namespace smem {
 static __thread int failedReason_ = 0;
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
-mf::tls_config StoreFactory::tlsOption_{};
+tls_config StoreFactory::tlsOption_{};
 
 StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer,
                                    uint32_t worldSize, int32_t rankId, int32_t connMaxRetry) noexcept
@@ -80,7 +80,7 @@ void StoreFactory::SetLogLevel(int level) noexcept
     ock::smem::StoreOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
 }
 
-void StoreFactory::SetTlsInfo(const mf::tls_config& tlsOption) noexcept
+void StoreFactory::SetTlsInfo(const tls_config& tlsOption) noexcept
 {
     tlsOption_ = tlsOption;
 }

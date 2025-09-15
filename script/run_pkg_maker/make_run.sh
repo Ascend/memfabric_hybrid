@@ -41,21 +41,29 @@ mkdir ${PKG_DIR}/${ARCH_OS}/lib64
 mkdir ${PKG_DIR}/${ARCH_OS}/wheel
 mkdir ${PKG_DIR}/${ARCH_OS}/script
 mkdir ${PKG_DIR}/config
+mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
+mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
+mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver
+mkdir -p ${PKG_DIR}/${ARCH_OS}/include/memcache
+mkdir -p ${PKG_DIR}/${ARCH_OS}/include/util
 
 # smem
-cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include
+cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include/smem
 cp ${OUTPUT_DIR}/smem/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64
 cp ${OUTPUT_DIR}/smem/wheel/* ${PKG_DIR}/${ARCH_OS}/wheel
 # hybm
+cp -r ${OUTPUT_DIR}/hybm/include/* ${PKG_DIR}/${ARCH_OS}/include/hybm
 cp ${OUTPUT_DIR}/hybm/lib/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
 # driver
-cp -r ${OUTPUT_DIR}/driver/include/* ${PKG_DIR}/${ARCH_OS}/include/
+cp -r ${OUTPUT_DIR}/driver/include/* ${PKG_DIR}/${ARCH_OS}/include/driver
 cp ${OUTPUT_DIR}/driver/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
 # memcache
-cp -r ${OUTPUT_DIR}/memcache/include/* ${PKG_DIR}/${ARCH_OS}/include/
+cp -r ${OUTPUT_DIR}/memcache/include/* ${PKG_DIR}/${ARCH_OS}/include/memcache
 cp ${OUTPUT_DIR}/memcache/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
 cp ${OUTPUT_DIR}/memcache/bin/* ${PKG_DIR}/${ARCH_OS}/bin/
 cp ${OUTPUT_DIR}/memcache/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+# util
+cp -r ${PROJECT_DIR}/src/util/include/* ${PKG_DIR}/${ARCH_OS}/include/util
 
 cp ${PROJECT_DIR}/config/* ${PKG_DIR}/config
 cp -r ${PROJECT_DIR}/script/certs ${PKG_DIR}/${ARCH_OS}/script

@@ -65,8 +65,8 @@ typedef struct {
     uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
     char hcomUrl[64];
-    ock::mf::tls_config hcomTlsOption;
-    ock::mf::tls_config configStoreTlsOpt;
+    tls_config hcomTlsConfig;
+    tls_config storeTlsConfig;
 } smem_bm_config_t;
 
 typedef struct {

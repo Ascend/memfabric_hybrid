@@ -123,7 +123,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::Startup(const mf::tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;

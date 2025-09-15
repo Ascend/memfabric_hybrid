@@ -471,7 +471,7 @@ void Configuration::LoadConfigurations()
     mInitialized = true;
 }
 
-void Configuration::GetAccTlsConfig(mf::tls_config &tlsConfig)
+void Configuration::GetAccTlsConfig(tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_TLS_ENABLE);
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
@@ -483,7 +483,7 @@ void Configuration::GetAccTlsConfig(mf::tls_config &tlsConfig)
     std::copy_n(GetString(ConfConstant::OCK_MMC_TLS_DECRYPTER_PATH).c_str(), PATH_MAX_LEN, tlsConfig.decrypterLibPath);
 }
 
-void Configuration::GetHcomTlsConfig(mf::tls_config &tlsConfig)
+void Configuration::GetHcomTlsConfig(tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_HCOM_TLS_ENABLE);
     std::copy_n(GetString(ConfConstant::OCK_MMC_HCOM_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
@@ -495,7 +495,7 @@ void Configuration::GetHcomTlsConfig(mf::tls_config &tlsConfig)
         PATH_MAX_LEN, tlsConfig.decrypterLibPath);
 }
 
-void Configuration::GetConfigStoreTlsConfig(mf::tls_config &tlsConfig)
+void Configuration::GetConfigStoreTlsConfig(tls_config &tlsConfig)
 {
     tlsConfig.tlsEnable = GetBool(ConfConstant::OCK_MMC_CS_TLS_ENABLE);
     std::copy_n(GetString(ConfConstant::OCK_MMC_CS_TLS_CA_PATH).c_str(), PATH_MAX_LEN, tlsConfig.caPath);
@@ -508,7 +508,7 @@ void Configuration::GetConfigStoreTlsConfig(mf::tls_config &tlsConfig)
         PATH_MAX_LEN, tlsConfig.decrypterLibPath);
 }
 
-int Configuration::ValidateTLSConfig(const mf::tls_config &tlsConfig)
+int Configuration::ValidateTLSConfig(const tls_config &tlsConfig)
 {
     if (tlsConfig.tlsEnable == false) {
         return MMC_OK;
