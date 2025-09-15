@@ -2,7 +2,8 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#pragma once
+#ifndef MMC_CONFIG_VALIDATOR_H
+#define MMC_CONFIG_VALIDATOR_H
 
 #include <string>
 #include <unistd.h>
@@ -342,3 +343,5 @@ private:
 };
 }  // namespace mmc
 }  // namespace ock
+
+#endif

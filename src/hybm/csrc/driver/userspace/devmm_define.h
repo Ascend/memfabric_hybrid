@@ -7,9 +7,6 @@
 
 #include <cstdint>
 
-typedef unsigned long virt_addr_t;
-typedef int32_t DVresult;
-
 #define DEVMM_MAP_ALIGN_SIZE 0x200000U /* 2M */
 #define DEVMM_HEAP_SIZE (1UL << 30UL) /* 1G */
 #define DEVMM_SVM_MEM_SIZE (1UL << 43UL) /* 8T */
@@ -95,8 +92,8 @@ enum devmm_memtype {
 struct devmm_virt_com_heap;
 
 struct devmm_com_heap_ops {
-    virt_addr_t (*heap_alloc)(struct devmm_virt_com_heap *heap, virt_addr_t va, size_t size, uint32_t advise);
-    DVresult (*heap_free)(struct devmm_virt_com_heap *heap, virt_addr_t ptr);
+    unsigned long (*heap_alloc)(struct devmm_virt_com_heap *heap, unsigned long va, size_t size, uint32_t advise);
+    int32_t (*heap_free)(struct devmm_virt_com_heap *heap, unsigned long ptr);
 };
 
 struct devmm_virt_list_head {
@@ -191,8 +188,8 @@ struct devmm_virt_com_heap {
     bool is_cache;      /* true: follow the cache rule, devmm_get_free_threshold_by_type, used by normal heap.
                            false: no cache, free the heap immediately, used by specified va alloc. For example,
                                   alloc 2M success, free 2M success, alloc 2G will fail because of cache heap. */
-    virt_addr_t start;
-    virt_addr_t end;
+    unsigned long start;
+    unsigned long end;
 
     uint32_t module_id;     /* used for large heap (>=512M) */
     uint32_t side;          /* used for large heap (>=512M) */

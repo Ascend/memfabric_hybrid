@@ -90,6 +90,8 @@ public:
 
     HyBMOutLogger(const HyBMOutLogger &) = delete;
     HyBMOutLogger(HyBMOutLogger &&) = delete;
+    HyBMOutLogger& operator=(const HyBMOutLogger& other) = delete;
+    HyBMOutLogger& operator=(HyBMOutLogger &&) = delete;
 
     ~HyBMOutLogger()
     {

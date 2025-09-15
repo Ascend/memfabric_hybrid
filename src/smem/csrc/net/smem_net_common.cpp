@@ -162,7 +162,7 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
             continue;
         }
 
-        if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == 0) {
+        if (inet_ntop(AF_INET, &localIp, localResultIp, sizeof(localResultIp)) == nullptr) {
             SM_LOG_ERROR("convert local ip to string failed : " << localIp.s_addr);
             result = SM_ERROR;
         } else {

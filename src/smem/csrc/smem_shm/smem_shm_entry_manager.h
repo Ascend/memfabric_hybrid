@@ -20,6 +20,8 @@ public:
 
     SmemShmEntryManager(const SmemShmEntryManager &) = delete;
     SmemShmEntryManager(SmemShmEntryManager &&) = delete;
+    SmemShmEntryManager& operator=(const SmemShmEntryManager& other) = delete;
+    SmemShmEntryManager& operator=(SmemShmEntryManager &&) = delete;
 
     Result Initialize(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId,
                       uint16_t deviceId, smem_shm_config_t *config);

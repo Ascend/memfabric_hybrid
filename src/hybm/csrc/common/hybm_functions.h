@@ -52,7 +52,7 @@ inline uint64_t Func::MakeObjectMagic(uint64_t srcAddress)
     return (srcAddress & gMagicBits) + UN40;
 }
 
-inline uint64_t Func::ValidateObjectMagic(void *ptr, uint64_t magic)
+inline uint64_t Func::ValidateObjectMagic(void *ptr, const uint64_t magic)
 {
     auto tmp = reinterpret_cast<uint64_t>(ptr);
     return magic == ((tmp & gMagicBits) + UN40);

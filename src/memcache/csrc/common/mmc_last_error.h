@@ -4,7 +4,7 @@
 #ifndef MEMFABRIC_HYBRID_MMC_LAST_ERROR_H
 #define MEMFABRIC_HYBRID_MMC_LAST_ERROR_H
 
-#include "mmc_common_includes.h"
+#include <string>
 
 namespace ock {
 namespace mmc {

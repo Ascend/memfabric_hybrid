@@ -149,7 +149,7 @@ static int32_t DevmmRemoveInGvaHeap(uint64_t va)
 }
 
 static struct devmm_virt_com_heap *DevmmVirtAllocHeapForBaseMem(void *mgmt,
-    struct devmm_virt_heap_type *heapType, virt_addr_t allocPtr, size_t allocSize)
+    struct devmm_virt_heap_type *heapType, unsigned long allocPtr, size_t allocSize)
 {
     struct devmm_virt_com_heap *heapSet = nullptr;
     uint32_t heapIdx;
@@ -232,7 +232,7 @@ static uint64_t DevmmVirtAllocGvaMem(void *mgmt, uint64_t allocPtr,
     struct devmm_heap_list *heap_list = nullptr;
     struct devmm_virt_com_heap *heap = nullptr;
     uint64_t retPtr = allocPtr;
-    DVresult ret;
+    int32_t ret;
 
     retPtr = DlHalApi::HalDevmmVirtAllocMemFromBase(mgmt, allocSize, 0, allocPtr);
     if (retPtr != allocPtr) {
@@ -287,7 +287,7 @@ static int32_t DevmmFreeManagedNomal(uint64_t va)
         return BM_ERROR;
     }
 
-    struct devmm_heap_list *heap_list = NULL;
+    struct devmm_heap_list *heap_list = nullptr;
     struct devmm_virt_heap_type heap_type;
     heap_type.heap_type = heap->heap_type;
     heap_type.heap_list_type = heap->heap_list_type;

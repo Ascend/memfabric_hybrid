@@ -244,7 +244,7 @@ public:
 
             /* do call */
             respLen = sizeof(RESP);
-            char *respData = reinterpret_cast<char *>(&resp);
+            respData = reinterpret_cast<char *>(&resp);
             return Call(peerId, opCode, serializedData.c_str(), serializedData.length(), &respData, respLen,
                         timeoutInSecond);
         } else {

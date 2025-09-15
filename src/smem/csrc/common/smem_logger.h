@@ -86,6 +86,8 @@ public:
 
     SMOutLogger(const SMOutLogger &) = delete;
     SMOutLogger(SMOutLogger &&) = delete;
+    SMOutLogger& operator=(const SMOutLogger& other) = delete;
+    SMOutLogger& operator=(SMOutLogger &&) = delete;
 
     ~SMOutLogger()
     {

@@ -125,6 +125,8 @@ public:
 
     MmcOutLogger(const MmcOutLogger &) = delete;
     MmcOutLogger(MmcOutLogger &&) = delete;
+    MmcOutLogger& operator=(const MmcOutLogger& other) = delete;
+    MmcOutLogger& operator=(MmcOutLogger &&) = delete;
 
     ~MmcOutLogger()
     {

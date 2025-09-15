@@ -1,7 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#pragma once
+#ifndef MMC_FUNCTIONS_H
+#define MMC_FUNCTIONS_H
 
 #include <climits>
 #include <cmath>
@@ -92,3 +93,5 @@ inline bool GetRealPath(std::string &path)
 
 } // namespace mmc
 } // namespace ock
+
+#endif
