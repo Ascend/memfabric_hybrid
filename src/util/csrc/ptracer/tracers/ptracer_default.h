@@ -43,7 +43,7 @@ public:
         return tracer;
     }
 
-    int32_t StartUp(const std::string &dumpFileDir);
+    int32_t StartUp(const std::string &dumpDir);
     void ShutDown();
 
 public:
@@ -58,7 +58,7 @@ private:
     void RunInThread();
     void DumpTracepoints();
     int GenerateAllTpString(std::stringstream &ss, bool needTotal = false);
-    void GenerateOneTpString(Tracepoint &traceInfo, bool needTotal, std::stringstream &ss, int &traceCount);
+    void GenerateOneTpString(Tracepoint &tp, bool needTotal, std::stringstream &outSS, int32_t &tpCount);
     void WriteTracepoints(std::stringstream &ss);
     void OverrideWrite(std::stringstream &ss);
 

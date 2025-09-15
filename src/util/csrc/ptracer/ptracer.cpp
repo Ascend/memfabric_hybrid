@@ -81,7 +81,7 @@ PTRACER_API int32_t ptracer_init(ptracer_config_t *config)
     return result;
 }
 
-PTRACER_API void ptracer_uninit()
+PTRACER_API void ptracer_uninit(void)
 {
     std::lock_guard<std::mutex> guard(g_mutex);
     if (!g_inited) {
@@ -94,7 +94,7 @@ PTRACER_API void ptracer_uninit()
     g_inited = false;
 }
 
-PTRACER_API const char *ptracer_get_last_err_msg()
+PTRACER_API const char *ptracer_get_last_err_msg(void)
 {
     return ock::mf::tracer::LastError::Get();
 }

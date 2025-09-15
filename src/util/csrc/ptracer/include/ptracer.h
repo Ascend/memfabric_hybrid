@@ -27,8 +27,8 @@ typedef struct {
 } ptracer_config_t;
 
 int32_t ptracer_init(ptracer_config_t *config);
-void ptracer_uninit();
-const char *ptracer_get_last_err_msg();
+void ptracer_uninit(void);
+const char *ptracer_get_last_err_msg(void);
 
 /**
  * @brief Start to trace

@@ -116,7 +116,7 @@ private:
                          const std::vector<std::vector<size_t>> &sizeLists,
                          std::vector<ock::mmc::MmcBufferArray> &bufferArrays);
 
-    static int ReturnWrapper(int result, const std::string &keyval);
+    static int ReturnWrapper(const int result, const std::string &key);
 };
 
 }  // namespace mmc

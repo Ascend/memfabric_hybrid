@@ -31,7 +31,7 @@ private:
     static bool CheckIsRunning();
     int LoadConfig();
     static void RegisterSignal();
-    static void SignalInterruptHandler(int signal);
+    static void SignalInterruptHandler(const int signal);
     static int InitLogger(const mmc_meta_service_config_t& options);
     void Exit();
 

@@ -17,7 +17,7 @@ public:
     static Result LibraryRealPath(const std::string &libDirPath, const std::string &libName, std::string &realPath);
 
     static uint64_t MakeObjectMagic(uint64_t srcAddress);
-    static uint64_t ValidateObjectMagic(void *ptr, uint64_t magic);
+    static uint64_t ValidateObjectMagic(void *ptr, const uint64_t magic);
 
     static inline int32_t GetLogicDeviceId(const int &deviceId)
     {

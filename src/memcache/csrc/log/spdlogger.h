@@ -44,7 +44,7 @@ public:
     }
 
     int Initialize(const std::string &path, int minLogLevel, int rotationFileSize, int rotationFileCount);
-    int SetLogMinLevel(int level);
+    int SetLogMinLevel(int minLevel);
     void LogMessage(int level, const char *message);
     void AuditLogMessage(const char *message);
     static const char *GetLastErrorMessage();
