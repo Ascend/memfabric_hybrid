@@ -9,6 +9,8 @@
 
 namespace ock {
 namespace mmc {
+constexpr int TIMEOUT_THIRTY = 30;
+constexpr int CLIENT_THREAD_COUNT = 2;
 MmcLocalServiceDefault::~MmcLocalServiceDefault() {}
 Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
 {
@@ -33,7 +35,7 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
     if (!metaNetClient_->Status()) {
         NetEngineOptions options;
         options.name = name_;
-        options.threadCount = 2;
+        options.threadCount = CLIENT_THREAD_COUNT;
         options.rankId = options_.rankId;
         options.startListener = false;
         options.tlsOption = options_.accTlsConfig;
@@ -139,13 +141,13 @@ Result MmcLocalServiceDefault::RegisterBm()
 
         req.blobMap_.insert(chunk_start, chunk_end);
         MMC_LOG_INFO("mmc meta blob rebuild count " << req.blobMap_.size());
-        MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
+        MMC_RETURN_ERROR(SyncCallMeta(req, resp, TIMEOUT_THIRTY), "bm register failed, bmRankId=" << req.rank_);
         MMC_RETURN_ERROR(resp.ret_,
                          "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
         chunk_start = chunk_end;
         req.blobMap_.clear();
     }
-    MMC_RETURN_ERROR(SyncCallMeta(req, resp, 30), "bm register failed, bmRankId=" << req.rank_);
+    MMC_RETURN_ERROR(SyncCallMeta(req, resp, TIMEOUT_THIRTY), "bm register failed, bmRankId=" << req.rank_);
     MMC_RETURN_ERROR(resp.ret_,
                      "bm register failed, bmRankId=" << req.rank_ << ", retCode=" << resp.ret_);
     MMC_LOG_INFO("bm register succeed, bmRankId=" << req.rank_ << ", type num=" << req.mediaType_.size());

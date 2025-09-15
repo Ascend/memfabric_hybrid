@@ -16,6 +16,7 @@
 namespace ock {
 namespace mmc {
 
+constexpr int RANK_ID_BIT_SHIFT = 32;
 class MmcMetaLeaseManager : public MmcReferable {
 public:
     Result Add(uint32_t id, uint32_t requestId, uint64_t ttl);
@@ -53,11 +54,11 @@ inline uint32_t MmcMetaLeaseManager::UseCount()
 
 uint64_t MmcMetaLeaseManager::GenerateClientId(uint32_t rankId, uint32_t requestId)
 {
-    return (static_cast<uint64_t>(rankId) << 32) | requestId;
+    return (static_cast<uint64_t>(rankId) << RANK_ID_BIT_SHIFT) | requestId;
 }
 uint32_t MmcMetaLeaseManager::RankId(uint64_t clientId)
 {
-    return static_cast<uint32_t>(clientId >> 32);  // 高32位
+    return static_cast<uint32_t>(clientId >> RANK_ID_BIT_SHIFT);  // 高32位
 }
 uint32_t MmcMetaLeaseManager::RequestId(uint64_t clientId)
 {

@@ -43,6 +43,9 @@ typedef enum {
     BF16 = 27
 } printDataType;
 
+constexpr int OUTPUT_FIELD_WIDTH = 10;
+constexpr int FLOAT_PRECISION = 6;
+
 #define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
 #define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
 #define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
@@ -142,7 +145,7 @@ template <typename T> void DoPrintData(const T *data, size_t count, size_t eleme
 {
     assert(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << data[i];
+        std::cout << std::setw(OUTPUT_FIELD_WIDTH) << data[i];
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }
@@ -153,7 +156,7 @@ void DoPrintHalfData(const aclFloat16 *data, size_t count, size_t elementsPerRow
 {
     assert(elementsPerRow != 0);
     for (size_t i = 0; i < count; ++i) {
-        std::cout << std::setw(10) << std::setprecision(6) << aclFloat16ToFloat(data[i]);
+        std::cout << std::setw(OUTPUT_FIELD_WIDTH) << std::setprecision(FLOAT_PRECISION) << aclFloat16ToFloat(data[i]);
         if (i % elementsPerRow == elementsPerRow - 1) {
             std::cout << std::endl;
         }

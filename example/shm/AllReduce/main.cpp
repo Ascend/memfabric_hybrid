@@ -19,6 +19,7 @@ static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
 static uint64_t gFlagOffset = 1024UL * 1024UL; // 前1M作为flag空间
 static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t);   // uint16_t represent half
+constexpr int HASH_HEX_WIDTH = 8;
 
 // FNV-1a 32-bit hash function
 uint32_t fnv1a_32(const void *data, size_t length) {
@@ -36,7 +37,7 @@ uint32_t fnv1a_32(const void *data, size_t length) {
 // 将哈希值转换为十六进制字符串表示
 std::string hashToHexString(uint32_t hash) {
     std::ostringstream hexStream;
-    hexStream << std::hex << std::setw(8) << std::setfill('0') << hash;
+    hexStream << std::hex << std::setw(HASH_HEX_WIDTH) << std::setfill('0') << hash;
     return hexStream.str();
 }
 

@@ -14,6 +14,7 @@ namespace ock {
 namespace mmc {
 Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
 {
+    const int threadCountBase = 4;
     std::lock_guard<std::mutex> guard(mutex_);
     if (started_) {
         MMC_LOG_INFO("MetaService " << name_ << " already started");
@@ -30,7 +31,7 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     std::string url{options_.discoveryURL};
     NetEngineOptions::ExtractIpPortFromUrl(url, netOptions);
     netOptions.name = name_;
-    netOptions.threadCount = 4;
+    netOptions.threadCount = threadCountBase;
     netOptions.rankId = 0;
     netOptions.startListener = true;
     netOptions.tlsOption = options_.accTlsConfig;

@@ -98,6 +98,7 @@ constexpr int32_t NUMBER_PRECISION = 3;
 constexpr int32_t WIDTH_FOUR = 4;
 constexpr int32_t WIDTH_TWO = 2;
 constexpr mode_t DEFAULT_DIR_MODE = 0750;
+constexpr int32_t BASE_YEAR_1900 = 1900;
 
 inline int32_t Func::MakeDir(const std::string &name)
 {
@@ -130,7 +131,7 @@ inline std::string Func::CurrentTimeString()
         return "";
     }
     std::stringstream ss;
-    ss << std::setfill('0') << std::setw(WIDTH_FOUR) << std::right << (tmInfo->tm_year + 1900) << "-"
+    ss << std::setfill('0') << std::setw(WIDTH_FOUR) << std::right << (tmInfo->tm_year + BASE_YEAR_1900) << "-"
        << std::setfill('0') << std::setw(WIDTH_TWO) << std::right << (tmInfo->tm_mon + 1) << "-" << std::setfill('0')
        << std::setw(WIDTH_TWO) << std::right << tmInfo->tm_mday << " ";
 

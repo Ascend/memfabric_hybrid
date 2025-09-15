@@ -9,6 +9,8 @@
 namespace ock {
 namespace mmc {
 
+constexpr int TIMEOUT_SECOND = 60;
+
 Result MmcMetaManager::Get(const std::string& key, uint64_t operateId, MmcBlobFilterPtr filterPtr,
                            MmcMemMetaDesc& objMeta)
 {
@@ -339,7 +341,7 @@ Result MmcMetaManager::CopyBlob(const MmcMemObjMetaPtr& objMeta, const MmcMemBlo
         BlobCopyRequest request{srcBlob, blobs[0]->GetDesc()};
         Response response;
         // rpc 到目标节点复制
-        ret = metaNetServer_->SyncCall(request.dstBlob_.rank_, request, response, 60);
+        ret = metaNetServer_->SyncCall(request.dstBlob_.rank_, request, response, TIMEOUT_SECOND);
         if (ret != MMC_OK || response.ret_ != MMC_OK) {
             MMC_LOG_ERROR("copy blob from rank " << request.srcBlob_.rank_ << " to rank " << request.dstBlob_.rank_
                                                  << " failed:" << ret << "," << response.ret_);

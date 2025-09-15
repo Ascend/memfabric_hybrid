@@ -12,6 +12,14 @@
 using namespace ock::mf;
 using namespace ock::mf::transport::host;
 
+constexpr int MIN_VALID_PORT = 1;
+constexpr int MAX_VALID_PORT = 65535;
+constexpr int MIN_VALID_MASK = 0;
+constexpr int MAX_VALID_MASK = 32;
+constexpr int PROT_MATCH_NUM = 1;
+constexpr int IP_MATCH_NUM = 2;
+constexpr int PORT_MATCH_NUM = 3;
+
 namespace {
 const std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
 const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
@@ -28,11 +36,11 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
         BM_LOG_ERROR("Failed to match nic, nic: " << nic);
         return BM_INVALID_PARAM;
     }
-    protocol = match[1].str();
-    ipStr = match[2].str();
-    std::string portStr = match[3].str();
+    protocol = match[PROT_MATCH_NUM].str();
+    ipStr = match[IP_MATCH_NUM].str();
+    std::string portStr = match[PORT_MATCH_NUM].str();
     port = std::stoi(portStr);
-    if (port < 1 || port > 65535) {
+    if (port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
         return BM_INVALID_PARAM;
     }
@@ -61,13 +69,13 @@ Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &
     std::string token;
 
     int mask = std::stoi(maskStr);
-    if (mask < 0 || mask > 32) {
+    if (mask < MIN_VALID_MASK || mask > MAX_VALID_MASK) {
         BM_LOG_ERROR("Failed to analysis nic mask is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
 
     port = std::stoi(portStr);
-    if (port < 1 || port > 65535) {
+    if (port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to analysis nic port is invalid: " << nic);
         return BM_INVALID_PARAM;
     }

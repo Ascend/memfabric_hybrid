@@ -14,9 +14,11 @@
 
 namespace ock {
 namespace mmc {
-#define NET_RETRY_COUNT 180
-#define TIMEOUT_60_SECONDS 60
-#define SYNC_CALL_INTERVAL 200
+constexpr int NET_RETRY_COUNT = 180;
+constexpr int TIMEOUT_60_SECONDS = 60;
+constexpr int SYNC_CALL_INTERVAL = 200;
+constexpr int FIRST_RETRY = 1;
+constexpr int RETRY_LOG_INTERVAL = 10;
 
 using ClientRetryHandler = std::function<int32_t(void)>;
 using ClientReplicateHandler = std::function<int32_t(const std::vector<uint32_t> &ops,
@@ -86,7 +88,7 @@ public:
             auto sleepTime = std::min(remaining, (int64_t)SYNC_CALL_INTERVAL);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
             retryCount++;
-            if (retryCount == 1 || retryCount % 10 == 0) {
+            if (retryCount == FIRST_RETRY || retryCount % RETRY_LOG_INTERVAL == 0) {
                 MMC_LOG_DEBUG("SyncCall retry " << retryCount << ", ret=" << ret);
             }
         } while (true);

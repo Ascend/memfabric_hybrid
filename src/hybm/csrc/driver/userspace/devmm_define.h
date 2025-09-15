@@ -7,25 +7,25 @@
 
 #include <cstdint>
 
-#define DEVMM_MAP_ALIGN_SIZE 0x200000U /* 2M */
-#define DEVMM_HEAP_SIZE (1UL << 30UL) /* 1G */
-#define DEVMM_SVM_MEM_SIZE (1UL << 43UL) /* 8T */
-#define DEVMM_SVM_MEM_START 0x100000000000ULL
+constexpr size_t DEVMM_MAP_ALIGN_SIZE = 0x200000U; /* 2M */
+constexpr size_t DEVMM_HEAP_SIZE = 1UL << 30UL; /* 1G */
+constexpr size_t DEVMM_SVM_MEM_SIZE = 1UL << 43UL; /* 8T */
+constexpr uint64_t DEVMM_SVM_MEM_START = 0x100000000000ULL;
 
-#define DV_ADVISE_HBM 0x0002
-#define DV_ADVISE_HUGEPAGE 0x0004
-#define DV_ADVISE_POPULATE 0x0008
-#define DV_ADVISE_LOCK_DEV 0x0080
-#define DV_ADVISE_MODULE_ID_BIT 24
-#define DV_ADVISE_MODULE_ID_MASK 0xff
-#define HCCL_HAL_MODULE_ID 3
-#define APP_MODULE_ID 33
+constexpr uint32_t DV_ADVISE_HBM = 0x0002;
+constexpr uint32_t DV_ADVISE_HUGEPAGE = 0x0004;
+constexpr uint32_t DV_ADVISE_POPULATE = 0x0008;
+constexpr uint32_t DV_ADVISE_LOCK_DEV = 0x0080;
+constexpr uint32_t DV_ADVISE_MODULE_ID_BIT = 24;
+constexpr uint32_t DV_ADVISE_MODULE_ID_MASK = 0xff;
+constexpr uint32_t HCCL_HAL_MODULE_ID = 3;
+constexpr uint32_t APP_MODULE_ID = 33;
 
-#define DEVMM_DDR_MEM 1
-#define DEVMM_HEAP_HUGE_PAGE (0xEFEF0002UL)
-#define DEVMM_HEAP_CHUNK_PAGE (0xEFEF0003UL)   // page_size is exchanged svm page_size
+constexpr uint32_t DEVMM_DDR_MEM = 1;
+constexpr uint32_t DEVMM_HEAP_HUGE_PAGE = 0xEFEF0002UL;
+constexpr uint32_t DEVMM_HEAP_CHUNK_PAGE = 0xEFEF0003UL;   // page_size is exchanged svm page_size
 
-#define DEVMM_MAX_PHY_DEVICE_NUM 64
+constexpr int DEVMM_MAX_PHY_DEVICE_NUM = 64;
 
 #ifndef ALIGN_DOWN
 #define ALIGN_DOWN(val, al) ((val) & ~((al) - 1))
@@ -35,13 +35,13 @@
 #define ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
 #endif
 
-#define MEM_SVM_VAL            0X0
-#define MEM_DEV_VAL            0X1
-#define MEM_HOST_VAL           0X2
-#define MEM_DVPP_VAL           0X3
-#define MEM_HOST_AGENT_VAL     0X4
-#define MEM_RESERVE_VAL        0X5
-#define MEM_MAX_VAL            0X6
+constexpr uint32_t MEM_SVM_VAL = 0x0;
+constexpr uint32_t MEM_DEV_VAL = 0x1;
+constexpr uint32_t MEM_HOST_VAL = 0x2;
+constexpr uint32_t MEM_DVPP_VAL = 0x3;
+constexpr uint32_t MEM_HOST_AGENT_VAL = 0x4;
+constexpr uint32_t MEM_RESERVE_VAL = 0x5;
+constexpr uint32_t MEM_MAX_VAL = 0x6;
 
 enum devmm_heap_sub_type {
     SUB_SVM_TYPE = 0x0,     /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */

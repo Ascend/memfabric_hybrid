@@ -11,6 +11,7 @@
 
 namespace ock {
 namespace mmc {
+constexpr int CLIENT_THREAD_COUNT = 2;
 MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
 std::mutex MmcClientDefault::gClientHandlerMtx;
 
@@ -34,7 +35,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
     if (!tmpNetClient->Status()) {
         NetEngineOptions options;
         options.name = name_;
-        options.threadCount = 2;
+        options.threadCount = CLIENT_THREAD_COUNT;
         options.rankId = rankId_;
         options.startListener = false;
         options.tlsOption = config.tlsConfig;

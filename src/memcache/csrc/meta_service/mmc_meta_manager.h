@@ -23,6 +23,7 @@ namespace mmc {
 
 static const uint16_t NUM_BUCKETS = 29;
 constexpr uint32_t META_MAMAGER_MTX_NUM = 29;
+constexpr int METAMGR_POOL_BASE = 4;
 
 struct MmcMemMetaDesc {
     uint16_t prot_{0};
@@ -88,7 +89,7 @@ public:
         MMC_ASSERT_RETURN(globalAllocator_ != nullptr, MMC_MALLOC_FAILED);
         metaContainer_ = MmcMetaContainer<std::string, MmcMemObjMetaPtr>::Create();
         MMC_ASSERT_RETURN(metaContainer_ != nullptr, MMC_MALLOC_FAILED);
-        threadPool_ = MmcMakeRef<MmcThreadPool>("metamgr_pool", 4);
+        threadPool_ = MmcMakeRef<MmcThreadPool>("metamgr_pool", METAMGR_POOL_BASE);
         MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
         MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
         started_ = true;

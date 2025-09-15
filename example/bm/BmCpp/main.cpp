@@ -37,7 +37,16 @@ const int32_t COPY_SIZE = 4096;
 const int32_t COPY_2D_HEIGHT = 2;
 const int32_t COPY_2D_SIZE = COPY_SIZE * COPY_2D_HEIGHT;
 const uint64_t GVA_SIZE = 1024ULL * 1024 * 1024;
+const int32_t RANDOM_MULTIPLIER = 23;
+const int32_t RANDOM_INCREMENT = 17;
+const int32_t NEGATIVE_RATIO_DIVISOR = 3;
 BarrierUtil *g_barrier = nullptr;
+
+constexpr int RANK_SIZE_ARG_INDEX = 1;
+constexpr int RANK_NUM_ARG_INDEX = 2;
+constexpr int RANK_START_ARG_INDEX = 3;
+constexpr int IPPORT_ARG_INDEX = 4;
+constexpr int AUTO_RANK_ARG_INDEX = 5;
 
 void GenerateData(void *ptr, int32_t rank)
 {
@@ -45,8 +54,8 @@ void GenerateData(void *ptr, int32_t rank)
     static int32_t mod = INT16_MAX;
     int32_t base = rank;
     for (uint32_t i = 0; i < COPY_SIZE / sizeof(int); i++) {
-        base = (base * 23 + 17) % mod;
-        if ((i + rank) % 3 == 0) {
+        base = (base * RANDOM_MULTIPLIER + RANDOM_INCREMENT) % mod;
+        if ((i + rank) % NEGATIVE_RATIO_DIVISOR == 0) {
             arr[i] = -base; // 构造三分之一的负数
         } else {
             arr[i] = base;
@@ -235,12 +244,12 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
 
 int main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankNum = atoi(argv[2]);
-    int rankStart = atoi(argv[3]);
-    std::string ipport = argv[4];
+    int rankSize = atoi(argv[RANK_SIZE_ARG_INDEX]);
+    int rankNum = atoi(argv[RANK_NUM_ARG_INDEX]);
+    int rankStart = atoi(argv[RANK_START_ARG_INDEX]);
+    std::string ipport = argv[IPPORT_ARG_INDEX];
     int autoRank = 0;
-    if (argc >5) autoRank = atoi(argv[5]);
+    if (argc > AUTO_RANK_ARG_INDEX) autoRank = atoi(argv[AUTO_RANK_ARG_INDEX]);
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
         " input_ip:" << ipport << " autoRank:" << autoRank);

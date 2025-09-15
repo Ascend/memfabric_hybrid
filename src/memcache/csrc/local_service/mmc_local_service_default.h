@@ -12,6 +12,7 @@
 
 namespace ock {
 namespace mmc {
+constexpr int TIMEOUT_THOUSAND = 1000;
 class MmcLocalServiceDefault : public MmcLocalService {
 public:
     explicit MmcLocalServiceDefault(const std::string &name) : name_(name), options_() {}
@@ -42,7 +43,7 @@ public:
     template <typename REQ, typename RESP>
     Result SyncCallMeta(const REQ &req, RESP &resp, int32_t timeoutInSecond)
     {
-        return metaNetClient_->SyncCall(req, resp, timeoutInSecond * 1000);
+        return metaNetClient_->SyncCall(req, resp, timeoutInSecond * TIMEOUT_THOUSAND);
     }
 
     inline MetaNetClientPtr GetMetaClient() const;

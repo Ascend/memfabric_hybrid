@@ -19,6 +19,10 @@ static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
 static uint32_t ctxSize = 16;
+static uint32_t hostRankId = 0;
+static uint32_t hostRankSize = 1;
+static uint32_t hostgInputLen = 2;
+static uint32_t hostgNpuMallocSpace = 3;
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
@@ -29,17 +33,17 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize)); // size = 32
     CHECK_ACL(aclrtMallocHost((void **)(&yHost), outputSize)); // size = 48
     CHECK_ACL(aclrtMalloc((void **)&xDevice, inputSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    xHost[0] = rankId;
-    xHost[1] = rankSize;
-    xHost[2] = gInputLen;
-    xHost[3] = gNpuMallocSpace;
+    xHost[hostRankId] = rankId;
+    xHost[hostRankSize] = rankSize;
+    xHost[hostgInputLen] = gInputLen;
+    xHost[hostgNpuMallocSpace] = gNpuMallocSpace;
 
     uint64_t metaAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(yHost[0], 0);
-    CHECK_EQUALS(yHost[1], rankId);
-    CHECK_EQUALS(yHost[2], rankSize);
-    CHECK_EQUALS(yHost[3], ctxSize);
+    CHECK_EQUALS(yHost[hostRankId], 0);
+    CHECK_EQUALS(yHost[hostRankSize], rankId);
+    CHECK_EQUALS(yHost[hostgInputLen], rankSize);
+    CHECK_EQUALS(yHost[hostgNpuMallocSpace], ctxSize);
 
     CHECK_ACL(aclrtMemcpy(xDevice, inputSize, xHost, inputSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_all_shift_do(stream, gva, xDevice);
@@ -47,8 +51,8 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     sleep(1);
 
     CHECK_ACL(aclrtMemcpy(xHost, outputSize, gva + rankId * gNpuMallocSpace, outputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(xHost[0], (rankId + rankSize - 1) % rankSize);
-    CHECK_EQUALS(xHost[4], rankId);
+    CHECK_EQUALS(xHost[hostRankId], (rankId + rankSize - 1) % rankSize);
+    CHECK_EQUALS(xHost[gInputLen], rankId);
 
     CHECK_ACL(aclrtFree(xDevice));
     CHECK_ACL(aclrtFreeHost(xHost));

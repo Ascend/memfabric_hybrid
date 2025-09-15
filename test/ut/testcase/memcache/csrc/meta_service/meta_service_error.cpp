@@ -191,7 +191,7 @@ TEST_F(TestMmcServiceError, metaService)
     mmcs_meta_service_stop(meta_service);
 }
 
-#define  MF_SIZE 1048576000
+constexpr size_t MF_SIZE = 1048576000;
 
 TEST_F(TestMmcServiceError, metaServiceRebuild)
 {

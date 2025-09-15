@@ -11,6 +11,8 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+constexpr int MR_INFO_ACCESS = 7;
+constexpr int WAIT_TIME_MS = 300;
 JoinableRanksQpManager::JoinableRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                                sockaddr_in devNet) noexcept
     : DeviceQpManager(deviceId, rankId, rankCount, devNet, HYBM_ROLE_PEER)
@@ -167,7 +169,7 @@ void JoinableRanksQpManager::ServerSideRunLoop() noexcept
 
     while (running_) {
         std::unique_lock<std::mutex> uniqueLock{mutex_};
-        cond_.wait_for(uniqueLock, std::chrono::milliseconds(300));
+        cond_.wait_for(uniqueLock, std::chrono::milliseconds(WAIT_TIME_MS));
         if (newClients_.empty() && removedClientRanks_.empty() && running_) {
             cond_.wait_for(uniqueLock, std::chrono::minutes(1));
         }
@@ -204,7 +206,7 @@ void JoinableRanksQpManager::ClientSideRunLoop() noexcept
     DlAclApi::AclrtSetDevice(deviceId_);
     while (running_) {
         std::unique_lock<std::mutex> uniqueLock{mutex_};
-        cond_.wait_for(uniqueLock, std::chrono::milliseconds(300));
+        cond_.wait_for(uniqueLock, std::chrono::milliseconds(WAIT_TIME_MS));
         if (newServers_.empty() && removedServerRanks_.empty() && running_) {
             cond_.wait_for(uniqueLock, std::chrono::minutes(1));
         }
@@ -479,7 +481,7 @@ int JoinableRanksQpManager::RegisterLocalMrToQpHandle(void *qpHandle) noexcept
         HccpMrInfo info{};
         info.addr = reinterpret_cast<void *>(mr.regAddress);
         info.size = mr.size;
-        info.access = 7;
+        info.access = MR_INFO_ACCESS;
         auto ret = DlHccpApi::RaMrReg(qpHandle, info);
         if (ret != 0) {
             BM_LOG_ERROR("register MR failed: " << ret);

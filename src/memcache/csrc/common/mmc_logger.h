@@ -20,6 +20,7 @@ namespace ock {
 namespace mmc {
 #define OBJ_MAX_LOG_FILE_SIZE 20971520 // 每个日志文件的最大大小
 #define OBJ_MAX_LOG_FILE_NUM 50
+constexpr int MICROSECOND_WIDTH = 6;
 
 using ExternalLog = void (*)(int, const char *);
 using ExternalAuditLog = void (*)(const char *);
@@ -96,8 +97,8 @@ public:
         time_t timeStamp = tv.tv_sec;
         struct tm localTime {};
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
-            std::cout << strTime << std::setw(6) << std::setfill('0') << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " " << oss.str() << std::endl;
+            std::cout << strTime << std::setw(MICROSECOND_WIDTH) << std::setfill('0') << tv.tv_usec << " "
+                      << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str() << std::endl;
         } else {
             std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
                       << std::endl;

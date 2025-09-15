@@ -648,7 +648,8 @@ std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string>
 bool MmcacheStore::Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes)
 {
     const auto layerNum = buffers.size();
-    if (layerNum < 2) {
+    const int layerNumLim = 2;
+    if (layerNum < layerNumLim) {
         return false;
     }
 

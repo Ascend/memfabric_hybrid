@@ -10,6 +10,7 @@
 namespace ock {
 namespace smem {
 constexpr auto CONNECT_RETRY_MAX_TIMES = 60;
+constexpr int DECIMAL_BASE = 10;
 
 class ClientWaitContext : public ClientCommonContext {
 public:
@@ -290,7 +291,7 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    value = strtol(data.c_str(), nullptr, 10);
+    value = strtol(data.c_str(), nullptr, DECIMAL_BASE);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -345,7 +346,7 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    newSize = strtoul(data.c_str(), nullptr, 10);
+    newSize = strtol(data.c_str(), nullptr, DECIMAL_BASE);
 
     return StoreErrorCode::SUCCESS;
 }

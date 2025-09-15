@@ -271,10 +271,10 @@ public:
         AddStrConf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
         AddIntConf(OKC_MMC_CLIENT_RETRY_MILLISECONDS,
-                   VIntRange::Create(OKC_MMC_CLIENT_RETRY_MILLISECONDS.first, 0, 600000));
+                   VIntRange::Create(OKC_MMC_CLIENT_RETRY_MILLISECONDS.first, MIN_RETRY_MS, MAX_RETRY_MS));
         AddBoolConf(OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA, VNoCheck::Create());
         AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS,
-            VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, 1, 600));
+            VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, MIN_TIMEOUT_SEC, MAX_TIMEOUT_SEC));
 
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL, VNoCheck::Create());
         AddBoolConf(OCK_MMC_HCOM_TLS_ENABLE, VNoCheck::Create());

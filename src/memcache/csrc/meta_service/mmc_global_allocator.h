@@ -11,6 +11,8 @@
 namespace ock {
 namespace mmc {
 
+constexpr int LEVEL_BASE = 100;
+
 using MmcMemPoolInitInfo = std::map<MmcLocation, MmcLocalMemlInitInfo>;
 
 class MmcGlobalAllocator : public MmcReferable {
@@ -192,7 +194,7 @@ public:
         GetUsedInfo(totalSize, usedSize);
         for (uint32_t i = 0; i < MEDIA_NONE; i++) {
             // 只要一个类型的池触发水位，即淘汰
-            if (usedSize[i] * 100 > totalSize[i] * level) {
+            if (usedSize[i] * LEVEL_BASE > totalSize[i] * level) {
                 return true;
             }
         }

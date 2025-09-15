@@ -74,6 +74,12 @@ constexpr int MAX_WORLD_SIZE = 1024;
 constexpr int MIN_EVICT_THRESHOLD = 1;
 constexpr int MAX_EVICT_THRESHOLD = 100;
 
+constexpr int MIN_RETRY_MS = 0;
+constexpr int MAX_RETRY_MS = 600000;
+
+constexpr int MIN_TIMEOUT_SEC = 1;
+constexpr int MAX_TIMEOUT_SEC = 600;
+
 constexpr uint64_t MAX_DRAM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB
 constexpr uint64_t MAX_HBM_SIZE = 1024ULL * 1024ULL * 1024ULL * 1024ULL;  // 1TB
 

@@ -9,6 +9,8 @@ using namespace ock::mmc;
 
 namespace {
 constexpr uint32_t MAX_BATCH_COUNT = 16 * 1024;
+constexpr int BUF_TYPE_BASE = 2;
+constexpr int MAX_KEY_LEN = 256;
 }
 
 MMC_API int32_t mmcc_init(mmc_client_config_t *config)
@@ -44,7 +46,7 @@ MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options optio
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(buf != nullptr, "invalid param, buf is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN((void *)buf->addr != nullptr, "invalid param, buf addr is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
@@ -61,7 +63,7 @@ MMC_API int32_t mmcc_get(const char *key, mmc_buffer *buf, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(buf != nullptr, "invalid param, buf is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(buf->addr != 0, "invalid param, buf addr is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
@@ -75,7 +77,7 @@ MMC_API int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(info != nullptr, "invalid param, info is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
 
@@ -105,7 +107,7 @@ MMC_API int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_
             MMC_LOG_ERROR("Get invalid key nullptr on idx [" << i << "]");
             return MMC_INVALID_PARAM;
         }
-        if (strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+        if (strlen(keys[i]) == 0 || strlen(keys[i]) > MAX_KEY_LEN) {
             MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
             invalids.emplace_back(i);
             continue;
@@ -135,7 +137,7 @@ MMC_API mmc_location_t mmcc_get_location(const char *key, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", {});
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", {});
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", {});
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", {});
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", {});
 
     return MmcClientDefault::GetInstance()->GetLocation(key, flags);
@@ -146,7 +148,7 @@ MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     MMC_RETURN_ERROR(MmcClientDefault::GetInstance()->Remove(key, flags), MmcClientDefault::GetInstance()->Name()
         << " remove key " << key << " failed!");
     return MMC_OK;
@@ -173,7 +175,7 @@ MMC_API int32_t mmcc_batch_remove(const char **keys, const uint32_t keys_count, 
             MMC_LOG_ERROR("Get invalid key nullptr on idx [" << i << "]");
             return MMC_INVALID_PARAM;
         }
-        if (strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+        if (strlen(keys[i]) == 0 || strlen(keys[i]) > MAX_KEY_LEN) {
             MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
             invalids.emplace_back(i);
             continue;
@@ -205,7 +207,7 @@ MMC_API int32_t mmcc_exist(const char *key, uint32_t flags)
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
     Result result = MmcClientDefault::GetInstance()->IsExist(key, flags);
     if (result == MMC_UNMATCHED_KEY) {
         // not exist, but does not need write error log
@@ -236,7 +238,7 @@ MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, i
             MMC_LOG_ERROR("Get invalid key nullptr on idx [" << i << "]");
             return MMC_INVALID_PARAM;
         }
-        if (strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+        if (strlen(keys[i]) == 0 || strlen(keys[i]) > MAX_KEY_LEN) {
             MMC_LOG_WARN("Get invalid key: \"" << keys[i] << "\" on idx [" << i << "]");
             invalids.emplace_back(i);
             continue;
@@ -282,7 +284,7 @@ MMC_API int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffe
             MMC_LOG_ERROR("Get invalid key nullptr on idx [" << i << "]");
             return MMC_INVALID_PARAM;
         }
-        if (strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+        if (strlen(keys[i]) == 0 || strlen(keys[i]) > MAX_KEY_LEN) {
             MMC_LOG_ERROR("Remove invalid key: " << keys[i]);
             return MMC_INVALID_PARAM;  // 这个错误属于入参不合法，直接给调用者返回错误
         }
@@ -319,11 +321,11 @@ MMC_API int32_t mmcc_batch_put(const char** keys, uint32_t keys_count, const mmc
             MMC_LOG_ERROR("Get invalid key nullptr on idx [" << i << "]");
             return MMC_INVALID_PARAM;
         }
-        if (strlen(keys[i]) == 0 || strlen(keys[i]) > 256) {
+        if (strlen(keys[i]) == 0 || strlen(keys[i]) > MAX_KEY_LEN) {
             MMC_LOG_ERROR("Remove invalid key: " << keys[i]);
             return MMC_INVALID_PARAM;  // 这个错误属于入参不合法，直接给调用者返回错误
         }
-        if (bufs == nullptr || bufs[i].addr == 0 || bufs[i].type >= 2 || bufs[i].dimType >= 2) {
+        if (bufs == nullptr || bufs[i].addr == 0 || bufs[i].type >= BUF_TYPE_BASE || bufs[i].dimType >= BUF_TYPE_BASE) {
             MMC_LOG_ERROR("Remove invalid buf with key: " << keys[i] << ", type: " << bufs[i].type
                                                           << ", dim:" << bufs[i].dimType);
             return MMC_INVALID_PARAM;

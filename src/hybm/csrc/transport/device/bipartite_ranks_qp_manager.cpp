@@ -12,6 +12,8 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+constexpr int INFO_CONN_LIMIT = 1024;
+constexpr int SLEEP_DURATION = 5;
 BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                                  sockaddr_in devNet, bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
@@ -189,7 +191,7 @@ int BipartiteRanksQpManager::ProcessServerAddWhitelistTask() noexcept
 
         HccpSocketWhiteListInfo info{};
         info.remoteIp.addr = it->second;
-        info.connLimit = 1024;
+        info.connLimit = INFO_CONN_LIMIT;
         bzero(info.tag, sizeof(info.tag));
         whitelist.emplace_back(info);
         auto res = connections_.emplace(it->first, ConnectionChannel{Ip2Net(info.remoteIp.addr), serverSocketHandle_});
@@ -230,7 +232,7 @@ int BipartiteRanksQpManager::ProcessClientConnectSocketTask() noexcept
         return 0;
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_DURATION));
     auto remotes = std::move(currTask.remoteAddress);
     currTask.status.exist = false;
     uniqueLock.unlock();
@@ -299,7 +301,7 @@ int BipartiteRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     currTask.status.exist = false;
     auto ip2rank = std::move(currTask.ip2rank);
     if (currTask.status.failedTimes > 0L) {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(SLEEP_DURATION));
     }
 
     uint32_t successCount = 0;

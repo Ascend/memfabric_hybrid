@@ -11,6 +11,15 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+constexpr int MR_INFO_ACCESS = 7;
+constexpr uint32_t QP_VERSION = 1;
+constexpr uint32_t SEND_CQ_DEPTH = 8192;
+constexpr uint32_t RECV_DQ_DEPTH = 128;
+constexpr uint32_t MAX_RECV_SGE = 1;
+constexpr uint32_t MAX_RECV_WR = 128;
+constexpr uint32_t MAX_SEND_WR = 8192;
+constexpr uint32_t CQ_CUSTOM_FLAG = 1;
+constexpr int COPY_INFO_SL = 4;
 FixedRanksQpManager::FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                          sockaddr_in devNet) noexcept
     : DeviceQpManager(deviceId, rankId, rankCount, devNet, HYBM_ROLE_PEER)
@@ -361,7 +370,7 @@ int FixedRanksQpManager::CreateQpWaitingReady(std::unordered_map<uint32_t, AiCor
             HccpMrInfo info{};
             info.addr = (void *)(ptrdiff_t)pos->second.address;
             info.size = pos->second.size;
-            info.access = 7;
+            info.access = MR_INFO_ACCESS;
             ret = DlHccpApi::RaMrReg(it->second.qpHandle, info);
             if (ret != 0) {
                 BM_LOG_ERROR("register MR failed: " << ret);
@@ -403,15 +412,15 @@ int FixedRanksQpManager::CreateOneQp(AiCoreConnChannel &channel) noexcept
 {
     HccpQpExtAttrs attr{};
     attr.qpMode = NETWORK_OFFLINE;
-    attr.version = 1;
-    attr.cqAttr.sendCqDepth = 8192;
-    attr.cqAttr.recvDqDepth = 128;
-    attr.qp_attr.cap.max_recv_sge = 1;
-    attr.qp_attr.cap.max_recv_wr = 128;
-    attr.qp_attr.cap.max_recv_sge = 1;
+    attr.version = QP_VERSION;
+    attr.cqAttr.sendCqDepth = SEND_CQ_DEPTH;
+    attr.cqAttr.recvDqDepth = RECV_DQ_DEPTH;
+    attr.qp_attr.cap.max_recv_sge = MAX_RECV_SGE;
+    attr.qp_attr.cap.max_recv_wr = MAX_RECV_WR;
+    attr.qp_attr.cap.max_recv_sge = MAX_RECV_SGE;
     attr.qp_attr.qp_type = IBV_QPT_RC;
-    attr.qp_attr.cap.max_send_wr = 8192;
-    attr.data_plane_flag.bs.cq_cstm = 1;
+    attr.qp_attr.cap.max_send_wr = MAX_SEND_WR;
+    attr.data_plane_flag.bs.cq_cstm = CQ_CUSTOM_FLAG;
     auto ret = DlHccpApi::RaQpAiCreate(rdmaHandle_, attr, channel.aiQpInfo, channel.qpHandle);
     return ret;
 }
@@ -452,8 +461,8 @@ int FixedRanksQpManager::FillQpInfo() noexcept
             return BM_ERROR;
         }
 
-        CopyAiWQInfo(copyInfo->sq[it->first], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, 4);
-        CopyAiWQInfo(copyInfo->rq[it->first], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, 4);
+        CopyAiWQInfo(copyInfo->sq[it->first], pos->second.aiQpInfo.data_plane_info.sq, DBMode::HW_DB, COPY_INFO_SL);
+        CopyAiWQInfo(copyInfo->rq[it->first], pos->second.aiQpInfo.data_plane_info.rq, DBMode::SW_DB, COPY_INFO_SL);
         CopyAiCQInfo(copyInfo->scq[it->first], pos->second.aiQpInfo.data_plane_info.scq, DBMode::HW_DB);
         CopyAiCQInfo(copyInfo->rcq[it->first], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }

@@ -10,6 +10,8 @@ thread_local std::string SpdLogger::gLastErrorMessage;
 constexpr int ROTATION_FILE_SIZE_MAX = 500 * 1024 * 1024; // 500MB
 constexpr int ROTATION_FILE_SIZE_MIN = 1 * 1024 * 1024;   // 1MB
 constexpr int ROTATION_FILE_COUNT_MAX = 50;
+constexpr mode_t LOG_FILE_CREATE_MODE = 0640;
+constexpr mode_t LOG_FILE_READ_ONLY_MODE = 0440;
 
 int SpdLogger::ValidateParams(int minLogLevel, const std::string& path, int rotationFileSize, int rotationFileCount)
 {
@@ -118,17 +120,17 @@ void SpdLogger::Flush(void)
 
 void SpdLogger::BeforeOpenCallback(const std::string &filename)
 {
-    chmod(filename.c_str(), 0640);
+    chmod(filename.c_str(), LOG_FILE_CREATE_MODE);
 }
 
 void SpdLogger::AfterOpenCallback(const std::string &filename, std::FILE *file_stream)
 {
-    chmod(filename.c_str(), 0440);
+    chmod(filename.c_str(), LOG_FILE_READ_ONLY_MODE);
 }
 
 void SpdLogger::AfterCloseCallback(const std::string &filename)
 {
-    chmod(filename.c_str(), 0440);
+    chmod(filename.c_str(), LOG_FILE_READ_ONLY_MODE);
 }
 
 }

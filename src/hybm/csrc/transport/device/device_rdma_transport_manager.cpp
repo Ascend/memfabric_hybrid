@@ -20,6 +20,10 @@ namespace transport {
 namespace device {
 
 const uint32_t RDMA_POLL_TIMES_MAX = 1000;
+constexpr int RT_STARS_SQE_TYPE_WRITE_VALUE = 8;
+constexpr int RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT = 3;
+constexpr int RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND = 2;
+constexpr int RT_STARS_SQE_TYPE_INVALID = 63;
 
 RdmaTransportManager::~RdmaTransportManager()
 {
@@ -677,7 +681,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
 
     auto taskId = taskIdGenerator.fetch_add(1);
     memset(sqe, 0, sizeof(rtStarsSqe_t));
-    sqe->header.type = 8;  // RT_STARS_SQE_TYPE_WRITE_VALUE;
+    sqe->header.type = RT_STARS_SQE_TYPE_WRITE_VALUE;  // RT_STARS_SQE_TYPE_WRITE_VALUE;
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.post_p = RT_STARS_SQE_INT_DIR_NO;
@@ -687,13 +691,13 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
 
     sqe->va = 0U;
     sqe->kernel_credit = RT_STARS_DEFAULT_KERNEL_CREDIT;
-    sqe->awsize = 3;    // RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
-    sqe->sub_type = 2;  // RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND;
+    sqe->awsize = RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;    // RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
+    sqe->sub_type = RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND;  // RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND;
 
     uint64_t dbVal = rspInfo.db.db_info;
     uint64_t dbAddr = GetRoceDbAddrForRdmaDbSendTask();
     if (dbAddr == 0ULL) {
-        sqe->header.type = 63;  // RT_STARS_SQE_TYPE_INVALID;
+        sqe->header.type = RT_STARS_SQE_TYPE_INVALID;  // RT_STARS_SQE_TYPE_INVALID;
         BM_LOG_ERROR("generate db address is zero.");
         return;
     }

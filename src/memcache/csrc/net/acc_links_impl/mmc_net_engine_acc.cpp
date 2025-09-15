@@ -17,6 +17,7 @@
 namespace ock {
 namespace mmc {
 constexpr const int16_t NET_SERVER_MAGIC = 3867;
+constexpr const int NET_POOL_BASE = 4;
 
 Result NetEngineAcc::Start(const NetEngineOptions &options)
 {
@@ -49,7 +50,7 @@ Result NetEngineAcc::Start(const NetEngineOptions &options)
     /* call start inner */
     MMC_RETURN_ERROR(StartInner(), "NetEngineAcc " << options.name << " start error");
 
-    threadPool_ = MmcMakeRef<MmcThreadPool>("net_pool", 4);
+    threadPool_ = MmcMakeRef<MmcThreadPool>("net_pool", NET_POOL_BASE);
     MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
     MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
 

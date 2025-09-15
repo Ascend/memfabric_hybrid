@@ -27,6 +27,8 @@ namespace ock {
 namespace smem {
 using ExternalLog = void (*)(int, const char *);
 
+constexpr int MICROSECOND_WIDTH = 6;
+
 enum LogLevel : int {
     DEBUG_LEVEL = 0,
     INFO_LEVEL,
@@ -83,8 +85,8 @@ public:
         time_t timeStamp = tv.tv_sec;
         struct tm localTime{};
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", localtime_r(&timeStamp, &localTime)) != 0) {
-            std::cout << strTime << std::setw(6) << std::setfill('0') << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " " << oss.str() << std::endl;
+            std::cout << strTime << std::setw(MICROSECOND_WIDTH) << std::setfill('0') << tv.tv_usec << " "
+                      << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str() << std::endl;
         } else {
             std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " " << oss.str()
                       << std::endl;

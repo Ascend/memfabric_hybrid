@@ -19,6 +19,7 @@
 namespace ock {
 namespace mmc {
 constexpr float EPSINON = 0.000001;
+constexpr int DECIMAL_DIGITS = 10;
 
 void OckTrimString(std::string &str);
 
@@ -44,7 +45,7 @@ inline bool OckStoULL(const std::string &str, uint64_t &value)
 {
     char *remain = nullptr;
     errno = 0;
-    value = std::strtoull(str.c_str(), &remain, 10);
+    value = std::strtoull(str.c_str(), &remain, DECIMAL_DIGITS);
     if (remain == nullptr || strnlen(remain, PATH_MAX) > 0 || (value == ULLONG_MAX && errno == ERANGE)) {
         return false;
     }
