@@ -225,7 +225,6 @@ private:
     static rtIpcDestroyMemoryNameFunc pRtIpcDestroyMemoryName;
     static rtEnableP2PFunc pRtEnableP2P;
     static rtDisableP2PFunc pRtDisableP2P;
-
 };
 }
 }

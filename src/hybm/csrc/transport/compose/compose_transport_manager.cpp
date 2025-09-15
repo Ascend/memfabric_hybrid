@@ -7,7 +7,6 @@
 #include <string>
 
 #include "hybm_logger.h"
-#include "compose_helper.h"
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
 #include "hybm_str_helper.h"

@@ -458,7 +458,7 @@ int FixedRanksQpManager::FillQpInfo() noexcept
         CopyAiCQInfo(copyInfo->rcq[it->first], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }
 
-    auto pointer = (ptrdiff_t)(void *)(qpInfo_);
+    auto pointer = (size_t)(void *)(qpInfo_);
     pointer += sizeof(AiQpRMAQueueInfo);
     copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
 

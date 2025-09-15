@@ -442,7 +442,8 @@ Result MmcClientDefault::IsExist(const std::string &key, uint32_t flags) const
     return response.ret_;
 }
 
-Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, uint32_t flags) const
+Result MmcClientDefault::BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results,
+                                      uint32_t flags) const
 {
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);
 
@@ -492,7 +493,8 @@ Result MmcClientDefault::Query(const std::string& key, mmc_data_info& query_info
     return MMC_OK;
 }
 
-Result MmcClientDefault::BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const
+Result MmcClientDefault::BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos,
+                                    uint32_t flags) const
 {
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);
 

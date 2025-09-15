@@ -4,8 +4,8 @@
 #ifndef MF_HYBRID_HCOM_SERVICE_C_DEFINE_H
 #define MF_HYBRID_HCOM_SERVICE_C_DEFINE_H
 
-#include "hcom_c_define.h"
 #include <stdint.h>
+#include "hcom_c_define.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,7 +83,7 @@ typedef int (*Hcom_TlsGetCertCb)(const char *name, char **certPath);
  * @param erase            [out] the erase function
  */
 typedef int (*Hcom_TlsGetPrivateKeyCb)(
-        const char *name, char **priKeyPath, char **keyPass, Hcom_TlsKeyPassErase *erase);
+    const char *name, char **priKeyPath, char **keyPass, Hcom_TlsKeyPassErase *erase);
 
 /*
  * @brief Get the CA and verify

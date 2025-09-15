@@ -21,7 +21,7 @@ int32_t HostDataOpSDMA::Initialize() noexcept
     }
 
     if (HybmGvmHasInited()) {
-        uint32_t devId = HybmGetInitedLogicDeviceId();
+        uint32_t devId = static_cast<uint32_t>(HybmGetInitedLogicDeviceId());
         hybmStream_ = std::make_shared<HybmStream>(devId, 0, 0);
         BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_MALLOC_FAILED);
 
@@ -293,7 +293,7 @@ int HostDataOpSDMA::CopyLH2GD2d(void* gvaAddr, uint64_t dpitch, const void* host
 }
 
 int HostDataOpSDMA::CopyLD2GD2d(void *gvaAddr, uint64_t dpitch, const void *deviceAddr, uint64_t spitch,
-                   size_t width, uint64_t height, void *stream) noexcept
+                                size_t width, uint64_t height, void *stream) noexcept
 {
     void *st = stream_;
     if (stream != nullptr) {
@@ -323,7 +323,7 @@ int HostDataOpSDMA::CopyLD2GD2d(void *gvaAddr, uint64_t dpitch, const void *devi
 }
 
 int HostDataOpSDMA::CopyGD2LH2d(void *hostAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch,
-                 size_t width, uint64_t height, void *stream) noexcept
+                                size_t width, uint64_t height, void *stream) noexcept
 {
     void *copyDevice;
     auto ret = DlAclApi::AclrtMalloc(&copyDevice, width * height, 0);
@@ -351,7 +351,7 @@ int HostDataOpSDMA::CopyGD2LH2d(void *hostAddr, uint64_t dpitch, const void *gva
 }
 
 int HostDataOpSDMA::CopyGD2LD2d(void *deviceAddr, uint64_t dpitch, const void *gvaAddr, uint64_t spitch,
-                   size_t width, uint64_t height, void *stream) noexcept
+                                size_t width, uint64_t height, void *stream) noexcept
 {
     void *st = stream_;
     if (stream != nullptr) {
@@ -794,9 +794,11 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
     sqe->dst_addr_high = static_cast<uint32_t>(
             (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
-    BM_LOG_DEBUG("[TEST] submit task"<< " src:" << task.sqe.memcpyAsyncSqe.src_addr_low << "~" << task.sqe.memcpyAsyncSqe.src_addr_high
-                << " dest:" << task.sqe.memcpyAsyncSqe.dst_addr_low << "~" << task.sqe.memcpyAsyncSqe.dst_addr_high
-                << " length:" << task.sqe.memcpyAsyncSqe.length);
+    BM_LOG_DEBUG("[TEST] submit task"<< " src:" << task.sqe.memcpyAsyncSqe.src_addr_low << "~"
+                                     << task.sqe.memcpyAsyncSqe.src_addr_high
+                                     << " dest:" << task.sqe.memcpyAsyncSqe.dst_addr_low << "~"
+                                     << task.sqe.memcpyAsyncSqe.dst_addr_high
+                                     << " length:" << task.sqe.memcpyAsyncSqe.length);
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
     auto ret = hybmStream_->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);

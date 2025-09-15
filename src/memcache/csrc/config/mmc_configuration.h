@@ -169,7 +169,8 @@ private:
 
 class MetaServiceConfig final : public Configuration {
 public:
-    void LoadDefault() override {
+    void LoadDefault() override
+    {
         using namespace ConfConstant;
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
         AddStrConf(OCK_MMC_META_SERVICE_CONFIG_STORE_URL, VNoCheck::Create(), 0);
@@ -205,7 +206,8 @@ public:
             VStrLength::Create(OCK_MMC_CS_TLS_DECRYPTER_PATH.first, PATH_MAX_LEN));
     }
 
-    void GetMetaServiceConfig(mmc_meta_service_config_t &config) {
+    void GetMetaServiceConfig(mmc_meta_service_config_t &config)
+    {
         const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
         size_t copy_count = std::min(std::strlen(discoveryURL.c_str()), static_cast<size_t>(DISCOVERY_URL_SIZE - 1));
         std::copy_n(discoveryURL.c_str(), copy_count, config.discoveryURL);
@@ -237,7 +239,8 @@ public:
 
 class ClientConfig final: public Configuration {
 public:
-    void LoadDefault() override {
+    void LoadDefault() override
+    {
         using namespace ConfConstant;
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
         AddStrConf(OCK_MMC_LOG_LEVEL, VNoCheck::Create());
@@ -289,13 +292,14 @@ public:
             VStrLength::Create(OCK_MMC_HCOM_TLS_DECRYPTER_PATH.first, PATH_MAX_LEN));
     }
 
-    void GetLocalServiceConfig(mmc_local_service_config_t &config) {
+    void GetLocalServiceConfig(mmc_local_service_config_t &config)
+    {
         const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
         size_t copy_count = std::min(std::strlen(discoveryURL.c_str()), static_cast<size_t>(DISCOVERY_URL_SIZE - 1));
         std::copy_n(discoveryURL.c_str(), copy_count, config.discoveryURL);
         config.discoveryURL[copy_count] = '\0';
 
-        config.worldSize = GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_WORLD_SIZE);
+        config.worldSize = static_cast<uint32_t>(GetInt(ConfConstant::OKC_MMC_LOCAL_SERVICE_WORLD_SIZE));
         config.bmIpPort = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_IP_PORT);
         config.bmHcomUrl = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_BM_HCOM_URL);
         config.createId = 0;
@@ -313,14 +317,15 @@ public:
         GetConfigStoreTlsConfig(config.configStoreTlsConfig);
     }
 
-    void GetClientConfig(mmc_client_config_t &config) {
+    void GetClientConfig(mmc_client_config_t &config)
+    {
         const auto discoveryURL = GetString(ConfConstant::OCK_MMC_META_SERVICE_URL);
         size_t copy_count = std::min(std::strlen(discoveryURL.c_str()), static_cast<size_t>(DISCOVERY_URL_SIZE - 1));
         std::copy_n(discoveryURL.c_str(), copy_count, config.discoveryURL);
         config.discoveryURL[copy_count] = '\0';
 
-        config.rpcRetryTimeOut = GetInt(ConfConstant::OKC_MMC_CLIENT_RETRY_MILLISECONDS);
-        config.timeOut = GetInt(ConfConstant::OCK_MMC_CLIENT_TIMEOUT_SECONDS);
+        config.rpcRetryTimeOut = static_cast<uint32_t>(GetInt(ConfConstant::OKC_MMC_CLIENT_RETRY_MILLISECONDS));
+        config.timeOut = static_cast<uint32_t>(GetInt(ConfConstant::OCK_MMC_CLIENT_TIMEOUT_SECONDS));
         std::string logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         StringToLower(logLevelStr);
         config.logLevel = MmcOutLogger::Instance().GetLogLevel(logLevelStr);

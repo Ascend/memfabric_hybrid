@@ -6,7 +6,6 @@
 
 #include <netinet/in.h>
 #include <cstdint>
-#include <cstddef>
 
 namespace ock {
 namespace mf {

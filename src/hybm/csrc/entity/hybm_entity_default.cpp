@@ -413,7 +413,6 @@ int32_t MemEntityDefault::Mmap() noexcept
         return BM_NOT_INITIALIZED;
     }
 
-
     if (hbmSegment_ != nullptr) {
         auto ret = hbmSegment_->Mmap();
         if (ret != BM_OK) {

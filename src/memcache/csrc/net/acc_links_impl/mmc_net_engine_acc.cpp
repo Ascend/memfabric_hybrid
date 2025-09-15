@@ -1,13 +1,12 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#include "mf_tls_util.h"
+#include "mmc_net_engine_acc.h"
 
+#include "mf_tls_util.h"
 #include "acc_def.h"
 #include "acc_tcp_server.h"
-
 #include "mmc_net_link_acc.h"
-#include "mmc_net_engine_acc.h"
 #include "mmc_net_ctx_store.h"
 #include "mmc_msg_base.h"
 #include "mmc_net_wait_handle.h"
@@ -202,7 +201,6 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     MMC_ASSERT_RETURN(reqDataLen != 0, MMC_INVALID_PARAM);
     MMC_ASSERT_RETURN(respData != nullptr, MMC_INVALID_PARAM);
 
-    // TODO
     MMC_ASSERT_RETURN(opCode != -1, MMC_INVALID_PARAM);
 
     /* step1: do serialization */
@@ -210,7 +208,7 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     /* step2: get the link to send */
     NetLinkAccPtr link;
     auto result = peerLinkMap_->Find(targetId, link);
-    if (!result) {
+    if (!result || link == nullptr) {
         return MMC_LINK_NOT_FOUND; /* need to connect */
     }
     /* step3: copy data */
@@ -260,6 +258,10 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
 
     if (*respData == nullptr) {
         *respData = (char*) malloc(data->DataLen());
+        if (*respData == nullptr) {
+            MMC_LOG_WARN("Failed to malloc resp date length:" << data->DataLen());
+            return MMC_MALLOC_FAILED;
+        }
     }
     memcpy(*respData, (void*) data->DataIntPtr(), data->DataLen());
     respDataLen = data->DataLen();
@@ -398,8 +400,8 @@ Result NetEngineAcc::HandleNeqRequest(const TcpReqContext &context)
             return MMC_ERROR;
         }
         auto future = threadPool_->Enqueue(
-            [&](int16_t opCode, NetContextPtr contextPtrL) { return reqReceivedHandlers_[opCode](contextPtrL); }, opCode,
-            asynCtxPtr);
+            [&](int16_t opCode, NetContextPtr contextPtrL) { return reqReceivedHandlers_[opCode](contextPtrL); },
+            opCode, asynCtxPtr);
         if (!future.valid()) {
             MMC_LOG_ERROR("req: " << context.SeqNo() << " add thread pool failed. op:" << opCode);
             return MMC_ERROR;
@@ -411,7 +413,6 @@ Result NetEngineAcc::HandleNeqRequest(const TcpReqContext &context)
 
 Result NetEngineAcc::HandleMsgSent(TcpMsgSentResult result, const TcpMsgHeader &header, const TcpDataBufPtr &cbCtx)
 {
-    // TODO
     return MMC_OK;
 }
 

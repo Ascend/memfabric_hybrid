@@ -249,7 +249,8 @@ bool Configuration::SetWithTypeAutoConvert(const std::string &key, const std::st
     } else if (valueType == ConfValueType::VUINT64) {
         uint64_t tmp = 0;
         if (!OckStoULL(value, tmp)) {
-            std::cerr << "<" << key << "> was empty or in wrong type, it should be a unsigned long long number." << std::endl;
+            std::cerr << "<" << key << "> was empty or in wrong type, it should be a unsigned long long number."
+                << std::endl;
             return false;
         }
         if (mUInt64Items.count(key) > 0) {

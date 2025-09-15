@@ -440,7 +440,7 @@ static void gvm_common_msg_notify(u32 devid)
 }
 
 static struct agentdrv_common_msg_client gvm_common_msg_client = {
-    .type = AGENTDRV_COMMON_MSG_PROFILE, // TODO: update
+    .type = AGENTDRV_COMMON_MSG_PROFILE,
     .common_msg_recv = gvm_common_msg_process,
     .init_notify = gvm_common_msg_notify,
 };
@@ -665,7 +665,6 @@ unsigned long gvm_peer_mem_get_page_size(void *mm_context)
 void gvm_peer_mem_put_pages(struct sg_table *sg_head, void *context)
 {
     struct gvm_peer_mem_context *mm_context = (struct gvm_peer_mem_context *)context;
-    // TODO: not implemented
     hybm_gvm_debug("gvm_peer_mem_put_pages, va:0x%llx", mm_context->va);
     return;
 }
@@ -673,7 +672,6 @@ void gvm_peer_mem_put_pages(struct sg_table *sg_head, void *context)
 void gvm_peer_mem_release(void *context)
 {
     struct gvm_peer_mem_context *mm_context = (struct gvm_peer_mem_context *)context;
-    // TODO: not implemented
     hybm_gvm_debug("gvm_peer_mem_release, va:0x%llx", mm_context->va);
     return;
 }

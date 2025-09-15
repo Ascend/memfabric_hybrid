@@ -73,7 +73,7 @@ public:
         clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
         struct timespec futureTime {};
-        futureTime.tv_sec = currentTime.tv_sec + second;
+        futureTime.tv_sec = static_cast<long int>(currentTime.tv_sec + second);
         futureTime.tv_nsec = currentTime.tv_nsec;
         auto waitResult = pthread_cond_timedwait(&cond_, &mutex_, &futureTime);
         if (waitResult == ETIMEDOUT) {

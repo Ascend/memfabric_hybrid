@@ -39,7 +39,7 @@ struct AllocRequest : MsgBase {
     std::string key_;
     AllocOptions options_;
 
-    AllocRequest() : MsgBase{0, ML_ALLOC_REQ, 0} {}
+    AllocRequest() : MsgBase{0, ML_ALLOC_REQ, 0}, operateId_{0} {}
     AllocRequest(const std::string& key, const AllocOptions& prot, uint64_t operateId)
         : MsgBase{0, ML_ALLOC_REQ, 0}, key_(key), options_(prot), operateId_(operateId) {};
 
@@ -72,7 +72,7 @@ struct GetRequest : MsgBase {
     std::string key_;
     bool isGet_;
 
-    GetRequest() : MsgBase{0, ML_GET_REQ, 0} {}
+    GetRequest() : MsgBase{0, ML_GET_REQ, 0}, operateId_{0}, rankId_{0}, isGet_{false} {}
     explicit GetRequest(const std::string &key, uint32_t rankId, uint64_t operateId, bool isGet)
         : MsgBase{0, ML_GET_REQ, 0}, key_(key), rankId_(rankId), operateId_(operateId), isGet_(isGet){};
 
@@ -106,7 +106,7 @@ struct BatchGetRequest : MsgBase {
     uint32_t rankId_;
     std::vector<std::string> keys_;
 
-    BatchGetRequest() : MsgBase{0, ML_BATCH_GET_REQ, 0} {}
+    BatchGetRequest() : MsgBase{0, ML_BATCH_GET_REQ, 0}, operateId_{0}, rankId_{0} {}
     explicit BatchGetRequest(const std::vector<std::string> &keys, uint32_t rankId, uint64_t operateId)
         : MsgBase{0, ML_BATCH_GET_REQ, 0}, keys_(keys), rankId_(rankId), operateId_(operateId) {}
 
@@ -140,7 +140,7 @@ struct BatchUpdateRequest : MsgBase {
     std::vector<uint16_t> mediaTypes_;
     uint64_t operateId_;
 
-    BatchUpdateRequest() : MsgBase{0, ML_BATCH_UPDATE_REQ, 0} {}
+    BatchUpdateRequest() : MsgBase{0, ML_BATCH_UPDATE_REQ, 0}, operateId_{0} {}
 
     BatchUpdateRequest(
         const std::vector<BlobActionResult>& actionResults,
@@ -186,9 +186,9 @@ struct BatchAllocRequest : MsgBase {
     std::vector<std::string> keys_;
     std::vector<AllocOptions> options_;
     uint32_t flags_;
-    uint64_t operateId_;  
+    uint64_t operateId_;
 
-    BatchAllocRequest() : MsgBase{0, ML_BATCH_ALLOC_REQ, 0}, operateId_(0) {}
+    BatchAllocRequest() : MsgBase{0, ML_BATCH_ALLOC_REQ, 0}, flags_{0}, operateId_(0) {}
     
     BatchAllocRequest(const std::vector<std::string>& keys,
                       const std::vector<AllocOptions>& options,
@@ -227,9 +227,9 @@ struct BatchAllocRequest : MsgBase {
 
 struct BatchAllocResponse : MsgBase {
     std::vector<std::vector<MmcMemBlobDesc>> blobs_;
-    std::vector<uint8_t> numBlobs_;              
-    std::vector<uint16_t> prots_;             
-    std::vector<uint8_t> priorities_;        
+    std::vector<uint8_t> numBlobs_;
+    std::vector<uint16_t> prots_;
+    std::vector<uint8_t> priorities_;
     std::vector<uint64_t> leases_;
     std::vector<Result> results_;
 
@@ -367,7 +367,7 @@ struct AllocResponse : MsgBase {
         : MsgBase{0, ML_ALLOC_RESP, 0},
           numBlobs_(numBlobs),
           prot_(prot),
-          priority_(priority){}
+          priority_(priority) {}
 
     Result Serialize(NetMsgPacker &packer) const override
     {
@@ -529,7 +529,7 @@ struct BmUnregisterRequest : public MsgBase {
     uint32_t rank_;
     std::vector<uint16_t> mediaType_{UINT16_MAX};
 
-    BmUnregisterRequest() : MsgBase{0, ML_BM_UNREGISTER_REQ, 0}{}
+    BmUnregisterRequest() : MsgBase{0, ML_BM_UNREGISTER_REQ, 0}, rank_{0} {}
     explicit BmUnregisterRequest(uint32_t rank, uint16_t mediaType) :
         MsgBase{0, ML_BM_UNREGISTER_REQ, 0}, rank_(rank), mediaType_(mediaType) {}
 

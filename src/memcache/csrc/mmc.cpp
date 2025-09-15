@@ -65,7 +65,6 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
     auto ret = mmcc_init(&clientConfig);
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("mmcc init failed, ret:" << ret);
-        // todo 回滚资源
         return ret;
     }
     mmcInit = true;

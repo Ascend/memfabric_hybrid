@@ -4,9 +4,10 @@
 #ifndef MF_HYBRID_MMC_META_CONTAINER_H
 #define MF_HYBRID_MMC_META_CONTAINER_H
 
+#include <memory>
+
 #include "mmc_meta_common.h"
 #include "mmc_ref.h"
-#include <memory>
 
 namespace ock {
 namespace mmc {

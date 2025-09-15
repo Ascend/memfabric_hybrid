@@ -80,7 +80,6 @@ int32_t SmemBmEntryManager::PrepareStore()
                                                    worldSize_, static_cast<int>(config_.rankId));
         }
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
-
     } else {
         if (config_.startConfigStore) {
             auto ret = RacingForStoreServer();

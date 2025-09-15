@@ -122,8 +122,7 @@ int32_t HybmStream::AllocLogicCq()
     input.cqId = 65535U;
     input.sqId = 0;
     input.info[0] = streamId_;
-    input.info[1] = syscall(SYS_gettid);
-    ;
+    input.info[1] = static_cast<uint32_t>(syscall(SYS_gettid));
 
     auto ret = DlHalApi::HalSqCqAllocate(deviceId_, &input, &output);
     if (ret != 0) {
@@ -211,8 +210,10 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
     info.sqId = sqId_;
 
     BM_LOG_DEBUG("[TEST] submit task, task_Id:" << taskId << " task_type:" << static_cast<int32_t>(tasks.type)
-                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.src_addr_high
-                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.dst_addr_high
+                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~"
+                                                << tasks.sqe.memcpyAsyncSqe.src_addr_high
+                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~"
+                                                << tasks.sqe.memcpyAsyncSqe.dst_addr_high
                                                 << " length:" << tasks.sqe.memcpyAsyncSqe.length);
 
     ret = DlHalApi::HalSqTaskSend(deviceId_, &info);
@@ -222,8 +223,10 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
     }
 
     BM_LOG_DEBUG("[TEST] submit task, task_Id:" << taskId << " task_type:" << static_cast<int32_t>(tasks.type)
-                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.src_addr_high
-                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~" << tasks.sqe.memcpyAsyncSqe.dst_addr_high
+                                                << " src:" << tasks.sqe.memcpyAsyncSqe.src_addr_low << "~"
+                                                << tasks.sqe.memcpyAsyncSqe.src_addr_high
+                                                << " dest:" << tasks.sqe.memcpyAsyncSqe.dst_addr_low << "~"
+                                                << tasks.sqe.memcpyAsyncSqe.dst_addr_high
                                                 << " length:" << tasks.sqe.memcpyAsyncSqe.length);
     return BM_OK;
 }

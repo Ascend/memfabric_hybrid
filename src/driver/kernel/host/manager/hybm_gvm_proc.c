@@ -357,7 +357,6 @@ static int hybm_gvm_map_phys_to_user(struct hybm_gvm_process *proc, u64 virt_add
 
 static void hybm_gvm_unmap_phys(struct mm_struct *mm, u64 virt_addr, u64 size)
 {
-    // TODO
 }
 
 static void hybm_gvm_dma_unmap(struct hybm_gvm_process *proc, u64 *pa_list, u32 num)

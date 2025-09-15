@@ -1,7 +1,6 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
-#include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>

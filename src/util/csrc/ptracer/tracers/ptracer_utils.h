@@ -84,7 +84,7 @@ inline uint64_t Monotonic::TimeNs()
 #else
     struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<uint64_t>(ts.tv_sec) * 1000000000L + ts.tv_nsec;
+    return static_cast<uint64_t>(ts.tv_sec) * 1000000000UL +  static_cast<uint64_t>(ts.tv_nsec);
 #endif
 }
 

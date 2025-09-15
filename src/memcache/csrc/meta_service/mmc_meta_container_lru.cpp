@@ -4,17 +4,18 @@
 
 #ifndef MF_HYBRID_MMC_META_CONTAINER_LRU_H
 #define MF_HYBRID_MMC_META_CONTAINER_LRU_H
-#include "mmc_mem_obj_meta.h"
-#include "mmc_meta_container.h"
+
 #include <list>
 #include <memory>
 #include <unordered_map>
+
+#include "mmc_mem_obj_meta.h"
+#include "mmc_meta_container.h"
 
 namespace ock {
 namespace mmc {
 
 template <typename Key, typename Value> class MmcMetaContainerLRU : public MmcMetaContainer<Key, Value> {
-
 private:
     struct ValueLruItem {
         Value value_;

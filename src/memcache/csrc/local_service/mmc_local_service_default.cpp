@@ -40,9 +40,11 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
         options.logLevel = options_.logLevel;
         options.logFunc = options_.logFunc;
         MMC_RETURN_ERROR(metaNetClient_->Start(options),
-                         "Failed to start net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
+                         "Failed to start net server of local service, name=" << name_
+                         << ", bmRankId=" << options_.rankId);
         MMC_RETURN_ERROR(metaNetClient_->Connect(options_.discoveryURL),
-                         "Failed to connect net server of local service, name=" << name_ << ", bmRankId=" << options_.rankId);
+                         "Failed to connect net server of local service, name=" << name_
+                         << ", bmRankId=" << options_.rankId);
     }
     pid_ = getpid();
 

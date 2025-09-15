@@ -36,9 +36,9 @@ typedef struct {
 
 namespace ock {
 namespace mmc {
-class MmcBmProxy : public MmcReferable{
+class MmcBmProxy : public MmcReferable {
 public:
-    explicit MmcBmProxy(const std::string &name) : name_(name) {}
+    explicit MmcBmProxy(const std::string &name) : name_(name), spaces_{0}, bmRankId_{0} {}
     ~MmcBmProxy() override = default;
 
     // 删除拷贝构造函数和赋值运算符

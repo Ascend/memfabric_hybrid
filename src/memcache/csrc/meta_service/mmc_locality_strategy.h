@@ -4,15 +4,16 @@
 #ifndef MEM_FABRIC_MMC_LOCALITY_STRATEGY_H
 #define MEM_FABRIC_MMC_LOCALITY_STRATEGY_H
 
+#include <vector>
+#include <set>
+#include <random>
+#include <algorithm>
+
 #include "mmc_mem_blob.h"
 #include "mmc_types.h"
 #include "mmc_blob_allocator.h"
 #include "mmc_msg_base.h"
 #include "mmc_msg_packer.h"
-#include <vector>
-#include <set>
-#include <random>
-#include <algorithm>
 
 namespace ock {
 namespace mmc {
@@ -32,7 +33,7 @@ struct AllocOptions {
     AllocOptions() = default;
     AllocOptions(uint64_t blobSize, uint32_t numBlobs, uint16_t mediaType, uint32_t preferredRank, uint32_t flags) :
                   blobSize_(blobSize), numBlobs_(numBlobs), mediaType_(mediaType), preferredRank_(preferredRank),
-                  flags_(flags){}
+                  flags_(flags) {}
 };
 
 struct MmcLocalMemCurInfo {
@@ -138,7 +139,7 @@ public:
         upperBound.rank_ = std::numeric_limits<uint32_t>::max();
         auto first = allocators.lower_bound(lowerBound);
         auto last = allocators.upper_bound(upperBound);
-        const size_t numCandidates = std::distance(first, last);
+        const size_t numCandidates = static_cast<size_t>(std::distance(first, last));
         if (numCandidates == 0) {
             MMC_LOG_ERROR("No allocators found for media type: " << allocReq.mediaType_);
             return MMC_ERROR;

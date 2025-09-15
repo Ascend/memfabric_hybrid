@@ -29,7 +29,7 @@ public:
         }
 
         BM_LOG_DEBUG("serialize data length = " << sizeof(DataType));
-        info = std::string((const char *)(const void *)&d, sizeof(DataType));
+        info = std::string(reinterpret_cast<const char *>(&d), sizeof(DataType));
         return 0;
     }
 
@@ -137,7 +137,7 @@ public:
             return -1;
         }
 
-        std::copy_n((const uint8_t *)data, length, exchangeInfo_->desc + exchangeInfo_->descLen);
+        std::copy_n(reinterpret_cast<const uint8_t *>(data), length, exchangeInfo_->desc + exchangeInfo_->descLen);
         exchangeInfo_->descLen += length;
         return 0;
     }
@@ -145,7 +145,7 @@ public:
     template <class DataType>
     inline int Append(const DataType &data) noexcept
     {
-        return Append((const void *)&data, sizeof(data));
+        return Append(reinterpret_cast<const void *>(&data), sizeof(data));
     }
 
 private:

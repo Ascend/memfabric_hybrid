@@ -82,7 +82,7 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     auto sliceAddr = localVirtualBase + allocatedSize_;
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
-                                       (uint64_t)(ptrdiff_t)(void *)sliceAddr, size);
+                                       reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
 
@@ -258,7 +258,6 @@ Result MemSegmentDevice::Unmap() noexcept
     }
     mappedMem_.clear();
 
-    // TODO: free local slice memory
     return 0;
 }
 
@@ -309,7 +308,7 @@ bool MemSegmentDevice::MemoryInRange(const void *begin, uint64_t size) const noe
         return false;
     }
 
-    if ((const uint8_t *)begin + size > globalVirtualAddress_ + totalVirtualSize_) {
+    if (reinterpret_cast<const uint8_t *>(begin) + size > globalVirtualAddress_ + totalVirtualSize_) {
         return false;
     }
 

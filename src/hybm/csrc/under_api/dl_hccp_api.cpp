@@ -106,7 +106,7 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM(gRaMrReg, raMrRegFunc, raHandle, "ra_mr_reg");
     DL_LOAD_SYM(gRaMrDereg, raMrDeregFunc, raHandle, "ra_mr_dereg");
     DL_LOAD_SYM(gRaSendWr, raSendWrFunc, raHandle, "ra_send_wr");
-    DL_LOAD_SYM(gRaPollCq, raPollCqFunc , raHandle, "ra_poll_cq");
+    DL_LOAD_SYM(gRaPollCq, raPollCqFunc, raHandle, "ra_poll_cq");
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
 

@@ -49,11 +49,13 @@ static int32_t InitGvaHeapMgmt(uint64_t st, uint64_t ed, int32_t deviceId)
 {
     if (g_gvaHeapMgr != nullptr) {
         if (ed != g_gvaHeapMgr->start) {
-            BM_LOG_ERROR("init gva manager error. input_ed:0x" << std::hex << ed << " pre_st:0x" << g_gvaHeapMgr->start);
+            BM_LOG_ERROR("init gva manager error. input_ed:0x" << std::hex << ed << " pre_st:0x"
+                                                               << g_gvaHeapMgr->start);
             return -1;
         }
         if (deviceId != g_gvaHeapMgr->deviceId) {
-            BM_LOG_ERROR("init gva manager error. input_device:" << deviceId << " pre_device:" << g_gvaHeapMgr->deviceId);
+            BM_LOG_ERROR("init gva manager error. input_device:" << deviceId << " pre_device:"
+                                                                 << g_gvaHeapMgr->deviceId);
             return -1;
         }
         g_gvaHeapMgr->start = st;
@@ -443,7 +445,7 @@ int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t fla
         return -1;
     }
 
-    auto ret = HybmMapShareMemory(name, (void *)address, size, flags);
+    auto ret = HybmMapShareMemory(name, reinterpret_cast<void *>(address), size, flags);
     if (ret != 0) {
         HalGvaFree(address, 0);
     }
@@ -452,7 +454,7 @@ int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t fla
 
 int32_t HalGvaClose(uint64_t address, uint64_t flags)
 {
-    auto ret = HybmUnmapShareMemory((void *)address, flags);
+    auto ret = HybmUnmapShareMemory(reinterpret_cast<void *>(address), flags);
     if (ret != 0) {
         BM_LOG_ERROR("Close error. ret=" << ret);
         return ret;

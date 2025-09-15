@@ -60,7 +60,7 @@ int HybmMapShareMemory(const char *name, void *expectAddr, uint64_t size, uint64
     }
 
     DevmmCommandMessage arg{};
-    arg.head.devId = gDeviceId;
+    arg.head.devId = static_cast<uint32_t>(gDeviceId);
     memcpy(arg.data.queryParam.name, name, DEVMM_MAX_NAME_SIZE);
 
     auto ret = ioctl(gDeviceFd, DEVMM_SVM_IPC_MEM_QUERY, &arg);
@@ -149,7 +149,7 @@ int HybmTranslateAddress(uint64_t va, uint64_t &pa, uint32_t &da) noexcept
     }
 
     DevmmCommandMessage arg{};
-    arg.head.devId = gDeviceId;
+    arg.head.devId = static_cast<uint32_t>(gDeviceId);
     arg.data.translateParam.vptr = va;
 
     auto ret = ioctl(gDeviceFd, DEVMM_SVM_TRANSLATE, &arg);

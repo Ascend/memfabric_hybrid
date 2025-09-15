@@ -156,8 +156,8 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
             continue;
         }
 
-        auto localIp = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-        auto localMask = ((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr;
+        auto localIp = (reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr))->sin_addr;
+        auto localMask = (reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask))->sin_addr;
         if ((localIp.s_addr & localMask.s_addr) != (targetIp.s_addr & localMask.s_addr)) {
             continue;
         }

@@ -98,7 +98,7 @@ Result MmcBlobAllocator::Release(const MmcMemBlobPtr &blob)
     }
     if (prevAddrPos != addressTree_.begin()) {
         --prevAddrPos;
-        if (prevAddrPos->first + prevAddrPos->second > offset) { 
+        if (prevAddrPos->first + prevAddrPos->second > offset) {
             spinlock_.unlock();
             MMC_LOG_ERROR("blob already released");
             return MMC_ERROR;

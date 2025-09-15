@@ -16,7 +16,7 @@ namespace ock {
 namespace mmc {
 class MmcMetaServiceDefault : public MmcMetaService {
 public:
-    explicit MmcMetaServiceDefault(const std::string& name) : name_(name) {}
+    explicit MmcMetaServiceDefault(const std::string& name) : name_(name), options_{} {}
 
     Result Start(const mmc_meta_service_config_t &options) override;
 

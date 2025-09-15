@@ -25,7 +25,8 @@ Result MmcMetaServiceLeaderElection::Start(const mmc_meta_service_config_t &opti
         }
 
         MMC_FALSE_ERROR(!this->podName_.empty(), "Meta pod name is empty, please check env variable META_POD_NAME");
-        MMC_FALSE_ERROR(!this->leaseName_.empty(), "Meta lease name is empty, please check env variable META_LEASE_NAME");
+        MMC_FALSE_ERROR(!this->leaseName_.empty(),
+                        "Meta lease name is empty, please check env variable META_LEASE_NAME");
         MMC_FALSE_ERROR(!this->ns_.empty(), "Meta namespace is empty, please check env variable META_NAMESPACE");
 
         pybind11::gil_scoped_acquire acquire;

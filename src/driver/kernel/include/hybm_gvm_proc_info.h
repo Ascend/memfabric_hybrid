@@ -63,7 +63,7 @@ struct hybm_gvm_process {
     u32 sdid;
     u32 pasid;
     u32 svspid;
-    u32 key_idx; // TODO: 考虑回绕，考虑新旧进程id重叠，考虑节点重启等场景
+    u32 key_idx; // 考虑回绕，考虑新旧进程id重叠，考虑节点重启等场景
     u64 va_start;
     u64 va_end;
     u64 va_page_num;

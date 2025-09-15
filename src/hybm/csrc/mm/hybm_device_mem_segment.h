@@ -67,11 +67,11 @@ public:
     static int FillDeviceSuperPodInfo() noexcept;
     static bool CanMapRemote(const HbmExportInfo &rmi) noexcept;
 
-protected: // TODO: 暂时暴露内部实现给 MemSegmentHostSDMA 复用，后续需要整改
+protected:
     Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
 
-protected: // TODO: 暂时暴露内部实现给 MemSegmentHostSDMA 复用，后续需要整改
+protected:
     uint8_t *globalVirtualAddress_{nullptr};
     uint64_t totalVirtualSize_{0UL};
     uint64_t allocatedSize_{0UL};
@@ -82,7 +82,7 @@ protected: // TODO: 暂时暴露内部实现给 MemSegmentHostSDMA 复用，后�
     std::vector<HbmExportInfo> imports_;
     std::map<uint16_t, HbmExportInfo> importMap_;
 
-protected: // TODO: 暂时暴露内部实现给 MemSegmentHostSDMA 复用，后续需要整改
+protected:
     static int deviceId_;
     static int logicDeviceId_;
     static int pid_;

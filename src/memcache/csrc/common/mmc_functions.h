@@ -8,7 +8,6 @@
 #include <climits>
 #include <string>
 #include <sys/stat.h>
-#include <unistd.h>
 #include "mmc_types.h"
 #include "mmc_logger.h"
 
@@ -67,7 +66,7 @@ inline bool Func::Realpath(std::string &path)
 }
 
 inline Result Func::LibraryRealPath(const std::string &libDirPath, const std::string &libName,
-                                          std::string &realPath)
+                                    std::string &realPath)
 {
     std::string tmpFullPath = libDirPath;
     if (!Realpath(tmpFullPath)) {

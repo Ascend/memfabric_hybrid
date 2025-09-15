@@ -23,7 +23,8 @@ struct HostSdmaExportInfo {
 
 class MemSegmentHostSDMA : public MemSegmentDevice {
 public:
-    explicit MemSegmentHostSDMA(const MemSegmentOptions &options, int eid) : MemSegmentDevice{options, eid}
+    explicit MemSegmentHostSDMA(const MemSegmentOptions &options, int eid) : MemSegmentDevice{options, eid},
+        shareKey_{0}
     {
     }
 

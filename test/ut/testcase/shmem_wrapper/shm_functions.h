@@ -58,7 +58,7 @@ inline bool Func::Realpath(std::string &path)
 }
 
 inline bool Func::LibraryRealPath(const std::string &libDirPath, const std::string &libName,
-                                        std::string &realPath)
+                                  std::string &realPath)
 {
     std::string tmpFullPath = libDirPath;
     if (!Realpath(tmpFullPath)) {

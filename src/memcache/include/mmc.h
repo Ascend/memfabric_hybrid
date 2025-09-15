@@ -48,21 +48,21 @@ int32_t mmc_set_log_level(int level);
 /**
  * @brief Un-Initialize the smem running environment
  */
-void mmc_uninit();
+void mmc_uninit(void);
 
 /**
  * @brief Get the last error message
  *
  * @return last error message
  */
-const char *mmc_get_last_err_msg();
+const char *mmc_get_last_err_msg(void);
 
 /**
  * @brief Get the last error message and clear
  *
  * @return last error message
  */
-const char *mmc_get_and_clear_last_err_msg();
+const char *mmc_get_and_clear_last_err_msg(void);
 
 #ifdef __cplusplus
 }

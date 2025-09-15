@@ -192,7 +192,6 @@ Result HcomTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint6
     addr = keyUnion.hostKey.hcomInfo.lAddress;
     size = keyUnion.hostKey.hcomInfo.size;
     return BM_OK;
-
 }
 
 Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)
@@ -429,7 +428,7 @@ Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uin
     BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx << " payLoad: " << payLoad);
     uint32_t rankId = UINT32_MAX;
     try {
-        rankId = std::stoi(payLoad);
+        rankId = static_cast<uint32_t>(std::stoi(payLoad));
     } catch (...) {
         BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
         return BM_ERROR;

@@ -21,7 +21,7 @@ int32_t mmcc_init(mmc_client_config_t *config);
 /**
  * @brief Un-initialize client
  */
-void mmcc_uninit();
+void mmcc_uninit(void);
 
 /**
  * @brief register into bm, support sdma

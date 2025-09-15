@@ -23,7 +23,11 @@ class SmemBmEntry : public SmReferable {
 public:
     explicit SmemBmEntry(const SmemBmEntryOptions &options, const StorePtr &store)
         : options_(options),
-          _configStore(store)
+          _configStore(store),
+          coreOptions_{},
+          dramSliceInfo_{},
+          hbmSliceInfo_{},
+          entityInfo_{}
     {
     }
 

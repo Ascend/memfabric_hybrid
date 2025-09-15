@@ -53,7 +53,6 @@ inline int16_t NetContextAcc::OpCode() const
 
 inline int16_t NetContextAcc::SrcRankId() const
 {
-    /* todo */
     return 0;
 }
 

@@ -12,8 +12,8 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
-BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
-                                             bool server) noexcept
+BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
+                                                 sockaddr_in devNet, bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
 {
     connectionView_.resize(rankCount);
@@ -587,8 +587,8 @@ std::vector<lite_mr_info> BipartiteRanksQpManager::GenerateRemoteLiteMrs(uint32_
 }
 
 void BipartiteRanksQpManager::GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
-                                                   std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
-                                                   std::unordered_set<uint32_t> &addMrRanks) noexcept
+                                                     std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                                     std::unordered_set<uint32_t> &addMrRanks) noexcept
 {
     for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
         auto pos = last.find(it->first);
@@ -644,7 +644,7 @@ void BipartiteRanksQpManager::GenTaskFromChangeRanks(
 }
 
 void BipartiteRanksQpManager::SetQpHandleRegisterMr(void *qpHandle, const std::vector<lite_mr_info> &mrs,
-                                                  bool local) noexcept
+                                                    bool local) noexcept
 {
     if (qpHandle == nullptr) {
         return;

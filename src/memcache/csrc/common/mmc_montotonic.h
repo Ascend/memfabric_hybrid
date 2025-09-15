@@ -165,21 +165,21 @@ namespace ock {
             {
                 struct timespec ts;
                 clock_gettime(CLOCK_MONOTONIC, &ts);
-                return ((uint64_t)ts.tv_sec) * 1000000L + ts.tv_nsec / 1000L;
+                return static_cast<uint64_t>(ts.tv_sec * 1000000L + ts.tv_nsec / 1000L);
             }
 
             static inline uint64_t TimeNs()
             {
                 struct timespec ts;
                 clock_gettime(CLOCK_MONOTONIC, &ts);
-                return ((uint64_t)ts.tv_sec) * 1000000000L + ts.tv_nsec;
+                return static_cast<uint64_t>(ts.tv_sec * 1000000000L + ts.tv_nsec);
             }
 
             static inline uint64_t TimeSec()
             {
                 struct timespec ts;
                 clock_gettime(CLOCK_MONOTONIC, &ts);
-                return ((uint64_t)ts.tv_sec) + ts.tv_nsec / 1000000000L;
+                return static_cast<uint64_t>(ts.tv_sec + ts.tv_nsec / 1000000000L);
             }
 #endif /* USE_PROCESS_MONOTONIC */
 #ifdef __x86_64__

@@ -4,6 +4,10 @@
 #ifndef MEM_FABRIC_MMC_MEM_OBJ_META_H
 #define MEM_FABRIC_MMC_MEM_OBJ_META_H
 
+#include <vector>
+#include <mutex>
+#include <list>
+
 #include "mmc_mem_blob.h"
 #include "mmc_meta_lease_manager.h"
 #include "mmc_montotonic.h"
@@ -11,9 +15,6 @@
 #include "mmc_ref.h"
 #include "mmc_spinlock.h"
 #include "mmc_global_allocator.h"
-#include <vector>
-#include <mutex>
-#include <list>
 
 namespace ock {
 namespace mmc {

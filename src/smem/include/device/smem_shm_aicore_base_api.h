@@ -100,7 +100,8 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(const AscendC::LocalTensor<T> &d
 
 template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32);
+                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                AscendC::LocalTensor<uint32_t> ubLocal32);
 /**
  * @brief Asynchronous RDMA READ function.
  *
@@ -115,12 +116,15 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* 
 
 template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t srcRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32);
+                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                AscendC::LocalTensor<uint32_t> ubLocal32);
 
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t* gva, uint32_t destRankId, uint32_t qpIdx);
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t* gva);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
+                                                      uint32_t qpIdx, uint64_t messageLen,
+                                                      AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                      AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t* gva);
 
 #endif // __MEMFABRIC_SMEM_AI_CORE_BASE_API_H__

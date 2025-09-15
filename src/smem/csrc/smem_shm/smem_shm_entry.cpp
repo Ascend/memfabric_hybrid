@@ -12,7 +12,7 @@
 namespace ock {
 namespace smem {
 
-SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullptr}
+SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullptr}, options_{}
 {
     (void)smem_shm_config_init(&extraConfig_);
 
@@ -142,7 +142,6 @@ int32_t SmemShmEntry::InitStepReserveMemory()
         SM_LOG_ERROR("reserve mem failed, result: " << ret);
         return SM_ERROR;
     }
-
 
     gva_ = hybm_get_memory_ptr(entity_, HYBM_MEM_TYPE_DEVICE);
     return SM_OK;

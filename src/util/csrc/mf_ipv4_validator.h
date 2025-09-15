@@ -106,7 +106,6 @@ private:
         return htonl(inet_addr(ip.c_str()));
     }
 
-
 private:
     bool emptyAllowed_ = false;
     std::string name_;

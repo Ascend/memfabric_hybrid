@@ -373,7 +373,6 @@ free_and_return:
 int hybm_gvm_p2p_msg_register(void)
 {
     int ret;
-    // TODO: 需要添加专门的消息枚举,当前暂时使用TEST
     ret = devdrv_register_s2s_msg_proc_func(DEVDRV_S2S_MSG_TEST, hybm_gvm_p2p_msg_recv);
     if (ret != 0) {
         hybm_gvm_err("register p2p msg func fail. (ret=%d)", ret);

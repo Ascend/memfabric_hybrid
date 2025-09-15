@@ -18,7 +18,7 @@ bool g_smemShmInited = false;
 #endif
 
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
-                           smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
+                                    smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
     SM_PARAM_VALIDATE(
         rankSize > UINT16_MAX || rankId >= rankSize,

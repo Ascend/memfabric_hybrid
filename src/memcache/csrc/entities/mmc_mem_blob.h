@@ -20,7 +20,7 @@ struct MemObjQueryInfo {
     bool valid_;
     uint32_t blobRanks_[MAX_BLOB_COPIES];
     uint16_t blobTypes_[MAX_BLOB_COPIES];
-    MemObjQueryInfo() : size_(0), prot_(0), numBlobs_(0), valid_(false) {}
+    MemObjQueryInfo() : size_(0), prot_(0), numBlobs_(0), valid_(false), blobTypes_{0}, blobRanks_{0} {}
     MemObjQueryInfo(const uint64_t size, const uint16_t prot, const uint8_t numBlobs, const bool valid)
         : size_(size), prot_(prot), numBlobs_(numBlobs), valid_(valid)
     {

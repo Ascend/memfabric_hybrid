@@ -13,12 +13,12 @@
 #include "hybm_logger.h"
 #include "hybm_types.h"
 
-int32_t HybmGetInitDeviceId();
+int32_t HybmGetInitDeviceId(void);
 
-int32_t HybmGetInitedLogicDeviceId();
+int32_t HybmGetInitedLogicDeviceId(void);
 
-bool HybmHasInited();
+bool HybmHasInited(void);
 
-bool HybmGvmHasInited();
+bool HybmGvmHasInited(void);
 
 #endif // MEM_FABRIC_HYBRID_HYBM_COMMON_INCLUDE_H

@@ -2,8 +2,9 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#include "mmc_meta_backup_mgr_factory.h"
 #include "mmc_meta_backup_mgr_default.h"
+
+#include "mmc_meta_backup_mgr_factory.h"
 #include "mmc_msg_client_meta.h"
 
 namespace ock {
@@ -24,7 +25,8 @@ void MMCMetaBackUpMgrDefault::BackupThreadFunc()
             MMC_LOG_INFO("backup thread destroy, thread id " << pthread_self());
             break;
         }
-        MMC_LOG_DEBUG("MMCMetaBackU thread will backup count " << backupList_.size() << " thread id " << pthread_self());
+        MMC_LOG_DEBUG("MMCMetaBackU thread will backup count " << backupList_.size()
+            << " thread id " << pthread_self());
 
         SendBackup2Local();
     }

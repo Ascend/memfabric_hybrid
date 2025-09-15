@@ -4,6 +4,11 @@
 #ifndef MEM_FABRIC_MMC_META_MANAGER_H
 #define MEM_FABRIC_MMC_META_MANAGER_H
 
+#include <functional>
+#include <thread>
+#include <list>
+#include <mutex>
+
 #include "mmc_global_allocator.h"
 #include "mmc_mem_obj_meta.h"
 #include "mmc_meta_container.h"
@@ -12,10 +17,6 @@
 #include "mmc_meta_backup_mgr.h"
 #include "mmc_meta_net_server.h"
 #include "mmc_thread_pool.h"
-#include <functional>
-#include <thread>
-#include <list>
-#include <mutex>
 
 namespace ock {
 namespace mmc {

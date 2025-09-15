@@ -57,7 +57,7 @@ Result ock::mmc::MetaNetServer::Start(NetEngineOptions &options)
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_REMOVE_REQ,
                                       std::bind(&MetaNetServer::HandleRemove, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_REMOVE_REQ,
-                                  std::bind(&MetaNetServer::HandleBatchRemove, this, std::placeholders::_1));
+                                      std::bind(&MetaNetServer::HandleBatchRemove, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_IS_EXIST_REQ,
                                       std::bind(&MetaNetServer::HandleIsExist, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BATCH_IS_EXIST_REQ,

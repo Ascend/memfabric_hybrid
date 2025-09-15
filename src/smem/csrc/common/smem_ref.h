@@ -5,8 +5,6 @@
 #define MEMFABRIC_HYBRID_SMEM_REF_H
 
 #include <cstdint>
-#include <utility>
-#include <string.h>
 
 namespace ock {
 namespace smem {

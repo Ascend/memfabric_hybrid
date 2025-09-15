@@ -12,11 +12,13 @@ constexpr uint32_t NUM_CQE_PER_POLL_CQ = 100;
 
 SMEM_SHM_INLINE_AICORE void cacheWriteThrough(__gm__ uint8_t* sourceAddr, uint64_t length) {
     __gm__ uint8_t* start = (__gm__ uint8_t*)((uint64_t)sourceAddr / DATA_CACHE_LINE_SIZE * DATA_CACHE_LINE_SIZE);
-    __gm__ uint8_t* end = (__gm__ uint8_t*)(((uint64_t)sourceAddr + length) / DATA_CACHE_LINE_SIZE * DATA_CACHE_LINE_SIZE);
+    __gm__ uint8_t* end = (__gm__ uint8_t*)(((uint64_t)sourceAddr + length) /
+        DATA_CACHE_LINE_SIZE * DATA_CACHE_LINE_SIZE);
     AscendC::GlobalTensor<uint8_t> global;
     global.SetGlobalBuffer(start);
     for (uint64_t i = 0; i <= end - start; i+= DATA_CACHE_LINE_SIZE) {
-        AscendC::DataCacheCleanAndInvalid<uint8_t, AscendC::CacheLine::SINGLE_CACHE_LINE, AscendC::DcciDst::CACHELINE_OUT>(global[i]);
+        AscendC::DataCacheCleanAndInvalid<
+            uint8_t, AscendC::CacheLine::SINGLE_CACHE_LINE, AscendC::DcciDst::CACHELINE_OUT>(global[i]);
     }
 }
 
@@ -116,9 +118,11 @@ struct HybmDeviceMeta {
  * @param ubLocal32              [in] temporary UB local tensor of uint32_t used as workspace
  */
 
-SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uint32_t qpIdx, uint32_t idx, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32) {
-    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR + 
-                                                                SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
+SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uint32_t qpIdx, uint32_t idx,
+                                                      AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                      AscendC::LocalTensor<uint32_t> ubLocal32) {
+    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
+        SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     uint32_t qpNum = RDMAInfo->qpNum;
     __gm__ CQCtx* cqCtxEntry = (__gm__ CQCtx*)(RDMAInfo->scqPtr + (remoteRankId * qpNum + qpIdx) * sizeof(CQCtx));
@@ -152,7 +156,7 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uin
         AscendC::DataCopyPad(WQTailGlobalTensor, ubLocal32, copyParamsTail);
         AscendC::PipeBarrier<PIPE_ALL>();
         cacheWriteThrough((__gm__ uint8_t*)curWQTailAddr, 8);
-        
+
         // Check CQE status
         uint32_t status = (cqeAddr->byte4 >> 8) & 0xFF;
         if (status) {
@@ -208,10 +212,12 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uin
  * @param ubLocal32              [in] temporary UB local tensor of uint32_t used as workspace
  */
 
-SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, __gm__ uint8_t* localAddr, uint32_t destRankId, uint32_t qpIdx,
-                                                    OPCODE opcode, uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32) {
-    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR + 
-                                                                SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
+SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, __gm__ uint8_t* localAddr,
+                                                    uint32_t destRankId, uint32_t qpIdx, OPCODE opcode,
+                                                    uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                    AscendC::LocalTensor<uint32_t> ubLocal32) {
+    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
+        SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     uint32_t qpNum = RDMAInfo->qpNum;
     __gm__ WQCtx* qpCtxEntry = (__gm__ WQCtx*)(RDMAInfo->sqPtr + (destRankId * qpNum + qpIdx) * sizeof(WQCtx));
@@ -229,8 +235,9 @@ SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, 
     // Poll CQ if send queue is full
     cacheWriteThrough((__gm__ uint8_t*)curHardwareTailAddr, 8);
     if ((curHead + 1) % depth == *(__gm__ uint32_t*)(curHardwareTailAddr)) {
-        smem_shm_roce_poll_cq(destRankId, qpIdx, *(__gm__ uint32_t*)(curHardwareTailAddr) + NUM_CQE_PER_POLL_CQ, ubLocal64, ubLocal32);
-    }    
+        smem_shm_roce_poll_cq(destRankId, qpIdx, *(__gm__ uint32_t*)(curHardwareTailAddr) + NUM_CQE_PER_POLL_CQ,
+                              ubLocal64, ubLocal32);
+    }
 
     // Write WQE to HBM
     __gm__ uint8_t* wqeAddr = (__gm__ uint8_t*)(sqBaseAddr + wqeSize * (curHead % depth));
@@ -298,9 +305,12 @@ SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, 
  */
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32) {
-    smem_shm_rdma_post_send(destDmaAddr, srcDmaAddr, destRankId, qpIdx, OPCODE::OP_RDMA_WRITE, messageLen, ubLocal64, ubLocal32);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
+                                                uint32_t qpIdx, uint64_t messageLen,
+                                                AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                AscendC::LocalTensor<uint32_t> ubLocal32) {
+    smem_shm_rdma_post_send(destDmaAddr, srcDmaAddr, destRankId, qpIdx, OPCODE::OP_RDMA_WRITE,
+                            messageLen, ubLocal64, ubLocal32);
 }
 
 /**
@@ -316,14 +326,17 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* 
  */
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t srcRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32) {
-    smem_shm_rdma_post_send(srcDmaAddr, destDmaAddr, srcRankId, qpIdx, OPCODE::OP_RDMA_READ, messageLen, ubLocal64, ubLocal32);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t srcRankId,
+                                               uint32_t qpIdx, uint64_t messageLen,
+                                               AscendC::LocalTensor<uint64_t> ubLocal64,
+                                               AscendC::LocalTensor<uint32_t> ubLocal32) {
+    smem_shm_rdma_post_send(srcDmaAddr, destDmaAddr, srcRankId, qpIdx, OPCODE::OP_RDMA_READ,
+                            messageLen, ubLocal64, ubLocal32);
 }
 
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t* gva, uint32_t destRankId, uint32_t qpIdx) {
-    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR + 
-                                                                SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
+    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
+        SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     *(__gm__ uint64_t*)(gva) = (uint64_t)RDMAInfo;
     uint32_t qpNum = RDMAInfo->qpNum;
@@ -365,12 +378,15 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t* gva, uint3
 }
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId, uint32_t qpIdx,
-                                                uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t* gva) {
-    smem_shm_rdma_post_send(destDmaAddr, srcDmaAddr, destRankId, qpIdx, OPCODE::OP_RDMA_WRITE, messageLen, ubLocal64, ubLocal32);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
+                                                      uint32_t qpIdx, uint64_t messageLen,
+                                                      AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                      AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t* gva) {
+    smem_shm_rdma_post_send(destDmaAddr, srcDmaAddr, destRankId, qpIdx, OPCODE::OP_RDMA_WRITE,
+                            messageLen, ubLocal64, ubLocal32);
     uint32_t idx = 1;
-    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR + 
-                                                                SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
+    __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
+        SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     uint32_t qpNum = RDMAInfo->qpNum;
     __gm__ CQCtx* cqCtxEntry = (__gm__ CQCtx*)(RDMAInfo->scqPtr + (destRankId * qpNum + qpIdx) * sizeof(CQCtx));
@@ -388,7 +404,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm
     *(__gm__ uint64_t*)(gva + 40) = (uint64_t)curTail;
 
     AscendC::DataCopyExtParams copyParamsTail{1, 1 * sizeof(uint32_t), 0, 0, 0};
-    
+
     __gm__ cqeCtx* cqeAddr = (__gm__ cqeCtx*)(cqBaseAddr + cqeSize * (curTail & (depth - 1)));
     uint32_t cqeByte4 = *(__gm__ uint32_t*)cqeAddr;
     while (!(cqeByte4 & (1 << 7))) {
@@ -418,7 +434,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm
     AscendC::PipeBarrier<PIPE_ALL>();
     cacheWriteThrough((__gm__ uint8_t*)curWQTailAddr, 8);
     // *(__gm__ uint64_t*)(gva + 72) = (uint64_t)(*(__gm__ uint32_t*)(curWQTailAddr));
-    
+
     // Check CQE status
     uint32_t status = (cqeAddr->byte4 >> 8) & 0xFF;
     *(__gm__ uint64_t*)(gva + 112) = status;

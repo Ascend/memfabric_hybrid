@@ -77,12 +77,14 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                                       void* stream,
                                       uint32_t flags)
 {
-    if (e == nullptr || params == nullptr ||
-        params->sources == nullptr || params->destinations == nullptr ||
+    if (e == nullptr || params == nullptr) {
+        BM_LOG_ERROR("input parameter invalid, e: 0x" << std::hex << e  << ", params: 0x" << params);
+        return BM_INVALID_PARAM;
+    }
+
+    if (params->sources == nullptr || params->destinations == nullptr ||
         params->dataSizes == nullptr) {
-        BM_LOG_ERROR("input parameter invalid, e: 0x" << std::hex << e
-                                                      << ", params: 0x" << params
-                                                      << ", src array: 0x" << params->sources
+        BM_LOG_ERROR("input parameter invalid, e: 0x" << ", src array: 0x" << params->sources
                                                       << ", dest array: 0x" << params->destinations
                                                       << ", dataSizes array: 0x" << params->dataSizes);
         return BM_INVALID_PARAM;

@@ -83,7 +83,8 @@ public:
         }
 
         allocators_[loc] =
-            MmcMakeRef<MmcBlobAllocator>(loc.rank_, loc.mediaType_, localMemInitInfo.bmAddr_, localMemInitInfo.capacity_);
+            MmcMakeRef<MmcBlobAllocator>(loc.rank_, loc.mediaType_, localMemInitInfo.bmAddr_,
+                                         localMemInitInfo.capacity_);
 
         MMC_LOG_INFO("Mount bm on " << loc << ", capacity:" << localMemInitInfo.capacity_ << "  successfully");
         globalAllocLock_.UnlockWrite();

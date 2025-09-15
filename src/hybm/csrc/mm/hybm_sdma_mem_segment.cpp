@@ -117,7 +117,6 @@ Result MemSegmentHostSDMA::Export(const std::shared_ptr<MemSlice> &slice, std::s
     ret = LiteralExInfoTranslater<HostSdmaExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
-        // TODO HybmGvmShmDestroy
         return BM_ERROR;
     }
 

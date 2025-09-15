@@ -1,8 +1,9 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#include "mmc_ref.h"
 #include "mmc_meta_service_default.h"
+
+#include "mmc_ref.h"
 #include "mmc_meta_mgr_proxy_default.h"
 #include "mmc_meta_net_server.h"
 #include "spdlogger4c.h"

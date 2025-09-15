@@ -97,7 +97,7 @@ typedef struct {
 } mmc_put_options;
 
 typedef struct {
-    int32_t xx;  // TODO
+    int32_t xx;
 } mmc_location_t;
 
 #define MAX_BLOB_COPIES 8

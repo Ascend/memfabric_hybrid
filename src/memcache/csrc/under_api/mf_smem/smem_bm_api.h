@@ -29,7 +29,7 @@ using smemBmGetLocalMemSizeFunc = uint64_t (*)(smem_bm_t);
 using smemBmPtrFunc = void *(*)(smem_bm_t, uint16_t);
 using smemBmCopyFunc = int32_t (*)(smem_bm_t, const void *, void *, uint64_t, smem_bm_copy_type, uint32_t);
 using smemBmCopy2dFunc = int32_t (*)(smem_bm_t, const void *, uint64_t, void *, uint64_t,
-                                     uint64_t, uint64_t ,smem_bm_copy_type, uint32_t);
+                                     uint64_t, uint64_t, smem_bm_copy_type, uint32_t);
 
 class MFSmemApi {
 public:

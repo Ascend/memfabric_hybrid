@@ -35,7 +35,7 @@ enum BlobState : uint8_t {
 struct BlobStateAction {
     BlobState state_ = NONE;
     BlobLeaseFunction action_ = nullptr;
-    BlobStateAction(BlobState state, BlobLeaseFunction action) : state_(state), action_(std::move(action)){}
+    BlobStateAction(BlobState state, BlobLeaseFunction action) : state_(state), action_(std::move(action)) {}
     BlobStateAction() = default;
 };
 
@@ -54,7 +54,7 @@ enum BlobActionResult : uint8_t {
     MMC_REMOVE_START
 };
 
-using StateTransTable = std::unordered_map<BlobState, std::unordered_map<Result , BlobStateAction>>;
+using StateTransTable = std::unordered_map<BlobState, std::unordered_map<Result, BlobStateAction>>;
 
 class BlobStateMachine : public MmcReferable {
 public:

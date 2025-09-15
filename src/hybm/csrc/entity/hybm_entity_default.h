@@ -28,7 +28,8 @@ struct SliceExportTransportKey {
     uint64_t address;
     transport::TransportMemoryKey key;
     SliceExportTransportKey() : SliceExportTransportKey{0, 0, 0} {}
-    SliceExportTransportKey(uint64_t mag, uint16_t rank, uint64_t addr) : magic{mag}, rankId{rank}, address{addr} {}
+    SliceExportTransportKey(uint64_t mag, uint16_t rank, uint64_t addr) : magic{mag}, rankId{rank}, address{addr},
+        key{0} {}
 };
 
 class MemEntityDefault : public MemEntity {

@@ -282,7 +282,6 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         if (ret != SM_OK) {
-            // TODO: 处理退出场景
             continue;
         }
 
@@ -330,12 +329,12 @@ void SmemNetGroupEngine::JoinLeaveEventProcess(const std::string &value, std::st
     UpdateGroupVersion(sizePair.first + 1);
 
     if (eVal.join) {
-        option_.rankSize = SplitSizeAndVersion(tmpVal).second + 1;
+        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second + 1);
         if (option_.joinCb != nullptr) {
             option_.joinCb(eVal.rankId);
         }
     } else {
-        option_.rankSize = SplitSizeAndVersion(tmpVal).second - 1;
+        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second - 1);
         if (option_.leaveCb != nullptr) {
             option_.leaveCb(eVal.rankId);
         }
@@ -407,7 +406,7 @@ void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
 
     auto sizePair = SplitSizeAndVersion(tmpVal);
     auto version = sizePair.first;
-    auto rankSize = sizePair.second;
+    auto rankSize = static_cast<uint32_t >(sizePair.second);
     if (version > groupVersion_) {
         UpdateGroupVersion(version);
         option_.rankSize = rankSize;
@@ -525,7 +524,7 @@ Result SmemNetGroupEngine::GroupJoin()
     }
 
     UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
-    option_.rankSize = SplitSizeAndVersion(tmp).second + 1;
+    option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmp).second + 1);
     if (option_.joinCb != nullptr) {
         ret = option_.joinCb(option_.rank);
         if (ret != SM_OK) {

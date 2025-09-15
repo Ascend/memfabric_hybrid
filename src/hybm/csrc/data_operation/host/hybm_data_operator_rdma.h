@@ -25,7 +25,7 @@ public:
     int32_t DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
                      const ExtOptions &options) noexcept override;
     int32_t DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                       uint64_t width,uint64_t height, hybm_data_copy_direction direction,
+                       uint64_t width, uint64_t height, hybm_data_copy_direction direction,
                        const ExtOptions &options) noexcept override;
     int32_t DataCopyAsync(const void* srcVA, void* destVA, uint64_t length, hybm_data_copy_direction direction,
                           const ExtOptions &options) noexcept override;
@@ -41,19 +41,19 @@ private:
     int32_t CopyGva2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
 
     int32_t CopyHost2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                           uint64_t width,uint64_t height, const ExtOptions &options);
+                           uint64_t width, uint64_t height, const ExtOptions &options);
     int32_t CopyGva2Host2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                           uint64_t width,uint64_t height, const ExtOptions &options);
+                           uint64_t width, uint64_t height, const ExtOptions &options);
     int32_t CopyDevice2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                             uint64_t width,uint64_t height, const ExtOptions &options);
+                             uint64_t width, uint64_t height, const ExtOptions &options);
     int32_t CopyGva2Device2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                             uint64_t width,uint64_t height, const ExtOptions &options);
+                             uint64_t width, uint64_t height, const ExtOptions &options);
     int32_t CopyGva2Gva2d(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                          uint64_t width,uint64_t height, const ExtOptions &options);
+                          uint64_t width, uint64_t height, const ExtOptions &options);
     int32_t RtMemoryCopyAsync(const void *srcVA, void *destVA, uint64_t length,
                               uint32_t kind, const ExtOptions &options);
     int32_t RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
-                                uint64_t width,uint64_t height,  uint32_t kind, const ExtOptions &options);
+                                uint64_t width, uint64_t height, uint32_t kind, const ExtOptions &options);
 
 private:
     uint32_t rankId_{0};
@@ -61,7 +61,6 @@ private:
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<transport::TransportManager> transportManager_;
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;
-
 };
 }
 }

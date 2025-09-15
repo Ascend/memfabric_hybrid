@@ -147,7 +147,8 @@ MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(strlen(key) <= 256, "invalid param, key's len more than 256", MMC_INVALID_PARAM);
-    MMC_RETURN_ERROR(MmcClientDefault::GetInstance()->Remove(key, flags), MmcClientDefault::GetInstance()->Name() << " remove key " << key << " failed!");
+    MMC_RETURN_ERROR(MmcClientDefault::GetInstance()->Remove(key, flags), MmcClientDefault::GetInstance()->Name()
+        << " remove key " << key << " failed!");
     return MMC_OK;
 }
 

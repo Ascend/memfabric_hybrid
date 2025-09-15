@@ -38,13 +38,13 @@ Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
     localVirtualBase_ = globalVirtualAddress_ + options_.size * options_.rankId;
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
-    *address = (void *) globalVirtualAddress_;
+    *address = globalVirtualAddress_;
     return BM_OK;
 }
 
 void MemSegmentHost::LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept
 {
-    auto *pos = (uint8_t *) (mappedAddress);
+    auto *pos = reinterpret_cast<uint8_t *>(mappedAddress);
     uint64_t setLength = 0;
     while (setLength < size) {
         *pos = 0;
@@ -52,7 +52,7 @@ void MemSegmentHost::LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t s
         pos += DEVICE_LARGE_PAGE_SIZE;
     }
 
-    pos = (uint8_t *) (mappedAddress) + (size - 1L);
+    pos = reinterpret_cast<uint8_t *>(mappedAddress) + (size - 1L);
     *pos = 0;
 }
 
@@ -74,7 +74,7 @@ Result MemSegmentHost::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice>
     LvaShmReservePhysicalMemory(sliceAddr, size);
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
-                                       (uint64_t)(ptrdiff_t)(void *)sliceAddr, size);
+                                       reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
 
@@ -192,7 +192,7 @@ bool MemSegmentHost::MemoryInRange(const void *begin, uint64_t size) const noexc
         return false;
     }
 
-    if ((const uint8_t *)begin + size > globalVirtualAddress_ + totalVirtualSize_) {
+    if (reinterpret_cast<const uint8_t *>(begin) + size > globalVirtualAddress_ + totalVirtualSize_) {
         return false;
     }
 

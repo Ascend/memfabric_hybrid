@@ -29,7 +29,7 @@ enum LOCAL_META_OPCODE_REQ : int16_t {
     ML_GET_REQ = 3,            /* get object info by key */
     ML_REMOVE_REQ = 4,         /* remove object by key */
     ML_BM_REGISTER_REQ = 5,    /* register local bm to meta service */
-    LM_PING_REQ = 6,           /* TODO duplicated */
+    LM_PING_REQ = 6,           /* duplicated */
     LM_META_REPLICATE_REQ = 7, /* get replicate list of object by key */
     ML_IS_EXIST_REQ = 8,       /* check if object exists */
     ML_BATCH_IS_EXIST_REQ = 9, /* check if objects exist in batch */

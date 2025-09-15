@@ -1,6 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  */
+#include "device_rdma_transport_manager.h"
+
 #include "hybm_define.h"
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
@@ -10,7 +12,6 @@
 #include "device_rdma_helper.h"
 #include "fixed_ranks_qp_manager.h"
 #include "bipartite_ranks_qp_manager.h"
-#include "device_rdma_transport_manager.h"
 #include "joinable_ranks_qp_manager.h"
 
 namespace ock {
@@ -151,7 +152,7 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     RegMemKeyUnion keyUnion{};
     auto pos = registerMRS_.lower_bound(addr);
     if (pos == registerMRS_.end() || pos->first + pos->second.size <= addr) {
-        BM_LOG_ERROR("input address not register: " << (void *)addr);
+        BM_LOG_ERROR("input address not register: " << reinterpret_cast<void *>(addr));
         return BM_INVALID_PARAM;
     }
 
@@ -596,7 +597,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     if (lAddr >= HYBM_HOST_GVA_START_ADDR) {
         auto pos = registerMRS_.lower_bound(lAddr);
         if (pos == registerMRS_.end() || pos->first + pos->second.size < lAddr + size) {
-            BM_LOG_ERROR("input local address not register: " << (void *)lAddr);
+            BM_LOG_ERROR("input local address not register: " << reinterpret_cast<void *>(lAddr));
             return BM_INVALID_PARAM;
         }
         wr.buf_list->addr = pos->second.regAddress + (lAddr - pos->first);
@@ -611,7 +612,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
 
         auto pos = it->second.lower_bound(rAddr);
         if (pos == it->second.end() || pos->first + pos->second.size <= lAddr + size) {
-            BM_LOG_ERROR("input remote address not register: " << (void *)rAddr);
+            BM_LOG_ERROR("input remote address not register: " << reinterpret_cast<void *>(rAddr));
             return BM_INVALID_PARAM;
         }
 

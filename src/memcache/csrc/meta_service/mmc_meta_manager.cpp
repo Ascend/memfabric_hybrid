@@ -65,7 +65,7 @@ void MmcMetaManager::CheckAndEvict()
         return;
     }
 
-    auto moveFunc = [&](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
+    auto moveFunc = [this](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
 
         MediaType type = objMeta->MoveTo(true);
@@ -142,7 +142,6 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
     return ret;
 }
 
-// todo update 方法没有兼容多blob情况
 Result MmcMetaManager::UpdateState(const std::string& key, const MmcLocation& loc, const BlobActionResult& actRet,
                                    uint64_t operateId)
 {
@@ -272,7 +271,7 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
     // Force delete the blobs
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
 
-    auto matchFunc = [&](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
+    auto matchFunc = [this, &filter](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
         auto ret = objMeta->FreeBlobs(key, globalAllocator_, filter, false);
         if (ret != MMC_OK) {

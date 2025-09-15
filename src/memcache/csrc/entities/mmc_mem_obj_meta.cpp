@@ -3,14 +3,12 @@
  */
  
 #include "mmc_mem_obj_meta.h"
-#include "mmc_global_allocator.h"
-#include <algorithm>
 #include <chrono>
+#include "mmc_global_allocator.h"
 
 namespace ock {
 namespace mmc {
 
-// TODO: 此处去重成本比较高，先不做
 Result MmcMemObjMeta::AddBlob(const MmcMemBlobPtr& blob)
 {
     if (numBlobs_ != 0 && size_ != blob->Size()) {

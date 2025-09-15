@@ -51,11 +51,13 @@ public:
 
     Result IsExist(const std::string &key, uint32_t flags) const;
 
-    Result BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results, uint32_t flags) const;
+    Result BatchIsExist(const std::vector<std::string> &keys, std::vector<int32_t> &exist_results,
+                        uint32_t flags) const;
 
     Result Query(const std::string &key, mmc_data_info &query_info, uint32_t flags) const;
 
-    Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos, uint32_t flags) const;
+    Result BatchQuery(const std::vector<std::string> &keys, std::vector<mmc_data_info> &query_infos,
+                      uint32_t flags) const;
 
     static Result RegisterInstance()
     {

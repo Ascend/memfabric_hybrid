@@ -4,11 +4,12 @@
 #ifndef MEM_FABRIC_MMC_META_PROXY_IMPL_H
 #define MEM_FABRIC_MMC_META_PROXY_IMPL_H
 
+#include <glob.h>
+
 #include "mmc_meta_manager.h"
 #include "mmc_meta_service.h"
 #include "mmc_msg_client_meta.h"
 #include "mmc_meta_net_server.h"
-#include <glob.h>
 
 namespace ock {
 namespace mmc {

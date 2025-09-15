@@ -294,7 +294,7 @@ KeyInfo MmcacheStore::GetKeyInfo(const std::string &key)
 
 std::vector<KeyInfo> MmcacheStore::BatchGetKeyInfo(const std::vector<std::string> &keys)
 {
-    int32_t size = keys.size();
+    uint32_t size = keys.size();
     if (size <= 0) {
         MMC_LOG_ERROR("batch to query keys num is " << size);
         return {};
@@ -305,7 +305,7 @@ std::vector<KeyInfo> MmcacheStore::BatchGetKeyInfo(const std::vector<std::string
         MMC_LOG_ERROR("Cannot malloc memory for keys!");
         return {};
     }
-    for (int i = 0; i < size; ++i) {
+    for (uint32_t i = 0; i < size; ++i) {
         ckeys[i] = keys[i].c_str();
     }
 
@@ -326,7 +326,7 @@ std::vector<KeyInfo> MmcacheStore::BatchGetKeyInfo(const std::vector<std::string
     }
 
     std::vector<KeyInfo> infoList{};
-    for (int i = 0; i < size; ++i) {
+    for (uint32_t i = 0; i < size; ++i) {
         mmc_data_info &info = infoArr[i];
         if (!info.valid) {
             infoList.emplace_back(KeyInfo{0, 0});
@@ -449,7 +449,8 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *
         mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
                              .type = type,
                              .dimType = 1,
-                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
+                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
+                                            reinterpret_cast<uint64_t>(buffers[0]),
                                         .layerOffset = 0,
                                         .width = static_cast<uint32_t>(sizes[0]),
                                         .layerNum = static_cast<uint16_t>(layerNum),
@@ -563,7 +564,8 @@ int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<void *
         mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
                              .type = type,
                              .dimType = 1,
-                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
+                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
+                                            reinterpret_cast<uint64_t>(buffers[0]),
                                         .layerOffset = 0,
                                         .width = static_cast<uint32_t>(sizes[0]),
                                         .layerNum = static_cast<uint16_t>(layerNum),
@@ -704,7 +706,8 @@ void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
         buffersIn2D.push_back({.addr = reinterpret_cast<uint64_t>(buffers[0]),
                                .type = type,
                                .dimType = 1,
-                               .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]),
+                               .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
+                                            reinterpret_cast<uint64_t>(buffers[0]),
                                           .layerOffset = 0,
                                           .width = static_cast<uint32_t>(sizes[0]),
                                           .layerNum = static_cast<uint16_t>(layerNum),
