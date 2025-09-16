@@ -27,6 +27,11 @@ protected:
     }
 };
 
+void extern_logger_example(int level, const char *msg)
+{
+    std::cout << "level:" << level << ":" << (msg == nullptr ? "" : msg) << std::endl;
+}
+
 /**
 * @tc.name  : hybm_init_ShouldReturnZero_WhenAllConditionsMet
 * @tc.desc  : Test hybm_init function when all conditions are met
@@ -153,9 +158,24 @@ TEST_F(HybmEntryTest, hybm_init_ShouldReturnBMMallocFailed_WhenAllocMemoryFails)
 TEST_F(HybmEntryTest, hybm_set_log_level_ShouldReturnMinusOne_WhenLevelIsInvalid)
 {
     EXPECT_EQ(hybm_set_log_level(BUTT_LEVEL), -1);
+    EXPECT_EQ(hybm_set_log_level(-1), -1);
 
     EXPECT_EQ(hybm_set_log_level(INFO_LEVEL), 0);
     hybm_set_extern_logger(nullptr);
 
     EXPECT_NE(hybm_get_error_string(0), nullptr);
+}
+
+/**
+* @tc.name  : hybm_set_extern_logger_test
+* @tc.desc  : 额外的logger函数为空时，OutLogger中的logFunc_为空
+*/
+TEST_F(HybmEntryTest, hybm_set_extern_logger_test)
+{
+    hybm_set_extern_logger(nullptr);
+    EXPECT_EQ((OutLogger::Instance().GetLogExtraFunc() == nullptr), 1);
+    hybm_set_extern_logger(extern_logger_example);
+    EXPECT_EQ((OutLogger::Instance().GetLogExtraFunc() == nullptr), 0);
+    hybm_set_extern_logger(extern_logger_example);
+    EXPECT_EQ((OutLogger::Instance().GetLogExtraFunc() == nullptr), 0);
 }
