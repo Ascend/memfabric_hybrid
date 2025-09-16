@@ -353,7 +353,7 @@ TEST_F(TestMmcServiceInterface, testExistOperations)
     EXPECT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
 
     const char* keys[] = {"key1", "key2", "non_existent"};
-    int32_t exists[3];
+    int32_t exists[3] = {};
     ret = mmcc_batch_exist(keys, 3, exists, 0);
     ASSERT_EQ(ret, ock::mmc::MMC_LINK_NOT_FOUND);
     ASSERT_EQ(exists[2], ock::mmc::MMC_OK);

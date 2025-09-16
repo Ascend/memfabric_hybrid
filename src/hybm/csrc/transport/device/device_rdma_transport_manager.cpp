@@ -24,6 +24,8 @@ constexpr int RT_STARS_SQE_TYPE_WRITE_VALUE = 8;
 constexpr int RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT = 3;
 constexpr int RT_STARS_WRITE_VALUE_SUB_TYPE_RDMA_DB_SEND = 2;
 constexpr int RT_STARS_SQE_TYPE_INVALID = 63;
+constexpr unsigned long RT_ASCEND910B1_ROCEE_BASE_ADDR = 0x2000000000UL;
+constexpr unsigned long RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG = 0x230UL;
 
 RdmaTransportManager::~RdmaTransportManager()
 {
@@ -718,9 +720,8 @@ uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
     auto chipOffset = deviceChipInfo_->GetChipOffset();
     auto dieOffset = deviceChipInfo_->GetDieOffset();
 
-    uint64_t dbAddr = 0x2000000000UL /* RT_ASCEND910B1_ROCEE_BASE_ADDR */ +
-                      0x230UL /* RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG */ + chipOffset * static_cast<uint64_t>(chipId) +
-                      dieOffset * dieId + chipAddr;
+    const uint64_t dbAddr = RT_ASCEND910B1_ROCEE_BASE_ADDR + RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG +
+        chipOffset * static_cast<uint64_t>(chipId) + dieOffset * dieId + chipAddr;
     BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId << ", db=0x" << std::hex << dbAddr);
 
     return dbAddr;

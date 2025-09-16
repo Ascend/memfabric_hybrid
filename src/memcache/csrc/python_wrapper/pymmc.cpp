@@ -240,7 +240,7 @@ PYBIND11_MODULE(_pymmc, m)
             py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G)
         .def("put",
              [](MmcacheStore &self, const std::string &key, const py::buffer &buf) {
-                py::buffer_info info = buf.request(/* writable= */ false);
+                py::buffer_info info = buf.request(false);
                 mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(info.ptr),
                                      .type = 0,
                                      .dimType = 0,

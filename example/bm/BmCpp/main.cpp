@@ -68,7 +68,9 @@ bool CheckData(void *base, void *ptr)
     int32_t *arr1 = (int32_t *)base;
     int32_t *arr2 = (int32_t *)ptr;
     for (uint32_t i = 0; i < COPY_SIZE / sizeof(int); i++) {
-        if (arr1[i] != arr2[i]) return false;
+        if (arr1[i] != arr2[i]) {
+            return false;
+        }
     }
     return true;
 }
@@ -249,7 +251,9 @@ int main(int32_t argc, char* argv[])
     int rankStart = atoi(argv[RANK_START_ARG_INDEX]);
     std::string ipport = argv[IPPORT_ARG_INDEX];
     int autoRank = 0;
-    if (argc > AUTO_RANK_ARG_INDEX) autoRank = atoi(argv[AUTO_RANK_ARG_INDEX]);
+    if (argc > AUTO_RANK_ARG_INDEX) {
+        autoRank = atoi(argv[AUTO_RANK_ARG_INDEX]);
+    }
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
         " input_ip:" << ipport << " autoRank:" << autoRank);

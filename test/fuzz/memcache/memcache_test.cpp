@@ -39,7 +39,7 @@ void TestMmcFuzzCommon::SetUpTestSuite()
     DT_Set_Running_Time_Second(DT_RUNNING_TIME);
 
     // 有没有更好的方法？现在要求执行这个用例之前设置环境变量，否则接口返回失败。没法打桩，也没法对常量复制覆盖。
-    const char * tempPath = std::getenv("MMC_LOCAL_CONFIG_PATH");
+    const char* tempPath = std::getenv("MMC_LOCAL_CONFIG_PATH");
     if (tempPath == nullptr) {
         std::cerr << "[Error] Please set env param MMC_LOCAL_CONFIG_PATH to test! \n";
     }

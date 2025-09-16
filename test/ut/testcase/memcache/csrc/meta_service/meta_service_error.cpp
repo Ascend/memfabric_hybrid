@@ -265,8 +265,8 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
         keys[i] = static_cast<char*>(malloc(16));
         sprintf(const_cast<char *>(keys[i]), "test_%d", i);
     }
-    void** hostSrcs = new void * [keys_count];
-    void** hostDests = new void * [keys_count];
+    void** hostSrcs = new void* [keys_count];
+    void** hostDests = new void* [keys_count];
     auto *bufs = new mmc_buffer [keys_count];
 
     for (uint32_t i = 0; i < keys_count; ++i) {

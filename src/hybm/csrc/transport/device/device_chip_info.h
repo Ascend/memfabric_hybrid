@@ -13,7 +13,7 @@ namespace transport {
 namespace device {
 class DeviceChipInfo {
 public:
-    DeviceChipInfo(uint32_t devId) noexcept: deviceId_{devId} {}
+    explicit DeviceChipInfo(uint32_t devId) noexcept: deviceId_{devId} {}
     int Init() noexcept;
 
 public:

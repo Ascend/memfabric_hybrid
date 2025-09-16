@@ -121,7 +121,8 @@ struct HybmDeviceMeta {
 
 SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uint32_t qpIdx, uint32_t idx,
                                                       AscendC::LocalTensor<uint64_t> ubLocal64,
-                                                      AscendC::LocalTensor<uint32_t> ubLocal32) {
+                                                      AscendC::LocalTensor<uint32_t> ubLocal32)
+{
     __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
         SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
@@ -216,7 +217,8 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_roce_poll_cq(uint32_t remoteRankId, uin
 SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, __gm__ uint8_t* localAddr,
                                                     uint32_t destRankId, uint32_t qpIdx, OPCODE opcode,
                                                     uint64_t messageLen, AscendC::LocalTensor<uint64_t> ubLocal64,
-                                                    AscendC::LocalTensor<uint32_t> ubLocal32) {
+                                                    AscendC::LocalTensor<uint32_t> ubLocal32)
+{
     __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
         SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
@@ -309,7 +311,8 @@ template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
                                                 uint32_t qpIdx, uint64_t messageLen,
                                                 AscendC::LocalTensor<uint64_t> ubLocal64,
-                                                AscendC::LocalTensor<uint32_t> ubLocal32) {
+                                                AscendC::LocalTensor<uint32_t> ubLocal32)
+{
     smem_shm_rdma_post_send(destDmaAddr, srcDmaAddr, destRankId, qpIdx, OPCODE::OP_RDMA_WRITE,
                             messageLen, ubLocal64, ubLocal32);
 }
@@ -330,7 +333,8 @@ template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t srcRankId,
                                                uint32_t qpIdx, uint64_t messageLen,
                                                AscendC::LocalTensor<uint64_t> ubLocal64,
-                                               AscendC::LocalTensor<uint32_t> ubLocal32) {
+                                               AscendC::LocalTensor<uint32_t> ubLocal32)
+{
     smem_shm_rdma_post_send(srcDmaAddr, destDmaAddr, srcRankId, qpIdx, OPCODE::OP_RDMA_READ,
                             messageLen, ubLocal64, ubLocal32);
 }

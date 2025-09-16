@@ -9,8 +9,6 @@
 #include <cstdint>
 #include <dlfcn.h>
 
-#define PATH_MAX_SIZE 1024
-
 namespace ock {
 namespace mf {
 

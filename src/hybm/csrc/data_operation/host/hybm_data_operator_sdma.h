@@ -12,7 +12,7 @@ namespace ock {
 namespace mf {
 class HostDataOpSDMA : public DataOperator {
 public:
-    HostDataOpSDMA(void *stm) noexcept;
+    explicit HostDataOpSDMA(void *stm) noexcept;
     ~HostDataOpSDMA() override = default;
 
     int32_t Initialize() noexcept override;

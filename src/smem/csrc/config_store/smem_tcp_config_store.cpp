@@ -61,7 +61,8 @@ private:
 
 class ClientWatchContext : public ClientCommonContext {
 public:
-    ClientWatchContext(std::function<void(int, const std::vector<uint8_t> &)> nfy, bool oneTime = true) noexcept
+    explicit ClientWatchContext(std::function<void(int, const std::vector<uint8_t> &)> nfy,
+        bool oneTime = true) noexcept
         : notify_{std::move(nfy)}, onlyOneTime_{oneTime}
     {}
 
@@ -346,7 +347,7 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     }
 
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
-    newSize = strtol(data.c_str(), nullptr, DECIMAL_BASE);
+    newSize = strtoull(data.c_str(), nullptr, DECIMAL_BASE);
 
     return StoreErrorCode::SUCCESS;
 }

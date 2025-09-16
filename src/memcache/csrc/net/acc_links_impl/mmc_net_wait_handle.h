@@ -59,7 +59,7 @@ public:
      *
      * @return 0 if ok, MMC_TIMEOUT if timeout
      */
-    Result TimedWait(uint32_t second = UINT32_MAX) noexcept
+    Result TimedWait(int32_t second = UINT32_MAX) noexcept
     {
         pthread_mutex_lock(&mutex_);
         /* already notified */
@@ -73,7 +73,7 @@ public:
         clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
         struct timespec futureTime {};
-        futureTime.tv_sec = static_cast<long int>(currentTime.tv_sec + second);
+        futureTime.tv_sec = currentTime.tv_sec + second;
         futureTime.tv_nsec = currentTime.tv_nsec;
         auto waitResult = pthread_cond_timedwait(&cond_, &mutex_, &futureTime);
         if (waitResult == ETIMEDOUT) {

@@ -109,13 +109,13 @@ public:
     template <typename DataType>
     inline int Test(DataType &data) const noexcept
     {
-        return Test((void *)&data, sizeof(data));
+        return Test(static_cast<void *>(&data), sizeof(data));
     }
 
     template <typename DataType>
     inline int Read(DataType &data) const noexcept
     {
-        return Read((void *)&data, sizeof(data));
+        return Read(static_cast<void *>(&data), sizeof(data));
     }
 
 private:

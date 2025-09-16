@@ -480,7 +480,7 @@ Result NetEngineAcc::ConnectToPeer(uint32_t peerId, const std::string &peerIp, u
     /* connect */
     TcpLinkPtr realLink;
     Result ret = server_->ConnectToPeerServer(peerIp, port, connReq, realLink);
-    if (ret != MMC_OK) {
+    if (ret != MMC_OK || realLink == nullptr) {
         MMC_LOG_ERROR("Failed to connection to peerId: " << peerId << ", peerIpPort: " << peerIp << ":" << port);
         return ret;
     }
@@ -520,6 +520,7 @@ Result NetEngineAcc::HandleAllRequests4Response(const TcpReqContext &context)
     auto dataBuf = MmcMakeRef<ock::acc::AccDataBuffer>(context.DataLen());
     MMC_ASSERT_RETURN(result == MMC_OK, MMC_NEW_OBJECT_FAILED);
     MMC_ASSERT_RETURN(dataBuf->AllocIfNeed(), MMC_NEW_OBJECT_FAILED);
+    MMC_ASSERT_RETURN(context.DataPtr() != nullptr, MMC_ERROR);
     memcpy(dataBuf->DataPtrVoid(), context.DataPtr(), context.DataLen());
     dataBuf->SetDataSize(context.DataLen());
 

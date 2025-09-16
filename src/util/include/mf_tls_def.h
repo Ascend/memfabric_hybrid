@@ -4,7 +4,8 @@
 #ifndef __MF_TLS_DEF_H__
 #define __MF_TLS_DEF_H__
 
-#define PATH_MAX_SIZE 1024
+#define TLS_PATH_SIZE 256
+#define TLS_PATH_MAX_LEN (TLS_PATH_SIZE - 1)
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,13 +13,13 @@ extern "C" {
 
 typedef struct {
     bool tlsEnable;
-    char caPath[PATH_MAX_SIZE];
-    char crlPath[PATH_MAX_SIZE];
-    char certPath[PATH_MAX_SIZE];
-    char keyPath[PATH_MAX_SIZE];
-    char keyPassPath[PATH_MAX_SIZE];
-    char packagePath[PATH_MAX_SIZE];
-    char decrypterLibPath[PATH_MAX_SIZE];
+    char caPath[TLS_PATH_SIZE];
+    char crlPath[TLS_PATH_SIZE];
+    char certPath[TLS_PATH_SIZE];
+    char keyPath[TLS_PATH_SIZE];
+    char keyPassPath[TLS_PATH_SIZE];
+    char packagePath[TLS_PATH_SIZE];
+    char decrypterLibPath[TLS_PATH_SIZE];
 } tls_config;
 
 #ifdef __cplusplus

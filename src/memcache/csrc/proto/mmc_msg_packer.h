@@ -7,6 +7,8 @@
 #include <vector>
 #include "mmc_common_includes.h"
 
+constexpr size_t MAX_CONTAINER_SIZE = 1024 * 1024;
+
 namespace ock {
 namespace mmc {
 class NetMsgPacker {
@@ -141,6 +143,10 @@ public:
     {
         std::size_t size = 0;
         inStream_.read(reinterpret_cast<char *>(&size), sizeof(size));
+        if (size > MAX_CONTAINER_SIZE) {
+            MMC_LOG_ERROR("container size exceeds limit: " << MAX_CONTAINER_SIZE);
+            return ;
+        }
         container.clear();
         container.reserve(size);
         for (std::size_t i = 0; i < size; ++i) {
@@ -162,6 +168,10 @@ public:
     {
         std::size_t size = 0;
         inStream_.read(reinterpret_cast<char *>(&size), sizeof(size));
+        if (size > MAX_CONTAINER_SIZE) {
+            MMC_LOG_ERROR("container size exceeds limit: " << MAX_CONTAINER_SIZE);
+            return ;
+        }
         container.clear();
         for (std::size_t i = 0; i < size; ++i) {
             K key;

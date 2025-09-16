@@ -89,7 +89,8 @@ private:
     MediaType mediaType_ {MEDIA_NONE};
 };
 
-uint32_t MmcBmProxy::RankId() const {
+uint32_t MmcBmProxy::RankId() const
+{
     return bmRankId_;
 }
 

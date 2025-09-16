@@ -4,8 +4,8 @@
 
 #ifndef MF_HYBRID_MMC_BLOB_COMMON_H
 #define MF_HYBRID_MMC_BLOB_COMMON_H
-#include "mmc_ref.h"
 #include <iostream>
+#include "mmc_ref.h"
 namespace ock {
 namespace mmc {
 class MmcMemBlob;

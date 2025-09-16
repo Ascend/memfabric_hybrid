@@ -18,7 +18,7 @@ namespace ock {
     namespace dagger {
         class Monotonic {
 #ifdef USE_PROCESS_MONOTONIC
-            public:
+        public:
 #ifdef __aarch64__
     /*
      * @brief init tick for us
@@ -183,7 +183,7 @@ namespace ock {
             }
 #endif /* USE_PROCESS_MONOTONIC */
 #ifdef __x86_64__
-            private:
+        private:
     /* NN_SplitStr */
     static void NN_SplitStr(const std::string &str, const std::string &separator, std::vector<std::string> &result)
     {

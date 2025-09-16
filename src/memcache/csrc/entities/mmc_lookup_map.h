@@ -4,9 +4,9 @@
 #ifndef MEMFABRIC_HYBRID_MMC_LOOKUP_MAP_H
 #define MEMFABRIC_HYBRID_MMC_LOOKUP_MAP_H
 
+#include <unordered_map>
 #include "mmc_spinlock.h"
 #include "mmc_types.h"
-#include <unordered_map>
 
 namespace ock {
 namespace mmc {
