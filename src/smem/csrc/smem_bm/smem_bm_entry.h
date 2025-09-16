@@ -25,8 +25,6 @@ public:
         : options_(options),
           _configStore(store)
     {
-        bzero(&entityInfo_.desc, sizeof(entityInfo_.desc));
-        entityInfo_.descLen = 0u;
     }
 
     ~SmemBmEntry() override;

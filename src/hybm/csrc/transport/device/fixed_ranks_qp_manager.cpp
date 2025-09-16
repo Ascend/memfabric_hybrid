@@ -24,11 +24,7 @@ FixedRanksQpManager::FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uin
 
 FixedRanksQpManager::~FixedRanksQpManager() noexcept
 {
-    try {
-        CloseServices();
-    } catch (const std::exception &ex) {
-        BM_LOG_ERROR("fixed ranks qp manager close services failed: " << ex.what());
-    }
+    CloseServices();
 }
 
 int FixedRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t, ConnectRankInfo> &ranks) noexcept
@@ -497,16 +493,16 @@ int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
     pointer += sizeof(AiQpRMAQueueInfo);
     copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
 
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
+    pointer += sizeof(AiQpRMAWQ) * rankCount_;
     copyInfo->rq = (AiQpRMAWQ *)(void *)(pointer);
 
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
+    pointer += sizeof(AiQpRMAWQ) * rankCount_;
     copyInfo->scq = (AiQpRMACQ *)(void *)(pointer);
 
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
+    pointer += sizeof(AiQpRMACQ) * rankCount_;
     copyInfo->rcq = (AiQpRMACQ *)(void *)(pointer);
 
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
+    pointer += sizeof(AiQpRMACQ) * rankCount_;
     copyInfo->mr = (RdmaMemRegionInfo *)(void *)pointer;
 
     auto ret = DlAclApi::AclrtMemcpy(qpInfo_, qpInfoSize_, copyInfo, qpInfoSize_, ACL_MEMCPY_HOST_TO_DEVICE);

@@ -779,8 +779,8 @@ Result MemEntityDefault::InitDramSegment()
 
 Result MemEntityDefault::InitTransManager()
 {
-    auto hostTransFlags = static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP);
-    auto composeTransFlags = static_cast<uint32_t>(HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags);
+    auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP;
+    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags;
     if ((options_.bmDataOpType & composeTransFlags) == 0) {
         BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
         return BM_OK;
