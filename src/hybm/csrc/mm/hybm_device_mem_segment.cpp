@@ -153,7 +153,7 @@ Result MemSegmentDevice::Export(const std::shared_ptr<MemSlice> &slice, std::str
         slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.deviceId = options_.devId;
-    info.pid = pid_;
+    info.pid = static_cast<int>(pid_);
     info.rankId = options_.rankId;
     info.size = slice->size_;
     info.entityId = entityId_;
