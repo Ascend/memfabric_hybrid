@@ -12,7 +12,7 @@ int32_t smem_bm_config_init(smem_bm_config_t *config)
 }
 
 int32_t smem_bm_init(const char *storeURL, uint32_t worldSize,
-                    uint16_t deviceId, const smem_bm_config_t *config)
+                     uint16_t deviceId, const smem_bm_config_t *config)
 {
     return 0;
 }
@@ -28,8 +28,8 @@ uint32_t smem_bm_get_rank_id(void)
 }
 
 smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
-                        smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
-                        uint64_t localHBMSize, uint32_t flags)
+                         smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+                         uint64_t localHBMSize, uint32_t flags)
 {
     g_spaces[SMEM_MEM_TYPE_DEVICE] = localHBMSize;
     g_spaces[SMEM_MEM_TYPE_HOST] = localDRAMSize;

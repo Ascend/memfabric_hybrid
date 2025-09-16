@@ -235,7 +235,10 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
     ASSERT_TRUE(memMetaObjs[0].NumBlobs() == 1);
     ASSERT_TRUE(memMetaObjs[0].Size() == SIZE_32K);
 
-    std::vector<std::string> allExistKeys, partExistKeys, allNotExistKeys;
+    std::vector<std::string> allExistKeys;
+    std::vector<std::string> partExistKeys;
+    std::vector<std::string> allNotExistKeys;
+
     auto GetKeys = [](uint16_t start, uint16_t end, std::vector<std::string> &keys) {
         for (uint16_t i = start; i < end; ++i) {
             string key = "testKey_" + std::to_string(i);

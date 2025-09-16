@@ -3,9 +3,9 @@
  */
 #include <vector>
 #include "hybm.h"
-#include "smem_shm_entry_manager.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
+#include "smem_shm_entry_manager.h"
 
 namespace ock {
 namespace smem {

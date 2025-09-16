@@ -124,7 +124,8 @@ Result MmcMetaServiceDefault::BmUnregister(uint32_t rank, uint16_t mediaType)
     return MMC_OK;
 }
 
-Result MmcMetaServiceDefault::ClearResource(uint32_t rank) {
+Result MmcMetaServiceDefault::ClearResource(uint32_t rank)
+{
     if (!started_) {
         MMC_LOG_ERROR("MetaService (" << name_ << ") is not started.");
         return MMC_NOT_STARTED;

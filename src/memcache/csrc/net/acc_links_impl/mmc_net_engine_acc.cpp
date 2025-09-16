@@ -270,7 +270,8 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     return result;
 }
 
-Result NetEngineAcc::Send(uint32_t peerId, const char *reqData, uint32_t reqDataLen, int32_t timeoutInSecond) {
+Result NetEngineAcc::Send(uint32_t peerId, const char *reqData, uint32_t reqDataLen, int32_t timeoutInSecond)
+{
     MMC_ASSERT_RETURN(started_, MMC_NOT_STARTED);
     MMC_ASSERT_RETURN(reqData != nullptr, MMC_INVALID_PARAM);
     MMC_ASSERT_RETURN(reqDataLen != 0, MMC_INVALID_PARAM);

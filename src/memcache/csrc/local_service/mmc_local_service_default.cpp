@@ -63,7 +63,8 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
 }
 
 void MmcLocalServiceDefault::Stop()
-{    std::lock_guard<std::mutex> guard(mutex_);
+{
+    std::lock_guard<std::mutex> guard(mutex_);
     if (!started_) {
         MMC_LOG_WARN("MmcClientDefault has not been started");
         return;

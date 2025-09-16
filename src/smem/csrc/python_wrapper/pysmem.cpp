@@ -250,7 +250,7 @@ automatically allocate rank IDs, default is false)")
         .def_readwrite("rank_id", &smem_bm_config_t::rankId, "user specified rank ID, valid for autoRanking is False")
         .def_readwrite("flags", &smem_bm_config_t::flags, "other flags, default 0")
         .def(
-            "set_nic",
+        "set_nic",
             [](smem_bm_config_t &config, const std::string &nic) {
                 strncpy(config.hcomUrl, nic.c_str(), sizeof(config.hcomUrl));
             },
@@ -273,7 +273,7 @@ void DefineShmClass(py::module_ &m)
 
     py::class_<ShareMemory>(m, "ShareMemory")
         .def(
-            "set_context",
+        "set_context",
             [](ShareMemory &shm, py::bytes data) {
                 auto str = py::bytes(data).cast<std::string>();
                 shm.SetExternContext(str.data(), str.size());
@@ -292,7 +292,7 @@ Get rank size of a shm object)")
         .def("barrier", &ShareMemory::Barrier, py::call_guard<py::gil_scoped_release>(), R"(
 Do barrier on a shm object, using control network.)")
         .def(
-            "all_gather",
+        "all_gather",
             [](ShareMemory &shm, py::bytes data) {
                 auto str = py::bytes(data).cast<std::string>();
                 auto outputSize = str.size() * shm.RankSize();
@@ -309,7 +309,7 @@ Arguments:
 Returns:
     output data)")
         .def_property_readonly(
-            "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
+        "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
             py::call_guard<py::gil_scoped_release>(), R"(
 get global virtual address created, it can be passed to kernel to data operations)");
 }

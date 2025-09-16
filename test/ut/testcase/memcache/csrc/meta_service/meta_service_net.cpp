@@ -182,7 +182,9 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
         ASSERT_TRUE(localServiceDefault->SyncCallMeta(updateRequest, updateResponse, 30) == MMC_OK);
     }
 
-    std::vector<std::string> allExistKeys, partExistKeys, allNotExistKeys;
+    std::vector<std::string> allExistKeys;
+    std::vector<std::string> partExistKeys;
+    std::vector<std::string> allNotExistKeys;
     std::vector<Result> results;
     auto GetKeys = [](uint16_t start, uint16_t end, std::vector<std::string> &keys) {
         for (uint16_t i = start; i < end; ++i) {
@@ -311,7 +313,9 @@ TEST_F(TestMmcMetaService, BatchQueryRequest)
         ASSERT_TRUE(localServiceDefault->SyncCallMeta(updateRequest, updateResponse, 30) == MMC_OK);
     }
 
-    std::vector<std::string> allExistKeys, partExistKeys, allNotExistKeys;
+    std::vector<std::string> allExistKeys;
+    std::vector<std::string> partExistKeys;
+    std::vector<std::string> allNotExistKeys;
     std::vector<Result> results;
     auto GetKeys = [](uint16_t start, uint16_t end, std::vector<std::string> &keys) {
         for (uint16_t i = start; i < end; ++i) {

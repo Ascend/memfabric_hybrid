@@ -46,7 +46,8 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     uint32_t blockDim = 8;
 
     // 申请本地主机内存 和 device内存
-    uint8_t *inputHost, *outputHost;
+    uint8_t *inputHost;
+    uint8_t *outputHost;
     CHECK_ACL(aclrtMallocHost((void**)(&inputHost), gDataByteSize));
     CHECK_ACL(aclrtMallocHost((void**)(&outputHost), gDataByteSize));
 

@@ -26,7 +26,8 @@ static uint32_t hostgNpuMallocSpace = 3;
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
-    int64_t *xHost, *xDevice;
+    int64_t *xHost;
+    int64_t *xDevice;
     uint32_t *yHost;
     size_t inputSize = (gInputLen + 2) * sizeof(int64_t);
     size_t outputSize = (gInputLen + 2) * sizeof(int64_t);

@@ -4,10 +4,10 @@
 
 #include <algorithm>
 #include "smem_common_includes.h"
-#include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
 #include "hybm_big_mem.h"
 #include "smem_store_factory.h"
+#include "smem_shm_entry.h"
 
 namespace ock {
 namespace smem {

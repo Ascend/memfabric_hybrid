@@ -3,10 +3,10 @@
  */
 #include <algorithm>
 #include "hybm_big_mem.h"
-#include "smem_shm.h"
 #include "smem_logger.h"
 #include "smem_shm_entry.h"
 #include "smem_shm_entry_manager.h"
+#include "smem_shm.h"
 
 using namespace ock::smem;
 #ifdef UT_ENABLED

@@ -10,7 +10,8 @@
 
 namespace ock {
 namespace mmc {
-std::string Join(const std::vector<std::string> &vec) {
+std::string Join(const std::vector<std::string> &vec)
+{
     std::string result = "[";
     for (const std::string &str : vec) {
         result += "\"" + str + "\", ";
