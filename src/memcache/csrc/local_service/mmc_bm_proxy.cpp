@@ -19,6 +19,7 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
         MMC_LOG_INFO("MmcBmProxy " << name_ << " already init");
         return MMC_OK;
     }
+    createConfig_ = createConfig;
     MMC_RETURN_ERROR(smem_set_log_level(initConfig.logLevel), "Failed to set smem bm log level");
     if (initConfig.logFunc != nullptr) {
         MMC_RETURN_ERROR(smem_set_extern_logger(initConfig.logFunc), "Failed to set smem bm extern logger");
@@ -112,6 +113,11 @@ MediaType MmcBmProxy::GetMediaType()
     }
     MMC_LOG_ERROR("MmcBmProxy GetMediaType unknown media type");
     return MEDIA_NONE;
+}
+
+std::string MmcBmProxy::GetDataOpType() const
+{
+    return createConfig_.dataOpType;
 }
 
 Result MmcBmProxy::Put(uint64_t srcBmAddr, uint64_t dstBmAddr, uint64_t size, smem_bm_copy_type type)

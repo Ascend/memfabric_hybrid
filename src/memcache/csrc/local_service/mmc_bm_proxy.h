@@ -74,6 +74,7 @@ public:
     }
 
     MediaType GetMediaType();
+    std::string GetDataOpType() const;
     inline uint32_t RankId() const;
 
 private:
@@ -87,6 +88,7 @@ private:
     std::mutex mutex_;
     uint32_t bmRankId_;
     MediaType mediaType_ {MEDIA_NONE};
+    mmc_bm_create_config_t createConfig_{};
 };
 
 uint32_t MmcBmProxy::RankId() const
