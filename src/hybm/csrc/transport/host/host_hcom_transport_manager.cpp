@@ -240,10 +240,10 @@ Result HcomTransportManager::Connect()
         if (rankId_ == i || nics_[i].empty()) {
             continue;
         }
-        auto ret = ConnectHcomChannel(i, nics_[i]);
+        const auto ret = ConnectHcomChannel(i, nics_[i]);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to connect remote service, rankId" << i << " nic: " << nics_[i] << " ret: " << ret);
-            continue;
+            return ret;
         }
     }
     return BM_OK;
@@ -296,11 +296,11 @@ Result HcomTransportManager::UpdateRankConnectInfos(const std::unordered_map<uin
         auto it = opt.find(i);
         if (channels_[i] == 0 && it != opt.end()) {
             nics_[i] = it->second.nic;
-            auto ret = ConnectHcomChannel(i, nics_[i]);
+            const auto ret = ConnectHcomChannel(i, nics_[i]);
             if (ret != BM_OK) {
                 BM_LOG_ERROR("Failed to connect remote service, rankId" << i << " nic: " << nics_[i]
                                                                         << " ret: " << ret);
-                continue;
+                return ret;
             }
         }
 
@@ -518,7 +518,7 @@ int HcomTransportManager::GetCACallBack(const char *name, char **caPath, char **
     }
     *caPath = tlsConfig_.caPath;
     *crlPath = tlsConfig_.crlPath;
-    *verifyType = C_VERIFY_BY_CUSTOM_FUNC;
+    *verifyType = C_VERIFY_BY_DEFAULT;
     *verify = CertVerifyCallBack;
     return 0;
 }
