@@ -9,6 +9,8 @@
 namespace ock {
 namespace mmc {
 
+static const uint16_t MAX_NUM_BLOB_CHAINS = 5;  // to make sure MmcMemObjMeta <= 64 bytes
+
 Result MmcMemObjMeta::AddBlob(const MmcMemBlobPtr& blob)
 {
     if (numBlobs_ != 0 && size_ != blob->Size()) {

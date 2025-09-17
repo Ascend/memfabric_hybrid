@@ -24,7 +24,7 @@ int32_t hybm_init(uint16_t deviceId, uint64_t flags);
 /**
  * @brief UnInitialize hybrid big memory library
  */
-void hybm_uninit();
+void hybm_uninit(void);
 
 /**
  * @brief Set external log function, if not set, log message will be instdout

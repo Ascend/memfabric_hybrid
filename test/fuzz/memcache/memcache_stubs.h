@@ -6,9 +6,9 @@
 
 // smem
 const uint64_t MAX_BUF_SIZE = 327680UL;
-void MockSmemH();
-void MockSmemBmH();
-void MockSmemShmH();
-void MockSmemAll();
+void MockSmemH(void);
+void MockSmemBmH(void);
+void MockSmemShmH(void);
+void MockSmemAll(void);
 
 #endif // MEMCACHE_STUBS_H

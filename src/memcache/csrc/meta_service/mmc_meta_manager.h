@@ -21,7 +21,6 @@
 namespace ock {
 namespace mmc {
 
-static const uint16_t NUM_BUCKETS = 29;
 constexpr uint32_t META_MAMAGER_MTX_NUM = 29;
 constexpr int METAMGR_POOL_BASE = 4;
 

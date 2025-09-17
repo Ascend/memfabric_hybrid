@@ -19,8 +19,6 @@
 namespace ock {
 namespace mmc {
 
-static const uint16_t MAX_NUM_BLOB_CHAINS = 5;  // to make sure MmcMemObjMeta <= 64 bytes
-
 class MmcMemObjMeta : public MmcReferable {
 public:
     MmcMemObjMeta() = default;

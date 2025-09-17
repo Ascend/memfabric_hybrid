@@ -10,6 +10,7 @@ namespace ock {
 namespace mmc {
 
 constexpr int TIMEOUT_SECOND = 60;
+static const uint16_t NUM_BUCKETS = 29;
 
 Result MmcMetaManager::Get(const std::string& key, uint64_t operateId, MmcBlobFilterPtr filterPtr,
                            MmcMemMetaDesc& objMeta)

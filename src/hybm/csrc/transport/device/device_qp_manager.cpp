@@ -9,6 +9,16 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+
+sockaddr_in Ip2Net(in_addr ip)
+{
+    sockaddr_in in{};
+    in.sin_family = AF_INET;
+    in.sin_addr = ip;
+    in.sin_port = 0;
+    return in;
+}
+
 DeviceQpManager::DeviceQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
                                  hybm_role_type role) noexcept
     : deviceId_{deviceId},

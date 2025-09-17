@@ -17,14 +17,7 @@ namespace mf {
 namespace transport {
 namespace device {
 
-static inline sockaddr_in Ip2Net(in_addr ip)
-{
-    sockaddr_in in{};
-    in.sin_family = AF_INET;
-    in.sin_addr = ip;
-    in.sin_port = 0;
-    return in;
-}
+sockaddr_in Ip2Net(in_addr ip);
 
 struct ConnectionChannel {
     sockaddr_in remoteNet;

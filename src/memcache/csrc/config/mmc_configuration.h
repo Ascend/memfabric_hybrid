@@ -44,12 +44,7 @@ enum class ConfValueType {
     VUINT64 = 4,
 };
 
-inline void StringToLower(std::string &str)
-{
-    for (char &c : str) {
-        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-}
+void StringToLower(std::string &str);
 
 class Configuration;
 using ConfigurationPtr = MmcRef<Configuration>;
