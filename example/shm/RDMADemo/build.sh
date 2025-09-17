@@ -30,7 +30,7 @@ done
 VERSION_LIST="Ascend910A Ascend910B Ascend310B1 Ascend310B2 Ascend310B3 Ascend310B4 Ascend310P1 Ascend310P3 Ascend910B1 Ascend910B2 Ascend910B3 Ascend910B4"
 if [[ " $VERSION_LIST " != *" $SOC_VERSION "* ]]; then
     echo "ERROR: SOC_VERSION should be in [$VERSION_LIST]"
-    exit -1
+    exit 1
 fi
 
 set -e

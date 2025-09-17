@@ -1,28 +1,31 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2022-2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  * This file constains code of cpu debug and npu code.We read data from bin file
  * and write result to file.
  */
-#include "data_utils.h"
-#include "acl/acl.h"
-
-#include "smem.h"
-#include "smem_shm.h"
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
-
-extern void shm_all_reduce_do(uint32_t coreDim, void *stream, uint8_t *gva, uint64_t spaceOffset,
-    uint64_t flagOffset, uint32_t rankId, uint32_t rankSize);
+#include "smem.h"
+#include "smem_shm.h"
+#include "shm_all_reduce.h"
+#include "data_utils.h"
+#include "acl/acl.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
 static uint64_t gFlagOffset = 1024UL * 1024UL; // 前1M作为flag空间
 static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t);   // uint16_t represent half
-constexpr int HASH_HEX_WIDTH = 8;
+enum Index : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+};
 
 // FNV-1a 32-bit hash function
-uint32_t fnv1a_32(const void *data, size_t length) {
+uint32_t fnv1a_32(const void *data, size_t length)
+{
     const unsigned char *p = static_cast<const unsigned char *>(data);
     uint32_t hash = 0x811c9dc5; // FNV offset basis for 32-bit
 
@@ -35,9 +38,11 @@ uint32_t fnv1a_32(const void *data, size_t length) {
 }
 
 // 将哈希值转换为十六进制字符串表示
-std::string hashToHexString(uint32_t hash) {
+std::string hashToHexString(uint32_t hash)
+{
+    const int HASH_STRING_WIDTH = 8;
     std::ostringstream hexStream;
-    hexStream << std::hex << std::setw(HASH_HEX_WIDTH) << std::setfill('0') << hash;
+    hexStream << std::hex << std::setw(HASH_STRING_WIDTH) << std::setfill('0') << hash;
     return hexStream.str();
 }
 
@@ -60,7 +65,6 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     std::string fileNmae = "./input/input_" + std::to_string(rankId) + ".bin";
     ReadFile(fileNmae, gDataByteSize, inputHost, gDataByteSize);
 
-    INFO_LOG("gva: %p, remote: %p", gva, localShm);
     // 将本地 host copy到 shm local
     int32_t ret = aclrtMemcpy(inputShm, gDataByteSize, inputHost, gDataByteSize, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {
@@ -103,9 +107,9 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 
 int32_t main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    std::string ipport = argv[3];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankId = atoi(argv[INDEX_2]);
+    std::string ipport = argv[INDEX_3];
     std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {
@@ -119,7 +123,13 @@ int32_t main(int32_t argc, char* argv[])
     aclrtStream stream = nullptr;
     CHECK_ACL(aclrtCreateStream(&stream));
 
-    auto ret = smem_init(0);
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    if (ret != 0) {
+        ERROR_LOG("[TEST] smem set tls failed, ret:%d, rank:%d", ret, rankId);
+        return -1;
+    }
+
+    ret = smem_init(0);
     if (ret != 0) {
         ERROR_LOG("[TEST] smem init failed, ret:%d, rank:%d", ret, rankId);
         return -1;
@@ -140,7 +150,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", static_cast<unsigned long long>(gNpuMallocSpace), rankId);
     TestAllReduce(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;

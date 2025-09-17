@@ -1,13 +1,15 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file constains code of cpu debug and npu code. We read data from bin file
+ * and write result to file.
  */
 #include "kernel_operator.h"
 #include "smem_shm_aicore_base_api.h"
+#include "shm_all_shift.h"
 
 constexpr int32_t RANK_SIZE_MAX = 32;
 constexpr int32_t BLOCK_LEN = SMEM_SHM_ALIGN_SIZE / sizeof(int64_t);
 constexpr int64_t FLAG_MAGIC = 3285742LL;
-constexpr int SMEM_SHM_UPUT_COUNT = 2;
 
 __BLOCK_LOCAL__ __inline__ uint64_t gD2dUbuf;
 __BLOCK_LOCAL__ __inline__ uint32_t gUbufSize;
@@ -112,7 +114,7 @@ public:
         smem_shm_put_int64(gvaSt, inputGm, (rank + 1) % rankSize, BLOCK_LEN);
         buf[0] = rank;
         buf[1] = rankSize;
-        smem_shm_uput_int64(gvaSt + BLOCK_LEN, buf, rank, SMEM_SHM_UPUT_COUNT);
+        smem_shm_uput_int64(gvaSt + BLOCK_LEN, buf, rank, 2U);
         bufQueue.FreeTensor(bufTensor);
     }
 

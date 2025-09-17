@@ -197,10 +197,10 @@ class MetaServiceLeaderElection:
             if self.retry_period * 3 > self.lease_duration:
                 self.retry_period = max(self.lease_duration // 3, 1)
 
-        # 租约未被持有，或持有者是自己，或租约已过期
         current_time = datetime.now(UTC)
-        if not holder or holder == self.pod_name or \
-                (renew_time and (current_time - renew_time > timedelta(seconds=self.lease_duration))):
+        lease_expired = renew_time and (current_time - renew_time > timedelta(seconds=self.lease_duration))
+        # 租约未被持有，或持有者是自己，或租约已过期
+        if not holder or holder == self.pod_name or lease_expired:
             self._inner_update_lease(is_renew, lease, current_time)
             return True
 

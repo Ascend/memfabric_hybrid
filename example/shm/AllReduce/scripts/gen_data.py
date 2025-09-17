@@ -8,17 +8,18 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # ===============================================================================
 
-import numpy as np
 import sys
+import os
+import numpy as np
 
 
 def gen_golden_data_simple(rank_size):
     golden = np.zeros([16, 2048], dtype=np.float16)
     for idx in range(rank_size):
-        input = np.random.uniform(1, 100, [16, 2048]).astype(np.float16)
-        golden = (golden + input).astype(np.float16)
-        input_name = './input/input_' + str(idx) + '.bin'
-        input.tofile(input_name)
+        np_input = np.random.uniform(1, 100, [16, 2048]).astype(np.float16)
+        golden = (golden + np_input).astype(np.float16)
+        input_name = os.path.join('input', f'input_{idx}.bin')
+        np_input.tofile(input_name)
 
     golden.tofile("./output/golden.bin")
 

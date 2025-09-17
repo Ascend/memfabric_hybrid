@@ -3,26 +3,27 @@
  * This file constains code of cpu debug and npu code.We read data from bin file
  * and write result to file.
  */
-#include "data_utils.h"
-#include "acl/acl.h"
-
-#include "smem.h"
-#include "smem_shm.h"
 #include <iostream>
 #include <sstream>
 #include <limits> // 用于std::numeric_limits
 #include <cstring>
-
-extern void shm_all_shift_do(void *stream, uint8_t *gva, int64_t *localInput);
+#include "smem.h"
+#include "smem_shm.h"
+#include "shm_all_shift.h"
+#include "data_utils.h"
+#include "acl/acl.h"
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
 static uint32_t ctxSize = 16;
-static uint32_t hostRankId = 0;
-static uint32_t hostRankSize = 1;
-static uint32_t hostgInputLen = 2;
-static uint32_t hostgNpuMallocSpace = 3;
+enum Index : uint8_t {
+    INDEX_0 = 0U,
+    INDEX_1 = 1U,
+    INDEX_2 = 2U,
+    INDEX_3 = 3U,
+    INDEX_4 = 4U,
+};
 
 static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, uint32_t rankSize)
 {
@@ -34,17 +35,17 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize)); // size = 32
     CHECK_ACL(aclrtMallocHost((void **)(&yHost), outputSize)); // size = 48
     CHECK_ACL(aclrtMalloc((void **)&xDevice, inputSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    xHost[hostRankId] = rankId;
-    xHost[hostRankSize] = rankSize;
-    xHost[hostgInputLen] = gInputLen;
-    xHost[hostgNpuMallocSpace] = gNpuMallocSpace;
+    xHost[INDEX_0] = rankId;
+    xHost[INDEX_1] = rankSize;
+    xHost[INDEX_2] = gInputLen;
+    xHost[INDEX_3] = gNpuMallocSpace;
 
-    uint64_t metaAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 128UL;
+    uint64_t metaAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 128UL;
     CHECK_ACL(aclrtMemcpy(yHost, inputSize, (void *)metaAddr, inputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(yHost[hostRankId], 0);
-    CHECK_EQUALS(yHost[hostRankSize], rankId);
-    CHECK_EQUALS(yHost[hostgInputLen], rankSize);
-    CHECK_EQUALS(yHost[hostgNpuMallocSpace], ctxSize);
+    CHECK_EQUALS(yHost[INDEX_0], 0);
+    CHECK_EQUALS(yHost[INDEX_1], rankId);
+    CHECK_EQUALS(yHost[INDEX_2], rankSize);
+    CHECK_EQUALS(yHost[INDEX_3], ctxSize);
 
     CHECK_ACL(aclrtMemcpy(xDevice, inputSize, xHost, inputSize, ACL_MEMCPY_HOST_TO_DEVICE));
     shm_all_shift_do(stream, gva, xDevice);
@@ -52,8 +53,8 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     sleep(1);
 
     CHECK_ACL(aclrtMemcpy(xHost, outputSize, gva + rankId * gNpuMallocSpace, outputSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    CHECK_EQUALS(xHost[hostRankId], (rankId + rankSize - 1) % rankSize);
-    CHECK_EQUALS(xHost[gInputLen], rankId);
+    CHECK_EQUALS(xHost[INDEX_0], (rankId + rankSize - 1) % rankSize);
+    CHECK_EQUALS(xHost[INDEX_4], rankId);
 
     CHECK_ACL(aclrtFree(xDevice));
     CHECK_ACL(aclrtFreeHost(xHost));
@@ -67,7 +68,7 @@ static void TestContext(smem_shm_t handle)
     CHECK_ACL(smem_shm_set_extra_context(handle, (void *)srcCtx, ctxSize));
 
     char dstCtx[32];
-    uint64_t ctxAddr = 0x180000000000ULL - 32ULL * 1024 * 1024 + 64ULL * 1024;
+    uint64_t ctxAddr = 0x180000000000ULL - (1UL << 30UL) - 32ULL * 1024 * 1024 + 64ULL * 1024;
     CHECK_ACL(aclrtMemcpy(dstCtx, ctxSize, (void *)ctxAddr, ctxSize, ACL_MEMCPY_DEVICE_TO_HOST));
     dstCtx[ctxSize] = 0;
 
@@ -77,9 +78,9 @@ static void TestContext(smem_shm_t handle)
 
 int32_t main(int32_t argc, char* argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    std::string ipport = argv[3];
+    int rankSize = atoi(argv[INDEX_1]);
+    int rankId = atoi(argv[INDEX_2]);
+    std::string ipport = argv[INDEX_3];
     std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {
@@ -93,7 +94,13 @@ int32_t main(int32_t argc, char* argv[])
     aclrtStream stream = nullptr;
     CHECK_ACL(aclrtCreateStream(&stream));
 
-    auto ret = smem_init(0);
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    if (ret != 0) {
+        ERROR_LOG("[TEST] smem set tls info failed, ret:%d, rank:%d", ret, rankId);
+        return -1;
+    }
+
+    ret = smem_init(0);
     if (ret != 0) {
         ERROR_LOG("[TEST] smem init failed, ret:%d, rank:%d", ret, rankId);
         return -1;
@@ -113,7 +120,7 @@ int32_t main(int32_t argc, char* argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", gNpuMallocSpace, rankId);
     TestContext(handle);
     TestAllShift(stream, (uint8_t *)gva, rankId, rankSize);
 
