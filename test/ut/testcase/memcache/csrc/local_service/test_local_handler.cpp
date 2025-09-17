@@ -91,7 +91,7 @@ protected:
         createConfig = {
             .id = 12345,
             .memberSize = 4,
-            .dataOpType = "sdma",
+            .dataOpType = "device_sdma",
             .localDRAMSize = 0,
             .localHBMSize = 1024 * 1024 * 2,
             .flags = 0

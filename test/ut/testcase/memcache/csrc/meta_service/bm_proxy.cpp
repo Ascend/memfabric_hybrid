@@ -41,7 +41,7 @@ void TestBmProxy::SetUp()
 
     createConfig_.id = 1234;
     createConfig_.memberSize = 1;
-    createConfig_.dataOpType = "sdma";
+    createConfig_.dataOpType = "device_sdma";
     createConfig_.localDRAMSize = 1024 * 1024;
     createConfig_.localHBMSize = 0;
     createConfig_.flags = 0;
@@ -100,7 +100,7 @@ TEST_F(TestBmProxy, Copy)
     mmc_bm_create_config_t createConfig;
     createConfig.id = 0;
     createConfig.memberSize = 1;
-    createConfig.dataOpType = "sdma";
+    createConfig.dataOpType = "device_sdma";
     createConfig.localDRAMSize = 0;
     createConfig.localHBMSize = 104857600;
     createConfig.flags = 0;

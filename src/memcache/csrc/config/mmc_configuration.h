@@ -276,7 +276,6 @@ public:
         AddStrConf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
         AddIntConf(OKC_MMC_CLIENT_RETRY_MILLISECONDS,
                    VIntRange::Create(OKC_MMC_CLIENT_RETRY_MILLISECONDS.first, MIN_RETRY_MS, MAX_RETRY_MS));
-        AddBoolConf(OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA, VNoCheck::Create());
         AddIntConf(OCK_MMC_CLIENT_TIMEOUT_SECONDS,
             VIntRange::Create(OCK_MMC_CLIENT_TIMEOUT_SECONDS.first, MIN_TIMEOUT_SEC, MAX_TIMEOUT_SEC));
 
@@ -310,9 +309,6 @@ public:
         config.dataOpType = GetString(ConfConstant::OKC_MMC_LOCAL_SERVICE_PROTOCOL);
         config.localDRAMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_SIZE.first, MEM_128MB_BYTES);
         config.localHBMSize = GetUInt64(ConfConstant::OKC_MMC_LOCAL_SERVICE_HBM_SIZE.first, MEM_2MB_BYTES);
-        if (GetBool(ConfConstant::OKC_MMC_LOCAL_SERVICE_DRAM_BY_SDMA)) {
-            config.flags |= SMEM_BM_INIT_GVM_FLAG;
-        }
         std::string logLevelStr = GetString(ConfConstant::OCK_MMC_LOG_LEVEL);
         StringToLower(logLevelStr);
         config.logLevel = MmcOutLogger::Instance().GetLogLevel(logLevelStr);

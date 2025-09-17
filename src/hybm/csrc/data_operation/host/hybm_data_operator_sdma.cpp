@@ -908,6 +908,16 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 {
     auto ret = 0;
     switch (direction) {
+        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
+            ret = BatchCopyLH2GD(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options.stream);
+            break;
+        }
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: {
+            ret = BatchCopyGD2LH(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options.stream);
+            break;
+        }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LD_TO_GH);
             ret = BatchCopyLD2GH(params.destinations, params.sources, params.dataSizes,
@@ -1090,6 +1100,44 @@ int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, const void **gvaAddrs, co
         return ret;
     }
 
+    return BM_OK;
+}
+
+int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, const void **hostAddrs, const uint32_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    void *st = stream_;
+    if (stream != nullptr) {
+        st = stream;
+    }
+    auto ret = 0;
+
+    for (auto i = 0U; i < batchSize; i++) {
+        ret = CopyLH2GD(gvaAddrs[i], hostAddrs[i], counts[i], stream);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on local host to GVA failed: " << ret);
+            return ret;
+        }
+    }
+    return BM_OK;
+}
+
+int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, const void **gvaAddrs, const uint32_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    void *st = stream_;
+    if (stream != nullptr) {
+        st = stream;
+    }
+    auto ret = 0;
+
+    for (auto i = 0U; i < batchSize; i++) {
+        ret = CopyGD2LH(hostAddrs[i], gvaAddrs[i], counts[i], stream);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on GVA to local host failed: " << ret);
+            return ret;
+        }
+    }
     return BM_OK;
 }
 }

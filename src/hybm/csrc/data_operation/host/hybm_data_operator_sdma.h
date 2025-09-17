@@ -67,6 +67,10 @@ private:
                     uint64_t height, void* stream) noexcept;
     int CopyGH2LD2d(void* deviceAddr, uint64_t dpitch, const void* gvaAddr, uint64_t spitch, size_t width,
                     uint64_t height, void* stream) noexcept;
+    int BatchCopyLH2GD(void *gvaAddrs[], const void *hostAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, void *stream) noexcept;
+    int BatchCopyGD2LH(void *hostAddrs[], const void *gvaAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, void *stream) noexcept;
     int BatchCopyLD2GH(void *gvaAddrs[], const void *deviceAddrs[], const uint32_t counts[],
                        uint32_t batchSize, void *stream) noexcept;
     int BatchCopyGH2LD(void *deviceAddrs[], const void *gvaAddrs[], const uint32_t counts[],

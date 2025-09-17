@@ -73,10 +73,9 @@ static int GenerateLocalConf(std::string confPath)
     outFile << "ock.mmc.config_store.tls.key.pass.path = /opt/ock/security/certs/client.passphrase" << std::endl;
     outFile << "ock.mmc.config_store.tls.package.path = /opt/ock/security/libs/" << std::endl;
     outFile << "ock.mmc.config_store.tls.decrypter.path =" << std::endl;
-    outFile << "ock.mmc.local_service.protocol = sdma" << std::endl;
+    outFile << "ock.mmc.local_service.protocol = device_sdma" << std::endl;
     outFile << "ock.mmc.local_service.dram.size = 32MB" << std::endl;
     outFile << "ock.mmc.local_service.hbm.size = 32MB" << std::endl;
-    outFile << "ock.mmc.local_service.dram_by_sdma = true" << std::endl;
 
     outFile << "ock.mmc.local_service.hcom_url = tcp://127.0.0.1:7000" << std::endl;
     outFile << "ock.mmc.local_service.hcom.tls.enable = false" << std::endl;

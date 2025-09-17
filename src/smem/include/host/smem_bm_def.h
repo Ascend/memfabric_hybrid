@@ -51,8 +51,6 @@ typedef enum {
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
 
-#define SMEM_BM_INIT_GVM_FLAG (1ULL << 1ULL) // Init the GVM module, enable to use Host DRAM
-
 typedef struct {
     uint32_t initTimeout;             /* func smem_bm_init timeout, default 120 second */
     uint32_t createTimeout;           /* func smem_bm_create timeout, default 120 second */

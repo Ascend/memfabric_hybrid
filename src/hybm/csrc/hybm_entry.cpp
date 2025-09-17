@@ -229,15 +229,12 @@ static int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags)
         return BM_ERROR;
     }
 
-    if (flags & HYBM_INIT_GVM_FLAG) {
-        ret = hybm_gvm_init(initedLogicDeviceId);
-        if (ret != 0) {
-            BM_LOG_ERROR("init hybm gvm failed: " << ret);
-            return BM_ERROR;
-        }
-        initedGvm = true;
-    } else {
+    ret = hybm_gvm_init(initedLogicDeviceId);
+    if (ret != 0) {
+        BM_LOG_ERROR("init hybm gvm failed: " << ret);
         initedGvm = false;
+    } else {
+        initedGvm = true;
     }
 
     void *globalMemoryBase = nullptr;

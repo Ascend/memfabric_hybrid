@@ -13,21 +13,17 @@ class MmcSmemBmHelper {
 public:
     static inline smem_bm_data_op_type TransSmemBmDataOpType(const mmc_bm_create_config_t& config)
     {
-        if (config.dataOpType == "sdma") {
+        if (config.dataOpType == "device_sdma") {
             return SMEMB_DATA_OP_SDMA;
         }
-        if (config.dataOpType == "roce") {
-            int res = 0;
-            if (config.localDRAMSize > 0) {
-                res |= SMEMB_DATA_OP_HOST_RDMA;
-            }
-            if (config.localHBMSize > 0) {
-                res |= SMEMB_DATA_OP_DEVICE_RDMA;
-            }
-            return static_cast<smem_bm_data_op_type>(res);
+        if (config.dataOpType == "device_rdma") {
+            return SMEMB_DATA_OP_DEVICE_RDMA;
         }
-        if (config.dataOpType == "tcp") {
+        if (config.dataOpType == "host_tcp") {
             return SMEMB_DATA_OP_HOST_TCP;
+        }
+        if (config.dataOpType == "host_rdma") {
+            return SMEMB_DATA_OP_HOST_RDMA;
         }
         return SMEMB_DATA_OP_BUTT;
     }
