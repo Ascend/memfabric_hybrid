@@ -110,7 +110,13 @@ int32_t HybmStream::AllocLogicCq()
     input.cqId = 65535U;
     input.sqId = 0;
     input.info[0] = streamId_;
-    input.info[1] = syscall(SYS_gettid);
+
+    pid_t realTid = syscall(SYS_gettid);
+    if (realTid < 0) {
+        BM_LOG_ERROR("get real tid failed " << realTid);
+        return BM_ERROR;
+    }
+    input.info[1] = static_cast<uint32_t>(realTid);
 
     auto ret = DlHalApi::HalSqCqAllocate(deviceId_, &input, &output);
     if (ret != 0) {

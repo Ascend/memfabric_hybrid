@@ -29,12 +29,12 @@ typedef enum {
 } hybm_type;
 
 typedef enum {
-    HYBM_DOP_TYPE_DEFAULT = 0,
-    HYBM_DOP_TYPE_MTE = 1 << 0,
-    HYBM_DOP_TYPE_SDMA = 1 << 1,
-    HYBM_DOP_TYPE_DEVICE_RDMA = 1 << 2,
-    HYBM_DOP_TYPE_HOST_RDMA = 1 << 3,
-    HYBM_DOP_TYPE_HOST_TCP = 1 << 4,
+    HYBM_DOP_TYPE_DEFAULT = 0U,
+    HYBM_DOP_TYPE_MTE = 1U << 0,
+    HYBM_DOP_TYPE_SDMA = 1U << 1,
+    HYBM_DOP_TYPE_DEVICE_RDMA = 1U << 2,
+    HYBM_DOP_TYPE_HOST_RDMA = 1U << 3,
+    HYBM_DOP_TYPE_HOST_TCP = 1U << 4,
 
     HYBM_DOP_TYPE_BUTT
 } hybm_data_op_type;
