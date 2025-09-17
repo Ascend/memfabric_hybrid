@@ -23,7 +23,11 @@ DynamicRanksQpManager::DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId,
 
 DynamicRanksQpManager::~DynamicRanksQpManager() noexcept
 {
-    CloseServices();
+    try {
+        CloseServices();
+    } catch (const std::exception &e) {
+        BM_LOG_ERROR("dynamic ranks qp mgr close services failed: " << e.what());
+    }
 }
 
 int DynamicRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t, ConnectRankInfo> &ranks) noexcept

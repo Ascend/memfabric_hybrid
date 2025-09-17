@@ -69,7 +69,7 @@ private:
     hybm_options coreOptions_{};
     StorePtr _configStore;
     hybm_exchange_info exInfo_{};
-    hybm_exchange_info entityInfo_;
+    hybm_exchange_info entityInfo_{};
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

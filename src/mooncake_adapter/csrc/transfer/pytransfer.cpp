@@ -18,10 +18,12 @@ static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
                                  ", build time: " __DATE__ " " __TIME__
                                  ", commit: " STR2(GIT_LAST_COMMIT);
 
-TransferAdapterPy::TransferAdapterPy() {
+TransferAdapterPy::TransferAdapterPy() : handle_(nullptr)
+{
 }
 
-TransferAdapterPy::~TransferAdapterPy() {
+TransferAdapterPy::~TransferAdapterPy()
+{
 }
 
 int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
@@ -73,7 +75,7 @@ int TransferAdapterPy::TransferSyncWrite(const char *destUniqueId,
     // 将uintptr_t类型的地址转换为指针类型
     const void *srcAddress = reinterpret_cast<const void*>(buffer);
     void *destAddress = reinterpret_cast<void*>(peer_buffer_address);
-    
+
     // 调用底层SMEM API
     int ret = smem_trans_write(handle_, srcAddress, destUniqueId, destAddress, length);
     if (ret != 0) {
@@ -93,20 +95,20 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
         ADAPTER_LOG_ERROR("Buffers, peer_buffer_addresses and lengths is not equal or too long.");
         return -1;
     }
-    
+
     // 转换向量数据为C风格数组
     const size_t batchSize = buffers.size();
     std::vector<const void*> srcAddresses(batchSize);
     std::vector<void*> destAddresses(batchSize);
     std::vector<size_t> dataSizes(batchSize);
-    
+
     // 填充转换后的数组
     for (size_t i = 0; i < batchSize; ++i) {
         srcAddresses[i] = reinterpret_cast<const void*>(buffers[i]);
         destAddresses[i] = reinterpret_cast<void*>(peer_buffer_addresses[i]);
         dataSizes[i] = lengths[i];
     }
-    
+
     // 调用底层批量写入API
     int ret = smem_trans_batch_write(
         handle_,

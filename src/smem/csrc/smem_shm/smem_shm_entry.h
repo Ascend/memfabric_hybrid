@@ -60,7 +60,7 @@ private:
     int32_t InitStepMap();
 
 private:
-    hybm_options options_;
+    hybm_options options_{};
     std::vector<ShmEntryInitStep> initSteps_;
     SmemGroupEnginePtr globalGroup_ = nullptr;
     smem_shm_config_t extraConfig_;
