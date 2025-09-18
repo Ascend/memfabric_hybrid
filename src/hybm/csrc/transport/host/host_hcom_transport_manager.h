@@ -97,9 +97,7 @@ private:
 
 private:
     std::string localNic_{};
-    std::string protocol{};
     std::string localIp_{};
-    int32_t localPort_{-1};
     Hcom_Service rpcService_{0};
     uint32_t rankId_{UINT32_MAX};
     uint32_t rankCount_{0};

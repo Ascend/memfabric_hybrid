@@ -20,7 +20,7 @@ constexpr int PROT_MATCH_NUM = 1;
 constexpr int IP_MATCH_NUM = 2;
 constexpr int PORT_MATCH_NUM = 3;
 
-Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, int32_t &port)
+Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
 {
     std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
     std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
@@ -50,7 +50,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
 }
 
 Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic,
-    std::string &protocol, std::string &ipStr, int32_t &port)
+    std::string &protocol, std::string &ipStr, uint32_t &port)
 {
     std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
     std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");

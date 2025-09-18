@@ -95,7 +95,6 @@ Result HcomTransportManager::CloseDevice()
     DlHcomApi::ServiceDestroy(rpcService_, HCOM_RPC_SERVICE_NAME);
     rpcService_ = 0;
     localNic_ = "";
-    protocol = "";
     localIp_ = "";
     rankId_ = UINT32_MAX;
     rankCount_ = 0;
@@ -412,12 +411,16 @@ Result HcomTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
 
 Result HcomTransportManager::CheckTransportOptions(const TransportOptions &options)
 {
-    auto ret = HostHcomHelper::AnalysisNic(options.nic, protocol, localIp_, localPort_);
+    std::string protocol;
+    uint32_t basePort;
+    auto ret = HostHcomHelper::AnalysisNic(options.nic, protocol, localIp_, basePort);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to check nic, nic: " << options.nic << " ret: " << ret);
         return ret;
     }
-    localNic_ = protocol + localIp_ + ":" + std::to_string(localPort_);
+    const auto hcomAutoPort = basePort + options.rankId;
+    BM_LOG_INFO("hcom base port: " << basePort << ", hcom auto port with rank :" << hcomAutoPort);
+    localNic_ = protocol + localIp_ + ":" + std::to_string(hcomAutoPort);
     return BM_OK;
 }
 

@@ -19,7 +19,7 @@ namespace host {
 
 class HostHcomHelper {
 public:
-    static Result AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, int32_t &port);
+    static Result AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port);
 
     static inline Service_Type HybmDopTransHcomProtocol(uint32_t hybmDop)
     {
@@ -35,7 +35,7 @@ public:
     }
 
 private:
-    static Result AnalysisNicWithMask(const std::string &nic, std::string &protocol, std::string &ip, int32_t &port);
+    static Result AnalysisNicWithMask(const std::string &nic, std::string &protocol, std::string &ip, uint32_t &port);
 
     static Result SelectLocalIpByIpMask(const std::string &ipStr, const int32_t &mask, std::string &localIp);
 };
