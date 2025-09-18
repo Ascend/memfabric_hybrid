@@ -55,43 +55,8 @@ bash script/build_and_pack_run.sh
 ```
 The output is a .run package in ../output
 
-##### 3. Install
-```shell
-cd output
-
-chmod +x mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
-
-./mxc-memfabric_hybrid-1.0.0_linux_aarch64.run --install
-```
-
-##### 4. Run
-1. Start MetaService
-
-- Method 1: Start from executable file
-```shell
-source /usr/local/mxc/memfabric_hybrid/set_env.sh
-export MMC_META_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-meta.conf
-
-/usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/bin/mmc_meta_service
-```
-
-- Method 2: Start using a [Python script](test/python/memcache/test_mmc_meta_service.py)
-```shell
-export MMC_META_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-meta.conf
-
-python3 test_mmc_meta_service.py
-```
-
-2. Start LocalService & Client in a demo [Python program](test/python/memcache/test_mmc_demo.py)
-```shell
-export MMC_LOCAL_CONFIG_PATH=/usr/local/mxc/memfabric_hybrid/latest/config/mmc-local.conf
-
-python3 test_mmc_demo.py
-```
-
 ### Detailed Documentations
-- How to use: [Introduction for Use](doc/zh/使用说明.md)
-- API Doc: [MMC_API](doc/zh/MMC_API.md)
+- How to use: [Introduction for MemCache](doc/zh/memcache.md)
 
 ### Security Statement
 
