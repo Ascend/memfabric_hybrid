@@ -60,6 +60,11 @@ private:
     void CloseClientConnections() noexcept;
     void CloseServerConnections() noexcept;
     void CloseConnections(std::unordered_map<uint32_t, ConnectionChannel> &connections) noexcept;
+    int CheckConnectionSuccessCount(std::unordered_map<uint32_t, ConnectionChannel> &connections,
+        std::vector<HccpSocketInfo> &socketInfos, std::unordered_map<in_addr_t, uint32_t> &addr2index, uint32_t &cnt);
+    void InitClientConnectThread();
+    void FillQpPreSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo);
+    void FillQpPostSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo);
 
 private:
     std::atomic<bool> started_{false};

@@ -41,6 +41,11 @@ private:
     void ProcessUpdateLocalMrTask() noexcept;
     void ProcessUpdateRemoteMrTask() noexcept;
     void CloseServices() noexcept;
+    int CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &r, std::vector<HccpSocketConnectInfo> &c,
+        ClientConnectSocketTask &currTask);
+    void Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::vector<HccpSocketInfo> &socketInfos);
+    int32_t GetSocketConn(std::vector<HccpSocketInfo> &socketInfos, QueryConnectionStateTask &currTask,
+        std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::unordered_set<uint32_t> &connectedRanks);
 
     std::vector<lite_mr_info> GenerateLocalLiteMrs() noexcept;
     std::vector<lite_mr_info> GenerateRemoteLiteMrs(uint32_t rankId) noexcept;

@@ -82,6 +82,7 @@ private:
     int32_t ExportWithSlice(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept;
     int32_t ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t flags) noexcept;
     int32_t ImportForTransport(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept;
+    int32_t ImportForTransportPrecheck(const ExchangeInfoReader desc[], uint32_t &cnt, bool &entity);
 
     Result InitSegment();
     Result InitHbmSegment();

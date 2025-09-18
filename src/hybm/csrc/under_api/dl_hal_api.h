@@ -268,6 +268,8 @@ public:
     {
         return pHalHostUnregister(srcPtr, devid);
     }
+private:
+    static Result LoadHybmV1V2Library();
 
 private:
     static std::mutex gMutex;

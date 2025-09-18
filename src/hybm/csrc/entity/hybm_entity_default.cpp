@@ -644,17 +644,15 @@ int32_t MemEntityDefault::ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t 
     return BM_OK;
 }
 
-int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept
+int32_t MemEntityDefault::ImportForTransportPrecheck(const ExchangeInfoReader desc[],
+                                                     uint32_t &count,
+                                                     bool &importInfoEntity)
 {
-    if (transportManager_ == nullptr) {
-        return BM_OK;
-    }
-
     int ret = BM_OK;
     uint64_t magic;
-    bool importInfoEntity = false;
     EntityExportInfo entityExportInfo;
     SliceExportTransportKey transportKey;
+
     for (auto i = 0U; i < count; i++) {
         ret = desc[i].Test(magic);
         if (ret != 0) {
@@ -683,6 +681,21 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
             BM_LOG_ERROR("read info for transport failed: " << ret);
             return ret;
         }
+    }
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept
+{
+    if (transportManager_ == nullptr) {
+        return BM_OK;
+    }
+
+    int ret = BM_OK;
+    bool importInfoEntity = false;
+    ret = ImportForTransportPrecheck(desc, count, importInfoEntity);
+    if (ret != BM_OK) {
+        return ret;
     }
 
     transport::HybmTransPrepareOptions transOptions;

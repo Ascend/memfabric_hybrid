@@ -205,6 +205,35 @@ int FixedRanksQpManager::StartServerSide() noexcept
     return BM_OK;
 }
 
+void FixedRanksQpManager::InitClientConnectThread()
+{
+    clientConnectThread_ = std::make_shared<std::thread>([this]() {
+        DlAclApi::AclrtSetDevice(deviceId_);
+        auto ret = WaitConnectionsReady(clientConnections_);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("client wait connections failed: " << ret);
+            CloseClientConnections();
+            return ret;
+        }
+
+        ret = CreateQpWaitingReady(clientConnections_, CONN_QP_AI_CORE);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("client create qp for AI CORE failed: " << ret);
+            CloseClientConnections();
+            return ret;
+        }
+
+        ret = CreateQpWaitingReady(clientConnections_, CONN_QP_STARS);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("client create qp for STARS failed: " << ret);
+            CloseClientConnections();
+            return ret;
+        }
+        clientConnectResult = BM_OK;
+        return 0;
+    });
+}
+
 int FixedRanksQpManager::StartClientSide() noexcept
 {
     if (rankId_ == 0U) {
@@ -243,31 +272,7 @@ int FixedRanksQpManager::StartClientSide() noexcept
         return BM_DL_FUNCTION_FAILED;
     }
 
-    clientConnectThread_ = std::make_shared<std::thread>([this]() {
-        DlAclApi::AclrtSetDevice(deviceId_);
-        auto ret = WaitConnectionsReady(clientConnections_);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("client wait connections failed: " << ret);
-            CloseClientConnections();
-            return ret;
-        }
-
-        ret = CreateQpWaitingReady(clientConnections_, CONN_QP_AI_CORE);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("client create qp for AI CORE failed: " << ret);
-            CloseClientConnections();
-            return ret;
-        }
-
-        ret = CreateQpWaitingReady(clientConnections_, CONN_QP_STARS);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("client create qp for STARS failed: " << ret);
-            CloseClientConnections();
-            return ret;
-        }
-        clientConnectResult = BM_OK;
-        return 0;
-    });
+    InitClientConnectThread();
     return BM_OK;
 }
 
@@ -296,6 +301,42 @@ int FixedRanksQpManager::GenerateWhiteList() noexcept
         return BM_ERROR;
     }
 
+    return BM_OK;
+}
+
+int FixedRanksQpManager::CheckConnectionSuccessCount(std::unordered_map<uint32_t, ConnectionChannel> &connections,
+                                                     std::vector<HccpSocketInfo> &socketInfos,
+                                                     std::unordered_map<in_addr_t, uint32_t> &addr2index,
+                                                     uint32_t &succCnt)
+{
+    for (auto i = 0U; i < succCnt; i++) {
+        auto socketInfoPos = addr2index.find(socketInfos[i].remoteIp.addr.s_addr);
+        if (socketInfoPos == addr2index.end()) {
+            BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
+            return BM_DL_FUNCTION_FAILED;
+        }
+
+        auto rankId = socketInfoPos->second;
+        auto pos = connections.find(rankId);
+        if (pos == connections.end()) {
+            BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
+            return BM_DL_FUNCTION_FAILED;
+        }
+
+        if (pos->second.socketFd != nullptr) {
+            BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") already get socket fd.");
+            return BM_DL_FUNCTION_FAILED;
+        }
+
+        if (pos->second.socketHandle != socketInfos[i].handle) {
+            BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr)
+                                            << ") socket handle not match.");
+            return BM_DL_FUNCTION_FAILED;
+        }
+
+        pos->second.socketFd = socketInfos[i].fd;
+        BM_LOG_INFO("connect to (" << rankId << ") ready.");
+    }
     return BM_OK;
 }
 
@@ -336,33 +377,9 @@ int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, Conne
             return BM_DL_FUNCTION_FAILED;
         }
 
-        for (auto i = 0U; i < successCount; i++) {
-            auto socketInfoPos = addr2index.find(socketInfos[i].remoteIp.addr.s_addr);
-            if (socketInfoPos == addr2index.end()) {
-                BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
-                return BM_DL_FUNCTION_FAILED;
-            }
-
-            auto rankId = socketInfoPos->second;
-            auto pos = connections.find(rankId);
-            if (pos == connections.end()) {
-                BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
-                return BM_DL_FUNCTION_FAILED;
-            }
-
-            if (pos->second.socketFd != nullptr) {
-                BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") already get socket fd.");
-                return BM_DL_FUNCTION_FAILED;
-            }
-
-            if (pos->second.socketHandle != socketInfos[i].handle) {
-                BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr)
-                                              << ") socket handle not match.");
-                return BM_DL_FUNCTION_FAILED;
-            }
-
-            pos->second.socketFd = socketInfos[i].fd;
-            BM_LOG_INFO("connect to (" << rankId << ") ready.");
+        ret = CheckConnectionSuccessCount(connections, socketInfos, addr2index, successCount);
+        if (ret != 0) {
+            return ret;
         }
 
         totalSuccessCount += successCount;
@@ -446,6 +463,35 @@ int FixedRanksQpManager::CreateOneQp(ConnQpType qpType, ConnectionChannel &chann
     return ret;
 }
 
+void FixedRanksQpManager::FillQpPreSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo)
+{
+    copyInfo->count = 1;
+    copyInfo->sq = (AiQpRMAWQ *)(void *)(copyInfo + 1);
+    copyInfo->rq = (AiQpRMAWQ *)(void *)(copyInfo->sq + rankCount_);
+    copyInfo->scq = (AiQpRMACQ *)(void *)(copyInfo->rq + rankCount_);
+    copyInfo->rcq = (AiQpRMACQ *)(void *)(copyInfo->scq + rankCount_);
+    copyInfo->mr = (RdmaMemRegionInfo *)(void *)(copyInfo->rcq + rankCount_);
+}
+
+void FixedRanksQpManager::FillQpPostSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo)
+{
+    auto pointer = (ptrdiff_t)(void *)(qpInfo_);
+    pointer += sizeof(AiQpRMAQueueInfo);
+    copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
+
+    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
+    copyInfo->rq = (AiQpRMAWQ *)(void *)(pointer);
+
+    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
+    copyInfo->scq = (AiQpRMACQ *)(void *)(pointer);
+
+    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
+    copyInfo->rcq = (AiQpRMACQ *)(void *)(pointer);
+
+    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
+    copyInfo->mr = (RdmaMemRegionInfo *)(void *)pointer;
+}
+
 int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
 {
     if (qpType != CONN_QP_AI_CORE) {
@@ -455,12 +501,7 @@ int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
     const uint32_t slevel = 4;
     std::vector<uint8_t> qpInfoBuffer(qpInfoSize_);
     auto copyInfo = (AiQpRMAQueueInfo *)(void *)qpInfoBuffer.data();
-    copyInfo->count = 1;
-    copyInfo->sq = (AiQpRMAWQ *)(void *)(copyInfo + 1);
-    copyInfo->rq = (AiQpRMAWQ *)(void *)(copyInfo->sq + rankCount_);
-    copyInfo->scq = (AiQpRMACQ *)(void *)(copyInfo->rq + rankCount_);
-    copyInfo->rcq = (AiQpRMACQ *)(void *)(copyInfo->scq + rankCount_);
-    copyInfo->mr = (RdmaMemRegionInfo *)(void *)(copyInfo->rcq + rankCount_);
+    FillQpPreSettingCopyInfo(copyInfo);
     for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
         auto &map = it->second.memoryMap;
         if (map.empty()) {
@@ -493,21 +534,7 @@ int FixedRanksQpManager::FillQpInfo(ConnQpType qpType) noexcept
         CopyAiCQInfo(copyInfo->rcq[it->first], pos->second.aiQpInfo.data_plane_info.rcq, DBMode::SW_DB);
     }
 
-    auto pointer = (ptrdiff_t)(void *)(qpInfo_);
-    pointer += sizeof(AiQpRMAQueueInfo);
-    copyInfo->sq = (AiQpRMAWQ *)(void *)(pointer);
-
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
-    copyInfo->rq = (AiQpRMAWQ *)(void *)(pointer);
-
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMAWQ) * rankCount_);
-    copyInfo->scq = (AiQpRMACQ *)(void *)(pointer);
-
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
-    copyInfo->rcq = (AiQpRMACQ *)(void *)(pointer);
-
-    pointer += static_cast<ptrdiff_t>(sizeof(AiQpRMACQ) * rankCount_);
-    copyInfo->mr = (RdmaMemRegionInfo *)(void *)pointer;
+    FillQpPostSettingCopyInfo(copyInfo);
 
     auto ret = DlAclApi::AclrtMemcpy(qpInfo_, qpInfoSize_, copyInfo, qpInfoSize_, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != 0) {

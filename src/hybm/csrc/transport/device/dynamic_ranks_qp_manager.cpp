@@ -226,24 +226,10 @@ int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
     return 0;
 }
 
-int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
+int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &remotes,
+                                              std::vector<HccpSocketConnectInfo> &connectInfos,
+                                              ClientConnectSocketTask &currTask)
 {
-    if (rankRole_ != HYBM_ROLE_SENDER) {
-        return 0;
-    }
-
-    auto &currTask = connectionTasks_.clientConnectTask;
-    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
-    if (!currTask.status.exist) {
-        return 0;
-    }
-
-    std::this_thread::sleep_for(WAIT_DELAY_TIME);
-    auto remotes = std::move(currTask.remoteAddress);
-    currTask.status.exist = false;
-    uniqueLock.unlock();
-
-    std::vector<HccpSocketConnectInfo> connectInfos;
     for (auto it = remotes.begin(); it != remotes.end(); ++it) {
         void *socketHandle;
         auto pos = connections_.find(it->first);
@@ -271,6 +257,31 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
         bzero(connectInfo.tag, sizeof(connectInfo.tag));
         BM_LOG_DEBUG("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
+    }
+    return BM_OK;
+}
+
+int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
+{
+    if (rankRole_ != HYBM_ROLE_SENDER) {
+        return 0;
+    }
+
+    auto &currTask = connectionTasks_.clientConnectTask;
+    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
+    if (!currTask.status.exist) {
+        return 0;
+    }
+
+    std::this_thread::sleep_for(WAIT_DELAY_TIME);
+    auto remotes = std::move(currTask.remoteAddress);
+    currTask.status.exist = false;
+    uniqueLock.unlock();
+
+    std::vector<HccpSocketConnectInfo> connectInfos;
+    auto ret = CreateConnectInfos(remotes, connectInfos, currTask);
+    if (ret != 0) {
+        return ret;
     }
 
     if (connectInfos.empty()) {
@@ -304,23 +315,9 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
     return 0;
 }
 
-int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
+void DynamicRanksQpManager::Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                             std::vector<HccpSocketInfo> &socketInfos)
 {
-    auto &currTask = connectionTasks_.queryConnectTask;
-    if (!currTask.status.exist || currTask.ip2rank.empty()) {
-        currTask.status.exist = false;
-        return 0;
-    }
-
-    currTask.status.exist = false;
-    auto ip2rank = std::move(currTask.ip2rank);
-    if (currTask.status.failedTimes > 0L) {
-        std::this_thread::sleep_for(std::chrono::seconds(delay));
-    }
-
-    uint32_t successCount = 0;
-    uint32_t cnt = 0;
-    std::vector<HccpSocketInfo> socketInfos;
     for (auto &pair : ip2rank) {
         struct in_addr ip;
         ip.s_addr = pair.first;
@@ -338,7 +335,15 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     if (socketInfos.size() == 0) {
         BM_LOG_DEBUG("ProcessQueryConnectionStateTask socketInfos.size is 0.");
     }
-    std::unordered_set<uint32_t> connectedRanks;
+}
+
+int32_t DynamicRanksQpManager::GetSocketConn(std::vector<HccpSocketInfo> &socketInfos,
+                                             QueryConnectionStateTask &currTask,
+                                             std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                             std::unordered_set<uint32_t> &connectedRanks)
+{
+    uint32_t cnt = 0;
+    uint32_t successCount = 0;
     uint32_t batchCnt = 16;
     do {
         auto socketRole = rankRole_ == HYBM_ROLE_SENDER ? 1 : 0;
@@ -385,6 +390,31 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
             }
         }
     } while (socketInfos.size() > 0);
+    return BM_OK;
+}
+
+int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
+{
+    auto &currTask = connectionTasks_.queryConnectTask;
+    if (!currTask.status.exist || currTask.ip2rank.empty()) {
+        currTask.status.exist = false;
+        return 0;
+    }
+
+    currTask.status.exist = false;
+    auto ip2rank = std::move(currTask.ip2rank);
+    if (currTask.status.failedTimes > 0L) {
+        std::this_thread::sleep_for(std::chrono::seconds(delay));
+    }
+
+    std::vector<HccpSocketInfo> socketInfos;
+    Parse2SocketInfo(ip2rank, socketInfos);
+
+    std::unordered_set<uint32_t> connectedRanks;
+    auto ret = GetSocketConn(socketInfos, currTask, ip2rank, connectedRanks);
+    if (ret != 0) {
+        return ret;
+    }
 
     if (!ip2rank.empty()) {
         currTask.Failed(ip2rank);
