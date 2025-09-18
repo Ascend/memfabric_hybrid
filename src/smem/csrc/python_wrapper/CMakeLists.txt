@@ -6,7 +6,6 @@ add_library(pysmem OBJECT pysmem.cpp)
 
 if(BUILD_PYTHON STREQUAL "ON")
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
-    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
     # python
     message(STATUS "PYTHON_EXECUTABLE:${PYTHON_EXECUTABLE}")
