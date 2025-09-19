@@ -18,16 +18,16 @@
 |特殊场景|无|
 
 说明：
-支持通过接口 `smem_set_conf_store_tls` 配置TLS秘钥证书等，进行tls安全连接，建议用户开启TLS加密配置，保证通信通信安全。系统启动后，建议删除本地秘钥证书等信息敏感文件。调用该接口时，传入的文件路径不能包含英文分号、逗号、冒号。
+支持通过接口 `smem_set_conf_store_tls` 配置TLS秘钥证书等，进行tls安全连接，安全选项默认开启，建议用户开启TLS加密配置，以保证通信通信安全，如需关闭加密功能，可以使用下面示例，调用接口关闭。
+系统启动后，建议删除本地秘钥证书等信息敏感文件。调用该接口时，传入的文件路径不能包含英文分号、逗号、冒号。
 支持通过环境变量 `ACCLINK_CHECK_PERIOD_HOURS`和`ACCLINK_CERT_CHECK_AHEAD_DAYS` 配置证书检查周期与证书过期预警时间
 
-使用接口里子：
+配置TLS调用接口示例：
 ```c
 // 配置关闭tls:
 smem_set_conf_store_tls(false, nullptr, 0);
 
 // 配置打开tls:
-
 char *tls_info ="                               \
     tlsCaPath: /etc/ssl/certs/;                 \
     tlsCert: /etc/ssl/certs/server.crt;         \
@@ -42,9 +42,9 @@ char *tls_pk_pw = "xxx";
 int32_t ret = smem_set_config_store_tls_key(tls_pk, strlen(tls_pk), tls_pk_pw, strlen(tls_pk_pw), nullptr);
 其中，若口令为密文，则需将解密函数作为第五个入参传入smem_set_config_store_tls_key
 
-// 配置每七天检查一次证书:
+// 可选，配置每七天检查一次证书:
 export ACCLINK_CHECK_PERIOD_HOURS=168
-// 配置剩余十四天过期时警告:
+// 可选，配置剩余十四天过期时警告:
 export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 ```
 
@@ -79,7 +79,7 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 | 程序文件目录                      |   550（r-xr-x---）            |
 | 配置文件                          |  640（rw-r-----）             |
 | 配置文件目录                      |   750（rwxr-x---）            |
-| 日志文件(记录完毕或者已经归档)        |  440（r--r-----）             | 
+| 日志文件(记录完毕或者已经归档)        |  440（r--r-----）             |
 | 日志文件(正在记录)                |    640（rw-r-----）           |
 | 日志文件目录                      |   750（rwxr-x---）            |
 | Debug文件                         |  640（rw-r-----）         |
