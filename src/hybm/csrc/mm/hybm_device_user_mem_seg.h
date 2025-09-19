@@ -74,6 +74,7 @@ private:
 
 private:
     uint16_t sliceCount_{0};
+    std::mutex mutex_;
     std::bitset<MAX_PEER_DEVICES> enablePeerDevices_;
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;

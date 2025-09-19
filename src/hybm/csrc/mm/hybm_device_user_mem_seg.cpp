@@ -64,7 +64,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
         BM_LOG_ERROR("set memory name failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
-
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &remoteDev : importedDeviceInfo_) {
         if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId)) {
             continue;
@@ -83,6 +83,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
                                        reinterpret_cast<uint64_t>(addr), size);
     registerSlices_.emplace(slice->index_, RegisterSlice{slice, name});
     addressedSlices_.emplace(slice->vAddress_, slice->size_);
+    uniqueLock.unlock();
     return BM_OK;
 }
 
@@ -282,7 +283,7 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
         enablePeerDevices_.set(deviceInfo.deviceId);
         BM_LOG_DEBUG("enable peer access for : " << deviceInfo.deviceId);
     }
-
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &it : registerSlices_) {
         ret = DlAclApi::RtSetIpcMemorySuperPodPid(it.second.name.c_str(), deviceInfo.sdid, (int *)&deviceInfo.pid, 1);
         if (ret != 0) {
@@ -294,6 +295,7 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
     }
 
     importedDeviceInfo_.emplace(deviceInfo.rankId, deviceInfo);
+    uniqueLock.unlock();
     return BM_OK;
 }
 
