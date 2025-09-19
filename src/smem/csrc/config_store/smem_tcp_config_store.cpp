@@ -172,7 +172,8 @@ Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTi
     }
 
     ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_ >= 0 ? static_cast<uint64_t>(rankId_) : std::numeric_limits<uint64_t>::max();
+    connReq.rankId = rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << 32) | rankId_)
+            : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
     result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
         STORE_LOG_ERROR("connect to server failed, result: " << result);

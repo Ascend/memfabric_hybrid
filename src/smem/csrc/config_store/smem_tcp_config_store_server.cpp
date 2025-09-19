@@ -74,6 +74,7 @@ Result AccStoreServer::Startup(const tls_config& tlsConfig) noexcept
     lockGuard.unlock();
 
     timerThread_ = std::thread{[this]() { TimerThreadTask(); }};
+    rankStateThread_ = std::thread{[this]() { RankStateTask(); }};
 
     return SM_OK;
 }
@@ -130,7 +131,13 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
                                             const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     STORE_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << req.rankId);
-    if (req.rankId >= std::numeric_limits<uint32_t>::max()) {
+    uint32_t worldSize = static_cast<uint32_t>(req.rankId >> 32);
+    uint32_t rankId = static_cast<uint32_t>(req.rankId & 0xFFFFFFFF);
+    if (worldSize_ == std::numeric_limits<uint32_t>::max()) {
+        worldSize_ = worldSize;
+        STORE_LOG_INFO("Success to fix world size:" << worldSize_);
+    }
+    if (rankId >= std::numeric_limits<uint32_t>::max()) {
         return SM_OK;
     }
 
@@ -139,7 +146,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
         uint32_t rankId;
         uint8_t data[4];
     } trans{};
-    trans.rankId = static_cast<uint32_t>(req.rankId);
+    trans.rankId = rankId;
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     kvStore_[autoRankingStr] = std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data));
@@ -176,18 +183,8 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
 
     std::unique_lock<std::mutex> rankStateLock{rankStateMutex_};
     rankStateWaiters_.erase(linkId);
-    auto copyWaiters = rankStateWaiters_;
-    rankStateLock.unlock();
-
-    SmemMessage responseMessage{MessageType::WATCH_RANK_STATE};
-    std::vector<uint8_t> value(trans.data, trans.data + sizeof(trans.data));
-    responseMessage.values.push_back(value);
-    auto response = SmemMessagePacker::Pack(responseMessage);
-    for (auto it = copyWaiters.begin(); it != copyWaiters.end(); ++it) {
-        STORE_LOG_INFO("rankId: " << rankId << " down notify to channel: " << it->first);
-        ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
-    }
-
+    rankStateTaskQueue_.push(rankId);
+    rankStateTaskCondition_.notify_one();
     return SM_OK;
 }
 
@@ -653,6 +650,31 @@ void AccStoreServer::TimerThreadTask() noexcept
 
         lockerGuard.lock();
         storeCond_.wait_for(lockerGuard, std::chrono::milliseconds(1), [this]() { return !running_; });
+    }
+}
+
+void AccStoreServer::RankStateTask() noexcept
+{
+    while (running_) {
+        std::unique_lock<std::mutex> lock(rankStateMutex_);
+        rankStateTaskCondition_.wait(lock, [this] { return !rankStateTaskQueue_.empty(); });
+
+        union Transfer {
+            uint32_t rankId;
+            uint8_t data[sizeof(uint32_t)];
+        } trans{};
+
+        auto rankId = std::move(rankStateTaskQueue_.front());
+        rankStateTaskQueue_.pop();
+        trans.rankId = rankId;
+        SmemMessage responseMessage{MessageType::WATCH_RANK_STATE};
+        std::vector<uint8_t> value(trans.data, trans.data + sizeof(trans.data));
+        responseMessage.values.push_back(value);
+        auto response = SmemMessagePacker::Pack(responseMessage);
+        for (auto it = rankStateWaiters_.begin(); it != rankStateWaiters_.end(); ++it) {
+            STORE_LOG_INFO("rankId: " << rankId << " down notify to channel: " << it->first);
+            ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
+        }
     }
 }
 }  // namespace smem

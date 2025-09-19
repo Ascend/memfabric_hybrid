@@ -9,6 +9,8 @@
 #include <mutex>
 #include <chrono>
 #include <mutex>
+#include <queue>
+#include <thread>
 #include <condition_variable>
 #include <unordered_map>
 #include <unordered_set>
@@ -91,6 +93,7 @@ private:
     void ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
                           const std::vector<uint8_t> &message) noexcept;
     void TimerThreadTask() noexcept;
+    void RankStateTask() noexcept;
     Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
 
 private:
@@ -112,12 +115,15 @@ private:
     bool running_{false};
 
     std::mutex rankStateMutex_;
+    std::condition_variable rankStateTaskCondition_;
     std::unordered_map<uint32_t, StoreWaitContext> rankStateWaiters_;
+    std::queue<uint32_t> rankStateTaskQueue_;
+    std::thread rankStateThread_;
 
     const std::string listenIp_;
     const uint16_t listenPort_;
     std::mutex mutex_;
-    const uint32_t worldSize_;
+    uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;
 };

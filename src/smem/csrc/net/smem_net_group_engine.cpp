@@ -407,9 +407,11 @@ void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
     auto sizePair = SplitSizeAndVersion(tmpVal);
     auto version = sizePair.first;
     auto rankSize = static_cast<uint32_t >(sizePair.second);
-    if (version > groupVersion_) {
-        UpdateGroupVersion(version);
-        option_.rankSize = rankSize;
+    if (version != groupVersion_) {
+        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << version
+            << " groupVersion_:" << groupVersion_ << " local:" <<  option_.rank << " downRank:" << rankId);
+        UpdateGroupVersion(groupVersion_ + 1);
+        option_.rankSize--;
     } else {
         version++;
         rankSize = --option_.rankSize;
@@ -419,6 +421,8 @@ void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
         auto newValStr = std::to_string(newVal);
         std::string existStr;
         ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
+        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") local: " << option_.rank
+            << " downRank:" << rankId << " oldVal:" << std::hex << tmpVal << " newVal:" << newVal);
         if (ret != SM_OK) {
             SM_LOG_ERROR("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
         }
@@ -605,6 +609,7 @@ void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
 {
     groupVersion_ = ver;
     groupSn_ = 0;
+    SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
 }
 
 void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> rankIds)
