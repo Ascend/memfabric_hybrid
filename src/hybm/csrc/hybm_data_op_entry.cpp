@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 #include <type_traits>
 #include "hybm_logger.h"
@@ -46,14 +46,15 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                                       void* stream,
                                       uint32_t flags)
 {
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->sources != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->destinations != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
-
+    if (e == nullptr || params->sources == nullptr || params->destinations == nullptr ||
+        params->dataSizes == nullptr) {
+        BM_LOG_ERROR("Input parameter invalid, please check input.");
+        return BM_INVALID_PARAM;
+    }
+    if (params->batchSize == 0 || direction >= HYBM_DATA_COPY_DIRECTION_BUTT) {
+        BM_LOG_ERROR("input parameter invalid, batchSize: " << params->batchSize << ", direction: " << direction);
+        return BM_INVALID_PARAM;
+    }
     bool addressValid = true;
     auto entity = (MemEntity *)e;
     for (uint32_t i = 0; i < params->batchSize; i++) {
