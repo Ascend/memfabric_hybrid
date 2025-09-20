@@ -68,8 +68,10 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
-    std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    storesMap_.erase(storeKey);
+    {
+        std::unique_lock<std::mutex> lockGuard{storesMutex_};
+        storesMap_.erase(storeKey);
+    }
     TlsCleanUp();
     ShutDownCleanupThread();
 }
