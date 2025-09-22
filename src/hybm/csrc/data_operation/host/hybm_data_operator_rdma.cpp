@@ -5,6 +5,7 @@
 #include "dl_acl_api.h"
 #include "space_allocator.h"
 #include "rbtree_range_pool.h"
+#include "hybm_ptracer.h"
 
 using namespace ock::mf;
 
@@ -412,6 +413,192 @@ int32_t HostDataOpRDMA::RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, 
 int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                       const ExtOptions &options) noexcept
 {
-    BM_LOG_ERROR("BatchDataCopy not support");
-    return BM_ERROR;
+    auto ret = 0;
+    switch (direction) {
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
+            TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_LD_TO_GH);
+            ret = BatchCopyLD2GH(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options);
+            TP_TRACE_END(TP_HYBM_HOST_RDMA_LD_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
+            TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_BATCH_GH_TO_LD);
+            ret = BatchCopyGH2LD(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options);
+            TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_GH_TO_LD, ret);
+            break;
+        }
+        case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
+            TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_LH_TO_GH);
+            ret = BatchCopyLH2GH(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options);
+            TP_TRACE_END(TP_HYBM_HOST_RDMA_LH_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: {
+            TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_BATCH_GH_TO_LH);
+            ret = BatchCopyGH2LH(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options);
+            TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_GH_TO_LH, ret);
+            break;
+        }
+        default:
+            BM_LOG_ERROR("data copy invalid direction: " << direction);
+            ret = BM_INVALID_PARAM;
+    }
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, const void **deviceAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    void *st = stream_;
+    if (options.stream != nullptr) {
+        st = options.stream;
+    }
+    auto ret = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        auto destAddr = hostAddrs[i];
+        auto srcAddr = deviceAddrs[i];
+        auto count = counts[i];
+        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_HOST, st);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on local device to local host failed: " << ret << " stream:" << st);
+            return BM_DL_FUNCTION_FAILED;
+        }
+    }
+
+    ret  = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+    }
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, const void **hostAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    void *st = stream_;
+    if (options.stream != nullptr) {
+        st = options.stream;
+    }
+    auto ret = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        auto destAddr = deviceAddrs[i];
+        auto srcAddr = hostAddrs[i];
+        auto count = counts[i];
+        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_HOST_TO_DEVICE, st);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy memory on local host to local device failed: " << ret << " stream:" << st);
+            return BM_DL_FUNCTION_FAILED;
+        }
+    }
+
+    ret  = DlAclApi::AclrtSynchronizeStream(st);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+    }
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyLD2GH(void **gvaAddrs, const void **deviceAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    if (options.destRankId == rankId_) {
+        return BatchCopyLD2LH(gvaAddrs, deviceAddrs, counts, batchSize, options);
+    }
+    auto ret = 0;
+    uint64_t totalSize = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        totalSize += counts[i];
+    }
+    auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(totalSize);
+    void *tmpHost = tmpRdmaMemory.Address();
+    if (tmpHost == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
+        return BM_MALLOC_FAILED;
+    }
+    void *tmpRdmaAddrs[batchSize];
+    uint64_t offset = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        tmpRdmaAddrs[i] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
+        offset += counts[i];
+    }
+    ret = BatchCopyLD2LH(tmpRdmaAddrs, deviceAddrs, counts, batchSize, options);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
+        return ret;
+    }
+    ret = transportManager_->WriteRemote(options.destRankId, (uint64_t)tmpHost, (uint64_t)gvaAddrs[0], totalSize);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: " << ret << " localRankId:" << rankId_
+            << " remoteRankId:" << options.destRankId);
+    }
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyGH2LD(void **deviceAddrs, const void **gvaAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    if (options.srcRankId == rankId_) {
+        return BatchCopyLH2LD(deviceAddrs, gvaAddrs, counts, batchSize, options);
+    }
+    auto ret = 0;
+    uint64_t totalSize = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        totalSize += counts[i];
+    }
+    auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(totalSize);
+    void *tmpHost = tmpRdmaMemory.Address();
+    if (tmpHost == nullptr) {
+        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
+        return BM_MALLOC_FAILED;
+    }
+    ret = transportManager_->ReadRemote(options.srcRankId, (uint64_t)tmpHost, (uint64_t)gvaAddrs[0], totalSize);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to read remote host to local host ret: " << ret);
+        return ret;
+    }
+    const void *tmpRdmaAddrs[batchSize];
+    uint64_t offset = 0;
+    for (size_t i = 0; i < batchSize; ++i) {
+        tmpRdmaAddrs[i] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
+        offset += counts[i];
+    }
+    ret = BatchCopyLH2LD(deviceAddrs, tmpRdmaAddrs, counts, batchSize, options);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to read swap memory to local device: " << ret << " localRankId:" << rankId_
+                                                                    << " remoteRankId:" << options.destRankId);
+        return ret;
+    }
+    return 0;
+}
+
+int HostDataOpRDMA::BatchCopyLH2GH(void **gvaAddrs, const void **hostAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    auto ret = 0;
+    for (auto i = 0U; i < batchSize; i++) {
+        ret = CopyHost2Gva(hostAddrs[i], gvaAddrs[i], counts[i], options);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy local host to GVA failed: " << ret);
+            return ret;
+        }
+    }
+    return BM_OK;
+}
+
+int HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, const void **gvaAddrs, const uint32_t *counts,
+                                   uint32_t batchSize, const ExtOptions &options) noexcept
+{
+    auto ret = 0;
+    for (auto i = 0U; i < batchSize; i++) {
+        ret = CopyGva2Host(gvaAddrs[i], hostAddrs[i], counts[i], options);
+        if (ret != 0) {
+            BM_LOG_ERROR("copy GVA to local host failed: " << ret);
+            return ret;
+        }
+    }
+    return BM_OK;
 }

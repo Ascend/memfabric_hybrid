@@ -54,6 +54,18 @@ private:
                               uint32_t kind, const ExtOptions &options);
     int32_t RtMemoryCopy2dAsync(const void *srcVA, uint64_t spitch, void *destVA, uint64_t dpitch,
                                 uint64_t width, uint64_t height, uint32_t kind, const ExtOptions &options);
+    int BatchCopyLD2LH(void *hostAddrs[], const void *deviceAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyLH2LD(void *deviceAddrs[], const void *hostAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyLD2GH(void *gvaAddrs[], const void *deviceAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyGH2LD(void *deviceAddrs[], const void *gvaAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyLH2GH(void *gvaAddrs[], const void *hostAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyGH2LH(void *hostAddrs[], const void *gvaAddrs[], const uint32_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
 
 private:
     uint32_t rankId_{0};
