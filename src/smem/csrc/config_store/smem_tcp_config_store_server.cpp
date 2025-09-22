@@ -174,6 +174,14 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         kvStore_.erase(pos);
         STORE_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
     }
+    if (aliveRankSet_.empty()) {
+        STORE_LOG_INFO("all client link broken, will clear data");
+        kvStore_.clear();
+        waitCtx_.clear();
+        keyWaiters_.clear();
+        timedWaiters_.clear();
+        return SM_OK;
+    }
     lockGuard.unlock();
 
     if (rankId == std::numeric_limits<uint32_t>::max()) {
