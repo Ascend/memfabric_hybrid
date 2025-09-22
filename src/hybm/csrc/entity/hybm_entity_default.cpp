@@ -414,10 +414,6 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
-    for (auto i = 0U; i < params.batchSize; i++) {
-        params.sources[i] = Valid48BitsAddress(params.sources[i]);
-        params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
-    }
     if (sdmaDataOperator_ != nullptr) {
         BM_LOG_DEBUG("SDMA data copy excute.");
         ret = sdmaDataOperator_->BatchDataCopy(params, direction, options);

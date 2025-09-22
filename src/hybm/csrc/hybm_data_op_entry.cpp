@@ -46,8 +46,8 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                                       void* stream,
                                       uint32_t flags)
 {
-    if (e == nullptr || params->sources == nullptr || params->destinations == nullptr ||
-        params->dataSizes == nullptr) {
+    if (e == nullptr || params == nullptr ||
+        params->sources == nullptr || params->destinations == nullptr || params->dataSizes == nullptr) {
         BM_LOG_ERROR("Input parameter invalid, please check input.");
         return BM_INVALID_PARAM;
     }
@@ -57,13 +57,32 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
     }
     bool addressValid = true;
     auto entity = (MemEntity *)e;
+    bool check_dst = false;
+    bool check_src = false;
+    switch (direction) {
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:
+        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
+            check_dst = true;
+            check_src = false;
+            break;
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE:
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
+            check_src = true;
+            check_dst = false;
+            break;
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE:
+            check_src = true;
+            check_dst = true;
+            break;
+        default:
+            BM_LOG_ERROR("Invalid direction: " << direction);
+            return BM_INVALID_PARAM;
+    }
     for (uint32_t i = 0; i < params->batchSize; i++) {
-        if (direction == HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE || direction == HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE ||
-            direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
+        if (check_dst) {
             addressValid = entity->CheckAddressInEntity(params->destinations[i], params->dataSizes[i]);
         }
-        if (direction == HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE || direction == HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST ||
-            direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
+        if (check_src) {
             addressValid = (addressValid && entity->CheckAddressInEntity(params->sources[i], params->dataSizes[i]));
         }
 
@@ -72,6 +91,8 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                          << std::oct << params->dataSizes[i] << ", direction: " << direction);
             return BM_INVALID_PARAM;
         }
+        params->sources[i] = Valid48BitsAddress(params->sources[i]);
+        params->destinations[i] = Valid48BitsAddress(params->destinations[i]);
     }
 
     return entity->BatchCopyData(*params, direction, stream, flags);
