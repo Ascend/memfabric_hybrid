@@ -32,6 +32,8 @@ enum WatchRankType : uint32_t {
 
 const std::string AutoRankingStr = "AutoRanking#";
 
+using ConfigStoreReconnectHandler = std::function<int32_t(void)>;
+
 class ConfigStore : public SmReferable {
 public:
     ~ConfigStore() override = default;
@@ -193,6 +195,8 @@ public:
     virtual std::string GetCommonPrefix() noexcept = 0;
 
     virtual SmRef<ConfigStore> GetCoreStore() noexcept = 0;
+
+    virtual void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept = 0;
 
 protected:
     virtual Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept = 0;

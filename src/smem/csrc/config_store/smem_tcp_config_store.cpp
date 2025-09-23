@@ -505,6 +505,20 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     for (auto &it : tempContext) {
         it.second->SetFailedFinish();
     }
+    auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
+    ock::acc::AccConnReq connReq;
+    connReq.rankId = rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << 32) | rankId_)
+                                  : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
+    STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
+    auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
+    if (result != 0) {
+        STORE_LOG_ERROR("reconnect to server failed, result: " << result);
+        return result;
+    }
+
+    if (reconnectHandler != nullptr) {
+        return reconnectHandler();
+    }
 
     return SM_OK;
 }

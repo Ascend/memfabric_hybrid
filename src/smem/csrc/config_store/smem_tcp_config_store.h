@@ -65,6 +65,16 @@ public:
         return this;
     }
 
+    void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept override
+    {
+        reconnectHandler = callback;
+    }
+
+    void SetRankId(const int32_t &rankId) noexcept
+    {
+        rankId_ = rankId;
+    }
+
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override;
 
@@ -89,8 +99,9 @@ private:
     const std::string serverIp_;
     const uint16_t serverPort_;
     const bool isServer_;
-    const int32_t rankId_;
+    int32_t rankId_;
     const uint32_t worldSize_;
+    ConfigStoreReconnectHandler reconnectHandler{nullptr};
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
 }  // namespace smem

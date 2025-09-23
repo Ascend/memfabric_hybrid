@@ -84,6 +84,11 @@ public:
         return baseStore_;
     }
 
+    void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept override
+    {
+        return baseStore_->RegisterReconnectHandler(callback);
+    }
+
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override
     {

@@ -59,6 +59,7 @@ spec:
             - |
               # 该端口请与 'ClusterIP#targetPort' 保持一致
               sed -i '/^ock.mmc.meta_service_url/c ock.mmc.meta_service_url = tcp://metaServiceUrl:5000' /home/meta/config/mmc-meta.conf && \
+              sed -i '/^ock.mmc.meta_service.config_store_url/c ock.mmc.meta_service.config_store_url = tcp://metaServiceUrl:6000' /home/meta/config/mmc-meta.conf && \
               sed -i s/metaServiceUrl/$META_POD_IP/ /home/meta/config/mmc-meta.conf
           env:
             - name: META_POD_IP

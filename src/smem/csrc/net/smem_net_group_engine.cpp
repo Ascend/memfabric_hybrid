@@ -285,6 +285,11 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
 
+        if (contextRet != SM_OK) {
+            listenCtx_.watchId = UINT32_MAX;
+            continue;
+        }
+
         if (!joined_) {  // maybe has leaved
             continue;
         }
@@ -456,8 +461,11 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
 
 void SmemNetGroupEngine::RemoteRankLinkDownCb(uint32_t remoteRankId)
 {
-    listenSignal_.OperateInLock([this, remoteRankId]() { listenCtx_.events.emplace_back(GroupEvent(remoteRankId)); },
-                                true);
+    SM_LOG_ERROR("[DEBUG]RemoteRankLinkDownCb rank id: " << remoteRankId);
+    listenSignal_.OperateInLock([this, remoteRankId]() {
+        listenCtx_.ret = SM_OK;
+        listenCtx_.events.emplace_back(GroupEvent(remoteRankId));
+    }, true);
 }
 
 void SmemNetGroupEngine::ClearBitmapForRank(uint32_t rankId)
@@ -609,7 +617,7 @@ void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
 {
     groupVersion_ = ver;
     groupSn_ = 0;
-    SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
+    SM_LOG_DEBUG("[DEBUG]Update version(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
 }
 
 void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> rankIds)
@@ -632,5 +640,38 @@ void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> rankIds)
         joinedRanksBitmap_[i] = tempBitmap[i];
     }
 }
+
+int32_t SmemNetGroupEngine::LinkReconnectHandler()
+{
+    uint32_t wid = 0;
+    auto ret = store_->Watch(
+        WatchRankType::WATCH_RANK_LINK_DOWN,
+        [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("Failed to watch rank link status, ret: " << ret);
+    }
+
+    int64_t tmpVal = 0L;
+    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
+        return ret;
+    }
+
+    auto version = groupVersion_;
+    auto rankSize = option_.rankSize;
+    auto newVal = MergeSizeAndVersion(version, rankSize);
+    auto oldValStr = std::to_string(tmpVal);
+    auto newValStr = std::to_string(newVal);
+    std::string existStr;
+    SM_LOG_DEBUG("[DEBUG]Try cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << std::hex << version
+                                       << " rankSize:" << rankSize << " oldVar:" << tmpVal);
+    ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
+    if (ret != SM_OK) {
+        SM_LOG_WARN("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
+    }
+    return SM_OK;
+}
+
 }  // namespace smem
 }  // namespace ock

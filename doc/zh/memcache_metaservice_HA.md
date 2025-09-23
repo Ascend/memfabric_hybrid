@@ -22,6 +22,11 @@
 
 ### 2. 成功安装后，将容器提交为新的镜像
 
+需要准备一个镜像仓，本地启动一个镜像仓服务（使用 nerdctl）
+nerdctl run -d --name registry -p 5000:5000 -v /tmp/registry:/var/lib/registry registry:2
+
+如果已有镜像仓，将命令中的 <镜像仓地址:端口> 改为用户自己的镜像仓地址
+
 运行以下命令，将容器提交为镜像
 ```
 nerdctl commit <容器名> <镜像仓地址:端口>/<镜像名>:<标签>

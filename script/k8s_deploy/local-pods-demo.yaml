@@ -78,13 +78,15 @@ spec:
                 exit 1; \
               fi; \
               echo "Service IP: $META_CLUSTER_IP_SERVICE_HOST"; \
-              echo "Service Port: $META_CLUSTER_IP_SERVICE_PORT"; \
-              META_CLUSTER_IP_PORT="$META_CLUSTER_IP_SERVICE_HOST:$META_CLUSTER_IP_SERVICE_PORT"; \
+              echo "Service Port: $META_CLUSTER_IP_SERVICE_META_PORT"; \
+              echo "Config Store Port: $META_CLUSTER_IP_SERVICE_META_PORT"; \
+              META_CLUSTER_IP_PORT="$META_CLUSTER_IP_SERVICE_HOST:$META_CLUSTER_IP_SERVICE_PORT_META"; \
+              CONFIG_STORE_IP_PORT="$META_CLUSTER_IP_SERVICE_HOST:$META_CLUSTER_IP_SERVICE_PORT_CONFIG"; \
               # 修改配置文件
-              sed -i '/^ock.mmc.local_service.config_store_url/c ock.mmc.local_service.config_store_url = tcp://configStoreUrl:6000' /home/meta/config/mmc-local.conf && \
-              sed -i s/configStoreUrl/$META_POD0_IP/ /home/meta/config/mmc-local.conf && \
+              sed -i '/^ock.mmc.local_service.config_store_url/c ock.mmc.local_service.config_store_url = tcp://configStoreUrl' /home/meta/config/mmc-local.conf && \
               sed -i '/^ock.mmc.meta_service_url/c ock.mmc.meta_service_url = tcp://metaServiceUrl' /home/meta/config/mmc-local.conf && \
               sed -i s/metaServiceUrl/$META_CLUSTER_IP_PORT/ /home/meta/config/mmc-local.conf
+              sed -i s/configStoreUrl/$CONFIG_STORE_IP_PORT/ /home/meta/config/mmc-local.conf
           volumeMounts:
             - name: host-home  # 与下方volumes.name对应
               mountPath: /home  # 容器内的挂载点

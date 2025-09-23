@@ -130,7 +130,7 @@ Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContex
 Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
                                             const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    STORE_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << req.rankId);
+    STORE_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << std::hex << req.rankId);
     uint32_t worldSize = static_cast<uint32_t>(req.rankId >> 32);
     uint32_t rankId = static_cast<uint32_t>(req.rankId & 0xFFFFFFFF);
     if (worldSize_ == std::numeric_limits<uint32_t>::max()) {
@@ -150,6 +150,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     kvStore_[autoRankingStr] = std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data));
+    aliveRankSet_.insert(rankId);
 
     return SM_OK;
 }
@@ -569,7 +570,7 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
         STORE_LOG_ERROR("link id : " << linkId << ", already watched for rank state.");
         return SM_REPEAT_CALL;
     }
-
+    STORE_LOG_DEBUG("WATCH REQUEST(" << context.SeqNo() << ") for key(" << WATCH_RANK_DOWN_KEY << ") finished.");
     return SM_OK;
 }
 
@@ -680,7 +681,7 @@ void AccStoreServer::RankStateTask() noexcept
         responseMessage.values.push_back(value);
         auto response = SmemMessagePacker::Pack(responseMessage);
         for (auto it = rankStateWaiters_.begin(); it != rankStateWaiters_.end(); ++it) {
-            STORE_LOG_INFO("rankId: " << rankId << " down notify to channel: " << it->first);
+            STORE_LOG_DEBUG("rankId: " << rankId << " down notify to linkId: " << it->first);
             ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
         }
     }

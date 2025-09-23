@@ -100,8 +100,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
     uint32_t localIpv4;
     std::string localIp;
     auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
-    SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
-    if (localIp != storeUrlExtraction_.ip) {
+    if (ret != SM_OK || localIp != storeUrlExtraction_.ip) {
         return SM_OK;
     }
 
@@ -115,17 +114,12 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
 
 int32_t SmemBmEntryManager::AutoRanking()
 {
-    uint32_t localIpv4;
     std::string localIp;
 
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
-    if (ret != 0) {
-        SM_LOG_ERROR("get local ip address connect to target ip: " << storeUrlExtraction_.ip << " failed: " << ret);
-        return ret;
-    }
     do {
         std::vector<uint8_t> rankIdDate;
-        ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+        auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate,
+                                                   SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
         if (ret == SM_OK && rankIdDate.size() == sizeof(uint32_t)) {
             union Transfer {
                 uint32_t rankId;
@@ -133,12 +127,14 @@ int32_t SmemBmEntryManager::AutoRanking()
             } trans{};
             std::copy_n(rankIdDate.begin(), sizeof(trans.date), trans.date);
             config_.rankId = trans.rankId;
+            auto tcpConfigStore = Convert<ConfigStore, TcpConfigStore>(confStore_->GetCoreStore());
+            tcpConfigStore->SetRankId(config_.rankId);
             SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: "
                                                            << localIp << " deviceId: " << deviceId_);
             return SM_OK;
         }
     } while (0);
-    SM_LOG_ERROR("Failed to auto ranking, localIp: " << localIp << " deviceId: " << deviceId_);
+    SM_LOG_ERROR("Failed to auto ranking deviceId: " << deviceId_);
     return SM_ERROR;
 }
 

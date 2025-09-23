@@ -71,7 +71,7 @@ public:
         if (option_.dynamic) {
             option_.rankSize = 1;
         }
-
+        store_->RegisterReconnectHandler(std::bind(&SmemNetGroupEngine::LinkReconnectHandler, this));
         bzero(joinedRanksBitmap_, sizeof(joinedRanksBitmap_));
     }
     ~SmemNetGroupEngine() override;
@@ -102,6 +102,7 @@ private:
     void RemoteRankLinkDownCb(uint32_t remoteRankId);
     void ClearBitmapForRank(uint32_t rankId);
     bool TestBitmapForRank(uint32_t rankId) const;
+    int32_t LinkReconnectHandler();
 
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
