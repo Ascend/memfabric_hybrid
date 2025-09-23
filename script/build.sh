@@ -1,10 +1,23 @@
 #!/bin/bash
 
+function check_env() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "Error: python3 not found in PATH"
+        return 1
+    fi
+    if ! python3 -c "import pybind11" >/dev/null 2>&1; then
+        echo "Error: pybind11 is not installed in current python environment"
+        echo "Try: pip install pybind11"
+        return 1
+    fi
+}
+
 BUILD_MODE=$1
 BUILD_TESTS=$2
 BUILD_OPEN_ABI=$3
 BUILD_PYTHON=$4
 BUILD_COMPILER=$5
+BUILD_PACKAGE=$6
 
 if [ -z "$BUILD_MODE" ]; then
     BUILD_MODE="RELEASE"
@@ -19,11 +32,19 @@ if [ -z "$BUILD_OPEN_ABI" ]; then
 fi
 
 if [ -z "$BUILD_PYTHON" ]; then
-    BUILD_PYTHON="ON"
+    if check_env; then
+        BUILD_PYTHON="ON"
+    else
+        BUILD_PYTHON="OFF"
+    fi
 fi
 
 if [ -z "$BUILD_COMPILER" ]; then
     BUILD_COMPILER="gcc"
+fi
+
+if [ -z "$BUILD_PACKAGE" ]; then
+    BUILD_PACKAGE="ON"
 fi
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
@@ -32,6 +53,7 @@ readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 if [ "${BUILD_TESTS}" == "ON" ]; then
     echo "BUILD_TESTS, NO BUILD PYTHON"
     BUILD_PYTHON="OFF"
+    BUILD_PACKAGE="OFF"
 
     cd test/3rdparty/
     [[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://github.com/google/googletest.git
@@ -64,6 +86,13 @@ make install -j5 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then
   echo "========= skip build python ============"
+    if [ "${BUILD_PACKAGE}" == "ON" ]; then
+        #copy mf_run package
+        bash "${PROJ_DIR}"/script/run_pkg_maker/make_run.sh RELEASE OFF
+        rm -rf "${PROJ_DIR}"/package
+        mkdir -p "${PROJ_DIR}"/package
+        cp "${PROJ_DIR}"/output/*.run "${PROJ_DIR}"/package
+    fi
     cd ${CURRENT_DIR}
     exit 0
 fi
@@ -131,5 +160,15 @@ rm -rf "${PROJ_DIR}"/src/smem/python/dist
 mkdir -p "${PROJ_DIR}/output/mooncake_adapter/wheel"
 cp "${PROJ_DIR}"/src/mooncake_adapter/python/dist/*.whl "${PROJ_DIR}/output/mooncake_adapter/wheel"
 rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/dist
+
+if [ "${BUILD_PACKAGE}" == "ON" ]; then
+    #copy smem wheel package && mooncake_adapter wheel package && mf_run package
+    bash "${PROJ_DIR}"/script/run_pkg_maker/make_run.sh RELEASE ON
+    rm -rf "${PROJ_DIR}"/package
+    mkdir -p "${PROJ_DIR}"/package
+    cp "${PROJ_DIR}"/output/mooncake_adapter/wheel/*.whl "${PROJ_DIR}/package"
+    cp "${PROJ_DIR}"/output/smem/wheel/*.whl "${PROJ_DIR}/package"
+    cp "${PROJ_DIR}"/output/*.run "${PROJ_DIR}"/package
+fi
 
 cd ${CURRENT_DIR}
