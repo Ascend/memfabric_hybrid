@@ -1,24 +1,24 @@
-# meta命名空间定义，用于memcache所有所有资源，包括：meta-pods，local-pods，ServiceAccount，role，RoleBinding，Lease和ClusterIP
+# meta命名空间定义，用于memcache所有资源，包括：meta-pods，local-pods，ServiceAccount，role，RoleBinding，Lease和ClusterIP
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: meta-service # Lease、Service和StatefulSet三种资源，都必须采用该namespace
+  name: ns-memcache # Lease、Service和StatefulSet三种资源，都必须采用该 namespace
 
 ---
 # 服务账号定义（与pod及lease相同命名空间）
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: meta-service-account
-  namespace: meta-service
+  name: account-memcache
+  namespace: ns-memcache # 位于 ns-memcache namespace中
 
 ---
 # 角色定义（命名空间内）
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: meta-access-role
-  namespace: meta-service
+  name: role-memcache
+  namespace: ns-memcache
 rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
@@ -32,13 +32,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: meta-access-role-binding
-  namespace: meta-service
+  name: role-binding-memcache
+  namespace: ns-memcache
 subjects:
   - kind: ServiceAccount
-    name: meta-service-account
-    namespace: meta-service
+    name: account-memcache
+    namespace: ns-memcache
 roleRef:
   kind: Role
-  name: meta-access-role
+  name: role-memcache
   apiGroup: rbac.authorization.k8s.io

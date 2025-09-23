@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: meta-service-pod
-  namespace: meta-service
+  namespace: ns-memcache
 spec:
   serviceName: meta-service
   replicas: 2
@@ -16,7 +16,7 @@ spec:
         app: meta-service
         role: backup  # 初始标签可设为backup，主节点由程序动态更新
     spec:
-      serviceAccountName: meta-service-account
+      serviceAccountName: account-memcache
       terminationGracePeriodSeconds: 10
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -45,9 +45,9 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
             - name: META_NAMESPACE
-              value: meta-service
+              value: ns-memcache
             - name: META_LEASE_NAME
-              value: meta-lock-lease
+              value: lease-memcache
           volumeMounts:
             - name: host-home
               mountPath: /home

@@ -8,25 +8,25 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mmc-local-pod
-  namespace: meta-service
+  name: local-service-pod
+  namespace: ns-memcache
 spec:
-  serviceName: mmc-local
+  serviceName: local-service
   replicas: 3
   selector:
     matchLabels:
-      app: mmc-local
+      app: local-service
   template:
     metadata:
       labels:
-        app: mmc-local
+        app: local-service
     spec:
-      serviceAccountName: meta-service-account
+      serviceAccountName: meta-service-account  #  Pod 内的应用使用该账号的权限调用 Kubernetes API
       terminationGracePeriodSeconds: 10
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:
-        - name: mmc-local
+        - name: local-service
           image: 110.3.229.11:5000/meta:0814_v4
           resources:
             requests:
@@ -65,16 +65,16 @@ spec:
           args:
             - |
               TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && \
-              # META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/meta-service/pods/mmc-local-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
+              # META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/ns-memcache/pods/local-service-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
               # 重试机制：等待 Pod0 就绪
               for i in {1..10}; do \
-                META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/meta-service/pods/mmc-local-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
+                META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/ns-memcache/pods/local-service-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
                 if [ -n "$META_POD0_IP" ]; then break; fi; \
-                echo "Waiting for mmc-local-pod-0 (attempt $i/10)..."; \
+                echo "Waiting for local-service-pod-0 (attempt $i/10)..."; \
                 sleep 2; \
               done; \
               if [ -z "$META_POD0_IP" ]; then \
-                echo "Error: Failed to get mmc-local-pod-0 IP"; \
+                echo "Error: Failed to get local-service-pod-0 IP"; \
                 exit 1; \
               fi; \
               echo "Service IP: $META_CLUSTER_IP_SERVICE_HOST"; \
