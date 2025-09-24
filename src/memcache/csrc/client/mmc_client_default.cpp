@@ -28,6 +28,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
         return MMC_OK;
     }
     bmProxy_ = MmcBmProxyFactory::GetInstance("bmProxyDefault");
+    MMC_ASSERT_RETURN(bmProxy_ != nullptr, MMC_MALLOC_FAILED);
     rankId_ = bmProxy_->RankId();
 
     threadPool_ = MmcMakeRef<MmcThreadPool>("client_pool", 1);
@@ -332,6 +333,7 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
     std::vector<BlobActionResult> actionResults;
     std::vector<uint32_t> ranks;
     std::vector<uint16_t> mediaTypes;
+    MMC_ASSERT_RETURN(!bufArrs[0].Buffers().empty(), MMC_INVALID_PARAM);
     auto transType = SelectTransportType(bufArrs[0].Buffers()[0]);
     batchResult.resize(keys.size(), MMC_ERROR);
     for (size_t i = 0; i < keys.size(); ++i) {
@@ -561,7 +563,7 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
         MMC_LOG_ERROR("Mismatch in number of keys and allocated blobs");
         return MMC_ERROR;
     }
-
+    MMC_ASSERT_RETURN(!bufArrs.empty() && !bufArrs[0].Buffers().empty(), MMC_INVALID_PARAM);
     auto transType = SelectTransportType(bufArrs[0].Buffers()[0]);
     for (size_t i = 0; i < keys.size(); ++i) {
         const std::string& key = keys[i];

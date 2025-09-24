@@ -41,6 +41,7 @@ Result ock::mmc::MetaNetServer::Start(NetEngineOptions &options)
     MMC_ASSERT_RETURN(metaService_.Get() != nullptr, MMC_INVALID_PARAM);
 
     NetEnginePtr server = NetEngine::Create();
+    MMC_ASSERT_RETURN(server != nullptr, MMC_MALLOC_FAILED);
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_ALLOC_REQ,
                                       std::bind(&MetaNetServer::HandleAlloc, this, std::placeholders::_1));
     server->RegRequestReceivedHandler(LOCAL_META_OPCODE_REQ::ML_BM_REGISTER_REQ,

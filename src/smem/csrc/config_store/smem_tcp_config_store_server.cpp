@@ -245,6 +245,7 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
 Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
 {
     auto &key = request.keys[0];
+    STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
     auto linkId = context.Link()->Id();
     auto rankingKey = key + std::to_string(linkId);
     STORE_LOG_INFO("GET rankingKey(" << rankingKey << ") success.");
@@ -560,7 +561,7 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: key should be");
         return SM_INVALID_PARAM;
     }
-
+    STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
     auto linkId = context.Link()->Id();
     StoreWaitContext waitContext{-1L, WATCH_RANK_DOWN_KEY, context};
     std::unique_lock<std::mutex> uniqueLock{rankStateMutex_};

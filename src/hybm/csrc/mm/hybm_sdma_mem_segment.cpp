@@ -67,6 +67,7 @@ Result MemSegmentHostSDMA::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSl
 
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_GVM, allocAddr, size);
+    BM_ASSERT_RETURN(slice != nullptr, BM_MALLOC_FAILED);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ", address:0x" << std::hex
                                        << slice->vAddress_ << ").");

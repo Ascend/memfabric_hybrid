@@ -115,6 +115,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
     options.tlsOption = manager.GetHcomTlsOption();
+    SM_PARAM_VALIDATE(manager.GetHcomUrl().size() > 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
     (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
     ret = entry->Initialize(options);
@@ -252,6 +253,8 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
                               uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(src == nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(dest == nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;
@@ -269,6 +272,8 @@ SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, const void *src, uint64_t spi
                                  smem_bm_copy_type t, uint32_t flags)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(src == nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(dest == nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;
@@ -316,6 +321,7 @@ SMEM_API int32_t smem_bm_wait(smem_bm_t handle)
 SMEM_API int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size)
 {
     SM_PARAM_VALIDATE(handle == nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_PARAM_VALIDATE(addr == 0, "invalid param, addr eq 0", SM_INVALID_PARAM);
     SM_PARAM_VALIDATE(!g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;

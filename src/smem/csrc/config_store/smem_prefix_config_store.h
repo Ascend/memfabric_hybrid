@@ -22,27 +22,32 @@ public:
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Set(std::string(keyPrefix_).append(key), value);
     }
 
     Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Add(std::string(keyPrefix_).append(key), increment, value);
     }
 
     Result Remove(const std::string &key) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Remove(std::string(keyPrefix_).append(key));
     }
 
     Result Append(const std::string &key, const std::vector<uint8_t> &value, uint64_t &newSize) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Append(std::string(keyPrefix_).append(key), value, newSize);
     }
 
     Result Cas(const std::string &key, const std::vector<uint8_t> &expect, const std::vector<uint8_t> &value,
                std::vector<uint8_t> &exists) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Cas(std::string(keyPrefix_).append(key), expect, value, exists);
     }
 
@@ -50,6 +55,7 @@ public:
                  const std::function<void(int result, const std::string &, const std::vector<uint8_t> &)> &notify,
                  uint32_t &wid) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Watch(
             std::string(keyPrefix_).append(key),
             [key, notify](int result, const std::string &, const std::vector<uint8_t> &value) {
@@ -61,11 +67,13 @@ public:
     Result Watch(WatchRankType type, const std::function<void(WatchRankType, uint32_t)> &notify,
                  uint32_t &wid) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Watch(type, notify, wid);
     }
 
     Result Unwatch(uint32_t wid) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Unwatch(wid);
     }
 
@@ -76,6 +84,7 @@ public:
 
     std::string GetCommonPrefix() noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, "");
         return keyPrefix_ + baseStore_->GetCommonPrefix();
     }
 
@@ -86,12 +95,16 @@ public:
 
     void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept override
     {
+        if (baseStore_ == nullptr) {
+            return;
+        }
         return baseStore_->RegisterReconnectHandler(callback);
     }
 
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override
     {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
         return baseStore_->Get(std::string(keyPrefix_).append(key), value, timeoutMs);
     }
 

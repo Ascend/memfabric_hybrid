@@ -48,7 +48,10 @@ AllocatedElement RbtreeRangePool::Allocate(uint64_t size) noexcept
         BM_LOG_ERROR("cannot allocate with size: " << size);
         return AllocatedElement{};
     }
-
+    if (baseAddress == nullptr) {
+        BM_LOG_ERROR("base is a null pointer.");
+        return AllocatedElement{};
+    }
     auto targetOffset = sizePos->offset;
     auto targetSize = sizePos->size;
     auto addrPos = addressTree.find(targetOffset);
@@ -73,6 +76,10 @@ bool RbtreeRangePool::Release(const AllocatedElement &element) noexcept
 {
     auto alignedSize = AllocateSizeAlignUp(element.Size());
     auto elemAddr = element.Address();
+    if (baseAddress == nullptr || elemAddr == nullptr) {
+        BM_LOG_ERROR("The addr is a null pointer.");
+        return false;
+    }
     if (elemAddr < baseAddress || elemAddr >= baseAddress + totalSize) {
         BM_LOG_ERROR("element address not in this range pool.");
         return false;

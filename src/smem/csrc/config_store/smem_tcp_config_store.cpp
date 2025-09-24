@@ -74,6 +74,10 @@ public:
     void SetFinished(const ock::acc::AccTcpRequestContext &response) noexcept override
     {
         auto data = reinterpret_cast<const uint8_t *>(response.DataPtr());
+        if (data == nullptr) {
+            STORE_LOG_ERROR("data is nullptr.");
+            return;
+        }
         auto packedResponse = std::vector<uint8_t>(data, data + response.DataLen());
 
         SmemMessage responseBody;
@@ -250,6 +254,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     }
 
     auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
+    STORE_ASSERT_RETURN(data != nullptr, SM_MALLOC_FAILED);
     auto packedResponse = std::vector<uint8_t>(data, data + response->DataLen());
     SmemMessage responseBody;
     auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
@@ -291,7 +296,7 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
         STORE_LOG_ERROR("send add for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
-
+    STORE_ASSERT_RETURN(response->DataPtr() != nullptr, IO_ERROR);
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
     value = strtol(data.c_str(), nullptr, DECIMAL_BASE);
     return StoreErrorCode::SUCCESS;
@@ -346,7 +351,7 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
         STORE_LOG_ERROR("send append for key: " << key << ", get response code: " << responseCode);
         return responseCode;
     }
-
+    STORE_ASSERT_RETURN(response->DataPtr() != nullptr, IO_ERROR);
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
     newSize = strtoull(data.c_str(), nullptr, DECIMAL_BASE);
 
@@ -380,6 +385,7 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
     }
 
     auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
+    STORE_ASSERT_RETURN(data != nullptr, SM_MALLOC_FAILED);
     auto packedResponse = std::vector<uint8_t>(data, data + response->DataLen());
     SmemMessage responseBody;
     auto ret = SmemMessagePacker::Unpack(packedResponse, responseBody);
@@ -476,6 +482,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
 {
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
+    STORE_ASSERT_RETURN(accClientLink_ != nullptr, nullptr);
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         STORE_LOG_ERROR("send message failed, result: " << ret);
@@ -485,7 +492,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     std::mutex waitRespMutex;
     std::condition_variable waitRespCond;
     auto waitContext = std::make_shared<ClientWaitContext>(waitRespMutex, waitRespCond);
-
+    STORE_ASSERT_RETURN(waitContext != nullptr, nullptr);
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, waitContext);
     msgCtxLocker.unlock();
@@ -555,6 +562,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
 {
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
+    STORE_ASSERT_RETURN(accClientLink_ != nullptr, SM_NOT_INITIALIZED);
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         STORE_LOG_ERROR("send message failed, result: " << ret);
@@ -562,6 +570,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     }
 
     auto watchContext = std::make_shared<ClientWatchContext>(notify, false);
+    STORE_ASSERT_RETURN(watchContext != nullptr, SM_MALLOC_FAILED);
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, std::move(watchContext));
     msgCtxLocker.unlock();

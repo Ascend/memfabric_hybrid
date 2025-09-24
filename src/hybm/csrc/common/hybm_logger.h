@@ -128,7 +128,9 @@ private:
     do {                                                                               \
         std::ostringstream oss;                                                        \
         oss << "[HyBM " << HYBM_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS; \
-        HyBMOutLogger::Instance()->Log(LEVEL, oss);                                    \
+        if (HyBMOutLogger::Instance() != nullptr) {                                    \
+            HyBMOutLogger::Instance()->Log(LEVEL, oss);                                \
+        }                                                                              \
     } while (0)
 
 #define BM_LOG_DEBUG(ARGS) BM_OUT_LOG(DEBUG_LEVEL, ARGS)
