@@ -110,6 +110,24 @@ static int RaSendWrStub(void *qp_handle, struct send_wr *wr, struct send_wr_rsp 
     return BM_OK;
 }
 
+static int32_t RtGetDeviceInfoStub1(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *val)
+{
+    if (infoType == INFO_TYPE_ADDR_MODE) return BM_ERROR;
+    return BM_OK;
+}
+
+static int32_t RtGetDeviceInfoStub2(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *val)
+{
+    if (infoType == INFO_TYPE_PHY_DIE_ID) return BM_ERROR;
+    return BM_OK;
+}
+
+static int32_t RtGetDeviceInfoStub3(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *val)
+{
+    if (infoType == INFO_TYPE_PHY_CHIP_ID) return BM_ERROR;
+    return BM_OK;
+}
+
 /* ======================================  TEST  ====================================== */
 
 TEST_F(HybmRdmaTransportManagerTest, PrepareThreadLocalStreamTest)
@@ -532,4 +550,39 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
     EXPECT_EQ(ret, BM_ERROR);
     ret = manager.CheckPrepareOptions(hoptions);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    GlobalMockObject::verify();
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
+        in_addr &, void *&)).stubs().will(returnValue(true));
+    MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub1));
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    GlobalMockObject::verify();
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
+        in_addr &, void *&)).stubs().will(returnValue(true));
+    MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub2));
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    GlobalMockObject::verify();
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
+        in_addr &, void *&)).stubs().will(returnValue(true));
+    MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub3));
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
+
+    GlobalMockObject::verify();
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
+        in_addr &, void *&)).stubs().will(returnValue(true));
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t,
+        int64_t *)).stubs().will(returnValue(0));
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
 }
