@@ -461,7 +461,7 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
 
 void SmemNetGroupEngine::RemoteRankLinkDownCb(uint32_t remoteRankId)
 {
-    SM_LOG_ERROR("[DEBUG]RemoteRankLinkDownCb rank id: " << remoteRankId);
+    SM_LOG_DEBUG("[DEBUG]RemoteRankLinkDownCb rank id: " << remoteRankId);
     listenSignal_.OperateInLock([this, remoteRankId]() {
         listenCtx_.ret = SM_OK;
         listenCtx_.events.emplace_back(GroupEvent(remoteRankId));

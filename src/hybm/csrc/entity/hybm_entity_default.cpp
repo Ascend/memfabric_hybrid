@@ -940,7 +940,7 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
 {
     if (!HybmGvmHasInited()) {
         BM_LOG_ERROR("gvm is not inited, skip register mem!");
-        return BM_ERROR;
+        return BM_OK;
     }
     // only register hbm
     if (!(addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR)) {

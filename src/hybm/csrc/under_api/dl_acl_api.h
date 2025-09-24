@@ -39,12 +39,20 @@ public:
     static Result LoadLibrary(const std::string &libDirPath);
     static void CleanupLibrary();
 
-    static inline Result AclrtSetDevice(int32_t deviceId)
+    static inline Result AclrtSetDevice(int32_t deviceId, bool force = false)
     {
         if (pAclrtSetDevice == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
-        return pAclrtSetDevice(deviceId);
+        if (force) {
+            return pAclrtSetDevice(deviceId);
+        }
+        int32_t nowDeviceId = -1;
+        if (AclrtGetDevice(&nowDeviceId) == 0 && nowDeviceId == deviceId) {
+            return BM_OK;
+        } else {
+            return pAclrtSetDevice(deviceId);
+        }
     }
 
     static inline Result AclrtGetDevice(int32_t *deviceId)
