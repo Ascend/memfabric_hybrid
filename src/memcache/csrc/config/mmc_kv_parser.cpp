@@ -8,6 +8,7 @@
 
 #include "mf_file_util.h"
 #include "mmc_functions.h"
+#include "common/mmc_functions.h"
 
 namespace ock {
 namespace mmc {
@@ -30,49 +31,30 @@ KVParser::~KVParser()
     }
 }
 
-HRESULT KVParser::FromFile(const std::string &filePath)
+Result KVParser::FromFile(const std::string &filePath)
 {
     char path[PATH_MAX + 1] = {0};
     if (filePath.size() > PATH_MAX || realpath(filePath.c_str(), path) == nullptr) {
-        return MMC_FAIL;
+        MMC_LOG_ERROR("Config file path is invalid");
+        return MMC_ERROR;
+    }
+    if (ValidatePathNotSymlink(filePath.c_str()) != MMC_OK) {
+        MMC_LOG_ERROR("Config file path (" << filePath << ") is a symlink");
+        return MMC_ERROR;
     }
     /* open file to read */
     std::ifstream inConfFile(path);
     if (!mf::FileUtil::CheckFileSize(inConfFile, MAX_CONF_FILE_SIZE)) {
         inConfFile.close();
-        return MMC_FAIL;
+        MMC_LOG_ERROR("Config file size exceeds 10 MB");
+        return MMC_ERROR;
     }
     std::string strLine;
-    HRESULT hr = OK;
+    Result res = MMC_OK;
     while (getline(inConfFile, strLine)) {
-        strLine.erase(strLine.find_last_not_of('\r') + 1);
-        OckTrimString(strLine);
-        if (strLine.empty() || strLine.at(0) == '#') {
-            continue;
-        }
-        if (strLine.size() > MAX_LINE_LENGTH) {
-            std::cerr << "Configuration file <" << path << "> strLine is too long." << std::endl;
-            hr = MMC_FAIL;
-            break;
-        }
-
-        std::string::size_type equalDivPos = strLine.find('=');
-        if (equalDivPos == std::string::npos) {
-            continue;
-        }
-
-        std::string strKey = strLine.substr(0, equalDivPos);
-        std::string strValue = strLine.substr(equalDivPos + 1, strLine.size() - 1);
-        OckTrimString(strKey);
-        OckTrimString(strValue);
-
-        if (strKey.empty()) {
-            hr = MMC_FAIL;
-            std::cerr << "Configuration item has empty key." << std::endl;
-            break;
-        }
-        if (RESULT_FAIL(SetItem(strKey, strValue))) {
-            hr = MMC_FAIL;
+        res = ParseLine(strLine);
+        if (res != MMC_OK) {
+            MMC_LOG_ERROR("Parse config file failed");
             break;
         }
     }
@@ -80,36 +62,36 @@ HRESULT KVParser::FromFile(const std::string &filePath)
     inConfFile.close();
     inConfFile.clear();
 
-    return hr;
+    return res;
 }
 
-HRESULT KVParser::GetItem(const std::string &key, std::string &outValue)
+Result KVParser::GetItem(const std::string &key, std::string &outValue)
 {
     GUARD(&mLock, mLock);
     const auto iter = mItemsIndex.find(key);
     if (iter != mItemsIndex.end()) {
         const auto itemPtr = mItems.at(iter->second);
         if (itemPtr == nullptr) {
-            return MMC_FAIL;
+            return MMC_ERROR;
         }
         outValue = itemPtr->value;
-        return OK;
+        return MMC_OK;
     }
-    return MMC_FAIL;
+    return MMC_ERROR;
 }
 
-HRESULT KVParser::SetItem(const std::string &key, const std::string &value)
+Result KVParser::SetItem(const std::string &key, const std::string &value)
 {
     GUARD(&mLock, mLock);
     const auto iter = mItemsIndex.find(key);
     if (iter != mItemsIndex.end()) {
         std::cerr << "Key <" << key << "> in configuration file is repeated." << std::endl;
-        return MMC_FAIL;
+        return MMC_ERROR;
     }
     auto *kv = new (std::nothrow) KvPair();
     if (kv == nullptr) {
         std::cerr << "Parse lines in configuration file failed, maybe out of memory." << std::endl;
-        return MMC_FAIL;
+        return MMC_ERROR;
     }
     kv->name = key;
     kv->value = value;
@@ -118,7 +100,7 @@ HRESULT KVParser::SetItem(const std::string &key, const std::string &value)
     if (mGotKeys.find(key) == mGotKeys.end()) {
         mGotKeys.insert(std::make_pair(key, true));
     }
-    return OK;
+    return MMC_OK;
 }
 
 uint32_t KVParser::Size()
@@ -165,5 +147,40 @@ bool KVParser::CheckSet(const std::vector<std::string> &keys)
     mGotKeys = std::unordered_map<std::string, bool>();
     return check;
 }
+
+Result KVParser::ParseLine(std::string &strLine)
+{
+    strLine.erase(strLine.find_last_not_of('\r') + 1);
+    OckTrimString(strLine);
+    if (strLine.empty() || strLine.at(0) == '#') {
+        return MMC_OK;
+    }
+    if (strLine.size() > MAX_LINE_LENGTH) {
+        MMC_LOG_ERROR("Configuration file strLine is too long");
+        return MMC_ERROR;
+    }
+
+    std::string::size_type equalDivPos = strLine.find('=');
+    if (equalDivPos == std::string::npos) {
+        return MMC_OK;
+    }
+
+    std::string strKey = strLine.substr(0, equalDivPos);
+    std::string strValue = strLine.substr(equalDivPos + 1, strLine.size() - 1);
+    OckTrimString(strKey);
+    OckTrimString(strValue);
+
+    if (strKey.empty()) {
+        MMC_LOG_ERROR("Configuration item has empty key");
+        return MMC_ERROR;
+    }
+    if (SetItem(strKey, strValue) != MMC_OK) {
+        MMC_LOG_ERROR("Failed to set key <" << strKey << "> with value <" << strValue << ">");
+        return MMC_ERROR;
+    }
+
+    return MMC_OK;
+}
+
 } // namespace mmc
 } // namespace ock

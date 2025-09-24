@@ -43,7 +43,7 @@ bool Configuration::LoadFromFile(const std::string &filePath)
     if (kvParser == nullptr) {
         return false;
     }
-    if (RESULT_FAIL(kvParser->FromFile(filePath))) {
+    if (kvParser->FromFile(filePath) != MMC_OK) {
         SAFE_DELETE(kvParser);
         return false;
     }

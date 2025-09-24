@@ -8,7 +8,6 @@
 using namespace ock::mmc;
 
 namespace {
-constexpr uint32_t MAX_BATCH_COUNT = 16 * 1024;
 constexpr int BUF_TYPE_BASE = 2;
 constexpr int MAX_KEY_LEN = 256;
 }
@@ -89,7 +88,7 @@ MMC_API int32_t mmcc_query(const char *key, mmc_data_info *info, uint32_t flags)
 MMC_API int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_info *info, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_OP_COUNT, "invalid param, keys_count: "
                         << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(info != nullptr, "invalid param, info is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
@@ -158,7 +157,7 @@ MMC_API int32_t mmcc_batch_remove(const char **keys, const uint32_t keys_count, 
 {
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_OP_COUNT, "invalid param, keys_count: "
                         << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(remove_results != nullptr, "invalid param, remove_results is null", MMC_INVALID_PARAM);
 
@@ -221,7 +220,7 @@ MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, i
 {
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_OP_COUNT, "invalid param, keys_count: "
                         << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(exist_results != nullptr, "invalid param, exist_results is null", MMC_INVALID_PARAM);
 
@@ -268,7 +267,7 @@ MMC_API int32_t mmcc_batch_exist(const char **keys, const uint32_t keys_count, i
 MMC_API int32_t mmcc_batch_get(const char **keys, uint32_t keys_count, mmc_buffer *bufs, uint32_t flags, int* results)
 {
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_OP_COUNT, "invalid param, keys_count: "
                         << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
@@ -304,7 +303,7 @@ MMC_API int32_t mmcc_batch_put(const char** keys, uint32_t keys_count, const mmc
                                uint32_t flags, int* results)
 {
     MMC_VALIDATE_RETURN(keys != nullptr, "invalid param, keys is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_COUNT, "invalid param, keys_count: "
+    MMC_VALIDATE_RETURN(keys_count != 0 && keys_count <= MAX_BATCH_OP_COUNT, "invalid param, keys_count: "
                         << keys_count, MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(bufs != nullptr, "invalid param, bufs is null", MMC_INVALID_PARAM);
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);

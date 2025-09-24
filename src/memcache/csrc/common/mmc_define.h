@@ -4,11 +4,6 @@
 #ifndef MEM_FABRIC_HYBRID_MMC_DEFINE_H
 #define MEM_FABRIC_HYBRID_MMC_DEFINE_H
 
-#include <cstdint>
-
-using HRESULT = uint32_t;
-#define OK (HRESULT(0x00000000L))
-#define MMC_FAIL (HRESULT(0x00000001L))
 #define MMC_DATA_TTL_MS 2000
 #define MMC_THRESHOLD_PRINT_SECONDS 30
 
@@ -99,16 +94,6 @@ namespace mmc {
     } while (0)
 
 #define MMC_API __attribute__((visibility("default")))
-
-inline bool RESULT_OK(const HRESULT hr)
-{
-    return ((hr) | OK) == OK;
-}
-
-inline bool RESULT_FAIL(const HRESULT hr)
-{
-    return (static_cast<HRESULT>(hr) & MMC_FAIL) == MMC_FAIL;
-}
 
 /**
  * @brief Delete a ptr safely, i.e. delete and set to nullptr

@@ -95,7 +95,7 @@ inline Result Func::LibraryRealPath(const std::string &libDirPath, const std::st
  */
 inline int ValidatePathNotSymlink(const char* path)
 {
-    struct stat path_stat;
+    struct stat path_stat{};
 
     // 检查路径是否存在
     if (access(path, F_OK) != 0) {

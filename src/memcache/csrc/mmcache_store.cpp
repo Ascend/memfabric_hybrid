@@ -183,10 +183,9 @@ std::vector<int> MmcacheStore::BatchRemove(const std::vector<std::string> &keys)
 {
     std::vector<int> results;
 
-    if (keys.empty()) {
-        MMC_LOG_ERROR("Empty keys vector provided to batchIsExist");
-        return results;  // Return empty vector
-    }
+    MMC_VALIDATE_RETURN(!keys.empty(), "key vector is empty", {});
+    MMC_VALIDATE_RETURN(keys.size() <= MAX_BATCH_OP_COUNT, "key vector length exceeds limit" << MAX_BATCH_OP_COUNT,
+        {MMC_INVALID_PARAM});
 
     results.resize(keys.size(), -1);
     const char **c_keys = new (std::nothrow) const char *[keys.size()];
@@ -230,10 +229,9 @@ std::vector<int> MmcacheStore::BatchIsExist(const std::vector<std::string> &keys
 {
     std::vector<int> results;
 
-    if (keys.empty()) {
-        MMC_LOG_ERROR("Empty keys vector provided to batchIsExist");
-        return results;  // Return empty vector
-    }
+    MMC_VALIDATE_RETURN(!keys.empty(), "key vector is empty", {});
+    MMC_VALIDATE_RETURN(keys.size() <= MAX_BATCH_OP_COUNT, "key vector length exceeds limit" << MAX_BATCH_OP_COUNT,
+        {MMC_INVALID_PARAM});
 
     results.resize(keys.size(), -1);
     const char **c_keys = new (std::nothrow) const char *[keys.size()];
@@ -295,10 +293,8 @@ KeyInfo MmcacheStore::GetKeyInfo(const std::string &key)
 std::vector<KeyInfo> MmcacheStore::BatchGetKeyInfo(const std::vector<std::string> &keys)
 {
     uint32_t size = keys.size();
-    if (size <= 0) {
-        MMC_LOG_ERROR("batch to query keys num is " << size);
-        return {};
-    }
+    MMC_VALIDATE_RETURN(!keys.empty(), "key vector is empty", {});
+    MMC_VALIDATE_RETURN(keys.size() <= MAX_BATCH_OP_COUNT, "key vector length exceeds limit" << MAX_BATCH_OP_COUNT, {});
 
     const char **ckeys = new (std::nothrow) const char *[size];
     if (ckeys == nullptr) {
@@ -350,6 +346,10 @@ std::vector<int> MmcacheStore::BatchPutFrom(const std::vector<std::string> &keys
                                             const std::vector<size_t> &sizes, const int32_t direct)
 {
     const size_t count = keys.size();
+    MMC_VALIDATE_RETURN(count > 0, "key vector is empty", {});
+    MMC_VALIDATE_RETURN(count <= MAX_BATCH_OP_COUNT, "key vector length exceeds limit" << MAX_BATCH_OP_COUNT,
+        {MMC_INVALID_PARAM});
+
     std::vector<int> results(count, -1);
     if (buffers.size() != count || sizes.size() != count) {
         MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size() << ", buffers=" << buffers.size()
@@ -389,6 +389,10 @@ std::vector<int> MmcacheStore::BatchGetInto(const std::vector<std::string> &keys
                                             const std::vector<size_t> &sizes, const int32_t direct)
 {
     size_t count = keys.size();
+    MMC_VALIDATE_RETURN(count > 0, "key vector is empty", {});
+    MMC_VALIDATE_RETURN(count <= MAX_BATCH_OP_COUNT, "key vector length exceeds limit" << MAX_BATCH_OP_COUNT,
+        {MMC_INVALID_PARAM});
+
     std::vector<int> results(count, -1);
     if (buffers.size() != count || sizes.size() != count) {
         MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size() << ", buffers=" << buffers.size()
@@ -479,6 +483,10 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
                                                   const std::vector<std::vector<size_t>> &sizes, const int32_t direct)
 {
     const size_t batchSize = keys.size();
+    MMC_VALIDATE_RETURN(batchSize > 0, "key vector is empty", {});
+    MMC_VALIDATE_RETURN(batchSize <= MAX_BATCH_SIZE, "key vector length exceeds limit" << MAX_BATCH_SIZE,
+        {MMC_INVALID_PARAM});
+
     std::vector<int> results(batchSize, MMC_INVALID_PARAM);
 
     if (direct != SMEMB_COPY_L2G && direct != SMEMB_COPY_H2G) {
@@ -490,11 +498,6 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
     if (batchSize != buffers.size() || batchSize != sizes.size()) {
         MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size() << ", buffers=" << buffers.size()
                                                            << ", sizes=" << sizes.size());
-        return results;
-    }
-
-    if (batchSize == 0 || batchSize > MAX_BATCH_SIZE) {
-        MMC_LOG_ERROR("Batch size is 0 or exceeds the limit of " << MAX_BATCH_SIZE);
         return results;
     }
 
@@ -595,6 +598,10 @@ std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string>
                                                   const std::vector<std::vector<size_t>> &sizes, const int32_t direct)
 {
     const size_t batchSize = keys.size();
+    MMC_VALIDATE_RETURN(batchSize > 0, "key vector is empty", {});
+    MMC_VALIDATE_RETURN(batchSize <= MAX_BATCH_SIZE, "key vector length exceeds limit" << MAX_BATCH_SIZE,
+        {MMC_INVALID_PARAM});
+
     std::vector<int> results(batchSize, MMC_INVALID_PARAM);
 
     if (direct != SMEMB_COPY_G2L && direct != SMEMB_COPY_G2H) {
@@ -606,11 +613,6 @@ std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string>
     if (batchSize != buffers.size() || batchSize != sizes.size()) {
         MMC_LOG_ERROR("Input vector sizes mismatch: keys=" << keys.size() << ", buffers=" << buffers.size()
                                                            << ", sizes=" << sizes.size());
-        return results;
-    }
-
-    if (batchSize == 0 || batchSize > MAX_BATCH_SIZE) {
-        MMC_LOG_ERROR("Batch size (" << batchSize << ") is 0 or exceeds the limit of " << MAX_BATCH_SIZE);
         return results;
     }
 

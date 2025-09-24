@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 #include "mmc_lock.h"
-#include "mmc_define.h"
+#include "mmc_types.h"
 
 namespace ock {
 namespace mmc {
@@ -30,18 +30,20 @@ public:
     KVParser(const KVParser &&) = delete;
     KVParser &operator = (const KVParser &&) = delete;
 
-    HRESULT FromFile(const std::string &filePath);
+    Result FromFile(const std::string &filePath);
 
-    HRESULT GetItem(const std::string &key, std::string &outValue);
-    HRESULT SetItem(const std::string &key, const std::string &value);
+    Result GetItem(const std::string &key, std::string &outValue);
+    Result SetItem(const std::string &key, const std::string &value);
 
     uint32_t Size();
-    void GetI(const uint32_t index, std::string &outKey, std::string &outValue);
+    void GetI(uint32_t index, std::string &outKey, std::string &outValue);
 
     void Dump();
     bool CheckSet(const std::vector<std::string> &keys);
 
 private:
+    Result ParseLine(std::string &strLine);
+
     std::map<std::string, uint32_t> mItemsIndex;
     std::vector<KvPair *> mItems;
     std::unordered_map<std::string, bool> mGotKeys;
