@@ -109,13 +109,12 @@ static int hybm_gvm_mmap(struct file *file, struct vm_area_struct *vma)
     }
 
     if (gvm_proc->vma != NULL) {
-        hybm_gvm_err("gvm_proc has mapped. va:0x%lx,size:0x%lx", vma->vm_start, vma->vm_end - vma->vm_start);
+        hybm_gvm_err("gvm_proc has mapped. size:0x%lx", vma->vm_end - vma->vm_start);
         return -EINVAL;
     }
 
     if (vma->vm_start != gvm_proc->va_start || vma->vm_end != gvm_proc->va_end) {
-        hybm_gvm_err("mapped addr is different with gvm inited addr. gvm:st:0x%llx,ed:0x%llx "
-                     "vma:st:0x%lx,ed:0x%lx", gvm_proc->va_start, gvm_proc->va_end, vma->vm_start, vma->vm_end);
+        hybm_gvm_err("mapped addr is different with gvm inited addr.");
         return -EINVAL;
     }
 
@@ -126,7 +125,7 @@ static int hybm_gvm_mmap(struct file *file, struct vm_area_struct *vma)
 #endif
     gvm_proc->vma = vma;
     gvm_proc->mm = vma->vm_mm;
-    hybm_gvm_info("gvm_proc map success. va:0x%lx,size:0x%lx", vma->vm_start, vma->vm_end - vma->vm_start);
+    hybm_gvm_info("gvm_proc map success. size:0x%lx", vma->vm_end - vma->vm_start);
     return 0;
 }
 

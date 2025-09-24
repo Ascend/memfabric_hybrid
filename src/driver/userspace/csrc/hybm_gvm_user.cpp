@@ -122,7 +122,7 @@ int32_t hybm_gvm_get_device_info(uint32_t *ssid)
         *ssid = 0;
         return HYBM_GVM_SUCCESS;
     }
-    
+
     if (ssid == nullptr) {
         BM_USER_LOG_ERROR("input is nullptr");
         return HYBM_GVM_FAILURE;
@@ -139,7 +139,7 @@ int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size, bool shared)
         return HYBM_GVM_FAILURE;
     }
     if (addr == nullptr || size == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_ERROR("Invalid param, addr is nullptr or size is empty, size:" << size);
         return HYBM_GVM_FAILURE;
     }
     auto ret = HybmGvmVirPageManager::Instance()->ReserveMemory(addr, size, shared);
@@ -169,7 +169,7 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || size % SIZE_1G) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_ERROR("Invalid param, addr is nullptr or size is not multiple of 1G, size:" << size);
         return HYBM_GVM_FAILURE;
     }
 
@@ -184,12 +184,11 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
         arg.data.mem_fetch_para.no_record = false;
         ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FETCH, &arg);
         if (ret < 0) {
-            BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " addr:" << std::hex << addr
-                                                                          << " size:" << size);
+            BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " size:" << size);
             return HYBM_GVM_FAILURE;
         }
     }
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH success, addr:" << std::hex << addr << " size:" << size);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH success, size:" << size);
     return HYBM_GVM_SUCCESS;
 }
 
@@ -208,7 +207,7 @@ int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || HybmGvmVirPageManager::Instance()->QeuryInRegisterMap(addr, size)) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_ERROR("Invalid param addr or size, size:" << size);
         return HYBM_GVM_FAILURE;
     }
 
@@ -218,18 +217,15 @@ int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size)
     arg.data.mem_fetch_para.no_record = true;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FETCH, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " addr:" << std::hex << addr
-                                                                      << " size:" << size);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FETCH failed, ret:" << ret << " size:" << size);
         return HYBM_GVM_FAILURE;
     }
 
     if (!HybmGvmVirPageManager::Instance()->UpdateRegisterMap(addr, size)) {
-        BM_USER_LOG_INFO(
-            "insert register set failed, addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_INFO("insert register set failed, size:" << size);
         return HYBM_GVM_FAILURE;
     } else {
-        BM_USER_LOG_INFO(
-            "ioctl HYBM_GVM_CMD_MEM_FETCH(register) success, addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH(register) success, size:" << size);
         return HYBM_GVM_SUCCESS;
     }
 }
@@ -248,7 +244,7 @@ int32_t hybm_gvm_mem_alloc(uint64_t addr, uint64_t size)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || size == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " size:" << size);
+        BM_USER_LOG_ERROR("Invalid param addr or size, size:" << size);
         return HYBM_GVM_FAILURE;
     }
     arg.data.mem_alloc_para.addr = addr;
@@ -256,12 +252,11 @@ int32_t hybm_gvm_mem_alloc(uint64_t addr, uint64_t size)
     arg.data.mem_alloc_para.dma_flag = (addr < HYBM_GVM_SDMA_START_ADDR);
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_ALLOC, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_ALLOC failed, ret:" << ret << " addr:" << std::hex << addr
-                                                                      << " size:" << size);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_ALLOC failed, ret:" << ret << " size:" << size);
         return HYBM_GVM_FAILURE;
     }
 
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_ALLOC success, addr:" << std::hex << addr << " size:" << size);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_ALLOC success, size:" << size);
     return HYBM_GVM_SUCCESS;
 }
 
@@ -274,16 +269,16 @@ int32_t hybm_gvm_mem_free(uint64_t addr)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr);
+        BM_USER_LOG_ERROR("Invalid param, addr is nullptr");
         return HYBM_GVM_FAILURE;
     }
     arg.data.mem_free_para.addr = addr;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FREE, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FREE failed, ret:" << ret << " addr:" << std::hex << addr);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_FREE failed, ret:" << ret);
         return HYBM_GVM_FAILURE;
     }
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FREE success, addr:" << std::hex << addr);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FREE success");
     return HYBM_GVM_SUCCESS;
 }
 
@@ -301,17 +296,17 @@ int32_t hybm_gvm_get_key(uint64_t addr, uint64_t *key)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || key == nullptr) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " key:" << key);
+        BM_USER_LOG_ERROR("Invalid param addr or key is nullptr");
         return HYBM_GVM_FAILURE;
     }
     arg.data.get_key_para.addr = addr;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_GET_KEY, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_GET_KEY failed, ret:" << ret << " addr:" << std::hex << addr);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_GET_KEY failed, ret:" << ret);
         return HYBM_GVM_FAILURE;
     }
     *key = arg.data.get_key_para.key;
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_GET_KEY success, addr:" << std::hex << addr << " key:" << (*key));
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_GET_KEY success, key:" << (*key));
     return HYBM_GVM_SUCCESS;
 }
 
@@ -358,18 +353,17 @@ int32_t hybm_gvm_mem_open(uint64_t addr, uint64_t key)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0 || key == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr << " key:" << key);
+        BM_USER_LOG_ERROR("Invalid param addr or key is empty, key:" << key);
         return HYBM_GVM_FAILURE;
     }
     arg.data.mem_open_para.addr = addr;
     arg.data.mem_open_para.key = key;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_OPEN, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_OPEN failed, ret:" << ret << " addr:" << std::hex << addr
-                                                                     << " key:" << key);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_OPEN failed, ret:" << ret << " key:" << key);
         return HYBM_GVM_FAILURE;
     }
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_OPEN success, addr:" << std::hex << addr << " key:" << key);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_OPEN success, key:" << key);
     return HYBM_GVM_SUCCESS;
 }
 
@@ -387,16 +381,16 @@ int32_t hybm_gvm_mem_close(uint64_t addr)
         return HYBM_GVM_FAILURE;
     }
     if (addr == 0) {
-        BM_USER_LOG_ERROR("Invalid param addr:" << std::hex << addr);
+        BM_USER_LOG_ERROR("Invalid param addr is nullptr");
         return HYBM_GVM_FAILURE;
     }
     arg.data.mem_close_para.addr = addr;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_CLOSE, &arg);
     if (ret < 0) {
-        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_CLOSE failed, ret:" << ret << " addr:" << std::hex << addr);
+        BM_USER_LOG_ERROR("ioctl HYBM_GVM_CMD_MEM_CLOSE failed, ret:" << ret);
         return HYBM_GVM_FAILURE;
     }
-    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_CLOSE success, addr:" << std::hex << addr);
+    BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_CLOSE success");
     return HYBM_GVM_SUCCESS;
 }
 

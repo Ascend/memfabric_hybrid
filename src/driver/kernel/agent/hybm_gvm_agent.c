@@ -170,14 +170,14 @@ static int gvm_agent_map_svsp(u64 va, u64 size, u64 *pa_list, u32 num, u32 pasid
     for (i = 0; i < num; i++) {
         ret_va = g_gvm_agent_info.svsp_mmap_func(page_size, pasid, iva, page_size, true);
         if (ret_va != iva) {
-            hybm_gvm_err("map mem failed, va:0x%llx,pa:0x%llx,ret_va:0x%llx", iva, pa_list[i], ret_va);
+            hybm_gvm_err("map mem failed, ret va is inconsistent with input va");
             ret = -EINVAL;
             break;
         }
 
         ret = g_gvm_agent_info.svsp_populate_func(iva, PFN_DOWN(pa_list[i]), page_size, pasid);
         if (ret != 0) {
-            hybm_gvm_err("populate mem failed, va:0x%llx,pa:0x%llx,ret:%d", iva, pa_list[i], ret);
+            hybm_gvm_err("populate mem failed, ret: %d", ret);
             i++;
             break;
         }
@@ -245,10 +245,10 @@ int gvm_agent_map_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
 
     if ((va >= HYBM_SVM_START && va < HYBM_SVM_END) || (va >= HYBM_SVSP_START && va < HYBM_SVSP_END)) {
         ret = gvm_agent_map_svsp(va, size, map_body->pa_list, num, pasid);
-        hybm_gvm_debug("map svsp, va:0x%llx,pa_0:0x%llx,size:0x%llx,ret:%d", va, map_body->pa_list[0], size, ret);
+        hybm_gvm_debug("map svsp, size:0x%llx, ret:%d", size, ret);
     } else {
         ret = gvm_agent_add_roce_node(va, size, map_body->pa_list, num);
-        hybm_gvm_debug("map roce, va:0x%llx,pa_0:0x%llx,size:0x%llx,ret:%d", va, map_body->pa_list[0], size, ret);
+        hybm_gvm_debug("map roce, size:0x%llx, ret:%d", size, ret);
     }
 
     return ret;
@@ -273,7 +273,7 @@ int gvm_agent_unmap_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     size = unmap_body->size;
     page_size = unmap_body->page_size;
     if (va % HYBM_GVM_PAGE_SIZE || size % HYBM_GVM_PAGE_SIZE || page_size % PAGE_SIZE || size % page_size) {
-        hybm_gvm_err("input addr error. va:0x%llx,size:0x%llx,pg_size:0x%llx", va, size, page_size);
+        hybm_gvm_err("input addr error. size:0x%llx, pg_size:0x%llx", size, page_size);
         return -EINVAL;
     }
 
@@ -298,7 +298,7 @@ int gvm_agent_unmap_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
         }
     }
 
-    hybm_gvm_debug("gvm_agent_unmap, va:0x%llx,size:0x%llx,pg_size:0x%llx", va, size, page_size);
+    hybm_gvm_debug("gvm_agent_unmap, size:0x%llx, pg_size:0x%llx", size, page_size);
     return 0;
 }
 
@@ -316,7 +316,7 @@ static int gvm_agent_map_svm_pa(u32 devid, struct hybm_gvm_agent_fetch_msg *fetc
 
     pg_size = g_gvm_agent_info.get_mem_page_size_func(&id, fetch->va, fetch->size);
     if (pg_size == 0) {
-        hybm_gvm_err("query va page_size failed. va:0x%llx,size:0x%llx", fetch->va, fetch->size);
+        hybm_gvm_err("query va page_size failed. size:0x%llx", fetch->size);
         return -EINVAL;
     }
 
@@ -357,7 +357,7 @@ static int gvm_agent_map_svm_pa(u32 devid, struct hybm_gvm_agent_fetch_msg *fetc
     ret = gvm_agent_map_svsp(fetch->va, fetch->size, pa_list, num, fetch->pasid);
     g_gvm_agent_info.put_mem_pa_func(&id, fetch->va, fetch->size, pa_list, num);
     kfree(pa_list);
-    hybm_gvm_debug("gvm_agent_fetch_map, va:0x%llx,size:0x%llx,num:%x,ret:%d", fetch->va, fetch->size, num, ret);
+    hybm_gvm_debug("gvm_agent_fetch_map, size:0x%llx,num:%x,ret:%d", fetch->size, num, ret);
     return ret;
 }
 
@@ -375,20 +375,20 @@ int gvm_agent_fetch_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     fetch_body = (struct hybm_gvm_agent_fetch_msg *)msg->body;
     va = fetch_body->va;
     if (va < HYBM_SVM_START || va + fetch_body->size > HYBM_SVM_END) {
-        hybm_gvm_err("input addr is out of range.va:0x%llx,size:0x%llx", va, fetch_body->size);
+        hybm_gvm_err("input addr is out of range, size:0x%llx", fetch_body->size);
         return -EINVAL;
     }
     if (fetch_body->pa_num > 0 && (va % HYBM_GVM_PAGE_SIZE || fetch_body->size != HYBM_GVM_PAGE_SIZE)) {
-        hybm_gvm_err("input addr error.va:0x%llx,size:0x%llx", va, fetch_body->size);
+        hybm_gvm_err("input addr error, size:0x%llx", fetch_body->size);
         return -EINVAL;
     }
 
     ret = gvm_agent_map_svm_pa(devid, fetch_body);
     if (ret != 0) {
-        hybm_gvm_err("map svm mem failed. va:0x%llx,ret:%d", va, ret);
+        hybm_gvm_err("map svm mem failed, ret:%d", ret);
     }
 
-    hybm_gvm_debug("gvm_agent_fetch, va:0x%llx,size:0x%llx", va, fetch_body->size);
+    hybm_gvm_debug("gvm_agent_fetch, size:0x%llx", fetch_body->size);
     return ret;
 }
 
@@ -485,7 +485,7 @@ int gvm_peer_mem_acquire(unsigned long addr, size_t size, void *peer_mem_data, c
         return false;
     }
     if (addr % HYBM_GVM_PAGE_SIZE || size % HYBM_GVM_PAGE_SIZE) {
-        hybm_gvm_err("input size must be a multiple of 1G, va:0x%lx,size:0x%lx", addr, size);
+        hybm_gvm_err("input is not aligned or size is not a multiple of 1G, size:0x%lx", size);
         return false;
     }
 
@@ -497,7 +497,7 @@ int gvm_peer_mem_acquire(unsigned long addr, size_t size, void *peer_mem_data, c
         }
     }
     if (node == NULL || node->va != addr) {
-        hybm_gvm_err("input addr has not been mapped, va:0x%lx", addr);
+        hybm_gvm_err("input addr has not been mapped");
         return false;
     }
 
@@ -509,7 +509,7 @@ int gvm_peer_mem_acquire(unsigned long addr, size_t size, void *peer_mem_data, c
     page_num = (aligned_size) / page_size;
     mm_context = (struct gvm_peer_mem_context *)vzalloc(sizeof(struct gvm_peer_mem_context) + sizeof(u64) * page_num);
     if (mm_context == NULL) {
-        hybm_gvm_err("kalloc mm_context fail. addr=0x%lx, num=%u", addr, page_num);
+        hybm_gvm_err("vzalloc mm_context fail. num=%u", page_num);
         return false;
     }
     mm_context->sg_head = NULL;
@@ -523,7 +523,7 @@ int gvm_peer_mem_acquire(unsigned long addr, size_t size, void *peer_mem_data, c
     mm_context->inited_flag = GVM_PEER_INITED_FLAG;
     *client_context = (void *)mm_context;
     memory_data->mem_side = 1U; // DEVMM_MEM_REMOTE_SIDE
-    hybm_gvm_debug("gvm_peer_mem_acquire, va:0x%lx,size:0x%lx,pg_size:0x%llx", addr, size, page_size);
+    hybm_gvm_debug("gvm_peer_mem_acquire, size:0x%lx, pg_size:0x%llx", size, page_size);
     return true;
 }
 
@@ -537,7 +537,7 @@ int gvm_peer_mem_get_pages(unsigned long addr, size_t size, int write, int force
     u32 st, i;
 
     if ((mm_context == NULL) || (mm_context->inited_flag != GVM_PEER_INITED_FLAG)) {
-        hybm_gvm_err("mm_context(%pK) is null or has not been initialized(%u).", mm_context,
+        hybm_gvm_err("mm_context(%u) is null or has not been initialized(%u).", mm_context != NULL,
                      (mm_context != NULL ? mm_context->inited_flag : 0));
         return -EINVAL;
     }
@@ -550,7 +550,7 @@ int gvm_peer_mem_get_pages(unsigned long addr, size_t size, int write, int force
 
     mutex_lock(&mm_context->context_mutex);
     if (mm_context->get_flag == 1) {
-        hybm_gvm_err("va=0x%lx, already got pages", addr);
+        hybm_gvm_err("already got pages");
         mutex_unlock(&mm_context->context_mutex);
         return -EINVAL;
     }
@@ -565,7 +565,7 @@ int gvm_peer_mem_get_pages(unsigned long addr, size_t size, int write, int force
         }
 
         if (node == NULL || node->va != va || node->page_size != HYBM_HPAGE_SIZE) {
-            hybm_gvm_err("va=0x%llx, not found agent mem node!", va);
+            hybm_gvm_err("not found agent mem node!");
             mutex_unlock(&mm_context->context_mutex);
             return -EINVAL;
         }
@@ -578,7 +578,7 @@ int gvm_peer_mem_get_pages(unsigned long addr, size_t size, int write, int force
 
     mm_context->get_flag = 1;
     mutex_unlock(&mm_context->context_mutex);
-    hybm_gvm_debug("gvm_peer_mem_get_pages, va:0x%lx,size:0x%lx,pg_size:0x%x", addr, size, mm_context->page_size);
+    hybm_gvm_debug("gvm_peer_mem_get_pages, size:0x%lx, pg_size:0x%x", size, mm_context->page_size);
     return 0;
 }
 
@@ -590,13 +590,13 @@ int gvm_peer_mem_dma_map(struct sg_table *sg_head, void *context, struct device 
     int ret;
 
     if ((mm_context == NULL) || (mm_context->inited_flag != GVM_PEER_INITED_FLAG)) {
-        hybm_gvm_err("mm_context(%pK) is null or has not been initialized(%u).", mm_context,
+        hybm_gvm_err("mm_context(%u) is null or has not been initialized(%u).", mm_context != NULL,
                      (mm_context != NULL ? mm_context->inited_flag : 0));
         return -EINVAL;
     }
     mutex_lock(&mm_context->context_mutex);
     if (mm_context->sg_head != NULL) {
-        hybm_gvm_err("sg_head has already been allocated, va=0x%llx.", mm_context->va);
+        hybm_gvm_err("sg_head has already been allocated.");
         ret = -EINVAL;
         goto dma_map_exit;
     }
@@ -623,7 +623,7 @@ int gvm_peer_mem_dma_map(struct sg_table *sg_head, void *context, struct device 
 
 dma_map_exit:
     mutex_unlock(&mm_context->context_mutex);
-    hybm_gvm_debug("gvm_peer_mem_dma_map, va:0x%llx,pa:0x%llx", mm_context->va, mm_context->pa_list[0]);
+    hybm_gvm_debug("gvm_peer_mem_dma_map");
     return ret;
 }
 
@@ -646,7 +646,7 @@ int gvm_peer_mem_dma_unmap(struct sg_table *sg_head, void *context, struct devic
     sg_free_table(sg_head);
     mm_context->sg_head = NULL;
     mutex_unlock(&mm_context->context_mutex);
-    hybm_gvm_debug("gvm_peer_mem_dma_unmap, va:0x%llx,pa:0x%llx", mm_context->va, mm_context->pa_list[0]);
+    hybm_gvm_debug("gvm_peer_mem_dma_unmap");
     return 0;
 }
 
@@ -660,21 +660,19 @@ unsigned long gvm_peer_mem_get_page_size(void *mm_context)
         return 0;
     }
     page_size = context->page_size;
-    hybm_gvm_debug("gvm_peer_mem_get_page_size, va:0x%llx", context->va);
+    hybm_gvm_debug("gvm_peer_mem_get_page_size");
     return page_size;
 }
 
 void gvm_peer_mem_put_pages(struct sg_table *sg_head, void *context)
 {
-    struct gvm_peer_mem_context *mm_context = (struct gvm_peer_mem_context *)context;
-    hybm_gvm_debug("gvm_peer_mem_put_pages, va:0x%llx", mm_context->va);
+    hybm_gvm_debug("gvm_peer_mem_put_pages");
     return;
 }
 
 void gvm_peer_mem_release(void *context)
 {
-    struct gvm_peer_mem_context *mm_context = (struct gvm_peer_mem_context *)context;
-    hybm_gvm_debug("gvm_peer_mem_release, va:0x%llx", mm_context->va);
+    hybm_gvm_debug("gvm_peer_mem_release");
     return;
 }
 

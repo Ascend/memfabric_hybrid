@@ -139,7 +139,7 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
 
     RegMemResult result{mr.addr, (uint64_t)(ptrdiff_t)info.addr, mr.size, mrHandle, info.lkey, info.rkey};
-    BM_LOG_DEBUG("register MR address=" << info.addr << ", result=" << result);
+    BM_LOG_DEBUG("register MR result=" << result);
 
     registerMRS_.emplace(mr.addr, result);
     ret = qpManager_->SetLocalMemories(registerMRS_);
@@ -180,7 +180,7 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     RegMemKeyUnion keyUnion{};
     auto pos = registerMRS_.lower_bound(addr);
     if (pos == registerMRS_.end() || pos->first + pos->second.size <= addr) {
-        BM_LOG_ERROR("input address not register: " << reinterpret_cast<void *>(addr));
+        BM_LOG_ERROR("input address not register");
         return BM_INVALID_PARAM;
     }
 
@@ -671,13 +671,7 @@ int RdmaTransportManager::GetRegAddress(const MemoryRegionMap &map, uint64_t inp
 {
     auto pos = map.lower_bound(inputAddr);
     if (pos == map.end() || pos->first + pos->second.size < inputAddr + size) {
-        BM_LOG_ERROR("[GetRegAddress] Input address not register: " << reinterpret_cast<void *>(inputAddr)
-                                                                    << ", size: " << size);
-        for (auto &pair : map) {
-            BM_LOG_DEBUG("[GetRegAddress] Registered MR: rank: " << rankId_
-                                                                 << ", addr: " << reinterpret_cast<void *>(pair.first)
-                                                                 << ", size: " << pair.second.size);
-        }
+        BM_LOG_ERROR("[GetRegAddress] Input address not register: size: " << size);
         return BM_INVALID_PARAM;
     }
     outputAddr = pos->second.regAddress + (inputAddr - pos->first);
@@ -702,9 +696,6 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
         return ret;
     }
 
-    BM_LOG_DEBUG("CorrectHostRegWr lAddr: "
-                 << reinterpret_cast<void *>(lAddr) << " to " << reinterpret_cast<void *>(wr.buf_list->addr)
-                 << ", rAddr: " << reinterpret_cast<void *>(rAddr) << " to " << reinterpret_cast<void *>(wr.dst_addr));
     return BM_OK;
 }
 
@@ -728,9 +719,6 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
     info.access = mr.access;
     info.lkey = 0;
     info.rkey = 0;
-
-    BM_LOG_DEBUG("ConvertHccpMrInfo input addr: " << reinterpret_cast<void *>(mr.addr)
-                                                  << ", output addr: " << info.addr);
 
     return BM_OK;
 }
@@ -792,7 +780,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
         BM_LOG_ERROR("generate db address is zero.");
         return;
     }
-    BM_LOG_DEBUG("db val=" << std::hex << dbVal << ", addr=" << reinterpret_cast<void *>(dbAddr));
+    BM_LOG_DEBUG("db val=" << std::hex << dbVal);
 
     sqe->write_value_part0 = static_cast<uint32_t>(dbVal & MASK_32_BIT);
     sqe->write_value_part1 = static_cast<uint32_t>(dbVal >> UINT32_BIT_NUM);
@@ -812,7 +800,7 @@ uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
 
     const uint64_t dbAddr = RT_ASCEND910B1_ROCEE_BASE_ADDR + RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG +
                             chipOffset * static_cast<uint64_t>(chipId) + dieOffset * dieId + chipAddr;
-    BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId << ", db=0x" << reinterpret_cast<void *>(dbAddr));
+    BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId);
 
     return dbAddr;
 }
@@ -857,7 +845,7 @@ int32_t RdmaTransportManager::InitStreamNotify()
     notifyInfo_.notifyLkey = info.lkey;
     notifyInfo_.srcAddr = reinterpret_cast<uint64_t>(ptr);
     notifyInfo_.srcRkey = info2.rkey;
-    BM_LOG_INFO("init notify, addr: " << std::hex << va << " offset:" << notify_->GetOffset() << " len:" << size);
+    BM_LOG_INFO("init notify, offset:" << notify_->GetOffset() << " len:" << size);
     return BM_OK;
 }
 

@@ -54,8 +54,7 @@ struct TransportMemoryRegion {
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryRegion &mr)
 {
-    output << "MemoryRegion(addr=" << reinterpret_cast<void *>(mr.addr) << ", size=" << mr.size << ", access="
-           << mr.access << ", flags=" << mr.flags << ")";
+    output << "MemoryRegion(size=" << mr.size << ", access=" << mr.access << ", flags=" << mr.flags << ")";
     return output;
 }
 

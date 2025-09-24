@@ -32,14 +32,13 @@ HybmGvmVirPageManager::~HybmGvmVirPageManager()
 int32_t HybmGvmVirPageManager::Initialize(uint64_t startAddr, uint64_t size, int fd)
 {
     if (local_.start != 0 || global_.start != 0) {
-        BM_USER_LOG_ERROR("Gvm manager is already inited, addr:" << startAddr << " size:" << size);
+        BM_USER_LOG_ERROR("Gvm manager is already inited, size:" << size);
         return -1;
     }
 
     void *mapped = mmap(reinterpret_cast<void *>(startAddr), size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (mapped == MAP_FAILED) {
-        BM_USER_LOG_ERROR("Failed to mmap startAddr:" << std::hex << startAddr << " size:" <<
-            size << " error:" << strerror(errno));
+        BM_USER_LOG_ERROR("Failed to mmap size:" << size << " error:" << strerror(errno));
         return -1;
     }
 
@@ -83,14 +82,14 @@ int32_t HybmGvmVirPageManager::ReserveMemory(uint64_t *addr, uint64_t size, bool
 bool HybmGvmVirPageManager::UpdateRegisterMap(uint64_t va, uint64_t size)
 {
     if (va > REGISTER_SET_VA_MAX || va + size > REGISTER_SET_VA_MAX) {
-        BM_USER_LOG_ERROR("register va is too large, va:" << std::hex << va << " size:" << size);
+        BM_USER_LOG_ERROR("register va is too large, size:" << size);
         return false;
     }
 
     std::unique_lock<std::mutex> lockGuard{mutex_};
     auto it = registerSet_.lower_bound((va << REGISTER_SET_MARK_BIT) | REGISTER_SET_LEFT_MARK);
     if (it != registerSet_.end() && ((*it) >> REGISTER_SET_MARK_BIT) < (va + size)) {
-        BM_USER_LOG_ERROR("va has registered, va:" << std::hex << va << " size:" << size);
+        BM_USER_LOG_ERROR("va has already registered, size:" << size);
         return false;
     }
 

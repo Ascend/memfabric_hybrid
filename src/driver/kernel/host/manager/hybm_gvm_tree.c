@@ -133,7 +133,7 @@ bool gvm_va_tree_insert(struct gvm_rbtree *rtree, void *data)
     struct rb_node *parent = NULL;
     struct gvm_va_node_head *input = (struct gvm_va_node_head *)data;
     if (input->va == 0ULL || input->size == 0ULL) {
-        hybm_gvm_err("node not set val, va:0x%llx sz:0x%llx", input->va, input->size);
+        hybm_gvm_err("invalid va or size, input:size(0x%llx)", input->size);
         return false;
     }
 
@@ -143,8 +143,8 @@ bool gvm_va_tree_insert(struct gvm_rbtree *rtree, void *data)
         struct gvm_va_node_head *tmp = container_of(*new, struct gvm_va_node_head, va_node);
         if ((input->va <= tmp->va && tmp->va < (input->va + input->size)) ||
             (tmp->va <= input->va && input->va < (tmp->va + tmp->size))) {
-            hybm_gvm_err("has cross node, st1:0x%llx sz1:0x%llx st2:0x%llx sz2:0x%llx",
-                         input->va, input->size, tmp->va, tmp->size);
+            hybm_gvm_err("addr overlaps with existing node, input:size(0x%llx) found:size(0x%llx)",
+                         input->size, tmp->size);
             mutex_unlock(&rtree->lock);
             return false;
         }
