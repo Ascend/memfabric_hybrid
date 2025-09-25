@@ -73,6 +73,11 @@ public:
         clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
         struct timespec futureTime {};
+        if (currentTime.tv_sec > std::numeric_limits<time_t>::max() - static_cast<time_t>(second)) {
+            pthread_mutex_unlock(&mutex_);
+            MMC_LOG_ERROR("Time overflow");
+            return MMC_ERROR;
+        }
         futureTime.tv_sec = currentTime.tv_sec + second;
         futureTime.tv_nsec = currentTime.tv_nsec;
         auto waitResult = pthread_cond_timedwait(&cond_, &mutex_, &futureTime);

@@ -58,6 +58,10 @@ public:
 
     Result Free(const MmcMemBlobPtr& blob)
     {
+        if (blob == nullptr) {
+            MMC_LOG_ERROR("Free blob failed, blob is nullptr");
+            return MMC_INVALID_PARAM;
+        }
         globalAllocLock_.LockRead();
         const MmcLocation location{blob->Rank(), static_cast<MediaType>(blob->Type())};
         const auto iter = allocators_.find(location);
@@ -69,6 +73,11 @@ public:
         }
 
         const auto &allocator = iter->second;
+        if (allocator == nullptr) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("Free blob failed, allocator is nullptr");
+            return MMC_ERROR;
+        }
         Result ret = allocator->Release(blob);
         globalAllocLock_.UnlockRead();
         return ret;
@@ -104,6 +113,11 @@ public:
         }
 
         const auto &allocator = iter->second;
+        if (allocator == nullptr) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("Start failed, allocator is nullptr");
+            return MMC_ERROR;
+        }
         allocator->Start();
         globalAllocLock_.UnlockRead();
         return MMC_OK;
@@ -120,6 +134,11 @@ public:
         }
 
         const auto &allocator = iter->second;
+        if (allocator == nullptr) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("Stop failed, allocator is nullptr");
+            return MMC_ERROR;
+        }
         allocator->Stop();
         MMC_LOG_INFO("Stop one bm successfully, bmRankId=" << loc.rank_);
         globalAllocLock_.UnlockRead();
@@ -135,6 +154,11 @@ public:
             MMC_LOG_ERROR("Cannot find the given {rank:" << loc.rank_ << ", type:" << loc.mediaType_
                                                          << "} in the mem pool");
             return MMC_INVALID_PARAM;
+        }
+        if (iter->second == nullptr) {
+            globalAllocLock_.UnlockWrite();
+            MMC_LOG_ERROR("Unmount failed, allocator is nullptr");
+            return MMC_ERROR;
         }
         if (!iter->second->CanUnmount()) {
             globalAllocLock_.UnlockWrite();
@@ -160,6 +184,11 @@ public:
         }
 
         const auto &allocator = iter->second;
+        if (allocator == nullptr) {
+            globalAllocLock_.UnlockRead();
+            MMC_LOG_ERROR("BuildFromBlobs failed, allocator is nullptr");
+            return MMC_ERROR;
+        }
         Result ret = allocator->BuildFromBlobs(blobMap);
         globalAllocLock_.UnlockRead();
         return ret;
@@ -194,6 +223,12 @@ public:
         GetUsedInfo(totalSize, usedSize);
         for (uint32_t i = 0; i < MEDIA_NONE; i++) {
             // 只要一个类型的池触发水位，即淘汰
+            if (usedSize[i] > std::numeric_limits<uint64_t>::max() / LEVEL_BASE ||
+                totalSize[i] > std::numeric_limits<uint64_t>::max() / level) {
+                MMC_LOG_ERROR("overflow: usedSize: " << usedSize[i] << ", LEVEL_BASE: " <<
+                    LEVEL_BASE << ", totalSize: " << totalSize[i] << ", level: " << level);
+                return false;
+            }
             if (usedSize[i] * LEVEL_BASE > totalSize[i] * level) {
                 return true;
             }

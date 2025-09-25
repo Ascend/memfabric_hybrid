@@ -20,6 +20,9 @@ public:
 
     Result Initialize()
     {
+        if (inited_) {
+            return SM_OK;
+        }
         signalFlag = false;
         int32_t attrInitRet = pthread_condattr_init(&cattr_);
         int32_t setLockRet = pthread_condattr_setclock(&cattr_, CLOCK_MONOTONIC);
@@ -28,6 +31,7 @@ public:
         if (attrInitRet || setLockRet || condInitRet || mutexInitRet) {
             return SM_ERROR;
         }
+        inited_ = true;
         return SM_OK;
     }
 
@@ -99,6 +103,7 @@ public:
         return signalRet;
     }
 private:
+    bool inited_{false};
     pthread_condattr_t cattr_;
     pthread_cond_t condTimeChecker_;
     pthread_mutex_t timeCheckerMutex_;

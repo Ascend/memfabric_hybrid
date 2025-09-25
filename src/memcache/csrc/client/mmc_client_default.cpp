@@ -16,6 +16,7 @@ constexpr uint32_t MMC_REGISTER_SET_MARK_BIT = 1U;
 constexpr uint32_t MMC_REGISTER_SET_LEFT_MARK = 1U;
 constexpr int32_t MMC_BATCH_TRANSPORT = 1U;
 constexpr int32_t MMC_ASYNC_TRANSPORT = 2U;
+constexpr uint32_t KEY_MAX_LENTH = 256U;
 MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
 std::mutex MmcClientDefault::gClientHandlerMtx;
 
@@ -85,7 +86,8 @@ Result MmcClientDefault::Put(const char* key, mmc_buffer* buf, mmc_put_options& 
     MMC_VALIDATE_RETURN(bmProxy_ != nullptr, "BmProxy is null", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);
 
-    if (buf == nullptr || key == nullptr) {
+    if (buf == nullptr || key == nullptr || key[0] == '\0' ||
+        strnlen(key, KEY_MAX_LENTH + 1) == KEY_MAX_LENTH + 1) {
         MMC_LOG_ERROR("Invalid arguments");
         return MMC_ERROR;
     }
@@ -225,7 +227,8 @@ Result MmcClientDefault::BatchPut(const std::vector<std::string>& keys, const st
 
 Result MmcClientDefault::Get(const char* key, mmc_buffer* buf, uint32_t flags)
 {
-    if (buf == nullptr || key == nullptr) {
+    if (buf == nullptr || key == nullptr || key[0] == '\0' ||
+        strnlen(key, KEY_MAX_LENTH + 1) == KEY_MAX_LENTH + 1) {
         MMC_LOG_ERROR("Invalid arguments");
         return MMC_ERROR;
     }

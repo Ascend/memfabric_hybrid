@@ -26,6 +26,9 @@ DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, void *stm, std::shared_ptr<t
 
 int32_t DataOpDeviceRDMA::Initialize() noexcept
 {
+    if (inited_) {
+        return BM_OK;
+    }
     auto ret = AllocSwapMemory();
     if (ret != BM_OK) {
         return ret;
@@ -43,12 +46,14 @@ int32_t DataOpDeviceRDMA::Initialize() noexcept
         }
     }
     rdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *)rdmaSwapBaseAddr_, RDMA_SWAP_SPACE_SIZE);
+    inited_ = true;
     return BM_OK;
 }
 
 void DataOpDeviceRDMA::UnInitialize() noexcept
 {
     FreeSwapMemory();
+    inited_ = false;
 }
 
 int32_t DataOpDeviceRDMA::AllocSwapMemory()
@@ -77,6 +82,7 @@ void DataOpDeviceRDMA::FreeSwapMemory()
 DataOpDeviceRDMA::~DataOpDeviceRDMA()
 {
     FreeSwapMemory();
+    inited_ = false;
 }
 
 int32_t DataOpDeviceRDMA::DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,

@@ -15,6 +15,9 @@ constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 
 int32_t HostDataOpRDMA::Initialize() noexcept
 {
+    if (inited_) {
+        return BM_OK;
+    }
     rdmaSwapBaseAddr_ = malloc(RDMA_SWAP_SPACE_SIZE);
     if (rdmaSwapBaseAddr_ == nullptr) {
         BM_LOG_ERROR("Failed to malloc rdma swap memory, size: " << RDMA_SWAP_SPACE_SIZE);
@@ -35,23 +38,25 @@ int32_t HostDataOpRDMA::Initialize() noexcept
         }
     }
     rdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *) rdmaSwapBaseAddr_, RDMA_SWAP_SPACE_SIZE);
+    inited_ = true;
     return BM_OK;
 }
 
 void HostDataOpRDMA::UnInitialize() noexcept
 {
+    if (!inited_) {
+        return;
+    }
     if (rdmaSwapBaseAddr_ != nullptr) {
         free(rdmaSwapBaseAddr_);
         rdmaSwapBaseAddr_ = nullptr;
     }
+    inited_ = false;
 }
 
 HostDataOpRDMA::~HostDataOpRDMA()
 {
-    if (rdmaSwapBaseAddr_ != nullptr) {
-        free(rdmaSwapBaseAddr_);
-        rdmaSwapBaseAddr_ = nullptr;
-    }
+    UnInitialize();
 }
 
 int32_t HostDataOpRDMA::DataCopy(const void *srcVA, void *destVA, uint64_t length, hybm_data_copy_direction direction,
@@ -86,6 +91,10 @@ int32_t HostDataOpRDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *des
                                    uint64_t width, uint64_t height, hybm_data_copy_direction direction,
                                    const ExtOptions &options) noexcept
 {
+    if (width > std::numeric_limits<uint64_t>::max() / height) {
+        BM_LOG_ERROR("multiply width(" << width << ") and height(" << height << ") will overflow");
+        return BM_INVALID_PARAM;
+    }
     int ret;
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:

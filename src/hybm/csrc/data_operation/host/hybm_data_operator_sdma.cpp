@@ -384,6 +384,14 @@ int HostDataOpSDMA::DataCopy2d(const void *srcVA, uint64_t spitch, void *destVA,
                                uint64_t width, uint64_t height, hybm_data_copy_direction direction,
                                const ExtOptions &options) noexcept
 {
+    if (!inited_) {
+        BM_LOG_ERROR("host data operator sdma is not inited yet.");
+        return BM_NOT_INITIALIZED;
+    }
+    if (width > std::numeric_limits<uint64_t>::max() / height) {
+        BM_LOG_ERROR("multiply width(" << width << ") and height(" << height << ") will overflow");
+        return BM_INVALID_PARAM;
+    }
     int ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE:

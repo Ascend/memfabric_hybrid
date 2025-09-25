@@ -170,6 +170,10 @@ Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &b
 Result MmcBlobAllocator::ValidateAndAddAllocation(uint64_t offset, uint64_t size)
 {
     // 验证地址范围有效性
+    if (offset > std::numeric_limits<uint64_t>::max() - size) {
+        MMC_LOG_ERROR("blob range overflow: offset:" << offset << ", size:" << size);
+        return MMC_ERROR;
+    }
     if (offset >= capacity_ || (offset + size) > capacity_) {
         MMC_LOG_ERROR("Blob out of range: offset: " << offset
                    << ", size: " << size << ", capacity: " << capacity_);

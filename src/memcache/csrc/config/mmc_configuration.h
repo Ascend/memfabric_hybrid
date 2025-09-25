@@ -26,6 +26,9 @@ constexpr uint32_t CONF_MUST = 1;
 constexpr uint64_t DRAM_SIZE_ALIGNMENT = 2097152; // 2MB
 constexpr uint64_t HBM_SIZE_ALIGNMENT = 2097152; // 2MB
 
+const std::string LOG_LEVEL_ENUM_STR = "debug||info||warn||error";
+const std::string LOCAL_SERVER_PROTOCAL_ENUM_STR = "host_rdma||host_tcp||device_rdma||device_sdma";
+
 // 定义单位与字节的转换关系
 enum class MemUnit {
     B,
@@ -170,7 +173,7 @@ public:
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
         AddStrConf(OCK_MMC_META_SERVICE_CONFIG_STORE_URL, VNoCheck::Create(), 0);
         AddBoolConf(OCK_MMC_META_HA_ENABLE, VNoCheck::Create());
-        AddStrConf(OCK_MMC_LOG_LEVEL, VNoCheck::Create());
+        AddStrConf(OCK_MMC_LOG_LEVEL, VStrEnum::Create(OCK_MMC_LOG_LEVEL.first, LOG_LEVEL_ENUM_STR));
         AddStrConf(OCK_MMC_LOG_PATH, VStrLength::Create(OCK_MMC_LOG_PATH.first, PATH_MAX_LEN));
         AddIntConf(OCK_MMC_LOG_ROTATION_FILE_SIZE, VIntRange::Create(OCK_MMC_LOG_ROTATION_FILE_SIZE.first,
             MIN_LOG_ROTATION_FILE_SIZE, MAX_LOG_ROTATION_FILE_SIZE));
@@ -240,7 +243,7 @@ public:
     {
         using namespace ConfConstant;
         AddStrConf(OCK_MMC_META_SERVICE_URL, VNoCheck::Create(), 0);
-        AddStrConf(OCK_MMC_LOG_LEVEL, VNoCheck::Create());
+        AddStrConf(OCK_MMC_LOG_LEVEL, VStrEnum::Create(OCK_MMC_LOG_LEVEL.first, LOG_LEVEL_ENUM_STR));
 
         AddBoolConf(OCK_MMC_TLS_ENABLE, VNoCheck::Create());
         AddStrConf(OCK_MMC_TLS_CA_PATH, VStrLength::Create(OCK_MMC_TLS_CA_PATH.first, TLS_PATH_MAX_LEN));
@@ -266,7 +269,8 @@ public:
         AddIntConf(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE,
             VIntRange::Create(OKC_MMC_LOCAL_SERVICE_WORLD_SIZE.first, MIN_WORLD_SIZE, MAX_WORLD_SIZE));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_BM_IP_PORT, VNoCheck::Create());
-        AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL, VNoCheck::Create());
+        AddStrConf(OKC_MMC_LOCAL_SERVICE_PROTOCOL,
+            VStrEnum::Create(OKC_MMC_LOCAL_SERVICE_PROTOCOL.first, LOCAL_SERVER_PROTOCAL_ENUM_STR));
         AddStrConf(OKC_MMC_LOCAL_SERVICE_DRAM_SIZE, VNoCheck::Create());
         AddStrConf(OKC_MMC_LOCAL_SERVICE_HBM_SIZE, VNoCheck::Create());
         AddIntConf(OKC_MMC_CLIENT_RETRY_MILLISECONDS,

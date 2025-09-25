@@ -45,6 +45,7 @@ Result MFSmemApi::LoadLibrary(const std::string &libDirPath)
         auto ret = Func::LibraryRealPath(libDirPath, std::string(gSmemLibName), realPath);
         if (ret != MMC_OK) {
             MMC_LOG_ERROR(libDirPath << "get lib path failed, ret: " << ret);
+            return MMC_ERROR;
         }
     } else {
         realPath = std::string(gSmemLibName);

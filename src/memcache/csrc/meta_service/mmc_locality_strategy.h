@@ -112,6 +112,11 @@ public:
         auto it = itPrefer;
 
         auto allocator = it->second;
+        if (allocator == nullptr) {
+            MMC_LOG_ERROR("Cannot force assign allocate blob, allocator rank: " << location.rank_
+                << " media type: " << location.mediaType_ << " is nullptr");
+            return MMC_ERROR;
+        }
         MmcMemBlobPtr blob = allocator->Alloc(allocReq.blobSize_);
         if (blob != nullptr) {
             blobs.push_back(blob);

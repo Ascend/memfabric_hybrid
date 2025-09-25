@@ -68,6 +68,7 @@ private:
                        uint32_t batchSize, const ExtOptions &options) noexcept;
 
 private:
+    bool inited_{false};
     uint32_t rankId_{0};
     void *stream_{nullptr};
     void *rdmaSwapBaseAddr_{nullptr};

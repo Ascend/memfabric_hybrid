@@ -105,7 +105,6 @@ public:
 
     VStrInSet(const std::string& name, std::string enumStr) : Validator(name), mEnumString(std::move(enumStr))
     {
-        VStrInSet::Initialize();
     }
 
     ~VStrInSet() override = default;

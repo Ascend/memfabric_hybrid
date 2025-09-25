@@ -68,7 +68,7 @@ public:
 
 inline bool FileUtil::Exist(const std::string &path)
 {
-    return access(reinterpret_cast<const char *>(path.c_str()), 0) != -1;
+    return access(path.c_str(), 0) != -1;
 }
 
 inline bool FileUtil::CheckFileSize(std::ifstream &inConfFile, int maxSize)
@@ -94,17 +94,17 @@ inline bool FileUtil::CheckFileSize(std::ifstream &inConfFile, int maxSize)
 
 inline bool FileUtil::Readable(const std::string &path)
 {
-    return access(reinterpret_cast<const char *>(path.c_str()), F_OK | R_OK) != -1;
+    return access(path.c_str(), F_OK | R_OK) != -1;
 }
 
 inline bool FileUtil::Writable(const std::string &path)
 {
-    return access(reinterpret_cast<const char *>(path.c_str()), F_OK | W_OK) != -1;
+    return access(path.c_str(), F_OK | W_OK) != -1;
 }
 
 inline bool FileUtil::ReadAndWritable(const std::string &path)
 {
-    return access(reinterpret_cast<const char *>(path.c_str()), F_OK | R_OK | W_OK) != -1;
+    return access(path.c_str(), F_OK | R_OK | W_OK) != -1;
 }
 
 inline bool FileUtil::MakeDir(const std::string &path, uint32_t mode)

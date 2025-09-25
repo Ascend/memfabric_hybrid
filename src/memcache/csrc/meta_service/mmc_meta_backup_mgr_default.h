@@ -55,10 +55,14 @@ public:
             MMC_LOG_INFO("MMCMetaBackUpMgr already started");
             return MMC_OK;
         }
-        started_ = true;
         MMCMetaBackUpConfDefaultPtr defaultPtr = Convert<MMCMetaBackUpConf, MMCMetaBackUpConfDefault>(confPtr);
+        if (defaultPtr == nullptr) {
+            MMC_LOG_ERROR("confPtr convert failed");
+            return MMC_INVALID_PARAM;
+        }
         metaNetServer_ = defaultPtr->serverPtr_;
         backupThread_ = std::thread(std::bind(&MMCMetaBackUpMgrDefault::BackupThreadFunc, this));
+        started_ = true;
         return MMC_OK;
     }
 
@@ -75,6 +79,7 @@ public:
         }
         backupThread_.join();
         metaNetServer_ = nullptr;
+        backupList_.clear();
         MMC_LOG_INFO("Stop MMCMetaBackUpMgr");
     }
     void BackupThreadFunc();

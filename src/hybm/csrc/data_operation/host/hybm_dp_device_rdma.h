@@ -63,6 +63,7 @@ private:
     void FreeSwapMemory();
 
 private:
+    bool inited_{false};
     uint32_t rankId_{0};
     void *stream_;
     std::shared_ptr<transport::TransportManager> transportManager_;
