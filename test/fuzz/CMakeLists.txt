@@ -29,6 +29,7 @@ file(GLOB_RECURSE UT_SOURCE_FILES
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/*
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api/*
 )
@@ -51,12 +52,14 @@ target_include_directories(test_mf_fuzz PRIVATE
 
         ../ut/stub/
         ${CMAKE_CURRENT_SOURCE_DIR}
-
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans
 
         ${PROJECT_HYBM_SRC_BASE}/include
         ${PROJECT_HYBM_SRC_BASE}/csrc/common
@@ -67,9 +70,11 @@ target_include_directories(test_mf_fuzz PRIVATE
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/compose
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
 
         ${PROJECT_ACCLINKS_SRC_BASE}/include
         ${PROJECT_ACCLINKS_SRC_BASE}/csrc

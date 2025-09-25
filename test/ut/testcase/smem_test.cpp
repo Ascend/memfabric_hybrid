@@ -188,7 +188,6 @@ TEST_F(TestSmem, two_card_shm_allgather_success)
     uint32_t rankSize = 2;
     std::thread ts[rankSize];
     auto func = [](uint32_t rank, uint32_t rankCount) {
-        setenv("SMEM_CONF_STORE_TLS_ENABLE", "0", 1);
         void *gva;
         int32_t ret = smem_init(0);
         if (ret != 0) {

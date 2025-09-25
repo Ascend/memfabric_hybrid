@@ -79,10 +79,9 @@ public:
         return level >= DEBUG_LEVEL && level < BUTT_LEVEL;
     }
 
-    inline void Log(int level, const std::ostringstream &oss)
+    inline void Log(int level, std::string logMsg)
     {
         // LCOV_EXCL_START
-        std::string logMsg = oss.str();
         logMsg.erase(std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }),
                      logMsg.end());
         if (logFunc_ != nullptr) {
@@ -159,7 +158,7 @@ private:
         }                                                                             \
         std::ostringstream oss;                                                       \
         oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
-        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss);             \
+        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());             \
     } while (0)
 
 #endif  // MEMFABRIC_HYBRID_LOGGER_H

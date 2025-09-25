@@ -309,6 +309,7 @@ int32_t StoreFactory::SetTlsPkInfo(const char *tlsPk, const uint32_t tlsPkLen, c
         // after one hour of the TLS private key being set, clean up the sensitive information stored in memory.
         if (!cv_.wait_for(lockGuard, std::chrono::hours(1), [] { return stop_.load(); })) {
             TlsCleanUp();
+            SM_LOG_INFO("TlsCleanUp successfully");
         }
     });
 

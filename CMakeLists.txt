@@ -69,11 +69,13 @@ else ()
 endif ()
 
 if (${CMAKE_BUILD_TYPE} MATCHES "ASAN")
-    add_link_options(-fsanitize=address)
-    set(CMAKE_EXE_LINKER_FLAGS " -fsanitize=address ")
-    set(CMAKE_SHARED_LINKER_FLAGS " -fsanitize=address  ")
-    set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -fsanitize=address ")
-    set(CMAKE_C_FLAGS " ${CMAKE_CXX_FLAGS} -fsanitize=address ")
+    # 开启多种 sanitizer   "address,undefined,pointer-compare,pointer-subtract,alignment"
+    set(SANITIZERS "address,undefined,pointer-compare,pointer-subtract,alignment")
+    # 编译选项
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${SANITIZERS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${SANITIZERS}")
+    # 链接选项
+    add_link_options(-fsanitize=${SANITIZERS})
 endif ()
 
 if (BUILD_TESTS STREQUAL "ON")

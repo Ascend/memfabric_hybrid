@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
+#include <algorithm>
 
 #include "smem_logger.h"
 #include "smem_message_packer.h"
@@ -81,14 +81,16 @@ int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLe
     length += sizeof(MessageType);
     SM_CHECK_CONDITION_RET(message.mt < MessageType::SET || message.mt > MessageType::INVALID_MSG, -1);
 
-    auto keyCount = *reinterpret_cast<const uint64_t *>(buffer + length);
+    uint64_t keyCount = 0;
+    std::copy_n(reinterpret_cast<const uint64_t *>(buffer + length), 1, &keyCount);
     SM_CHECK_CONDITION_RET(keyCount > MAX_KEY_COUNT, -1);
 
     length += sizeof(uint64_t);
     message.keys.reserve(keyCount);
 
     for (auto i = 0UL; i < keyCount; i++) {
-        auto keySize = *reinterpret_cast<const uint64_t *>(buffer + length);
+        uint64_t keySize = 0;
+        std::copy_n(reinterpret_cast<const uint64_t *>(buffer + length), 1, &keySize);
         length += sizeof(uint64_t);
 
         SM_CHECK_CONDITION_RET(keySize > MAX_KEY_SIZE || length + keySize > bufferLen, -1);
@@ -96,14 +98,16 @@ int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLe
         length += keySize;
     }
 
-    auto valueCount = *reinterpret_cast<const uint64_t *>(buffer + length);
+    uint64_t valueCount = 0;
+    std::copy_n(reinterpret_cast<const uint64_t *>(buffer + length), 1, &valueCount);
     SM_CHECK_CONDITION_RET(valueCount > MAX_VALUE_COUNT, -1);
 
     length += sizeof(uint64_t);
     message.values.reserve(valueCount);
 
     for (auto i = 0UL; i < valueCount; i++) {
-        auto valueSize = *reinterpret_cast<const uint64_t *>(buffer + length);
+        uint64_t valueSize = 0;
+        std::copy_n(reinterpret_cast<const uint64_t *>(buffer + length), 1, &valueSize);
         length += sizeof(uint64_t);
         SM_CHECK_CONDITION_RET(valueSize > MAX_VALUE_SIZE || length + valueSize > bufferLen, -1);
 

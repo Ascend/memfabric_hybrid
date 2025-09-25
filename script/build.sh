@@ -56,7 +56,6 @@ fi
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 
-
 if [ "${BUILD_TESTS}" == "ON" ]; then
     echo "BUILD_TESTS, NO BUILD PYTHON"
     BUILD_PYTHON="OFF"

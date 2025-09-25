@@ -84,6 +84,7 @@ TEST_F(TestHybmOp, hybm_data_copy)
     uint64_t seed = 0;
     DT_FUZZ_START(seed, CAPI_FUZZ_COUNT, fuzzName, 0)
     {
+        MFFUzzCountNumber(fuzzName);
         hybm_copy_params copyParams = {g_reservedMem, g_reservedMem, g_allocSize};
         auto ret = hybm_data_copy(g_entity, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
         EXPECT_EQ(ret, BM_OK);

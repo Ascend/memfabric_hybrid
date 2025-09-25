@@ -141,7 +141,7 @@ static void SortGatherRecv(std::vector<uint8_t> &vec, uint32_t preSize, uint32_t
     uint8_t *ptr = vec.data();
     for (uint32_t i = 0; i < rankSize; i++) {
         uint32_t idx = i * unitSize;
-        offset[i].first = *reinterpret_cast<uint32_t *>(ptr + idx);
+        std::copy_n(reinterpret_cast<uint32_t *>(ptr + idx), 1, &offset[i].first);
         offset[i].second = idx + SMEM_GATHER_PREFIX_SIZE;
     }
 
