@@ -36,6 +36,8 @@ public:
     ~TcpConfigStore() noexcept override;
 
     Result Startup(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ClientStart(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ServerStart(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
     void Shutdown() noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;

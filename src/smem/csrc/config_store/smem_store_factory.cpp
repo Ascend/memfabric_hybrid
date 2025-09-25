@@ -48,6 +48,68 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     return store.Get();
 }
 
+StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize,
+                                         int32_t rankId, int32_t connMaxRetry) noexcept
+{
+    std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
+
+    std::unique_lock<std::mutex> lockGuard{storesMutex_};
+    auto pos = storesMap_.find(storeKey);
+    if (pos != storesMap_.end()) {
+        return pos->second;
+    }
+
+    auto store = SmMakeRef<TcpConfigStore>(ip, port, true, worldSize, rankId);
+    STORE_ASSERT_RETURN(store != nullptr, nullptr);
+
+    auto ret = store->ServerStart(tlsOption_, connMaxRetry);
+    if (ret == SM_RESOURCE_IN_USE) {
+        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port
+            << " rankId:" << rankId << " is in use, ret:" << ret);
+        failedReason_ = SM_RESOURCE_IN_USE;
+        return nullptr;
+    }
+    if (ret != 0) {
+        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port
+            << " rankId:" << rankId << " ret:" << ret);
+        failedReason_ = ret;
+        return nullptr;
+    }
+
+    storesMap_.emplace(storeKey, store.Get());
+    lockGuard.unlock();
+
+    return store.Get();
+}
+
+StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize,
+                                         int32_t rankId, int32_t connMaxRetry) noexcept
+{
+    std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
+
+    std::unique_lock<std::mutex> lockGuard{storesMutex_};
+    auto pos = storesMap_.find(storeKey);
+    if (pos != storesMap_.end()) {
+        return pos->second;
+    }
+
+    auto store = SmMakeRef<TcpConfigStore>(ip, port, false, worldSize, rankId);
+    STORE_ASSERT_RETURN(store != nullptr, nullptr);
+
+    auto ret = store->ClientStart(tlsOption_, connMaxRetry);
+    if (ret != 0) {
+        STORE_LOG_ERROR("Failed to start config store client, ip:" << ip << " port:" << port
+            << " rankId:" << rankId << " ret:" << ret);
+        failedReason_ = ret;
+        return nullptr;
+    }
+
+    storesMap_.emplace(storeKey, store.Get());
+    lockGuard.unlock();
+
+    return store.Get();
+}
+
 void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));

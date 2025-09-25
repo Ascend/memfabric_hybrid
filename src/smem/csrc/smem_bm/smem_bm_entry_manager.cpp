@@ -71,14 +71,8 @@ int32_t SmemBmEntryManager::PrepareStore()
     StoreFactory::SetTlsInfo(config_.storeTlsConfig);
     if (!config_.autoRanking) {
         SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
-        if (config_.rankId == 0 && config_.startConfigStore) {
-            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true,
-                                                   worldSize_, 0);
-            SM_LOG_INFO("smem bm start store server success, rk: " << config_.rankId);
-        } else {
-            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false,
-                                                   worldSize_, static_cast<int>(config_.rankId));
-        }
+        confStore_ = StoreFactory::CreateStoreClient(storeUrlExtraction_.ip, storeUrlExtraction_.port,
+                                                     worldSize_, static_cast<int>(config_.rankId));
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
     } else {
         if (config_.startConfigStore) {
@@ -87,7 +81,7 @@ int32_t SmemBmEntryManager::PrepareStore()
         }
 
         if (confStore_ == nullptr) {
-            confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, false, worldSize_);
+            confStore_ = StoreFactory::CreateStoreClient(storeUrlExtraction_.ip, storeUrlExtraction_.port, worldSize_);
             SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
         }
     }
@@ -104,7 +98,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
         return SM_OK;
     }
 
-    confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true, worldSize_);
+    confStore_ = StoreFactory::CreateStoreClient(storeUrlExtraction_.ip, storeUrlExtraction_.port, worldSize_);
     if (confStore_ != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE) {
         return SM_OK;
     }

@@ -132,6 +132,24 @@ TcpConfigStore::~TcpConfigStore() noexcept
 Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
+    if (isServer_) {
+        result = ServerStart(tlsConfig, reconnectRetryTimes);
+        if (result != 0) {
+            STORE_LOG_ERROR("Failed to start config store server ret:" << result);
+            return result;
+        }
+    }
+
+    result = ClientStart(tlsConfig, reconnectRetryTimes);
+    if (result != 0) {
+        STORE_LOG_ERROR("Failed to start config store client ret:" << result);
+    }
+    return result;
+}
+
+Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+{
+    Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
 
     std::lock_guard<std::mutex> guard(mutex_);
@@ -149,19 +167,6 @@ Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTi
         STORE_LOG_ERROR("Failed to prepare TLS for acc client");
     }
 
-    if (isServer_) {
-        accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_);
-        if (accServer_ == nullptr) {
-            Shutdown();
-            return SM_NEW_OBJECT_FAILED;
-        }
-
-        if ((result = accServer_->Startup(tlsConfig)) != SM_OK) {
-            Shutdown();
-            return result;
-        }
-    }
-
     accClient_->RegisterNewRequestHandler(
         0, [this](const ock::acc::AccTcpRequestContext &context) { return ReceiveResponseHandler(context); });
     accClient_->RegisterLinkBrokenHandler(
@@ -177,15 +182,31 @@ Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTi
 
     ock::acc::AccConnReq connReq;
     connReq.rankId = rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << 32) | rankId_)
-            : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
+                                  : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
     result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
         STORE_LOG_ERROR("connect to server failed, result: " << result);
         Shutdown();
         return result;
     }
+    return result;
+}
 
-    return SM_OK;
+Result TcpConfigStore::ServerStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+{
+    Result result = SM_OK;
+    std::lock_guard<std::mutex> guard(mutex_);
+    accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_);
+    if (accServer_ == nullptr) {
+        Shutdown();
+        return SM_NEW_OBJECT_FAILED;
+    }
+
+    if ((result = accServer_->Startup(tlsConfig)) != SM_OK) {
+        Shutdown();
+        return result;
+    }
+    return result;
 }
 
 void TcpConfigStore::Shutdown() noexcept

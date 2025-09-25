@@ -55,8 +55,8 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
     smem::StoreFactory::SetLogLevel(options_.logLevel);
     smem::StoreFactory::SetExternalLogFunction(SPDLOG_LogMessage);
     smem::StoreFactory::SetTlsInfo(options_.configStoreTlsConfig);
-    confStore_ = smem::StoreFactory::CreateStore(configStoreOpt.ip, configStoreOpt.port, true,
-                                                 std::numeric_limits<uint32_t>::max());
+    confStore_ = smem::StoreFactory::CreateStoreServer(configStoreOpt.ip, configStoreOpt.port,
+                                                       std::numeric_limits<uint32_t>::max());
     MMC_VALIDATE_RETURN(confStore_ != nullptr, "Failed to start config store server", MMC_ERROR);
 
     started_ = true;
