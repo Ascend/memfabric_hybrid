@@ -8,7 +8,7 @@
 #include "mf_file_util.h"
 #include "hybm.h"
 
-static std::string GetDriverVersionPath(const std::string &driverEnvStr, const std::string &keyStr)
+std::string GetDriverVersionPath(const std::string &driverEnvStr, const std::string &keyStr)
 {
     std::string driverVersionPath;
     std::string tempPath; // 存放临时路径
@@ -40,7 +40,7 @@ static std::string GetDriverVersionPath(const std::string &driverEnvStr, const s
     return driverVersionPath;
 }
 
-static std::string LoadDriverVersionInfoFile(const std::string &realName, const std::string &keyStr)
+std::string LoadDriverVersionInfoFile(const std::string &realName, const std::string &keyStr)
 {
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
@@ -79,7 +79,7 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
     return driverVersion;
 }
 
-static std::string CastDriverVersion(const std::string &driverEnv)
+std::string CastDriverVersion(const std::string &driverEnv)
 {
     std::string driverVersionPath = GetDriverVersionPath(driverEnv, "/driver/lib64");
     if (!driverVersionPath.empty()) {
@@ -91,7 +91,7 @@ static std::string CastDriverVersion(const std::string &driverEnv)
     return "";
 }
 
-static int32_t GetValueFromVersion(const std::string &ver, std::string key)
+int32_t GetValueFromVersion(const std::string &ver, std::string key)
 {
     int32_t val = 0;
     auto found = ver.find(key);
