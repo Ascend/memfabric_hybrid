@@ -44,7 +44,10 @@ std::vector<uint32_t> NetworkGetIpAddresses() noexcept
 
         auto sin = reinterpret_cast<struct sockaddr_in *>(p->ifa_addr);
         addresses.emplace_back(ntohl(sin->sin_addr.s_addr));
-        BM_LOG_INFO("find ip address: " << p->ifa_name << " -> " << inet_ntoa(sin->sin_addr));
+        char ip_str[INET_ADDRSTRLEN];
+        if (inet_ntop(AF_INET, &sin->sin_addr, ip_str, sizeof(ip_str)) != nullptr) {
+            BM_LOG_INFO("find ip address: " << p->ifa_name << " -> " << ip_str);
+        }
     }
 
     freeifaddrs(ifa);

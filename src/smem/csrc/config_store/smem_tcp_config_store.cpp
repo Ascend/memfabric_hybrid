@@ -319,7 +319,9 @@ Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &v
     }
     STORE_ASSERT_RETURN(response->DataPtr() != nullptr, IO_ERROR);
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
+    errno = 0;
     value = strtol(data.c_str(), nullptr, DECIMAL_BASE);
+    STORE_ASSERT_RETURN(errno != ERANGE, IO_ERROR);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -374,8 +376,9 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     }
     STORE_ASSERT_RETURN(response->DataPtr() != nullptr, IO_ERROR);
     std::string data(reinterpret_cast<char *>(response->DataPtr()), response->DataLen());
+    errno = 0;
     newSize = strtoull(data.c_str(), nullptr, DECIMAL_BASE);
-
+    STORE_ASSERT_RETURN(errno != ERANGE, IO_ERROR);
     return StoreErrorCode::SUCCESS;
 }
 

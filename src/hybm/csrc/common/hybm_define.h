@@ -516,6 +516,7 @@ using HcclComm = void*;
         if (TARGET_FUNC_VAR == nullptr) {                                                 \
             BM_LOG_ERROR("Failed to call dlsym to load SYMBOL_NAME, error" << dlerror()); \
             dlclose(FILE_HANDLE);                                                         \
+            FILE_HANDLE = nullptr;                                                        \
             return BM_DL_FUNCTION_FAILED;                                                 \
         }                                                                                 \
     } while (0)
