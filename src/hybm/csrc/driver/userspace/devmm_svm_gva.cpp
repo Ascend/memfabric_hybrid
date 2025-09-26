@@ -30,11 +30,17 @@ DevmmGvaHeap *g_gvaHeapMgr = nullptr;
 
 static void SetModuleId2Advise(uint32_t modelId, uint32_t *advise)
 {
+    if (advise == nullptr) {
+        return;
+    }
     *advise = *advise | ((modelId & DV_ADVISE_MODULE_ID_MASK) << DV_ADVISE_MODULE_ID_BIT);
 }
 
 static void FillSvmHeapType(uint32_t advise, struct devmm_virt_heap_type *heapType)
 {
+    if (heapType == nullptr) {
+        return;
+    }
     heapType->heap_list_type = SVM_LIST;
     heapType->heap_sub_type = SUB_SVM_TYPE;
     heapType->heap_mem_type = DEVMM_DDR_MEM;
@@ -223,6 +229,9 @@ static inline uint32_t DevmmHeapSubTypeToMemVal(uint32_t type)
 static void DevmmPrimaryHeapModuleMemStatsInc(struct devmm_virt_com_heap *heap,
     uint32_t moduleId, uint64_t size)
 {
+    if (heap == nullptr) {
+        return;
+    }
     uint32_t memVal = DevmmHeapSubTypeToMemVal(heap->heap_sub_type);
     uint32_t pageType = (heap->heap_type == DEVMM_HEAP_HUGE_PAGE) ? DEVMM_HUGE_PAGE_TYPE : DEVMM_NORMAL_PAGE_TYPE;
     uint32_t phyMemtype = heap->heap_mem_type;
@@ -271,7 +280,7 @@ static uint64_t DevmmVirtAllocGvaMem(void *mgmt, uint64_t allocPtr,
         return 0;
     }
 
-    if (DlHalApi::HalDevmmGetHeapListByType(mgmt, heap_type, &heap_list) != 0) {
+    if (DlHalApi::HalDevmmGetHeapListByType(mgmt, heap_type, &heap_list) != 0 || heap_list == nullptr) {
         (void)DlHalApi::HalDevmmVirtDestroyHeap(mgmt, heap, false);
         (void)DlHalApi::HalDevmmIoctlFreePages(retPtr);
         return 0;
@@ -411,6 +420,7 @@ int32_t HalGvaAlloc(uint64_t address, size_t size, uint64_t flags)
     advise |= DV_ADVISE_HUGEPAGE | DV_ADVISE_HBM;
     advise |= DV_ADVISE_POPULATE | DV_ADVISE_LOCK_DEV;
     SetModuleId2Advise(APP_MODULE_ID, &advise);
+    BM_ASSERT_RETURN(g_gvaHeapMgr != nullptr, BM_INVALID_PARAM);
     int32_t ret = HybmIoctlAllocAnddAdvice(va, size, g_gvaHeapMgr->deviceId, advise);
     if (ret != 0) {
         BM_LOG_ERROR("Alloc gva local mem error. (ret=" << ret << " size=0x" << std::hex <<

@@ -200,7 +200,7 @@ int HostDataOpSDMA::CopyLD2GD(void *gvaAddr, const void *deviceAddr, size_t coun
     if (stream != nullptr) {
         st = stream;
     }
-
+    BM_ASSERT_RETURN(st != nullptr, BM_INVALID_PARAM);
     auto ret = DlAclApi::AclrtMemcpyAsync(gvaAddr, count, deviceAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
         BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
@@ -222,7 +222,7 @@ int HostDataOpSDMA::CopyGD2LD(void *deviceAddr, const void *gvaAddr, size_t coun
     if (stream != nullptr) {
         st = stream;
     }
-
+    BM_ASSERT_RETURN(st != nullptr, BM_INVALID_PARAM);
     auto ret = DlAclApi::AclrtMemcpyAsync(deviceAddr, count, gvaAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
         BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << st);
@@ -299,7 +299,9 @@ int HostDataOpSDMA::CopyLD2GD2d(void *gvaAddr, uint64_t dpitch, const void *devi
     if (stream != nullptr) {
         st = stream;
     }
-
+    BM_ASSERT_RETURN(gvaAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(deviceAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(st != nullptr, BM_INVALID_PARAM);
     int ret = BM_OK;
     for (uint64_t i = 0; i < height; ++i) {
         void *dstAddr = reinterpret_cast<void *>((uint64_t) gvaAddr + i * dpitch);
@@ -357,7 +359,9 @@ int HostDataOpSDMA::CopyGD2LD2d(void *deviceAddr, uint64_t dpitch, const void *g
     if (stream != nullptr) {
         st = stream;
     }
-
+    BM_ASSERT_RETURN(deviceAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(st != nullptr, BM_INVALID_PARAM);
     int ret = BM_OK;
     for (uint64_t i = 0; i < height; ++i) {
         void *dstAddr = reinterpret_cast<void *>((uint64_t) deviceAddr + i * dpitch);
@@ -518,6 +522,8 @@ int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
 int HostDataOpSDMA::CopyGD2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGD2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
     // HBM池拷贝到HOST池
     BM_LOG_INFO("Copy global device to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -526,6 +532,8 @@ int HostDataOpSDMA::CopyGD2GH(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyGH2GD(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2GD hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
     // HOST池到HBM池的拷贝
     BM_LOG_INFO("Copy global host to global device, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -534,6 +542,8 @@ int HostDataOpSDMA::CopyGH2GD(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyGH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
     // HOST池到HOST池的拷贝
     BM_LOG_INFO("Copy global host to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     return CopyG2G(destVA, srcVA, length);
@@ -542,6 +552,9 @@ int HostDataOpSDMA::CopyGH2GH(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyLD2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyLD2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     // local device到dram池的拷贝
     BM_LOG_INFO("Copy local device to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     // LD2GD
@@ -573,6 +586,9 @@ int HostDataOpSDMA::CopyLD2GH(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyLH2GH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     // local host到dram池的拷贝
     BM_LOG_INFO("Copy local host to global host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     if (hybm_gvm_mem_has_registered((uint64_t)srcVA, length)) {
@@ -604,6 +620,9 @@ int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyGH2LD(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2LD hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     // dram池的拷贝到local device
     BM_LOG_INFO("Copy global host to local device, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     if (hybm_gvm_mem_has_registered((uint64_t)destVA, length)) {
@@ -636,6 +655,9 @@ int HostDataOpSDMA::CopyGH2LD(void *destVA, const void *srcVA, uint64_t length, 
 int HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(HybmGvmHasInited(), "Failed to CopyGH2LH hybm gvm not init", BM_NOT_SUPPORT_FUNC);
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     // dram池的拷贝到local host
     BM_LOG_INFO("Copy global host to local host, destVa:" << destVA << " srcVa:" << srcVA << " length:" << length);
     if (hybm_gvm_mem_has_registered((uint64_t)destVA, length)) {
@@ -670,6 +692,7 @@ int HostDataOpSDMA::CopyLD2GHAsync(void *destVA, const void *srcVA, uint64_t len
     if (hybm_gvm_mem_has_registered((uint64_t)srcVA, length)) {
         return CopyG2GAsync(destVA, srcVA, length);
     }
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
     BM_LOG_DEBUG("Can not to direct copy, deviceId:" << HybmGetInitDeviceId() << " addr:" << srcVA
         << " length:" << length << " not register!");
     return CopyLD2GH(destVA, srcVA, length, stream);
@@ -680,6 +703,7 @@ int HostDataOpSDMA::CopyGH2LDAsync(void *destVA, const void *srcVA, uint64_t len
     if (hybm_gvm_mem_has_registered((uint64_t)destVA, length)) {
         return CopyG2GAsync(destVA, srcVA, length);
     }
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
     BM_LOG_DEBUG("Can not to direct copy, deviceId:" << HybmGetInitDeviceId() << " addr:" << destVA
         << " length:" << length << " not register!");
     return CopyGH2LD(destVA, srcVA, length, stream);
@@ -729,6 +753,9 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
 
 int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexcept
 {
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_INVALID_PARAM);
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -754,6 +781,9 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexc
 int HostDataOpSDMA::CopyG2G2d(void* destVA, uint64_t dpitch, const void* srcVA, uint64_t spitch,
                               size_t width, uint64_t height) noexcept
 {
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_INVALID_PARAM);
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -780,6 +810,8 @@ int HostDataOpSDMA::CopyG2G2d(void* destVA, uint64_t dpitch, const void* srcVA, 
 
 int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) noexcept
 {
+    BM_ASSERT_RETURN(destVA != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVA != nullptr, BM_INVALID_PARAM);
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -803,6 +835,9 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
 int HostDataOpSDMA::BatchCopyG2G(void **destVAs, const void **srcVAs,
                                  const uint32_t *counts, uint32_t batchSize) noexcept
 {
+    BM_ASSERT_RETURN(destVAs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(srcVAs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
     auto ret = 0;
     auto asyncRet = 0;
     for (auto i = 0U; i < batchSize; i++) {
@@ -834,6 +869,8 @@ int HostDataOpSDMA::CopyGH2LD2d(void *deviceAddr, uint64_t dpitch, const void *g
         BM_LOG_ERROR("Invalid param spitch: " << spitch << " width: " << width);
         return BM_INVALID_PARAM;
     }
+    BM_ASSERT_RETURN(deviceAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddr, width)) {
         return CopyG2G2d(deviceAddr, dpitch, gvaAddr, spitch, width, height);
     }
@@ -867,6 +904,9 @@ int HostDataOpSDMA::CopyLD2GH2d(void *gvaAddr, uint64_t dpitch, const void *devi
         BM_LOG_ERROR("Invalid param dpitch: " << dpitch << " width: " << width);
         return BM_INVALID_PARAM;
     }
+    BM_ASSERT_RETURN(gvaAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(deviceAddr != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddr, width)) {
         return CopyG2G2d(gvaAddr, dpitch, deviceAddr, spitch, width, height);
     }
@@ -946,6 +986,10 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, const void **deviceAddrs, const uint32_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
+    BM_ASSERT_RETURN(deviceAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     void *st = stream_;
     if (stream != nullptr) {
         st = stream;
@@ -993,6 +1037,10 @@ int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, const void **deviceAddrs, co
 int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, const void **gvaAddrs, const uint32_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
+    BM_ASSERT_RETURN(deviceAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(sdmaSwapMemoryAllocator_ != nullptr, BM_INVALID_PARAM);
     void *st = stream_;
     if (stream != nullptr) {
         st = stream;
@@ -1046,7 +1094,9 @@ int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, const void **deviceAddrs, co
         st = stream;
     }
     auto ret = 0;
-
+    BM_ASSERT_RETURN(deviceAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
     for (auto i = 0U; i < batchSize; i++) {
         ret = CopyLD2GD(gvaAddrs[i], deviceAddrs[i], counts[i], stream);
         if (ret != 0) {
@@ -1065,7 +1115,9 @@ int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, const void **gvaAddrs, co
         st = stream;
     }
     auto ret = 0;
-
+    BM_ASSERT_RETURN(deviceAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
     for (auto i = 0U; i < batchSize; i++) {
         ret = CopyGD2LD(deviceAddrs[i], gvaAddrs[i], counts[i], stream);
         if (ret != 0) {
@@ -1084,7 +1136,9 @@ int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, const void **hostAddrs, cons
         st = stream;
     }
     auto ret = 0;
-
+    BM_ASSERT_RETURN(hostAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
     for (auto i = 0U; i < batchSize; i++) {
         ret = CopyLH2GD(gvaAddrs[i], hostAddrs[i], counts[i], stream);
         if (ret != 0) {
@@ -1103,7 +1157,9 @@ int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, const void **gvaAddrs, cons
         st = stream;
     }
     auto ret = 0;
-
+    BM_ASSERT_RETURN(hostAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(gvaAddrs != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(counts != nullptr, BM_INVALID_PARAM);
     for (auto i = 0U; i < batchSize; i++) {
         ret = CopyGD2LH(hostAddrs[i], gvaAddrs[i], counts[i], stream);
         if (ret != 0) {
