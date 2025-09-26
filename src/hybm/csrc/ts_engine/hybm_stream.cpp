@@ -145,6 +145,12 @@ int32_t HybmStream::AllocLogicCq()
     ret = DlHalApi::HalResourceConfig(deviceId_, &in, &configInfo);
     if (ret != 0) {
         BM_LOG_INFO("bind logic cq with ts_id:" << tsId_ << " failed: " << ret);
+        halSqCqFreeInfo freeInfo{};
+        freeInfo.type = DRV_LOGIC_TYPE;
+        freeInfo.tsId = tsId_;
+        freeInfo.sqId = output.sqId;
+        freeInfo.cqId = output.cqId;
+        DlHalApi::HalSqCqFree(deviceId_, &freeInfo);
         return ret;
     }
     return BM_OK;
@@ -316,6 +322,10 @@ int32_t HybmStream::ReceiveCqe(uint32_t &lastTask)
         if (ret != 0) {
             BM_LOG_ERROR("HalCqReportRecv failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
+        }
+        if (info.report_cqe_num > RT_MILAN_MAX_QUERY_CQE_NUM) {
+            BM_LOG_ERROR("Invalid report_cqe_num");
+            return BM_INVALID_PARAM;
         }
 
         for (uint32_t idx = 0; idx < info.report_cqe_num; idx++) {

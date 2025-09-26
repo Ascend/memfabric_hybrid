@@ -12,7 +12,6 @@
 #include "mmc_ptracer.h"
 
 using namespace ock::mmc;
-static ClientConfig *g_clientConfig;
 static mmc_local_service_t g_localService;
 
 static std::mutex gMmcMutex;
@@ -30,12 +29,11 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
 
     MMC_VALIDATE_RETURN(MMC_LOCAL_CONF_PATH != nullptr, "MMC_LOCAL_CONFIG_PATH is not set", MMC_INVALID_PARAM);
 
-    g_clientConfig = new ClientConfig();
-    MMC_VALIDATE_RETURN(g_clientConfig != nullptr, "Failed to initialize client config", MMC_ERROR);
+    ClientConfig configManager{};
 
-    MMC_VALIDATE_RETURN(g_clientConfig->LoadFromFile(MMC_LOCAL_CONF_PATH), "Failed to load client config", MMC_ERROR);
+    MMC_VALIDATE_RETURN(configManager.LoadFromFile(MMC_LOCAL_CONF_PATH), "Failed to load client config", MMC_ERROR);
 
-    const std::vector<std::string> validationError = g_clientConfig->ValidateConf();
+    const std::vector<std::string> validationError = configManager.ValidateConf();
     if (!validationError.empty()) {
         MMC_LOG_ERROR("Wrong configuration in file <" << std::string(MMC_LOCAL_CONF_PATH)
             << ">, because of following mistakes:");
@@ -48,23 +46,25 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
     mmc_local_service_config_t localServiceConfig{};
     localServiceConfig.flags = 0;
     localServiceConfig.deviceId = config.deviceId;
-    g_clientConfig->GetLocalServiceConfig(localServiceConfig);
+    configManager.GetLocalServiceConfig(localServiceConfig);
     MMC_RETURN_ERROR(ock::mmc::MmcOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(localServiceConfig.logLevel)),
                      "failed to set log level " << localServiceConfig.logLevel);
     if (localServiceConfig.logFunc != nullptr) {
         MmcOutLogger::Instance().SetExternalLogFunction(localServiceConfig.logFunc);
     }
 
-    MMC_VALIDATE_RETURN(g_clientConfig->ValidateLocalServiceConfig(localServiceConfig) == MMC_OK,
+    MMC_VALIDATE_RETURN(configManager.ValidateLocalServiceConfig(localServiceConfig) == MMC_OK,
         "Invalid local service config", MMC_INVALID_PARAM);
     g_localService = mmcs_local_service_start(&localServiceConfig);
     MMC_VALIDATE_RETURN(g_localService != nullptr, "failed to create or start local service", MMC_ERROR);
 
     mmc_client_config_t clientConfig{};
-    g_clientConfig->GetClientConfig(clientConfig);
+    configManager.GetClientConfig(clientConfig);
     auto ret = mmcc_init(&clientConfig);
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("mmcc init failed, ret:" << ret);
+        mmcs_local_service_stop(g_localService);
+        g_localService = nullptr;
         return ret;
     }
     mmcInit = true;
@@ -97,19 +97,4 @@ MMC_API void mmc_uninit()
     }
     mmcc_uninit();
     mmcInit = false;
-
-    if (g_clientConfig != nullptr) {
-        delete g_clientConfig;
-        g_clientConfig = nullptr;
-    }
-}
-
-MMC_API const char *mmc_get_last_err_msg()
-{
-    return NULL;
-}
-
-MMC_API const char *mmc_get_and_clear_last_err_msg()
-{
-    return NULL;
 }

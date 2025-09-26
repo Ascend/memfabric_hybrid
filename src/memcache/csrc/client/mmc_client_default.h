@@ -65,7 +65,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(gClientHandlerMtx);
         if (gClientHandler != nullptr) {
-            MMC_LOG_INFO("client handler alreay register");
+            MMC_LOG_INFO("client handler already registered");
             return MMC_OK;
         }
         gClientHandler = new (std::nothrow) MmcClientDefault("mmc_client");
@@ -80,7 +80,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(gClientHandlerMtx);
         if (gClientHandler == nullptr) {
-            MMC_LOG_INFO("client handler alreay unregister");
+            MMC_LOG_INFO("client handler already unregistered");
             return MMC_OK;
         }
         delete gClientHandler;
