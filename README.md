@@ -1,0 +1,3 @@
+# memfabric_hybrid
+
+基于host侧RDMA、npu侧RDMA和SDMA实现多代际多路径数据传输, 构建高带宽和高性能的全局统一地址内存池
