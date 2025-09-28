@@ -420,29 +420,38 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
-    if (sdmaDataOperator_ != nullptr) {
+    segment_->GetRankIdByAddr(params.sources[0], params.dataSizes[0], options.srcRankId);
+    segment_->GetRankIdByAddr(params.destinations[0], params.dataSizes[0], options.destRankId);
+    for (auto i = 0U; i < params.batchSize; i++) {
+        params.sources[i] = Valid48BitsAddress(params.sources[i]);
+        params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
+    }
+
+    auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
+    if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
         BM_LOG_DEBUG("SDMA data copy excute.");
         ret = sdmaDataOperator_->BatchDataCopy(params, direction, options);
         if (ret == BM_OK) {
             return BM_OK;
         }
         BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
-    } else if (devRdmaDataOperator_ != nullptr) {
+    }
+
+    if (devRdmaDataOperator_ != nullptr) {
         BM_LOG_DEBUG("Device RDMA data copy excute.");
         ret = devRdmaDataOperator_->BatchDataCopy(params, direction, options);
         if (ret == BM_OK) {
             return BM_OK;
         }
         BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
-    } else if (hostRdmaDataOperator_ != nullptr) {
+    }
+
+    if (hostRdmaDataOperator_ != nullptr) {
         ret = hostRdmaDataOperator_->BatchDataCopy(params, direction, options);
         if (ret == BM_OK) {
             return BM_OK;
         }
         BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
-    } else {
-        BM_LOG_ERROR("No DataOperator specified, please check.");
-        return BM_INVALID_PARAM;
     }
     return ret;
 }

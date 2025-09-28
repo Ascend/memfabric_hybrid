@@ -97,8 +97,6 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e,
                          << std::oct << params->dataSizes[i] << ", direction: " << direction);
             return BM_INVALID_PARAM;
         }
-        params->sources[i] = Valid48BitsAddress(params->sources[i]);
-        params->destinations[i] = Valid48BitsAddress(params->destinations[i]);
     }
 
     return entity->BatchCopyData(*params, direction, stream, flags);

@@ -210,7 +210,7 @@ TEST_F(HybmEntityDefaultTest, DevRdmaDataOperator_Copydata)
     paramsbatch.destinations = destinations;
     paramsbatch.dataSizes = dataSizes;
     ret = entity.BatchCopyData(paramsbatch, HYBM_DATA_COPY_DIRECTION_BUTT, nullptr, 0);
-    EXPECT_EQ(ret, BM_ERROR);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
     delete[] sources;
     delete[] destinations;
     delete[] dataSizes;
