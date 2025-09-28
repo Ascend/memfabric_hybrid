@@ -33,11 +33,11 @@ inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, tls_con
 
     if (std::string(config.decrypterLibPath).empty()) {
         STORE_LOG_WARN("No decrypter provided, using default decrypter handler");
-        server->RegisterDecryptHandler(mf::DefaultDecrypter);
+        server->RegisterDecryptHandler(mf::MfTlsUtil::DefaultDecrypter);
         return SM_OK;
     }
 
-    const auto decrypter = mf::LoadDecryptFunction(config.decrypterLibPath);
+    const auto decrypter = mf::MfTlsUtil::LoadDecryptFunction(config.decrypterLibPath);
     if (decrypter == nullptr) {
         STORE_LOG_ERROR("failed to load customized decrypt function");
         return SM_ERROR;

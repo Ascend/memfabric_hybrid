@@ -245,7 +245,7 @@ int gvm_agent_init_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
 {
     int devpid, pasid, svspid, ret;
     struct hybm_gvm_agent_init_msg *init_body;
-    if (msg == NULL || msg->type != HYBM_GVM_AGENT_MSG_INIT) {
+    if (msg == NULL || msg->body == NULL || msg->type != HYBM_GVM_AGENT_MSG_INIT) {
         hybm_gvm_err("input msg is invalid.");
         return -EINVAL;
     }
@@ -280,6 +280,10 @@ int gvm_agent_init_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
 
 static int gvm_agent_map_svsp(u64 va, u64 size, u64 *pa_list, u32 num, u32 pasid)
 {
+    if (pa_list == NULL) {
+        hybm_gvm_err("input is error, pa_list is null");
+        return -EINVAL;
+    }
     u64 i, iva, ret_va, page_size;
     int ret = 0;
 
@@ -346,7 +350,7 @@ int gvm_agent_map_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     u32 pasid, num;
     struct hybm_gvm_agent_mmap_msg *map_body;
     int ret;
-    if (msg == NULL || msg->type != HYBM_GVM_AGENT_MSG_MAP) {
+    if (msg == NULL || msg->body == NULL || msg->type != HYBM_GVM_AGENT_MSG_MAP) {
         hybm_gvm_err("input msg type is invalid.");
         return -EINVAL;
     }
@@ -380,7 +384,7 @@ int gvm_agent_unmap_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     struct gvm_dev_mem_node *node;
     u32 pasid;
 
-    if (msg == NULL || msg->type != HYBM_GVM_AGENT_MSG_UNMAP) {
+    if (msg == NULL || msg->body ==NULL || msg->type != HYBM_GVM_AGENT_MSG_UNMAP) {
         hybm_gvm_err("input msg type is invalid.");
         return -EINVAL;
     }
@@ -487,7 +491,7 @@ int gvm_agent_fetch_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     struct hybm_gvm_agent_fetch_msg *fetch_body;
     int ret = 0;
 
-    if (msg == NULL || msg->type != HYBM_GVM_AGENT_MSG_FETCH) {
+    if (msg == NULL || msg->body == NULL || msg->type != HYBM_GVM_AGENT_MSG_FETCH) {
         hybm_gvm_err("input msg type is invalid.");
         return -EINVAL;
     }
@@ -621,6 +625,11 @@ int gvm_peer_mem_acquire(unsigned long addr, size_t size, void *peer_mem_data, c
         size > HYBM_GVM_ALLOC_MAX_SIZE) {
         hybm_gvm_err("invalid addr or size, size:0x%lx", size);
         return false;
+    }
+
+    if (size > UINT64_MAX - addr || GVM_ALIGN_UP(size, HYBM_GVM_PAGE_SIZE) > UINT64_MAX - addr) {
+        hybm_gvm_err("input addr+size too large");
+        return -EINVAL;
     }
 
     node = find_gvm_dev_mem_node_by_va(&g_gvm_agent_info.roce_head, addr);

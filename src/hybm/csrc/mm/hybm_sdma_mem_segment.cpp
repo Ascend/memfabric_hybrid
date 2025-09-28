@@ -14,6 +14,7 @@ using namespace ock::mf;
 Result MemSegmentHostSDMA::ValidateOptions() noexcept
 {
     if (options_.segType != HYBM_MST_DRAM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.size);
         return BM_INVALID_PARAM;
     }
 
@@ -22,6 +23,7 @@ Result MemSegmentHostSDMA::ValidateOptions() noexcept
 
 Result MemSegmentHostSDMA::ReserveMemorySpace(void **address) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     if (globalVirtualAddress_ != nullptr) {
         BM_LOG_ERROR("already prepare virtual memory.");
         return BM_ERROR;

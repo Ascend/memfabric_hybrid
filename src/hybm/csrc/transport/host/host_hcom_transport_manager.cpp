@@ -87,6 +87,7 @@ Result HcomTransportManager::CloseDevice()
         DisConnectHcomChannel(i, channels_[i]);
     }
     DlHcomApi::ServiceDestroy(rpcService_, HCOM_RPC_SERVICE_NAME);
+    mf::MfTlsUtil::CloseTlsLib();
     rpcService_ = 0;
     localNic_ = "";
     localIp_ = "";
@@ -299,9 +300,6 @@ Result HcomTransportManager::UpdateRankConnectInfos(const std::unordered_map<uin
                                                                         << " ret: " << ret);
                 return ret;
             }
-        }
-
-        if (it == opt.end() && channels_[i] != 0) {
         }
     }
     return BM_OK;
@@ -576,9 +574,9 @@ int HcomTransportManager::GetPrivateKeyCallBack(const char *name, char **priKeyP
     DecryptFunc func;
     if (std::string(tlsConfig_.decrypterLibPath).empty()) {
         BM_LOG_WARN("No decrypter provided, using default decrypter handler");
-        func = static_cast<DecryptFunc>(DefaultDecrypter);
+        func = static_cast<DecryptFunc>(MfTlsUtil::DefaultDecrypter);
     } else {
-        func = LoadDecryptFunction(tlsConfig_.decrypterLibPath);
+        func = MfTlsUtil::LoadDecryptFunction(tlsConfig_.decrypterLibPath);
         if (func == nullptr) {
             BM_LOG_ERROR("failed to load customized decrypt function");
             return 1;

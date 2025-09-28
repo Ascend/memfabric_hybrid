@@ -44,7 +44,7 @@ public:
             return -1;
         }
 
-        memcpy(&d, info.data(), sizeof(DataType));
+        std::copy_n(info.data(), sizeof(DataType), reinterpret_cast<uint8_t *>(&d));
         return 0;
     }
 };

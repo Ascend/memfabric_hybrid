@@ -297,6 +297,10 @@ static int hybm_gvm_proc_create(struct file *file, struct hybm_gvm_process *proc
 {
     struct hybm_gvm_process *gvm_proc = NULL;
     struct hybm_gvm_proc_create_para *arg = &args->data.proc_create_para;
+    if (file == NULL) {
+        hybm_gvm_err("input param file is invalid..");
+        return -EINVAL;
+    }
 
     if (gvm_test_and_set_init_flag(file) == true) {
         hybm_gvm_err("gvm already initialized.");

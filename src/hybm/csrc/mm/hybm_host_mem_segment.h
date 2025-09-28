@@ -32,6 +32,7 @@ public:
 
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
+    Result UnReserveMemorySpace() noexcept override;
     Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
     Result Export(std::string &exInfo) noexcept override;
     Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;

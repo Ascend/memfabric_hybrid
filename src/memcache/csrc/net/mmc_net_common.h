@@ -76,7 +76,7 @@ inline Result NetEngineOptions::ExtractIpPortFromUrl(const std::string &url, Net
     std::map<std::string, std::string> details;
     /* extract to vector */
     auto result = ExtractURL(url, p, details);
-    MMC_RETURN_ERROR(result, "Failed to extract url " << url << ", which is invalid");
+    MMC_RETURN_ERROR(result, "Failed to extract url is invalid");
 
     std::string ipStr = details["ip"];
     std::string portStr = details["port"];
@@ -85,14 +85,14 @@ inline Result NetEngineOptions::ExtractIpPortFromUrl(const std::string &url, Net
     Ipv4PortValidator validator1("IndexServiceUrl");
     validator1.Initialize();
     if (!(validator1.Validate(ipStr + ":" + portStr))) {
-        MMC_LOG_ERROR("Invalid url " << url);
+        MMC_LOG_ERROR("Failed to extract url");
         return MMC_INVALID_PARAM;
     }
 
     /* covert port */
     long tmpPort = 0;
     if (!StrUtil::StrToLong(portStr, tmpPort)) {
-        MMC_LOG_ERROR("Invalid url " << url);
+        MMC_LOG_ERROR("Failed to extract url");
         return MMC_INVALID_PARAM;
     }
 

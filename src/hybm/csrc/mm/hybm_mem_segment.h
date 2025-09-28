@@ -37,6 +37,8 @@ public:
 
     virtual Result ReserveMemorySpace(void **address) noexcept = 0;
 
+    virtual Result UnReserveMemorySpace() noexcept = 0;
+
     /*
      * Allocate memory according to segType
      * @return 0 if successful

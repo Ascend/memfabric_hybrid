@@ -48,11 +48,20 @@ Result NetEngineAcc::Start(const NetEngineOptions &options)
     }
 
     /* call start inner */
-    MMC_RETURN_ERROR(StartInner(), "NetEngineAcc " << options.name << " start error");
+    auto ret = StartInner();
+    if (ret != MMC_OK) {
+        UnInitialize();
+        MMC_LOG_ERROR("NetEngineAcc " << options.name << " start error");
+        return ret;
+    }
 
     threadPool_ = MmcMakeRef<MmcThreadPool>("net_pool", NET_POOL_BASE);
-    MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
-    MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
+    if (threadPool_ == nullptr || threadPool_->Start() != MMC_OK) {
+        StopInner();
+        UnInitialize();
+        MMC_LOG_ERROR("Failed to start thread pool");
+        return ret;
+    }
 
     started_ = true;
     return MMC_OK;
@@ -152,7 +161,7 @@ Result NetEngineAcc::StopInner()
         server_->Stop();
         server_ = nullptr;
     }
-
+    mf::MfTlsUtil::CloseTlsLib();
     return MMC_OK;
 }
 
@@ -216,8 +225,7 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     auto dataBuf = MmcMakeRef<ock::acc::AccDataBuffer>(reqDataLen);
     MMC_ASSERT_RETURN(dataBuf.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     MMC_ASSERT_RETURN(dataBuf->AllocIfNeed(), MMC_NEW_OBJECT_FAILED);
-    memcpy(dataBuf->DataPtrVoid(), static_cast<void*>(const_cast<char*>(reqData)),
-           reqDataLen);
+    std::copy_n(reqData, reqDataLen, static_cast<char *>(dataBuf->DataPtrVoid()));
     dataBuf->SetDataSize(reqDataLen);
 
     /* step4: create wait handler and initialize */
@@ -264,7 +272,7 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
             return MMC_MALLOC_FAILED;
         }
     }
-    memcpy(*respData, (void*) data->DataIntPtr(), data->DataLen());
+    std::copy_n(reinterpret_cast<char *>(data->DataIntPtr()), data->DataLen(), *respData);
     respDataLen = data->DataLen();
     TraceSendRecord(opCode, TP_CURRENT_TIME_NS - startTime);
     return result;
@@ -522,7 +530,8 @@ Result NetEngineAcc::HandleAllRequests4Response(const TcpReqContext &context)
     MMC_ASSERT_RETURN(result == MMC_OK, MMC_NEW_OBJECT_FAILED);
     MMC_ASSERT_RETURN(dataBuf->AllocIfNeed(), MMC_NEW_OBJECT_FAILED);
     MMC_ASSERT_RETURN(context.DataPtr() != nullptr, MMC_ERROR);
-    memcpy(dataBuf->DataPtrVoid(), context.DataPtr(), context.DataLen());
+    std::copy_n(static_cast<char *>(context.DataPtr()), context.DataLen(),
+                reinterpret_cast<char *>(dataBuf->DataIntPtr()));
     dataBuf->SetDataSize(context.DataLen());
 
     result = waiter->Notify(context.Header().result, dataBuf.Get());
@@ -538,11 +547,11 @@ Result NetEngineAcc::RegisterDecryptHandler(const std::string &decryptLibPath) c
 {
     if (decryptLibPath.empty()) {
         MMC_LOG_WARN("No decrypter provided, using default decrypter handler");
-        server_->RegisterDecryptHandler(mf::DefaultDecrypter);
+        server_->RegisterDecryptHandler(mf::MfTlsUtil::DefaultDecrypter);
         return MMC_OK;
     }
 
-    const auto decrypter = mf::LoadDecryptFunction(decryptLibPath.c_str());
+    const auto decrypter = mf::MfTlsUtil::LoadDecryptFunction(decryptLibPath.c_str());
     if (decrypter == nullptr) {
         MMC_LOG_ERROR("failed to load customized decrypt function");
         return MMC_ERROR;

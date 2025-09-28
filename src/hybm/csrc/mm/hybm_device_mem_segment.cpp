@@ -28,6 +28,7 @@ uint32_t MemSegmentDevice::superPodId_{0};
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
     if (options_.segType != HYBM_MST_HBM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.size);
         return BM_INVALID_PARAM;
     }
 
@@ -36,6 +37,7 @@ Result MemSegmentDevice::ValidateOptions() noexcept
 
 Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     if (globalVirtualAddress_ != nullptr) {
         BM_LOG_ERROR("already prepare virtual memory.");
         return BM_ERROR;
@@ -53,6 +55,13 @@ Result MemSegmentDevice::ReserveMemorySpace(void **address) noexcept
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
     *address = globalVirtualAddress_;
+    return BM_OK;
+}
+
+Result MemSegmentDevice::UnReserveMemorySpace() noexcept
+{
+    BM_LOG_INFO("un-reserve memory space.");
+    FreeMemory();
     return BM_OK;
 }
 
@@ -74,7 +83,8 @@ Result MemSegmentDevice::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlic
     if (HybmGvmHasInited()) {
         ret = hybm_gvm_mem_fetch((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
         if (ret != BM_OK) {
-            BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
+            drv::HalGvaFree((uint64_t)(localVirtualBase + allocatedSize_), size);
+            BM_LOG_ERROR("Failed to fetch gvm memory failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -199,8 +209,7 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo) noexc
                                                        &deserializedInfos[i].pid, 1);
         if (ret != 0) {
             BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret
-                                                       << ", local rank = " << options_.rankId
-                                                       << ", shmName=" << deserializedInfos[localIdx].shmName);
+                << ", local rank = " << options_.rankId << ", shmName=" << deserializedInfos[localIdx].shmName);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -222,7 +231,7 @@ Result MemSegmentDevice::Mmap() noexcept
 
         auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
-            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped: " << (void *)remoteAddress);
+            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped");
             continue;
         }
 
@@ -231,8 +240,7 @@ Result MemSegmentDevice::Mmap() noexcept
             continue;
         }
 
-        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
-                                             << ", size = " << im.size);
+        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to" << ", size = " << im.size);
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
@@ -243,6 +251,7 @@ Result MemSegmentDevice::Mmap() noexcept
         if (HybmGvmHasInited()) {
             ret = hybm_gvm_mem_fetch((uint64_t)remoteAddress, im.size, im.sdid);
             if (ret != BM_OK) {
+                drv::HalGvaClose((uint64_t)remoteAddress, 0);
                 BM_LOG_WARN("hybm_gvm_mem_fetch memory failed: " << ret);
             }
         }
@@ -315,8 +324,47 @@ bool MemSegmentDevice::MemoryInRange(const void *begin, uint64_t size) const noe
     return true;
 }
 
+Result MemSegmentDevice::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+{
+    if (slice == nullptr) {
+        BM_LOG_ERROR("input slice is nullptr");
+        return BM_INVALID_PARAM;
+    }
+
+    auto pos = slices_.find(slice->index_);
+    if (pos == slices_.end()) {
+        BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (pos->second.slice != slice) {
+        BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
+        return BM_INVALID_PARAM;
+    }
+
+    auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
+    BM_LOG_INFO("free slice(idx:" << slice->index_ << ") size: " << slice->size_ << " return:" << res);
+
+    slices_.erase(pos);
+    return BM_OK;
+}
+
 void MemSegmentDevice::FreeMemory() noexcept
 {
+    while (!slices_.empty()) {
+        auto slice = slices_.begin()->second.slice;
+        ReleaseSliceMemory(slice);
+    }
+
+    allocatedSize_ = 0;
+    sliceCount_ = 0;
+    if (globalVirtualAddress_ != nullptr) {
+        auto ret = drv::HalGvaUnreserveMemory();
+        if (ret != 0) {
+            BM_LOG_ERROR("HalGvaUnreserveMemory failed: " << ret);
+        }
+        globalVirtualAddress_ = nullptr;
+    }
 }
 
 int MemSegmentDevice::GetDeviceId(int deviceId) noexcept

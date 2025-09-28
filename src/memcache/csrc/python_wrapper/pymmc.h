@@ -46,7 +46,7 @@ public:
 
     /**
      * @brief Get a pointer to the data
-     * @return void* Pointer to the dat
+     * @return void* Pointer to the data
      */
     void *ptr() const;
 

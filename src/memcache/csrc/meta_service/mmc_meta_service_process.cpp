@@ -76,6 +76,7 @@ int MmcMetaServiceProcess::MainForPython()
 
     metaService_ = new (std::nothrow)MmcMetaServiceDefault("meta_service");
     if (metaService_ == nullptr || metaService_->Start(config_) != MMC_OK) {
+        delete leaderElection_;
         std::cerr << "Error, failed to start MmcMetaService." << std::endl;
         return -1;
     }

@@ -29,6 +29,7 @@ public:
             ctxStore_->DecreaseRef();
             ctxStore_ = nullptr;
         }
+        pthread_cond_destroy(&cond_);
     }
 
     /* *

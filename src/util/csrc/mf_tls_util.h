@@ -14,29 +14,48 @@ namespace mf {
 
 using DecryptFunc = int (*)(const char* cipherText, const size_t cipherTextLen, char* plainText, size_t plainTextLen);
 
-inline int32_t DefaultDecrypter(const char* cipherText, const size_t cipherTextLen,
-                                char* plainText, const size_t plainTextLen)
-{
-    std::copy_n(cipherText, plainTextLen, plainText);
-    return 0;
-}
-
-inline DecryptFunc LoadDecryptFunction(const char* decrypterLibPath)
-{
-    void* decryptLibHandle = dlopen(decrypterLibPath, RTLD_LAZY);
-    if (decryptLibHandle != nullptr) {
-        const auto decryptFunc = (DecryptFunc)dlsym(decryptLibHandle, "DecryptPassword");
-        if (decryptFunc != nullptr) {
-            return decryptFunc;
-        } else {
-            dlclose(decryptLibHandle);
-            return nullptr;
-        }
+class MfTlsUtil {
+public:
+    static inline int32_t DefaultDecrypter(const char* cipherText, const size_t cipherTextLen,
+                                    char* plainText, const size_t plainTextLen)
+    {
+        std::copy_n(cipherText, plainTextLen, plainText);
+        return 0;
     }
 
-    return nullptr;
-}
+    static inline void **GetTlsLibHandler()
+    {
+        static void* decryptLibHandle = nullptr;
+        return &decryptLibHandle;
+    }
 
+    static inline DecryptFunc LoadDecryptFunction(const char* decrypterLibPath)
+    {
+        void **decryptLibHandlePtr = GetTlsLibHandler();
+        if (*decryptLibHandlePtr == nullptr) {
+            *decryptLibHandlePtr = dlopen(decrypterLibPath, RTLD_LAZY);
+        }
+        if (*decryptLibHandlePtr != nullptr) {
+            const auto decryptFunc = (DecryptFunc)dlsym(*decryptLibHandlePtr, "DecryptPassword");
+            if (decryptFunc != nullptr) {
+                return decryptFunc;
+            } else {
+                CloseTlsLib();
+                return nullptr;
+            }
+        }
+        return nullptr;
+    }
+
+    static inline void CloseTlsLib()
+    {
+        void **decryptLibHandlePtr = GetTlsLibHandler();
+        if (*decryptLibHandlePtr != nullptr) {
+            dlclose(*decryptLibHandlePtr);
+            decryptLibHandlePtr = nullptr;
+        }
+    }
+};
 }
 }
 

@@ -78,7 +78,7 @@ void MemEntityDefault::UnInitialize() noexcept
     if (!initialized) {
         return;
     }
-
+    UnReserveMemorySpace();
     hbmSegment_.reset();
     dramSegment_.reset();
     sdmaDataOperator_.reset();
@@ -111,6 +111,7 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
     if (dramSegment_ != nullptr) {
         auto ret = dramSegment_->ReserveMemorySpace(&dramGva_);
         if (ret != BM_OK) {
+            UnReserveMemorySpace();
             BM_LOG_ERROR("Failed to reserver DRAM memory space ret: " << ret);
             return ret;
         }
@@ -121,6 +122,12 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
 
 int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
 {
+    if (hbmSegment_ != nullptr) {
+        hbmSegment_->UnReserveMemorySpace();
+    }
+    if (dramSegment_ != nullptr) {
+        dramSegment_->UnReserveMemorySpace();
+    }
     return BM_OK;
 }
 

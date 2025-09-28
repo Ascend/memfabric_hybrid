@@ -4,6 +4,7 @@
 #ifndef MMC_NET_CTX_ACC_H
 #define MMC_NET_CTX_ACC_H
 
+#include <algorithm>
 #include "mmc_net_engine.h"
 #include "mmc_net_common_acc.h"
 
@@ -36,7 +37,7 @@ inline int32_t NetContextAcc::Reply(int16_t responseCode, char *respData, uint32
     TcpDataBufPtr dataBuf = new (std::nothrow)ock::acc::AccDataBuffer(respDataLen);
     MMC_ASSERT_RETURN(dataBuf.Get() != nullptr, MMC_NEW_OBJECT_FAILED);
     MMC_ASSERT_RETURN(dataBuf->AllocIfNeed(), MMC_NEW_OBJECT_FAILED);
-    memcpy(dataBuf->DataPtrVoid(), static_cast<void *>(const_cast<char *>(respData)), respDataLen);
+    std::copy_n(respData, respDataLen,  static_cast<char *>(dataBuf->DataPtrVoid()));
     dataBuf->SetDataSize(respDataLen);
     return realContext.Reply(responseCode, dataBuf);
 }

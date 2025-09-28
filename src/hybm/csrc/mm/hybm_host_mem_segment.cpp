@@ -22,6 +22,7 @@ Result MemSegmentHost::ValidateOptions() noexcept
 
 Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
 {
+    BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
 
@@ -39,6 +40,13 @@ Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
     *address = globalVirtualAddress_;
+    return BM_OK;
+}
+
+Result MemSegmentHost::UnReserveMemorySpace() noexcept
+{
+    BM_LOG_INFO("un-reserve memory space.");
+    FreeMemory();
     return BM_OK;
 }
 

@@ -92,7 +92,7 @@ public:
     int32_t GetRequest(REQ &req)
     {
         if (std::is_pod<REQ>::value) {
-            memcpy((void *)(&req), Data(), DataLen());
+            std::copy_n(reinterpret_cast<char *>(Data()), DataLen(), reinterpret_cast<char *>(&req));
         } else {
             std::string str{(char *)Data(), DataLen()};
             NetMsgUnpacker unpacker(str);
@@ -233,6 +233,9 @@ public:
             std::string respStr(respData, respLen);
             NetMsgUnpacker unpacker(respStr);
             result = resp.Deserialize(unpacker);
+            if (respData != nullptr) {
+                free(respData);
+            }
             MMC_RETURN_ERROR(result, "deserialize failed");
 
             return result;
