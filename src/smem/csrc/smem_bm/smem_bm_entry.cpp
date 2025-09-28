@@ -27,6 +27,9 @@ static void ReleaseAfterFailed(hybm_entity_t entity, hybm_mem_slice_t slice)
 
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
+    if (inited_) {
+        return SM_OK;
+    }
     uint32_t flags = 0;
     hybm_entity_t entity = nullptr;
     hybm_mem_slice_t slice = nullptr;
@@ -367,7 +370,20 @@ bool SmemBmEntry::AddrInHostGva(const void *address, uint64_t size)
         return false;
     }
 
+    if (coreOptions_.hostVASpace >
+        std::numeric_limits<uint64_t>::max() / static_cast<uint64_t>(coreOptions_.rankCount)) {
+        return false;
+    }
     auto totalSize = coreOptions_.hostVASpace * coreOptions_.rankCount;
+    uintptr_t addrVal = reinterpret_cast<uintptr_t>(address);
+    uintptr_t hostVal = reinterpret_cast<uintptr_t>(hostGva_);
+    if (size > std::numeric_limits<uintptr_t>::max() - addrVal) {
+        return false;
+    }
+    if (totalSize > std::numeric_limits<uintptr_t>::max() - hostVal) {
+        return false;
+    }
+
     if ((const uint8_t *)address + size > (const uint8_t *)hostGva_ + totalSize) {
         return false;
     }

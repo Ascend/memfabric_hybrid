@@ -124,6 +124,7 @@ void DlHalApi::CleanupLibrary()
     pHalResourceIdAlloc = nullptr;
     pHalResourceIdFree = nullptr;
     pHalGetSsid = nullptr;
+    pHalResourceConfig = nullptr;
     pHalSqCqQuery = nullptr;
     pHalHostRegister = nullptr;
     pHalHostUnregister = nullptr;

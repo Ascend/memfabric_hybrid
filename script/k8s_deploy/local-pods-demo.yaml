@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: local-service
-          image: 110.3.229.11:5000/meta:0814_v4
+          image: 127.0.0.1:5000/meta:0814_v4
           resources:
             requests:
               memory: "2Gi"
@@ -60,7 +60,7 @@ spec:
               mountPath: /hugepages-2Mi
       initContainers:
         - name: change-pod-ip
-          image: 110.3.229.11:5000/meta:0814_v4
+          image: 127.0.0.1:5000/meta:0814_v4
           command: [ "/bin/sh", "-c"]
           args:
             - |

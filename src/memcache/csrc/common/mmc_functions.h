@@ -97,6 +97,11 @@ inline int ValidatePathNotSymlink(const char* path)
 {
     struct stat path_stat{};
 
+    if (path == nullptr) {
+        MMC_LOG_ERROR("null path");
+        return MMC_INVALID_PARAM;
+    }
+
     // 检查路径是否存在
     if (access(path, F_OK) != 0) {
         MMC_LOG_ERROR("path " << path << " does not exist. ");

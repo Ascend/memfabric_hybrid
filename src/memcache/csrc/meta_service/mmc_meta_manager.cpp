@@ -54,6 +54,10 @@ Result MmcMetaManager::ExistKey(const std::string& key)
     }
     std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(memObj)]);
     MmcBlobFilterPtr filterPtr = MmcMakeRef<MmcBlobFilter>(UINT32_MAX, MEDIA_NONE, READABLE);
+    if (filterPtr == nullptr) {
+        MMC_LOG_ERROR("Failed to alloc filter");
+        return MMC_MALLOC_FAILED;
+    }
     std::vector<MmcMemBlobPtr> blobs = memObj->GetBlobs(filterPtr);
     if (blobs.empty()) {
         MMC_LOG_ERROR("Key is exist but do not have readable blob key:" << key);
@@ -72,6 +76,10 @@ void MmcMetaManager::CheckAndEvict()
     auto moveFunc = [this](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
 
+        if (objMeta == nullptr) {
+            MMC_LOG_ERROR("objMeta is null");
+            return false;
+        }
         MediaType type = objMeta->MoveTo(true);
         MediaType srcType = MoveUp(type);
         if (type == MediaType::MEDIA_NONE || srcType == MediaType::MEDIA_NONE) {
@@ -107,6 +115,10 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
                              MmcMemMetaDesc& objMeta)
 {
     MmcMemObjMetaPtr tempMetaObj = MmcMakeRef<MmcMemObjMeta>();
+    if (tempMetaObj == nullptr) {
+        MMC_LOG_ERROR("Fail to malloc tempMetaObj");
+        return MMC_MALLOC_FAILED;
+    }
     std::vector<MmcMemBlobPtr> blobs;
 
     Result ret = globalAllocator_->Alloc(allocOpt, blobs);
@@ -258,10 +270,12 @@ Result MmcMetaManager::RebuildMeta(std::map<std::string, MmcMemBlobDesc> &blobMa
         }
 
         objMeta = MmcMakeRef<MmcMemObjMeta>();
-        objMeta->AddBlob(blobPtr);
-        ret = metaContainer_->Insert(key, objMeta);
-        if (ret == MMC_OK) {
-            continue;
+        if (objMeta != nullptr) {
+            objMeta->AddBlob(blobPtr);
+            ret = metaContainer_->Insert(key, objMeta);
+            if (ret == MMC_OK) {
+                continue;
+            }
         }
 
         if (metaContainer_->Get(key, objMeta) == MMC_OK) {
@@ -286,6 +300,10 @@ Result MmcMetaManager::Unmount(const MmcLocation &loc)
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(loc.rank_, loc.mediaType_, NONE);
 
     auto matchFunc = [this, &filter](const std::string& key, const MmcMemObjMetaPtr& objMeta) -> bool {
+        if (objMeta == nullptr) {
+            MMC_LOG_ERROR("objMeta is null");
+            return false;
+        }
         std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
         auto ret = objMeta->FreeBlobs(key, globalAllocator_, filter, false);
         if (ret != MMC_OK) {
@@ -333,6 +351,10 @@ Result MmcMetaManager::Query(const std::string &key, MemObjQueryInfo &queryInfo)
 Result MmcMetaManager::CopyBlob(const MmcMemObjMetaPtr& objMeta, const MmcMemBlobDesc& srcBlob,
                                 const MmcLocation& dstLoc)
 {
+    if (objMeta == nullptr) {
+        MMC_LOG_ERROR("objMeta is null");
+        return MMC_INVALID_PARAM;
+    }
     AllocOptions allocOpt{};
     allocOpt.blobSize_ = srcBlob.size_;
     allocOpt.numBlobs_ = 1;
@@ -386,6 +408,10 @@ Result MmcMetaManager::MoveBlob(const std::string& key, const MmcLocation& src, 
     std::unique_lock<std::mutex> guard(metaItemMtxs_[GetIndex(objMeta)]);
     std::vector<MmcMemBlobDesc> blobsDesc;
     MmcBlobFilterPtr filter = MmcMakeRef<MmcBlobFilter>(src.rank_, src.mediaType_, READABLE);
+    if (filter == nullptr) {
+        MMC_LOG_ERROR("Fail to malloc filter");
+        return MMC_MALLOC_FAILED;
+    }
     objMeta->GetBlobsDesc(blobsDesc, filter);
     if (blobsDesc.empty()) {
         MMC_LOG_ERROR("blob for " << src << " to " << dst << " is empty with key : " << key << "," << objMeta);
@@ -399,6 +425,10 @@ Result MmcMetaManager::MoveBlob(const std::string& key, const MmcLocation& src, 
     }
 
     filter = MmcMakeRef<MmcBlobFilter>(src.rank_, src.mediaType_, NONE);
+    if (filter == nullptr) {
+        MMC_LOG_ERROR("Fail to malloc filter");
+        return MMC_MALLOC_FAILED;
+    }
     ret = objMeta->FreeBlobs(key, globalAllocator_, filter);
     if (ret != MMC_OK) {
         MMC_LOG_ERROR("key: " << key << " free blob failed, ret " << ret);

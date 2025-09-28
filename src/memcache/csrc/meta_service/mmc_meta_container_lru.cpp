@@ -164,6 +164,10 @@ public:
 
     std::vector<Key> EvictCandidates(const uint16_t evictThresholdHigh, const uint16_t evictThresholdLow)
     {
+        if (evictThresholdLow == 0 || evictThresholdHigh <= evictThresholdLow) {
+            MMC_LOG_ERROR("Evict threshold invalid, high: " << evictThresholdHigh << ", low: " << evictThresholdLow);
+            return {};
+        }
         std::lock_guard<std::mutex> guard(mutex_);
 
         uint32_t numEvictObjs = std::max(std::min(

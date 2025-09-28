@@ -350,6 +350,7 @@ void SmemNetGroupEngine::JoinLeaveEventProcess(const std::string &value, std::st
 
 void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId, std::string &prevEventValue)
 {
+    SM_ASSERT_RET_VOID(store_ != nullptr);
     std::string currentEventValue;
     prevEventValue = std::to_string(option_.rank).append("L").append(std::to_string(rankId));
     auto ret = store_->Get(SMEM_GROUP_LISTEN_EVENT_KEY, currentEventValue, 0L);
@@ -403,6 +404,7 @@ void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId, std::string &
 
 void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
 {
+    SM_ASSERT_RET_VOID(store_ != nullptr);
     int64_t tmpVal = 0L;
     auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
     if (ret != SM_OK) {
@@ -498,6 +500,7 @@ bool SmemNetGroupEngine::TestBitmapForRank(uint32_t rankId) const
 
 Result SmemNetGroupEngine::StartListenEvent()
 {
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(listenSignal_.Initialize() == SM_OK, SM_ERROR);
 
     uint32_t wid = 0;
@@ -516,6 +519,7 @@ Result SmemNetGroupEngine::StartListenEvent()
 
 Result SmemNetGroupEngine::GroupJoin()
 {
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
     if (joined_) {
         return SM_OK;
@@ -565,6 +569,7 @@ join_exit:
 
 Result SmemNetGroupEngine::GroupLeave()
 {
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
 

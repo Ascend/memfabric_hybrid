@@ -59,6 +59,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     ret = hybm_init(deviceId, config->flags);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
+        SmemBmEntryManager::Instance().Destroy();
         return SM_ERROR;
     }
 

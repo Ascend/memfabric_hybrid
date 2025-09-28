@@ -616,6 +616,9 @@ Result MmcClientDefault::RegisterBuffer(uint64_t addr, uint64_t size)
 
 void MmcClientDefault::UpdateRegisterMap(uint64_t va, uint64_t size)
 {
+    if (va > std::numeric_limits<uint64_t>::max() - size) {
+        return;
+    }
     registerSet_.insert((va << MMC_REGISTER_SET_MARK_BIT) | MMC_REGISTER_SET_LEFT_MARK);
     registerSet_.insert((va + size) << MMC_REGISTER_SET_MARK_BIT);
 }

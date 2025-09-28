@@ -22,9 +22,9 @@ namespace mmc {
 class MmcMemObjMeta : public MmcReferable {
 public:
     MmcMemObjMeta() = default;
-    MmcMemObjMeta(uint16_t prot, uint8_t priority, uint8_t numBlobs, std::vector<MmcMemBlobPtr> blobs,
+    MmcMemObjMeta(uint16_t prot, uint8_t priority, std::vector<MmcMemBlobPtr> blobs,
                   uint64_t size)
-        : prot_(prot), priority_(priority), numBlobs_(numBlobs)
+        : prot_(prot), priority_(priority)
     {
         for (auto &blob : blobs) {
             AddBlob(blob);

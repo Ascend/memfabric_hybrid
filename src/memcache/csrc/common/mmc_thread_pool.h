@@ -36,8 +36,8 @@ public:
 
     int32_t Start()
     {
-        if (numThreads_ == 0) {
-            MMC_LOG_ERROR("Number of threads must be greater than 0");
+        if (numThreads_ == 0 || numThreads_ > MMC_THREAD_POOL_MAX_THREADS) {
+            MMC_LOG_ERROR("Number of threads must be greater than 0 and less than " << MMC_THREAD_POOL_MAX_THREADS);
             return MMC_ERROR;
         }
         for (size_t i = 0; i < numThreads_; ++i) {

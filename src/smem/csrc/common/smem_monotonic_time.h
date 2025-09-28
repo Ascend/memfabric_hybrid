@@ -61,7 +61,7 @@ public:
 
 public:
     uint64_t start = 0; /* start time in ns */
-    uint64_t end = 0;   /* end time in ns */
+    uint64_t end = UINT64_MAX;   /* end time in ns */
 };
 
 #if defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__)

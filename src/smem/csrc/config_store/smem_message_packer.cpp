@@ -39,7 +39,7 @@ std::vector<uint8_t> SmemMessagePacker::Pack(const SmemMessage &message) noexcep
 
 bool SmemMessagePacker::Full(const std::vector<uint8_t> &buffer) noexcept
 {
-    if (buffer.size() < sizeof(uint64_t) + sizeof(MessageType)) {
+    if (buffer.size() < 4U * sizeof(uint64_t) + sizeof(MessageType)) {
         return false;
     }
 
@@ -49,7 +49,7 @@ bool SmemMessagePacker::Full(const std::vector<uint8_t> &buffer) noexcept
 
 int64_t SmemMessagePacker::MessageSize(const std::vector<uint8_t> &buffer) noexcept
 {
-    if (buffer.size() < sizeof(uint64_t)) {
+    if (buffer.size() < 4U * sizeof(uint64_t) + sizeof(MessageType)) {
         return -1L;
     }
 
