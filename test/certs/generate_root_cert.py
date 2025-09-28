@@ -1,10 +1,14 @@
+#  Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+
+from datetime import datetime, timedelta
+import argparse
+
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-from datetime import datetime, timedelta
-import argparse
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ca_cert_path', type=str, help='The path to save the certificate of ca',

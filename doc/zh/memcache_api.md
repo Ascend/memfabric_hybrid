@@ -70,6 +70,20 @@ void mmcc_uninit();
 
 ### 3. 数据操作接口
 
+#### mmcc_register_buffer
+```c
+int32_t mmcc_register_buffer(uint64_t addr, uint64_t size);
+```
+**功能**: 将指定地址和大小的内存缓冲区注册到BM中，以加速device rdma操作。
+
+**参数**:
+- `addr`: 要注册的内存缓冲区地址
+- `size`: 要注册的内存缓冲区大小
+
+**返回值**:
+- `0`: 成功
+- 其他: 失败
+
 #### mmcc_put
 ```c
 int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags);
@@ -551,6 +565,52 @@ results = store.batch_is_exist(keys)
   - `1`: 存在
   - `0`: 不存在
   - 其他: 错误
+
+#### get_key_info
+```python
+key_info = store.get_key_info(key)
+```
+**功能**: 获取指定key的数据信息
+
+**参数**:
+- `key`: 数据的键
+
+**返回值**:
+- `KeyInfo`对象，包含以下方法：
+  - `size()`: 获取数据大小
+  - `loc_list()`: 获取数据位置列表
+  - `type_list()`: 获取数据类型列表
+  - `__str__()`: 获取信息的字符串表示
+
+#### batch_get_key_info
+```python
+key_infos = store.batch_get_key_info(keys)
+```
+**功能**: 批量获取多个key的数据信息
+
+**参数**:
+- `keys`: 数据键列表
+
+**返回值**:
+- `KeyInfo`对象列表，每个对象包含以下方法：
+  - `size()`: 获取数据大小
+  - `loc_list()`: 获取数据位置列表
+  - `type_list()`: 获取数据类型列表
+  - `__str__()`: 获取信息的字符串表示
+
+#### register_buffer
+```python
+result = store.register_buffer(buffer_ptr, size)
+```
+**功能**: 注册内存缓冲区，用于Device RDMA的加速操作
+
+**参数**:
+- `buffer_ptr`: 缓冲区指针
+- `size`: 缓冲区大小
+
+**返回值**:
+- `0`: 成功
+- 其他: 失败
 
 ### MmcCopyDirect 枚举类型
 

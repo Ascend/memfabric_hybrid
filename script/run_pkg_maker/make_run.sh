@@ -46,6 +46,7 @@ mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/memcache
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/util
+mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
 
 # smem
 cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include/smem
@@ -66,9 +67,9 @@ cp ${OUTPUT_DIR}/memcache/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 cp -r ${PROJECT_DIR}/src/util/include/* ${PKG_DIR}/${ARCH_OS}/include/util
 
 cp ${PROJECT_DIR}/config/* ${PKG_DIR}/config
-cp -r ${PROJECT_DIR}/script/certs ${PKG_DIR}/${ARCH_OS}/script
+cp -r ${PROJECT_DIR}/test/certs ${PKG_DIR}/${ARCH_OS}/script
 cp -r ${PROJECT_DIR}/script/k8s_deploy ${PKG_DIR}/${ARCH_OS}/script
-cp -r ${PROJECT_DIR}/test/python/memcache/mock_server ${PKG_DIR}/${ARCH_OS}/script
+cp ${PROJECT_DIR}/test/python/memcache/mock_server/server.py ${PKG_DIR}/${ARCH_OS}/script/mock_server
 cp -r ${PROJECT_DIR}/test/python/memcache/ha ${PKG_DIR}/${ARCH_OS}/script
 
 mkdir -p ${PKG_DIR}/script

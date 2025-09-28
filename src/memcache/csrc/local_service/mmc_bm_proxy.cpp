@@ -25,26 +25,38 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
         MMC_RETURN_ERROR(smem_set_extern_logger(initConfig.logFunc), "Failed to set smem bm extern logger");
     }
 
-    MMC_RETURN_ERROR(smem_init(0), "Failed to init smem");
-
     smem_bm_config_t config;
     MMC_RETURN_ERROR(smem_bm_config_init(&config), "Failed to init smem bm config");
-
     config.flags = initConfig.flags;
     config.hcomTlsConfig = initConfig.hcomTlsConfig;
     config.storeTlsConfig = initConfig.storeTlsConfig;
     (void) std::copy_n(initConfig.hcomUrl.c_str(), initConfig.hcomUrl.size(), config.hcomUrl);
-    MMC_RETURN_ERROR(smem_bm_init(initConfig.ipPort.c_str(), initConfig.worldSize, initConfig.deviceId, &config),
-                     "Failed to init smem bm");
+
+    MMC_RETURN_ERROR(smem_init(0), "Failed to init smem");
+
+    if (smem_bm_init(initConfig.ipPort.c_str(), initConfig.worldSize, initConfig.deviceId, &config) != 0) {
+        MMC_LOG_ERROR("Failed to init smem bm");
+        smem_uninit();
+        return MMC_ERROR;
+    }
 
     bmRankId_ = smem_bm_get_rank_id();
 
     auto ret = InternalCreateBm(createConfig);
     if (ret != MMC_OK) {
+        MMC_LOG_ERROR("Internal create bm failed");
+        smem_bm_uninit(0);
+        smem_uninit();
         return ret;
     }
     void* tmpGva = nullptr;
-    MMC_RETURN_ERROR(smem_bm_join(handle_, 0, &tmpGva), "Failed to join smem bm");
+    if (smem_bm_join(handle_, 0, &tmpGva) != 0) {
+        MMC_LOG_ERROR("Failed to join smem bm");
+        smem_bm_destroy(handle_);
+        smem_bm_uninit(0);
+        smem_uninit();
+        return MMC_ERROR;
+    }
 
     gvas_[MEDIA_HBM] = smem_bm_ptr_by_mem_type(handle_, SMEM_MEM_TYPE_DEVICE, bmRankId_);
     gvas_[MEDIA_DRAM] = smem_bm_ptr_by_mem_type(handle_, SMEM_MEM_TYPE_HOST, bmRankId_);
@@ -52,9 +64,8 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
     spaces_[MEDIA_DRAM] = smem_bm_get_local_mem_size_by_mem_type(handle_, SMEM_MEM_TYPE_HOST);
     started_ = true;
 
-    MMC_LOG_INFO("init bm success, rank:" << bmRankId_ << ", worldSize:" << initConfig.worldSize << ", hbm{"
-                                          << gvas_[MEDIA_HBM] << ", " << spaces_[MEDIA_HBM] << "}, dram{"
-                                          << gvas_[MEDIA_DRAM] << "," << spaces_[MEDIA_DRAM] << "}");
+    MMC_LOG_INFO("init bm success, rank:" << bmRankId_ << ", worldSize:" << initConfig.worldSize <<
+        ", hbm{" << spaces_[MEDIA_HBM] << "}, dram{" << spaces_[MEDIA_DRAM] << "}");
     return MMC_OK;
 }
 
@@ -93,11 +104,11 @@ void MmcBmProxy::DestroyBm()
 
     if (handle_ != nullptr) {
         smem_bm_destroy(handle_);
-        smem_bm_uninit(0);
-        smem_uninit();
         handle_ = nullptr;
         std::fill(gvas_, gvas_ + MEDIA_NONE, nullptr);
     }
+    smem_bm_uninit(0);
+    smem_uninit();
     started_ = false;
     MMC_LOG_INFO("MmcBmProxy (" << name_ << ") is destroyed successfully");
 }

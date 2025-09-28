@@ -1,8 +1,11 @@
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+#  Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+
 from datetime import datetime, timedelta
 import argparse
 import os
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
 
 
 parser = argparse.ArgumentParser()

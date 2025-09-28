@@ -41,16 +41,21 @@ Result MmcLocalServiceDefault::Start(const mmc_local_service_config_t &config)
         options.tlsOption = options_.accTlsConfig;
         options.logLevel = options_.logLevel;
         options.logFunc = options_.logFunc;
-        MMC_RETURN_ERROR(metaNetClient_->Start(options),
-                         "Failed to start net server of local service, name=" << name_
-                         << ", bmRankId=" << options_.rankId);
-        MMC_RETURN_ERROR(metaNetClient_->Connect(options_.discoveryURL),
-                         "Failed to connect net server of local service, name=" << name_
-                         << ", bmRankId=" << options_.rankId);
+        if (metaNetClient_->Start(options) != MMC_OK || metaNetClient_->Connect(options_.discoveryURL) != MMC_OK) {
+            MMC_LOG_ERROR("Failed to start net server of local service, bmRankId=" << options_.rankId);
+            DestroyBm();
+            metaNetClient_->Stop();
+            return MMC_ERROR;
+        }
     }
     pid_ = getpid();
 
-    MMC_RETURN_ERROR(RegisterBm(),  "Failed to register bm, name=" << name_ << ", bmRankId=" << options_.rankId);
+    if (RegisterBm() != MMC_OK) {
+        MMC_LOG_ERROR("Failed to register bm, name=" << name_ << ", bmRankId=" << options_.rankId);
+        DestroyBm();
+        metaNetClient_->Stop();
+        return MMC_ERROR;
+    }
     metaNetClient_->RegisterRetryHandler(
         std::bind(&MmcLocalServiceDefault::RegisterBm, this),
         std::bind(&MmcLocalServiceDefault::UpdateMetaBackup, this,
@@ -85,6 +90,7 @@ Result MmcLocalServiceDefault::InitBm()
                                            options_.localDRAMSize, options_.localHBMSize, options_.flags};
 
     MmcBmProxyPtr bmProxy = MmcBmProxyFactory::GetInstance("bmProxyDefault");
+    MMC_ASSERT_RETURN(bmProxy != nullptr, MMC_ERROR);
     Result ret = bmProxy->InitBm(initConfig, createConfig);
     if (ret != MMC_OK) {
         return ret;

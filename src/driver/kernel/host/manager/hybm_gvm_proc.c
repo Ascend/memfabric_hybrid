@@ -385,6 +385,10 @@ static int hybm_gvm_dma_map(struct hybm_gvm_process *proc, u64 pa, u64 *pa_list,
 {
     u32 i;
     struct device *dev = uda_get_device(proc->devid);
+    if (dev == NULL) {
+        hybm_gvm_err("uda_get_device failed, devid:%u", proc->devid);
+        return -EINVAL;
+    }
     struct page *pg;
     int ret;
 
