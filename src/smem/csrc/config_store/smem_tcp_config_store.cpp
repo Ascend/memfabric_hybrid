@@ -512,12 +512,6 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     STORE_ASSERT_RETURN(accClientLink_ != nullptr, nullptr);
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
-    if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret);
-        return nullptr;
-    }
-
     std::mutex waitRespMutex;
     std::condition_variable waitRespCond;
     auto waitContext = std::make_shared<ClientWaitContext>(waitRespMutex, waitRespCond);
@@ -525,6 +519,11 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, waitContext);
     msgCtxLocker.unlock();
+    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    if (ret != SM_OK) {
+        STORE_LOG_ERROR("send message failed, result: " << ret);
+        return nullptr;
+    }
 
     auto response = waitContext->WaitFinished();
     return response;
@@ -592,17 +591,16 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     STORE_ASSERT_RETURN(accClientLink_ != nullptr, SM_NOT_INITIALIZED);
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
-    if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret);
-        return ret;
-    }
-
     auto watchContext = std::make_shared<ClientWatchContext>(notify, false);
     STORE_ASSERT_RETURN(watchContext != nullptr, SM_MALLOC_FAILED);
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, std::move(watchContext));
     msgCtxLocker.unlock();
+    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    if (ret != SM_OK) {
+        STORE_LOG_ERROR("send message failed, result: " << ret);
+        return ret;
+    }
 
     id = seqNo;
     return SM_OK;

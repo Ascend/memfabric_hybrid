@@ -30,14 +30,7 @@ Result DlApi::LoadLibrary(const std::string &libDirPath)
         return result;
     }
 
-    result = DlHcomApi::LoadLibrary();
-    if (result != BM_OK) {
-        DlHccpApi::CleanupLibrary();
-        DlHalApi::CleanupLibrary();
-        DlAclApi::CleanupLibrary();
-        return result;
-    }
-
+    DlHcomApi::LoadLibrary();
     return BM_OK;
 }
 

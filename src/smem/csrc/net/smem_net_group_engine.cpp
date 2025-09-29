@@ -106,7 +106,7 @@ Result SmemNetGroupEngine::GroupBarrier()
         return SM_ERROR;
     }
     traceAdd.RecordEnd();
-    SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " value: " << val);
+    SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " value: " << val << " size:" << size);
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
     if (val == size) {
