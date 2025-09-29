@@ -85,7 +85,7 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
     // 打开该文件前，判断该文件路径是否有效、规范
     char realFile[PATH_MAX] = {0};
     if (realpath(realName.c_str(), realFile) == nullptr) {
-        BM_LOG_WARN("driver version path " << realName << " is not a valid real path");
+        BM_LOG_WARN("driver version path is not a valid real path.");
         return "";
     }
 
@@ -125,7 +125,7 @@ static std::string CastDriverVersion(const std::string &driverEnv)
         std::string driverVersion = LoadDriverVersionInfoFile(driverVersionPath, "Innerversion=");
         return driverVersion;
     }
-    BM_LOG_WARN("cannot found version file in :" << driverEnv);
+    BM_LOG_WARN("cannot found version file in driverEnv.");
     return "";
 }
 
@@ -290,7 +290,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     auto libPath = std::string(path).append("/lib64");
     auto ret = DlApi::LoadLibrary(libPath);
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "load library from path: " << libPath << " failed: " << ret, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "load library failed: " << ret, ret);
 
     ret = hybm_init_hbm_gva(deviceId, flags);
     if (ret != BM_OK) {

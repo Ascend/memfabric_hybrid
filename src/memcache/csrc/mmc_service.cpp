@@ -48,5 +48,10 @@ MMC_API mmc_local_service_t mmcs_local_service_start(mmc_local_service_config_t 
 MMC_API void mmcs_local_service_stop(mmc_local_service_t handle)
 {
     MMC_VALIDATE_RETURN_VOID(handle != nullptr, "invalid param, handle is nullptr");
-    static_cast<MmcLocalServiceDefault *>(handle)->Stop();
+    auto service_default = static_cast<MmcLocalServiceDefault *>(handle);
+    if (service_default != nullptr) {
+        service_default->Stop();
+        delete service_default;
+        service_default = nullptr;
+    }
 }

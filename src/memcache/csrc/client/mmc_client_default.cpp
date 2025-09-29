@@ -35,7 +35,7 @@ Result MmcClientDefault::Start(const mmc_client_config_t &config)
     threadPool_ = MmcMakeRef<MmcThreadPool>("client_pool", 1);
     MMC_ASSERT_RETURN(threadPool_ != nullptr, MMC_MALLOC_FAILED);
     MMC_RETURN_ERROR(threadPool_->Start(), "thread pool start failed");
-
+    MMC_ASSERT_RETURN(memchr(config.discoveryURL, '\0', DISCOVERY_URL_SIZE) != nullptr, MMC_INVALID_PARAM);
     auto tmpNetClient  = MetaNetClientFactory::GetInstance(config.discoveryURL, "MetaClientCommon").Get();
     MMC_ASSERT_RETURN(tmpNetClient != nullptr, MMC_NEW_OBJECT_FAILED);
     if (!tmpNetClient->Status()) {
