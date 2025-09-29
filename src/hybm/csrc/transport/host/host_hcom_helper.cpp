@@ -12,7 +12,7 @@
 using namespace ock::mf;
 using namespace ock::mf::transport::host;
 
-constexpr int MIN_VALID_PORT = 1;
+constexpr int MIN_VALID_PORT = 1024;
 constexpr int MAX_VALID_PORT = 65535;
 constexpr int MIN_VALID_MASK = 0;
 constexpr int MAX_VALID_MASK = 32;
