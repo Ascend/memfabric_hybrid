@@ -67,6 +67,7 @@ public:
 
 private:
     smem_bm_t handle_;
+    int sockfd_;
 };
 
 #endif // PYTRANSFER_H

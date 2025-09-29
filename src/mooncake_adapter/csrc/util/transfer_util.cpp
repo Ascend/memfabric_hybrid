@@ -22,18 +22,22 @@
 namespace ock {
 namespace adapter {
 
-uint16_t findAvailableTcpPort()
+uint16_t findAvailableTcpPort(int &sockfd)
 {
     static std::random_device rd;
-    static std::mt19937 gen(rd());
     const int min_port = 15000;
-    const int max_port = 17000;
-    const int max_attempts = 500;
+    const int max_port = 25000;
+    const int max_attempts = 1000;
+    const int offset_bit = 32;
+    uint64_t seed = 1;
+    seed |= static_cast<uint64_t>(getpid()) << offset_bit;
+    seed |= static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count() & 0xFFFFFFFF);
+    static std::mt19937_64 gen(seed);
     std::uniform_int_distribution<> dis(min_port, max_port);
 
     for (int attempt = 0; attempt < max_attempts; ++attempt) {
         int port = dis(gen);
-        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd == -1) {
             continue;
         }
@@ -41,6 +45,7 @@ uint16_t findAvailableTcpPort()
         int on = 1;
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
             close(sockfd);
+            sockfd = -1;
             continue;
         }
 
@@ -50,11 +55,11 @@ uint16_t findAvailableTcpPort()
         bind_address.sin_addr.s_addr = INADDR_ANY;
         
         if (bind(sockfd, reinterpret_cast<sockaddr*>(&bind_address), sizeof(bind_address)) == 0) {
-            close(sockfd);
             return port;
         }
 
         close(sockfd);
+        sockfd = -1;
     }
     ADAPTER_LOG_ERROR("Not find a available tcp port");
     return 0;

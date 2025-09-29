@@ -23,12 +23,15 @@ static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
                                  ", build time: " __DATE__ " " __TIME__
                                  ", commit: " STR2(GIT_LAST_COMMIT);
 
-TransferAdapterPy::TransferAdapterPy() : handle_(nullptr)
+TransferAdapterPy::TransferAdapterPy() : handle_(nullptr), sockfd_(-1)
 {
 }
 
 TransferAdapterPy::~TransferAdapterPy()
 {
+    if (sockfd_ != -1) {
+        close(sockfd_);
+    }
 }
 
 int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
@@ -67,7 +70,7 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
 
 int TransferAdapterPy::GetRpcPort()
 {
-    int rpcPort = static_cast<int>(findAvailableTcpPort());
+    int rpcPort = static_cast<int>(findAvailableTcpPort(sockfd_));
     ADAPTER_LOG_INFO("Get rpcPort is " << rpcPort);
     return rpcPort;
 }

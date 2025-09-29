@@ -34,7 +34,8 @@ int HybmStream::Initialize() noexcept
     ret = AllocLogicCq();
     BM_ASSERT_RETURN(ret == 0, ret);
 
-    BM_LOG_INFO("[TEST] init st ok, st:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_ << " logic:" << logicCq_);
+    BM_LOG_DEBUG("HybmStream init st ok, st:" << streamId_ << " sq:" << sqId_
+                 << " cq:" << cqId_ << " logic:" << logicCq_);
     runningTaskCount_.store(0L);
     taskList_.resize(HYBM_SQCQ_DEPTH);
     inited_ = true;

@@ -18,7 +18,7 @@ namespace adapter {
 #define STR(x) #x
 #define STR2(x) STR(x)
 
-uint16_t findAvailableTcpPort();
+uint16_t findAvailableTcpPort(int &sockfd);
 
 int32_t pytransfer_create_config_store(const char *storeUrl);
 

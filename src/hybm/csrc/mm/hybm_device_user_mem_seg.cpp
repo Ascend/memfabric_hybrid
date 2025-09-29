@@ -82,6 +82,9 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
             DlAclApi::RtIpcDestroyMemoryName(name);
             return BM_DL_FUNCTION_FAILED;
         }
+        BM_LOG_INFO("set shm(" << name << ") deviceId=" << deviceId_ << " for sdid=" << remoteDev.first
+                    << " pid=" << remoteDev.second.pid << ", remoteDev.deviceId=" << remoteDev.second.deviceId
+                    << " remoteDev.rankId=" << remoteDev.second.rankId);
     }
 
     memNames_.emplace_back(name);
@@ -296,8 +299,10 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
             BM_LOG_ERROR("RtSetIpcMemorySuperPodPid failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_DEBUG("set whitelist for shm(" << it.second.name << ") sdid=" << deviceInfo.sdid
-                                              << ", pid=" << deviceInfo.pid);
+        BM_LOG_INFO("set whitelist for shm(" << it.second.name << ") deviceId_="
+                    << deviceId_ << ", sdid=" << deviceInfo.sdid
+                    << ", pid=" << deviceInfo.pid << ", deviceInfo.deviceId=" << deviceInfo.deviceId
+                    << ", deviceInfo.rankId=" << deviceInfo.rankId);
     }
 
     importedDeviceInfo_.emplace(deviceInfo.rankId, deviceInfo);
@@ -320,6 +325,7 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
         return BM_ERROR;
     }
 
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
     void *address = nullptr;
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) && CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId)) {
         if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
@@ -336,12 +342,13 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
         if (ret != 0) {
             BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_
                          << ", pid=" << pid_ << ", deviceId=" << deviceId_
-                         << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
+                         << ", sliceInfo.deviceId=" << sliceInfo.deviceId
+                         << ", sliceInfo.rankId=" << sliceInfo.rankId);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_DEBUG("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
-                     << ", pid=" << pid_ << ", deviceId=" << deviceId_
-                     << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
+        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
+                    << ", pid=" << pid_ << ", deviceId=" << deviceId_
+                    << ", sliceInfo.deviceId=" << sliceInfo.deviceId << ", sliceInfo.rankId=" << sliceInfo.rankId);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         address = (void *)(ptrdiff_t)sliceInfo.address;
     }
@@ -360,6 +367,7 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
+    uniqueLock.unlock();
     return BM_OK;
 }
 

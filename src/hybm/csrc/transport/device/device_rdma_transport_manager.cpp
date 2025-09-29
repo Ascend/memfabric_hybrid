@@ -314,7 +314,7 @@ Result RdmaTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_
         return ret;
     }
 
-    BM_LOG_INFO("ReadRemote() success.");
+    BM_LOG_DEBUG("ReadRemote() success.");
     return BM_OK;
 }
 
@@ -327,7 +327,7 @@ Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
         return ret;
     }
 
-    BM_LOG_INFO("WriteRemote() success.");
+    BM_LOG_DEBUG("WriteRemote() success.");
     return BM_OK;
 }
 
@@ -621,7 +621,7 @@ uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
                       chipOffset * static_cast<uint64_t>(chipId) +
                       dieOffset * dieId +
                       chipAddr;
-    BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId << ", db=0x" << std::hex << dbAddr);
+    BM_LOG_DEBUG("deviceId=" << deviceId << ", die_id=" << dieId << ", db=0x" << std::hex << dbAddr);
 
     return dbAddr;
 }
