@@ -357,6 +357,7 @@ int HybmStream::Synchronize(uint32_t task) noexcept
         uint32_t head = UINT16_MAX;
         ret = GetSqHead(head);
         BM_ASSERT_LOG_AND_RETURN(ret == 0, "GetSqHead failed! ret:" << ret, ret);
+        BM_ASSERT_LOG_AND_RETURN(head < HYBM_SQCQ_DEPTH, "GetSqHead invalid! head:" << head, BM_ERROR);
 
         if (!GetCqeStatus()) { // no cqe
             while (sqHead_ != head) {
