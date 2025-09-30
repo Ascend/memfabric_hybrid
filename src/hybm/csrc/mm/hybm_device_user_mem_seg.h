@@ -43,7 +43,7 @@ struct HbmExportSliceInfo {
     uint16_t rankId{0};
     uint16_t reserved{0};
     uint32_t deviceId{0};
-    char name[DEVICE_SHM_NAME_SIZE]{};
+    char name[DEVICE_SHM_NAME_SIZE + 1]{};
 };
 
 class MemSegmentDeviceUseMem : public MemSegmentDevice {
