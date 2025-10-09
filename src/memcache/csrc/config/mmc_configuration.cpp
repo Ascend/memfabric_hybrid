@@ -232,14 +232,14 @@ bool Configuration::SetWithTypeAutoConvert(const std::string &key, const std::st
             std::cerr << "<" << key << "> was empty or in wrong type, it should be a int number." << std::endl;
             return false;
         }
-        if (mIntItems.count(key) > 0) {
-            mIntItems.at(key) = static_cast<int32_t>(tmp);
-        }
+        mIntItems[key] = static_cast<int32_t>(tmp);
     } else if (valueType == ConfValueType::VFLOAT) {
-        if (!OckStof(value, mFloatItems.at(key))) {
+        float tmp = 0.0;
+        if (!OckStof(value, tmp)) {
             std::cerr << "<" << key << "> was empty or in wrong type, it should be a float number." << std::endl;
             return false;
         }
+        mFloatItems[key] = tmp;
     } else if (valueType == ConfValueType::VSTRING) {
         if (mStrItems.count(key) > 0) {
             return SetWithStrAutoConvert(key, value);
@@ -250,9 +250,7 @@ bool Configuration::SetWithTypeAutoConvert(const std::string &key, const std::st
             std::cerr << "<" << key << "> should represent a bool value." << std::endl;
             return false;
         }
-        if (mBoolItems.count(key) > 0) {
-            mBoolItems.at(key) = b;
-        }
+        mBoolItems[key] = b;
     } else if (valueType == ConfValueType::VUINT64) {
         uint64_t tmp = 0;
         if (!OckStoULL(value, tmp)) {
@@ -260,9 +258,7 @@ bool Configuration::SetWithTypeAutoConvert(const std::string &key, const std::st
                 << std::endl;
             return false;
         }
-        if (mUInt64Items.count(key) > 0) {
-            mUInt64Items.at(key) = tmp;
-        }
+        mUInt64Items[key] = tmp;
     }
     return true;
 }
@@ -286,7 +282,7 @@ bool Configuration::SetWithStrAutoConvert(const std::string &key, const std::str
         std::cerr << "Simplify <" << key << "> to absolute path failed." << std::endl;
         return false;
     }
-    mStrItems.at(key) = tempValue;
+    mStrItems[key] = tempValue;
     return true;
 }
 

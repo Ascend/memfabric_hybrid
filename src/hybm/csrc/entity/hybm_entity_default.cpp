@@ -157,6 +157,10 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
         ret = transportManager_->RegisterMemoryRegion(info);
         if (ret != 0) {
             BM_LOG_ERROR("register memory region allocate failed: " << ret << ", info: " << info);
+            auto res = segment->ReleaseSliceMemory(realSlice);
+            if (res != BM_OK) {
+                BM_LOG_ERROR("failed to release slice memory: " << res);
+            }
             return ret;
         }
     }
