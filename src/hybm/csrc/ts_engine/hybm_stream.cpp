@@ -207,7 +207,7 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(inited_, "stream not init!", BM_NOT_INITIALIZED);
     int ret = 0;
-    if ((sqTail_ + 1U) % HYBM_SQCQ_DEPTH == sqHead_) {
+    if ((sqTail_ + UN40) % HYBM_SQCQ_DEPTH == sqHead_) {
         ret = Synchronize(sqHead_);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "stream synchronize failed!", BM_ERROR);
     }
