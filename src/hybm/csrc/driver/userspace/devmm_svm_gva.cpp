@@ -395,7 +395,9 @@ int32_t HalGvaUnreserveMemory(void)
 
     (void)pthread_mutex_lock(&g_gvaHeapMgr->treeLock);
     for (auto &pair : g_gvaHeapMgr->tree) {
-        (void)DlHalApi::HalDevmmIoctlFreePages(pair.first);
+        if (DlHalApi::HalDevmmIoctlFreePages(pair.first) != BM_OK) {
+            BM_LOG_WARN("HalGvaUnreserveMemory failed. " << pair.first);
+        }
     }
     g_gvaHeapMgr->tree.clear();
     (void)pthread_mutex_unlock(&g_gvaHeapMgr->treeLock);

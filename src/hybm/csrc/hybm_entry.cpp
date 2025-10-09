@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <mutex>
 #include <string>
-
+#include <regex>
 #include "devmm_svm_gva.h"
 #include "hybm.h"
 #include "hybm_ptracer.h"
@@ -145,11 +145,10 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
             break;
         }
     }
-
-    try {
-        val = std::stoi(tmp);
-    } catch (...) {
-        val = -1;
+    val = -1;
+    auto ret = StrHelper::OckStol(tmp, val);
+    if (!ret) {
+        BM_LOG_ERROR("tmp=" << tmp << ", val=" << val);
     }
     return val;
 }
@@ -261,6 +260,22 @@ static int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags)
     return BM_OK;
 }
 
+static std::string SanitizeAndAppendLib64(const std::string &path)
+{
+    // 禁止包含 ".." 或 "."
+    if (path.find("..") != std::string::npos || path.find("./") != std::string::npos) {
+        BM_LOG_ERROR("path check failed.");
+        return "";
+    }
+    // 禁止特殊字符
+    std::regex regex(R"([^\w\-_/])");
+    if (std::regex_search(path, regex)) {
+        BM_LOG_ERROR("path check failed.");
+        return "";
+    }
+    return path + "/lib64";
+}
+
 HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 {
     std::unique_lock<std::mutex> lockGuard{initMutex};
@@ -288,7 +303,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         return BM_ERROR;
     }
 
-    auto libPath = std::string(path).append("/lib64");
+    auto libPath = SanitizeAndAppendLib64(path);
     auto ret = DlApi::LoadLibrary(libPath);
     BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "load library failed: " << ret, ret);
 

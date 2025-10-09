@@ -5,7 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <cstdint>
-
+#include <new>
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
@@ -81,7 +81,7 @@ public:
             throw std::runtime_error("create shm failed!");
         }
 
-        return new ShareMemory(handle, gva);
+        return new (std::nothrow) ShareMemory(handle, gva);
     }
 
 private:
@@ -104,7 +104,7 @@ public:
         if (ret != 0) {
             throw std::runtime_error(std::string("join bm failed:").append(std::to_string(ret)));
         }
-        return (uint64_t)(ptrdiff_t)address;
+        return static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(address));
     }
 
     void Leave(uint32_t flags)
@@ -163,7 +163,7 @@ public:
             throw std::runtime_error(std::string("create bm handle failed."));
         }
 
-        return new BigMemory{hd};
+        return new (std::nothrow) BigMemory{hd};
     }
 
 private:
@@ -200,7 +200,7 @@ void DefineShmConfig(py::module_ &m)
 {
     py::class_<smem_shm_config_t>(m, "ShmConfig")
         .def(py::init([]() {
-                 auto config = new smem_shm_config_t;
+                 auto config = new (std::nothrow) smem_shm_config_t;
                  smem_shm_config_init(config);
                  return config;
              }),
@@ -239,7 +239,7 @@ void DefineBmConfig(py::module_ &m)
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
-                 auto config = new smem_bm_config_t;
+                 auto config = new (std::nothrow) smem_bm_config_t;
                  smem_bm_config_init(config);
                  return config;
              }),

@@ -352,8 +352,10 @@ int32_t HybmStream::ReceiveCqe(uint32_t &lastTask)
 int HybmStream::Synchronize(uint32_t task) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(inited_, "stream not init!", BM_NOT_INITIALIZED);
+    constexpr int MAX_RETRY = 1000000;
+    int retry = 0;
     int ret = BM_OK;
-    while (sqHead_ != sqTail_ && TaskInRange(task)) {
+    while (sqHead_ != sqTail_ && TaskInRange(task) && retry < MAX_RETRY) {
         uint32_t head = UINT16_MAX;
         ret = GetSqHead(head);
         BM_ASSERT_LOG_AND_RETURN(ret == 0, "GetSqHead failed! ret:" << ret, ret);
@@ -373,6 +375,7 @@ int HybmStream::Synchronize(uint32_t task) noexcept
             }
             BM_ASSERT_LOG_AND_RETURN(ret == 0, "ReceiveCqe failed! ret:" << ret, ret);
         }
+        retry++;
         usleep(1U);
     }
 

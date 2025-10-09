@@ -56,13 +56,13 @@ public:
     std::unique_ptr<IterBase> Begin() override
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        return std::unique_ptr<IterBase>(new MetaIterator(metaMap_.begin(), metaMap_.end()));
+        return std::unique_ptr<IterBase>(new (std::nothrow) MetaIterator(metaMap_.begin(), metaMap_.end()));
     }
 
     std::unique_ptr<IterBase> End() override
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        return std::unique_ptr<IterBase>(new MetaIterator(metaMap_.end(), metaMap_.end()));
+        return std::unique_ptr<IterBase>(new (std::nothrow) MetaIterator(metaMap_.end(), metaMap_.end()));
     }
 
     Result Insert(const Key &key, const Value &value) override

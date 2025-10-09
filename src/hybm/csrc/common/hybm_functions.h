@@ -32,9 +32,7 @@ public:
                 BM_LOG_ERROR("Failed to get visible devSize: " << devList.size() << " deviceId: " << deviceId);
                 return BM_ERROR;
             } else {
-                try {
-                    logicDeviceId = std::stoi(devList[deviceId]);
-                } catch (...) {
+                if (!StrHelper::OckStol(devList[deviceId], logicDeviceId)) {
                     BM_LOG_ERROR("Failed to get visible dev size: " << devList.size() << " deviceId: " << deviceId);
                     return BM_ERROR;
                 }

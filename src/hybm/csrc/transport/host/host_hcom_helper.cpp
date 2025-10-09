@@ -6,7 +6,7 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-
+#include "hybm_str_helper.h"
 #include "hybm_logger.h"
 
 using namespace ock::mf;
@@ -36,8 +36,8 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     protocol = match[PROT_MATCH_NUM].str();
     ipStr = match[IP_MATCH_NUM].str();
     std::string portStr = match[PORT_MATCH_NUM].str();
-    port = std::stoi(portStr);
-    if (port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
+    auto ret = StrHelper::OckStoULL(portStr, port);
+    if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
         return BM_INVALID_PARAM;
     }
@@ -68,14 +68,15 @@ Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic,
     std::istringstream iss(ipStr);
     std::string token;
 
-    int mask = std::stoi(maskStr);
-    if (mask < MIN_VALID_MASK || mask > MAX_VALID_MASK) {
+    int mask = MIN_VALID_MASK;
+    auto ret = StrHelper::OckStol(maskStr, mask);
+    if (!ret || mask < MIN_VALID_MASK || mask > MAX_VALID_MASK) {
         BM_LOG_ERROR("Failed to analysis nic mask is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
 
-    port = std::stoi(portStr);
-    if (port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
+    ret = StrHelper::OckStoULL(portStr, port);
+    if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to analysis nic port is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
@@ -109,7 +110,14 @@ Result HostHcomHelper::SelectLocalIpByIpMask(const std::string &ipStr, const int
         in_addr_t localIpAddr = addr->sin_addr.s_addr;
         uint32_t localNetwork = localIpAddr & netMask;
         if (localNetwork == targetNetwork) {
-            localIp = inet_ntoa(addr->sin_addr);
+            char str[INET_ADDRSTRLEN];
+            auto ret = inet_ntop(AF_INET, &addr->sin_addr, str, INET_ADDRSTRLEN);
+            if (ret == nullptr) {
+                BM_LOG_ERROR("Failed to get local ip ip.");
+                freeifaddrs(ifAddsPtr);
+                return BM_ERROR;
+            }
+            localIp = str;
             found = true;
             BM_LOG_DEBUG("Success to find ip: " << localIp);
             break;
