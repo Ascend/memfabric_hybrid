@@ -189,6 +189,7 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
     }
 
     for (uint64_t i = 0; i < size; i += SIZE_1G) {
+        BM_ASSERT_RETURN(std::numeric_limits<uint64_t>::max() - addr >= i, HYBM_GVM_FAILURE);
         arg.data.mem_fetch_para.addr = addr + i;
         arg.data.mem_fetch_para.size = SIZE_1G;
         arg.data.mem_fetch_para.sdid = sdid;

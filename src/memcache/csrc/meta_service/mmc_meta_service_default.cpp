@@ -85,6 +85,8 @@ Result MmcMetaServiceDefault::BmRegister(uint32_t rank, std::vector<uint16_t> me
         MmcLocalMemlInitInfo locInfo{bm[i], capacity[i]};
         infos.emplace_back(locInfo);
     }
+    MMC_ASSERT_RETURN(metaBackUpMgrPtr_ != nullptr, MMC_MALLOC_FAILED);
+    MMC_ASSERT_RETURN(metaMgrProxy_ != nullptr, MMC_MALLOC_FAILED);
     MMC_RETURN_ERROR(metaBackUpMgrPtr_->Load(blobMap), "Mount loc { " << rank << " } load backup failed");
     MMC_RETURN_ERROR(metaMgrProxy_->Mount(locs, infos, blobMap), "Mount loc { " << rank << " } failed");
     MMC_LOG_INFO("Mount loc {rank:" << rank << ", rebuild size:" << blobMap.size() << ", mediaNum:" << typeNum

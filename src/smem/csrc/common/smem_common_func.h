@@ -70,6 +70,10 @@ inline Result CommonFunc::LibraryRealPath(const std::string &libDirPath, const s
     }
 
     tmpFullPath.append(libName);
+    if (tmpFullPath.size() >  PATH_MAX) {
+        SM_LOG_ERROR("The path:" << tmpFullPath << " length is " << tmpFullPath.size() << " > " << PATH_MAX);
+        return SM_INVALID_PARAM;
+    }
     auto ret = ::access(tmpFullPath.c_str(), F_OK);
     if (ret != 0) {
         SM_LOG_ERROR(tmpFullPath << " cannot be accessed, ret: " << ret);

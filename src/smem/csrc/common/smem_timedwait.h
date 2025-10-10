@@ -18,7 +18,14 @@ namespace smem {
 class SmemTimedwait {    // wait signal or overtime, instead of sem_timedwait
 public:
     SmemTimedwait() = default;
-    ~SmemTimedwait() = default;
+    ~SmemTimedwait()
+    {
+        if (inited_) {
+            pthread_condattr_destroy(&cattr_);
+            pthread_cond_destroy(&condTimeChecker_);
+            pthread_mutex_destroy(&timeCheckerMutex_);
+        }
+    }
 
     Result Initialize()
     {

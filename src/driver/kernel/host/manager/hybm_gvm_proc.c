@@ -121,7 +121,10 @@ static struct gvm_node *hybm_gvm_node_alloc(u64 va, u64 size)
         hybm_gvm_err("input size is too large, size(0x%llx)", size);
         return NULL;
     }
-
+    if (pa_num > SIZE_MAX / sizeof(struct gvm_pa_node)) {
+        hybm_gvm_err("input size is too large, size(0x%llx)", size);
+        return NULL;
+    }
     node = kzalloc(sizeof(struct gvm_node) + sizeof(struct gvm_pa_node) * pa_num, GFP_KERNEL | __GFP_ACCOUNT);
     if (node == NULL) {
         hybm_gvm_err("kzalloc gvm node fail.");

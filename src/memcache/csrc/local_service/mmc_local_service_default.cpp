@@ -75,7 +75,9 @@ void MmcLocalServiceDefault::Stop()
         return;
     }
     DestroyBm();
-    metaNetClient_->Stop();
+    if (metaNetClient_ != nullptr) {
+        metaNetClient_->Stop();
+    }
     std::lock_guard<std::mutex> guardBlob(blobMutex_);
     blobMap_.clear();
     MMC_LOG_INFO("Stop MmcClientDefault (" << name_ << ") server " << options_.discoveryURL);

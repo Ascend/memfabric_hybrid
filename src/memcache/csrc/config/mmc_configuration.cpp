@@ -593,6 +593,10 @@ const std::string Configuration::GetLogPath(const std::string &logPath)
 
 int Configuration::ValidateLogPathConfig(const std::string &logPath)
 {
+    if (logPath.empty()) {
+        MMC_LOG_ERROR("path is empty.");
+        return MMC_ERROR;
+    }
     MMC_RETURN_ERROR(ValidatePathNotSymlink(logPath.c_str()), logPath << " does not exist or is a symlink");
     return MMC_OK;
 }

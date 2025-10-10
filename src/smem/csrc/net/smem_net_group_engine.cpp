@@ -532,7 +532,9 @@ Result SmemNetGroupEngine::GroupJoin()
     }
     std::string old;
     std::string val = "J" + std::to_string(option_.rank);
-    while (true) {
+    int retry_count = 0;
+    static constexpr int MAX_RETRY = 100000;
+    while (retry_count++ < MAX_RETRY) {
         auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
         if (ret == SM_OK && (old.empty() || old == val)) {
             break;
@@ -593,7 +595,9 @@ Result SmemNetGroupEngine::GroupLeave()
     }
     std::string old;
     std::string val = "L" + std::to_string(option_.rank);
-    while (true) {
+    int retry_count = 0;
+    static constexpr int MAX_RETRY = 100000;
+    while (retry_count++ < MAX_RETRY) {
         ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
         if (ret == SM_OK && old == val) {
             break;

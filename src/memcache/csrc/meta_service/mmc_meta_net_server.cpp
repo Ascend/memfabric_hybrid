@@ -90,6 +90,8 @@ Result ock::mmc::MetaNetServer::Start(NetEngineOptions &options)
 Result MetaNetServer::HandleBmRegister(const NetContextPtr &context)
 {
     auto metaServiceDefaultPtr = Convert<MmcMetaService, MmcMetaServiceDefault>(metaService_);
+    MMC_ASSERT_RETURN(metaServiceDefaultPtr != nullptr, MMC_ERROR);
+    MMC_ASSERT_RETURN(context != nullptr, MMC_ERROR);
     BmRegisterRequest req;
     context->GetRequest<BmRegisterRequest>(req);
     TP_TRACE_BEGIN(TP_MMC_META_BM_REGISTER);
@@ -157,6 +159,7 @@ Result MetaNetServer::HandleLinkBroken(const NetLinkPtr &link)
 
 Result MetaNetServer::HandleAlloc(const NetContextPtr &context)
 {
+    MMC_ASSERT_RETURN(context != nullptr, MMC_ERROR);
     AllocRequest req;
     AllocResponse resp;
     context->GetRequest<AllocRequest>(req);

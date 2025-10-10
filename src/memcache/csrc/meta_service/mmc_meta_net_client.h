@@ -66,6 +66,7 @@ public:
     Result SyncCall(const REQ &req, RESP &resp, int32_t timeoutInMilliSecond)
     {
         Result ret = MMC_ERROR;
+        MMC_ASSERT_RETURN(engine_.Get() != nullptr, ret);
 
         auto start = std::chrono::high_resolution_clock::now();
         // 预计算超时时间点（开始时间 + 超时毫秒数）

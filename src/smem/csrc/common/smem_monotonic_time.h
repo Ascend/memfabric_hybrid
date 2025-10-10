@@ -97,7 +97,9 @@ inline uint64_t MonotonicTime::TimeNs()
     const static uint64_t TICK_PER_US = InitTickUs<1>();
     uint64_t timeValue = 0;
     __asm__ volatile("mrs %0, cntvct_el0" : "=r"(timeValue));
-    return timeValue * 1000ULL / TICK_PER_US;
+    // 使用 128 位中间结果防止溢出
+    unsigned __int128 tmp = (unsigned __int128)timeValue * 1000ULL;
+    return (uint64_t)(tmp / TICK_PER_US);
 }
 
 #else  /* defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__) */

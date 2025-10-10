@@ -658,7 +658,9 @@ bool MmcacheStore::Is2D(const std::vector<void *> &buffers, const std::vector<si
     if (layerNum < layerNumLim) {
         return false;
     }
-
+    if (reinterpret_cast<uint64_t>(buffers[1]) < reinterpret_cast<uint64_t>(buffers[0])) {
+        return false;
+    }
     const auto interval = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]);
     for (size_t i = 2; i < layerNum; i += 1) {
         if (reinterpret_cast<uint64_t>(buffers[i]) - reinterpret_cast<uint64_t>(buffers[i - 1]) != interval) {
@@ -710,6 +712,10 @@ void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
         const auto &buffers = bufferLists[i];
         const auto &sizes = sizeLists[i];
         const auto layerNum = buffers.size();
+        if (layerNum > std::numeric_limits<uint16_t>::max()) {
+            MMC_LOG_ERROR("layerNum=" << layerNum);
+            return;
+        }
         buffersIn2D.push_back({.addr = reinterpret_cast<uint64_t>(buffers[0]),
                                .type = type,
                                .dimType = 1,

@@ -444,7 +444,7 @@ Result MmcMetaManager::MoveBlob(const std::string& key, const MmcLocation& src, 
 Result MmcMetaManager::ReplicateBlob(const std::string& key, const MmcLocation& loc)
 {
     MmcMemObjMetaPtr objMeta;
-    if (metaContainer_->Get(key, objMeta) != MMC_OK) {
+    if (metaContainer_->Get(key, objMeta) != MMC_OK || objMeta.Get() == nullptr) {
         MMC_LOG_ERROR("Cannot find MmcMemObjMeta with key : " << key);
         return MMC_UNMATCHED_KEY;
     }

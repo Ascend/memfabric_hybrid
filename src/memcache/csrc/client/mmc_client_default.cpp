@@ -66,8 +66,9 @@ void MmcClientDefault::Stop()
         MMC_LOG_WARN("MmcClientDefault has not been started");
         return;
     }
-    threadPool_->Shutdown();
-
+    if (threadPool_ != nullptr) {
+        threadPool_->Shutdown();
+    }
     if (metaNetClient_ != nullptr) {
         metaNetClient_->Stop();
         metaNetClient_ = nullptr;
@@ -625,6 +626,10 @@ void MmcClientDefault::UpdateRegisterMap(uint64_t va, uint64_t size)
 
 bool MmcClientDefault::QueryInRegisterMap(uint64_t va, uint64_t size)
 {
+    if (va > std::numeric_limits<uint64_t>::max() / 2u) {
+        MMC_LOG_ERROR("va is " << va);
+        return false;
+    }
     auto it = registerSet_.upper_bound((va << MMC_REGISTER_SET_MARK_BIT) | MMC_REGISTER_SET_LEFT_MARK);
     return (it != registerSet_.end() && !((*it) & MMC_REGISTER_SET_LEFT_MARK) &&
             (va + size) <= ((*it) >> MMC_REGISTER_SET_MARK_BIT));

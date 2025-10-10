@@ -17,7 +17,7 @@ public:
     void LockRead()
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        while (isWriting_) {
+        while (isWriting_ || numReaders_ == std::numeric_limits<uint16_t>::max()) {
             cv_.wait(lock);
         }
         numReaders_++;
@@ -26,6 +26,9 @@ public:
     void UnlockRead()
     {
         std::unique_lock<std::mutex> lock(mutex_);
+        if (numReaders_ == 0) {
+            return;
+        }
         numReaders_--;
         if (numReaders_ == 0) {
             cv_.notify_one();  // wake up the write thread

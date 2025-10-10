@@ -69,8 +69,9 @@ void NetEngineAcc::Stop()
         MMC_LOG_WARN("NetEngineAcc has not been started");
         return;
     }
-    threadPool_->Shutdown();
-
+    if (threadPool_ == nullptr) {
+        threadPool_->Shutdown();
+    }
     MMC_ASSERT(StopInner() == MMC_OK);
 
     UnInitialize();
@@ -232,6 +233,7 @@ Result NetEngineAcc::Call(uint32_t targetId, int16_t opCode, const char *reqData
     uint32_t seqNo = 0;
     result = ctxStore_->PutAndGetSeqNo<NetWaitHandler>(waiter.Get(), seqNo);
     MMC_ASSERT_RETURN(result == MMC_OK, result);
+    MMC_ASSERT_RETURN(link->RealLink() != nullptr, MMC_ERROR);
     /* step6: send message to peer */
 
     result = link->RealLink()->NonBlockSend(MSG_TYPE_DATA, opCode, seqNo, dataBuf.Get(), nullptr);

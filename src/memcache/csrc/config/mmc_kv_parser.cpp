@@ -70,6 +70,10 @@ Result KVParser::GetItem(const std::string &key, std::string &outValue)
     GUARD(&mLock, mLock);
     const auto iter = mItemsIndex.find(key);
     if (iter != mItemsIndex.end()) {
+        if (iter->second >= mItems.size()) {
+            std::cerr << "index=" << iter->second << ", item_size=" << mItems.size() << std::endl;
+            return MMC_ERROR;
+        }
         const auto itemPtr = mItems.at(iter->second);
         if (itemPtr == nullptr) {
             return MMC_ERROR;

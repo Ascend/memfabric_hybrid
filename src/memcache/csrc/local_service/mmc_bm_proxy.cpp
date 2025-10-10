@@ -316,6 +316,10 @@ Result MmcBmProxy::BatchPut(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
         return MMC_ERROR;
     }
     size_t shift = 0;
+    if (bufArr.Buffers().size() > std::numeric_limits<uint32_t>::max()) {
+        MMC_LOG_ERROR("buff size is " << bufArr.Buffers().size());
+        return MMC_ERROR;
+    }
     uint32_t count = bufArr.Buffers().size();
     void *sources[count];
     void *destinations[count];
@@ -352,6 +356,10 @@ Result MmcBmProxy::BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
         return MMC_ERROR;
     }
     size_t shift = 0;
+    if (bufArr.Buffers().size() > std::numeric_limits<uint32_t>::max()) {
+        MMC_LOG_ERROR("buff size is " << bufArr.Buffers().size());
+        return MMC_ERROR;
+    }
     uint32_t count = bufArr.Buffers().size();
     void *sources[count];
     void *destinations[count];
