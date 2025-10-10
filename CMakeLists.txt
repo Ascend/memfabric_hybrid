@@ -105,33 +105,6 @@ set(PROJECT_3RDPARTY_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdparty)
 set(PROJECT_3RDPARTY_BIN_DIR ${PROJECT_SOURCE_DIR}/output/3rdparty)
 set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
 
-# set src base dir of util
-set(PROJECT_UTIL_SRC_BASE ${PROJECT_SOURCE_DIR}/src/util/csrc)
-
-# set src base dir and output dir of smem
-set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
-set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
-
-# set src base dir and output dir of memcache
-set(PROJECT_MMC_SRC_BASE ${PROJECT_SOURCE_DIR}/src/memcache)
-set(PROJECT_MMC_OUTPUT ${PROJECT_SOURCE_DIR}/output/memcache)
-
-# set src base dir and output dir of smem
-set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
-set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
-
-# set src base dir and output dir of hybm driver
-set(PROJECT_DRIVER_BASE ${PROJECT_SOURCE_DIR}/src/driver)
-set(PROJECT_DRIVER_OUTPUT ${PROJECT_SOURCE_DIR}/output/driver)
-
-# set src base dir and output dir of adapter
-set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
-set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mooncake_adapter)
-
-# set src base dir and output dir of acc_links
-set(PROJECT_ACCLINKS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/acc_links)
-set(PROJECT_ACCLINKS_OUTPUT ${PROJECT_SOURCE_DIR}/output/acc_links)
-
 # set install target top dir
 message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")
@@ -142,6 +115,29 @@ else ()
     set(TARGET_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/)
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
+
+# set src base dir of util
+set(PROJECT_UTIL_SRC_BASE ${PROJECT_SOURCE_DIR}/src/util/csrc)
+
+# set src base dir and output dir of smem
+set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
+set(PROJECT_SMEM_OUTPUT ${TARGET_INSTALL_DIR}/smem)
+
+# set src base dir and output dir of smem
+set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
+set(PROJECT_HYBM_OUTPUT ${TARGET_INSTALL_DIR}/hybm)
+
+# set src base dir and output dir of hybm driver
+set(PROJECT_DRIVER_BASE ${PROJECT_SOURCE_DIR}/src/driver)
+set(PROJECT_DRIVER_OUTPUT ${TARGET_INSTALL_DIR}/driver)
+
+# set src base dir and output dir of adapter
+set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
+set(PROJECT_ADAPTER_OUTPUT ${TARGET_INSTALL_DIR}/mooncake_adapter)
+
+# set src base dir and output dir of acc_links
+set(PROJECT_ACCLINKS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/acc_links)
+set(PROJECT_ACCLINKS_OUTPUT ${TARGET_INSTALL_DIR}/acc_links)
 
 if(BUILD_PYTHON STREQUAL "ON")
     # 获取Python头文件路径

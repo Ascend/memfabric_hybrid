@@ -43,7 +43,7 @@ install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/hos
 install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/include/device/)
 
 # install library
-install(TARGETS smem_shared
-        LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib64
+install(TARGETS smem_static smem_shared
+        DESTINATION ${TARGET_INSTALL_DIR}/smem/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
         )

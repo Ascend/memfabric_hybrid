@@ -16,12 +16,6 @@ if [ -z "$BUILD_PYTHON" ]; then
 fi
 
 cd ${ROOT_PATH}
-SPDLOG_SRC=${ROOT_PATH}/../3rdparty/log/spdlog/src
-if [ ! -d "${SPDLOG_SRC}" ]; then
-    git submodule init
-    git submodule update
-fi
-
 bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}"
 
 bash run_pkg_maker/make_run.sh "${BUILD_PYTHON}"

@@ -45,13 +45,9 @@ if [ "${BUILD_PYTHON}" != "ON" ]; then
 fi
 
 mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
-\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
-
-mkdir -p "${PROJ_DIR}/src/memcache/python/memcache/lib"
-\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/memcache/python/memcache/lib"
-\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/memcache/python/memcache/lib"
-\cp -v "${PROJ_DIR}/output/memcache/lib64/libmf_memcache.so" "${PROJ_DIR}/src/memcache/python/memcache/lib"
-\cp -v "${PROJ_DIR}/output/driver/lib64/libhybm_gvm.so" "${PROJ_DIR}/src/memcache/python/memcache/lib"
+\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
+\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
+\cp -v "${PROJ_DIR}/output/driver/lib64/libhybm_gvm.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 
 mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
 cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
@@ -65,7 +61,6 @@ GIT_COMMIT=$(cat script/git_last_commit.txt)
 } > VERSION
 
 cp VERSION "${PROJ_DIR}/src/smem/python/mf_smem/"
-cp VERSION "${PROJ_DIR}/src/memcache/python/memcache/"
 cp VERSION "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/"
 rm -f VERSION
 
@@ -109,12 +104,6 @@ do
     rm -rf build mf_smem.egg-info
     python3 setup.py bdist_wheel
 
-    rm -f "${PROJ_DIR}"/src/memcache/python/memcache/_pymmc.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/memcache/csrc/python_wrapper/_pymmc.cpython*.so "${PROJ_DIR}"/src/memcache/python/memcache
-    cd "${PROJ_DIR}/src/memcache/python"
-    rm -rf build memcache.egg-info
-    python3 setup.py bdist_wheel
-
     rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter/_pymf_transfer.cpython*.so
     \cp -v "${PROJ_DIR}"/build/src/mooncake_adapter/csrc/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter
     cd "${PROJ_DIR}/src/mooncake_adapter/python"
@@ -130,10 +119,6 @@ done
 mkdir -p "${PROJ_DIR}/output/smem/wheel"
 cp "${PROJ_DIR}"/src/smem/python/dist/*.whl "${PROJ_DIR}/output/smem/wheel"
 rm -rf "${PROJ_DIR}"/src/smem/python/dist
-
-mkdir -p "${PROJ_DIR}/output/memcache/wheel"
-cp "${PROJ_DIR}"/src/memcache/python/dist/*.whl "${PROJ_DIR}/output/memcache/wheel"
-rm -rf "${PROJ_DIR}"/src/memcache/python/dist
 
 # copy mooncake_adapter wheel package
 mkdir -p "${PROJ_DIR}/output/mooncake_adapter/wheel"

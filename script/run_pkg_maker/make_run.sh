@@ -44,7 +44,6 @@ mkdir ${PKG_DIR}/config
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver
-mkdir -p ${PKG_DIR}/${ARCH_OS}/include/memcache
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/util
 mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
 
@@ -58,11 +57,6 @@ cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
 # driver
 cp -r ${OUTPUT_DIR}/driver/include/* ${PKG_DIR}/${ARCH_OS}/include/driver
 cp ${OUTPUT_DIR}/driver/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
-# memcache
-cp -r ${OUTPUT_DIR}/memcache/include/* ${PKG_DIR}/${ARCH_OS}/include/memcache
-cp ${OUTPUT_DIR}/memcache/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
-cp ${OUTPUT_DIR}/memcache/bin/* ${PKG_DIR}/${ARCH_OS}/bin/
-cp ${OUTPUT_DIR}/memcache/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 # util
 cp -r ${PROJECT_DIR}/src/util/include/* ${PKG_DIR}/${ARCH_OS}/include/util
 # mooncake_adapter
@@ -71,8 +65,6 @@ cp -r ${OUTPUT_DIR}/mooncake_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 cp ${PROJECT_DIR}/config/* ${PKG_DIR}/config
 cp -r ${PROJECT_DIR}/test/certs ${PKG_DIR}/${ARCH_OS}/script
 cp -r ${PROJECT_DIR}/test/k8s_deploy ${PKG_DIR}/${ARCH_OS}/script
-cp ${PROJECT_DIR}/test/python/memcache/mock_server/server.py ${PKG_DIR}/${ARCH_OS}/script/mock_server
-cp -r ${PROJECT_DIR}/test/python/memcache/ha ${PKG_DIR}/${ARCH_OS}/script
 
 mkdir -p ${PKG_DIR}/script
 cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
