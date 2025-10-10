@@ -4,13 +4,8 @@
 
 #include "pymmc.h"
 
-#include <iostream>
-
 #include "mmc_client.h"
-#include "mmc_client_default.h"
 #include "mmc.h"
-#include "mmc_logger.h"
-#include "mmc_types.h"
 #include "mmc_ptracer.h"
 #include "mmc_meta_service_process.h"
 #include "smem_bm_def.h"
@@ -18,23 +13,6 @@
 namespace py = pybind11;
 using namespace ock::mmc;
 using namespace ock::mf;
-
-// SliceBuffer implementation
-SliceBuffer::SliceBuffer(MmcacheStore &store, void *buffer, uint64_t size, bool use_allocator_free)
-    : store_(store), buffer_(buffer), size_(size), use_allocator_free_(use_allocator_free)
-{}
-
-SliceBuffer::~SliceBuffer() {}
-
-void *SliceBuffer::ptr() const
-{
-    return buffer_;
-}
-
-uint64_t SliceBuffer::size() const
-{
-    return size_;
-}
 
 void DefineMmcStructModule(py::module_ &m)
 {
@@ -44,7 +22,7 @@ void DefineMmcStructModule(py::module_ &m)
         .value("SMEMB_COPY_G2H", SMEMB_COPY_G2H)
         .value("SMEMB_COPY_H2G", SMEMB_COPY_H2G);
 
-    // Define the SliceBuffer class
+    // Define the KeyInfo class
     py::class_<KeyInfo, std::shared_ptr<KeyInfo>>(m, "KeyInfo", py::buffer_protocol())
         .def("size", &KeyInfo::Size)
         .def("loc_list", &KeyInfo::GetLocs)
@@ -62,39 +40,6 @@ PYBIND11_MODULE(_pymmc, m)
         .def_static(
             "main", []() { return MmcMetaServiceProcess::getInstance().MainForPython(); },
             "Start the meta service process directly. This is a blocking call.");
-
-    // Define the SliceBuffer class
-    py::class_<SliceBuffer, std::shared_ptr<SliceBuffer>>(m, "SliceBuffer", py::buffer_protocol())
-        .def("ptr",
-             [](const SliceBuffer &self) {
-                 // Return the pointer as an integer for Python
-                 return reinterpret_cast<uintptr_t>(self.ptr());
-             })
-        .def("size", &SliceBuffer::size)
-        .def("__len__", &SliceBuffer::size)
-        .def_buffer([](SliceBuffer &self) -> py::buffer_info {
-            // SliceBuffer now always contains contiguous memory
-            if (self.size() > 0) {
-                return py::buffer_info(
-                    self.ptr(),                            /* Pointer to buffer */
-                    sizeof(char),                          /* Size of one scalar */
-                    py::format_descriptor<char>::format(), /* Python struct-style format descriptor */
-                    1,                                     /* Number of dimensions */
-                    {(size_t)self.size()},                 /* Buffer dimensions */
-                    {sizeof(char)}                         /* Strides (in bytes) for each index */
-                );
-            } else {
-                // Empty buffer
-                return py::buffer_info(
-                    nullptr,                               /* Pointer to buffer */
-                    sizeof(char),                          /* Size of one scalar */
-                    py::format_descriptor<char>::format(), /* Python struct-style format descriptor */
-                    1,                                     /* Number of dimensions */
-                    {0},                                   /* Buffer dimensions */
-                    {sizeof(char)}                         /* Strides (in bytes) for each index */
-                );
-            }
-        });
 
     // Define the MmcacheStore class
     py::class_<MmcacheStore>(m, "DistributedObjectStore")

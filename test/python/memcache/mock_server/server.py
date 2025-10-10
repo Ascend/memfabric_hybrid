@@ -235,8 +235,11 @@ class MmcTest(TestServer):
 
     @result_handler
     def close_mmc(self):
-        res = self._store.close()
-        self.cli_return(res)
+        if self._store:
+            res = self._store.close()
+            self.cli_return(res)
+        else:
+            self.cli_return(0)
 
     @result_handler
     def put(self, key: str, data: bytes):
@@ -368,7 +371,7 @@ class MmcTest(TestServer):
             device = 'npu'
         tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
         # tensor is None in negative cases whose sizes is 0
-        if tensor is not None:
+        if tensor is not None and device == 'npu':
             self._store.register_buffer(tensor.data_ptr(), mini_block_size * layers_num)
         res = self._store.put_from_layers(key,
                                           [] if tensor is None else [layer.data_ptr() for layer in tensor],
@@ -389,7 +392,7 @@ class MmcTest(TestServer):
             device = 'npu'
         tensor = self.malloc_tensor(layer_num=layers_num, mini_block_size=mini_block_size, device=device)
         # tensor is None in negative cases whose sizes is 0
-        if tensor is not None:
+        if tensor is not None and device == 'npu':
             self._store.register_buffer(tensor.data_ptr(), mini_block_size * layers_num)
         res = self._store.get_into_layers(key,
                                           [] if tensor is None else [layer.data_ptr() for layer in tensor],
