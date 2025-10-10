@@ -4,13 +4,13 @@
 #include "mmc_service.h"
 #include "mmc_common_includes.h"
 #include "mmc_meta_service_default.h"
-#include "mmc_meta_service.h"
 #include "mmc_local_service_default.h"
 
 using namespace ock::mmc;
 
 MMC_API mmc_meta_service_t mmcs_meta_service_start(mmc_meta_service_config_t *config)
 {
+    MMC_VALIDATE_RETURN(config != nullptr, "invalid param, config is nullptr", nullptr);
     auto *serviceDefault = new (std::nothrow) MmcMetaServiceDefault("meta_service");
     if (serviceDefault == nullptr) {
         MMC_LOG_AND_SET_LAST_ERROR("create or start meta service failed");
@@ -32,6 +32,7 @@ MMC_API void mmcs_meta_service_stop(mmc_meta_service_t handle)
 
 MMC_API mmc_local_service_t mmcs_local_service_start(mmc_local_service_config_t *config)
 {
+    MMC_VALIDATE_RETURN(config != nullptr, "invalid param, config is nullptr", nullptr);
     auto *serviceDefault = new (std::nothrow) MmcLocalServiceDefault("local_service");
     if (serviceDefault == nullptr) {
         MMC_LOG_AND_SET_LAST_ERROR("create or start local service failed");

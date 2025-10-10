@@ -247,7 +247,7 @@ public:
 
     /**
      * @brief get object info
-     * @param keys key to get info
+     * @param key key to get info
      * @return key info
      */
     virtual KeyInfo GetKeyInfo(const std::string &key) = 0;

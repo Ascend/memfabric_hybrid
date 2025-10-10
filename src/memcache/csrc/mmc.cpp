@@ -72,12 +72,18 @@ MMC_API int32_t mmc_init(const mmc_init_config &config)
 
 MMC_API int32_t mmc_set_extern_logger(void (*func)(int level, const char *msg))
 {
+    if (func == nullptr) {
+        return MMC_INVALID_PARAM;
+    }
     ock::mmc::MmcOutLogger::Instance().SetExternalLogFunction(func);
     return MMC_OK;
 }
 
 MMC_API int32_t mmc_set_log_level(int level)
 {
+    if (level < DEBUG_LEVEL || level >= BUTT_LEVEL) {
+        return MMC_INVALID_PARAM;
+    }
     ock::mmc::MmcOutLogger::Instance().SetLogLevel(static_cast<LogLevel>(level));
     return MMC_OK;
 }
