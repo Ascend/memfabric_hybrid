@@ -269,7 +269,7 @@ typedef struct {
 } Channel_ReplyContext;
 
 typedef struct {
-    uint32_t keys[4];
+    uint64_t keys[4];
 } OneSideKey;
 
 /*

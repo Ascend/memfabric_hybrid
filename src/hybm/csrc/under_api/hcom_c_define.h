@@ -186,8 +186,8 @@ typedef struct {
 typedef struct {
     uintptr_t lMRA;         // local memory region address
     uintptr_t rMRA;         // remote memory region address
-    uint32_t lKey;          // local memory region key
-    uint32_t rKey;          // remote memory region key
+    uint64_t lKey;          // local memory region key
+    uint64_t rKey;          // remote memory region key
     uint32_t size;          // data size
     uint16_t upCtxSize;     // user context size
     char upCtxData[16]; // user context
@@ -196,8 +196,8 @@ typedef struct {
 typedef struct {
     uintptr_t lAddress; // local memory region address
     uintptr_t rAddress; // remote memory region address
-    uint32_t lKey;      // local memory region key
-    uint32_t rKey;      // remote memory region key
+    uint64_t lKey;      // local memory region key
+    uint64_t rKey;      // remote memory region key
     uint32_t size;      // data size
 } __attribute__((packed)) Hcom_ReadWriteSge;
 
@@ -213,7 +213,7 @@ typedef struct {
  */
 typedef struct {
     uintptr_t lAddress; // local memory region address
-    uint32_t lKey;      // local memory region key
+    uint64_t lKey;      // local memory region key
     uint32_t size;      // data size
 } Hcom_MemoryRegionInfo;
 
