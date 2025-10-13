@@ -179,43 +179,29 @@ public:
 
     bool EvictOneLeastRecentlyUsed(std::function<bool(const Key &, const Value &)> moveFunc, Key &key)
     {
-        lruLock_.LockRead();
+        ock::mf::WriteGuard lockGuard(metaLock_);
+        ock::mf::WriteGuard lruLockGuard(lruLock_);
         if (lruList_.empty()) {
-            lruLock_.UnLock();
             return false;
         }
         auto iter = std::prev(lruList_.end());
         key = *iter;
-        lruLock_.UnLock();
 
         // 1、查找value
-        metaLock_.LockRead();
         auto mapIter = metaMap_.find(key);
         if (mapIter == metaMap_.end()) {
-            metaLock_.UnLock();
-
-            lruLock_.LockWrite();
             lruList_.erase(iter);
-            lruLock_.UnLock();
-
             MMC_LOG_INFO("Key " << key << " not found in MmcMetaContainer.");
             return true;
         }
 
         // 2、删除map和lru
-        Value value = mapIter->second.value_;
-        metaLock_.UnLock();
+        Value& value = mapIter->second.value_;
 
         // 3、回调处理key，value
         if (moveFunc(key, value)) {
-            metaLock_.LockWrite();
             metaMap_.erase(mapIter);
-            metaLock_.UnLock();
-
-            lruLock_.LockWrite();
             lruList_.erase(iter);
-            lruLock_.UnLock();
-
             MMC_LOG_INFO("Key " << key << " removed by evict.");
             return true;
         }
