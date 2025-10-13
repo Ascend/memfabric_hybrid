@@ -98,15 +98,27 @@ Result MmcClientDefault::Put(const char* key, mmc_buffer* buf, mmc_put_options& 
     return Put(key, buffArr, options, flags);
 }
 
-Result MmcClientDefault::Put(const std::string &key, const MmcBufferArray& bufArr, mmc_put_options &options,
-                             uint32_t flags)
+Result MmcClientDefault::PrePutHandle(const MmcBufferArray &bufArr, mmc_put_options &options, AllocRequest &request,
+                                      uint32_t flags)
 {
     MMC_VALIDATE_RETURN(bmProxy_ != nullptr, "BmProxy is null", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);
-
     options.mediaType = bmProxy_->GetMediaType();
+    AllocOptions prot = {bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flags};
+    if (options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0) {
+        prot.preferredRank_ = options.preferredLocalServiceIDs[0];
+        prot.flags_ = ALLOC_FORCE_BY_RANK;
+    }
+    request.options_ = prot;
+    return MMC_OK;
+}
+
+Result MmcClientDefault::Put(const std::string &key, const MmcBufferArray &bufArr, mmc_put_options &options,
+                             uint32_t flags)
+{
     uint64_t operateId = GenerateOperateId(rankId_);
-    AllocRequest request{key, {bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flags}, operateId};
+    AllocRequest request{key, {}, operateId};
+    MMC_VALIDATE_RETURN(PrePutHandle(bufArr, options, request, flags) == MMC_OK, "put error", MMC_ERROR);
     AllocResponse response;
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, response, rpcRetryTimeOut_),
                      "client " << name_ << " alloc " << key << " failed");
@@ -556,10 +568,17 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
     std::vector<int>& batchResult, BatchAllocResponse& allocResponse)
 {
     std::vector<AllocOptions> allocOptionsList;
-    for (const auto& bufArr : bufArrs) {
-        allocOptionsList.emplace_back(bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flags);
+    auto flag = options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0
+                    ? static_cast<uint32_t>(ALLOC_FORCE_BY_RANK)
+                    : flags;
+    for (const auto &bufArr : bufArrs) {
+        AllocOptions tmpAllocOptions = {bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flag};
+        if (options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0) {
+            tmpAllocOptions.preferredRank_ = options.preferredLocalServiceIDs[0];
+        }
+        allocOptionsList.emplace_back(tmpAllocOptions);
     }
-    BatchAllocRequest request(keys, allocOptionsList, flags, operateId);
+    BatchAllocRequest request(keys, allocOptionsList, flag, operateId);
     MMC_RETURN_ERROR(metaNetClient_->SyncCall(request, allocResponse, rpcRetryTimeOut_), "batch put alloc failed");
 
     if (keys.size() != allocResponse.blobs_.size() || keys.size() != allocResponse.numBlobs_.size() ||

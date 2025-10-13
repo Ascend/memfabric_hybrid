@@ -62,29 +62,35 @@ public:
 
     int RegisterBuffer(void *buffer, size_t size) override;
 
-    int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct) override;
+    int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct = 2) override;
 
     std::vector<int> BatchGetInto(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                  const std::vector<size_t> &sizes, const int32_t direct) override;
+                                  const std::vector<size_t> &sizes, const int32_t direct = 2) override;
 
     int GetIntoLayers(const std::string &key, const std::vector<void *> &buffers, const std::vector<size_t> &sizes,
-                      const int32_t direct) override;
+                      const int32_t direct = 2) override;
 
     std::vector<int> BatchGetIntoLayers(const std::vector<std::string> &keys,
                                         const std::vector<std::vector<void *>> &buffers,
-                                        const std::vector<std::vector<size_t>> &sizes, const int32_t direct) override;
+                                        const std::vector<std::vector<size_t>> &sizes,
+                                        const int32_t direct = 2) override;
 
-    int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct) override;
+    int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct = 3,
+                const ReplicateConfig &replicateConfig = {}) override;
+
+    int GetLocalServiceId(uint32_t &localServiceId) override;
 
     std::vector<int> BatchPutFrom(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                  const std::vector<size_t> &sizes, const int32_t direct) override;
+                                  const std::vector<size_t> &sizes, const int32_t direct = 3,
+                                  const ReplicateConfig &replicateConfig = {}) override;
 
     int PutFromLayers(const std::string &key, const std::vector<void *> &buffers, const std::vector<size_t> &sizes,
-                      const int32_t direct) override;
+                      const int32_t direct = 3, const ReplicateConfig &replicateConfig = {}) override;
 
     std::vector<int> BatchPutFromLayers(const std::vector<std::string> &keys,
                                         const std::vector<std::vector<void *>> &buffers,
-                                        const std::vector<std::vector<size_t>> &sizes, const int32_t direct) override;
+                                        const std::vector<std::vector<size_t>> &sizes, const int32_t direct = 3,
+                                        const ReplicateConfig &replicateConfig = {}) override;
 
     int Remove(const std::string &key) override;
 
@@ -101,7 +107,7 @@ public:
     // bellow only python api use
     mmc_buffer Get(const std::string &key);
 
-    int Put(const std::string &key, mmc_buffer &buffer);
+    int Put(const std::string &key, mmc_buffer &buffer, const ReplicateConfig &replicateConfig = {});
 
 private:
     bool Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes);

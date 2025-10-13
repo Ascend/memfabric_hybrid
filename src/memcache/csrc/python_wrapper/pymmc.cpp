@@ -2,13 +2,13 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#include "pymmc.h"
-
+#include <algorithm>
 #include "mmc_client.h"
 #include "mmc.h"
 #include "mmc_ptracer.h"
 #include "mmc_meta_service_process.h"
 #include "smem_bm_def.h"
+#include "pymmc.h"
 
 namespace py = pybind11;
 using namespace ock::mmc;
@@ -29,12 +29,28 @@ void DefineMmcStructModule(py::module_ &m)
         .def("type_list", &KeyInfo::GetTypes)
         .def("__str__", &KeyInfo::ToString)
         .def("__repr__", &KeyInfo::ToString);
+
+    py::class_<ReplicateConfig>(m, "ReplicateConfig", R"pbdoc(
+         Configuration for replica allocation policy.
+     )pbdoc")
+        .def(py::init<>(), R"pbdoc(
+         Default constructor.
+         Initializes:
+           - preferredLocalServiceIDs = {}
+           - replicaNum = 0
+     )pbdoc")
+        .def_readwrite("replicaNum", &ReplicateConfig::replicaNum, R"pbdoc(
+         Less than or equal to 8, Currently only supports a value of 1.
+     )pbdoc")
+        .def_readwrite("preferredLocalServiceIDs", &ReplicateConfig::preferredLocalServiceIDs, R"pbdoc(
+         List of instance IDs for forced storage. The values in the list must be unique, and the list size must be equal to replicaNum.
+     )pbdoc");
 }
 
 PYBIND11_MODULE(_pymmc, m)
 {
     DefineMmcStructModule(m);
-
+    ock::mmc::ReplicateConfig defaultConfig;
     // Support starting the meta service from python
     py::class_<MmcMetaServiceProcess>(m, "MetaService")
         .def_static(
@@ -124,32 +140,43 @@ PYBIND11_MODULE(_pymmc, m)
             },
             py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_G2H)
         .def(
-            "put_from",
-            [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
+            "get_local_service_id",
+            [](MmcacheStore &self) {
                 py::gil_scoped_release release;
-                return self.PutFrom(key, reinterpret_cast<void *>(buffer_ptr), size, direct);
+                uint32_t localServiceId = std::numeric_limits<uint32_t>::max();
+                self.GetLocalServiceId(localServiceId);
+                return localServiceId;
+            },
+            "Get local serviceId")
+        .def(
+            "put_from",
+            [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct,
+               const ReplicateConfig &replicateConfig) {
+                py::gil_scoped_release release;
+                return self.PutFrom(key, reinterpret_cast<void *>(buffer_ptr), size, direct, replicateConfig);
             },
             py::arg("key"), py::arg("buffer_ptr"), py::arg("size"), py::arg("direct") = SMEMB_COPY_H2G,
-            "Put object data directly from a pre-allocated buffer")
+            py::arg("replicateConfig") = defaultConfig, "Put object data directly from a pre-allocated buffer")
         .def(
             "batch_put_from",
             [](MmcacheStore &self, const std::vector<std::string> &keys, const std::vector<uintptr_t> &buffer_ptrs,
-               const std::vector<size_t> &sizes, const int32_t &direct) {
+               const std::vector<size_t> &sizes, const int32_t &direct, const ReplicateConfig &replicateConfig) {
                 std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
                 for (uintptr_t ptr : buffer_ptrs) {
                     buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
-                return self.BatchPutFrom(keys, buffers, sizes, direct);
+                return self.BatchPutFrom(keys, buffers, sizes, direct, replicateConfig);
             },
             py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G,
+            py::arg("replicateConfig") = defaultConfig,
             "Put object data directly from pre-allocated buffers for multiple "
             "keys")
         .def(
             "put_from_layers",
             [](MmcacheStore &self, const std::string &key, const std::vector<uintptr_t> &buffer_ptrs,
-               const std::vector<size_t> &sizes, const int32_t &direct) {
+               const std::vector<size_t> &sizes, const int32_t &direct, const ReplicateConfig &replicateConfig) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_PUT_LAYERS);
                 std::vector<void *> buffers;
                 buffers.reserve(buffer_ptrs.size());
@@ -157,16 +184,17 @@ PYBIND11_MODULE(_pymmc, m)
                     buffers.push_back(reinterpret_cast<void *>(ptr));
                 }
                 py::gil_scoped_release release;
-                auto ret = self.PutFromLayers(key, buffers, sizes, direct);
+                auto ret = self.PutFromLayers(key, buffers, sizes, direct, replicateConfig);
                 TP_TRACE_END(TP_MMC_PYBIND_PUT_LAYERS, 0);
                 return ret;
             },
-            py::arg("key"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G)
+            py::arg("key"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G,
+            py::arg("replicateConfig") = defaultConfig)
         .def(
             "batch_put_from_layers",
             [](MmcacheStore &self, const std::vector<std::string> &keys,
                const std::vector<std::vector<uintptr_t>> &buffer_ptrs, const std::vector<std::vector<size_t>> &sizes,
-               const int32_t &direct) {
+               const int32_t &direct, const ReplicateConfig &replicateConfig) {
                 TP_TRACE_BEGIN(TP_MMC_PYBIND_BATCH_PUT_LAYERS);
                 std::vector<std::vector<void *>> buffers;
                 buffers.reserve(buffer_ptrs.size());
@@ -178,21 +206,23 @@ PYBIND11_MODULE(_pymmc, m)
                     buffers.push_back(tmp);
                 }
                 py::gil_scoped_release release;
-                auto ret = self.BatchPutFromLayers(keys, buffers, sizes, direct);
+                auto ret = self.BatchPutFromLayers(keys, buffers, sizes, direct, replicateConfig);
                 TP_TRACE_END(TP_MMC_PYBIND_BATCH_PUT_LAYERS, 0);
                 return ret;
             },
-            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G)
+            py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G,
+            py::arg("replicateConfig") = defaultConfig)
         .def("put",
-             [](MmcacheStore &self, const std::string &key, const py::buffer &buf) {
+            [](MmcacheStore &self, const std::string &key, const py::buffer &buf, const ReplicateConfig &replicateConfig) {
                 py::buffer_info info = buf.request(false);
                 mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(info.ptr),
                                      .type = 0,
                                      .dimType = 0,
                                      .oneDim = {.offset = 0, .len = static_cast<uint64_t>(info.size)}};
                 py::gil_scoped_release release;
-                return self.Put(key, buffer);
-             })
+                return self.Put(key, buffer, replicateConfig);
+            },
+            py::arg("key"), py::arg("buf"), py::arg("replicateConfig") = defaultConfig)
         .def("get", [](MmcacheStore &self, const std::string &key) {
             mmc_buffer buffer = self.Get(key);
             py::gil_scoped_acquire acquire_gil;

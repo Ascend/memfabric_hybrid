@@ -21,6 +21,22 @@ constexpr int MAX_LAYER_NUM = 255;
 constexpr int MAX_BATCH_SIZE = 512;
 constexpr int MAX_KEY_LEN = 256;
 
+static bool CopyPutOptions(const ReplicateConfig &replicateConfig, mmc_put_options &options)
+{
+    if (replicateConfig.preferredLocalServiceIDs.size() > MAX_BLOB_COPIES) {
+        MMC_LOG_ERROR("vector size is " << replicateConfig.preferredLocalServiceIDs.size()
+                                        << ", Maximum number of copies is " << MAX_BLOB_COPIES);
+        return false;
+    }
+    options.mediaType = 0; // will set by client proxy
+    options.policy = NATIVE_AFFINITY;
+    std::fill(std::begin(options.preferredLocalServiceIDs), std::end(options.preferredLocalServiceIDs), -1);
+    std::copy(std::begin(replicateConfig.preferredLocalServiceIDs), std::end(replicateConfig.preferredLocalServiceIDs),
+              std::begin(options.preferredLocalServiceIDs));
+    options.replicaNum = replicateConfig.replicaNum;
+    return true;
+}
+
 // ResourceTracker implementation using singleton pattern
 ResourceTracker &ResourceTracker::getInstance()
 {
@@ -150,7 +166,13 @@ int MmcacheStore::GetInto(const std::string &key, void *buffer, size_t size, con
     return res;
 }
 
-int MmcacheStore::PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct)
+int MmcacheStore::GetLocalServiceId(uint32_t &localServiceId)
+{
+    return mmcc_local_service_id(&localServiceId);
+}
+
+int MmcacheStore::PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct,
+                          const ReplicateConfig &replicateConfig)
 {
     uint32_t type = 0;
     switch (direct) {
@@ -162,8 +184,7 @@ int MmcacheStore::PutFrom(const std::string &key, void *buffer, size_t size, con
         .addr = reinterpret_cast<uint64_t>(buffer), .type = type, .dimType = 0, .oneDim = {.offset = 0, .len = size}};
 
     mmc_put_options options{};
-    options.mediaType = 0;  // will set by client proxy
-    options.policy = NATIVE_AFFINITY;
+    MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), MMC_ERROR);
     TP_TRACE_BEGIN(TP_MMC_PY_PUT);
     const auto res = mmcc_put(key.c_str(), &mmcBuffer, options, 0);
     auto ret = ReturnWrapper(res, key);
@@ -343,7 +364,8 @@ std::vector<KeyInfo> MmcacheStore::BatchGetKeyInfo(const std::vector<std::string
 }
 
 std::vector<int> MmcacheStore::BatchPutFrom(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                            const std::vector<size_t> &sizes, const int32_t direct)
+                                            const std::vector<size_t> &sizes, const int32_t direct,
+                                            const ReplicateConfig &replicateConfig)
 {
     const size_t count = keys.size();
     MMC_VALIDATE_RETURN(count > 0, "key vector is empty", {});
@@ -374,8 +396,7 @@ std::vector<int> MmcacheStore::BatchPutFrom(const std::vector<std::string> &keys
     }
 
     mmc_put_options options{};
-    options.mediaType = 0;
-    options.policy = NATIVE_AFFINITY;
+    MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), results);
     TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT);
     mmcc_batch_put(keyArray, count, bufferArray, options, 0, results.data());
     TP_TRACE_END(TP_MMC_PY_BATCH_PUT, 0);
@@ -422,7 +443,8 @@ std::vector<int> MmcacheStore::BatchGetInto(const std::vector<std::string> &keys
 }
 
 int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *> &buffers,
-                                const std::vector<size_t> &sizes, const int32_t direct)
+                                const std::vector<size_t> &sizes, const int32_t direct,
+                                const ReplicateConfig &replicateConfig)
 {
     MMC_ASSERT_RETURN(MmcClientDefault::GetInstance() != nullptr, MMC_INVALID_PARAM);
     if (direct != SMEMB_COPY_L2G && direct != SMEMB_COPY_H2G) {
@@ -448,7 +470,7 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *
     }
 
     mmc_put_options options{};
-    options.policy = NATIVE_AFFINITY;
+    MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), MMC_ERROR);
     Result res;
     if (Is2D(buffers, sizes)) {
         mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
@@ -481,7 +503,8 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *
 
 std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string> &keys,
                                                   const std::vector<std::vector<void *>> &buffers,
-                                                  const std::vector<std::vector<size_t>> &sizes, const int32_t direct)
+                                                  const std::vector<std::vector<size_t>> &sizes, const int32_t direct,
+                                                  const ReplicateConfig &replicateConfig)
 {
     MMC_ASSERT_RETURN(MmcClientDefault::GetInstance() != nullptr, {});
     const size_t batchSize = keys.size();
@@ -518,7 +541,7 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
     }
 
     mmc_put_options options{};
-    options.policy = NATIVE_AFFINITY;
+    MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), results);
     if (all2D) {
         TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS_2D);
         std::vector<mmc_buffer> buffersIn2D;
@@ -764,11 +787,10 @@ int MmcacheStore::ReturnWrapper(const int result, const std::string &key)
     return MMC_OK;
 }
 
-int MmcacheStore::Put(const std::string &key, mmc_buffer &buffer)
+int MmcacheStore::Put(const std::string &key, mmc_buffer &buffer, const ReplicateConfig &replicateConfig)
 {
     mmc_put_options options{};
-    options.mediaType = 0;  // will set by client proxy
-    options.policy = NATIVE_AFFINITY;
+    MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), MMC_ERROR);
     TP_TRACE_BEGIN(TP_MMC_PY_PUT);
     const auto res = mmcc_put(key.c_str(), &buffer, options, 0);
     auto ret = ReturnWrapper(res, key);

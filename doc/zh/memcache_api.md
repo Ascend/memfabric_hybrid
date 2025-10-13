@@ -84,6 +84,19 @@ int32_t mmcc_register_buffer(uint64_t addr, uint64_t size);
 - `0`: 成功
 - 其他: 失败
 
+#### mmcc_local_service_id
+```c
+int32_t mmcc_local_service_id(uint32_t *localServiceId);
+```
+**功能**: 获取本地服务的实例id。
+
+**参数**:
+- `localServiceId`: 本地服务的实例id
+
+**返回值**:
+- `0`: 成功
+- 其他: 失败
+
 #### mmcc_put
 ```c
 int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags);
@@ -314,6 +327,14 @@ result = store.init(device_id)
 - `0`: 成功
 - 其他: 失败
 
+#### get_local_service_id
+
+```python
+store.get_local_service_id()
+```
+
+**功能**: Get local serviceId
+
 #### close
 ```python
 store.close()
@@ -322,13 +343,14 @@ store.close()
 
 #### put
 ```python
-result = store.put(key, data)
+result = store.put(key, data, replicateConfig = defaultConfig)
 ```
 **功能**: 将指定key的数据写入分布式内存缓存中
 
 **参数**:
 - `key`: 数据的键，字符串类型
 - `data`: 要存储的字节数据
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -336,7 +358,7 @@ result = store.put(key, data)
 
 #### put_from
 ```python
-result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
+result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从预分配的缓冲区中写入数据
 
@@ -347,6 +369,7 @@ result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -354,7 +377,7 @@ result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 
 #### batch_put_from
 ```python
-result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
+result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从预分配的缓冲区中批量写入数据
 
@@ -365,6 +388,7 @@ result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - 结果列表，每个元素表示对应写入操作的结果
@@ -373,7 +397,7 @@ result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 
 #### put_from_layers
 ```python
-result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
+result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从多个预分配的缓冲区中写入数据（分层数据）
 
@@ -384,6 +408,7 @@ result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -391,7 +416,7 @@ result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 
 #### batch_put_from_layers
 ```python
-result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_H2G)
+result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从多个预分配的缓冲区中批量写入分层数据
 
@@ -402,6 +427,7 @@ result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - 结果列表，每个元素表示对应写入操作的结果
@@ -615,6 +641,11 @@ result = store.register_buffer(buffer_ptr, size)
 - `logLevel`: 日志级别
 - `logFunc`: 外部日志函数
 - `tlsConfig`: TLS配置
+
+### ReplicateConfig
+客户端配置结构体，包含以下字段：
+- `replicaNum`: 最大为8，当前只支持1，默认为0
+- `preferredLocalServiceIDs`: 强制分配的实例id列表，列表大小必须等于replicaNum
 
 ### mmc_meta_service_config_t
 元数据服务配置结构体，包含以下字段：

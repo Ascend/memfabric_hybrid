@@ -341,3 +341,11 @@ MMC_API int32_t mmcc_batch_put(const char** keys, uint32_t keys_count, const mmc
     }
     return MMC_OK;
 }
+
+MMC_API int32_t mmcc_local_service_id(uint32_t *localServiceId)
+{
+    MMC_VALIDATE_RETURN(localServiceId != nullptr, "invalid param, localServiceID is null", MMC_INVALID_PARAM);
+    MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
+    *localServiceId = MmcClientDefault::GetInstance()->RankId();
+    return MMC_OK;
+}

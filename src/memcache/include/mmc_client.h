@@ -44,6 +44,14 @@ int32_t mmcc_register_buffer(uint64_t addr, uint64_t size);
 int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags);
 
 /**
+ * @brief query localServiceId
+ *
+ * @param localServiceId     [out] localServiceId
+ * @return 0 if successful
+ */
+int32_t mmcc_local_service_id(uint32_t *localServiceId);
+
+/**
  * @brief Get data of object by key from Distributed Memory Cache
  * This data operation supports both sync and async
  *

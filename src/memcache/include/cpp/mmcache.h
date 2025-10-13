@@ -77,6 +77,12 @@ private:
     std::vector<int> type_{};  // blob's media type
 };
 
+class ReplicateConfig {
+public:
+    uint16_t replicaNum{0}; // Less than or equal to 8, Currently only supports a value of 1
+    std::vector<int32_t> preferredLocalServiceIDs;
+};
+
 class ObjectStore {
 public:
     ObjectStore() = default;
@@ -125,7 +131,7 @@ public:
      * @param direct direct indicate the location of the buffer, for detailed meanings, refer to smem_bm_copy_type
      * @return zero on success, other on error
      */
-    virtual int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct) = 0;
+    virtual int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct = 2) = 0;
 
     /**
      * @brief Get object data directly into pre-allocated buffers for multiple
@@ -138,7 +144,7 @@ public:
      * read on success, or a negative value on error
      */
     virtual std::vector<int> BatchGetInto(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                          const std::vector<size_t> &sizes, const int32_t direct) = 0;
+                                          const std::vector<size_t> &sizes, const int32_t direct = 2) = 0;
 
     /**
      * @brief Get object data directly into a pre-allocated buffer
@@ -149,7 +155,7 @@ public:
      * @return zero on success, other on error
      */
     virtual int GetIntoLayers(const std::string &key, const std::vector<void *> &buffers,
-                              const std::vector<size_t> &sizes, const int32_t direct) = 0;
+                              const std::vector<size_t> &sizes, const int32_t direct = 2) = 0;
 
     /**
      * @brief Get object data directly into pre-allocated buffers for multiple
@@ -164,7 +170,7 @@ public:
     virtual std::vector<int> BatchGetIntoLayers(const std::vector<std::string> &keys,
                                                 const std::vector<std::vector<void *>> &buffers,
                                                 const std::vector<std::vector<size_t>> &sizes,
-                                                const int32_t direct) = 0;
+                                                const int32_t direct = 2) = 0;
 
     /**
      * @brief Put object data directly from a pre-allocated buffer
@@ -172,9 +178,18 @@ public:
      * @param buffer Pointer to the buffer containing data
      * @param size size of the buffer
      * @param direct direct indicate the location of the buffer, for detailed meanings, refer to smem_bm_copy_type
+     * @param replicateConfig Preferred rank for allocation
      * @return 0 on success, negative value on error
      */
-    virtual int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct) = 0;
+    virtual int PutFrom(const std::string &key, void *buffer, size_t size, const int32_t direct = 3,
+                        const ReplicateConfig &replicateConfig = {}) = 0;
+
+    /**
+     * @brief Get current service instance ID
+     * @localServiceId current service instance ID
+     * @return 0 on success, negative value on error
+     */
+    virtual int GetLocalServiceId(uint32_t &localServiceId) = 0;
 
     /**
      * @brief Put object data directly from pre-allocated buffers for multiple
@@ -183,11 +198,13 @@ public:
      * @param buffers Vector of pointers to the pre-allocated buffers
      * @param sizes Vector of sizes of the buffers
      * @param direct direct indicate the location of the data, for detailed meanings, refer to smem_bm_copy_type
+     * @param replicateConfig Preferred rank for allocation
      * @return Vector of integers, where each element is 0 on success, or a
      * negative value on error
      */
     virtual std::vector<int> BatchPutFrom(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
-                                          const std::vector<size_t> &sizes, const int32_t direct) = 0;
+                                          const std::vector<size_t> &sizes, const int32_t direct = 3,
+                                          const ReplicateConfig &replicateConfig = {}) = 0;
 
     /**
      * @brief Put object data directly from a pre-allocated buffer
@@ -195,10 +212,12 @@ public:
      * @param buffers Pointer to the buffer containing data
      * @param sizes Vector of sizes of the buffers
      * @param direct direct indicate the location of the data, for detailed meanings, refer to smem_bm_copy_type
+     * @param replicateConfig Preferred rank for allocation
      * @return 0 on success, negative value on error
      */
     virtual int PutFromLayers(const std::string &key, const std::vector<void *> &buffers,
-                              const std::vector<size_t> &sizes, const int32_t direct) = 0;
+                              const std::vector<size_t> &sizes, const int32_t direct = 3,
+                              const ReplicateConfig &replicateConfig = {}) = 0;
 
     /**
      * @brief Put object data directly from pre-allocated buffers for multiple
@@ -207,13 +226,14 @@ public:
      * @param buffers Vector of pointers to the pre-allocated buffers
      * @param sizes Vector of sizes of the buffers
      * @param direct direct indicate the location of the data, for detailed meanings, refer to smem_bm_copy_type
+     * @param replicateConfig Preferred rank for allocation
      * @return Vector of integers, where each element is 0 on success, or a
      * negative value on error
      */
     virtual std::vector<int> BatchPutFromLayers(const std::vector<std::string> &keys,
                                                 const std::vector<std::vector<void *>> &buffers,
-                                                const std::vector<std::vector<size_t>> &sizes,
-                                                const int32_t direct) = 0;
+                                                const std::vector<std::vector<size_t>> &sizes, const int32_t direct = 3,
+                                                const ReplicateConfig &replicateConfig = {}) = 0;
 
     /**
      * @brief remove the object

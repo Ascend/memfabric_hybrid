@@ -61,6 +61,11 @@ public:
 
     Result RegisterBuffer(uint64_t addr, uint64_t size);
 
+    uint32_t RankId() const
+    {
+        return rankId_;
+    }
+
     static Result RegisterInstance()
     {
         std::lock_guard<std::mutex> lock(gClientHandlerMtx);
@@ -100,7 +105,7 @@ private:
     MmcClientDefault& operator=(const MmcClientDefault&) = delete;
 
     inline uint32_t RankId(const affinity_policy &policy);
-
+    Result PrePutHandle(const MmcBufferArray &bufArr, mmc_put_options &options, AllocRequest &request, uint32_t flags);
     Result AllocateAndPutBlobs(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufs,
                                const mmc_put_options& options, uint32_t flags, uint64_t operateId,
                                std::vector<int>& batchResult, BatchAllocResponse& allocResponse);
