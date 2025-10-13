@@ -43,7 +43,8 @@ void DefineMmcStructModule(py::module_ &m)
          Less than or equal to 8, Currently only supports a value of 1.
      )pbdoc")
         .def_readwrite("preferredLocalServiceIDs", &ReplicateConfig::preferredLocalServiceIDs, R"pbdoc(
-         List of instance IDs for forced storage. The values in the list must be unique, and the list size must be equal to replicaNum.
+         List of instance IDs for forced storage. The values in the list must be unique,
+         and the list size must be equal to replicaNum.
      )pbdoc");
 }
 
@@ -213,7 +214,8 @@ PYBIND11_MODULE(_pymmc, m)
             py::arg("keys"), py::arg("buffer_ptrs"), py::arg("sizes"), py::arg("direct") = SMEMB_COPY_H2G,
             py::arg("replicateConfig") = defaultConfig)
         .def("put",
-            [](MmcacheStore &self, const std::string &key, const py::buffer &buf, const ReplicateConfig &replicateConfig) {
+            [](MmcacheStore &self, const std::string &key, const py::buffer &buf,
+               const ReplicateConfig &replicateConfig) {
                 py::buffer_info info = buf.request(false);
                 mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(info.ptr),
                                      .type = 0,
