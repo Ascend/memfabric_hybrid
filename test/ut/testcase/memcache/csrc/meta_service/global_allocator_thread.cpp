@@ -59,7 +59,7 @@ int AllocatorTest(const int worldSize, const int rankId, MmcGlobalAllocatorPtr a
 
     allocReq.blobSize_ = SIZE_32K - 10000;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = (rankId + 1) % worldSize;
+    allocReq.preferredRank_.push_back((rankId + 1) % worldSize);
     allocReq.mediaType_ = MEDIA_DRAM;
 
     result = allocator->Alloc(allocReq, blobs);

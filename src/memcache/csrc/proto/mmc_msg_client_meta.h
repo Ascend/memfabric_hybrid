@@ -41,7 +41,7 @@ struct AllocRequest : MsgBase {
 
     AllocRequest() : MsgBase{0, ML_ALLOC_REQ, 0}, operateId_{0} {}
     AllocRequest(const std::string& key, const AllocOptions& prot, uint64_t operateId)
-        : MsgBase{0, ML_ALLOC_REQ, 0}, key_(key), options_(prot), operateId_(operateId) {};
+        : MsgBase{0, ML_ALLOC_REQ, 0}, operateId_(operateId), key_(key), options_(prot) {};
 
     Result Serialize(NetMsgPacker& packer) const override
     {
@@ -49,7 +49,7 @@ struct AllocRequest : MsgBase {
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
         packer.Serialize(key_);
-        packer.Serialize(options_);
+        options_.Serialize(packer);
         packer.Serialize(operateId_);
         return MMC_OK;
     }
@@ -60,7 +60,7 @@ struct AllocRequest : MsgBase {
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
         packer.Deserialize(key_);
-        packer.Deserialize(options_);
+        options_.Deserialize(packer);
         packer.Deserialize(operateId_);
         return MMC_OK;
     }
@@ -206,7 +206,10 @@ struct BatchAllocRequest : MsgBase {
         packer.Serialize(msgId);
         packer.Serialize(destRankId);
         packer.Serialize(keys_);
-        packer.Serialize(options_);
+        MMC_ASSERT_RETURN(keys_.size() == options_.size(), MMC_ERROR);
+        for (const auto &option : options_) {
+            option.Serialize(packer);
+        }
         packer.Serialize(flags_);
         packer.Serialize(operateId_);
         return MMC_OK;
@@ -218,7 +221,11 @@ struct BatchAllocRequest : MsgBase {
         packer.Deserialize(msgId);
         packer.Deserialize(destRankId);
         packer.Deserialize(keys_);
-        packer.Deserialize(options_);
+        options_.clear();
+        options_.assign(keys_.size(), AllocOptions());
+        for (auto &option : options_) {
+            option.Deserialize(packer);
+        }
         packer.Deserialize(flags_);
         packer.Deserialize(operateId_);
         return MMC_OK;
@@ -542,7 +549,8 @@ struct BmUnregisterRequest : public MsgBase {
         packer.Serialize(mediaType_);
         return MMC_OK;
     }
-    Result Deserialize(NetMsgUnpacker &packer)
+
+    Result Deserialize(NetMsgUnpacker &packer) override
     {
         packer.Deserialize(msgVer);
         packer.Deserialize(msgId);

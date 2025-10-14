@@ -66,16 +66,16 @@ TEST_F(TestMmcGlobalAllocator, AllocOne)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = MEDIA_DRAM;
 
     Result ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Gva(), size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]));
 }
 
 TEST_F(TestMmcGlobalAllocator, AllocMulti)
@@ -112,14 +112,14 @@ TEST_F(TestMmcGlobalAllocator, AllocMulti)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 10;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
 
     Result ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 10U);
     for (size_t i = 0; i < blobs.size(); i++) {
-        uint32_t rank = (allocReq.preferredRank_ + i) % 10;
+        uint32_t rank = ((allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]) + i) % 10;
         EXPECT_EQ(blobs[i]->Rank(), rank);
         EXPECT_EQ(blobs[i]->Size(), allocReq.blobSize_);
         EXPECT_EQ(blobs[i]->Type(), allocReq.mediaType_);
@@ -161,7 +161,7 @@ TEST_F(TestMmcGlobalAllocator, AllocCrossRank)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 12;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
 
     Result ret = allocator->Alloc(allocReq, blobs);
@@ -202,16 +202,16 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
 
     Result ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Gva(), size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]));
 
     ret = allocator->Free(blobs[0]);
     EXPECT_EQ(ret, MMC_OK);
@@ -220,10 +220,10 @@ TEST_F(TestMmcGlobalAllocator, FreeOne)
     ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Gva(), size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]));
 }
 
 TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
@@ -260,14 +260,14 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 10;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
 
     Result ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), allocReq.numBlobs_);
     for (int i = 0; i < 10; i++) {
-        uint32_t rank = (allocReq.preferredRank_ + i) % 10;
+        uint32_t rank = ((allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]) + i) % 10;
         EXPECT_EQ(blobs[i]->Rank(), rank);
         EXPECT_EQ(blobs[i]->Size(), allocReq.blobSize_);
         EXPECT_EQ(blobs[i]->Type(), allocReq.mediaType_);
@@ -282,10 +282,11 @@ TEST_F(TestMmcGlobalAllocator, FreeCrossRank)
     ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_ + 1 * allocReq.blobSize_);
+    EXPECT_EQ(blobs[0]->Gva(),
+              size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]) + 1 * allocReq.blobSize_);
 }
 
 TEST_F(TestMmcGlobalAllocator, MountUnmount)
@@ -325,7 +326,7 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 9;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
 
     Result ret = allocator->Alloc(allocReq, blobs);
@@ -341,10 +342,11 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
     ret = allocator->Alloc(allocReq, blobs1);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs1.size(), 1U);
-    EXPECT_EQ(blobs1[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs1[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs1[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs1[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs1[0]->Gva(), size * allocReq.preferredRank_ + 1 * allocReq.blobSize_);
+    EXPECT_EQ(blobs1[0]->Gva(),
+              size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]) + 1 * allocReq.blobSize_);
 
     MmcLocation loc;
     MmcLocalMemlInitInfo info;
@@ -366,7 +368,7 @@ TEST_F(TestMmcGlobalAllocator, MountUnmount)
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs2.size(), 10U);
     for (int i = 0; i < 10; i++) {
-        uint32_t rank = (allocReq.preferredRank_ + i) % 10;
+        uint32_t rank = ((allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]) + i) % 10;
         EXPECT_EQ(blobs2[i]->Rank(), rank);
         EXPECT_EQ(blobs2[i]->Size(), allocReq.blobSize_);
         EXPECT_EQ(blobs2[i]->Type(), allocReq.mediaType_);
@@ -381,7 +383,7 @@ TEST_F(TestMmcGlobalAllocator, AllocWhenEmpty)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 0;
+    allocReq.preferredRank_.push_back(0);
     allocReq.mediaType_ = MEDIA_DRAM;
     
     Result ret = allocator->Alloc(allocReq, blobs);
@@ -426,7 +428,7 @@ TEST_F(TestMmcGlobalAllocator, UnmountInUseLocation)
     std::vector<MmcMemBlobPtr> blobs;
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 0;
+    allocReq.preferredRank_.push_back(0);
     allocReq.mediaType_ = MEDIA_DRAM;
     Result ret = allocator->Alloc(allocReq, blobs);
     ASSERT_EQ(ret, MMC_OK);
@@ -471,7 +473,7 @@ TEST_F(TestMmcGlobalAllocator, ReBuild)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(0);
     allocReq.mediaType_ = MEDIA_DRAM;
 
     Result ret;
@@ -555,7 +557,7 @@ TEST_F(TestMmcGlobalAllocator, AllocForce)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 10;
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.push_back(5);
     allocReq.mediaType_ = 0;
     allocReq.flags_ = ALLOC_FORCE_BY_RANK;
 
@@ -564,19 +566,21 @@ TEST_F(TestMmcGlobalAllocator, AllocForce)
     EXPECT_EQ(blobs.size(), 0U);
 
     allocReq.numBlobs_ = 1;
-    allocReq.preferredRank_ = 10;
+    allocReq.preferredRank_.clear();
+    allocReq.preferredRank_.push_back(10);
     ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_ERROR);
     EXPECT_EQ(blobs.size(), 0U);
 
-    allocReq.preferredRank_ = 5;
+    allocReq.preferredRank_.clear();
+    allocReq.preferredRank_.push_back(5);
     ret = allocator->Alloc(allocReq, blobs);
     EXPECT_EQ(ret, MMC_OK);
     EXPECT_EQ(blobs.size(), 1U);
-    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Rank(), allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]);
     EXPECT_EQ(blobs[0]->Size(), allocReq.blobSize_);
     EXPECT_EQ(blobs[0]->Type(), allocReq.mediaType_);
-    EXPECT_EQ(blobs[0]->Gva(), size * allocReq.preferredRank_);
+    EXPECT_EQ(blobs[0]->Gva(), size * (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]));
 }
 
 TEST_F(TestMmcGlobalAllocator, AllocRandom)
@@ -613,7 +617,7 @@ TEST_F(TestMmcGlobalAllocator, AllocRandom)
 
     allocReq.blobSize_ = SIZE_32K;
     allocReq.numBlobs_ = 10;
-    allocReq.preferredRank_ = 0;
+    allocReq.preferredRank_.push_back(0);
     allocReq.mediaType_ = 1;
     allocReq.flags_ = ALLOC_RANDOM;
 

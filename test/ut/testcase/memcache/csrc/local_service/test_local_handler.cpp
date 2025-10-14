@@ -59,7 +59,7 @@ TEST_F(TestLocalHandler, Alloc)
     std::map<std::string, MmcMemBlobDesc> blobMap;
     metaMng->Mount(loc, locInfo, blobMap);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+    AllocOptions allocReq{SIZE_32K, 1, 0, {0}, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);

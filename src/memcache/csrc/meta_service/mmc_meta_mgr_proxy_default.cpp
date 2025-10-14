@@ -29,6 +29,7 @@ Result MmcMetaMgrProxyDefault::BatchAlloc(const BatchAllocRequest &req, BatchAll
     metaMangerPtr_->CheckAndEvict();
     resp.results_.resize(req.keys_.size());
     resp.blobs_.resize(req.keys_.size());
+    MMC_ASSERT_RETURN(req.keys_.size() == req.options_.size(), MMC_ERROR);
     for (size_t i = 0; i < req.keys_.size(); ++i) {
         MmcMemMetaDesc objMeta{};
         Result ret = metaMangerPtr_->Alloc(req.keys_[i], req.options_[i], req.operateId_, objMeta);

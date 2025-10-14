@@ -15,46 +15,90 @@ constexpr int LEVEL_BASE = 100;
 
 using MmcMemPoolInitInfo = std::map<MmcLocation, MmcLocalMemlInitInfo>;
 
+inline std::ostream &operator<<(std::ostream &os, const std::vector<MmcMemBlobPtr> &vec)
+{
+    os << ", Rank[";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        if (i > 0) {
+            os << ", ";
+        }
+        os << vec[i]->Rank();
+    }
+    os << "]";
+    return os;
+}
+
 class MmcGlobalAllocator : public MmcReferable {
 public:
     MmcGlobalAllocator() = default;
 
+    // preferredRank为空时（当前实际至少有一个local rank，代码需要考虑为空场景）， numBlobs任意值
+    // preferredRank非空时，不能重复，而且列表大小小于等于 numBlobs
+    // preferredRank大于1的时候，必定是强制分配场景
+    // handle :
+    // replicaNum=4
+    // preferredLocalServiceIDs=[0,1]
+    // 0,1 强制，剩下的默认处理；默认处理时候需要排除强制rank列表
     Result Alloc(const AllocOptions &allocReq, std::vector<MmcMemBlobPtr> &blobs)
     {
-        globalAllocLock_.LockRead();
-        if (allocators_.empty()) {
-            globalAllocLock_.UnlockRead();
-            MMC_LOG_ERROR("Alloc allocators_ is empty");
+        std::unordered_set<uint32_t> excludeRanks(allocReq.preferredRank_.begin(), allocReq.preferredRank_.end());
+        if (allocReq.numBlobs_ < allocReq.preferredRank_.size() ||
+            excludeRanks.size() != allocReq.preferredRank_.size()) {
+            MMC_LOG_ERROR(allocReq);
             return MMC_ERROR;
         }
-        Result ret;
-        switch (allocReq.flags_) {
-            case ALLOC_ARRANGE:
-                ret = MmcLocalityStrategy::ArrangeLocality(allocators_, allocReq, blobs);
-                break;
-
-            case ALLOC_FORCE_BY_RANK:
-                ret = MmcLocalityStrategy::ForceAssign(allocators_, allocReq, blobs);
-                break;
-
-            case ALLOC_RANDOM:
-                ret = MmcLocalityStrategy::RandomAssign(allocators_, allocReq, blobs);
-                break;
-
-            default:
-                ret = MmcLocalityStrategy::ArrangeLocality(allocators_, allocReq, blobs);
-                break;
+        globalAllocLock_.LockRead();
+        // size=1 不一定是强制分配
+        if (allocReq.preferredRank_.size() <= 1u) {
+            auto ret = InnerAlloc(allocReq, blobs, {});
+            globalAllocLock_.UnlockRead();
+            if (ret != MMC_OK) {
+                Free(blobs);
+                MMC_LOG_ERROR("Simple alloc failed, ret: " << ret << ", allocReq: " << allocReq);
+            }
+            return ret;
+        }
+        Result result{};
+        for (const uint32_t rank : allocReq.preferredRank_) {
+            AllocOptions tmpAllocReq = allocReq;
+            tmpAllocReq.preferredRank_ = {rank};
+            tmpAllocReq.numBlobs_ = 1u;
+            tmpAllocReq.flags_ = static_cast<uint32_t>(ALLOC_FORCE_BY_RANK);
+            if ((result = InnerAlloc(tmpAllocReq, blobs, {})) != MMC_OK) {
+                MMC_LOG_ERROR("Force alloc failed, result: " << result << ", allocReq: " << tmpAllocReq);
+                globalAllocLock_.UnlockRead();
+                Free(blobs);
+                return result;
+            }
+        }
+        if (allocReq.numBlobs_ - allocReq.preferredRank_.size() > 0) {
+            AllocOptions tmpAllocReq = allocReq;
+            tmpAllocReq.numBlobs_ = allocReq.numBlobs_ - allocReq.preferredRank_.size();
+            tmpAllocReq.flags_ = static_cast<uint32_t>(ALLOC_ARRANGE);
+            if ((result = InnerAlloc(tmpAllocReq, blobs, excludeRanks)) != MMC_OK) {
+                MMC_LOG_ERROR("Arrange alloc failed, result: " << result << ", allocReq: " << tmpAllocReq);
+                globalAllocLock_.UnlockRead();
+                Free(blobs);
+                return result;
+            }
         }
         globalAllocLock_.UnlockRead();
-        if (ret != MMC_OK && !blobs.empty()) {
-            for (auto& blob : blobs) {
-                Free(blob);
-            }
-            blobs.clear();
-            MMC_LOG_ERROR("Alloc " << allocReq.blobSize_ << "failed, ret:" << ret);
+        if (blobs.size() != allocReq.numBlobs_) {
+            MMC_LOG_ERROR("More alloc failed, " << allocReq << blobs);
+            Free(blobs);
+            return MMC_ERROR;
         }
-        return ret;
-    };
+        MMC_LOG_DEBUG("More alloc, " << allocReq << blobs);
+        return MMC_OK;
+    }
+
+    void Free(std::vector<MmcMemBlobPtr> &blobs) noexcept
+    {
+        for (const auto &blob : blobs) {
+            Free(blob);
+        }
+        blobs.clear();
+    }
 
     Result Free(const MmcMemBlobPtr& blob)
     {
@@ -237,6 +281,34 @@ public:
     }
 
 private:
+    Result InnerAlloc(const AllocOptions &allocReq, std::vector<MmcMemBlobPtr> &blobs,
+                      const std::unordered_set<uint32_t> &excludeRanks) const
+    {
+        if (allocators_.empty()) {
+            MMC_LOG_ERROR("Alloc allocators_ is empty");
+            return MMC_ERROR;
+        }
+        Result ret;
+        switch (allocReq.flags_) {
+            case ALLOC_ARRANGE:
+                ret = MmcLocalityStrategy::ArrangeLocality(allocators_, allocReq, blobs, excludeRanks);
+                break;
+
+            case ALLOC_FORCE_BY_RANK:
+                ret = MmcLocalityStrategy::ForceAssign(allocators_, allocReq, blobs);
+                break;
+
+            case ALLOC_RANDOM:
+                ret = MmcLocalityStrategy::RandomAssign(allocators_, allocReq, blobs);
+                break;
+
+            default:
+                ret = MmcLocalityStrategy::ArrangeLocality(allocators_, allocReq, blobs, excludeRanks);
+                break;
+        }
+        return ret;
+    }
+
     MmcAllocators allocators_;
     ReadWriteLock globalAllocLock_;
 };

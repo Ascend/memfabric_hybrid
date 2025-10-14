@@ -121,7 +121,8 @@ TEST_F(TestMmcServiceError, metaService)
     buffer.oneDim.offset = 0;
     buffer.oneDim.len = SIZE_32K;
 
-    mmc_put_options options{0, NATIVE_AFFINITY};
+    mmc_put_options options{0, NATIVE_AFFINITY, 1};
+    std::fill_n(options.preferredLocalServiceIDs, MAX_BLOB_COPIES, -1);
     ret = mmcc_put(test.c_str(), &buffer, options, 0);
     ASSERT_TRUE(ret == 0);
 
@@ -242,7 +243,8 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     buffer.oneDim.offset = 0;
     buffer.oneDim.len = SIZE_32K;
 
-    mmc_put_options options{0, NATIVE_AFFINITY};
+    mmc_put_options options{0, NATIVE_AFFINITY, 1};
+    std::fill_n(options.preferredLocalServiceIDs, MAX_BLOB_COPIES, -1);
     ret = mmcc_put(test.c_str(), &buffer, options, 0);
     EXPECT_TRUE(ret == 0);
 

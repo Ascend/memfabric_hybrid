@@ -104,10 +104,16 @@ Result MmcClientDefault::PrePutHandle(const MmcBufferArray &bufArr, mmc_put_opti
     MMC_VALIDATE_RETURN(bmProxy_ != nullptr, "BmProxy is null", MMC_CLIENT_NOT_INIT);
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);
     options.mediaType = bmProxy_->GetMediaType();
-    AllocOptions prot = {bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flags};
-    if (options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0) {
-        prot.preferredRank_ = options.preferredLocalServiceIDs[0];
+    AllocOptions prot = {bufArr.TotalSize(), 1, options.mediaType, {RankId(options.policy)}, flags};
+    if (options.replicaNum > 0) {
+        prot.numBlobs_ = options.replicaNum;
+    }
+    std::vector<uint32_t> preferredRank;
+    std::copy_if(std::begin(options.preferredLocalServiceIDs), std::end(options.preferredLocalServiceIDs),
+                 std::back_inserter(preferredRank), [](const int32_t x) { return x >= 0; });
+    if (!preferredRank.empty()) {
         prot.flags_ = ALLOC_FORCE_BY_RANK;
+        prot.preferredRank_ = preferredRank;
     }
     request.options_ = prot;
     return MMC_OK;
@@ -567,14 +573,17 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
     const std::vector<MmcBufferArray>& bufArrs, const mmc_put_options& options, uint32_t flags, uint64_t operateId,
     std::vector<int>& batchResult, BatchAllocResponse& allocResponse)
 {
+    std::vector<uint32_t> preferredRank;
+    std::copy_if(std::begin(options.preferredLocalServiceIDs), std::end(options.preferredLocalServiceIDs),
+                 std::back_inserter(preferredRank), [](const int32_t x) { return x >= 0; });
     std::vector<AllocOptions> allocOptionsList;
-    auto flag = options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0
-                    ? static_cast<uint32_t>(ALLOC_FORCE_BY_RANK)
-                    : flags;
+    auto flag = !preferredRank.empty() ? static_cast<uint32_t>(ALLOC_FORCE_BY_RANK) : flags;
+    uint16_t numBlobs = std::max<uint16_t>(options.replicaNum, 1u);
     for (const auto &bufArr : bufArrs) {
-        AllocOptions tmpAllocOptions = {bufArr.TotalSize(), 1, options.mediaType, RankId(options.policy), flag};
-        if (options.preferredLocalServiceIDs[0] >= 0 && options.replicaNum > 0) {
-            tmpAllocOptions.preferredRank_ = options.preferredLocalServiceIDs[0];
+        AllocOptions tmpAllocOptions = {
+            bufArr.TotalSize(), numBlobs, options.mediaType, {RankId(options.policy)}, flag};
+        if (!preferredRank.empty()) {
+            tmpAllocOptions.preferredRank_ = preferredRank;
         }
         allocOptionsList.emplace_back(tmpAllocOptions);
     }

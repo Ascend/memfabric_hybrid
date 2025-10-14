@@ -40,7 +40,7 @@ void DefineMmcStructModule(py::module_ &m)
            - replicaNum = 0
      )pbdoc")
         .def_readwrite("replicaNum", &ReplicateConfig::replicaNum, R"pbdoc(
-         Less than or equal to 8, Currently only supports a value of 1.
+         Less than or equal to 8.
      )pbdoc")
         .def_readwrite("preferredLocalServiceIDs", &ReplicateConfig::preferredLocalServiceIDs, R"pbdoc(
          List of instance IDs for forced storage. The values in the list must be unique,

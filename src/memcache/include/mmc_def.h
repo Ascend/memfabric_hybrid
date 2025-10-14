@@ -95,7 +95,7 @@ enum affinity_policy : int {
 typedef struct {
     uint16_t mediaType;
     affinity_policy policy;
-    uint16_t replicaNum; // Less than or equal to MAX_BLOB_COPIES=8, Currently only supports a value of 1
+    uint16_t replicaNum; // Less than or equal to MAX_BLOB_COPIES=8
     int32_t preferredLocalServiceIDs[MAX_BLOB_COPIES];
 } mmc_put_options;
 

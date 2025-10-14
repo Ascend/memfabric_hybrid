@@ -80,7 +80,7 @@ TEST_F(TestMmcMetaService, Init)
 
     AllocRequest reqAlloc;
     reqAlloc.key_ = "test";
-    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
+    reqAlloc.options_ = AllocOptions(SIZE_32K, 1, MEDIA_HBM, {0}, 0);
     AllocResponse respAlloc;
     ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
     ASSERT_TRUE(respAlloc.numBlobs_ == 1);
@@ -119,7 +119,7 @@ TEST_F(TestMmcMetaService, ExistRequest)
 
     AllocRequest reqAlloc;
     reqAlloc.key_ = "test";
-    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
+    reqAlloc.options_ = AllocOptions(SIZE_32K, 1, MEDIA_HBM, {0}, 0);
     AllocResponse respAlloc;
     ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
 
@@ -171,7 +171,7 @@ TEST_F(TestMmcMetaService, BatchExistRequest)
     ASSERT_TRUE(localServicePtr->Start(localServiceConfig) == MMC_OK);
 
     AllocRequest reqAlloc;
-    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
+    reqAlloc.options_ = AllocOptions(SIZE_32K, 1, MEDIA_HBM, {0}, 0);
     for (uint16_t i = 0U; i < 5U; ++i) {
         reqAlloc.key_ = "test_" + std::to_string(i);
         AllocResponse respAlloc;
@@ -244,7 +244,7 @@ TEST_F(TestMmcMetaService, QueryRequest)
 
     AllocRequest reqAlloc;
     reqAlloc.key_ = "test";
-    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
+    reqAlloc.options_ = AllocOptions(SIZE_32K, 1, MEDIA_HBM, {0}, 0);
     AllocResponse respAlloc;
     ASSERT_TRUE(localServiceDefault->SyncCallMeta(reqAlloc, respAlloc, 30) == MMC_OK);
 
@@ -300,7 +300,7 @@ TEST_F(TestMmcMetaService, BatchQueryRequest)
 
     AllocRequest reqAlloc;
     std::map<std::string, std::pair<uint32_t, uint8_t>> keyMap;  // key : {size, numBlobs}
-    reqAlloc.options_ = {SIZE_32K, 1, MEDIA_HBM, 0, 0};
+    reqAlloc.options_ = AllocOptions(SIZE_32K, 1, MEDIA_HBM, {0}, 0);
     for (uint16_t i = 0U; i < 3U; ++i) {
         reqAlloc.key_ = "test_" + std::to_string(i);
         reqAlloc.options_.numBlobs_ = 1;

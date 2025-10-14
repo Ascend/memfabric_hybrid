@@ -373,7 +373,8 @@ Result MmcMetaManager::CopyBlob(const MmcMemObjMetaPtr& objMeta, const MmcMemBlo
     allocOpt.blobSize_ = srcBlob.size_;
     allocOpt.numBlobs_ = 1;
     allocOpt.mediaType_ = dstLoc.mediaType_;
-    allocOpt.preferredRank_ = dstLoc.rank_;
+    allocOpt.preferredRank_.clear();
+    allocOpt.preferredRank_.push_back(dstLoc.rank_);
     allocOpt.flags_ = dstLoc.rank_ == UINT32_MAX ? 0 : ALLOC_FORCE_BY_RANK;
 
     std::vector<MmcMemBlobPtr> blobs;

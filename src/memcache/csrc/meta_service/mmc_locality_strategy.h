@@ -8,7 +8,7 @@
 #include <set>
 #include <random>
 #include <algorithm>
-
+#include <ostream>
 #include "mmc_mem_blob.h"
 #include "mmc_types.h"
 #include "mmc_blob_allocator.h"
@@ -28,12 +28,42 @@ struct AllocOptions {
     uint64_t blobSize_{0};
     uint32_t numBlobs_{0};
     uint16_t mediaType_{0};
-    uint32_t preferredRank_{0};
+    std::vector<uint32_t> preferredRank_{};
     uint32_t flags_{0};
     AllocOptions() = default;
-    AllocOptions(uint64_t blobSize, uint32_t numBlobs, uint16_t mediaType, uint32_t preferredRank, uint32_t flags)
+    AllocOptions(uint64_t blobSize, uint32_t numBlobs, uint16_t mediaType, const std::vector<uint32_t> &preferredRank,
+                 uint32_t flags)
         : blobSize_(blobSize), numBlobs_(numBlobs), mediaType_(mediaType), preferredRank_(preferredRank), flags_(flags)
     {}
+
+    Result Serialize(NetMsgPacker &packer) const
+    {
+        packer.Serialize(blobSize_);
+        packer.Serialize(numBlobs_);
+        packer.Serialize(mediaType_);
+        packer.Serialize(preferredRank_);
+        packer.Serialize(flags_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer)
+    {
+        packer.Deserialize(blobSize_);
+        packer.Deserialize(numBlobs_);
+        packer.Deserialize(mediaType_);
+        packer.Deserialize(preferredRank_);
+        packer.Deserialize(flags_);
+        return MMC_OK;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const AllocOptions &obj)
+    {
+        os << "blobSize: " << obj.blobSize_ << ", numBlobs: " << obj.numBlobs_ << ", preferredRank: [";
+        for (uint32_t rank : obj.preferredRank_) {
+            os << rank << ", ";
+        }
+        return os << "], ";
+    }
 };
 
 struct MmcLocalMemCurInfo {
@@ -47,15 +77,19 @@ using MmcAllocators = std::map<MmcLocation, MmcBlobAllocatorPtr>;
 class MmcLocalityStrategy : public MmcReferable {
 public:
     static Result ArrangeLocality(const MmcAllocators &allocators, const AllocOptions &allocReq,
-                                  std::vector<MmcMemBlobPtr> &blobs)
+                                  std::vector<MmcMemBlobPtr> &blobs, const std::unordered_set<uint32_t> &excludeRanks)
     {
         if (allocators.empty()) {
             MMC_LOG_ERROR("Cannot allocate blob, allocators empty");
             return MMC_ERROR;
         }
+        if (allocators.size() < allocReq.numBlobs_) {
+            MMC_LOG_ERROR("Cannot allocate blob, allocators not enough");
+            return MMC_ERROR;
+        }
         MmcLocation location{};
         location.mediaType_ = static_cast<MediaType>(allocReq.mediaType_);
-        location.rank_ = allocReq.preferredRank_;
+        location.rank_ = allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0];
         auto itPrefer = allocators.find(location);
         if (itPrefer == allocators.end()) {
             itPrefer = allocators.begin();
@@ -65,7 +99,8 @@ public:
         std::set<MmcLocation> visited;
         for (uint32_t i = 0; i < allocReq.numBlobs_; i++) {
             while (true) {
-                if (!(visited.find(it->first) != visited.end()) && it->first.mediaType_ == allocReq.mediaType_) {
+                if (!(visited.find(it->first) != visited.end()) && it->first.mediaType_ == allocReq.mediaType_ &&
+                    excludeRanks.find(it->first.rank_) == excludeRanks.end()) {
                     auto allocator = it->second;
                     MmcMemBlobPtr blob = allocator->Alloc(allocReq.blobSize_);
                     if (blob != nullptr) {
@@ -81,7 +116,7 @@ public:
                 if (it == itPrefer) {
                     MMC_LOG_ERROR("Cannot allocate blob, blobSize "<< allocReq.blobSize_
                         << " numBlobs " << allocReq.numBlobs_ << " mediaType " << allocReq.mediaType_
-                        << " preferredRank " << allocReq.preferredRank_);
+                        << " preferredRank " << (allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0]));
                     return MMC_ERROR;
                 }
             }
@@ -102,7 +137,7 @@ public:
         }
         MmcLocation location{};
         location.mediaType_ = static_cast<MediaType>(allocReq.mediaType_);
-        location.rank_ = allocReq.preferredRank_;
+        location.rank_ = allocReq.preferredRank_.empty() ? 0 : allocReq.preferredRank_[0];
         auto itPrefer = allocators.find(location);
         if (itPrefer == allocators.end()) {
             MMC_LOG_ERROR("Cannot force assign allocate blob, allocator rank: " << location.rank_
@@ -130,7 +165,7 @@ public:
     }
 
     static Result RandomAssign(const MmcAllocators &allocators, const AllocOptions &allocReq,
-                                  std::vector<MmcMemBlobPtr> &blobs)
+                               std::vector<MmcMemBlobPtr> &blobs)
     {
         if (allocators.empty()) {
             MMC_LOG_ERROR("Cannot allocate blob, allocators empty");

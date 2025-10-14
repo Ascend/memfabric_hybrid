@@ -644,8 +644,8 @@ result = store.register_buffer(buffer_ptr, size)
 
 ### ReplicateConfig
 客户端配置结构体，包含以下字段：
-- `replicaNum`: 最大为8，当前只支持1，默认为0
-- `preferredLocalServiceIDs`: 强制分配的实例id列表，列表大小必须等于replicaNum
+- `replicaNum`: 副本数，最大为8，默认为1
+- `preferredLocalServiceIDs`: 强制分配的实例id列表，列表大小必须小于或等于replicaNum
 
 ### mmc_meta_service_config_t
 元数据服务配置结构体，包含以下字段：

@@ -79,7 +79,7 @@ private:
 
 class ReplicateConfig {
 public:
-    uint16_t replicaNum{0}; // Less than or equal to 8, Currently only supports a value of 1
+    uint16_t replicaNum{1u}; // Less than or equal to 8
     std::vector<int32_t> preferredLocalServiceIDs;
 };
 
