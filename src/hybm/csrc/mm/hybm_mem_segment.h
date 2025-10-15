@@ -121,6 +121,8 @@ public:
 
 protected:
     static Result InitDeviceInfo();
+    static bool CanLocalHostReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
+    static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
 
 protected:
     const MemSegmentOptions options_;
@@ -130,6 +132,9 @@ protected:
     static int deviceId_;
     static uint32_t pid_;
     static uint32_t sdid_;
+    static uint32_t serverId_;
+    static uint32_t superPodId_;
+    static AscendSocType socType_;
 };
 }
 }

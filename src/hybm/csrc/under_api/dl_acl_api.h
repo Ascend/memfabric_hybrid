@@ -35,6 +35,7 @@ using rtDisableP2PFunc = int32_t (*)(uint32_t, uint32_t);
 using rtGetLogicDevIdByUserDevIdFunc = int32_t (*)(const int32_t, int32_t *const);
 using rtIpcOpenMemoryFunc = int32_t (*)(void **, const char *);
 using rtIpcCloseMemoryFunc = int32_t (*)(const void *);
+using aclrtGetSocNameFunc = const char *(*)();
 
 class DlAclApi {
 public:
@@ -228,6 +229,11 @@ public:
         return pRtIpcCloseMemory(ptr);
     }
 
+    static inline const char *AclrtGetSocName()
+    {
+        return pAclrtGetSocName();
+    }
+
     static inline Result RtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t flag)
     {
         if (pRtEnableP2P == nullptr) {
@@ -280,6 +286,7 @@ private:
     static rtIpcDestroyMemoryNameFunc pRtIpcDestroyMemoryName;
     static rtIpcOpenMemoryFunc pRtIpcOpenMemory;
     static rtIpcCloseMemoryFunc pRtIpcCloseMemory;
+    static aclrtGetSocNameFunc pAclrtGetSocName;
     static rtEnableP2PFunc pRtEnableP2P;
     static rtDisableP2PFunc pRtDisableP2P;
     static rtGetLogicDevIdByUserDevIdFunc pRtGetLogicDevIdByUserDevId;

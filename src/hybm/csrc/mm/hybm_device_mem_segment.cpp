@@ -207,56 +207,60 @@ Result MemSegmentDevice::Import(const std::vector<std::string> &allExInfo, void 
 {
     std::map<uint16_t, HbmExportInfo> importMap;
     LiteralExInfoTranslater<HbmExportInfo> translator;
-    std::vector<HbmExportInfo> deserializedInfos(allExInfo.size());
+    std::vector<HbmExportInfo> desInfos(allExInfo.size());
     for (auto i = 0U; i < allExInfo.size(); i++) {
-        auto ret = translator.Deserialize(allExInfo[i], deserializedInfos[i]);
+        auto ret = translator.Deserialize(allExInfo[i], desInfos[i]);
         if (ret != 0) {
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
-        importMap.emplace(deserializedInfos[i].rankId, deserializedInfos[i]);
+        importMap.emplace(desInfos[i].rankId, desInfos[i]);
     }
     importMap_ = std::move(importMap);
 
     uint32_t localIdx = UINT32_MAX;
-    for (auto i = 0U; i < deserializedInfos.size(); i++) {
-        if (deserializedInfos[i].magic != HBM_SLICE_EXPORT_INFO_MAGIC) {
-            BM_LOG_ERROR("import info(" << i << ") magic(" << deserializedInfos[i].magic << ") invalid.");
+    for (auto i = 0U; i < desInfos.size(); i++) {
+        if (desInfos[i].magic != HBM_SLICE_EXPORT_INFO_MAGIC) {
+            BM_LOG_ERROR("import info(" << i << ") magic(" << desInfos[i].magic << ") invalid.");
             return BM_INVALID_PARAM;
         }
 
-        if (deserializedInfos[i].rankId == options_.rankId) {
+        if (desInfos[i].rankId == options_.rankId) {
             localIdx = i;
         }
     }
-    BM_ASSERT_RETURN(localIdx < deserializedInfos.size(), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(localIdx < desInfos.size(), BM_INVALID_PARAM);
 
-    for (auto i = 0U; i < deserializedInfos.size(); i++) {
-        if (deserializedInfos[i].rankId == options_.rankId) {
+    for (auto i = 0U; i < desInfos.size(); i++) {
+        if (desInfos[i].rankId == options_.rankId) {
             continue;
         }
 
-        if (deserializedInfos[i].logicDeviceId != logicDeviceId_) {
-            auto ret = DlAclApi::RtEnableP2P(deviceId_, deserializedInfos[i].logicDeviceId, 0);
+        if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
+            auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:"
                              << ret << " local_device:" << deviceId_ << " remote_device:"
-                             << (int)deserializedInfos[i].deviceId << " logic_device:" << logicDeviceId_
-                             << " remote_logic_device:" << deserializedInfos[i].logicDeviceId);
+                             << (int)desInfos[i].deviceId << " logic_device:" << logicDeviceId_
+                             << " remote_logic_device:" << desInfos[i].logicDeviceId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
+        
+        if (!CanSdmaReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
+            continue;
+        }
 
-        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(deserializedInfos[localIdx].shmName, deserializedInfos[i].sdid,
-                                                       &deserializedInfos[i].pid, 1);
+        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid,
+                                                       &desInfos[i].pid, 1);
         if (ret != 0) {
-            BM_LOG_ERROR("enable white list for rank(" << deserializedInfos[i].rankId << ") failed: " << ret
-                << ", local rank = " << options_.rankId << ", shmName=" << deserializedInfos[localIdx].shmName);
+            BM_LOG_ERROR("enable white list for rank(" << desInfos[i].rankId << ") failed: " << ret
+                << ", local rank = " << options_.rankId << ", shmName=" << desInfos[localIdx].shmName);
             return BM_DL_FUNCTION_FAILED;
         }
     }
 
-    return SafeCopy(deserializedInfos.begin(), deserializedInfos.end(), std::back_inserter(imports_));
+    return SafeCopy(desInfos.begin(), desInfos.end(), std::back_inserter(imports_));
 }
 
 Result MemSegmentDevice::Mmap() noexcept
@@ -276,8 +280,7 @@ Result MemSegmentDevice::Mmap() noexcept
             continue;
         }
 
-        if (!CanMapRemote(im)) {
-            BM_LOG_INFO("remote slice on rank(" << im.rankId << ") SDMA cannot reaches.");
+        if (!CanSdmaReaches(im.superPodId, im.serverId, im.logicDeviceId)) {
             continue;
         }
 
@@ -474,26 +477,6 @@ int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
                                  << ", spid=" << superPodId_);
 
     return BM_OK;
-}
-
-bool MemSegmentDevice::CanMapRemote(const HbmExportInfo &rmi) noexcept
-{
-    return CanSdmaReaches(rmi.superPodId, rmi.serverId);
-}
-
-bool MemSegmentDevice::CanSdmaReaches(uint32_t superPodId, uint32_t serverId) noexcept
-{
-    if (serverId == serverId_) {
-        BM_LOG_DEBUG("on sample host, can reach.");
-        return true;
-    }
-
-    if (superPodId == invalidSuperPodId || superPodId_ == invalidSuperPodId) {
-        BM_LOG_INFO("spid: " << superPodId << ", local: " << superPodId_ << " cannot reach.");
-        return false;
-    }
-
-    return superPodId == superPodId_;
 }
 
 void MemSegmentDevice::GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept

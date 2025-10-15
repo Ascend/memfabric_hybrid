@@ -83,6 +83,12 @@ inline void *Valid48BitsAddress(void *address)
     return reinterpret_cast<void *>(static_cast<uintptr_t>(Valid48BitsAddress(addr)));
 }
 
+enum AscendSocType {
+    ASCEND_UNKNOWN = 0,
+    ASCEND_910B,
+    ASCEND_910C,
+};
+
 enum DeviceSystemInfoType {
     INFO_TYPE_VERSION = 1,
     INFO_TYPE_PHY_CHIP_ID = 18,

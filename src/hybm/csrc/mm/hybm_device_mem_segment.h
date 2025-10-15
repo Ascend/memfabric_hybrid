@@ -70,8 +70,6 @@ public:
 public:
     static int SetDeviceInfo(int deviceId) noexcept;
     static int FillDeviceSuperPodInfo() noexcept;
-    static bool CanMapRemote(const HbmExportInfo &rmi) noexcept;
-    static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId) noexcept;
     static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;
 
 protected:

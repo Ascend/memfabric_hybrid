@@ -60,7 +60,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
     }
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &remoteDev : importedDeviceInfo_) {
-        if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId)) {
+        if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId, remoteDev.second.deviceId)) {
             continue;
         }
         ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.second.sdid, (int *)&remoteDev.second.pid, 1);
@@ -309,7 +309,8 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     }
 
     void *address = nullptr;
-    if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) && CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId)) {
+    if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
+         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.deviceId)) {
         if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
             ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.deviceId, 0);
             if (ret != 0) {

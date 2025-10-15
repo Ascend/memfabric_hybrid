@@ -485,16 +485,19 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
         BM_LOG_INFO("ra already initialized.");
         return true;
     }
-
+    const std::chrono::seconds WAIT_TIME(3);
     HccpRaInitConfig initConfig{};
     initConfig.phyId = deviceId;
     initConfig.nicPosition = NETWORK_OFFLINE;
     initConfig.hdcType = 6; // HDC_SERVICE_TYPE_RDMA = 6  HDC_SERVICE_TYPE_RDMA_V2=18
     BM_LOG_DEBUG("RaInit=" << initConfig);
+    std::this_thread::sleep_for(WAIT_TIME); // avoid hccl init conflict
     auto ret = DlHccpApi::RaInit(initConfig);
     if (ret != 0) {
-        BM_LOG_ERROR("Hccp Init RA failed: " << ret << " devid:" << deviceId);
-        return false;
+        BM_LOG_WARN("Hccp Init RA failed: " << ret << " devid:" << deviceId);
+        std::this_thread::sleep_for(WAIT_TIME);
+        raInitialized = true;
+        return true;
     }
 
     BM_LOG_DEBUG("ra init for device id: " << deviceId << " success.");
