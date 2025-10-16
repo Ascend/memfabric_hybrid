@@ -398,5 +398,13 @@ bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
 
     return pos->second.superPodId == superPodId;
 }
+
+Result MemSegmentDeviceUseMem::GetDeviceInfo() noexcept
+{
+    if (InitDeviceInfo() != BM_OK) {
+        return BM_ERROR;
+    }
+    return BM_OK;
+}
 }  // namespace mf
 }  // namespace ock
