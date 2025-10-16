@@ -16,6 +16,7 @@ namespace py = pybind11;
 static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
                                  ", build time: " __DATE__ " " __TIME__
                                  ", commit: " STR2(GIT_LAST_COMMIT);
+constexpr uint64_t MAX_BATCH_COUNT = 1024 * 1024;
 
 TransferAdapterPy::TransferAdapterPy() : handle_(nullptr)
 {
@@ -70,6 +71,7 @@ int TransferAdapterPy::TransferSyncWrite(const char *destUniqueId,
                                          uintptr_t peer_buffer_address,
                                          size_t length)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     // 将uintptr_t类型的地址转换为指针类型
     const void *srcAddress = reinterpret_cast<const void*>(buffer);
     void *destAddress = reinterpret_cast<void*>(peer_buffer_address);
@@ -87,6 +89,7 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
                                               std::vector<uintptr_t> peer_buffer_addresses,
                                               std::vector<size_t> lengths)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     // 检查向量大小是否一致
     if (buffers.size() != peer_buffer_addresses.size() ||
         buffers.size() != lengths.size() || buffers.size() > UINT32_MAX) {
@@ -124,12 +127,14 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
 
 int TransferAdapterPy::RegisterMemory(uintptr_t buffer_addr, size_t capacity)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     char *buffer = reinterpret_cast<char *>(buffer_addr);
     return smem_trans_register_mem(handle_, buffer, capacity, 0);
 }
 
 int TransferAdapterPy::UnregisterMemory(uintptr_t buffer_addr)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     char *buffer = reinterpret_cast<char *>(buffer_addr);
     return smem_trans_deregister_mem(handle_, buffer);
 }
@@ -137,12 +142,17 @@ int TransferAdapterPy::UnregisterMemory(uintptr_t buffer_addr)
 int TransferAdapterPy::BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs,
     std::vector<size_t> capacities)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     if (buffer_addrs.size() != capacities.size()) {
         ADAPTER_LOG_ERROR("Size of buffer_addrs and capacities is not equal.");
         return -1;
     }
 
-    uint32_t count = static_cast<uint32_t>(buffer_addrs.size());
+    const size_t count = buffer_addrs.size();
+    if (count > MAX_BATCH_COUNT) {
+        ADAPTER_LOG_ERROR("array size (" << count << ") exceeds limit(" << MAX_BATCH_COUNT << ")");
+        return -1;
+    }
     std::vector<void*> registerAddrs(count);
 
     for (size_t i = 0; i < count; ++i) {
