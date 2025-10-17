@@ -13,7 +13,7 @@
 #include "mmc_types.h"
 #include "mmc_blob_allocator.h"
 #include "mmc_msg_base.h"
-#include "mmc_msg_packer.h"
+#include "mmc_msg_client_meta.h"
 
 namespace ock {
 namespace mmc {
@@ -22,48 +22,6 @@ enum AllocFlags {
     ALLOC_ARRANGE = 0,
     ALLOC_FORCE_BY_RANK = 1 << 0, // 按照rank强制分配
     ALLOC_RANDOM = 1 << 1,
-};
-
-struct AllocOptions {
-    uint64_t blobSize_{0};
-    uint32_t numBlobs_{0};
-    uint16_t mediaType_{0};
-    std::vector<uint32_t> preferredRank_{};
-    uint32_t flags_{0};
-    AllocOptions() = default;
-    AllocOptions(uint64_t blobSize, uint32_t numBlobs, uint16_t mediaType, const std::vector<uint32_t> &preferredRank,
-                 uint32_t flags)
-        : blobSize_(blobSize), numBlobs_(numBlobs), mediaType_(mediaType), preferredRank_(preferredRank), flags_(flags)
-    {}
-
-    Result Serialize(NetMsgPacker &packer) const
-    {
-        packer.Serialize(blobSize_);
-        packer.Serialize(numBlobs_);
-        packer.Serialize(mediaType_);
-        packer.Serialize(preferredRank_);
-        packer.Serialize(flags_);
-        return MMC_OK;
-    }
-
-    Result Deserialize(NetMsgUnpacker &packer)
-    {
-        packer.Deserialize(blobSize_);
-        packer.Deserialize(numBlobs_);
-        packer.Deserialize(mediaType_);
-        packer.Deserialize(preferredRank_);
-        packer.Deserialize(flags_);
-        return MMC_OK;
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, const AllocOptions &obj)
-    {
-        os << "blobSize: " << obj.blobSize_ << ", numBlobs: " << obj.numBlobs_ << ", preferredRank: [";
-        for (uint32_t rank : obj.preferredRank_) {
-            os << rank << ", ";
-        }
-        return os << "], ";
-    }
 };
 
 struct MmcLocalMemCurInfo {

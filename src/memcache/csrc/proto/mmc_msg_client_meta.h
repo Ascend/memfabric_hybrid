@@ -4,13 +4,55 @@
 
 #ifndef MF_HYBRID_MMC_MSG_CLIENT_META_H
 #define MF_HYBRID_MMC_MSG_CLIENT_META_H
-#include "mmc_locality_strategy.h"
+
 #include "mmc_mem_blob.h"
 #include "mmc_msg_base.h"
 #include "mmc_msg_packer.h"
 
 namespace ock {
 namespace mmc {
+struct AllocOptions {
+    uint64_t blobSize_{0};
+    uint32_t numBlobs_{0};
+    uint16_t mediaType_{0};
+    std::vector<uint32_t> preferredRank_{};
+    uint32_t flags_{0};
+    AllocOptions() = default;
+    AllocOptions(const uint64_t blobSize, const uint32_t numBlobs, const uint16_t mediaType,
+                 const std::vector<uint32_t> &preferredRank, const uint32_t flags)
+        : blobSize_(blobSize), numBlobs_(numBlobs), mediaType_(mediaType), preferredRank_(preferredRank), flags_(flags)
+    {}
+
+    Result Serialize(NetMsgPacker &packer) const
+    {
+        packer.Serialize(blobSize_);
+        packer.Serialize(numBlobs_);
+        packer.Serialize(mediaType_);
+        packer.Serialize(preferredRank_);
+        packer.Serialize(flags_);
+        return MMC_OK;
+    }
+
+    Result Deserialize(NetMsgUnpacker &packer)
+    {
+        packer.Deserialize(blobSize_);
+        packer.Deserialize(numBlobs_);
+        packer.Deserialize(mediaType_);
+        packer.Deserialize(preferredRank_);
+        packer.Deserialize(flags_);
+        return MMC_OK;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const AllocOptions &obj)
+    {
+        os << "blobSize: " << obj.blobSize_ << ", numBlobs: " << obj.numBlobs_ << ", preferredRank: [";
+        for (const uint32_t rank : obj.preferredRank_) {
+            os << rank << ", ";
+        }
+        return os << "], ";
+    }
+};
+
 struct PingMsg : public MsgBase {
     uint64_t num = UINT64_MAX;
     PingMsg() : MsgBase{0, ML_PING_REQ, 0} {}

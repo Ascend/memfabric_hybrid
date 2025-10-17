@@ -43,7 +43,7 @@ enum MmcErrorCode : int32_t {
     MMC_META_BACKUP_ERROR = -3105,
 };
 
-static inline std::ostream& operator<<(std::ostream& os, MmcErrorCode errCode)
+inline std::ostream& operator<<(std::ostream& os, MmcErrorCode errCode)
 {
     os << std::to_string(static_cast<int32_t>(errCode));
     return os;
@@ -71,7 +71,7 @@ enum MediaType : uint8_t {
     MEDIA_NONE,
 };
 
-static inline MediaType MoveUp(MediaType mediaType)
+inline MediaType MoveUp(MediaType mediaType)
 {
     if (mediaType == MediaType::MEDIA_HBM) {
         return MediaType::MEDIA_NONE;
@@ -82,7 +82,7 @@ static inline MediaType MoveUp(MediaType mediaType)
     }
 }
 
-static inline MediaType MoveDown(MediaType mediaType)
+inline MediaType MoveDown(MediaType mediaType)
 {
     if (mediaType == MediaType::MEDIA_HBM) {
         return MediaType::MEDIA_DRAM;
@@ -93,7 +93,7 @@ static inline MediaType MoveDown(MediaType mediaType)
     }
 }
 
-static inline std::ostream& operator<<(std::ostream& os, MediaType type)
+inline std::ostream& operator<<(std::ostream& os, MediaType type)
 {
     switch (type) {
         case MEDIA_DRAM: os << "MEDIA_DRAM"; break;
@@ -176,7 +176,7 @@ class MmcBufferArray {
 public:
     MmcBufferArray() : totalSize_(0) {}
 
-    MmcBufferArray(const std::vector<mmc_buffer>& buffers) : buffers_(buffers)
+    explicit MmcBufferArray(const std::vector<mmc_buffer>& buffers) : buffers_(buffers)
     {
         totalSize_ = 0;
         for (const auto& buf : buffers_) {

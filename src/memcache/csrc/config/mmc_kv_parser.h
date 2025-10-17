@@ -36,7 +36,7 @@ public:
     Result SetItem(const std::string &key, const std::string &value);
 
     uint32_t Size();
-    void GetI(uint32_t index, std::string &outKey, std::string &outValue);
+    void GetI(const uint32_t index, std::string &outKey, std::string &outValue);
 
     void Dump();
     bool CheckSet(const std::vector<std::string> &keys);

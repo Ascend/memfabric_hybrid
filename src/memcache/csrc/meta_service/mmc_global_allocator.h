@@ -35,7 +35,6 @@ public:
     // preferredRank为空时（当前实际至少有一个local rank，代码需要考虑为空场景）， numBlobs任意值
     // preferredRank非空时，不能重复，而且列表大小小于等于 numBlobs
     // preferredRank大于1的时候，必定是强制分配场景
-    // handle :
     // replicaNum=4
     // preferredLocalServiceIDs=[0,1]
     // 0,1 强制，剩下的默认处理；默认处理时候需要排除强制rank列表

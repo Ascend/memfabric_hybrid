@@ -21,6 +21,4 @@ bool HybmHasInited(void);
 
 bool HybmGvmHasInited(void);
 
-ock::mf::HybmGvaVersion HybmGetGvaVersion();
-
 #endif // MEM_FABRIC_HYBRID_HYBM_COMMON_INCLUDE_H

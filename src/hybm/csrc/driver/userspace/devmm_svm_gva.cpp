@@ -6,6 +6,7 @@
 #include <fstream>
 #include <climits>
 #include "hybm_common_include.h"
+#include "hybm_gva_version.h"
 #include "hybm_logger.h"
 #include "devmm_define.h"
 #include "hybm_cmd.h"
