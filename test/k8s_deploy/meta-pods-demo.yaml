@@ -1,4 +1,5 @@
 # MetaService 主备Pod定义（与lease相同命名空间）
+# 修改本文档命令中xxxxxxxx为自己的目录或者正确的ip
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -22,14 +23,17 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: meta-service
-          image: 7.218.30.112:5000/meta:0807_v6
-          command: [ "/bin/sh", "-c" ]
+          image: 127.0.0.1:5000/memcache:jchv1
+          command: [ "/bin/bash", "-c" ]
           args:
             - |
+              source /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+              bash /home/xxxxxxxx/mxc-memfabric_hybrid-1.0.0_linux_aarch64.run && \
+              echo "install end." && \
               sleep 20 && \
               exec /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/bin/mmc_meta_service
           ports:
-            - containerPort: 5000
+            - containerPort: 5123
               name: meta
           env:
             - name: LD_LIBRARY_PATH
@@ -51,14 +55,47 @@ spec:
           volumeMounts:
             - name: host-home
               mountPath: /home
+            - name: ascend-dir
+              mountPath: /usr/local/Ascend
+            - name: host-ping
+              mountPath: /usr/local/bin/ping
+            - name: smi
+              mountPath: /usr/local/bin/npu-smi
+            - name: drive
+              mountPath: /usr/local/Ascend/driver
+            - name: firmware
+              mountPath: /usr/local/Ascend/firmware
+              # 挂载 NPU 设备文件（每个设备单独挂载）
+            - name: davinci0
+              mountPath: /dev/davinci0
+            - name: davinci1
+              mountPath: /dev/davinci1
+            - name: davinci2
+              mountPath: /dev/davinci2
+            - name: davinci3
+              mountPath: /dev/davinci3
+            - name: davinci4
+              mountPath: /dev/davinci4
+            - name: davinci5
+              mountPath: /dev/davinci5
+            - name: davinci6
+              mountPath: /dev/davinci6
+            - name: davinci7
+              mountPath: /dev/davinci7
+            - name: davincimanager
+              mountPath: /dev/davinci_manager
+            - name: devmmsvm
+              mountPath: /dev/devmm_svm
+            - name: hisihdc
+              mountPath: /dev/hisi_hdc
       initContainers:
         - name: change-pod-ip
-          image: 7.218.30.112:5000/meta:0807_v6
+          image: 127.0.0.1:5000/memcache:jchv1
           command: ["/bin/sh", "-c"]
           args:
             - |
               # 该端口请与 'ClusterIP#targetPort' 保持一致
-              sed -i '/^ock.mmc.meta_service_url/c ock.mmc.meta_service_url = tcp://metaServiceUrl:5000' /home/meta/config/mmc-meta.conf && \
+              sed -i '/^ock.mmc.meta_service_url/c ock.mmc.meta_service_url = tcp://metaServiceUrl:5123' /home/meta/config/mmc-meta.conf && \
               sed -i '/^ock.mmc.meta_service.config_store_url/c ock.mmc.meta_service.config_store_url = tcp://metaServiceUrl:6000' /home/meta/config/mmc-meta.conf && \
               sed -i s/metaServiceUrl/$META_POD_IP/ /home/meta/config/mmc-meta.conf
           env:
@@ -74,3 +111,67 @@ spec:
           hostPath:
             path: /home
             type: Directory
+        - name: ascend-dir
+          hostPath:
+            path: /usr/local/Ascend  # 昇腾驱动安装目录
+            type: Directory
+        - name: smi
+          hostPath:
+            path: /usr/local/bin/npu-smi  # 昇腾驱动安装目录
+            type: File
+        - name: drive
+          hostPath:
+            path: /usr/local/Ascend/driver  # 昇腾驱动安装目录
+            type: Directory
+        - name: firmware
+          hostPath:
+            path: /usr/local/Ascend/firmware  # 昇腾驱动安装目录
+            type: Directory
+        - name: host-ping
+          hostPath:
+            path: /usr/bin/ping
+            type: File
+        - name: davinci0
+          hostPath:
+            path: /dev/davinci0
+            type: CharDevice   # 设备文件：必须指定 type: CharDevice
+        - name: davinci1
+          hostPath:
+            path: /dev/davinci1
+            type: CharDevice
+        - name: davinci2
+          hostPath:
+            path: /dev/davinci2
+            type: CharDevice
+        - name: davinci3
+          hostPath:
+            path: /dev/davinci3
+            type: CharDevice
+        - name: davinci4
+          hostPath:
+            path: /dev/davinci4
+            type: CharDevice
+        - name: davinci5
+          hostPath:
+            path: /dev/davinci5
+            type: CharDevice
+        - name: davinci6
+          hostPath:
+            path: /dev/davinci6
+            type: CharDevice
+        - name: davinci7
+          hostPath:
+            path: /dev/davinci7
+            type: CharDevice
+        - name: davincimanager
+          hostPath:
+            path: /dev/davinci_manager
+            type: CharDevice
+        - name: devmmsvm
+          hostPath:
+            path: /dev/devmm_svm
+            type: CharDevice
+        - name: hisihdc
+          hostPath:
+            path: /dev/hisi_hdc
+            type: CharDevice
