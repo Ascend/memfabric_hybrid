@@ -73,7 +73,7 @@ uint16_t findAvailableTcpPort(int &sockfd)
     const int offset_bit = 32;
     uint64_t seed = 1;
     seed |= static_cast<uint64_t>(getpid()) << offset_bit;
-    seed |= static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count() & 0xFFFFFFFF);
+    seed |= static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count()) & 0xFFFFFFFFULL;
     static std::mt19937_64 gen(seed);
     std::uniform_int_distribution<> dis(min_port, max_port);
 
