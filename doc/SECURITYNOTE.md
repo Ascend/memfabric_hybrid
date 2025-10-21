@@ -71,11 +71,12 @@
 
 ### 源码内公网地址
 
-| 类型         | 开源代码地址                                        | 文件名         | 公网IP地址/公网URL地址/域名/邮箱地址                     | 用途说明        |
-|------------|-----------------------------------------------|-------------|--------------------------------------------|-------------|
-| 依赖三方库      | https://github.com/google/googletest.git      | .gitmodules | https://github.com/google/googletest.git   | 单元测试框架依赖    |
-| 依赖三方库      | https://github.com/sinojelly/mockcpp.git      | .gitmodules | https://github.com/sinojelly/mockcpp.git   | 单元测试框架依赖    |
-| 依赖三方库      | https://github.com/gabime/spdlog.git          | .gitmodules | https://github.com/gabime/spdlog.git       | 日志框架依赖      |
-| license 地址 | 不涉及                                           | LICENSE     | http://www.apache.org/licenses/            | license文件   |
-| license 地址 | 不涉及                                           | LICENSE     | http://www.apache.org/licenses/LICENSE-2.0 | license文件   |
-| 代码仓地址      | https://gitee.com/ascend/memfabric_hybrid.git | setup.py    | https://gitee.com/ascend/memfabric_hybrid  | whl 包仓库地址信息 |
+| 类型         | 开源代码地址                                        | 文件名                    | 公网IP地址/公网URL地址/域名/邮箱地址                     | 用途说明        |
+|------------|-----------------------------------------------|------------------------|--------------------------------------------|-------------|
+| 依赖三方库      | https://github.com/google/googletest.git      | .gitmodules            | https://github.com/google/googletest.git   | 单元测试框架依赖    |
+| 依赖三方库      | https://github.com/sinojelly/mockcpp.git      | .gitmodules            | https://github.com/sinojelly/mockcpp.git   | 单元测试框架依赖    |
+| 依赖三方库      | https://github.com/gabime/spdlog.git          | .gitmodules            | https://github.com/gabime/spdlog.git       | 日志框架依赖      |
+| license 地址 | 不涉及                                           | LICENSE                | http://www.apache.org/licenses/            | license文件   |
+| license 地址 | 不涉及                                           | LICENSE                | http://www.apache.org/licenses/LICENSE-2.0 | license文件   |
+| 代码仓地址      | https://gitee.com/ascend/memfabric_hybrid.git | setup.py               | https://gitee.com/ascend/memfabric_hybrid  | whl 包仓库地址信息 |
+| 代码仓地址      | https://gitee.com/ascend/shmem.git            | performance_compare.sh | https://gitee.com/ascend/shmem             | 工具脚本        |
