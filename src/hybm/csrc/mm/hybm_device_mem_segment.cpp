@@ -9,6 +9,8 @@
  */
 #include <cstring>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
 #include "dl_api.h"
 #include "dl_hal_api.h"
 #include "dl_acl_api.h"
@@ -20,6 +22,8 @@
 
 namespace ock {
 namespace mf {
+std::string MemSegmentDevice::sysBoolId_;
+uint32_t MemSegmentDevice::bootIdHead_{0};
 uint32_t MemSegmentDevice::serverId_{0};
 uint32_t MemSegmentDevice::superPodId_{0};
 
@@ -400,6 +404,7 @@ int MemSegmentDevice::SetDeviceInfo(int deviceId) noexcept
 
     deviceId_ = deviceId;
     pid_ = tgid;
+    FillSysBootIdInfo();
     ret = FillDeviceSuperPodInfo();
     if (ret != BM_OK) {
         BM_LOG_ERROR("FillDeviceSuperPodInfo() failed: " << ret);
@@ -436,19 +441,33 @@ int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
     superPodId_ = static_cast<uint32_t>(value);
 
     if (superPodId_ == invalidSuperPodId && serverId_ == invalidServerId) {
-        auto networks = NetworkGetIpAddresses();
-        if (networks.empty()) {
-            BM_LOG_ERROR("get local host ip address empty.");
-            return BM_ERROR;
+        if (bootIdHead_ != 0) {
+            serverId_ = bootIdHead_;
+        } else {
+            auto networks = NetworkGetIpAddresses();
+            if (networks.empty()) {
+                BM_LOG_ERROR("get local host ip address empty.");
+                return BM_ERROR;
+            }
+            serverId_ = networks[0];
         }
-
-        serverId_ = networks[0];
     }
 
     BM_LOG_DEBUG("local sdid=0x" << std::hex << sdid_ << ", local server=0x" << std::hex << serverId_
                                  << ", spid=" << superPodId_);
 
     return BM_OK;
+}
+
+void MemSegmentDevice::FillSysBootIdInfo() noexcept
+{
+    std::string bootIdPath("/proc/sys/kernel/random/boot_id");
+    std::ifstream input(bootIdPath);
+    input >> sysBoolId_;
+
+    std::stringstream ss(sysBoolId_);
+    ss >> std::hex >> bootIdHead_;
+    BM_LOG_DEBUG("os-boot-id: " << sysBoolId_ << ", head u32: " << std::hex << bootIdHead_);
 }
 
 bool MemSegmentDevice::CanMapRemote(const HbmExportInfo &rmi) noexcept
