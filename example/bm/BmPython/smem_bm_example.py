@@ -144,7 +144,7 @@ def main_process():
                              ' [RANK_START, RANK_START + LOCAL_RANK_SIZE).')
     parser.add_argument('--url', type=str,
                         help='Listening IP address and port number of the configStore server, for example,'
-                             ' tcp://<ip>:<port>.',
+                             ' tcp://<ip>:<port> or tcp6://<ip>:<port>.',
                         required=True)
     parser.add_argument('--auto_ranking', type=str_to_bool,
                         help='If autorank is enabled, the BM automatically generates a global rank ID, which does '

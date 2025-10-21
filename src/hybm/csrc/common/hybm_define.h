@@ -219,6 +219,7 @@ struct HccpRaGetIfAttr {
 struct HccpIfaddrInfo {
     HccpIpAddr ip;       /* Address of interface */
     struct in_addr mask; /* Netmask of interface */
+    struct in6_addr maskv6; /* Ipv6 Netmask of interface */
 };
 
 struct HccpInterfaceInfo {

@@ -14,6 +14,7 @@
 #include <ostream>
 #include <sstream>
 #include <map>
+#include "mf_net.h"
 #include "hybm_define.h"
 #include "hybm_transport_common.h"
 
@@ -59,16 +60,16 @@ using MemoryRegionMap = std::map<uint64_t, RegMemResult, std::greater<uint64_t>>
 
 struct ConnectRankInfo {
     hybm_role_type role;
-    sockaddr_in network;
+    mf_sockaddr network;
     MemoryRegionMap memoryMap;
 
-    ConnectRankInfo(hybm_role_type r, sockaddr_in nw, const TransportMemoryKey &mk) : role{r}, network{std::move(nw)}
+    ConnectRankInfo(hybm_role_type r, mf_sockaddr nw, const TransportMemoryKey &mk) : role{r}, network{std::move(nw)}
     {
         auto &deviceKey = container_of(&mk, RegMemKeyUnion, commonKey)->deviceKey;
         memoryMap.emplace(deviceKey.address, deviceKey);
     }
 
-    ConnectRankInfo(hybm_role_type r, sockaddr_in nw, const std::vector<TransportMemoryKey> &mks)
+    ConnectRankInfo(hybm_role_type r, mf_sockaddr nw, const std::vector<TransportMemoryKey> &mks)
         : role{r},
           network{std::move(nw)}
     {

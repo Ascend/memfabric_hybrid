@@ -261,7 +261,7 @@
 
     |参数/返回值|含义|
     |-|-|
-    |configStoreIpPort|config store的IP和端口，格式tcp://ip:port|
+    |configStoreIpPort|config store的IP和端口，格式tcp://ip:port或者tcp6://[ip]:port|
     |worldSize|参与SMEM初始化rank数量，最大支持1024|
     |rankId|当前rank id|
     |deviceId|当前rank的device id|

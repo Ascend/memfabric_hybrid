@@ -23,7 +23,7 @@ static constexpr uint32_t MAX_SEND_WR = 8192;
 static constexpr uint32_t MAX_RECV_WR = 128;
 static constexpr uint32_t QP_MODE = 2;
 FixedRanksQpManager::FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
-                                         sockaddr_in devNet) noexcept
+                                         mf_sockaddr devNet) noexcept
     : DeviceQpManager(deviceId, rankId, rankCount, devNet, HYBM_ROLE_PEER)
 {
 }
@@ -261,11 +261,25 @@ int FixedRanksQpManager::StartClientSide() noexcept
             return BM_DL_FUNCTION_FAILED;
         }
 
-        clientConnections_.emplace(it->first, ConnectionChannel{it->second.network.sin_addr, socketHandle});
+        net_addr_t addr;
+        if (it->second.network.type == IpV4) {
+            addr.type = IpV4;
+            addr.ip.ipv4 = it->second.network.ip.ipv4.sin_addr;
+        } else if (it->second.network.type == IpV6) {
+            addr.type = IpV6;
+            addr.ip.ipv6 = it->second.network.ip.ipv6.sin6_addr;
+        }
+
+        clientConnections_.emplace(it->first, ConnectionChannel{addr, socketHandle});
         HccpSocketConnectInfo connectInfo;
         connectInfo.handle = socketHandle;
-        connectInfo.remoteIp.addr = it->second.network.sin_addr;
-        connectInfo.port = it->second.network.sin_port;
+        if (it->second.network.type == IpV4) {
+            connectInfo.remoteIp.addr = it->second.network.ip.ipv4.sin_addr;
+        } else if (it->second.network.type == IpV6) {
+            connectInfo.remoteIp.addr6 = it->second.network.ip.ipv6.sin6_addr;
+        }
+        connectInfo.port = (it->second.network.type == IpV4) ? it->second.network.ip.ipv4.sin_port
+            : it->second.network.ip.ipv6.sin6_port;
         bzero(connectInfo.tag, sizeof(connectInfo.tag));
         BM_LOG_DEBUG("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
@@ -290,11 +304,20 @@ int FixedRanksQpManager::GenerateWhiteList() noexcept
             continue;  // small id as server, large id as client
         }
         HccpSocketWhiteListInfo info{};
-        info.remoteIp.addr = it->second.network.sin_addr;
+        net_addr_t addr;
+        if (it->second.network.type == IpV4) {
+            addr.type = IpV4;
+            addr.ip.ipv4 = it->second.network.ip.ipv4.sin_addr;
+            info.remoteIp.addr = it->second.network.ip.ipv4.sin_addr;
+        } else if (it->second.network.type == IpV6) {
+            addr.type = IpV6;
+            addr.ip.ipv6 = it->second.network.ip.ipv6.sin6_addr;
+            info.remoteIp.addr6 = it->second.network.ip.ipv6.sin6_addr;
+        }
         info.connLimit = rankCount_;
         bzero(info.tag, sizeof(info.tag));
         whitelist.emplace_back(info);
-        serverConnections_.emplace(it->first, ConnectionChannel{info.remoteIp.addr, serverSocketHandle_});
+        serverConnections_.emplace(it->first, ConnectionChannel{addr, serverSocketHandle_});
     }
 
     if (whitelist.empty()) {
@@ -312,31 +335,42 @@ int FixedRanksQpManager::GenerateWhiteList() noexcept
 
 int FixedRanksQpManager::CheckConnectionSuccessCount(std::unordered_map<uint32_t, ConnectionChannel> &connections,
                                                      std::vector<HccpSocketInfo> &socketInfos,
-                                                     std::unordered_map<in_addr_t, uint32_t> &addr2index,
-                                                     uint32_t &succCnt)
+                                                     std::unordered_map<net_addr_t, uint32_t> &addr2index,
+                                                     uint32_t &succCnt, IpType type)
 {
     for (auto i = 0U; i < succCnt; i++) {
-        auto socketInfoPos = addr2index.find(socketInfos[i].remoteIp.addr.s_addr);
+        net_addr_t addr;
+        char ipStr[INET6_ADDRSTRLEN];
+        char* result {};
+        if (type == IpV4) {
+            addr = net_addr_t::from_ipv4(socketInfos[i].remoteIp.addr);
+            result = inet_ntoa(socketInfos[i].remoteIp.addr);
+        } else if (type == IpV6) {
+            addr = net_addr_t::from_ipv6(socketInfos[i].remoteIp.addr6);
+            inet_ntop(AF_INET6, &socketInfos[i].remoteIp.addr6, ipStr, INET6_ADDRSTRLEN);
+            result = ipStr;
+        }
+        auto socketInfoPos = addr2index.find(addr);
         if (socketInfoPos == addr2index.end()) {
-            BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
+            BM_LOG_ERROR("socket ip(" << result << ") should not exist.");
             return BM_DL_FUNCTION_FAILED;
         }
 
         auto rankId = socketInfoPos->second;
         auto pos = connections.find(rankId);
         if (pos == connections.end()) {
-            BM_LOG_ERROR("socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") should not exist.");
+            BM_LOG_ERROR("socket ip(" << result << ") should not exist.");
             return BM_DL_FUNCTION_FAILED;
         }
 
         if (pos->second.socketFd != nullptr) {
-            BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr) << ") already get socket fd.");
+            BM_LOG_ERROR("get socket ip(" << result << ") already get socket fd.");
             return BM_DL_FUNCTION_FAILED;
         }
 
         if (pos->second.socketHandle != socketInfos[i].handle) {
-            BM_LOG_ERROR("get socket ip(" << inet_ntoa(socketInfos[i].remoteIp.addr)
-                                            << ") socket handle not match.");
+            BM_LOG_ERROR("get socket ip(" << result
+                << ") socket handle not match.");
             return BM_DL_FUNCTION_FAILED;
         }
 
@@ -348,6 +382,7 @@ int FixedRanksQpManager::CheckConnectionSuccessCount(std::unordered_map<uint32_t
 
 int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, ConnectionChannel> &connections) noexcept
 {
+    IpType type{};
     uint32_t totalSuccessCount = 0;
     auto start = std::chrono::steady_clock::now();
     auto timeout = start + std::chrono::minutes(2);
@@ -359,7 +394,7 @@ int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, Conne
 
         uint32_t successCount = 0;
         std::vector<HccpSocketInfo> socketInfos;
-        std::unordered_map<in_addr_t, uint32_t> addr2index;
+        std::unordered_map<net_addr_t, uint32_t> addr2index;
         for (auto it = connections.begin(); it != connections.end(); ++it) {
             if (it->second.socketFd != nullptr) {
                 continue;
@@ -368,11 +403,17 @@ int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, Conne
             HccpSocketInfo info{};
             info.handle = it->second.socketHandle;
             info.fd = nullptr;
-            info.remoteIp.addr = it->second.remoteIp;
+            if (it->second.remoteIp.type == IpV4) {
+                info.remoteIp.addr = it->second.remoteIp.ip.ipv4;
+                type = IpV4;
+            } else if (it->second.remoteIp.type == IpV6) {
+                info.remoteIp.addr6 = it->second.remoteIp.ip.ipv6;
+                type = IpV6;
+            }
             info.status = 0;
             bzero(info.tag, sizeof(info.tag));
             socketInfos.push_back(info);
-            addr2index.emplace(it->second.remoteIp.s_addr, it->first);
+            addr2index.emplace(it->second.remoteIp, it->first);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -383,7 +424,7 @@ int FixedRanksQpManager::WaitConnectionsReady(std::unordered_map<uint32_t, Conne
             return BM_DL_FUNCTION_FAILED;
         }
 
-        ret = CheckConnectionSuccessCount(connections, socketInfos, addr2index, successCount);
+        ret = CheckConnectionSuccessCount(connections, socketInfos, addr2index, successCount, type);
         if (ret != 0) {
             return ret;
         }

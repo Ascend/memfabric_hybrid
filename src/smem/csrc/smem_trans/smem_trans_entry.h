@@ -73,12 +73,12 @@ public:
                      const size_t dataSizes[], uint32_t batchSize);
 
 private:
-    bool ParseTransName(const std::string &name, uint32_t &ip, uint16_t &port);
+    bool ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port);
     Result StartWatchThread();
     void WatchTaskOneLoop();
     void WatchTaskFindNewRanks();
     void WatchTaskFindNewSlices();
-    Result ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId);
+    Result ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);
@@ -106,8 +106,9 @@ private:
     bool watchRunning_{true};
 
     ReadWriteLock remoteSliceRwMutex_;
-    std::unordered_map<uint64_t, std::map<const void *, LocalMapAddress, std::greater<const void *>>> remoteSlices_;
-    std::map<std::string, uint64_t> nameToWorkerId;     /* To accelerate name parsed */
+    std::unordered_map<
+        WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash> remoteSlices_;
+    std::map<std::string, WorkerId> nameToWorkerId;     /* To accelerate name parsed */
 };
 
 inline const std::string &SmemTransEntry::Name() const

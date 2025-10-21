@@ -183,10 +183,22 @@ Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remo
     return SyncWrite(&srcAddress, remoteName, &destAddress, &dataSize, 1U);
 }
 
+static std::string uniqueToString(const WorkerId& unique)
+{
+    std::ostringstream oss;
+    for (size_t i = 0; i < unique.size(); ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(unique[i]);
+        if (i < unique.size() - 1) {
+            oss << ":";
+        }
+    }
+    return oss.str();
+}
+
 Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
                                  const size_t dataSizes[], uint32_t batchSize)
 {
-    uint64_t unique;
+    WorkerId unique;
     auto ret = ParseNameToUniqueId(remoteName, unique);
     if (ret != 0) {
         return ret;
@@ -197,7 +209,7 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     ReadGuard locker(remoteSliceRwMutex_);
     auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
-        SM_LOG_ERROR("session:(" << remoteName << ")(" << unique << ") not found.");
+        SM_LOG_ERROR("session:(" << remoteName << ")(" << uniqueToString(unique) << ") not found.");
         return SM_INVALID_PARAM;
     }
 
@@ -228,23 +240,33 @@ Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &
     return SM_OK;
 }
 
-bool SmemTransEntry::ParseTransName(const std::string &name, uint32_t &ip, uint16_t &port)
+bool SmemTransEntry::ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port)
 {
     UrlExtraction extraction;
-    auto ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
+    int ret = -1;
+    if (name.find('.') != std::string::npos) {
+        ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
+    } else {
+        ret = extraction.ExtractIpPortFromUrl(std::string("tcp6://").append(name));
+    }
     if (ret != 0) {
         SM_LOG_ERROR("parse name failed: " << ret);
         return false;
     }
 
-    in_addr addr;
-    ret = inet_aton(extraction.ip.c_str(), &addr);
-    if (ret != 1) {
-        SM_LOG_ERROR("parse name failed: " << ret);
-        return false;
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, extraction.ip.c_str(), &addr6) == 1) {
+        ip.ip.ipv6 = addr6;
+        ip.type = IpV6;
+    } else {
+        struct in_addr addr4;
+        if (inet_pton(AF_INET, extraction.ip.c_str(), &addr4) != 1) {
+            SM_LOG_ERROR("Invalid IP address format: " << extraction.ip);
+            return false;
+        }
+        ip.ip.ipv4.s_addr = ntohl(addr4.s_addr);
+        ip.type = IpV4;
     }
-
-    ip = ntohl(addr.s_addr);
     port = extraction.port;
     return true;
 }
@@ -301,7 +323,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
         WriteGuard locker(remoteSliceRwMutex_);
         for (auto i = 0U; i < info.size(); i++) {
             WorkerIdUnion workerId{ss[i]->session};
-            SM_LOG_DEBUG("add remote slice for : " << workerId.workerId);
+            SM_LOG_DEBUG("add remote slice for : " << uniqueToString(workerId.workerId));
             remoteSlices_[workerId.workerId].emplace(ss[i]->address, LocalMapAddress{addresses[i], ss[i]->size});
         }
         return 0;
@@ -309,7 +331,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
     storeHelper_.FindNewRemoteSlices(importNewSlices);
 }
 
-Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId)
+Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId)
 {
     WorkerUniqueId workerUniqueId;
     auto it = nameToWorkerId.find(name);

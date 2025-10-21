@@ -18,6 +18,7 @@
 #include <ostream>
 #include <iomanip>
 #include <unordered_map>
+#include "mf_net.h"
 #include "hybm_def.h"
 
 namespace ock {
@@ -44,6 +45,7 @@ struct TransportOptions {
     uint32_t protocol;
     hybm_role_type role;
     std::string nic;
+    IpType type {IpV4};
 
     friend std::ostream& operator<<(std::ostream& output, const TransportOptions& options)
     {
@@ -51,7 +53,8 @@ struct TransportOptions {
                << ", count=" << options.rankCount
                << ", protocol=" << options.protocol
                << ", role=" << options.role
-               << ", nid=" << options.nic << ")";
+               << ", nid=" << options.nic
+               << ", iptype=" << options.type << ")";
         return output;
     }
 };

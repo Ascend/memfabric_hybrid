@@ -31,35 +31,60 @@ Result ParseDeviceNic(const std::string &nic, uint16_t &port)
     return BM_OK;
 }
 
-Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
+Result ParseDeviceNic(const std::string &nic, mf_sockaddr &address)
 {
-    static std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://([0-9.]{1,24}):(\d{1,5})$)");
-
+    static std::regex pattern_ipv4(R"(^[a-zA-Z0-9_]{1,16}://([0-9.]{1,24}):(\d{1,5})$)");
+    static std::regex pattern_ipv6(R"(^[a-zA-Z0-9_]{1,16}://\[([0-9a-fA-F:]{1,45})\]:(\d{1,5})$)");
     std::smatch match;
-    if (!std::regex_search(nic, match, pattern)) {
+    if (std::regex_search(nic, match, pattern_ipv4)) {
+        address.type = IpV4;
+    } else if (std::regex_search(nic, match, pattern_ipv6)) {
+        address.type = IpV6;
+    } else {
         BM_LOG_ERROR("input nic(" << nic << ") not matches.");
         return BM_INVALID_PARAM;
     }
 
-    if (inet_aton(match[INDEX_1].str().c_str(), &address.sin_addr) == 0) {
-        BM_LOG_ERROR("parse ip for nic: " << nic << " failed.");
-        return BM_INVALID_PARAM;
-    }
+    if (address.type == IpV4) {
+        if (inet_aton(match[INDEX_1].str().c_str(), &address.ip.ipv4.sin_addr) == 0) {
+            BM_LOG_ERROR("parse ip for nic: " << nic << " failed.");
+            return BM_INVALID_PARAM;
+        }
 
-    auto caught = match[INDEX_2].str();
-    if (!StringUtil::String2Uint(caught, address.sin_port)) {
-        BM_LOG_ERROR("failed to convert str : " << caught << " to uint16_t, or sin_port is 0.");
-        return BM_INVALID_PARAM;
-    }
+        auto caught = match[INDEX_2].str();
+        if (!StringUtil::String2Uint(caught, address.ip.ipv4.sin_port)) {
+            BM_LOG_ERROR("failed to convert str : " << caught << " to uint16_t, or sin_port is 0.");
+            return BM_INVALID_PARAM;
+        }
 
-    address.sin_family = AF_INET;
+        address.ip.ipv4.sin_family = AF_INET;
+    } else if (address.type == IpV6) {
+        if (inet_pton(AF_INET6, match[INDEX_1].str().c_str(), &address.ip.ipv6.sin6_addr) != 1) {
+            BM_LOG_ERROR("parse ip for nic: " << nic << " failed.");
+            return BM_INVALID_PARAM;
+        }
+
+        auto caught = match[INDEX_2].str();
+        if (!StringUtil::String2Uint(caught, address.ip.ipv6.sin6_port)) {
+            BM_LOG_ERROR("failed to convert str : " << caught << " to uint16_t, or sin_port is 0.");
+            return BM_INVALID_PARAM;
+        }
+
+        address.ip.ipv6.sin6_family = AF_INET6;
+    }
     return BM_OK;
 }
 
-std::string GenerateDeviceNic(in_addr ip, uint16_t port)
+std::string GenerateDeviceNic(net_addr_t ip, uint16_t port)
 {
     std::stringstream ss;
-    ss << "tcp://" << inet_ntoa(ip) << ":" << port;
+    if (ip.type == IpV4) {
+        ss << "tcp://" << inet_ntoa(ip.ip.ipv4) << ":" << port;
+    } else {
+        char ipv6Str[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &ip.ip.ipv6, ipv6Str, INET6_ADDRSTRLEN);
+        ss << "tcp6://[" << ipv6Str << "]:" << port;
+    }
     return ss.str();
 }
 }

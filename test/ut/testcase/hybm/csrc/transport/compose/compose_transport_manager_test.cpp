@@ -104,6 +104,9 @@ TEST_F(HybmComposeTransManagerTest, OpenHostTrans)
     options.nic = "host://0.0.0.0:3030";
     ret = transmanager.OpenDevice(options);
     EXPECT_EQ(ret, BM_ERROR);
+    options.nic = "host://[::]:3030";
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_ERROR);
 
     MOCKER_CPP(&host::HcomTransportManager::OpenDevice, int (*)(const TransportOptions &))
               .stubs().will(returnValue(0));
@@ -163,6 +166,22 @@ TEST_F(HybmComposeTransManagerTest, OpenHostTrans_ServiceCreateFail)
     options.rankCount = g_rankCount;
     options.protocol = HYBM_DOP_TYPE_BUTT;
     options.nic = "host#tcp://0.0.0.0:3030";
+
+    MOCKER(DlHcomApi::ServiceCreate).expects(once()).will(returnValue(-1));
+
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_ERROR);
+}
+
+TEST_F(HybmComposeTransManagerTest, OpenHostTransIpv6_ServiceCreateFail)
+{
+    int ret = 0;
+    ComposeTransportManager transmanager;
+    TransportOptions options;
+    options.rankId = g_srcRankId;
+    options.rankCount = g_rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.nic = "host#tcp6://[::]:3030";
 
     MOCKER(DlHcomApi::ServiceCreate).expects(once()).will(returnValue(-1));
 
@@ -351,7 +370,7 @@ static int32_t AclrtGetDeviceStub(int32_t *deviceId)
     return BM_OK;
 }
 
-bool PrepareOpenDeviceStub(uint32_t device, uint32_t rankCount, in_addr &deviceIp, void *&rdmaHandle)
+bool PrepareOpenDeviceStub(uint32_t device, uint32_t rankCount, net_addr_t &deviceIp, void *&rdmaHandle)
 {
     rdmaHandle = g_ptr;
     return true;
@@ -394,6 +413,46 @@ TEST_F(HybmComposeTransManagerTest, PrepareDevice_Test)
     ret = transmanager.Prepare(hoptions);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ((transmanager.GetNic() == "device#tcp://0.0.0.0:8080;"), 1);
+}
+
+TEST_F(HybmComposeTransManagerTest, PrepareDeviceIpv6_Test)
+{
+    int ret = 0;
+    uint32_t rankCount = 1;
+    ComposeTransportManager transmanager;
+    TransportRankPrepareInfo prepareInfo;
+    HybmTransPrepareOptions hoptions;
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.role = HYBM_ROLE_PEER;
+    options.nic = "device#8080";
+
+    prepareInfo.nic = "device#tcp6://[::]:8080";
+    hoptions.options.emplace(g_srcRankId, prepareInfo);
+
+    ret = transmanager.Prepare(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.Connect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.AsyncConnect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WaitForConnected(-1);
+    EXPECT_EQ(ret, BM_OK);
+
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER(&RdmaTransportManager::PrepareOpenDevice).stubs().will(invoke(PrepareOpenDeviceStub));
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t, int64_t *))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlAclApi::AclrtMalloc, int32_t(*)(void **ptr, size_t count, uint32_t)).stubs().will(returnValue(0));
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = transmanager.Prepare(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_EQ((transmanager.GetNic() == "device#tcp6://[::]:8080;"), 1); // error
 }
 
 TEST_F(HybmComposeTransManagerTest, PrepareHost_Test)
@@ -442,6 +501,53 @@ TEST_F(HybmComposeTransManagerTest, PrepareHost_Test)
     EXPECT_EQ((transmanager.GetNic() == "host#tcp://0.0.0.0:3030;"), 1);
 }
 
+TEST_F(HybmComposeTransManagerTest, PrepareHostIpv6_Test)
+{
+    int ret = 0;
+    uint32_t rankCount = 1;
+    ComposeTransportManager transmanager;
+    TransportRankPrepareInfo prepareInfo;
+    HybmTransPrepareOptions hoptions;
+    prepareInfo.nic = "host#tcp6://[::]:3030";
+    hoptions.options.emplace(g_srcRankId, prepareInfo);
+
+    ret = transmanager.Prepare(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.Connect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.AsyncConnect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WaitForConnected(-1);
+    EXPECT_EQ(ret, BM_OK);
+
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = g_rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.nic = "host#tcp6://[::]:3030";
+    const int registerTimes = 3;
+
+    MOCKER(DlHcomApi::ServiceCreate).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetSendQueueSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetRecvQueueSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetQueuePrePostSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceStart).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterChannelBrokerHandler).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterHandler).expects(exactly(registerTimes)).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetDeviceIpMask).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceBind).expects(once()).will(returnValue(0));
+    MOCKER_CPP(&HcomTransportManager::Prepare, int32_t(*)(const HybmTransPrepareOptions &))
+        .stubs().will(returnValue(0));
+
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = transmanager.Prepare(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_EQ((transmanager.GetNic() == "host#tcp6://[::]:3030;"), 1);
+}
+
 TEST_F(HybmComposeTransManagerTest, ReadRemoteDevice_Test)
 {
     int ret = 0;
@@ -466,6 +572,58 @@ TEST_F(HybmComposeTransManagerTest, ReadRemoteDevice_Test)
     options.role = HYBM_ROLE_PEER;
     options.nic = "device#8080";
     prepareInfo.nic = "device#tcp://0.0.0.0:8080";
+    hoptions.options.emplace(0, prepareInfo);
+    std::cout << mr << std::endl;
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER(&RdmaTransportManager::PrepareOpenDevice).stubs().will(invoke(PrepareOpenDeviceStub));
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t, int64_t *))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlAclApi::AclrtMalloc, int32_t(*)(void **ptr, size_t count, uint32_t)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaRegisterMR, int(*)(const void *, HccpMrInfo *, void *&))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&RdmaTransportManager::RemoteIO, int(*)(uint32_t, uint64_t, uint64_t, uint64_t, bool))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaDeregisterMR, int(*)(const void *, void *)).stubs().will(returnValue(0));
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.RegisterMemoryRegion(mr);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.ReadRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WriteRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.UpdateRankOptions(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = transmanager.UnregisterMemoryRegion(mr.addr);
+    EXPECT_EQ(ret, BM_OK);
+}
+
+TEST_F(HybmComposeTransManagerTest, ReadRemoteDeviceIpv6_Test)
+{
+    int ret = 0;
+    uint64_t addr = 0;
+    uint32_t rankCount = 1;
+    ComposeTransportManager transmanager;
+    TransportRankPrepareInfo prepareInfo;
+    HybmTransPrepareOptions hoptions;
+    ret = transmanager.ReadRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = transmanager.WriteRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    TransportMemoryRegion mr;
+    mr.flags = 2;
+    mr.addr = 0;
+    mr.size = 1;
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.role = HYBM_ROLE_PEER;
+    options.nic = "device#8080";
+    prepareInfo.nic = "device#tcp6://[::]:8080";
     hoptions.options.emplace(0, prepareInfo);
     std::cout << mr << std::endl;
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
@@ -567,7 +725,75 @@ TEST_F(HybmComposeTransManagerTest, ReadRemoteHost_Test)
 
     ret = transmanager.UnregisterMemoryRegion(mr.addr);
     EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.CloseDevice();
+    EXPECT_EQ(ret, BM_OK);
 }
+
+TEST_F(HybmComposeTransManagerTest, ReadRemoteHostIpv6_Test)
+{
+    GlobalMockObject::verify();
+    int ret = 0;
+    uint64_t addr = 1;
+    uint32_t rankCount = 1;
+    int flag = 1;
+    ComposeTransportManager transmanager;
+    TransportRankPrepareInfo prepareInfo;
+    HybmTransPrepareOptions hoptions;
+    TransportMemoryRegion mr;
+    mr.flags = flag;
+    mr.addr  = flag;
+    mr.size  = flag;
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = g_rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.nic = "host#tcp6://[::]:3030";
+    uint32_t keys[16] {};
+    TransportMemoryKey key;
+    std::copy(std::begin(keys), std::end(keys), std::begin(key.keys));
+    prepareInfo.memKeys.push_back(key);
+    prepareInfo.nic = "host#tcp6://[::]:3030";
+    hoptions.options.emplace(0, prepareInfo);
+    const int registerTimes = 3;
+    std::cout << key << " " << prepareInfo << hoptions << std::endl;
+    
+    MOCKER(DlHcomApi::ServiceCreate).stubs().will(invoke(ServiceCreateStub));
+    MOCKER(DlHcomApi::ServiceSetSendQueueSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetRecvQueueSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetQueuePrePostSize).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceStart).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterChannelBrokerHandler).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterHandler).expects(exactly(registerTimes)).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetDeviceIpMask).expects(once()).will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceBind).expects(once()).will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaRegisterMR, int(*)(const void *, HccpMrInfo *, void *&))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaDeregisterMR, int(*)(const void *, void *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHcomApi::ServiceRegisterAssignMemoryRegion, int(*)(Hcom_Service, uintptr_t, uint64_t,
+        Service_MemoryRegion *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHcomApi::ServiceGetMemoryRegionInfo, int(*)(Service_MemoryRegion, Service_MemoryRegionInfo *))
+        .stubs().will(returnValue(0));
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.RegisterMemoryRegion(mr);
+    EXPECT_EQ(ret, BM_OK);
+
+    MOCKER_CPP(&HcomTransportManager::ReadRemote, int32_t(*)(uint32_t, uint64_t, uint64_t, uint64_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&HcomTransportManager::WriteRemote, int32_t(*)(uint32_t, uint64_t, uint64_t, uint64_t))
+        .stubs().will(returnValue(0));
+    ret = transmanager.ReadRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WriteRemote(g_srcRankId, addr, addr, addr);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.UpdateRankOptions(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = transmanager.UnregisterMemoryRegion(mr.addr);
+    EXPECT_EQ(ret, BM_OK);
+}
+
 TEST_F(HybmComposeTransManagerTest, Connect_Test)
 {
     int ret = 0;
@@ -622,6 +848,63 @@ TEST_F(HybmComposeTransManagerTest, Connect_Test)
     ret = transmanager.Connect();
     EXPECT_EQ(ret, BM_ERROR);
 }
+
+TEST_F(HybmComposeTransManagerTest, ConnectIpv6_Test)
+{
+    int ret = 0;
+    ComposeTransportManager transmanager;
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = g_rankCount;
+    options.protocol = HYBM_DOP_TYPE_BUTT;
+    options.nic = "host#tcp6://[::]:8080";
+
+    MOCKER(DlHcomApi::ServiceCreate).stubs().will(invoke(ServiceCreateStub));
+    MOCKER(DlHcomApi::ServiceSetSendQueueSize).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetRecvQueueSize).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetQueuePrePostSize).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceStart).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterChannelBrokerHandler).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceRegisterHandler).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceSetDeviceIpMask).stubs().will(returnValue(0));
+    MOCKER(DlHcomApi::ServiceBind).stubs().will(returnValue(0));
+    MOCKER_CPP(&HcomTransportManager::Prepare, int32_t(*)(const HybmTransPrepareOptions &))
+        .stubs().will(returnValue(0));
+
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.AsyncConnect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WaitForConnected(-1);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.Connect();
+    EXPECT_EQ(ret, BM_OK);
+
+    options.nic = "device#tcp6://[::]:8080";
+    MOCKER_CPP(&RdmaTransportManager::OpenDevice, int32_t(*)(const TransportOptions &))
+        .stubs().will(returnValue(0));
+    ret = transmanager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = transmanager.AsyncConnect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.WaitForConnected(-1);
+    EXPECT_EQ(ret, BM_OK);
+    ret = transmanager.Connect();
+    EXPECT_EQ(ret, BM_OK);
+
+    MOCKER_CPP(&HcomTransportManager::Connect, int32_t(*)()).stubs().will(returnValue(-1));
+    MOCKER_CPP(&HcomTransportManager::AsyncConnect, int32_t(*)()).stubs().will(returnValue(-1));
+    MOCKER_CPP(&HcomTransportManager::WaitForConnected, int32_t(*)(int64_t)).stubs().will(returnValue(-1));
+    ret = transmanager.AsyncConnect();
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = transmanager.WaitForConnected(-1);
+    EXPECT_EQ(ret, BM_ERROR);
+    ret = transmanager.Connect();
+    EXPECT_EQ(ret, BM_ERROR);
+}
+
 
 TEST_F(HybmComposeTransManagerTest, CreateCOMPOSETest)
 {

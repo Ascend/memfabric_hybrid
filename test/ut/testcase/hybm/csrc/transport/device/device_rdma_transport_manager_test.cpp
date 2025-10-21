@@ -74,6 +74,13 @@ static int RaGetIfAddrsStub(const HccpRaGetIfAttr &config, HccpInterfaceInfo inf
     return BM_OK;
 }
 
+static int RaGetIfAddrsIpv6Stub(const HccpRaGetIfAttr &config, HccpInterfaceInfo infos[], uint32_t &num)
+{
+    infos[0].family = AF_INET6;
+    inet_pton(AF_INET6, "::", &infos[0].ifaddr.ip.addr6);
+    return BM_OK;
+}
+
 static int RaRdevInitV2Stub(const HccpRdevInitInfo &info, const HccpRdev &rdev, void *&rdmaHandle)
 {
     rdmaHandle = g_ptr;
@@ -215,6 +222,54 @@ TEST_F(HybmRdmaTransportManagerTest, PrepareTest)
     EXPECT_EQ(ret, BM_OK);
 }
 
+TEST_F(HybmRdmaTransportManagerTest, PrepareIpv6Test)
+{
+    int ret = 0;
+    RdmaTransportManager manager;
+    TransportRankPrepareInfo prepareInfo;
+    prepareInfo.nic = "tcp6://[::]:10002";
+    HybmTransPrepareOptions options;
+    options.options.emplace(0, prepareInfo);
+
+    TransportOptions options2;
+    options2.type = IpV6;
+    options2.rankId = g_srcRankId;
+    options2.rankCount = g_rankCount;
+    options2.nic = "10002";
+    options2.role = HYBM_ROLE_PEER;
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&DlHccpApi::RaRdevGetHandle, int(*)(uint32_t, void *&)).stubs().will(returnValue(1));
+    MOCKER_CPP(&DlHccpApi::TsdOpen, uint32_t(*)(uint32_t, uint32_t)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaInit, int(*)(const HccpRaInitConfig &)).stubs().will(returnValue(0));
+    MOCKER(&DlHccpApi::RaGetIfNum).stubs().will(invoke(RaGetIfNumStub));
+    MOCKER(&DlHccpApi::RaGetIfAddrs).stubs().will(invoke(RaGetIfAddrsIpv6Stub));
+    MOCKER(&DlHccpApi::RaRdevInitV2).stubs().will(invoke(RaRdevInitV2Stub));
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t, int64_t *))
+        .stubs().will(returnValue(0));
+    ret = manager.OpenDevice(options2);
+    EXPECT_EQ(ret, BM_OK);
+    
+    MOCKER(&DlAclApi::AclrtMalloc).stubs().will(invoke(AclrtMallocStub));
+    ret = manager.Prepare(options);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = manager.Connect();
+    EXPECT_EQ(ret, BM_OK);
+    ret = manager.UpdateRankOptions(options);
+    EXPECT_EQ(ret, BM_ERROR);
+    EXPECT_EQ(manager.GetNic(), prepareInfo.nic);
+    ret = manager.RemoteIO(0, 0, 0, 0, true);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    MOCKER_CPP(&DlHccpApi::RaQpDestroy, int(*)(void *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketBatchClose, int(*)(HccpSocketCloseInfo, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketDeinit, int(*)(void *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketListenStop, int(*)(HccpSocketListenInfo, uint32_t)).stubs().will(returnValue(0));
+    ret = manager.CloseDevice();
+    EXPECT_EQ(ret, BM_OK);
+}
+
 TEST_F(HybmRdmaTransportManagerTest, RemoteIOTest)
 {
     int ret = 0;
@@ -238,6 +293,77 @@ TEST_F(HybmRdmaTransportManagerTest, RemoteIOTest)
 
     TransportRankPrepareInfo prepareInfo;
     prepareInfo.nic = "tcp://0.0.0.0:10002";
+    HybmTransPrepareOptions options2;
+    options2.options.emplace(0, prepareInfo);
+    options2.options.emplace(1, prepareInfo);
+    MOCKER(&DlAclApi::AclrtMalloc).stubs().will(invoke(AclrtMallocStub));
+
+    MOCKER(&DlHccpApi::RaSocketInit).stubs().will(invoke(RaSocketInitStub));
+    MOCKER_CPP(&DlHccpApi::RaSocketListenStart, int(*)(HccpSocketListenInfo, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketWhiteListAdd, int(*)(void *, const HccpSocketWhiteListInfo, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&FixedRanksQpManager::WaitConnectionsReady, int(*)(std::unordered_map<uint32_t,
+        FixedRanksQpManager::ConnectionChannel> &)).stubs().will(returnValue(0));
+    MOCKER(&DlHccpApi::RaGetSockets).stubs().will(invoke(RaGetSocketsStub));
+    MOCKER_CPP(&DlHccpApi::RaQpAiCreate, int(*)(void *, const HccpQpExtAttrs &, HccpAiQpInfo &i, void *&))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaQpCreate, int(*)(void *, int, int, void *&))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaMrReg, int(*)(void *, HccpMrInfo &)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaQpConnectAsync, int(*)(void *, const void *)).stubs().will(returnValue(0));
+    MOCKER(&DlHccpApi::RaGetQpStatus).stubs().will(invoke(RaGetQpStatusStub));
+    MOCKER_CPP(&DlAclApi::AclrtMemcpy, int32_t(*)(void *, size_t, const void *, size_t, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlAclApi::AclrtSetDevice, int32_t(*)(int32_t)).stubs().will(returnValue(0));
+
+    ret = manager.Prepare(options2);
+    EXPECT_EQ(ret, BM_OK);
+
+    ret = manager.ReadRemote(0, 0, 0, 0);
+    EXPECT_EQ(ret, BM_ERROR);
+
+    MOCKER_CPP(&FixedRanksQpManager::GetQpHandleWithRankId, void*(*)(uint32_t)).stubs().will(returnValue(g_ptr));
+    MOCKER_CPP(&HybmStream::Initialize, int(*)()).stubs().will(returnValue(0));
+    MOCKER(&DlHccpApi::RaSendWr).stubs().will(invoke(RaSendWrStub));
+    MOCKER_CPP(&HybmStream::SubmitTasks, int32_t(*)(const StreamTask &)).stubs().will(returnValue(0));
+    MOCKER_CPP(&HybmStream::Synchronize, int(*)()).stubs().will(returnValue(0));
+    ret = manager.ReadRemote(0, 0, 0, 0);
+    EXPECT_EQ(ret, BM_OK);
+
+    MOCKER_CPP(&DlHccpApi::RaQpDestroy, int(*)(void *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketBatchClose, int(*)(HccpSocketCloseInfo, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketDeinit, int(*)(void *)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaSocketListenStop, int(*)(HccpSocketListenInfo, uint32_t)).stubs().will(returnValue(0));
+    ret = manager.CloseDevice();
+    EXPECT_EQ(ret, BM_OK);
+}
+
+TEST_F(HybmRdmaTransportManagerTest, RemoteIOIpv6Test)
+{
+    int ret = 0;
+    RdmaTransportManager manager;
+    TransportOptions options;
+    options.type = IpV6;
+    options.rankId = g_srcRankId;
+    options.rankCount = 2;
+    options.nic = "10002";
+    options.role = HYBM_ROLE_PEER;
+    MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
+    MOCKER_CPP(&DlHccpApi::RaRdevGetHandle, int(*)(uint32_t, void *&)).stubs().will(returnValue(1));
+    MOCKER_CPP(&DlHccpApi::TsdOpen, uint32_t(*)(uint32_t, uint32_t)).stubs().will(returnValue(0));
+    MOCKER_CPP(&DlHccpApi::RaInit, int(*)(const HccpRaInitConfig &)).stubs().will(returnValue(0));
+    MOCKER(&DlHccpApi::RaGetIfNum).stubs().will(invoke(RaGetIfNumStub));
+    MOCKER(&DlHccpApi::RaGetIfAddrs).stubs().will(invoke(RaGetIfAddrsIpv6Stub));
+    MOCKER(&DlHccpApi::RaRdevInitV2).stubs().will(invoke(RaRdevInitV2Stub));
+    MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t, int64_t *))
+        .stubs().will(returnValue(0));
+    ret = manager.OpenDevice(options);
+    EXPECT_EQ(ret, BM_OK);
+
+    TransportRankPrepareInfo prepareInfo;
+    prepareInfo.nic = "tcp6://[::]:10002";
     HybmTransPrepareOptions options2;
     options2.options.emplace(0, prepareInfo);
     options2.options.emplace(1, prepareInfo);
@@ -310,7 +436,7 @@ TEST_F(HybmRdmaTransportManagerTest, OpenDeviceErrorBranchTest)
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(false));
+        net_addr_t &, void *&)).stubs().will(returnValue(false));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
@@ -319,7 +445,7 @@ TEST_F(HybmRdmaTransportManagerTest, OpenDeviceErrorBranchTest)
     options.role = HYBM_ROLE_RECEIVER;
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DeviceChipInfo::Init, int(*)()).stubs().will(returnValue(-1));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_ERROR);
@@ -347,7 +473,7 @@ TEST_F(HybmRdmaTransportManagerTest, RegisterMemoryRegionErrorBranchTest)
     options.nic = "90";
     options.role = HYBM_ROLE_PEER;
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DeviceChipInfo::Init, int(*)()).stubs().will(returnValue(0));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_OK);
@@ -379,7 +505,7 @@ TEST_F(HybmRdmaTransportManagerTest, QueryMemoryKeyErrorBranchTest)
     MOCKER_CPP(&DlHccpApi::RaRegisterMR, int(*)(const void *, HccpMrInfo *, void *&)).stubs().will(returnValue(0));
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DeviceChipInfo::Init, int(*)()).stubs().will(returnValue(0));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_OK);
@@ -404,7 +530,7 @@ TEST_F(HybmRdmaTransportManagerTest, PrepareErrorBranchTest)
 
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DeviceChipInfo::Init, int(*)()).stubs().will(returnValue(0));
     MOCKER_CPP(&FixedRanksQpManager::WaitingConnectionReady, int(*)()).stubs().will(returnValue(-1));
     ret = manager.OpenDevice(options);
@@ -465,7 +591,7 @@ TEST_F(HybmRdmaTransportManagerTest, UpdateRankOptionsErrorBranchTest)
 
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DeviceChipInfo::Init, int(*)()).stubs().will(returnValue(0));
     MOCKER_CPP(&FixedRanksQpManager::WaitingConnectionReady, int(*)()).stubs().will(returnValue(-1));
     ret = manager.OpenDevice(options);
@@ -475,6 +601,12 @@ TEST_F(HybmRdmaTransportManagerTest, UpdateRankOptionsErrorBranchTest)
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     prepareInfo.nic = "tcp://0.0.0.0:90";
+    hoptions.options.erase(0);
+    hoptions.options.emplace(0, prepareInfo);
+    ret = manager.UpdateRankOptions(hoptions);
+    EXPECT_EQ(ret, BM_OK);
+
+    prepareInfo.nic = "tcp6://[::]:90";
     hoptions.options.erase(0);
     hoptions.options.emplace(0, prepareInfo);
     ret = manager.UpdateRankOptions(hoptions);
@@ -492,7 +624,7 @@ TEST_F(HybmRdmaTransportManagerTest, PrepareOpenDeviceErrorBranchTest)
 {
     bool ret = true;
     RdmaTransportManager manager;
-    in_addr deviceIp;
+    net_addr_t deviceIp;
     void *rdmaHandle = nullptr;
     MOCKER_CPP(&DlHccpApi::RaRdevGetHandle, int(*)(uint32_t, void *&)).stubs().will(returnValue(1));
     MOCKER_CPP(&DlHccpApi::TsdOpen, uint32_t(*)(uint32_t, uint32_t)).stubs().will(returnValue(0));
@@ -521,7 +653,7 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
 
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(false));
+        net_addr_t &, void *&)).stubs().will(returnValue(false));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_ERROR);
     ret = manager.CheckPrepareOptions(hoptions);
@@ -554,7 +686,7 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
     GlobalMockObject::verify();
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub1));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
@@ -562,7 +694,7 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
     GlobalMockObject::verify();
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub2));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
@@ -570,7 +702,7 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
     GlobalMockObject::verify();
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER(&DlAclApi::RtGetDeviceInfo).stubs().will(invoke(RtGetDeviceInfoStub3));
     ret = manager.OpenDevice(options);
     EXPECT_EQ(ret, BM_DL_FUNCTION_FAILED);
@@ -578,7 +710,7 @@ TEST_F(HybmRdmaTransportManagerTest, CheckPrepareOptionsErrorBranchTest)
     GlobalMockObject::verify();
     MOCKER(&DlAclApi::AclrtGetDevice).stubs().will(invoke(AclrtGetDeviceStub));
     MOCKER_CPP(&RdmaTransportManager::PrepareOpenDevice, bool(*)(uint32_t, uint32_t,
-        in_addr &, void *&)).stubs().will(returnValue(true));
+        net_addr_t &, void *&)).stubs().will(returnValue(true));
     MOCKER_CPP(&DlAclApi::RtGetDeviceInfo, int32_t(*)(uint32_t, int32_t, int32_t,
         int64_t *)).stubs().will(returnValue(0));
     ret = manager.OpenDevice(options);

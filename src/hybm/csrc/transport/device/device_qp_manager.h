@@ -24,7 +24,7 @@ namespace device {
 
 class DeviceQpManager {
 public:
-    DeviceQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
+    DeviceQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, mf_sockaddr devNet,
                     hybm_role_type role) noexcept;
     virtual ~DeviceQpManager() = default;
 
@@ -46,7 +46,7 @@ protected:
     const uint32_t rankId_;
     const uint32_t rankCount_;
     const hybm_role_type rankRole_;
-    sockaddr_in deviceAddress_;
+    mf_sockaddr deviceAddress_;
     void *serverSocketHandle_{nullptr};
 };
 }

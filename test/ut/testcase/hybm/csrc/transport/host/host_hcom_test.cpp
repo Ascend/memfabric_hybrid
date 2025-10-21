@@ -58,12 +58,42 @@ TEST_F(HybmHostHcomTest, HostHcomHelper)
     std::string nic_error5 = "tcp://0.0.0.0/1:65536";
     ret = HostHcomHelper::AnalysisNicWithMask(nic_error5, protocol, ipStr, port);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
-    std::string nic_error6 = "tcp://256.256.256.256/1:8080";
+    std::string nic_error6 = "tcp://0:0.#0&0/1:11";
     ret = HostHcomHelper::AnalysisNicWithMask(nic_error6, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    std::string nic_error7 = "tcp://256.256.256.256/1:8080";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic_error7, protocol, ipStr, port);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 
     MOCKER_CPP(&getifaddrs, int(*)(struct ifaddrs **)).stubs().will(returnValue(0));
     std::string nic = "tcp://0.0.0.1/1:8080";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_ERROR);
+}
+
+TEST_F(HybmHostHcomTest, HostHcomHelperWhenIpv6)
+{
+    std::string protocol;
+    std::string ipStr;
+    int32_t port;
+    std::string nic_error1 = "tcp6://[::]:808080";
+    int ret = HostHcomHelper::AnalysisNicWithMask(nic_error1, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    std::string nic_error2 = "tcp6://[::]/-1:80";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic_error2, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    std::string nic_error3 = "tcp6://[::]/140:80";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic_error3, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    std::string nic_error4 = "tcp6://[::]/1:80";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic_error4, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+    std::string nic_error5 = "tcp6://[::]/1:65536";
+    ret = HostHcomHelper::AnalysisNicWithMask(nic_error5, protocol, ipStr, port);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
+
+    MOCKER_CPP(&getifaddrs, int(*)(struct ifaddrs **)).stubs().will(returnValue(0));
+    std::string nic = "tcp6://[::]/1:8080";
     ret = HostHcomHelper::AnalysisNicWithMask(nic, protocol, ipStr, port);
     EXPECT_EQ(ret, BM_ERROR);
 }

@@ -11,6 +11,7 @@
 #ifndef MF_HYBRID_SMEM_TRANS_STORE_HELPER_H
 #define MF_HYBRID_SMEM_TRANS_STORE_HELPER_H
 
+#include <array>
 #include <string>
 #include <functional>
 #include "hybm_def.h"
@@ -37,17 +38,28 @@ struct StoreKeys {
 };
 
 struct WorkerUniqueId {
-    uint32_t address{0};
+    net_addr_t address{};
     uint16_t port{0};
     uint16_t reserved{0};
 };
 
+using WorkerId = std::array<uint8_t, sizeof(WorkerUniqueId)>;
+
+struct WorkerIdHash {
+    size_t operator()(const WorkerId& id) const
+    {
+        return std::hash<std::string>()(
+            std::string(id.begin(), id.end())
+        );
+    }
+};
+
 union WorkerIdUnion {
     WorkerUniqueId session;
-    uint64_t workerId;
+    WorkerId workerId;
 
     explicit WorkerIdUnion(WorkerUniqueId ws) : session(ws) {}
-    explicit WorkerIdUnion(uint64_t id) : workerId{id} {}
+    explicit WorkerIdUnion(WorkerId id) : workerId{id} {}
 };
 
 struct StoredSliceInfo {

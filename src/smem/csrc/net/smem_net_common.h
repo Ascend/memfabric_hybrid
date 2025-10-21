@@ -12,6 +12,7 @@
 #ifndef MEM_FABRIC_HYBRID_SMEM_NET_COMMON_H
 #define MEM_FABRIC_HYBRID_SMEM_NET_COMMON_H
 
+#include "mf_net.h"
 #include "smem_common_includes.h"
 
 namespace ock {
@@ -24,7 +25,7 @@ struct UrlExtraction {
     Result ExtractIpPortFromUrl(const std::string &url);
 };
 
-Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint32_t &ipv4);
+Result GetLocalIpWithTarget(const std::string &target, std::string &local, mf_ip_addr &ipaddr);
 
 inline bool CharToLong(const char* src, long &value)
 {

@@ -73,6 +73,7 @@ private:
     Result HandleNewRequest(const AccTcpRequestContext &context);
     Result HandleRequestSent(AccMsgSentResult msgResult, const AccMsgHeader &header, const AccDataBufferPtr &cbCtx);
     Result HandleLinkBroken(const AccTcpLinkComplexDefaultPtr &link);
+    void ConstructSocketAddress(IpType ipType, mf_sockaddr &addr, const std::string &peerIp, uint16_t port);
 
 private:
     AccNewReqHandler newRequestHandle_[UNO_48]{};

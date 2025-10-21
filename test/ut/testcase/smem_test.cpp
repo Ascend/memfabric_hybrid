@@ -23,6 +23,7 @@
 #include "smem_bm_entry_manager.h"
 #undef private
 #include "smem_tcp_config_store.h"
+#include "acc_tcp_link_default.h"
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
@@ -31,6 +32,9 @@ using namespace ock::smem;
 const int32_t UT_SMEM_ID = 1;
 const char UT_IP_PORT[] = "tcp://127.0.0.1:7758";
 const char UT_IP_PORT2[] = "tcp://127.0.0.1:7958";
+const char UT_IP_PORT_IPV6[] = "tcp6://[0000:0000:0000:0000:0000:0000:0000:0001]:7758";
+const char UT_IP_PORT2_IPV6[] = "tcp6://[0000:0000:0000:0000:0000:0000:0000:0001]:7958";
+const char UT_IP_PORT3_IPV6[] = "tcp6://[::1]:6010";
 const char UT_SHM_NAME[] = "/mfhy_ut_shm_128M";
 const uint32_t UT_CREATE_MEM_SIZE = 1024;
 const uint32_t UT_COPY_MEM_SIZE = 128;
@@ -119,6 +123,90 @@ TEST_F(TestSmem, two_card_shm_create_success)
             exit(2);
         }
         ret = smem_shm_init(UT_IP_PORT, rankCount, rank, rank, &config);
+        if (ret != 0) {
+            exit(3);
+        }
+
+        auto handle = smem_shm_create(UT_SMEM_ID, rankCount, rank, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+        if (handle == nullptr) {
+            exit(4);
+        }
+
+        smem_shm_destroy(handle, 0);
+        smem_shm_uninit(0);
+        smem_uninit();
+    };
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            func(i, rankSize);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        FinalizeUTShareMem(shmFd);
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        if (needKillOthers) {
+            kill(pids[i], SIGKILL);
+        }
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0) {
+                needKillOthers = true;
+            }
+        } else {
+            needKillOthers = true;
+        }
+    }
+    FinalizeUTShareMem(shmFd);
+}
+
+TEST_F(TestSmem, two_card_shm_create_success_ipv6)
+{
+    int shmFd = -1;
+    auto shmCreateRet = InitUTShareMem(shmFd);
+    ASSERT_EQ(shmCreateRet, true);
+    smem_set_log_level(0);
+    uint32_t rankSize = 2;
+    std::thread ts[rankSize];
+    auto func = [](uint32_t rank, uint32_t rankCount) {
+        void *gva;
+        int32_t ret = smem_init(0);
+        if (ret != 0) {
+            exit(1);
+        }
+        ret = smem_set_conf_store_tls(false, nullptr, 0);
+        if (ret != 0) {
+            exit(1);
+        }
+        smem_shm_config_t config;
+        ret = smem_shm_config_init(&config);
+        if (ret != 0) {
+            exit(2);
+        }
+        ret = smem_shm_init(UT_IP_PORT_IPV6, rankCount, rank, rank, &config);
         if (ret != 0) {
             exit(3);
         }
@@ -271,6 +359,98 @@ TEST_F(TestSmem, two_card_shm_allgather_success)
     FinalizeUTShareMem(shmFd);
 }
 
+TEST_F(TestSmem, two_card_shm_allgather_success_ipv6)
+{
+    int shmFd = -1;
+    auto shmCreateRet = InitUTShareMem(shmFd);
+    ASSERT_EQ(shmCreateRet, true);
+    smem_set_log_level(0);
+    uint32_t rankSize = 2;
+    std::thread ts[rankSize];
+    auto func = [](uint32_t rank, uint32_t rankCount) {
+        void *gva;
+        int32_t ret = smem_init(0);
+        if (ret != 0) {
+            exit(1);
+        }
+
+        smem_shm_config_t config;
+        ret = smem_shm_config_init(&config);
+        if (ret != 0) {
+            exit(2);
+        }
+        ret = smem_set_conf_store_tls(false, nullptr, 0);
+        if (ret != 0) {
+            exit(3);
+        }
+        ret = smem_shm_init(UT_IP_PORT_IPV6, rankCount, rank, rank, &config);
+        if (ret != 0) {
+            exit(4);
+        }
+
+        auto handle = smem_shm_create(UT_SMEM_ID, rankCount, rank, UT_CREATE_MEM_SIZE, SMEMS_DATA_OP_MTE, 0, &gva);
+        if (handle == nullptr) {
+            exit(5);
+        }
+        char send[] = "test";
+        uint32_t len = sizeof(send) - 1;
+        char recv[rankCount * len + 1];
+        ret = smem_shm_control_allgather(handle, send, len, recv, rankCount * len);
+        EXPECT_EQ(ret, 0);
+        char checkResult[rankCount * len + 1];
+        for (int i = 0; i < rankCount; ++i) {
+            std::strcat(checkResult, send);
+        }
+        smem_shm_destroy(handle, 0);
+        smem_shm_uninit(0);
+        smem_uninit();
+    };
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            func(i, rankSize);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        FinalizeUTShareMem(shmFd);
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        if (needKillOthers) {
+            kill(pids[i], SIGKILL);
+        }
+        waitpid(pids[i], &status, 0);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0) {
+                needKillOthers = true;
+            }
+        } else {
+            needKillOthers = true;
+        }
+    }
+    FinalizeUTShareMem(shmFd);
+}
+
 TEST_F(TestSmem, two_crad_bm_copy_success)
 {
     int shmFd = -1;
@@ -303,6 +483,146 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
             exit(4);
         }
         ret = barrier->Init(rank, rank, rankCount, UT_IP_PORT2, UT_CREATE_MEM_SIZE);
+        if (ret != 0) {
+            exit(5);
+        }
+
+        auto handle = smem_bm_create(0, rankCount, SMEMB_DATA_OP_SDMA, 0, UT_CREATE_MEM_SIZE, 0);
+        if (handle == nullptr) {
+            exit(6);
+        }
+
+        ret = barrier->Barrier();
+        if (ret != 0) {
+            exit(7);
+        }
+
+        void *local = smem_bm_ptr(handle, rank);
+        if (local == nullptr) {
+            exit(8);
+        }
+        void *remote = smem_bm_ptr(handle, (rank + 1) % rankCount);
+        if (remote == nullptr) {
+            exit(9);
+        }
+        void *hostSrc = malloc(UT_COPY_MEM_SIZE);
+        void *hostDst = malloc(UT_COPY_MEM_SIZE);
+        if (hostDst == nullptr || hostSrc == nullptr) {
+            exit(10);
+        }
+        memset(hostSrc, rank + 1, UT_COPY_MEM_SIZE);
+        memset(hostDst, 0, UT_COPY_MEM_SIZE);
+
+        smem_copy_params params = {hostSrc, remote, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_H2G, 0);
+        if (ret != 0) {
+            exit(11);
+        }
+        ret = barrier->Barrier();
+        if (ret != 0) {
+            exit(12);
+        }
+
+        params = {remote, hostDst, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2H, 0);
+        if (ret != 0) {
+            exit(13);
+        }
+
+        ret = barrier->Barrier();
+        if (ret != 0) {
+            exit(14);
+        }
+        auto cpyRet = CheckMem(hostSrc, hostDst, UT_COPY_MEM_SIZE);
+        free(hostSrc);
+        free(hostDst);
+        smem_bm_destroy(handle);
+        delete barrier;
+        barrier = nullptr;
+        smem_bm_uninit(0);
+        smem_uninit();
+        if (!cpyRet) {
+            exit(15);
+        }
+    };
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            func(i, rankSize);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        FinalizeUTShareMem(shmFd);
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        if (needKillOthers) {
+            kill(pids[i], SIGKILL);
+        }
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0) {
+                needKillOthers = true;
+            }
+        } else {
+            needKillOthers = true;
+        }
+    }
+    FinalizeUTShareMem(shmFd);
+}
+
+TEST_F(TestSmem, two_crad_bm_copy_success_ipv6)
+{
+    int shmFd = -1;
+    auto shmCreateRet = InitUTShareMem(shmFd);
+    ASSERT_EQ(shmCreateRet, true);
+    smem_set_log_level(0);
+    uint32_t rankSize = 2;
+    auto func = [](uint32_t rank, uint32_t rankCount) {
+        int32_t ret = smem_init(0);
+        if (ret != 0) {
+            exit(1);
+        }
+        ret = smem_set_conf_store_tls(false, nullptr, 0);
+        if (ret != 0) {
+            exit(1);
+        }
+        smem_bm_config_t config;
+        ret = smem_bm_config_init(&config);
+        if (ret != 0) {
+            exit(2);
+        }
+        config.rankId = rank;
+        ret = smem_bm_init(UT_IP_PORT2_IPV6, rankCount, rank, &config);
+        if (ret != 0) {
+            exit(3);
+        }
+
+        auto barrier = new (std::nothrow) UtBarrierUtil;
+        if (barrier == nullptr) {
+            exit(4);
+        }
+        ret = barrier->Init(rank, rank, rankCount, UT_IP_PORT2_IPV6, UT_CREATE_MEM_SIZE);
         if (ret != 0) {
             exit(5);
         }
@@ -516,13 +836,21 @@ TEST_F(TestSmem, smem_shm_init_failed_invalid_params)
     config.shmInitTimeout = 0;
     ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
     EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT_IPV6, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+
     smem_shm_config_init(&config);
     config.shmCreateTimeout = 0;
     ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
     EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT_IPV6, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+
     smem_shm_config_init(&config);
     config.controlOperationTimeout = 0;
     ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT_IPV6, 2, 0, 0, &config);
     EXPECT_NE(ret, 0);
 
     smem_shm_config_init(&config);
@@ -544,6 +872,8 @@ TEST_F(TestSmem, smem_shm_init_failed_manager_error)
         uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(-1));
     auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
     EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT_IPV6, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
 
     smem_uninit();
 }
@@ -559,6 +889,8 @@ TEST_F(TestSmem, smem_shm_init_failed_hybm_error)
         uint32_t, uint32_t, uint16_t, smem_shm_config_t *)).stubs().will(returnValue(0));
     MOCKER(hybm_init).stubs().will(returnValue(-1));
     auto ret = smem_shm_init(UT_IP_PORT, 2, 0, 0, &config);
+    EXPECT_NE(ret, 0);
+    ret = smem_shm_init(UT_IP_PORT_IPV6, 2, 0, 0, &config);
     EXPECT_NE(ret, 0);
 
     smem_uninit();
@@ -1270,6 +1602,29 @@ TEST_F(TestSmem, smem_bm_create_with_initialize)
     smem_uninit();
 }
 
+TEST_F(TestSmem, smem_bm_create_with_initialize_ipv6)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    config.rankId = 0;
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&ock::acc::AccTcpLinkDefault::BlockRecv, int32_t(*)(void *, uint32_t))
+        .stubs().will(returnValue(0));
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    ASSERT_EQ(ret, 0);
+    ret = smem_bm_init(UT_IP_PORT2_IPV6, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
 TEST_F(TestSmem, smem_bm_create_with_initialize_2)
 {
     smem_init(0);
@@ -1287,6 +1642,34 @@ TEST_F(TestSmem, smem_bm_create_with_initialize_2)
     auto ret = smem_set_conf_store_tls(false, nullptr, 0);
     ASSERT_EQ(ret, 0);
     ret = smem_bm_init(UT_IP_PORT2, 2, 0, &config);
+    ASSERT_EQ(ret, 0);
+    auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
+    EXPECT_EQ(handle, nullptr);
+
+    smem_bm_uninit(0);
+    smem_uninit();
+}
+
+TEST_F(TestSmem, smem_bm_create_with_initialize_2_ipv6)
+{
+    smem_init(0);
+    smem_bm_config_t config;
+    smem_bm_config_init(&config);
+    config.rankId = 0;
+    config.autoRanking = true;
+    MOCKER_CPP(&SmemBmEntryManager::CreateEntryById, int32_t(*)(SmemBmEntryManager *, uint32_t,
+        ock::smem::SmemBmEntryPtr &)).stubs().will(invoke(UtBmCreateEntryByIdStub));
+    MOCKER_CPP(&SmemBmEntryManager::RemoveEntryByPtr, int32_t(*)(SmemBmEntryManager *, uintptr_t ptr))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(static_cast<int32_t(TcpConfigStore::*)(const std::string &, std::vector<uint8_t> &, int64_t)>
+        (&TcpConfigStore::Get), int32_t(*)(TcpConfigStore *, const std::string &,
+        std::vector<uint8_t> &, int64_t)).stubs().will(returnValue(0));
+    MOCKER_CPP(&ock::acc::AccTcpLinkDefault::BlockRecv, int32_t(*)(void *, uint32_t))
+        .stubs().will(returnValue(0));
+    MOCKER_CPP(&SmemBmEntryManager::AutoRanking, int32_t(*)()).stubs().will(returnValue(0));
+    auto ret = smem_set_conf_store_tls(false, nullptr, 0);
+    ASSERT_EQ(ret, 0);
+    ret = smem_bm_init(UT_IP_PORT3_IPV6, 2, 0, &config);
     ASSERT_EQ(ret, 0);
     auto handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, 1024, 0);
     EXPECT_EQ(handle, nullptr);

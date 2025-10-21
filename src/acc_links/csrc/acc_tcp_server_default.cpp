@@ -7,6 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <net/if.h>
+#include "mf_net.h"
 #include "acc_tcp_server.h"
 #include "acc_common_util.h"
 #include "acc_tcp_server_default.h"
@@ -457,34 +459,79 @@ void AccTcpServerDefault::WorkerLinkCntUpdate(uint32_t workerIdx)
     return;
 }
 
-Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
-                                                uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink)
+static Result CreateSocket(const std::string &peerIp, IpType &type, int &sockfd)
 {
-    ASSERT_RETURN(AccCommonUtil::IsValidIPv4(peerIp), ACC_ERROR);
-    std::string ipAndPort = peerIp + ":" + std::to_string(port);
-
-    auto tmpFD = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (tmpFD < 0) {
+    if (AccCommonUtil::IsValidIPv4(peerIp)) {
+        type = IpV4;
+        sockfd = ::socket(AF_INET, SOCK_STREAM, 0);
+    } else if (AccCommonUtil::IsValidIPv6(peerIp)) {
+        type = IpV6;
+        sockfd = ::socket(AF_INET6, SOCK_STREAM, 0);
+    } else {
+        return ACC_ERROR;
+    }
+    if (sockfd < 0) {
         LOG_ERROR("Failed to create socket, errno:" << errno << ", please check if fd is out of limit");
         return ACC_ERROR;
     }
+    return ACC_OK;
+}
+
+void AccTcpServerDefault::ConstructSocketAddress(IpType ipType, mf_sockaddr &addr,
+                                                 const std::string &peerIp, uint16_t port)
+{
+    if (ipType == IpV4) {
+        addr.ip.ipv4.sin_family = AF_INET;
+        addr.ip.ipv4.sin_addr.s_addr = inet_addr(peerIp.c_str());
+        addr.ip.ipv4.sin_port = htons(port);
+    } else {
+        addr.ip.ipv6.sin6_family = AF_INET6;
+        inet_pton(AF_INET6, peerIp.c_str(), &addr.ip.ipv6.sin6_addr);
+        addr.ip.ipv6.sin6_port = htons(port);
+        if (peerIp.rfind("fe80", 0) == 0) {
+            const char *ipInfo = std::getenv("SHMEM_CONF_STORE_MASTER_IF");
+            std::string tmpIp = std::string(ipInfo);
+            size_t index = tmpIp.find(':');
+            if (ipInfo == nullptr || index == std::string::npos) {
+                LOG_ERROR("SHMEM_CONF_STORE_MASTER_IF is null");
+            }
+            tmpIp = tmpIp.substr(0, index);
+            addr.ip.ipv6.sin6_scope_id = if_nametoindex(tmpIp.c_str());
+            if (addr.ip.ipv6.sin6_scope_id == 0) {
+                perror("if_nametoindex failed");
+            }
+        }
+    }
+}
+
+Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
+                                                uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink)
+{
+    IpType ipType = IPNONE;
+    auto tmpFD {-1};
+    if (CreateSocket(peerIp, ipType, tmpFD) != ACC_OK) {
+        return ACC_ERROR;
+    }
+    std::string ipAndPort = peerIp + ":" + std::to_string(port);
 
     int flags = 1;
     setsockopt(tmpFD, SOL_TCP, TCP_NODELAY, reinterpret_cast<void*>(&flags), sizeof(flags));
     int synCnt = 1; /* Set connect() retry time for quick connect */
     setsockopt(tmpFD, IPPROTO_TCP, TCP_SYNCNT, &synCnt, sizeof(synCnt));
 
-    struct sockaddr_in addr {};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(peerIp.c_str());
-    addr.sin_port = htons(port);
+    mf_sockaddr addr {};
+    ConstructSocketAddress(ipType, addr, peerIp, port);
 
     uint32_t timesRetried = 0;
     int lastErrno = 0;
 
     while (timesRetried < maxRetryTimes) {
         LOG_INFO("Trying to connect to " << ipAndPort);
-        if (::connect(tmpFD, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == 0) {
+
+        if ((ipType == IpV4 && ::connect(tmpFD, reinterpret_cast<struct sockaddr*>(&addr.ip.ipv4),
+            sizeof(addr.ip.ipv4)) == 0)
+            || (ipType == IpV6 && ::connect(tmpFD, reinterpret_cast<struct sockaddr*>(&addr.ip.ipv6),
+            sizeof(addr.ip.ipv6)) == 0)) {
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
             setsockopt(tmpFD, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
             return Handshake(tmpFD, req, ipAndPort, newLink);

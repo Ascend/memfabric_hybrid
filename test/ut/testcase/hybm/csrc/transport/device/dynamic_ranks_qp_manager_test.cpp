@@ -60,10 +60,11 @@ static int RaGetSocketsStub(uint32_t role, HccpSocketInfo conn[], uint32_t num, 
 TEST_F(HybmTransportDynamicRanksQpManagerTest, DynamicRanksQpManagerStartupTest)
 {
     void *rdma = malloc(1);
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     DynamicRanksQpManager manager(g_deviceId, g_rankId, g_rankCount, deviceAddr, true);
 
     int ret = manager.Startup(nullptr);
@@ -97,10 +98,11 @@ TEST_F(HybmTransportDynamicRanksQpManagerTest, DynamicRanksQpManagerSetRemoteRan
 {
     void *rdma = malloc(1);
     uint32_t count = 2;
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    deviceAddr.type = IpV4;
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     DynamicRanksQpManager manager(g_deviceId, g_rankId, count, deviceAddr, true);
     uint32_t keys[16] {};
     TransportMemoryKey key;
@@ -152,10 +154,11 @@ TEST_F(HybmTransportDynamicRanksQpManagerTest, SetRemoteRankInfoErrorBranch)
     uint32_t hrankid1 = 0;
     uint32_t hrankid2 = 4;
     uint32_t count    = 2;
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    deviceAddr.type = IpV4;
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     DynamicRanksQpManager manager(g_deviceId, g_rankId, count, deviceAddr, true);
 
     EXPECT_EQ((manager.GetQpHandleWithRankId(hrankid2) == nullptr), 1);
@@ -183,13 +186,14 @@ TEST_F(HybmTransportDynamicRanksQpManagerTest, SetRemoteRankInfoErrorBranch)
 
 TEST_F(HybmTransportDynamicRanksQpManagerTest, ProcessClientConnectSocketTaskTest)
 {
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     DynamicRanksQpManager manager(g_deviceId, g_rankId, g_rankCount, deviceAddr, false);
     
-    std::unordered_map<uint32_t, sockaddr_in> addedRanks{};
+    std::unordered_map<uint32_t, mf_sockaddr> addedRanks{};
     std::unordered_set<uint32_t> addMrRanks{};
     manager.GenTaskFromChangeRanks(addedRanks, addMrRanks);
     int ret = manager.ProcessClientConnectSocketTask();
@@ -233,12 +237,13 @@ TEST_F(HybmTransportDynamicRanksQpManagerTest, ProcessClientConnectSocketTaskTes
 
 TEST_F(HybmTransportDynamicRanksQpManagerTest, ProcessUpdateRemoteMrTaskTest)
 {
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     DynamicRanksQpManager manager(g_deviceId, g_rankId, g_rankCount, deviceAddr, true);
-    std::unordered_map<uint32_t, sockaddr_in> addedRanks{};
+    std::unordered_map<uint32_t, mf_sockaddr> addedRanks{};
     std::unordered_set<uint32_t> addMrRanks{0};
     manager.GenTaskFromChangeRanks(addedRanks, addMrRanks);
     manager.ProcessUpdateRemoteMrTask();

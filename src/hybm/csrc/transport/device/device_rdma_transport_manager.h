@@ -50,15 +50,17 @@ public:
     Result WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) override;
 
 private:
-    static bool PrepareOpenDevice(uint32_t device, uint32_t rankCount, in_addr &deviceIp, void *&rdmaHandle);
+    static bool PrepareOpenDevice(uint32_t device, uint32_t rankCount, net_addr_t &deviceIp, void *&rdmaHandle);
     static bool OpenTsd(uint32_t deviceId, uint32_t rankCount);
     static bool RaInit(uint32_t deviceId);
-    static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
-    static bool RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle);
+    static bool HandleRetiredDeviceIp(net_addr_t &deviceIp, net_addr_t &retiredIp);
+    static bool RetireDeviceIp(uint32_t deviceId, net_addr_t &deviceIp);
+    static bool RaRdevInit(uint32_t deviceId, net_addr_t deviceIp, void *&rdmaHandle);
     void ClearAllRegisterMRs();
     int CheckPrepareOptions(const HybmTransPrepareOptions &options);
     int RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write);
     int PrepareThreadLocalStream();
+    void InitializeDeviceAddress(mf_sockaddr &deviceAddr);
 
 private: // RDMA HOST STARS
     void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command);
@@ -70,7 +72,7 @@ private:
     uint32_t rankCount_{1};
     uint32_t deviceId_{0};
     hybm_role_type role_{HYBM_ROLE_PEER};
-    in_addr deviceIp_{0};
+    net_addr_t deviceIp_{};
     uint16_t devicePort_{0};
     void *rdmaHandle_{nullptr};
     static void *storedRdmaHandle_;

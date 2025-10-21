@@ -52,6 +52,21 @@ int RdmaTransportManager::PrepareThreadLocalStream()
     return BM_OK;
 }
 
+void RdmaTransportManager::InitializeDeviceAddress(mf_sockaddr &deviceAddr)
+{
+    if (deviceIp_.type == IpV4) {
+        deviceAddr.ip.ipv4.sin_family = AF_INET;
+        deviceAddr.ip.ipv4.sin_addr = deviceIp_.ip.ipv4;
+        deviceAddr.ip.ipv4.sin_port = devicePort_;
+        deviceAddr.type = IpV4;
+    } else if (deviceIp_.type == IpV6) {
+        deviceAddr.ip.ipv6.sin6_family = AF_INET6;
+        deviceAddr.ip.ipv6.sin6_addr = deviceIp_.ip.ipv6;
+        deviceAddr.ip.ipv6.sin6_port = devicePort_;
+        deviceAddr.type = IpV6;
+    }
+}
+
 Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
 {
     int32_t deviceId = -1;
@@ -72,6 +87,11 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
         return BM_INVALID_PARAM;
     }
 
+    if (options.type == IpV4) {
+        deviceIp_.type = IpV4;
+    } else if (options.type == IpV6) {
+        deviceIp_.type = IpV6;
+    }
     if (!PrepareOpenDevice(deviceId_, rankCount_, deviceIp_, rdmaHandle_)) {
         BM_LOG_ERROR("PrepareOpenDevice failed.");
         return BM_ERROR;
@@ -79,10 +99,8 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
 
     nicInfo_ = GenerateDeviceNic(deviceIp_, devicePort_);
 
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_addr = deviceIp_;
-    deviceAddr.sin_port = devicePort_;
+    mf_sockaddr deviceAddr;
+    InitializeDeviceAddress(deviceAddr);
     if (role_ == HYBM_ROLE_PEER) {
         qpManager_ = std::make_shared<FixedRanksQpManager>(deviceId_, rankId_, rankCount_, deviceAddr);
     } else {
@@ -195,7 +213,7 @@ Result RdmaTransportManager::Prepare(const HybmTransPrepareOptions &options)
         return ret;
     }
 
-    sockaddr_in deviceNetwork;
+    mf_sockaddr deviceNetwork;
     std::unordered_map<uint32_t, ConnectRankInfo> rankInfo;
     for (auto it = options.options.begin(); it != options.options.end(); ++it) {
         ret = ParseDeviceNic(it->second.nic, deviceNetwork);
@@ -269,7 +287,7 @@ Result RdmaTransportManager::UpdateRankOptions(const HybmTransPrepareOptions &op
         return BM_ERROR;
     }
 
-    sockaddr_in deviceNetwork;
+    mf_sockaddr deviceNetwork;
     std::unordered_map<uint32_t, ConnectRankInfo> ranksInfo;
     for (auto it = options.options.begin(); it != options.options.end(); ++it) {
         auto ret = ParseDeviceNic(it->second.nic, deviceNetwork);
@@ -331,7 +349,8 @@ Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
     return BM_OK;
 }
 
-bool RdmaTransportManager::PrepareOpenDevice(uint32_t device, uint32_t rankCount, in_addr &deviceIp, void *&rdmaHandle)
+bool RdmaTransportManager::PrepareOpenDevice(uint32_t device, uint32_t rankCount,
+                                             net_addr_t &deviceIp, void *&rdmaHandle)
 {
     // If can get rdmaHandle, maybe the device has been opened, can try get rdmaHandle directly.
     if (DlHccpApi::RaRdevGetHandle(device, rdmaHandle) == 0) {
@@ -412,13 +431,28 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
     return true;
 }
 
-bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
+bool RdmaTransportManager::HandleRetiredDeviceIp(net_addr_t &deviceIp, net_addr_t &retiredIp)
 {
-    static in_addr retiredIp{};
-
-    if (deviceIpRetired_) {
-        BM_LOG_INFO("device ip already retired : " << inet_ntoa(retiredIp));
+    if (deviceIpRetired_ && deviceIp.type == IpV4) {
+        BM_LOG_INFO("device ip already retired : " << inet_ntoa(retiredIp.ip.ipv4));
         deviceIp = retiredIp;
+        return true;
+    } else if (deviceIpRetired_ && deviceIp.type == IpV6) {
+        char ipv6Str[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &retiredIp.ip.ipv6, ipv6Str, INET6_ADDRSTRLEN);
+        BM_LOG_INFO("device ip already retired : " << ipv6Str);
+        deviceIp = retiredIp;
+        return true;
+    }
+    return false;
+}
+
+bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, net_addr_t &deviceIp)
+{
+    net_addr_t retiredIp{};
+ 
+    auto isRetire = HandleRetiredDeviceIp(deviceIp, retiredIp);
+    if (isRetire) {
         return true;
     }
 
@@ -445,18 +479,28 @@ bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
 
     for (auto &info : infos) {
         if (info.family == AF_INET) {
-            deviceIp = retiredIp = info.ifaddr.ip.addr;
+            deviceIp.ip.ipv4 = retiredIp.ip.ipv4 = info.ifaddr.ip.addr;
+            deviceIp.type = IpV4;
             deviceIpRetired_ = true;
-            BM_LOG_DEBUG("retire device ip success : " << inet_ntoa(deviceIp));
+            BM_LOG_DEBUG("retire device ip success : " << inet_ntoa(deviceIp.ip.ipv4));
+            return true;
+        }
+        if (info.family == AF_INET6) {
+            deviceIp.ip.ipv6 = retiredIp.ip.ipv6 = info.ifaddr.ip.addr6;
+            deviceIp.type = IpV6;
+            deviceIpRetired_ = true;
+            char ipv6Str[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, &deviceIp.ip.ipv6, ipv6Str, INET6_ADDRSTRLEN);
+            BM_LOG_DEBUG("retire device ip success : " << ipv6Str);
             return true;
         }
     }
 
-    BM_LOG_ERROR("not found network device of AF_INET on NPU.");
+    BM_LOG_ERROR("not found network device of AF_INET or AF_INET6 on NPU.");
     return false;
 }
 
-bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle)
+bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, net_addr_t deviceIp, void *&rdmaHandle)
 {
     if (storedRdmaHandle_ != nullptr) {
         BM_LOG_INFO("ra rdev already initialized.");
@@ -471,8 +515,12 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
     info.notifyType = NOTIFY;
     info.enabled2mbLite = true;
     rdev.phyId = deviceId;
-    rdev.family = AF_INET;
-    rdev.localIp.addr = deviceIp;
+    rdev.family = (deviceIp.type == IpV4) ? AF_INET : AF_INET6;
+    if (deviceIp.type == IpV4) {
+        rdev.localIp.addr = deviceIp.ip.ipv4;
+    } else if (deviceIp.type == IpV6) {
+        rdev.localIp.addr6 = deviceIp.ip.ipv6;
+    }
     BM_LOG_DEBUG("RaRdevInitV2, info=" << info << "rdev=" << rdev);
     auto ret = DlHccpApi::RaRdevInitV2(info, rdev, rdmaHandle);
     if (ret != 0) {

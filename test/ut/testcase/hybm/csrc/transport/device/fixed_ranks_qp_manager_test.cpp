@@ -77,10 +77,11 @@ static int RaGetSocketsStub(uint32_t role, HccpSocketInfo conn[], uint32_t num, 
 
 TEST_F(HybmTransportFixedRanksQpManagerTest, FixedRanksQpManagerStartupTest)
 {
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     FixedRanksQpManager manager(g_deviceId, g_rankId, g_rankCount, deviceAddr);
     uint32_t keys[16] {};
     TransportMemoryKey key;
@@ -115,10 +116,11 @@ TEST_F(HybmTransportFixedRanksQpManagerTest, FixedRanksQpManagerStartupTest)
 
 TEST_F(HybmTransportFixedRanksQpManagerTest, FixedRanksQpManagerStartupReturnError)
 {
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     FixedRanksQpManager manager(g_deviceId, g_rankId, g_rankCount, deviceAddr);
     void *rdma = malloc(1);
 
@@ -163,10 +165,11 @@ TEST_F(HybmTransportFixedRanksQpManagerTest, WaitingConnectionReadyTest)
     uint32_t rankid   = 1;
     uint32_t hrankid1 = 0;
     uint32_t hrankid2 = 2;
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     FixedRanksQpManager manager(g_deviceId, rankid, count, deviceAddr);
     uint32_t keys[16] {};
     TransportMemoryKey key;
@@ -221,10 +224,11 @@ TEST_F(HybmTransportFixedRanksQpManagerTest, WaitingConnectionReadyTest)
 
 TEST_F(HybmTransportFixedRanksQpManagerTest, StartSideTest)
 {
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     uint32_t id    = 1;
     uint32_t count = 3;
     FixedRanksQpManager manager(g_deviceId, id, count, deviceAddr);
@@ -267,13 +271,17 @@ TEST_F(HybmTransportFixedRanksQpManagerTest, WaitConnectionsReadyTest)
 {
     uint32_t count  = 3;
     uint32_t rankid = 1;
-    sockaddr_in deviceAddr;
-    deviceAddr.sin_family = AF_INET;
-    deviceAddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.sin_addr);
+    mf_sockaddr deviceAddr;
+    deviceAddr.type = IpV4;
+    deviceAddr.ip.ipv4.sin_family = AF_INET;
+    deviceAddr.ip.ipv4.sin_port = htons(PORT);
+    inet_pton(AF_INET, "0.0.0.0", &deviceAddr.ip.ipv4.sin_addr);
     FixedRanksQpManager manager(g_deviceId, rankid, count, deviceAddr);
+    net_addr_t ipConnection;
+    ipConnection.type = IpV4;
+    ipConnection.ip.ipv4 = deviceAddr.ip.ipv4.sin_addr;
     std::unordered_map<uint32_t, FixedRanksQpManager::ConnectionChannel> connections;
-    connections.emplace(0, FixedRanksQpManager::ConnectionChannel(deviceAddr.sin_addr, nullptr));
+    connections.emplace(0, FixedRanksQpManager::ConnectionChannel(ipConnection, nullptr));
 
     MOCKER(&DlHccpApi::RaGetSockets).stubs().will(invoke(RaGetSocketsStub));
     int ret = manager.WaitConnectionsReady(connections);

@@ -27,7 +27,7 @@ namespace device {
 
 class DynamicRanksQpManager : public DeviceQpManager {
 public:
-    DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
+    DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, mf_sockaddr devNet,
                           bool server) noexcept;
     ~DynamicRanksQpManager() noexcept override;
 
@@ -47,32 +47,43 @@ private:
     void ProcessUpdateLocalMrTask() noexcept;
     void ProcessUpdateRemoteMrTask() noexcept;
     void CloseServices() noexcept;
-    int CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &r, std::vector<HccpSocketConnectInfo> &c,
+    int CreateConnectInfos(std::unordered_map<uint32_t, mf_sockaddr> &r, std::vector<HccpSocketConnectInfo> &c,
         ClientConnectSocketTask &currTask);
-    void Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::vector<HccpSocketInfo> &socketInfos);
+    void Parse2SocketInfo(std::unordered_map<net_addr_t, uint32_t> &ip2rank, std::vector<HccpSocketInfo> &socketInfos,
+        std::vector<IpType> &types);
     int32_t GetSocketConn(std::vector<HccpSocketInfo> &socketInfos, QueryConnectionStateTask &currTask,
-        std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::unordered_set<uint32_t> &connectedRanks);
+        std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+        std::unordered_set<uint32_t> &connectedRanks, std::vector<IpType> &types);
 
     std::vector<lite_mr_info> GenerateLocalLiteMrs() noexcept;
     std::vector<lite_mr_info> GenerateRemoteLiteMrs(uint32_t rankId) noexcept;
     void GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
-                                std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
                                 std::unordered_set<uint32_t> &addMrRanks) noexcept;
-    void GenTaskFromChangeRanks(const std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+    void GenTaskFromChangeRanks(const std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
                                 const std::unordered_set<uint32_t> &addMrRanks) noexcept;
     static void SetQpHandleRegisterMr(void *qpHandle, const std::vector<lite_mr_info> &mrs, bool local) noexcept;
+    void InitializeWhiteList(std::vector<HccpSocketWhiteListInfo> &whitelist,
+                             std::unordered_map<uint32_t, net_addr_t> remotes) noexcept;
+    int BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos,
+        ClientConnectSocketTask &currTask, std::unordered_map<uint32_t, mf_sockaddr> &remotes) noexcept;
+    void ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
+                                      std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+                                      std::vector<IpType> &types,
+                                      std::unordered_set<uint32_t> &connectedRanks,
+                                      uint32_t &successCount);
 
 private:
     struct ConnectionChannel {
-        in_addr remoteIp;
+        net_addr_t remoteIp;
         void *socketHandle;
         void *socketFd{nullptr};
         void *qpHandle{nullptr};
         bool qpConnectCalled{false};
         int qpStatus{-1};
 
-        explicit ConnectionChannel(const in_addr ip) : ConnectionChannel{ip, nullptr} {}
-        ConnectionChannel(in_addr ip, void *sock) : remoteIp{ip}, socketHandle{sock} {}
+        explicit ConnectionChannel(const net_addr_t ip) : ConnectionChannel{ip, nullptr} {}
+        ConnectionChannel(net_addr_t ip, void *sock) : remoteIp{ip}, socketHandle{sock} {}
     };
 
     void *rdmaHandle_{nullptr};

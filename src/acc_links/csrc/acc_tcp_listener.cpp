@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <net/if.h>
 #include <sys/time.h>
 #include "acc_common_util.h"
 #include "acc_tcp_listener.h"
@@ -14,11 +15,69 @@
 namespace ock {
 namespace acc {
     
-void AccTcpListener::PrepareSockAddr(struct sockaddr_in& addr) noexcept
+void AccTcpListener::PrepareSockAddr(mf_sockaddr& addr) noexcept
 {
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(listenIp_.c_str());
-    addr.sin_port = htons(listenPort_);
+    if (addr.type == IpV4) {
+        addr.ip.ipv4.sin_family = AF_INET;
+        addr.ip.ipv4.sin_addr.s_addr = inet_addr(listenIp_.c_str());
+        addr.ip.ipv4.sin_port = htons(listenPort_);
+    } else if (addr.type == IpV6) {
+        addr.ip.ipv6.sin6_family = AF_INET6;
+        addr.ip.ipv6.sin6_port = htons(listenPort_);
+        inet_pton(AF_INET6, listenIp_.c_str(), &addr.ip.ipv6.sin6_addr);
+        if (listenIp_.rfind("fe80", 0) == 0) {
+            const char *ipInfo = std::getenv("SHMEM_CONF_STORE_MASTER_IF");
+            std::string tmpIp = std::string(ipInfo);
+            size_t index = tmpIp.find(':');
+            if (ipInfo == nullptr || index == std::string::npos) {
+                LOG_ERROR("SHMEM_CONF_STORE_MASTER_IF is null");
+            }
+            tmpIp = tmpIp.substr(0, index);
+            addr.ip.ipv6.sin6_scope_id = if_nametoindex(tmpIp.c_str());
+            if (addr.ip.ipv6.sin6_scope_id == 0) {
+                perror("if_nametoindex failed");
+            }
+        }
+    }
+}
+
+Result AccTcpListener::CreateSocketForStrat(mf_sockaddr &addr, int &tmpFD) noexcept
+{
+    if (listenIp_.find(':') != std::string::npos) {
+        tmpFD = ::socket(AF_INET6, SOCK_STREAM, 0);
+        addr.type = IpV6;
+    } else {
+        tmpFD = ::socket(AF_INET, SOCK_STREAM, 0);
+        addr.type = IpV4;
+    }
+    if (tmpFD < 0) {
+        LOG_ERROR("Failed to create listen socket, error " << strerror(errno) <<
+            ", please check if running of fd limit");
+        return ACC_ERROR;
+    }
+    ipType_ = addr.type;
+    return ACC_OK;
+}
+
+Result AccTcpListener::BindAndListenSocket(int tmpFD, mf_sockaddr &addr) noexcept
+{
+    int result_bind = -1;
+    if (addr.type == IpV4) {
+        result_bind = ::bind(tmpFD, reinterpret_cast<struct sockaddr *>(&addr.ip.ipv4), sizeof(addr.ip.ipv4));
+    } else if (addr.type == IpV6) {
+        result_bind = ::bind(tmpFD, reinterpret_cast<struct sockaddr *>(&addr.ip.ipv6), sizeof(addr.ip.ipv6));
+    }
+    if (result_bind < 0 || ::listen(tmpFD, 200L) < 0) {
+        auto errorNum = errno;
+        SafeCloseFd(tmpFD);
+        if (errorNum == EADDRINUSE) {
+            LOG_INFO("address in use for bind listen on " << NameAndPort());
+            return ACC_LINK_ADDRESS_IN_USE;
+        }
+        LOG_ERROR("Failed to bind or listen on " << NameAndPort() << " as errno " << strerror(errorNum));
+        return ACC_ERROR;
+    }
+    return ACC_OK;
 }
 
 Result AccTcpListener::Start() noexcept
@@ -34,15 +93,12 @@ Result AccTcpListener::Start() noexcept
     }
 
     /* create socket */
-    auto tmpFD = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (tmpFD < 0) {
-        LOG_ERROR("Failed to create listen socket, error " << strerror(errno) <<
-            ", please check if running of fd limit");
+    mf_sockaddr addr {};
+    auto tmpFD {-1};
+    if (CreateSocketForStrat(addr, tmpFD) != ACC_OK) {
         return ACC_ERROR;
     }
-
     /* assign address */
-    struct sockaddr_in addr {};
     PrepareSockAddr(addr);
 
     /* set option, bind and listen */
@@ -55,15 +111,9 @@ Result AccTcpListener::Start() noexcept
         }
     }
 
-    if (::bind(tmpFD, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0 || ::listen(tmpFD, 200L) < 0) {
-        auto errorNum = errno;
-        SafeCloseFd(tmpFD);
-        if (errorNum == EADDRINUSE) {
-            LOG_INFO("address in use for bind listen on " << NameAndPort());
-            return ACC_LINK_ADDRESS_IN_USE;
-        }
-        LOG_ERROR("Failed to bind or listen on " << NameAndPort() << " as errno " << strerror(errorNum));
-        return ACC_ERROR;
+    auto isListen = BindAndListenSocket(tmpFD, addr);
+    if (isListen != ACC_OK) {
+        return isListen;
     }
 
     auto ret = StartAcceptThread();
@@ -149,9 +199,15 @@ void AccTcpListener::RunInThread() noexcept
                 continue;
             }
 
-            struct sockaddr_in addressIn {};
-            socklen_t len = sizeof(addressIn);
-            auto fd = ::accept(listenFd_, reinterpret_cast<struct sockaddr *>(&addressIn), &len);
+            mf_sockaddr addressIn {};
+            auto fd {-1};
+            if (ipType_ == IpV6) {
+                socklen_t len = sizeof(sockaddr_in6);
+                fd = ::accept(listenFd_, reinterpret_cast<struct sockaddr *>(&addressIn.ip.ipv6), &len);
+            } else if (ipType_ == IpV4) {
+                socklen_t len = sizeof(sockaddr_in);
+                fd = ::accept(listenFd_, reinterpret_cast<struct sockaddr *>(&addressIn.ip.ipv4), &len);
+            }
             if (fd < 0) {
                 LOG_WARN("Failed to accept on new socket with " << strerror(errno) << ", ignore and continue");
                 continue;
@@ -175,11 +231,25 @@ void AccTcpListener::RunInThread() noexcept
     LOG_INFO("Working thread for AccTcpStore listener at " << NameAndPort() << " exiting");
 }
 
-void AccTcpListener::ProcessNewConnection(int fd, struct sockaddr_in addressIn) noexcept
+void AccTcpListener::FormatIPAddressAndPort(mf_sockaddr addressIn, std::string &ipPort) noexcept
 {
-    std::string ipPort = inet_ntoa(addressIn.sin_addr);
-    ipPort += ":";
-    ipPort += std::to_string(ntohs(addressIn.sin_port));
+    if (ipType_ == IpV6) {
+        char ipStr[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &(addressIn.ip.ipv6.sin6_addr), ipStr, INET6_ADDRSTRLEN);
+        ipPort = ipStr;
+        ipPort += ":";
+        ipPort += std::to_string(ntohs(addressIn.ip.ipv6.sin6_port));
+    } else if (ipType_ == IpV4) {
+        ipPort = inet_ntoa(addressIn.ip.ipv4.sin_addr);
+        ipPort += ":";
+        ipPort += std::to_string(ntohs(addressIn.ip.ipv4.sin_port));
+    }
+}
+
+void AccTcpListener::ProcessNewConnection(int fd, mf_sockaddr addressIn) noexcept
+{
+    std::string ipPort {};
+    FormatIPAddressAndPort(addressIn, ipPort);
 
     /* receive header */
     AccConnReq req;

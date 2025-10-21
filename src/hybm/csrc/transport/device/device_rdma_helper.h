@@ -15,7 +15,7 @@
 
 #include <cstdint>
 #include <string>
-
+#include "mf_net.h"
 #include "hybm_types.h"
 
 namespace ock {
@@ -23,8 +23,8 @@ namespace mf {
 namespace transport {
 namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port);
-Result ParseDeviceNic(const std::string &nic, sockaddr_in &address);
-std::string GenerateDeviceNic(in_addr ip, uint16_t port);
+Result ParseDeviceNic(const std::string &nic, mf_sockaddr &address);
+std::string GenerateDeviceNic(net_addr_t ip, uint16_t port);
 }
 }
 }

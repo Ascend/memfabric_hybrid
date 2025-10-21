@@ -37,7 +37,7 @@ std::vector<uint32_t> NetworkGetIpAddresses() noexcept
             continue;
         }
 
-        if (p->ifa_addr->sa_family != AF_INET) {
+        if (p->ifa_addr->sa_family != AF_INET && p->ifa_addr->sa_family != AF_INET6) {
             continue;
         }
 
@@ -45,9 +45,20 @@ std::vector<uint32_t> NetworkGetIpAddresses() noexcept
             continue;
         }
 
-        auto sin = reinterpret_cast<struct sockaddr_in *>(p->ifa_addr);
-        addresses.emplace_back(ntohl(sin->sin_addr.s_addr));
-        BM_LOG_INFO("find ip address: " << p->ifa_name << " -> " << inet_ntoa(sin->sin_addr));
+        std::string ip_address {};
+        if (p->ifa_addr->sa_family == AF_INET) {
+            auto sin = reinterpret_cast<struct sockaddr_in *>(p->ifa_addr);
+            addresses.emplace_back(ntohl(sin->sin_addr.s_addr));
+            ip_address = inet_ntoa(sin->sin_addr);
+        } else if (p->ifa_addr->sa_family == AF_INET6) {
+            auto sin = reinterpret_cast<struct sockaddr_in6 *>(p->ifa_addr);
+            char addr_str[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, &(sin->sin6_addr), addr_str, INET6_ADDRSTRLEN);
+            addresses.emplace_back(addr_str);
+            ip_address = addr_str;
+        }
+
+        BM_LOG_INFO("find ip address: " << p->ifa_name << " -> " << ip_address);
     }
 
     freeifaddrs(ifa);

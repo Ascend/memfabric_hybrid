@@ -41,6 +41,42 @@ const hybm_options g_rdma_options2 = {HYBM_TYPE_HOST_INITIATE,
                                       true,
                                       HYBM_ROLE_PEER,
                                       "tcp://127.0.0.1:10002"};
+const hybm_options g_rdma_options3 = {HYBM_TYPE_HOST_INITIATE,
+                                      HYBM_MEM_TYPE_HOST,
+                                      HYBM_DOP_TYPE_HOST_TCP,
+                                      HYBM_SCOPE_CROSS_NODE,
+                                      g_rankSize,
+                                      0,
+                                      0,
+                                      g_localMemSize,
+                                      0,
+                                      true,
+                                      HYBM_ROLE_PEER,
+                                      "tcp6://[::]:10002"};
+const hybm_options g_rdma_options4 = {HYBM_TYPE_HOST_INITIATE,
+                                      HYBM_MEM_TYPE_HOST,
+                                      HYBM_DOP_TYPE_HOST_RDMA,
+                                      HYBM_SCOPE_CROSS_NODE,
+                                      g_rankSize,
+                                      0,
+                                      0,
+                                      g_localMemSize,
+                                      0,
+                                      true,
+                                      HYBM_ROLE_PEER,
+                                      "tcp6://[2001:0db8:85a3:0011:0020:8a2e:0370:7334]:10002"};
+const hybm_options g_rdma_options5 = {HYBM_TYPE_HOST_INITIATE,
+                                      HYBM_MEM_TYPE_HOST,
+                                      HYBM_DOP_TYPE_HOST_TCP,
+                                      HYBM_SCOPE_CROSS_NODE,
+                                      g_rankSize,
+                                      0,
+                                      0,
+                                      g_localMemSize,
+                                      0,
+                                      true,
+                                      HYBM_ROLE_PEER,
+                                      "tcp6://[2001:0db8:85a3:0011:0020:8a2e:0370:7334]:10002"};
 const uint64_t g_allocSize = 2 * 1024 * 1024;
 const uint64_t g_copy2dSize = 128;
 }  // namespace
@@ -240,5 +276,8 @@ TEST_P(HybmDataOpEntryTest, hybm_data_copy_2d_ShouldReturnInvalidParam)
 
 INSTANTIATE_TEST_SUITE_P(HybmOptions, HybmDataOpEntryTest,
                          ::testing::Values(TestData{&g_rdma_options1, "RDMA_HBM"},
-                                           TestData{&g_rdma_options2, "RDMA_DRAM"}),
+                                           TestData{&g_rdma_options2, "RDMA_DRAM"},
+                                           TestData{&g_rdma_options3, "RDMA_HBM_IPV6"},
+                                           TestData{&g_rdma_options4, "RDMA_DRAM_IPV6"},
+                                           TestData{&g_rdma_options5, "RDMA_HBM2_IPV6"}),
                          [](const ::testing::TestParamInfo<TestData> &info) { return info.param.name; });

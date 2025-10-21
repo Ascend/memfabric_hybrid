@@ -27,6 +27,7 @@
 using namespace ock::smem;
 
 const std::string UT_BM_IP_PORT = "tcp://127.0.0.1:7758";
+const std::string UT_BM_IP_PORT_V6 = "tcp6://[::]:7758";
 
 class TestSmemBmEntryManager : public testing::Test {
 public:
@@ -78,6 +79,8 @@ TEST_F(TestSmemBmEntryManager, init_already_inited)
     smem_bm_config_init(&config);
     auto ret = SmemBmEntryManager::Instance().Initialize(UT_BM_IP_PORT, 2, 0, config);
     EXPECT_EQ(ret, 0);
+    ret = SmemBmEntryManager::Instance().Initialize(UT_BM_IP_PORT_V6, 2, 0, config);
+    EXPECT_EQ(ret, 0);
     SmemBmEntryManager::Instance().inited_ = false;
 }
 
@@ -87,6 +90,10 @@ TEST_F(TestSmemBmEntryManager, init_failed_invalid_url)
     smem_bm_config_init(&config);
     std::string invalidIpPort = "255.255.255.555:66666";
     auto ret = SmemBmEntryManager::Instance().Initialize(invalidIpPort, 2, 0, config);
+    EXPECT_NE(ret, 0);
+
+    invalidIpPort = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:66666";
+    ret = SmemBmEntryManager::Instance().Initialize(invalidIpPort, 2, 0, config);
     EXPECT_NE(ret, 0);
 }
 
@@ -108,6 +115,15 @@ TEST_F(TestSmemBmEntryManager, get_entry_by_id_success)
     SmemBmEntryManager::Instance().entryIdMap_.insert(std::make_pair(id, tmpEntry));
     SmemBmEntryPtr handle = nullptr;
     auto ret = SmemBmEntryManager::Instance().GetEntryById(id, handle);
+    EXPECT_EQ(ret, 0);
+    EXPECT_NE(handle, nullptr);
+
+    tcpStore = SmMakeRef<TcpConfigStore>("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", 8475, false, 0);
+    store = tcpStore.Get();
+    tmpEntry = SmMakeRef<SmemBmEntry>(options, store);
+    SmemBmEntryManager::Instance().entryIdMap_.insert(std::make_pair(id, tmpEntry));
+    handle = nullptr;
+    ret = SmemBmEntryManager::Instance().GetEntryById(id, handle);
     EXPECT_EQ(ret, 0);
     EXPECT_NE(handle, nullptr);
 }

@@ -29,9 +29,9 @@ struct TaskStatus {
 struct ServerAddWhitelistTask {
     TaskStatus status;
     std::mutex locker;
-    std::unordered_map<uint32_t, in_addr> remoteIps;
+    std::unordered_map<uint32_t, net_addr_t> remoteIps;
 
-    inline int64_t Failed(const std::unordered_map<uint32_t, in_addr> &ips) noexcept
+    inline int64_t Failed(const std::unordered_map<uint32_t, net_addr_t> &ips) noexcept
     {
         std::unique_lock<std::mutex> uniqueLock{locker};
         remoteIps = ips;
@@ -51,9 +51,9 @@ struct ServerAddWhitelistTask {
 struct ClientConnectSocketTask {
     TaskStatus status;
     std::mutex locker;
-    std::unordered_map<uint32_t, sockaddr_in> remoteAddress;
+    std::unordered_map<uint32_t, mf_sockaddr> remoteAddress;
 
-    inline int64_t Failed(const std::unordered_map<uint32_t, sockaddr_in> &address) noexcept
+    inline int64_t Failed(const std::unordered_map<uint32_t, mf_sockaddr> &address) noexcept
     {
         std::unique_lock<std::mutex> uniqueLock{locker};
         status.exist = true;
@@ -72,8 +72,8 @@ struct ClientConnectSocketTask {
 // (3)
 struct QueryConnectionStateTask {
     TaskStatus status;
-    std::unordered_map<in_addr_t, uint32_t> ip2rank;
-    inline int64_t Failed(const std::unordered_map<in_addr_t, uint32_t> &p2r) noexcept
+    std::unordered_map<net_addr_t, uint32_t> ip2rank;
+    inline int64_t Failed(const std::unordered_map<net_addr_t, uint32_t> &p2r) noexcept
     {
         ip2rank = p2r;
         status.exist = true;

@@ -22,7 +22,7 @@ namespace device {
 
 class FixedRanksQpManager : public DeviceQpManager {
 public:
-    FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet) noexcept;
+    FixedRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, mf_sockaddr devNet) noexcept;
     ~FixedRanksQpManager() noexcept override;
 
     int SetRemoteRankInfo(const std::unordered_map<uint32_t, ConnectRankInfo> &ranks) noexcept override;
@@ -41,15 +41,15 @@ private:
     };
 
     struct ConnectionChannel {
-        in_addr remoteIp;
+        net_addr_t remoteIp;
         void *socketHandle;
         void *socketFd{nullptr};
         void *qpHandles[CONN_QP_COUNT]{};
         HccpAiQpInfo aiQpInfo{};
         int qpStatus{-1};
 
-        explicit ConnectionChannel(const in_addr ip) : ConnectionChannel{ip, nullptr} {}
-        ConnectionChannel(in_addr ip, void *sock) : remoteIp{ip}, socketHandle{sock} {}
+        explicit ConnectionChannel(const net_addr_t ip) : ConnectionChannel{ip, nullptr} {}
+        ConnectionChannel(net_addr_t ip, void *sock) : remoteIp{ip}, socketHandle{sock} {}
     };
 
     bool ReserveQpInfoSpace() noexcept;
@@ -67,7 +67,8 @@ private:
     void CloseServerConnections() noexcept;
     void CloseConnections(std::unordered_map<uint32_t, ConnectionChannel> &connections) noexcept;
     int CheckConnectionSuccessCount(std::unordered_map<uint32_t, ConnectionChannel> &connections,
-        std::vector<HccpSocketInfo> &socketInfos, std::unordered_map<in_addr_t, uint32_t> &addr2index, uint32_t &cnt);
+        std::vector<HccpSocketInfo> &socketInfos, std::unordered_map<net_addr_t, uint32_t> &addr2index,
+        uint32_t &succCnt, IpType type);
     void InitClientConnectThread();
     void FillQpPreSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo);
     void FillQpPostSettingCopyInfo(AiQpRMAQueueInfo *&copyInfo);

@@ -32,7 +32,7 @@ int32_t smem_shm_config_init(smem_shm_config_t *config);
  * this function will finish when all processes connected or timeout;
  * the global config store will be used to exchange information about shm object and team
  *
- * @param configStoreIpPort[in] ipPort of config store, e.g. tcp://ip:port
+ * @param configStoreIpPort[in] ipPort of config store, e.g. tcp://ip:port or tcp6://[ip]:port
  * @param worldSize        [in] size of processes
  * @param rankId           [in] local rank id in world size
  * @param deviceId         [in] device npu id

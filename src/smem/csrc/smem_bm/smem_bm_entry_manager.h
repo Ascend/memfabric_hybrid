@@ -11,6 +11,7 @@
 #define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
 
 #include <string>
+#include "mf_net.h"
 #include "smem_net_common.h"
 #include "smem_bm.h"
 #include "smem_bm_entry.h"
@@ -65,6 +66,12 @@ private:
     int32_t PrepareStore();
     int32_t RacingForStoreServer();
     int32_t AutoRanking();
+    int32_t ProcessRankTableByIPType(mf_ip_addr localAddress, uint64_t size,
+                                     std::string rankTableKey, std::string sortedRankTableKey,
+                                     std::vector<uint8_t> &rtv);
+    int32_t ProcessRankTableByIPTypeWhenIpv6(mf_ip_addr localAddress, uint64_t size,
+                                             std::string rankTableKey, std::string sortedRankTableKey,
+                                             std::vector<uint8_t> &rtv);
 
 private:
     std::mutex entryMutex_;

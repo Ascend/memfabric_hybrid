@@ -551,7 +551,7 @@ void DefineBmClass(py::module_ &m)
 Initialize smem big memory library.
 
 Arguments:
-    store_url(str):   configure store url for control, e.g. tcp://ip:port
+    store_url(str):   configure store url for control, e.g. tcp://ip:port or tcp6://[ip]:port
     world_size(int):  number of guys participating
     device_id(int):   device id
     config(BmConfig): extract config

@@ -130,3 +130,4 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 | license 地址 | 不涉及  | LICENSE |  http://www.apache.org/licenses/ | license文件 |
 | license 地址 |  不涉及 |  LICENSE | http://www.apache.org/licenses/LICENSE-2.0  | license文件  |
 | 代码仓地址 |  https://gitee.com/ascend/memfabric_hybrid.git | setup.py | https://gitee.com/ascend/memfabric_hybrid  | whl 包仓库地址信息 |
+| 代码仓地址 |  https://gitee.com/ascend/shmem.git | 不涉及 | https://gitee.com/ascend/shmem  | shmem 仓库地址信息 |

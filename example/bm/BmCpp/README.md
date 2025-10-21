@@ -42,11 +42,17 @@ source /usr/local/mxc/memfabric_hybrid/set_env.sh
   ```bash
   单节点运行8张卡: 
   ./bm_example 8 8 0 tcp://127.0.0.1:8570
+  (ipv6) ./bm_example 8 8 0 tcp6://[::]:8080
   
   单节点运行8张卡,并启用autorank: 
   ./bm_example 8 8 0 tcp://127.0.0.1:8570 1
+  (ipv6) ./bm_example 8 8 0 tcp6://[::]:8080 1
   
   两节点运行16张卡,每节点8张(假设nodeA的ip为x.x.x.x):
   nodeA: ./bm_example 16 8 0 tcp://x.x.x.x:8570
   nodeB: ./bm_example 16 8 8 tcp://x.x.x.x:8570
+
+  (ipv6)
+  nodeA: ./bm_example 16 8 0 tcp6://[x:x:x:x]:8080
+  nodeB: ./bm_example 16 8 8 tcp6://[x:x:x:x]:8080
   ```

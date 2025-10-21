@@ -50,4 +50,8 @@ RDMADemo/
   ```bash
   bash run.sh 2 tcp://127.0.0.1:8570
   ```
+  或者
+  ```bash
+  bash run.sh 2 tcp6://[::1]:8570
+  ```
 - 如需要跨机在A3超节点内运行，可以参考run.sh内执行shm_kernels命令在多个节点内运行

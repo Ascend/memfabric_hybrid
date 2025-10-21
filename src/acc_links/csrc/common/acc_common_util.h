@@ -24,6 +24,7 @@ namespace acc {
 class AccCommonUtil {
 public:
     static bool IsValidIPv4(const std::string &ip);
+    static bool IsValidIPv6(const std::string &ip);
     static Result SslShutdownHelper(SSL *s);
     static uint32_t GetEnvValue2Uint32(const char *envName);
     static bool IsAllDigits(const std::string &str);

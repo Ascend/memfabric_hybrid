@@ -33,6 +33,26 @@ struct RankTable {
         return r1.deviceId < r2.deviceId;
     }
 };
+struct RankTableV6 {
+    uint8_t ipv6[16];
+    uint8_t deviceId;
+    RankTableV6() : ipv6{}, deviceId{0} {}
+    RankTableV6(uint8_t ip[16], uint16_t dev) : deviceId{static_cast<uint8_t>(dev)}
+    {
+        std::copy(ip, ip + 16, ipv6);
+    }
+
+    static bool Less(const RankTableV6 &r1, const RankTableV6 &r2)
+    {
+        for (size_t i = 0; i < 16; i++) {
+            if (r1.ipv6[i] != r2.ipv6[i]) {
+                return r1.ipv6[i] < r2.ipv6[i];
+            }
+        }
+
+        return r1.deviceId < r2.deviceId;
+    }
+};
 #pragma pack(pop)
 
 SmemBmEntryManager &SmemBmEntryManager::Instance()
@@ -101,9 +121,9 @@ int32_t SmemBmEntryManager::PrepareStore()
 
 int32_t SmemBmEntryManager::RacingForStoreServer()
 {
-    uint32_t localIpv4;
+    mf_ip_addr localAddress;
     std::string localIp;
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
+    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localAddress);
     SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
     if (localIp != storeUrlExtraction_.ip) {
         return SM_OK;
@@ -117,12 +137,87 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
     return StoreFactory::GetFailedReason();
 }
 
+int32_t SmemBmEntryManager::ProcessRankTableByIPTypeWhenIpv6(mf_ip_addr localAddress, uint64_t size,
+                                                             std::string rankTableKey, std::string sortedRankTableKey,
+                                                             std::vector<uint8_t> &rtv)
+{
+    int32_t ret = SM_OK;
+    std::vector<RankTableV6> ranks;
+    if (size == sizeof(RankTableV6) * worldSize_) {
+        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
+
+        ret = confStore_->Remove(rankTableKey);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "remove key: " << rankTableKey << " failed: " << ret);
+
+        ranks = std::vector<RankTableV6>{(RankTableV6 *)rtv.data(), (RankTableV6 *)rtv.data() + worldSize_};
+        std::sort(ranks.begin(), ranks.end(), RankTableV6::Less);
+
+        rtv = std::vector<uint8_t>{(uint8_t *)ranks.data(), (uint8_t *)ranks.data() +
+            sizeof(RankTableV6) * worldSize_};
+        ret = confStore_->Set(sortedRankTableKey, rtv);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
+    } else {
+        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
+        ranks = std::vector<RankTableV6>{(RankTableV6 *)rtv.data(), (RankTableV6 *)rtv.data() + worldSize_};
+    }
+
+    for (auto i = 0U; i < ranks.size(); ++i) {
+        if (std::equal(ranks[i].ipv6, ranks[i].ipv6 + 16, localAddress.addr.addrv6) &&
+            ranks[i].deviceId == deviceId_) {
+            config_.rankId = i;
+            break;
+        }
+    }
+    return ret;
+}
+
+int32_t SmemBmEntryManager::ProcessRankTableByIPType(mf_ip_addr localAddress, uint64_t size,
+                                                     std::string rankTableKey, std::string sortedRankTableKey,
+                                                     std::vector<uint8_t> &rtv)
+{
+    int32_t ret = SM_OK;
+    if (localAddress.type == IpV4) {
+        std::vector<RankTable> ranks;
+        if (size == sizeof(RankTable) * worldSize_) {
+            ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+            SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
+
+            ret = confStore_->Remove(rankTableKey);
+            SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "remove key: " << rankTableKey << " failed: " << ret);
+
+            ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
+            std::sort(ranks.begin(), ranks.end(), RankTable::Less);
+
+            rtv = std::vector<uint8_t>{(uint8_t *)ranks.data(), (uint8_t *)ranks.data() +
+                sizeof(RankTable) * worldSize_};
+            ret = confStore_->Set(sortedRankTableKey, rtv);
+            SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
+        } else {
+            ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+            SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
+            ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
+        }
+
+        for (auto i = 0U; i < ranks.size(); ++i) {
+            if (ranks[i].ipv4 == localAddress.addr.addrv4 && ranks[i].deviceId == deviceId_) {
+                config_.rankId = i;
+                break;
+            }
+        }
+    } else if (localAddress.type == IpV6) {
+        ret = ProcessRankTableByIPTypeWhenIpv6(localAddress, size, rankTableKey, sortedRankTableKey, rtv);
+    }
+    return ret;
+}
+
 int32_t SmemBmEntryManager::AutoRanking()
 {
-    uint32_t localIpv4;
+    mf_ip_addr localAddress;
     std::string localIp;
 
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
+    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localAddress);
     if (ret != 0) {
         SM_LOG_ERROR("get local ip address connect to target ip failed: " << ret);
         return ret;
@@ -130,38 +225,20 @@ int32_t SmemBmEntryManager::AutoRanking()
 
     std::string rankTableKey = std::string("AutoRanking#RankTables");
     std::string sortedRankTableKey = std::string("AutoRanking#SortedRankTables");
-    RankTable rt{localIpv4, deviceId_};
     uint64_t size;
-    std::vector<uint8_t> rtv{(uint8_t *)&rt, (uint8_t *)&rt + sizeof(rt)};
+    std::vector<uint8_t> rtv {};
+    if (localAddress.type == IpV4) {
+        RankTable rt{localAddress.addr.addrv4, deviceId_};
+        rtv = std::vector<uint8_t>{(uint8_t *)&rt, (uint8_t *)&rt + sizeof(rt)};
+    } else if (localAddress.type == IpV6) {
+        RankTableV6 rt{localAddress.addr.addrv6, deviceId_};
+        rtv = std::vector<uint8_t>{(uint8_t *)&rt, (uint8_t *)&rt + sizeof(rt)};
+    }
     ret = confStore_->Append(rankTableKey, rtv, size);
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "append key: " << rankTableKey << " failed: " << ret);
 
-    std::vector<RankTable> ranks;
-    if (size == sizeof(rt) * worldSize_) {
-        ret = confStore_->Get(rankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << rankTableKey << " failed: " << ret);
-
-        ret = confStore_->Remove(rankTableKey);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "remove key: " << rankTableKey << " failed: " << ret);
-
-        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
-        std::sort(ranks.begin(), ranks.end(), RankTable::Less);
-
-        rtv = std::vector<uint8_t>{(uint8_t *)ranks.data(), (uint8_t *)ranks.data() + sizeof(RankTable) * worldSize_};
-        ret = confStore_->Set(sortedRankTableKey, rtv);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set key: " << sortedRankTableKey << " failed: " << ret);
-    } else {
-        ret = confStore_->Get(sortedRankTableKey, rtv, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "get key: " << sortedRankTableKey << " failed: " << ret);
-        ranks = std::vector<RankTable>{(RankTable *)rtv.data(), (RankTable *)rtv.data() + worldSize_};
-    }
-
-    for (auto i = 0U; i < ranks.size(); ++i) {
-        if (ranks[i].ipv4 == localIpv4 && ranks[i].deviceId == deviceId_) {
-            config_.rankId = i;
-            break;
-        }
-    }
+    ret = ProcessRankTableByIPType(localAddress, size, rankTableKey, sortedRankTableKey, rtv);
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "process rank table failed: " << ret);
 
     return SM_OK;
 }

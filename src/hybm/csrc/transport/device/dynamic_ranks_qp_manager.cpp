@@ -20,8 +20,8 @@ namespace transport {
 namespace device {
 const int delay = 5;
 static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(delay);
-DynamicRanksQpManager::DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
-                                             bool server) noexcept
+DynamicRanksQpManager::DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
+                                             mf_sockaddr devNet, bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
 {
     connectionView_.resize(rankCount);
@@ -52,7 +52,7 @@ int DynamicRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t, 
         tempRanks.emplace(it->first, it->second);
     }
 
-    std::unordered_map<uint32_t, sockaddr_in> addedRanks;
+    std::unordered_map<uint32_t, mf_sockaddr> addedRanks;
     std::unordered_set<uint32_t> addMrRanks;
 
     std::unique_lock<std::mutex> uniqueLock{mutex_};
@@ -108,7 +108,15 @@ int DynamicRanksQpManager::Startup(void *rdma) noexcept
         auto &task = connectionTasks_.whitelistTask;
         task.locker.lock();
         for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
-            task.remoteIps.emplace(it->first, it->second.network.sin_addr);
+            net_addr_t remoteIp;
+            if (it->second.network.type == IpV4) {
+                remoteIp.type = IpV4;
+                remoteIp.ip.ipv4 = it->second.network.ip.ipv4.sin_addr;
+            } else if (it->second.network.type == IpV4) {
+                remoteIp.type = IpV6;
+                remoteIp.ip.ipv6 = it->second.network.ip.ipv6.sin6_addr;
+            }
+            task.remoteIps.emplace(it->first, remoteIp);
         }
         task.status.failedTimes = 0;
         task.status.exist = true;
@@ -178,9 +186,36 @@ void DynamicRanksQpManager::BackgroundProcess() noexcept
     }
 }
 
-int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
+void DynamicRanksQpManager::InitializeWhiteList(std::vector<HccpSocketWhiteListInfo> &whitelist,
+    std::unordered_map<uint32_t, net_addr_t> remotes) noexcept
 {
     const uint32_t MAX_CONNECTIONS = 1024;
+    for (auto it = remotes.begin(); it != remotes.end(); ++it) {
+        if (connections_.find(it->first) != connections_.end()) {
+            continue;
+        }
+
+        HccpSocketWhiteListInfo info{};
+        net_addr_t addr;
+        if (it->second.type == IpV4) {
+            info.remoteIp.addr = it->second.ip.ipv4;
+            addr.type = IpV4;
+            addr.ip.ipv4 = info.remoteIp.addr;
+        } else if (it->second.type == IpV6) {
+            info.remoteIp.addr6 = it->second.ip.ipv6;
+            addr.type = IpV6;
+            addr.ip.ipv6 = info.remoteIp.addr6;
+        }
+        info.connLimit = MAX_CONNECTIONS;
+        bzero(info.tag, sizeof(info.tag));
+        whitelist.emplace_back(info);
+        auto res = connections_.emplace(it->first, ConnectionChannel{addr, serverSocketHandle_});
+        connectionView_[it->first] = &res.first->second;
+    }
+}
+
+int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
+{
     if (rankRole_ != HYBM_ROLE_RECEIVER) {
         return 0;
     }
@@ -196,19 +231,7 @@ int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
     uniqueLock.unlock();
 
     std::vector<HccpSocketWhiteListInfo> whitelist;
-    for (auto it = remotes.begin(); it != remotes.end(); ++it) {
-        if (connections_.find(it->first) != connections_.end()) {
-            continue;
-        }
-
-        HccpSocketWhiteListInfo info{};
-        info.remoteIp.addr = it->second;
-        info.connLimit = MAX_CONNECTIONS;
-        bzero(info.tag, sizeof(info.tag));
-        whitelist.emplace_back(info);
-        auto res = connections_.emplace(it->first, ConnectionChannel{info.remoteIp.addr, serverSocketHandle_});
-        connectionView_[it->first] = &res.first->second;
-    }
+    InitializeWhiteList(whitelist, remotes);
 
     if (whitelist.empty()) {
         return 0;
@@ -225,14 +248,22 @@ int DynamicRanksQpManager::ProcessServerAddWhitelistTask() noexcept
     currTask.Success();
     auto &nextTask = connectionTasks_.queryConnectTask;
     for (auto &rank : remotes) {
-        nextTask.ip2rank.emplace(rank.second.s_addr, rank.first);
+        net_addr_t rankIp;
+        if (rank.second.type == IpV4) {
+            rankIp.type = IpV4;
+            rankIp.ip.ipv4 = rank.second.ip.ipv4;
+        } else if (rank.second.type == IpV6) {
+            rankIp.type = IpV6;
+            rankIp.ip.ipv6 = rank.second.ip.ipv6;
+        }
+        nextTask.ip2rank.emplace(rankIp, rank.first);
     }
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return 0;
 }
 
-int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &remotes,
+int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, mf_sockaddr> &remotes,
                                               std::vector<HccpSocketConnectInfo> &connectInfos,
                                               ClientConnectSocketTask &currTask)
 {
@@ -246,7 +277,15 @@ int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, socka
                 BM_LOG_ERROR("create local socket handle failed times: " << failedCount);
                 return 1;
             }
-            pos = connections_.emplace(it->first, ConnectionChannel{it->second.sin_addr, socketHandle}).first;
+            net_addr_t remoteIp;
+            if (it->second.type == IpV4) {
+                remoteIp.type = IpV4;
+                remoteIp.ip.ipv4 = it->second.ip.ipv4.sin_addr;
+            } else if (it->second.type == IpV6) {
+                remoteIp.type = IpV6;
+                remoteIp.ip.ipv6 = it->second.ip.ipv6.sin6_addr;
+            }
+            pos = connections_.emplace(it->first, ConnectionChannel{remoteIp, socketHandle}).first;
             connectionView_[it->first] = &pos->second;
         } else {
             socketHandle = pos->second.socketHandle;
@@ -258,13 +297,39 @@ int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, socka
 
         HccpSocketConnectInfo connectInfo;
         connectInfo.handle = socketHandle;
-        connectInfo.remoteIp.addr = it->second.sin_addr;
-        connectInfo.port = it->second.sin_port;
+        if (it->second.type == IpV4) {
+            connectInfo.remoteIp.addr = it->second.ip.ipv4.sin_addr;
+            connectInfo.port = it->second.ip.ipv4.sin_port;
+        } else if (it->second.type == IpV6) {
+            connectInfo.remoteIp.addr6 = it->second.ip.ipv6.sin6_addr;
+            connectInfo.port = it->second.ip.ipv6.sin6_port;
+        }
         bzero(connectInfo.tag, sizeof(connectInfo.tag));
         BM_LOG_DEBUG("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
     }
     return BM_OK;
+}
+
+int DynamicRanksQpManager::BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos,
+    ClientConnectSocketTask &currTask, std::unordered_map<uint32_t, mf_sockaddr> &remotes) noexcept
+{
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < connectInfos.size(); i += batchSize) {
+        size_t currentBatchSize = (connectInfos.size() - i) >= batchSize ? batchSize : (connectInfos.size() - i);
+        auto batchStart = connectInfos.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketConnectInfo> currentBatch(batchStart, batchEnd);
+
+        auto ret = DlHccpApi::RaSocketBatchConnect(currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            auto failedCount = currTask.Failed(remotes);
+            BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
+                                                           << ", failed times: " << failedCount);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
@@ -295,47 +360,55 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
         return 0;
     }
 
-    uint32_t batchSize = 16;
-    for (size_t i = 0; i < connectInfos.size(); i += batchSize) {
-        size_t currentBatchSize = (connectInfos.size() - i) >= batchSize ? batchSize : (connectInfos.size() - i);
-        auto batchStart = connectInfos.begin() + i;
-        auto batchEnd = batchStart + currentBatchSize;
-        std::vector<HccpSocketConnectInfo> currentBatch(batchStart, batchEnd);
-
-        auto ret = DlHccpApi::RaSocketBatchConnect(currentBatch.data(), currentBatch.size());
-        if (ret != 0) {
-            auto failedCount = currTask.Failed(remotes);
-            BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
-                                                        << ", failed times: " << failedCount);
-            return 1;
-        }
+    if (BatchConnectWithRetry(connectInfos, currTask, remotes) != 0) {
+        return 1;
     }
 
     currTask.Success();
     auto &nextTask = connectionTasks_.queryConnectTask;
     for (auto &rank : remotes) {
-        nextTask.ip2rank.emplace(rank.second.sin_addr.s_addr, rank.first);
+        net_addr_t rankIp;
+        if (rank.second.type == IpV4) {
+            rankIp.type = IpV4;
+            rankIp.ip.ipv4 = rank.second.ip.ipv4.sin_addr;
+        } else if (rank.second.type == IpV6) {
+            rankIp.type = IpV6;
+            rankIp.ip.ipv6 = rank.second.ip.ipv6.sin6_addr;
+        }
+        nextTask.ip2rank.emplace(rankIp, rank.first);
     }
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return 0;
 }
 
-void DynamicRanksQpManager::Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank,
-                                             std::vector<HccpSocketInfo> &socketInfos)
+void DynamicRanksQpManager::Parse2SocketInfo(std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+                                             std::vector<HccpSocketInfo> &socketInfos, std::vector<IpType> &types)
 {
     for (auto &pair : ip2rank) {
-        struct in_addr ip;
-        ip.s_addr = pair.first;
+        struct net_addr_t ip;
+        if (pair.first.type == IpV4) {
+            ip.type = IpV4;
+            ip.ip.ipv4 = pair.first.ip.ipv4;
+        } else if (pair.first.type == IpV6) {
+            ip.type = IpV6;
+            ip.ip.ipv6 = pair.first.ip.ipv6;
+        }
+        
         auto pos = connections_.find(pair.second);
         if (pos != connections_.end()) {
             HccpSocketInfo info;
             info.handle = pos->second.socketHandle;
             info.fd = nullptr;
-            info.remoteIp.addr = pos->second.remoteIp;
+            if (pos->second.remoteIp.type == IpV4) {
+                info.remoteIp.addr = pos->second.remoteIp.ip.ipv4;
+            } else if (pos->second.remoteIp.type == IpV6) {
+                info.remoteIp.addr6 = pos->second.remoteIp.ip.ipv6;
+            }
             info.status = 0;
             bzero(info.tag, sizeof(info.tag));
             socketInfos.emplace_back(info);
+            types.emplace_back(pos->second.remoteIp.type);
         }
     }
     if (socketInfos.size() == 0) {
@@ -343,10 +416,52 @@ void DynamicRanksQpManager::Parse2SocketInfo(std::unordered_map<in_addr_t, uint3
     }
 }
 
+void DynamicRanksQpManager::ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
+                                                         std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+                                                         std::vector<IpType> &types,
+                                                         std::unordered_set<uint32_t> &connectedRanks,
+                                                         uint32_t &successCount)
+{
+    for (auto i = 0U; i < getSize; i++) {
+        if (socketInfos[i].status != 1) {
+            continue;
+        }
+        net_addr_t addr;
+        char ipStr[INET6_ADDRSTRLEN];
+        char* result {};
+        if (types[i] == IpV4) {
+            addr.type = IpV4;
+            addr.ip.ipv4 = socketInfos[i].remoteIp.addr;
+            result = inet_ntoa(socketInfos[i].remoteIp.addr);
+        } else if (types[i] == IpV6) {
+            addr.type = IpV6;
+            addr.ip.ipv6 = socketInfos[i].remoteIp.addr6;
+            inet_ntop(AF_INET6, &socketInfos[i].remoteIp.addr6, ipStr, INET6_ADDRSTRLEN);
+            result = ipStr;
+        }
+        auto pos = ip2rank.find(addr);
+        if (pos == ip2rank.end()) {
+            BM_LOG_ERROR("get non-expected socket remote ip: " << result);
+            continue;
+        }
+        auto rankId = pos->second;
+        auto nPos = connections_.find(rankId);
+        if (nPos == connections_.end()) {
+            BM_LOG_ERROR("get non-expected ip: " << result << ", rank: " << rankId);
+            continue;
+        }
+
+        nPos->second.socketFd = socketInfos[i].fd;
+        connectedRanks.emplace(pos->second);
+        ip2rank.erase(pos);
+        successCount++;
+    }
+}
+
 int32_t DynamicRanksQpManager::GetSocketConn(std::vector<HccpSocketInfo> &socketInfos,
                                              QueryConnectionStateTask &currTask,
-                                             std::unordered_map<in_addr_t, uint32_t> &ip2rank,
-                                             std::unordered_set<uint32_t> &connectedRanks)
+                                             std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+                                             std::unordered_set<uint32_t> &connectedRanks, std::vector<IpType> &types)
 {
     uint32_t cnt = 0;
     uint32_t successCount = 0;
@@ -365,28 +480,7 @@ int32_t DynamicRanksQpManager::GetSocketConn(std::vector<HccpSocketInfo> &socket
         if (cnt == 0) {
             continue;
         }
-        for (auto i = 0U; i < getSize; i++) {
-            if (socketInfos[i].status != 1) {
-                continue;
-            }
-            auto pos = ip2rank.find(socketInfos[i].remoteIp.addr.s_addr);
-            if (pos == ip2rank.end()) {
-                BM_LOG_ERROR("get non-expected socket remote ip: " << inet_ntoa(socketInfos[i].remoteIp.addr));
-                continue;
-            }
-            auto rankId = pos->second;
-            auto nPos = connections_.find(rankId);
-            if (nPos == connections_.end()) {
-                BM_LOG_ERROR("get non-expected ip: " << inet_ntoa(socketInfos[i].remoteIp.addr)
-                             << ", rank: " << rankId);
-                continue;
-            }
-
-            nPos->second.socketFd = socketInfos[i].fd;
-            connectedRanks.emplace(pos->second);
-            ip2rank.erase(pos);
-            successCount++;
-        }
+        ProcessSocketConnectionsByIP(getSize, socketInfos, ip2rank, types, connectedRanks, successCount);
         std::vector<HccpSocketInfo>::iterator it = socketInfos.begin();
         for (; it != socketInfos.end();) {
             if (it->status == 1) {
@@ -414,10 +508,11 @@ int DynamicRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     }
 
     std::vector<HccpSocketInfo> socketInfos;
-    Parse2SocketInfo(ip2rank, socketInfos);
+    std::vector<IpType> types{};
+    Parse2SocketInfo(ip2rank, socketInfos, types);
 
     std::unordered_set<uint32_t> connectedRanks;
-    auto ret = GetSocketConn(socketInfos, currTask, ip2rank, connectedRanks);
+    auto ret = GetSocketConn(socketInfos, currTask, ip2rank, connectedRanks, types);
     if (ret != 0) {
         return ret;
     }
@@ -661,7 +756,7 @@ std::vector<lite_mr_info> DynamicRanksQpManager::GenerateRemoteLiteMrs(uint32_t 
 }
 
 void DynamicRanksQpManager::GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
-                                                   std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                                   std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
                                                    std::unordered_set<uint32_t> &addMrRanks) noexcept
 {
     for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
@@ -680,14 +775,22 @@ void DynamicRanksQpManager::GenDiffInfoChangeRanks(const std::unordered_map<uint
 }
 
 void DynamicRanksQpManager::GenTaskFromChangeRanks(
-    const std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+    const std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
     const std::unordered_set<uint32_t> &addMrRanks) noexcept
 {
     if (rankRole_ == HYBM_ROLE_RECEIVER) {
         auto &task = connectionTasks_.whitelistTask;
         std::unique_lock<std::mutex> taskLocker{task.locker};
         for (auto it = addedRanks.begin(); it != addedRanks.end(); ++it) {
-            task.remoteIps.emplace(it->first, it->second.sin_addr);
+            net_addr_t addr;
+            if (it->second.type == IpV4) {
+                addr.type = IpV4;
+                addr.ip.ipv4 = it->second.ip.ipv4.sin_addr;
+            } else if (it->second.type == IpV6) {
+                addr.type = IpV6;
+                addr.ip.ipv6 = it->second.ip.ipv6.sin6_addr;
+            }
+            task.remoteIps.emplace(it->first, addr);
         }
         task.status.exist = !task.remoteIps.empty();
         task.status.failedTimes = 0;

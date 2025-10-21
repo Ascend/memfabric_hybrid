@@ -386,7 +386,11 @@ Result HcomTransportManager::CheckTransportOptions(const TransportOptions &optio
         BM_LOG_ERROR("Failed to check nic, nic: " << options.nic << " ret: " << ret);
         return ret;
     }
-    localNic_ = protocol + localIp_ + ":" + std::to_string(localPort_);
+    if (protocol == "tcp6://") {
+        localNic_ = protocol + "[" + localIp_ + "]:" + std::to_string(localPort_);
+    } else {
+        localNic_ = protocol + localIp_ + ":" + std::to_string(localPort_);
+    }
     return BM_OK;
 }
 

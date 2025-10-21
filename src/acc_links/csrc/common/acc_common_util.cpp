@@ -25,6 +25,27 @@ bool AccCommonUtil::IsValidIPv4(const std::string &ip)
     return std::regex_match(ip, ipv4Regex);
 }
 
+bool AccCommonUtil::IsValidIPv6(const std::string &ip)
+{
+    constexpr size_t maxIpv6Len = 39;
+    if (ip.size() > maxIpv6Len) {
+        return false;
+    }
+    const std::string ipv6_common_core =
+        R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})|)"
+        R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?::)"
+        R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?|)"
+        R"((?:(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,4}:)?)"
+        R"((?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d))"
+        R"((?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}))";
+
+    const std::regex ipV6Pattern(
+        "^" + ipv6_common_core + "$"
+    );
+
+    return std::regex_match(ip, ipV6Pattern);
+}
+
 Result AccCommonUtil::SslShutdownHelper(SSL *ssl)
 {
     if (!ssl) {

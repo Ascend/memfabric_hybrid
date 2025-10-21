@@ -28,7 +28,7 @@ python3 smem_bm_example.py --world_size <WORLD_SIZE> --local_ranks <LOCAL_RANK_S
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
-    - STORE_URL: `tcp://<ip>:<port>` configStore的server的监听ip和端口
+    - STORE_URL: `tcp://<ip>:<port>` 或 `tcp6://<ip>:<port>` configStore的server的监听ip和端口
     - AUTO_RANKING: 可选参数,不填则默认不开启auto_rank; true表示开启, false表示不开启(开启autorank,则bm内部会自动生成全局rankId,不需要用户指定)
 
 示例如下(假设期望指定监听8570端口)
@@ -39,10 +39,18 @@ python3 smem_bm_example.py --world_size <WORLD_SIZE> --local_ranks <LOCAL_RANK_S
 python3 smem_bm_example.py --world_size 8 --local_ranks 8 --rank_start 0 --url tcp://127.0.0.1:8570
 ```
 
+```bash
+python3 smem_bm_example.py --world_size 8 --local_ranks 8 --rank_start 0 --url tcp6://[::]:8570
+```
+
 (2) 单节点运行8张卡,并启用autorank: 
 
 ```bash
 python3 smem_bm_example.py --world_size 8 --local_ranks 8 --rank_start 0 --url tcp://127.0.0.1:8570 --auto_ranking true
+```
+
+```bash
+python3 smem_bm_example.py --world_size 8 --local_ranks 8 --rank_start 0 --url tcp6://[::]:8570 --auto_ranking true
 ```
 
 (3) 两节点运行16张卡,每节点8张(假设nodeA的ip为x.x.x.x):  
@@ -55,4 +63,15 @@ python3 smem_bm_example.py --world_size 16 --local_ranks 8 --rank_start 0 --url 
 nodeB:
 ```bash
 python3 smem_bm_example.py --world_size 16 --local_ranks 8 --rank_start 8 --url tcp://x.x.x.x:8570
+```
+
+ipv6格式下：
+nodeA: 
+```bash
+python3 smem_bm_example.py --world_size 16 --local_ranks 8 --rank_start 0 --url tcp6://[x:x:x:x]:8570
+```
+
+nodeB:
+```bash
+python3 smem_bm_example.py --world_size 16 --local_ranks 8 --rank_start 8 --url tcp6://[x:x:x:x]:8570
 ```
