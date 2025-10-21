@@ -12,6 +12,10 @@
 #include <unistd.h>
 #define protected public
 #define private public
+#include "mf_string_util.h"
+#include "acc_out_logger.h"
+#include "acc_def.h"
+#include "mf_file_util.h"
 #include "acc_common_util.h"
 #include "openssl_api_wrapper.h"
 #include "openssl_api_dl.cpp"
@@ -20,6 +24,7 @@
 #include "acc_tcp_ssl_helper.h"
 #include "acc_tcp_ssl_helper.cpp"
 #include "acc_tcp_server.h"
+#include "acc_tcp_server_default.h"
 
 #undef private
 #undef protected
@@ -952,4 +957,332 @@ TEST_F(TestAccTcpLinks, testForMsgNode)
     result = node2.DataAllSent(0);
     EXPECT_EQ(result, false);
 }
+}
+
+/* ===================================== AI Create UT =============================================== */
+
+/*** Test plaintext password branch (happy path) ***/
+TEST_F(TestAccTcpSslHelper, GetPkPass_Plaintext)
+{
+    AccTcpSslHelper helper;
+    helper.mDecryptHandler_ = nullptr;
+    helper.tlsPkPwd = "abcde";
+
+    AccResult result = helper.GetPkPass();
+
+    EXPECT_EQ(ACC_OK, result);
+    EXPECT_EQ(5, helper.mKeyPass.second);
+    EXPECT_STREQ("abcde", helper.mKeyPass.first);
+}
+
+/*** Test the error path when PemReadBioPk fails to parse the private key. edge case ***/
+TEST_F(TestAccTcpSslHelper, TestLoadPrivateKey_PemReadBioPkFails)
+{
+    AccTcpSslHelper helper;
+    helper.tlsPk = "test_key";
+
+    MOCKER(OpenSslApiWrapper::BioNewMemBuf)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(reinterpret_cast<BIO*>(0x1234)));
+
+    MOCKER(OpenSslApiWrapper::PemReadBioPk)
+        .stubs()
+        .with(any(), any(), any(), any())
+        .will(returnValue(static_cast<ock::acc::evp_pkey_st*>(nullptr)));
+
+    SSL_CTX* sslCtx = nullptr;
+    AccResult result = helper.LoadPrivateKey(sslCtx);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the happy path of ReadFile function, where the file is successfully opened and content is read ***/
+TEST_F(TestAccTcpSslHelper, ReadFile_HappyPath)
+{
+    std::string tempFile = "test_file.txt";
+    std::ofstream out(tempFile);
+    out << "Test content";
+    out.close();
+
+    std::string content;
+    AccTcpSslHelper helper;
+    AccResult result = helper.ReadFile(tempFile, content);
+
+    EXPECT_EQ(result, ACC_OK);
+    EXPECT_EQ(content, "Test content");
+    std::remove(tempFile.c_str());
+}
+
+/*** Test the failure path when SslNew fails to create the SSL object ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslNewFailure)
+{
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(static_cast<SSL*>(nullptr)));
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_MALLOC_FAIL);
+}
+
+/*** Test the error path when SslAccept fails to establish SSL connection in server mode ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslAcceptFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(1));
+    MOCKER(OpenSslApiWrapper::SslAccept)
+        .stubs()
+        .will(returnValue(-1));
+    MOCKER(OpenSslApiWrapper::SslGetError)
+        .stubs()
+        .will(returnValue(0));
+
+    bool isServer = true;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the error path when SslConnect fails to establish SSL connection in client mode ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslConnectFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(1));
+    MOCKER(OpenSslApiWrapper::SslConnect)
+        .stubs()
+        .will(returnValue(-1));
+    MOCKER(OpenSslApiWrapper::SslGetError)
+        .stubs()
+        .will(returnValue(0));
+
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the happy path of CaVerifyCallback when arg is a non-empty string with commas ***/
+TEST_F(TestAccTcpSslHelper, CaVerifyCallbackHappyPath)
+{
+    MOCKER(AccTcpSslHelper::ProcessCrlAndVerifyCert)
+        .stubs()
+        .will(returnValue(1));
+
+    X509_STORE_CTX* x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::string argStr = "path1,path2";
+    char* argStrCopy = new char[argStr.size() + 1];
+    std::copy(argStr.begin(), argStr.end(), argStrCopy);
+    argStrCopy[argStr.size()] = '\0';
+    void* arg = reinterpret_cast<void*>(argStrCopy);
+
+    int result = AccTcpSslHelper::CaVerifyCallback(x509ctx, arg);
+    EXPECT_EQ(result, 1);
+    delete[] argStrCopy;
+}
+
+/*** Test the error path when X509StoreCtxGet0Store returns null ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertX509StoreCtxGet0StoreNull)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue(static_cast<X509_STORE*>(nullptr)));
+
+    std::vector<std::string> paths = {"test_path"};
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, -1);
+}
+
+/*** edge case: certificate expired (current time after notAfter) ***/
+TEST_F(TestAccTcpSslHelper, CertVerify_CertificateExpired)
+{
+    MOCKER(OpenSslApiWrapper::X509GetNotAfter)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(-1));
+    X509* dummyCert = (X509*)0x1;
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(dummyCert);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test that HandleCertExpiredCheck returns ACC_ERROR when certificate path resolution fails (edge case) ***/
+TEST_F(TestAccTcpSslHelper, HandleCertExpiredCheck_CertPathRealpathFailed)
+{
+    ock::acc::AccTcpSslHelper helper;
+    helper.tlsTopPath = "/tmp";
+    helper.tlsCert = "cert.pem";
+
+    MOCKER(ock::mf::FileUtil::Realpath)
+        .stubs()
+        .with(eq(std::string("/tmp/cert.pem")))
+        .will(returnValue(false));
+
+    AccResult result = helper.HandleCertExpiredCheck();
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when BioNewMemBuf fails to create BIO for private key ***/
+TEST_F(TestAccTcpSslHelper, TestLoadPrivateKey_BioNewMemBufFails)
+{
+    AccTcpSslHelper helper;
+    helper.tlsPk = "test_key";
+
+    MOCKER(OpenSslApiWrapper::BioNewMemBuf)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(static_cast<BIO*>(nullptr)));
+
+    SSL_CTX* sslCtx = nullptr;
+    AccResult result = helper.LoadPrivateKey(sslCtx);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when SslSetFd fails to set the file descriptor ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslSetFdFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(-1));
+
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the happy path of ProcessCrlAndVerifyCert with one valid CRL and successful verification ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertHappyPath)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_STORE*)0x1234));
+
+    MOCKER(OpenSslApiWrapper::X509CrlGet0NextUpdate)
+        .stubs()
+        .with(any())
+        .will(returnValue((const ASN1_TIME*)0x5678));
+
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(1));
+
+    MOCKER(OpenSslApiWrapper::X509StoreAddCrl)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(1U));
+
+    MOCKER(OpenSslApiWrapper::X509VerifyCert)
+        .stubs()
+        .with(any())
+        .will(returnValue(1U));
+
+    MOCKER(LoadCertRevokeListFile)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_CRL*)0x9012));
+
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::vector<std::string> paths = {"test_path"};
+
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, 1);
+}
+
+/*** Test the error path when X509StoreAddCrl returns 0 (failure) ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertX509StoreAddCrlFailed)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_STORE*)0x1234));
+
+    MOCKER(LoadCertRevokeListFile)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_CRL*)0x9012));
+
+    MOCKER(OpenSslApiWrapper::X509CrlGet0NextUpdate)
+        .stubs()
+        .with(any())
+        .will(returnValue((const ASN1_TIME*)0x5678));
+
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(1));
+
+    MOCKER(OpenSslApiWrapper::X509StoreAddCrl)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(0U));
+
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::vector<std::string> paths = {"test_path"};
+
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(TestAccTcpSslHelper, CertVerify_NullCert)
+{
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(nullptr);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when certificate key length is too short (edge case) ***/
+TEST_F(TestAccTcpSslHelper, CertVerify_KeyLengthTooShort)
+{
+    MOCKER(OpenSslApiWrapper::X509GetNotAfter)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(0));
+    MOCKER(OpenSslApiWrapper::X509GetNotBefore)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509GetPubkey)
+        .stubs()
+        .will(returnValue((EVP_PKEY*)0x1234));
+    MOCKER(OpenSslApiWrapper::EvpPkeyBits)
+        .stubs()
+        .will(returnValue(2048));
+    X509* dummyCert = (X509*)0x1;
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(dummyCert);
+    EXPECT_EQ(result, ACC_ERROR);
 }
