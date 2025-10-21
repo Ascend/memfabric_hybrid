@@ -20,8 +20,8 @@ constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 
 namespace ock {
 namespace mf {
-DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, void *stm, std::shared_ptr<transport::TransportManager> tm) noexcept
-    : rankId_{rankId}, stream_(stm), transportManager_{std::move(tm)}
+DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> tm) noexcept
+    : rankId_{rankId}, transportManager_{std::move(tm)}
 {}
 
 int32_t DataOpDeviceRDMA::Initialize() noexcept

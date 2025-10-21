@@ -14,8 +14,8 @@ namespace mf {
 
 class HostDataOpRDMA : public DataOperator {
 public:
-    HostDataOpRDMA(uint32_t rankId, void *stm, std::shared_ptr<transport::TransportManager> &transportManager) noexcept
-        :rankId_(rankId), stream_(stm), transportManager_(transportManager) {};
+    HostDataOpRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> &transportManager) noexcept
+        :rankId_(rankId), transportManager_(transportManager) {};
 
     ~HostDataOpRDMA() override;
 
@@ -61,7 +61,6 @@ private:
 private:
     bool inited_{false};
     uint32_t rankId_{0};
-    void *stream_{nullptr};
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<transport::TransportManager> transportManager_;
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;

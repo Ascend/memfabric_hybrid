@@ -423,10 +423,7 @@ int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const uint64_t *counts,
                                    uint32_t batchSize, const ExtOptions &options) noexcept
 {
-    void *st = stream_;
-    if (options.stream != nullptr) {
-        st = options.stream;
-    }
+    void *st = options.stream;
     auto ret = 0;
     for (size_t i = 0; i < batchSize; ++i) {
         auto destAddr = hostAddrs[i];
@@ -450,10 +447,7 @@ int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const u
 int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const uint64_t *counts,
                                    uint32_t batchSize, const ExtOptions &options) noexcept
 {
-    void *st = stream_;
-    if (options.stream != nullptr) {
-        st = options.stream;
-    }
+    void *st = options.stream;
     auto ret = 0;
     for (size_t i = 0; i < batchSize; ++i) {
         auto destAddr = deviceAddrs[i];

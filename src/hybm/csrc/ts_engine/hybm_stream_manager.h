@@ -11,7 +11,8 @@ namespace ock {
 namespace mf {
 class HybmStreamManager {
 public:
-    static HybmStreamPtr CreateStream(uint32_t deviceId, uint32_t prio, uint32_t flags) noexcept;
+    static HybmStreamPtr GetThreadHybmStream(uint32_t devId, uint32_t prio, uint32_t flags);
+    static void *GetThreadAclStream(int32_t devId);
 };
 }
 }

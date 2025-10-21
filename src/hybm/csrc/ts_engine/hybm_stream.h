@@ -17,7 +17,7 @@ namespace mf {
 class HybmStream {
 public:
     HybmStream(uint32_t deviceId, uint32_t prio, uint32_t flags) noexcept;
-    virtual ~HybmStream() = default;
+    ~HybmStream() { Destroy(); }
 
     int Initialize() noexcept;
     void Destroy();

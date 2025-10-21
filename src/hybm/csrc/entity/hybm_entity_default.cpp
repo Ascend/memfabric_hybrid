@@ -14,6 +14,7 @@
 #include "hybm_ex_info_transfer.h"
 #include "hybm_logger.h"
 #include "hybm_gvm_user.h"
+#include "hybm_stream_manager.h"
 
 namespace ock {
 namespace mf {
@@ -39,32 +40,20 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
                        BM_INVALID_PARAM);
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CheckOptions(options), "check options failed.");
 
-    auto ret = DlAclApi::AclrtCreateStream(&stream_);
-    if (ret != 0) {
-        BM_LOG_ERROR("create stream failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
     options_ = *options;
-    ret = InitSegment();
+    auto ret = InitSegment();
     if (ret != 0) {
-        DlAclApi::AclrtDestroyStream(stream_);
-        stream_ = nullptr;
         return ret;
     }
 
     ret = InitTransManager();
     if (ret != 0) {
-        DlAclApi::AclrtDestroyStream(stream_);
-        stream_ = nullptr;
         return ret;
     }
 
     if (options_.bmType != HYBM_TYPE_AI_CORE_INITIATE) {
         ret = InitDataOperator();
         if (ret != 0) {
-            DlAclApi::AclrtDestroyStream(stream_);
-            stream_ = nullptr;
             return ret;
         }
     }
@@ -335,12 +324,6 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
         return BM_ERROR;
     }
 
-    ret = DlAclApi::AclrtSetDevice(HybmGetInitDeviceId());
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("set device id to be " << HybmGetInitDeviceId() << " failed: " << ret);
-        return BM_ERROR;
-    }
-
     if (desc == nullptr) {
         BM_LOG_ERROR("the input desc is nullptr.");
         return BM_ERROR;
@@ -564,9 +547,9 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
         return BM_NOT_INITIALIZED;
     }
 
-    auto ret = SetThreadAclDevice();
-    if (ret != BM_OK) {
-        return ret;
+    int32_t ret = BM_OK;
+    if (stream == nullptr) {
+        stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
 
     ExtOptions options{};
@@ -611,9 +594,9 @@ int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy
         return BM_NOT_INITIALIZED;
     }
 
-    auto ret = SetThreadAclDevice();
-    if (ret != BM_OK) {
-        return ret;
+    int32_t ret = BM_OK;
+    if (stream == nullptr) {
+        stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
 
     ExtOptions options{};
@@ -657,9 +640,9 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         return BM_NOT_INITIALIZED;
     }
 
-    auto ret = SetThreadAclDevice();
-    if (ret != BM_OK) {
-        return ret;
+    int32_t ret = BM_OK;
+    if (stream == nullptr) {
+        stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
 
     ExtOptions options{};
@@ -946,7 +929,7 @@ Result MemEntityDefault::InitDataOperator()
     }
 
     if (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) {
-        sdmaDataOperator_ = std::make_shared<HostDataOpSDMA>(stream_);
+        sdmaDataOperator_ = std::make_shared<HostDataOpSDMA>();
         auto ret = sdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
             BM_LOG_ERROR("SDMA data operator init failed, ret:" << ret);
@@ -956,7 +939,7 @@ Result MemEntityDefault::InitDataOperator()
 
     if (options_.rankCount > 1) {
         if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-            devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, stream_, transportManager_);
+            devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
             auto ret = devRdmaDataOperator_->Initialize();
             if (ret != BM_OK) {
                 BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
@@ -965,7 +948,7 @@ Result MemEntityDefault::InitDataOperator()
         }
     }
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
-        hostRdmaDataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, stream_, transportManager_);
+        hostRdmaDataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
         auto ret = hostRdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
             BM_LOG_ERROR("Host RDMA data operator init failed, ret:" << ret);
@@ -1079,8 +1062,6 @@ void MemEntityDefault::ReleaseResources()
         transportManager_->CloseDevice();
         transportManager_.reset();
     }
-    DlAclApi::AclrtDestroyStream(stream_);
-    stream_ = nullptr;
     initialized = false;
 }
 } // namespace mf

@@ -15,7 +15,7 @@ namespace ock {
 namespace mf {
 class DataOpDeviceRDMA : public DataOperator {
 public:
-    DataOpDeviceRDMA(uint32_t rankId, void *stm, std::shared_ptr<transport::TransportManager> tm) noexcept;
+    DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> tm) noexcept;
     ~DataOpDeviceRDMA() override;
     int32_t Initialize() noexcept override;
     void UnInitialize() noexcept override;
@@ -64,7 +64,6 @@ private:
 private:
     bool inited_{false};
     uint32_t rankId_{0};
-    void *stream_;
     std::shared_ptr<transport::TransportManager> transportManager_;
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;

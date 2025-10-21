@@ -8,12 +8,13 @@
 #include "hybm_ptracer.h"
 #include "hybm_gvm_user.h"
 #include "hybm_data_op.h"
+#include "hybm_stream_manager.h"
 
 namespace ock {
 namespace mf {
 constexpr uint64_t HBM_SWAP_SPACE_SIZE = 128 * 1024 * 1024;
 
-HostDataOpSDMA::HostDataOpSDMA(void *stm) noexcept : stream_{stm} {}
+HostDataOpSDMA::HostDataOpSDMA() noexcept = default;
 
 HostDataOpSDMA::~HostDataOpSDMA()
 {
@@ -27,21 +28,8 @@ int32_t HostDataOpSDMA::Initialize() noexcept
     }
 
     if (HybmGvmHasInited()) {
-        uint32_t devId = static_cast<uint32_t>(HybmGetInitedLogicDeviceId());
-        hybmStream_ = std::make_shared<HybmStream>(devId, 0, 0);
-        BM_ASSERT_RETURN(hybmStream_ != nullptr, BM_MALLOC_FAILED);
-
-        auto ret = hybmStream_->Initialize();
-        if (ret != 0) {
-            BM_LOG_ERROR("create stream failed, dev:" << devId << " ret:" << ret);
-            hybmStream_ = nullptr;
-            return BM_ERROR;
-        }
-
-        ret = DlAclApi::AclrtMalloc(&sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE, 0);
+        auto ret = DlAclApi::AclrtMalloc(&sdmaSwapMemAddr_, HBM_SWAP_SPACE_SIZE, 0);
         if (ret != 0 || !sdmaSwapMemAddr_) {
-            hybmStream_->Destroy();
-            hybmStream_ = nullptr;
             BM_LOG_ERROR("allocate temp copy memory on local device failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
         }
@@ -51,8 +39,6 @@ int32_t HostDataOpSDMA::Initialize() noexcept
         if (ret != BM_OK) {
             DlAclApi::AclrtFree(&sdmaSwapMemAddr_);
             sdmaSwapMemAddr_ = nullptr;
-            hybmStream_->Destroy();
-            hybmStream_ = nullptr;
             BM_LOG_ERROR("hybm_gvm_mem_register failed: " << ret << " addr:" << sdmaSwapMemAddr_);
             return BM_DL_FUNCTION_FAILED;
         }
@@ -73,11 +59,6 @@ void HostDataOpSDMA::UnInitialize() noexcept
     if (sdmaSwapMemoryAllocator_) {
         DlAclApi::AclrtFree(&sdmaSwapMemAddr_);
         sdmaSwapMemAddr_ = nullptr;
-    }
-
-    if (hybmStream_ != nullptr) {
-        hybmStream_->Destroy();
-        hybmStream_ = nullptr;
     }
     inited_ = false;
 }
@@ -203,10 +184,7 @@ int HostDataOpSDMA::CopyGD2GD(void* gvaAddr, const void* deviceAddr, size_t coun
 
 int HostDataOpSDMA::CopyLD2GD(void *gvaAddr, const void *deviceAddr, size_t count, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
 
     auto ret = DlAclApi::AclrtMemcpyAsync(gvaAddr, count, deviceAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
@@ -225,10 +203,7 @@ int HostDataOpSDMA::CopyLD2GD(void *gvaAddr, const void *deviceAddr, size_t coun
 
 int HostDataOpSDMA::CopyGD2LD(void *deviceAddr, const void *gvaAddr, size_t count, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
 
     auto ret = DlAclApi::AclrtMemcpyAsync(deviceAddr, count, gvaAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
     if (ret != 0) {
@@ -304,10 +279,7 @@ int HostDataOpSDMA::CopyLH2GD2d(void* gvaAddr, const void* hostAddr, hybm_copy_2
 int HostDataOpSDMA::CopyLD2GD2d(void *gvaAddr, const void *deviceAddr, hybm_copy_2d_params &params,
                                 void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
 
     int ret = BM_OK;
     for (uint64_t i = 0; i < params.height; ++i) {
@@ -362,10 +334,7 @@ int HostDataOpSDMA::CopyGD2LH2d(void *hostAddr, const void *gvaAddr, hybm_copy_2
 int HostDataOpSDMA::CopyGD2LD2d(void *deviceAddr, const void *gvaAddr, hybm_copy_2d_params &params,
                                 void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
 
     int ret = BM_OK;
     for (uint64_t i = 0; i < params.height; ++i) {
@@ -514,8 +483,10 @@ int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
 
 int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
 {
-    if (hybmStream_ != nullptr) {
-        return hybmStream_->Synchronize();
+    auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+    BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
+    if (hybmStream != nullptr) {
+        return hybmStream->Synchronize();
     }
     return BM_OK;
 }
@@ -692,13 +663,18 @@ int HostDataOpSDMA::CopyGH2LDAsync(void *destVA, const void *srcVA, uint64_t len
 
 void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
 {
+    auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+    if (hybmStream == nullptr) {
+        BM_LOG_ERROR("Failed to get thread local hybmStream");
+        return;
+    }
     task.type = STREAM_TASK_TYPE_SDMA;
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
     sqe->header.type = RT_STARS_SQE_TYPE_SDMA;
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
-    sqe->header.wr_cqe = hybmStream_->GetWqeFlag();
-    sqe->header.rt_stream_id = hybmStream_->GetId();
+    sqe->header.wr_cqe = hybmStream->GetWqeFlag();
+    sqe->header.rt_stream_id = hybmStream->GetId();
     sqe->header.task_id = 0;
 
     sqe->kernelCredit = RT_STARS_DEFAULT_KERNEL_CREDIT;
@@ -737,6 +713,8 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexc
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+    BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
     sqe->length = count;
     sqe->src_addr_low =
             static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
@@ -747,10 +725,10 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexc
     sqe->dst_addr_high = static_cast<uint32_t>(
             (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
-    auto ret = hybmStream_->SubmitTasks(task);
+    auto ret = hybmStream->SubmitTasks(task);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
 
-    ret = hybmStream_->Synchronize();
+    ret = hybmStream->Synchronize();
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
 }
@@ -760,6 +738,8 @@ int HostDataOpSDMA::CopyG2G2d(void* destVA, const void* srcVA, hybm_copy_2d_para
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+    BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
     for (size_t i = 0; i < params.height; ++i) {
         void *dst = reinterpret_cast<void *>((uint64_t) destVA + i * params.dpitch);
         void *src = reinterpret_cast<void *>((uint64_t) srcVA + i * params.spitch);
@@ -772,11 +752,11 @@ int HostDataOpSDMA::CopyG2G2d(void* destVA, const void* srcVA, hybm_copy_2d_para
                 static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(dst)) & 0x00000000FFFFFFFFU);
         sqe->dst_addr_high = static_cast<uint32_t>(
                 (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(dst)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
-        auto ret = hybmStream_->SubmitTasks(task);
+        auto ret = hybmStream->SubmitTasks(task);
         BM_ASSERT_LOG_AND_RETURN(ret == 0, "Failed to submit g2g task ret:" << ret, BM_ERROR);
     }
 
-    auto ret = hybmStream_->Synchronize();
+    auto ret = hybmStream->Synchronize();
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "Failed to wait g2g task ret:" << ret, BM_ERROR);
     return BM_OK;
 }
@@ -787,6 +767,8 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+    BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
     sqe->length = count;
     sqe->src_addr_low =
             static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
@@ -798,7 +780,7 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
             (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
-    auto ret = hybmStream_->SubmitTasks(task);
+    auto ret = hybmStream->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
@@ -991,10 +973,7 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, void **deviceAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
         return BatchCopyG2G(gvaAddrs, deviceAddrs, counts, batchSize);
     }
@@ -1039,10 +1018,7 @@ int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, void **deviceAddrs, const ui
 int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, void **gvaAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
+    void *st = stream;
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
         return BatchCopyG2G(deviceAddrs, gvaAddrs, counts, batchSize);
     }
@@ -1088,10 +1064,6 @@ int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, void **gvaAddrs, const ui
 int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, void **deviceAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
     BM_LOG_DEBUG("[DEBUG]copy memory on local device to GVA count:" << counts[0] << " destAddr:" << deviceAddrs[0]);
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
         return BatchCopyG2G(gvaAddrs, deviceAddrs, counts, batchSize);
@@ -1100,16 +1072,16 @@ int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, void **deviceAddrs, const ui
 
     for (auto i = 0U; i < batchSize; i++) {
         ret = DlAclApi::AclrtMemcpyAsync(gvaAddrs[i], counts[i], deviceAddrs[i], counts[i],
-                                         ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+                                         ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
         if (ret != 0) {
-            BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << st);
+            BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << stream);
             return BM_DL_FUNCTION_FAILED;
         }
     }
 
-    ret = DlAclApi::AclrtSynchronizeStream(st);
+    ret = DlAclApi::AclrtSynchronizeStream(stream);
     if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << stream);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -1118,11 +1090,6 @@ int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, void **deviceAddrs, const ui
 int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, void **gvaAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
-
     if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
         return BatchCopyG2G(deviceAddrs, gvaAddrs, counts, batchSize);
     }
@@ -1130,16 +1097,16 @@ int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, void **gvaAddrs, const ui
 
     for (auto i = 0U; i < batchSize; i++) {
         ret = DlAclApi::AclrtMemcpyAsync(deviceAddrs[i], counts[i], gvaAddrs[i], counts[i],
-                                         ACL_MEMCPY_DEVICE_TO_DEVICE, st);
+                                         ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
         if (ret != 0) {
-            BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << st);
+            BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << stream);
             return BM_DL_FUNCTION_FAILED;
         }
     }
 
-    ret = DlAclApi::AclrtSynchronizeStream(st);
+    ret = DlAclApi::AclrtSynchronizeStream(stream);
     if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << stream);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -1148,10 +1115,6 @@ int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, void **gvaAddrs, const ui
 int HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
     auto ret = 0;
 
     for (auto i = 0U; i < batchSize; i++) {
@@ -1167,10 +1130,6 @@ int HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint
 int HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
     auto ret = 0;
 
     for (auto i = 0U; i < batchSize; i++) {
@@ -1186,10 +1145,6 @@ int HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint
 int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
                                    void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
     auto ret = 0;
 
     for (auto i = 0U; i < batchSize; i++) {
@@ -1205,10 +1160,6 @@ int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint
 int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
                                    void *stream) noexcept
 {
-    void *st = stream_;
-    if (stream != nullptr) {
-        st = stream;
-    }
     auto ret = 0;
 
     for (auto i = 0U; i < batchSize; i++) {

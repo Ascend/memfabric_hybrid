@@ -598,18 +598,16 @@ int RdmaTransportManager::PrepareThreadLocalStream()
         return BM_OK;
     }
 
-    stream_ = HybmStreamManager::CreateStream(deviceId_, 0, 0);
-    auto ret = stream_->Initialize();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HybmStream init failed: " << ret);
-        stream_ = nullptr;
-        return ret;
+    stream_ = HybmStreamManager::GetThreadHybmStream(deviceId_, 0, 0);
+    if (stream_ == nullptr) {
+        BM_LOG_ERROR("HybmStream init failed");
+        return BM_ERROR;
     }
 
     notify_ = std::make_shared<HybmStreamNotify>(stream_);
     BM_ASSERT_LOG_AND_RETURN(notify_ != nullptr, "notify create failed.", BM_ERROR);
 
-    ret = notify_->Init();
+    auto ret = notify_->Init();
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "notify init failed.", ret);
     return BM_OK;
 }

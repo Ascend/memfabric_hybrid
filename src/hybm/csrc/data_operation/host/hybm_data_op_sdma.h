@@ -12,7 +12,7 @@ namespace ock {
 namespace mf {
 class HostDataOpSDMA : public DataOperator {
 public:
-    explicit HostDataOpSDMA(void *stm) noexcept;
+    explicit HostDataOpSDMA() noexcept;
     ~HostDataOpSDMA() override;
 
     int32_t Initialize() noexcept override;
@@ -77,9 +77,7 @@ private:
                        uint32_t batchSize, void *stream) noexcept;
 
 private:
-    void *stream_;
     bool inited_ = false;
-    HybmStreamPtr hybmStream_ = nullptr;
     void *sdmaSwapMemAddr_ = nullptr;
     std::shared_ptr<RbtreeRangePool> sdmaSwapMemoryAllocator_;
 };
