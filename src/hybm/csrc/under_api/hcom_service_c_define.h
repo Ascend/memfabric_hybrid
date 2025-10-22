@@ -270,6 +270,7 @@ typedef struct {
 
 typedef struct {
     uint64_t keys[4];
+    uint64_t tokens[4];
 } OneSideKey;
 
 /*
