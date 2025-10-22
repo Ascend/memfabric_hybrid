@@ -412,7 +412,7 @@ std::vector<int> MmcacheStore::BatchPutFrom(const std::vector<std::string> &keys
     mmc_put_options options{};
     MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), results);
     TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT);
-    mmcc_batch_put(keyArray, count, bufferArray, options, 0, results.data());
+    mmcc_batch_put(keyArray, count, bufferArray, options, ALLOC_RANDOM, results.data());
     TP_TRACE_END(TP_MMC_PY_BATCH_PUT, 0);
     for (size_t i = 0; i < count; i++) {
         results[i] = ReturnWrapper(results[i], keys[i]);
@@ -560,13 +560,13 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
         TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS_2D);
         std::vector<mmc_buffer> buffersIn2D;
         GetBuffersIn2D(batchSize, type, buffers, sizes, buffersIn2D);
-        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, buffersIn2D, options, 0, results);
+        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, buffersIn2D, options, ALLOC_RANDOM, results);
         TP_TRACE_END(TP_MMC_PY_BATCH_PUT_LAYERS_2D, ret);
     } else {
         TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS);
         std::vector<MmcBufferArray> bufferArrays;
         GetBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
-        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, bufferArrays, options, 0, results);
+        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, bufferArrays, options, ALLOC_RANDOM, results);
         TP_TRACE_END(TP_MMC_PY_BATCH_PUT_LAYERS, ret);
     }
 
