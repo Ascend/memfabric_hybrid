@@ -68,6 +68,10 @@ public:
     Result Synchronize(uint32_t rankId) override;
 
 private:
+    Result InnerReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size);
+
+    Result InnerWriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size);
+
     Result CheckTransportOptions(const TransportOptions &options);
 
     static Result TransportRpcHcomNewEndPoint(Hcom_Channel newCh, uint64_t usrCtx, const char *payLoad);
@@ -83,6 +87,8 @@ private:
     Result ConnectHcomChannel(uint32_t rankId, const std::string &url);
 
     void DisConnectHcomChannel(uint32_t rankId, Hcom_Channel ch);
+
+    void ForceReConnectHcomChannel(uint32_t rankId);
 
     Result GetMemoryRegionByAddr(const uint32_t &rankId, const uint64_t &addr, HcomMemoryRegion &mr);
 

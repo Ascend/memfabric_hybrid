@@ -115,6 +115,10 @@ void MmcMetaServiceLeaderElection::CheckLeaderStatus()
                 MMC_LOG_WARN("Pod " << this->podName_ << " became the leader");
                 this->isLeader_ = true;
                 OnStartLeading();
+            } else if (currentLeader != "None") {
+                MMC_LOG_DEBUG("Pod " << this->podName_ << " is a backup");
+                this->isLeader_ = false;
+                OnStopLeading();
             }
         }
     }
