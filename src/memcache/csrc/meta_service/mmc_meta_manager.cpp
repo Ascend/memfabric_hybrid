@@ -49,7 +49,7 @@ Result MmcMetaManager::ExistKey(const std::string& key)
     MmcMemObjMetaPtr memObj;
     auto ret = metaContainer_->Get(key, memObj);
     if (ret != MMC_OK) {
-        MMC_LOG_ERROR("Failed to get key:" << key << " ret:" << ret);
+        MMC_LOG_INFO("Failed to get key:" << key << " ret:" << ret);
         return ret;
     }
     {
