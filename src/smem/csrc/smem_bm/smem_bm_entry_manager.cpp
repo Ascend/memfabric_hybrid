@@ -39,12 +39,14 @@ struct RankTableV6 {
     RankTableV6() : ipv6{}, deviceId{0} {}
     RankTableV6(uint8_t ip[16], uint16_t dev) : deviceId{static_cast<uint8_t>(dev)}
     {
-        std::copy(ip, ip + 16, ipv6);
+        constexpr int SIZE = 16;
+        std::copy(ip, ip + SIZE, ipv6);
     }
 
     static bool Less(const RankTableV6 &r1, const RankTableV6 &r2)
     {
-        for (size_t i = 0; i < 16; i++) {
+        constexpr int SIZE = 16;
+        for (size_t i = 0; i < SIZE; i++) {
             if (r1.ipv6[i] != r2.ipv6[i]) {
                 return r1.ipv6[i] < r2.ipv6[i];
             }
@@ -163,8 +165,9 @@ int32_t SmemBmEntryManager::ProcessRankTableByIPTypeWhenIpv6(mf_ip_addr localAdd
         ranks = std::vector<RankTableV6>{(RankTableV6 *)rtv.data(), (RankTableV6 *)rtv.data() + worldSize_};
     }
 
+    constexpr int SIZE = 16;
     for (auto i = 0U; i < ranks.size(); ++i) {
-        if (std::equal(ranks[i].ipv6, ranks[i].ipv6 + 16, localAddress.addr.addrv6) &&
+        if (std::equal(ranks[i].ipv6, ranks[i].ipv6 + SIZE, localAddress.addr.addrv6) &&
             ranks[i].deviceId == deviceId_) {
             config_.rankId = i;
             break;

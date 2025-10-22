@@ -186,8 +186,9 @@ Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remo
 static std::string uniqueToString(const WorkerId& unique)
 {
     std::ostringstream oss;
+    constexpr int WIDTH = 2;
     for (size_t i = 0; i < unique.size(); ++i) {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(unique[i]);
+        oss << std::hex << std::setw(WIDTH) << std::setfill('0') << static_cast<int>(unique[i]);
         if (i < unique.size() - 1) {
             oss << ":";
         }

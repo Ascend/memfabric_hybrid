@@ -97,7 +97,9 @@ namespace std {
     private:
         static void hash_combine(size_t& seed, size_t value)
         {
-            seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            constexpr size_t SHIFT_LEFT = 6;
+            constexpr size_t SHIFT_RIGHT = 2;
+            seed ^= value + 0x9e3779b9 + (seed << SHIFT_LEFT) + (seed >> SHIFT_RIGHT);
         }
     };
 }

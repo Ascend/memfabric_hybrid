@@ -50,7 +50,8 @@ inline void Split(const std::string &src, const std::string &sep, std::vector<st
         }
     } else {
         if (std::count(src.begin(), src.end(), sep[0]) > COUNT) {
-            tmpStr = src.substr(pos1 + 1, pos2 - pos1 - 2);
+            const int diff = 2;
+            tmpStr = src.substr(pos1 + 1, pos2 - pos1 - diff);
             out.emplace_back(tmpStr);
             pos1 = pos2 + sep.size();
             pos2 = src.find(sep, pos1);
@@ -225,7 +226,8 @@ static Result DetermineTargetIpType(const std::string &target, struct in_addr &t
 static bool IsSameNetwork(const struct in6_addr &localIp, const struct in6_addr &localMask,
                           const struct in6_addr &targetIp)
 {
-    for (int i = 0; i < 16; i++) {
+    constexpr int SIZE = 16;
+    for (int i = 0; i < SIZE; i++) {
         if ((localIp.s6_addr[i] & localMask.s6_addr[i]) != (targetIp.s6_addr[i] & localMask.s6_addr[i])) {
             return false;
         }

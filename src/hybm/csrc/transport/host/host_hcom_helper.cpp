@@ -128,6 +128,9 @@ static Result SelectLocalIpByIpMaskWhenIpv6(const std::string &ipStr, const int3
                                             std::string &localIp, bool &found, struct ifaddrs* ifAddsPtr)
 {
     // ipv6
+    const int SIZE = 16;
+    const int BITS_PER_BYTE = 8;
+    const int MAX_BIT_IN_BYTE = 7;
     struct in6_addr targetNetV6;
     if (inet_pton(AF_INET6, ipStr.c_str(), &targetNetV6) <= 0) {
         BM_LOG_ERROR("Invalid ipv6: " << ipStr << " mask: " << mask);
@@ -137,9 +140,9 @@ static Result SelectLocalIpByIpMaskWhenIpv6(const std::string &ipStr, const int3
     struct in6_addr netMaskV6 {};
     struct in6_addr targetNetworkV6 {};
     for (int i = 0; i < mask; i++) {
-        netMaskV6.s6_addr[i / 8] |= (1 << (7 - (i % 8)));
+        netMaskV6.s6_addr[i / BITS_PER_BYTE] |= (1 << (MAX_BIT_IN_BYTE - (i % BITS_PER_BYTE)));
     }
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < SIZE; i++) {
         targetNetworkV6.s6_addr[i] = targetNetV6.s6_addr[i] & netMaskV6.s6_addr[i];
     }
 
@@ -151,7 +154,7 @@ static Result SelectLocalIpByIpMaskWhenIpv6(const std::string &ipStr, const int3
         auto *addr = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr);
         struct in6_addr localIpAddr = addr->sin6_addr;
         struct in6_addr localNetworkV6;
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < SIZE; i++) {
             localNetworkV6.s6_addr[i] = localIpAddr.s6_addr[i] & netMaskV6.s6_addr[i];
         }
         if (memcmp(&localNetworkV6, &targetNetworkV6, sizeof(struct in6_addr)) == 0) {
