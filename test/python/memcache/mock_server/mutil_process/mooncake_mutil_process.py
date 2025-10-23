@@ -1,16 +1,16 @@
 #!/usr/bin/env python3.10
-#  Copyright (c) Huawei Technologies Co., Ltd. 2025-2026. All rights reserved.
+#  Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 import os
 from time import sleep
 from typing import List
 import torch
 import torch_npu
 
-from memcache import DistributedObjectStore
+from mooncake_store import Mooncakestore, MooncakeConfig
 
-process_count: int = 8
-one_batch_count: int = 32
-call_count: int = 64
+process_count: int = 1
+one_batch_count: int = 1
+call_count: int = 1
 test_times: int = 8
 size1 = [128 * 1024 for _ in range(61)]
 size2 = [16 * 1024 for _ in range(61)]
@@ -35,7 +35,6 @@ def tensor_sum(tensor: List[torch.Tensor], sizes: List[int] = None):
         return sum(layer.sum().item() for layer in tensor)
     return sum(layer[:size].sum().item() for layer, size in zip(tensor, sizes))
 
-
 def malloc_npu_blocks(min_block_size: int, layer_num: int, block_num: int):
     raw_blocks = torch.randint(
         low=0, high=256,
@@ -47,13 +46,11 @@ def malloc_npu_blocks(min_block_size: int, layer_num: int, block_num: int):
     torch_npu.npu.current_stream().synchronize()
     return raw_blocks
 
-
 def get_col_tensors_by_index(tensors, layer_num, block_index):
     block_tensor = []
     for li in range(layer_num):
         block_tensor.append(tensors[li][block_index])
     return block_tensor
-
 
 def get_col_tensors_ptr_by_index(tensors, layer_num, block_index):
     block_ptrs = []
@@ -61,6 +58,18 @@ def get_col_tensors_ptr_by_index(tensors, layer_num, block_index):
         block_ptrs.append(tensors[li][block_index].data_ptr())
     return block_ptrs
 
+def init_mooncake(device_id: int):
+    config = MooncakeConfig(
+        device=device_id,
+        protocol='ascend',
+        device_name= '',
+        local_hostname='141.61.41.87',
+        metadata_server='P2PHANDSHAKE',
+        global_segment_size=1024 * 1024 * 1024 * process_count,
+        local_buffer_size=1024 * 1024 * 1024,
+        master_server_address='141.61.41.87:50051')
+    store = Mooncakestore(config)
+    return store
 
 def write_worker(device: int):
     device_id = device
@@ -68,20 +77,14 @@ def write_worker(device: int):
     print(f"npu:{device_id} 开始，PID: {os.getpid()}")
     tensor1 = malloc_npu_blocks(max(size1, default=0), len(size1), one_batch_count)
     tensor2 = malloc_npu_blocks(max(size2, default=0), len(size2), one_batch_count)
-    register_buffs = [item for pair in zip(get_col_tensors_ptr_by_index(tensor1, len(size1), 0),
-                                           get_col_tensors_ptr_by_index(tensor2, len(size2), 0)) for item in pair]
-    register_size = [mini_block_size * one_batch_count for mini_block_size in block_size]
-    store = DistributedObjectStore()
     print(f"==== Start to init memcache device:{device_id}")
-    res = store.init(device_id)
-    if res != 0:
-        raise f"Failed to start pid:{os.getpid()} deviceId:{device_id}"
+    store = init_mooncake(device_id)
     print(f"==== Success to init device:{device_id}")
-    store.register_layer_buffer(register_buffs, register_size, one_batch_count)
     for i in range(call_count):
         keys = []
         buffs = []
         sizes = []
+        ret = []
         for j in range(one_batch_count):
             key = key_prefix + str(device) + '_' + str(i) + '_' + str(j)
             keys.append(key)
@@ -89,7 +92,8 @@ def write_worker(device: int):
                                                 get_col_tensors_ptr_by_index(tensor2, len(size2), j)) for item in pair]
             buffs.append(block_buffs)
             sizes.append(block_size)
-        ret = store.batch_put_from_layers(keys, buffs, sizes, 0)
+        for j in range(one_batch_count):
+            ret.append(store.put(keys[j], buffs[j], sizes[j]))
         for j in range(one_batch_count):
             block_tensors = [item for pair in zip(get_col_tensors_by_index(tensor1, len(size1), j),
                                                   get_col_tensors_by_index(tensor2, len(size2), j)) for item in pair]
@@ -97,27 +101,20 @@ def write_worker(device: int):
     print(f"===== npu:{device_id} 结束 wait......")
     sleep(30 * 60)
 
-
 def read_worker(device: int):
     device_id = device
     set_device(device_id)
     print(f"npu:{device_id} 开始，PID: {os.getpid()}")
     tensor1 = malloc_npu_blocks(max(size1, default=0), len(size1), one_batch_count)
     tensor2 = malloc_npu_blocks(max(size2, default=0), len(size2), one_batch_count)
-    register_buffs = [item for pair in zip(get_col_tensors_ptr_by_index(tensor1, len(size1), 0),
-                                           get_col_tensors_ptr_by_index(tensor2, len(size2), 0)) for item in pair]
-    register_size = [mini_block_size * one_batch_count for mini_block_size in block_size]
-    store = DistributedObjectStore()
     print(f"==== Start to init memcache device:{device_id}")
-    res = store.init(device_id)
-    if res != 0:
-        raise f"Failed to start pid:{os.getpid()} deviceId:{device_id}"
+    store = init_mooncake(device_id)
     print(f"==== Success to init device:{device_id}")
-    store.register_layer_buffer(register_buffs, register_size, one_batch_count)
     for i in range(call_count):
         keys = []
         buffs = []
         sizes = []
+        ret = []
         for j in range(one_batch_count):
             key = key_prefix + str(device) + '_' + str(i) + '_' + str(j)
             keys.append(key)
@@ -125,7 +122,8 @@ def read_worker(device: int):
                                                 get_col_tensors_ptr_by_index(tensor2, len(size2), j)) for item in pair]
             buffs.append(block_buffs)
             sizes.append(block_size)
-        ret = store.batch_get_into_layers(keys, buffs, sizes, 1)
+        for j in range(one_batch_count):
+            ret.append(store.get(keys[j], buffs[j], sizes[j]))
         for j in range(one_batch_count):
             block_tensors = [item for pair in zip(get_col_tensors_by_index(tensor1, len(size1), j),
                                                   get_col_tensors_by_index(tensor2, len(size2), j)) for item in pair]
