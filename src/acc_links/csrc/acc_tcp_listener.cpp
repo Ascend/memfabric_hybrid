@@ -25,19 +25,6 @@ void AccTcpListener::PrepareSockAddr(mf_sockaddr& addr) noexcept
         addr.ip.ipv6.sin6_family = AF_INET6;
         addr.ip.ipv6.sin6_port = htons(listenPort_);
         inet_pton(AF_INET6, listenIp_.c_str(), &addr.ip.ipv6.sin6_addr);
-        if (listenIp_.rfind("fe80", 0) == 0) {
-            const char *ipInfo = std::getenv("SHMEM_CONF_STORE_MASTER_IF");
-            std::string tmpIp = std::string(ipInfo);
-            size_t index = tmpIp.find(':');
-            if (ipInfo == nullptr || index == std::string::npos) {
-                LOG_ERROR("SHMEM_CONF_STORE_MASTER_IF is null");
-            }
-            tmpIp = tmpIp.substr(0, index);
-            addr.ip.ipv6.sin6_scope_id = if_nametoindex(tmpIp.c_str());
-            if (addr.ip.ipv6.sin6_scope_id == 0) {
-                perror("if_nametoindex failed");
-            }
-        }
     }
 }
 
