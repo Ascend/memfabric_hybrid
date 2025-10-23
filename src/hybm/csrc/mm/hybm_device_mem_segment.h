@@ -70,8 +70,6 @@ public:
 
 public:
     static int SetDeviceInfo(int deviceId) noexcept;
-    static int FillDeviceSuperPodInfo() noexcept;
-    static void FillSysBootIdInfo() noexcept;
     static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;
 
 protected:
@@ -91,14 +89,7 @@ protected:
     std::map<uint16_t, HbmExportInfo> importMap_;
 
 protected:
-    static std::string sysBoolId_;
-    static uint32_t bootIdHead_;
-    static int deviceId_;
     static int logicDeviceId_;
-    static uint32_t pid_;
-    static uint32_t sdid_;
-    static uint32_t serverId_;
-    static uint32_t superPodId_;
 };
 } // namespace mf
 } // namespace ock

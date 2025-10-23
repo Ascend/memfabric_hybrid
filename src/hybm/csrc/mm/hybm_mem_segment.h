@@ -123,6 +123,7 @@ protected:
     static Result InitDeviceInfo();
     static bool CanLocalHostReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
     static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
+    static void FillSysBootIdInfo() noexcept;
 
 protected:
     const MemSegmentOptions options_;
@@ -134,6 +135,8 @@ protected:
     static uint32_t sdid_;
     static uint32_t serverId_;
     static uint32_t superPodId_;
+    static uint32_t bootIdHead_;
+    static std::string sysBoolId_;
     static AscendSocType socType_;
 };
 }

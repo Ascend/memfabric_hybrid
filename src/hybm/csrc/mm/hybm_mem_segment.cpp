@@ -3,6 +3,9 @@
  */
 #include "hybm_mem_segment.h"
 
+#include <fstream>
+#include <sstream>
+
 #include "dl_acl_api.h"
 #include "hybm_networks_common.h"
 #include "hybm_device_user_mem_seg.h"
@@ -23,6 +26,8 @@ uint32_t MemSegment::pid_{0};
 uint32_t MemSegment::sdid_{0};
 uint32_t MemSegment::serverId_{0};
 uint32_t MemSegment::superPodId_{0};
+std::string MemSegment::sysBoolId_{};
+uint32_t MemSegment::bootIdHead_{0};
 AscendSocType MemSegment::socType_{AscendSocType::ASCEND_UNKNOWN};
 
 MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
@@ -70,6 +75,8 @@ Result MemSegment::InitDeviceInfo()
         return BM_OK;
     }
 
+    FillSysBootIdInfo();
+
     auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
     if (ret != 0) {
         BM_LOG_ERROR("get device id failed: " << ret);
@@ -106,10 +113,14 @@ Result MemSegment::InitDeviceInfo()
 
     superPodId_ = static_cast<uint32_t>(value);
     if (superPodId_ == invalidSuperPodId && serverId_ == invalidServerId) {
-        auto networks = NetworkGetIpAddresses();
-        if (networks.empty()) {
-            BM_LOG_WARN("get local host ip address empty.");
+        if (bootIdHead_ != 0) {
+            serverId_ = bootIdHead_;
         } else {
+            auto networks = NetworkGetIpAddresses();
+            if (networks.empty()) {
+                BM_LOG_ERROR("get local host ip address empty.");
+                return BM_ERROR;
+            }
             serverId_ = networks[0];
         }
     }
@@ -153,6 +164,17 @@ bool MemSegment::CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t
     }
 
     return superPodId == superPodId_;
+}
+
+void MemSegment::FillSysBootIdInfo() noexcept
+{
+    std::string bootIdPath("/proc/sys/kernel/random/boot_id");
+    std::ifstream input(bootIdPath);
+    input >> sysBoolId_;
+
+    std::stringstream ss(sysBoolId_);
+    ss >> std::hex >> bootIdHead_;
+    BM_LOG_DEBUG("os-boot-id: " << sysBoolId_ << ", head u32: " << std::hex << bootIdHead_);
 }
 }
 }

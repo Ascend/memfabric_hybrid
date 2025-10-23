@@ -19,14 +19,7 @@
 
 namespace ock {
 namespace mf {
-std::string MemSegmentDevice::sysBoolId_;
-uint32_t MemSegmentDevice::bootIdHead_{0};
-int MemSegmentDevice::deviceId_{-1};
 int MemSegmentDevice::logicDeviceId_{-1};
-uint32_t MemSegmentDevice::pid_{0};
-uint32_t MemSegmentDevice::sdid_{0};
-uint32_t MemSegmentDevice::serverId_{0};
-uint32_t MemSegmentDevice::superPodId_{0};
 
 Result MemSegmentDevice::ValidateOptions() noexcept
 {
@@ -432,70 +425,8 @@ int MemSegmentDevice::SetDeviceInfo(int deviceId) noexcept
     deviceId_ = deviceId;
     logicDeviceId_ = logicDeviceId;
     pid_ = tgid;
-    FillSysBootIdInfo();
-    ret = FillDeviceSuperPodInfo();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("FillDeviceSuperPodInfo() failed: " << ret);
-        return ret;
-    }
 
     return BM_OK;
-}
-
-int MemSegmentDevice::FillDeviceSuperPodInfo() noexcept
-{
-    int64_t value = 0;
-
-    auto ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SDID, &value);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get sdid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    sdid_ = static_cast<uint32_t>(value);
-
-    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SERVER_ID, &value);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get server id failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    serverId_ = static_cast<uint32_t>(value);
-    BM_LOG_DEBUG("local server id=0x" << std::hex << serverId_);
-
-    ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_SUPER_POD_ID, &value);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get super pod id failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    superPodId_ = static_cast<uint32_t>(value);
-
-    if (superPodId_ == invalidSuperPodId && serverId_ == invalidServerId) {
-        if (bootIdHead_ != 0) {
-            serverId_ = bootIdHead_;
-        } else {
-            auto networks = NetworkGetIpAddresses();
-            if (networks.empty()) {
-                BM_LOG_ERROR("get local host ip address empty.");
-                return BM_ERROR;
-            }
-            serverId_ = networks[0];
-        }
-    }
-
-    BM_LOG_DEBUG("local sdid=0x" << std::hex << sdid_ << ", local server id=0x" << std::hex << serverId_
-                                 << ", spid=" << superPodId_);
-
-    return BM_OK;
-}
-
-void MemSegmentDevice::FillSysBootIdInfo() noexcept
-{
-    std::string bootIdPath("/proc/sys/kernel/random/boot_id");
-    std::ifstream input(bootIdPath);
-    input >> sysBoolId_;
-
-    std::stringstream ss(sysBoolId_);
-    ss >> std::hex >> bootIdHead_;
-    BM_LOG_DEBUG("os-boot-id: " << sysBoolId_ << ", head u32: " << std::hex << bootIdHead_);
 }
 
 void MemSegmentDevice::GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept
