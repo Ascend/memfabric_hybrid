@@ -2,13 +2,17 @@
 import multiprocessing
 import logging
 import argparse
+from typing import List
+
 import torch
 import torch_npu
+
 import mf_smem
-from mf_smem import bm, shm
+from mf_smem import bm
 
 COPY_SIZE = 4096
 GVA_SIZE = 1024 * 1024 * 1024
+HYBM_INIT_GVM_FLAG = 2
 
 
 def generate_host_tensor(seed: int):
@@ -33,23 +37,20 @@ def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_rank
 
     config = bm.BmConfig()
     config.auto_ranking = auto_ranking
-    config.rank_id = rank_id if not auto_ranking else -1
+    if not auto_ranking:
+        config.rank_id = rank_id
+    config.flags = HYBM_INIT_GVM_FLAG
+    config.set_nic("tcp://127.0.0.1:1234")  # for device port
     ret = bm.initialize(store_url=url, world_size=rank_size, device_id=device_id, config=config)
     if ret != 0:
         logging.error(f'smem BM initialize failed: {ret}')
         return ret
 
-    config = shm.ShmConfig()
-    config.start_store = not auto_ranking
-    ret = shm.initialize(store_url=url, world_size=rank_size, rank_id=rank_id, device_id=device_id, config=config)
-    if ret != 0:
-        logging.error(f'smem SHM initialize failed: {ret}')
-        return ret
-
     return 0
 
 
-def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool):
+def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool,
+                  barriers: List[multiprocessing.Barrier]):
     torch.npu.set_device(device=device_id)
     _stream = torch_npu.npu.Stream(device=torch.npu.current_device())
 
@@ -58,44 +59,43 @@ def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_r
         logging.error(f'child process rank: {rank_id}, rank_size: {rank_size} initialize failed: {ret}')
         return
 
-    try:
-        shm_handle = shm.create(id=0, rank_size=rank_size, rank_id=rank_id, local_mem_size=GVA_SIZE)
-        bm_handle = bm.create(id=0, local_dram_size=0, local_hbm_size=GVA_SIZE)
-        address = bm_handle.join()
-        logging.info(f'==================== bm handle create got local GVA: {address}')
+    bm_handle = bm.create(id=0, local_dram_size=GVA_SIZE, local_hbm_size=0, data_op_type=bm.BmDataOpType.DEVICE_RDMA)
+    bm_handle.join()
 
-        shm_handle.barrier()
-        logging.info('==================== barrier finished, start test')
+    logging.info('==================== waiting at barrier 1')
+    barriers[0].wait()
+    logging.info('==================== barrier 1 finished, start test')
 
-        remote = bm_handle.peer_rank_ptr(peer_rank=((rank_id + 1) % rank_size))
-        cpu_src_tensor = generate_host_tensor(rank_id)
-        npu_tensor = cpu_src_tensor.npu(device_id)
-        bm_handle.copy_data(src_ptr=cpu_src_tensor.data_ptr(), dst_ptr=remote, size=COPY_SIZE, type=bm.BmCopyType.H2G)
-        bm_handle.copy_data(src_ptr=npu_tensor.data_ptr(), dst_ptr=remote + COPY_SIZE, size=COPY_SIZE,
-                            type=bm.BmCopyType.L2G)
-        shm_handle.barrier()
-        logging.info('==================== barrier finished for copy data')
+    address = bm_handle.peer_rank_ptr(peer_rank=rank_id, mem_type=bm.BmMemType.HOST)
+    logging.info(f'==================== got local GVA: {address}')
+    remote = bm_handle.peer_rank_ptr(peer_rank=((rank_id + 1) % rank_size), mem_type=bm.BmMemType.HOST)
+    cpu_src_tensor = generate_host_tensor(rank_id)
+    npu_tensor = cpu_src_tensor.npu(device_id)
+    bm_handle.copy_data(src_ptr=cpu_src_tensor.data_ptr(), dst_ptr=remote, size=COPY_SIZE, type=bm.BmCopyType.H2G)
+    bm_handle.copy_data(src_ptr=npu_tensor.data_ptr(), dst_ptr=remote + COPY_SIZE, size=COPY_SIZE,
+                        type=bm.BmCopyType.L2G)
 
-        cpu_dst_tensor = generate_host_tensor((rank_id + rank_size - 1) % rank_size)
-        bm_handle.copy_data(src_ptr=address, dst_ptr=cpu_src_tensor.data_ptr(), size=COPY_SIZE, type=bm.BmCopyType.G2H)
-        if not torch.equal(cpu_src_tensor, cpu_dst_tensor):
-            logging.error(f'check G2H data failed for rank: {rank_id}')
-            return
+    logging.info('==================== waiting at barrier 2')
+    barriers[1].wait()
+    logging.info('==================== barrier 2 finished for copy data')
 
-        bm_handle.copy_data(src_ptr=address + COPY_SIZE, dst_ptr=npu_tensor.data_ptr(), size=COPY_SIZE,
-                            type=bm.BmCopyType.G2L)
-        if not torch.equal(cpu_src_tensor, npu_tensor.cpu()):
-            logging.error(f'check G2L data failed for rank: {rank_id}')
-            return
+    cpu_dst_tensor = generate_host_tensor((rank_id + rank_size - 1) % rank_size)
+    bm_handle.copy_data(src_ptr=address, dst_ptr=cpu_src_tensor.data_ptr(), size=COPY_SIZE, type=bm.BmCopyType.G2H)
+    if not torch.equal(cpu_src_tensor, cpu_dst_tensor):
+        logging.error(f'check G2H data failed for rank: {rank_id}')
+        return
 
-        del bm_handle
-        shm_handle.barrier()
-        logging.info('==================== barrier finished for all test.')
+    bm_handle.copy_data(src_ptr=address + COPY_SIZE, dst_ptr=npu_tensor.data_ptr(), size=COPY_SIZE,
+                        type=bm.BmCopyType.G2L)
+    if not torch.equal(cpu_src_tensor, npu_tensor.cpu()):
+        logging.error(f'check G2L data failed for rank: {rank_id}')
+        return
 
-    except RuntimeError as e:
-        logging.error(f'child process rank: {rank_id}, rank_size: {rank_size} process failed: {e}')
-    except Exception as e:
-        logging.error(f'child process rank: {rank_id}, rank_size: {rank_size} process failed: {e}')
+    del bm_handle
+
+    logging.info('==================== waiting at barrier 3')
+    barriers[2].wait()
+    logging.info('==================== barrier 3 finished for all test.')
 
 
 def str_to_bool(v):
@@ -129,10 +129,13 @@ def main_process():
     logging.info(f'example for BM, world_size:{args.world_size}, local_ranks:{args.local_ranks}, '
                  f'rank_start:{args.rank_start}, url={args.url}, auto-ranking={args.auto_ranking}')
 
+    barriers = [multiprocessing.Barrier(args.local_ranks) for i in range(3)]
+
     children = []
     for i in range(0, args.local_ranks):
         p = multiprocessing.Process(target=child_process,
-                                    args=(i, i + args.rank_start, args.world_size, args.url, args.auto_ranking,))
+                                    args=(i, i + args.rank_start, args.world_size, args.url, args.auto_ranking,
+                                          barriers))
         p.start()
         children.append(p)
 
@@ -144,5 +147,5 @@ def main_process():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
-                        format=' %(process)d - %(asctime)s - %(levelname)s - %(message)s')
+                        format='%(process)d - %(asctime)s - %(levelname)s - %(message)s - %(lineno)d')
     main_process()

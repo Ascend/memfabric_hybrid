@@ -574,7 +574,7 @@ int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, 
         BM_LOG_ERROR("Failed to CopyG2G ret: " << ret << " dest:"<< tmpHbm << " srcVa:" << srcVA
             << " length:" << length);
     }
-    return 0;
+    return ret;
 }
 
 int HostDataOpSDMA::CopyGH2LD(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
