@@ -113,13 +113,8 @@ public:
     int Put(const std::string &key, mmc_buffer &buffer, const ReplicateConfig &replicateConfig = {});
 
 private:
-    bool Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes);
-
-    int CheckInputAndIsAll2D(size_t batchSize, const std::vector<std::vector<void *>> &buffers,
-                             const std::vector<std::vector<size_t>> &sizes, bool &result);
-
-    void GetBuffersIn2D(size_t batchSize, uint32_t type, const std::vector<std::vector<void *>> &bufferLists,
-                        const std::vector<std::vector<size_t>> &sizeLists, std::vector<mmc_buffer> &buffersIn2D);
+    int CheckInput(size_t batchSize, const std::vector<std::vector<void *>> &buffers,
+                   const std::vector<std::vector<size_t>> &sizes);
 
     void GetBufferArrays(size_t batchSize, uint32_t type, const std::vector<std::vector<void *>> &bufferLists,
                          const std::vector<std::vector<size_t>> &sizeLists,

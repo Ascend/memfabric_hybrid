@@ -486,31 +486,16 @@ int MmcacheStore::PutFromLayers(const std::string &key, const std::vector<void *
     mmc_put_options options{};
     MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), MMC_ERROR);
     Result res;
-    if (Is2D(buffers, sizes)) {
-        mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
-                             .type = type,
-                             .dimType = 1,
-                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
-                                            reinterpret_cast<uint64_t>(buffers[0]),
-                                        .layerOffset = 0,
-                                        .width = static_cast<uint32_t>(sizes[0]),
-                                        .layerNum = static_cast<uint16_t>(layerNum),
-                                        .layerCount = static_cast<uint16_t>(layerNum)}};
-        TP_TRACE_BEGIN(TP_MMC_PY_PUT_LAYERS_2D);
-        res = mmcc_put(key.c_str(), &buffer, options, 0);
-        TP_TRACE_END(TP_MMC_PY_PUT_LAYERS_2D, res);
-    } else {
-        MmcBufferArray bufArr;
-        for (size_t i = 0; i < layerNum; i += 1) {
-            bufArr.AddBuffer({.addr = reinterpret_cast<uint64_t>(buffers[i]),
-                              .type = type,
-                              .dimType = 0,
-                              .oneDim = {.offset = 0, .len = static_cast<uint64_t>(sizes[i])}});
-        }
-        TP_TRACE_BEGIN(TP_MMC_PY_PUT_LAYERS);
-        res = MmcClientDefault::GetInstance()->Put(key, bufArr, options, 0);
-        TP_TRACE_END(TP_MMC_PY_PUT_LAYERS, res);
+    MmcBufferArray bufArr;
+    for (size_t i = 0; i < layerNum; i += 1) {
+        bufArr.AddBuffer({.addr = reinterpret_cast<uint64_t>(buffers[i]),
+                          .type = type,
+                          .dimType = 0,
+                          .oneDim = {.offset = 0, .len = static_cast<uint64_t>(sizes[i])}});
     }
+    TP_TRACE_BEGIN(TP_MMC_PY_PUT_LAYERS);
+    res = MmcClientDefault::GetInstance()->Put(key, bufArr, options, 0);
+    TP_TRACE_END(TP_MMC_PY_PUT_LAYERS, res);
 
     return ReturnWrapper(res, key);
 }
@@ -547,8 +532,7 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
         }
     }
 
-    bool all2D;
-    auto res = CheckInputAndIsAll2D(batchSize, buffers, sizes, all2D);
+    auto res = CheckInput(batchSize, buffers, sizes);
     if (res != MMC_OK) {
         MMC_LOG_ERROR("Failed to check if all layers are 2D");
         return results;
@@ -556,20 +540,11 @@ std::vector<int> MmcacheStore::BatchPutFromLayers(const std::vector<std::string>
 
     mmc_put_options options{};
     MMC_ASSERT_RETURN(CopyPutOptions(replicateConfig, options), results);
-    if (all2D) {
-        TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS_2D);
-        std::vector<mmc_buffer> buffersIn2D;
-        GetBuffersIn2D(batchSize, type, buffers, sizes, buffersIn2D);
-        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, buffersIn2D, options, ALLOC_RANDOM, results);
-        TP_TRACE_END(TP_MMC_PY_BATCH_PUT_LAYERS_2D, ret);
-    } else {
-        TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS);
-        std::vector<MmcBufferArray> bufferArrays;
-        GetBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
-        auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, bufferArrays, options, ALLOC_RANDOM, results);
-        TP_TRACE_END(TP_MMC_PY_BATCH_PUT_LAYERS, ret);
-    }
-
+    TP_TRACE_BEGIN(TP_MMC_PY_BATCH_PUT_LAYERS);
+    std::vector<MmcBufferArray> bufferArrays;
+    GetBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
+    auto ret = MmcClientDefault::GetInstance()->BatchPut(keys, bufferArrays, options, ALLOC_RANDOM, results);
+    TP_TRACE_END(TP_MMC_PY_BATCH_PUT_LAYERS, ret);
     for (size_t i = 0; i < batchSize; i++) {
         results[i] = ReturnWrapper(results[i], keys[i]);
     }
@@ -603,34 +578,18 @@ int MmcacheStore::GetIntoLayers(const std::string &key, const std::vector<void *
         return MMC_INVALID_PARAM;
     }
 
-    if (Is2D(buffers, sizes)) {
-        mmc_buffer buffer = {.addr = reinterpret_cast<uint64_t>(buffers[0]),
-                             .type = type,
-                             .dimType = 1,
-                             .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
-                                            reinterpret_cast<uint64_t>(buffers[0]),
-                                        .layerOffset = 0,
-                                        .width = static_cast<uint32_t>(sizes[0]),
-                                        .layerNum = static_cast<uint16_t>(layerNum),
-                                        .layerCount = static_cast<uint16_t>(layerNum)}};
-        TP_TRACE_BEGIN(TP_MMC_PY_GET_LAYERS_2D);
-        auto ret = mmcc_get(key.c_str(), &buffer, 0);
-        TP_TRACE_END(TP_MMC_PY_GET_LAYERS_2D, ret);
-        return ret;
-    } else {
-        std::vector<mmc_buffer> mmc_buffers;
-        for (size_t i = 0; i < layerNum; i += 1) {
-            mmc_buffers.push_back({.addr = reinterpret_cast<uint64_t>(buffers[i]),
-                                   .type = type,
-                                   .dimType = 0,
-                                   .oneDim = {.offset = 0, .len = static_cast<uint64_t>(sizes[i])}});
-        }
-        MmcBufferArray bufArr(mmc_buffers);
-        TP_TRACE_BEGIN(TP_MMC_PY_GET_LAYERS);
-        auto ret = MmcClientDefault::GetInstance()->Get(key, bufArr, 0);
-        TP_TRACE_END(TP_MMC_PY_GET_LAYERS, ret);
-        return ret;
+    std::vector<mmc_buffer> mmc_buffers;
+    for (size_t i = 0; i < layerNum; i += 1) {
+        mmc_buffers.push_back({.addr = reinterpret_cast<uint64_t>(buffers[i]),
+                                      .type = type,
+                                      .dimType = 0,
+                                      .oneDim = {.offset = 0, .len = static_cast<uint64_t>(sizes[i])}});
     }
+    MmcBufferArray bufArr(mmc_buffers);
+    TP_TRACE_BEGIN(TP_MMC_PY_GET_LAYERS);
+    auto ret = MmcClientDefault::GetInstance()->Get(key, bufArr, 0);
+    TP_TRACE_END(TP_MMC_PY_GET_LAYERS, ret);
+    return ret;
 }
 
 std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string> &keys,
@@ -664,59 +623,22 @@ std::vector<int> MmcacheStore::BatchGetIntoLayers(const std::vector<std::string>
         }
     }
 
-    bool isAll2D;
-    auto res = CheckInputAndIsAll2D(batchSize, buffers, sizes, isAll2D);
+    auto res = CheckInput(batchSize, buffers, sizes);
     if (res != MMC_OK) {
         MMC_LOG_ERROR("Failed to check if all layers are 2D");
         return results;
     }
 
-    if (isAll2D) {
-        TP_TRACE_BEGIN(TP_MMC_PY_BATCH_GET_LAYERS_2D);
-        std::vector<mmc_buffer> buffersIn2D;
-        GetBuffersIn2D(batchSize, type, buffers, sizes, buffersIn2D);
-        auto ret = MmcClientDefault::GetInstance()->BatchGet(keys, buffersIn2D, 0, results);
-        TP_TRACE_END(TP_MMC_PY_BATCH_GET_LAYERS_2D, ret);
-    } else {
-        TP_TRACE_BEGIN(TP_MMC_PY_BATCH_GET_LAYERS);
-        std::vector<MmcBufferArray> bufferArrays;
-        GetBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
-        auto ret = MmcClientDefault::GetInstance()->BatchGet(keys, bufferArrays, 0, results);
-        TP_TRACE_END(TP_MMC_PY_BATCH_GET_LAYERS, ret);
-    }
-
+    TP_TRACE_BEGIN(TP_MMC_PY_BATCH_GET_LAYERS);
+    std::vector<MmcBufferArray> bufferArrays;
+    GetBufferArrays(batchSize, type, buffers, sizes, bufferArrays);
+    auto ret = MmcClientDefault::GetInstance()->BatchGet(keys, bufferArrays, 0, results);
+    TP_TRACE_END(TP_MMC_PY_BATCH_GET_LAYERS, ret);
     return results;
 }
 
-bool MmcacheStore::Is2D(const std::vector<void *> &buffers, const std::vector<size_t> &sizes)
-{
-    const auto layerNum = buffers.size();
-    const int layerNumLim = 2;
-    if (layerNum < layerNumLim) {
-        return false;
-    }
-    if (reinterpret_cast<uint64_t>(buffers[1]) < reinterpret_cast<uint64_t>(buffers[0])) {
-        return false;
-    }
-    const auto interval = reinterpret_cast<uint64_t>(buffers[1]) - reinterpret_cast<uint64_t>(buffers[0]);
-    for (size_t i = 2; i < layerNum; i += 1) {
-        if (reinterpret_cast<uint64_t>(buffers[i]) - reinterpret_cast<uint64_t>(buffers[i - 1]) != interval) {
-            return false;
-        }
-    }
-
-    const auto size = sizes[0];
-    for (size_t i = 1; i < layerNum; i += 1) {
-        if (sizes[i] != size) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-int MmcacheStore::CheckInputAndIsAll2D(const size_t batchSize, const std::vector<std::vector<void *>> &buffers,
-                                       const std::vector<std::vector<size_t>> &sizes, bool &result)
+int MmcacheStore::CheckInput(const size_t batchSize, const std::vector<std::vector<void *>> &buffers,
+                             const std::vector<std::vector<size_t>> &sizes)
 {
     for (size_t i = 0; i < batchSize; i += 1) {
         const auto layerNum = buffers[i].size();
@@ -729,40 +651,7 @@ int MmcacheStore::CheckInputAndIsAll2D(const size_t batchSize, const std::vector
             return MMC_INVALID_PARAM;
         }
     }
-
-    result = true;
-    for (size_t i = 0; i < batchSize; i += 1) {
-        if (!Is2D(buffers[i], sizes[i])) {
-            result = false;
-            break;
-        }
-    }
     return MMC_OK;
-}
-
-void MmcacheStore::GetBuffersIn2D(const size_t batchSize, const uint32_t type,
-                                  const std::vector<std::vector<void *>> &bufferLists,
-                                  const std::vector<std::vector<size_t>> &sizeLists,
-                                  std::vector<mmc_buffer> &buffersIn2D)
-{
-    for (size_t i = 0; i < batchSize; i += 1) {
-        const auto &buffers = bufferLists[i];
-        const auto &sizes = sizeLists[i];
-        const auto layerNum = buffers.size();
-        if (layerNum > std::numeric_limits<uint16_t>::max()) {
-            MMC_LOG_ERROR("layerNum=" << layerNum);
-            return;
-        }
-        buffersIn2D.push_back({.addr = reinterpret_cast<uint64_t>(buffers[0]),
-                               .type = type,
-                               .dimType = 1,
-                               .twoDim = {.dpitch = reinterpret_cast<uint64_t>(buffers[1]) -
-                                            reinterpret_cast<uint64_t>(buffers[0]),
-                                          .layerOffset = 0,
-                                          .width = static_cast<uint32_t>(sizes[0]),
-                                          .layerNum = static_cast<uint16_t>(layerNum),
-                                          .layerCount = static_cast<uint16_t>(layerNum)}});
-    }
 }
 
 void MmcacheStore::GetBufferArrays(const size_t batchSize, const uint32_t type,
