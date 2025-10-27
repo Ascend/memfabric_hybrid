@@ -50,14 +50,14 @@ channelPutFunc DlHcomApi::gChannelPut = nullptr;
 channelGetFunc DlHcomApi::gChannelGet = nullptr;
 channelSetFlowControlConfigFunc DlHcomApi::gChannelSetFlowControlConfig = nullptr;
 channelSetChannelTimeOutFunc DlHcomApi::gChannelSetChannelTimeOut = nullptr;
-serviceGetRspCtxFunc DlHcomApi::gServiceGetRspCtx = nullptr;
-serviceGetChannelFunc DlHcomApi::gServiceGetChannel = nullptr;
-serviceGetContextTypeFunc DlHcomApi::gServiceGetContextType = nullptr;
-serviceGetResultFunc DlHcomApi::gServiceGetResult = nullptr;
-serviceGetOpCodeFunc DlHcomApi::gServiceGetOpCode = nullptr;
-serviceGetMessageDataFunc DlHcomApi::gServiceGetMessageData = nullptr;
-serviceGetMessageDataLenFunc DlHcomApi::gServiceGetMessageDataLen = nullptr;
-serviceSetExternalLoggerFunc DlHcomApi::gServiceSetExternalLogger = nullptr;
+contextGetRspCtxFunc DlHcomApi::gContextGetRspCtx = nullptr;
+contextGetChannelFunc DlHcomApi::gContextGetChannel = nullptr;
+contextGetTypeFunc DlHcomApi::gContextGetType = nullptr;
+contextGetResultFunc DlHcomApi::gContextGetResult = nullptr;
+contextGetOpCodeFunc DlHcomApi::gContextGetOpCode = nullptr;
+contextGetMessageDataFunc DlHcomApi::gContextGetMessageData = nullptr;
+contextGetMessageDataLenFunc DlHcomApi::gContextGetMessageDataLen = nullptr;
+setExternalLoggerFunc DlHcomApi::gSetExternalLogger = nullptr;
 
 Result DlHcomApi::LoadLibrary()
 {
@@ -125,14 +125,14 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gChannelSetFlowControlConfig, channelSetFlowControlConfigFunc, hcomHandle,
         "ubs_hcom_channel_set_flowctl_cfg");
     DL_LOAD_SYM(gChannelSetChannelTimeOut, channelSetChannelTimeOutFunc, hcomHandle, "ubs_hcom_channel_set_timeout");
-    DL_LOAD_SYM(gServiceGetRspCtx, serviceGetRspCtxFunc, hcomHandle, "ubs_hcom_context_get_rspctx");
-    DL_LOAD_SYM(gServiceGetChannel, serviceGetChannelFunc, hcomHandle, "ubs_hcom_service_get_channel");
-    DL_LOAD_SYM(gServiceGetContextType, serviceGetContextTypeFunc, hcomHandle, "ubs_hcom_context_get_channel");
-    DL_LOAD_SYM(gServiceGetResult, serviceGetResultFunc, hcomHandle, "ubs_hcom_context_get_result");
-    DL_LOAD_SYM(gServiceGetOpCode, serviceGetOpCodeFunc, hcomHandle, "ubs_hcom_context_get_opcode");
-    DL_LOAD_SYM(gServiceGetMessageData, serviceGetMessageDataFunc, hcomHandle, "ubs_hcom_context_get_data");
-    DL_LOAD_SYM(gServiceGetMessageDataLen, serviceGetMessageDataLenFunc, hcomHandle, "ubs_hcom_context_get_datalen");
-    DL_LOAD_SYM(gServiceSetExternalLogger, serviceSetExternalLoggerFunc, hcomHandle, "ubs_hcom_set_log_handler");
+    DL_LOAD_SYM(gContextGetRspCtx, contextGetRspCtxFunc, hcomHandle, "ubs_hcom_context_get_rspctx");
+    DL_LOAD_SYM(gContextGetChannel, contextGetChannelFunc, hcomHandle, "ubs_hcom_context_get_channel");
+    DL_LOAD_SYM(gContextGetType, contextGetTypeFunc, hcomHandle, "ubs_hcom_context_get_type");
+    DL_LOAD_SYM(gContextGetResult, contextGetResultFunc, hcomHandle, "ubs_hcom_context_get_result");
+    DL_LOAD_SYM(gContextGetOpCode, contextGetOpCodeFunc, hcomHandle, "ubs_hcom_context_get_opcode");
+    DL_LOAD_SYM(gContextGetMessageData, contextGetMessageDataFunc, hcomHandle, "ubs_hcom_context_get_data");
+    DL_LOAD_SYM(gContextGetMessageDataLen, contextGetMessageDataLenFunc, hcomHandle, "ubs_hcom_context_get_datalen");
+    DL_LOAD_SYM(gSetExternalLogger, setExternalLoggerFunc, hcomHandle, "ubs_hcom_set_log_handler");
 
     gLoaded = true;
     return BM_OK;
@@ -182,14 +182,14 @@ void DlHcomApi::CleanupLibrary()
     gChannelGet = nullptr;
     gChannelSetFlowControlConfig = nullptr;
     gChannelSetChannelTimeOut = nullptr;
-    gServiceGetRspCtx = nullptr;
-    gServiceGetChannel = nullptr;
-    gServiceGetContextType = nullptr;
-    gServiceGetResult = nullptr;
-    gServiceGetOpCode = nullptr;
-    gServiceGetMessageData = nullptr;
-    gServiceGetMessageDataLen = nullptr;
-    gServiceSetExternalLogger = nullptr;
+    gContextGetRspCtx = nullptr;
+    gContextGetChannel = nullptr;
+    gContextGetType = nullptr;
+    gContextGetResult = nullptr;
+    gContextGetOpCode = nullptr;
+    gContextGetMessageData = nullptr;
+    gContextGetMessageDataLen = nullptr;
+    gSetExternalLogger = nullptr;
 
     if (hcomHandle != nullptr) {
         dlclose(hcomHandle);

@@ -54,14 +54,14 @@ using channelPutFunc = int (*)(Hcom_Channel, Channel_OneSideRequest, Channel_Cal
 using channelGetFunc = int (*)(Hcom_Channel, Channel_OneSideRequest, Channel_Callback *);
 using channelSetFlowControlConfigFunc = int (*)(Hcom_Channel, Channel_FlowCtrlOptions);
 using channelSetChannelTimeOutFunc = void (*)(Hcom_Channel, int16_t, int16_t);
-using serviceGetRspCtxFunc = int (*)(Service_Context, Channel_ReplyContext *);
-using serviceGetChannelFunc = int (*)(Service_Context, Hcom_Channel *);
-using serviceGetContextTypeFunc = int (*)(Service_Context, Service_ContextType *);
-using serviceGetResultFunc = int (*)(Service_Context, int *);
-using serviceGetOpCodeFunc = uint64_t (*)(Service_Context);
-using serviceGetMessageDataFunc = void *(*)(Service_Context);
-using serviceGetMessageDataLenFunc = uint32_t (*)(Service_Context);
-using serviceSetExternalLoggerFunc = void (*)(Service_LogHandler);
+using contextGetRspCtxFunc = int (*)(Service_Context, Channel_ReplyContext *);
+using contextGetChannelFunc = int (*)(Service_Context, Hcom_Channel *);
+using contextGetTypeFunc = int (*)(Service_Context, Service_ContextType *);
+using contextGetResultFunc = int (*)(Service_Context, int *);
+using contextGetOpCodeFunc = uint64_t (*)(Service_Context);
+using contextGetMessageDataFunc = void *(*)(Service_Context);
+using contextGetMessageDataLenFunc = uint32_t (*)(Service_Context);
+using setExternalLoggerFunc = void (*)(Service_LogHandler);
 
 class DlHcomApi {
 public:
@@ -319,52 +319,52 @@ public:
         gChannelSetChannelTimeOut(channel, oneSideTimeout, twoSideTimeout);
     }
 
-    static inline int ServiceGetRspCtx(Service_Context context, Channel_ReplyContext *rspCtx)
+    static inline int ContextGetRspCtx(Service_Context context, Channel_ReplyContext *rspCtx)
     {
-        BM_ASSERT_RETURN(gServiceGetRspCtx != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetRspCtx(context, rspCtx);
+        BM_ASSERT_RETURN(gContextGetRspCtx != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetRspCtx(context, rspCtx);
     }
 
-    static inline int ServiceGetChannel(Service_Context context, Hcom_Channel *channel)
+    static inline int ContextGetChannel(Service_Context context, Hcom_Channel *channel)
     {
-        BM_ASSERT_RETURN(gServiceGetChannel != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetChannel(context, channel);
+        BM_ASSERT_RETURN(gContextGetChannel != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetChannel(context, channel);
     }
 
-    static inline int ServiceGetContextType(Service_Context context, Service_ContextType *type)
+    static inline int ContextGetContextType(Service_Context context, Service_ContextType *type)
     {
-        BM_ASSERT_RETURN(gServiceGetContextType != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetContextType(context, type);
+        BM_ASSERT_RETURN(gContextGetType != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetType(context, type);
     }
 
-    static inline int ServiceGetResult(Service_Context context, int *result)
+    static inline int ContextGetResult(Service_Context context, int *result)
     {
-        BM_ASSERT_RETURN(gServiceGetResult != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetResult(context, result);
+        BM_ASSERT_RETURN(gContextGetResult != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetResult(context, result);
     }
 
-    static inline uint16_t ServiceGetOpCode(Service_Context context)
+    static inline uint16_t ContextGetOpCode(Service_Context context)
     {
-        BM_ASSERT_RETURN(gServiceGetOpCode != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetOpCode(context);
+        BM_ASSERT_RETURN(gContextGetOpCode != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetOpCode(context);
     }
 
-    static inline void *ServiceGetMessageData(Service_Context context)
+    static inline void *ContextGetMessageData(Service_Context context)
     {
-        BM_ASSERT_RETURN(gServiceGetMessageData != nullptr, nullptr);
-        return gServiceGetMessageData(context);
+        BM_ASSERT_RETURN(gContextGetMessageData != nullptr, nullptr);
+        return gContextGetMessageData(context);
     }
 
-    static inline uint32_t ServiceGetMessageDataLen(Service_Context context)
+    static inline uint32_t ContextGetMessageDataLen(Service_Context context)
     {
-        BM_ASSERT_RETURN(gServiceGetMessageDataLen != nullptr, BM_NOT_INITIALIZED);
-        return gServiceGetMessageDataLen(context);
+        BM_ASSERT_RETURN(gContextGetMessageDataLen != nullptr, BM_NOT_INITIALIZED);
+        return gContextGetMessageDataLen(context);
     }
 
-    static inline void ServiceSetExternalLogger(Service_LogHandler h)
+    static inline void SetExternalLogger(Service_LogHandler h)
     {
-        BM_ASSERT_RET_VOID(gServiceSetExternalLogger != nullptr);
-        gServiceSetExternalLogger(h);
+        BM_ASSERT_RET_VOID(gSetExternalLogger != nullptr);
+        gSetExternalLogger(h);
     }
 
 private:
@@ -412,14 +412,14 @@ private:
     static channelGetFunc gChannelGet;
     static channelSetFlowControlConfigFunc gChannelSetFlowControlConfig;
     static channelSetChannelTimeOutFunc gChannelSetChannelTimeOut;
-    static serviceGetRspCtxFunc gServiceGetRspCtx;
-    static serviceGetChannelFunc gServiceGetChannel;
-    static serviceGetContextTypeFunc gServiceGetContextType;
-    static serviceGetResultFunc gServiceGetResult;
-    static serviceGetOpCodeFunc gServiceGetOpCode;
-    static serviceGetMessageDataFunc gServiceGetMessageData;
-    static serviceGetMessageDataLenFunc gServiceGetMessageDataLen;
-    static serviceSetExternalLoggerFunc gServiceSetExternalLogger;
+    static contextGetRspCtxFunc gContextGetRspCtx;
+    static contextGetChannelFunc gContextGetChannel;
+    static contextGetTypeFunc gContextGetType;
+    static contextGetResultFunc gContextGetResult;
+    static contextGetOpCodeFunc gContextGetOpCode;
+    static contextGetMessageDataFunc gContextGetMessageData;
+    static contextGetMessageDataLenFunc gContextGetMessageDataLen;
+    static setExternalLoggerFunc gSetExternalLogger;
 };
 }
 }
