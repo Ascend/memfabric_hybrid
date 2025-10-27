@@ -269,3 +269,26 @@ HYBM_API int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *
     }
     return 0;
 }
+
+int32_t hybm_host_mem_register(hybm_entity_t e, void *src, uint64_t size, void **dest)
+{
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
+
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+
+    return entity->HostMemRegister(src, size, *dest);
+}
+
+int32_t hybm_host_mem_unregister(hybm_entity_t e, void *src)
+{
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    return entity->HostMemUnregister(src);
+}

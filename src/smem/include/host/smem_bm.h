@@ -165,6 +165,24 @@ int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size
 
 int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num);
 
+/**
+ * @brief This command is used to register host memory to device.
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param addr             [in] requested the src share memory pointer, srcPtr must be page aligned.
+ * @param size             [in] requested byte size.
+ * @param dest             [out] pointer that stores the address of the allocated dst memory pointer.
+ * @return 0 if successful
+ */
+int32_t smem_bm_register_host_mem(smem_bm_t handle, uint64_t addr, uint64_t size, uint64_t *dest);
+
+/**
+ * @brief This command is used to unregister host memory to device.
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param addr             [in] Requested the src share memory pointer.
+ * @return 0 if successful
+ */
+int32_t smem_bm_unregister_host_mem(smem_bm_t handle, uint64_t addr);
+
 #ifdef __cplusplus
 }
 #endif

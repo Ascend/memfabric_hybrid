@@ -339,3 +339,37 @@ SMEM_API int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
     return hybm_register_layer_mem(addrs, sizes, layer, num); // check in hybm
 }
+
+int32_t smem_bm_register_host_mem(smem_bm_t handle, uint64_t addr, uint64_t size, uint64_t *dest)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(addr != 0, "invalid param, addr eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(size != 0, "invalid param, size eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->RegisterHostMem(addr, size, *dest);
+}
+
+int32_t smem_bm_unregister_host_mem(smem_bm_t handle, uint64_t addr)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(addr != 0, "invalid param, addr eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->UnregisterHostMem(addr);
+}

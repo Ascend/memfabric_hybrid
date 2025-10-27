@@ -54,6 +54,10 @@ public:
 
     Result RegisterMem(uint64_t addr, uint64_t size);
 
+    Result RegisterHostMem(uint64_t addr, uint64_t size, uint64_t &dest);
+
+    Result UnregisterHostMem(uint64_t addr);
+
     uint32_t Id() const;
 
     const hybm_options &GetCoreOptions() const;

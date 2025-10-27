@@ -8,88 +8,12 @@
 #include <mutex>
 #include <new>
 #include "smem.h"
-#include "smem_shm.h"
 #include "smem_bm.h"
 #include "smem_version.h"
 
 namespace py = pybind11;
 
 namespace {
-class ShareMemory {
-public:
-    explicit ShareMemory(smem_shm_t hd, void *gva) noexcept : handle_{hd}, gvaAddress_{gva} {}
-    virtual ~ShareMemory() noexcept
-    {
-        smem_shm_destroy(handle_, 0);
-    }
-
-    void SetExternContext(const void *context, uint32_t size)
-    {
-        auto ret = smem_shm_set_extra_context(handle_, context, size);
-        if (ret != 0) {
-            throw std::runtime_error("set extern context failed:");
-        }
-    }
-
-    uint32_t LocalRank() noexcept
-    {
-        return smem_shm_get_global_rank(handle_);
-    }
-
-    uint32_t RankSize() noexcept
-    {
-        return smem_shm_get_global_rank_size(handle_);
-    }
-
-    void Barrier()
-    {
-        auto ret = smem_shm_control_barrier(handle_);
-        if (ret != 0) {
-            throw std::runtime_error("barrier failed:");
-        }
-    }
-
-    void AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
-    {
-        auto ret = smem_shm_control_allgather(handle_, sendBuf, sendSize, recvBuf, recvSize);
-        if (ret != 0) {
-            throw std::runtime_error("all gather failed:");
-        }
-    }
-
-    void *Address() const noexcept
-    {
-        return gvaAddress_;
-    }
-
-    static int Initialize(const std::string &storeURL, uint32_t worldSize, uint32_t rankId, uint16_t deviceId,
-                          smem_shm_config_t &config) noexcept
-    {
-        return smem_shm_init(storeURL.c_str(), worldSize, rankId, deviceId, &config);
-    }
-
-    static void UnInitialize(uint32_t flags) noexcept
-    {
-        smem_shm_uninit(flags);
-    }
-
-    static ShareMemory *Create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
-                               smem_shm_data_op_type dataOpType, uint32_t flags)
-    {
-        void *gva;
-        auto handle = smem_shm_create(id, rankSize, rankId, symmetricSize, dataOpType, flags, &gva);
-        if (handle == nullptr) {
-            throw std::runtime_error("create shm failed!");
-        }
-
-        return new (std::nothrow) ShareMemory(handle, gva);
-    }
-
-private:
-    smem_shm_t handle_;
-    void *gvaAddress_;
-};
-
 class BigMemory {
 public:
     explicit BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
@@ -176,6 +100,24 @@ public:
         return smem_bm_register_user_mem(handle_, addr, size);
     }
 
+    uint64_t RegisterHostMem(uint64_t addr, uint64_t size)
+    {
+        uint64_t target = 0;
+        auto ret = smem_bm_register_host_mem(handle_, addr, size, &target);
+        if (ret != 0) {
+            throw std::runtime_error(std::string("register host memory failed: ").append(std::to_string(ret)));
+        }
+        return target;
+    }
+
+    void UnregisterHostMem(uint64_t addr)
+    {
+        auto ret = smem_bm_unregister_host_mem(handle_, addr);
+        if (ret != 0) {
+            throw std::runtime_error(std::string("unregister host memory failed: ").append(std::to_string(ret)));
+        }
+    }
+
 private:
     smem_bm_t handle_;
     static uint32_t worldSize_;
@@ -190,7 +132,8 @@ struct LoggerState {
 std::mutex LoggerState::mutex;
 std::shared_ptr<py::function> LoggerState::py_logger;
 
-static void cpp_logger_adapter(int level, const char* msg) {
+static void cpp_logger_adapter(int level, const char *msg)
+{
     std::lock_guard<std::mutex> lock(LoggerState::mutex);
 
     if (!LoggerState::py_logger) {
@@ -254,9 +197,7 @@ Returns:
     0 if successful
 )");
 
-    m.add_object("_cleanup_capsule", py::capsule([]() {
-        LoggerState::py_logger.reset();
-    }));
+    m.add_object("_cleanup_capsule", py::capsule([]() { LoggerState::py_logger.reset(); }));
 
     m.def("get_last_err_msg", &smem_get_last_err_msg, py::call_guard<py::gil_scoped_release>(), R"(
 Get last error message.
@@ -270,26 +211,6 @@ Returns:
     error message string
 )");
     m.doc() = LIB_VERSION;
-}
-
-void DefineShmConfig(py::module_ &m)
-{
-    py::class_<smem_shm_config_t>(m, "ShmConfig")
-        .def(py::init([]() {
-                 auto config = new (std::nothrow) smem_shm_config_t;
-                 smem_shm_config_init(config);
-                 return config;
-             }),
-             py::call_guard<py::gil_scoped_release>())
-        .def_readwrite("init_timeout", &smem_shm_config_t::shmInitTimeout, R"(
-func smem_shm_init timeout, default 120 second.)")
-        .def_readwrite("create_timeout", &smem_shm_config_t::shmCreateTimeout, R"(
-func smem_shm_create timeout, default 120 second)")
-        .def_readwrite("operation_timeout", &smem_shm_config_t::controlOperationTimeout, R"(
-control operation timeout, i.e. barrier, allgather, topology_can_reach etc, default 120 second)")
-        .def_readwrite("start_store", &smem_shm_config_t::startConfigStoreServer, R"(
-whether to start config store, default true)")
-        .def_readwrite("flags", &smem_shm_config_t::flags, "other flags, default 0");
 }
 
 // enum wrap for binding
@@ -310,8 +231,7 @@ void DefineBmConfig(py::module_ &m)
         .value("H2G", SMEMB_COPY_H2G, "copy data from host memory to global space")
         .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space");
 
-    py::enum_<smem_bm_init_flag>(m, "BmInitFlag")
-        .value("GVM", SMEM_BM_INIT_FLAG_GVM, "enable GVM");
+    py::enum_<smem_bm_init_flag>(m, "BmInitFlag").value("GVM", SMEM_BM_INIT_FLAG_GVM, "enable GVM");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
@@ -336,7 +256,7 @@ automatically allocate rank IDs, default is false)")
         .def_readwrite("rank_id", &smem_bm_config_t::rankId, "user specified rank ID, valid for autoRanking is False")
         .def_readwrite("flags", &smem_bm_config_t::flags, "other flags, default 0")
         .def(
-        "set_nic",
+            "set_nic",
             [](smem_bm_config_t &config, const std::string &nic) {
                 strncpy(config.hcomUrl, nic.c_str(), sizeof(config.hcomUrl));
             },
@@ -422,6 +342,17 @@ Destroy the big memory handle.)")
         .def("register", &BigMemory::RegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"),
              py::arg("size"), R"(
 register user mem.)")
+        .def("register_host_mem", &BigMemory::RegisterHostMem, py::call_guard<py::gil_scoped_release>(),
+             py::arg("addr"), py::arg("size"), R"(
+register user mem.
+
+Arguments:
+    addr(int): Requested the src share memory pointer, addr must be page aligned.
+    size(int): Requested byte size.
+Returns:
+    pointer that stores the address of the allocated dst memory pointer.)")
+        .def("unregister_host_mem", &BigMemory::UnregisterHostMem, py::call_guard<py::gil_scoped_release>(),
+             py::arg("addr"), R"(unregister user mem.)")
         .def("copy_data", &BigMemory::CopyData, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
              py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, R"(
 Data operation on Big Memory object.
@@ -435,7 +366,7 @@ Arguments:
 Returns:
     0 if successful)");
 }
-}  // namespace
+} // namespace
 
 PYBIND11_MODULE(_pymf_smem, m)
 {

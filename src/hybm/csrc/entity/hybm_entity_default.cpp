@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "dl_acl_api.h"
+#include "dl_hal_api.h"
 #include "hybm_data_op_host_rdma.h"
 #include "hybm_device_mem_segment.h"
 #include "hybm_data_op_sdma.h"
@@ -988,6 +989,26 @@ hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) c
     }
 
     return static_cast<hybm_data_op_type>(supportDataOp);
+}
+
+int32_t MemEntityDefault::HostMemRegister(void *addr, uint64_t size, void *&dest) noexcept
+{
+    auto ret = DlHalApi::HalHostRegister(addr, size, HOST_MEM_MAP_DEV, options_.devId, &dest);
+    if (ret != 0) {
+        BM_LOG_ERROR("register host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::HostMemUnregister(void *addr) noexcept
+{
+    auto ret = DlHalApi::HalHostUnregisterEx(addr, options_.devId, HOST_MEM_MAP_DEV);
+    if (ret != 0) {
+        BM_LOG_ERROR("unregister host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
 }
 
 void *MemEntityDefault::GetReservedMemoryPtr(hybm_mem_type memType) noexcept
