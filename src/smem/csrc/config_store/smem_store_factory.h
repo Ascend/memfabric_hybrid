@@ -27,10 +27,10 @@ public:
     static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer,
                                 uint32_t worldSize = 0, int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
-    static StorePtr CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize = 0,
+    static StorePtr CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize = UINT32_MAX,
                                       int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
-    static StorePtr CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize = 0,
+    static StorePtr CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize = 1024,
                                       int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
     /**

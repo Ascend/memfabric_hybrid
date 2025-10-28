@@ -36,14 +36,25 @@ def tensor_sum(tensor: List[torch.Tensor], sizes: List[int] = None):
     return sum(layer[:size].sum().item() for layer, size in zip(tensor, sizes))
 
 
-def malloc_npu_blocks(min_block_size: int, layer_num: int, block_num: int):
-    raw_blocks = torch.randint(
-        low=0, high=256,
-        size=(layer_num, block_num, min_block_size),
-        dtype=torch.uint8,
-        device=torch.device('npu')
-    )
+def allocate_aligned_tensor(shape, dtype=torch.float32, alignment=2*1024*1024):
+    num_elements = torch.prod(torch.tensor(shape)).item()
+    element_size = torch.finfo(dtype).bits // 8 if dtype.is_floating_point else torch.iinfo(dtype).bits // 8
+    total_bytes = num_elements * element_size
 
+    padding = alignment - 1
+    buffer = torch.empty(total_bytes + padding, dtype=dtype, device='npu')
+
+    address = buffer.data_ptr()
+    aligned_address = (address + alignment - 1) & ~(alignment - 1)
+    offset = (aligned_address - address) // element_size
+
+    aligned_tensor = buffer[offset:offset + num_elements].view(*shape)
+    print(f"Aligned tensor address: {aligned_tensor.data_ptr():x}")
+    return aligned_tensor
+
+
+def malloc_npu_blocks(min_block_size: int, layer_num: int, block_num: int):
+    raw_blocks = allocate_aligned_tensor((layer_num, block_num, min_block_size), torch.uint8)
     torch_npu.npu.current_stream().synchronize()
     return raw_blocks
 
