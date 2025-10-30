@@ -239,6 +239,7 @@ HYBM_API int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t
 
 HYBM_API int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
 {
+    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
     BM_ASSERT_RETURN(num > 0U, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(layer > 0U, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(addrs != nullptr, BM_INVALID_PARAM);
@@ -270,25 +271,45 @@ HYBM_API int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *
     return 0;
 }
 
-int32_t hybm_host_mem_register(hybm_entity_t e, void *src, uint64_t size, void **dest)
+void *hybm_host_mem_malloc(uint64_t size, uint64_t flags)
 {
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(HybmHasInited(), nullptr);
+    BM_ASSERT_RETURN(size != 0, nullptr);
+    return (void *)hybm_gvm_user_alloc(size);
+}
+
+void hybm_host_mem_free(void *addr)
+{
+    BM_ASSERT_RET_VOID(HybmHasInited());
+    BM_ASSERT_RET_VOID(addr != nullptr);
+    return hybm_gvm_user_free((uint64_t)addr);
+}
+
+int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest)
+{
+    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
+    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(size != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
 
-    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-
-    return entity->HostMemRegister(src, size, *dest);
+    auto ret = DlHalApi::HalHostRegister((void *)src, size, HOST_MEM_MAP_DEV, HybmGetInitDeviceId(), (void **)dest);
+    if (ret != 0) {
+        BM_LOG_ERROR("register host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
 }
 
-int32_t hybm_host_mem_unregister(hybm_entity_t e, void *src)
+int32_t hybm_host_mem_unregister(uint64_t src)
 {
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
+    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
 
-    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    return entity->HostMemUnregister(src);
+    auto ret = DlHalApi::HalHostUnregisterEx((void *)src, HybmGetInitDeviceId(), HOST_MEM_MAP_DEV);
+    if (ret != 0) {
+        BM_LOG_ERROR("unregister host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
+
 }

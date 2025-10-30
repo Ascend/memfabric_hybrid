@@ -338,23 +338,6 @@ Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
     return hybm_register_user_mem(entity_, addr, size);
 }
 
-Result SmemBmEntry::RegisterHostMem(uint64_t addr, uint64_t size, uint64_t &dest)
-{
-    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    void *outputAddr = nullptr;
-    auto ret = hybm_host_mem_register(entity_, (void *)addr, size, &outputAddr);
-    SM_VALIDATE_RETURN(ret == 0, "register failed: " << ret, ret);
-
-    dest = (uint64_t)outputAddr;
-    return SM_OK;
-}
-
-Result SmemBmEntry::UnregisterHostMem(uint64_t addr)
-{
-    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    return hybm_host_mem_unregister(entity_, (void *)addr);
-}
-
 Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(params->sources != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);

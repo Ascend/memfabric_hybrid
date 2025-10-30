@@ -212,21 +212,23 @@ int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, ui
 
 /**
  * @brief This command is used to register host memory to device.
- * @param e                [in] entity created by hybm_create_entity
  * @param src              [in] requested the src share memory pointer, srcPtr must be page aligned.
  * @param size             [in] requested byte size.
  * @param dest             [out] Level-2 pointer that stores the address of the allocated dst memory pointer.
  * @return 0 if successful
  */
-int32_t hybm_host_mem_register(hybm_entity_t e, void *src, uint64_t size, void **dest);
+int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest);
 
 /**
  * @brief This command is used to unregister host memory to device.
- * @param e                [in] entity created by hybm_create_entity
  * @param src              [in] Requested the src share memory pointer.
  * @return 0 if successful
  */
-int32_t hybm_host_mem_unregister(hybm_entity_t e, void *src);
+int32_t hybm_host_mem_unregister(uint64_t src);
+
+void *hybm_host_mem_malloc(uint64_t size, uint64_t flags);
+void hybm_host_mem_free(void *addr);
+
 
 #ifdef __cplusplus
 }

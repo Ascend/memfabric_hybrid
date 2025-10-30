@@ -78,8 +78,6 @@ public:
     int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
     hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept override;
-    int32_t HostMemRegister(void *addr, uint64_t size, void *&dest) noexcept override;
-    int32_t HostMemUnregister(void *addr) noexcept override;
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;

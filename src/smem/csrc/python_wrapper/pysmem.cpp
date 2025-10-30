@@ -103,7 +103,7 @@ public:
     uint64_t RegisterHostMem(uint64_t addr, uint64_t size)
     {
         uint64_t target = 0;
-        auto ret = smem_bm_register_host_mem(handle_, addr, size, &target);
+        auto ret = smem_bm_register_host_mem(addr, size, &target);
         if (ret != 0) {
             throw std::runtime_error(std::string("register host memory failed: ").append(std::to_string(ret)));
         }
@@ -112,7 +112,7 @@ public:
 
     void UnregisterHostMem(uint64_t addr)
     {
-        auto ret = smem_bm_unregister_host_mem(handle_, addr);
+        auto ret = smem_bm_unregister_host_mem(addr);
         if (ret != 0) {
             throw std::runtime_error(std::string("unregister host memory failed: ").append(std::to_string(ret)));
         }

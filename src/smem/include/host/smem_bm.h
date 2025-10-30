@@ -167,21 +167,34 @@ int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes,
 
 /**
  * @brief This command is used to register host memory to device.
- * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
  * @param addr             [in] requested the src share memory pointer, srcPtr must be page aligned.
  * @param size             [in] requested byte size.
  * @param dest             [out] pointer that stores the address of the allocated dst memory pointer.
  * @return 0 if successful
  */
-int32_t smem_bm_register_host_mem(smem_bm_t handle, uint64_t addr, uint64_t size, uint64_t *dest);
+int32_t smem_bm_register_host_mem(uint64_t addr, uint64_t size, uint64_t *dest);
 
 /**
  * @brief This command is used to unregister host memory to device.
- * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
  * @param addr             [in] Requested the src share memory pointer.
  * @return 0 if successful
  */
-int32_t smem_bm_unregister_host_mem(smem_bm_t handle, uint64_t addr);
+int32_t smem_bm_unregister_host_mem(uint64_t addr);
+
+/**
+ * @brief alloc mem
+ * @param size              [in] alloc size
+ * @param memType           [in] mem type, only support SMEM_MEM_TYPE_HOST now
+ * @param flags             [in] optional flags
+ * @return addr if successful
+ */
+void *smem_bm_mem_malloc(uint64_t size, smem_bm_mem_type memType, uint64_t flags);
+
+/**
+ * @brief free mem
+ * @param addr             [in] address
+ */
+void smem_bm_mem_free(void *addr);
 
 #ifdef __cplusplus
 }
