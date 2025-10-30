@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
+#include <cstdint>
 
 #define PATH_MAX_LIMIT 4096L
 namespace ock {

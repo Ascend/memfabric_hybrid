@@ -641,7 +641,7 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         return BM_NOT_INITIALIZED;
     }
 
-    int32_t ret = BM_OK;
+    int32_t ret = BM_ERROR;
     if (stream == nullptr) {
         stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
@@ -938,16 +938,15 @@ Result MemEntityDefault::InitDataOperator()
         }
     }
 
-    if (options_.rankCount > 1) {
-        if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-            devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
-            auto ret = devRdmaDataOperator_->Initialize();
-            if (ret != BM_OK) {
-                BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
-                return ret;
-            }
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
+        auto ret = devRdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
+            return ret;
         }
     }
+
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
         hostRdmaDataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
         auto ret = hostRdmaDataOperator_->Initialize();
