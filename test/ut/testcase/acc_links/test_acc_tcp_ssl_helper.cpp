@@ -1,0 +1,1288 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ */
+#include <mockcpp/mokc.h>
+#include <mockcpp/mockcpp.hpp>
+#include <gtest/gtest.h>
+#include <cstring>
+#include <thread>
+#include <iostream>
+#include <cstdlib>
+#include <string>
+#include <unistd.h>
+#define protected public
+#define private public
+#include "mf_string_util.h"
+#include "acc_out_logger.h"
+#include "acc_def.h"
+#include "mf_file_util.h"
+#include "acc_common_util.h"
+#include "openssl_api_wrapper.h"
+#include "openssl_api_dl.cpp"
+#include "acc_tcp_worker.h"
+#include "acc_tcp_link_complex_default.h"
+#include "acc_tcp_ssl_helper.h"
+#include "acc_tcp_ssl_helper.cpp"
+#include "acc_tcp_server.h"
+#include "acc_tcp_server_default.h"
+
+#undef private
+#undef protected
+namespace {
+#define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
+using namespace ock::acc;
+const int BUFF_SIZE = 32;
+const int LISTEN_PORT = 8100;
+const int LINK_SEND_QUEUE_SIZE = 100;
+const int WORK_COUNT = 4;
+const int PATH_MAX_TEST = 248;
+const void *src = reinterpret_cast<void *>(0x000000000000ULL);
+const void *dst = reinterpret_cast<void *>(0x000000010000ULL);
+const uint64_t size = 1;
+const size_t MAX_SIZE = std::numeric_limits<size_t>::max() - 1;
+class TestAccTcpSslHelper : public testing::Test {
+public:
+    static void SetUpTestSuite();
+    static void TearDownTestSuite();
+
+public:
+    void SetUp() override;
+    void TearDown() override;
+};
+
+int decrypt_handler_for_test(const std::string &cipherText, char *plainText, size_t &plainTextLen)
+{
+    const char* decryptText = cipherText.c_str();   // pk pwd is empty, copy cipher directy
+    if (cipherText.length() >= plainTextLen) {
+        return ACC_ERROR;
+    }
+    std::copy_n(decryptText, cipherText.length(), plainText);
+    plainText[cipherText.length()] = '\0';
+    return ACC_OK;
+}
+
+void print_tls_option(AccTlsOption &tlsOption)
+{
+    std::cout << "enableTls:" << tlsOption.enableTls << std::endl;
+    std::cout << "tlsTopPath:" << tlsOption.tlsTopPath << std::endl;
+    std::cout << "tlsCert:" << tlsOption.tlsCert << std::endl;
+    std::cout << "tlsCrlPath:" << tlsOption.tlsCrlPath << std::endl;
+    std::cout << "tlsCaPath:" << tlsOption.tlsCaPath << std::endl;
+    if (!tlsOption.tlsCaFile.empty()) {
+        std::cout << "tlsCaFile:" << *tlsOption.tlsCaFile.begin() << std::endl;
+    }
+    if (!tlsOption.tlsCrlFile.empty()) {
+        std::cout << "tlsCrlFile:" << *tlsOption.tlsCrlFile.begin() << std::endl;
+    }
+    std::cout << "tlsPk:" << tlsOption.tlsPk << std::endl;
+    std::cout << "tlsPkPwd:" << tlsOption.tlsPkPwd << std::endl;
+}
+
+void TestAccTcpSslHelper::SetUpTestSuite() {}
+
+void TestAccTcpSslHelper::TearDownTestSuite()
+{
+    GlobalMockObject::verify();
+}
+
+void TestAccTcpSslHelper::SetUp() {}
+
+void TestAccTcpSslHelper::TearDown()
+{
+    GlobalMockObject::verify();
+}
+
+bool GetCertPath(std::string &execPath) noexcept
+{
+    std::string linkedPath = "/proc/" + std::to_string(getpid()) + "/exe";
+    std::string realPath;
+    realPath.resize(PATH_MAX_TEST);
+    auto size = readlink(linkedPath.c_str(), &realPath[0], realPath.size());
+    if (size < 0 || size >= PATH_MAX_TEST) {
+        std::cout << "get lib path failed : invalid size " << size << std::endl;
+        return false;
+    }
+
+    // (base)/build/bin/test_acc_links
+    realPath[size] = '\0';
+    std::string path{realPath};
+
+    std::string::size_type position = path.find_last_of('/');
+    if (position == std::string::npos) {
+        std::cout << "get lib path failed : invalid folder path." << std::endl;
+        return false;
+    }
+    // (base)/build/bin
+    path = path.substr(0, position);
+
+    position = path.find_last_of('/');
+    if (position == std::string::npos) {
+        std::cout << "get lib path failed : invalid folder path." << std::endl;
+        return false;
+    }
+    // (base)/build
+    path = path.substr(0, position);
+
+    position = path.find_last_of('/');
+    if (position == std::string::npos) {
+        std::cout << "get lib path failed : invalid folder path." << std::endl;
+        return false;
+    }
+    // (base)/
+    path = path.substr(0, position);
+    path.append("/test/ut/openssl_cert");
+
+    // (base)/test/ut/openssl_cert
+    execPath = path;
+    std::cout << "Get cert path " << path << std::endl;
+    return true;
+}
+
+// *********************************TEST_F*************************
+
+TEST_F(TestAccTcpSslHelper, start)
+{
+    std::string certPath;
+
+    GetCertPath(certPath);
+
+    AccTcpSslHelperPtr tmpHelperPtr = AccMakeRef<AccTcpSslHelper>();
+    ASSERT_TRUE(tmpHelperPtr != nullptr);
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    std::string errStr;
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsTopPath = certPath;
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCert = "/cert/cert.pem";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCaPath = "/CA/";
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCrlFile.insert("crl.pem");
+    ASSERT_FALSE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    tlsOption.tlsCrlPath = "/crl/";
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    print_tls_option(tlsOption);
+
+    const char *days = "9";
+    const char *checkPeriod = "24";
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    ASSERT_TRUE(result == ACC_OK);
+
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
+
+    std::string invalidIpv4 = "2666.6666.6666.6666";
+    bool ipCheck = AccCommonUtil::IsValidIPv4(invalidIpv4);
+    ASSERT_EQ(ipCheck, false);
+
+    tmpHelperPtr->Stop();
+}
+
+TEST_F(TestAccTcpSslHelper, load_crl)
+{
+    std::string certPath;
+    GetCertPath(certPath);
+
+    AccTcpSslHelperPtr tmpHelperPtr = AccMakeRef<AccTcpSslHelper>();
+    ASSERT_TRUE(tmpHelperPtr != nullptr);
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsCrlFile.insert("crl.pem");
+    tlsOption.tlsCrlPath = "/crl/";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
+    std::string errStr;
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    const char *days = "2";
+    const char *checkPeriod = "33";
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
+    ASSERT_TRUE(result == ACC_OK);
+
+    tmpHelperPtr->Stop();
+}
+
+TEST_F(TestAccTcpSslHelper, bad_PkPwd)
+{
+    std::string certPath;
+    GetCertPath(certPath);
+
+    AccTcpSslHelperPtr tmpHelperPtr = AccMakeRef<AccTcpSslHelper>();
+    ASSERT_TRUE(tmpHelperPtr != nullptr);
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
+    std::string errStr;
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    const char *days = "error_val";
+    const char *checkPeriod = "illegal_val";
+    ::setenv("ACCLINK_CERT_CHECK_AHEAD_DAYS", days, 1);
+    ::setenv("ACCLINK_CHECK_PERIOD_HOURS", checkPeriod, 1);
+    tmpHelperPtr->RegisterDecryptHandler(
+        [&](const std::string &cipherText, char *plainText, size_t &plainTextLen) -> int {
+            const char* decryptText = "Hello World";
+            size_t required_len = strlen(decryptText) + 1;
+            if (required_len < plainTextLen) {
+                return ACC_ERROR;
+            }
+            std::copy_n(decryptText, plainTextLen - 1, plainText);
+            plainText[plainTextLen - 1] = '\0';
+            return ACC_OK;
+        });
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    unsetenv("ACCLINK_CERT_CHECK_AHEAD_DAYS");
+    unsetenv("ACCLINK_CHECK_PERIOD_HOURS");
+
+    ASSERT_TRUE(result == ACC_ERROR);
+    tmpHelperPtr->EraseDecryptData();
+
+    tmpHelperPtr->Stop();
+}
+
+TEST_F(TestAccTcpSslHelper, difftime_less_than_zero)
+{
+    std::string certPath;
+    GetCertPath(certPath);
+
+    AccTcpSslHelperPtr tmpHelperPtr = AccMakeRef<AccTcpSslHelper>();
+    ASSERT_TRUE(tmpHelperPtr != nullptr);
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
+    std::string errStr;
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+    double diff = -100.0;
+    MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(diff));
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    ASSERT_TRUE(result == ACC_ERROR);
+
+    tmpHelperPtr->Stop();
+}
+
+TEST_F(TestAccTcpSslHelper, difftime_less_than_required)
+{
+    std::string certPath;
+    GetCertPath(certPath);
+
+    AccTcpSslHelperPtr tmpHelperPtr = AccMakeRef<AccTcpSslHelper>();
+    ASSERT_TRUE(tmpHelperPtr != nullptr);
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = true;
+    tlsOption.tlsTopPath = certPath;
+    tlsOption.tlsCert = "/cert/cert.pem";
+    tlsOption.tlsCaPath = "/CA/";
+    tlsOption.tlsCaFile.insert("ca_cert.pem");
+    tlsOption.tlsPk = "/cert/key.pem";
+    tlsOption.tlsPkPwd = "/key_pwd.txt";
+    print_tls_option(tlsOption);
+    std::string errStr;
+    ASSERT_TRUE(AccCommonUtil::CheckTlsOptions(tlsOption) == ACC_OK);
+
+    MOCKER_CPP(&difftime, double (*)(time_t, time_t)).expects(atLeast(1)).will(returnValue(1.0));
+    tmpHelperPtr->RegisterDecryptHandler(decrypt_handler_for_test);
+    auto result = tmpHelperPtr->Start(tmpSslCtx, tlsOption);
+    ASSERT_TRUE(result == ACC_OK);
+
+    tmpHelperPtr->Stop();
+}
+
+// **********************************************************
+enum OpCode : int32_t {
+    TTP_OP_HEARTBEAT_SEND = 0, // processor send heart beat to controller
+    TTP_OP_HEARTBEAT_REPLY,
+};
+
+static std::unordered_map<int32_t, AccTcpLinkComplexPtr> g_rankLinkMap;
+static void *g_cbCtx = nullptr;
+class TestAccTcpSslClient : public testing::Test {
+public:
+    static void SetUpTestSuite();
+    static void TearDownTestSuite();
+
+public:
+    void SetUp() override;
+    void TearDown() override;
+
+public:
+    int32_t HandleHeartBeat(const AccTcpRequestContext &context)
+    {
+        if (context.DataLen() != BUFF_SIZE) {
+            std::cout << "receive data len mis match" << std::endl;
+            return 1;
+        }
+        std::cout << "receive data len match" << std::endl;
+        AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(0);
+        if (buffer == nullptr || buffer->DataPtr() == nullptr) {
+            std::cout << "data buffer is nullptr" << std::endl;
+            return 1;
+        }
+        return context.Reply(0, buffer);
+    }
+
+    int32_t HbReplyCallBack(AccMsgSentResult result, const AccMsgHeader &header, const AccDataBufferPtr &cbCtx)
+    {
+        g_cbCtx = (cbCtx == nullptr) ? nullptr : cbCtx->DataPtrVoid();
+        if (result != MSG_SENT) {
+            return 1;
+        }
+        return 0;
+    }
+
+    int32_t BroadcastCallBack(AccMsgSentResult result, const AccMsgHeader &header, const AccDataBufferPtr &cbCtx)
+    {
+        g_cbCtx = (cbCtx == nullptr) ? nullptr : cbCtx->DataPtrVoid();
+        return 0;
+    }
+
+    int32_t HandleNewConnection(const AccConnReq &req, const AccTcpLinkComplexPtr &link)
+    {
+        auto it = g_rankLinkMap.find(req.rankId);
+        if (it != g_rankLinkMap.end()) {
+            return 1;
+        }
+        g_rankLinkMap[req.rankId] = link;
+        return 0;
+    }
+
+    int32_t HandleLinkBroken(const AccTcpLinkComplexPtr &link)
+    {
+        for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
+            if (it->second->Id() == link->Id()) {
+                g_rankLinkMap.erase(it->first);
+                break;
+            }
+        }
+        return 0;
+    }
+
+    void ClientHandleCtrlNotify(uint8_t *data, uint32_t len)
+    {
+        clientRecvLen = len;
+        isClientRecv.store(true);
+    }
+
+protected:
+    static AccTcpServerPtr mServer;
+    std::atomic<bool> isClientRecv{ false };
+    uint32_t clientRecvLen;
+};
+
+AccTcpServerPtr TestAccTcpSslClient::mServer = nullptr;
+
+void TestAccTcpSslClient::SetUpTestSuite()
+{
+    mServer = AccTcpServer::Create();
+    ASSERT_TRUE(mServer != nullptr);
+}
+
+void TestAccTcpSslClient::TearDownTestSuite()
+{
+    GlobalMockObject::verify();
+}
+
+void TestAccTcpSslClient::SetUp()
+{
+    // add server handler
+    auto hbMethod = [this](const AccTcpRequestContext &context) { return HandleHeartBeat(context); };
+    mServer->RegisterNewRequestHandler(TTP_OP_HEARTBEAT_SEND, hbMethod);
+
+    // add sent handler
+    auto hdSentMethod = [this](AccMsgSentResult result, const AccMsgHeader &header, const AccDataBufferPtr &cbCtx) {
+        return HbReplyCallBack(result, header, cbCtx);
+    };
+    mServer->RegisterRequestSentHandler(TTP_OP_HEARTBEAT_REPLY, hdSentMethod);
+
+    // add link handle
+    auto linkMethod = [this](const AccConnReq &req, const AccTcpLinkComplexPtr &link) {
+        return HandleNewConnection(req, link);
+    };
+    mServer->RegisterNewLinkHandler(linkMethod);
+
+    auto linkBrokenMethod = [this](const AccTcpLinkComplexPtr &link) { return HandleLinkBroken(link); };
+    mServer->RegisterLinkBrokenHandler(linkBrokenMethod);
+
+    AccTcpServerOptions opts;
+    opts.enableListener = true;
+    opts.linkSendQueueSize = LINK_SEND_QUEUE_SIZE;
+    opts.listenIp = "127.0.0.1";
+    opts.listenPort = LISTEN_PORT;
+    opts.reusePort = true;
+    opts.magic = 0;
+    opts.version = 1;
+    opts.workerCount = WORK_COUNT;
+
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+
+    std::string certPath;
+    GetCertPath(certPath);
+    AccTlsOption tlsOption;
+    tlsOption.enableTls = false;
+    (void)mServer->Start(opts, tlsOption);
+}
+
+void TestAccTcpSslClient::TearDown()
+{
+    mServer->Stop();
+    g_rankLinkMap.clear();
+    GlobalMockObject::verify();
+}
+
+// **********************************************************
+
+class TestOPENSSLAPIDL : public testing::Test {
+public:
+    static void SetUpTestSuite();
+    static void TearDownTestSuite();
+
+public:
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void TestOPENSSLAPIDL::SetUpTestSuite() {}
+
+void TestOPENSSLAPIDL::TearDownTestSuite()
+{
+    GlobalMockObject::verify();
+}
+
+void TestOPENSSLAPIDL::SetUp() {}
+
+void TestOPENSSLAPIDL::TearDown()
+{
+    GlobalMockObject::verify();
+}
+
+class N {
+public:
+    static const int n2 = 2;
+    static const int n3 = 3;
+    static const int n4 = 4;
+    static const int n5 = 5;
+    static const int n6 = 6;
+    static const int n7 = 7;
+    static const int n8 = 8;
+    static const int n9 = 9;
+    static const int n10 = 10;
+    static const int n11 = 11;
+    static const int n12 = 12;
+    static const int n13 = 13;
+    static const int n14 = 14;
+    static const int n15 = 15;
+    static const int n16 = 16;
+    static const int n17 = 17;
+    static const int n18 = 18;
+    static const int n19 = 19;
+    static const int n20 = 20;
+    static const int n21 = 21;
+    static const int n22 = 22;
+    static const int n23 = 23;
+    static const int n24 = 24;
+    static const int n25 = 25;
+    static const int n26 = 26;
+    static const int n27 = 27;
+    static const int n28 = 28;
+    static const int n29 = 29;
+    static const int n30 = 30;
+    static const int n31 = 31;
+    static const int n32 = 32;
+    static const int n33 = 33;
+    static const int n34 = 34;
+    static const int n35 = 35;
+    static const int n36 = 36;
+    static const int n37 = 37;
+};
+
+TEST_F(TestOPENSSLAPIDL, FakeSslLibPath)
+{
+    std::string fakePath = "./fakePath";
+    auto ret = OPENSSLAPIDL::GetLibPath(fakePath, fakePath, fakePath);
+    ASSERT_EQ(ret, -1);
+}
+
+TEST_F(TestOPENSSLAPIDL, LoadSSLSymbols_return_error)
+{
+    int branchTestRepeat = 37; // LoadSSLSymbols函数中语句行数
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+
+    std::string libDir = dynLibPath;
+    std::string libSslPath;
+    std::string libCryptoPath;
+    auto ret = OPENSSLAPIDL::GetLibPath(libDir, libSslPath, libCryptoPath);
+    ASSERT_EQ(ret, 0);
+    auto sslHandle = dlopen(libSslPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
+
+    void *nuPtr = nullptr;
+    auto mPtr = dlsym((sslHandle), ("OPENSSL_init_ssl"));
+    ASSERT_FALSE(mPtr == nullptr);
+
+    int i = 1;
+    MOCKER_CPP(&dlsym, void *(*)(void *, const char *))
+        .expects(atLeast(1))
+        .will(returnValue(nuPtr))
+        .then(returnValue(mPtr))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n2))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n3))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n4))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n5))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n6))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n7))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n8))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n9))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n10))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n11))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n12))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n13))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n14))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n15))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n16))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n17))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n18))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n19))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n20))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n21))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n22))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n23))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n24))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n25))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n26))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n27))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n28))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n29))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n30))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n31))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n32))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n33))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n34))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n35))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n36))
+        .then(returnValue(nuPtr));
+    for (int k = 0; k < branchTestRepeat; k++) {
+        ret = OPENSSLAPIDL::LoadSSLSymbols(sslHandle);
+        ASSERT_EQ(ret, -1);
+    }
+}
+
+
+TEST_F(TestOPENSSLAPIDL, LoadCryptoSymbols_return_error)
+{
+    int branchTestRepeat = 38; // LoadCryptoSymbols函数中语句行数
+    char buff[1024];
+    auto buffret = getcwd(buff, sizeof(buff));
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+
+    std::string libDir = dynLibPath;
+    std::string libSslPath;
+    std::string libCryptoPath;
+    auto ret = OPENSSLAPIDL::GetLibPath(libDir, libSslPath, libCryptoPath);
+    // CheckPermission : fail branch coverage
+    std::string errMsg;
+    bool permRet = FileValidator::CheckPermission(libSslPath, 0b000000000, false, errMsg);
+    ASSERT_EQ(permRet, false);
+    permRet = FileValidator::CheckPermission(libCryptoPath, 0b000000000, true, errMsg);
+    ASSERT_EQ(permRet, false);
+
+    auto cryptoHandle = dlopen(libCryptoPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
+
+    void *nuPtr = nullptr;
+    auto mPtr = dlsym((cryptoHandle), ("EVP_CIPHER_CTX_new"));
+
+    int i = 1;
+    MOCKER_CPP(&dlsym, void *(*)(void *, const char *))
+        .expects(atLeast(1))
+        .will(returnValue(nuPtr))
+        .then(returnValue(mPtr))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n2))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n3))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n4))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n5))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n6))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n7))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n8))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n9))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n10))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n11))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n12))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n13))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n14))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n15))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n16))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n17))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n18))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n19))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n20))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n21))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n22))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n23))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n24))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n25))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n26))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n27))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n28))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n29))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n30))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n31))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n32))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n33))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n34))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n35))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n36))
+        .then(returnValue(nuPtr))
+        .then(repeat(mPtr, N::n37))
+        .then(returnValue(nuPtr));
+    for (int k = 0; k < branchTestRepeat; k++) {
+        ret = OPENSSLAPIDL::LoadCryptoSymbols(cryptoHandle);
+        ASSERT_EQ(ret, -1);
+    }
+}
+
+class TestAccTcpLinks : public testing::Test {
+public:
+    static void SetUpTestSuite();
+    static void TearDownTestSuite();
+
+public:
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void TestAccTcpLinks::SetUpTestSuite() {}
+
+void TestAccTcpLinks::TearDownTestSuite()
+{
+    GlobalMockObject::verify();
+}
+
+void TestAccTcpLinks::SetUp() {}
+
+void TestAccTcpLinks::TearDown()
+{
+    GlobalMockObject::verify();
+}
+
+// ******************** TEST_F *************************
+
+TEST_F(TestAccTcpLinks, accTcpLinkDefault_coverAllofTheFunctions)
+{
+    AccTcpLinkDefault accLinkError1(-1, "0.0.0.0:8080", 0, nullptr);
+    int ret = accLinkError1.SetSendTimeout(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.SetReceiveTimeout(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.BlockSend(nullptr, 0);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.BlockRecv(nullptr, 0);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    ret = accLinkError1.PollingInput(10);
+    EXPECT_EQ(ret, ACC_CONNECTION_NOT_READY);
+    bool result = accLinkError1.IsConnected();
+    EXPECT_EQ(result, false);
+
+    AccTcpLinkDefault accLinkNoSsl(0, "0.0.0.0:8080", 0, nullptr);
+    ret = accLinkNoSsl.SetSendTimeout(10);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkNoSsl.SetReceiveTimeout(10);
+    EXPECT_EQ(ret, ACC_ERROR);
+
+    ret = accLinkNoSsl.BlockSend(nullptr, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    ret = accLinkNoSsl.BlockRecv(nullptr, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    
+    ret = accLinkNoSsl.BlockSend(dst, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+    ret = accLinkNoSsl.BlockRecv(dst, 0);
+    EXPECT_EQ(ret, ACC_INVALID_PARAM);
+
+    ret = accLinkNoSsl.BlockSend(dst, size);
+    EXPECT_EQ((ret < 0), true);
+    ret = accLinkNoSsl.BlockRecv(dst, size);
+    EXPECT_EQ((ret < 0), true);
+
+    ret = accLinkNoSsl.PollingInput(10);
+    result = accLinkNoSsl.IsConnected();
+    EXPECT_EQ(result, false);
+    
+    char buff[1024];
+    if (getcwd(buff, sizeof(buff)) != nullptr) {
+        std::cout << "Current directory: " << buff << std::endl;
+    } else {
+        perror("getcwd() error");
+    }
+    std::string dynLibPath = buff;
+    dynLibPath.append("/../3rdparty/openssl/lib/");
+    OpenSslApiWrapper::Load(dynLibPath);
+    auto tmpSslCtx = OpenSslApiWrapper::SslCtxNew(OpenSslApiWrapper::TlsMethod());
+    ASSERT_TRUE(tmpSslCtx != nullptr);
+    auto tmpSsl = OpenSslApiWrapper::SslNew(tmpSslCtx);
+    AccTcpLinkDefault accLinkWithSsl(0, "0.0.0.0:8080", 0, tmpSsl);
+    ret = accLinkWithSsl.BlockSend(dst, size);
+    EXPECT_EQ(ret, ACC_OK);
+    ret = accLinkWithSsl.BlockRecv(dst, size);
+    EXPECT_EQ(ret, ACC_OK);
+
+    AccDataBufferPtr data = AccMakeRef<ock::acc::AccDataBuffer>(src, 0);
+    ock::acc::AccMsgHeader msg;
+    ret = accLinkWithSsl.NonBlockSend(0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.NonBlockSend(0, 0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.NonBlockSend(0, 0, 0, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+    ret = accLinkWithSsl.EnqueueAndModifyEpoll(msg, data, data);
+    EXPECT_EQ(ret, ACC_ERROR);
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd != -1) {
+        AccTcpLinkDefault accLinkWithFd(sockfd, "0.0.0.0:8080", 0, tmpSsl);
+        ret = accLinkWithFd.PollingInput(10);
+        EXPECT_EQ(ret, ACC_OK);
+    }
+
+    accLinkWithSsl.Close();
+    OpenSslApiWrapper::SslCtxFree(tmpSslCtx);
+}
+
+TEST_F(TestAccTcpLinks, testForMsgNode)
+{
+    struct ock::acc::AccLinkedMessageNode node1;
+    bool result = node1.Sent();
+    EXPECT_EQ(result, false);
+    result = node1.HeaderAllSent(MAX_SIZE);
+    EXPECT_EQ(result, true);
+    result = node1.Sent();
+    EXPECT_EQ(result, true);
+
+    struct AccMsgHeader head;
+    AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(1);
+    buffer->SetDataSize(1);
+    struct ock::acc::AccLinkedMessageNode node2(head, buffer, buffer);
+    result = node2.HeaderAllSent(0);
+    EXPECT_EQ(result, false);
+    result = node2.Sent();
+    EXPECT_EQ(result, false);
+    result = node2.HeaderAllSent(MAX_SIZE);
+    EXPECT_EQ(result, true);
+    result = node2.Sent();
+    EXPECT_EQ(result, false);
+    result = node2.DataAllSent(0);
+    EXPECT_EQ(result, false);
+}
+}
+
+/* ===================================== AI Create UT =============================================== */
+
+/*** Test plaintext password branch (happy path) ***/
+TEST_F(TestAccTcpSslHelper, GetPkPass_Plaintext)
+{
+    AccTcpSslHelper helper;
+    helper.mDecryptHandler_ = nullptr;
+    helper.tlsPkPwd = "abcde";
+
+    AccResult result = helper.GetPkPass();
+
+    EXPECT_EQ(ACC_OK, result);
+    EXPECT_EQ(5, helper.mKeyPass.second);
+    EXPECT_STREQ("abcde", helper.mKeyPass.first);
+}
+
+/*** Test the error path when PemReadBioPk fails to parse the private key. edge case ***/
+TEST_F(TestAccTcpSslHelper, TestLoadPrivateKey_PemReadBioPkFails)
+{
+    AccTcpSslHelper helper;
+    helper.tlsPk = "test_key";
+
+    MOCKER(OpenSslApiWrapper::BioNewMemBuf)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(reinterpret_cast<BIO*>(0x1234)));
+
+    MOCKER(OpenSslApiWrapper::PemReadBioPk)
+        .stubs()
+        .with(any(), any(), any(), any())
+        .will(returnValue(static_cast<ock::acc::evp_pkey_st*>(nullptr)));
+
+    SSL_CTX* sslCtx = nullptr;
+    AccResult result = helper.LoadPrivateKey(sslCtx);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the happy path of ReadFile function, where the file is successfully opened and content is read ***/
+TEST_F(TestAccTcpSslHelper, ReadFile_HappyPath)
+{
+    std::string tempFile = "test_file.txt";
+    std::ofstream out(tempFile);
+    out << "Test content";
+    out.close();
+
+    std::string content;
+    AccTcpSslHelper helper;
+    AccResult result = helper.ReadFile(tempFile, content);
+
+    EXPECT_EQ(result, ACC_OK);
+    EXPECT_EQ(content, "Test content");
+    std::remove(tempFile.c_str());
+}
+
+/*** Test the failure path when SslNew fails to create the SSL object ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslNewFailure)
+{
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(static_cast<SSL*>(nullptr)));
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_MALLOC_FAIL);
+}
+
+/*** Test the error path when SslAccept fails to establish SSL connection in server mode ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslAcceptFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(1));
+    MOCKER(OpenSslApiWrapper::SslAccept)
+        .stubs()
+        .will(returnValue(-1));
+    MOCKER(OpenSslApiWrapper::SslGetError)
+        .stubs()
+        .will(returnValue(0));
+
+    bool isServer = true;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the error path when SslConnect fails to establish SSL connection in client mode ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslConnectFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(1));
+    MOCKER(OpenSslApiWrapper::SslConnect)
+        .stubs()
+        .will(returnValue(-1));
+    MOCKER(OpenSslApiWrapper::SslGetError)
+        .stubs()
+        .will(returnValue(0));
+
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the happy path of CaVerifyCallback when arg is a non-empty string with commas ***/
+TEST_F(TestAccTcpSslHelper, CaVerifyCallbackHappyPath)
+{
+    MOCKER(AccTcpSslHelper::ProcessCrlAndVerifyCert)
+        .stubs()
+        .will(returnValue(1));
+
+    X509_STORE_CTX* x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::string argStr = "path1,path2";
+    char* argStrCopy = new char[argStr.size() + 1];
+    std::copy(argStr.begin(), argStr.end(), argStrCopy);
+    argStrCopy[argStr.size()] = '\0';
+    void* arg = reinterpret_cast<void*>(argStrCopy);
+
+    int result = AccTcpSslHelper::CaVerifyCallback(x509ctx, arg);
+    EXPECT_EQ(result, 1);
+    delete[] argStrCopy;
+}
+
+/*** Test the error path when X509StoreCtxGet0Store returns null ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertX509StoreCtxGet0StoreNull)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue(static_cast<X509_STORE*>(nullptr)));
+
+    std::vector<std::string> paths = {"test_path"};
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, -1);
+}
+
+/*** edge case: certificate expired (current time after notAfter) ***/
+TEST_F(TestAccTcpSslHelper, CertVerify_CertificateExpired)
+{
+    MOCKER(OpenSslApiWrapper::X509GetNotAfter)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(-1));
+    X509* dummyCert = (X509*)0x1;
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(dummyCert);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test that HandleCertExpiredCheck returns ACC_ERROR when certificate path resolution fails (edge case) ***/
+TEST_F(TestAccTcpSslHelper, HandleCertExpiredCheck_CertPathRealpathFailed)
+{
+    ock::acc::AccTcpSslHelper helper;
+    helper.tlsTopPath = "/tmp";
+    helper.tlsCert = "cert.pem";
+
+    MOCKER(ock::mf::FileUtil::Realpath)
+        .stubs()
+        .with(eq(std::string("/tmp/cert.pem")))
+        .will(returnValue(false));
+
+    AccResult result = helper.HandleCertExpiredCheck();
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when BioNewMemBuf fails to create BIO for private key ***/
+TEST_F(TestAccTcpSslHelper, TestLoadPrivateKey_BioNewMemBufFails)
+{
+    AccTcpSslHelper helper;
+    helper.tlsPk = "test_key";
+
+    MOCKER(OpenSslApiWrapper::BioNewMemBuf)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(static_cast<BIO*>(nullptr)));
+
+    SSL_CTX* sslCtx = nullptr;
+    AccResult result = helper.LoadPrivateKey(sslCtx);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when SslSetFd fails to set the file descriptor ***/
+TEST_F(TestAccTcpSslHelper, TestNewSslLink_SslSetFdFailure)
+{
+    SSL* mockSsl = reinterpret_cast<SSL*>(0x1234);
+    MOCKER(OpenSslApiWrapper::SslNew)
+        .stubs()
+        .will(returnValue(mockSsl));
+    MOCKER(OpenSslApiWrapper::SslSetFd)
+        .stubs()
+        .will(returnValue(-1));
+
+    bool isServer = false;
+    int fd = 10;
+    SSL_CTX* ctx = nullptr;
+    SSL* ssl = nullptr;
+    AccResult result = AccTcpSslHelper::NewSslLink(isServer, fd, ctx, ssl);
+    EXPECT_EQ(result, ACC_ERROR);
+    EXPECT_EQ(ssl, nullptr);
+}
+
+/*** Test the happy path of ProcessCrlAndVerifyCert with one valid CRL and successful verification ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertHappyPath)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_STORE*)0x1234));
+
+    MOCKER(OpenSslApiWrapper::X509CrlGet0NextUpdate)
+        .stubs()
+        .with(any())
+        .will(returnValue((const ASN1_TIME*)0x5678));
+
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(1));
+
+    MOCKER(OpenSslApiWrapper::X509StoreAddCrl)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(1U));
+
+    MOCKER(OpenSslApiWrapper::X509VerifyCert)
+        .stubs()
+        .with(any())
+        .will(returnValue(1U));
+
+    MOCKER(LoadCertRevokeListFile)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_CRL*)0x9012));
+
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::vector<std::string> paths = {"test_path"};
+
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, 1);
+}
+
+/*** Test the error path when X509StoreAddCrl returns 0 (failure) ***/
+TEST_F(TestAccTcpSslHelper, ProcessCrlAndVerifyCertX509StoreAddCrlFailed)
+{
+    MOCKER(OpenSslApiWrapper::X509StoreCtxGet0Store)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_STORE*)0x1234));
+
+    MOCKER(LoadCertRevokeListFile)
+        .stubs()
+        .with(any())
+        .will(returnValue((X509_CRL*)0x9012));
+
+    MOCKER(OpenSslApiWrapper::X509CrlGet0NextUpdate)
+        .stubs()
+        .with(any())
+        .will(returnValue((const ASN1_TIME*)0x5678));
+
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(1));
+
+    MOCKER(OpenSslApiWrapper::X509StoreAddCrl)
+        .stubs()
+        .with(any(), any())
+        .will(returnValue(0U));
+
+    X509_STORE_CTX *x509ctx = reinterpret_cast<X509_STORE_CTX*>(0x1234);
+    std::vector<std::string> paths = {"test_path"};
+
+    int result = AccTcpSslHelper::ProcessCrlAndVerifyCert(paths, x509ctx);
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(TestAccTcpSslHelper, CertVerify_NullCert)
+{
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(nullptr);
+    EXPECT_EQ(result, ACC_ERROR);
+}
+
+/*** Test the error path when certificate key length is too short (edge case) ***/
+TEST_F(TestAccTcpSslHelper, CertVerify_KeyLengthTooShort)
+{
+    MOCKER(OpenSslApiWrapper::X509GetNotAfter)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509CmpCurrentTime)
+        .stubs()
+        .with(any())
+        .will(returnValue(0));
+    MOCKER(OpenSslApiWrapper::X509GetNotBefore)
+        .stubs()
+        .will(returnValue((ASN1_TIME*)0x1234));
+    MOCKER(OpenSslApiWrapper::X509GetPubkey)
+        .stubs()
+        .will(returnValue((EVP_PKEY*)0x1234));
+    MOCKER(OpenSslApiWrapper::EvpPkeyBits)
+        .stubs()
+        .will(returnValue(2048));
+    X509* dummyCert = (X509*)0x1;
+    AccTcpSslHelper helper;
+    AccResult result = helper.CertVerify(dummyCert);
+    EXPECT_EQ(result, ACC_ERROR);
+}

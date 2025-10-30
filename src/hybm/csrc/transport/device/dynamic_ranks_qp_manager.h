@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#ifndef MF_HYBRID_DYNAMIC_RANKS_QP_MANAGER_H
+#define MF_HYBRID_DYNAMIC_RANKS_QP_MANAGER_H
+#include <atomic>
+#include <thread>
+#include <list>
+#include <mutex>
+#include <condition_variable>
+#include <unordered_set>
+#include "dl_hccp_def.h"
+#include "device_qp_manager.h"
+#include "dynamic_ranks_qp_def.h"
+
+namespace ock {
+namespace mf {
+namespace transport {
+namespace device {
+
+class DynamicRanksQpManager : public DeviceQpManager {
+public:
+    DynamicRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, mf_sockaddr devNet,
+                          bool server) noexcept;
+    ~DynamicRanksQpManager() noexcept override;
+
+    int SetRemoteRankInfo(const std::unordered_map<uint32_t, ConnectRankInfo> &ranks) noexcept override;
+    int SetLocalMemories(const MemoryRegionMap &mrs) noexcept override;
+    int Startup(void *rdma) noexcept override;
+    void Shutdown() noexcept override;
+    void *GetQpHandleWithRankId(uint32_t rankId) const noexcept override;
+
+private:
+    void BackgroundProcess() noexcept;
+    int ProcessServerAddWhitelistTask() noexcept;
+    int ProcessClientConnectSocketTask() noexcept;
+    int ProcessQueryConnectionStateTask() noexcept;
+    int ProcessConnectQpTask() noexcept;
+    int ProcessQueryQpStateTask() noexcept;
+    void ProcessUpdateLocalMrTask() noexcept;
+    void ProcessUpdateRemoteMrTask() noexcept;
+    void CloseServices() noexcept;
+    int CreateConnectInfos(std::unordered_map<uint32_t, mf_sockaddr> &r, std::vector<HccpSocketConnectInfo> &c,
+        ClientConnectSocketTask &currTask);
+    void Parse2SocketInfo(std::unordered_map<net_addr_t, uint32_t> &ip2rank, std::vector<HccpSocketInfo> &socketInfos,
+        std::vector<IpType> &types);
+    int32_t GetSocketConn(std::vector<HccpSocketInfo> &socketInfos, QueryConnectionStateTask &currTask,
+        std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+        std::unordered_set<uint32_t> &connectedRanks, std::vector<IpType> &types);
+
+    std::vector<lite_mr_info> GenerateLocalLiteMrs() noexcept;
+    std::vector<lite_mr_info> GenerateRemoteLiteMrs(uint32_t rankId) noexcept;
+    void GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
+                                std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
+                                std::unordered_set<uint32_t> &addMrRanks) noexcept;
+    void GenTaskFromChangeRanks(const std::unordered_map<uint32_t, mf_sockaddr> &addedRanks,
+                                const std::unordered_set<uint32_t> &addMrRanks) noexcept;
+    static void SetQpHandleRegisterMr(void *qpHandle, const std::vector<lite_mr_info> &mrs, bool local) noexcept;
+    void InitializeWhiteList(std::vector<HccpSocketWhiteListInfo> &whitelist,
+                             std::unordered_map<uint32_t, net_addr_t> remotes) noexcept;
+    int BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos,
+        ClientConnectSocketTask &currTask, std::unordered_map<uint32_t, mf_sockaddr> &remotes) noexcept;
+    void ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
+                                      std::unordered_map<net_addr_t, uint32_t> &ip2rank,
+                                      std::vector<IpType> &types,
+                                      std::unordered_set<uint32_t> &connectedRanks,
+                                      uint32_t &successCount);
+
+private:
+    struct ConnectionChannel {
+        net_addr_t remoteIp;
+        void *socketHandle;
+        void *socketFd{nullptr};
+        void *qpHandle{nullptr};
+        bool qpConnectCalled{false};
+        int qpStatus{-1};
+
+        explicit ConnectionChannel(const net_addr_t ip) : ConnectionChannel{ip, nullptr} {}
+        ConnectionChannel(net_addr_t ip, void *sock) : remoteIp{ip}, socketHandle{sock} {}
+    };
+
+    void *rdmaHandle_{nullptr};
+    std::unordered_map<uint32_t, ConnectRankInfo> currentRanksInfo_;
+    MemoryRegionMap currentLocalMrs_;
+    std::atomic<bool> managerRunning_{false};
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    std::shared_ptr<std::thread> backGroundThread_;
+    ConnectionTasks connectionTasks_;
+    std::unordered_map<uint32_t, ConnectionChannel> connections_;
+    std::vector<ConnectionChannel *> connectionView_;
+};
+}
+}
+}
+}
+
+#endif  // MF_HYBRID_DYNAMIC_RANKS_QP_MANAGER_H

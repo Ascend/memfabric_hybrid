@@ -1,0 +1,93 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+#ifndef MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
+#define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
+
+#include <string>
+#include "mf_net.h"
+#include "smem_net_common.h"
+#include "smem_bm.h"
+#include "smem_bm_entry.h"
+#include "smem_config_store.h"
+
+namespace ock {
+namespace smem {
+
+class SmemBmEntryManager {
+public:
+    static SmemBmEntryManager &Instance();
+
+    SmemBmEntryManager() = default;
+    ~SmemBmEntryManager() = default;
+
+    SmemBmEntryManager(const SmemBmEntryManager &) = delete;
+    SmemBmEntryManager(SmemBmEntryManager &&) = delete;
+    SmemBmEntryManager& operator=(const SmemBmEntryManager&) = delete;
+    SmemBmEntryManager& operator=(SmemBmEntryManager&&) = delete;
+
+    Result Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
+                      const smem_bm_config_t &config);
+
+    Result CreateEntryById(uint32_t id, SmemBmEntryPtr &entry);
+    Result GetEntryByPtr(uintptr_t ptr, SmemBmEntryPtr &entry);
+    Result GetEntryById(uint32_t id, SmemBmEntryPtr &entry);
+    Result RemoveEntryByPtr(uintptr_t ptr);
+
+    void Destroy();
+
+    inline uint32_t GetRankId() const
+    {
+        return config_.rankId;
+    }
+
+    inline uint32_t GetWorldSize() const
+    {
+        return worldSize_;
+    }
+
+    inline uint16_t GetDeviceId() const
+    {
+        return deviceId_;
+    }
+
+    inline std::string GetHcomUrl() const
+    {
+        return config_.hcomUrl;
+    }
+
+private:
+    int32_t PrepareStore();
+    int32_t RacingForStoreServer();
+    int32_t AutoRanking();
+    int32_t ProcessRankTableByIPType(mf_ip_addr localAddress, uint64_t size,
+                                     std::string rankTableKey, std::string sortedRankTableKey,
+                                     std::vector<uint8_t> &rtv);
+    int32_t ProcessRankTableByIPTypeWhenIpv6(mf_ip_addr localAddress, uint64_t size,
+                                             std::string rankTableKey, std::string sortedRankTableKey,
+                                             std::vector<uint8_t> &rtv);
+
+private:
+    std::mutex entryMutex_;
+    std::map<uintptr_t, SmemBmEntryPtr> ptr2EntryMap_; /* lookup entry by ptr */
+    std::map<uint32_t, SmemBmEntryPtr> entryIdMap_;    /* deduplicate entry by id */
+    smem_bm_config_t config_{};
+    std::string storeURL_;
+    uint32_t worldSize_{0};
+    uint16_t deviceId_{0};
+    bool inited_ = false;
+    UrlExtraction storeUrlExtraction_;
+
+    StorePtr confStore_ = nullptr;
+};
+
+}  // namespace smem
+}  // namespace ock
+
+#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H

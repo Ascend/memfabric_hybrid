@@ -1,0 +1,182 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+# This file is a part of the CANN Open Software.
+# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+
+cmake_minimum_required(VERSION 3.12.0)
+project(MF_HYBRID VERSION 1.0)
+
+set(CMAKE_CXX_STANDARD 11)
+
+if (BUILD_COMPILER MATCHES gcc)
+    set(CMAKE_COMPILER gcc)
+else ()
+    set(CMAKE_COMPILER bisheng)
+endif()
+
+if (CMAKE_COMPILER MATCHES bisheng AND DEFINED ENV{ASCEND_HOME_PATH})
+    set(ASCEND_HOME_PATH $ENV{ASCEND_HOME_PATH})
+    set(CMAKE_C_COMPILER ${CMAKE_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_COMPILER})
+else ()
+    if (CMAKE_COMPILER MATCHES bisheng)
+        message(FATAL_ERROR "ASCEND_HOME_PATH not found! Please run set_env.sh first.")
+    endif()
+    set(CMAKE_C_COMPILER gcc)
+    set(CMAKE_CXX_COMPILER g++)
+endif ()
+
+option(ENABLE_TRACE_LOG "Enable trace log" OFF)
+option(ENABLE_ASAN "Enable ASAN" OFF)
+option(BUILD_TESTS "build test or not" OFF)
+option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
+option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
+option(BUILD_GIT_COMMIT "build library version with commit" ON)
+option(BUILD_PYTHON "build python file" ON)
+
+message(STATUS "BUILD_TESTS = ${BUILD_TESTS}")
+message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
+message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
+message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
+message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
+message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
+message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+
+#set(CMAKE_VERBOSE_MAKEFILE ON)
+
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RELEASE)
+endif ()
+
+add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
+add_compile_options(-fpermissive -Wno-error)
+add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra)
+
+if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
+    add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
+    add_compile_options(-fstack-protector-strong)
+    add_compile_options(-fPIE -fPIC -ftrapv)
+    add_compile_options(-D_FORTIFY_SOURCE=2 -O2)
+    add_link_options(-Wl,-z,noexecstack,-z,relro,-z,now)
+    add_link_options(-s)
+    set(CMAKE_SKIP_RPATH TRUE)
+    message(STATUS "build type set to RELEASE")
+else ()
+    add_compile_options(-g -rdynamic -fPIC)
+endif ()
+
+if (${CMAKE_BUILD_TYPE} MATCHES "ASAN")
+    # 开启多种 sanitizer   "address,undefined,pointer-compare,pointer-subtract,alignment"
+    set(SANITIZERS "address,undefined,pointer-compare,pointer-subtract,alignment")
+    # 编译选项
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${SANITIZERS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${SANITIZERS}")
+    # 链接选项
+    add_link_options(-fsanitize=${SANITIZERS})
+endif ()
+
+if (BUILD_TESTS STREQUAL "ON")
+    add_definitions(-DUT_ENABLED)
+    if (NOT CMAKE_COMPILER MATCHES bisheng)
+        add_compile_options(-fprofile-arcs -ftest-coverage)
+        add_link_options(-lgcov --coverage)
+    endif()
+    set(BUILD_OPEN_ABI "ON")
+endif ()
+
+if (NOT BUILD_OPEN_ABI STREQUAL "ON")
+    add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
+endif ()
+
+if (ENABLE_CPU_MONOTONIC STREQUAL "ON")
+    add_compile_options(-DENABLE_CPU_MONOTONIC)
+endif ()
+
+# set log commit into compile definition
+if (BUILD_GIT_COMMIT STREQUAL "ON")
+    find_program(GIT_EXECUTABLE NAMES git)
+    if (EXISTS ${GIT_EXECUTABLE})
+        # get commit id from file
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+            RESULT_VARIABLE GIT_COMMIT_RESULT
+            OUTPUT_VARIABLE GIT_LAST_COMMIT
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if (${GIT_COMMIT_RESULT} EQUAL 1)
+            set(GIT_LAST_COMMIT "empty")
+        endif ()
+        add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
+        message(STATUS "add definition for last commit: ${GIT_LAST_COMMIT}")
+    else ()
+        add_definitions(-DGIT_LAST_COMMIT=empty)
+        message(STATUS "Failed to find git command, not GIT_LAST_COMMIT will be set")
+    endif ()
+else ()
+    add_definitions(-DGIT_LAST_COMMIT=empty)
+    message(STATUS "add definition for last commit: empty")
+endif ()
+
+if (ENABLE_TRACE_L0G)
+    add_definitions(-DLOG_TRACE_INFO_ENABLED)
+endif ()
+
+set(BUILD_PATH ${PROJECT_BINARY_DIR}/)
+set(ENV{3RDPARTY_BIN_DIR} ${PROJECT_3RDPARTY_BIN_DIR})
+set(PROJECT_BUILD_PATH ${PROJECT_SOURCE_DIR}/build)
+set(PROJECT_3RDPARTY_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdparty)
+set(PROJECT_3RDPARTY_BIN_DIR ${PROJECT_SOURCE_DIR}/output/3rdparty)
+set(PROJECT_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/output)
+
+# set src base dir and output dir of smem
+set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
+set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
+
+# set src base dir and output dir of hybm
+set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
+set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
+
+# set src base dir and output dir of adapter
+set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
+set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mooncake_adapter)
+
+# set src base dir and output dir of acc_links
+set(PROJECT_ACCLINKS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/acc_links)
+set(PROJECT_ACCLINKS_OUTPUT ${PROJECT_SOURCE_DIR}/output/acc_links)
+
+set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/bin")
+message(STATUS "3rdparty src dir ${PROJECT_3RDPARTY_SRC_DIR}")
+message(STATUS "3rdparty bin dir ${PROJECT_3RDPARTY_BIN_DIR}")
+message(STATUS "target install dir ${TARGET_INSTALL_DIR}")
+
+# set install target top dir
+message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
+if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")
+    set(TARGET_INSTALL_DIR ${PROJECT_OUTPUT_PATH}/)
+elseif (NOT EXISTS ${CMAKE_INSTALL_PREFIX})
+    set(TARGET_INSTALL_DIR ${PROJECT_OUTPUT_PATH}/)
+else ()
+    set(TARGET_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/)
+endif ()
+message(STATUS "install dir ${TARGET_INSTALL_DIR}")
+
+include_directories(
+        ${PROJECT_SMEM_SRC_BASE}/include/host
+        ${PROJECT_SOURCE_DIR}/include/hybm
+        ${PROJECT_SOURCE_DIR}/src/utils
+)
+
+link_directories(
+    ${PROJECT_3RDPARTY_BIN_DIR}/openssl/lib/
+)
+
+add_subdirectory(src)
+
+if (BUILD_TESTS STREQUAL "ON")
+    set(CMAKE_CXX_STANDARD 14)
+    message(STATUS "BUILD_TESTS = ON, add compile gov")
+    link_directories(${CMAKE_BINARY_DIR}/output)
+    add_subdirectory(test)
+endif ()
