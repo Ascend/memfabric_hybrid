@@ -3,6 +3,7 @@
  */
 #include "mmc_bm_proxy.h"
 #include <algorithm>
+#include <numeric>
 #include "mmc_logger.h"
 #include "mmc_smem_bm_helper.h"
 #include "mmc_ptracer.h"
@@ -381,6 +382,64 @@ Result MmcBmProxy::BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& 
     }
     smem_batch_copy_params batch_params = {sources, destinations, dataSizes, count};
     return smem_bm_copy_batch(handle_, &batch_params, type, 0);
+}
+
+Result MmcBmProxy::BatchDataPut(std::vector<void *> &sources, std::vector<void *> &destinations,
+                                const std::vector<uint64_t> &sizes, MediaType localMedia)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (handle_ == nullptr) {
+        MMC_LOG_ERROR("Failed to put data to smem bm, handle is null");
+        return MMC_ERROR;
+    }
+    if (localMedia == MEDIA_NONE) {
+        MMC_LOG_ERROR("Failed to put data to smem bm, media:" << localMedia);
+        return MMC_ERROR;
+    }
+    if (sources.empty() || sources.size() != destinations.size() || sources.size() != sizes.size()) {
+        MMC_LOG_ERROR("Failed data copy, sources:" << sources.size() << ", destinations:" << destinations.size()
+                                                   << ", sizes:" << sizes.size());
+        return MMC_ERROR;
+    }
+    smem_bm_copy_type type = localMedia == MEDIA_DRAM ? SMEMB_COPY_H2G : SMEMB_COPY_L2G;
+    smem_batch_copy_params batch_params = {reinterpret_cast<void **>(sources.data()),
+                                           reinterpret_cast<void **>(destinations.data()), sizes.data(),
+                                           static_cast<uint32_t>(sources.size())};
+    uint64_t totalSize = std::accumulate(sizes.begin(), sizes.end(), 0ULL);
+    TP_TRACE_BEGIN(TP_MMC_LOCAL_BATCH_PUT);
+    auto ret = smem_bm_copy_batch(handle_, &batch_params, type, 0);
+    TP_TRACE_END(TP_MMC_LOCAL_BATCH_PUT, ret);
+    TP_TRACE_RECORD(TP_MMC_LOCAL_BATCH_PUT_SIZE, totalSize * 1000ULL, 0);
+    return ret;
+}
+
+Result MmcBmProxy::BatchDataGet(std::vector<void *> &sources, std::vector<void *> &destinations,
+                                const std::vector<uint64_t> &sizes, MediaType localMedia)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (handle_ == nullptr) {
+        MMC_LOG_ERROR("Failed to get data to smem bm, handle is null");
+        return MMC_ERROR;
+    }
+    if (localMedia == MEDIA_NONE) {
+        MMC_LOG_ERROR("Failed to get data to smem bm, media:" << localMedia);
+        return MMC_ERROR;
+    }
+    if (sources.empty() || sources.size() != destinations.size() || sources.size() != sizes.size()) {
+        MMC_LOG_ERROR("Failed data copy, sources:" << sources.size() << ", destinations:" << destinations.size()
+                                                   << ", sizes:" << sizes.size());
+        return MMC_ERROR;
+    }
+    smem_bm_copy_type type = localMedia == MEDIA_DRAM ? SMEMB_COPY_G2H : SMEMB_COPY_G2L;
+    smem_batch_copy_params batch_params = {reinterpret_cast<void **>(sources.data()),
+                                           reinterpret_cast<void **>(destinations.data()), sizes.data(),
+                                           static_cast<uint32_t>(sources.size())};
+    uint64_t totalSize = std::accumulate(sizes.begin(), sizes.end(), 0ULL);
+    TP_TRACE_BEGIN(TP_MMC_LOCAL_BATCH_GET);
+    auto ret = smem_bm_copy_batch(handle_, &batch_params, type, 0);
+    TP_TRACE_END(TP_MMC_LOCAL_BATCH_GET, ret);
+    TP_TRACE_RECORD(TP_MMC_LOCAL_BATCH_GET_SIZE, totalSize * 1000ULL, 0);
+    return ret;
 }
 
 Result MmcBmProxy::RegisterBuffer(uint64_t addr, uint64_t size)

@@ -81,6 +81,18 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
             BM_LOG_ERROR("Failed to reserver HBM memory space ret: " << ret);
             return ret;
         }
+        if (sdmaDataOperator_) {
+            sdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_DEVICE, (uint64_t)hbmGva_, options_.deviceVASpace,
+                                              options_.rankCount);
+        }
+        if (devRdmaDataOperator_) {
+            devRdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_DEVICE, (uint64_t)hbmGva_, options_.deviceVASpace,
+                                                 options_.rankCount);
+        }
+        if (hostRdmaDataOperator_) {
+            hostRdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_DEVICE, (uint64_t)hbmGva_, options_.deviceVASpace,
+                                                  options_.rankCount);
+        }
     }
 
     if (dramSegment_ != nullptr) {
@@ -89,6 +101,18 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
             UnReserveMemorySpace();
             BM_LOG_ERROR("Failed to reserver DRAM memory space ret: " << ret);
             return ret;
+        }
+        if (sdmaDataOperator_) {
+            sdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_HOST, (uint64_t)dramGva_, options_.hostVASpace,
+                                              options_.rankCount);
+        }
+        if (devRdmaDataOperator_) {
+            devRdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_HOST, (uint64_t)dramGva_, options_.hostVASpace,
+                                                 options_.rankCount);
+        }
+        if (hostRdmaDataOperator_) {
+            hostRdmaDataOperator_->UpdateGvaSpace(HYBM_MEM_TYPE_HOST, (uint64_t)dramGva_, options_.hostVASpace,
+                                                  options_.rankCount);
         }
     }
 

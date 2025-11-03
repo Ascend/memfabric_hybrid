@@ -468,79 +468,240 @@ int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const u
     return ret;
 }
 
-int HostDataOpRDMA::BatchCopyLD2GH(void **gvaAddrs, void **deviceAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, const ExtOptions &options) noexcept
+void HostDataOpRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      std::unordered_map<uint32_t, CopyDescriptor> &rmtRankMap,
+                                      std::unordered_map<uint32_t, CopyDescriptor> &localRankMap) noexcept
 {
-    if (options.destRankId == rankId_) {
-        return BatchCopyLD2LH(gvaAddrs, deviceAddrs, counts, batchSize, options);
+    for (size_t i = 0; i < batchSize; ++i) {
+        uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
+        if (gvaRankId == rankId_) {
+            auto iter = localRankMap.find(gvaRankId);
+            if (iter == localRankMap.end()) {
+                CopyDescriptor desc{};
+                desc.localAddrs.push_back(localAddrs[i]);
+                desc.globalAddrs.push_back(globalAddrs[i]);
+                desc.counts.push_back(counts[i]);
+                localRankMap.emplace(std::make_pair(gvaRankId, desc));
+            } else {
+                iter->second.localAddrs.push_back(localAddrs[i]);
+                iter->second.globalAddrs.push_back(globalAddrs[i]);
+                iter->second.counts.push_back(counts[i]);
+            }
+        } else {
+            auto iter = rmtRankMap.find(gvaRankId);
+            if (iter == rmtRankMap.end()) {
+                CopyDescriptor desc{};
+                desc.localAddrs.push_back(localAddrs[i]);
+                desc.globalAddrs.push_back(globalAddrs[i]);
+                desc.counts.push_back(counts[i]);
+                rmtRankMap.emplace(std::make_pair(gvaRankId, desc));
+            } else {
+                iter->second.localAddrs.push_back(localAddrs[i]);
+                iter->second.globalAddrs.push_back(globalAddrs[i]);
+                iter->second.counts.push_back(counts[i]);
+            }
+        }
     }
+}
+
+int HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor,
+                                    const ExtOptions &options) noexcept
+{
     auto ret = 0;
-    uint64_t totalSize = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        totalSize += counts[i];
-        BM_ASSERT_RETURN(totalSize <= RDMA_SWAP_SPACE_SIZE, BM_INVALID_PARAM);
-    }
-    auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(totalSize);
-    void *tmpHost = tmpRdmaMemory.Address();
-    if (tmpHost == nullptr) {
-        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
-        return BM_MALLOC_FAILED;
-    }
-    void *tmpRdmaAddrs[batchSize];
-    uint64_t offset = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        tmpRdmaAddrs[i] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
-        offset += counts[i];
-    }
-    ret = BatchCopyLD2LH(tmpRdmaAddrs, deviceAddrs, counts, batchSize, options);
-    if (ret != 0) {
-        BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
-        return ret;
-    }
-    ret = transportManager_->WriteRemote(options.destRankId, (uint64_t)tmpHost, (uint64_t)gvaAddrs[0], totalSize);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: " << ret << " localRankId:" << rankId_
-            << " remoteRankId:" << options.destRankId);
+    ExtOptions tmpOptions = options;
+    tmpOptions.destRankId = rmtRankId;
+    // 分批处理：每批最大不超过 RDMA_SWAP_SPACE_SIZE
+    size_t batchSize = rmtCopyDescriptor.counts.size();
+    uint64_t batchOffset = 0; // 当前处理的 rmtCopyDescriptor 索引
+    while (batchOffset < batchSize) {
+        // 计算当前批次能拷贝的最大数据量
+        uint64_t currentBatchDataSize = 0;
+        size_t batchEnd = batchOffset;
+        while (batchEnd < batchSize &&
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+            currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
+            ++batchEnd;
+        }
+
+        // 如果连一个都放不下，说明单个 count 太大
+        if (currentBatchDataSize == 0) {
+            BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
+                                                                      << RDMA_SWAP_SPACE_SIZE);
+            return BM_INVALID_PARAM;
+        }
+
+        // 分配当前批次的临时 HBM 内存
+        auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentBatchDataSize);
+        void *tmpHost = tmpRdmaMemory.Address();
+        if (tmpHost == nullptr) {
+            BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchDataSize);
+            return BM_MALLOC_FAILED;
+        }
+
+        // 先copy到tmp内存
+        size_t currentBatchSize = batchEnd - batchOffset;
+        void *tmpRdmaAddrs[currentBatchSize];
+        void *tmplocalAddrs[currentBatchSize];
+        uint64_t tmpCounts[currentBatchSize];
+        uint64_t offset = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            tmpRdmaAddrs[i - batchOffset] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
+            tmplocalAddrs[i - batchOffset] = rmtCopyDescriptor.localAddrs[i];
+            tmpCounts[i - batchOffset] = rmtCopyDescriptor.counts[i];
+            offset += rmtCopyDescriptor.counts[i];
+        }
+
+        ret = BatchCopyLD2LH((void **)tmpRdmaAddrs, (void **)tmplocalAddrs, tmpCounts, currentBatchSize, tmpOptions);
+        if (ret != 0) {
+            BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
+            return ret;
+        }
+
+        // 从tmp copy到目标位置
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto glabalAddr = rmtCopyDescriptor.globalAddrs[i];
+            auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
+            auto count = rmtCopyDescriptor.counts[i];
+            ret = transportManager_->WriteRemote(rmtRankId, (uint64_t)tmpAddr, (uint64_t)glabalAddr, count);
+            if (ret != BM_OK) {
+                BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: "
+                             << ret << " localRankId:" << rankId_ << " remoteRankId:" << rmtRankId);
+            }
+        }
+
+        // 下一次迭代
+        batchOffset = batchEnd;
     }
     return ret;
 }
 
-int HostDataOpRDMA::BatchCopyGH2LD(void **deviceAddrs, void **gvaAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, const ExtOptions &options) noexcept
+int HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor,
+                                   const ExtOptions &options) noexcept
 {
-    if (options.srcRankId == rankId_) {
-        return BatchCopyLH2LD(deviceAddrs, gvaAddrs, counts, batchSize, options);
-    }
     auto ret = 0;
-    uint64_t totalSize = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        totalSize += counts[i];
-        BM_ASSERT_RETURN(totalSize <= RDMA_SWAP_SPACE_SIZE, BM_INVALID_PARAM);
+    ExtOptions tmpOptions = options;
+    tmpOptions.srcRankId = rmtRankId;
+    // 分批处理：每批最大不超过 RDMA_SWAP_SPACE_SIZE
+    size_t batchSize = rmtCopyDescriptor.counts.size();
+    uint64_t batchOffset = 0; // 当前处理的 rmtCopyDescriptor 索引
+    while (batchOffset < batchSize) {
+        // 计算当前批次能拷贝的最大数据量
+        uint64_t currentBatchDataSize = 0;
+        size_t batchEnd = batchOffset;
+        while (batchEnd < batchSize &&
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+            currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
+            ++batchEnd;
+        }
+
+        // 如果连一个都放不下，说明单个 count 太大
+        if (currentBatchDataSize == 0) {
+            BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
+                                                                      << RDMA_SWAP_SPACE_SIZE);
+            return BM_INVALID_PARAM;
+        }
+
+        // 分配当前批次的临时 HBM 内存
+        auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentBatchDataSize);
+        void *tmpHost = tmpRdmaMemory.Address();
+        if (tmpHost == nullptr) {
+            BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchDataSize);
+            return BM_MALLOC_FAILED;
+        }
+
+        // 先copy到tmp内存
+        size_t currentBatchSize = batchEnd - batchOffset;
+        void *tmpRdmaAddrs[currentBatchSize];
+        void *tmplocalAddrs[currentBatchSize];
+        uint64_t tmpCounts[currentBatchSize];
+        uint64_t offset = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            tmpRdmaAddrs[i - batchOffset] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
+            tmplocalAddrs[i - batchOffset] = rmtCopyDescriptor.localAddrs[i];
+            tmpCounts[i - batchOffset] = rmtCopyDescriptor.counts[i];
+            offset += rmtCopyDescriptor.counts[i];
+        }
+
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto glabalAddr = rmtCopyDescriptor.globalAddrs[i];
+            auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
+            auto count = rmtCopyDescriptor.counts[i];
+            ret = transportManager_->ReadRemote(rmtRankId, (uint64_t)tmpAddr, (uint64_t)glabalAddr, count);
+            if (ret != BM_OK) {
+                BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: "
+                             << ret << " localRankId:" << rankId_ << " remoteRankId:" << rmtRankId);
+            }
+        }
+
+        // 从tmp copy到目标位置
+        ret = BatchCopyLH2LD((void **)tmplocalAddrs, (void **)tmpRdmaAddrs, tmpCounts, currentBatchSize, tmpOptions);
+        if (ret != 0) {
+            BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
+            return ret;
+        }
+
+        // 下一次迭代
+        batchOffset = batchEnd;
     }
-    auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(totalSize);
-    void *tmpHost = tmpRdmaMemory.Address();
-    if (tmpHost == nullptr) {
-        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
-        return BM_MALLOC_FAILED;
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyLD2GH(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   const ExtOptions &options) noexcept
+{
+    auto ret = 0;
+    ExtOptions tmpOptions = options;
+    std::unordered_map<uint32_t, CopyDescriptor> rmtRankMap{};
+    std::unordered_map<uint32_t, CopyDescriptor> localRankMap{};
+    ClassifyDataAddr(destinations, sources, counts, batchSize, rmtRankMap, localRankMap);
+
+    for (auto &it : localRankMap) {
+        tmpOptions.destRankId = it.first;
+        ret = BatchCopyLD2LH(it.second.globalAddrs.data(), it.second.localAddrs.data(), it.second.counts.data(),
+                             it.second.counts.size(), tmpOptions);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to write local device to local host ret: " << ret);
+            return ret;
+        }
     }
-    ret = transportManager_->ReadRemote(options.srcRankId, (uint64_t)tmpHost, (uint64_t)gvaAddrs[0], totalSize);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to read remote host to local host ret: " << ret);
-        return ret;
+
+    for (auto &it : rmtRankMap) {
+        ret = BatchWriteLD2RH(it.first, it.second, options);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to write local device to remote host ret: " << ret);
+            return ret;
+        }
     }
-    void *tmpRdmaAddrs[batchSize];
-    uint64_t offset = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        tmpRdmaAddrs[i] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
-        offset += counts[i];
+    return ret;
+}
+
+int HostDataOpRDMA::BatchCopyGH2LD(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   const ExtOptions &options) noexcept
+{
+    auto ret = 0;
+    ExtOptions tmpOptions = options;
+    std::unordered_map<uint32_t, CopyDescriptor> rmtRankMap{};
+    std::unordered_map<uint32_t, CopyDescriptor> localRankMap{};
+    ClassifyDataAddr(sources, destinations, counts, batchSize, rmtRankMap, localRankMap);
+
+    for (auto &it : localRankMap) {
+        tmpOptions.srcRankId = it.first;
+        ret = BatchCopyLH2LD(it.second.localAddrs.data(), it.second.globalAddrs.data(), it.second.counts.data(),
+                             it.second.counts.size(), tmpOptions);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to write local device to local host ret: " << ret);
+            return ret;
+        }
     }
-    ret = BatchCopyLH2LD(deviceAddrs, tmpRdmaAddrs, counts, batchSize, options);
-    if (ret != 0) {
-        BM_LOG_ERROR("Failed to read swap memory to local device: " << ret << " localRankId:" << rankId_
-                                                                    << " remoteRankId:" << options.destRankId);
-        return ret;
+
+    for (auto &it : rmtRankMap) {
+        ret = BatchReadRH2LD(it.first, it.second, options);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to write local device to remote host ret: " << ret);
+            return ret;
+        }
     }
-    return 0;
+    return ret;
 }
 
 int HostDataOpRDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts,

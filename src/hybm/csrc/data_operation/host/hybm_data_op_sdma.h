@@ -59,22 +59,36 @@ private:
     int CopyGD2LD2d(void* gvaAddr, const void* hostAddr, hybm_copy_2d_params &params, void* stream) noexcept;
     int CopyLD2GH2d(void* gvaAddr, const void* deviceAddr, hybm_copy_2d_params &params, void* stream) noexcept;
     int CopyGH2LD2d(void* deviceAddr, const void* gvaAddr, hybm_copy_2d_params &params, void* stream) noexcept;
-    int BatchCopyLH2GD(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyGD2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyLD2GH(void *gvaAddrs[], void *deviceAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyGH2LD(void *deviceAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyLD2GD(void *gvaAddrs[], void *deviceAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyGD2LD(void *deviceAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyLH2GH(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    int BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
+    int BatchCopyLH2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGD2LH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyLD2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGH2LD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyLD2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGD2LD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyLH2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGH2LH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGH2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGH2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGD2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+    int BatchCopyGD2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                       void *stream) noexcept;
+
+    int BatchWriteNotRegisterData(CopyDescriptor &notRegistered, void *stream, uint32_t direction) noexcept;
+    int BatchReadNotRegisterData(CopyDescriptor &notRegistered, void *stream, uint32_t direction) noexcept;
+
+    void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
+                          CopyDescriptor &registered, CopyDescriptor &notRegistered) noexcept;
 
 private:
     bool inited_ = false;

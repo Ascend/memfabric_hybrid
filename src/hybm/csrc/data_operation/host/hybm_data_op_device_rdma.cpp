@@ -585,88 +585,213 @@ int32_t DataOpDeviceRDMA::BatchCopyGD2LH(hybm_batch_copy_params &params, const E
     return BM_OK;
 }
 
+void DataOpDeviceRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts,
+                                        uint32_t batchSize, std::unordered_map<uint32_t, CopyDescriptor> &registered,
+                                        std::unordered_map<uint32_t, CopyDescriptor> &notRegistered) noexcept
+{
+    for (size_t i = 0; i < batchSize; ++i) {
+        uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
+        if (!hybm_gvm_mem_has_registered((uint64_t)localAddrs[i], counts[i]) || gvaRankId == rankId_) {
+            auto iter = notRegistered.find(gvaRankId);
+            if (iter == notRegistered.end()) {
+                CopyDescriptor desc{};
+                desc.localAddrs.push_back(localAddrs[i]);
+                desc.globalAddrs.push_back(globalAddrs[i]);
+                desc.counts.push_back(counts[i]);
+                notRegistered.emplace(std::make_pair(gvaRankId, desc));
+            } else {
+                iter->second.localAddrs.push_back(localAddrs[i]);
+                iter->second.globalAddrs.push_back(globalAddrs[i]);
+                iter->second.counts.push_back(counts[i]);
+            }
+        } else {
+            auto iter = registered.find(gvaRankId);
+            if (iter == registered.end()) {
+                CopyDescriptor desc{};
+                desc.localAddrs.push_back(localAddrs[i]);
+                desc.globalAddrs.push_back(globalAddrs[i]);
+                desc.counts.push_back(counts[i]);
+                registered.emplace(std::make_pair(gvaRankId, desc));
+            } else {
+                iter->second.localAddrs.push_back(localAddrs[i]);
+                iter->second.globalAddrs.push_back(globalAddrs[i]);
+                iter->second.counts.push_back(counts[i]);
+            }
+        }
+    }
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
+                                         hybm_data_copy_direction direction) noexcept
+{
+    auto ret = 0;
+    ExtOptions tmpOptions = options;
+    std::unordered_map<uint32_t, CopyDescriptor> registered{};
+    std::unordered_map<uint32_t, CopyDescriptor> notRegistered{};
+    ClassifyDataAddr(params.destinations, params.sources, params.dataSizes, params.batchSize, registered,
+                     notRegistered);
+
+    // 先写异步
+    for (auto &it : registered) {
+        hybm_batch_copy_params regParams = {it.second.localAddrs.data(), it.second.globalAddrs.data(),
+                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
+        tmpOptions.destRankId = it.first;
+
+        for (uint32_t i = 0; i < regParams.batchSize; ++i) {
+            ret = transportManager_->WriteRemoteAsync(tmpOptions.destRankId, (uint64_t)regParams.sources[i],
+                                                      (uint64_t)regParams.destinations[i], regParams.dataSizes[i]);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+        }
+    }
+    // 再写本地
+    for (auto &it : notRegistered) {
+        hybm_batch_copy_params notParams = {it.second.localAddrs.data(), it.second.globalAddrs.data(),
+                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
+        tmpOptions.destRankId = it.first;
+        ret = BatchDataCopyDefault(notParams, direction, tmpOptions);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "write default failed:", ret);
+    }
+    // 再等异步
+    for (auto &it : registered) {
+        TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT_W);
+        ret = transportManager_->Synchronize(it.first);
+        TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT_W, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to Synchronize", ret);
+    }
+    return BM_OK;
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
+                                        hybm_data_copy_direction direction) noexcept
+{
+    auto ret = 0;
+    ExtOptions tmpOptions = options;
+    std::unordered_map<uint32_t, CopyDescriptor> registered{};
+    std::unordered_map<uint32_t, CopyDescriptor> notRegistered{};
+    ClassifyDataAddr(params.sources, params.destinations, params.dataSizes, params.batchSize, registered,
+                     notRegistered);
+
+    // 先写异步
+    for (auto &it : registered) {
+        hybm_batch_copy_params regParams = {it.second.globalAddrs.data(), it.second.localAddrs.data(),
+                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
+        tmpOptions.srcRankId = it.first;
+        for (uint32_t i = 0; i < regParams.batchSize; ++i) {
+            ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)regParams.destinations[i],
+                                                     (uint64_t)regParams.sources[i], regParams.dataSizes[i]);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+        }
+    }
+    // 再写本地
+    for (auto &it : notRegistered) {
+        hybm_batch_copy_params notParams = {it.second.globalAddrs.data(), it.second.localAddrs.data(),
+                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
+        tmpOptions.srcRankId = it.first;
+        ret = BatchDataCopyDefault(notParams, direction, tmpOptions);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "write default failed:", ret);
+    }
+    // 再等异步
+    for (auto &it : registered) {
+        TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT_R);
+        ret = transportManager_->Synchronize(it.first);
+        TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT_R, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to Synchronize", ret);
+    }
+    return BM_OK;
+}
+
 int32_t DataOpDeviceRDMA::BatchCopyLD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
-    if (options.destRankId == rankId_ ||
-        !hybm_gvm_mem_has_registered((uint64_t)params.sources[0], params.dataSizes[0])) {
-        return BatchDataCopyDefault(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    }
-
-    auto ret = 0;
-    for (size_t i = 0; i < params.batchSize; ++i) {
-        ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)params.sources[i],
-                                                  (uint64_t)params.destinations[i], params.dataSizes[i]);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyLD2GD] Failed to write src to dest", ret);
-    }
-
-    TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT);
-    ret = transportManager_->Synchronize(options.destRankId);
-    TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT, ret);
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyLH2GD] Failed to Synchronize", ret);
-    return BM_OK;
+    return BatchCopyWrite(params, options, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE);
 }
 
 int32_t DataOpDeviceRDMA::BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
-    if (options.destRankId == rankId_ ||
-        !hybm_gvm_mem_has_registered((uint64_t)params.sources[0], params.dataSizes[0])) {
-        return BatchDataCopyDefault(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    }
-
-    auto ret = 0;
-    for (size_t i = 0; i < params.batchSize; ++i) {
-        ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)params.sources[i],
-                                                  (uint64_t)params.destinations[i], params.dataSizes[i]);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyLD2GH] Failed to write src to dest", ret);
-    }
-
-    TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT);
-    ret = transportManager_->Synchronize(options.destRankId);
-    TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT, ret);
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyLD2GH] Failed to Synchronize", ret);
-    return BM_OK;
+    return BatchCopyWrite(params, options, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST);
 }
 
 int32_t DataOpDeviceRDMA::BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
-    if (options.srcRankId == rankId_ ||
-        !hybm_gvm_mem_has_registered((uint64_t)params.destinations[0], params.dataSizes[0])) {
-        return BatchDataCopyDefault(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    }
-
-    auto ret = 0;
-    for (size_t i = 0; i < params.batchSize; ++i) {
-        ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)params.destinations[i],
-                                                 (uint64_t)params.sources[i], params.dataSizes[i]);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyGH2LD] Failed to write src to dest", ret);
-    }
-
-    TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT);
-    ret = transportManager_->Synchronize(options.srcRankId);
-    TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT, ret);
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyGH2LD] Failed to Synchronize", ret);
-    return BM_OK;
+    return BatchCopyRead(params, options, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE);
 }
 
 int32_t DataOpDeviceRDMA::BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
-    if (options.srcRankId == rankId_ ||
-        !hybm_gvm_mem_has_registered((uint64_t)params.destinations[0], params.dataSizes[0])) {
-        return BatchDataCopyDefault(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
-    }
+    return BatchCopyRead(params, options, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE);
+}
 
+int32_t DataOpDeviceRDMA::BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyWrite(params, options, HYBM_LOCAL_HOST_TO_GLOBAL_HOST);
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+                                       hybm_data_copy_direction direction) noexcept
+{
     auto ret = 0;
-    for (size_t i = 0; i < params.batchSize; ++i) {
-        ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)params.destinations[i],
-                                                 (uint64_t)params.sources[i], params.dataSizes[i]);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyGD2LD] Failed to write src to dest", ret);
-    }
+    auto batchSize = params.batchSize;
+    ExtOptions tmpOptions = options;
+    std::set<uint32_t> asyncWriteRanks{};
+    // 先写异步
+    for (uint32_t i = 0; i < batchSize; i++) {
+        uint32_t srcRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(params.sources[i]));
+        uint32_t dstRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(params.destinations[i]));
+        tmpOptions.srcRankId = srcRankId;
+        tmpOptions.destRankId = dstRankId;
 
-    TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT);
-    ret = transportManager_->Synchronize(options.srcRankId);
-    TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT, ret);
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[BatchCopyGD2LD] Failed to Synchronize", ret);
-    return BM_OK;
+        if (srcRankId == rankId_ && dstRankId == rankId_) {
+            hybm_copy_params pm = {params.sources[i], params.destinations[i], params.dataSizes[i]};
+            ret = DataCopy(pm, direction, tmpOptions);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "write default failed:", ret);
+        } else if (srcRankId == rankId_) {
+            ret = transportManager_->WriteRemoteAsync(tmpOptions.destRankId, (uint64_t)params.sources[i],
+                                                      (uint64_t)params.destinations[i], params.dataSizes[i]);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            asyncWriteRanks.insert(tmpOptions.destRankId);
+        } else if (dstRankId == rankId_) {
+            ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)params.destinations[i],
+                                                     (uint64_t)params.sources[i], params.dataSizes[i]);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            asyncWriteRanks.insert(tmpOptions.destRankId);
+        } else {
+            BM_LOG_ERROR("invalid param, local rank:" << rankId_ << ", srcId: " << srcRankId
+                                                      << ", dstId: " << dstRankId);
+            return BM_ERROR;
+        }
+    }
+    // 再等异步
+    for (auto &it : asyncWriteRanks) {
+        TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_WAIT_W);
+        ret = transportManager_->Synchronize(it);
+        TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT_W, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to Synchronize", ret);
+    }
+    return ret;
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyG2G(params, options, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST);
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyG2G(params, options, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE);
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyRead(params, options, HYBM_GLOBAL_HOST_TO_LOCAL_HOST);
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyG2G(params, options, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST);
+}
+
+int32_t DataOpDeviceRDMA::BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+{
+    return BatchCopyG2G(params, options, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE);
 }
 
 int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
@@ -674,44 +799,81 @@ int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
 {
     auto ret = 0;
     switch (direction) {
-        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
+        case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: { // 0
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LH_TO_GH);
+            ret = BatchCopyLH2GH(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_LH_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: { // 4
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GH_TO_GH);
+            ret = BatchCopyGH2GH(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_GH_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: { // 5
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GH_TO_GD);
+            ret = BatchCopyGH2GD(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_GH_TO_GD, ret);
+            break;
+        }
+        case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: { // 6
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GH_TO_LH);
+            ret = BatchCopyGH2LH(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_GH_TO_LH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: { // 8
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GD_TO_GH);
+            ret = BatchCopyGD2GH(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_GD_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: { // 9
+            TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GD_TO_GD);
+            ret = BatchCopyGD2GD(params, options);
+            TP_TRACE_END(TP_HYBM_RDMA_BATCH_GD_TO_GD, ret);
+            break;
+        }
+        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: { // 1
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LH_TO_GD);
             ret = BatchCopyLH2GD(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_LH_TO_GD, ret);
             break;
         }
-        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: {
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: { // 10
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GD_TO_LH);
             ret = BatchCopyGD2LH(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_GD_TO_LH, ret);
             break;
         }
-        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: { // 2
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LD_TO_GH);
             ret = BatchCopyLD2GH(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_LD_TO_GH, ret);
             break;
         }
-        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
+        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {  // 7
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GH_TO_LD);
             ret = BatchCopyGH2LD(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_GH_TO_LD, ret);
             break;
         }
-        case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: { // 3
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LD_TO_GD);
             ret = BatchCopyLD2GD(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_LD_TO_GD, ret);
             break;
         }
-        case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: { // 11
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GD_TO_LD);
             ret = BatchCopyGD2LD(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_GD_TO_LD, ret);
             break;
         }
         default: {
-            ret = BatchDataCopyDefault(params, direction, options);
+            ret = BM_ERROR;
+            BM_LOG_ERROR("unexcepted direction:" << direction);
             break;
         }
     }

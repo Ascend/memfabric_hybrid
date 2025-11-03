@@ -6,6 +6,7 @@
 
 #include <mutex>
 #include <map>
+#include <vector>
 #include "smem.h"
 #include "smem_bm.h"
 #include "mmc_def.h"
@@ -54,6 +55,10 @@ public:
     Result Get(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob);
     Result BatchPut(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob);
     Result BatchGet(const MmcBufferArray& bufArr, const MmcMemBlobDesc& blob);
+    Result BatchDataPut(std::vector<void *> &sources, std::vector<void *> &destinations,
+                        const std::vector<uint64_t> &sizes, MediaType localMedia);
+    Result BatchDataGet(std::vector<void *> &sources, std::vector<void *> &destinations,
+                        const std::vector<uint64_t> &sizes, MediaType localMedia);
     Result RegisterBuffer(uint64_t addr, uint64_t size);
     Result RegisterLayerBuffer(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num);
 

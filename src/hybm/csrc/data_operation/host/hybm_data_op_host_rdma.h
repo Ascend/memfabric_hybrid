@@ -4,6 +4,7 @@
 #ifndef MF_HYBRID_HYBM_DATA_OP_HOST_RDMA_H
 #define MF_HYBRID_HYBM_DATA_OP_HOST_RDMA_H
 
+#include <unordered_map>
 #include "hybm_data_operator.h"
 #include "hybm_mem_segment.h"
 #include "hybm_transport_manager.h"
@@ -57,6 +58,12 @@ private:
                        uint32_t batchSize, const ExtOptions &options) noexcept;
     int BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
                        uint32_t batchSize, const ExtOptions &options) noexcept;
+
+    void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
+                          std::unordered_map<uint32_t, CopyDescriptor> &rmtRankMap,
+                          std::unordered_map<uint32_t, CopyDescriptor> &localRankMap) noexcept;
+    int BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
+    int BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
 
 private:
     bool inited_{false};

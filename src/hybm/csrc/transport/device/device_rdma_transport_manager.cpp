@@ -380,7 +380,7 @@ Result RdmaTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_
         return ret;
     }
 
-    BM_LOG_INFO("ReadRemote() success. size=" << size);
+    BM_LOG_DEBUG("ReadRemote() success. size=" << size);
     return BM_OK;
 }
 
@@ -392,7 +392,7 @@ Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
         return ret;
     }
 
-    BM_LOG_INFO("WriteRemote() success. size=" << size);
+    BM_LOG_DEBUG("WriteRemote() success. size=" << size);
     return BM_OK;
 }
 
@@ -405,8 +405,7 @@ Result RdmaTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         BM_LOG_ERROR("ReadRemoteAsync() failed: " << ret);
         return ret;
     }
-
-    BM_LOG_INFO("ReadRemoteAsync() success. size=" << size);
+    BM_LOG_DEBUG("ReadRemoteAsync() success. size=" << size);
     return BM_OK;
 }
 
@@ -419,8 +418,7 @@ Result RdmaTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
         BM_LOG_ERROR("WriteRemoteAsync() failed: " << ret);
         return ret;
     }
-
-    BM_LOG_INFO("WriteRemoteAsync() success. size=" << size);
+    BM_LOG_DEBUG("WriteRemoteAsync() success. size=" << size);
     return BM_OK;
 }
 
@@ -738,6 +736,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     ReadGuard lockGuard(lock_);
     auto ret = GetRegAddress(registerMRS_, lAddr, size, true, wr.buf_list->addr, wr.buf_list->lkey);
     if (ret != BM_OK) {
+        BM_LOG_ERROR("lAddr not register: size: " << size);
         return ret;
     }
     auto &it = ranksMRs_[rankId];
@@ -747,6 +746,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     }
     ret = GetRegAddress(it, rAddr, size, false, wr.dst_addr, wr.rkey);
     if (ret != BM_OK) {
+        BM_LOG_ERROR("rAddr not register: size: " << size);
         return ret;
     }
 
@@ -854,7 +854,7 @@ uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
 
     const uint64_t dbAddr = RT_ASCEND910B1_ROCEE_BASE_ADDR + RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG +
                             chipOffset * static_cast<uint64_t>(chipId) + dieOffset * dieId + chipAddr;
-    BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId);
+    BM_LOG_DEBUG("deviceId=" << deviceId << ", die_id=" << dieId);
 
     return dbAddr;
 }

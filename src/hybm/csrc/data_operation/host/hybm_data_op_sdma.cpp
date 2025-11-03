@@ -711,24 +711,10 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
 
 int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexcept
 {
-    StreamTask task{};
-    InitG2GStreamTask(task);
-    rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    auto ret = CopyG2GAsync(destVA, srcVA, count);
+    BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
     BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
-    sqe->length = count;
-    sqe->src_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
-    sqe->src_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
-    sqe->dst_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
-    sqe->dst_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
-
-    auto ret = hybmStream->SubmitTasks(task);
-    BM_ASSERT_RETURN(ret == 0, BM_ERROR);
-
     ret = hybmStream->Synchronize();
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
@@ -912,55 +898,87 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 {
     auto ret = 0;
     switch (direction) {
-        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
-            ret = BatchCopyLH2GD(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+        case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: { // 4
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_GH);
+            ret =
+                BatchCopyGH2GH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_GH, ret);
             break;
         }
-        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: {
-            ret = BatchCopyGD2LH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+        case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: { // 5
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_GD);
+            ret =
+                BatchCopyGH2GD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_GD, ret);
             break;
         }
-        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: { // 8
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GD_TO_GH);
+            ret =
+                BatchCopyGD2GH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_GD_TO_GH, ret);
+            break;
+        }
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: { // 9
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GD_TO_GD);
+            ret =
+                BatchCopyGD2GD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_GD_TO_GD, ret);
+            break;
+        }
+        case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: { // 1
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LH_TO_GD);
+            ret =
+                BatchCopyLH2GD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_LH_TO_GD, ret);
+            break;
+        }
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: { // 10
+            TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GD_TO_LH);
+            ret =
+                BatchCopyGD2LH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
+            TP_TRACE_END(TP_HYBM_SDMA_BATCH_GD_TO_LH, ret);
+            break;
+        }
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: { // 2
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LD_TO_GH);
-            ret = BatchCopyLD2GH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyLD2GH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LD_TO_GH, ret);
             break;
         }
-        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
+        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: { // 7
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_LD);
-            ret = BatchCopyGH2LD(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyGH2LD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_LD, ret);
             break;
         }
-        case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
+        case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: { // 3
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LD_TO_GD);
-            ret = BatchCopyLD2GD(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyLD2GD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LD_TO_GD, ret);
             break;
         }
-        case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: { // 11
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GD_TO_LD);
-            ret = BatchCopyGD2LD(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyGD2LD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GD_TO_LD, ret);
             break;
         }
-        case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
+        case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: { // 0
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LH_TO_GH);
-            ret = BatchCopyLH2GH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyLH2GH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LH_TO_GH, ret);
             break;
         }
-        case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: {
+        case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: { // 6
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_LH);
-            ret = BatchCopyGH2LH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyGH2LH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_LH, ret);
             break;
         }
@@ -971,109 +989,240 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
     return ret;
 }
 
-int HostDataOpSDMA::BatchCopyLD2GH(void **gvaAddrs, void **deviceAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
+void HostDataOpSDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      CopyDescriptor &registered, CopyDescriptor &notRegistered) noexcept
 {
-    void *st = stream;
-    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
-        return BatchCopyG2G(gvaAddrs, deviceAddrs, counts, batchSize);
-    }
-    auto ret = 0;
-    uint64_t totalSize = 0;
     for (size_t i = 0; i < batchSize; ++i) {
-        totalSize += counts[i];
-        BM_ASSERT_RETURN(totalSize <= HBM_SWAP_SPACE_SIZE, BM_INVALID_PARAM);
-    }
-    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(totalSize);
-    void *tmpHbm = tmpSdmaMemory.Address();
-    if (tmpHbm == nullptr) {
-        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
-        return BM_MALLOC_FAILED;
-    }
-    uint64_t offset = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        auto srcAddr = deviceAddrs[i];
-        auto destAddr = (void *)((uint64_t) tmpHbm + offset);
-        auto count = counts[i];
-        offset += count;
-        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
-            return BM_DL_FUNCTION_FAILED;
+        if (hybm_gvm_mem_has_registered((uint64_t)localAddrs[i], counts[i])) {
+            registered.localAddrs.push_back(localAddrs[i]);
+            registered.globalAddrs.push_back(globalAddrs[i]);
+            registered.counts.push_back(counts[i]);
+        } else {
+            notRegistered.localAddrs.push_back(localAddrs[i]);
+            notRegistered.globalAddrs.push_back(globalAddrs[i]);
+            notRegistered.counts.push_back(counts[i]);
         }
     }
+}
 
-    ret  = DlAclApi::AclrtSynchronizeStream(st);
-    if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
-        return ret;
-    }
-    ret = CopyG2G(gvaAddrs[0], tmpHbm, totalSize);
-    if (ret != 0) {
-        BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" <<  gvaAddrs[0]
-                                          << " tmpHbm:" << tmpHbm << " length: " << totalSize);
+int HostDataOpSDMA::BatchWriteNotRegisterData(CopyDescriptor &notRegistered, void *stream, uint32_t direction) noexcept
+{
+    void *st = stream;
+    auto ret = 0;
+
+    // 分批处理：每批最大不超过 HBM_SWAP_SPACE_SIZE
+    size_t notBatchSize = notRegistered.counts.size();
+    uint64_t batchOffset = 0; // 当前处理的 notRegistered 索引
+    while (batchOffset < notBatchSize) {
+        // 计算当前批次能拷贝的最大数据量
+        uint64_t currentBatchSize = 0;
+        size_t batchEnd = batchOffset;
+        while (batchEnd < notBatchSize && currentBatchSize + notRegistered.counts[batchEnd] <= HBM_SWAP_SPACE_SIZE) {
+            currentBatchSize += notRegistered.counts[batchEnd];
+            ++batchEnd;
+        }
+
+        // 如果连一个都放不下，说明单个 count 太大
+        if (currentBatchSize == 0) {
+            BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << notRegistered.counts[batchOffset] << " > "
+                                                                      << HBM_SWAP_SPACE_SIZE);
+            return BM_INVALID_PARAM;
+        }
+
+        // 分配当前批次的临时 HBM 内存
+        auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(currentBatchSize);
+        void *tmpHbm = tmpSdmaMemory.Address();
+        if (tmpHbm == nullptr) {
+            BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchSize);
+            return BM_MALLOC_FAILED;
+        }
+
+        // 拷贝当前批次数据到tmp HBM
+        uint64_t offsetInBatch = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto localAddr = notRegistered.localAddrs[i];
+            auto tmpDevAddr = (void *)((uint64_t)tmpHbm + offsetInBatch);
+            auto count = notRegistered.counts[i];
+            if (direction == ACL_MEMCPY_DEVICE_TO_DEVICE || direction == ACL_MEMCPY_HOST_TO_DEVICE) {
+                ret = DlAclApi::AclrtMemcpyAsync(tmpDevAddr, count, localAddr, count, direction, st);
+            } else {
+                ret = BM_INVALID_PARAM;
+                BM_LOG_ERROR("unexcepted direct:" << direction);
+            }
+            if (ret != 0) {
+                BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st << " at index "
+                                                                           << i);
+                return BM_DL_FUNCTION_FAILED;
+            }
+            offsetInBatch += count;
+        }
+        ret = DlAclApi::AclrtSynchronizeStream(st);
+        if (ret != 0) {
+            BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+            return ret;
+        }
+
+        // tmp copy 到 gva
+        uint64_t buffCopyOffset = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto gva = notRegistered.globalAddrs[i];
+            auto tmpHbmAddr = (void *)(reinterpret_cast<uint64_t>(tmpHbm) + buffCopyOffset);
+            auto count = notRegistered.counts[i];
+            ret = CopyG2GAsync(gva, tmpHbmAddr, count);
+            if (ret != 0) {
+                BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" << gva << " tmpHbmOff:" << buffCopyOffset
+                                                  << " length: " << count);
+                return ret;
+            }
+            buffCopyOffset += count;
+        }
+
+        auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+        BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
+        ret = hybmStream->Synchronize();
+        BM_ASSERT_RETURN(ret == 0, BM_ERROR);
+
+        // 下一次迭代
+        batchOffset = batchEnd;
     }
     return ret;
 }
 
-int HostDataOpSDMA::BatchCopyGH2LD(void **deviceAddrs, void **gvaAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
+int HostDataOpSDMA::BatchReadNotRegisterData(CopyDescriptor &notRegistered, void *stream, uint32_t direction) noexcept
 {
     void *st = stream;
-    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
-        return BatchCopyG2G(deviceAddrs, gvaAddrs, counts, batchSize);
-    }
     auto ret = 0;
-    uint64_t totalSize = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        totalSize += counts[i];
-        BM_ASSERT_RETURN(totalSize <= HBM_SWAP_SPACE_SIZE, BM_INVALID_PARAM);
-    }
-    auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(totalSize);
-    void *tmpHbm = tmpSdmaMemory.Address();
-    if (tmpHbm == nullptr) {
-        BM_LOG_ERROR("Failed to malloc swap length: " << totalSize);
-        return BM_MALLOC_FAILED;
-    }
-    ret = CopyG2G(tmpHbm, gvaAddrs[0], totalSize);
-    if (ret != 0) {
-        BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" <<  gvaAddrs[0]
-            << " tmpHbm:" << tmpHbm << " length: " << totalSize);
-        return ret;
-    }
 
-    uint64_t offset = 0;
-    for (size_t i = 0; i < batchSize; ++i) {
-        auto destAddr = deviceAddrs[i];
-        auto srcAddr = (void *)((uint64_t) tmpHbm + offset);
-        auto count = counts[i];
-        offset += count;
-        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_DEVICE, st);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st);
-            return BM_DL_FUNCTION_FAILED;
+    // 分批处理：每批最大不超过 HBM_SWAP_SPACE_SIZE
+    size_t notBatchSize = notRegistered.counts.size();
+    uint64_t batchOffset = 0; // 当前处理的 notRegistered 索引
+    while (batchOffset < notBatchSize) {
+        // 计算当前批次能拷贝的最大数据量
+        uint64_t currentBatchSize = 0;
+        size_t batchEnd = batchOffset;
+        while (batchEnd < notBatchSize && currentBatchSize + notRegistered.counts[batchEnd] <= HBM_SWAP_SPACE_SIZE) {
+            currentBatchSize += notRegistered.counts[batchEnd];
+            ++batchEnd;
         }
-    }
 
-    ret  = DlAclApi::AclrtSynchronizeStream(st);
-    if (ret != 0) {
-        BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+        // 如果连一个都放不下，说明单个 count 太大
+        if (currentBatchSize == 0) {
+            BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << notRegistered.counts[batchOffset] << " > "
+                                                                      << HBM_SWAP_SPACE_SIZE);
+            return BM_INVALID_PARAM;
+        }
+
+        // 分配当前批次的临时 HBM 内存
+        auto tmpSdmaMemory = sdmaSwapMemoryAllocator_->Allocate(currentBatchSize);
+        void *tmpHbm = tmpSdmaMemory.Address();
+        if (tmpHbm == nullptr) {
+            BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchSize);
+            return BM_MALLOC_FAILED;
+        }
+
+        // 先copy到tmp内存
+        uint64_t buffCopyOffset = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto gva = notRegistered.globalAddrs[i];
+            auto tmpHbmAddr = (void *)(reinterpret_cast<uint64_t>(tmpHbm) + buffCopyOffset);
+            auto count = notRegistered.counts[i];
+            ret = CopyG2GAsync(tmpHbmAddr, gva, count);
+            if (ret != 0) {
+                BM_LOG_ERROR("Failed to g2g ret:" << ret << " src:" << gva << " tmpHbmOff:" << buffCopyOffset
+                                                  << " length: " << count);
+                return ret;
+            }
+            buffCopyOffset += count;
+        }
+
+        auto hybmStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
+        BM_ASSERT_RETURN(hybmStream != nullptr, BM_ERROR);
+        ret = hybmStream->Synchronize();
+        BM_ASSERT_RETURN(ret == 0, BM_ERROR);
+
+        // 从tmp copy到目标位置
+        uint64_t offsetInBatch = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            auto localAddr = notRegistered.localAddrs[i];
+            auto tmpDevAddr = (void *)((uint64_t)tmpHbm + offsetInBatch);
+            auto count = notRegistered.counts[i];
+            if (direction == ACL_MEMCPY_DEVICE_TO_DEVICE || direction == ACL_MEMCPY_DEVICE_TO_HOST) {
+                ret = DlAclApi::AclrtMemcpyAsync(localAddr, count, tmpDevAddr, count, direction, st);
+            } else {
+                ret = BM_INVALID_PARAM;
+                BM_LOG_ERROR("unexcepted direct:" << direction);
+            }
+            if (ret != 0) {
+                BM_LOG_ERROR("copy memory on local device to GVA failed: " << ret << " stream:" << st << " at index "
+                                                                           << i);
+                return BM_DL_FUNCTION_FAILED;
+            }
+            offsetInBatch += count;
+        }
+        ret = DlAclApi::AclrtSynchronizeStream(st);
+        if (ret != 0) {
+            BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << st);
+            return ret;
+        }
+
+        // 下一次迭代
+        batchOffset = batchEnd;
     }
     return ret;
 }
 
-int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, void **deviceAddrs, const uint64_t *counts,
+int HostDataOpSDMA::BatchCopyLD2GH(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    auto ret = 0;
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(destinations, sources, counts, batchSize, registered, notRegistered);
+
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.globalAddrs.data(), registered.localAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
+
+    return BatchWriteNotRegisterData(notRegistered, stream, ACL_MEMCPY_DEVICE_TO_DEVICE);
+}
+
+int HostDataOpSDMA::BatchCopyGH2LD(void **destinations, void **sources, const uint64_t *counts,
                                    uint32_t batchSize, void *stream) noexcept
 {
-    BM_LOG_DEBUG("[DEBUG]copy memory on local device to GVA count:" << counts[0] << " destAddr:" << deviceAddrs[0]);
-    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
-        return BatchCopyG2G(gvaAddrs, deviceAddrs, counts, batchSize);
-    }
     auto ret = 0;
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(sources, destinations, counts, batchSize, registered, notRegistered);
 
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = DlAclApi::AclrtMemcpyAsync(gvaAddrs[i], counts[i], deviceAddrs[i], counts[i],
-                                         ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.localAddrs.data(), registered.globalAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
+    return BatchReadNotRegisterData(notRegistered, stream, ACL_MEMCPY_DEVICE_TO_DEVICE);
+}
+
+int HostDataOpSDMA::BatchCopyLD2GD(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    auto ret = 0;
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(destinations, sources, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.globalAddrs.data(), registered.localAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
+
+    auto notRegisteredBatchSize = notRegistered.counts.size();
+    for (auto i = 0U; i < notRegisteredBatchSize; i++) {
+        auto gva = notRegistered.globalAddrs[i];
+        auto local = notRegistered.localAddrs[i];
+        auto count = notRegistered.counts[i];
+        ret = DlAclApi::AclrtMemcpyAsync(gva, count, local, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << stream);
             return BM_DL_FUNCTION_FAILED;
@@ -1088,17 +1237,25 @@ int HostDataOpSDMA::BatchCopyLD2GD(void **gvaAddrs, void **deviceAddrs, const ui
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, void **gvaAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
+int HostDataOpSDMA::BatchCopyGD2LD(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
 {
-    if (hybm_gvm_mem_has_registered((uint64_t)deviceAddrs[0], counts[0])) {
-        return BatchCopyG2G(deviceAddrs, gvaAddrs, counts, batchSize);
-    }
     auto ret = 0;
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(sources, destinations, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.localAddrs.data(), registered.globalAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
 
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = DlAclApi::AclrtMemcpyAsync(deviceAddrs[i], counts[i], gvaAddrs[i], counts[i],
-                                         ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+    auto notRegisteredBatchSize = notRegistered.counts.size();
+    for (auto i = 0U; i < notRegisteredBatchSize; i++) {
+        auto gva = notRegistered.globalAddrs[i];
+        auto local = notRegistered.localAddrs[i];
+        auto count = notRegistered.counts[i];
+        ret = DlAclApi::AclrtMemcpyAsync(local, count, gva, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on GVA to local device failed: " << ret << " stream:" << stream);
             return BM_DL_FUNCTION_FAILED;
@@ -1113,64 +1270,96 @@ int HostDataOpSDMA::BatchCopyGD2LD(void **deviceAddrs, void **gvaAddrs, const ui
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
-{
-    auto ret = 0;
-
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyLH2GH(gvaAddrs[i], hostAddrs[i], counts[i], stream);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on local host to GVA failed: " << ret);
-            return ret;
-        }
-    }
-    return BM_OK;
-}
-
-int HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
-{
-    auto ret = 0;
-
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyGH2LH(hostAddrs[i], gvaAddrs[i],  counts[i], stream);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on GVA to local host failed: " << ret);
-            return ret;
-        }
-    }
-    return BM_OK;
-}
-
-int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
+int HostDataOpSDMA::BatchCopyLH2GH(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
                                    void *stream) noexcept
 {
     auto ret = 0;
 
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyLH2GD(gvaAddrs[i], hostAddrs[i], counts[i], stream);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on local host to GVA failed: " << ret);
-            return ret;
-        }
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(destinations, sources, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.globalAddrs.data(), registered.localAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
     }
-    return BM_OK;
+
+    return BatchWriteNotRegisterData(notRegistered, stream, ACL_MEMCPY_HOST_TO_DEVICE);
 }
 
-int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
+int HostDataOpSDMA::BatchCopyGH2LH(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
                                    void *stream) noexcept
 {
     auto ret = 0;
 
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyGD2LH(hostAddrs[i], gvaAddrs[i], counts[i], stream);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy memory on GVA to local host failed: " << ret);
-            return ret;
-        }
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(sources, destinations, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.localAddrs.data(), registered.globalAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
     }
-    return BM_OK;
+
+    return BatchReadNotRegisterData(notRegistered, stream, ACL_MEMCPY_DEVICE_TO_HOST);
+}
+
+int HostDataOpSDMA::BatchCopyLH2GD(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    auto ret = 0;
+
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(destinations, sources, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.globalAddrs.data(), registered.localAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
+
+    return BatchWriteNotRegisterData(notRegistered, stream, ACL_MEMCPY_HOST_TO_DEVICE);
+}
+
+int HostDataOpSDMA::BatchCopyGD2LH(void **destinations, void **sources, const uint64_t *counts, uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    auto ret = 0;
+
+    CopyDescriptor registered{};
+    CopyDescriptor notRegistered{};
+    ClassifyDataAddr(sources, destinations, counts, batchSize, registered, notRegistered);
+    if (!registered.localAddrs.empty()) {
+        ret = BatchCopyG2G(registered.localAddrs.data(), registered.globalAddrs.data(), registered.counts.data(),
+                           registered.counts.size());
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "batch write g2g failed", ret);
+    }
+
+    return BatchReadNotRegisterData(notRegistered, stream, ACL_MEMCPY_DEVICE_TO_HOST);
+}
+
+int HostDataOpSDMA::BatchCopyGH2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    return BatchCopyG2G(destinations, sources, counts, batchSize);
+}
+
+int HostDataOpSDMA::BatchCopyGH2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    return BatchCopyG2G(destinations, sources, counts, batchSize);
+}
+
+int HostDataOpSDMA::BatchCopyGD2GH(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    return BatchCopyG2G(destinations, sources, counts, batchSize);
+}
+
+int HostDataOpSDMA::BatchCopyGD2GD(void *destinations[], void *sources[], const uint64_t counts[], uint32_t batchSize,
+                                   void *stream) noexcept
+{
+    return BatchCopyG2G(destinations, sources, counts, batchSize);
 }
 }
 }

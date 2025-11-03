@@ -6,6 +6,7 @@
 #define MF_HYBRID_HYBM_DATA_OP_DEVICE_RDMA_H
 
 #include <cstdint>
+#include <unordered_map>
 
 #include "hybm_data_operator.h"
 #include "hybm_transport_manager.h"
@@ -54,12 +55,28 @@ private:
     int32_t BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
     int32_t BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
     int32_t BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    int32_t BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
 
     int32_t BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept;
 
     int32_t AllocSwapMemory();
     void FreeSwapMemory();
+
+    void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
+                          std::unordered_map<uint32_t, CopyDescriptor> &registered,
+                          std::unordered_map<uint32_t, CopyDescriptor> &notRegistered) noexcept;
+    int32_t BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
+                           hybm_data_copy_direction direction) noexcept;
+    int32_t BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
+                          hybm_data_copy_direction direction) noexcept;
+    int32_t BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+                         hybm_data_copy_direction direction) noexcept;
 
 private:
     bool inited_{false};
