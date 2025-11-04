@@ -12,8 +12,8 @@ if __name__ == "__main__":
     
     key_num = 8
     block_num = 16
-    media = 0 # 0 cpu | 1 npu
-    start = 38
+    media = 1 # 0 cpu | 1 npu
+    start = 15
     end = start + 2
     
     for k in range(start, end):
@@ -34,5 +34,11 @@ if __name__ == "__main__":
         )
 
         print(f"{res1 == res2}")
+
+        keys1 = [f"key2_{i:03d}_{k}" for i in range(key_num)]
+        sizes1 = [1024] * key_num
+        res4 = client.batch_put_from(keys1, sizes1, media)
+        res5 = client.batch_get_into(keys1, sizes1, media)
+        print(f"{res4 == res5}")
 
 

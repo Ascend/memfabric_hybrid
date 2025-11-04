@@ -17,7 +17,8 @@ constexpr uint32_t MMC_REGISTER_SET_LEFT_MARK = 1U;
 constexpr int32_t MMC_BATCH_TRANSPORT = 1U;
 constexpr int32_t MMC_ASYNC_TRANSPORT = 2U;
 constexpr uint32_t KEY_MAX_LENTH = 256U;
-constexpr uint32_t MMC_IO_POOL_NUM = 16;
+constexpr uint32_t MMC_IO_POOL_NUM = 64;
+constexpr uint32_t MMC_EACH_BATCH_SIZE = 61;
 
 MmcClientDefault* MmcClientDefault::gClientHandler = nullptr;
 std::mutex MmcClientDefault::gClientHandlerMtx;
@@ -432,14 +433,34 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
 
     std::vector<std::pair<uint32_t, std::future<int32_t>>> futures;
     for (auto &it : srcMap) {
-        auto future = ioThreadPool_->Enqueue(
-            [&](std::vector<void *> &sourcesL, std::vector<void *> &destinationsL, const std::vector<uint64_t> &sizesL,
-                MediaType localMediaL) -> int32_t {
-                return bmProxy_->BatchDataGet(sourcesL, destinationsL, sizesL, localMediaL);
-            },
-            it.second, dstMap.at(it.first), sizesMap.at(it.first), mediaType);
-        if (future.valid()) {
-            futures.push_back(std::make_pair(it.first, std::move(future)));
+        std::vector<void *> &tmpSrc = srcMap.at(it.first);
+        std::vector<void *> &tmpDst = dstMap.at(it.first);
+        std::vector<uint64_t> &tmpSize = sizesMap.at(it.first);
+        size_t tmpSizeNum = tmpSize.size();
+        size_t eachCount = MMC_EACH_BATCH_SIZE;
+        bool success = true;
+        for (size_t i = 0; i < tmpSizeNum; i += eachCount) {
+            size_t currentBatchSize = std::min(eachCount, tmpSizeNum - i);
+            std::vector<void *> partSrc(tmpSrc.begin() + i, tmpSrc.begin() + i + currentBatchSize);
+            std::vector<void *> partDst(tmpDst.begin() + i, tmpDst.begin() + i + currentBatchSize);
+            std::vector<uint64_t> partSize(tmpSize.begin() + i, tmpSize.begin() + i + currentBatchSize);
+
+            auto future = ioThreadPool_->Enqueue(
+                [&](std::vector<void *> sourcesL, std::vector<void *> destinationsL, const std::vector<uint64_t> sizesL,
+                    MediaType localMediaL) -> int32_t {
+                    return bmProxy_->BatchDataGet(sourcesL, destinationsL, sizesL, localMediaL);
+                },
+                partSrc, partDst, partSize, mediaType);
+            if (future.valid()) {
+                futures.push_back(std::make_pair(it.first, std::move(future)));
+            } else {
+                success = false;
+                MMC_LOG_ERROR("add thread pool queue failed");
+                break;
+            }
+        }
+
+        if (success) {
             continue;
         }
         // 提交失败，直接执行
@@ -454,7 +475,9 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
     }
 
     for (auto &future : futures) {
+        TP_TRACE_BEGIN(TP_MMC_LOCAL_GET_WAIT_FUTURE);
         auto res = future.second.get();
+        TP_TRACE_END(TP_MMC_LOCAL_GET_WAIT_FUTURE, res);
         if (res != 0) {
             MMC_LOG_ERROR("batch rank " << future.first << " failed, error code " << res);
             for (auto idx : indexs) {
@@ -734,14 +757,35 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
 
     std::vector<std::pair<uint32_t, std::future<int32_t>>> futures;
     for (auto &it : srcMap) {
-        auto future = ioThreadPool_->Enqueue(
-            [&](std::vector<void *> &sourcesL, std::vector<void *> &destinationsL, const std::vector<uint64_t> &sizesL,
-                MediaType localMediaL) -> int32_t {
-                return bmProxy_->BatchDataPut(sourcesL, destinationsL, sizesL, localMediaL);
-            },
-            it.second, dstMap.at(it.first), sizesMap.at(it.first), mediaType);
-        if (future.valid()) {
-            futures.push_back(std::make_pair(it.first, std::move(future)));
+        std::vector<void *> &tmpSrc = srcMap.at(it.first);
+        std::vector<void *> &tmpDst = dstMap.at(it.first);
+        std::vector<uint64_t> &tmpSize = sizesMap.at(it.first);
+        size_t tmpSizeNum = tmpSize.size();
+        size_t eachCount = MMC_EACH_BATCH_SIZE;
+        bool success = true;
+        for (size_t i = 0; i < tmpSizeNum; i += eachCount) {
+            size_t currentBatchSize = std::min(eachCount, tmpSizeNum - i);
+
+            std::vector<void *> partSrc(tmpSrc.begin() + i, tmpSrc.begin() + i + currentBatchSize);
+            std::vector<void *> partDst(tmpDst.begin() + i, tmpDst.begin() + i + currentBatchSize);
+            std::vector<uint64_t> partSize(tmpSize.begin() + i, tmpSize.begin() + i + currentBatchSize);
+
+            auto future = ioThreadPool_->Enqueue(
+                [&](std::vector<void *> sourcesL, std::vector<void *> destinationsL, const std::vector<uint64_t> sizesL,
+                    MediaType localMediaL) -> int32_t {
+                    return bmProxy_->BatchDataPut(sourcesL, destinationsL, sizesL, localMediaL);
+                },
+                partSrc, partDst, partSize, mediaType);
+            if (future.valid()) {
+                futures.push_back(std::make_pair(it.first, std::move(future)));
+            } else {
+                success = false;
+                MMC_LOG_ERROR("add thread pool queue failed");
+                break;
+            }
+        }
+
+        if (success) {
             continue;
         }
         // 提交失败，直接执行
@@ -756,7 +800,9 @@ Result MmcClientDefault::AllocateAndPutBlobs(const std::vector<std::string>& key
     }
 
     for (auto &future : futures) {
+        TP_TRACE_BEGIN(TP_MMC_LOCAL_PUT_WAIT_FUTURE);
         auto res = future.second.get();
+        TP_TRACE_END(TP_MMC_LOCAL_PUT_WAIT_FUTURE, res);
         if (res != 0) {
             MMC_LOG_ERROR("batch rank " << future.first << " failed, error code " << res);
             for (auto idx : indexs) {

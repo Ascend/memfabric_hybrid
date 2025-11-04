@@ -201,7 +201,7 @@ void PrintSqe(const rtStarsSqe_t *sqe)
     for (size_t i = 0UL; i < (sizeof(rtStarsSqe_t) / sizeof(uint32_t)); i++) {
         info << " " << std::setw(HYBM_SQE_PRINT_WIDTH) << std::setfill('0') << std::hex << cmd[i];
     }
-    BM_LOG_DEBUG("SQE:" << info.str());
+    BM_LOG_INFO("SQE:" << info.str());
 }
 
 int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
@@ -226,8 +226,6 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
     info.sqe_num = 1U;
     info.tsId = tsId_;
     info.sqId = sqId_;
-
-    PrintSqe(&taskList_[taskId].sqe);
 
     ret = DlHalApi::HalSqTaskSend(deviceId_, &info);
     if (ret != 0) {
@@ -338,6 +336,7 @@ int32_t HybmStream::ReceiveCqe(uint32_t &lastTask)
                              << " cqeErrorCode:" << reportInfo[idx].errorCode << "(" << GetCqeErrorStr(reportInfo[idx])
                              << ") cqeErrorType:" << static_cast<uint32_t>(reportInfo[idx].errorType));
                 retFlag = BM_ERROR;
+                PrintSqe(&taskList_[reportInfo[idx].taskId].sqe);
             }
         }
 

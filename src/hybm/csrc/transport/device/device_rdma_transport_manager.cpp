@@ -597,10 +597,13 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
 
 int RdmaTransportManager::PrepareThreadLocalStream()
 {
+    lock_.LockRead();
     if (stream_ != nullptr) {
+        lock_.UnLock();
         return BM_OK;
     }
-
+    lock_.UnLock();
+    WriteGuard lockGuard(lock_);
     stream_ = HybmStreamManager::GetThreadHybmStream(deviceId_, 0, 0);
     if (stream_ == nullptr) {
         BM_LOG_ERROR("HybmStream init failed");

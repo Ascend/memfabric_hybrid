@@ -238,6 +238,8 @@ int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size, uint64_t new_addr)
         BM_USER_LOG_INFO("insert register set failed, size:" << size);
         return HYBM_GVM_FAILURE;
     } else {
+        BM_USER_LOG_INFO("insert register addr " << std::hex << addr << " size:" << size
+                                                 << " new:" << std::hex << new_addr);
         return HYBM_GVM_SUCCESS;
     }
 }
