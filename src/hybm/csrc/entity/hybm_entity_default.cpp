@@ -1039,18 +1039,13 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
         return BM_OK;
     }
 
-    if (transportManager_ == nullptr) {
-        BM_LOG_WARN("transport Manager is not initialized, skip register memory.");
-        return BM_OK;
-    }
-
     // only register hbm
     if (!(addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR)) {
         BM_LOG_ERROR("input addr is not hbm! addr:" << std::hex << addr);
         return BM_ERROR;
     }
 
-    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) && transportManager_ != nullptr) {
         transport::TransportMemoryRegion info;
         info.size = size;
         info.addr = addr;
