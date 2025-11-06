@@ -17,4 +17,3 @@ for lib_source in lib_list:
     ctypes.CDLL(os.path.join(lib_dir, lib_source))
 
 from _pymmc import DistributedObjectStore, ReplicateConfig, KeyInfo, MetaService
-from .meta_service_leader_election import MetaServiceLeaderElection

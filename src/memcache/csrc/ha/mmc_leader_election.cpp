@@ -8,7 +8,7 @@
 
 namespace ock {
 namespace mmc {
-std::string g_defaultMemCacheWhlName = "memcache";
+std::string g_leaderElectionModule = "memcache.meta_service_leader_election";
 constexpr uint32_t LEASE_RETRY_PERIOD = 3;
 
 MmcMetaServiceLeaderElection::MmcMetaServiceLeaderElection(
@@ -31,7 +31,7 @@ Result MmcMetaServiceLeaderElection::Start(const mmc_meta_service_config_t &opti
 
         pybind11::gil_scoped_acquire acquire;
 
-        pybind11::module modelModule = pybind11::module_::import(g_defaultMemCacheWhlName.c_str());
+        pybind11::module modelModule = pybind11::module_::import(g_leaderElectionModule.c_str());
         MMC_FALSE_ERROR(pybind11::hasattr(modelModule, "MetaServiceLeaderElection"),
                         "The class named MetaServiceLeaderElection was not found.");
 
