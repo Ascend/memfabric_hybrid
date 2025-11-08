@@ -8,8 +8,9 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
+#include "smem_bm_def.h"
 #include "smem_config_store.h"
-#include "mf_tls_def.h"
 
 namespace ock {
 namespace smem {
@@ -52,12 +53,12 @@ public:
 
     static int GetFailedReason() noexcept;
 
-    static void SetTlsInfo(const tls_config& tlsOption) noexcept;
+    static void SetTlsInfo(const smem_tls_config& tlsOption) noexcept;
 
 private:
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
-    static tls_config tlsOption_;
+    static smem_tls_config tlsOption_;
 };
 } // namespace smem
 } // namespace ock

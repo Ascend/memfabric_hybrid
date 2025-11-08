@@ -30,8 +30,8 @@ Result MmcBmProxy::InitBm(const mmc_bm_init_config_t &initConfig, const mmc_bm_c
     MMC_RETURN_ERROR(smem_bm_config_init(&config), "Failed to init smem bm config");
     config.flags = initConfig.flags;
     config.startConfigStoreServer = false;
-    config.hcomTlsConfig = initConfig.hcomTlsConfig;
-    config.storeTlsConfig = initConfig.storeTlsConfig;
+    config.hcomTlsConfig = MmcSmemBmHelper::TransSmemTlsConfig(initConfig.hcomTlsConfig);
+    config.storeTlsConfig = MmcSmemBmHelper::TransSmemTlsConfig(initConfig.storeTlsConfig);
 
     // config.hcomUrl is zero-filled, copy only valid chars, and ensure at least one zero at the end.
     std::copy_n(initConfig.hcomUrl.c_str(), std::min(sizeof(config.hcomUrl) - 1, initConfig.hcomUrl.size()),
@@ -84,7 +84,7 @@ Result MmcBmProxy::InternalCreateBm(const mmc_bm_create_config_t &createConfig)
         MMC_LOG_INFO("dram and hbm hybrid pool");
     }
 
-    smem_bm_data_op_type opType = MmcSmemBmHelper::TransSmemBmDataOpType(createConfig);
+    smem_bm_data_op_type opType = MmcSmemBmHelper::TransSmemBmDataOpType(createConfig.dataOpType);
     if (opType == SMEMB_DATA_OP_BUTT) {
         MMC_LOG_ERROR("MmcBmProxy unknown data op type " << createConfig.dataOpType);
         return MMC_ERROR;

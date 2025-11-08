@@ -5,9 +5,7 @@
 #define __MEMFABRIC_SMEM_BM_DEF_H__
 
 #include <stdint.h>
-#include <stdbool.h>
-
-#include "mf_tls_def.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +14,8 @@ extern "C" {
 typedef void *smem_bm_t;
 #define SMEM_BM_TIMEOUT_MAX     UINT32_MAX /* all timeout must <= UINT32_MAX */
 #define ASYNC_COPY_FLAG (1UL << (0))
+#define SMEM_BM_INIT_GVM_FLAG (1ULL << 1ULL) // Init the GVM module, enable to use Host DRAM
+#define SMEM_TLS_PATH_SIZE 256
 /**
 * @brief Smem memory type
 */
@@ -42,22 +42,31 @@ typedef enum {
 * @brief Data copy direction
 */
 typedef enum {
-    SMEMB_COPY_L2G = 0,              /* copy data from local space to global space */
-    SMEMB_COPY_G2L = 1,              /* copy data from global space to local space */
-    SMEMB_COPY_G2H = 2,              /* copy data from global space to host memory */
-    SMEMB_COPY_H2G = 3,              /* copy data from host memory to global space */
+    SMEMB_COPY_L2G = 0,              /* copy data from local hbm to global space */
+    SMEMB_COPY_G2L = 1,              /* copy data from global space to local hbm */
+    SMEMB_COPY_G2H = 2,              /* copy data from global space to local host dram */
+    SMEMB_COPY_H2G = 3,              /* copy data from local host dram to global space */
     SMEMB_COPY_G2G = 4,               /* copy data from global space to global space */
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
 
-#define SMEM_BM_INIT_GVM_FLAG (1ULL << 1ULL) // Init the GVM module, enable to use Host DRAM
+typedef struct {
+    bool tlsEnable;
+    char caPath[SMEM_TLS_PATH_SIZE];
+    char crlPath[SMEM_TLS_PATH_SIZE];
+    char certPath[SMEM_TLS_PATH_SIZE];
+    char keyPath[SMEM_TLS_PATH_SIZE];
+    char keyPassPath[SMEM_TLS_PATH_SIZE];
+    char packagePath[SMEM_TLS_PATH_SIZE];
+    char decrypterLibPath[SMEM_TLS_PATH_SIZE];
+} smem_tls_config;
 
 typedef struct {
     uint32_t initTimeout;             /* func smem_bm_init timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
     uint32_t createTimeout;           /* func smem_bm_create timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
     uint32_t controlOperationTimeout; /* control operation timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
-    bool startConfigStoreServer;            /* whether to start config store, default true */
+    bool startConfigStoreServer;      /* whether to start config store, default true */
     bool startConfigStoreOnly;        /* only start the config store */
     bool dynamicWorldSize;            /* member cannot join dynamically */
     bool unifiedAddressSpace;         /* unified address with SVM */
@@ -65,8 +74,8 @@ typedef struct {
     uint16_t rankId;                  /* user specified rank ID, valid for autoRanking is False */
     uint32_t flags;                   /* other flag, default 0 */
     char hcomUrl[64];
-    tls_config hcomTlsConfig;
-    tls_config storeTlsConfig;
+    smem_tls_config hcomTlsConfig;
+    smem_tls_config storeTlsConfig;
 } smem_bm_config_t;
 
 typedef struct {

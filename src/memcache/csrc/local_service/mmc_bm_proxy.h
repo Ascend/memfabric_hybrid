@@ -22,8 +22,8 @@ typedef struct {
     int32_t logLevel;
     ExternalLog logFunc;
     uint32_t flags;
-    tls_config hcomTlsConfig;
-    tls_config storeTlsConfig;
+    mmc_tls_config hcomTlsConfig;
+    mmc_tls_config storeTlsConfig;
 } mmc_bm_init_config_t;
 
 typedef struct {

@@ -28,7 +28,7 @@ constexpr uint8_t HCOM_TRANS_EP_SIZE = 16;
 const char *HCOM_RPC_SERVICE_NAME = "hybm_hcom_service";
 }
 
-tls_config HcomTransportManager::tlsConfig_ = {};
+hybm_tls_config HcomTransportManager::tlsConfig_ = {};
 char HcomTransportManager::keyPass_[KEYPASS_MAX_LEN] = {0};
 std::mutex HcomTransportManager::keyPassMutex = {};
 

@@ -118,7 +118,7 @@ private:
     std::vector<std::mutex> channelMutex_;
     std::vector<std::string> nics_;
     std::vector<Hcom_Channel> channels_;
-    static tls_config tlsConfig_;
+    static hybm_tls_config tlsConfig_;
     static char keyPass_[KEYPASS_MAX_LEN];
     static std::mutex keyPassMutex;
 };

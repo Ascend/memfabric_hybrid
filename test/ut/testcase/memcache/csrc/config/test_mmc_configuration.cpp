@@ -29,7 +29,7 @@ void TestMmcConfiguration::TearDown() {}
 
 TEST_F(TestMmcConfiguration, ValidateTLSConfigTest)
 {
-    tls_config tlsConfig {};
+    mmc_tls_config tlsConfig {};
     tlsConfig.tlsEnable = true;
     // 1. caPath is empty
     auto ret = Configuration::ValidateTLSConfig(tlsConfig);

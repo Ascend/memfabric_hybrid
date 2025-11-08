@@ -9,7 +9,6 @@
 #include "smem_bm.h"
 #include "smem_bm_entry.h"
 #include "smem_config_store.h"
-#include "mf_tls_def.h"
 
 namespace ock {
 namespace smem {
@@ -56,7 +55,7 @@ public:
         return config_.hcomUrl;
     }
 
-    inline tls_config GetHcomTlsOption() const
+    inline smem_tls_config GetHcomTlsOption() const
     {
         return config_.hcomTlsConfig;
     }

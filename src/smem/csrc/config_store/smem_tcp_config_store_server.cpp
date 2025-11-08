@@ -25,7 +25,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
                        {MessageType::WATCH_RANK_STATE, &AccStoreServer::WatchRankStateHandler}}
 {}
 
-Result AccStoreServer::Startup(const tls_config& tlsConfig) noexcept
+Result AccStoreServer::Startup(const smem_tls_config& tlsConfig) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {

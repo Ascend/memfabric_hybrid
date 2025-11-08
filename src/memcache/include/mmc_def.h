@@ -6,12 +6,12 @@
 
 #include <stdint.h>
 
-#include "mf_tls_def.h"
-
 #define DISCOVERY_URL_SIZE 1024
 #define PATH_MAX_SIZE 1024
 #define PROTOCOL_SIZE 64
 #define MAX_BATCH_OP_COUNT 16384
+#define TLS_PATH_SIZE 256
+#define TLS_PATH_MAX_LEN (TLS_PATH_SIZE - 1)
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +25,17 @@ typedef void (*ExternalLog)(int level, const char* msg);
 #endif
 
 typedef struct {
+    bool tlsEnable;
+    char caPath[TLS_PATH_SIZE];
+    char crlPath[TLS_PATH_SIZE];
+    char certPath[TLS_PATH_SIZE];
+    char keyPath[TLS_PATH_SIZE];
+    char keyPassPath[TLS_PATH_SIZE];
+    char packagePath[TLS_PATH_SIZE];
+    char decrypterLibPath[TLS_PATH_SIZE];
+} mmc_tls_config;
+
+typedef struct {
     char discoveryURL[DISCOVERY_URL_SIZE]; /* composed by schema and url, e.g. tcp:// or etcd:// or zk:// */
     char configStoreURL[DISCOVERY_URL_SIZE]; /* composed by schema and url, e.g. tcp:// or etcd:// or zk:// */
     bool haEnable;
@@ -34,8 +45,8 @@ typedef struct {
     int32_t logRotationFileCount;
     uint16_t evictThresholdHigh;
     uint16_t evictThresholdLow;
-    tls_config accTlsConfig;
-    tls_config configStoreTlsConfig;
+    mmc_tls_config accTlsConfig;
+    mmc_tls_config configStoreTlsConfig;
 } mmc_meta_service_config_t;
 
 typedef struct {
@@ -50,11 +61,11 @@ typedef struct {
     uint64_t localDRAMSize;
     uint64_t localHBMSize;
     uint32_t flags;
-    tls_config accTlsConfig;
+    mmc_tls_config accTlsConfig;
     int32_t logLevel;
     ExternalLog logFunc;
-    tls_config hcomTlsConfig;
-    tls_config configStoreTlsConfig;
+    mmc_tls_config hcomTlsConfig;
+    mmc_tls_config configStoreTlsConfig;
 } mmc_local_service_config_t;
 
 typedef struct {
@@ -64,7 +75,7 @@ typedef struct {
     uint32_t timeOut;
     int32_t logLevel;
     ExternalLog logFunc;
-    tls_config tlsConfig;
+    mmc_tls_config tlsConfig;
 } mmc_client_config_t;
 
 typedef struct {

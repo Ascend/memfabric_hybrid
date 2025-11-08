@@ -130,7 +130,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     if (isServer_) {
@@ -148,7 +148,7 @@ Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTi
     return result;
 }
 
-Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
@@ -194,7 +194,7 @@ Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRet
     return result;
 }
 
-Result TcpConfigStore::ServerStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ServerStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     std::lock_guard<std::mutex> guard(mutex_);

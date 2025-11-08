@@ -149,7 +149,17 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
-    options.tlsOption = manager.GetHcomTlsOption();
+
+    smem_tls_config hcomTlsConfig = manager.GetHcomTlsOption();
+    options.tlsOption.tlsEnable = hcomTlsConfig.tlsEnable;
+    std::copy_n(hcomTlsConfig.caPath, SMEM_TLS_PATH_SIZE, options.tlsOption.caPath);
+    std::copy_n(hcomTlsConfig.crlPath, SMEM_TLS_PATH_SIZE, options.tlsOption.crlPath);
+    std::copy_n(hcomTlsConfig.certPath, SMEM_TLS_PATH_SIZE, options.tlsOption.certPath);
+    std::copy_n(hcomTlsConfig.keyPath, SMEM_TLS_PATH_SIZE, options.tlsOption.keyPath);
+    std::copy_n(hcomTlsConfig.keyPassPath, SMEM_TLS_PATH_SIZE, options.tlsOption.keyPassPath);
+    std::copy_n(hcomTlsConfig.packagePath, SMEM_TLS_PATH_SIZE, options.tlsOption.packagePath);
+    std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
+
     SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
     (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 

@@ -45,7 +45,6 @@ mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/memcache
-mkdir -p ${PKG_DIR}/${ARCH_OS}/include/util
 mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
 
 # smem
@@ -63,8 +62,6 @@ cp -r ${OUTPUT_DIR}/memcache/include/* ${PKG_DIR}/${ARCH_OS}/include/memcache
 cp ${OUTPUT_DIR}/memcache/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
 cp ${OUTPUT_DIR}/memcache/bin/* ${PKG_DIR}/${ARCH_OS}/bin/
 cp ${OUTPUT_DIR}/memcache/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
-# util
-cp -r ${PROJECT_DIR}/src/util/include/* ${PKG_DIR}/${ARCH_OS}/include/util
 # mooncake_adapter
 cp -r ${OUTPUT_DIR}/mooncake_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 

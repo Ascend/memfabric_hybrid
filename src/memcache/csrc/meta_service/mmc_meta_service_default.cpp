@@ -6,6 +6,7 @@
 #include "mmc_ref.h"
 #include "mmc_meta_mgr_proxy_default.h"
 #include "mmc_meta_net_server.h"
+#include "mmc_smem_bm_helper.h"
 #include "spdlogger4c.h"
 #include "spdlogger.h"
 #include "smem_store_factory.h"
@@ -52,7 +53,7 @@ Result MmcMetaServiceDefault::Start(const mmc_meta_service_config_t &options)
 
     NetEngineOptions configStoreOpt{};
     NetEngineOptions::ExtractIpPortFromUrl(options_.configStoreURL, configStoreOpt);
-    smem::StoreFactory::SetTlsInfo(options_.configStoreTlsConfig);
+    smem::StoreFactory::SetTlsInfo(MmcSmemBmHelper::TransSmemTlsConfig(options_.configStoreTlsConfig));
     confStore_ = smem::StoreFactory::CreateStoreServer(configStoreOpt.ip, configStoreOpt.port,
                                                        std::numeric_limits<uint32_t>::max());
     MMC_VALIDATE_RETURN(confStore_ != nullptr, "Failed to start config store server", MMC_ERROR);

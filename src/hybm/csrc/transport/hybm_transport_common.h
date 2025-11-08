@@ -14,7 +14,6 @@
 #include <unordered_map>
 #include "hybm_def.h"
 #include "hybm_define.h"
-#include "mf_tls_def.h"
 
 namespace ock {
 namespace mf {
@@ -41,7 +40,7 @@ struct TransportOptions {
     hybm_type initialType;
     hybm_role_type role;
     std::string nic;
-    tls_config tlsOption;
+    hybm_tls_config tlsOption;
 };
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportOptions &options)
