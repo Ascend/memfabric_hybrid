@@ -511,17 +511,6 @@ Result MmcClientDefault::BatchGet(const std::vector<std::string>& keys, const st
     return MMC_OK;
 }
 
-mmc_location_t MmcClientDefault::GetLocation(const char *key, uint32_t flags)
-{
-    MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", {});
-
-    uint64_t operateId = GenerateOperateId(rankId_);
-    GetRequest request{key, rankId_, operateId, false};
-    AllocResponse response;
-    MMC_ASSERT_RETURN(metaNetClient_->SyncCall(request, response, rpcRetryTimeOut_) == MMC_OK, {-1});
-    return {};
-}
-
 Result MmcClientDefault::Remove(const char *key, uint32_t flags) const
 {
     MMC_VALIDATE_RETURN(metaNetClient_ != nullptr, "MetaNetClient is null", MMC_CLIENT_NOT_INIT);

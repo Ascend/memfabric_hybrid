@@ -141,16 +141,6 @@ MMC_API int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_
     return MMC_OK;
 }
 
-MMC_API mmc_location_t mmcc_get_location(const char *key, uint32_t flags)
-{
-    MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", {});
-    MMC_VALIDATE_RETURN(strlen(key) != 0, "invalid param, key's len equals 0", {});
-    MMC_VALIDATE_RETURN(strlen(key) <= MAX_KEY_LEN, "invalid param, key's len more than 256", {});
-    MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", {});
-
-    return MmcClientDefault::GetInstance()->GetLocation(key, flags);
-}
-
 MMC_API int32_t mmcc_remove(const char *key, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);

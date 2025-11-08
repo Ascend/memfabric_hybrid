@@ -102,10 +102,6 @@ typedef struct {
 } mmc_put_options;
 
 typedef struct {
-    int32_t xx;
-} mmc_location_t;
-
-typedef struct {
     uint64_t size;
     uint16_t prot;
     uint8_t numBlobs;

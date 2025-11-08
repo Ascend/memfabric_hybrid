@@ -171,19 +171,6 @@ int32_t mmcc_exist(const char *key, uint32_t flags);
 - `0`: 成功
 - 其他: 失败
 
-#### mmcc_get_location
-```c
-mmc_location_t mmcc_get_location(const char *key, uint32_t flags);
-```
-**功能**: 获取对象的位置信息。此操作仅支持同步模式。
-
-**参数**:
-- `key`: 数据的键，长度小于256字节
-- `flags`: 可选标志，保留字段
-
-**返回值**:
-- `mmc_location_t`: 对象的位置信息（如果存在）
-
 #### mmcc_batch_query
 ```c
 int32_t mmcc_batch_query(const char **keys, size_t keys_count, mmc_data_info *info, uint32_t flags);
@@ -680,9 +667,6 @@ result = store.register_buffer(buffer_ptr, size)
 
 ### mmc_data_info
 数据信息结构体，包含大小、保护标志、blob数量和有效性标志。
-
-### mmc_location_t
-位置信息结构体，表示数据在内存中的位置。
 
 ### tls_config
 TLS配置结构体，包含以下字段：

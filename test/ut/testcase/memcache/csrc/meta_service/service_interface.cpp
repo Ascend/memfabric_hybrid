@@ -220,9 +220,6 @@ TEST_F(TestMmcServiceInterface, metaServiceStart)
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
 
-    mmc_location_t location = mmcc_get_location(test.c_str(), 0);
-    ASSERT_TRUE(location.xx == 0);
-
     ret = mmcc_remove(test.c_str(), 0);
     ASSERT_TRUE(ret == 0);
 

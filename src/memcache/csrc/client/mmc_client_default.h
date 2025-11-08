@@ -43,8 +43,6 @@ public:
     Result BatchGet(const std::vector<std::string>& keys, const std::vector<MmcBufferArray>& bufArrs,
                     uint32_t flags, std::vector<int>& batchResult);
 
-    mmc_location_t GetLocation(const char *key, uint32_t flags);
-
     Result Remove(const char *key, uint32_t flags) const;
 
     Result BatchRemove(const std::vector<std::string>& keys, std::vector<Result>& remove_results, uint32_t flags) const;
