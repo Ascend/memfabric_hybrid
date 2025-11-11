@@ -29,4 +29,10 @@ if (BUILD_PYTHON STREQUAL "ON")
     set_target_properties(_pytransfer PROPERTIES CXX_STANDARD 17)
     set_target_properties(_pytransfer PROPERTIES OUTPUT_NAME "_pymf_transfer")
     target_link_libraries(_pytransfer PRIVATE smem_shared)
+
+    set_target_properties(_pytransfer PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
 endif ()

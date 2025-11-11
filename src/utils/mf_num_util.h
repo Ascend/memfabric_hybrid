@@ -15,7 +15,7 @@
 #include <string>
 #include <cctype>
 
-enum MfIndex : uint8_t {
+enum MfIndex {
     INDEX_0 = 0U,
     INDEX_1 = 1U,
     INDEX_2 = 2U,
