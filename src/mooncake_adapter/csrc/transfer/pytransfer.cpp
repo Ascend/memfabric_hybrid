@@ -42,6 +42,15 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
     }
+    const char *shmem_level = std::getenv("SHMEM_LOG_LEVEL");
+    const char* mf_level = std::getenv("ASCEND_MF_LOG_LEVEL");
+    if (shmem_level == nullptr && mf_level != nullptr && strlen(mf_level) == 1) {
+        unsigned char c = static_cast<unsigned char>(mf_level[0]);
+        if (std::isdigit(c)) {
+            int level = c - '0';
+            smem_set_log_level(level);
+        }
+    }
     // default: disable tls
     smem_set_conf_store_tls(false, nullptr, 0);
     smem_trans_config_t config;

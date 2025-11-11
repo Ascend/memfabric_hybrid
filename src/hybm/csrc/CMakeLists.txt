@@ -44,6 +44,20 @@ set_target_properties(hybmm_shared PROPERTIES OUTPUT_NAME "mf_hybm_core")
 target_link_libraries(hybmm_shared PUBLIC pthread dl)
 target_include_directories(hybmm_shared INTERFACE ${HYBM_INCLUDE_DIR})
 
+set_target_properties(hybmm_shared PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${PROJECT_HYBM_OUTPUT}/lib"
+)
+
+set_target_properties(hybmm_shared PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
+
+install(TARGETS hybmm_shared
+    LIBRARY DESTINATION lib
+    PUBLIC_HEADER DESTINATION include
+)
+
 ## install header files
 file(GLOB HEADER_FILES ${PROJECT_HYBM_SRC_BASE}/include/*.h)
 install(

@@ -211,6 +211,7 @@ void DynamicRanksQpManager::InitializeWhiteList(std::vector<HccpSocketWhiteListI
         whitelist.emplace_back(info);
         auto res = connections_.emplace(it->first, ConnectionChannel{addr, serverSocketHandle_});
         connectionView_[it->first] = &res.first->second;
+        BM_LOG_INFO("connections list add rank: " << it->first << ", remoteIP: " << inet_ntoa(info.remoteIp.addr));
     }
 }
 
@@ -305,7 +306,7 @@ int DynamicRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, mf_so
             connectInfo.port = it->second.ip.ipv6.sin6_port;
         }
         bzero(connectInfo.tag, sizeof(connectInfo.tag));
-        BM_LOG_DEBUG("add connecting server " << connectInfo);
+        BM_LOG_INFO("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
     }
     return BM_OK;
@@ -356,7 +357,7 @@ int DynamicRanksQpManager::ProcessClientConnectSocketTask() noexcept
     }
 
     if (connectInfos.empty()) {
-        BM_LOG_DEBUG("no connections now.");
+        BM_LOG_INFO("no connections now.");
         return 0;
     }
 
@@ -412,7 +413,7 @@ void DynamicRanksQpManager::Parse2SocketInfo(std::unordered_map<net_addr_t, uint
         }
     }
     if (socketInfos.size() == 0) {
-        BM_LOG_DEBUG("ProcessQueryConnectionStateTask socketInfos.size is 0.");
+        BM_LOG_INFO("ProcessQueryConnectionStateTask socketInfos.size is 0.");
     }
 }
 
@@ -549,6 +550,7 @@ int DynamicRanksQpManager::ProcessConnectQpTask() noexcept
     for (auto rank : ranks) {
         auto pos = connections_.find(rank);
         if (pos == connections_.end()) {
+            BM_LOG_INFO("connection to " << rank << " not exist.");
             continue;
         }
 
@@ -560,6 +562,7 @@ int DynamicRanksQpManager::ProcessConnectQpTask() noexcept
                 failedCount++;
                 continue;
             }
+            BM_LOG_INFO("create QP to " << rank << " success, qpHandle=" << pos->second.qpHandle);
             pos->second.qpConnectCalled = false;
         }
 
@@ -602,6 +605,7 @@ int DynamicRanksQpManager::ProcessQueryQpStateTask() noexcept
     for (auto rank : ranks) {
         auto pos = connections_.find(rank);
         if (pos == connections_.end()) {
+            BM_LOG_INFO("connection to " << rank << " not exist.");
             continue;
         }
 
@@ -613,6 +617,7 @@ int DynamicRanksQpManager::ProcessQueryQpStateTask() noexcept
             continue;
         }
 
+        BM_LOG_INFO("get QP status to " << rank << " success. qpStatus: " << pos->second.qpStatus);
         if (pos->second.qpStatus != 1) {
             currTask.ranks.emplace(rank);
             continue;

@@ -7,6 +7,8 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 
+set -x
+
 function check_env() {
     if ! command -v python3 >/dev/null 2>&1; then
         echo "Error: python3 not found in PATH"
@@ -53,6 +55,10 @@ fi
 if [ -z "$BUILD_PACKAGE" ]; then
     BUILD_PACKAGE="ON"
 fi
+
+export BUILD_MODE=${BUILD_MODE}
+export BUILD_OPEN_ABI=${BUILD_OPEN_ABI}
+export BUILD_PYTHON=${BUILD_PYTHON}
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 
@@ -135,7 +141,9 @@ do
     fi
 
     rm -rf "${PROJ_DIR}"/src/smem/python/mf_smem/_pymf_smem.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/_pymf_smem.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_smem
+    \cp -v "${PROJ_DIR}"/build/lib/_pymf_smem.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_smem
+    \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}"/src/smem/python/mf_smem
+    \cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}"/src/smem/python/mf_smem
 
     cd "${PROJ_DIR}/src/smem/python"
     rm -rf build mf_smem.egg-info
@@ -143,7 +151,7 @@ do
     cd "${PROJ_DIR}"
 
     rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter/_pymf_transfer.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/mooncake_adapter/csrc/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter
+    \cp -v "${PROJ_DIR}"/build/lib/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter
     mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
     cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
     cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"

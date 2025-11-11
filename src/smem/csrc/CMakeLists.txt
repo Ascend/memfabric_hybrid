@@ -43,6 +43,15 @@ set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_directories(smem_shared PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/acc_links/lib)
 target_link_libraries(smem_shared PUBLIC pthread acc_tcp_net_static hybmm_shared)
 
+set_target_properties(smem_shared PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
+
+install(TARGETS smem_shared
+    LIBRARY DESTINATION lib
+)
+
 if(BUILD_PYTHON STREQUAL "ON")
     add_subdirectory(python_wrapper)
 endif()

@@ -43,4 +43,9 @@ print(os.path.dirname(pybind11.__file__),end='');"
     set_target_properties(_pysmem PROPERTIES OUTPUT_NAME "_pymf_smem")
     target_link_libraries(_pysmem PRIVATE smem_shared)
 
+    set_target_properties(_pysmem PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
 endif ()
