@@ -59,6 +59,7 @@ fi
 export BUILD_MODE=${BUILD_MODE}
 export BUILD_OPEN_ABI=${BUILD_OPEN_ABI}
 export BUILD_PYTHON=${BUILD_PYTHON}
+export BUILD_COMPILER=${BUILD_COMPILER}
 
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 
