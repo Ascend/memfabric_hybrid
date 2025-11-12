@@ -525,6 +525,10 @@ int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, ui
 {
     uint32_t advise = 0;
     struct DevVirtHeapType heap_type;
+    if (size > (size_t)(-1) - (DEVMM_HEAP_SIZE - 1)) {
+        BM_LOG_ERROR("size is too large to avoid overflow. (size=0x" << std::hex << size << ")");
+        return -1;
+    }
     size_t allocSize = ALIGN_UP(size, DEVMM_HEAP_SIZE);
     if (allocSize == 0 || allocSize > (DEVMM_SVM_MEM_SIZE >> 1) || address == nullptr) { // init size <= 4T
         BM_LOG_ERROR("gva init failed, (size must > 0 && <= 4T) or address is null. (flag=" << flags <<

@@ -325,7 +325,12 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         std::string oldValueStr{pos->second.begin(), pos->second.end()};
         long storedValueNum = 0;
         SM_VALIDATE_RETURN(StrToLong(oldValueStr, storedValueNum), "convert string to long failed.", SM_ERROR);
-        
+
+        if (storedValueNum > LONG_MAX - valueNum) {
+            SM_LOG_ERROR("storedValueNum + valueNum would overflow. (storedValueNum=" << storedValueNum << ", valueNum=" << valueNum << ")");
+            ReplyWithMessage(context, StoreErrorCode::ERROR, "overflow error: storedValueNum + valueNum would overflow.");
+            return SM_ERROR;
+        }
         storedValueNum += valueNum;
         auto storedValueStr = std::to_string(storedValueNum);
         pos->second = std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end());

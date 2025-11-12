@@ -418,6 +418,7 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
     ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
     if (ret != 0) {
         SM_LOG_ERROR("store for slice info failed: " << ret);
+        hybm_free_local_memory(entity_, slice, size, 0);
         return SM_ERROR;
     }
 

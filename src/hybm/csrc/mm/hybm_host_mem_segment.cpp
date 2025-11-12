@@ -226,11 +226,15 @@ void MemSegmentHost::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &
 void MemSegmentHost::FreeMemory() noexcept
 {
     if (localVirtualBase_ != nullptr) {
-        munmap(localVirtualBase_, options_.size);
+        if (munmap(localVirtualBase_, options_.size) != 0) {
+            BM_LOG_ERROR("Failed to munmap localVirtualBase_");
+        }
         localVirtualBase_ = nullptr;
     }
     if (globalVirtualAddress_ != nullptr) {
-        munmap(globalVirtualAddress_, totalVirtualSize_);
+        if (munmap(globalVirtualAddress_, totalVirtualSize_) != 0) {
+            BM_LOG_ERROR("Failed to munmap globalVirtualAddress_");
+        }
         globalVirtualAddress_ = nullptr;
     }
 }

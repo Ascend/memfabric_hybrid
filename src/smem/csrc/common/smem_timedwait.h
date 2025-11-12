@@ -24,7 +24,16 @@ namespace smem {
 class SmemTimedwait {    // wait signal or overtime, instead of sem_timedwait
 public:
     SmemTimedwait() = default;
-    ~SmemTimedwait() = default;
+    ~SmemTimedwait()
+    {
+        if (!initialized) {
+            return;
+        }
+
+        pthread_cond_destroy(&condTimeChecker_);
+        pthread_mutex_destroy(&timeCheckerMutex_);
+        pthread_condattr_destroy(&cattr_);
+    }
 
     Result Initialize()
     {
@@ -54,6 +63,7 @@ public:
             return SM_ERROR;
         }
 
+        initialized = true;  // 设置初始化标志位
         return SM_OK;
     }
 
@@ -106,6 +116,7 @@ private:
     pthread_cond_t condTimeChecker_;
     pthread_mutex_t timeCheckerMutex_;
     bool signalFlag { false };  // signal will NOT lost when call PthreadSignal before PthreadTimedwaitMillsecs
+    bool initialized { false };  // 新增标志位，用于跟踪资源是否已初始化
 };
 
 }

@@ -272,6 +272,9 @@ void AccTcpListener::ProcessNewConnection(int fd, mf_sockaddr addressIn) noexcep
         return;
     }
 
+    if (connHandler_ == nullptr) {
+        return;
+    }
     // tmpLink作为智能指针 异常分支返回时会自动析构释放资源
     auto result = connHandler_(req, newLink.Get());
     if (result != ACC_OK) {

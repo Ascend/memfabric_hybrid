@@ -144,6 +144,9 @@ inline bool AccTcpLinkDelayCleanup::CheckAndPop(uint32_t periodSecond, AccTcpLin
 
     struct timeval currentTime {};
     gettimeofday(&currentTime, nullptr);
+    if (currentTime.tv_sec < frontItem.enqueueTime.tv_sec) {
+        return false;
+    }
     if (currentTime.tv_sec - frontItem.enqueueTime.tv_sec >= periodSecond) {
         item = frontItem;
         queue_.pop_front();

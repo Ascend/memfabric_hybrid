@@ -405,7 +405,12 @@ Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uin
     BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx);
     uint32_t rankId = UINT32_MAX;
     try {
-        rankId = static_cast<uint32_t>(std::stoul(payLoad));
+        unsigned long rankId_UL = std::stoul(payLoad);
+        if (rankId_UL > UINT32_MAX) {
+            BM_LOG_ERROR("rankId exceeds uint32_t range, payLoad: " << payLoad);
+            return BM_ERROR;
+        }
+        rankId = static_cast<uint32_t>(rankId_UL);
     } catch (...) {
         BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
         return BM_ERROR;
