@@ -159,6 +159,7 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
         X509 *ca = OpenSslApiWrapper::PemReadX509(fp, NULL, NULL, NULL);
         fclose(fp);
         if (CertVerify(ca) != ACC_OK) {
+            OpenSslApiWrapper::X509Free(ca);
             return ACC_ERROR;
         }
         auto ret = OpenSslApiWrapper::SslCtxLoadVerifyLocations(sslCtx, caFile.c_str(), nullptr);

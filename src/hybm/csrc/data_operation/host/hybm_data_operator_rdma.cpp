@@ -11,6 +11,7 @@
 #include "dl_acl_api.h"
 #include "hybm_space_allocator.h"
 #include "hybm_rbtree_range_pool.h"
+#include "../../../../utils/mf_num_util.h"
 
 using namespace ock::mf;
 
@@ -293,6 +294,10 @@ int32_t HostDataOpRDMA::CopyHost2Gva2d(hybm_copy_2d_params &params, const ExtOpt
         BM_LOG_ERROR("Not support 2d memory on host");
         return BM_ERROR;
     }
+    if (NumUtil::IsOverflowCheck(params.height, params.width, UINT64_MAX, '*')) {
+        BM_LOG_ERROR("Integer overflow detected");
+        return BM_ERROR;
+    }
     uint64_t size = params.width * params.height;
     return CopyHost2Gva(params.src, params.dest, size, options);
 }
@@ -314,6 +319,10 @@ int32_t HostDataOpRDMA::CopyDevice2Gva2d(hybm_copy_2d_params &params, const ExtO
         return BM_ERROR;
     }
 
+    if (NumUtil::IsOverflowCheck(params.height, params.width, UINT64_MAX, '*')) {
+        BM_LOG_ERROR("Integer overflow detected");
+        return BM_ERROR;
+    }
     uint64_t size = params.width * params.height;
     if (options.destRankId == rankId_) {
         return DlAclApi::AclrtMemcpy2d(params.dest, params.dpitch, params.src, params.spitch,
@@ -379,6 +388,10 @@ int32_t HostDataOpRDMA::CopyGva2Gva2d(hybm_copy_2d_params &params, const ExtOpti
 {
     if (params.spitch != params.width || params.dpitch != params.width) {
         BM_LOG_ERROR("Not support 2d memory on host");
+        return BM_ERROR;
+    }
+    if (NumUtil::IsOverflowCheck(params.height, params.width, UINT64_MAX, '*')) {
+        BM_LOG_ERROR("Integer overflow detected");
         return BM_ERROR;
     }
     uint64_t size = params.width * params.height;
