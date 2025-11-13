@@ -481,10 +481,16 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
 
     while (timesRetried < maxRetryTimes) {
         LOG_INFO("Trying to connect to " << ipAndPort);
+        errno = 0;
         if (::connect(tmpFD, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == 0) {
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
             setsockopt(tmpFD, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-            return Handshake(tmpFD, req, ipAndPort, newLink);
+            auto ret = Handshake(tmpFD, req, ipAndPort, newLink);
+            if (ret != ACC_OK) {
+                LOG_ERROR("Failed to Handshake to " << ipAndPort << " after tried " << timesRetried << " times");
+                SafeCloseFd(tmpFD);
+            }
+            return ret;
         }
 
         if (errno == EINTR) {

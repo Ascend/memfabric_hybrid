@@ -153,6 +153,8 @@ Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &b
 
         if (it->second.mediaType_ != mediaType_) {
              ++it;
+            MMC_LOG_WARN("rebuild blob not match, allocator mediaType: " << mediaType_ << ", blob mediaType: "
+                                                                         << it->second.mediaType_);
             continue;
         }
         uint64_t gva = it->second.gva_;
@@ -166,6 +168,7 @@ Result MmcBlobAllocator::BuildFromBlobs(std::map<std::string, MmcMemBlobDesc> &b
             it = blobMap.erase(it);
             continue;
         }
+        MMC_LOG_INFO("rebuild block successful, rank: " << it->second);
         ++it;
     }
     spinlock_.unlock();

@@ -126,6 +126,9 @@ public:
         }
         Result ret = allocator->Release(blob);
         globalAllocLock_.UnlockRead();
+        if (ret != MMC_OK) {
+            MMC_LOG_ERROR("Free blob failed, blob: " << blob->GetDesc());
+        }
         return ret;
     };
 
@@ -135,7 +138,7 @@ public:
         auto iter = allocators_.find(loc);
         if (iter != allocators_.end()) {
             globalAllocLock_.UnlockWrite();
-            MMC_LOG_INFO("not need mount at the existing position");
+            MMC_LOG_INFO("not need mount at the existing position, loc: " << loc);
             return MMC_OK;
         }
 

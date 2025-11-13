@@ -551,18 +551,28 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     for (auto &it : tempContext) {
         it.second->SetFailedFinish();
     }
-    auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
-    ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_ >= 0 ?
-        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_)) :
-        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
-    STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
-    auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
-    if (result != 0) {
-        STORE_LOG_ERROR("reconnect to server failed, result: " << result);
-        return result;
+    uint32_t timesRetried = 0;
+    while (timesRetried < CONNECT_RETRY_MAX_TIMES) {
+        auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
+        ock::acc::AccConnReq connReq;
+        connReq.rankId =
+            rankId_ >= 0
+                ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
+                : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
+        STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
+        auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
+        if (result == 0) {
+            STORE_LOG_INFO("reconnect to server successful, serverPort: " << serverPort_);
+            break;
+        }
+        // interval between each retry, 2 sec for each time,
+        sleep(2);
+        timesRetried++;
     }
-
+    if (!accClientLink_->Established()) {
+        STORE_LOG_ERROR("reconnect to server failed, serverPort_: " << serverPort_);
+        return SM_ERROR;
+    }
     if (reconnectHandler != nullptr) {
         return reconnectHandler();
     }
@@ -610,7 +620,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     msgCtxLocker.unlock();
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret);
+        STORE_LOG_ERROR("send message failed, result: " << ret << ", Established: " << accClientLink_->Established());
         return ret;
     }
 

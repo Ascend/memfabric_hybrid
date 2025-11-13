@@ -148,6 +148,7 @@ Result MetaNetClient::HandleLinkBroken(const NetLinkPtr &link)
             }
             return MMC_OK;
         }
+        sleep(2ULL);
     }
     return MMC_ERROR;
 }
