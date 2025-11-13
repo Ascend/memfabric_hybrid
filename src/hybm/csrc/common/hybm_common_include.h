@@ -16,5 +16,4 @@
 int32_t HybmGetInitDeviceId(void);
 
 bool HybmHasInited(void);
-
 #endif // MEM_FABRIC_HYBRID_HYBM_COMMON_INCLUDE_H

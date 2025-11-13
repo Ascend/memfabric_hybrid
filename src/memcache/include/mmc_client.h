@@ -33,8 +33,6 @@ void mmcc_uninit(void);
  */
 int32_t mmcc_register_buffer(uint64_t addr, uint64_t size);
 
-int32_t mmcc_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num);
-
 /**
  * @brief Put data of object with key into Distributed Memory Cache
  * This data operation supports both sync and async

@@ -236,39 +236,6 @@ TEST_F(TestMmcacheStore, RegisterBufferTest)
     mmcs_meta_service_stop(meta_service);
 }
 
-TEST_F(TestMmcacheStore, RegisterLayerBufferTest)
-{
-    std::shared_ptr<ObjectStore> store = ObjectStore::CreateObjectStore();
-    std::vector<uintptr_t> buffers;
-    std::vector<uintptr_t> sizes;
-    int32_t nums = 0;
-
-    auto ret = store->RegisterLayerBuffer(buffers, sizes, nums);
-    EXPECT_NE(ret, 0);
-
-    auto meta_service = StartMetaService();
-    EXPECT_NE(meta_service, nullptr);
-    ret = GenerateLocalConf(confPath_);
-    ASSERT_EQ(ret, 0);
-    MMC_LOCAL_CONF_PATH = confPath_;
-    ret = store->Init(0);
-    ASSERT_EQ(ret, 0);
-    ret = store->RegisterLayerBuffer(buffers, sizes, nums);
-    EXPECT_NE(ret, 0);
-
-    buffers.push_back(1);
-    ret = store->RegisterLayerBuffer(buffers, sizes, nums);
-    EXPECT_NE(ret, 0);
-
-    sizes.push_back(1024 * 1024 * 2);
-    nums = 1;
-    ret = store->RegisterLayerBuffer(buffers, sizes, nums);
-    EXPECT_EQ(ret, 0);
-
-    store->TearDown();
-    mmcs_meta_service_stop(meta_service);
-}
-
 TEST_F(TestMmcacheStore, GetIntoTest)
 {
     std::shared_ptr<ObjectStore> store = ObjectStore::CreateObjectStore();

@@ -116,7 +116,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     Service_MemoryRegion memoryRegion;
     int32_t ret = DlHcomApi::ServiceRegisterAssignMemoryRegion(rpcService_, mr.addr, mr.size, &memoryRegion);
     if (ret != 0) {
-        BM_LOG_ERROR("Failed to register mem region, size: " << mr.size
+        BM_LOG_ERROR("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
                                                              << " service: " << rpcService_ << " ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
@@ -160,6 +160,17 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
         }
     }
     return BM_ERROR;
+}
+
+bool HcomTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
+{
+    std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
+    for (const auto &mrInfo: mrs_[rankId_]) {
+        if (mrInfo.addr <= addr && mrInfo.addr + mrInfo.size >= addr + size) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Result HcomTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &key)

@@ -87,7 +87,7 @@ class FlatConfigParser:
 
     def get(self, key: str, default: Any = None) -> Any:
         """获取配置值，支持默认值"""
-        return self.config.get(key, default)
+        return str(self.config.get(key, default))
 
     def _parse(self):
         pattern = re.compile(r'^\s*([^#\s]+)\s*=\s*(.+?)(?:\s*#.*|;\s*|$)')
@@ -365,25 +365,29 @@ class MmcTest(TestServer):
             raise RuntimeError(f"Failed to init mf_smem")
         config = bm.BmConfig()
         config.auto_ranking = False
-        config.flags = 2
         config.rank_id = self._rank_id
         config.set_nic(client_config.nic)  # for device port
+        if client_config.protocol == 'host_rdma':
+            op_type = bm.BmDataOpType.HOST_RDMA
+            config.flags = 0
+        elif client_config.protocol == 'host_tcp':
+            op_type = bm.BmDataOpType.HOST_TCP
+            config.flags = 0
+        elif client_config.protocol == 'device_rdma':
+            op_type = bm.BmDataOpType.DEVICE_RDMA
+            config.flags = 2
+        elif client_config.protocol == 'device_sdma':
+            op_type = bm.BmDataOpType.SDMA
+            config.flags = 2
+        else:
+            op_type = bm.BmDataOpType.DEVICE_RDMA
+            config.flags = 2
         ret = bm.initialize(store_url=client_config.config_store_url,
                             world_size=client_config.world_size,
                             device_id=self._device_id,
                             config=config)
         if ret != 0:
             raise RuntimeError(f"Failed to init bm")
-        if client_config.protocol == 'host_rdma':
-            op_type = bm.BmDataOpType.HOST_RDMA
-        elif client_config.protocol == 'host_tcp':
-            op_type = bm.BmDataOpType.HOST_TCP
-        elif client_config.protocol == 'device_rdma':
-            op_type = bm.BmDataOpType.DEVICE_RDMA
-        elif client_config.protocol == 'device_sdma':
-            op_type = bm.BmDataOpType.SDMA
-        else:
-            op_type = bm.BmDataOpType.RDMA
         try:
             # create
             self._bm_handle = bm.create(id=0,

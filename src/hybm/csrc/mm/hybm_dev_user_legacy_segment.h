@@ -2,12 +2,12 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
 
-#ifndef MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
-#define MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
+#ifndef MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H
+#define MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H
 
 #include <bitset>
 #include "hybm_mem_segment.h"
-#include "hybm_device_mem_segment.h"
+#include "hybm_dev_legacy_segment.h"
 
 namespace ock {
 namespace mf {
@@ -40,10 +40,10 @@ struct HbmExportSliceInfo {
     char name[DEVICE_SHM_NAME_SIZE]{};
 };
 
-class MemSegmentDeviceUseMem : public MemSegmentDevice {
+class HybmDevUserLegacySegment : public HybmDevLegacySegment {
 public:
-    MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept;
-    ~MemSegmentDeviceUseMem() override;
+    HybmDevUserLegacySegment(const MemSegmentOptions &options, int eid) noexcept;
+    ~HybmDevUserLegacySegment() override;
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
     Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
@@ -87,4 +87,4 @@ private:
 }
 }
 
-#endif  // MF_HYBRID_HYBM_DEVICE_USER_MEM_SEG_H
+#endif  // MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H

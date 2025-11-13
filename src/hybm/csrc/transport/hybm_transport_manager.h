@@ -40,6 +40,8 @@ public:
 
     virtual Result UnregisterMemoryRegion(uint64_t addr) = 0;
 
+    virtual bool QueryHasRegistered(uint64_t addr, uint64_t size) = 0;
+
     virtual Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) = 0;
 
     virtual Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) = 0;

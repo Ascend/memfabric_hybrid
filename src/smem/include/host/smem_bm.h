@@ -103,7 +103,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
 /**
  *
  * @param handle        [in] Big Memory object handle created by smem_bm_create
- * @param memType       [in] memory type, device or host
+ * @param memType       [in] memory type, SMEM_MEM_TYPE_DEVICE or SMEM_MEM_TYPE_HOST
  * @param peerRankId    [in] rank id of peer
  * @return memory ptr of peer gva
  */
@@ -140,8 +140,6 @@ int32_t smem_bm_wait(smem_bm_t handle);
  * @param size              [in] register size
  */
 int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
-
-int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num);
 
 /**
  * @brief Get the belong rank id of gva

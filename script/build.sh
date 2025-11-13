@@ -5,6 +5,7 @@ BUILD_TESTS=${2:-OFF}
 BUILD_OPEN_ABI=${3:-ON}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
+USE_VMM=${6:-OFF}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -35,7 +36,7 @@ bash script/gen_last_git_commit.sh
 rm -rf ./build ./output
 
 mkdir build/
-cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -S . -B build/
+cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_VMM="${USE_VMM}" -S . -B build/
 make install -j32 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then

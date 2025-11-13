@@ -156,20 +156,6 @@ int MmcacheStore::RegisterBuffer(void *buffer, size_t size)
     return mmcc_register_buffer(reinterpret_cast<uint64_t>(buffer), size);
 }
 
-int MmcacheStore::RegisterLayerBuffer(const std::vector<uintptr_t> &buffers,
-                                      const std::vector<size_t> &sizes, int32_t nums)
-{
-    std::vector<uint64_t> addrList;
-    std::vector<uint64_t> sizeList;
-    for (uintptr_t ptr : buffers) {
-        addrList.push_back(reinterpret_cast<uint64_t>(ptr));
-    }
-    for (size_t sz : sizes) {
-        sizeList.push_back(reinterpret_cast<uint64_t>(sz));
-    }
-    return mmcc_register_layer_mem(addrList.data(), sizeList.data(), addrList.size(), nums);
-}
-
 int MmcacheStore::GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct)
 {
     uint32_t type = 0;

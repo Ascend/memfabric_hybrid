@@ -64,9 +64,6 @@ public:
 
     int GetInto(const std::string &key, void *buffer, size_t size, const int32_t direct = 2) override;
 
-    int RegisterLayerBuffer(const std::vector<uintptr_t> &buffers,
-                            const std::vector<size_t> &sizes, int32_t nums) override;
-
     std::vector<int> BatchGetInto(const std::vector<std::string> &keys, const std::vector<void *> &buffers,
                                   const std::vector<size_t> &sizes, const int32_t direct = 2) override;
 

@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#ifndef MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
-#define MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
+#ifndef MF_HYBRID_HYBM_CONN_BASED_SEGMENT_H
+#define MF_HYBRID_HYBM_CONN_BASED_SEGMENT_H
 
 #include <set>
 #include "hybm_mem_segment.h"
@@ -22,10 +22,10 @@ struct HostExportInfo {
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
 };
-class MemSegmentHost : public MemSegment {
+class HybmConnBasedSegment : public MemSegment {
 public:
-    explicit MemSegmentHost(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
-    ~MemSegmentHost() override
+    explicit HybmConnBasedSegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
+    ~HybmConnBasedSegment() override
     {
         FreeMemory();
     }
@@ -68,4 +68,4 @@ private:
 }
 }
 
-#endif  // MF_HYBRID_HYBM_HOST_MEM_SEGMENT_H
+#endif  // MF_HYBRID_HYBM_CONN_BASED_SEGMENT_H

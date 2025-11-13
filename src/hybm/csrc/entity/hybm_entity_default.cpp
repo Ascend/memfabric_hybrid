@@ -8,7 +8,7 @@
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "hybm_data_op_host_rdma.h"
-#include "hybm_device_mem_segment.h"
+#include "hybm_dev_legacy_segment.h"
 #include "hybm_data_op_sdma.h"
 #include "hybm_data_op_device_rdma.h"
 #include "hybm_ex_info_transfer.h"
@@ -143,8 +143,8 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
         return BM_NOT_INITIALIZED;
     }
 
-    if ((size % DEVICE_LARGE_PAGE_SIZE) != 0) {
-        BM_LOG_ERROR("allocate memory size: " << size << " invalid, page size is: " << DEVICE_LARGE_PAGE_SIZE);
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("allocate memory size: " << size << " invalid, page size is: " << HYBM_LARGE_PAGE_SIZE);
         return BM_INVALID_PARAM;
     }
 
@@ -720,7 +720,7 @@ int MemEntityDefault::UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept
 
     SetHybmDeviceInfo(info);
     info.extraContextSize = extCtxSize;
-    auto ret = DlAclApi::AclrtMemcpy((void *)addr, DEVICE_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
+    auto ret = DlAclApi::AclrtMemcpy((void *)addr, HYBM_LARGE_PAGE_SIZE, &info, sizeof(HybmDeviceMeta),
                                      ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("update hybm info memory failed, ret: " << ret);
@@ -829,12 +829,13 @@ Result MemEntityDefault::InitHbmSegment()
     segmentOptions.segType = HYBM_MST_HBM;
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
+    segmentOptions.dataOpType = options_.bmDataOpType;
     hbmSegment_ = MemSegment::Create(segmentOptions, id_);
     if (hbmSegment_ == nullptr) {
         BM_LOG_ERROR("Failed to create hbm segment");
         return BM_ERROR;
     }
-    return MemSegmentDevice::SetDeviceInfo(HybmGetInitDeviceId());
+    return HybmDevLegacySegment::SetDeviceInfo(HybmGetInitDeviceId());
 }
 
 Result MemEntityDefault::InitDramSegment()
@@ -850,6 +851,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.segType = HYBM_MST_DRAM;
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
+    segmentOptions.dataOpType = options_.bmDataOpType;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         segmentOptions.shared = false;
     }
@@ -859,7 +861,7 @@ Result MemEntityDefault::InitDramSegment()
         return BM_ERROR;
     }
 
-    return MemSegmentDevice::SetDeviceInfo(HybmGetInitDeviceId());
+    return HybmDevLegacySegment::SetDeviceInfo(HybmGetInitDeviceId());
 }
 
 Result MemEntityDefault::InitTransManager()
@@ -987,18 +989,14 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
         BM_LOG_ERROR("Invalid memory size: " << size);
         return BM_INVALID_PARAM;
     }
-
+#ifndef USE_VMM
     if (!HybmGvmHasInited()) {
         BM_LOG_ERROR("gvm is not inited, skip register mem!");
         return BM_OK;
     }
+#endif
 
-    // only register hbm
-    if (!(addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR)) {
-        BM_LOG_ERROR("input addr is not hbm! addr:" << std::hex << addr);
-        return BM_ERROR;
-    }
-    size = (size + DEVICE_LARGE_PAGE_SIZE - 1) / DEVICE_LARGE_PAGE_SIZE * DEVICE_LARGE_PAGE_SIZE;
+    size = (size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE * HYBM_LARGE_PAGE_SIZE;
 
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) && transportManager_ != nullptr) {
         transport::TransportMemoryRegion info;
@@ -1008,8 +1006,16 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
         auto ret = transportManager_->RegisterMemoryRegion(info);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to RegisterMem into rdma", ret);
     }
-
+#ifdef USE_VMM
+    return BM_OK;
+#else
+    // only register hbm
+    if (!(addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR)) {
+        BM_LOG_ERROR("input addr is not hbm! addr:" << std::hex << addr);
+        return BM_ERROR;
+    }
     return hybm_gvm_mem_register(addr, size, addr);
+#endif
 }
 
 int32_t MemEntityDefault::SetThreadAclDevice()

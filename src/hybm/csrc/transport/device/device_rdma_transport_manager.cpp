@@ -164,6 +164,16 @@ Result RdmaTransportManager::UnregisterMemoryRegion(uint64_t addr)
     return BM_OK;
 }
 
+bool RdmaTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
+{
+    ReadGuard lockGuard(lock_);
+    auto pos = registerMRS_.lower_bound(addr);
+    if (pos == registerMRS_.end() || pos->first + pos->second.size < addr + size) {
+        return false;
+    }
+    return true;
+}
+
 Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &key)
 {
     RegMemKeyUnion keyUnion{};
@@ -875,14 +885,14 @@ int32_t RdmaTransportManager::InitStreamNotifyBuf()
     ret = DlHccpApi::RaGetNotifyMrInfo(rdmaHandle_, &info);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "get notify mr failed.", ret);
 
-    ret = DlAclApi::AclrtMalloc(&ptr, DEVICE_LARGE_PAGE_SIZE, 0);
+    ret = DlAclApi::AclrtMalloc(&ptr, HYBM_LARGE_PAGE_SIZE, 0);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "alloc notify buf failed.", ret);
 
     ret = DlAclApi::AclrtMemcpy(ptr, notifySize, &notifyVal, notifySize, ACL_MEMCPY_HOST_TO_DEVICE);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "set notify val failed.", ret);
 
     void *mrHandle = nullptr;
-    HccpMrInfo info2{ptr, DEVICE_LARGE_PAGE_SIZE, RA_ACCESS_NORMAL, 0, 0};
+    HccpMrInfo info2{ptr, HYBM_LARGE_PAGE_SIZE, RA_ACCESS_NORMAL, 0, 0};
     ret = DlHccpApi::RaRegisterMR(rdmaHandle_, &info2, mrHandle);
     if (ret != 0) {
         BM_LOG_ERROR("register notify mr failed: " << ret);

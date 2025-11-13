@@ -158,11 +158,6 @@ void CheckBatchCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm
         }
     }
 
-    if (OP_TYPE != SMEMB_DATA_OP_DEVICE_RDMA) {
-        ret = smem_bm_register_layer_mem(rSrc, rSize, BATCH_COPY_LAYER, LAYER_BLOCK_NUM);
-        CHECK_RET_VOID(ret, "register failed, ret:" << ret << " rank:" << rankId);
-    }
-
     void* srcList[BATCH_COPY_ARR_LEN];
     void* dstList[BATCH_COPY_ARR_LEN];
     uint64_t sizeList[BATCH_COPY_ARR_LEN];
@@ -214,11 +209,6 @@ void CheckBatchCopy2(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_b
         if (OP_TYPE == SMEMB_DATA_OP_DEVICE_RDMA) {
             smem_bm_register_user_mem(handle, rSrc[i], rSize[i]);
         }
-    }
-
-    if (OP_TYPE != SMEMB_DATA_OP_DEVICE_RDMA) {
-        ret = smem_bm_register_layer_mem(rSrc, rSize, BATCH_COPY_LAYER, LAYER_BLOCK_NUM);
-        CHECK_RET_VOID(ret, "register failed, ret:" << ret << " rank:" << rankId);
     }
 
     void* srcList[BATCH_COPY_ARR_LEN];

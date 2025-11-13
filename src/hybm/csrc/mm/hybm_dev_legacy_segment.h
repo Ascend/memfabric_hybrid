@@ -37,10 +37,10 @@ struct HbmExportInfo {
     char shmName[DEVICE_SHM_NAME_SIZE + 1U]{};
 };
 
-class MemSegmentDevice : public MemSegment {
+class HybmDevLegacySegment : public MemSegment {
 public:
-    explicit MemSegmentDevice(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
-    ~MemSegmentDevice() override
+    explicit HybmDevLegacySegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
+    ~HybmDevLegacySegment() override
     {
         FreeMemory();
     }
@@ -82,7 +82,6 @@ protected:
     uint64_t allocatedSize_{0UL};
     uint16_t sliceCount_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
-    std::map<uint16_t, MemSliceStatus> regSlices_;
     std::map<uint16_t, std::string> exportMap_;
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;

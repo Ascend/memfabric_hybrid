@@ -376,16 +376,6 @@ Result MmcBmProxy::RegisterBuffer(uint64_t addr, uint64_t size)
     return ret;
 }
 
-Result MmcBmProxy::RegisterLayerBuffer(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto ret = smem_bm_register_layer_mem(addrs, sizes, layer, num);
-    if (ret != MMC_OK) {
-        MMC_LOG_ERROR("Failed to register layer mem,  ret:" << ret);
-    }
-    return ret;
-}
-
 Result MmcBmProxy::CopyWait()
 {
     auto ret = smem_bm_wait(handle_);

@@ -4,16 +4,16 @@
 #include "dl_acl_api.h"
 #include "hybm_networks_common.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_device_user_mem_seg.h"
+#include "hybm_dev_user_legacy_segment.h"
 
 namespace ock {
 namespace mf {
 constexpr uint8_t MAX_DEVICE_COUNT = 16;
-MemSegmentDeviceUseMem::MemSegmentDeviceUseMem(const MemSegmentOptions &options, int eid) noexcept
-    : MemSegmentDevice{options, eid}
+HybmDevUserLegacySegment::HybmDevUserLegacySegment(const MemSegmentOptions &options, int eid) noexcept
+    : HybmDevLegacySegment{options, eid}
 {}
 
-MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem() noexcept
+HybmDevUserLegacySegment::~HybmDevUserLegacySegment() noexcept
 {
     if (!memNames_.empty()) {
         for (auto &name : memNames_) {
@@ -27,25 +27,25 @@ MemSegmentDeviceUseMem::~MemSegmentDeviceUseMem() noexcept
     CloseMemory();
 }
 
-Result MemSegmentDeviceUseMem::ValidateOptions() noexcept
+Result HybmDevUserLegacySegment::ValidateOptions() noexcept
 {
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::ReserveMemorySpace(void **address) noexcept
+Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
 {
-    BM_LOG_ERROR("MemSegmentDeviceUseMem NOT SUPPORT ReserveMemorySpace");
+    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT ReserveMemorySpace");
     return BM_NOT_SUPPORTED;
 }
 
-Result MemSegmentDeviceUseMem::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevUserLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
-    BM_LOG_ERROR("MemSegmentDeviceUseMem NOT SUPPORT AllocLocalMemory");
+    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT AllocLocalMemory");
     return BM_NOT_SUPPORTED;
 }
 
-Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
-                                              std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
+                                                std::shared_ptr<MemSlice> &slice) noexcept
 {
     if (addr == nullptr || size == 0) {
         BM_LOG_ERROR("input address parameter is invalid.");
@@ -81,7 +81,7 @@ Result MemSegmentDeviceUseMem::RegisterMemory(const void *addr, uint64_t size,
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevUserLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
 {
     auto pos = registerSlices_.find(slice->index_);
     if (pos == registerSlices_.end()) {
@@ -100,15 +100,15 @@ Result MemSegmentDeviceUseMem::ReleaseSliceMemory(const std::shared_ptr<MemSlice
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::Export(std::string &exInfo) noexcept
+Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
 {
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
 
     HbmExportDeviceInfo info;
     info.deviceId = deviceId_;
     info.rankId = options_.rankId;
-    info.pid = MemSegmentDevice::pid_;
-    MemSegmentDevice::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
+    info.pid = HybmDevLegacySegment::pid_;
+    HybmDevLegacySegment::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
 
     auto ret = LiteralExInfoTranslater<HbmExportDeviceInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
@@ -120,7 +120,7 @@ Result MemSegmentDeviceUseMem::Export(std::string &exInfo) noexcept
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result HybmDevUserLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
 {
     auto pos = registerSlices_.find(slice->index_);
     if (pos == registerSlices_.end()) {
@@ -134,7 +134,7 @@ Result MemSegmentDeviceUseMem::Export(const std::shared_ptr<MemSlice> &slice, st
     info.size = pos->second.slice->size_;
     info.deviceId = static_cast<uint32_t>(deviceId_);
     info.rankId = static_cast<uint16_t>(options_.rankId);
-    MemSegmentDevice::GetDeviceInfo(sdId, info.serverId, info.superPodId);
+    HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
 
     auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);
@@ -147,13 +147,13 @@ Result MemSegmentDeviceUseMem::Export(const std::shared_ptr<MemSlice> &slice, st
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::GetExportSliceSize(size_t &size) noexcept
+Result HybmDevUserLegacySegment::GetExportSliceSize(size_t &size) noexcept
 {
     size = sizeof(HbmExportSliceInfo);
     return BM_OK;
 }
 
-void MemSegmentDeviceUseMem::RollbackIpcMemory(void *addresses[], uint32_t count)
+void HybmDevUserLegacySegment::RollbackIpcMemory(void *addresses[], uint32_t count)
 {
     for (uint32_t j = 0; j < count; j++) {
         if (addresses[j] != nullptr) {
@@ -162,7 +162,7 @@ void MemSegmentDeviceUseMem::RollbackIpcMemory(void *addresses[], uint32_t count
     }
 }
 
-Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
+Result HybmDevUserLegacySegment::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
     if (allExInfo.empty()) {
         return BM_OK;
@@ -203,19 +203,19 @@ Result MemSegmentDeviceUseMem::Import(const std::vector<std::string> &allExInfo,
     return ret;
 }
 
-Result MemSegmentDeviceUseMem::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
+Result HybmDevUserLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
-    BM_LOG_ERROR("MemSegmentDeviceUseMem NOT SUPPORT RemoveImported");
+    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT RemoveImported");
     return BM_NOT_SUPPORTED;
 }
 
-Result MemSegmentDeviceUseMem::Mmap() noexcept
+Result HybmDevUserLegacySegment::Mmap() noexcept
 {
-    BM_LOG_ERROR("MemSegmentDeviceUseMem NOT SUPPORT Mmap");
+    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT Mmap");
     return BM_NOT_SUPPORTED;
 }
 
-std::shared_ptr<MemSlice> MemSegmentDeviceUseMem::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+std::shared_ptr<MemSlice> HybmDevUserLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     std::shared_ptr<MemSlice> target;
     auto index = MemSlice::GetIndexFrom(slice);
@@ -236,13 +236,13 @@ std::shared_ptr<MemSlice> MemSegmentDeviceUseMem::GetMemSlice(hybm_mem_slice_t s
     return target;
 }
 
-Result MemSegmentDeviceUseMem::Unmap() noexcept
+Result HybmDevUserLegacySegment::Unmap() noexcept
 {
-    BM_LOG_ERROR("MemSegmentDeviceUseMem NOT SUPPORT Unmap");
+    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT Unmap");
     return BM_NOT_SUPPORTED;
 }
 
-bool MemSegmentDeviceUseMem::MemoryInRange(const void *begin, uint64_t size) const noexcept
+bool HybmDevUserLegacySegment::MemoryInRange(const void *begin, uint64_t size) const noexcept
 {
     auto address = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(begin));
     auto pos = addressedSlices_.lower_bound(address);
@@ -253,7 +253,7 @@ bool MemSegmentDeviceUseMem::MemoryInRange(const void *begin, uint64_t size) con
     return (pos->first + pos->second >= address + size);
 }
 
-Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcept
+Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexcept
 {
     HbmExportDeviceInfo deviceInfo;
     LiteralExInfoTranslater<HbmExportDeviceInfo> translator;
@@ -293,7 +293,8 @@ Result MemSegmentDeviceUseMem::ImportDeviceInfo(const std::string &info) noexcep
     return BM_OK;
 }
 
-Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept
+Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
+                                                 std::shared_ptr<MemSlice> &remoteSlice) noexcept
 {
     HbmExportSliceInfo sliceInfo;
     LiteralExInfoTranslater<HbmExportSliceInfo> translator;
@@ -352,7 +353,7 @@ Result MemSegmentDeviceUseMem::ImportSliceInfo(const std::string &info, std::sha
     return BM_OK;
 }
 
-void MemSegmentDeviceUseMem::CloseMemory() noexcept
+void HybmDevUserLegacySegment::CloseMemory() noexcept
 {
     for (auto &addr : registerAddrs_) {
         if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
@@ -364,7 +365,7 @@ void MemSegmentDeviceUseMem::CloseMemory() noexcept
     BM_LOG_INFO("close memory finish.");
 }
 
-void MemSegmentDeviceUseMem::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+void HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
 {
     auto value = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(addr));
     auto rankIdBits = static_cast<uint16_t>(value >> 48);
@@ -376,7 +377,7 @@ void MemSegmentDeviceUseMem::GetRankIdByAddr(const void *addr, uint64_t size, ui
     rankId = rankIdBits - 1U;
 }
 
-bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
+bool HybmDevUserLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
 {
     auto pos = importedDeviceInfo_.find(rankId);
     if (pos == importedDeviceInfo_.end()) {
@@ -386,7 +387,7 @@ bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
     uint32_t sdId;
     uint32_t serverId;
     uint32_t superPodId;
-    MemSegmentDevice::GetDeviceInfo(sdId, serverId, superPodId);
+    HybmDevLegacySegment::GetDeviceInfo(sdId, serverId, superPodId);
 
     if (pos->second.serverId == serverId) {
         return true;
@@ -399,7 +400,7 @@ bool MemSegmentDeviceUseMem::CheckSmdaReaches(uint32_t rankId) const noexcept
     return pos->second.superPodId == superPodId;
 }
 
-Result MemSegmentDeviceUseMem::GetDeviceInfo() noexcept
+Result HybmDevUserLegacySegment::GetDeviceInfo() noexcept
 {
     if (InitDeviceInfo() != BM_OK) {
         return BM_ERROR;

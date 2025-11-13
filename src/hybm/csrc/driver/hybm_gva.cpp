@@ -44,6 +44,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddre
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
         return BM_ERROR;
     }
+#ifndef USE_VMM
     if (flags & HYBM_INIT_GVM_FLAG) {
         ret = hybm_gvm_init(initedLogicDeviceId);
         if (ret != 0) {
@@ -55,6 +56,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddre
     } else {
         initedGvm = false;
     }
+#endif
 
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间

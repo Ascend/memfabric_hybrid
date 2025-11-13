@@ -123,8 +123,6 @@ public:
      */
     virtual int RegisterBuffer(void *buffer, size_t size) = 0;
 
-    virtual int RegisterLayerBuffer(const std::vector<uintptr_t> &buffers,
-        const std::vector<size_t> &sizes, int32_t nums) = 0;
     /**
      * @brief Get object data directly into a pre-allocated buffer
      * @param key Key of the object to get

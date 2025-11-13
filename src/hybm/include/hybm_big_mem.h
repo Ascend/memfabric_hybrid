@@ -208,8 +208,6 @@ void hybm_unmap(hybm_entity_t e, uint32_t flags);
  */
 int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size);
 
-int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num);
-
 /**
  * @brief This command is used to register host memory to device.
  * @param src              [in] requested the src share memory pointer, srcPtr must be page aligned.

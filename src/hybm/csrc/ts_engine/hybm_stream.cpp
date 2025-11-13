@@ -26,10 +26,12 @@ int HybmStream::Initialize() noexcept
 {
     uint32_t ssid = 0;
     int32_t ret = 0;
+#ifndef USE_VMM
     if (HybmGvmHasInited()) {
         ret = hybm_gvm_get_device_info(&ssid);
         BM_ASSERT_LOG_AND_RETURN(ret == 0, "get ssid failed, ret:" << ret, BM_ERROR);
     }
+#endif
 
     tsId_ = 0; // 当前仅支持0
     ret = AllocStreamId();

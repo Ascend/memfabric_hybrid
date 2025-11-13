@@ -24,8 +24,10 @@ using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
 struct MemSliceStatus {
     std::shared_ptr<MemSlice> slice;
+    void *handle;
 
-    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)} {}
+    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)}, handle(nullptr) {}
+    MemSliceStatus(std::shared_ptr<MemSlice> s, void *h) noexcept : slice{std::move(s)}, handle(h) {}
 };
 
 class MemSegment {

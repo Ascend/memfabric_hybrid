@@ -342,12 +342,6 @@ SMEM_API int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint
     return entry->RegisterMem(addr, size);
 }
 
-SMEM_API int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
-    return hybm_register_layer_mem(addrs, sizes, layer, num); // check in hybm
-}
-
 int32_t smem_bm_register_host_mem(uint64_t addr, uint64_t size, uint64_t *dest)
 {
     SM_VALIDATE_RETURN(addr != 0, "invalid param, addr eq 0", SM_INVALID_PARAM);

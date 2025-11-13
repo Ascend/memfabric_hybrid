@@ -8,12 +8,13 @@
 
 #include "dl_acl_api.h"
 #include "hybm_networks_common.h"
-#include "hybm_device_user_mem_seg.h"
-#include "hybm_device_mem_segment.h"
+#include "hybm_dev_user_legacy_segment.h"
+#include "hybm_dev_legacy_segment.h"
 #include "hybm_gva.h"
 #include "hybm_types.h"
-#include "hybm_host_mem_segment.h"
-#include "hybm_sdma_mem_segment.h"
+#include "hybm_conn_based_segment.h"
+#include "hybm_vmm_based_segment.h"
+#include "hybm_gva_version.h"
 
 namespace ock {
 namespace mf {
@@ -37,26 +38,31 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
         return nullptr;
     }
 
-    auto ret = MemSegmentDevice::SetDeviceInfo(options.devId);
+    auto ret = HybmDevLegacySegment::SetDeviceInfo(options.devId);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("MemSegmentDevice::GetDeviceId with devId: " << options.devId << " failed: " << ret);
+        BM_LOG_ERROR("HybmDevLegacySegment::GetDeviceId with devId: " << options.devId << " failed: " << ret);
         return nullptr;
     }
 
     MemSegmentPtr tmpSeg;
     switch (options.segType) {
         case HYBM_MST_HBM:
-            tmpSeg = std::make_shared<MemSegmentDevice>(options, entityId);
+            if (HybmGetGvaVersion() == HYBM_GVA_V4) {
+                tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
+            } else {
+                tmpSeg = std::make_shared<HybmDevLegacySegment>(options, entityId);
+            }
             break;
         case HYBM_MST_DRAM:
-            if (HybmGvmHasInited()) {
-                tmpSeg = std::make_shared<MemSegmentHostSDMA>(options, entityId);
+            if ((options.dataOpType & HYBM_DOP_TYPE_SDMA) != 0 ||
+                (options.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0) {
+                tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
-                tmpSeg = std::make_shared<MemSegmentHost>(options, entityId);
+                tmpSeg = std::make_shared<HybmConnBasedSegment>(options, entityId);
             }
             break;
         case HYBM_MST_HBM_USER:
-            tmpSeg = std::make_shared<MemSegmentDeviceUseMem>(options, entityId);
+            tmpSeg = std::make_shared<HybmDevUserLegacySegment>(options, entityId);
             break;
         default:
             BM_LOG_ERROR("Invalid memory seg type " << int(options.segType));

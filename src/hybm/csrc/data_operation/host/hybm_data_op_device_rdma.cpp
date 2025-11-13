@@ -12,7 +12,6 @@
 #include "hybm_logger.h"
 #include "hybm_types.h"
 #include "hybm_ptracer.h"
-#include "hybm_gvm_user.h"
 
 namespace {
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
@@ -445,7 +444,7 @@ int32_t DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t le
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
-    } else if (hybm_gvm_mem_has_registered(reinterpret_cast<uint64_t>(destVA), length)) {
+    } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
         ret = CopyRDMA(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
     } else {
@@ -469,7 +468,7 @@ int32_t DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t le
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
-    } else if (hybm_gvm_mem_has_registered(reinterpret_cast<uint64_t>(destVA), length)) {
+    } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
         ret = CopyRDMA(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
     } else {
@@ -538,11 +537,13 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocal(hybm_batch_copy_params &params, int
             return BatchDataCopyLocalAsync(params, ACL_MEMCPY_DEVICE_TO_DEVICE, options);
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE:
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE:
+            return BatchDataCopyLocalAsync(params, ACL_MEMCPY_HOST_TO_DEVICE, options);
+        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST:
+        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
+            return BatchDataCopyLocalAsync(params, ACL_MEMCPY_DEVICE_TO_HOST, options);
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE:
             return BatchDataCopyLocalBatch(params, ACL_MEMCPY_HOST_TO_DEVICE, options);
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
-        case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST:
-        case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST:
             return BatchDataCopyLocalBatch(params, ACL_MEMCPY_DEVICE_TO_HOST, options);
         default:
             BM_LOG_ERROR("Failed to BatchDataCopyLocal noy support direct:" << direction);
@@ -641,7 +642,7 @@ void DataOpDeviceRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, c
                 iter->second.globalAddrs.push_back(globalAddrs[i]);
                 iter->second.counts.push_back(counts[i]);
             }
-        } else if (!hybm_gvm_mem_has_registered((uint64_t)localAddrs[i], counts[i])) {
+        } else if (!transportManager_->QueryHasRegistered((uint64_t)localAddrs[i], counts[i])) {
             auto iter = notRegistered.find(gvaRankId);
             if (iter == notRegistered.end()) {
                 CopyDescriptor desc{};
@@ -824,7 +825,7 @@ int32_t DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const Ext
             ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)params.destinations[i],
                                                      (uint64_t)params.sources[i], params.dataSizes[i]);
             BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
-            asyncWriteRanks.insert(tmpOptions.destRankId);
+            asyncWriteRanks.insert(tmpOptions.srcRankId);
         } else {
             BM_LOG_ERROR("invalid param, local rank:" << rankId_ << ", srcId: " << srcRankId
                                                       << ", dstId: " << dstRankId);

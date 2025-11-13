@@ -42,14 +42,6 @@ MMC_API int32_t mmcc_register_buffer(uint64_t addr, uint64_t size)
     return MmcClientDefault::GetInstance()->RegisterBuffer(addr, size);
 }
 
-MMC_API int32_t mmcc_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    MMC_VALIDATE_RETURN(MmcClientDefault::GetInstance() != nullptr, "client is not initialize", MMC_CLIENT_NOT_INIT);
-    MMC_VALIDATE_RETURN(addrs != nullptr, "invalid parma, addr is null", MMC_INVALID_PARAM);
-    MMC_VALIDATE_RETURN(sizes != nullptr, "invalid parma, size is null", MMC_INVALID_PARAM);
-    return MmcClientDefault::GetInstance()->RegisterLayerBuffer(addrs, sizes, layer, num);
-}
-
 MMC_API int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags)
 {
     MMC_VALIDATE_RETURN(key != nullptr, "invalid param, key is null", MMC_INVALID_PARAM);

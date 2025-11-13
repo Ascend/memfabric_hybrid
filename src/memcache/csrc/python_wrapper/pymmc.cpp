@@ -81,14 +81,6 @@ PYBIND11_MODULE(_pymmc, m)
             },
             py::arg("buffer_ptr"), py::arg("size"), "Register a memory buffer for direct access operations")
         .def(
-            "register_layer_buffer",
-            [](MmcacheStore &self, const std::vector<uintptr_t> &buffer_ptrs,
-                    const std::vector<size_t> &sizes, const int32_t &nums) {
-                py::gil_scoped_release release;
-                return self.RegisterLayerBuffer(buffer_ptrs, sizes, nums);
-            },
-            py::arg("buffer"), py::arg("size"), py::arg("num"), "Register a memory buffer for direct access operations")
-        .def(
             "get_into",
             [](MmcacheStore &self, const std::string &key, uintptr_t buffer_ptr, size_t size, const int32_t &direct) {
                 py::gil_scoped_release release;

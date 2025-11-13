@@ -11,6 +11,7 @@ option(BUILD_GIT_COMMIT "build library version with commit" ON)
 option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
+option(USE_VMM "use vmm api" OFF)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -23,6 +24,7 @@ message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
 message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
+message(STATUS "USE_VMM = ${USE_VMM}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
@@ -62,6 +64,10 @@ endif ()
 
 if (ENABLE_PTRACER STREQUAL "ON")
     add_definitions(-DENABLE_PTRACER=ON)
+endif ()
+
+if (USE_VMM STREQUAL "ON")
+    add_definitions(-DUSE_VMM=ON)
 endif ()
 
 if (NOT BUILD_OPEN_ABI STREQUAL "ON")

@@ -236,41 +236,6 @@ HYBM_API int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t
     return entity->RegisterMem(addr, size);
 }
 
-
-HYBM_API int32_t hybm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
-    BM_ASSERT_RETURN(num > 0U, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(layer > 0U, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(addrs != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(sizes != nullptr, BM_INVALID_PARAM);
-
-    static uint64_t offset = 0U;
-    uint64_t len = 0U;
-    for (uint64_t i = 0; i < layer; i++) {
-        BM_ASSERT_RETURN(sizes[i] % num == 0U, BM_INVALID_PARAM);
-        BM_ASSERT_RETURN((sizes[i] / num) % SMALL_PAGE_SIZE == 0, BM_INVALID_PARAM);
-        BM_ASSERT_RETURN(addrs[i] >= HYBM_DEVICE_VA_START && addrs[i] < SVM_END_ADDR, BM_INVALID_PARAM);
-        BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(sizes[i], len, UINT64_MAX, '+'), BM_INVALID_PARAM);
-        len += sizes[i];
-    }
-    BM_VALIDATE_RETURN(offset + len <= HYBM_GVM_REGISTER_LAYER_SIZE, " len:" << std::hex << len, BM_INVALID_PARAM);
-    len /= num;
-
-    int ret = 0;
-    for (uint64_t k = 0; k < num; k++) {
-        uint64_t base = HYBM_GVM_REGISTER_ADDR + offset;
-        for (uint64_t i = 0; i < layer; i++) {
-            uint64_t tmp = sizes[i] / num;
-            ret = hybm_gvm_mem_register(addrs[i] + tmp * k, tmp, base);
-            base += tmp;
-            BM_ASSERT_RETURN(ret == 0, BM_ERROR);
-        }
-        offset += len;
-    }
-    return 0;
-}
-
 void *hybm_host_mem_malloc(uint64_t size, uint64_t flags)
 {
     BM_ASSERT_RETURN(HybmHasInited(), nullptr);

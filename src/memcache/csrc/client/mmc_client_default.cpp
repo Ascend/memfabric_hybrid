@@ -812,17 +812,6 @@ Result MmcClientDefault::RegisterBuffer(uint64_t addr, uint64_t size)
     return ret;
 }
 
-Result MmcClientDefault::RegisterLayerBuffer(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    auto ret = bmProxy_->RegisterLayerBuffer(addrs, sizes, layer, num);
-    if (ret == MMC_OK) {
-        for (uint64_t i = 0; i < layer; i++) {
-            UpdateRegisterMap(addrs[i], sizes[i]);
-        }
-    }
-    return ret;
-}
-
 void MmcClientDefault::UpdateRegisterMap(uint64_t va, uint64_t size)
 {
     if (va > std::numeric_limits<uint64_t>::max() - size) {

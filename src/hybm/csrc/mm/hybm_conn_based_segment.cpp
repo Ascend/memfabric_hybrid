@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  */
-#include "hybm_host_mem_segment.h"
+#include "hybm_conn_based_segment.h"
 
 #include <sys/mman.h>
 
@@ -10,13 +10,9 @@
 
 using namespace ock::mf;
 
-namespace {
-constexpr uint64_t HYBM_HOST_GVA_START_ADDR = 0x0000200000000000UL;
-}
-
-Result MemSegmentHost::ValidateOptions() noexcept
+Result HybmConnBasedSegment::ValidateOptions() noexcept
 {
-    if (options_.segType != HYBM_MST_DRAM || options_.size == 0 || (options_.size % DEVICE_LARGE_PAGE_SIZE) != 0) {
+    if (options_.segType != HYBM_MST_DRAM || options_.size == 0 || (options_.size % HYBM_LARGE_PAGE_SIZE) != 0) {
         BM_LOG_ERROR("Validate options error type(" << options_.segType << ") size(" << options_.size);
         return BM_INVALID_PARAM;
     }
@@ -29,7 +25,7 @@ Result MemSegmentHost::ValidateOptions() noexcept
     return BM_OK;
 }
 
-Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
+Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
@@ -52,31 +48,31 @@ Result MemSegmentHost::ReserveMemorySpace(void **address) noexcept
     return BM_OK;
 }
 
-Result MemSegmentHost::UnReserveMemorySpace() noexcept
+Result HybmConnBasedSegment::UnReserveMemorySpace() noexcept
 {
     BM_LOG_INFO("un-reserve memory space.");
     FreeMemory();
     return BM_OK;
 }
 
-void MemSegmentHost::LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept
+void HybmConnBasedSegment::LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept
 {
     BM_ASSERT_RET_VOID(mappedAddress != nullptr);
     auto *pos = static_cast<uint8_t *>(mappedAddress);
     uint64_t setLength = 0;
     while (setLength < size) {
         *pos = 0;
-        setLength += DEVICE_LARGE_PAGE_SIZE;
-        pos += DEVICE_LARGE_PAGE_SIZE;
+        setLength += HYBM_LARGE_PAGE_SIZE;
+        pos += HYBM_LARGE_PAGE_SIZE;
     }
 
     pos = static_cast<uint8_t *>(mappedAddress) + (size - 1L);
     *pos = 0;
 }
 
-Result MemSegmentHost::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
-    if ((size % DEVICE_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
         BM_LOG_ERROR("invalid allocate memory size : " << size << ", now used " << allocatedSize_ << " of "
                                                        << options_.size);
         return BM_INVALID_PARAM;
@@ -99,12 +95,12 @@ Result MemSegmentHost::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice>
     return BM_OK;
 }
 
-Result MemSegmentHost::Export(std::string &exInfo) noexcept
+Result HybmConnBasedSegment::Export(std::string &exInfo) noexcept
 {
     return BM_OK;
 }
 
-Result MemSegmentHost::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result HybmConnBasedSegment::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");
@@ -146,7 +142,7 @@ Result MemSegmentHost::Export(const std::shared_ptr<MemSlice> &slice, std::strin
     return BM_OK;
 }
 
-Result MemSegmentHost::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
+Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
     LiteralExInfoTranslater<HostExportInfo> translator;
     std::vector<HostExportInfo> deserializedInfos{allExInfo.size()};
@@ -179,19 +175,19 @@ Result MemSegmentHost::Import(const std::vector<std::string> &allExInfo, void *a
     return BM_OK;
 }
 
-Result MemSegmentHost::Mmap() noexcept
+Result HybmConnBasedSegment::Mmap() noexcept
 {
     imports_.clear();
     return 0;
 }
 
-Result MemSegmentHost::Unmap() noexcept
+Result HybmConnBasedSegment::Unmap() noexcept
 {
     return 0;
 }
 
 
-std::shared_ptr<MemSlice> MemSegmentHost::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+std::shared_ptr<MemSlice> HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);
@@ -209,7 +205,7 @@ std::shared_ptr<MemSlice> MemSegmentHost::GetMemSlice(hybm_mem_slice_t slice) co
     return target;
 }
 
-bool MemSegmentHost::MemoryInRange(const void *begin, uint64_t size) const noexcept
+bool HybmConnBasedSegment::MemoryInRange(const void *begin, uint64_t size) const noexcept
 {
     if (begin < globalVirtualAddress_) {
         return false;
@@ -222,7 +218,7 @@ bool MemSegmentHost::MemoryInRange(const void *begin, uint64_t size) const noexc
     return true;
 }
 
-void MemSegmentHost::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+void HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
 {
     if (!MemoryInRange(addr, size)) {
         rankId = options_.rankId;
@@ -231,7 +227,7 @@ void MemSegmentHost::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &
     }
 }
 
-void MemSegmentHost::FreeMemory() noexcept
+void HybmConnBasedSegment::FreeMemory() noexcept
 {
     if (localVirtualBase_ != nullptr) {
         if (munmap(localVirtualBase_, options_.size) != 0) {
@@ -247,22 +243,22 @@ void MemSegmentHost::FreeMemory() noexcept
     }
 }
 
-Result MemSegmentHost::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
+Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
     return 0;
 }
 
-Result MemSegmentHost::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
     return BM_OK;
 }
 
-Result MemSegmentHost::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
 {
     return BM_OK;
 }
 
-Result MemSegmentHost::GetExportSliceSize(size_t &size) noexcept
+Result HybmConnBasedSegment::GetExportSliceSize(size_t &size) noexcept
 {
     return BM_OK;
 }

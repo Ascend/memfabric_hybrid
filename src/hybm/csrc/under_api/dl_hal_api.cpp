@@ -55,6 +55,42 @@ halHostRegisterFunc DlHalApi::pHalHostRegister = nullptr;
 halHostUnregisterExFunc DlHalApi::pHalHostUnregisterEx = nullptr;
 drvNotifyIdAddrOffsetFunc DlHalApi::pDrvNotifyIdAddrOffset = nullptr;
 
+halMemAddressReserveFunc DlHalApi::pHalMemAddressReserve = nullptr;
+halMemAddressFreeFunc DlHalApi::pHalMemAddressFree = nullptr;
+halMemCreateFunc DlHalApi::pHalMemCreate = nullptr;
+halMemReleaseFunc DlHalApi::pHalMemRelease = nullptr;
+halMemMapFunc DlHalApi::pHalMemMap = nullptr;
+halMemUnmapFunc DlHalApi::pHalMemUnmap = nullptr;
+halMemExportFunc DlHalApi::pHalMemExport = nullptr;
+halMemImportFunc DlHalApi::pHalMemImport = nullptr;
+halMemShareHandleSetAttributeFunc DlHalApi::pHalMemShareHandleSetAttribute = nullptr;
+halMemTransShareableHandleFunc DlHalApi::pHalMemTransShareableHandle = nullptr;
+
+#ifdef USE_VMM
+
+Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
+{
+    if (gvaVersion != HYBM_GVA_V4) {
+        BM_LOG_INFO("driver version is too old, not support vmm.");
+        return BM_OK;
+    }
+
+    DL_LOAD_SYM(pHalMemAddressReserve, halMemAddressReserveFunc, halHandle, "halMemAddressReserve");
+    DL_LOAD_SYM(pHalMemAddressFree, halMemAddressFreeFunc, halHandle, "halMemAddressFree");
+    DL_LOAD_SYM(pHalMemCreate, halMemCreateFunc, halHandle, "halMemCreate");
+    DL_LOAD_SYM(pHalMemRelease, halMemReleaseFunc, halHandle, "halMemRelease");
+    DL_LOAD_SYM(pHalMemMap, halMemMapFunc, halHandle, "halMemMap");
+    DL_LOAD_SYM(pHalMemUnmap, halMemUnmapFunc, halHandle, "halMemUnmap");
+    DL_LOAD_SYM(pHalMemExport, halMemExportFunc, halHandle, "halMemExportToShareableHandleV2");
+    DL_LOAD_SYM(pHalMemImport, halMemImportFunc, halHandle, "halMemImportFromShareableHandleV2");
+    DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc,
+                halHandle, "halMemShareHandleSetAttribute");
+    DL_LOAD_SYM(pHalMemTransShareableHandle, halMemTransShareableHandleFunc, halHandle, "halMemTransShareableHandle");
+
+    return BM_OK;
+}
+#endif
+
 Result DlHalApi::LoadHybmV1V2Library(uint32_t gvaVersion)
 {
     if (gvaVersion == HYBM_GVA_V1 || gvaVersion == HYBM_GVA_V2) {
@@ -92,9 +128,7 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
 
     halHandle = dlopen(gAscendHalLibName, RTLD_NOW);
     if (halHandle == nullptr) {
-        BM_LOG_ERROR(
-            "Failed to open library ["
-            << gAscendHalLibName
+        BM_LOG_ERROR("Failed to open library [" << gAscendHalLibName
             << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"
             << " error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;
@@ -116,7 +150,11 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
                 "devmm_virt_normal_heap_update_info");
     DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
 
+#ifdef USE_VMM
+    auto ret = LoadHybmV1V2Library(gvaVersion) | LoadHybmVmmLibrary(gvaVersion);
+#else
     auto ret = LoadHybmV1V2Library(gvaVersion);
+#endif
     if (ret != 0) {
         return ret;
     }
@@ -138,13 +176,8 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
     return BM_OK;
 }
 
-void DlHalApi::CleanupLibrary()
+void DlHalApi::CleanupHalApi()
 {
-    std::lock_guard<std::mutex> guard(gMutex);
-    if (!gLoaded) {
-        return;
-    }
-
     pHalFd = nullptr;
     pSvmModuleAllocedSizeInc = nullptr;
     pVirtAllocMemFromBase = nullptr;
@@ -182,6 +215,25 @@ void DlHalApi::CleanupLibrary()
     pHalSqCqQuery = nullptr;
     pHalHostRegister = nullptr;
     pHalHostUnregisterEx = nullptr;
+
+    pHalMemAddressReserve = nullptr;
+    pHalMemAddressFree = nullptr;
+    pHalMemCreate = nullptr;
+    pHalMemRelease = nullptr;
+    pHalMemMap = nullptr;
+    pHalMemUnmap = nullptr;
+    pHalMemExport = nullptr;
+    pHalMemImport = nullptr;
+}
+
+void DlHalApi::CleanupLibrary()
+{
+    std::lock_guard<std::mutex> guard(gMutex);
+    if (!gLoaded) {
+        return;
+    }
+
+    CleanupHalApi();
 
     if (halHandle != nullptr) {
         dlclose(halHandle);

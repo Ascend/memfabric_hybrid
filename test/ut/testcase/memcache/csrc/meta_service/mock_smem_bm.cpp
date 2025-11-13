@@ -90,11 +90,6 @@ int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size
     return 0;
 }
 
-int32_t smem_bm_register_layer_mem(const uint64_t *addrs, const uint64_t *sizes, uint64_t layer, uint64_t num)
-{
-    return 0;
-}
-
 int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     return 0;

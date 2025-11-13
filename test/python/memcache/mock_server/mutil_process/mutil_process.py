@@ -88,7 +88,8 @@ def write_worker(device: int):
     if res != 0:
         raise f"Failed to start pid:{os.getpid()} deviceId:{device_id}"
     print(f"==== Success to init device:{device_id}")
-    store.register_layer_buffer(register_buffs, register_size, one_batch_count)
+    store.register_buffer(tensor1.data_ptr(), max(size1, default=0) * len(size1) * one_batch_count)
+    store.register_buffer(tensor2.data_ptr(), max(size2, default=0) * len(size2) * one_batch_count)
     for i in range(call_count):
         keys = []
         buffs = []
@@ -124,7 +125,8 @@ def read_worker(device: int):
     if res != 0:
         raise f"Failed to start pid:{os.getpid()} deviceId:{device_id}"
     print(f"==== Success to init device:{device_id}")
-    store.register_layer_buffer(register_buffs, register_size, one_batch_count)
+    store.register_buffer(tensor1.data_ptr(), max(size1, default=0) * len(size1) * one_batch_count)
+    store.register_buffer(tensor2.data_ptr(), max(size2, default=0) * len(size2) * one_batch_count)
     for i in range(call_count):
         keys = []
         buffs = []
