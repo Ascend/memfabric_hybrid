@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12.0)
 project(MF_HYBRID VERSION 1.0 LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 option(ENABLE_TRACE_LOG "Enable trace log" OFF)
 option(BUILD_TESTS "build test or not" OFF)
@@ -12,6 +12,7 @@ option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
 option(USE_VMM "use vmm api" OFF)
+option(USE_CANN "BM implemented using CANN." ON)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -42,7 +43,7 @@ if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
     set(CMAKE_SKIP_RPATH TRUE)
     message(STATUS "build type set to RELEASE")
 else ()
-    add_compile_options(-g -rdynamic -fPIC)
+    add_compile_options(-g -ggdb3 -O0 -fno-omit-frame-pointer -rdynamic -fPIC)
 endif ()
 
 if (${CMAKE_BUILD_TYPE} MATCHES "ASAN")
@@ -66,6 +67,10 @@ if (ENABLE_PTRACER STREQUAL "ON")
     add_definitions(-DENABLE_PTRACER=ON)
 endif ()
 
+if (USE_CANN STREQUAL "ON")
+    add_definitions(-DUSE_CANN=ON)
+    message("USE_CANN IS ON.")
+endif ()
 if (USE_VMM STREQUAL "ON")
     add_definitions(-DUSE_VMM=ON)
 endif ()
@@ -200,9 +205,10 @@ include_directories(
 
 add_subdirectory(3rdparty)
 add_subdirectory(src)
+add_subdirectory(test/example/memcache_cpp_test)
 
 if(BUILD_TESTS STREQUAL "ON")
-    set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_STANDARD 17)
     message(STATUS "BUILD_TESTS = ON, add compile gov")
     add_subdirectory(test)
 endif()

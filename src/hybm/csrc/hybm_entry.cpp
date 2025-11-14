@@ -40,14 +40,17 @@ bool HybmHasInited()
 
 static inline int hybm_load_library()
 {
+    std::string libPath;
+#ifdef USE_CANN
     char *path = std::getenv("ASCEND_HOME_PATH");
     BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
-
-    std::string libPath = std::string(path).append("/lib64");
+    libPath = std::string(path).append("/lib64");
     if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
         BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
         return BM_ERROR;
     }
+#endif
+
     auto ret = DlApi::LoadLibrary(libPath, HybmGetGvaVersion());
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
     return 0;

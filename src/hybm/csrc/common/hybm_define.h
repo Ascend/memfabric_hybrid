@@ -141,6 +141,14 @@ struct HybmDeviceMeta {
         }                                                                                             \
     } while (0)
 
+#define DL_LOAD_SYM_OPTIONAL(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)            \
+    do {                                                                                             \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                         \
+        if ((TARGET_FUNC_VAR) == nullptr) {                                                          \
+            BM_LOG_WARN("Failed to call dlsym to load " << (SYMBOL_NAME) << ", error" << dlerror()); \
+        }                                                                                            \
+    } while (0)
+
 enum HybmGvaVersion : uint32_t {
     HYBM_GVA_V1 = 0,
     HYBM_GVA_V2 = 1,

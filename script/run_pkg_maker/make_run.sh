@@ -1,5 +1,7 @@
 #!/bin/bash
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+USE_CANN=${2:-ON}
+echo "USE_CANN is ${USE_CANN}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -73,7 +75,13 @@ cp ${PROJECT_DIR}/test/python/memcache/mock_server/smem_bm/smem_bm_server.py ${P
 cp -r ${PROJECT_DIR}/test/python/memcache/ha ${PKG_DIR}/${ARCH_OS}/script
 
 mkdir -p ${PKG_DIR}/script
-cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
+if [[ "$USE_CANN" == "OFF" ]]; then
+   echo "in make_run.sh, USE_CANN is OFF"
+   cp ${BASH_PATH}/no_cann/install.sh ${PKG_DIR}/script/
+else
+   echo "in make_run.sh, USE_CANN is ON"
+   cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
+fi
 cp ${BASH_PATH}/uninstall.sh ${PKG_DIR}/script/
 
 # generate version.info

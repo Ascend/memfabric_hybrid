@@ -16,7 +16,7 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
     if (result != BM_OK) {
         return result;
     }
-
+#ifdef USE_CANN
     result = DlHalApi::LoadLibrary(gvaVersion);
     if (result != BM_OK) {
         DlAclApi::CleanupLibrary();
@@ -29,6 +29,7 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
         DlAclApi::CleanupLibrary();
         return result;
     }
+#endif
 
     DlHcomApi::LoadLibrary();
     return BM_OK;

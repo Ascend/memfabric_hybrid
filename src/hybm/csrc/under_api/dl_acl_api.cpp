@@ -42,6 +42,9 @@ rtGetLogicDevIdByUserDevIdFunc DlAclApi::pRtGetLogicDevIdByUserDevId = nullptr;
 
 Result DlAclApi::LoadLibrary(const std::string &libDirPath)
 {
+#ifndef USE_CANN
+    return BM_OK;
+#else
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {
         return BM_OK;
@@ -74,7 +77,7 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pAclrtMallocHost, aclrtMallocHostFunc, rtHandle, "aclrtMallocHost");
     DL_LOAD_SYM(pAclrtFreeHost, aclrtFreeHostFunc, rtHandle, "aclrtFreeHost");
     DL_LOAD_SYM(pAclrtMemcpy, aclrtMemcpyFunc, rtHandle, "aclrtMemcpy");
-    DL_LOAD_SYM(pAclrtMemcpyBatch, aclrtMemcpyBatchFunc, rtHandle, "aclrtMemcpyBatch");
+    DL_LOAD_SYM_OPTIONAL(pAclrtMemcpyBatch, aclrtMemcpyBatchFunc, rtHandle, "aclrtMemcpyBatch");
     DL_LOAD_SYM(pAclrtMemcpyAsync, aclrtMemcpyAsyncFunc, rtHandle, "aclrtMemcpyAsync");
     DL_LOAD_SYM(pAclrtMemcpy2d, aclrtMemcpy2dFunc, rtHandle, "aclrtMemcpy2d");
     DL_LOAD_SYM(pAclrtMemcpy2dAsync, aclrtMemcpy2dAsyncFunc, rtHandle, "aclrtMemcpy2dAsync");
@@ -93,6 +96,7 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
 
     gLoaded = true;
     return BM_OK;
+#endif
 }
 
 void DlAclApi::CleanupLibrary()

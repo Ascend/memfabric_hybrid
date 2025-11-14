@@ -63,6 +63,8 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
     DlHcomApi::ServiceSetDeviceIpMask(rpcService_, ipMask.c_str());
     DlHcomApi::ServiceBind(rpcService_, localNic_.c_str(), TransportRpcHcomNewEndPoint);
     ret = DlHcomApi::ServiceStart(rpcService_);
+    // 单节点不需要hcom
+#ifdef USE_CANN
     if (ret != 0) {
         BM_LOG_ERROR("Failed to start hcom service, nic: " << localNic_ << " type: " << enumProtocolType
                                                            << " ret: " << ret);
@@ -70,6 +72,12 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         rpcService_ = 0;
         return BM_DL_FUNCTION_FAILED;
     }
+#else
+    if (ret != 0) {
+        BM_LOG_WARN("Failed to start hcom service, nic: " << localNic_ << " type: " << enumProtocolType
+                                                           << " ret: " << ret);
+    }
+#endif
 
     rankId_ = options.rankId;
     rankCount_ = options.rankCount;
@@ -115,20 +123,37 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
     Service_MemoryRegion memoryRegion;
     int32_t ret = DlHcomApi::ServiceRegisterAssignMemoryRegion(rpcService_, mr.addr, mr.size, &memoryRegion);
+    // 单节点不需要hcom
+#ifdef USE_CANN
     if (ret != 0) {
         BM_LOG_ERROR("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
                                                              << " service: " << rpcService_ << " ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
-
+#else
+    if (ret != 0) {
+        BM_LOG_WARN("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
+                                                             << " service: " << rpcService_ << " ret: " << ret);
+    }
+#endif
     Service_MemoryRegionInfo memoryRegionInfo;
-    ret = DlHcomApi::ServiceGetMemoryRegionInfo(memoryRegion, &memoryRegionInfo);
+    if (ret == 0) {
+        ret = DlHcomApi::ServiceGetMemoryRegionInfo(memoryRegion, &memoryRegionInfo);
+    }
+    // 单节点不需要hcom
+#ifdef USE_CANN
     if (ret != 0) {
         BM_LOG_ERROR("Failed to get mem region info, size: " << mr.size
                                                              << " service: " << rpcService_ << " ret: " << ret);
         DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, memoryRegion);
         return BM_DL_FUNCTION_FAILED;
     }
+#else
+    if (ret != 0) {
+        BM_LOG_WARN("Failed to get mem region info, size: " << mr.size
+                                                             << " service: " << rpcService_ << " ret: " << ret);
+    }
+#endif
 
     HcomMemoryRegion mrInfo{};
     mrInfo.addr = mr.addr;

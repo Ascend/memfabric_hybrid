@@ -32,6 +32,9 @@ int32_t HybmGetInitedLogicDeviceId()
 
 int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddress)
 {
+#ifndef USE_CANN
+    return BM_OK;
+#else
     initedLogicDeviceId = Func::GetLogicDeviceId(deviceId);
     if (initedLogicDeviceId < 0) {
         BM_LOG_ERROR("Failed to get logic deviceId: " << deviceId);
@@ -78,6 +81,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddre
 
     baseAddress = reinterpret_cast<uint64_t>(globalMemoryBase);
     return BM_OK;
+#endif
 }
 
 } // namespace mf

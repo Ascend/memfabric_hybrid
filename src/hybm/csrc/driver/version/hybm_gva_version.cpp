@@ -129,6 +129,9 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
 
 static bool DriverVersionCheck(const std::string &ver)
 {
+#ifndef USE_CANN
+    return true;
+#else
     auto libPath = std::getenv("LD_LIBRARY_PATH");
     if (libPath == nullptr) {
         BM_LOG_ERROR("check driver version failed, Environment LD_LIBRARY_PATH not set.");
@@ -172,6 +175,7 @@ static bool DriverVersionCheck(const std::string &ver)
         return false;
     }
     return true;
+#endif
 }
 
 int32_t HalGvaPrecheck()
