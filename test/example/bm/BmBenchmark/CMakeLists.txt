@@ -9,7 +9,10 @@ set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
 if("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
     message(FATAL_ERROR "ascend cann path not found!")
 endif()
-add_executable(bm_perf_benchmark ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+file(GLOB BM_BENCHMARK_FILES *.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/*
+)
+add_executable(bm_perf_benchmark ${BM_BENCHMARK_FILES})
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
     set(TARGET_ARCH "x86_64")
@@ -24,6 +27,7 @@ target_compile_options(bm_perf_benchmark PRIVATE
 )
 
 include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/
         ${MF_PATH}/${TARGET_ARCH}-linux/include/smem/host
         ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/include/
         ${MF_PATH}/${TARGET_ARCH}-linux/include/util/

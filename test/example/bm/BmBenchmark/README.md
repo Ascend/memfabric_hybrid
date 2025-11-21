@@ -46,22 +46,31 @@ bash build_bm_perf_benchmark.sh
 编译完成后,会在当前目录生成bm_example可执行文件
 执行方式如下,支持多节点运行
   ```bash
-  ./bm_perf_benchmark [WORLD_SIZE] [LOCAL_RANK_SIZE] [RANK_START] [SERVER_IP] [BLOCK_SIZE] [LOOP_COUNT] [BATCH_SIZE]
+  ./bm_perf_benchmark -bw -t [DATA_COPY_TYPE] -et[EXCUTE_TIMES] -s [BLOCK_SIZE] -bs[BATCH_SIZE] -d [DEVICE_START] -ws [WORLD_SIZE] -lrs [LOCAL_RANK_SIZE] -rs [RANK_START] -ip [SERVER_IP]
   ```
+    - DATA_COPY_TYPE: 数据拷贝方式
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
+    - DEVICE_START: 本节点使用的卡号的起始值,本节点的卡号范围就是[DEVICE_START, DEVICE_START + LOCAL_RANK_SIZE)
     - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口
     - BLOCK_SIZE: 单个拷贝数据块的大小
     - BATCH_SIZE：每次下发拷贝的block个数
-    - LOOP_COUNT：循环下发多少次拷贝
+    - EXCUTE_TIMES：循环下发多少次拷贝
 
   示例如下(假设期望指定监听8570端口)
   ```bash
+  查看指令说明:
+  ./bm_perf_benchmark -h
+
   单节点运行2张卡: 
-  ./bm_perf_benchmark 2 2 0 tcp://127.0.0.1:8570 4194304 10000 1
+  ./bm_perf_benchmark -bw -t all -s 524288 -ws 2 -lrs 2 -ip tcp://x.x.x.x:8570
   
   两节点运行16张卡,每节点8张(假设nodeA的ip为x.x.x.x):
-  nodeA: ./bm_perf_benchmark 16 8 0 tcp://x.x.x.x:8570 4194304 10000 1
-  nodeB: ./bm_perf_benchmark 16 8 8 tcp://x.x.x.x:8570 4194304 10000 1
+  nodeA: ./bm_perf_benchmark -bw -t all -s 524288 -ws 16 -lrs 8 -rs 0 -ip tcp://x.x.x.x:8570
+  nodeB: ./bm_perf_benchmark -bw -t all -s 524288 -ws 16 -lrs 8 -rs 8 -ip tcp://x.x.x.x:8570
+
+  两节点运行8张卡,每节点4张,A节点使用2-5卡,B节点使用4-7卡(假设nodeA的ip为x.x.x.x):
+  nodeA: ./bm_perf_benchmark -bw -t all -s 524288 -ws 8 -lrs 4 -rs 0 -d 2 -ip tcp://x.x.x.x:8570
+  nodeB: ./bm_perf_benchmark -bw -t all -s 524288 -ws 8 -lrs 4 -rs 2 -d 4 -ip tcp://x.x.x.x:8570
   ```

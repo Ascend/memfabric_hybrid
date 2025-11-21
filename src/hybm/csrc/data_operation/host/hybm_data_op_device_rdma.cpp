@@ -577,7 +577,6 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params
     if (ret != 0) {
         BM_LOG_ERROR("Failed to batchDataCopyLocal ret:" << ret << std::hex << " srcAddr:" << params.sources[fail_idx]
             << " dstAddr:" << params.destinations[fail_idx]);
-        return BatchDataCopyLocalAsync(params, direction, options);
     }
     return ret;
 }
