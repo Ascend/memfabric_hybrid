@@ -17,7 +17,16 @@ Result MmcMemObjMeta::AddBlob(const MmcMemBlobPtr& blob)
         MMC_LOG_ERROR("add blob size:" << blob->Size() << " != meta size:" << size_);
         return MMC_ERROR;
     }
-
+    for (const auto &old : blobs_) {
+        if (old == nullptr || blob == nullptr) {
+            MMC_LOG_ERROR("null ptr find: " << (old == nullptr));
+            return MMC_ERROR;
+        }
+        if (old->GetDesc() == blob->GetDesc()) {
+            MMC_LOG_INFO("find old block: " << blob->GetDesc());
+            return MMC_OK;
+        }
+    }
     blobs_.emplace_back(blob);
     numBlobs_++;
     size_ = blob->Size();

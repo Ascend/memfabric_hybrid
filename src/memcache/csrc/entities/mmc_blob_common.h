@@ -23,6 +23,17 @@ struct MmcMemBlobDesc {
     {
     }
 
+    friend bool operator==(const MmcMemBlobDesc &lhs, const MmcMemBlobDesc &rhs)
+    {
+        return lhs.size_ == rhs.size_ && lhs.gva_ == rhs.gva_ && lhs.rank_ == rhs.rank_ &&
+               lhs.mediaType_ == rhs.mediaType_;
+    }
+
+    friend bool operator!=(const MmcMemBlobDesc &lhs, const MmcMemBlobDesc &rhs)
+    {
+        return !(lhs == rhs);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const MmcMemBlobDesc& blob)
     {
         os << "blob{size=" << blob.size_ << ",gva=" << blob.gva_ << ",rank=" << blob.rank_

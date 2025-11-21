@@ -131,7 +131,7 @@ Result MmcMetaManager::Alloc(const std::string &key, const AllocOptions &allocOp
 
     ret = metaContainer_->Insert(key, tempMetaObj);
     if (ret != MMC_OK) {
-        tempMetaObj->FreeBlobs(key, globalAllocator_);
+        tempMetaObj->FreeBlobs(key, globalAllocator_, nullptr, false);
         if (ret != MMC_DUPLICATED_OBJECT) {
             MMC_LOG_ERROR("Fail to insert " << key << " into MmcMetaContainer. ret:" << ret);
         }
