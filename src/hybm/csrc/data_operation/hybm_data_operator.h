@@ -30,6 +30,8 @@ public:
 
     virtual int32_t DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                              const ExtOptions &options) noexcept = 0;
+    virtual int32_t DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
+                               const ExtOptions &options) noexcept = 0;
     virtual int32_t BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                   const ExtOptions &options) noexcept = 0;
     /*

@@ -10,6 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <unordered_set>
+#include "dl_hccp_def.h"
 #include "device_qp_manager.h"
 #include "bipartite_ranks_qp_def.h"
 
@@ -17,6 +18,12 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
+
+enum class IpType {
+    IpV4,
+    IpV6,
+    IPNONE,
+};
 
 class BipartiteRanksQpManager : public DeviceQpManager {
 public:
@@ -37,11 +44,33 @@ private:
     int ProcessQueryConnectionStateTask() noexcept;
     int ProcessConnectQpTask() noexcept;
     int ProcessQueryQpStateTask() noexcept;
+    void ProcessUpdateLocalMrTask() noexcept;
+    void ProcessUpdateRemoteMrTask() noexcept;
     void CloseServices() noexcept;
-
+    int CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &r, std::vector<HccpSocketConnectInfo> &c,
+                           ClientConnectSocketTask &currTask);
+    void Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::vector<HccpSocketInfo> &socketInfos,
+                          std::vector<IpType> &types);
+    int32_t GetSocketConn(std::vector<HccpSocketInfo> &socketInfos, QueryConnectionStateTask &currTask,
+                          std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                          std::unordered_set<uint32_t> &connectedRanks, std::vector<IpType> &types);
+    std::vector<lite_mr_info> GenerateLocalLiteMrs() noexcept;
+    std::vector<lite_mr_info> GenerateRemoteLiteMrs(uint32_t rankId) noexcept;
     void GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
-                                std::unordered_map<uint32_t, sockaddr_in> &addedRanks) noexcept;
-    void GenTaskFromChangeRanks(const std::unordered_map<uint32_t, sockaddr_in> &addedRanks) noexcept;
+                                std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                std::unordered_set<uint32_t> &addMrRanks) noexcept;
+    void GenTaskFromChangeRanks(const std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                const std::unordered_set<uint32_t> &addMrRanks) noexcept;
+    static void SetQpHandleRegisterMr(void *qpHandle, const std::vector<lite_mr_info> &mrs, bool local) noexcept;
+    void InitializeWhiteList(std::vector<HccpSocketWhiteListInfo> &whitelist,
+                             std::unordered_map<uint32_t, in_addr> remotes) noexcept;
+    int BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos, ClientConnectSocketTask &currTask,
+                              std::unordered_map<uint32_t, sockaddr_in> &remotes) noexcept;
+    void ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
+                                      std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                      std::vector<IpType> &types,
+                                      std::unordered_set<uint32_t> &connectedRanks,
+                                      uint32_t &successCount);
 
 private:
     void *rdmaHandle_{nullptr};

@@ -72,6 +72,8 @@ public:
                      void *stream, uint32_t flags) noexcept override;
     int32_t BatchCopyData(hybm_batch_copy_params &params,
                           hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept override;
+    int32_t CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
+                       void *stream, uint32_t flags) noexcept override;
     int32_t Wait() noexcept override;
     int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
@@ -79,6 +81,7 @@ public:
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;
+    int LoadExtendLibrary() noexcept;
     int UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
     int ImportForTransport(const ExchangeInfoReader desc[], uint32_t count) noexcept;
@@ -92,6 +95,8 @@ private:
 
     void ReleaseResources();
     int32_t SetThreadAclDevice();
+    int32_t ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t flags);
+    int32_t ImportForTransportPrecheck(const ExchangeInfoReader *desc, uint32_t &count, bool &importInfoEntity);
 
 private:
     static thread_local bool isSetDevice_;
@@ -106,7 +111,9 @@ private:
     std::shared_ptr<DataOperator> devRdmaDataOperator_;
     std::shared_ptr<DataOperator> hostRdmaDataOperator_;
     bool transportPrepared{false};
+    std::mutex importMutex_;
     transport::TransManagerPtr transportManager_;
+    std::unordered_map<uint32_t, EntityExportInfo> importedRanks_;
     std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> importedMemories_;
 };
 using EngineImplPtr = std::shared_ptr<MemEntityDefault>;

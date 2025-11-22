@@ -33,6 +33,22 @@ int32_t hybm_init(uint16_t deviceId, uint64_t flags);
 void hybm_uninit(void);
 
 /**
+ * @brief Set external log function, if not set, log message will be instdout
+ *
+ * @param logger           [in] logger function
+ * @return 0 if successful
+ */
+void hybm_set_extern_logger(void (*logger)(int level, const char *msg));
+
+/**
+ * @brief Set log print level
+ *
+ * @param level           [in] log level, 0:debug 1:info 2:warn 3:error
+ * @return 0 if successful
+ */
+int32_t hybm_set_log_level(int level);
+
+/**
  * @brief Get error message by error code
  *
  * @param errCode          [in] error number returned by other functions

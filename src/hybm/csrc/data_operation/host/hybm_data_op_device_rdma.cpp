@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "hybm_data_op_device_rdma.h"
 
@@ -584,10 +590,14 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params
 void DataOpDeviceRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts,
                                         uint32_t batchSize, std::unordered_map<uint32_t, CopyDescriptor> &registered,
                                         std::unordered_map<uint32_t, CopyDescriptor> &localed,
-                                        std::unordered_map<uint32_t, CopyDescriptor> &notRegistered) noexcept
+                                        std::unordered_map<uint32_t, CopyDescriptor> &notRegistered,
+                                        uint32_t globalRankId) noexcept
 {
     for (size_t i = 0; i < batchSize; ++i) {
         uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
+        if (gvaRankId == UINT32_MAX) {
+            gvaRankId = globalRankId;
+        }
         if (gvaRankId == rankId_) {
             auto iter = localed.find(gvaRankId);
             if (iter == localed.end()) {
@@ -640,7 +650,7 @@ int32_t DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const E
     std::unordered_map<uint32_t, CopyDescriptor> registered{};
     std::unordered_map<uint32_t, CopyDescriptor> notRegistered{};
     ClassifyDataAddr(params.destinations, params.sources, params.dataSizes, params.batchSize, registered, localed,
-                     notRegistered);
+                     notRegistered, options.destRankId);
 
     // 先写异步
     for (auto &it : registered) {
@@ -691,7 +701,7 @@ int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ex
     std::unordered_map<uint32_t, CopyDescriptor> registered{};
     std::unordered_map<uint32_t, CopyDescriptor> notRegistered{};
     ClassifyDataAddr(params.sources, params.destinations, params.dataSizes, params.batchSize, registered, localed,
-                     notRegistered);
+                     notRegistered, options.srcRankId);
 
     // 先写异步
     for (auto &it : registered) {
@@ -701,7 +711,7 @@ int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ex
         for (uint32_t i = 0; i < regParams.batchSize; ++i) {
             ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)regParams.destinations[i],
                                                      (uint64_t)regParams.sources[i], regParams.dataSizes[i]);
-            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to read src to dest", ret);
         }
     }
     // 再写本地
@@ -712,7 +722,7 @@ int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ex
         TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LOCAL);
         ret = BatchDataCopyLocal(localParams, direction, tmpOptions);
         TP_TRACE_END(TP_HYBM_RDMA_BATCH_LOCAL, ret);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "write local failed:", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "read local failed:", ret);
     }
     // 再写未注册
     for (auto &it : notRegistered) {
@@ -968,6 +978,13 @@ int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
         }
     }
     return ret;
+}
+
+int32_t DataOpDeviceRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
+                                     const ExtOptions &options) noexcept
+{
+    BM_LOG_ERROR("DataOpDeviceRDMA::DataCopy2d Not Supported!");
+    return BM_ERROR;
 }
 } // namespace mf
 } // namespace ock

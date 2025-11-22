@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef MF_HYBRID_HYBM_DATA_OP_DEVICE_RDMA_H
@@ -26,6 +32,8 @@ public:
                           const ExtOptions &options) noexcept override;
     int32_t BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                           const ExtOptions &options) noexcept override;
+    int32_t DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
+                       const ExtOptions &options) noexcept override;
     int32_t Wait(int32_t waitId) noexcept override;
 
 private:
@@ -77,7 +85,8 @@ private:
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
                           std::unordered_map<uint32_t, CopyDescriptor> &registered,
                           std::unordered_map<uint32_t, CopyDescriptor> &localed,
-                          std::unordered_map<uint32_t, CopyDescriptor> &notRegistered) noexcept;
+                          std::unordered_map<uint32_t, CopyDescriptor> &notRegistered,
+                          uint32_t globalRankId) noexcept;
     int32_t BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
                            hybm_data_copy_direction direction) noexcept;
     int32_t BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,

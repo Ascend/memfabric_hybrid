@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <type_traits>
 #include <iomanip>
@@ -107,4 +113,46 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
     }
 
     return entity->BatchCopyData(*params, direction, stream, flags);
+}
+
+HYBM_API int32_t hybm_data_copy_2d(hybm_entity_t e, hybm_copy_2d_params *params,
+                                   hybm_data_copy_direction direction, void *stream, uint32_t flags)
+{
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->src != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->dest != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->width != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->height != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->dpitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->dpitch * (params->height - 1), params->width, UINT64_MAX, '+'),
+                     BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->spitch, params->height - 1, UINT64_MAX, '*'), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(!NumUtil::IsOverflowCheck(params->spitch * (params->height - 1), params->width, UINT64_MAX, '+'),
+                     BM_INVALID_PARAM);
+
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+
+    bool addressValid = true;
+    if (direction == HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE || direction == HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE ||
+        direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
+        addressValid = entity->CheckAddressInEntity(
+            params->dest, params->dpitch * (params->height - 1) + params->width);
+    }
+    if (direction == HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE || direction == HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST ||
+        direction == HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE) {
+        addressValid = (addressValid && entity->CheckAddressInEntity(
+            params->src, params->spitch * (params->height - 1) + params->width));
+    }
+
+    if (!addressValid) {
+        BM_LOG_ERROR("input copy address out of entity range , spitch: " << std::oct << params->spitch << ", dpitch: "
+                     << params->dpitch << ", width: " << params->width << ", height: "
+                     << params->height << ") direction: " << direction);
+        return BM_INVALID_PARAM;
+    }
+
+    return entity->CopyData2d(*params, direction, stream, flags);
 }

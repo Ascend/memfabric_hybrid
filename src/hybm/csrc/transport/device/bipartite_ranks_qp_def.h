@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef MF_HYBRID_DYNAMIC_RANKS_QP_DEF_H
@@ -100,12 +106,52 @@ struct QueryQpStateTask {
     }
 };
 
+// (6)
+struct UpdateLocalMrTask {
+    TaskStatus status;
+    std::mutex locker;
+    inline int64_t Failed() noexcept
+    {
+        std::unique_lock<std::mutex> uniqueLock{locker};
+        status.exist = true;
+        return ++status.failedTimes;
+    }
+
+    inline void Success() noexcept
+    {
+        std::unique_lock<std::mutex> uniqueLock{locker};
+        status.exist = false;
+        status.failedTimes = 0;
+    }
+};
+// (7)
+struct UpdateRemoteMrTask {
+    TaskStatus status;
+    std::mutex locker;
+    std::unordered_set<uint32_t> addedMrRanks;
+    inline int64_t Failed() noexcept
+    {
+        std::unique_lock<std::mutex> uniqueLock{locker};
+        status.exist = true;
+        return ++status.failedTimes;
+    }
+
+    inline void Success() noexcept
+    {
+        std::unique_lock<std::mutex> uniqueLock{locker};
+        status.exist = false;
+        status.failedTimes = 0;
+    }
+};
+
 struct ConnectionTasks {
     ServerAddWhitelistTask whitelistTask;
     ClientConnectSocketTask clientConnectTask;
     QueryConnectionStateTask queryConnectTask;
     ConnectQpTask connectQpTask;
     QueryQpStateTask queryQpStateTask;
+    UpdateLocalMrTask updateMrTask;
+    UpdateRemoteMrTask updateRemoteMrTask;
 };
 }
 }

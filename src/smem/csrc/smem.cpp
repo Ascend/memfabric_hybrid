@@ -76,6 +76,7 @@ SMEM_API int32_t smem_set_extern_logger(void (*func)(int, const char *))
     SM_VALIDATE_RETURN(func != nullptr, "set extern logger failed, invalid func which is NULL",
                        ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetExternalLogFunction(func, true);
+    hybm_set_extern_logger(func);
     return ock::smem::SM_OK;
 }
 
@@ -84,7 +85,7 @@ SMEM_API int32_t smem_set_log_level(int level)
     SM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
                        "set log level failed, invalid param, level should be 0~3", ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
-    return ock::smem::SM_OK;
+    return hybm_set_log_level(level);
 }
 
 SMEM_API int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len)

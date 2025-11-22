@@ -12,8 +12,8 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
-constexpr int INFO_CONN_LIMIT = 1024;
-constexpr int SLEEP_DURATION = 5;
+const int delay = 5;
+static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(delay);
 BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
                                                  sockaddr_in devNet, bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
@@ -44,6 +44,7 @@ int BipartiteRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t
     }
 
     std::unordered_map<uint32_t, sockaddr_in> addedRanks;
+    std::unordered_set<uint32_t> addMrRanks;
 
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     auto lastTimeRanksInfo = std::move(currentRanksInfo_);
@@ -52,10 +53,12 @@ int BipartiteRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t
         return BM_OK;
     }
 
-    GenDiffInfoChangeRanks(lastTimeRanksInfo, addedRanks);
+    BM_LOG_INFO("SetRemoteRankInfo currentRanksInfo_.size=: " << currentRanksInfo_.size()
+                << ", lastTimeRanksInfo.size=" << lastTimeRanksInfo.size());
+    GenDiffInfoChangeRanks(lastTimeRanksInfo, addedRanks, addMrRanks);
     uniqueLock.unlock();
 
-    GenTaskFromChangeRanks(addedRanks);
+    GenTaskFromChangeRanks(addedRanks, addMrRanks);
     return BM_OK;
 }
 
@@ -78,7 +81,8 @@ int BipartiteRanksQpManager::Startup(void *rdma) noexcept
         auto &task = connectionTasks_.whitelistTask;
         task.locker.lock();
         for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
-            task.remoteIps.emplace(it->first, it->second.network.sin_addr);
+            in_addr remoteIp = it->second.network.sin_addr;
+            task.remoteIps.emplace(it->first, remoteIp);
         }
         task.status.failedTimes = 0;
         task.status.exist = true;
@@ -106,7 +110,11 @@ int BipartiteRanksQpManager::Startup(void *rdma) noexcept
 
 void BipartiteRanksQpManager::Shutdown() noexcept
 {
-    CloseServices();
+    try {
+        CloseServices();
+    } catch (const std::exception &e) {
+        BM_LOG_ERROR("dynamic ranks qp mgr close services failed: " << e.what());
+    }
 }
 
 UserQpInfo *BipartiteRanksQpManager::GetQpHandleWithRankId(uint32_t rankId) noexcept
@@ -138,6 +146,8 @@ void BipartiteRanksQpManager::BackgroundProcess() noexcept
         count += ProcessQueryConnectionStateTask();
         count += ProcessConnectQpTask();
         count += ProcessQueryQpStateTask();
+        ProcessUpdateLocalMrTask();
+        ProcessUpdateRemoteMrTask();
         if (count > 0) {
             continue;
         }
@@ -147,6 +157,27 @@ void BipartiteRanksQpManager::BackgroundProcess() noexcept
             cond_.wait_for(uniqueLock, std::chrono::minutes(1));
         }
         uniqueLock.unlock();
+    }
+}
+
+void BipartiteRanksQpManager::InitializeWhiteList(std::vector<HccpSocketWhiteListInfo> &whitelist,
+                                                  std::unordered_map<uint32_t, in_addr> remotes) noexcept
+{
+    const uint32_t MAX_CONNECTIONS = 1024;
+    for (auto it = remotes.begin(); it != remotes.end(); ++it) {
+        if (connections_.find(it->first) != connections_.end()) {
+            continue;
+        }
+
+        HccpSocketWhiteListInfo info{};
+        info.connLimit = MAX_CONNECTIONS;
+        info.remoteIp.addr = it->second;
+        bzero(info.tag, sizeof(info.tag));
+        whitelist.emplace_back(info);
+        auto res = connections_.emplace(it->first, ConnectionChannel{Ip2Net(info.remoteIp.addr), serverSocketHandle_});
+        connectionView_[it->first] = &res.first->second;
+        userQpInfo_[it->first].qpHandle = connectionView_[it->first]->qpHandle;
+        BM_LOG_INFO("connections list add rank: " << it->first << ", remoteIP: " << inet_ntoa(info.remoteIp.addr));
     }
 }
 
@@ -167,20 +198,7 @@ int BipartiteRanksQpManager::ProcessServerAddWhitelistTask() noexcept
     uniqueLock.unlock();
 
     std::vector<HccpSocketWhiteListInfo> whitelist;
-    for (auto it = remotes.begin(); it != remotes.end(); ++it) {
-        if (connections_.find(it->first) != connections_.end()) {
-            continue;
-        }
-
-        HccpSocketWhiteListInfo info{};
-        info.remoteIp.addr = it->second;
-        info.connLimit = INFO_CONN_LIMIT;
-        bzero(info.tag, sizeof(info.tag));
-        whitelist.emplace_back(info);
-        auto res = connections_.emplace(it->first, ConnectionChannel{Ip2Net(info.remoteIp.addr), serverSocketHandle_});
-        connectionView_[it->first] = &res.first->second;
-        userQpInfo_[it->first].qpHandle = connectionView_[it->first]->qpHandle;
-    }
+    InitializeWhiteList(whitelist, remotes);
 
     if (whitelist.empty()) {
         return 0;
@@ -193,7 +211,6 @@ int BipartiteRanksQpManager::ProcessServerAddWhitelistTask() noexcept
                                                          << ", times=" << failedTimes);
         return 1;
     }
-
     currTask.Success();
     auto &nextTask = connectionTasks_.queryConnectTask;
     for (auto &rank : remotes) {
@@ -204,24 +221,10 @@ int BipartiteRanksQpManager::ProcessServerAddWhitelistTask() noexcept
     return 0;
 }
 
-int BipartiteRanksQpManager::ProcessClientConnectSocketTask() noexcept
+int BipartiteRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, sockaddr_in> &remotes,
+                                                std::vector<HccpSocketConnectInfo> &connectInfos,
+                                                ClientConnectSocketTask &currTask)
 {
-    if (rankRole_ != HYBM_ROLE_SENDER) {
-        return 0;
-    }
-
-    auto &currTask = connectionTasks_.clientConnectTask;
-    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
-    if (!currTask.status.exist) {
-        return 0;
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_DURATION));
-    auto remotes = std::move(currTask.remoteAddress);
-    currTask.status.exist = false;
-    uniqueLock.unlock();
-
-    std::vector<HccpSocketConnectInfo> connectInfos;
     for (auto it = remotes.begin(); it != remotes.end(); ++it) {
         void *socketHandle;
         auto pos = connections_.find(it->first);
@@ -251,20 +254,61 @@ int BipartiteRanksQpManager::ProcessClientConnectSocketTask() noexcept
         BM_LOG_DEBUG("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
     }
+    return BM_OK;
+}
 
-    if (connectInfos.empty()) {
-        BM_LOG_DEBUG("no connections now.");
+int BipartiteRanksQpManager::BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos,
+                                                   ClientConnectSocketTask &currTask,
+                                                   std::unordered_map<uint32_t, sockaddr_in> &remotes) noexcept
+{
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < connectInfos.size(); i += batchSize) {
+        size_t currentBatchSize = (connectInfos.size() - i) >= batchSize ? batchSize : (connectInfos.size() - i);
+        auto batchStart = connectInfos.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketConnectInfo> currentBatch(batchStart, batchEnd);
+
+        auto ret = DlHccpApi::RaSocketBatchConnect(currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            auto failedCount = currTask.Failed(remotes);
+            BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
+                                                           << ", failed times: " << failedCount);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int BipartiteRanksQpManager::ProcessClientConnectSocketTask() noexcept
+{
+    if (rankRole_ != HYBM_ROLE_SENDER) {
         return 0;
     }
 
-    auto ret = DlHccpApi::RaSocketBatchConnect(connectInfos.data(), connectInfos.size());
-    if (ret != 0) {
-        auto failedCount = currTask.Failed(remotes);
-        BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size()
-                                                       << ", failed times: " << failedCount);
-        return 1;
+    auto &currTask = connectionTasks_.clientConnectTask;
+    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
+    if (!currTask.status.exist) {
+        return 0;
     }
 
+    std::this_thread::sleep_for(WAIT_DELAY_TIME);
+    auto remotes = std::move(currTask.remoteAddress);
+    currTask.status.exist = false;
+    uniqueLock.unlock();
+
+    std::vector<HccpSocketConnectInfo> connectInfos;
+    auto ret = CreateConnectInfos(remotes, connectInfos, currTask);
+    if (ret != 0) {
+        return ret;
+    }
+
+    if (connectInfos.empty()) {
+        return 0;
+    }
+
+    if (BatchConnectWithRetry(connectInfos, currTask, remotes) != 0) {
+        return 1;
+    }
     currTask.Success();
     auto &nextTask = connectionTasks_.queryConnectTask;
     for (auto &rank : remotes) {
@@ -273,6 +317,97 @@ int BipartiteRanksQpManager::ProcessClientConnectSocketTask() noexcept
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return 0;
+}
+
+void BipartiteRanksQpManager::Parse2SocketInfo(std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                               std::vector<HccpSocketInfo> &socketInfos, std::vector<IpType> &types)
+{
+    for (auto &pair : ip2rank) {
+        auto pos = connections_.find(pair.second);
+        if (pos != connections_.end()) {
+            HccpSocketInfo info;
+            info.handle = pos->second.socketHandle;
+            info.fd = nullptr;
+            info.remoteIp.addr.s_addr = pair.first;
+            info.status = 0;
+            bzero(info.tag, sizeof(info.tag));
+            socketInfos.emplace_back(info);
+            types.emplace_back(IpType::IpV4);
+        }
+    }
+    if (socketInfos.size() == 0) {
+        BM_LOG_INFO("ProcessQueryConnectionStateTask socketInfos.size is 0.");
+    }
+}
+
+void BipartiteRanksQpManager::ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
+                                                           std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                                           std::vector<IpType> &types,
+                                                           std::unordered_set<uint32_t> &connectedRanks,
+                                                           uint32_t &successCount)
+{
+    for (auto i = 0U; i < getSize; i++) {
+        if (socketInfos[i].status != 1) {
+            continue;
+        }
+        in_addr_t addr;
+        char* result {};
+        addr = {socketInfos[i].remoteIp.addr.s_addr};
+        result = inet_ntoa(socketInfos[i].remoteIp.addr);
+        auto pos = ip2rank.find(addr);
+        if (pos == ip2rank.end()) {
+            BM_LOG_ERROR("get non-expected socket remote ip: " << result);
+            continue;
+        }
+
+        auto rankId = pos->second;
+        auto nPos = connections_.find(rankId);
+        if (nPos == connections_.end()) {
+            BM_LOG_ERROR("get non-expected ip: " << result << ", rank: " << rankId);
+            continue;
+        }
+
+        nPos->second.socketFd = socketInfos[i].fd;
+        connectedRanks.emplace(pos->second);
+        ip2rank.erase(pos);
+        successCount++;
+    }
+}
+
+int32_t BipartiteRanksQpManager::GetSocketConn(std::vector<HccpSocketInfo> &socketInfos,
+                                               QueryConnectionStateTask &currTask,
+                                               std::unordered_map<in_addr_t, uint32_t> &ip2rank,
+                                               std::unordered_set<uint32_t> &connectedRanks, std::vector<IpType> &types)
+{
+    uint32_t cnt = 0;
+    uint32_t successCount = 0;
+    uint32_t batchCnt = 16;
+    do {
+        auto socketRole = rankRole_ == HYBM_ROLE_SENDER ? 1 : 0;
+        uint32_t getSize = socketInfos.size() < batchCnt ? socketInfos.size() : batchCnt;
+        auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), getSize, cnt);
+        if (ret != 0) {
+            auto failedCount = currTask.Failed(ip2rank);
+            BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: "
+                                       << ret << ", count: " << failedCount);
+            return 1;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (cnt == 0) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+        ProcessSocketConnectionsByIP(getSize, socketInfos, ip2rank, types, connectedRanks, successCount);
+        std::vector<HccpSocketInfo>::iterator it = socketInfos.begin();
+        for (; it != socketInfos.end();) {
+            if (it->status == 1) {
+                it = socketInfos.erase(it);
+            } else {
+                it++;
+            }
+        }
+    } while (socketInfos.size() > 0);
+    return BM_OK;
 }
 
 int BipartiteRanksQpManager::ProcessQueryConnectionStateTask() noexcept
@@ -286,51 +421,17 @@ int BipartiteRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     currTask.status.exist = false;
     auto ip2rank = std::move(currTask.ip2rank);
     if (currTask.status.failedTimes > 0L) {
-        std::this_thread::sleep_for(std::chrono::seconds(SLEEP_DURATION));
+        std::this_thread::sleep_for(std::chrono::seconds(delay));
     }
 
-    uint32_t successCount = 0;
     std::vector<HccpSocketInfo> socketInfos;
-    for (auto &pair : ip2rank) {
-        struct in_addr ip;
-        ip.s_addr = pair.first;
-        auto pos = connections_.find(pair.second);
-        if (pos != connections_.end()) {
-            HccpSocketInfo info;
-            info.handle = pos->second.socketHandle;
-            info.fd = nullptr;
-            info.remoteIp.addr = pos->second.remoteNet.sin_addr;
-            info.status = 0;
-            bzero(info.tag, sizeof(info.tag));
-            socketInfos.emplace_back(info);
-        }
-    }
-    auto socketRole = rankRole_ == HYBM_ROLE_SENDER ? 1 : 0;
-    auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), socketInfos.size(), successCount);
-    if (ret != 0) {
-        auto failedCount = currTask.Failed(ip2rank);
-        BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: " << ret << ", count: " << failedCount);
-        return 1;
-    }
+    std::vector<IpType> types{};
+    Parse2SocketInfo(ip2rank, socketInfos, types);
 
     std::unordered_set<uint32_t> connectedRanks;
-    for (auto i = 0U; i < successCount; i++) {
-        auto pos = ip2rank.find(socketInfos[i].remoteIp.addr.s_addr);
-        if (pos == ip2rank.end()) {
-            BM_LOG_ERROR("get non-expected socket remote ip: " << DescribeIPv4(socketInfos[i].remoteIp.addr));
-            continue;
-        }
-
-        auto rankId = pos->second;
-        auto nPos = connections_.find(rankId);
-        if (nPos == connections_.end()) {
-            BM_LOG_ERROR("get non-expected ip: " << DescribeIPv4(socketInfos[i].remoteIp.addr) << ", rank: " << rankId);
-            continue;
-        }
-
-        nPos->second.socketFd = socketInfos[i].fd;
-        connectedRanks.emplace(pos->second);
-        ip2rank.erase(pos);
+    auto ret = GetSocketConn(socketInfos, currTask, ip2rank, connectedRanks, types);
+    if (ret != 0) {
+        return ret;
     }
 
     if (!ip2rank.empty()) {
@@ -340,7 +441,7 @@ int BipartiteRanksQpManager::ProcessQueryConnectionStateTask() noexcept
     }
 
     auto &nextTask = connectionTasks_.connectQpTask;
-    nextTask.ranks = connectedRanks;
+    nextTask.ranks.insert(connectedRanks.begin(), connectedRanks.end());
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return !ip2rank.empty();
@@ -394,7 +495,7 @@ int BipartiteRanksQpManager::ProcessConnectQpTask() noexcept
     }
 
     auto &nextTask = connectionTasks_.queryQpStateTask;
-    nextTask.ranks = std::move(connectedQpRanks);
+    nextTask.ranks.insert(connectedQpRanks.begin(), connectedQpRanks.end());
     nextTask.status.exist = true;
     nextTask.status.failedTimes = 0;
     return failedCount > 0;
@@ -414,6 +515,7 @@ int BipartiteRanksQpManager::ProcessQueryQpStateTask() noexcept
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
+    auto localMrs = GenerateLocalLiteMrs();
     for (auto rank : ranks) {
         auto pos = connections_.find(rank);
         if (pos == connections_.end()) {
@@ -428,10 +530,15 @@ int BipartiteRanksQpManager::ProcessQueryQpStateTask() noexcept
             continue;
         }
 
+        BM_LOG_INFO("get QP status to " << rank << " success. qpStatus: " << pos->second.qpStatus);
         if (pos->second.qpStatus != 1) {
             currTask.ranks.emplace(rank);
             continue;
         }
+        auto remoteMrs = GenerateRemoteLiteMrs(rank);
+        SetQpHandleRegisterMr(pos->second.qpHandle, localMrs, true);
+        SetQpHandleRegisterMr(pos->second.qpHandle, remoteMrs, false);
+        userQpInfo_[rank].qpHandle = pos->second.qpHandle;
     }
 
     if (!currTask.ranks.empty()) {
@@ -441,6 +548,46 @@ int BipartiteRanksQpManager::ProcessQueryQpStateTask() noexcept
     }
 
     return 0;
+}
+
+void BipartiteRanksQpManager::ProcessUpdateLocalMrTask() noexcept
+{
+    auto &currTask = connectionTasks_.updateMrTask;
+    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
+    if (!currTask.status.exist) {
+        return;
+    }
+    currTask.status.exist = false;
+    uniqueLock.unlock();
+
+    auto localMRs = GenerateLocalLiteMrs();
+    for (auto it = connections_.begin(); it != connections_.end(); ++it) {
+        if (it->second.qpHandle == nullptr || it->second.qpStatus != 1) {
+            continue;
+        }
+        SetQpHandleRegisterMr(it->second.qpHandle, localMRs, true);
+    }
+}
+
+void BipartiteRanksQpManager::ProcessUpdateRemoteMrTask() noexcept
+{
+    auto &currTask = connectionTasks_.updateRemoteMrTask;
+    std::unique_lock<std::mutex> uniqueLock{currTask.locker};
+    if (!currTask.status.exist) {
+        return;
+    }
+    currTask.status.exist = false;
+    auto addedMrRanks = std::move(currTask.addedMrRanks);
+    uniqueLock.unlock();
+    for (auto remoteRank : addedMrRanks) {
+        auto mrs = GenerateRemoteLiteMrs(remoteRank);
+        auto pos = connections_.find(remoteRank);
+        if (pos == connections_.end()) {
+            continue;
+        }
+
+        SetQpHandleRegisterMr(pos->second.qpHandle, mrs, false);
+    }
 }
 
 void BipartiteRanksQpManager::CloseServices() noexcept
@@ -491,24 +638,67 @@ void BipartiteRanksQpManager::CloseServices() noexcept
     DestroyServerSocket();
 }
 
+std::vector<lite_mr_info> BipartiteRanksQpManager::GenerateLocalLiteMrs() noexcept
+{
+    std::vector<lite_mr_info> localMrs;
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
+    for (auto it = currentLocalMrs_.begin(); it != currentLocalMrs_.end(); ++it) {
+        lite_mr_info info;
+        info.key = it->second.lkey;
+        info.addr = it->second.address;
+        info.len = it->second.size;
+        localMrs.emplace_back(info);
+    }
+    uniqueLock.unlock();
+    return localMrs;
+}
+
+std::vector<lite_mr_info> BipartiteRanksQpManager::GenerateRemoteLiteMrs(uint32_t rankId) noexcept
+{
+    std::vector<lite_mr_info> remoteMrs;
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
+    auto pos = currentRanksInfo_.find(rankId);
+    if (pos == currentRanksInfo_.end()) {
+        uniqueLock.unlock();
+        return remoteMrs;
+    }
+
+    for (auto it = pos->second.memoryMap.begin(); it != pos->second.memoryMap.end(); ++it) {
+        lite_mr_info info;
+        info.key = it->second.lkey;
+        info.addr = it->second.address;
+        info.len = it->second.size;
+        remoteMrs.emplace_back(info);
+    }
+    uniqueLock.unlock();
+    return remoteMrs;
+}
+
 void BipartiteRanksQpManager::GenDiffInfoChangeRanks(const std::unordered_map<uint32_t, ConnectRankInfo> &last,
-                                                     std::unordered_map<uint32_t, sockaddr_in> &addedRanks) noexcept
+                                                     std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                                     std::unordered_set<uint32_t> &addMrRanks) noexcept
 {
     for (auto it = currentRanksInfo_.begin(); it != currentRanksInfo_.end(); ++it) {
         auto pos = last.find(it->first);
         if (pos == last.end()) {
             addedRanks.emplace(it->first, it->second.network);
+            continue;
+        }
+        for (auto mit = it->second.memoryMap.begin(); mit != it->second.memoryMap.end(); ++mit) {
+            if (pos->second.memoryMap.find(mit->first) == pos->second.memoryMap.end()) {
+                addMrRanks.emplace(it->first);
+                break;
+            }
         }
     }
 }
 
-void BipartiteRanksQpManager::GenTaskFromChangeRanks(
-    const std::unordered_map<uint32_t, sockaddr_in> &addedRanks) noexcept
+void BipartiteRanksQpManager::GenTaskFromChangeRanks(const std::unordered_map<uint32_t, sockaddr_in> &addedRanks,
+                                                     const std::unordered_set<uint32_t> &addMrRanks) noexcept
 {
     if (rankRole_ == HYBM_ROLE_RECEIVER) {
         auto &task = connectionTasks_.whitelistTask;
         std::unique_lock<std::mutex> taskLocker{task.locker};
-        task.remoteIps.clear();
         for (auto it = addedRanks.begin(); it != addedRanks.end(); ++it) {
             task.remoteIps.emplace(it->first, it->second.sin_addr);
         }
@@ -517,7 +707,6 @@ void BipartiteRanksQpManager::GenTaskFromChangeRanks(
     } else {
         auto &task = connectionTasks_.clientConnectTask;
         std::unique_lock<std::mutex> taskLocker{task.locker};
-        task.remoteAddress.clear();
         for (auto it = addedRanks.begin(); it != addedRanks.end(); ++it) {
             task.remoteAddress.emplace(it->first, it->second);
         }
@@ -525,13 +714,35 @@ void BipartiteRanksQpManager::GenTaskFromChangeRanks(
         task.status.failedTimes = 0;
     }
 
-    if (addedRanks.empty()) {
+    auto &task = connectionTasks_.updateRemoteMrTask;
+    std::unique_lock<std::mutex> taskLocker{task.locker};
+    task.addedMrRanks.insert(addMrRanks.begin(), addMrRanks.end());
+    task.status.exist = !task.addedMrRanks.empty();
+    task.status.failedTimes = 0;
+    taskLocker.unlock();
+
+    if (addedRanks.empty() && addMrRanks.empty()) {
         return;
     }
 
     cond_.notify_one();
 }
 
+void BipartiteRanksQpManager::SetQpHandleRegisterMr(void *qpHandle, const std::vector<lite_mr_info> &mrs,
+                                                    bool local) noexcept
+{
+    if (qpHandle == nullptr) {
+        return;
+    }
+
+    auto qp = (ra_qp_handle *)qpHandle;
+    auto dest = local ? qp->local_mr : qp->rem_mr;
+    pthread_mutex_lock(&qp->qp_mutex);
+    for (auto i = 0U; i < mrs.size() && i < RA_MR_MAX_NUM - 1U; i++) {
+        dest[i + 1] = mrs[i];
+    }
+    pthread_mutex_unlock(&qp->qp_mutex);
+}
 }
 }
 }
