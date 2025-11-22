@@ -1,14 +1,21 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "smem.h"
-
 #include <atomic>
-
 #include "smem_common_includes.h"
 #include "smem_version.h"
+#include "smem_net_common.h"
 #include "hybm.h"
+#include "acc_log.h"
 #include "smem_store_factory.h"
+#include "smem_last_error.h"
+#include "smem.h"
 
 namespace {
 bool g_smemInited = false;
@@ -43,7 +50,7 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl)
         SM_LOG_ERROR("create store server failed with URL.");
         return ock::smem::SM_ERROR;
     }
-
+    
     if (callNum.fetch_add(1U) == 0) {
         pthread_atfork(
             []() {}, // 父进程 fork 前：释放锁等资源
@@ -61,25 +68,25 @@ SMEM_API void smem_uninit()
     g_smemInited = false;
 }
 
-SMEM_API int32_t smem_set_extern_logger(void (*fun)(int, const char *))
+SMEM_API int32_t smem_set_extern_logger(void (*func)(int, const char *))
 {
-    using namespace ock::smem;
-    SM_VALIDATE_RETURN(fun != nullptr, "set extern logger failed, invalid func which is NULL", SM_INVALID_PARAM);
-
-    /* set my out logger */
-    ock::mf::OutLogger::Instance().SetExternalLogFunction(fun, true);
-    return SM_OK;
+    SM_VALIDATE_RETURN(func != nullptr, "set extern logger failed, invalid func which is NULL",
+                       ock::smem::SM_INVALID_PARAM);
+    ock::mf::OutLogger::Instance().SetExternalLogFunction(func, true);
+    return ock::smem::SM_OK;
 }
 
 SMEM_API int32_t smem_set_log_level(int level)
 {
-    using namespace ock::smem;
     SM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
-                       "set log level failed, invalid param, level should be 0~3", SM_INVALID_PARAM);
-
-    /* set my logger's level */
+                       "set log level failed, invalid param, level should be 0~3", ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
-    return SM_OK;
+    return ock::smem::SM_OK;
+}
+
+SMEM_API int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len)
+{
+    return ock::smem::SM_OK;
 }
 
 SMEM_API const char *smem_get_last_err_msg()
@@ -90,4 +97,10 @@ SMEM_API const char *smem_get_last_err_msg()
 SMEM_API const char *smem_get_and_clear_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(true);
+}
+
+SMEM_API int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len,
+    const char *tls_pk_pw, const uint32_t tls_pk_pw_len, const smem_decrypt_handler h)
+{
+    return ock::smem::SM_OK;
 }

@@ -86,7 +86,7 @@ void smem_bm_destroy_(smem_bm_t handle)
     return;
 }
 
-int32_t smem_bm_join_(smem_bm_t handle, uint32_t flags, void **localGvaAddress)
+int32_t smem_bm_join_(smem_bm_t handle, uint32_t flags)
 {
     return 0;
 }

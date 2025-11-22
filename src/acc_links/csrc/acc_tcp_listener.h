@@ -1,9 +1,16 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef ACC_LINKS_ACC_TCP_LISTENER_H
 #define ACC_LINKS_ACC_TCP_LISTENER_H
 
+#include "mf_net.h"
 #include "acc_includes.h"
 #include "acc_tcp_common.h"
 #include "acc_tcp_link.h"
@@ -33,9 +40,12 @@ public:
 
 private:
     void RunInThread() noexcept;
-    void ProcessNewConnection(int fd, struct sockaddr_in addressIn) noexcept;
+    void ProcessNewConnection(int fd, mf_sockaddr addressIn) noexcept;
+    void PrepareSockAddr(mf_sockaddr& addr) noexcept;
     Result StartAcceptThread() noexcept;
-
+    Result CreateSocketForStrat(mf_sockaddr &addr, int &tmpFD) noexcept;
+    void FormatIPAddressAndPort(mf_sockaddr addressIn, std::string &ipPort) noexcept;
+    Result BindAndListenSocket(int tmpFD, mf_sockaddr &addr) noexcept;
     inline std::string NameAndPort() const noexcept;
 
 private:
@@ -50,6 +60,7 @@ private:
     const bool reusePort_; /* reuse listen port or not */
     const bool enableTls_; /* enable tls */
     SSL_CTX* sslCtx_ = nullptr; /* ssl ctx */
+    IpType ipType_ {IPNONE}; /* listenIp_ is ipv4 or ipv6 */
 };
 using AccTcpListenerPtr = AccRef<AccTcpListener>;
 
@@ -62,7 +73,12 @@ inline void AccTcpListener::RegisterNewConnectionHandler(const NewConnHandlerInn
 
 inline std::string AccTcpListener::NameAndPort() const noexcept
 {
-    return listenIp_ + ":" + std::to_string(listenPort_);
+    if (ipType_ == IpV4) {
+        return listenIp_ + ":" + std::to_string(listenPort_);
+    } else if (ipType_ == IpV6) {
+        return "[" + listenIp_ + "]:" + std::to_string(listenPort_);
+    }
+    return "";
 }
 }  // namespace acc
 }  // namespace ock

@@ -171,17 +171,16 @@
 1. 加入BM
 
     ```c
-    int32_t smem_bm_join(smem_bm_t handle, uint32_t flags, void **localGvaAddress);
+    int32_t smem_bm_join(smem_bm_t handle, uint32_t flags);
     ```
 
     |参数/返回值|含义|
     |-|-|
     |handle|待加入BM handle|    
     |flags|预留参数|
-    |localGvaAddress|当前rank在gva上的地址位置|
     |返回值|成功返回0，否则返回错误码|
 
-1. 退出BM
+2. 退出BM
     ```c
     int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
     ```
@@ -192,7 +191,7 @@
     |flags|预留参数|
     |返回值|成功返回0，否则返回错误码|
 
-1. 获取创建BM本地贡献的空间大小
+3. 获取创建BM本地贡献的空间大小
     ```c
     uint64_t smem_bm_get_local_mem_size(smem_bm_t handle);
     ```
@@ -202,7 +201,7 @@
     |handle|BM handle|
     |返回值|本地贡献空间大小，单位byte|
 
-1. 获取rank id对应在gva上的地址位置
+4. 获取rank id对应在gva上的地址位置
     ```c
     void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId);
     ```
@@ -213,7 +212,7 @@
     |peerRankId|rank id|
     |返回值|rank地址对应空间位置指针|
 
-1. 拷贝数据对象
+5. 拷贝数据对象
     ```c
     int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params,  
         smem_bm_copy_type t, uint32_t flags);

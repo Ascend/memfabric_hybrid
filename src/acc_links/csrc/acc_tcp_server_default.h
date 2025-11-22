@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef ACC_LINKS_ACC_TCP_SERVER_DEFAULT_H
 #define ACC_LINKS_ACC_TCP_SERVER_DEFAULT_H
@@ -67,6 +73,7 @@ private:
     Result HandleNewRequest(const AccTcpRequestContext &context);
     Result HandleRequestSent(AccMsgSentResult msgResult, const AccMsgHeader &header, const AccDataBufferPtr &cbCtx);
     Result HandleLinkBroken(const AccTcpLinkComplexDefaultPtr &link);
+    void ConstructSocketAddress(IpType ipType, mf_sockaddr &addr, const std::string &peerIp, uint16_t port);
 
 private:
     AccNewReqHandler newRequestHandle_[UNO_48]{};

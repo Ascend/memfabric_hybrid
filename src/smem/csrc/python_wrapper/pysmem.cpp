@@ -62,7 +62,8 @@ public:
 
     void CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
     {
-        auto ret = smem_bm_copy(handle_, (const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size, type, flags);
+        smem_copy_params params = {(const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size};
+        auto ret = smem_bm_copy(handle_, &params, type, flags);
         if (ret != 0) {
             throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
         }
@@ -146,8 +147,7 @@ struct LoggerState {
 std::mutex LoggerState::mutex;
 std::shared_ptr<py::function> LoggerState::py_logger;
 
-static void cpp_logger_adapter(int level, const char *msg)
-{
+static void cpp_logger_adapter(int level, const char* msg) {
     std::lock_guard<std::mutex> lock(LoggerState::mutex);
 
     if (!LoggerState::py_logger) {
@@ -290,7 +290,7 @@ void DefineBmClass(py::module_ &m)
 Initialize smem big memory library.
 
 Arguments:
-    store_url(str):   configure store url for control, e.g. tcp:://ip:port
+    store_url(str):   configure store url for control, e.g. tcp://ip:port or tcp6://[ip]:port
     world_size(int):  number of guys participating
     device_id(int):   device id
     config(BmConfig): extract config

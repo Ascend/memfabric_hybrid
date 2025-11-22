@@ -15,7 +15,7 @@ current_path = os.path.abspath(__file__)
 current_dir = os.path.dirname(current_path)
 sys.path.append(current_dir)
 libs_path = os.path.join(current_dir, 'lib')
-for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
+for lib in ['libhybm_gvm.so', "libmf_hybm_core.so", "libmf_smem.so"]:
     ctypes.CDLL(os.path.join(libs_path, lib))
 
 

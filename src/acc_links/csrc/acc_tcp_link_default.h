@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef ACC_LINKS_ACC_TCP_LINK_DEFAULT_H
 #define ACC_LINKS_ACC_TCP_LINK_DEFAULT_H
@@ -7,6 +13,7 @@
 #include <sys/uio.h>
 
 #include "acc_includes.h"
+#include "acc_common_util.h"
 #include "acc_tcp_common.h"
 #include "acc_tcp_ssl_helper.h"
 #include "openssl_api_wrapper.h"
@@ -78,7 +85,7 @@ public:
     ~AccTcpLinkDefault() override
     {
         if (ssl_ != nullptr) {
-            if (SslShutdownHelper(ssl_) != ACC_OK) {
+            if (AccCommonUtil::SslShutdownHelper(ssl_) != ACC_OK) {
                 LOG_ERROR("shut down ssl failed!");
             }
             OpenSslApiWrapper::SslFree(ssl_);
@@ -322,7 +329,7 @@ public:
     {
         __sync_bool_compare_and_swap(&established_, 1, 0);
         if (ssl_ != nullptr) {
-            if (SslShutdownHelper(ssl_) != ACC_OK) {
+            if (AccCommonUtil::SslShutdownHelper(ssl_) != ACC_OK) {
                 LOG_ERROR("shut down ssl failed!");
             }
             OpenSslApiWrapper::SslFree(ssl_);

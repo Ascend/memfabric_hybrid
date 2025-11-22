@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "pytransfer.h"
 #include <thread>
@@ -18,12 +24,15 @@ static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
                                  ", commit: " STR2(GIT_LAST_COMMIT);
 constexpr uint64_t MAX_BATCH_COUNT = 1024 * 1024;
 
-TransferAdapterPy::TransferAdapterPy() : handle_(nullptr)
+TransferAdapterPy::TransferAdapterPy() : handle_(nullptr), sockfd_(-1)
 {
 }
 
 TransferAdapterPy::~TransferAdapterPy()
 {
+    if (sockfd_ != -1) {
+        close(sockfd_);
+    }
 }
 
 int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
@@ -34,7 +43,17 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
     }
-
+    const char *shmem_level = std::getenv("SHMEM_LOG_LEVEL");
+    const char* mf_level = std::getenv("ASCEND_MF_LOG_LEVEL");
+    if (shmem_level == nullptr && mf_level != nullptr && strlen(mf_level) == 1) {
+        unsigned char c = static_cast<unsigned char>(mf_level[0]);
+        if (std::isdigit(c)) {
+            int level = c - '0';
+            smem_set_log_level(level);
+        }
+    }
+    // default: disable tls
+    smem_set_conf_store_tls(false, nullptr, 0);
     smem_trans_config_t config;
     ADAPTER_LOG_INFO("Begin to initialize trans");
     int32_t ret = smem_trans_config_init(&config);
@@ -61,7 +80,7 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
 
 int TransferAdapterPy::GetRpcPort()
 {
-    int rpcPort = static_cast<int>(findAvailableTcpPort());
+    int rpcPort = static_cast<int>(findAvailableTcpPort(sockfd_));
     ADAPTER_LOG_INFO("Get rpcPort is " << rpcPort);
     return rpcPort;
 }

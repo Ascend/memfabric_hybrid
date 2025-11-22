@@ -1,10 +1,27 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #ifndef MEMFABRIC_HYBRID_SMEM_LOGGER_H
 #define MEMFABRIC_HYBRID_SMEM_LOGGER_H
 
+#include <cstring>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <sstream>
+#include <sys/syscall.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include "mf_out_logger.h"
+#include "smem_last_error.h"
 
 #define SM_LOG_DEBUG(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::DEBUG_LEVEL, ARGS)
 #define SM_LOG_INFO(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::INFO_LEVEL, ARGS)
@@ -30,7 +47,7 @@
     do {                                \
         std::stringstream tmpStr;       \
         tmpStr << msg;                  \
-        SmLastError::Set(tmpStr.str()); \
+        ock::smem::SmLastError::Set(tmpStr.str()); \
         SM_LOG_ERROR(tmpStr.str());     \
     } while (0)
 
@@ -80,4 +97,14 @@
             return innerResult;           \
         }                                 \
     } while (0)
+
+#define SM_LOG_LIMIT_WARN(limit, msg) \
+    do {                                \
+        static uint32_t printCnt = 0;   \
+        if (printCnt++ == (limit)) {      \
+            SM_LOG_WARN(msg);         \
+            printCnt -= limit;          \
+        }                               \
+    } while (0)
+
 #endif  // MEMFABRIC_HYBRID_SMEM_LOGGER_H

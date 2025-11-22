@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef __MEMFABRIC_SMEM_BM_H__
 #define __MEMFABRIC_SMEM_BM_H__
@@ -26,7 +32,7 @@ int32_t smem_bm_config_init(smem_bm_config_t *config);
  * the KVBlocks then copy to global shared memory space, other workers can read it
  * by data copy as well.
  *
- * @param storeURL         [in] configure store url for control, e.g. tcp:://ip:port
+ * @param storeURL         [in] configure store url for control, e.g. tcp://ip:port or tcp6://[ip]:port
  * @param worldSize        [in] number of guys participating
  * @param deviceId         [in] device id
  * @param config           [in] extract config
@@ -124,7 +130,7 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
 int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 /**
@@ -178,6 +184,25 @@ void *smem_bm_mem_malloc(uint64_t size, smem_bm_mem_type memType, uint64_t flags
  */
 void smem_bm_mem_free(void *addr);
 
+/**
+ * @brief Data copy on Big Memory object, several copy types supported:
+ * L2G: local memory to global space
+ * G2L: global space to local memory
+ * G2H: global space to host memory
+ * H2G: host memory to global space
+ *
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param params.src       [in] source gva of data
+ * @param params.spitch    [in] pitch of source memory
+ * @param params.dest      [in] target gva of data
+ * @param params.dpitch    [in] pitch of destination memory
+ * @param params.width     [in] width of matrix transfer
+ * @param params.heigth    [in] height of matrix transfer
+ * @param t                [in] copy type, L2G, G2L, G2H, H2G
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
+int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags);
 #ifdef __cplusplus
 }
 #endif

@@ -143,7 +143,8 @@ Result MmcBmProxy::Copy(uint64_t srcBmAddr, uint64_t dstBmAddr, uint64_t size, s
         return MMC_ERROR;
     }
     TP_TRACE_BEGIN(TP_SMEM_BM_PUT);
-    auto ret = smem_bm_copy(handle_, (void*)srcBmAddr, (void*)dstBmAddr, size, type, 0);
+    smem_copy_params params = {(const void*)srcBmAddr, (void*)dstBmAddr, size};
+    auto ret = smem_bm_copy(handle_, &params, type, 0);
     TP_TRACE_END(TP_SMEM_BM_PUT, ret);
     return ret;
 }
@@ -165,9 +166,9 @@ Result MmcBmProxy::Put(const mmc_buffer* buf, uint64_t bmAddr, uint64_t size)
         return MMC_ERROR;
     }
     TP_TRACE_BEGIN(TP_SMEM_BM_PUT);
+    smem_copy_params params = {(void*)(buf->addr + buf->offset), (void*)bmAddr, buf->len};
     auto ret =
-            smem_bm_copy(handle_, (void*)(buf->addr + buf->offset), (void*)bmAddr, buf->len,
-                         type, ASYNC_COPY_FLAG);
+            smem_bm_copy(handle_, &params, type, ASYNC_COPY_FLAG);
     TP_TRACE_END(TP_SMEM_BM_PUT, ret);
     return ret;
 }
@@ -189,9 +190,9 @@ Result MmcBmProxy::Get(const mmc_buffer* buf, uint64_t bmAddr, uint64_t size)
         return MMC_ERROR;
     }
     TP_TRACE_BEGIN(TP_SMEM_BM_GET);
+    smem_copy_params params = {(void*)bmAddr, (void*)(buf->addr + buf->offset), buf->len};
     auto ret =
-            smem_bm_copy(handle_, (void*)bmAddr, (void*)(buf->addr + buf->offset), buf->len,
-                         type, ASYNC_COPY_FLAG);
+            smem_bm_copy(handle_, &params, type, ASYNC_COPY_FLAG);
     TP_TRACE_END(TP_SMEM_BM_GET, ret);
     return ret;
 }
