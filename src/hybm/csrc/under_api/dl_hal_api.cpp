@@ -65,6 +65,7 @@ halMemExportFunc DlHalApi::pHalMemExport = nullptr;
 halMemImportFunc DlHalApi::pHalMemImport = nullptr;
 halMemShareHandleSetAttributeFunc DlHalApi::pHalMemShareHandleSetAttribute = nullptr;
 halMemTransShareableHandleFunc DlHalApi::pHalMemTransShareableHandle = nullptr;
+halMemGetAllocationGranularityFunc DlHalApi::pHalMemGetAllocationGranularity = nullptr;
 
 #ifdef USE_VMM
 
@@ -86,6 +87,8 @@ Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
     DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc,
                 halHandle, "halMemShareHandleSetAttribute");
     DL_LOAD_SYM(pHalMemTransShareableHandle, halMemTransShareableHandleFunc, halHandle, "halMemTransShareableHandle");
+    DL_LOAD_SYM(pHalMemGetAllocationGranularity, halMemGetAllocationGranularityFunc,
+                halHandle, "halMemGetAllocationGranularity");
 
     return BM_OK;
 }
@@ -224,6 +227,7 @@ void DlHalApi::CleanupHalApi()
     pHalMemUnmap = nullptr;
     pHalMemExport = nullptr;
     pHalMemImport = nullptr;
+    pHalMemGetAllocationGranularity = nullptr;
 }
 
 void DlHalApi::CleanupLibrary()

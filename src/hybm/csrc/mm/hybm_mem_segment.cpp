@@ -23,6 +23,7 @@ constexpr uint32_t ASC910B_CONN_RANKS = 8U;
 
 bool MemSegment::deviceInfoReady_{false};
 int MemSegment::deviceId_{-1};
+int MemSegment::logicDeviceId_{-1};
 uint32_t MemSegment::pid_{0};
 uint32_t MemSegment::sdid_{0};
 uint32_t MemSegment::serverId_{0};
@@ -88,6 +89,8 @@ Result MemSegment::InitDeviceInfo()
         BM_LOG_ERROR("get device id failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
+
+    logicDeviceId_ = Func::GetLogicDeviceId(deviceId_);
 
     ret = DlAclApi::RtDeviceGetBareTgid(&pid_);
     if (ret != BM_OK) {

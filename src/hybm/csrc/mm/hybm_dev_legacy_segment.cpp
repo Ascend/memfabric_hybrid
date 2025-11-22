@@ -20,8 +20,6 @@
 
 namespace ock {
 namespace mf {
-int HybmDevLegacySegment::logicDeviceId_{-1};
-
 Result HybmDevLegacySegment::ValidateOptions() noexcept
 {
     if (options_.segType != HYBM_MST_HBM || options_.size == 0 || options_.devId < 0 ||

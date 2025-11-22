@@ -17,6 +17,8 @@ struct HostSdmaExportInfo {
     uint64_t mappingOffset{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
+    uint32_t serverId{0};
+    uint32_t superPodId{0};
     uint32_t rankId{0};
     uint32_t devId{0};
     uint64_t size{0};

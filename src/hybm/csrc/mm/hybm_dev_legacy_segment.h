@@ -86,9 +86,6 @@ protected:
     std::set<uint64_t> mappedMem_;
     std::vector<HbmExportInfo> imports_;
     std::map<uint16_t, HbmExportInfo> importMap_;
-
-protected:
-    static int logicDeviceId_;
 };
 } // namespace mf
 } // namespace ock

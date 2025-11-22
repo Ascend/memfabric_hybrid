@@ -253,6 +253,12 @@ struct drv_mem_prop {
     uint64_t reserve;
 };
 
+typedef enum {
+    MEM_ALLOC_GRANULARITY_MINIMUM = 0x0,
+    MEM_ALLOC_GRANULARITY_RECOMMENDED,
+    MEM_ALLOC_GRANULARITY_INVALID,
+} drv_mem_granularity_options;
+
 enum ShareHandleAttrType {
     SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER = 0,
     SHR_HANDLE_ATTR_TYPE_MAX

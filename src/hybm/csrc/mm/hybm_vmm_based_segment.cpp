@@ -92,14 +92,20 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
     drv_mem_prop prop{};
     switch (options_.segType) {
         case HYBM_MST_HBM:
-            prop = { MEM_DEV_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_HUGE_PAGE_TYPE, MEM_HBM_TYPE, 0 };
+            prop = {MEM_DEV_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
             break;
         case HYBM_MST_DRAM:
-            prop = { MEM_HOST_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_HUGE_PAGE_TYPE, MEM_DDR_TYPE, 0 };
+            prop = {MEM_HOST_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
             break;
         default:
             BM_LOG_ERROR("invalid seg type: " << options_.segType);
             return BM_INVALID_PARAM;
+    }
+    // check is support 1GB GIANT_PAGE
+    size_t granularity = 0;
+    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
+        prop.pg_type = MEM_HUGE_PAGE_TYPE;
+        BM_LOG_WARN("Not support MEM_GIANT_PAGE_TYPE page size change use MEM_HUGE_PAGE_TYPE");
     }
     auto ret = DlHalApi::HalMemCreate(&handle, size, &prop, 0);
     BM_VALIDATE_RETURN(ret == BM_OK, "HalMemCreate failed: " << ret, BM_DL_FUNCTION_FAILED);
@@ -200,6 +206,8 @@ Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, 
     info.rankId = options_.rankId;
     info.size = slice->size_;
     info.sdid = sdid_;
+    info.serverId = serverId_;
+    info.superPodId = superPodId_;
     ret = LiteralExInfoTranslater<HostSdmaExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
@@ -260,7 +268,8 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
             return BM_INVALID_PARAM;
         }
         if (options_.segType == HYBM_MST_HBM && deserializedInfos[i].rankId != options_.rankId &&
-            CanLocalHostReaches(deserializedInfos[i].sdid, deserializedInfos[i].sdid, deserializedInfos[i].devId)) {
+            CanLocalHostReaches(deserializedInfos[i].superPodId, deserializedInfos[i].serverId,
+                                deserializedInfos[i].devId)) {
             ret = DlAclApi::RtEnableP2P(deviceId_, deserializedInfos[i].devId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:"
