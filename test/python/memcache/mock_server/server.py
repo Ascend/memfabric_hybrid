@@ -16,7 +16,7 @@ from enum import Enum
 
 import torch
 
-from memcache import DistributedObjectStore
+from memcache import DistributedObjectStore, ReplicateConfig
 
 
 class MmcDirect(Enum):
@@ -31,7 +31,7 @@ class CliCommand:
     cmd_name: str
     cmd_desc: str
     func: Callable
-    args_num: int
+    required_args_num: int
 
 class TestServer:
     def __init__(self, ip, port):
@@ -97,8 +97,8 @@ class TestServer:
             self._help()
             self._cli_end_line()
             return
-        if len(args) != command.args_num:
-            self.cli_print(f"Invalid input args num: {len(args)}.")
+        if len(args) < command.required_args_num:
+            self.cli_print(f"Invalid input args num: {len(args)}, required args num: {command.required_args_num}")
             self._help()
             self._cli_end_line()
             return
@@ -199,6 +199,7 @@ class MmcTest(TestServer):
         cmds = [
             CliCommand("init_mmc", "initialize memcache", self.init_mmc, 0),
             CliCommand("close_mmc", "destruct memcache", self.close_mmc, 0),
+            CliCommand("get_local_service_id", "get local service id", self.get_local_service_id, 0),
             CliCommand("put", "put data in bytes format: [key] [data]", self.put, 2),
             CliCommand("get", "get data in bytes format: [key]", self.get, 1),
             CliCommand("put_from", "put data from a buffer: [key] [size] [media(0:cpu 1:npu)]", self.put_from, 3),
@@ -215,9 +216,9 @@ class MmcTest(TestServer):
                        self.put_from_layers, 3),
             CliCommand("get_into_layers", "get data into multiple buffers [key] [sizes] [media(0:cpu 1:npu)]",
                        self.get_into_layers, 3),
-            CliCommand("batch_put_from_layers", func=self.batch_put_from_layers, args_num=3,
+            CliCommand("batch_put_from_layers", func=self.batch_put_from_layers, required_args_num=3,
                        cmd_desc="batch put data from multiple buffers [keys] [sizes] [media(0:cpu 1:npu)]"),
-            CliCommand("batch_get_into_layers", func=self.batch_get_into_layers, args_num=3,
+            CliCommand("batch_get_into_layers", func=self.batch_get_into_layers, required_args_num=3,
                        cmd_desc="batch get data into multiple buffers [keys] [sizes] [media(0:cpu 1:npu)]")
         ]
         self.register_command(cmds)
@@ -242,23 +243,40 @@ class MmcTest(TestServer):
             self.cli_return(0)
 
     @result_handler
-    def put(self, key: str, data: bytes):
-        res = self._store.put(key, data)
+    def get_local_service_id(self):
+        self.cli_return(self._store.get_local_service_id())
+
+    @result_handler
+    def put(self, key: str, data: bytes, replica_num: int | None = None, preferred_ranks: List[int] | None = None):
+        rep_conf = ReplicateConfig()
+        if replica_num is not None:
+            rep_conf.replicaNum = replica_num
+        if preferred_ranks is not None:
+            rep_conf.preferredLocalServiceIDs = preferred_ranks
+        res = self._store.put(key, data, rep_conf)
         self.cli_return(res)
 
     @result_handler
-    def put_from(self, key: str, size: int, media: int):
+    def put_from(self, key: str, size: int, media: int, replica_num: int | None = None,
+                 preferred_ranks: List[int] | None = None):
         if media == 0:
             direct = int(MmcDirect.COPY_H2G.value)
             tensor = self.malloc_tensor(mini_block_size=size, device='cpu')
         else:
             direct = int(MmcDirect.COPY_L2G.value)
             tensor = self.malloc_tensor(mini_block_size=size, device='npu')
+
+        rep_conf = ReplicateConfig()
+        if replica_num is not None:
+            rep_conf.replicaNum = replica_num
+        if preferred_ranks is not None:
+            rep_conf.preferredLocalServiceIDs = preferred_ranks
+
         if size <= 0:
             res = self._store.put_from(key, 0, 0, direct)
             value = 0
         else:
-            res = self._store.put_from(key, tensor.data_ptr(), size, direct)
+            res = self._store.put_from(key, tensor.data_ptr(), size, direct, rep_conf)
             value = tensor_sum(tensor)
         self.cli_return(str([res, value]))
 
@@ -307,7 +325,8 @@ class MmcTest(TestServer):
         self.cli_return(str([res, values]))
 
     @result_handler
-    def batch_put_from(self, keys: list, sizes: list, media: int):
+    def batch_put_from(self, keys: list, sizes: list, media: int, replica_num: int | None = None,
+                       preferred_ranks: List[int] | None = None):
         data_ptrs = []
         blocks = []
         if media == 0:
@@ -323,7 +342,14 @@ class MmcTest(TestServer):
                 data_ptrs.append(0)
             else:
                 data_ptrs.append(blocks[i].data_ptr())
-        res = self._store.batch_put_from(keys, data_ptrs, sizes, direct)
+
+        rep_conf = ReplicateConfig()
+        if replica_num is not None:
+            rep_conf.replicaNum = replica_num
+        if preferred_ranks is not None:
+            rep_conf.preferredLocalServiceIDs = preferred_ranks
+
+        res = self._store.batch_put_from(keys, data_ptrs, sizes, direct, rep_conf)
         values = []
         for i in range(len(sizes)):
             values.append(tensor_sum(blocks[i]))
@@ -360,7 +386,8 @@ class MmcTest(TestServer):
         self.cli_return(res)
 
     @result_handler
-    def put_from_layers(self, key: str, sizes: List[int], media: int):
+    def put_from_layers(self, key: str, sizes: List[int], media: int, replica_num: int | None = None,
+                        preferred_ranks: List[int] | None = None):
         layers_num = len(sizes)
         mini_block_size = max(sizes, default=0)
         if media == 0:
@@ -373,10 +400,18 @@ class MmcTest(TestServer):
         # tensor is None in negative cases whose sizes is 0
         if tensor is not None and device == 'npu':
             self._store.register_buffer(tensor.data_ptr(), mini_block_size * layers_num)
+
+        rep_conf = ReplicateConfig()
+        if replica_num is not None:
+            rep_conf.replicaNum = replica_num
+        if preferred_ranks is not None:
+            rep_conf.preferredLocalServiceIDs = preferred_ranks
+
         res = self._store.put_from_layers(key,
                                           [] if tensor is None else [layer.data_ptr() for layer in tensor],
                                           sizes,
-                                          direct)
+                                          direct,
+                                          rep_conf)
         value = tensor_sum(tensor, sizes)
         self.cli_return(str([res, value]))
 
@@ -404,7 +439,8 @@ class MmcTest(TestServer):
         self.cli_return(str([res, value]))
 
     @result_handler
-    def batch_put_from_layers(self, keys: List[str], sizes: List[List[int]], media: int):
+    def batch_put_from_layers(self, keys: List[str], sizes: List[List[int]], media: int, replica_num: int | None = None,
+                              preferred_ranks: List[int] | None = None):
         if media == 0:
             direct = MmcDirect.COPY_H2G.value
             device = 'cpu'
@@ -418,14 +454,21 @@ class MmcTest(TestServer):
             if tensor is not None:
                 self._store.register_buffer(tensor.data_ptr(), max(sizes_, default=0) * len(sizes_))
             blocks.append(tensor)
+
+        rep_conf = ReplicateConfig()
+        if replica_num is not None:
+            rep_conf.replicaNum = replica_num
+        if preferred_ranks is not None:
+            rep_conf.preferredLocalServiceIDs = preferred_ranks
+
         results = self._store.batch_put_from_layers(
             keys,
-            [[]
-             if block is None
+            [[] if block is None
              else [layer.data_ptr() for layer in block]
              for block in blocks],
             sizes,
-            direct
+            direct,
+            rep_conf
         )
         if device == 'npu':
             self.sync_stream()
@@ -449,8 +492,7 @@ class MmcTest(TestServer):
             blocks.append(tensor)
         results = self._store.batch_get_into_layers(
             keys,
-            [[]
-             if block is None
+            [[] if block is None
              else [layer.data_ptr() for layer in block]
              for block in blocks],
             sizes,
@@ -471,7 +513,6 @@ class MmcTest(TestServer):
     def sync_stream(self):
         import torch_npu
         torch_npu.npu.current_stream().synchronize()
-
 
     def malloc_tensor(self, layer_num: int = 1, mini_block_size: int = 1024, device='cpu'):
         if device not in ('cpu', 'npu'):

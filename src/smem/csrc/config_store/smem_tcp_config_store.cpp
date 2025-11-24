@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #include "smem_tcp_config_store.h"
@@ -12,6 +18,7 @@ namespace ock {
 namespace smem {
 constexpr auto CONNECT_RETRY_MAX_TIMES = 60;
 constexpr int DECIMAL_BASE = 10;
+constexpr int WORLD_SIZE_SHIFT = 32;
 
 class ClientWaitContext : public ClientCommonContext {
 public:
@@ -129,7 +136,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     if (isServer_) {
@@ -144,10 +151,11 @@ Result TcpConfigStore::Startup(const tls_config& tlsConfig, int reconnectRetryTi
     if (result != 0) {
         STORE_LOG_ERROR("Failed to start config store client ret:" << result);
     }
+    isConnect_.store(true);
     return result;
 }
 
-Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
@@ -181,8 +189,9 @@ Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRet
     }
 
     ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << 32) | rankId_)
-                                  : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
+    connReq.rankId = rankId_ >= 0 ?
+        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_)) :
+        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
     result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
         STORE_LOG_ERROR("connect to server failed, result: " << result);
@@ -192,7 +201,7 @@ Result TcpConfigStore::ClientStart(const tls_config& tlsConfig, int reconnectRet
     return result;
 }
 
-Result TcpConfigStore::ServerStart(const tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ServerStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     std::lock_guard<std::mutex> guard(mutex_);
@@ -397,6 +406,35 @@ Result TcpConfigStore::Append(const std::string &key, const std::vector<uint8_t>
     return StoreErrorCode::SUCCESS;
 }
 
+Result TcpConfigStore::Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept
+{
+    if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
+        STORE_LOG_ERROR("key length is invalid");
+        return StoreErrorCode::INVALID_KEY;
+    }
+
+    SmemMessage request{MessageType::WRITE};
+    std::vector<uint8_t> sendValue(reinterpret_cast<const uint8_t *>(&offset),
+                                   reinterpret_cast<const uint8_t *>(&offset) + sizeof(offset));
+    sendValue.insert(sendValue.end(), value.begin(), value.end());
+    request.keys.push_back(key);
+    request.values.push_back(sendValue);
+
+    auto packedRequest = SmemMessagePacker::Pack(request);
+    auto response = SendMessageBlocked(packedRequest);
+    if (response == nullptr) {
+        STORE_LOG_ERROR("send set for key: " << key << ", get null response");
+        return IO_ERROR;
+    }
+
+    auto responseCode = response->Header().result;
+    if (responseCode != 0) {
+        STORE_LOG_ERROR("send set for key: " << key << ", get response code: " << responseCode);
+    }
+
+    return responseCode;
+}
+
 Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &expect,
                            const std::vector<uint8_t> &value, std::vector<uint8_t> &exists) noexcept
 {
@@ -538,9 +576,59 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     return response;
 }
 
+Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
+{
+    auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
+    ock::acc::AccConnReq connReq;
+    connReq.rankId = rankId_;
+    auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
+    if (result != 0) {
+        STORE_LOG_ERROR("Reconnect to server failed, result.");
+        return result;
+    }
+    return SM_OK;
+}
+
+bool TcpConfigStore::GetConnectStatus() noexcept
+{
+    return isConnect_.load();
+}
+
+void TcpConfigStore::SetConnectStatus(bool status) noexcept
+{
+    isConnect_.store(status);
+}
+
+void TcpConfigStore::RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept
+{
+    brokenHandler_ = std::move(handler);
+}
+
+void TcpConfigStore::RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept
+{
+    if (accServer_ == nullptr) {
+        STORE_LOG_INFO("accServer_ is null, cannot register server broken handler");
+        return;
+    }
+    accServer_->RegisterBrokenLinkCHandler(handler);
+}
+
+void TcpConfigStore::RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept
+{
+    if (accServer_ == nullptr) {
+        STORE_LOG_INFO("accServer_ is null, cannot register server op handler");
+        return;
+    }
+    accServer_->RegisterOpHandler(opCode, handler);
+}
+
 Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     STORE_LOG_INFO("link broken, linkId: " << link->Id());
+    SetConnectStatus(false);
+    if (brokenHandler_ != nullptr) {
+        brokenHandler_();
+    }
     std::unordered_map<uint32_t, std::shared_ptr<ClientCommonContext>> tempContext;
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     tempContext.swap(msgClientContext_);
@@ -549,17 +637,28 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     for (auto &it : tempContext) {
         it.second->SetFailedFinish();
     }
-    auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
-    ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << 32) | rankId_)
-                                  : ((static_cast<uint64_t>(worldSize_) << 32) | std::numeric_limits<uint32_t>::max());
-    STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
-    auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
-    if (result != 0) {
-        STORE_LOG_ERROR("reconnect to server failed, result: " << result);
-        return result;
+    uint32_t timesRetried = 0;
+    while (timesRetried < CONNECT_RETRY_MAX_TIMES) {
+        auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
+        ock::acc::AccConnReq connReq;
+        connReq.rankId =
+            rankId_ >= 0
+                ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
+                : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
+        STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
+        auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
+        if (result == 0) {
+            STORE_LOG_INFO("reconnect to server successful, serverPort: " << serverPort_);
+            break;
+        }
+        // interval between each retry, 2 sec for each time,
+        sleep(2);
+        timesRetried++;
     }
-
+    if (!accClientLink_->Established()) {
+        STORE_LOG_ERROR("reconnect to server failed, serverPort_: " << serverPort_);
+        return SM_ERROR;
+    }
     if (reconnectHandler != nullptr) {
         return reconnectHandler();
     }
@@ -607,7 +706,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     msgCtxLocker.unlock();
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret);
+        STORE_LOG_ERROR("send message failed, result: " << ret << ", Established: " << accClientLink_->Established());
         return ret;
     }
 

@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef MF_SMEM_TRANS_ENTRY_H
 #define MF_SMEM_TRANS_ENTRY_H
@@ -11,6 +17,7 @@
 
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
+#include "mf_net.h"
 #include "hybm_def.h"
 #include "mf_rwlock.h"
 #include "smem_trans.h"
@@ -67,20 +74,25 @@ public:
                      const size_t dataSizes[], uint32_t batchSize);
 
 private:
-    bool ParseTransName(const std::string &name, uint32_t &ip, uint16_t &port);
+    bool ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port);
+    void CleanupRemoteSlices(const std::vector<const StoredSliceInfo *> &rmSs);
+    void RemoveRanks(std::set<uint32_t> &rankSet);
+    Result StartWatchConnectThread();
+    Result WatchConnectTaskOneLoop();
     Result StartWatchThread();
     void WatchTaskOneLoop();
     void WatchTaskFindNewRanks();
     void WatchTaskFindNewSlices();
-    Result ParseNameToUniqueId(const std::string &name, uint64_t &uniqueId);
+    Result ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);
     hybm_options GenerateHybmOptions();
+    int32_t ReInitialize();
 
 private:
-    hybm_entity_t entity_ = nullptr;                     /* local hybm entity */
-    std::map<PeerEntryKey, PeerEntryValue> peerEntries_; /* peer transfer entry look up map */
+    hybm_entity_t entity_ = nullptr;                       /* local hybm entity */
+    std::map<PeerEntryKey, PeerEntryValue> peerEntries_{}; /* peer transfer entry look up map */
 
     uint16_t rankId_ = 0;
     uint16_t entityId_ = 0;
@@ -90,18 +102,21 @@ private:
     bool inited_ = false;
     const std::string name_;
     UrlExtraction storeUrlExtraction_;
-    smem_trans_config_t config_; /* config of transfer entry */
+    smem_trans_config_t config_{}; /* config of transfer entry */
     WorkerUniqueId workerUniqueId_;
     uint32_t sliceInfoSize_{0};
-    hybm_exchange_info deviceInfo_;
+    hybm_exchange_info deviceInfo_{};
     std::thread watchThread_;
+    std::thread watchConnectThread_;
     std::mutex watchMutex_;
     std::condition_variable watchCond_;
     bool watchRunning_{true};
+    bool watchConnectRunning_{true};
 
-    mf::ReadWriteLock remoteSliceRwMutex_;
-    std::unordered_map<uint64_t, std::map<const void *, LocalMapAddress, std::greater<const void *>>> remoteSlices_;
-    std::map<std::string, uint64_t> nameToWorkerId;     /* To accelerate name parsed */
+    ock::mf::ReadWriteLock remoteSliceRwMutex_;
+    std::unordered_map<
+        WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash> remoteSlices_;
+    std::map<std::string, WorkerId> nameToWorkerId;     /* To accelerate name parsed */
 };
 
 inline const std::string &SmemTransEntry::Name() const

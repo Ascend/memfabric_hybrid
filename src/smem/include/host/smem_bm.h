@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef __MEMFABRIC_SMEM_BM_H__
 #define __MEMFABRIC_SMEM_BM_H__
@@ -26,7 +32,7 @@ int32_t smem_bm_config_init(smem_bm_config_t *config);
  * the KVBlocks then copy to global shared memory space, other workers can read it
  * by data copy as well.
  *
- * @param storeURL         [in] configure store url for control, e.g. tcp:://ip:port
+ * @param storeURL         [in] configure store url for control, e.g. tcp://ip:port or tcp6://[ip]:port
  * @param worldSize        [in] number of guys participating
  * @param deviceId         [in] device id
  * @param config           [in] extract config
@@ -103,7 +109,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
 /**
  *
  * @param handle        [in] Big Memory object handle created by smem_bm_create
- * @param memType       [in] memory type, device or host
+ * @param memType       [in] memory type, SMEM_MEM_TYPE_DEVICE or SMEM_MEM_TYPE_HOST
  * @param peerRankId    [in] rank id of peer
  * @return memory ptr of peer gva
  */
@@ -124,11 +130,62 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+
+int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+/**
+ * @brief wait async copy finish
+ * @return 0 if successful
+ */
+int32_t smem_bm_wait(smem_bm_t handle);
+
+/**
+ * @brief register hbm mem, support sdma or drma
+ *
+ * @param addr              [in] register addr
+ * @param size              [in] register size
+ */
+int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
+
+/**
+ * @brief Get the belong rank id of gva
+ * @param gva
+ * @return rank id if successful, UINT32_MAX is returned if failed
+ */
+uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);
+/**
+ * @brief This command is used to register host memory to device.
+ * @param addr             [in] requested the src share memory pointer, srcPtr must be page aligned.
+ * @param size             [in] requested byte size.
+ * @param dest             [out] pointer that stores the address of the allocated dst memory pointer.
+ * @return 0 if successful
+ */
+int32_t smem_bm_register_host_mem(uint64_t addr, uint64_t size, uint64_t *dest);
+
+/**
+ * @brief This command is used to unregister host memory to device.
+ * @param addr             [in] Requested the src share memory pointer.
+ * @return 0 if successful
+ */
+int32_t smem_bm_unregister_host_mem(uint64_t addr);
+
+/**
+ * @brief alloc mem
+ * @param size              [in] alloc size
+ * @param memType           [in] mem type, only support SMEM_MEM_TYPE_HOST now
+ * @param flags             [in] optional flags
+ * @return addr if successful
+ */
+void *smem_bm_mem_malloc(uint64_t size, smem_bm_mem_type memType, uint64_t flags);
+
+/**
+ * @brief free mem
+ * @param addr             [in] address
+ */
+void smem_bm_mem_free(void *addr);
 
 /**
  * @brief Data copy on Big Memory object, several copy types supported:
- * The size of the dest address must be continuous heigth * width
  * L2G: local memory to global space
  * G2L: global space to local memory
  * G2H: global space to host memory
@@ -146,23 +203,6 @@ int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t siz
  * @return 0 if successful
  */
 int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags);
-
-
-int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
-/**
- * @brief wait async copy finish
- * @return 0 if successful
- */
-int32_t smem_bm_wait(smem_bm_t handle);
-
-/**
- * @brief register hbm mem, support sdma or drma
- *
- * @param addr              [in] register addr
- * @param size              [in] register size
- */
-int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
-
 #ifdef __cplusplus
 }
 #endif

@@ -1,11 +1,18 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <map>
 #include <vector>
 #include <fstream>
 #include <climits>
 #include "hybm_common_include.h"
+#include "hybm_gva_version.h"
 #include "hybm_logger.h"
 #include "devmm_define.h"
 #include "hybm_cmd.h"
@@ -544,6 +551,10 @@ int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, ui
 
     uint64_t va = (DEVMM_SVM_MEM_START + DEVMM_SVM_MEM_SIZE - DEVMM_HEAP_SIZE) - allocSize;
     if (g_gvaHeapMgr.inited) {
+        if (allocSize > g_gvaHeapMgr.start) {
+            BM_LOG_ERROR("invalid allocSize or g_gvaHeapMgr.start");
+            return -1;
+        }
         va = g_gvaHeapMgr.start - allocSize;
     }
 

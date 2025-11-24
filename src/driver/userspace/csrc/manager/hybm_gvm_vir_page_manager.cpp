@@ -64,8 +64,8 @@ int32_t HybmGvmVirPageManager::Initialize(uint64_t startAddr, uint64_t size, int
 
 int32_t HybmGvmVirPageManager::ReserveMemory(uint64_t *addr, uint64_t size, bool shared)
 {
-    BM_ASSERT_RETURN(addr != nullptr, -1);
-    std::unique_lock<std::mutex> lockGuard{mutex_};
+    BM_USER_ASSERT_RETURN(addr != nullptr, -1);
+    WriteGuard lockGuard{mutex_};
     if (size == 0 || size % HYBM_VIR_PAGE_SIZE != 0) {
         BM_USER_LOG_ERROR("Failed to reserve memory size:" << size << " must alignment " << HYBM_VIR_PAGE_SIZE);
         return -1;
@@ -82,7 +82,7 @@ int32_t HybmGvmVirPageManager::ReserveMemory(uint64_t *addr, uint64_t size, bool
     return 0;
 }
 
-bool HybmGvmVirPageManager::UpdateRegisterMap(uint64_t va, uint64_t size)
+bool HybmGvmVirPageManager::UpdateRegisterMap(uint64_t va, uint64_t size, uint64_t newVa)
 {
     if (va > REGISTER_SET_VA_MAX || size > std::numeric_limits<uint64_t>::max() - va ||
         va + size > REGISTER_SET_VA_MAX) {
@@ -90,27 +90,32 @@ bool HybmGvmVirPageManager::UpdateRegisterMap(uint64_t va, uint64_t size)
         return false;
     }
 
-    std::unique_lock<std::mutex> lockGuard{mutex_};
+    WriteGuard lockGuard{mutex_};
     auto it = registerSet_.lower_bound((va << REGISTER_SET_MARK_BIT) | REGISTER_SET_LEFT_MARK);
-    if (it != registerSet_.end() && ((*it) >> REGISTER_SET_MARK_BIT) < (va + size)) {
+    if (it != registerSet_.end() && ((it->first) >> REGISTER_SET_MARK_BIT) < (va + size)) {
         BM_USER_LOG_ERROR("va has already registered, size:" << size);
         return false;
     }
 
-    registerSet_.insert(va << REGISTER_SET_MARK_BIT | REGISTER_SET_LEFT_MARK);
-    registerSet_.insert((va + size) << REGISTER_SET_MARK_BIT);
+    registerSet_.emplace((va << REGISTER_SET_MARK_BIT) | REGISTER_SET_LEFT_MARK, newVa);
+    registerSet_.emplace((va + size) << REGISTER_SET_MARK_BIT, newVa + size);
     return true;
 }
 
-bool HybmGvmVirPageManager::QueryInRegisterMap(uint64_t va, uint64_t size)
+uint64_t HybmGvmVirPageManager::QueryInRegisterMap(uint64_t va, uint64_t size)
 {
-    std::unique_lock<std::mutex> lockGuard{mutex_};
+    ReadGuard lockGuard{mutex_};
     // check overflow
     if (size > std::numeric_limits<uint64_t>::max() - va) {
-        return false;
+        return 0ULL;
     }
     // 必须查询到一个右端点,且待查询区间<=右端点
     auto it = registerSet_.upper_bound((va << REGISTER_SET_MARK_BIT) | REGISTER_SET_LEFT_MARK);
-    return (it != registerSet_.end() && !((*it) & REGISTER_SET_LEFT_MARK) &&
-            (va + size) <= ((*it) >> REGISTER_SET_MARK_BIT));
+    if (it != registerSet_.end() && !((it->first) & REGISTER_SET_LEFT_MARK) &&
+            (va + size) <= ((it->first) >> REGISTER_SET_MARK_BIT)) {
+        uint64_t ed = (it->first) >> REGISTER_SET_MARK_BIT;
+        return it->second - (ed - va);
+    } else {
+        return 0ULL;
+    }
 }

@@ -189,7 +189,7 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
     }
 
     for (uint64_t i = 0; i < size; i += SIZE_1G) {
-        BM_ASSERT_RETURN(std::numeric_limits<uint64_t>::max() - addr >= i, HYBM_GVM_FAILURE);
+        BM_USER_ASSERT_RETURN(std::numeric_limits<uint64_t>::max() - addr >= i, HYBM_GVM_FAILURE);
         arg.data.mem_fetch_para.addr = addr + i;
         arg.data.mem_fetch_para.size = SIZE_1G;
         arg.data.mem_fetch_para.sdid = sdid;
@@ -204,11 +204,11 @@ int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid)
     return HYBM_GVM_SUCCESS;
 }
 
-int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size)
+int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size, uint64_t new_addr)
 {
     if ((g_sdid >> GVM_SDID_SERVER_OFFSET) == GVM_SDID_UNKNOWN_SERVER_ID) {
         BM_USER_LOG_INFO("found A2 server, skip register mem!");
-        HybmGvmVirPageManager::Instance()->UpdateRegisterMap(addr, size);
+        HybmGvmVirPageManager::Instance()->UpdateRegisterMap(addr, size, new_addr);
         return HYBM_GVM_SUCCESS;
     }
 
@@ -225,6 +225,7 @@ int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size)
 
     arg.data.mem_fetch_para.addr = addr;
     arg.data.mem_fetch_para.size = size;
+    arg.data.mem_fetch_para.new_addr = new_addr;
     arg.data.mem_fetch_para.sdid = g_sdid;
     arg.data.mem_fetch_para.no_record = true;
     ret = ioctl(g_hybm_fd, HYBM_GVM_CMD_MEM_FETCH, &arg);
@@ -233,16 +234,17 @@ int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size)
         return HYBM_GVM_FAILURE;
     }
 
-    if (!HybmGvmVirPageManager::Instance()->UpdateRegisterMap(addr, size)) {
+    if (!HybmGvmVirPageManager::Instance()->UpdateRegisterMap(addr, size, new_addr)) {
         BM_USER_LOG_INFO("insert register set failed, size:" << size);
         return HYBM_GVM_FAILURE;
     } else {
-        BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_FETCH(register) success, size:" << size);
+        BM_USER_LOG_INFO("insert register addr " << std::hex << addr << " size:" << size
+                                                 << " new:" << std::hex << new_addr);
         return HYBM_GVM_SUCCESS;
     }
 }
 
-bool hybm_gvm_mem_has_registered(uint64_t addr, uint64_t size)
+uint64_t hybm_gvm_mem_has_registered(uint64_t addr, uint64_t size)
 {
     return HybmGvmVirPageManager::Instance()->QueryInRegisterMap(addr, size);
 }
@@ -406,18 +408,29 @@ int32_t hybm_gvm_mem_close(uint64_t addr)
     return HYBM_GVM_SUCCESS;
 }
 
-int32_t hybm_gvm_set_log_level(int level)
+uint64_t hybm_gvm_user_alloc(uint64_t size)
 {
-    const auto instance = HybmUserOutLogger::Instance();
-    if (instance == nullptr) {
+    uint64_t len = (size + SIZE_1G - 1U) / SIZE_1G * SIZE_1G;
+    uint64_t va = 0U;
+    int32_t ret = hybm_gvm_reserve_memory(&va, len, false);
+    if (ret != 0) {
+        BM_USER_LOG_ERROR("alloc va failed, ret:" << ret);
         return HYBM_GVM_FAILURE;
     }
 
-    if (level < 0 || level >= BUTT_LEVEL) {
-        BM_USER_LOG_ERROR("Set log level error, invalid param level: " << level);
+    ret = hybm_gvm_mem_alloc(va, len);
+    if (ret != 0) {
+        BM_USER_LOG_ERROR("va map failed, ret:" << ret);
         return HYBM_GVM_FAILURE;
     }
 
-    instance->SetLogLevel(static_cast<LogLevel>(level));
-    return HYBM_GVM_SUCCESS;
+    return va;
+}
+
+void hybm_gvm_user_free(uint64_t addr)
+{
+    int32_t ret = hybm_gvm_mem_free(addr);
+    if (ret != 0) {
+        BM_USER_LOG_ERROR("free mem failed, ret:" << ret);
+    }
 }

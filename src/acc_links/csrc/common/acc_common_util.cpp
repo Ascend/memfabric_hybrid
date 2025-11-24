@@ -1,9 +1,17 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <unistd.h>
+#include <regex>
 
 #include "mf_str_util.h"
+#include "mf_file_util.h"
 #include "acc_includes.h"
 #include "acc_common_util.h"
 
@@ -17,6 +25,20 @@ bool AccCommonUtil::IsValidIPv4(const std::string &ip)
     }
     std::regex ipv4Regex("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
     return std::regex_match(ip, ipv4Regex);
+}
+
+bool AccCommonUtil::IsValidIPv6(const std::string &ip)
+{
+    constexpr size_t maxIpv6Len = 39;
+    if (ip.size() > maxIpv6Len) {
+        return false;
+    }
+
+    const std::regex ipV6Pattern(
+        "^" + ock::mf::ipv6_common_core + "$"
+    );
+
+    return std::regex_match(ip, ipV6Pattern);
 }
 
 Result AccCommonUtil::SslShutdownHelper(SSL *ssl)
@@ -65,7 +87,7 @@ uint32_t AccCommonUtil::GetEnvValue2Uint32(const char *envName)
     if (tmpEnvValue != nullptr && strlen(tmpEnvValue) <= maxUint32Len && IsAllDigits(tmpEnvValue)) {
         uint32_t envValue = 0;
         std::string str(tmpEnvValue);
-        if (!ock::mf::StrUtil::String2Uint<uint32_t>(str, envValue)) {
+        if (!ock::mf::StrUtil::String2Uint(str, envValue)) {
             LOG_ERROR("failed to convert str : " << str << " to uint32_t");
             return 0;
         }

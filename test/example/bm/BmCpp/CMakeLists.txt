@@ -11,22 +11,31 @@ if("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
 endif()
 add_executable(bm_example ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+    set(TARGET_ARCH "x86_64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+    set(TARGET_ARCH "aarch64")
+else()
+    message(FATAL_ERROR "arch is not support!")
+endif()
+
 target_compile_options(bm_example PRIVATE
-        -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Werror
+        -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -g
 )
 
 include_directories(
-        ${MF_PATH}/aarch64-linux/include/smem/host
-        ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
-        ${MF_PATH}/aarch64-linux/include/util/
+        ${MF_PATH}/${TARGET_ARCH}-linux/include/smem/host
+        ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/include/
+        ${MF_PATH}/${TARGET_ARCH}-linux/include/util/
 )
 target_link_directories(bm_example PUBLIC
-        ${MF_PATH}/aarch64-linux/lib64
-        ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64
+        ${MF_PATH}/${TARGET_ARCH}-linux/lib64
+        ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64
 )
 
 target_link_libraries(bm_example PRIVATE
         mf_smem
+        mf_hybm_core
         ascendcl
 )
 

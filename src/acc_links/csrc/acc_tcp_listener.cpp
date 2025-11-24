@@ -1,43 +1,38 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <net/if.h>
 #include <sys/time.h>
 #include "acc_common_util.h"
+#include "mf_ipv4_validator.h"
 #include "acc_tcp_listener.h"
 
 namespace ock {
 namespace acc {
-    
-void AccTcpListener::PrepareSockAddr(struct sockaddr_in& addr) noexcept
-{
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(listenIp_.c_str());
-    addr.sin_port = htons(listenPort_);
-}
-
 Result AccTcpListener::Start() noexcept
 {
+    auto parser = mf::SocketAddressParserMgr::getInstance().GetParser(listenPort_);
     if (started_) {
         LOG_INFO("AccTcpListener at " << NameAndPort() << " already started");
         return ACC_OK;
     }
 
-    if (connHandler_ == nullptr) {
-        LOG_ERROR("Invalid connection handler");
-        return ACC_INVALID_PARAM;
-    }
+    VALIDATE_RETURN(connHandler_ != nullptr, "connection handler not initialized", ACC_ERROR);
+    VALIDATE_RETURN(parser != nullptr, "parser not initialized", ACC_ERROR);
 
     /* create socket */
-    auto tmpFD = ::socket(AF_INET, SOCK_STREAM, 0);
+    auto tmpFD = ::socket(parser->GetAddressFamily(), SOCK_STREAM, 0);
     if (tmpFD < 0) {
         LOG_ERROR("Failed to create listen socket, error " << strerror(errno) <<
             ", please check if running of fd limit");
         return ACC_ERROR;
     }
-
-    /* assign address */
-    struct sockaddr_in addr {};
-    PrepareSockAddr(addr);
 
     /* set option, bind and listen */
     if (reusePort_) {
@@ -49,7 +44,7 @@ Result AccTcpListener::Start() noexcept
         }
     }
 
-    if (::bind(tmpFD, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0 || ::listen(tmpFD, 200L) < 0) {
+    if (::bind(tmpFD, parser->GetSockAddr(), parser->GetAddrLen()) < 0 || ::listen(tmpFD, 200L) < 0) {
         auto errorNum = errno;
         SafeCloseFd(tmpFD);
         if (errorNum == EADDRINUSE) {
@@ -68,8 +63,14 @@ Result AccTcpListener::Start() noexcept
 
     listenFd_ = tmpFD;
 
+    int retry_times = 10000;
     while (!threadStarted_.load()) {
         usleep(100L);
+        retry_times -= 1;
+        if (retry_times == 0) {
+            LOG_ERROR("Internal thread start timeout.");
+            return ACC_ERROR;
+        }
     }
 
     started_ = true;

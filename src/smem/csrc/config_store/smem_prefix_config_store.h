@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef SMEM_SMEM_PREFIX_CONFIG_STORE_H
@@ -77,6 +83,11 @@ public:
         return baseStore_->Unwatch(wid);
     }
 
+    Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept override
+    {
+        return baseStore_->Write(std::string(keyPrefix_).append(key), value, offset);
+    }
+
     std::string GetCompleteKey(const std::string &key) noexcept override
     {
         return std::string(keyPrefix_).append(key);
@@ -99,6 +110,36 @@ public:
             return;
         }
         return baseStore_->RegisterReconnectHandler(callback);
+    }
+
+    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept
+    {
+        return baseStore_->ReConnectAfterBroken(reconnectRetryTimes);
+    }
+
+    bool GetConnectStatus() noexcept override
+    {
+        return baseStore_->GetConnectStatus();
+    }
+
+    void SetConnectStatus(bool status) noexcept override
+    {
+        baseStore_->SetConnectStatus(status);
+    }
+
+    void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept override
+    {
+        baseStore_->RegisterClientBrokenHandler(handler);
+    }
+
+    void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override
+    {
+        baseStore_->RegisterServerBrokenHandler(handler);
+    }
+
+    void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override
+    {
+        baseStore_->RegisterServerOpHandler(opCode, handler);
     }
 
 protected:

@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
 #define MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
@@ -207,6 +213,26 @@ void hybm_unmap(hybm_entity_t e, uint32_t flags);
  * @param size              [in] register size
  */
 int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size);
+
+/**
+ * @brief This command is used to register host memory to device.
+ * @param src              [in] requested the src share memory pointer, srcPtr must be page aligned.
+ * @param size             [in] requested byte size.
+ * @param dest             [out] Level-2 pointer that stores the address of the allocated dst memory pointer.
+ * @return 0 if successful
+ */
+int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest);
+
+/**
+ * @brief This command is used to unregister host memory to device.
+ * @param src              [in] Requested the src share memory pointer.
+ * @return 0 if successful
+ */
+int32_t hybm_host_mem_unregister(uint64_t src);
+
+void *hybm_host_mem_malloc(uint64_t size, uint64_t flags);
+void hybm_host_mem_free(void *addr);
+
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef MF_HYBRID_HYBM_TRANSPORT_COMMON_H
@@ -14,7 +20,7 @@
 #include <unordered_map>
 #include "hybm_def.h"
 #include "hybm_define.h"
-#include "mf_tls_def.h"
+#include "dl_hccp_def.h"
 
 namespace ock {
 namespace mf {
@@ -41,7 +47,7 @@ struct TransportOptions {
     hybm_type initialType;
     hybm_role_type role;
     std::string nic;
-    tls_config tlsOption;
+    hybm_tls_config tlsOption;
 };
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportOptions &options)
@@ -65,7 +71,7 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 }
 
 struct TransportMemoryKey {
-    uint64_t keys[8];
+    uint64_t keys[12];
 };
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryKey &key)

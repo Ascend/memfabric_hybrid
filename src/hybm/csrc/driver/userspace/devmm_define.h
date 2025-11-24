@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef MEM_FABRIC_HYBRID_DEVMM_DEFINE_H
@@ -8,10 +14,10 @@
 #include <cstdint>
 
 constexpr uint64_t DEVMM_MAP_ALIGN_SIZE = 0x200000U;
-constexpr uint64_t DEVMM_HEAP_SIZE = 1UL << 30UL;
-constexpr size_t DEVMM_SVM_MEM_SIZE = 1UL << 43UL;
+constexpr uint64_t DEVMM_HEAP_SIZE = (1UL << 30UL);
+constexpr size_t DEVMM_SVM_MEM_SIZE = (1UL << 43UL);
 constexpr uint64_t DEVMM_SVM_MEM_START = 0x100000000000ULL;
-constexpr uint32_t DEVMM_MAX_HEAP_NUM = DEVMM_SVM_MEM_SIZE >> 30;
+constexpr uint32_t DEVMM_MAX_HEAP_NUM = (DEVMM_SVM_MEM_SIZE >> 30);
 
 constexpr uint32_t DV_ADVISE_DDR = 0x0001;
 constexpr uint32_t DV_ADVISE_HBM = 0x0002;
@@ -28,7 +34,7 @@ constexpr uint32_t DEVMM_NODE_MAPPED_BIT = 1;
 constexpr uint32_t DEVMM_NODE_MEMTYPE_SHIFT = 2;
 constexpr uint32_t DEVMM_NODE_MEMTYPE_WID = 4;
 
-constexpr uint32_t DEVMM_NODE_MAPPED_FLG = 1UL << DEVMM_NODE_MAPPED_BIT;
+constexpr uint32_t DEVMM_NODE_MAPPED_FLG = (1UL << DEVMM_NODE_MAPPED_BIT);
 constexpr uint32_t DEVMM_HEAP_HUGE_PAGE = 0xEFEF0002UL;
 constexpr uint32_t DEVMM_HEAP_CHUNK_PAGE = 0xEFEF0003UL;
 

@@ -79,13 +79,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
     return g_spaces[memType];
 }
 
-int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest,
-                     uint64_t size, smem_bm_copy_type t, uint32_t flags)
-{
-    return 0;
-}
-
-int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)
+int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     return 0;
 }
@@ -101,6 +95,11 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 }
 
 int32_t smem_bm_wait(smem_bm_t handle)
+{
+    return 0;
+}
+
+uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva)
 {
     return 0;
 }

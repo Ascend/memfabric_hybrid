@@ -1,5 +1,11 @@
 ﻿/*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <algorithm>
 #include "hybm_big_mem.h"
@@ -52,6 +58,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.singleRankVASpace = symmetricSize;
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
+    options.globalUniqueAddress = true;
     std::string defaultNic = "10002";
     std::copy_n(defaultNic.c_str(), defaultNic.size() + 1, options.nic);
 

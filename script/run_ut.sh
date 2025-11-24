@@ -39,7 +39,7 @@ export LD_LIBRARY_PATH=$MEMCACHE_LIB_PATH:$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CA
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 
-cd "$OUTPUT_PATH/bin/ut" && ./test_mmc_test --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml"
+cd "$OUTPUT_PATH/bin/ut" && ./test_mmc_test --gtest_break_on_failure --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml"
 
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"

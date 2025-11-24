@@ -19,15 +19,17 @@ int32_t hybm_gvm_get_device_info(uint32_t *ssid);
 int32_t hybm_gvm_reserve_memory(uint64_t *addr, uint64_t size, bool shared);
 int32_t hybm_gvm_unreserve_memory(void);
 int32_t hybm_gvm_mem_fetch(uint64_t addr, uint64_t size, uint32_t sdid);
-int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size);
-bool hybm_gvm_mem_has_registered(uint64_t addr, uint64_t size);
+int32_t hybm_gvm_mem_register(uint64_t addr, uint64_t size, uint64_t new_addr);
+uint64_t hybm_gvm_mem_has_registered(uint64_t addr, uint64_t size);
 int32_t hybm_gvm_mem_alloc(uint64_t addr, uint64_t size);
 int32_t hybm_gvm_mem_free(uint64_t addr);
 int32_t hybm_gvm_get_key(uint64_t addr, uint64_t *key);
 int32_t hybm_gvm_set_whitelist(uint64_t key, uint32_t sdid);
 int32_t hybm_gvm_mem_open(uint64_t addr, uint64_t key);
 int32_t hybm_gvm_mem_close(uint64_t addr);
-int32_t hybm_gvm_set_log_level(int level);
+
+uint64_t hybm_gvm_user_alloc(uint64_t size);
+void hybm_gvm_user_free(uint64_t addr);
 
 #ifdef __cplusplus
 }

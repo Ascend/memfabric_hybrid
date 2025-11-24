@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "device_rdma_transport_manager.h"
 
@@ -19,6 +25,7 @@
 #include "fixed_ranks_qp_manager.h"
 #include "bipartite_ranks_qp_manager.h"
 #include "hybm_types.h"
+#include "hybm_ptracer.h"
 #include "joinable_ranks_qp_manager.h"
 
 namespace {
@@ -41,7 +48,6 @@ constexpr unsigned long RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG = 0x230UL;
 
 thread_local HybmStreamPtr RdmaTransportManager::stream_ = nullptr;
 thread_local HybmStreamNotifyPtr RdmaTransportManager::notify_ = nullptr;
-thread_local RdmaNotifyInfo RdmaTransportManager::notifyInfo_{};
 
 RdmaTransportManager::~RdmaTransportManager()
 {
@@ -153,8 +159,25 @@ Result RdmaTransportManager::UnregisterMemoryRegion(uint64_t addr)
         return BM_DL_FUNCTION_FAILED;
     }
 
+    if (pos->second.address != pos->second.regAddress) {
+        ret = DlHalApi::HalHostUnregisterEx((void *)(ptrdiff_t)pos->second.address, deviceId_, HOST_MEM_MAP_DEV);
+        if (ret != 0) {
+            BM_LOG_ERROR("HalHostUnregister failed: " << ret);
+        }
+    }
+
     registerMRS_.erase(pos);
     return BM_OK;
+}
+
+bool RdmaTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
+{
+    ReadGuard lockGuard(lock_);
+    auto pos = registerMRS_.lower_bound(addr);
+    if (pos == registerMRS_.end() || pos->first + pos->second.size < addr + size) {
+        return false;
+    }
+    return true;
 }
 
 Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &key)
@@ -374,7 +397,7 @@ Result RdmaTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_
         return ret;
     }
 
-    BM_LOG_INFO("ReadRemote() success. size=" << size);
+    BM_LOG_DEBUG("ReadRemote() success. size=" << size);
     return BM_OK;
 }
 
@@ -386,35 +409,31 @@ Result RdmaTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64
         return ret;
     }
 
-    BM_LOG_INFO("WriteRemote() success. size=" << size);
+    BM_LOG_DEBUG("WriteRemote() success. size=" << size);
     return BM_OK;
 }
 
 Result RdmaTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_DEBUG(
-        "ReadRemoteAsync rk:" << rankId << " lAddr:" << std::hex << lAddr << " rAddr:" << rAddr << " size:" << size);
+    TP_TRACE_BEGIN(TP_HYBM_DEV_RDMA_ASYNC_READ);
     auto ret = RemoteIO(rankId, lAddr, rAddr, size, false, false);
+    TP_TRACE_END(TP_HYBM_DEV_RDMA_ASYNC_READ, ret);
     if (ret != BM_OK) {
         BM_LOG_ERROR("ReadRemoteAsync() failed: " << ret);
         return ret;
     }
-
-    BM_LOG_INFO("ReadRemoteAsync() success. size=" << size);
     return BM_OK;
 }
 
 Result RdmaTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_DEBUG(
-        "WriteRemoteAsync rk:" << rankId << " lAddr:" << std::hex << lAddr << " rAddr:" << rAddr << " size:" << size);
+    TP_TRACE_BEGIN(TP_HYBM_DEV_RDMA_ASYNC_WRITE);
     auto ret = RemoteIO(rankId, lAddr, rAddr, size, true, false);
+    TP_TRACE_END(TP_HYBM_DEV_RDMA_ASYNC_WRITE, ret);
     if (ret != BM_OK) {
         BM_LOG_ERROR("WriteRemoteAsync() failed: " << ret);
         return ret;
     }
-
-    BM_LOG_INFO("WriteRemoteAsync() success. size=" << size);
     return BM_OK;
 }
 
@@ -435,6 +454,18 @@ Result RdmaTransportManager::Synchronize(uint32_t rankId)
 bool RdmaTransportManager::PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount,
                                              in_addr &deviceIp, void *&rdmaHandle)
 {
+    // If can get rdmaHandle, maybe the device has been opened, can try get rdmaHandle directly.
+    if (DlHccpApi::RaRdevGetHandle(device, rdmaHandle) == 0) {
+        if (rdmaHandle != nullptr) {
+            if (!RetireDeviceIp(device, deviceIp)) {
+                BM_LOG_ERROR("RetireDeviceIp failed.");
+                return false;
+            }
+            BM_LOG_INFO("Had prepared device and get rdmaHandle success.");
+            return true;
+        }
+        BM_LOG_INFO("Had prepared device, but rdmaHandle is null, need init again.");
+    }
     // OpenTsd need userDeviceId
     if (!OpenTsd(userId, rankCount)) {
         BM_LOG_ERROR("open tsd failed.");
@@ -485,16 +516,19 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
         BM_LOG_INFO("ra already initialized.");
         return true;
     }
-
+    const std::chrono::seconds WAIT_TIME(3);
     HccpRaInitConfig initConfig{};
     initConfig.phyId = deviceId;
     initConfig.nicPosition = NETWORK_OFFLINE;
     initConfig.hdcType = 6; // HDC_SERVICE_TYPE_RDMA = 6  HDC_SERVICE_TYPE_RDMA_V2=18
     BM_LOG_DEBUG("RaInit=" << initConfig);
+    std::this_thread::sleep_for(WAIT_TIME); // avoid hccl init conflict
     auto ret = DlHccpApi::RaInit(initConfig);
     if (ret != 0) {
-        BM_LOG_ERROR("Hccp Init RA failed: " << ret << " devid:" << deviceId);
-        return false;
+        BM_LOG_WARN("Hccp Init RA failed: " << ret << " devid:" << deviceId);
+        std::this_thread::sleep_for(WAIT_TIME);
+        raInitialized = true;
+        return true;
     }
 
     BM_LOG_DEBUG("ra init for device id: " << deviceId << " success.");
@@ -579,22 +613,23 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
 
 int RdmaTransportManager::PrepareThreadLocalStream()
 {
+    lock_.LockRead();
     if (stream_ != nullptr) {
+        lock_.UnLock();
         return BM_OK;
     }
-
-    stream_ = HybmStreamManager::CreateStream(deviceId_, 0, 0);
-    auto ret = stream_->Initialize();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HybmStream init failed: " << ret);
-        stream_ = nullptr;
-        return ret;
+    lock_.UnLock();
+    WriteGuard lockGuard(lock_);
+    stream_ = HybmStreamManager::GetThreadHybmStream(deviceId_, 0, 0);
+    if (stream_ == nullptr) {
+        BM_LOG_ERROR("HybmStream init failed");
+        return BM_ERROR;
     }
 
     notify_ = std::make_shared<HybmStreamNotify>(stream_);
     BM_ASSERT_LOG_AND_RETURN(notify_ != nullptr, "notify create failed.", BM_ERROR);
 
-    ret = notify_->Init();
+    auto ret = notify_->Init();
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "notify init failed.", ret);
     return BM_OK;
 }
@@ -673,7 +708,9 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     }
 
     send_wr_rsp rspInfo{};
+    TP_TRACE_BEGIN(TP_HYBM_DEV_SEND_WR);
     ret = DlHccpApi::RaSendWrV2(qp->qpHandle, &wr, &rspInfo);
+    TP_TRACE_END(TP_HYBM_DEV_SEND_WR, ret);
     if (ret != 0) {
         BM_LOG_ERROR("DlHccpApi::RaSendWr(handle, &wr, &opRsp) failed: " << ret);
         qpManager_->PutQpHandle(qp);
@@ -683,7 +720,9 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     StreamTask task;
     task.type = STREAM_TASK_TYPE_RDMA;
     ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe);
+    TP_TRACE_BEGIN(TP_HYBM_DEV_SUBMIT_TASK);
     ret = stream_->SubmitTasks(task);
+    TP_TRACE_END(TP_HYBM_DEV_SUBMIT_TASK, ret);
     if (ret != BM_OK) {
         BM_LOG_ERROR("stream_->SubmitTasks(task) failed: " << ret);
         qpManager_->PutQpHandle(qp);
@@ -719,6 +758,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     ReadGuard lockGuard(lock_);
     auto ret = GetRegAddress(registerMRS_, lAddr, size, true, wr.buf_list->addr, wr.buf_list->lkey);
     if (ret != BM_OK) {
+        BM_LOG_ERROR("lAddr not register: size: " << size);
         return ret;
     }
     auto &it = ranksMRs_[rankId];
@@ -728,6 +768,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     }
     ret = GetRegAddress(it, rAddr, size, false, wr.dst_addr, wr.rkey);
     if (ret != BM_OK) {
+        BM_LOG_ERROR("rAddr not register: size: " << size);
         return ret;
     }
 
@@ -741,7 +782,7 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
     if ((mr.flags & REG_MR_FLAG_DRAM) && (addr < HYBM_GVM_START_ADDR || addr >= HYBM_GVM_END_ADDR)) {
         auto input = (void *)(ptrdiff_t)addr;
         void *output = nullptr;
-        auto ret = DlHalApi::HalHostRegister(input, mr.size, 3, deviceId_, &output);
+        auto ret = DlHalApi::HalHostRegister(input, mr.size, HOST_MEM_MAP_DEV, deviceId_, &output);
         if (ret != 0) {
             BM_LOG_ERROR("HalHostRegister failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
@@ -814,7 +855,6 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
         BM_LOG_ERROR("generate db address is zero.");
         return;
     }
-    BM_LOG_DEBUG("db val=" << std::hex << dbVal);
 
     sqe->write_value_part0 = static_cast<uint32_t>(dbVal & MASK_32_BIT);
     sqe->write_value_part1 = static_cast<uint32_t>(dbVal >> UINT32_BIT_NUM);
@@ -825,7 +865,6 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
 uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
 {
     BM_ASSERT_RETURN(deviceChipInfo_ != nullptr, BM_MALLOC_FAILED);
-    uint32_t deviceId = deviceId_;
 
     auto chipId = deviceChipInfo_->GetChipId();
     auto dieId = deviceChipInfo_->GetDieId();
@@ -835,8 +874,6 @@ uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
 
     const uint64_t dbAddr = RT_ASCEND910B1_ROCEE_BASE_ADDR + RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG +
                             chipOffset * static_cast<uint64_t>(chipId) + dieOffset * dieId + chipAddr;
-    BM_LOG_INFO("deviceId=" << deviceId << ", die_id=" << dieId);
-
     return dbAddr;
 }
 
@@ -854,14 +891,14 @@ int32_t RdmaTransportManager::InitStreamNotifyBuf()
     ret = DlHccpApi::RaGetNotifyMrInfo(rdmaHandle_, &info);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "get notify mr failed.", ret);
 
-    ret = DlAclApi::AclrtMalloc(&ptr, DEVICE_LARGE_PAGE_SIZE, 0);
+    ret = DlAclApi::AclrtMalloc(&ptr, HYBM_LARGE_PAGE_SIZE, 0);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "alloc notify buf failed.", ret);
 
     ret = DlAclApi::AclrtMemcpy(ptr, notifySize, &notifyVal, notifySize, ACL_MEMCPY_HOST_TO_DEVICE);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "set notify val failed.", ret);
 
     void *mrHandle = nullptr;
-    HccpMrInfo info2{ptr, DEVICE_LARGE_PAGE_SIZE, RA_ACCESS_NORMAL, 0, 0};
+    HccpMrInfo info2{ptr, HYBM_LARGE_PAGE_SIZE, RA_ACCESS_NORMAL, 0, 0};
     ret = DlHccpApi::RaRegisterMR(rdmaHandle_, &info2, mrHandle);
     if (ret != 0) {
         BM_LOG_ERROR("register notify mr failed: " << ret);

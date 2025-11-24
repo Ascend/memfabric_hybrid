@@ -151,7 +151,7 @@ TEST_F(TestMmcFuzzServiceLocal, TestMmcLocalServiceStart)
             mmcc_init(&clientConfig);
         }
         mmc_data_info infoQuery{.valid = false};
-        mmc_buffer buf{.addr = 1, .type = 0, .dimType = 0, .oneDim = {.offset = 0, .len = 0}};
+        mmc_buffer buf{.addr = 1, .type = 0, .offset = 0, .len = 0};
         mmc_put_options opt{0, NATIVE_AFFINITY};
         ASSERT_EQ(mmcc_put("test", &buf, opt, 0) != 0, isRetNullptr);
         ASSERT_EQ(mmcc_get("test", &buf, 0) != 0, isRetNullptr);

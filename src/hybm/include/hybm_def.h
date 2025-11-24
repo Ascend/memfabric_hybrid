@@ -1,12 +1,17 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 #define MEM_FABRIC_HYBRID_HYBRID_BIG_MEM_DL_H
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "mf_tls_def.h"
 
 #ifndef __cplusplus
 extern "C" {
@@ -22,6 +27,8 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_EXPORT_ALL_SLICE     0x01
 
 #define HYBM_IMPORT_WITH_ADDRESS 0x01U
+
+#define HYBM_TLS_PATH_SIZE 256
 
 /**
  * @brief Determine whether the IO initiator is on the host or the device.
@@ -73,6 +80,17 @@ typedef struct {
 } hybm_exchange_info;
 
 typedef struct {
+    bool tlsEnable;
+    char caPath[HYBM_TLS_PATH_SIZE];
+    char crlPath[HYBM_TLS_PATH_SIZE];
+    char certPath[HYBM_TLS_PATH_SIZE];
+    char keyPath[HYBM_TLS_PATH_SIZE];
+    char keyPassPath[HYBM_TLS_PATH_SIZE];
+    char packagePath[HYBM_TLS_PATH_SIZE];
+    char decrypterLibPath[HYBM_TLS_PATH_SIZE];
+} hybm_tls_config;
+
+typedef struct {
     hybm_type bmType;
     hybm_mem_type memType;
     hybm_data_op_type bmDataOpType;
@@ -83,9 +101,11 @@ typedef struct {
     uint64_t deviceVASpace;
     uint64_t hostVASpace;
     uint64_t preferredGVA;
+    uint64_t singleRankVASpace;
+    bool globalUniqueAddress; // 是否使用全局统一内存地址
     hybm_role_type role;
     char nic[64];
-    tls_config tlsOption;
+    hybm_tls_config tlsOption;
 } hybm_options;
 
 typedef enum {

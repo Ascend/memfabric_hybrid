@@ -84,6 +84,19 @@ int32_t mmcc_register_buffer(uint64_t addr, uint64_t size);
 - `0`: 成功
 - 其他: 失败
 
+#### mmcc_local_service_id
+```c
+int32_t mmcc_local_service_id(uint32_t *localServiceId);
+```
+**功能**: 获取本地服务的实例id。
+
+**参数**:
+- `localServiceId`: 本地服务的实例id
+
+**返回值**:
+- `0`: 成功
+- 其他: 失败
+
 #### mmcc_put
 ```c
 int32_t mmcc_put(const char *key, mmc_buffer *buf, mmc_put_options options, uint32_t flags);
@@ -157,19 +170,6 @@ int32_t mmcc_exist(const char *key, uint32_t flags);
 **返回值**:
 - `0`: 成功
 - 其他: 失败
-
-#### mmcc_get_location
-```c
-mmc_location_t mmcc_get_location(const char *key, uint32_t flags);
-```
-**功能**: 获取对象的位置信息。此操作仅支持同步模式。
-
-**参数**:
-- `key`: 数据的键，长度小于256字节
-- `flags`: 可选标志，保留字段
-
-**返回值**:
-- `mmc_location_t`: 对象的位置信息（如果存在）
 
 #### mmcc_batch_query
 ```c
@@ -314,6 +314,14 @@ result = store.init(device_id)
 - `0`: 成功
 - 其他: 失败
 
+#### get_local_service_id
+
+```python
+store.get_local_service_id()
+```
+
+**功能**: Get local serviceId
+
 #### close
 ```python
 store.close()
@@ -322,13 +330,14 @@ store.close()
 
 #### put
 ```python
-result = store.put(key, data)
+result = store.put(key, data, replicateConfig = defaultConfig)
 ```
 **功能**: 将指定key的数据写入分布式内存缓存中
 
 **参数**:
 - `key`: 数据的键，字符串类型
 - `data`: 要存储的字节数据
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -336,7 +345,7 @@ result = store.put(key, data)
 
 #### put_from
 ```python
-result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
+result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从预分配的缓冲区中写入数据
 
@@ -347,6 +356,7 @@ result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -354,7 +364,7 @@ result = store.put_from(key, buffer_ptr, size, direct=SMEMB_COPY_H2G)
 
 #### batch_put_from
 ```python
-result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
+result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从预分配的缓冲区中批量写入数据
 
@@ -365,6 +375,7 @@ result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - 结果列表，每个元素表示对应写入操作的结果
@@ -373,7 +384,7 @@ result = store.batch_put_from(keys, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 
 #### put_from_layers
 ```python
-result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
+result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从多个预分配的缓冲区中写入数据（分层数据）
 
@@ -384,6 +395,7 @@ result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - `0`: 成功
@@ -391,7 +403,7 @@ result = store.put_from_layers(key, buffer_ptrs, sizes, direct=SMEMB_COPY_H2G)
 
 #### batch_put_from_layers
 ```python
-result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_H2G)
+result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=SMEMB_COPY_H2G, replicateConfig = defaultConfig)
 ```
 **功能**: 从多个预分配的缓冲区中批量写入分层数据
 
@@ -402,6 +414,7 @@ result = store.batch_put_from_layers(keys, buffer_ptrs_list, sizes_list, direct=
 - `direct`: 数据拷贝方向，可选值：
   - `SMEMB_COPY_H2G`: 从主机内存到全局内存（默认）
   - `SMEMB_COPY_L2G`: 从卡上内存到全局内存
+- `replicateConfig`: 具体看ReplicateConfig数据结构
 
 **返回值**:
 - 结果列表，每个元素表示对应写入操作的结果
@@ -616,6 +629,11 @@ result = store.register_buffer(buffer_ptr, size)
 - `logFunc`: 外部日志函数
 - `tlsConfig`: TLS配置
 
+### ReplicateConfig
+客户端配置结构体，包含以下字段：
+- `replicaNum`: 副本数，最大为8，默认为1
+- `preferredLocalServiceIDs`: 强制分配的实例id列表，列表大小必须小于或等于replicaNum
+
 ### mmc_meta_service_config_t
 元数据服务配置结构体，包含以下字段：
 - `discoveryURL`: 发现服务URL
@@ -649,9 +667,6 @@ result = store.register_buffer(buffer_ptr, size)
 
 ### mmc_data_info
 数据信息结构体，包含大小、保护标志、blob数量和有效性标志。
-
-### mmc_location_t
-位置信息结构体，表示数据在内存中的位置。
 
 ### tls_config
 TLS配置结构体，包含以下字段：

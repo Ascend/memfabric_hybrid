@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
 #define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
@@ -46,15 +52,17 @@ public:
 
     Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
-    Result DataCopy2d(smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags);
-
     Result DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
     Result Wait();
 
     Result RegisterMem(uint64_t addr, uint64_t size);
 
+    Result DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags);
+
     uint32_t Id() const;
+
+    uint32_t GetRankIdByGva(void *gva);
 
     const hybm_options &GetCoreOptions() const;
 
@@ -69,7 +77,7 @@ private:
     smem_bm_mem_type GetHybmMemTypeFromGva(const void *addr, uint64_t size);
     hybm_data_copy_direction TransToHybmDirection(const smem_bm_copy_type &smemDirect, const void *src,
                                                   uint64_t srcSize, const void *dest, uint64_t destSize);
-
+    bool AddressInRange(const void *address, uint64_t size);
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
 
     Result JoinHandle(uint32_t rk);

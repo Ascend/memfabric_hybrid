@@ -824,6 +824,10 @@ static int hybm_gvm_mem_fetch(struct file *file, struct hybm_gvm_process *proc, 
         return -EBUSY;
     }
 
+    if (arg->no_record) {
+        va = arg->new_addr;
+    }
+
     node = hybm_gvm_dev_node_alloc(va, size);
     if (node == NULL) {
         return -ENOMEM;
@@ -831,7 +835,7 @@ static int hybm_gvm_mem_fetch(struct file *file, struct hybm_gvm_process *proc, 
 
     if (arg->no_record) {
         node->pa_num = 0;
-        ret = hybm_gvm_to_agent_fetch(proc->devid, proc->pasid, va, size, &node->page_size, NULL, 0);
+        ret = hybm_gvm_to_agent_register(proc->devid, proc->pasid, arg->addr, size, va, &node->page_size);
     } else if (proc->sdid == arg->sdid) {
         node->pa_num = HYBM_GVM_PAGE_NUM;
         ret = hybm_gvm_to_agent_fetch(proc->devid, proc->pasid, va, size, &node->page_size, node->pa, HYBM_GVM_PAGE_NUM);

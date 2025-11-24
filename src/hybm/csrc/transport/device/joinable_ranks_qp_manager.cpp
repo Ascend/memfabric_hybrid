@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <chrono>
 #include "hybm_logger.h"
@@ -273,6 +279,7 @@ int JoinableRanksQpManager::WaitSocketConnections(const std::set<uint32_t> &newR
 
     bool socketRole = *newRanks.begin() < rankId_ ? 1 : 0;
     uint32_t successCount = 0;
+    uint32_t cnt = 0;
     std::vector<HccpSocketInfo> socketInfos;
     std::unordered_map<in_addr_t, uint32_t> addr2rank;
     for (auto rankId : newRanks) {
@@ -299,30 +306,49 @@ int JoinableRanksQpManager::WaitSocketConnections(const std::set<uint32_t> &newR
         return BM_OK;
     }
 
-    auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), socketInfos.size(), successCount);
-    if (ret != 0) {
-        BM_LOG_ERROR("role(" << socketRole << ") side get sockets failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    for (auto i = 0U; i < successCount; i++) {
-        auto socketInfoPos = addr2rank.find(socketInfos[i].remoteIp.addr.s_addr);
-        if (socketInfoPos == addr2rank.end()) {
-            BM_LOG_ERROR("socket ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") should not exist.");
+    std::unordered_set<uint32_t> connectedRanks;
+    uint32_t batchCnt = 16U;
+    do {
+        uint32_t getSize = socketInfos.size() < batchCnt ? socketInfos.size() : batchCnt;
+        auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), getSize, cnt);
+        if (ret != 0) {
+            BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: " << ret);
+            return 1;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100L));
+        if (cnt == 0) {
             continue;
         }
-
-        auto rankId = socketInfoPos->second;
-        if (rankId >= rankCount_) {
-            BM_LOG_ERROR("socket ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") should not exist.");
-            continue;
+        for (auto i = 0U; i < getSize; i++) {
+            if (socketInfos[i].status != 1) {
+                continue;
+            }
+            auto socketInfoPos = addr2rank.find(socketInfos[i].remoteIp.addr.s_addr);
+            if (socketInfoPos == addr2rank.end()) {
+                BM_LOG_ERROR("socket ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") should not exist.");
+                continue;
+            }
+            auto rankId = socketInfoPos->second;
+            if (rankId >= rankCount_) {
+                BM_LOG_ERROR("socket ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") should not exist.");
+                continue;
+            }
+            if (connections_[rankId].socketFd != nullptr) {
+                BM_LOG_ERROR("get ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") already get socket fd.");
+                continue;
+            }
+            connections_[rankId].socketFd = socketInfos[i].fd;
+            successCount++;
         }
-        if (connections_[rankId].socketFd != nullptr) {
-            BM_LOG_ERROR("get socket ip(" << DescribeIPv4(socketInfos[i].remoteIp.addr) << ") already get socket fd.");
-            continue;
+        std::vector<HccpSocketInfo>::iterator it = socketInfos.begin();
+        for (; it != socketInfos.end();) {
+            if (it->status == 1) {
+                it = socketInfos.erase(it);
+            } else {
+                it++;
+            }
         }
-        connections_[rankId].socketFd = socketInfos[i].fd;
-    }
+    } while (socketInfos.size() > 0);
     return BM_OK;
 }
 
@@ -362,6 +388,7 @@ void JoinableRanksQpManager::MakeQpConnections(const std::set<uint32_t> &newRank
                 BM_LOG_ERROR("create QP from " << rankId_ << " to " << rankId << " failed: " << ret);
                 continue;
             }
+            BM_LOG_INFO("create QP success from " << rankId_ << " to " << rankId);
             connections_[rankId].qpConnectCalled = true;
         }
     }
@@ -436,10 +463,17 @@ int JoinableRanksQpManager::GenerateWhiteList(const std::set<uint32_t> &newClien
         return BM_OK;
     }
 
-    auto ret = DlHccpApi::RaSocketWhiteListAdd(serverSocketHandle_, whitelist.data(), whitelist.size());
-    if (ret != 0) {
-        BM_LOG_ERROR("socket handle add white list failed: " << ret);
-        return BM_ERROR;
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < whitelist.size(); i += batchSize) {
+        size_t currentBatchSize = (whitelist.size() - i) >= batchSize ? batchSize : (whitelist.size() - i);
+        auto batchStart = whitelist.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketWhiteListInfo> currentBatch(batchStart, batchEnd);
+        auto ret = DlHccpApi::RaSocketWhiteListAdd(serverSocketHandle_, currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            BM_LOG_ERROR("RaSocketWhiteListAdd() with size=" << currentBatch.size() << " failed: " << ret);
+            return BM_ERROR;
+        }
     }
 
     return BM_OK;
@@ -477,26 +511,27 @@ int JoinableRanksQpManager::CreateConnectionToServers(const std::set<uint32_t> &
         connectInfo.remoteIp.addr = connections_[rankId].remoteNet.sin_addr;
         connectInfo.port = connections_[rankId].remoteNet.sin_port;
         bzero(connectInfo.tag, sizeof(connectInfo.tag));
-        BM_LOG_DEBUG("add connecting server " << connectInfo);
+        BM_LOG_INFO("add connecting server " << connectInfo);
         connectInfos.emplace_back(connectInfo);
     }
 
     if (connectInfos.empty()) {
         return BM_OK;
     }
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < connectInfos.size(); i += batchSize) {
+        size_t currentBatchSize = (connectInfos.size() - i) >= batchSize ? batchSize : (connectInfos.size() - i);
+        auto batchStart = connectInfos.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketConnectInfo> currentBatch(batchStart, batchEnd);
 
-    auto ret = DlHccpApi::RaSocketBatchConnect(connectInfos.data(), connectInfos.size());
-    if (ret == 0) {
-        return BM_OK;
+        auto ret = DlHccpApi::RaSocketBatchConnect(currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size());
+            return BM_ERROR;
+        }
     }
-
-    BM_LOG_ERROR("connect to all servers failed: " << ret << ", servers count = " << connectInfos.size());
-    for (auto rankId : rollbacks) {
-        auto socketHandle = connections_[rankId].socketHandle;
-        connections_[rankId].socketHandle = nullptr;
-        DlHccpApi::RaSocketDeinit(socketHandle);
-    }
-    return BM_ERROR;
+    return BM_OK;
 }
 
 void JoinableRanksQpManager::RemoveRanksProcess(const std::set<uint32_t> &ranks) noexcept

@@ -6,6 +6,8 @@
 
 #include "hybm_stream.h"
 
+constexpr uint32_t TASK_WAIT_TIME_OUT = 5U;
+
 namespace ock {
 namespace mf {
 class HybmStreamNotify {

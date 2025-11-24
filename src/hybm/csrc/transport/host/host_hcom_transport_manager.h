@@ -39,6 +39,8 @@ public:
 
     Result UnregisterMemoryRegion(uint64_t addr) override;
 
+    bool QueryHasRegistered(uint64_t addr, uint64_t size) override;
+
     Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) override;
 
     Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) override;
@@ -68,6 +70,10 @@ public:
     Result Synchronize(uint32_t rankId) override;
 
 private:
+    Result InnerReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size);
+
+    Result InnerWriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size);
+
     Result CheckTransportOptions(const TransportOptions &options);
 
     static Result TransportRpcHcomNewEndPoint(Hcom_Channel newCh, uint64_t usrCtx, const char *payLoad);
@@ -83,6 +89,8 @@ private:
     Result ConnectHcomChannel(uint32_t rankId, const std::string &url);
 
     void DisConnectHcomChannel(uint32_t rankId, Hcom_Channel ch);
+
+    void ForceReConnectHcomChannel(uint32_t rankId);
 
     Result GetMemoryRegionByAddr(const uint32_t &rankId, const uint64_t &addr, HcomMemoryRegion &mr);
 
@@ -112,7 +120,7 @@ private:
     std::vector<std::mutex> channelMutex_;
     std::vector<std::string> nics_;
     std::vector<Hcom_Channel> channels_;
-    static tls_config tlsConfig_;
+    static hybm_tls_config tlsConfig_;
     static char keyPass_[KEYPASS_MAX_LEN];
     static std::mutex keyPassMutex;
 };

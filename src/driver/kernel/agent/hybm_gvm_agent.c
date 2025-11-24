@@ -292,7 +292,7 @@ static int gvm_agent_map_svsp(u64 va, u64 size, u64 *pa_list, u32 num, u32 pasid
     for (i = 0; i < num; i++) {
         ret_va = svm_svsp_roce_mmap(page_size, pasid, iva, page_size, true);
         if (ret_va != iva) {
-            hybm_gvm_err("map mem failed, ret va is inconsistent with input va");
+            hybm_gvm_err("map mem failed, ret: 0x%llx page_size: %llx", ret_va, page_size);
             ret = -EINVAL;
             break;
         }
@@ -394,7 +394,7 @@ int gvm_agent_unmap_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     va = unmap_body->va;
     size = unmap_body->size;
     page_size = unmap_body->page_size;
-    if (!IS_MULTIPLE_OF(va, HYBM_GVM_PAGE_SIZE) || !IS_MULTIPLE_OF(size, HYBM_GVM_PAGE_SIZE) ||
+    if (!IS_MULTIPLE_OF(va, PAGE_SIZE) ||
         !IS_MULTIPLE_OF(page_size, PAGE_SIZE) || !IS_MULTIPLE_OF(size, page_size)) {
         hybm_gvm_err("input addr error. size:0x%llx, pg_size:0x%llx", size, page_size);
         return -EINVAL;
@@ -516,12 +516,160 @@ int gvm_agent_fetch_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
     return ret;
 }
 
+static int gvm_agent_map_svsp_inner_v2(u64 va, u64 size, u64 *pa_list, u32 num, u32 pasid)
+{
+    if (pa_list == NULL) {
+        hybm_gvm_err("input is error, pa_list is null");
+        return -EINVAL;
+    }
+    u64 i, iva, ret_va, page_size;
+    int ret = 0;
+    page_size = size / num;
+    if (va == HYBM_GVM_REGISTER_ADDR) {
+        ret_va = svm_svsp_roce_mmap(HYBM_GVM_REGISTER_SIZE, pasid, va, page_size, true);
+        if (ret_va != va) {
+            hybm_gvm_err("map mem failed, ret va:0x%llx is inconsistent with input va", ret_va);
+            return -EINVAL;
+        }
+    }
+
+    iva = va;
+    for (i = 0; i < num; i++) {
+        ret = svm_svsp_roce_populate(iva, PFN_DOWN(pa_list[i]), page_size, pasid);
+        if (ret != 0) {
+            hybm_gvm_err("populate mem failed, ret: %d", ret);
+            i++;
+            break;
+        }
+        iva += page_size;
+    }
+
+    if (ret != 0) {
+        while (i > 0) {
+            i--;
+            svm_svsp_roce_munmap(va + i * page_size, page_size, pasid);
+        }
+    }
+    return ret;
+}
+
+static int gvm_agent_map_svsp_v2(struct hybm_gvm_agent_register_msg *reg, u64 base, u64 pre_size, u64 *pa_list, u32 num)
+{
+    u32 num2 = reg->size / PAGE_SIZE;
+    u64 tmp;
+    u64 i;
+    u64 j;
+    u64 *pa_list2 = NULL;
+    int ret;
+
+    pa_list2 = kzalloc(sizeof(u64) * num2, GFP_KERNEL | __GFP_ACCOUNT);
+    if (pa_list2 == NULL) {
+        hybm_gvm_err("Kzalloc pa_list is NULL. num:%u", num2);
+        return -EINVAL;
+    }
+
+    for (i = 0; i < num2; i++) {
+        tmp = reg->va + PAGE_SIZE * i;
+        j = (tmp - base) / pre_size;
+        pa_list2[i] = pa_list[j] + (tmp - base) % pre_size;
+    }
+
+    ret = gvm_agent_map_svsp_inner_v2(reg->new_va, reg->size, pa_list2, num2, reg->pasid);
+    kfree(pa_list2);
+    return ret;
+}
+
+static int gvm_agent_map_svm_new(u32 devid, struct hybm_gvm_agent_register_msg *reg)
+{
+    struct devmm_svm_process_id id = {0};
+    u64 *pa_list = NULL;
+    u64 new_ed;
+    u64 new_st;
+    int ret = 0;
+    u64 pg_size;
+    u32 num;
+    id.hostpid = reg->hostpid;
+    id.devid = devid;
+
+    if (!IS_MULTIPLE_OF(reg->va, PAGE_SIZE) || !IS_MULTIPLE_OF(reg->size, PAGE_SIZE) ||
+        reg->size > HYBM_GVM_PAGE_SIZE) {
+        hybm_gvm_err("input addr error. size:0x%llx, va:0x%llx", reg->size, reg->va);
+        return -EINVAL;
+    }
+
+    pg_size = devmm_get_mem_page_size(&id, reg->va, reg->size);
+    if (pg_size == 0) {
+        hybm_gvm_err("query va page_size failed. size:0x%llx", reg->size);
+        return -EINVAL;
+    }
+
+    new_ed = GVM_ALIGN_UP(reg->va + reg->size, pg_size);
+    new_st = GVM_ALIGN_DOWN(reg->va, pg_size);
+    num = (new_ed - new_st) / pg_size;
+    if (num > HYBM_GVM_QUERY_SVM_PA_MAX_NUM) {
+        hybm_gvm_err("query mem size is invalid, num:0x%x pg_size:0x%llx", num, pg_size);
+        return -EBUSY;
+    }
+
+    pa_list = kzalloc(sizeof(u64) * num, GFP_KERNEL | __GFP_ACCOUNT);
+    if (pa_list == NULL) {
+        hybm_gvm_err("Kzalloc pa_list is NULL. num:%u", num);
+        return -EINVAL;
+    }
+
+    ret = devmm_get_mem_pa_list(&id, new_st, new_ed - new_st, pa_list, num);
+    if (ret != 0) {
+        hybm_gvm_err("get svm pa failed. ret:%d", ret);
+        kfree(pa_list);
+        return -EINVAL;
+    }
+
+    reg->page_size = PAGE_SIZE;
+    if (reg->new_va == new_st && reg->size == new_ed - new_st) {
+        ret = gvm_agent_map_svsp(reg->new_va, reg->size, pa_list, num, reg->pasid);
+    } else {
+        ret = gvm_agent_map_svsp_v2(reg, new_st, pg_size, pa_list, num);
+    }
+    devmm_put_mem_pa_list(&id, reg->va, reg->size, pa_list, num);
+    kfree(pa_list);
+    hybm_gvm_debug("gvm_agent_fetch_map, size:0x%llx,num:%x,ret:%d", reg->size, num, ret);
+    return ret;
+}
+
+int gvm_agent_register_recv(struct hybm_gvm_agent_msg *msg, u32 devid)
+{
+    u64 va;
+    struct hybm_gvm_agent_register_msg *reg_body;
+    int ret = 0;
+
+    if (msg == NULL || msg->body == NULL || msg->type != HYBM_GVM_AGENT_MSG_REGISTER) {
+        hybm_gvm_err("input msg type is invalid.");
+        return -EINVAL;
+    }
+
+    reg_body = (struct hybm_gvm_agent_register_msg *)msg->body;
+    va = reg_body->va;
+    if (va < HYBM_SVM_START || va + reg_body->size > HYBM_SVM_END) {
+        hybm_gvm_err("input addr is out of range, size:0x%llx", reg_body->size);
+        return -EINVAL;
+    }
+
+    ret = gvm_agent_map_svm_new(devid, reg_body);
+    if (ret != 0) {
+        hybm_gvm_err("map svm mem failed, ret:%d", ret);
+    }
+
+    hybm_gvm_debug("gvm_agent_register, size:0x%llx", reg_body->size);
+    return ret;
+}
+
 typedef int (*hybm_gvm_agent_msg_rcv_func_t)(struct hybm_gvm_agent_msg *msg, u32 devid);
 static const hybm_gvm_agent_msg_rcv_func_t rcv_ops[HYBM_GVM_AGENT_MSG_MAX] = {
     [HYBM_GVM_AGENT_MSG_INIT] = gvm_agent_init_recv,
     [HYBM_GVM_AGENT_MSG_MAP] = gvm_agent_map_recv,
     [HYBM_GVM_AGENT_MSG_UNMAP] = gvm_agent_unmap_recv,
     [HYBM_GVM_AGENT_MSG_FETCH] = gvm_agent_fetch_recv,
+    [HYBM_GVM_AGENT_MSG_REGISTER] = gvm_agent_register_recv,
 };
 
 static int gvm_common_msg_process(u32 devid, void *data, u32 in_data_len, u32 out_data_len, u32 *real_out_len)

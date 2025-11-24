@@ -7,14 +7,13 @@
 #include "acc_def.h"
 #include "acc_tcp_server.h"
 #include "config_store_log.h"
-#include "mf_tls_def.h"
 #include "mf_tls_util.h"
 #include "smem_types.h"
 
 namespace ock {
 namespace smem {
 
-inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, tls_config config)
+inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, smem_tls_config config)
 {
     if (server == nullptr) {
         STORE_LOG_ERROR("Invalid input");
@@ -46,7 +45,7 @@ inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, tls_con
     return SM_OK;
 }
 
-inline acc::AccTlsOption GetAccTlsOption(const tls_config& config)
+inline acc::AccTlsOption GetAccTlsOption(const smem_tls_config& config)
 {
     acc::AccTlsOption option{};
     option.enableTls = config.tlsEnable;

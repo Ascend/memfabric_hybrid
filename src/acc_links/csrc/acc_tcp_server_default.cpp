@@ -1,8 +1,18 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
+
+#include "mf_file_util.h"
+
 #include "acc_tcp_server.h"
 #include "acc_common_util.h"
+#include "mf_ipv4_validator.h"
 #include "acc_tcp_server_default.h"
 
 namespace ock {
@@ -71,7 +81,7 @@ Result AccTcpServerDefault::Start(const AccTcpServerOptions &opt, const AccTlsOp
     if (result != ACC_OK) {
         StopAndCleanDelayCleanup();
         StopAndCleanWorkers();
-        LOG_ERROR("Failed to start AccTcpServerDefault listener");
+        LOG_ERROR("Failed to start AccTcpServerDefault listener, result: " << result);
         return result;
     }
 
@@ -454,10 +464,14 @@ void AccTcpServerDefault::WorkerLinkCntUpdate(uint32_t workerIdx)
 Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
                                                 uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink)
 {
-    ASSERT_RETURN(AccCommonUtil::IsValidIPv4(peerIp), ACC_ERROR);
+    auto parser = mf::SocketAddressParserMgr::getInstance().GetParser(options_.listenPort);
+    ASSERT_RETURN(parser != nullptr, ACC_ERROR);
+    if (!parser->IsIpv6()) {
+        ASSERT_RETURN(AccCommonUtil::IsValidIPv4(peerIp), ACC_ERROR);
+    }
     std::string ipAndPort = peerIp + ":" + std::to_string(port);
 
-    auto tmpFD = ::socket(AF_INET, SOCK_STREAM, 0);
+    auto tmpFD = ::socket(parser->GetAddressFamily(), SOCK_STREAM, 0);
     if (tmpFD < 0) {
         LOG_ERROR("Failed to create socket, errno:" << errno << ", please check if fd is out of limit");
         return ACC_ERROR;
@@ -468,20 +482,21 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
     int synCnt = 1; /* Set connect() retry time for quick connect */
     setsockopt(tmpFD, IPPROTO_TCP, TCP_SYNCNT, &synCnt, sizeof(synCnt));
 
-    struct sockaddr_in addr {};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(peerIp.c_str());
-    addr.sin_port = htons(port);
-
     uint32_t timesRetried = 0;
     int lastErrno = 0;
-
+    auto [addrPtr, addrLen] = parser->GetPeerAddress(peerIp, port);
     while (timesRetried < maxRetryTimes) {
         LOG_INFO("Trying to connect to " << ipAndPort);
-        if (::connect(tmpFD, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == 0) {
+        errno = 0;
+        if (::connect(tmpFD, addrPtr, addrLen) == 0) {
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
             setsockopt(tmpFD, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-            return Handshake(tmpFD, req, ipAndPort, newLink);
+            auto ret = Handshake(tmpFD, req, ipAndPort, newLink);
+            if (ret != ACC_OK) {
+                LOG_ERROR("Failed to Handshake to " << ipAndPort << " after tried " << timesRetried << " times");
+                SafeCloseFd(tmpFD);
+            }
+            return ret;
         }
 
         if (errno == EINTR) {

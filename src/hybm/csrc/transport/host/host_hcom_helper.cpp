@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "host_hcom_helper.h"
 #include <regex>
@@ -20,8 +26,35 @@ constexpr int PROT_MATCH_NUM = 1;
 constexpr int IP_MATCH_NUM = 2;
 constexpr int PORT_MATCH_NUM = 3;
 
+static Result AnalysisUBNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
+{
+    static constexpr uint32_t UBC_START_PORT = 512UL;
+    auto input = StrUtil::StrTrim(nic);
+    if (input.size() < strlen(UBC_PROTOCOL_PREFIX)) {
+        BM_LOG_ERROR("Failed to match nic, nic: " << input);
+        return BM_INVALID_PARAM;
+    }
+    protocol.clear();
+    ipStr.clear();
+    port = 0;
+    std::string eid = input.substr(strlen(UBC_PROTOCOL_PREFIX));
+    std::regex pattern(R"(([0-9a-fA-F]{4}:){7}[0-9a-fA-F]{4})");
+    if (std::regex_match(eid, pattern)) {
+        ipStr = eid;
+        protocol = UBC_PROTOCOL_PREFIX;
+        port = UBC_START_PORT;
+    } else {
+        BM_LOG_ERROR("Failed to match nic, nic: " << input);
+        return BM_INVALID_PARAM;
+    }
+    return BM_OK;
+}
+
 Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
 {
+    if (StrUtil::StartWith(nic, UBC_PROTOCOL_PREFIX)) {
+        return AnalysisUBNic(nic, protocol, ipStr, port);
+    }
     std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
     std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
     if (std::regex_match(nic, ipPortMaskPattern)) {

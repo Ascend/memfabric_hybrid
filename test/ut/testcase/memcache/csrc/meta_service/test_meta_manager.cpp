@@ -53,7 +53,7 @@ TEST_F(TestMmcMetaManager, AllocAndFree)
     std::map<std::string, MmcMemBlobDesc> blobMap;
     metaMng->Mount(loc, locInfo, blobMap);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);
@@ -81,7 +81,7 @@ TEST_F(TestMmcMetaManager, AllocAndFreeMulti)
     uint16_t numKeys = 10U;
     std::vector<std::string> keys;
     std::vector<MmcMemMetaDesc> memMetaObjs;
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
     Result ret;
     for (int i = 0; i < numKeys; ++i) {
         MmcMemMetaDesc objMeta;
@@ -115,7 +115,7 @@ TEST_F(TestMmcMetaManager, GetAndUpdate)
     uint16_t numKeys = 20U;
     std::vector<std::string> keys;
     std::vector<MmcMemMetaDesc> memMetaObjs;
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     Result ret;
     for (int i = 0; i < numKeys; ++i) {
         MmcMemMetaDesc objMeta;
@@ -153,7 +153,7 @@ TEST_F(TestMmcMetaManager, LRU)
     uint16_t numKeys = 8U;
     std::vector<std::string> keys;
     std::vector<MmcMemMetaDesc> memMetaObjs;
-    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     Result ret;
     Result writeRet;
 
@@ -163,6 +163,7 @@ TEST_F(TestMmcMetaManager, LRU)
         string key = "testKey" + std::to_string(i);
         MetaNetServerPtr server;
         metaMng->CheckAndEvict();
+        usleep(1000 * 500);
         ret = metaMng->Alloc(key, allocReq, 1, objMeta);
         ASSERT_TRUE(ret == MMC_OK);
         memMetaObjs.push_back(objMeta);
@@ -195,7 +196,7 @@ TEST_F(TestMmcMetaManager, AllocAndExistKey)
     std::map<std::string, MmcMemBlobDesc> blobMap;
     metaMng->Mount(loc, locInfo, blobMap);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
     MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("test_string", allocReq, 1, objMeta);
     metaMng->UpdateState("test_string", loc, MMC_WRITE_OK, 1);
@@ -221,7 +222,7 @@ TEST_F(TestMmcMetaManager, AllocAndBatchExistKey)
     uint16_t numKeys = 5U;
     std::vector<std::string> keys;
     std::vector<MmcMemMetaDesc> memMetaObjs;
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};  // blobSize, numBlobs, mediaType, preferredRank, flags
     Result ret = MMC_ERROR;
     for (uint16_t i = 0U; i < numKeys; ++i) {
         MmcMemMetaDesc objMeta;
@@ -275,7 +276,7 @@ TEST_F(TestMmcMetaManager, Remove)
     std::map<std::string, MmcMemBlobDesc> blobMap;
     metaMng->Mount(loc, locInfo, blobMap);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
     MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("testKey", allocReq, 1, objMeta);
     ASSERT_TRUE(ret == MMC_OK);
@@ -305,7 +306,7 @@ TEST_F(TestMmcMetaManager, Get_NotAllBlobsReady)
     std::map<std::string, MmcMemBlobDesc> blobMap;
     metaMng->Mount(loc, locInfo, blobMap);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
     MmcMemMetaDesc objMeta;
     Result ret = metaMng->Alloc("test_key", allocReq, 1, objMeta);
     ASSERT_EQ(ret, MMC_OK);
@@ -331,7 +332,7 @@ TEST_F(TestMmcMetaManager, Alloc_ThresholdEviction)
 
     std::vector<std::string> keys = {"key1", "key2"};
     for (const auto& key : keys) {
-        AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+        AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
         MmcMemMetaDesc objMeta;
         Result ret = metaMng->Alloc(key, allocReq, 1, objMeta);
         ASSERT_EQ(ret, MMC_OK);
@@ -341,7 +342,7 @@ TEST_F(TestMmcMetaManager, Alloc_ThresholdEviction)
     MmcMemMetaDesc temp;
     metaMng->Get("key2", 1, nullptr, temp);
 
-    AllocOptions allocReq{SIZE_32K, 1, 0, 0, 0};
+    AllocOptions allocReq{SIZE_32K, 1, MEDIA_DRAM, {0}, 0};
     MmcMemMetaDesc newObjMeta;
     Result ret = metaMng->Alloc("key3", allocReq, 1, newObjMeta);
     ASSERT_EQ(ret, MMC_OK);

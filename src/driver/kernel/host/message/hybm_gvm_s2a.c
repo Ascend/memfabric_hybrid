@@ -184,3 +184,45 @@ int hybm_gvm_to_agent_fetch(u32 devid, u32 pasid, u64 va, u64 size, u32 *pg_size
     kfree(msg);
     return 0;
 }
+
+int hybm_gvm_to_agent_register(u32 devid, u32 pasid, u64 va, u64 size, u64 new_va, u32 *pg_size)
+{
+    struct hybm_gvm_agent_msg *msg;
+    struct hybm_gvm_agent_register_msg *register_body;
+    u32 in_len, out_len, i;
+    int ret;
+
+    in_len = sizeof(struct hybm_gvm_agent_msg) + sizeof(struct hybm_gvm_agent_register_msg);
+    msg = kzalloc(in_len, GFP_KERNEL | __GFP_ACCOUNT);
+    if (msg == NULL) {
+        hybm_gvm_err("kzalloc msg fail.");
+        return -ENOMEM;
+    }
+
+    msg->type = HYBM_GVM_AGENT_MSG_REGISTER;
+    msg->valid = HYBM_GVM_S2A_MSG_SEND_MAGIC;
+    msg->result = 0;
+
+    register_body = (struct hybm_gvm_agent_register_msg *)msg->body;
+    if (register_body == NULL) {
+        hybm_gvm_err("register_body is NULL.");
+        return -ENOMEM;
+    }
+    register_body->va = va;
+    register_body->size = size;
+    register_body->new_va = new_va;
+    register_body->hostpid = (current->tgid);
+    register_body->pasid = pasid;
+
+    ret = hybm_gvm_agent_msg_send(devid, msg, in_len, in_len, &out_len);
+    if (ret != 0 || out_len != in_len || msg->valid != HYBM_GVM_S2A_MSG_RCV_MAGIC || msg->result != 0) {
+        hybm_gvm_err("fetch msg send fail. (ret=%d; result=%d; valid=0x%x; devid=%u; size=%u)", ret, msg->result,
+                     msg->valid, devid, out_len);
+        kfree(msg);
+        return -EBUSY;
+    }
+
+    *pg_size = register_body->page_size;
+    kfree(msg);
+    return 0;
+}

@@ -9,7 +9,6 @@ mkdir ${PROJ_DIR}/output/tmp_mf/aarch64-linux/include/hybm -p
 mkdir ${PROJ_DIR}/output/tmp_mf/aarch64-linux/lib64 -p
 cp -rf ${PROJ_DIR}/output/smem/include/* ${PROJ_DIR}/output/tmp_mf/aarch64-linux/include/smem
 cp -rf ${PROJ_DIR}/output/hybm/include/* ${PROJ_DIR}/output/tmp_mf/aarch64-linux/include/hybm
-cp -rf ${PROJ_DIR}/src/util/include/mf_tls_def.h ${PROJ_DIR}/output/tmp_mf/aarch64-linux/include/util
 cp -rf ${PROJ_DIR}/output/smem/lib64/* ${PROJ_DIR}/output/tmp_mf/aarch64-linux/lib64
 cp -rf ${PROJ_DIR}/output/hybm/lib64/* ${PROJ_DIR}/output/tmp_mf/aarch64-linux/lib64
 cp -rf ${PROJ_DIR}/output/driver/lib64/* ${PROJ_DIR}/output/tmp_mf/aarch64-linux/lib64

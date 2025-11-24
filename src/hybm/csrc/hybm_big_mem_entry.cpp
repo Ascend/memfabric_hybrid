@@ -1,11 +1,19 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "hybm_logger.h"
 #include "hybm_entity_factory.h"
 #include "hybm_big_mem.h"
 #include "dl_hal_api.h"
 #include "hybm_ex_info_transfer.h"
+#include "hybm_gvm_user.h"
+#include "mf_num_util.h"
 
 using namespace ock::mf;
 
@@ -232,4 +240,46 @@ HYBM_API int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     return entity->RegisterMem(addr, size);
+}
+
+void *hybm_host_mem_malloc(uint64_t size, uint64_t flags)
+{
+    BM_ASSERT_RETURN(HybmHasInited(), nullptr);
+    BM_ASSERT_RETURN(size != 0, nullptr);
+    return (void *)hybm_gvm_user_alloc(size);
+}
+
+void hybm_host_mem_free(void *addr)
+{
+    BM_ASSERT_RET_VOID(HybmHasInited());
+    BM_ASSERT_RET_VOID(addr != nullptr);
+    return hybm_gvm_user_free((uint64_t)addr);
+}
+
+int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest)
+{
+    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
+    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
+
+    auto ret = DlHalApi::HalHostRegister((void *)src, size, HOST_MEM_MAP_DEV, HybmGetInitDeviceId(), (void **)dest);
+    if (ret != 0) {
+        BM_LOG_ERROR("register host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
+}
+
+int32_t hybm_host_mem_unregister(uint64_t src)
+{
+    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
+    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
+
+    auto ret = DlHalApi::HalHostUnregisterEx((void *)src, HybmGetInitDeviceId(), HOST_MEM_MAP_DEV);
+    if (ret != 0) {
+        BM_LOG_ERROR("unregister host memory to device failed: " << ret);
+        return BM_DL_FUNCTION_FAILED;
+    }
+    return BM_OK;
 }

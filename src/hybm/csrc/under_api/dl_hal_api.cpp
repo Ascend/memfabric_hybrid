@@ -1,10 +1,15 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <dlfcn.h>
 #include <mutex>
 
-#include "hybm_common_include.h"
 #include "hybm_define.h"
 #include "hybm_logger.h"
 #include "dl_hal_api.h"
@@ -53,13 +58,52 @@ halGetSsidFunc DlHalApi::pHalGetSsid = nullptr;
 halResourceConfigFunc DlHalApi::pHalResourceConfig = nullptr;
 halSqCqQueryFunc DlHalApi::pHalSqCqQuery = nullptr;
 halHostRegisterFunc DlHalApi::pHalHostRegister = nullptr;
-halHostUnregisterFunc DlHalApi::pHalHostUnregister = nullptr;
+halHostUnregisterExFunc DlHalApi::pHalHostUnregisterEx = nullptr;
 drvNotifyIdAddrOffsetFunc DlHalApi::pDrvNotifyIdAddrOffset = nullptr;
 
-Result DlHalApi::LoadHybmV1V2Library()
+halMemAddressReserveFunc DlHalApi::pHalMemAddressReserve = nullptr;
+halMemAddressFreeFunc DlHalApi::pHalMemAddressFree = nullptr;
+halMemCreateFunc DlHalApi::pHalMemCreate = nullptr;
+halMemReleaseFunc DlHalApi::pHalMemRelease = nullptr;
+halMemMapFunc DlHalApi::pHalMemMap = nullptr;
+halMemUnmapFunc DlHalApi::pHalMemUnmap = nullptr;
+halMemExportFunc DlHalApi::pHalMemExport = nullptr;
+halMemImportFunc DlHalApi::pHalMemImport = nullptr;
+halMemShareHandleSetAttributeFunc DlHalApi::pHalMemShareHandleSetAttribute = nullptr;
+halMemTransShareableHandleFunc DlHalApi::pHalMemTransShareableHandle = nullptr;
+halMemGetAllocationGranularityFunc DlHalApi::pHalMemGetAllocationGranularity = nullptr;
+
+#ifdef USE_VMM
+
+Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
 {
-    if (HybmGetGvaVersion() == HYBM_GVA_V1 || HybmGetGvaVersion() == HYBM_GVA_V2) {
-        if (HybmGetGvaVersion() == HYBM_GVA_V1) {
+    if (gvaVersion != HYBM_GVA_V4) {
+        BM_LOG_INFO("driver version is too old, not support vmm.");
+        return BM_OK;
+    }
+
+    DL_LOAD_SYM(pHalMemAddressReserve, halMemAddressReserveFunc, halHandle, "halMemAddressReserve");
+    DL_LOAD_SYM(pHalMemAddressFree, halMemAddressFreeFunc, halHandle, "halMemAddressFree");
+    DL_LOAD_SYM(pHalMemCreate, halMemCreateFunc, halHandle, "halMemCreate");
+    DL_LOAD_SYM(pHalMemRelease, halMemReleaseFunc, halHandle, "halMemRelease");
+    DL_LOAD_SYM(pHalMemMap, halMemMapFunc, halHandle, "halMemMap");
+    DL_LOAD_SYM(pHalMemUnmap, halMemUnmapFunc, halHandle, "halMemUnmap");
+    DL_LOAD_SYM(pHalMemExport, halMemExportFunc, halHandle, "halMemExportToShareableHandleV2");
+    DL_LOAD_SYM(pHalMemImport, halMemImportFunc, halHandle, "halMemImportFromShareableHandleV2");
+    DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc,
+                halHandle, "halMemShareHandleSetAttribute");
+    DL_LOAD_SYM(pHalMemTransShareableHandle, halMemTransShareableHandleFunc, halHandle, "halMemTransShareableHandle");
+    DL_LOAD_SYM(pHalMemGetAllocationGranularity, halMemGetAllocationGranularityFunc,
+                halHandle, "halMemGetAllocationGranularity");
+
+    return BM_OK;
+}
+#endif
+
+Result DlHalApi::LoadHybmV1V2Library(uint32_t gvaVersion)
+{
+    if (gvaVersion == HYBM_GVA_V1 || gvaVersion == HYBM_GVA_V2) {
+        if (gvaVersion == HYBM_GVA_V1) {
             DL_LOAD_SYM(pVirtDestroyHeapV1, halVirtDestroyHeapV1Func, halHandle, "devmm_virt_destroy_heap");
         } else {
             DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle,
@@ -84,7 +128,7 @@ Result DlHalApi::LoadHybmV1V2Library()
     return BM_OK;
 }
 
-Result DlHalApi::LoadLibrary()
+Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
 {
     std::lock_guard<std::mutex> guard(gMutex);
     if (gLoaded) {
@@ -93,15 +137,13 @@ Result DlHalApi::LoadLibrary()
 
     halHandle = dlopen(gAscendHalLibName, RTLD_NOW);
     if (halHandle == nullptr) {
-        BM_LOG_ERROR(
-            "Failed to open library ["
-            << gAscendHalLibName
+        BM_LOG_ERROR("Failed to open library [" << gAscendHalLibName
             << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"
             << " error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;
     }
 
-    BM_ASSERT_RETURN(HybmGetGvaVersion() != HYBM_GVA_UNKNOWN, BM_NOT_INITIALIZED);
+    BM_ASSERT_RETURN(gvaVersion != HYBM_GVA_UNKNOWN, BM_NOT_INITIALIZED);
     /* load sym */
     DL_LOAD_SYM(pHalFd, int *, halHandle, "g_devmm_mem_dev");
     DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle, "svm_module_alloced_size_inc");
@@ -117,7 +159,11 @@ Result DlHalApi::LoadLibrary()
                 "devmm_virt_normal_heap_update_info");
     DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
 
-    auto ret = DlHalApi::LoadHybmV1V2Library();
+#ifdef USE_VMM
+    auto ret = LoadHybmV1V2Library(gvaVersion) | LoadHybmVmmLibrary(gvaVersion);
+#else
+    auto ret = LoadHybmV1V2Library(gvaVersion);
+#endif
     if (ret != 0) {
         return ret;
     }
@@ -132,20 +178,15 @@ Result DlHalApi::LoadLibrary()
     DL_LOAD_SYM(pHalResourceConfig, halResourceConfigFunc, halHandle, "halResourceConfig");
     DL_LOAD_SYM(pHalSqCqQuery, halSqCqQueryFunc, halHandle, "halSqCqQuery");
     DL_LOAD_SYM(pHalHostRegister, halHostRegisterFunc, halHandle, "halHostRegister");
-    DL_LOAD_SYM(pHalHostUnregister, halHostUnregisterFunc, halHandle, "halHostUnregister");
+    DL_LOAD_SYM(pHalHostUnregisterEx, halHostUnregisterExFunc, halHandle, "halHostUnregisterEx");
     DL_LOAD_SYM(pDrvNotifyIdAddrOffset, drvNotifyIdAddrOffsetFunc, halHandle, "drvNotifyIdAddrOffset");
 
     gLoaded = true;
     return BM_OK;
 }
 
-void DlHalApi::CleanupLibrary()
+void DlHalApi::CleanupHalApi()
 {
-    std::lock_guard<std::mutex> guard(gMutex);
-    if (!gLoaded) {
-        return;
-    }
-
     pHalFd = nullptr;
     pSvmModuleAllocedSizeInc = nullptr;
     pVirtAllocMemFromBase = nullptr;
@@ -182,7 +223,27 @@ void DlHalApi::CleanupLibrary()
     pHalResourceConfig = nullptr;
     pHalSqCqQuery = nullptr;
     pHalHostRegister = nullptr;
-    pHalHostUnregister = nullptr;
+    pHalHostUnregisterEx = nullptr;
+
+    pHalMemAddressReserve = nullptr;
+    pHalMemAddressFree = nullptr;
+    pHalMemCreate = nullptr;
+    pHalMemRelease = nullptr;
+    pHalMemMap = nullptr;
+    pHalMemUnmap = nullptr;
+    pHalMemExport = nullptr;
+    pHalMemImport = nullptr;
+    pHalMemGetAllocationGranularity = nullptr;
+}
+
+void DlHalApi::CleanupLibrary()
+{
+    std::lock_guard<std::mutex> guard(gMutex);
+    if (!gLoaded) {
+        return;
+    }
+
+    CleanupHalApi();
 
     if (halHandle != nullptr) {
         dlclose(halHandle);

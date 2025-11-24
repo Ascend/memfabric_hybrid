@@ -6,6 +6,8 @@
 #include <sstream>
 #include <regex>
 #include <limits>
+#include "mf_str_util.h"
+#include "mf_num_util.h"
 #include "hybm_logger.h"
 #include "device_rdma_helper.h"
 

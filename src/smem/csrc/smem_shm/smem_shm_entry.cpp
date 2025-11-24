@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #include <algorithm>
@@ -39,11 +45,6 @@ SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullpt
 
 SmemShmEntry::~SmemShmEntry()
 {
-    if (globalGroup_ != nullptr) {
-        globalGroup_->GroupSnClean();
-        globalGroup_ = nullptr;
-    }
-
     uint32_t flags = 0;
     if (entity_ != nullptr && slice_ != nullptr) {
         hybm_free_local_memory(entity_, slice_, 1, flags);
@@ -160,7 +161,7 @@ void SmemShmEntry::InitStepDestroyEntity()
 int32_t SmemShmEntry::InitStepReserveMemory()
 {
     void *reservedMem = nullptr;
-    auto ret = hybm_reserve_mem_space(entity_, 0, &reservedMem);
+    auto ret = hybm_reserve_mem_space(entity_, 0);
     if (ret != 0 || reservedMem == nullptr) {
         SM_LOG_ERROR("reserve mem failed, result: " << ret);
         return SM_ERROR;
@@ -172,7 +173,6 @@ int32_t SmemShmEntry::InitStepReserveMemory()
 
 void SmemShmEntry::InitStepUnreserveMemory()
 {
-    auto reservedMem = gva_;
     auto ret = hybm_unreserve_mem_space(entity_, 0);
     if (ret != 0) {
         SM_LOG_WARN("unreserve mem space failed: " << ret);

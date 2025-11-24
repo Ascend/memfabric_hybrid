@@ -30,6 +30,7 @@ struct hybm_gvm_mem_alloc_para {
 struct hybm_gvm_mem_fetch_para {
     uint64_t addr; // in
     uint64_t size; // in
+    uint64_t new_addr; // in
     uint32_t sdid; // in
     uint32_t no_record; // in
 };

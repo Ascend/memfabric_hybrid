@@ -24,8 +24,10 @@ using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
 struct MemSliceStatus {
     std::shared_ptr<MemSlice> slice;
+    void *handle;
 
-    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)} {}
+    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)}, handle(nullptr) {}
+    MemSliceStatus(std::shared_ptr<MemSlice> s, void *h) noexcept : slice{std::move(s)}, handle(h) {}
 };
 
 class MemSegment {
@@ -121,6 +123,9 @@ public:
 
 protected:
     static Result InitDeviceInfo();
+    static bool CanLocalHostReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
+    static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
+    static void FillSysBootIdInfo() noexcept;
 
 protected:
     const MemSegmentOptions options_;
@@ -128,8 +133,14 @@ protected:
 
     static bool deviceInfoReady_;
     static int deviceId_;
+    static int logicDeviceId_;
     static uint32_t pid_;
     static uint32_t sdid_;
+    static uint32_t serverId_;
+    static uint32_t superPodId_;
+    static uint32_t bootIdHead_;
+    static std::string sysBoolId_;
+    static AscendSocType socType_;
 };
 }
 }

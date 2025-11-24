@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef SMEM_SMEM_CONFIG_STORE_H
@@ -8,6 +14,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <memory>
 #include <functional>
 
@@ -22,6 +29,7 @@ enum StoreErrorCode : int16_t {
     INVALID_MESSAGE = -400,
     INVALID_KEY = -401,
     NOT_EXIST = -404,
+    RESTORE = -405,
     TIMEOUT = -601,
     IO_ERROR = -602
 };
@@ -33,6 +41,14 @@ enum WatchRankType : uint32_t {
 const std::string AutoRankingStr = "AutoRanking#";
 
 using ConfigStoreReconnectHandler = std::function<int32_t(void)>;
+
+using ConfigStoreClientBrokenHandler = std::function<int()>;
+using ConfigStoreServerOpHandler = std::function<int32_t(const uint32_t, const std::string &,
+                                                         std::vector<uint8_t> &,
+                                                         const std::unordered_map<std::string,
+                                                         std::vector<uint8_t>> &)>;
+using ConfigStoreServerBrokenHandler = std::function<void(const uint32_t,
+                                                          std::unordered_map<std::string, std::vector<uint8_t>> &)>;
 
 class ConfigStore : public SmReferable {
 public:
@@ -192,6 +208,15 @@ public:
     virtual Result Unwatch(uint32_t wid) noexcept = 0;
 
     /**
+     * @brief Write char/int8 vector on specify location to a key with char/int8 value
+     *
+     * @param key          [in] key to be write
+     * @param value        [in] value to be write
+     * @param offset       [in] offset to be write
+     */
+    virtual Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept = 0;
+
+    /**
      * @brief Get error string by code
      *
      * @param errCode      [in] error cde
@@ -206,6 +231,18 @@ public:
     virtual SmRef<ConfigStore> GetCoreStore() noexcept = 0;
 
     virtual void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept = 0;
+
+    virtual Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept = 0;
+
+    virtual bool GetConnectStatus() noexcept = 0;
+
+    virtual void SetConnectStatus(bool status) noexcept = 0;
+
+    virtual void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept = 0;
+
+    virtual void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept = 0;
+
+    virtual void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept = 0;
 
 protected:
     virtual Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept = 0;
@@ -291,6 +328,8 @@ inline const char *ConfigStore::ErrStr(int16_t errCode)
             return "timeout";
         case IO_ERROR:
             return "socket error";
+        case RESTORE:
+            return "restore";
         default:
             return "unknown error";
     }

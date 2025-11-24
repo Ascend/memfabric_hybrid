@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "pytransfer.h"
 #include <thread>
@@ -16,13 +22,17 @@ namespace py = pybind11;
 static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
                                  ", build time: " __DATE__ " " __TIME__
                                  ", commit: " STR2(GIT_LAST_COMMIT);
+constexpr uint64_t MAX_BATCH_COUNT = 1024 * 1024;
 
-TransferAdapterPy::TransferAdapterPy() : handle_(nullptr)
+TransferAdapterPy::TransferAdapterPy() : handle_(nullptr), sockfd_(-1)
 {
 }
 
 TransferAdapterPy::~TransferAdapterPy()
 {
+    if (sockfd_ != -1) {
+        close(sockfd_);
+    }
 }
 
 int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
@@ -33,7 +43,17 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
     }
-
+    const char *shmem_level = std::getenv("SHMEM_LOG_LEVEL");
+    const char* mf_level = std::getenv("ASCEND_MF_LOG_LEVEL");
+    if (shmem_level == nullptr && mf_level != nullptr && strlen(mf_level) == 1) {
+        unsigned char c = static_cast<unsigned char>(mf_level[0]);
+        if (std::isdigit(c)) {
+            int level = c - '0';
+            smem_set_log_level(level);
+        }
+    }
+    // default: disable tls
+    smem_set_conf_store_tls(false, nullptr, 0);
     smem_trans_config_t config;
     ADAPTER_LOG_INFO("Begin to initialize trans");
     int32_t ret = smem_trans_config_init(&config);
@@ -60,7 +80,7 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
 
 int TransferAdapterPy::GetRpcPort()
 {
-    int rpcPort = static_cast<int>(findAvailableTcpPort());
+    int rpcPort = static_cast<int>(findAvailableTcpPort(sockfd_));
     ADAPTER_LOG_INFO("Get rpcPort is " << rpcPort);
     return rpcPort;
 }
@@ -70,6 +90,7 @@ int TransferAdapterPy::TransferSyncWrite(const char *destUniqueId,
                                          uintptr_t peer_buffer_address,
                                          size_t length)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     // 将uintptr_t类型的地址转换为指针类型
     const void *srcAddress = reinterpret_cast<const void*>(buffer);
     void *destAddress = reinterpret_cast<void*>(peer_buffer_address);
@@ -87,6 +108,7 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
                                               std::vector<uintptr_t> peer_buffer_addresses,
                                               std::vector<size_t> lengths)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     // 检查向量大小是否一致
     if (buffers.size() != peer_buffer_addresses.size() ||
         buffers.size() != lengths.size() || buffers.size() > UINT32_MAX) {
@@ -124,12 +146,14 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
 
 int TransferAdapterPy::RegisterMemory(uintptr_t buffer_addr, size_t capacity)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     char *buffer = reinterpret_cast<char *>(buffer_addr);
     return smem_trans_register_mem(handle_, buffer, capacity, 0);
 }
 
 int TransferAdapterPy::UnregisterMemory(uintptr_t buffer_addr)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     char *buffer = reinterpret_cast<char *>(buffer_addr);
     return smem_trans_deregister_mem(handle_, buffer);
 }
@@ -137,12 +161,17 @@ int TransferAdapterPy::UnregisterMemory(uintptr_t buffer_addr)
 int TransferAdapterPy::BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs,
     std::vector<size_t> capacities)
 {
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
     if (buffer_addrs.size() != capacities.size()) {
         ADAPTER_LOG_ERROR("Size of buffer_addrs and capacities is not equal.");
         return -1;
     }
 
-    uint32_t count = static_cast<uint32_t>(buffer_addrs.size());
+    const size_t count = buffer_addrs.size();
+    if (count > MAX_BATCH_COUNT) {
+        ADAPTER_LOG_ERROR("array size (" << count << ") exceeds limit(" << MAX_BATCH_COUNT << ")");
+        return -1;
+    }
     std::vector<void*> registerAddrs(count);
 
     for (size_t i = 0; i < count; ++i) {

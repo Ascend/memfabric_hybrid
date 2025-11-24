@@ -12,7 +12,7 @@ spec:
   ports:
     - port: 18080        # Service暴露的端口（ClusterIP:18080）
       name: meta
-      targetPort: 5000   # 后端Pod实际监听的端口，与MetaService配置文件 mmc-meta.conf 中的 ock.mmc.meta_service_url 端口号保持一致
+      targetPort: 5123   # 后端Pod实际监听的端口，与MetaService配置文件 mmc-meta.conf 中的 ock.mmc.meta_service_url 端口号保持一致，不能是5000，和镜像服务冲突
       protocol: TCP      # 显式指定TCP协议
     - port: 18090        # Service暴露的端口（ClusterIP:18090）
       name: config

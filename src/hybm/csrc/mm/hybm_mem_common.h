@@ -12,7 +12,7 @@ namespace mf {
 constexpr auto DEVICE_SHM_NAME_SIZE = 64U;
 class MemSlice;
 class MemSegment;
-class MemSegmentDevice;
+class HybmDevLegacySegment;
 
 using MemSlicePtr = std::shared_ptr<MemSlice>;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;

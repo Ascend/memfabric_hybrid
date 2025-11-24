@@ -1,6 +1,6 @@
 file(GLOB_RECURSE meta_service_src
         ${CMAKE_CURRENT_SOURCE_DIR}/test_meta_manager.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/meta_service_net.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_meta_service_net.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem_bm.cpp
 )
@@ -22,7 +22,7 @@ ADD_UNIT_TEST(test_meta_manager
 )
 
 file(GLOB_RECURSE global_allocator_src
-        ${CMAKE_CURRENT_SOURCE_DIR}/global_allocator.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_global_allocator.cpp
 )
 ADD_UNIT_TEST(test_global_allocator
         FILES ${global_allocator_src} ${TEST_SRC_PATHS}/ut_main.cpp
@@ -32,7 +32,7 @@ ADD_UNIT_TEST(test_global_allocator
 )
 
 file(GLOB_RECURSE service_interface
-        ${CMAKE_CURRENT_SOURCE_DIR}/service_interface.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_service_interface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem_bm.cpp
 )
@@ -56,7 +56,7 @@ ADD_UNIT_TEST(test_service_error
 )
 
 file(GLOB_RECURSE bm_init_src
-        ${CMAKE_CURRENT_SOURCE_DIR}/bm_init.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_bm_init.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem_bm.cpp
 )
@@ -68,7 +68,7 @@ ADD_UNIT_TEST(test_bm_init
 )
 
 file(GLOB_RECURSE bm_proxy_src
-        ${CMAKE_CURRENT_SOURCE_DIR}/bm_proxy.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_bm_proxy.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mock_smem_bm.cpp
 )
@@ -80,7 +80,7 @@ ADD_UNIT_TEST(test_bm_proxy
 )
 
 file(GLOB_RECURSE global_allocator_thread_src
-        ${CMAKE_CURRENT_SOURCE_DIR}/global_allocator_thread.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_global_allocator_thread.cpp
 )
 ADD_UNIT_TEST(test_global_allocator_thread
         FILES ${global_allocator_thread_src} ${TEST_SRC_PATHS}/ut_main.cpp

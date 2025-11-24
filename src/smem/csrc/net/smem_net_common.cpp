@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #include "smem_net_common.h"
@@ -10,7 +16,7 @@
 #include <vector>
 #include <map>
 #include <regex>
-
+#include "mf_ipv4_validator.h"
 #include "mf_str_util.h"
 
 namespace ock {
@@ -56,53 +62,14 @@ inline bool IsValidIpV4(const std::string &address)
     return true;
 }
 
-Result ExtractTcpURL(const std::string &url, std::map<std::string, std::string> &details)
-{
-    if (url.compare(0, PROTOCOL_TCP.size(), PROTOCOL_TCP) != 0) {
-        return SM_INVALID_PARAM;
-    }
-
-    /* remove tcp:// */
-    std::string tmpUrl = url.substr(PROTOCOL_TCP.length(), url.length() - PROTOCOL_TCP.length());
-
-    /* split */
-    std::vector<std::string> splits;
-    Split(tmpUrl, ":", splits);
-    if (splits.size() != UN2) {
-        return SM_INVALID_PARAM;
-    }
-
-    /* assign port */
-    details["port"] = splits[1];
-    if (splits[0].find('/') == std::string::npos) {
-        /* assign ip */
-        details["ip"] = splits[0];
-        return SM_OK;
-    }
-
-    /* get ip mask */
-    tmpUrl = splits[0];
-    splits.clear();
-    Split(tmpUrl, "/", splits);
-    if (splits.size() != UN2) {
-        return SM_INVALID_PARAM;
-    }
-
-    details["ip"] = splits[0];
-    details["mask"] = splits[1];
-    return SM_OK;
-}
-
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
 {
     std::map<std::string, std::string> details;
-    /* extract to vector */
-    auto result = ExtractTcpURL(url, details);
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, "Failed to extract url , which is invalid");
+    auto parser = mf::SocketAddressParserMgr::getInstance().CreateParser(url);
+    SM_ASSERT_RETURN(parser != nullptr, SM_ERROR);
 
-    auto iterMask = details.find("mask");
-    std::string ipStr = details["ip"];
-    std::string portStr = details["port"];
+    std::string ipStr = parser->GetIp();
+    std::string portStr = std::to_string(parser->GetPort());
 
     /* covert port */
     long tmpPort = 0;
@@ -111,9 +78,11 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
         return SM_INVALID_PARAM;
     }
 
-    if (!IsValidIpV4(ipStr) || tmpPort <= N1024 || tmpPort > UINT16_MAX) {
-        SM_LOG_ERROR("Invalid url. ");
-        return SM_INVALID_PARAM;
+    if (!parser->IsIpv6()) {
+        if (!IsValidIpV4(ipStr) || tmpPort <= N1024 || tmpPort > UINT16_MAX) {
+            SM_LOG_ERROR("Invalid url. ");
+            return SM_INVALID_PARAM;
+        }
     }
 
     /* set ip and port */

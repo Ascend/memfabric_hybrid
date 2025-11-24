@@ -90,7 +90,7 @@ inline uint64_t Monotonic::TimeNs()
 
 /*** functions for Func ***/
 constexpr int32_t TIME_WIDTH = 23;
-constexpr int32_t NAME_WIDTH = 35;
+constexpr int32_t NAME_WIDTH = 40;
 constexpr int32_t DIGIT_WIDTH = 15;
 constexpr int32_t UNIT_STEP = 1000;
 constexpr double IOPS_DIFF = 90.000;

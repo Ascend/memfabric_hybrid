@@ -26,7 +26,11 @@ struct UserQpInfo {
     std::atomic<uint32_t> ref{0};
     UserQpInfo() : qpHandle{nullptr}, ref{0} {}
     UserQpInfo& operator=(UserQpInfo&&) = delete;
-    UserQpInfo(UserQpInfo&& ot) noexcept : qpHandle(ot.qpHandle), ref(ot.ref.load()) {}
+    UserQpInfo(UserQpInfo&& ot) noexcept : qpHandle(ot.qpHandle), ref(ot.ref.load())
+    {
+        ot.qpHandle = nullptr;
+        ot.ref = 0;
+    }
 };
 
 struct ConnectionChannel {

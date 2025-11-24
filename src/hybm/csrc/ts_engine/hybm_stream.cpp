@@ -1,10 +1,17 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "hybm_stream.h"
 #include "hybm_common_include.h"
 #include "dl_hal_api.h"
 #include "dl_hal_api_def.h"
+#include "hybm_gva.h"
 #include "hybm_gvm_user.h"
 #include "hybm_logger.h"
 #include "ptracer.h"
@@ -25,10 +32,12 @@ int HybmStream::Initialize() noexcept
 {
     uint32_t ssid = 0;
     int32_t ret = 0;
+#ifndef USE_VMM
     if (HybmGvmHasInited()) {
         ret = hybm_gvm_get_device_info(&ssid);
         BM_ASSERT_LOG_AND_RETURN(ret == 0, "get ssid failed, ret:" << ret, BM_ERROR);
     }
+#endif
 
     tsId_ = 0; // 当前仅支持0
     ret = AllocStreamId();
@@ -123,7 +132,13 @@ int32_t HybmStream::AllocLogicCq()
     input.cqId = 65535U;
     input.sqId = 0;
     input.info[0] = streamId_;
-    input.info[1] = static_cast<uint32_t>(syscall(SYS_gettid));
+
+    pid_t realTid = syscall(SYS_gettid);
+    if (realTid < 0) {
+        BM_LOG_ERROR("get real tid failed " << realTid);
+        return BM_ERROR;
+    }
+    input.info[1] = static_cast<uint32_t>(realTid);
 
     auto ret = DlHalApi::HalSqCqAllocate(deviceId_, &input, &output);
     if (ret != 0) {
@@ -200,7 +215,7 @@ void PrintSqe(const rtStarsSqe_t *sqe)
     for (size_t i = 0UL; i < (sizeof(rtStarsSqe_t) / sizeof(uint32_t)); i++) {
         info << " " << std::setw(HYBM_SQE_PRINT_WIDTH) << std::setfill('0') << std::hex << cmd[i];
     }
-    BM_LOG_DEBUG("SQE:" << info.str());
+    BM_LOG_INFO("SQE:" << info.str());
 }
 
 int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
@@ -225,8 +240,6 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
     info.sqe_num = 1U;
     info.tsId = tsId_;
     info.sqId = sqId_;
-
-    PrintSqe(&taskList_[taskId].sqe);
 
     ret = DlHalApi::HalSqTaskSend(deviceId_, &info);
     if (ret != 0) {
@@ -274,23 +287,23 @@ static constexpr auto SDMA_CQE_ERROR_MAX = 16;
 static std::string GetCqeErrorStr(rtLogicCqReport_t &cqe)
 {
     static std::string sdmaCqeError[] = {
-        "normal",                                     // 0
-        "read response error or sqe invalid opcode",  // 1
-        "bit ecc",                                    // 2
-        "transfer page error, smmu return terminate", // 3
-        "meeting TLBI",                               // 4
-        "non safe access",                            // 5
-        "DAW, MSD or address error",                  // 6
-        "operation fail",                             // 7
-        "sdma move DDRC ERROR",                       // 8
-        "sdma move COMPERR ERROR",                    // 9
-        "sdma move COMPDATAERR ERROR",                // 10
-        "reduce overflow",                            // 11
-        "reduce float infinity",                      // 12
-        "reduce source data NaN",                     // 13
-        "reduce dest data NaN",                       // 14
-        "reduce both source and dest data NaN",       // 15
-        "data is not equal"                           // 16
+        "normal",                                      // 0
+        "read response error or sqe invalid opcode",   // 1
+        "bit ecc",                                     // 2
+        "transfer page error, smmu return terminate",  // 3
+        "meeting TLBI",                                // 4
+        "non safe access",                             // 5
+        "DAW, MSD or address error",                   // 6
+        "operation fail",                              // 7
+        "sdma move DDRC ERROR",                        // 8
+        "sdma move COMPERR ERROR",                     // 9
+        "sdma move COMPDATAERR ERROR",                 // 10
+        "reduce overflow",                             // 11
+        "reduce float infinity",                       // 12
+        "reduce source data NaN",                      // 13
+        "reduce dest data NaN",                        // 14
+        "reduce both source and dest data NaN",        // 15
+        "data is not equal"                            // 16
     };
 
     if (cqe.sqeType == RT_STARS_SQE_TYPE_SDMA) {
@@ -337,6 +350,7 @@ int32_t HybmStream::ReceiveCqe(uint32_t &lastTask)
                              << " cqeErrorCode:" << reportInfo[idx].errorCode << "(" << GetCqeErrorStr(reportInfo[idx])
                              << ") cqeErrorType:" << static_cast<uint32_t>(reportInfo[idx].errorType));
                 retFlag = BM_ERROR;
+                PrintSqe(&taskList_[reportInfo[idx].taskId].sqe);
             }
         }
 

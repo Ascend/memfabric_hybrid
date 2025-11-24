@@ -13,6 +13,7 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver
         ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/version
         ${PROJECT_HYBM_SRC_BASE}/csrc/entity
         ${PROJECT_HYBM_SRC_BASE}/csrc/mm
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport

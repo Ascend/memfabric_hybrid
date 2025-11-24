@@ -1,6 +1,6 @@
 file(GLOB_RECURSE common_src
         ${CMAKE_CURRENT_SOURCE_DIR}/test_locks.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/thread_pool.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_thread_pool.cpp
 )
 ADD_UNIT_TEST(test_common
         FILES ${common_src} ${TEST_SRC_PATHS}/ut_main.cpp

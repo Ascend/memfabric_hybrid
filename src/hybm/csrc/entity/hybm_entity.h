@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef __MF_HYBRID_BM_H__
 #define __MF_HYBRID_BM_H__
@@ -46,8 +52,8 @@ public:
     virtual hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept = 0;
 
     virtual bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept = 0;
-    virtual int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction,
-                             void *stream, uint32_t flags) noexcept = 0;
+    virtual int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,
+                             uint32_t flags) noexcept = 0;
     virtual int32_t CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
                                uint32_t flags) noexcept = 0;
     virtual int32_t BatchCopyData(hybm_batch_copy_params &params, hybm_data_copy_direction direction, void *stream,
@@ -60,7 +66,7 @@ public:
 };
 
 using MemEntityPtr = std::shared_ptr<MemEntity>;
-} // namespace mf
-} // namespace ock
+}  // namespace mf
+}  // namespace ock
 
-#endif // __MF_HYBRID_BM_H__
+#endif  // __MF_HYBRID_BM_H__

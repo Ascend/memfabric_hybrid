@@ -60,7 +60,7 @@ TEST_F(TestMmcFuzzClientInit, TestMmcClientInit)
         tempConfig.timeOut = *(u32 *)DT_SetGetU32(&g_Element[2], 0);
 
         mmc_data_info infoQuery{.valid = false};
-        mmc_buffer buf{.addr = 1, .type = 0, .dimType = 0, .oneDim = {.offset = 0, .len = 0}};
+        mmc_buffer buf{.addr = 1, .type = 0, .offset = 0, .len = 0};
         mmc_put_options opt{0, NATIVE_AFFINITY};
 
         ASSERT_NE(mmcc_put("test", &buf, opt, 0), 0);
@@ -100,7 +100,7 @@ TEST_F(TestMmcFuzzClientInit, TestMmcClientInitFailureNoLocal)
         ASSERT_EQ(mmcc_init(&tempConfig) == 0, tempConfig.logLevel <= 3 && tempConfig.logLevel >= 0);
 
         mmc_data_info infoQuery{.valid = true};
-        mmc_buffer buf{.addr = 1, .type = 0, .dimType = 0, .oneDim = {.offset = 0, .len = 0}};
+        mmc_buffer buf{.addr = 1, .type = 0, .offset = 0, .len = 0};
         mmc_put_options opt{0, NATIVE_AFFINITY};
         ASSERT_NE(mmcc_put("test", &buf, opt, 0), 0);
         ASSERT_NE(mmcc_get("test", &buf, 0), 0);
@@ -245,15 +245,15 @@ TEST_F(TestMmcFuzzClientFeature, TestMmcClientPutOneDim)
         buf.type = *(u32 *)DT_SetGetNumberEnum(&g_Element[4], 0, typeEnum, 2);
 
         // OneDim Case
-        buf.dimType = 0;
         uint64_t offset = *(u64 *)DT_SetGetU64(&g_Element[5], 3);
         uint64_t len = *(u64 *)DT_SetGetU64(&g_Element[6], 50);
-        buf.oneDim = {offset, len};
+        buf.offset = offset;
+        buf.len = len;
 
         bool keyValid = strlen(key) > 0 && strlen(key) <= 256;
         bool isValid = keyValid && buf.addr != 0 && buf.addr != 0 && len <= MAX_BUF_SIZE;
         mmc_data_info infoQuery{.valid = false};
-        mmc_buffer bufGet{.addr = 1, .type = buf.type, .dimType = 0, .oneDim = buf.oneDim};
+        mmc_buffer bufGet{.addr = 1, .type = buf.type, .offset = buf.offset, .len = buf.len};
 
         ASSERT_NE(mmcc_exist(key, 0), 0);
         ASSERT_EQ(mmcc_query(key, &infoQuery, 0) == 0, keyValid);
@@ -268,57 +268,6 @@ TEST_F(TestMmcFuzzClientFeature, TestMmcClientPutOneDim)
         ASSERT_EQ(infoQuery.valid, isValid);
         ASSERT_EQ(mmcc_get(key, &bufGet, 0) == 0, isValid);
         ASSERT_EQ(mmcc_remove(key, 0) == 0, isValid);
-    }
-    DT_FUZZ_END()
-}
-
-TEST_F(TestMmcFuzzClientFeature, TestMmcClientPutTwoDim)
-{
-    char fuzzName[] = "TestMmcClientPutTwoDim";
-    int policyEnum[] = {0};
-    int typeEnum[] = {0, 1};
-    DT_FUZZ_START(0, CAPI_FUZZ_COUNT, fuzzName, 0)
-    {
-        char *key = DT_SetGetString(&g_Element[0], 9, 258, (char*)"test_key");
-
-        mmc_put_options opt;
-        opt.mediaType = *(u16 *)DT_SetGetU16(&g_Element[1], 0);
-        opt.policy = static_cast<affinity_policy>(*(s32 *)DT_SetGetNumberEnum(&g_Element[2], 0, policyEnum, 1));
-
-        mmc_buffer buf;
-        buf.addr = *(u64 *)DT_SetGetU64(&g_Element[3], 50);
-        buf.type = *(u32 *)DT_SetGetNumberEnum(&g_Element[4], 0, typeEnum, 2);
-
-        // TwoDim Case
-        buf.dimType = 1;
-        uint64_t dpitch_high = *(u16 *)DT_SetGetU16(&g_Element[5], 0);
-        uint64_t dpitch_low = *(u32 *)DT_SetGetU32(&g_Element[6], 50);
-        uint64_t dpitch = (dpitch_high << 32) + dpitch_low; // dpitch 在结构体定义中指定为 48 位
-        uint64_t layerOffset = *(u16 *)DT_SetGetU16(&g_Element[7], 1); // layerOffset 在结构体定义中指定为 16 位
-        uint32_t width = *(u32 *)DT_SetGetU32(&g_Element[8], 50);
-        uint16_t layerNum = *(u16 *)DT_SetGetU16(&g_Element[9], 3);
-        uint16_t layerCount = *(u16 *)DT_SetGetU16(&g_Element[10], 4);
-        buf.twoDim = {dpitch, layerOffset, width, layerNum, layerCount};
-
-        bool keyValid = strlen(key) > 0 && strlen(key) <= 256;
-        bool isValid = keyValid && buf.addr != 0 && dpitch >= width && width * layerNum <= MAX_BUF_SIZE;
-        mmc_data_info infoQuery{.valid = false};
-        mmc_buffer bufGet{.addr = 1, .type = buf.type, .dimType = 1, .twoDim = buf.twoDim};
-
-        ASSERT_NE(mmcc_exist(key, 0), 0);
-        ASSERT_EQ(mmcc_query(key, &infoQuery, 0) == 0, keyValid);
-        ASSERT_EQ(infoQuery.valid, false);
-        ASSERT_NE(mmcc_get(key, &bufGet, 0), 0);
-        ASSERT_NE(mmcc_remove(key, 0), 0);
-
-        ASSERT_EQ(mmcc_put(key, &buf, opt, 0) == 0, isValid);
-
-        bool isValid_ = keyValid && buf.addr != 0 && width * layerNum <= MAX_BUF_SIZE;
-        ASSERT_EQ(mmcc_exist(key, 0) == 0, isValid_);
-        ASSERT_EQ(mmcc_query(key, &infoQuery, 0) == 0, keyValid);
-        ASSERT_EQ(infoQuery.valid, isValid_);
-        ASSERT_EQ(mmcc_get(key, &bufGet, 0) == 0, isValid);
-        ASSERT_EQ(mmcc_remove(key, 0) == 0, isValid_);
     }
     DT_FUZZ_END()
 }
@@ -354,66 +303,10 @@ TEST_F(TestMmcFuzzClientFeature, TestMmcClientBatchPutOneDim)
 
         // OneDim Case
         for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].dimType = 0;
             uint64_t offset = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 3);
             uint64_t len = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 50);
-            bufs[i].oneDim = {offset, len};
-        }
-
-        ASSERT_EQ(mmcc_batch_put(keys, keys_count, bufs, opt, 0, results) == 0, isAllValid);  // todo results validate
-        int32_t resultsExist[3] = {1, 1, 1};
-        int32_t resultsGet[3] = {1, 1, 1};
-        int32_t resultsRemove[3] = {1, 1, 1};
-        mmc_data_info infoQuery[3] {};
-        mmc_buffer bufsGet[3] {{.addr = 1}, {.addr = 1}, {.addr = 1}};
-        mmcc_batch_exist(keys, keys_count, resultsExist, 0);
-        mmcc_batch_query(keys, keys_count, infoQuery, 0);
-        mmcc_batch_get(keys, keys_count, bufsGet, 0, resultsGet);
-        mmcc_batch_remove(keys, keys_count, resultsRemove, 0);
-    }
-    DT_FUZZ_END()
-}
-
-TEST_F(TestMmcFuzzClientFeature, TestMmcClientBatchPutTwoDim)
-{
-    char fuzzName[] = "TestMmcClientBatchPutTwoDim";
-    int policyEnum[] = {0};
-    int typeEnum[] = {0, 1};
-    DT_FUZZ_START(0, CAPI_FUZZ_COUNT, fuzzName, 0)
-    {
-        uint32_t keys_count = 3;
-        char *key1 = DT_SetGetString(&g_Element[0], 11, 258, (char*)"test_key_1");
-        char *key2 = DT_SetGetString(&g_Element[1], 11, 258, (char*)"Test_key_2");
-        char *key3 = DT_SetGetString(&g_Element[2], 11, 258, (char*)"test_Key_3");
-        const char *keys[] = {key1, key2, key3};
-
-        mmc_put_options opt;
-        opt.mediaType = *(u16 *)DT_SetGetU16(&g_Element[3], 0);
-        opt.policy = static_cast<affinity_policy>(*(s32 *)DT_SetGetNumberEnum(&g_Element[4], 0, policyEnum, 1));
-
-        int dtSetGetCnt = 5;
-        bool isAllValid = true;
-        mmc_buffer bufs[keys_count];
-        for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].addr = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 50);
-            bufs[i].type = *(u32 *)DT_SetGetNumberEnum(&g_Element[dtSetGetCnt++], 0, typeEnum, 2);
-            isAllValid &= bufs[i].addr != 0;
-            isAllValid &= strlen(keys[i]) > 0 && strlen(keys[i]) <= 256;
-        }
-
-        int32_t results[] = {-1, -1, -1};
-
-        // TwoDim Case
-        for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].dimType = 1;
-            uint64_t dpitch_high = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 0);
-            uint64_t dpitch_low = *(u32 *)DT_SetGetU32(&g_Element[dtSetGetCnt++], 50);
-            uint64_t dpitch = (dpitch_high << 32) + dpitch_low; // dpitch 在结构体定义中指定为 48 位
-            uint64_t layerOffset = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 1); // layerOffset 在结构体定义中指定为 16 位
-            uint32_t width = *(u32 *)DT_SetGetU32(&g_Element[dtSetGetCnt++], 50);
-            uint16_t layerNum = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 3);
-            uint16_t layerCount = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 4);
-            bufs[i].twoDim = {dpitch, layerOffset, width, layerNum, layerCount};
+            bufs[i].offset = offset;
+            bufs[i].len = len;
         }
 
         ASSERT_EQ(mmcc_batch_put(keys, keys_count, bufs, opt, 0, results) == 0, isAllValid);  // todo results validate
@@ -443,39 +336,10 @@ TEST_F(TestMmcFuzzClientFeature, TestMmcClientGetOneDim)
         buf.type = *(u32 *)DT_SetGetNumberEnum(&g_Element[2], 0, typeEnum, 2);
 
         // OneDim Case
-        buf.dimType = 0;
         uint64_t offset = *(u64 *)DT_SetGetU64(&g_Element[3], 3);
         uint64_t len = *(u64 *)DT_SetGetU64(&g_Element[4], 50);
-        buf.oneDim = {offset, len};
-
-        ASSERT_NE(mmcc_get(key, &buf, 0), 0);
-        ASSERT_NE(mmcc_get(key, nullptr, 0), 0);
-    }
-    DT_FUZZ_END()
-}
-
-TEST_F(TestMmcFuzzClientFeature, TestMmcClientGetTwoDim)
-{
-    char fuzzName[] = "TestMmcClientGetTwoDim";
-    int typeEnum[] = {0, 1};
-    DT_FUZZ_START(0, CAPI_FUZZ_COUNT, fuzzName, 0)
-    {
-        char *key = DT_SetGetString(&g_Element[0], 9, 258, (char*)"test_key");
-
-        mmc_buffer buf;
-        buf.addr = *(u64 *)DT_SetGetU64(&g_Element[1], 50);
-        buf.type = *(u32 *)DT_SetGetNumberEnum(&g_Element[2], 0, typeEnum, 2);
-
-        // TwoDim Case
-        buf.dimType = 1;
-        uint64_t dpitch_high = *(u16 *)DT_SetGetU16(&g_Element[3], 0);
-        uint64_t dpitch_low = *(u32 *)DT_SetGetU32(&g_Element[4], 50);
-        uint64_t dpitch = (dpitch_high << 32) + dpitch_low; // dpitch 在结构体定义中指定为 48 位
-        uint64_t layerOffset = *(u16 *)DT_SetGetU16(&g_Element[5], 1); // layerOffset 在结构体定义中指定为 16 位
-        uint32_t width = *(u32 *)DT_SetGetU32(&g_Element[6], 50);
-        uint16_t layerNum = *(u16 *)DT_SetGetU16(&g_Element[7], 3);
-        uint16_t layerCount = *(u16 *)DT_SetGetU16(&g_Element[8], 4);
-        buf.twoDim = {dpitch, layerOffset, width, layerNum, layerCount};
+        buf.offset = offset;
+        buf.len = len;
 
         ASSERT_NE(mmcc_get(key, &buf, 0), 0);
         ASSERT_NE(mmcc_get(key, nullptr, 0), 0);
@@ -508,52 +372,10 @@ TEST_F(TestMmcFuzzClientFeature, TestMmcClientBatchGetOneDim)
 
         // OneDim Case
         for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].dimType = 0;
             uint64_t offset = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 3);
             uint64_t len = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 50);
-            bufs[i].oneDim = {offset, len};
-        }
-
-        ASSERT_EQ(mmcc_batch_get(keys, keys_count, bufs, 0, results) == 0, isAllValid);  // todo results validate
-        ASSERT_NE(mmcc_batch_get(keys, keys_count, nullptr, 0, results), 0);
-    }
-    DT_FUZZ_END()
-}
-
-TEST_F(TestMmcFuzzClientFeature, TestMmcClientBatchGetTwoDim)
-{
-    char fuzzName[] = "TestMmcClientBatchGetTwoDim";
-    int typeEnum[] = {0, 1};
-    DT_FUZZ_START(0, CAPI_FUZZ_COUNT, fuzzName, 0)
-    {
-        uint32_t keys_count = 3;
-        char *key1 = DT_SetGetString(&g_Element[0], 9, 258, (char*)"test_key");
-        char *key2 = DT_SetGetString(&g_Element[1], 9, 258, (char*)"test_key");
-        char *key3 = DT_SetGetString(&g_Element[2], 9, 258, (char*)"test_key");
-        const char *keys[] = {key1, key2, key3};
-
-        int dtSetGetCnt = 3;
-        bool isAllValid = true;
-        mmc_buffer bufs[keys_count];
-        for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].addr = *(u64 *)DT_SetGetU64(&g_Element[dtSetGetCnt++], 50);
-            bufs[i].type = *(u32 *)DT_SetGetNumberEnum(&g_Element[dtSetGetCnt++], 0, typeEnum, 2);
-            isAllValid &= strlen(keys[i]) > 0 && strlen(keys[i]) <= 256;
-        }
-
-        int32_t results[] = {-1, -1, -1};
-
-        // TwoDim Case
-        for (size_t i = 0; i < keys_count; ++i) {
-            bufs[i].dimType = 1;
-            uint64_t dpitch_high = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 0);
-            uint64_t dpitch_low = *(u32 *)DT_SetGetU32(&g_Element[dtSetGetCnt++], 50);
-            uint64_t dpitch = (dpitch_high << 32) + dpitch_low; // dpitch 在结构体定义中指定为 48 位
-            uint64_t layerOffset = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 1); // layerOffset 在结构体定义中指定为 16 位
-            uint32_t width = *(u32 *)DT_SetGetU32(&g_Element[dtSetGetCnt++], 50);
-            uint16_t layerNum = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 3);
-            uint16_t layerCount = *(u16 *)DT_SetGetU16(&g_Element[dtSetGetCnt++], 4);
-            bufs[i].twoDim = {dpitch, layerOffset, width, layerNum, layerCount};
+            bufs[i].offset = offset;
+            bufs[i].len = len;
         }
 
         ASSERT_EQ(mmcc_batch_get(keys, keys_count, bufs, 0, results) == 0, isAllValid);  // todo results validate

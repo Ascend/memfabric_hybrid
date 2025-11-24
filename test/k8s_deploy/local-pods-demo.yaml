@@ -5,6 +5,7 @@
 # 4. POD中使用大页：
 #    4.1 需要将大页资源挂载到pod中：本yaml中的 'hugepages' 挂载项，使用大小为2MB的大页
 #    4.2 需要指定容器需要的大页资源：在resources.requests和resources.limits配置项中指定 hugepages-2Mi: 500Mi
+#    修改本文档命令中xxxxxxxx为自己的目录或者正确的ip
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -12,7 +13,7 @@ metadata:
   namespace: ns-memcache
 spec:
   serviceName: local-service
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: local-service
@@ -21,13 +22,20 @@ spec:
       labels:
         app: local-service
     spec:
-      serviceAccountName: meta-service-account  #  Pod 内的应用使用该账号的权限调用 Kubernetes API
+      serviceAccountName: account-memcache  #  Pod 内的应用使用该账号的权限调用 Kubernetes API
       terminationGracePeriodSeconds: 10
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: local-service
       containers:
         - name: local-service
-          image: 127.0.0.1:5000/meta:0814_v4
+          image: 127.0.0.1:5000/memcache:1028
           resources:
             requests:
               memory: "2Gi"
@@ -35,20 +43,20 @@ spec:
             limits:
               memory: "4Gi"
               hugepages-2Mi: 2Gi  # 修改容器需要的大页内存，请提前在宿主机上创建大页
-          command: ["/bin/sh", "-c"]
+          command: [ "/bin/bash", "-c" ]
+          # 手动进入容器执行用例测试
           args:
             - |
-              # 加载ascend环境变量
-              . /usr/local/Ascend/ascend-toolkit/set_env.sh && \
-              # 确保日志目录存在，避免日志重定向失败
-              mkdir -p /home/memcache/logs && \
-              # 启动local测试，同时重定向日志
-              exec python3 /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/script/ha/test-mmc-meta-ha.py > /home/memcache/logs/mmc-local.log 2>&1
+              source /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+              bash /home/meta/mxc-memfabric_hybrid-1.0.0_linux_aarch64.run && \
+              echo "install end." && \
+              echo "App start." && \
+              sleep infinity
           env:
-            - name: LD_LIBRARY_PATH  # 追加lib库：python3.11 lib， libhcom.so lib
-              value: "/usr/local/python3.11/lib:/home/meta/lib:$(LD_LIBRARY_PATH)"
             - name: MMC_LOCAL_CONFIG_PATH
               value: /home/meta/config/mmc-local.conf
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: host-home
               mountPath: /home
@@ -58,35 +66,43 @@ spec:
               mountPath: /usr/local/bin/ping
             - name: hugepages                # 挂载大页2Mi
               mountPath: /hugepages-2Mi
+            - name: smi
+              mountPath: /usr/local/bin/npu-smi
+            - name: drive
+              mountPath: /usr/local/Ascend/driver
+            - name: firmware
+              mountPath: /usr/local/Ascend/firmware
+              # 挂载 NPU 设备文件（每个设备单独挂载）
+            - name: davinci0
+              mountPath: /dev/davinci0
+            - name: davinci1
+              mountPath: /dev/davinci1
+            - name: davinci2
+              mountPath: /dev/davinci2
+            - name: davinci3
+              mountPath: /dev/davinci3
+            - name: davinci4
+              mountPath: /dev/davinci4
+            - name: davinci5
+              mountPath: /dev/davinci5
+            - name: davinci6
+              mountPath: /dev/davinci6
+            - name: davinci7
+              mountPath: /dev/davinci7
+            - name: davincimanager
+              mountPath: /dev/davinci_manager
+            - name: devmmsvm
+              mountPath: /dev/devmm_svm
+            - name: hisihdc
+              mountPath: /dev/hisi_hdc
       initContainers:
         - name: change-pod-ip
-          image: 127.0.0.1:5000/meta:0814_v4
+          image: 127.0.0.1:5000/memcache:1028
           command: [ "/bin/sh", "-c"]
           args:
             - |
-              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && \
-              # META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/ns-memcache/pods/local-service-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
-              # 重试机制：等待 Pod0 就绪
-              for i in {1..10}; do \
-                META_POD0_IP=$(curl -s -H "Authorization: Bearer $TOKEN" -k https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/ns-memcache/pods/local-service-pod-0 | grep -oP '(?<="podIP": ")[^"]+') && \
-                if [ -n "$META_POD0_IP" ]; then break; fi; \
-                echo "Waiting for local-service-pod-0 (attempt $i/10)..."; \
-                sleep 2; \
-              done; \
-              if [ -z "$META_POD0_IP" ]; then \
-                echo "Error: Failed to get local-service-pod-0 IP"; \
-                exit 1; \
-              fi; \
-              echo "Service IP: $META_CLUSTER_IP_SERVICE_HOST"; \
-              echo "Service Port: $META_CLUSTER_IP_SERVICE_META_PORT"; \
-              echo "Config Store Port: $META_CLUSTER_IP_SERVICE_META_PORT"; \
-              META_CLUSTER_IP_PORT="$META_CLUSTER_IP_SERVICE_HOST:$META_CLUSTER_IP_SERVICE_PORT_META"; \
-              CONFIG_STORE_IP_PORT="$META_CLUSTER_IP_SERVICE_HOST:$META_CLUSTER_IP_SERVICE_PORT_CONFIG"; \
-              # 修改配置文件
-              sed -i '/^ock.mmc.local_service.config_store_url/c ock.mmc.local_service.config_store_url = tcp://configStoreUrl' /home/meta/config/mmc-local.conf && \
-              sed -i '/^ock.mmc.meta_service_url/c ock.mmc.meta_service_url = tcp://metaServiceUrl' /home/meta/config/mmc-local.conf && \
-              sed -i s/metaServiceUrl/$META_CLUSTER_IP_PORT/ /home/meta/config/mmc-local.conf
-              sed -i s/configStoreUrl/$CONFIG_STORE_IP_PORT/ /home/meta/config/mmc-local.conf
+              # 手动修改配置文件
+              echo "App start"
           volumeMounts:
             - name: host-home  # 与下方volumes.name对应
               mountPath: /home  # 容器内的挂载点
@@ -99,6 +115,18 @@ spec:
           hostPath:
             path: /usr/local/Ascend  # 昇腾驱动安装目录
             type: Directory
+        - name: smi
+          hostPath:
+            path: /usr/local/bin/npu-smi  # 昇腾驱动安装目录
+            type: File
+        - name: drive
+          hostPath:
+            path: /usr/local/Ascend/driver  # 昇腾驱动安装目录
+            type: Directory
+        - name: firmware
+          hostPath:
+            path: /usr/local/Ascend/firmware  # 昇腾驱动安装目录
+            type: Directory
         - name: host-ping
           hostPath:
             path: /usr/bin/ping
@@ -106,3 +134,48 @@ spec:
         - name: hugepages
           emptyDir:
             medium: HugePages-2Mi
+            # 设备文件：必须指定 type: CharDevice
+        - name: davinci0
+          hostPath:
+            path: /dev/davinci0
+            type: CharDevice
+        - name: davinci1
+          hostPath:
+            path: /dev/davinci1
+            type: CharDevice
+        - name: davinci2
+          hostPath:
+            path: /dev/davinci2
+            type: CharDevice
+        - name: davinci3
+          hostPath:
+            path: /dev/davinci3
+            type: CharDevice
+        - name: davinci4
+          hostPath:
+            path: /dev/davinci4
+            type: CharDevice
+        - name: davinci5
+          hostPath:
+            path: /dev/davinci5
+            type: CharDevice
+        - name: davinci6
+          hostPath:
+            path: /dev/davinci6
+            type: CharDevice
+        - name: davinci7
+          hostPath:
+            path: /dev/davinci7
+            type: CharDevice
+        - name: davincimanager
+          hostPath:
+            path: /dev/davinci_manager
+            type: CharDevice
+        - name: devmmsvm
+          hostPath:
+            path: /dev/devmm_svm
+            type: CharDevice
+        - name: hisihdc
+          hostPath:
+            path: /dev/hisi_hdc
+            type: CharDevice

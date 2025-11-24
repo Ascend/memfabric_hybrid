@@ -1,17 +1,20 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "smem_bm.h"
-
 #include <algorithm>
-
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_logger.h"
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
-
 #include "mf_rwlock.h"
+#include "smem_bm.h"
 
 using namespace ock::smem;
 using namespace ock::mf;
@@ -55,7 +58,7 @@ static int32_t SmemBmConfigCheck(const smem_bm_config_t *config)
     SM_VALIDATE_RETURN(config->controlOperationTimeout <= SMEM_BM_TIMEOUT_MAX, "controlOperationTimeout is too large",
                        SM_INVALID_PARAM);
 
-    // config->rank ��SmemBmEntryManager::PrepareStore��check
+    // config->rank 在SmemBmEntryManager::PrepareStore中check
     return 0;
 }
 
@@ -149,10 +152,21 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     bzero(options.nic, sizeof(options.nic));
-    options.tlsOption = manager.GetHcomTlsOption();
+
+    smem_tls_config hcomTlsConfig = manager.GetHcomTlsOption();
+    options.tlsOption.tlsEnable = hcomTlsConfig.tlsEnable;
+    std::copy_n(hcomTlsConfig.caPath, SMEM_TLS_PATH_SIZE, options.tlsOption.caPath);
+    std::copy_n(hcomTlsConfig.crlPath, SMEM_TLS_PATH_SIZE, options.tlsOption.crlPath);
+    std::copy_n(hcomTlsConfig.certPath, SMEM_TLS_PATH_SIZE, options.tlsOption.certPath);
+    std::copy_n(hcomTlsConfig.keyPath, SMEM_TLS_PATH_SIZE, options.tlsOption.keyPath);
+    std::copy_n(hcomTlsConfig.keyPassPath, SMEM_TLS_PATH_SIZE, options.tlsOption.keyPassPath);
+    std::copy_n(hcomTlsConfig.packagePath, SMEM_TLS_PATH_SIZE, options.tlsOption.packagePath);
+    std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
+
     SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
     (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.nic);
 
+    options.globalUniqueAddress = true;
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
@@ -181,7 +195,6 @@ SMEM_API int32_t smem_bm_join(smem_bm_t handle, uint32_t flags)
         SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
         return SM_INVALID_PARAM;
     }
-
     return entry->Join(flags);
 }
 
@@ -200,7 +213,7 @@ SMEM_API int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags)
     return entry->Leave(flags);
 }
 
-uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType)
+SMEM_API uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", 0UL);
 
@@ -221,7 +234,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
     }
 }
 
-void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId)
+SMEM_API void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", nullptr);
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
@@ -250,12 +263,10 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
     }
 }
 
-SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uint64_t size, smem_bm_copy_type t,
-                              uint32_t flags)
+SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
 
     SmemBmEntryPtr entry = nullptr;
@@ -265,25 +276,7 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, const void *src, void *dest, uin
         return SM_INVALID_PARAM;
     }
 
-    return entry->DataCopy(src, dest, size, t, flags);
-}
-
-SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)
-{
-    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params != nullptr, "params is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params->src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params->dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
-
-    SmemBmEntryPtr entry = nullptr;
-    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
-    if (ret != SM_OK || entry == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
-        return SM_INVALID_PARAM;
-    }
-
-    return entry->DataCopy2d(params, t, flags);
+    return entry->DataCopy(params->src, params->dest, params->dataSize, t, flags);
 }
 
 SMEM_API int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,
@@ -318,6 +311,38 @@ SMEM_API int32_t smem_bm_wait(smem_bm_t handle)
     return entry->Wait();
 }
 
+SMEM_API int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
+    return entry->DataCopy2d(*params, t, flags);
+}
+
+SMEM_API uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->GetRankIdByGva(gva);
+}
+
+
 SMEM_API int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
@@ -332,4 +357,38 @@ SMEM_API int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint
     }
 
     return entry->RegisterMem(addr, size);
+}
+
+int32_t smem_bm_register_host_mem(uint64_t addr, uint64_t size, uint64_t *dest)
+{
+    SM_VALIDATE_RETURN(addr != 0, "invalid param, addr eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(size != 0, "invalid param, size eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    return hybm_host_mem_register(addr, size, dest);
+}
+
+int32_t smem_bm_unregister_host_mem(uint64_t addr)
+{
+    SM_VALIDATE_RETURN(addr != 0, "invalid param, addr eq 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    return hybm_host_mem_unregister(addr);
+}
+
+void *smem_bm_mem_malloc(uint64_t size, smem_bm_mem_type memType, uint64_t flags)
+{
+    SM_VALIDATE_RETURN(size != 0, "invalid param, size eq 0", nullptr);
+    SM_VALIDATE_RETURN(memType == SMEM_MEM_TYPE_HOST, "invalid memType", nullptr);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
+    return hybm_host_mem_malloc(size, flags);
+}
+
+
+void smem_bm_mem_free(void *addr)
+{
+    SM_ASSERT_RET_VOID(g_smemBmInited);
+    SM_ASSERT_RET_VOID(addr != nullptr);
+    return hybm_host_mem_free(addr);
 }

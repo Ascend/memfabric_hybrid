@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #ifndef ACC_LINKS_ACC_TCP_LINK_COMPLEX_DEFAULT_H
 #define ACC_LINKS_ACC_TCP_LINK_COMPLEX_DEFAULT_H
@@ -381,7 +387,7 @@ inline Result AccTcpLinkComplexDefault::HandlePollIn() noexcept
             return ACC_LINK_MSG_READY; /* message fully received, we can do the upper call */
         }
 
-        LOG_INFO("Receive sock " << id_ << " not full body size: " << receiveState_.bodyToBeReceived);
+        LOG_DEBUG("Receive sock " << id_ << " not full body size: " << receiveState_.bodyToBeReceived);
         /* body is not fully received, continue to receive */
         return ACC_LINK_EAGAIN;
     } else { /* ECONNRESET is broken during io, SUCCESS is broken during idle time. */

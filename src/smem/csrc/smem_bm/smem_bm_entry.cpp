@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "smem_bm_entry.h"
 
@@ -299,37 +305,22 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
 }
 
-Result SmemBmEntry::DataCopy2d(smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags)
-{
-    SM_VALIDATE_RETURN(params->src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params->dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params->width != 0, "invalid param, width is 0", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(params->height != 0, "invalid param, height is 0", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
-    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-
-    SM_ASSERT_RETURN(!mf::NumUtil::IsOverflowCheck(params->dpitch, params->height, UINT64_MAX, '*'), SM_INVALID_PARAM);
-    auto direct = TransToHybmDirection(t, params->src, params->spitch * params->height,
-                                       params->dest, params->dpitch * params->height);
-    if (direct == HYBM_DATA_COPY_DIRECTION_BUTT) {
-        SM_LOG_ERROR("Failed to trans to hybm direct, smem direct: " << t << " src: " << params->src
-            << " dest: " << params->dest);
-        return SM_INVALID_PARAM;
-    }
-
-    hybm_copy_2d_params copy2dparams = {.src = params->src,
-                                        .spitch = params->spitch,
-                                        .dest = params->dest,
-                                        .dpitch = params->dpitch,
-                                        .width = params->width,
-                                        .height = params->height};
-    return hybm_data_copy_2d(entity_, &copy2dparams, direct, nullptr, flags);
-}
-
 Result SmemBmEntry::Wait()
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     return hybm_wait(entity_);
+}
+
+uint32_t SmemBmEntry::GetRankIdByGva(void *gva)
+{
+    if (AddrInHostGva(gva, 1UL)) {
+        return ((uint64_t) gva - (uint64_t) hostGva_) / coreOptions_.hostVASpace;
+    }
+
+    if (AddrInDeviceGva(gva, 1UL)) {
+        return ((uint64_t) gva - (uint64_t) deviceGva_) / coreOptions_.deviceVASpace;
+    }
+    return UINT32_MAX;
 }
 
 Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
@@ -355,6 +346,12 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     }
     hybm_batch_copy_params copyParams = {params->sources, params->destinations, params->dataSizes, params->batchSize};
     return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
+}
+
+Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags)
+{
+    SM_LOG_ERROR("DataCopy2d support later.");
+    return SM_OK;
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
@@ -413,6 +410,19 @@ bool SmemBmEntry::AddrInDeviceGva(const void *address, uint64_t size)
     }
 
     if ((const uint8_t *)address < (const uint8_t *)deviceGva_) {
+        return false;
+    }
+
+    return true;
+}
+
+bool SmemBmEntry::AddressInRange(const void *address, uint64_t size)
+{
+    if (address < deviceGva_) {
+        return false;
+    }
+    auto totalSize = coreOptions_.singleRankVASpace * coreOptions_.rankCount;
+    if ((const uint8_t *)address + size >= (const uint8_t *)deviceGva_ + totalSize) {
         return false;
     }
 

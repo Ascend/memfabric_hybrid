@@ -7,6 +7,7 @@ target_compile_options(hybm_gvm_object PRIVATE -fPIC)
 
 target_include_directories(hybm_gvm_object PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_include_directories(hybm_gvm_object PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(hybm_gvm_object PUBLIC ${PROJECT_UTIL_SRC_BASE}/)
 target_include_directories(hybm_gvm_object PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include)
 target_include_directories(hybm_gvm_object PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/csrc/manager)
 

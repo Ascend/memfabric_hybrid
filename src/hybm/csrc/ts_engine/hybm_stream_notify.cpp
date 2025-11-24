@@ -63,7 +63,7 @@ int32_t HybmStreamNotify::Wait()
     sqe->header.task_id = 0U;
     sqe->res2 = 0U;
     sqe->res3 = 0U;
-    sqe->timeout = 0;
+    sqe->timeout = TASK_WAIT_TIME_OUT;
 
     auto ret = stream_->SubmitTasks(task);
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "submit notify wait task failed.", ret);

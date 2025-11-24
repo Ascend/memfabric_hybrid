@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
+#include <cstdint>
 
 #define PATH_MAX_LIMIT 4096L
 namespace ock {
@@ -249,7 +250,10 @@ inline bool FileUtil::Realpath(std::string &path)
     }
 
     /* It will allocate memory to store path */
-    char* tmp = new char[ock::mf::FileUtil::GetSafePathMax() + 1];
+    char* tmp = new(std::nothrow) char[ock::mf::FileUtil::GetSafePathMax() + 1];
+    if (tmp == nullptr) {
+        return false;
+    }
     char* realPath = realpath(path.c_str(), tmp);
     if (realPath == nullptr) {
         delete[] tmp;

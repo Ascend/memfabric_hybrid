@@ -1,5 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef SMEM_SMEM_TCP_CONFIG_STORE_H
@@ -35,9 +41,9 @@ public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
-    Result Startup(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
-    Result ClientStart(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
-    Result ServerStart(const tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result Startup(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ClientStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ServerStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
     void Shutdown(bool afterFork = false) noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
@@ -52,6 +58,7 @@ public:
     Result Watch(WatchRankType type, const std::function<void(WatchRankType, uint32_t)> &notify,
                  uint32_t &wid) noexcept override;
     Result Unwatch(uint32_t wid) noexcept override;
+    Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept override;
     std::string GetCompleteKey(const std::string &key) noexcept override
     {
         return key;
@@ -76,6 +83,15 @@ public:
     {
         rankId_ = rankId;
     }
+
+    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept;
+    bool GetConnectStatus() noexcept override;
+    void SetConnectStatus(bool status) noexcept override;
+    void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept override;
+
+    void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override;
+
+    void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override;
 
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override;
@@ -103,7 +119,9 @@ private:
     const bool isServer_;
     int32_t rankId_;
     const uint32_t worldSize_;
+    std::atomic<bool> isConnect_{false};
     ConfigStoreReconnectHandler reconnectHandler{nullptr};
+    ConfigStoreClientBrokenHandler brokenHandler_ = nullptr;
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
 }  // namespace smem

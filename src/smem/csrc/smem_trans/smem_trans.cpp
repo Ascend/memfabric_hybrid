@@ -1,5 +1,11 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "smem_trans.h"
 
@@ -105,7 +111,7 @@ SMEM_API int32_t smem_trans_register_mem(smem_trans_t handle, void *address, siz
     /* get entry by ptr */
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
-    if (result != SM_OK) {
+    if (result != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
@@ -180,7 +186,7 @@ SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, c
     /* get entry by ptr */
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
-    if (result != SM_OK) {
+    if (result != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }
@@ -207,7 +213,7 @@ SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddr
     /* get entry by ptr */
     SmemTransEntryPtr entry;
     auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
-    if (result != SM_OK) {
+    if (result != SM_OK || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
         return result;
     }

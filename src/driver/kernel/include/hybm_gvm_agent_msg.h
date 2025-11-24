@@ -16,6 +16,7 @@ enum HYBM_GVM_AGENT_MSG_TYPE {
     HYBM_GVM_AGENT_MSG_MAP,
     HYBM_GVM_AGENT_MSG_UNMAP,
     HYBM_GVM_AGENT_MSG_FETCH,
+    HYBM_GVM_AGENT_MSG_REGISTER,
     HYBM_GVM_AGENT_MSG_MAX
 };
 
@@ -48,6 +49,15 @@ struct hybm_gvm_agent_fetch_msg {
     u32 pasid;
     u32 pa_num;
     u64 pa_list[];
+};
+
+struct hybm_gvm_agent_register_msg {
+    u64 va;
+    u64 size;
+    u64 new_va;
+    u32 page_size;
+    int hostpid;
+    u32 pasid;
 };
 
 struct hybm_gvm_agent_msg {

@@ -3,16 +3,8 @@
 */
 #ifndef HYBM_DRIVER_H
 #define HYBM_DRIVER_H
-
-#include <string>
-
-namespace ock {
-namespace mf {
 std::string GetDriverVersionPath(const std::string &driverEnvStr, const std::string &keyStr);
 std::string LoadDriverVersionInfoFile(const std::string &realName, const std::string &keyStr);
 std::string CastDriverVersion(const std::string &driverEnv);
 int32_t GetValueFromVersion(const std::string &ver, std::string key);
-} // namespace mf
-} // namespace ock
-
 #endif

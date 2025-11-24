@@ -13,6 +13,7 @@ namespace ock {
 namespace smem {
 
 const std::string SMEM_GROUP_SET_STR = "ok";
+const std::string SMEM_GROUP_EXIT_KEY = "EXIT";
 const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
 const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
@@ -170,6 +171,64 @@ static void SortGatherRecv(std::vector<uint8_t> &vec, uint32_t preSize, uint32_t
     std::sort(offset.begin(), offset.end());
     for (uint32_t i = 0; i < rankSize; i++) {
         (void)std::copy_n(ptr + offset[i].second, preSize, recvBuf + preSize * i);
+    }
+}
+
+
+Result SmemNetGroupEngine::GroupBroadcastExit(int status)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+
+    auto ret = store_->Set(SMEM_GROUP_EXIT_KEY, std::to_string(status));
+    SM_VALIDATE_RETURN(ret == SM_OK, "store set key: " << store_->GetCompleteKey(SMEM_GROUP_EXIT_KEY)
+                                                       << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+    SM_LOG_DEBUG("store set key: " << store_->GetCompleteKey(SMEM_GROUP_EXIT_KEY));
+    return ret;
+}
+
+Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
+{
+    if (globalExitHandler_ != nullptr) {
+        SM_LOG_WARN("the exit function is not null");
+        return SM_INVALID_PARAM;
+    }
+    SM_ASSERT_RETURN(exit != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    globalExitHandler_ = exit;
+    uint32_t wid;
+    auto ret = store_->Watch(SMEM_GROUP_EXIT_KEY, std::bind(&SmemNetGroupEngine::RankExit, this,
+                                                            std::placeholders::_1, std::placeholders::_2,
+                                                            std::placeholders::_3), wid);
+    if (ret != SM_OK) {
+        SM_LOG_WARN("group watch failed, maybe link down, ret: " << ret);
+        globalExitHandler_ = nullptr;
+        return ret;
+    }
+    return SM_OK;
+}
+
+void SmemNetGroupEngine::RankExit(int result, const std::string &key, const std::string &value)
+{
+    if (result == SUCCESS && globalExitHandler_ != nullptr) {
+        if (value.empty()) {
+            SM_LOG_WARN("the value is empty");
+            return;
+        }
+        int val = 0;
+        try {
+            long tempVal = std::stol(value);
+            if (tempVal < std::numeric_limits<int>::min() || tempVal > std::numeric_limits<int>::max()) {
+                SM_LOG_WARN("value out of int range: " << tempVal << " (value='" << value << "')");
+                return;
+            }
+            val = static_cast<int>(tempVal);
+        } catch (...) {
+            SM_LOG_WARN("convert string to int failed");
+            return;
+        }
+        globalExitHandler_(val);
+    } else {
+        SM_LOG_WARN("global exit failed");
     }
 }
 
@@ -474,7 +533,7 @@ void SmemNetGroupEngine::RemoteRankLinkDownCb(uint32_t remoteRankId)
     listenSignal_.OperateInLock([this, remoteRankId]() {
         listenCtx_.ret = SM_OK;
         listenCtx_.events.emplace_back(GroupEvent(remoteRankId));
-    }, true);
+        }, true);
 }
 
 void SmemNetGroupEngine::ClearBitmapForRank(uint32_t rankId)

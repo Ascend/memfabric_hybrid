@@ -20,7 +20,14 @@ git clone git@gitee.com:ascend/memfabric_hybrid.git
 cd memfabric_hybrid
 ```
 
-2. 编译
+2. 拉取三方库
+```
+git submodule init
+
+git submodule update --recursive
+```
+
+3. 编译
 
 支持直接执行如下脚本编译
 ```
@@ -35,7 +42,7 @@ build_compiler:编译器选择，输入bisheng可手动指定编译器为bisheng
 不填入参数情况下,默认执行build.sh RELEASE OFF ON ON gcc
 ```
 
-3. ut运行
+4. ut运行
 
 支持直接执行如下脚本编译并运行ut
 ```

@@ -71,7 +71,7 @@ TEST_F(TestMmcServiceError, metaService)
     std::string bmUrl = "tcp://127.0.0.1:5881";
     std::string hcomUrl = "tcp://127.0.0.1:5882";
     std::string localUrl = "";
-    mmc_meta_service_config_t metaServiceConfig;
+    mmc_meta_service_config_t metaServiceConfig{};
     metaServiceConfig.logLevel = 0;
     metaServiceConfig.logRotationFileSize = 2 * 1024 * 1024;
     metaServiceConfig.logRotationFileCount = 20;
@@ -84,10 +84,12 @@ TEST_F(TestMmcServiceError, metaService)
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
 
-    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "device_sdma", 0, 104857600, 0};
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, "", "", 0, "device_sdma", 0, 104857600, 0};
     localServiceConfig.logLevel = 0;
     localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
+    UrlStringToChar(bmUrl, localServiceConfig.bmIpPort);
+    UrlStringToChar(hcomUrl, localServiceConfig.bmHcomUrl);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);
 
@@ -117,26 +119,22 @@ TEST_F(TestMmcServiceError, metaService)
     mmc_buffer buffer;
     buffer.addr = (uint64_t)hostSrc;
     buffer.type = 0;
-    buffer.dimType = 0;
-    buffer.oneDim.offset = 0;
-    buffer.oneDim.len = SIZE_32K;
+    buffer.offset = 0;
+    buffer.len = SIZE_32K;
 
-    mmc_put_options options{0, NATIVE_AFFINITY};
+    mmc_put_options options{0, NATIVE_AFFINITY, 1};
+    std::fill_n(options.preferredLocalServiceIDs, MAX_BLOB_COPIES, -1);
     ret = mmcc_put(test.c_str(), &buffer, options, 0);
     ASSERT_TRUE(ret == 0);
 
     mmc_buffer readBuffer;
     readBuffer.addr = (uint64_t)hostDest;
     readBuffer.type = 0;
-    readBuffer.dimType = 0;
-    readBuffer.oneDim.offset = 0;
-    readBuffer.oneDim.len = SIZE_32K;
+    readBuffer.offset = 0;
+    readBuffer.len = SIZE_32K;
 
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     ASSERT_TRUE(ret == 0);
-
-    mmc_location_t location = mmcc_get_location(test.c_str(), 0);
-    ASSERT_TRUE(location.xx == 0);
 
     ret = mmcc_remove(test.c_str(), 0);
     ASSERT_TRUE(ret == 0);
@@ -154,9 +152,8 @@ TEST_F(TestMmcServiceError, metaService)
 
         bufs[i].addr = (uint64_t)hostSrcs[i];
         bufs[i].type = 0;
-        bufs[i].dimType = 0;
-        bufs[i].oneDim.offset = 0;
-        bufs[i].oneDim.len = SIZE_32K;
+        bufs[i].offset = 0;
+        bufs[i].len = SIZE_32K;
     }
     std::vector<int> results(keys_count, -1);
     ret = mmcc_batch_put(keys, keys_count, bufs, options, 0, results.data());
@@ -166,9 +163,8 @@ TEST_F(TestMmcServiceError, metaService)
         mmc_buffer readBuffer;
         readBuffer.addr = (uint64_t)hostDests[i];
         readBuffer.type = 0;
-        readBuffer.dimType = 0;
-        readBuffer.oneDim.offset = 0;
-        readBuffer.oneDim.len = SIZE_32K;
+        readBuffer.offset = 0;
+        readBuffer.len = SIZE_32K;
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         ASSERT_TRUE(ret == 0);
@@ -199,7 +195,7 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     std::string bmUrl = "tcp://127.0.0.1:5881";
     std::string hcomUrl = "tcp://127.0.0.1:5882";
     std::string localUrl = "";
-    mmc_meta_service_config_t metaServiceConfig;
+    mmc_meta_service_config_t metaServiceConfig{};
     metaServiceConfig.logLevel = 0;
     metaServiceConfig.logRotationFileSize = 2 * 1024 * 1024;
     metaServiceConfig.logRotationFileCount = 20;
@@ -212,10 +208,12 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     mmc_meta_service_t meta_service = mmcs_meta_service_start(&metaServiceConfig);
     ASSERT_TRUE(meta_service != nullptr);
 
-    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, bmUrl, hcomUrl, 0, "device_sdma", 0, MF_SIZE, 0};
+    mmc_local_service_config_t localServiceConfig = {"", 0, 0, 1, "", "", 0, "device_sdma", 0, MF_SIZE, 0};
     localServiceConfig.logLevel = 0;
     localServiceConfig.accTlsConfig.tlsEnable = false;
     UrlStringToChar(metaUrl, localServiceConfig.discoveryURL);
+    UrlStringToChar(bmUrl, localServiceConfig.bmIpPort);
+    UrlStringToChar(hcomUrl, localServiceConfig.bmHcomUrl);
     mmc_meta_service_t local_service = mmcs_local_service_start(&localServiceConfig);
     ASSERT_TRUE(local_service != nullptr);
 
@@ -238,26 +236,22 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     mmc_buffer buffer;
     buffer.addr = (uint64_t)hostSrc;
     buffer.type = 0;
-    buffer.dimType = 0;
-    buffer.oneDim.offset = 0;
-    buffer.oneDim.len = SIZE_32K;
+    buffer.offset = 0;
+    buffer.len = SIZE_32K;
 
-    mmc_put_options options{0, NATIVE_AFFINITY};
+    mmc_put_options options{0, NATIVE_AFFINITY, 1};
+    std::fill_n(options.preferredLocalServiceIDs, MAX_BLOB_COPIES, -1);
     ret = mmcc_put(test.c_str(), &buffer, options, 0);
     EXPECT_TRUE(ret == 0);
 
     mmc_buffer readBuffer;
     readBuffer.addr = (uint64_t)hostDest;
     readBuffer.type = 0;
-    readBuffer.dimType = 0;
-    readBuffer.oneDim.offset = 0;
-    readBuffer.oneDim.len = SIZE_32K;
+    readBuffer.offset = 0;
+    readBuffer.len = SIZE_32K;
 
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     EXPECT_TRUE(ret == 0);
-
-    mmc_location_t location = mmcc_get_location(test.c_str(), 0);
-    EXPECT_TRUE(location.xx == 0);
 
     uint32_t keys_count = MF_SIZE / SIZE_32K / 2;
     const char **keys = static_cast<const char**>(malloc(keys_count * sizeof(char*)));
@@ -276,9 +270,8 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
 
         bufs[i].addr = (uint64_t)hostSrcs[i];
         bufs[i].type = 0;
-        bufs[i].dimType = 0;
-        bufs[i].oneDim.offset = 0;
-        bufs[i].oneDim.len = SIZE_32K;
+        bufs[i].offset = 0;
+        bufs[i].len = SIZE_32K;
     }
     std::vector<int> results(keys_count, -1);
     ret = mmcc_batch_put(keys, keys_count, bufs, options, 0, results.data());
@@ -288,9 +281,8 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
         mmc_buffer readBuffer;
         readBuffer.addr = (uint64_t)hostDests[i];
         readBuffer.type = 0;
-        readBuffer.dimType = 0;
-        readBuffer.oneDim.offset = 0;
-        readBuffer.oneDim.len = SIZE_32K;
+        readBuffer.offset = 0;
+        readBuffer.len = SIZE_32K;
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         EXPECT_TRUE(ret == 0);
@@ -310,9 +302,6 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
     ret = mmcc_get(test.c_str(), &readBuffer, 0);
     EXPECT_TRUE(ret == 0);
 
-    location = mmcc_get_location(test.c_str(), 0);
-    EXPECT_TRUE(location.xx == 0);
-
     ret = mmcc_remove(test.c_str(), 0);
     EXPECT_TRUE(ret == 0);
 
@@ -320,9 +309,8 @@ TEST_F(TestMmcServiceError, metaServiceRebuild)
         mmc_buffer readBuffer;
         readBuffer.addr = (uint64_t)hostDests[i];
         readBuffer.type = 0;
-        readBuffer.dimType = 0;
-        readBuffer.oneDim.offset = 0;
-        readBuffer.oneDim.len = SIZE_32K;
+        readBuffer.offset = 0;
+        readBuffer.len = SIZE_32K;
 
         ret = mmcc_get(keys[i], &readBuffer, 0);
         if (i == 0) {

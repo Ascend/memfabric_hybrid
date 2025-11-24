@@ -27,15 +27,15 @@
         }                                                                                   \
     } while (0)
 
-#define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << msg << std::endl
+#define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << (msg) << std::endl
 
-#define CHECK_GOTO_ERR(x, msg, lable)   \
-do {                            \
-    if ((x) != 0) {             \
-        LOG_ERROR(msg);         \
-        goto lable;              \
-    }                           \
-} while (0)
+#define CHECK_GOTO_ERR(x, msg, lable) \
+    do {                              \
+        if ((x) != 0) {               \
+            LOG_ERROR(msg);           \
+            goto (lable);             \
+        }                             \
+    } while (0)
 
 const uint64_t GVA_SIZE = 1024ULL * 1024 * 1024;
 constexpr uint32_t MAX_UINT32 = 0xFFFFFFFF;

@@ -210,7 +210,8 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
         memset(hostSrc, rank + 1, UT_COPY_MEM_SIZE);
         memset(hostDst, 0, UT_COPY_MEM_SIZE);
 
-        ret = smem_bm_copy(handle, hostSrc, remote, UT_COPY_MEM_SIZE, SMEMB_COPY_H2G, 0);
+        smem_copy_params params = {hostSrc, remote, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_H2G, 0);
         if (ret != 0) {
             exit(11);
         }
@@ -219,7 +220,8 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
             exit(12);
         }
 
-        ret = smem_bm_copy(handle, remote, hostDst, UT_COPY_MEM_SIZE, SMEMB_COPY_G2H, 0);
+        params = {remote, hostDst, UT_COPY_MEM_SIZE};
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2H, 0);
         if (ret != 0) {
             exit(13);
         }

@@ -86,7 +86,7 @@ void smem_bm_destroy_(smem_bm_t handle)
     return;
 }
 
-int32_t smem_bm_join_(smem_bm_t handle, uint32_t flags, void **localGvaAddress)
+int32_t smem_bm_join_(smem_bm_t handle, uint32_t flags)
 {
     return 0;
 }
@@ -121,12 +121,6 @@ int32_t smem_bm_copy_(smem_bm_t handle, const void *src, void *dest, uint64_t si
     return 0;
 }
 
-int32_t smem_bm_copy_2d_(smem_bm_t handle, const void *src, uint64_t spitch, void *dest, uint64_t dpitch, uint64_t width,
-                         uint64_t heigth, smem_bm_copy_type t, uint32_t flags)
-{
-    return 0;
-}
-
 void MockSmemBmH()
 {
     MOCKER(smem_bm_config_init).stubs().will(invoke(smem_bm_config_init_));
@@ -142,7 +136,6 @@ void MockSmemBmH()
     MOCKER(smem_bm_get_local_mem_size_by_mem_type).stubs().will(invoke(smem_bm_get_local_mem_size_by_mem_type_));
     MOCKER(smem_bm_ptr_by_mem_type).stubs().will(invoke(smem_bm_ptr_by_mem_type_));
     MOCKER(smem_bm_copy).stubs().will(invoke(smem_bm_copy_));
-    MOCKER(smem_bm_copy_2d).stubs().will(invoke(smem_bm_copy_2d_));
 }
 
 // smem_shm.h
