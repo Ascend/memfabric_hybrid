@@ -7,7 +7,6 @@ readonly BUILD_PATH="$PROJECT_FULL_PATH/build"
 readonly OUTPUT_PATH="$PROJECT_FULL_PATH/output"
 readonly HYBM_LIB_PATH="$OUTPUT_PATH/hybm/lib64"
 readonly SMEM_LIB_PATH="$OUTPUT_PATH/smem/lib64"
-readonly MEMCACHE_LIB_PATH="$OUTPUT_PATH/memcache/lib64"
 readonly COVERAGE_PATH="$OUTPUT_PATH/coverage"
 readonly TEST_REPORT_PATH="$OUTPUT_PATH/bin/gcover_report"
 readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
@@ -35,16 +34,16 @@ dos2unix $TEST_3RD_PATCH_PATH/*.patch
 
 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTS=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
 make install -j32 -C ${BUILD_PATH}
-export LD_LIBRARY_PATH=$MEMCACHE_LIB_PATH:$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 
-cd "$OUTPUT_PATH/bin/ut" && ./test_mmc_test --gtest_break_on_failure --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml"
+cd "$OUTPUT_PATH/bin/ut" && ./test_smem_test --gtest_break_on_failure --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml"
 
 mkdir -p "$COVERAGE_PATH"
 cd "$OUTPUT_PATH"
 lcov -d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|SM_LOG*|SM_ASSERT*|BM_LOG*|BM_ASSERT*|SM_VALIDATE_*|ASSERT*|LOG_*|MMC_LOG*|MMC_RETURN*|MMC_ASSERT*|MMC_VALIDATE*"
-lcov -e "$COVERAGE_PATH"/coverage.info "*/src/memcache/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+lcov -e "$COVERAGE_PATH"/coverage.info "*/src/smem/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
 lcov -r "$COVERAGE_PATH"/coverage.info "*/3rdparty/*" "*/src/hybm/csrc/driver/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
 genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1
 
