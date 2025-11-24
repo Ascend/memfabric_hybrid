@@ -17,7 +17,7 @@ HDK固件驱动需要使用**25.0.RC1**及以上版本([昇腾社区HDK下载链
 安装完成后需要配置CANN环境变量([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
 
 ### 安装流程
-run包格式为 mxc-memfabric-hybrid-${version}_${os}_${arch}.run
+run包格式为 memfabric-hybrid-${version}_${os}_${arch}.run
 
 默认安装根路径为 /usr/local/
 
@@ -25,19 +25,18 @@ run包格式为 mxc-memfabric-hybrid-${version}_${os}_${arch}.run
 
 参考安装命令如下
 ```bash
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
-source /usr/local/mxc/memfabric_hybrid/set_env.sh
+bash memfabric_hybrid-1.0.0_linux_aarch64.run
+source /usr/local/memfabric_hybrid/set_env.sh
 ```
 
 如果想要自定义安装路径，可以添加--install-path参数
 ```bash
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
+bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 ```
 
 安装完成后目录结构如下
 ```
 ${INSTALL_PATH}/
-    |--mxc
           |--memfabric_hybrid
               |-- latest
               |-- set_env.sh
@@ -72,7 +71,7 @@ G2H: copy data from global HBM space to host DRAM memory
 ```
 
 安装memfabric hybrid后，BM接口详情参见
-```${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_bm.h```
+```${INSTALL_PATH}/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_bm.h```
 
 #### Share Memory(SHM)
     * 支持创建统一内存空间
@@ -84,9 +83,9 @@ G2H: copy data from global HBM space to host DRAM memory
 
 安装memfabric hybrid后，SHM接口详情参见
 ```
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_shm.h
+${INSTALL_PATH}/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_shm.h
 和
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/lowlevel/smem_shm_aicore_base_api.h
+${INSTALL_PATH}/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/lowlevel/smem_shm_aicore_base_api.h
 ```
          
 
@@ -112,5 +111,3 @@ help(mf_smem)       # 查看smem基础函数介绍
 help(mf_smem.bm)    # 查看big memory接口介绍
 help(mf_smem.shm)   # 查看share memory接口介绍
 ```
-
-

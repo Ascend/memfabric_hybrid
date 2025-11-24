@@ -110,14 +110,14 @@ CONTAINER ID    IMAGE                           COMMAND                   CREATE
 │   └── libhcom.so
 ├── logs
 │   └── logs
-└── mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
+└── memfabric_hybrid-1.0.0_linux_aarch64.run
 ```
 
 #### 2.1 配置文件
 先往config目录下拷贝一份配置文件模板（配置文件可以通过安装run包方式获取）
 ```shell
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
-cp -rf /usr/local/mxc/memfabric_hybrid/latest/config/* /home/meta/config
+bash memfabric_hybrid-1.0.0_linux_aarch64.run
+cp -rf /usr/local/memfabric_hybrid/latest/config/* /home/meta/config
 ```
 
 修改如下配置
@@ -296,9 +296,9 @@ kubectl describe lease lease-memcache -n ns-memcache
 kubectl exec -it local-service-pod-0 -n ns-memcache -c local-service -- bash
 
 source /usr/local/Ascend/ascend-toolkit/set_env.sh;
-source /usr/local/mxc/memfabric_hybrid/set_env.sh;
+source /usr/local/memfabric_hybrid/set_env.sh;
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/meta/lib
-cd /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/script/k8s_deploy;
+cd /usr/local/memfabric_hybrid/latest/aarch64-linux/script/k8s_deploy;
 # 交互式测试，输入put/get/remove 等命令验证功能正常
 python interactive_app.py 
 ```
@@ -348,7 +348,7 @@ kubectl exec -it meta-service-pod-0 -n ns-memcache -c meta-service -- bash
 <br>将meta日志路径配置为`/home/memcache`，则对应的业务日志会写到`/home/memcache/logs/mmc-meta.log`文件中
 <br>将local的测试输出重定向到`/home/memcache/logs/mmc-local.log`文件中<br>
 （注意local-pods-demo.yaml中的业务启动命令
-`exec python3 /usr/local/mxc/memfabric_hybrid/latest/aarch64-linux/script/ha/test-mmc-meta-ha.py > /home/memcache/logs/mmc-local.log 2>&1`）
+`exec python3 /usr/local/memfabric_hybrid/latest/aarch64-linux/script/ha/test-mmc-meta-ha.py > /home/memcache/logs/mmc-local.log 2>&1`）
 
 ### 6. 测试场景
 

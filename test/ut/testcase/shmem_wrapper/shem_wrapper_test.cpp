@@ -29,7 +29,7 @@ public:
 TEST_F(ShmemWrapperTest, smem_api_test)
 {
     std::string outLibPath = OUT_LIB_PATH;
-    ASSERT_EQ(SmemApi::LoadLibrary("") != 0, true);
+    ASSERT_EQ(SmemApi::LoadLibrary("") == 0, true);
     ASSERT_EQ(SmemApi::LoadLibrary(outLibPath + "/smem/lib64/") == 0, true);
 
     ASSERT_EQ(SmemApi::SmemInit(0) == 0, true);

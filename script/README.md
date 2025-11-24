@@ -1,7 +1,6 @@
 ### 1 install dir
 ```
 ${INSTALL_PATH}/
-    |--mxc
           |--memfabric_hybrid
               |-- latest
               |-- set_env.sh
@@ -20,7 +19,7 @@ default ${INSTALL_PATH} is /usr/local/
 
 ### 2 rule of package name
 ```
-mxc-memfabric-hybrid-${version}_${os}_${arch}.run
+memfabric-hybrid-${version}_${os}_${arch}.run
 ```
 
 ### 3 upgrade

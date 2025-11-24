@@ -12,7 +12,7 @@ endif ()
 add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 add_library(pysmem OBJECT pysmem.cpp)
 
-if(BUILD_PYTHON STREQUAL "ON")
+if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
 
     # python

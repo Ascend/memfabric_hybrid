@@ -1,5 +1,11 @@
 #!/bin/bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+# This file is a part of the CANN Open Software.
+# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
 install_flag=y
 uninstall_flag=n
 install_path_flag=n
@@ -9,7 +15,7 @@ script_dir=$(dirname $(readlink -f "$0"))
 version1="none"
 pkg_arch="none"
 os1="none"
-default_install_dir="/usr/local/mxc/memfabric_hybrid"
+default_install_dir="/usr/local/memfabric_hybrid"
 
 function print_help() {
     echo "--install-path=<path>             Install to specific dir"
@@ -82,7 +88,7 @@ function parse_script_args()
         --install-path=*)
             install_path_flag=y
             target_dir=$(echo $1 | cut -d"=" -f2-)
-            target_dir=${target_dir}/mxc/memfabric_hybrid
+            target_dir=${target_dir}/memfabric_hybrid
             shift
         ;;
         --uninstall)
@@ -139,7 +145,7 @@ function check_owner()
     fi
 
     if [[ "${cur_owner}" != "root" && "${install_flag}" == "y" ]]; then
-        default_install_dir="${HOME}/mxc/memfabric_hybrid"
+        default_install_dir="${HOME}/memfabric_hybrid"
     fi
 
     if [ "${install_path_flag}" == "y" ]; then
@@ -286,7 +292,6 @@ function install_to_path()
 
     cd ${install_dir}
     cp -r ${script_dir}/../${pkg_arch}-${os1} ${install_dir}/
-    cp -r ${script_dir}/../config ${install_dir}/
     cp -r ${script_dir}/uninstall.sh ${install_dir}/
     cp -r ${script_dir}/../version.info ${install_dir}/
 

@@ -1,9 +1,37 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+# This file is a part of the CANN Open Software.
+# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+
 cmake_minimum_required(VERSION 3.12.0)
 project(MF_HYBRID VERSION 1.0 LANGUAGES CXX C)
-
+message(STATUS "in memfabric cmakefile ${BUILD_FROM_MEMCACHE}.")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+
+if (BUILD_COMPILER MATCHES gcc)
+    set(CMAKE_COMPILER gcc)
+else ()
+    set(CMAKE_COMPILER bisheng)
+endif ()
+
+if (CMAKE_COMPILER MATCHES bisheng AND DEFINED ENV{ASCEND_HOME_PATH})
+    set(ASCEND_HOME_PATH $ENV{ASCEND_HOME_PATH})
+    set(CMAKE_C_COMPILER ${CMAKE_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_COMPILER})
+else ()
+    if (CMAKE_COMPILER MATCHES bisheng)
+        message(WARNING "ASCEND_HOME_PATH not found! Please run set_env.sh first.")
+    endif ()
+    set(CMAKE_C_COMPILER gcc)
+    set(CMAKE_CXX_COMPILER g++)
+endif ()
+
 option(ENABLE_TRACE_LOG "Enable trace log" OFF)
+option(ENABLE_ASAN "Enable ASAN" OFF)
 option(BUILD_TESTS "build test or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
@@ -58,10 +86,13 @@ endif ()
 
 if (BUILD_TESTS STREQUAL "ON")
     add_definitions(-DUT_ENABLED)
-    add_compile_options(-fprofile-arcs -ftest-coverage)
-    add_link_options(-lgcov --coverage)
+    if (NOT CMAKE_COMPILER MATCHES bisheng)
+        add_compile_options(-fprofile-arcs -ftest-coverage)
+        add_link_options(-lgcov --coverage)
+    endif()
     set(BUILD_OPEN_ABI "ON")
 endif ()
+
 
 if (ENABLE_PTRACER STREQUAL "ON")
     add_definitions(-DENABLE_PTRACER=ON)
@@ -123,6 +154,10 @@ set(PROJECT_UTIL_SRC_BASE ${PROJECT_SOURCE_DIR}/src/util/csrc)
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
 
+# set src base dir and output dir of memcache
+set(PROJECT_MMC_SRC_BASE ${PROJECT_SOURCE_DIR}/src/memcache)
+set(PROJECT_MMC_OUTPUT ${PROJECT_SOURCE_DIR}/output/memcache)
+
 # set src base dir and output dir of smem
 set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
@@ -150,7 +185,7 @@ else ()
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 
-if(BUILD_PYTHON STREQUAL "ON")
+if( (BUILD_PYTHON STREQUAL "ON") OR (BUILD_TESTS STREQUAL "ON") )
     # 获取Python头文件路径
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
     if(NOT PYTHON_EXECUTABLE)

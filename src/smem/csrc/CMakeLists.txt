@@ -41,7 +41,7 @@ add_library(smem_shared SHARED $<TARGET_OBJECTS:smem_objects> $<TARGET_OBJECTS:c
 set_target_properties(smem_shared PROPERTIES OUTPUT_NAME "mf_smem")
 target_link_libraries(smem_shared PUBLIC pthread acc_tcp_net_static hybmm_shared)
 
-if(BUILD_PYTHON STREQUAL "ON")
+if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
     add_subdirectory(python_wrapper)
 endif()
 

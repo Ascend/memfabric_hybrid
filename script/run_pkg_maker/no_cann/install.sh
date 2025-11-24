@@ -9,7 +9,7 @@ script_dir=$(dirname $(readlink -f "$0"))
 version1="none"
 pkg_arch="none"
 os1="none"
-default_install_dir="/usr/local/mxc/memfabric_hybrid"
+default_install_dir="/usr/local/memfabric_hybrid"
 echo "USE_CANN is OFF"
 function print_help() {
     echo "--install-path=<path>             Install to specific dir"
@@ -82,7 +82,7 @@ function parse_script_args()
         --install-path=*)
             install_path_flag=y
             target_dir=$(echo $1 | cut -d"=" -f2-)
-            target_dir=${target_dir}/mxc/memfabric_hybrid
+            target_dir=${target_dir}/memfabric_hybrid
             shift
         ;;
         --uninstall)
@@ -116,7 +116,7 @@ function check_owner()
     local cur_owner=$(whoami)
 
     if [[ "${cur_owner}" != "root" && "${install_flag}" == "y" ]]; then
-        default_install_dir="${HOME}/mxc/memfabric_hybrid"
+        default_install_dir="${HOME}/memfabric_hybrid"
     fi
 
     if [ "${install_path_flag}" == "y" ]; then
@@ -263,7 +263,6 @@ function install_to_path()
 
     cd ${install_dir}
     cp -r ${script_dir}/../${pkg_arch}-${os1} ${install_dir}/
-    cp -r ${script_dir}/../config ${install_dir}/
     cp -r ${script_dir}/uninstall.sh ${install_dir}/
     cp -r ${script_dir}/../version.info ${install_dir}/
 

@@ -51,7 +51,7 @@ bash script/run_ut.sh
 
 ### 安装使用
 
-memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```mxc-memfabric-hybrid-${version}_${os}_${arch}.run```
+memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
 
 其中，versin表示memfabric_hybrid的版本；os表示操作系统,如linux；arch表示架构，如x86或aarch64
 
@@ -78,13 +78,13 @@ run包的默认安装根路径为 /usr/local/
 
 参考安装命令如下
 ```bash
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
+bash memfabric_hybrid-1.0.0_linux_aarch64.run
 source /usr/local/mxc/memfabric_hybrid/set_env.sh
 ```
 
 如果想要自定义安装路径，可以添加--install-path参数
 ```bash
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
+bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 ```
 
 安装完成后目录结构如下

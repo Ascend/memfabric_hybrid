@@ -10,6 +10,7 @@ constexpr int32_t RETURN_ERROR = -1;
 constexpr uint64_t baseAddr = 0x10000000000;
 
 extern "C" {
+int *g_devmm_mem_dev;
 int32_t halGvaReserveMemory(void **address, size_t size, int32_t deviceId, uint64_t flags)
 {
     *address = (void *) baseAddr;
@@ -41,7 +42,6 @@ int32_t halGvaClose(void *address, uint64_t flags)
     return RETURN_OK;
 }
 
-int *g_devmm_mem_dev;
 void svm_module_alloced_size_inc(void *a, uint32_t b, uint32_t c, uint64_t d)
 {
     return;

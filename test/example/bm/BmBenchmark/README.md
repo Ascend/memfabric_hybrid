@@ -26,8 +26,8 @@
 
 memfabric_hybrid参考安装命令
 ```bash
-bash mxc-memfabric_hybrid-1.0.0_linux_aarch64.run
-source /usr/local/mxc/memfabric_hybrid/set_env.sh
+bash memfabric_hybrid-1.0.0_linux_aarch64.run
+source /usr/local/memfabric_hybrid/set_env.sh
 ```
 
 ## 编译

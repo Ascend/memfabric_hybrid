@@ -17,7 +17,7 @@ include_directories(
         ${PROJECT_ADAPTER_SRC_BASE}/csrc/util
 )
 
-if (BUILD_PYTHON STREQUAL "ON")
+if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
     file(GLOB_RECURSE MOONCAKE_SRC *.cpp)
     add_library(pytransfer OBJECT  ${MOONCAKE_SRC})
     find_package(pybind11 REQUIRED)

@@ -27,7 +27,7 @@ install(
 
 install(
         TARGETS hal_shared
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib/cann/driver/lib64
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver/lib64
         PERMISSIONS OWNER_READ GROUP_READ
 )
 

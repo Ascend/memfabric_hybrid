@@ -84,7 +84,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(HalGvaPrecheck(), "the current version of ascend driver does not support mf!");
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
-    ptracer_config_t config{.tracerType = 1, .dumpFilePath = "/var/log/mxc/memfabric_hybrid"};
+    ptracer_config_t config{.tracerType = 1, .dumpFilePath = "/var/log/memfabric_hybrid"};
     auto ret = ptracer_init(&config);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();

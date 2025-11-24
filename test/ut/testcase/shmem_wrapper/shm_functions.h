@@ -13,8 +13,8 @@
 
 namespace shm {
 
-#define LOG_ERROR(ARGS) std::cout << "[SHM][ERROR] " << ARGS << std::endl;
-#define LOG_INFO(ARGS) std::cout << "[SHM][INFO] " << ARGS << std::endl;
+#define LOG_ERROR(ARGS) std::cout << "[SHM][ERROR] " << ARGS << std::endl
+#define LOG_INFO(ARGS) std::cout << "[SHM][INFO] " << ARGS << std::endl
 
 class Func {
 public:
@@ -39,7 +39,7 @@ public:
 
 inline bool Func::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX) {
+    if (path.empty() || path.size() >= PATH_MAX) {
         LOG_ERROR("Failed to get realpath of [" << path << "] as path is invalid");
         return false;
     }
@@ -82,8 +82,8 @@ inline bool Func::LibraryRealPath(const std::string &libDirPath, const std::stri
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)       \
     do {                                                                               \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);           \
-        if (TARGET_FUNC_VAR == nullptr) {                                              \
+        (TARGET_FUNC_VAR) = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);           \
+        if ((TARGET_FUNC_VAR) == nullptr) {                                              \
             LOG_ERROR("Failed to call dlsym to load SYMBOL_NAME, error" << dlerror()); \
             dlclose(FILE_HANDLE);                                                      \
             return false;                                                              \

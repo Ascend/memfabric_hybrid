@@ -1,5 +1,11 @@
 #!/bin/bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+# This file is a part of the CANN Open Software.
+# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
 USE_CANN=${2:-ON}
 echo "USE_CANN is ${USE_CANN}"
 set -e
@@ -10,10 +16,7 @@ PROJECT_DIR=${BASH_PATH}/../..
 cd ${BASH_PATH}
 
 # get commit id
-rm -rf ../git_last_commit.txt
-bash ../gen_last_git_commit.sh
-GIT_COMMIT=$(cat ../git_last_commit.txt)
-rm -rf ../git_last_commit.txt
+GIT_COMMIT=`git rev-parse HEAD`
 
 # get arch
 if [ $( uname -i | grep -c -i "x86_64" ) -ne 0 ]; then
@@ -31,7 +34,7 @@ fi
 OS_NAME=$(uname -s | awk '{print tolower($0)}')
 ARCH_OS=${ARCH}-${OS_NAME}
 
-PKG_DIR="mxc-memfabric_hybrid"
+PKG_DIR="memfabric_hybrid"
 VERSION="1.0.0"
 OUTPUT_DIR=${BASH_PATH}/../../output
 
@@ -42,7 +45,6 @@ mkdir ${PKG_DIR}/${ARCH_OS}/include
 mkdir ${PKG_DIR}/${ARCH_OS}/lib64
 mkdir ${PKG_DIR}/${ARCH_OS}/wheel
 mkdir ${PKG_DIR}/${ARCH_OS}/script
-mkdir ${PKG_DIR}/config
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver

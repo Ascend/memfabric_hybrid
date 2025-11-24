@@ -44,7 +44,7 @@ int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
     std::string realPath;
     if (!libDirPath.empty()) {
         if (!Func::LibraryRealPath(libDirPath, std::string(gSmemFileName), realPath)) {
-            LOG_ERROR("get lib path failed, library path: " << libDirPath);
+            LOG_ERROR("get lib path failed, library path: " << gSmemFileName);
             return -1;
         }
     } else {
@@ -54,7 +54,7 @@ int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
     /* dlopen library */
     gSmemHandle = dlopen(realPath.c_str(), RTLD_NOW);
     if (gSmemHandle == nullptr) {
-        LOG_ERROR("Failed to open library: " << realPath << ", error: " << dlerror());
+        LOG_ERROR("Failed to open library: " << gSmemFileName << ", error: " << dlerror());
         return -1L;
     }
 
@@ -83,7 +83,7 @@ int32_t SmemApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(gSmemShmTopoCanReach, SmemShmTopoCanReachFunc, gSmemHandle, "smem_shm_topology_can_reach");
 
     gLoaded = true;
-    LOG_INFO("loaded library: " << gSmemFileName << " under dir: " << libDirPath.c_str());
+    LOG_INFO("loaded library: " << gSmemFileName << " success.");
     return 0;
 }
 }  // namespace shm

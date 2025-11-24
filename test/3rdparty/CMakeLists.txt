@@ -49,13 +49,12 @@ externalproject_add(googletest
         LOG_BUILD On
         LOG_INSTALL On)
 
-add_library(GTEST::GTEST STATIC IMPORTED GLOBAL)
-externalproject_get_property(googletest INSTALL_DIR)
-externalproject_get_property(googletest BINARY_DIR)
-set(GTEST_LIBS_DIR ${INSTALL_DIR}/lib PARENT_SCOPE)
-set(GTEST_INCLUDE_DIR ${INSTALL_DIR}/include PARENT_SCOPE)
-set_target_properties(GTEST::GTEST PROPERTIES IMPORTED_LOCATION ${INSTALL_DIR}/lib/libgtestd.a)
-
+macro(TARGET_GTEST_HEADER target)
+    add_dependencies(${target} googletest)
+    target_include_directories(${target} PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/googletest/include)
+    target_link_directories(${target} PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib)
+    target_link_libraries(${target} ${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib/libgtest.a)
+endmacro()
 
 ######################################################################
 # Mockcpp

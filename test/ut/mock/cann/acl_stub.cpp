@@ -17,6 +17,9 @@ int32_t aclrtSetDevice(int32_t deviceId)
 
 int32_t aclrtGetDevice(int32_t *deviceId)
 {
+    if (deviceId != nullptr) {
+        *deviceId = 0;
+    }
     return RETURN_OK;
 }
 
@@ -42,6 +45,9 @@ int32_t aclrtSynchronizeStream(void *stream)
 
 int32_t aclrtMalloc(void **ptr, size_t count, uint32_t type)
 {
+    if (ptr == nullptr) {
+        return RETURN_ERROR;
+    }
     *ptr = (void *) START_ADDR;
     return RETURN_OK;
 }
@@ -81,11 +87,17 @@ int32_t aclrtMemset(void *dst, size_t destMax, int32_t value, size_t count)
 
 int32_t rtDeviceGetBareTgid(uint32_t *pid)
 {
+    if (pid != nullptr) {
+        *pid = 0;
+    }
     return RETURN_OK;
 }
 
 int32_t rtGetDeviceInfo(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *val)
 {
+    if (val != nullptr) {
+        *val = 0;
+    }
     return RETURN_OK;
 }
 
@@ -100,6 +112,20 @@ int32_t rtIpcSetMemoryName(const void *ptr, uint64_t byteCount, char *name, uint
 }
 
 int32_t rtIpcDestroyMemoryName(const char *name)
+{
+    return RETURN_OK;
+}
+
+int32_t rtIpcOpenMemory(void **ptr, const char *name)
+{
+    if (ptr == nullptr) {
+        return RETURN_ERROR;
+    }
+    *ptr = reinterpret_cast<void*>(0x3200);
+    return RETURN_OK;
+}
+
+int32_t rtIpcCloseMemory(const void *ptr)
 {
     return RETURN_OK;
 }
