@@ -1,11 +1,13 @@
 #!/bin/bash
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-# This file is a part of the CANN Open Software.
-# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
-# Please refer to the License for details. You may not use this file except in compliance with the License.
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-# See LICENSE in the root of the software repository for the full text of the License.
+# MemFabric_Hybrid is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#          http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
 
 BUILD_MODE=${1:-RELEASE}
 BUILD_TESTS=${2:-OFF}
@@ -43,13 +45,6 @@ PROJ_DIR=$(pwd)
 
 rm -rf ./build ./output
 
-readonly BACK_PATH_EVN=$PATH
-
-export PYTHON_HOME="/opt/buildtools/python-3.11.4"
-export CMAKE_PREFIX_PATH=$PYTHON_HOME/lib/python3.11/site-packages/pybind11/share/cmake/pybind11/
-export LD_LIBRARY_PATH=$PYTHON_HOME/lib
-export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
-
 mkdir build/
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_COMPILER="${BUILD_COMPILER}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_VMM="${USE_VMM}"  -DUSE_CANN="${USE_CANN}" -S . -B build/
 make install -j32 -C build/
@@ -81,6 +76,8 @@ cp VERSION "${PROJ_DIR}/src/smem/python/mf_smem/"
 cp VERSION "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/"
 rm -f VERSION
 
+readonly BACK_PATH_EVN=$PATH
+
 # 如果 PYTHON_HOME 不存在，则设置默认值
 if [ -z "$PYTHON_HOME" ]; then
     # 定义要检查的目录路径
@@ -94,7 +91,11 @@ if [ -z "$PYTHON_HOME" ]; then
     echo "Not set PYTHON_HOME，and use $PYTHON_HOME"
 fi
 
-python_path_list=("/opt/buildtools/python-3.11.4")
+export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
+export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
+export CMAKE_PREFIX_PATH=$PYTHON_HOME
+
+python_path_list=("/opt/buildtools/python-3.8.5" "/opt/buildtools/python-3.9.11" "/opt/buildtools/python-3.10.2" "/opt/buildtools/python-3.11.4")
 for python_path in "${python_path_list[@]}"
 do
     if [ -n "${multiple_python}" ]; then
