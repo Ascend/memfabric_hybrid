@@ -1,93 +1,53 @@
 # memfabric_hybrid
 
-### 简介
+## 🔄Latest News
+
+- [2025/11] memfabric_hybrid项目预计2025年11月30日开源，开源社区地址为：https://gitcode.com/Ascend/memfabric_hybrid
+
+## 🎉概述
 MemFabric Hybrid面向昇腾NPU服务器和超节点，提供了构建基于HCCS互联的跨节点的HBM和DRAM的内存池的功能，可充分发挥A3超节点内D2D大带宽优势，无需配置额外Host网卡。它为用户提供了一个并行编程接口，并为跨多个NPU的内存的数据创建了一个全局地址空间，可以在NPU上通过使用MTE、RoCE、SDMA发起的数据操作来访问，还提供了由CPU发起的数据拷贝操作。
 
-#### Memfabric软件架构
-![architecture](./doc/source/architecture.JPG)
+![architecture](./doc/architecture.JPG)
 
-##### Memcache架构
-[Architecture for MemCache](./doc/zh/memcache.md)
 
-### 编译
+## 🧩核心组件及特性
 
-memfabric_hybrid编译不依赖CANN和HDK.
+- **Big Memory(BM)**
+    - 支持创建统一内存空间存储数据
+    - 支持同步数据拷贝，包含L2G, G2L, G2H, H2G
+    - 自动分配rank (初始化时用户可以不指定rank,由BM内部自动生成,具体参见smem_bm_init接口)
+    - 动态join和leave (参见smem_bm_join和smem_bm_leave接口)
+    - 接口支持的语言: c, python
 
-1. 下载代码
-```
-git clone git@gitee.com:ascend/memfabric_hybrid.git
-
-cd memfabric_hybrid
-```
-
-2. 拉取三方库
-```
-git submodule init
-
-git submodule update --recursive
+Note:
+```angular2html
+L2G: copy data from local HBM space to global HBM space
+G2L: copy data from global HBM space to local HBM space
+H2G: copy data from host DRAM memory to global HBM space
+G2H: copy data from global HBM space to host DRAM memory
 ```
 
-3. 编译
+安装memfabri hybrid后，BM接口头文件位于
+```${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_bm.h```
 
-支持直接执行如下脚本编译
+- **Share Memory(SHM)**
+    - 支持创建统一内存空间
+    - 支持用户传入自定义数据在卡侧访问(参见smem_shm_set_extra_context和smem_shm_get_extra_context_addr接口)
+    - 支持host侧全局barrier和allgather(参见smem_shm_control_barrier和smem_shm_control_allgather接口)
+    - 支持超节点内，卡侧通过MTE直接访问统一内存
+    - 卡侧提供基础copy接口
+    - 接口支持的语言: c, python
+
+安装memfabri hybrid后，SHM接口头文件位于
 ```
-bash script/build.sh
+${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_shm.h
 
-build.sh支持5个参数,按顺序分别是<build_mode> <need_build_ut> <open_abi> <build_whl> <BUILD_COMPILER>
-build_mode:编译类型,可填RELEASE或DEBUG
-need_build_ut:是否编译uttest,可填ON或OFF
-open_abi:编译时是否添加-D_GLIBCXX_USE_CXX11_ABI=1宏,可填ON或OFF
-build_whl:是否编译python的whl包,可填ON或OFF
-build_compiler:编译器选择，输入bisheng可手动指定编译器为bisheng。
-不填入参数情况下,默认执行build.sh RELEASE OFF ON ON gcc
-```
-
-4. ut运行
-
-支持直接执行如下脚本编译并运行ut
-```
-bash script/run_ut.sh
+${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/smem_shm_aicore_base_api.h
 ```
 
-### 安装使用
 
-memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
+## 🔍目录结构
 
-其中，versin表示memfabric_hybrid的版本；os表示操作系统,如linux；arch表示架构，如x86或aarch64
-
-#### run包编译
-
-可以直接执行如下命令进行编译，在output目录下生成run包
-```
-bash script/build_and_pack_run.sh
-```
-
-#### run包依赖
-
-run包只能安装到npu环境上，且依赖于NPU固件驱动和CANN包，具体版本依赖详见下面的软件硬件配套说明
-
-请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
-
-安装完成后需要配置CANN环境变量([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
-
-#### run包安装
-
-run包的默认安装根路径为 /usr/local/
-
-安装完成后需要source安装路径下的mxc/memfabric_hybrid/set_env.sh
-
-参考安装命令如下
-```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run
-source /usr/local/mxc/memfabric_hybrid/set_env.sh
-```
-
-如果想要自定义安装路径，可以添加--install-path参数
-```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
-```
-
-安装完成后目录结构如下
 ```
 ${INSTALL_PATH}/
     |--mxc
@@ -105,78 +65,60 @@ ${INSTALL_PATH}/
 default ${INSTALL_PATH} is /usr/local/
 ```
 
-在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
 
-memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要主动调用`smem_set_conf_store_tls`接口关闭：
-```c
-int32_t ret = smem_set_conf_store_tls(false, nullptr, 0);
-```
-具体细节详见安全声明章节
+## 🔥性能表现
 
+### 时延测试
+读写时延性能是一个衡量缓存池的重要指标，为对比测试内存语义和非内存语义，我们将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件）进行如下的测试：
+- 测试环境：2台昇腾A3机器，节点1每个die对应一个写进程，节点2每个die对应一个读进程，共32个进程
+- 测试步骤：
+  1) 构造block模拟DeepSeek-R1模型KV大小，即：61*128K + 61*16K = 8784KB ≈ 8.57MB，共122个离散地址。
+  2) 节点1所有进程调用put接口写入指定个数（8、16、32）的block，每个进程写512次，统计写总时延。
+  3) 节点2所有进程调用get接口读取所有写入的block，每个进程共计读取512次，统计读总时延。
+分别对内存语义（Memory标识，下同）和非内存语义（Message标识，下同）统计测试结果，绘制曲线对比如所示。
 
-### 特性简介
-#### Big Memory(BM)
-    * 支持创建统一内存空间存储数据
-    * 支持同步数据拷贝，包含L2G, G2L, G2H, H2G
-    * 自动分配rank (初始化时用户可以不指定rank,由BM内部自动生成,具体参见smem_bm_init接口)
-    * 动态join和leave (参见smem_bm_join和smem_bm_leave接口)
-    * 接口支持的语言: c, python
+![memfabric-Latency-performance](./doc/memfabric-Latency-performance.JPG)
 
-Note:
-```angular2html
-L2G: copy data from local HBM space to global HBM space
-G2L: copy data from global HBM space to local HBM space
-H2G: copy data from host DRAM memory to global HBM space
-G2H: copy data from global HBM space to host DRAM memory
-```
+### 单DIE带宽测试
+- 性能评估指标：单die跨机传输带宽。
+- 测试环境：2台昇腾A3机器
+- 测试步骤：
+  1) 构造单次拷贝数据大小1G/2G，连续内存
+  2) 进行RH2LD测试，循环调用RH2LD拷贝1000次，取时延平均值
+  3) 进行LD2RH测试，循环调用LD2RH拷贝1000次，取时延平均值
+  4) 进行LD2RD测试，循环调用LD2RD拷贝1000次，取时延平均值
+  5) 进行RD2LD测试，循环调用RD2LD拷贝1000次，取时延平均值
+![memfabric-Bandwidth-performance](./doc/memfabric-Bandwidth-performance.JPG)
 
-安装memfabri hybrid后，BM接口头文件位于
-```${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_bm.h```
+### PrefixCache吞吐测试
+在大模型推理中，尤其是需要长上下文或高并发处理请求时，KVCache的高效复用与调度成为关键，此类缓存需要在HBM、DRAM乃至 SSD之间频繁迁移，若无良好的池化支持，将导致显存拥堵和请求阻塞，因此，此场景是内存池化软件重要的应用场景。MemFabric +MemCache（类似MoonCake Store的分布式缓存软件，此文不赘述）联合国内某头部互联网AI部门，基于vLLM推理框架在昇腾A3超节点进行Prefill吞吐QPS测试，测试系统示意图如下图所示。
 
-#### Share Memory(SHM)
-    * 支持创建统一内存空间
-    * 支持用户传入自定义数据在卡侧访问(参见smem_shm_set_extra_context和smem_shm_get_extra_context_addr接口)
-    * 支持host侧全局barrier和allgather(参见smem_shm_control_barrier和smem_shm_control_allgather接口)
-    * 支持超节点内，卡侧通过MTE直接访问统一内存
-    * 卡侧提供基础copy接口
-    * 接口支持的语言: c, python
+![Prefill-QPS](./doc/Prefill-QPS.JPG)
 
-安装memfabri hybrid后，SHM接口头文件位于
-```
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_shm.h
-和
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/smem_shm_aicore_base_api.h
-```
-
-### 使用方法
-#### C接口
-安装完成run包并source安装路径下的set_env.sh后，会添加memfabric_hybrid安装路径的环境变量MEMFABRIC_HYBRID_HOME_PATH
-
-使用memfabric_hybrid相关接口时，需要include相关头文件(在\${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/include/smem/host路径下)，并且在**链接时需要添加libmf_smem.so**(在${MEMFABRIC_HYBRID_HOME_PATH}/aarch64-linux/lib64路径下)依赖
-
-可以通过MEMFABRIC_HYBRID_HOME_PATH环境变量指定头文件和lib库依赖路径，从而完成代码构建
+- 性能评估指标：2P1D（D是2机）共4台昇腾A3机器，观察P节点归一化QPS的提升，测试模型为DeepSeek-R1
+-  PrefixCache KVPool配置：每台机器贡献40GB*16die共640GB的DRAM内存，组成4机共2.5TB的KVPool，存储最高水位85%，超过最高水位后淘汰5%
+-  benchmark 配置：请求输入长度为4K，输出token为1；一共400组不同的前缀，每组发送25个请求，共约1w条请求；
+-  命中率构造：每组请求通过相同前缀长度来构造命中率，在发送请求时，先发送每组的第一个请求（400个），再发送每组的第二个请求（400个）以此类推；在发送每组第二个请求时，保障了其第一个请求不会被换出。
+- 分别对无KVPool（Baseline标识），内存语义KVPool（Memory标识）和非内存语义KVPool（Message标识）进行测试，绘制QPS吞吐对比曲线如图。
+![memfabric-Throughput-performance](./doc/memfabric-Throughput-performance.JPG)
 
 
-[C接口API列表](./doc/zh/smem_api.md)
+## 🚀快速入门
 
-#### Python接口
-安装完成run包并source安装路径下的set_env.sh后，即可在python中通过**import mf_smem**导入memfabric_hybrid的python包，然后调用python接口
+请访问以下文档获取简易教程。
 
-python接口为c接口的封装，功能一致，具体介绍可以在python中使用help函数获取，参考如下
-```python
-import mf_smem  #导入memfabric_hybrid
-help(mf_smem)   #查看memfabric_hybrid基础函数介绍
-help(mf_smem.bm)    #查看big memory接口介绍
-help(mf_smem.shm)   #查看share memory接口介绍
-```
+- [构建](./doc/build.md)：介绍组件编译和安装教程。
 
-[python接口API列表](./doc/zh/smem_py_api.md)
+- 样例执行：具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
 
-#### 运行样例
+## 📑学习教程
 
-具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
+- [C接口](./doc/API.md)：C接口介绍以及C接口对应的API列表
 
-### 软件硬件配套说明
+- [python接口](./doc/pythonAPI.md)：python接口介绍以及python接口对应的API列表
+
+
+## 📦软件硬件配套说明
 - 硬件型号支持
   - Atlas 800I A2/A3 系列产品
   - Atlas 800T A2/A3 系列产品
@@ -186,9 +128,8 @@ help(mf_smem.shm)   #查看share memory接口介绍
 - GLIBC >= 2.28
 
 
-### 安全声明
+## 📝相关信息
 
-[安全声明](./doc/SECURITYNOTE.md)
+- [安全声明](./doc/SECURITYNOTE.md)
 
-### 许可证
-memfabric_hybrid使用Apache License，详见[LICENSE](./LICENSE)文件。
+- [许可证](./LICENSE)
