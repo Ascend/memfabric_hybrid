@@ -92,10 +92,10 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
     drv_mem_prop prop{};
     switch (options_.segType) {
         case HYBM_MST_HBM:
-            prop = {MEM_DEV_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
+            prop = {MEM_DEV_SIDE, static_cast<uint32_t>(logicDeviceId_), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
             break;
         case HYBM_MST_DRAM:
-            prop = {MEM_HOST_SIDE, static_cast<uint32_t>(options_.devId), 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
+            prop = {MEM_HOST_SIDE, static_cast<uint32_t>(logicDeviceId_), 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
             break;
         default:
             BM_LOG_ERROR("invalid seg type: " << options_.segType);
@@ -126,7 +126,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
 
     drv_mem_handle_t *dHandle = handle;
     if (options_.segType == HYBM_MST_DRAM) {
-        ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &sHandle, static_cast<uint32_t>(options_.devId), &dHandle);
+        ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &sHandle, logicDeviceId_, &dHandle);
         BM_VALIDATE_RETURN(ret == BM_OK, "HalMemImport memory failed:" << ret, BM_ERROR);
     }
 
@@ -197,7 +197,7 @@ Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, 
     BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
 
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
-    info.devId = options_.devId;
+    info.devId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? DRAM_SLICE_EXPORT_INFO_MAGIC : HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.mappingOffset =
@@ -315,7 +315,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
                                              << ", size = " << im.size);
         drv_mem_handle_t *handle = nullptr;
         auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle,
-                                          static_cast<uint32_t>(options_.devId), &handle);
+                                          logicDeviceId_, &handle);
         BM_VALIDATE_RETURN(ret == BM_OK, "HalMemImport memory failed:" << ret
             << " local sdid:" << sdid_ << " remote ssid:" << im.sdid, BM_ERROR);
 
