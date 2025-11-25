@@ -7,7 +7,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 
 cmake_minimum_required(VERSION 3.12.0)
-project(MF_HYBRID VERSION 1.0 LANGUAGES CXX C)
+project(memfabric_hybrid VERSION 1.0 LANGUAGES CXX C)
 message(STATUS "in memfabric cmakefile ${BUILD_FROM_MEMCACHE}.")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
