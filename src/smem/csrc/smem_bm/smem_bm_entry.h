@@ -58,8 +58,6 @@ public:
 
     Result RegisterMem(uint64_t addr, uint64_t size);
 
-    Result DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags);
-
     uint32_t Id() const;
 
     uint32_t GetRankIdByGva(void *gva);

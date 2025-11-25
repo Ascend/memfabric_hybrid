@@ -19,7 +19,7 @@ using namespace ock::adapter;
 
 namespace py = pybind11;
 
-static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.0"
+static const char *PY_TRANSFER_LIB_VERSION = "library version: 1.0.1"
                                  ", build time: " __DATE__ " " __TIME__
                                  ", commit: " STR2(GIT_LAST_COMMIT);
 constexpr uint64_t MAX_BATCH_COUNT = 1024 * 1024;
@@ -144,6 +144,65 @@ int TransferAdapterPy::BatchTransferSyncWrite(const char *destUniqueId,
     return ret;
 }
 
+int TransferAdapterPy::TransferSyncRead(const char *destUniqueId,
+                                        uintptr_t buffer,
+                                        uintptr_t peer_buffer_address,
+                                        size_t length)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    // 将uintptr_t类型的地址转换为指针类型
+    void *srcAddress = reinterpret_cast<void*>(buffer);
+    const void *destAddress = reinterpret_cast<const void*>(peer_buffer_address);
+
+    // 调用底层SMEM API
+    int ret = smem_trans_read(handle_, srcAddress, destUniqueId, destAddress, length);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_write happen error, ret=" << ret);
+    }
+    return ret;
+}
+
+int TransferAdapterPy::BatchTransferSyncRead(const char *destUniqueId,
+                                             std::vector<uintptr_t> buffers,
+                                             std::vector<uintptr_t> peer_buffer_addresses,
+                                             std::vector<size_t> lengths)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    // 检查向量大小是否一致
+    if (buffers.size() != peer_buffer_addresses.size() ||
+        buffers.size() != lengths.size() || buffers.size() > UINT32_MAX) {
+        ADAPTER_LOG_ERROR("Buffers, peer_buffer_addresses and lengths is not equal or too long.");
+        return -1;
+    }
+
+    // 转换向量数据为C风格数组
+    const size_t batchSize = buffers.size();
+    std::vector<void*> srcAddresses(batchSize);
+    std::vector<const void*> destAddresses(batchSize);
+    std::vector<size_t> dataSizes(batchSize);
+
+    // 填充转换后的数组
+    for (size_t i = 0; i < batchSize; ++i) {
+        srcAddresses[i] = reinterpret_cast<void*>(buffers[i]);
+        destAddresses[i] = reinterpret_cast<const void*>(peer_buffer_addresses[i]);
+        dataSizes[i] = lengths[i];
+    }
+
+    // 调用底层批量读取API
+    int ret = smem_trans_batch_read(
+        handle_,
+        srcAddresses.data(),
+        destUniqueId,
+        destAddresses.data(),
+        dataSizes.data(),
+        static_cast<uint32_t>(batchSize)
+    );
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_batch_read happen error, ret=" << ret);
+    }
+    return ret;
+}
+
 int TransferAdapterPy::RegisterMemory(uintptr_t buffer_addr, size_t capacity)
 {
     ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
@@ -236,6 +295,11 @@ PYBIND11_MODULE(_pymf_transfer, m) {
             .def("transfer_sync_write", &TransferAdapterPy::TransferSyncWrite, py::call_guard<py::gil_scoped_release>(),
                  py::arg("dest_session"), py::arg("buffer"), py::arg("peer_buffer"), py::arg("length"))
             .def("batch_transfer_sync_write", &TransferAdapterPy::BatchTransferSyncWrite,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
+                 py::arg("peer_buffers"), py::arg("lengths"))
+            .def("transfer_sync_read", &TransferAdapterPy::TransferSyncRead, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("dest_session"), py::arg("buffer"), py::arg("peer_buffer"), py::arg("length"))
+            .def("batch_transfer_sync_read", &TransferAdapterPy::BatchTransferSyncRead,
                  py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
                  py::arg("peer_buffers"), py::arg("lengths"))
             .def("register_memory", &TransferAdapterPy::RegisterMemory, py::call_guard<py::gil_scoped_release>(),

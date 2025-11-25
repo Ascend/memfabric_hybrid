@@ -101,7 +101,7 @@ hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param slice            [in] slice to export, could be null if export all
- * @param flags            [in] HYBM_EXPORT_SINGLE_SLICE | HYBM_EXPORT_ALL_SLICE
+ * @param flags            [in] HYBM_FLAG_EXPORT_ENTITY: export entity instead of slice.
  * @param exInfo           [out] exchange info to be filled in
  * @return 0 if successful, error code if failed
  */
@@ -122,32 +122,11 @@ int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size);
  * @param allExInfo        [in] ptr of entities array
  * @param count            [in] count of entities
  * @param addresses        [out] import slices got local virtual address, can be null if not care
- * @param flags            [in] optional flags, default value 0
+ * @param flags            [in] optional flags, default  0, HYBM_FLAG_EXPORT_ENTITY: export entity instead of slice.
  * @return 0 if successful
  */
 int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
                     uint32_t flags);
-
-/**
- * @brief Export exchange info for peer to import
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param flags            [in] HYBM_EXPORT_SINGLE_SLICE | HYBM_EXPORT_ALL_SLICE
- * @param exInfo           [out] exchange info to be filled in
- * @return 0 if successful, error code if failed
- */
-int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo);
-
-/**
- * @brief Import batch of exchange info of other HyBM entities
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param allExInfo        [in] ptr of entities array
- * @param count            [in] count of entities
- * @param flags            [in] optional flags, default value 0
- * @return 0 if successful
- */
-int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, uint32_t flags);
 
 /**
  * @brief mmap all memory which is imported
@@ -159,6 +138,14 @@ int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[]
 int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
 
 /**
+ * @brief unmap the entity
+ *
+ * @param e                 [in] entity created by hybm_create_entity
+ * @param flags             [in] optional flags, default value 0
+ */
+void hybm_unmap(hybm_entity_t e, uint32_t flags);
+
+/**
  * @brief Determine whether various channels from local rank to the remote is reachable.
  * @param e                [in] entity created by hybm_create_entity
  * @param rank             [in] remote rank
@@ -167,16 +154,6 @@ int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
  * @return 0 if successful, error code if failed
  */
 int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, hybm_data_op_type &reachTypes, uint32_t flags);
-
-/**
- * @brief join one rank after start
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param rank             [in] join rank
- * @param flags            [in] optional flags, default value 0
- * @return 0 if successful, error code if failed
- */
-int32_t hybm_join(hybm_entity_t e, uint32_t rank, uint32_t flags);
 
 /**
  * @brief remove one rank after imported
@@ -199,40 +176,12 @@ int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
 
 /**
- * @brief unmap the entity
- *
- * @param e                 [in] entity created by hybm_create_entity
- * @param flags             [in] optional flags, default value 0
- */
-void hybm_unmap(hybm_entity_t e, uint32_t flags);
-
-/**
  * @brief register user mem, support sdma or rdma
  *
  * @param addr              [in] register addr
  * @param size              [in] register size
  */
 int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size);
-
-/**
- * @brief This command is used to register host memory to device.
- * @param src              [in] requested the src share memory pointer, srcPtr must be page aligned.
- * @param size             [in] requested byte size.
- * @param dest             [out] Level-2 pointer that stores the address of the allocated dst memory pointer.
- * @return 0 if successful
- */
-int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest);
-
-/**
- * @brief This command is used to unregister host memory to device.
- * @param src              [in] Requested the src share memory pointer.
- * @return 0 if successful
- */
-int32_t hybm_host_mem_unregister(uint64_t src);
-
-void *hybm_host_mem_malloc(uint64_t size, uint64_t flags);
-void hybm_host_mem_free(void *addr);
-
 
 #ifdef __cplusplus
 }

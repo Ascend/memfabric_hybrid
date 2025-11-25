@@ -700,53 +700,6 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     return ret;
 }
 
-int32_t MemEntityDefault::CopyData2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction, void *stream,
-                                     uint32_t flags) noexcept
-{
-    if (!initialized) {
-        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
-        return BM_NOT_INITIALIZED;
-    }
-    auto ret = SetThreadAclDevice();
-    if (ret != BM_OK) {
-        return ret;
-    }
-    ExtOptions options{};
-    options.flags = flags;
-    options.stream = stream;
-    hbmSegment_->GetRankIdByAddr(params.src, params.spitch * params.height, options.srcRankId);
-    hbmSegment_->GetRankIdByAddr(params.dest, params.dpitch * params.height, options.destRankId);
-    params.src = Valid48BitsAddress(params.src);
-    params.dest = Valid48BitsAddress(params.dest);
-
-    auto remoteRankId = options.srcRankId == options_.rankId ? options.destRankId : options.srcRankId;
-    if (SdmaReaches(remoteRankId) && sdmaDataOperator_ != nullptr) {
-        ret = sdmaDataOperator_->DataCopy2d(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-
-        BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
-    }
-
-    if (devRdmaDataOperator_ != nullptr) {
-        ret = devRdmaDataOperator_->DataCopy2d(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
-    }
-
-    if (hostRdmaDataOperator_ != nullptr) {
-        ret = hostRdmaDataOperator_->DataCopy2d(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
-    }
-    return ret;
-}
-
 int32_t MemEntityDefault::Wait() noexcept
 {
     if (!initialized) {
@@ -1079,7 +1032,7 @@ Result MemEntityDefault::InitTransManager()
     options.protocol = options_.bmDataOpType;
     options.role = options_.role;
     options.initialType = options_.bmType;
-    options.nic = options_.nic;
+    options.nic = options_.transUrl;
     options.tlsOption = options_.tlsOption;
     auto ret = transportManager_->OpenDevice(options);
     if (ret != 0) {

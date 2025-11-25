@@ -177,12 +177,6 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
     return SM_OK;
 }
 
-Result SmemTransEntry::SyncWrite(const void *srcAddress, const std::string &remoteName, void *destAddress,
-                                 size_t dataSize)
-{
-    return SyncWrite(&srcAddress, remoteName, &destAddress, &dataSize, 1U);
-}
-
 static std::string uniqueToString(const WorkerId& unique)
 {
     std::ostringstream oss;
@@ -196,49 +190,78 @@ static std::string uniqueToString(const WorkerId& unique)
     return oss.str();
 }
 
-Result SmemTransEntry::SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
-                                 const size_t dataSizes[], uint32_t batchSize)
+Result SmemTransEntry::SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr,
+                                    size_t dataSize, smem_bm_copy_type opcode)
 {
+    SM_VALIDATE_RETURN(localAddr != nullptr, "invalid localAddr, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(remoteAddr != nullptr, "invalid remoteAddr, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dataSize != 0, "invalid dataSize, which is 0", SM_INVALID_PARAM);
+    return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode);
+}
+
+Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
+                                         const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode)
+{
+    SM_VALIDATE_RETURN(localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(dataSizes != nullptr, "invalid dataSizes, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(batchSize != 0, "invalid batchSize, which is 0", SM_INVALID_PARAM);
+    for (auto i = 0U; i < batchSize; i++) {
+        SM_VALIDATE_RETURN(localAddrs[i] != nullptr, "localAddrs, which is null", SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(remoteAddrs[i] != nullptr, "remoteAddrs, which is null", SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(dataSizes[i] != 0, "invalid dataSizes, which is 0", SM_INVALID_PARAM);
+    }
     WorkerId unique;
-    auto ret = ParseNameToUniqueId(remoteName, unique);
+    auto ret = ParseNameToUniqueId(remoteUniqueId, unique);
     if (ret != 0) {
         return ret;
     }
 
     std::vector<void *> mappedAddress(batchSize);
 
-    ock::mf::ReadGuard locker(remoteSliceRwMutex_);
+    mf::ReadGuard locker(remoteSliceRwMutex_);
     auto it = remoteSlices_.find(unique);
     if (it == remoteSlices_.end()) {
-        SM_LOG_ERROR("session:(" << remoteName << ")(" << uniqueToString(unique) << ") not found.");
+        SM_LOG_ERROR("session:(" << remoteUniqueId << ")(" << uniqueToString(unique) << ") not found.");
         return SM_INVALID_PARAM;
     }
 
     for (auto i = 0U; i < batchSize; i++) {
-        auto pos = it->second.lower_bound(destAddresses[i]);
+        auto pos = it->second.lower_bound(remoteAddrs[i]);
         if (pos == it->second.end()) {
-            SM_LOG_ERROR("address[" << i << "] is invalid.");
+            SM_LOG_ERROR("remote address[" << i << "] is invalid.");
             return SM_INVALID_PARAM;
         }
 
-        if ((const uint8_t *)destAddresses[i] + dataSizes[i] > (const uint8_t *)(pos->first) + pos->second.size) {
+        if ((const uint8_t *)remoteAddrs[i] + dataSizes[i] > (const uint8_t *)(pos->first) + pos->second.size) {
             SM_LOG_ERROR("address[" << i << "], size[" << i << "]=" << dataSizes[i] << " out of range.");
             return SM_INVALID_PARAM;
         }
 
         mappedAddress[i] =
-            (uint8_t *)pos->second.address + ((const uint8_t *)destAddresses[i] - (const uint8_t *)(pos->first));
+            (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
     }
-
-    hybm_batch_copy_params copyParams = {const_cast<void **>(srcAddresses), mappedAddress.data(), dataSizes, batchSize};
-    ret = hybm_data_batch_copy(entity_, &copyParams,
-                               HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+    switch (opcode) {
+        case SMEMB_COPY_L2G:
+            {
+                hybm_batch_copy_params copyParams = {localAddrs, mappedAddress.data(), dataSizes, batchSize};
+                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+            }
+            break;
+        case SMEMB_COPY_G2L:
+            {
+                hybm_batch_copy_params copyParams = {mappedAddress.data(), localAddrs, dataSizes, batchSize};
+                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
+            }
+            break;
+        default:
+            SM_LOG_ERROR("unexpect copy type[" << opcode << "] is invalid.");
+            return SM_INVALID_PARAM;
+    }
     if (ret != 0) {
         SM_LOG_ERROR("batch copy data failed:" << ret);
-        return ret;
     }
-
-    return SM_OK;
+    return ret;
 }
 
 bool SmemTransEntry::ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port)
@@ -534,14 +557,14 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.preferredGVA = 0;
     options.globalUniqueAddress = false;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
-    options.nic[0] = '\0';
+    options.transUrl[0] = '\0';
     uint16_t port = 11000 + entityId_;
     auto url = "tcp://127.0.0.1:" + std::to_string(port);
 
-    constexpr size_t NIC_SIZE = sizeof(options.nic);
+    constexpr size_t NIC_SIZE = sizeof(options.transUrl);
     size_t max_chars = std::min(url.length(), NIC_SIZE - 1);
-    std::copy_n(url.c_str(), max_chars, options.nic);
-    options.nic[max_chars] = '\0';
+    std::copy_n(url.c_str(), max_chars, options.transUrl);
+    options.transUrl[max_chars] = '\0';
     return std::move(options);
 }
 

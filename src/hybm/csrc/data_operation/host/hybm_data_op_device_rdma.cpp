@@ -979,12 +979,5 @@ int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
     }
     return ret;
 }
-
-int32_t DataOpDeviceRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
-                                     const ExtOptions &options) noexcept
-{
-    BM_LOG_ERROR("DataOpDeviceRDMA::DataCopy2d Not Supported!");
-    return BM_ERROR;
-}
 } // namespace mf
 } // namespace ock

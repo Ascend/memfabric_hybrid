@@ -69,9 +69,10 @@ public:
 
     Result RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags);
     Result RegisterLocalMemories(const std::vector<std::pair<const void *, size_t>> &regMemories, uint32_t flags);
-    Result SyncWrite(const void *srcAddress, const std::string &remoteName, void *destAddress, size_t dataSize);
-    Result SyncWrite(const void *srcAddresses[], const std::string &remoteName, void *destAddresses[],
-                     const size_t dataSizes[], uint32_t batchSize);
+    Result SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr, size_t dataSize,
+                        smem_bm_copy_type opcode);
+    Result BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
+                             const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode);
 
 private:
     bool ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port);

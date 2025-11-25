@@ -102,9 +102,11 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
         void *remote_addr = smem_bm_ptr_by_mem_type(bm_handle, SMEM_MEM_TYPE_HOST, 1);
         // warmup
         std::cout << "Warmup Start" << std::endl;
-        ret = smem_bm_copy(bm_handle, warmup_data, local_addr, GVA_SIZE, SMEMB_COPY_H2G, 0);
+        smem_copy_params copy_params_1 = {warmup_data, local_addr, GVA_SIZE};
+        ret = smem_bm_copy(bm_handle, &copy_params_1, SMEMB_COPY_H2G, 0);
         CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
-        ret = smem_bm_copy(bm_handle, local_addr, remote_addr, GVA_SIZE / 16, SMEMB_COPY_L2G, 0);
+        smem_copy_params copy_params_2 = {local_addr, remote_addr, GVA_SIZE / 16};
+        ret = smem_bm_copy(bm_handle, &copy_params_2, SMEMB_COPY_L2G, 0);
         CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
         std::cout << "Warmup End" << std::endl;
 
@@ -115,8 +117,9 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
             struct timeval stop_tv;
             gettimeofday(&start_tv, nullptr);
             /* latency test */
+            smem_copy_params copy_params = {local_addr, remote_addr, block_size};
             for (uint32_t j = 0; j < times; j++) {
-                ret = smem_bm_copy(bm_handle, local_addr, remote_addr, block_size, SMEMB_COPY_L2G, 0);
+                ret = smem_bm_copy(bm_handle, &copy_params, SMEMB_COPY_L2G, 0);
                 CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
             }
 

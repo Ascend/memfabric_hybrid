@@ -20,13 +20,7 @@ extern "C" {
 typedef void *hybm_entity_t;
 typedef void *hybm_mem_slice_t;
 
-#define HYBM_FREE_SINGLE_SLICE 0x00
-#define HYBM_FREE_ALL_SLICE    0x01
-
-#define HYBM_EXPORT_PARTIAL_SLICE 0x00
-#define HYBM_EXPORT_ALL_SLICE     0x01
-
-#define HYBM_IMPORT_WITH_ADDRESS 0x01U
+#define HYBM_FLAG_EXPORT_ENTITY     1U      ///< export/import entity instead of slice
 
 #define HYBM_TLS_PATH_SIZE 256
 
@@ -104,7 +98,7 @@ typedef struct {
     uint64_t singleRankVASpace;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
     hybm_role_type role;
-    char nic[64];
+    char transUrl[64];
     hybm_tls_config tlsOption;
 } hybm_options;
 
@@ -127,15 +121,6 @@ typedef enum {
 
     HYBM_DATA_COPY_DIRECTION_BUTT
 } hybm_data_copy_direction;
-
-typedef struct {
-    void *src;
-    uint64_t spitch;
-    void *dest;
-    uint64_t dpitch;
-    uint64_t width;
-    uint64_t height;
-} hybm_copy_2d_params;
 
 typedef struct {
     void *src;

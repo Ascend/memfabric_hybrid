@@ -407,30 +407,3 @@ int32_t hybm_gvm_mem_close(uint64_t addr)
     BM_USER_LOG_INFO("ioctl HYBM_GVM_CMD_MEM_CLOSE success");
     return HYBM_GVM_SUCCESS;
 }
-
-uint64_t hybm_gvm_user_alloc(uint64_t size)
-{
-    uint64_t len = (size + SIZE_1G - 1U) / SIZE_1G * SIZE_1G;
-    uint64_t va = 0U;
-    int32_t ret = hybm_gvm_reserve_memory(&va, len, false);
-    if (ret != 0) {
-        BM_USER_LOG_ERROR("alloc va failed, ret:" << ret);
-        return HYBM_GVM_FAILURE;
-    }
-
-    ret = hybm_gvm_mem_alloc(va, len);
-    if (ret != 0) {
-        BM_USER_LOG_ERROR("va map failed, ret:" << ret);
-        return HYBM_GVM_FAILURE;
-    }
-
-    return va;
-}
-
-void hybm_gvm_user_free(uint64_t addr)
-{
-    int32_t ret = hybm_gvm_mem_free(addr);
-    if (ret != 0) {
-        BM_USER_LOG_ERROR("free mem failed, ret:" << ret);
-    }
-}

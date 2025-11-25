@@ -33,7 +33,7 @@ python test\_transfer\_engine.py \[参数]
 | -------------------- | -- | ---------------------------------------------------- |
 | --role               | 是  | 工作角色，可选值：`Prefill` 或 `Decode`                        |
 | --src-unique-id     | 否  | 当前节点的会话 ID，格式：`ip:port`                              |
-| --store-url          | 是  | 配置存储服务地址，格式：`tcp://ip:port`                          |
+| --store-url          | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp6://[ip]:port`      |
 | --npu-id             | 否  | NPU 设备 ID，默认值：0                                      |
 | --dst-unique-id     | 否  | 目标节点会话 ID（仅 Prefill 角色需要），格式：`ip:port`               |
 | --log-level          | 否  | 日志级别：0 (debug)、1 (info)、2 (warn)、3 (error)，默认值：0     |

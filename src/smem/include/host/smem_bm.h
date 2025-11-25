@@ -123,16 +123,31 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
  * H2G: host memory to global space
  *
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
- * @param src              [in] source gva of data
- * @param dest             [in] target gva of data
- * @param size             [in] size of data to be copied
+  * @param params          [in] Pointer to the batch copy parameter structure
+ *                              - src: source gva of data
+ *                              - dest: target gva of data
+ *                              - size: size of data to be copied
  * @param t                [in] copy type, L2G, G2L, G2H, H2G
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
+/**
+ * @brief Perform batch data copy operations on Big Memory
+ * @param handle           [in] Big Memory object handle, created and returned by the smem_bm_create function,
+ *                              used to identify the target shared memory instance
+ * @param params           [in] Pointer to the batch copy parameter structure
+ *                              - sources: Pointer to an array of source addresses
+ *                              - destinations: Pointer to an array of destination addresses
+ *                              - dataSizes: Pointer to an array of data lengths
+ *                              - batchSize: Number of copy groups in the batch
+ * @param t                [in] copy type, L2G, G2L, G2H, H2G
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
 int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+
 /**
  * @brief wait async copy finish
  * @return 0 if successful
@@ -153,56 +168,7 @@ int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size
  * @return rank id if successful, UINT32_MAX is returned if failed
  */
 uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);
-/**
- * @brief This command is used to register host memory to device.
- * @param addr             [in] requested the src share memory pointer, srcPtr must be page aligned.
- * @param size             [in] requested byte size.
- * @param dest             [out] pointer that stores the address of the allocated dst memory pointer.
- * @return 0 if successful
- */
-int32_t smem_bm_register_host_mem(uint64_t addr, uint64_t size, uint64_t *dest);
 
-/**
- * @brief This command is used to unregister host memory to device.
- * @param addr             [in] Requested the src share memory pointer.
- * @return 0 if successful
- */
-int32_t smem_bm_unregister_host_mem(uint64_t addr);
-
-/**
- * @brief alloc mem
- * @param size              [in] alloc size
- * @param memType           [in] mem type, only support SMEM_MEM_TYPE_HOST now
- * @param flags             [in] optional flags
- * @return addr if successful
- */
-void *smem_bm_mem_malloc(uint64_t size, smem_bm_mem_type memType, uint64_t flags);
-
-/**
- * @brief free mem
- * @param addr             [in] address
- */
-void smem_bm_mem_free(void *addr);
-
-/**
- * @brief Data copy on Big Memory object, several copy types supported:
- * L2G: local memory to global space
- * G2L: global space to local memory
- * G2H: global space to host memory
- * H2G: host memory to global space
- *
- * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
- * @param params.src       [in] source gva of data
- * @param params.spitch    [in] pitch of source memory
- * @param params.dest      [in] target gva of data
- * @param params.dpitch    [in] pitch of destination memory
- * @param params.width     [in] width of matrix transfer
- * @param params.heigth    [in] height of matrix transfer
- * @param t                [in] copy type, L2G, G2L, G2H, H2G
- * @param flags            [in] optional flags
- * @return 0 if successful
- */
-int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, smem_bm_copy_type t, uint32_t flags);
 #ifdef __cplusplus
 }
 #endif

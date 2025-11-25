@@ -266,7 +266,6 @@
         def peer_rank_ptr(peer_rank) -> int:
         def destroy() -> None:
         def copy_data(src_ptr, dst_ptr, size, type, flags) -> int:
-        def copy_data_2d(params, type, flags) -> int:
     ```
 
     |属性/方法|含义|
@@ -284,26 +283,8 @@
     |copy_data参数size(int)|size of data to be copied|
     |copy_data参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
     |copy_data参数flags(int)|optional flags|
-    |copy_data_2d方法|2D数据拷贝|
-    |copy_data_2d参数params(CopyData2DParams)|parameters of 2D copy|
-    |copy_data_2d参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
-    |copy_data_2d参数flags(int)|optional flags|
-
 
 ##### 辅助类
-1. CopyData2DParams类
-    ```python
-    class CopyData2DParams:
-    ```
-
-    |属性|含义|
-    |-|-|
-    |src|数据的源|
-    |spitch|数据的源间距|
-    |dest|数据的目标|
-    |dpitch|数据的目标间距|
-    |width|要复制的数据的宽度|
-    |height|要复制的数据的高度|
 
 ##### transfer接口函数
 1. 创建config store对象
@@ -335,6 +316,8 @@
         def get_rpc_port() -> int:
         def transfer_sync_write(destflag: str, buffer, peer_buffer_address, length) -> int:
         def batch_transfer_sync_write(destflag: str, buffers, peer_buffer_addresses, lengths) -> int:
+        def transfer_sync_read(destflag: str, buffer, peer_buffer_address, length) -> int:
+        def batch_transfer_sync_read(destflag: str, buffers, peer_buffer_addresses, lengths) -> int:
         def register_memory(buffer_addr, capacity) -> int:
         def unregister_memory(buffer_addr) -> int:
         def batch_register_memory(buffer_addrs, capacities) -> int:
@@ -360,6 +343,16 @@
     |batch_transfer_sync_write参数buffer|源地址的起始地址指针列表|
     |batch_transfer_sync_write参数peer_buffer_address|目的地址的起始地址指针列表|
     |batch_transfer_sync_write参数length|传输数据大小列表|
+    |transfer_sync_read方法|同步写接口,成功返回0，其他为错误码|
+    |transfer_sync_read参数destflag|目的TRANS实例对应的标识|
+    |transfer_sync_read参数buffer|源地址的起始地址指针|
+    |transfer_sync_read参数peer_buffer_address|目的地址的起始地址指针|
+    |transfer_sync_read参数length|传输数据大小|
+    |batch_transfer_sync_read方法|批量同步写接口，成功返回0，其他为错误码|
+    |batch_transfer_sync_read参数destflag|目的TRANS实例对应的标识|
+    |batch_transfer_sync_read参数buffer|源地址的起始地址指针列表|
+    |batch_transfer_sync_read参数peer_buffer_address|目的地址的起始地址指针列表|
+    |batch_transfer_sync_read参数length|传输数据大小列表|
     |register_memory方法|注册内存，成功返回0，其他为错误码|
     |register_memory参数buffer_addr|注册地址的起始地址指针|
     |register_memory参数capacity|注册地址大小|

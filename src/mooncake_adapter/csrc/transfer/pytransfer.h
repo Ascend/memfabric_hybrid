@@ -54,6 +54,14 @@ public:
                             std::vector<uintptr_t> peer_buffer_addresses,
                             std::vector<size_t> lengths);
 
+    int TransferSyncRead(const char *destUniqueId, uintptr_t buffer,
+                         uintptr_t peer_buffer_address, size_t length);
+
+    int BatchTransferSyncRead(const char *destUniqueId,
+                              std::vector<uintptr_t> buffers,
+                              std::vector<uintptr_t> peer_buffer_addresses,
+                              std::vector<size_t> lengths);
+
     int RegisterMemory(uintptr_t buffer_addr, size_t capacity);
 
     // must be called before TransferAdapterPy::~TransferAdapterPy()

@@ -119,10 +119,18 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     BM_ASSERT_RETURN(exInfo != nullptr, BM_INVALID_PARAM);
 
     ExchangeInfoWriter writer(exInfo);
-    auto ret = entity->ExportExchangeInfo(slice, writer, flags);
-    if (ret != 0) {
-        BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
-        return ret;
+    if ((flags & HYBM_FLAG_EXPORT_ENTITY) != 0) {
+        auto ret = entity->ExportExchangeInfo(writer, 0);
+        if (ret != 0) {
+            BM_LOG_ERROR("export entity data failed: " << ret);
+            return ret;
+        }
+    } else {
+        auto ret = entity->ExportExchangeInfo(slice, writer, flags);
+        if (ret != 0) {
+            BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
+            return ret;
+        }
     }
 
     return BM_OK;
@@ -152,41 +160,11 @@ HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo
     for (auto i = 0U; i < count; i++) {
         readers[i].Reset(allExInfo + i);
     }
+    if ((flags & HYBM_FLAG_EXPORT_ENTITY) != 0) {
+        return entity->ImportEntityExchangeInfo(readers.data(), count, flags);
+    }
 
     return entity->ImportExchangeInfo(readers.data(), count, addresses, flags);
-}
-
-HYBM_API int32_t hybm_entity_export(hybm_entity_t e, uint32_t flags, hybm_exchange_info *exInfo)
-{
-    auto entity = static_cast<MemEntity *>(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(exInfo != nullptr, BM_INVALID_PARAM);
-
-    ExchangeInfoWriter writer(exInfo);
-    auto ret = entity->ExportExchangeInfo(writer, 0);
-    if (ret != 0) {
-        BM_LOG_ERROR("export entity data failed: " << ret);
-        return ret;
-    }
-
-    return BM_OK;
-}
-
-HYBM_API int32_t hybm_entity_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count,
-                                    uint32_t flags)
-{
-    auto entity = static_cast<MemEntity *>(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(allExInfo != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(count > 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(count <= RANK_MAX, BM_INVALID_PARAM);
-
-    std::vector<ExchangeInfoReader> readers(count);
-    for (auto i = 0U; i < count; i++) {
-        readers[i].Reset(allExInfo + i);
-    }
-
-    return entity->ImportEntityExchangeInfo(readers.data(), count, flags);
 }
 
 HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)
@@ -240,46 +218,4 @@ HYBM_API int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     return entity->RegisterMem(addr, size);
-}
-
-void *hybm_host_mem_malloc(uint64_t size, uint64_t flags)
-{
-    BM_ASSERT_RETURN(HybmHasInited(), nullptr);
-    BM_ASSERT_RETURN(size != 0, nullptr);
-    return (void *)hybm_gvm_user_alloc(size);
-}
-
-void hybm_host_mem_free(void *addr)
-{
-    BM_ASSERT_RET_VOID(HybmHasInited());
-    BM_ASSERT_RET_VOID(addr != nullptr);
-    return hybm_gvm_user_free((uint64_t)addr);
-}
-
-int32_t hybm_host_mem_register(uint64_t src, uint64_t size, uint64_t *dest)
-{
-    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
-    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(size != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(dest != nullptr, BM_INVALID_PARAM);
-
-    auto ret = DlHalApi::HalHostRegister((void *)src, size, HOST_MEM_MAP_DEV, HybmGetInitDeviceId(), (void **)dest);
-    if (ret != 0) {
-        BM_LOG_ERROR("register host memory to device failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    return BM_OK;
-}
-
-int32_t hybm_host_mem_unregister(uint64_t src)
-{
-    BM_ASSERT_RETURN(HybmHasInited(), BM_ERROR);
-    BM_ASSERT_RETURN(src != 0, BM_INVALID_PARAM);
-
-    auto ret = DlHalApi::HalHostUnregisterEx((void *)src, HybmGetInitDeviceId(), HOST_MEM_MAP_DEV);
-    if (ret != 0) {
-        BM_LOG_ERROR("unregister host memory to device failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-    return BM_OK;
 }

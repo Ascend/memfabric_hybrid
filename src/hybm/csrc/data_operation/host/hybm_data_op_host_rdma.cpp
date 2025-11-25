@@ -615,10 +615,3 @@ int HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint
     }
     return BM_OK;
 }
-
-int32_t HostDataOpRDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
-                                   const ExtOptions &options) noexcept
-{
-    BM_LOG_ERROR("HostDataOpRDMA::DataCopy2d Not Supported!");
-    return BM_ERROR;
-}

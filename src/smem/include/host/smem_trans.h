@@ -99,29 +99,55 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  * @brief Transfer data to peer with write
  *
  * @param handle           [in] transfer object handle
- * @param srcAddress       [in] address of src data to be written to peer
- * @param destUniqueId     [in] uniqueId of dst
- * @param destAddress      [in] address of dst
+ * @param localAddr        [in] Pointer to the start address of local source data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddr       [in] Pointer to the start address of remote target storage
  * @param dataSize         [in] data size to be transfered
  * @return 0 if successful
  */
-int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId, void *destAddress,
-                         size_t dataSize);
+int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
+                         void *remoteAddr, size_t dataSize);
 
 /**
  * @brief Transfer data to peer with write in batch
  *
  * @param handle           [in] transfer object handle
- * @param srcAddresses     [in] addresses of src data to be written to peer
- * @param destUniqueId     [in] uniqueId of dst
- * @param destAddresses    [in] addresses of data
- * @param dataSizes        [in] sizes of data
- * @param batchSize        [in] batch size
+ * @param localAddrs       [in] Array of pointers to the start addresses of batch local source data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote target storage
+ * @param dataSizes        [in] Array of byte counts corresponding to batch transmitted data
+ * @param batchSize        [in] Total number of tasks in batch transmission
  * @return 0 if successful
  */
-int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
-                               void *destAddresses[], size_t dataSizes[], uint32_t batchSize);
+int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
+                               void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize);
 
+/**
+ * @brief Read data from peer to local
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddr        [in] Pointer to the start address of local received data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddr       [in] Pointer to the start address of remote data to be read
+ * @param dataSize         [in] Number of bytes for single read operation
+ * @return 0 if successful
+ */
+int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
+                        const void *remoteAddr, size_t dataSize);
+
+/**
+ * @brief Read data from peer to local in batch
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddrs       [in] Array of pointers to the start addresses of batch local received data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote data to be read
+ * @param dataSizes        [in] Array of byte counts corresponding to batch read data
+ * @param batchSize        [in] Total number of tasks in batch read operation
+ * @return 0 if successful
+ */
+int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
+                              const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize);
 #ifdef __cplusplus
 }
 #endif

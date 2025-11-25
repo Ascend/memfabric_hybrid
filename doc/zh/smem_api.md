@@ -490,34 +490,67 @@
 1. 同步写接口
 
     ```c
-    int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
-                                  void *destAddress, size_t dataSize)
+    int32_t smem_trans_write(smem_trans_t handle, const void *localAddress, const char *remoteUniqueId,
+                             void *remoteAddress, size_t dataSize)
     ```
 
     |参数/返回值|含义|
     |-|---------|
     |handle|TRANS对象handle|
-    |srcAddress|源地址的起始地址指针|
-    |destUniqueId|目的TRANS实例对应的标识|
-    |destAddress|目的地址的起始地址指针|
+    |localAddress|本地源数据存储起始地址指针|
+    |remoteUniqueId|远端TRANS实例对应的标识|
+    |remoteAddress|远端目标存储起始地址指针|
     |dataSize|传输数据大小|
     |返回值|成功返回0，其他为错误码|
 
 1. 批量同步写接口
 
     ```c
-    int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
-                                        void *destAddresses[], size_t dataSizes[], uint32_t batchSize)
+    int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddresses[], const char *remoteUniqueId,
+                                        void *remoteAddress[], size_t dataSizes[], uint32_t batchSize)
     ```
 
     |参数/返回值|含义|
     |-|--------|
     |handle|TRANS对象handle|
-    |srcAddresses[]|批量源地址的起始地址指针列表|
-    |destUniqueId|目的TRANS实例对应的标识|
-    |destAddresses[]|批量目的地址的起始地址指针列表|
+    |localAddresses[]|批量本地源数据存储起始地址指针数组|
+    |remoteUniqueId|远端TRANS实例对应的标识|
+    |remoteAddress[]|批量远端目标存储起始地址指针数组|
     |dataSizes[]|批量传输数据大小列表|
     |batchSize|批量传输数据数量|
+    |返回值|成功返回0，其他为错误码|
+
+1. 同步读接口
+
+    ```c
+    int32_t smem_trans_read(smem_trans_t handle, const void *localAddress, const char *remoteUniqueId,
+                            void *remoteAddress, size_t dataSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|---------|
+    |handle|TRANS对象handle|
+    |localAddress|本地接收数据存储起始地址指针|
+    |remoteUniqueId|远端TRANS实例对应的标识|
+    |remoteAddress|远端待读取数据起始地址指针|
+    |dataSize|单次读取数据字节数|
+    |返回值|成功返回0，其他为错误码|
+
+2. 批量同步读接口
+
+    ```c
+    int32_t smem_trans_batch_read(smem_trans_t handle, const void *localAddresses[], const char *remoteUniqueId,
+                                  void *remoteAddress[], size_t dataSizes[], uint32_t batchSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|--------|
+    |handle|TRANS对象handle|
+    |localAddresses[]|批量本地接收数据存储起始地址指针数组|
+    |remoteUniqueId|远端TRANS实例对应的标识|
+    |remoteAddress[]|批量远端待读取数据起始地址指针数组|
+    |dataSizes[]|对应批量读取数据的字节数数组|
+    |batchSize|批量读取的任务总数|
     |返回值|成功返回0，其他为错误码|
 
 ##### 环境变量

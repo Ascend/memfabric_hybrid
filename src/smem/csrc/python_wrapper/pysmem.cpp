@@ -118,15 +118,6 @@ private:
 
 class BigMemory {
 public:
-    struct CopyData2DParams{
-        uint64_t src;
-        uint64_t spitch;
-        uint64_t dest;
-        uint64_t dpitch;
-        uint64_t width;
-        uint64_t height;
-    };
-public:
     explicit BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
     virtual ~BigMemory() noexcept
     {
@@ -192,17 +183,6 @@ public:
         return smem_bm_copy_batch(handle_, &batch_params, type, flags);
     }
 
-    void CopyData2D(CopyData2DParams &params, smem_bm_copy_type type, uint32_t flags)
-    {
-        smem_copy_2d_params copyParams = {(const void *)(ptrdiff_t)params.src, params.spitch,
-                                          (void *)(ptrdiff_t)params.dest,
-                                          params.dpitch, params.width, params.height};
-        auto ret = smem_bm_copy_2d(handle_, &copyParams, type, flags);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
-        }
-    }
-
     static int Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                           const smem_bm_config_t &config) noexcept
     {
@@ -235,25 +215,6 @@ public:
     {
         return smem_bm_register_user_mem(handle_, addr, size);
     }
-
-    uint64_t RegisterHostMem(uint64_t addr, uint64_t size)
-    {
-        uint64_t target = 0;
-        auto ret = smem_bm_register_host_mem(addr, size, &target);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("register host memory failed: ").append(std::to_string(ret)));
-        }
-        return target;
-    }
-
-    void UnregisterHostMem(uint64_t addr)
-    {
-        auto ret = smem_bm_unregister_host_mem(addr);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("unregister host memory failed: ").append(std::to_string(ret)));
-        }
-    }
-
 private:
     smem_bm_t handle_;
     static uint32_t worldSize_;
@@ -449,24 +410,6 @@ whether to start config store, default true)")
         .def_readwrite("flags", &smem_shm_config_t::flags, "other flags, default 0");
 }
 
-void DefineBmCopyData2DParams(py::module_ &m)
-{
-    py::class_<BigMemory::CopyData2DParams>(m, "CopyData2DParams")
-        .def(py::init<>())
-        .def_readwrite("src", &BigMemory::CopyData2DParams::src, R"(
-            source src of data.)")
-        .def_readwrite("spitch", &BigMemory::CopyData2DParams::spitch, R"(
-            source pitch of data.)")
-        .def_readwrite("dest", &BigMemory::CopyData2DParams::dest, R"(
-            destination src of data.)")
-        .def_readwrite("dpitch", &BigMemory::CopyData2DParams::dpitch, R"(
-            destination pitch of data.)")
-        .def_readwrite("width", &BigMemory::CopyData2DParams::width, R"(
-            width of data to be copied.)")
-        .def_readwrite("height", &BigMemory::CopyData2DParams::height, R"(
-            height of data to be copied.)");
-}
-
 void DefineBmConfig(py::module_ &m)
 {
     py::enum_<smem_bm_mem_type>(m, "BmMemType")
@@ -659,17 +602,6 @@ Destroy the big memory handle.)")
         .def("register", &BigMemory::RegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"),
              py::arg("size"), R"(
 register user mem.)")
-        .def("register_host_mem", &BigMemory::RegisterHostMem, py::call_guard<py::gil_scoped_release>(),
-             py::arg("addr"), py::arg("size"), R"(
-register user mem.
-
-Arguments:
-    addr(int): Requested the src share memory pointer, addr must be page aligned.
-    size(int): Requested byte size.
-Returns:
-    pointer that stores the address of the allocated dst memory pointer.)")
-        .def("unregister_host_mem", &BigMemory::UnregisterHostMem, py::call_guard<py::gil_scoped_release>(),
-             py::arg("addr"), R"(unregister user mem.)")
         .def("copy_data", &BigMemory::CopyData, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
              py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, R"(
 Data operation on Big Memory object.
@@ -684,17 +616,7 @@ Returns:
     0 if successful)")
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
              py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"),
-             py::arg("type"), py::arg("flags"), R"(cop data with batch.)")
-        .def("copy_data_2d", &BigMemory::CopyData2D, py::call_guard<py::gil_scoped_release>(), py::arg("params"),
-             py::arg("type"), py::arg("flags") = 0, R"(
-2D data operation on Big Memory object.
-
-Arguments:
-    params(CopyData2DParams): parameters of 2D copy
-    type(BmCopyType): copy type, L2G, G2L, G2H, H2G, G2G
-    flags(int): optional flags
-Returns:
-    0 if successful)");
+             py::arg("type"), py::arg("flags"), R"(cop data with batch.)");
 }
 } // namespace
 
@@ -710,5 +632,4 @@ PYBIND11_MODULE(_pymf_smem, m)
 
     DefineBmConfig(bm);
     DefineBmClass(bm);
-    DefineBmCopyData2DParams(bm);
 }

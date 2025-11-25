@@ -94,7 +94,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
 
         bzero(&entityInfo_, sizeof(hybm_exchange_info));
-        ret = hybm_entity_export(entity, flags, &entityInfo_);
+        ret = hybm_export(entity, nullptr, HYBM_FLAG_EXPORT_ENTITY, &entityInfo_);
         if (ret != 0) {
             SM_LOG_ERROR("hybm entity export failed, result: " << ret);
             break;
@@ -215,7 +215,7 @@ Result SmemBmEntry::ExchangeEntityForJoin()
         return SM_ERROR;
     }
 
-    ret = hybm_entity_import(entity_, allExInfo.data(), globalGroup_->GetRankSize(), 0);
+    ret = hybm_import(entity_, allExInfo.data(), globalGroup_->GetRankSize(), nullptr, HYBM_FLAG_EXPORT_ENTITY);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import failed, result: " << ret);
         return SM_ERROR;
@@ -346,12 +346,6 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     }
     hybm_batch_copy_params copyParams = {params->sources, params->destinations, params->dataSizes, params->batchSize};
     return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
-}
-
-Result SmemBmEntry::DataCopy2d(smem_copy_2d_params &params, smem_bm_copy_type t, uint32_t flags)
-{
-    SM_LOG_ERROR("DataCopy2d support later.");
-    return SM_OK;
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)

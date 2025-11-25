@@ -126,6 +126,5 @@ Result SmemTransEntryManager::RemoveEntryByName(const std::string &name)
 
     return SM_OK;
 }
-
 }
 }

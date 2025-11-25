@@ -28,9 +28,6 @@ int32_t hybm_gvm_set_whitelist(uint64_t key, uint32_t sdid);
 int32_t hybm_gvm_mem_open(uint64_t addr, uint64_t key);
 int32_t hybm_gvm_mem_close(uint64_t addr);
 
-uint64_t hybm_gvm_user_alloc(uint64_t size);
-void hybm_gvm_user_free(uint64_t addr);
-
 #ifdef __cplusplus
 }
 #endif

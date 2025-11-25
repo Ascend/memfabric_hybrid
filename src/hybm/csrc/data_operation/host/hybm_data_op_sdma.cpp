@@ -479,13 +479,6 @@ int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
     return ret;
 }
 
-int32_t HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
-                                   const ExtOptions &options) noexcept
-{
-    BM_LOG_ERROR("HostDataOpSDMA::DataCopy2d Not Supported!");
-    return BM_ERROR;
-}
-
 int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                       const ExtOptions &options) noexcept
 {
@@ -1230,13 +1223,6 @@ int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
         ret = asyncRet;
     }
     return ret;
-}
-
-int32_t HostDataOpSDMA::DataCopy2d(hybm_copy_2d_params &params, hybm_data_copy_direction direction,
-                                   const ExtOptions &options) noexcept
-{
-    BM_LOG_ERROR("HostDataOpSDMA::DataCopy2d Not Supported!");
-    return BM_ERROR;
 }
 
 int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,

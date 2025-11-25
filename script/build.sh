@@ -41,9 +41,14 @@ CURRENT_DIR=$(pwd)
 cd ${ROOT_PATH}/..
 PROJ_DIR=$(pwd)
 
-bash script/gen_last_git_commit.sh
-
 rm -rf ./build ./output
+
+readonly BACK_PATH_EVN=$PATH
+
+export PYTHON_HOME="/opt/buildtools/python-3.11.4"
+export CMAKE_PREFIX_PATH=$PYTHON_HOME/lib/python3.11/site-packages/pybind11/share/cmake/pybind11/
+export LD_LIBRARY_PATH=$PYTHON_HOME/lib
+export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
 
 mkdir build/
 cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_COMPILER="${BUILD_COMPILER}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_VMM="${USE_VMM}"  -DUSE_CANN="${USE_CANN}" -S . -B build/
@@ -76,8 +81,6 @@ cp VERSION "${PROJ_DIR}/src/smem/python/mf_smem/"
 cp VERSION "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/"
 rm -f VERSION
 
-readonly BACK_PATH_EVN=$PATH
-
 # 如果 PYTHON_HOME 不存在，则设置默认值
 if [ -z "$PYTHON_HOME" ]; then
     # 定义要检查的目录路径
@@ -91,11 +94,7 @@ if [ -z "$PYTHON_HOME" ]; then
     echo "Not set PYTHON_HOME，and use $PYTHON_HOME"
 fi
 
-export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
-export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
-export CMAKE_PREFIX_PATH=$PYTHON_HOME
-
-python_path_list=("/opt/buildtools/python-3.8.5" "/opt/buildtools/python-3.9.11" "/opt/buildtools/python-3.10.2" "/opt/buildtools/python-3.11.4")
+python_path_list=("/opt/buildtools/python-3.11.4")
 for python_path in "${python_path_list[@]}"
 do
     if [ -n "${multiple_python}" ]; then
