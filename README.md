@@ -1,69 +1,36 @@
-# memfabric_hybrid
+# MemFabric
 
 ## 🔄Latest News
 
-- [2025/11] memfabric_hybrid项目预计2025年11月30日开源，开源社区地址为：https://gitcode.com/Ascend/memfabric_hybrid
+- [2025/11] MemFabric项目于2025年11月30日开源，在昇腾芯片上提供高效的多链路D2RH,RH2D,RH2H,D2D,D2H,H2D等单边通信能力。
 
 ## 🎉概述
-MemFabric Hybrid面向昇腾NPU服务器和超节点，提供了构建基于HCCS互联的跨节点的HBM和DRAM的内存池的功能，可充分发挥A3超节点内D2D大带宽优势，无需配置额外Host网卡。它为用户提供了一个并行编程接口，并为跨多个NPU的内存的数据创建了一个全局地址空间，可以在NPU上通过使用MTE、RoCE、SDMA发起的数据操作来访问，还提供了由CPU发起的数据拷贝操作。
 
-![architecture](./doc/architecture.JPG)
-
-
-## 🧩核心组件及特性
-
-- **Big Memory(BM)**
-    - 支持创建统一内存空间存储数据
-    - 支持同步数据拷贝，包含L2G, G2L, G2H, H2G
-    - 自动分配rank (初始化时用户可以不指定rank,由BM内部自动生成,具体参见smem_bm_init接口)
-    - 动态join和leave (参见smem_bm_join和smem_bm_leave接口)
-    - 接口支持的语言: c, python
-
-Note:
-```angular2html
-L2G: copy data from local HBM space to global HBM space
-G2L: copy data from global HBM space to local HBM space
-H2G: copy data from host DRAM memory to global HBM space
-G2H: copy data from global HBM space to host DRAM memory
-```
-
-安装memfabri hybrid后，BM接口头文件位于
-```${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_bm.h```
-
-- **Share Memory(SHM)**
-    - 支持创建统一内存空间
-    - 支持用户传入自定义数据在卡侧访问(参见smem_shm_set_extra_context和smem_shm_get_extra_context_addr接口)
-    - 支持host侧全局barrier和allgather(参见smem_shm_control_barrier和smem_shm_control_allgather接口)
-    - 支持超节点内，卡侧通过MTE直接访问统一内存
-    - 卡侧提供基础copy接口
-    - 接口支持的语言: c, python
-
-安装memfabri hybrid后，SHM接口头文件位于
-```
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/host/smem_shm.h
-
-${INSTALL_PATH}/mxc/memfabric_hybrid/latest/${arch}-${os}/include/smem/device/smem_shm_aicore_base_api.h
-```
+  MemFabric是一款开源内存池化软件，面向昇腾NPU服务器和超节点，其设计目的是:
+  - 将多节点的异构设备内存(DRAM | HBM等)池化且提供高性能的全局内存直接访问的能力
+  - 北向提供简单的内存语义访问接口(xcopy with global virtual address)
+  - 南向屏蔽多种DMA引擎及多种总线/网络 (Device UB、Device RoCE、Host UB、Host RoCE等)
+![architecture](./doc/source/architecture.png)
+  可以通过简单的集成MemFabric，快速支撑大模型KV缓存、强化训练参数Reshard、生成式推荐缓存、模型参数缓存等多种业务场景。
 
 
-## 🔍目录结构
+## 🧩核心特性
 
-```
-${INSTALL_PATH}/
-    |--mxc
-          |--memfabric_hybrid
-              |-- latest
-              |-- set_env.sh
-              |-- ${version}
-                   |-- ${arch}-${os}
-                        |-- include    (头文件)
-                        |-- lib64      (so库)
-                        |-- whl        (python的whl包)
-                   |-- uninstall.sh
-                   |-- version.info
+- **全局统一编址内存池**
+MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在不同层级、不同节点的内存单元进行统一管理与使用，使系统能够像管理单一物理资源一样，对跨 CPU、NPU的内存资源进行统一寻址和透明访问，核心目的是实现内存资源的整合与统一调度，从而显著提升 AI 超节点的算力释放效率。
+全局内存统一地址(Global Virual Address)的特点：
+    - 它是一个简单的uint64
+    - 所有进程的gva的起始地址一致
+    - 所有进程的gva的按线性排布且一致
+![architecture](./doc/source/unified_global_address.png)
 
-default ${INSTALL_PATH} is /usr/local/
-```
+- **跨机跨介质单边访问**
+基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明访问和直接传输，典型跨节点跨介质的访问路径有：
+    - D2RH：本机HBM到跨机DRAM
+    - RH2D：跨机DRAM到本机HBM
+    - RH2H：跨机DRAM到本机DRAM
+MemFabric访问数据流和控制流如下图所示：
+![architecture](./doc/source/one_copy.png)
 
 
 ## 🔥性能表现
@@ -101,6 +68,25 @@ default ${INSTALL_PATH} is /usr/local/
 -  命中率构造：每组请求通过相同前缀长度来构造命中率，在发送请求时，先发送每组的第一个请求（400个），再发送每组的第二个请求（400个）以此类推；在发送每组第二个请求时，保障了其第一个请求不会被换出。
 - 分别对无KVPool（Baseline标识），内存语义KVPool（Memory标识）和非内存语义KVPool（Message标识）进行测试，绘制QPS吞吐对比曲线如图。
 ![memfabric-Throughput-performance](./doc/memfabric-Throughput-performance.JPG)
+
+## 🔍目录结构
+
+```
+${INSTALL_PATH}/
+    |--mxc
+          |--memfabric_hybrid
+              |-- latest
+              |-- set_env.sh
+              |-- ${version}
+                   |-- ${arch}-${os}
+                        |-- include    (头文件)
+                        |-- lib64      (so库)
+                        |-- whl        (python的whl包)
+                   |-- uninstall.sh
+                   |-- version.info
+
+default ${INSTALL_PATH} is /usr/local/
+```
 
 
 ## 🚀快速入门
