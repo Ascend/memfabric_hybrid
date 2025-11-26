@@ -27,13 +27,13 @@
         }                                                                                   \
     } while (0)
 
-#define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << (msg) << std::endl
+#define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << msg << std::endl
 
 #define CHECK_GOTO_ERR(x, msg, lable) \
     do {                              \
         if ((x) != 0) {               \
             LOG_ERROR(msg);           \
-            goto (lable);             \
+            goto lable;               \
         }                             \
     } while (0)
 
@@ -287,7 +287,6 @@ out:
 
 int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string &ipPort)
 {
-    void *bm_gva = nullptr;
     void *shm_gva = nullptr;
     smem_bm_config_t config;
     smem_shm_config_t config2;

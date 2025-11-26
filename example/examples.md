@@ -17,7 +17,8 @@
 |------------------------------------------------|----------------|----------|
 | [BmCpp](./bm/BmCpp/README.md)                  | BM C++样例       | C++      |
 | [BmPython](./bm/BmPython/README.md)            | bm Python样例    | Python   |
+| [BmBenchmark](./bm/BmBenchmark/README.md)      | bm Benchmark样例 | C++      |
 | [shm_AllReduce](./shm/AllReduce/README.md)     | shm C++样例      | C++      |
 | [shm_RDMADemo](./shm/RDMADemo/README.md)       | shm C++样例      | C++      |
 | [shm_ShiftPutGet](./shm/ShiftPutGet/README.md) | shm C++样例      | C++      |
-| [trans](./trans/demo/README.md)                | trans Python样例 | Python   |
+| [trans](./trans/perf/README.md)                | trans C++样例    | C++      |

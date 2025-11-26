@@ -6,6 +6,11 @@
 
 ## 使用方法
 
+```shell
+  mkdir build
+  cmake . -B build
+  make -C build
+```
 ### 基本命令格式
 
 ```
