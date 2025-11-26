@@ -37,7 +37,7 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
 
 MemFabric访问数据流和控制流如下图所示(昇腾A3超节点):
 
-![architecture](./doc/source/one_copy.png)
+![one_copy](./doc/source/one_copy.jpg)
 
 
 ## 🔥性能表现
