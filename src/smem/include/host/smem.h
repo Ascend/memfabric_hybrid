@@ -53,7 +53,7 @@ int32_t smem_create_config_store(const char *storeUrl);
 int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
 
 /**
- * @brief set log print level
+ * @brief Set log level
  *
  * @param level            [in] log level, 0:debug 1:info 2:warn 3:error
  * @return 0 if successful
@@ -61,7 +61,7 @@ int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
 int32_t smem_set_log_level(int level);
 
 /**
- * @brief set config store tls info.
+ * @brief Set TLS related for config store
  *
  * @param enable whether to enable tls
  * @param tls_info the format describle in memfabric SECURITYNOTE.md, if disabled tls_info won't be use
@@ -72,7 +72,7 @@ int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_
 
 
 /**
- * @brief Callback function of private key password decryptor, see smem_set_config_store_tls_key
+ * @brief Callback function definition of get private key password de-crypted, see smem_set_config_store_tls_key
  *
  * @param cipherText       [in] the encrypted text(private key password)
  * @param cipherTextLen    [in] the length of encrypted text
@@ -83,7 +83,7 @@ typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen
                                     size_t &plainTextLen);
 
 /**
- * @brief Set the TLS private key and password.
+ * @brief Set the TLS private key and password
  *
  * @param tls_pk          [in] content of tls private key
  * @param tls_pk_len      [in] size of tls private key

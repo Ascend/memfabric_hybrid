@@ -101,19 +101,21 @@ int32_t smem_bm_join(smem_bm_t handle, uint32_t flags);
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 
 /**
+ * @brief Get the size of memory allocated locally by memory type
  *
- * @param handle        [in] Big Memory object handle created by smem_bm_create
- * @param memType       [in] memory type, device or host
+ * @param handle           [in] Big Memory object handle created by smem_bm_create
+ * @param memType          [in] memory type, device or host
  * @return local memory size in bytes
  */
 uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType);
 
 /**
+ * @brief Get GVA by memory type and rank id
  *
- * @param handle        [in] Big Memory object handle created by smem_bm_create
- * @param memType       [in] memory type, SMEM_MEM_TYPE_DEVICE or SMEM_MEM_TYPE_HOST
- * @param peerRankId    [in] rank id of peer
- * @return memory ptr of peer gva
+ * @param handle           [in] Big Memory object handle created by smem_bm_create
+ * @param memType          [in] memory type, SMEM_MEM_TYPE_DEVICE or SMEM_MEM_TYPE_HOST
+ * @param peerRankId       [in] rank id of peer
+ * @return memory ptr of peer gva; start address of GVA when peerRankId = 0
  */
 void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
 
@@ -125,7 +127,7 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
  * H2G: host memory to global space
  *
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
-  * @param params          [in] Pointer to the batch copy parameter structure
+ * @param params           [in] Pointer to the batch copy parameter structure
  *                              - src: source gva of data
  *                              - dest: target gva of data
  *                              - size: size of data to be copied
@@ -151,22 +153,26 @@ int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_ty
 int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
 /**
- * @brief wait async copy finish
+ * @brief Wait all issued async copy(s) finish
+ *
  * @return 0 if successful
  */
 int32_t smem_bm_wait(smem_bm_t handle);
 
 /**
- * @brief register hbm mem, support sdma or drma
+ * @brief Register hbm mem, support sdma or drma
  *
- * @param addr              [in] register addr
- * @param size              [in] register size
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param addr             [in] register addr
+ * @param size             [in] register size
  */
 int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
 
 /**
- * @brief Get the belong rank id of gva
- * @param gva
+ * @brief Get rank id of gva that belongs to
+ *
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param gva              [in] global virtual address
  * @return rank id if successful, UINT32_MAX is returned if failed
  */
 uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);

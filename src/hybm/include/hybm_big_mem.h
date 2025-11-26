@@ -110,9 +110,10 @@ hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType
 int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo);
 
 /**
- * @brief get fixed size for export slice size
- * @param e               [in] entity created by hybm_create_entity
- * @param size            [out] fixed size when export slice
+ * @brief Get fixed size for export slice size
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param size             [out] fixed size when export slice
  * @return 0 if successful, error code if failed
  */
 int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size);
@@ -131,7 +132,7 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
                     uint32_t flags);
 
 /**
- * @brief mmap all memory which is imported
+ * @brief Mmap all memory which is imported
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param flags            [in] optional flags, default value 0
@@ -140,10 +141,10 @@ int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint3
 int32_t hybm_mmap(hybm_entity_t e, uint32_t flags);
 
 /**
- * @brief unmap the entity
+ * @brief Unmap the entity
  *
- * @param e                 [in] entity created by hybm_create_entity
- * @param flags             [in] optional flags, default value 0
+ * @param e                [in] entity created by hybm_create_entity
+ * @param flags            [in] optional flags, default value 0
  */
 void hybm_unmap(hybm_entity_t e, uint32_t flags);
 
@@ -158,7 +159,7 @@ void hybm_unmap(hybm_entity_t e, uint32_t flags);
 int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, hybm_data_op_type &reachTypes, uint32_t flags);
 
 /**
- * @brief remove one rank after imported
+ * @brief Remove one rank after imported
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param rank             [in] leave rank
@@ -168,7 +169,7 @@ int32_t hybm_entity_reach_types(hybm_entity_t e, uint32_t rank, hybm_data_op_typ
 int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
 
 /**
- * @brief write user extra context into the fixed addr of the hbm
+ * @brief Write user extra context into the fixed addr of the hbm
  *
  * @param e                [in] entity created by hybm_create_entity
  * @param context          [in] user extra context addr
@@ -178,10 +179,10 @@ int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
 
 /**
- * @brief register user mem, support sdma or rdma
+ * @brief Register user mem, support sdma or rdma
  *
- * @param addr              [in] register addr
- * @param size              [in] register size
+ * @param addr             [in] register addr
+ * @param size             [in] register size
  */
 int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size);
 

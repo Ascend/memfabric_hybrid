@@ -139,19 +139,20 @@ int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint3
 int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo);
 
 /**
- * @brief Register function of exit.
+ * @brief Register function of exit
  *
- * @param exit         [in] global exit option, every rank will apply this function
- *                          to complete global exit
- * @param handle       [in] shm object
+ * @param exit             [in] global exit option, every rank will apply this function
+ *                              to complete global exit
+ * @param handle           [in] shm object
  * @return 0 if successful
  */
 int32_t smem_shm_register_exit(smem_shm_t handle, void (*exit)(int));
 
 /**
- * @brief all rank exit.
- * @param handle       [in] shm object
- * @param status       [in] int
+ * @brief Wait for all ranks exit
+ *
+ * @param handle           [in] shm object
+ * @param status           [in] int
  */
 void smem_shm_global_exit(smem_shm_t handle, int status);
 

@@ -67,10 +67,10 @@ void smem_trans_destroy(smem_trans_t handle, uint32_t flags);
 /**
  * @brief Register a contiguous memory space to be transferred
  *
- * @param handle            [in] transfer object handle
- * @param address           [in] start address of the contiguous memory space
- * @param capacity          [in] size of contiguous memory space
- * @param flags             [in] optional flags
+ * @param handle           [in] transfer object handle
+ * @param address          [in] start address of the contiguous memory space
+ * @param capacity         [in] size of contiguous memory space
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capacity, uint32_t flags);
@@ -104,7 +104,7 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  * @param localAddr        [in] Pointer to the start address of local source data storage
  * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
  * @param remoteAddr       [in] Pointer to the start address of remote target storage
- * @param dataSize         [in] data size to be transfered
+ * @param dataSize         [in] data size to be transferred
  * @return 0 if successful
  */
 int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
