@@ -583,8 +583,7 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params
     auto ret = DlAclApi::AclrtMemcpyBatch(params.destinations, sizes.data(), params.sources, sizes.data(),
                                           sizes.size(), attrs.data(), attrsIds.data(), attrs.size(), &fail_idx);
     if (ret != 0) {
-        BM_LOG_ERROR("Failed to batchDataCopyLocal ret:" << ret << std::hex << " srcAddr:" << params.sources[fail_idx]
-            << " dstAddr:" << params.destinations[fail_idx]);
+        return BatchDataCopyLocalAsync(params, direction, options);
     }
     return ret;
 }
