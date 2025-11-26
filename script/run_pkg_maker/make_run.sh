@@ -18,7 +18,7 @@ PROJECT_DIR=${BASH_PATH}/../..
 cd ${BASH_PATH}
 
 # get commit id
-GIT_COMMIT=`git rev-parse HEAD`
+GIT_COMMIT=`git rev-parse HEAD` || true
 
 # get arch
 if [ $( uname -i | grep -c -i "x86_64" ) -ne 0 ]; then

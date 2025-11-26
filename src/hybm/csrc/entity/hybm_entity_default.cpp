@@ -767,7 +767,7 @@ int MemEntityDefault::LoadExtendLibrary() noexcept
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA);
         if (ret != 0) {
-            BM_LOG_ERROR("LoadExtendLibrary for DEVICE RDMA failed: " << ret);
+            BM_LOG_ERROR("LoadExtendLibrary for HOST RDMA failed: " << ret);
             return ret;
         }
     }

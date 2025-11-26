@@ -621,6 +621,7 @@ Result AccTcpServerDefault::Handshake(int &tmpFD, const AccConnReq &connReq, con
 
     SSL *ssl = nullptr;
     if (CreateSSLLink(ssl, tmpFD) != ACC_OK) {
+        LOG_ERROR("Failed to create ssl link");
         return ACC_NEW_OBJECT_FAIL;
     }
 
@@ -633,6 +634,7 @@ Result AccTcpServerDefault::Handshake(int &tmpFD, const AccConnReq &connReq, con
 
     // tmpLink作为智能指针 异常分支返回时会自动析构释放资源
     if (LinkReceive(tmpLink, ipAndPort) != ACC_OK) {
+        LOG_ERROR("Failed to receive link");
         return ACC_ERROR;
     }
 

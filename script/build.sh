@@ -65,7 +65,7 @@ cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_ad
 cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
 \cp -v "${PROJ_DIR}/output/driver/lib64/libhybm_gvm.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
 
-GIT_COMMIT=`git rev-parse HEAD`
+GIT_COMMIT=`git rev-parse HEAD` || true
 {
   echo "mf version info:"
   echo "mf version: 1.0.0"

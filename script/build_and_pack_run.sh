@@ -69,11 +69,6 @@ echo "USE_CANN: $USE_CANN"
 echo "USE_VMM: $USE_VMM"
 
 cd ${ROOT_PATH}
-SPDLOG_SRC=${ROOT_PATH}/../3rdparty/log/spdlog/src
-if [ ! -d "${SPDLOG_SRC}" ]; then
-    git submodule init
-    git submodule update
-fi
 
 bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${USE_VMM}" "${USE_CANN}"
 
