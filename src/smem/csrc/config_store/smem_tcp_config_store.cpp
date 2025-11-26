@@ -626,7 +626,7 @@ void TcpConfigStore::RegisterServerOpHandler(int16_t opCode, const ConfigStoreSe
 
 Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    STORE_LOG_INFO("link broken, linkId: " << link->Id());
+    STORE_LOG_WARN("link broken, linkId: " << link->Id());
     SetConnectStatus(false);
     if (brokenHandler_ != nullptr) {
         brokenHandler_();
@@ -638,31 +638,6 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
 
     for (auto &it : tempContext) {
         it.second->SetFailedFinish();
-    }
-    uint32_t timesRetried = 0;
-    while (timesRetried < CONNECT_RETRY_MAX_TIMES) {
-        auto retryMaxTimes = CONNECT_RETRY_MAX_TIMES;
-        ock::acc::AccConnReq connReq;
-        connReq.rankId =
-            rankId_ >= 0
-                ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
-                : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
-        STORE_LOG_DEBUG("reconnect to server req.rankId:" << std::hex << connReq.rankId);
-        auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
-        if (result == 0) {
-            STORE_LOG_INFO("reconnect to server successful, serverPort: " << serverPort_);
-            break;
-        }
-        // interval between each retry, 2 sec for each time,
-        sleep(2);
-        timesRetried++;
-    }
-    if (!accClientLink_->Established()) {
-        STORE_LOG_ERROR("reconnect to server failed, serverPort_: " << serverPort_);
-        return SM_ERROR;
-    }
-    if (reconnectHandler != nullptr) {
-        return reconnectHandler();
     }
 
     return SM_OK;

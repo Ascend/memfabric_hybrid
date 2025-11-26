@@ -57,7 +57,7 @@ struct StoreKeys {
 };
 
 struct WorkerUniqueId {
-    net_addr_t address{};
+    ock::mf::net_addr_t address{};
     uint16_t port{0};
     uint16_t reserved{0};
 };

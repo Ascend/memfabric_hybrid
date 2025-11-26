@@ -298,10 +298,6 @@ help(mf_smem.shm)   #查看share memory接口介绍
     |copy_data参数size(int)|size of data to be copied|
     |copy_data参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
     |copy_data参数flags(int)|optional flags|
-    |copy_data_2d方法|2D数据拷贝|
-    |copy_data_2d参数params(CopyData2DParams)|parameters of 2D copy|
-    |copy_data_2d参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
-    |copy_data_2d参数flags(int)|optional flags|
 
 
 ##### 辅助类

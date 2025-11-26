@@ -266,7 +266,7 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
     return ret;
 }
 
-bool SmemTransEntry::ParseTransName(const std::string &name, net_addr_t &ip, uint16_t &port)
+bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port)
 {
     UrlExtraction extraction;
     int ret = -1;
@@ -283,7 +283,7 @@ bool SmemTransEntry::ParseTransName(const std::string &name, net_addr_t &ip, uin
     struct in6_addr addr6;
     if (inet_pton(AF_INET6, extraction.ip.c_str(), &addr6) == 1) {
         ip.ip.ipv6 = addr6;
-        ip.type = IpV6;
+        ip.type = ock::mf::IpV6;
     } else {
         struct in_addr addr4;
         if (inet_pton(AF_INET, extraction.ip.c_str(), &addr4) != 1) {
@@ -291,7 +291,7 @@ bool SmemTransEntry::ParseTransName(const std::string &name, net_addr_t &ip, uin
             return false;
         }
         ip.ip.ipv4.s_addr = ntohl(addr4.s_addr);
-        ip.type = IpV4;
+        ip.type = ock::mf::IpV4;
     }
     port = extraction.port;
     return true;

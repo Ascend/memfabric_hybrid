@@ -12,6 +12,8 @@ Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 #include <functional>
 #include <cstdint>
 
+namespace ock {
+namespace mf {
 enum IpType {
     IpV4,
     IpV6,
@@ -72,19 +74,20 @@ struct net_addr_t {
         return true;
     }
 };
-
+}
+}
 namespace std {
     template<>
-    struct hash<net_addr_t> {
-        size_t operator()(const net_addr_t& addr) const
+    struct hash<ock::mf::net_addr_t> {
+        size_t operator()(const ock::mf::net_addr_t& addr) const
         {
             size_t result = 0;
             
             hash_combine(result, static_cast<int>(addr.type));
             
-            if (addr.type == IpV4) {
+            if (addr.type == ock::mf::IpV4) {
                 hash_combine(result, addr.ip.ipv4.s_addr);
-            } else if (addr.type == IpV6) {
+            } else if (addr.type == ock::mf::IpV6) {
                 const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&addr.ip.ipv6);
                 for (size_t i = 0; i < sizeof(struct in6_addr); ++i) {
                     hash_combine(result, bytes[i]);
