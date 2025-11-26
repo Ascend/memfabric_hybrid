@@ -73,7 +73,6 @@ bool WriteFile(const std::string &filePath, const void *buffer, size_t size)
 
 void DoPrintHalfData(const aclFloat16 *data, size_t count, size_t elementsPerRow)
 {
-    ASSERT(elementsPerRow != 0);
     const int precisionWidth = 6;
     for (size_t i = 0; i < count; ++i) {
         std::cout << std::setw(OUTPUT_WIDTH) << std::setprecision(precisionWidth) << aclFloat16ToFloat(data[i]);

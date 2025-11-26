@@ -235,9 +235,6 @@ SMEM_SHM_INLINE_AICORE void smem_shm_rdma_post_send(__gm__ uint8_t* remoteAddr, 
 {
     __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
         SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
-    if (metaPtr->qpInfoAddress == nullptr) {
-        return;
-    }
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     uint32_t qpNum = RDMAInfo->qpNum;
     __gm__ WQCtx* qpCtxEntry = (__gm__ WQCtx*)(RDMAInfo->sqPtr + (destRankId * qpNum + qpIdx) * sizeof(WQCtx));
@@ -385,9 +382,6 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t* gva, uint3
 {
     __gm__ HybmDeviceMeta* metaPtr = (__gm__ HybmDeviceMeta*)(SMEM_SHM_DEVICE_META_ADDR +
         SMEM_SHM_DEVICE_GLOBAL_META_SIZE);
-    if (metaPtr->qpInfoAddress == nullptr) {
-        return;
-    }
     __gm__ AIVRDMAInfo* RDMAInfo = (__gm__ AIVRDMAInfo*)(metaPtr->qpInfoAddress);
     *(__gm__ uint64_t*)(gva) = (uint64_t)RDMAInfo;
     uint32_t qpNum = RDMAInfo->qpNum;

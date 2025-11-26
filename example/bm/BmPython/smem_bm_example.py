@@ -9,6 +9,7 @@ import torch_npu
 
 import mf_smem
 from mf_smem import bm
+from mf_smem import set_log_level
 
 COPY_SIZE = 4096
 GVA_SIZE = 1024 * 1024 * 1024
@@ -148,4 +149,5 @@ def main_process():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(process)d - %(asctime)s - %(levelname)s - %(message)s - %(lineno)d')
+    set_log_level(0)
     main_process()
