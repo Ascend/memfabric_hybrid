@@ -72,20 +72,33 @@ MemFabric访问数据流和控制流如下图所示：
 ## 🔍目录结构
 
 ```
-${INSTALL_PATH}/
-    |--mxc
-          |--memfabric_hybrid
-              |-- latest
-              |-- set_env.sh
-              |-- ${version}
-                   |-- ${arch}-${os}
-                        |-- include    (头文件)
-                        |-- lib64      (so库)
-                        |-- whl        (python的whl包)
-                   |-- uninstall.sh
-                   |-- version.info
-
-default ${INSTALL_PATH} is /usr/local/
+├── LICENSE                                 # LICENSE
+├── .clang-format                           # 格式化配置
+├── .gitmodules                             # git配置
+├── .gitignore                              # git忽视文件
+├── CMakeLists.txt                          # 项目的CMakeList
+├── doc                                     # 文档目录
+├── example                                 # 样例
+│  ├── bm                                   # big memory样例
+│  └── shm                                  # share memory样例
+│  └── trans                                # 数据传输功能样例
+│  └── decrypt                              # 自定义解密库示例
+├── script                                  # 构建脚本
+│  ├── build_and_pack_run.sh                # 编译+加包脚本
+│  ├── build.sh                             # 编译脚本
+│  ├── run_ut.sh                            # 编译+运行ut脚本
+├── test                                    # test目录
+│  ├── certs                                # 证书生成脚本
+│  ├── python                               # python测试用例
+│  └── ut                                   # 单元测试用例
+├── src                                     # 源码
+│  ├── acc_links                            # 内部通信层
+│  ├── driver                               # 驱动层
+│  └── hybm                                 # 存储管理层
+│  └── mooncake_adapter                     # 对接mooncake
+│  └── smem                                 # share memory+big memory接口实现
+│  └── util                                 # 公共函数
+├── README.md
 ```
 
 
@@ -95,7 +108,7 @@ default ${INSTALL_PATH} is /usr/local/
 
 - [构建](./doc/build.md)：介绍组件编译和安装教程。
 
-- 样例执行：具体流程参考example目录下各个样例中对应的README.md，example及其他样例代码仅供参考，在生产环境中请谨慎使用。
+- [样例执行](./example/examples.md)：介绍如何端到端执行样例代码，包括C++和Python样例。
 
 ## 📑学习教程
 

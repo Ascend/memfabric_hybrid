@@ -276,11 +276,14 @@ help(mf_smem.shm)   #查看share memory接口介绍
         def local_mem_size() -> int:
         def peer_rank_ptr(peer_rank) -> int:
         def destroy() -> None:
+        def register(addr, size) -> None:
         def copy_data(src_ptr, dst_ptr, size, type, flags) -> int:
-        def copy_data_2d(params, type, flags) -> int:
+        def copy_data_batch(src_addrs, dst_addrs, sizes, count, type, flags) -> int:
+
     ```
 
-    |属性/方法|含义|
+   |属性/方法|含义|  
+          |-|-|
     |join方法|加入BM|
     |join参数flags|预置参数|
     |leave方法|退出BM|
@@ -302,19 +305,6 @@ help(mf_smem.shm)   #查看share memory接口介绍
 
 
 ##### 辅助类
-1. CopyData2DParams类
-    ```python
-    class CopyData2DParams:
-    ```
-
-    |属性|含义|
-    |-|-|
-    |src|数据的源|
-    |spitch|数据的源间距|
-    |dest|数据的目标|
-    |dpitch|数据的目标间距|
-    |width|要复制的数据的宽度|
-    |height|要复制的数据的高度|
 
 ##### transfer接口函数
 1. 创建config store对象

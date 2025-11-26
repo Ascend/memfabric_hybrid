@@ -51,6 +51,18 @@
     |-|-|
     |level|日志级别，0-debug 1-info 2-warn 3-error|
     |返回值|成功返回0，其他为错误码|
+	
+1. 安装证书设置
+    ```c
+    int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |enable|whether to enable tls|
+	|tls_info|the format describle in memfabric SECURITYNOTE.md, if disabled tls_info won't be use|
+	|tls_info_len|length of tls_info, if disabled tls_info_len won't be use|
+    |返回值|成功返回0，其他为错误码|	
 
 1. 退出运行环境
     ```c
@@ -201,22 +213,24 @@
 
 1. 获取创建BM本地贡献的空间大小
     ```c
-    uint64_t smem_bm_get_local_mem_size(smem_bm_t handle);
+    uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType);
     ```
 
     |参数/返回值|含义|
     |-|-|
     |handle|BM handle|
+	|memType|Bmemory type, device or host|
     |返回值|本地贡献空间大小，单位byte|
 
 1. 获取rank id对应在gva上的地址位置
     ```c
-    void *smem_bm_ptr(smem_bm_t handle, uint16_t peerRankId);
+    void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
     ```
 
     |参数/返回值|含义|
     |-|-|
     |handle|BM handle|
+	|memType|memory type, SMEM_MEM_TYPE_DEVICE or SMEM_MEM_TYPE_HOST|
     |peerRankId|rank id|
     |返回值|rank地址对应空间位置指针|
 
@@ -233,11 +247,10 @@
     |t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
-
-1. 2D数据拷贝
+	
+1. 拷贝数据对象
     ```c
-    int32_t smem_bm_copy_2d(smem_bm_t handle, smem_copy_2d_params *params, 
-        smem_bm_copy_type t, uint32_t flags);
+    int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
     ```
 
     |参数/返回值|含义|
@@ -248,6 +261,37 @@
     |flags|预留参数|
     |返回值|成功返回0，失败返回错误码|
 
+1. 等待异步操作完成
+    ```c
+    int32_t smem_bm_wait(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|BM handle|
+    |返回值|成功返回0，失败返回错误码|
+
+1. smem_bm_register_user_mem（废弃）
+    ```c
+    int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|BM handle|
+    |返回值|成功返回0，失败返回错误码|
+	
+1. 根据全局地址获取rankId
+    ```c
+    uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|BM handle|
+	|gva|addr|
+    |返回值|rank id if successful, UINT32_MAX is returned if failed|
+	
 ##### SMEM接口列表
 
 1. SMEM配置初始化
@@ -541,6 +585,39 @@
     |dataSizes[]|批量传输数据大小列表|
     |batchSize|批量传输数据数量|
     |返回值|成功返回0，其他为错误码|
+	
+1. 同步读接口
+
+    ```c
+    int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
+                        const void *remoteAddr, size_t dataSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|---------|
+    |handle|TRANS对象handle|
+    |remoteAddr|源地址的起始地址指针|
+    |destUniqueId|目的TRANS实例对应的标识|
+    |localAddr|目的地址的起始地址指针|
+    |dataSize|传输数据大小|
+    |返回值|成功返回0，其他为错误码|
+
+1. 批量同步读接口
+
+    ```c
+    int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
+                              const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize)
+    ```
+
+    |参数/返回值|含义|
+    |-|--------|
+    |handle|TRANS对象handle|
+    |remoteAddrs[]|批量源地址的起始地址指针列表|
+    |destUniqueId|目的TRANS实例对应的标识|
+    |localAddrs[]|批量目的地址的起始地址指针列表|
+    |dataSizes[]|批量传输数据大小列表|
+    |batchSize|批量传输数据数量|
+    |返回值|成功返回0，其他为错误码|	
 
 ##### 环境变量
 |环境变量|含义|
