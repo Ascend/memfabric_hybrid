@@ -11,7 +11,7 @@
   - 北向提供简单的内存语义访问接口(xcopy with global virtual address)
   - 南向屏蔽多种DMA引擎及多种总线/网络 (Device UB、Device RoCE、Host UB、Host RoCE等)
 
-![architecture](./doc/source/architecture.png)
+![architecture](./doc/source/architecture.jpg)
 
   可以通过简单的集成MemFabric，快速支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存等多种业务场景。
 
