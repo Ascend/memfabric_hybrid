@@ -47,15 +47,23 @@ MemFabric访问数据流和控制流如下图所示：
 ![memfabric-Latency-performance](./doc/memfabric-Latency-performance.JPG)
 
 ### 单DIE带宽测试
-- 性能评估指标：单die跨机传输带宽。
-- 测试环境：2台昇腾A3机器
-- 测试步骤：
-  1) 构造单次拷贝数据大小1G/2G，连续内存
-  2) 进行RH2LD测试，循环调用RH2LD拷贝1000次，取时延平均值
-  3) 进行LD2RH测试，循环调用LD2RH拷贝1000次，取时延平均值
-  4) 进行LD2RD测试，循环调用LD2RD拷贝1000次，取时延平均值
-  5) 进行RD2LD测试，循环调用RD2LD拷贝1000次，取时延平均值
-![memfabric-Bandwidth-performance](./doc/memfabric-Bandwidth-performance.JPG)
+- 在昇腾A3服务器跨机数据访问性能如下：
+
+| 数据传输方向 | 单次数据大小（GB） | 带宽（GB/s） |
+| ----------- | -----------------| ------------ |
+| RH2D | 1 | 102.66 |
+| RH2D | 2 | 102.62 |
+| D2RH | 1 | 69.42 |
+| D2RH | 2 | 69.42 |
+| RD2D | 1 | 155.04 |
+| RD2D | 2 | 155.04 |
+| D2RD | 1 | 128.53 |
+| D2RD | 2 | 128.53 |
+
+- 在昇腾A2服务器跨机数据访问性能如下：
+![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
+
+- 性能测试参考 [benchmark](./test/example/bm/BmBenchmark/README.md)
 
 ### PrefixCache吞吐测试
 在大模型推理中，尤其是需要长上下文或高并发处理请求时，KVCache的高效复用与调度成为关键，此类缓存需要在HBM、DRAM乃至 SSD之间频繁迁移，若无良好的池化支持，将导致显存拥堵和请求阻塞，因此，此场景是内存池化软件重要的应用场景。MemFabric +MemCache（类似MoonCake Store的分布式缓存软件，此文不赘述）联合国内某头部互联网AI部门，基于vLLM推理框架在昇腾A3超节点进行Prefill吞吐QPS测试，测试系统示意图如下图所示。
