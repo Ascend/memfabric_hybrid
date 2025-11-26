@@ -36,15 +36,9 @@ MemFabric访问数据流和控制流如下图所示：
 ## 🔥性能表现
 
 ### 时延测试
-读写时延性能是一个衡量缓存池的重要指标，为对比测试内存语义和非内存语义，我们将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件）进行如下的测试：
-- 测试环境：2台昇腾A3机器，节点1每个die对应一个写进程，节点2每个die对应一个读进程，共32个进程
-- 测试步骤：
-  1) 构造block模拟DeepSeek-R1模型KV大小，即：61*128K + 61*16K = 8784KB ≈ 8.57MB，共122个离散地址。
-  2) 节点1所有进程调用put接口写入指定个数（8、16、32）的block，每个进程写512次，统计写总时延。
-  3) 节点2所有进程调用get接口读取所有写入的block，每个进程共计读取512次，统计读总时延。
-分别对内存语义（Memory标识，下同）和非内存语义（Message标识，下同）统计测试结果，绘制曲线对比如所示。
+- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/yrewzjs/Mooncake/pull/1/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址。
 
-![memfabric-Latency-performance](./doc/memfabric-Latency-performance.JPG)
+![a3-Latency-performance](./doc/source/a3_latency.png)
 
 ### 单DIE带宽测试
 - 在昇腾A3服务器跨机数据访问性能如下：
@@ -64,18 +58,6 @@ MemFabric访问数据流和控制流如下图所示：
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
 
 - 性能测试参考 [benchmark](./test/example/bm/BmBenchmark/README.md)
-
-### PrefixCache吞吐测试
-在大模型推理中，尤其是需要长上下文或高并发处理请求时，KVCache的高效复用与调度成为关键，此类缓存需要在HBM、DRAM乃至 SSD之间频繁迁移，若无良好的池化支持，将导致显存拥堵和请求阻塞，因此，此场景是内存池化软件重要的应用场景。MemFabric +MemCache（类似MoonCake Store的分布式缓存软件，此文不赘述）联合国内某头部互联网AI部门，基于vLLM推理框架在昇腾A3超节点进行Prefill吞吐QPS测试，测试系统示意图如下图所示。
-
-![Prefill-QPS](./doc/Prefill-QPS.JPG)
-
-- 性能评估指标：2P1D（D是2机）共4台昇腾A3机器，观察P节点归一化QPS的提升，测试模型为DeepSeek-R1
--  PrefixCache KVPool配置：每台机器贡献40GB*16die共640GB的DRAM内存，组成4机共2.5TB的KVPool，存储最高水位85%，超过最高水位后淘汰5%
--  benchmark 配置：请求输入长度为4K，输出token为1；一共400组不同的前缀，每组发送25个请求，共约1w条请求；
--  命中率构造：每组请求通过相同前缀长度来构造命中率，在发送请求时，先发送每组的第一个请求（400个），再发送每组的第二个请求（400个）以此类推；在发送每组第二个请求时，保障了其第一个请求不会被换出。
-- 分别对无KVPool（Baseline标识），内存语义KVPool（Memory标识）和非内存语义KVPool（Message标识）进行测试，绘制QPS吞吐对比曲线如图。
-![memfabric-Throughput-performance](./doc/memfabric-Throughput-performance.JPG)
 
 ## 🔍目录结构
 
