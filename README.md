@@ -13,7 +13,19 @@
 
 ![architecture](./doc/source/architecture.png)
 
-  可以通过简单的集成MemFabric，快速支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存等多种业务场景。
+如上图所示, MemFabric主要分为四大模块: Global Memory Management、Data Operation、Transport Management、API
+  * Global Memory Management: 实现GVA的全局编排、页表映射策略制定及通过驱动将映射策略注入页表
+  * Data Operation: 即xcopy的实现，驱动DMA、LD/ST实现全局内存直接读写
+  * Transport Management: xcopy驱动Host RDMA、Device RDMA、UDMA时，需要建立QP、Jetty链接部分，xcopy使用SDMA、MTE、LD/ST时不需要Transport Management
+  * API: 对上提供简化的API及API实现, 包括BM API、SHM API、Trans API，三种API适应于不同的场景
+
+其中, Global Memory Management、Data Operation、Transport Management都实现了逻辑的抽象, 可以轻松扩展实现不同硬件的对接。当前已支持的南方包括:
+  * 昇腾A3超节点: DRAM+HBM pooling over Device UB 1.0, DRAM pooling over Host RoCE
+  * 昇腾A2: DRAM+HBM pooling over Device RoCE, DRAM and HBM pooling over Host RoCE
+  * 鲲鹏服务器: DRAM pooling over Host RoCE
+  * 鲲鹏Matrix Server: on going
+
+  可以通过简单的集成MemFabric，快速支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存、PD传输等多种业务场景。
 
 
 ## 🧩核心特性
@@ -47,8 +59,8 @@ MemFabric访问数据流和控制流如下图所示(昇腾A3超节点):
 
 ![a3-Latency-performance](./doc/source/a3_latency.png)
 
-### 单DIE带宽测试
-- 在昇腾A3超节点跨机数据访问性能如下：
+### 带宽测试(单DIE)
+- 在昇腾A3超节点跨机数据访问性能(DRAM and HBM pooling over UB 1.0)如下：
 
 | 数据传输方向 | 单次数据大小（GB） | 带宽（GB/s） |
 | ----------- | -----------------| ------------ |
@@ -61,7 +73,8 @@ MemFabric访问数据流和控制流如下图所示(昇腾A3超节点):
 | D2RD | 1 | 128.53 |
 | D2RD | 2 | 128.53 |
 
-- 在昇腾A2服务器跨机数据访问性能如下：
+- 在昇腾A2服务器跨机数据访问性能(DRAM and HBM pooling over Device RoCE)如下:
+
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
 
 - 性能测试参考 [benchmark](./test/example/bm/BmBenchmark/README.md)
