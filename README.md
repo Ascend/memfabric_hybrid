@@ -2,34 +2,41 @@
 
 ## 🔄Latest News
 
-- [2025/11] MemFabric项目于2025年11月30日开源，在昇腾芯片上提供高效的多链路D2RH,RH2D,RH2H,D2D,D2H,H2D等单边通信能力。
+- [2025/11] MemFabric项目于2025年11月30日开源，在昇腾上提供高效的多链路的D2RH,RH2D,RH2H,D2D,D2H,H2D等内存直接访问能力。
 
 ## 🎉概述
 
-  MemFabric是一款开源内存池化软件，面向昇腾NPU服务器和超节点，其设计目的是:
+  MemFabric是一款开源内存池化软件，面向昇腾超节点和服务器，其设计目的是:
   - 将多节点的异构设备内存(DRAM | HBM等)池化且提供高性能的全局内存直接访问的能力
   - 北向提供简单的内存语义访问接口(xcopy with global virtual address)
   - 南向屏蔽多种DMA引擎及多种总线/网络 (Device UB、Device RoCE、Host UB、Host RoCE等)
+
 ![architecture](./doc/source/architecture.png)
-  可以通过简单的集成MemFabric，快速支撑大模型KV缓存、强化训练参数Reshard、生成式推荐缓存、模型参数缓存等多种业务场景。
+
+  可以通过简单的集成MemFabric，快速支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存等多种业务场景。
 
 
 ## 🧩核心特性
 
-- **全局统一编址内存池**
+- **池化与全局统一编址**
 MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在不同层级、不同节点的内存单元进行统一管理与使用，使系统能够像管理单一物理资源一样，对跨 CPU、NPU的内存资源进行统一寻址和透明访问，核心目的是实现内存资源的整合与统一调度，从而显著提升 AI 超节点的算力释放效率。
-全局内存统一地址(Global Virual Address)的特点：
+全局统一内存地址(Global Virtual Address, GVA)的特点：
     - 它是一个简单的uint64
     - 所有进程的gva的起始地址一致
     - 所有进程的gva的按线性排布且一致
+
 ![architecture](./doc/source/unified_global_address.png)
 
 - **跨机跨介质单边访问**
-基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明访问和直接传输，典型跨节点跨介质的访问路径有：
+  基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问，典型跨节点跨介质的访问路径有：
     - D2RH：本机HBM到跨机DRAM
     - RH2D：跨机DRAM到本机HBM
     - RH2H：跨机DRAM到本机DRAM
-MemFabric访问数据流和控制流如下图所示：
+
+  Note: D为Device, RH为Remote Host
+
+MemFabric访问数据流和控制流如下图所示(昇腾A3超节点):
+
 ![architecture](./doc/source/one_copy.png)
 
 
@@ -41,7 +48,7 @@ MemFabric访问数据流和控制流如下图所示：
 ![a3-Latency-performance](./doc/source/a3_latency.png)
 
 ### 单DIE带宽测试
-- 在昇腾A3服务器跨机数据访问性能如下：
+- 在昇腾A3超节点跨机数据访问性能如下：
 
 | 数据传输方向 | 单次数据大小（GB） | 带宽（GB/s） |
 | ----------- | -----------------| ------------ |
@@ -71,7 +78,7 @@ MemFabric访问数据流和控制流如下图所示：
 ├── example                                 # 样例
 │  ├── bm                                   # big memory样例
 │  └── shm                                  # share memory样例
-│  └── trans                                # 数据传输功能样例
+│  └── trans                                # batch data write/read样例
 │  └── decrypt                              # 自定义解密库示例
 ├── script                                  # 构建脚本
 │  ├── build_and_pack_run.sh                # 编译+加包脚本
@@ -85,8 +92,7 @@ MemFabric访问数据流和控制流如下图所示：
 │  ├── acc_links                            # 内部通信层
 │  ├── driver                               # 驱动层
 │  └── hybm                                 # 存储管理层
-│  └── mooncake_adapter                     # 对接mooncake
-│  └── smem                                 # share memory+big memory接口实现
+│  └── smem                                 # big memory+trans+share memory接口实现
 │  └── util                                 # 公共函数
 ├── README.md
 ```
