@@ -11,7 +11,7 @@
   - 北向提供简单的内存语义访问接口(xcopy with global virtual address)
   - 南向屏蔽多种DMA引擎及多种总线/网络 (Device UB、Device RoCE、Host UB、Host RoCE等)
 
-![architecture](./doc/source/architecture.jpg)
+![architecture](./doc/source/architecture.png)
 
   可以通过简单的集成MemFabric，快速支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存等多种业务场景。
 
@@ -25,7 +25,7 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
     - 所有进程的gva的起始地址一致
     - 所有进程的gva的按线性排布且一致
 
-![architecture](./doc/source/unified_global_address.png)
+![unified_global_address](./doc/source/unified_global_address.png)
 
 - **跨机跨介质单边访问**
   基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问，典型跨节点跨介质的访问路径有：
@@ -37,7 +37,7 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
 
 MemFabric访问数据流和控制流如下图所示(昇腾A3超节点):
 
-![one_copy](./doc/source/one_copy.jpg)
+![one_copy](./doc/source/one_copy.png)
 
 
 ## 🔥性能表现
