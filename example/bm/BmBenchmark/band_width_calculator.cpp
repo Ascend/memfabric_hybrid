@@ -330,7 +330,11 @@ int64_t BandWidthCalculator::CheckCopyResult(smem_bm_mem_type localMemType, smem
     void *rmtPtr = malloc(len);
     CHECK_RET_ERR((rmtPtr == nullptr), "malloc failed, len:" << len);
     void *gva = smem_bm_ptr_by_mem_type(handle, rmtMemType, gvaRankId);
-    ret = smem_bm_copy(handle, gva, rmtPtr, len, SMEMB_COPY_G2H, 0);
+    smem_copy_params params{};
+    params.src = gva;
+    params.dest = rmtPtr;
+    params.dataSize = len;
+    ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2H, 0);
     CHECK_RET_ERR((ret != 0), "g2h copy failed, ret:" << ret);
     auto wrongNum = CheckData(localPtr, rmtPtr, len);
     if (wrongNum != 0) {
