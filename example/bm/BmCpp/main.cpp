@@ -264,7 +264,11 @@ void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t hand
 
     int ret;
     for (int i = 0; i < BIG_COPY_NUM; i++) {
-        ret = smem_bm_copy(handle, local_host, remote_dev, bitCheckSize, SMEMB_COPY_G2G, 0);
+        smem_copy_params params{};
+        params.dest = remote_dev;
+        params.src = local_host;
+        params.dataSize = bitCheckSize;
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2G, 0);
         CHECK_RET_VOID(ret, "copy g2g failed, ret:" << ret << " rank:" << rankId <<
             " ptr:" << local_host << " " << remote_dev);
     }
@@ -281,7 +285,11 @@ void BigCopyCheck(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t
 
     int ret;
     for (int i = 0; i < BIG_COPY_NUM; i++) {
-        ret = smem_bm_copy(handle, local_dev, local_host, bitCheckSize, SMEMB_COPY_G2G, 0);
+        smem_copy_params params{};
+        params.dest = local_host;
+        params.src = local_dev;
+        params.dataSize = bitCheckSize;
+        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2G, 0);
         CHECK_RET_VOID(ret, "copy g2g failed, ret:" << ret << " rank:" << rankId <<
                                                     " ptr:" << local_host << " " << local_dev);
     }
