@@ -249,62 +249,6 @@ enum ibv_qp_type {
     IBV_QPT_DRIVER = 0xff,
 };
 
-enum ibv_wc_status {
-    IBV_WC_SUCCESS,
-    IBV_WC_LOC_LEN_ERR,
-    IBV_WC_LOC_QP_OP_ERR,
-    IBV_WC_LOC_EEC_OP_ERR,
-    IBV_WC_LOC_PROT_ERR,
-    IBV_WC_WR_FLUSH_ERR,
-    IBV_WC_MW_BIND_ERR,
-    IBV_WC_BAD_RESP_ERR,
-    IBV_WC_LOC_ACCESS_ERR,
-    IBV_WC_REM_INV_REQ_ERR,
-    IBV_WC_REM_ACCESS_ERR,
-    IBV_WC_REM_OP_ERR,
-    IBV_WC_RETRY_EXC_ERR,
-    IBV_WC_RNR_RETRY_EXC_ERR,
-    IBV_WC_LOC_RDD_VIOL_ERR,
-    IBV_WC_REM_INV_RD_REQ_ERR,
-    IBV_WC_REM_ABORT_ERR,
-    IBV_WC_INV_EECN_ERR,
-    IBV_WC_INV_EEC_STATE_ERR,
-    IBV_WC_FATAL_ERR,
-    IBV_WC_RESP_TIMEOUT_ERR,
-    IBV_WC_GENERAL_ERR
-};
-
-enum ibv_wc_opcode {
-    IBV_WC_SEND,
-    IBV_WC_RDMA_WRITE,
-    IBV_WC_RDMA_READ,
-    IBV_WC_COMP_SWAP,
-    IBV_WC_FETCH_ADD,
-    IBV_WC_BIND_MW,
-    /*
- * Set value of IBV_WC_RECV so consumers can test if a completion is a
- * receive by testing (opcode & IBV_WC_RECV).
- */
-    IBV_WC_RECV = 1 << 7,
-    IBV_WC_RECV_RDMA_WITH_IMM
-};
-
-struct ibv_wc {
-    uint64_t wr_id;
-    enum ibv_wc_status status;
-    enum ibv_wc_opcode opcode;
-    uint32_t vendor_err;
-    uint32_t byte_len;
-    uint32_t imm_data; /* in network byte order */
-    uint32_t qp_num;
-    uint32_t src_qp;
-    int wc_flags;
-    uint16_t pkey_index;
-    uint16_t slid;
-    uint8_t sl;
-    uint8_t dlid_path_bits;
-};
-
 struct ibv_qp_cap {
     uint32_t max_send_wr;
     uint32_t max_recv_wr;

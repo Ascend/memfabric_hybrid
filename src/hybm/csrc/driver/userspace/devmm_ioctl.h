@@ -16,24 +16,12 @@
 #include <cstdint>
 
 constexpr auto DEVMM_MAX_NAME_SIZE = 65U;
-constexpr auto DAVINIC_MODULE_NAME_MAX = 256U;
 
 struct DevmmCommandHead {
     uint32_t logicDevId;
     uint32_t devId;
     uint32_t vFid;
 };
-
-struct DAVINCI_INTF_OPEN_ARAG { // davinci_intf_open_arg
-    char module[DAVINIC_MODULE_NAME_MAX];
-    int device_id;
-};
-
-struct davinci_intf_close_arg {
-    char module_name[DAVINIC_MODULE_NAME_MAX];
-    int device_id;
-};
-
 
 struct DevmmCommandOpenParam {
     uint64_t vptr;

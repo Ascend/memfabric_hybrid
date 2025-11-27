@@ -181,9 +181,9 @@ function uninstall()
 function check_arch()
 {
     # get arch
-    if [ $( uname -i | grep -c -i "x86_64" ) -ne 0 ]; then
+    if [ $( uname -m | grep -c -i "x86_64" ) -ne 0 ]; then
         local_arch="x86_64"
-    elif [ $( uname -i | grep -c -i "aarch64" ) -ne 0 ]; then
+    elif [ $( uname -m | grep -c -i "aarch64" ) -ne 0 ]; then
         local_arch="aarch64"
     else
         print "ERROR" "it is not system of x86_64 or aarch64"

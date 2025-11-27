@@ -21,10 +21,10 @@ cd ${BASH_PATH}
 GIT_COMMIT=`git rev-parse HEAD` || true
 
 # get arch
-if [ $( uname -i | grep -c -i "x86_64" ) -ne 0 ]; then
+if [ $( uname -m | grep -c -i "x86_64" ) -ne 0 ]; then
     echo "it is system of x86_64"
     ARCH="x86_64"
-elif [ $( uname -i | grep -c -i "aarch64" ) -ne 0 ]; then
+elif [ $( uname -m | grep -c -i "aarch64" ) -ne 0 ]; then
     echo "it is system of aarch64"
     ARCH="aarch64"
 else
