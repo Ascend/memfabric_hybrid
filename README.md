@@ -33,10 +33,10 @@
 - **池化与全局统一编址**
 
 MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在不同层级、不同节点的内存单元进行统一管理与使用，使系统能够像管理单一物理资源一样，对跨 CPU、NPU的内存资源进行统一寻址和透明访问，核心目的是实现内存资源的整合与统一调度，从而显著提升 AI 超节点的算力释放效率。
-全局统一内存地址(Global Virtual Address, GVA)的特点：
-    - 它是一个简单的uint64
-    - 所有进程的gva的起始地址一致
-    - 所有进程的gva的按线性排布且一致
+全局统一内存地址(Global Virtual Address, GVA)的特点:
+  - 它是一个简单的uint64
+  - 所有进程的gva的起始地址一致
+  - 所有进程的gva的按线性排布且一致
 
 ![unified_global_address](./doc/source/unified_global_address.png)
 
