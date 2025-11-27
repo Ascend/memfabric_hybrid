@@ -97,7 +97,6 @@ typedef struct {
     uint64_t deviceVASpace;
     uint64_t hostVASpace;
     uint64_t preferredGVA;
-    uint64_t singleRankVASpace;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
     hybm_role_type role;
     char transUrl[64];

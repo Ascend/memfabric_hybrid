@@ -47,6 +47,10 @@ SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullpt
 
 SmemShmEntry::~SmemShmEntry()
 {
+    if (globalGroup_ != nullptr) {
+        globalGroup_->GroupSnClean();
+        globalGroup_ = nullptr;
+    }
     uint32_t flags = 0;
     if (entity_ != nullptr && slice_ != nullptr) {
         hybm_free_local_memory(entity_, slice_, 1, flags);
@@ -162,14 +166,13 @@ void SmemShmEntry::InitStepDestroyEntity()
 
 int32_t SmemShmEntry::InitStepReserveMemory()
 {
-    void *reservedMem = nullptr;
     auto ret = hybm_reserve_mem_space(entity_, 0);
-    if (ret != 0 || reservedMem == nullptr) {
+    if (ret != 0) {
         SM_LOG_ERROR("reserve mem failed, result: " << ret);
         return SM_ERROR;
     }
 
-    gva_ = reservedMem;
+    gva_ = hybm_get_memory_ptr(entity_, HYBM_MEM_TYPE_DEVICE);
     return SM_OK;
 }
 
@@ -184,9 +187,9 @@ void SmemShmEntry::InitStepUnreserveMemory()
 
 int32_t SmemShmEntry::InitStepAllocSlice()
 {
-    auto slice = hybm_alloc_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, options_.singleRankVASpace, 0);
+    auto slice = hybm_alloc_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, options_.deviceVASpace, 0);
     if (slice == nullptr) {
-        SM_LOG_ERROR("alloc local mem failed, size: " << options_.singleRankVASpace);
+        SM_LOG_ERROR("alloc local mem failed, size: " << options_.deviceVASpace);
         return SM_ERROR;
     }
 

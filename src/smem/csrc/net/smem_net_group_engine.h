@@ -17,6 +17,7 @@ namespace smem {
 class SmemNetGroupEngine;
 using SmemGroupEnginePtr = SmRef<SmemNetGroupEngine>;
 using SmemGroupChangeCallback = std::function<Result(uint32_t rank)>;
+const uint32_t REMOVE_INTERVAL = 2;
 
 /**
  * @brief create group option
@@ -96,6 +97,8 @@ public:
 
     void SetBitmapFromRanks(const std::vector<uint32_t> rankIds);
 
+    void GroupSnClean();
+
 private:
     void GroupListenEvent();
     void JoinLeaveEventProcess(const std::string &value, std::string &prevEventValue);
@@ -112,7 +115,8 @@ private:
     StorePtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
-    uint32_t groupSn_ = 0;
+    uint32_t allGatherGroupSn_ = 0;
+    uint32_t barrierGroupSn_ = 0;
 
     std::thread listenThread_;
     SmemTimedwait listenSignal_;

@@ -98,7 +98,7 @@ Result SmemNetGroupEngine::GroupBarrier()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     uint32_t size = option_.rankSize;
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++barrierGroupSn_);
     std::string addKey = idx + "_BA";
     std::string waitKey = idx + "_BW";
     int64_t val = 0;
@@ -114,6 +114,17 @@ Result SmemNetGroupEngine::GroupBarrier()
     }
     traceAdd.RecordEnd();
     SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " value: " << val << " size:" << size);
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == 1 && barrierGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t removeBarrierGroupSn = barrierGroupSn_ - REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
     if (val == size) {
@@ -238,7 +249,7 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     uint32_t size = option_.rankSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
 
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(groupSn_++);
+    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++allGatherGroupSn_);
     std::string addKey = idx + "_GA";
     std::string waitKey = idx + "_GW";
 
@@ -257,6 +268,17 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
         return SM_ERROR;
     }
     traceAppend.RecordEnd();
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t rmAllGatherGroupSn = allGatherGroupSn_- REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
 
     /* the last guy set ok status */
     if (val == input.size() * size) {
@@ -606,7 +628,7 @@ Result SmemNetGroupEngine::GroupJoin()
         SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
         goto join_exit;
     }
-
+    GroupSnClean();
     UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
     option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmp).second + 1);
     if (option_.joinCb != nullptr) {
@@ -676,6 +698,7 @@ Result SmemNetGroupEngine::GroupLeave()
     if (ret != SM_OK) {
         SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
     }
+    GroupSnClean();
     UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
 
 leave_exit:
@@ -691,7 +714,8 @@ leave_exit:
 void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
 {
     groupVersion_ = ver;
-    groupSn_ = 0;
+    allGatherGroupSn_ = 0;
+    barrierGroupSn_ = 0;
     SM_LOG_DEBUG("[DEBUG]Update version(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
 }
 
@@ -748,5 +772,29 @@ int32_t SmemNetGroupEngine::LinkReconnectHandler()
     return SM_OK;
 }
 
+void SmemNetGroupEngine::GroupSnClean()
+{
+    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
+        if (allGatherGroupSn_ < i) {
+            break;
+        }
+        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - i;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+
+    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
+        if (barrierGroupSn_ < i) {
+            break;
+        }
+        uint32_t removeBarrierGroupSn = barrierGroupSn_ - i;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+}
 }  // namespace smem
 }  // namespace ock
