@@ -1,5 +1,7 @@
-#### Python接口
-安装完成run包并source安装路径下的set_env.sh后，即可在python中通过**import mf_smem**导入memfabric_hybrid的python包，然后调用python接口
+## Python接口
+安装完成run包并source安装路径下的set_env.sh后，即可在python中通过**import memfabric_hybrid**导入memfabric的python包，然后调用python接口
+
+**Note: 后续支持pip安装**
 
 python接口为c接口的封装，功能一致，具体介绍可以在python中使用help函数获取，参考如下
 ```python
@@ -9,7 +11,8 @@ help(mf.bm)    #查看big memory接口介绍
 help(mf.shm)   #查看share memory接口介绍
 ```
 
-##### python接口列表
+### 1）公共接口
+### 接口函数
 1. 初始化运行环境
     ```python
     def initialize(flags = 0) -> int
@@ -88,97 +91,10 @@ help(mf.shm)   #查看share memory接口介绍
     |tls_info(str)|TLS配置字符串|
     |返回值|成功时返回零,出错时返回非零值|
 
-##### shm子模块函数
-1. 初始化运行环境
-    ```python
-    def initialize(store_url, world_size, rank_id, device_id, config) -> int
-    ```
 
-    |参数/返回值|含义|
-    |-|-|
-    |store_url|config store的IP和端口，格式tcp://ip:port|
-    |world_size|参与SMEM初始化rank数量，最大支持1024|
-    |rank_id|当前rank id|
-    |device_id|当前rank的device id|
-    |config|初始化SMEM配置|
-    |返回值|成功返回0，其他为错误码|
 
-1. 退出运行环境
-    ```python
-    def uninitialize(flags = 0) -> None
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |flags|int类型，预留参数|
-
-1. 创建SMEM
-    ```python
-    def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
-    |rank_size|参与创建SMEM的rank数量，最大支持1024|
-    |rank_id|当前rank id|
-    |local_mem_size|每个rank贡献到创建SMEM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
-    |data_op_type|数据操作类型，参考smem_shm_data_op_type类型定义|
-    |flags|预留参数|
-    |返回值|SMEM对象handle|
-
-##### shm子模块类
-1. ShmConfig类
-    ```python
-    class ShmConfig:
-        def __init__(self) -> None
-    ```
-
-    |构造函数/属性|含义|
-    |-|-|
-    |构造函数|SMEM配置初始化|
-    |init_timeout|init函数的超时时间，默认120秒（最小值为1，最大值为SMEM_BM_TIMEOUT_MAX）|
-    |create_timeout|create函数的超时时间，默认120秒（最小值为1，最大值为SMEM_BM_TIMEOUT_MAX）|
-    |operation_timeout|控制操作的超时时间|
-    |start_store|是否启动配置存储|
-    |flags|预留参数|
-
-1. ShareMemory类
-    ```python
-    class ShareMemory:
-        def set_context(context) -> int:
-        def destroy(flags:int = 0) -> int:
-        def query_support_data_operation() -> int:
-        def barrier() -> None:
-        def all_gather(local_data) -> bytes:
-        def topology_can_reach(remote_rank, reach_info) -> int
-    ```
-
-    |属性/方法|含义|
-    |set_context方法|设置共享内存对象的用户额外上下文|
-    |set_context参数context|额外上下文数据|
-    |destroy方法|销毁内存句柄|
-    |destroy参数flags|预留参数|
-    |query_support_data_operation方法|查询支持的数据操作|
-    |barrier|在内存对象上执行barrier操作|
-    |all_gather方法|在内存对象上执行allgather操作|
-    |all_gather参数local_data|输入的数据，bytes类型|
-    |topology_can_reach方法|查询到远程排名的可达性|
-    |topology_can_reach属性remote_rank|int类型，目标rankid|
-    |topology_can_reach属性reach_info|int类型，可达性信息|
-    |local_rank(只读属性)|获取内存对象的本地排名|
-    |rank_size(只读属性)|获取内存对象的秩大小|
-    |gva(只读属性)|获取全局虚拟地址|
-
-1. ShmDataOpType枚举
-    ```python
-    class ShmDataOpType(Enum):
-        MTE
-        SDMA
-        ROCE
-    ```
-
-##### bm子模块函数
+### 2) bm接口
+#### 接口函数
 1. 初始化运行环境
     ```python
     def initialize(store_url, world_size, device_id, config) -> int
@@ -224,7 +140,7 @@ help(mf.shm)   #查看share memory接口介绍
     |flags|预留参数|
     |返回值|SMEM对象handle|
 
-##### bm子模块类
+#### 类型
 1. BmCopyType枚举类
     ```python
     class BmCopyType(Enum):
@@ -300,9 +216,8 @@ help(mf.shm)   #查看share memory接口介绍
     |copy_data参数flags(int)|optional flags|
 
 
-##### 辅助类
-
-##### transfer接口函数
+### 3) transfer接口
+#### 接口函数
 1. 创建config store对象
     ```python
     def create_config_store(store_url: str) -> int
@@ -313,7 +228,7 @@ help(mf.shm)   #查看share memory接口介绍
     |store_url|业务面地址，格式tcp:://ip:port|
     |返回值|成功返回0，其他为错误码|
 
-##### transfer类
+#### 类型
 1. TransferEngine类
     ```python
     class TransferEngine:
@@ -364,4 +279,95 @@ help(mf.shm)   #查看share memory接口介绍
     class TransferOpcode(Enum):
         READ
         WRITE
+    ```
+
+### 4) shm接口
+#### 接口函数
+1. 初始化运行环境
+    ```python
+    def initialize(store_url, world_size, rank_id, device_id, config) -> int
+    ```
+
+   |参数/返回值|含义|
+       |-|-|
+   |store_url|config store的IP和端口，格式tcp://ip:port|
+   |world_size|参与SMEM初始化rank数量，最大支持1024|
+   |rank_id|当前rank id|
+   |device_id|当前rank的device id|
+   |config|初始化SMEM配置|
+   |返回值|成功返回0，其他为错误码|
+
+1. 退出运行环境
+    ```python
+    def uninitialize(flags = 0) -> None
+    ```
+
+   |参数/返回值|含义|
+       |-|-|
+   |flags|int类型，预留参数|
+
+1. 创建SMEM
+    ```python
+    def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
+    ```
+
+   |参数/返回值|含义|
+       |-|-|
+   |id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
+   |rank_size|参与创建SMEM的rank数量，最大支持1024|
+   |rank_id|当前rank id|
+   |local_mem_size|每个rank贡献到创建SMEM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
+   |data_op_type|数据操作类型，参考smem_shm_data_op_type类型定义|
+   |flags|预留参数|
+   |返回值|SMEM对象handle|
+
+#### 类型
+1. ShmConfig类
+    ```python
+    class ShmConfig:
+        def __init__(self) -> None
+    ```
+
+   |构造函数/属性|含义|
+       |-|-|
+   |构造函数|SMEM配置初始化|
+   |init_timeout|init函数的超时时间，默认120秒（最小值为1，最大值为SMEM_BM_TIMEOUT_MAX）|
+   |create_timeout|create函数的超时时间，默认120秒（最小值为1，最大值为SMEM_BM_TIMEOUT_MAX）|
+   |operation_timeout|控制操作的超时时间|
+   |start_store|是否启动配置存储|
+   |flags|预留参数|
+
+1. ShareMemory类
+    ```python
+    class ShareMemory:
+        def set_context(context) -> int:
+        def destroy(flags:int = 0) -> int:
+        def query_support_data_operation() -> int:
+        def barrier() -> None:
+        def all_gather(local_data) -> bytes:
+        def topology_can_reach(remote_rank, reach_info) -> int
+    ```
+
+   |属性/方法|含义|
+   |set_context方法|设置共享内存对象的用户额外上下文|
+   |set_context参数context|额外上下文数据|
+   |destroy方法|销毁内存句柄|
+   |destroy参数flags|预留参数|
+   |query_support_data_operation方法|查询支持的数据操作|
+   |barrier|在内存对象上执行barrier操作|
+   |all_gather方法|在内存对象上执行allgather操作|
+   |all_gather参数local_data|输入的数据，bytes类型|
+   |topology_can_reach方法|查询到远程排名的可达性|
+   |topology_can_reach属性remote_rank|int类型，目标rankid|
+   |topology_can_reach属性reach_info|int类型，可达性信息|
+   |local_rank(只读属性)|获取内存对象的本地排名|
+   |rank_size(只读属性)|获取内存对象的秩大小|
+   |gva(只读属性)|获取全局虚拟地址|
+
+1. ShmDataOpType枚举
+    ```python
+    class ShmDataOpType(Enum):
+        MTE
+        SDMA
+        ROCE
     ```
