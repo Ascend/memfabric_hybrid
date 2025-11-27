@@ -64,7 +64,7 @@ function uninstall_process()
     if [ -z "$pip_path" ]; then
         print "WARNING" "memfabric_hybrid  pip3 Not Found, skip uninstall wheel package."
     else
-        pip3 uninstall -y mf_smem
+        pip3 uninstall -y memfabric_hybrid
     fi
     print "INFO" "memfabric_hybrid $(basename $1) uninstall success!"
 }

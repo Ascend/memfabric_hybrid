@@ -622,7 +622,7 @@ Returns:
 }
 } // namespace
 
-PYBIND11_MODULE(_pymf_smem, m)
+PYBIND11_MODULE(_pymf_hybrid, m)
 {
     DefineSmemFunctions(m);
 

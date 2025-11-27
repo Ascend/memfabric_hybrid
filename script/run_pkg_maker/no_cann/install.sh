@@ -278,8 +278,7 @@ function install_to_path()
     wheel_dir="${install_dir}"/"${pkg_arch}"-"${os1}"/wheel
     python_version=$(python3 -c "import sys; print(''.join(map(str, sys.version_info[:2])))")
 
-    install_wheel_package "${wheel_dir}" mf_smem "${python_version}"
-    install_wheel_package "${wheel_dir}" mf_adapter "${python_version}"
+    install_wheel_package "${wheel_dir}" memfabric_hybrid "${python_version}"
 }
 
 function generate_set_env()

@@ -22,7 +22,37 @@ for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
     ctypes.CDLL(os.path.join(libs_path, lib))
 
 
-from _pymf_transfer import TransferEngine, set_log_level, create_config_store, set_conf_store_tls
+from _pymf_transfer import (
+    TransferEngine,
+    TransferOpcode,
+    create_config_store
+)
+from _pymf_hybrid import (
+    bm,
+    shm,
+    initialize,
+    uninitialize,
+    set_log_level,
+    set_extern_logger,
+    get_last_err_msg,
+    set_conf_store_tls,
+    set_conf_store_tls_key,
+    get_and_clear_last_err_msg
+)
 
 
-__all__ = ['TransferEngine', 'set_log_level', 'create_config_store', 'set_conf_store_tls']
+__all__ = [
+    'TransferEngine',
+    'TransferOpcode',
+    'create_config_store',
+    'bm',
+    'shm',
+    'initialize',
+    'uninitialize',
+    'set_log_level',
+    'set_extern_logger',
+    'get_last_err_msg',
+    'set_conf_store_tls',
+    'set_conf_store_tls_key',
+    'get_and_clear_last_err_msg'
+]

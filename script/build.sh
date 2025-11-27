@@ -54,13 +54,15 @@ if [ "${BUILD_PYTHON}" != "ON" ]; then
         exit 0
 fi
 
-mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
-\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
-\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
+# mf_adapter
+mkdir -p ${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib
+cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
+cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
 
-mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
-cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
-cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
+# memfabric_hybrid
+mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
+\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
+\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 
 GIT_COMMIT=`git rev-parse HEAD` || true
 {
@@ -69,8 +71,8 @@ GIT_COMMIT=`git rev-parse HEAD` || true
   echo "git: ${GIT_COMMIT}"
 } > VERSION
 
-cp VERSION "${PROJ_DIR}/src/smem/python/mf_smem/"
-cp VERSION "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/"
+cp VERSION "${PROJ_DIR}/src/smem/csrc/python_wrapper/mf_smem/"
+cp VERSION "${PROJ_DIR}/src/smem/csrc/python_wrapper/mk_transfer_adapter/"
 rm -f VERSION
 
 readonly BACK_PATH_EVN=$PATH
@@ -107,21 +109,24 @@ do
         make -j5 -C build
     fi
 
-    rm -rf "${PROJ_DIR}"/src/smem/python/mf_smem/_pymf_smem.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/_pymf_smem.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_smem
-
-    cd "${PROJ_DIR}/src/smem/python"
-    rm -rf build mf_smem.egg-info
+    # mf_adapter
+    rm -rf "${PROJ_DIR}"/src/smem/python/mf_transfer/mk_transfer_adapter/_pymf_transfer.cpython*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_transfer/mk_transfer_adapter/
+    mkdir -p ${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib
+    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
+    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
+    cd "${PROJ_DIR}/src/smem/python/mf_transfer"
+    rm -rf build mf_adapter.egg-info
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 
-    rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter/_pymf_transfer.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/mooncake_adapter/csrc/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/mooncake_adapter/python/mf_adapter
-    mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
-    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
-    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
-    cd "${PROJ_DIR}/src/mooncake_adapter/python"
-    rm -rf build mf_adapter.egg-info
+    # memfabric_hybrid
+    rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid.cpython*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mf_smem/_pymf_hybrid.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
+    rm -rf "${PROJ_DIR}"/src/python/memfabric_hybrid/_pymf_transfer.cpython*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
+    cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
+    rm -rf build memfabric_hybrid.egg-info
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 
@@ -130,23 +135,23 @@ do
     fi
 done
 
-# copy smem wheel package
-mkdir -p "${PROJ_DIR}/output/smem/wheel"
-cp "${PROJ_DIR}"/src/smem/python/dist/*.whl "${PROJ_DIR}/output/smem/wheel"
-rm -rf "${PROJ_DIR}"/src/smem/python/dist
+# copy mf_transfer wheel package
+mkdir -p "${PROJ_DIR}/output/mf_transfer/wheel"
+cp "${PROJ_DIR}"/src/smem/python/mf_transfer/dist/*.whl "${PROJ_DIR}/output/mf_transfer/wheel"
+rm -rf "${PROJ_DIR}"/src/smem/python/mf_transfer/dist
 
-# copy mooncake_adapter wheel package
-mkdir -p "${PROJ_DIR}/output/mooncake_adapter/wheel"
-cp "${PROJ_DIR}"/src/mooncake_adapter/python/dist/*.whl "${PROJ_DIR}/output/mooncake_adapter/wheel"
-rm -rf "${PROJ_DIR}"/src/mooncake_adapter/python/dist
+# memfabric_hybrid
+mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
+cp "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist/*.whl "${PROJ_DIR}/output/memfabric_hybrid/wheel"
+rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist
 
 if [ "${BUILD_PACKAGE}" == "ON" ]; then
-    #copy smem wheel package && mooncake_adapter wheel package && mf_run package
+    # copy memfabric_hybrid wheel package && mf_transfer wheel package && mf_run package
     bash "${PROJ_DIR}"/script/run_pkg_maker/make_run.sh RELEASE ON
     rm -rf "${PROJ_DIR}"/package
     mkdir -p "${PROJ_DIR}"/package
-    cp "${PROJ_DIR}"/output/mooncake_adapter/wheel/*.whl "${PROJ_DIR}/package"
-    cp "${PROJ_DIR}"/output/smem/wheel/*.whl "${PROJ_DIR}/package"
+    cp "${PROJ_DIR}"/output/mf_transfer/wheel/*.whl "${PROJ_DIR}/package"
+    cp "${PROJ_DIR}"/output/memfabric_hybrid/wheel/*.whl "${PROJ_DIR}/package"
     cp "${PROJ_DIR}"/output/*.run "${PROJ_DIR}"/package
 fi
 

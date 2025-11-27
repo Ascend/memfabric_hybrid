@@ -54,12 +54,13 @@ mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
 # smem
 cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include/smem
 cp ${OUTPUT_DIR}/smem/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64
-cp ${OUTPUT_DIR}/smem/wheel/* ${PKG_DIR}/${ARCH_OS}/wheel
 # hybm
 cp -r ${OUTPUT_DIR}/hybm/include/* ${PKG_DIR}/${ARCH_OS}/include/hybm
 cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
-# mooncake_adapter
-cp -r ${OUTPUT_DIR}/mooncake_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+# mf_transfer
+cp -r ${OUTPUT_DIR}/mf_transfer/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+# memfabric_hybrid
+cp -r ${OUTPUT_DIR}/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 
 cp -r ${PROJECT_DIR}/test/certs ${PKG_DIR}/${ARCH_OS}/script
 

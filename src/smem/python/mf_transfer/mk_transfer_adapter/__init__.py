@@ -9,43 +9,20 @@
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
+
 import os
 import sys
 import ctypes
 
-
 current_path = os.path.abspath(__file__)
 current_dir = os.path.dirname(current_path)
 sys.path.append(current_dir)
-
-lib_dir = os.path.join(current_dir, 'lib')
+libs_path = os.path.join(current_dir, 'lib')
 for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
-    ctypes.CDLL(os.path.join(lib_dir, lib))
+    ctypes.CDLL(os.path.join(libs_path, lib))
+
+# This package is part of memfabric_hybrid. It is recommended to use the full package memfabric_hybrid.
+from _pymf_transfer import TransferEngine, set_log_level, create_config_store, set_conf_store_tls
 
 
-from _pymf_smem import (
-    bm,
-    shm,
-    initialize,
-    uninitialize,
-    set_log_level,
-    set_extern_logger,
-    get_last_err_msg,
-    set_conf_store_tls,
-    set_conf_store_tls_key,
-    get_and_clear_last_err_msg
-)
-
-
-__all__ = [
-    'bm',
-    'shm',
-    'initialize',
-    'uninitialize',
-    'set_log_level',
-    'set_extern_logger',
-    'get_last_err_msg',
-    'set_conf_store_tls',
-    'set_conf_store_tls_key',
-    'get_and_clear_last_err_msg'
-]
+__all__ = ['TransferEngine', 'set_log_level', 'create_config_store', 'set_conf_store_tls']

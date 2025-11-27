@@ -10,8 +10,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-
-"""python api for mf_smem."""
+"""python api for memfabric_hybrid."""
 
 import os
 
@@ -37,16 +36,16 @@ print(pkgs)
 
 
 setuptools.setup(
-    name="mf_adapter",
+    name="memfabric_hybrid",
     version=current_version,
     author="",
     author_email="",
-    description="python api for mf_adapter",
+    description="python api for memfabric_hybrid",
     packages=find_namespace_packages(exclude=("tests*",)),
-    url="https://gitee.com/ascend/memfabric_hybrid",
+    url="https://gitcode.com/Ascend/memfabric_hybrid",
     license="Apache License Version 2.0",
     python_requires=">=3.7",
-    package_data={"mf_adapter": ["_pymf_transfer.cpython*.so",
-                  "lib/lib*.so", "VERSION"]},
-    distclass=BinaryDistribution,
+    package_data={"memfabric_hybrid": ["_pymf_hybrid.cpython*.so", "_pymf_transfer.cpython*.so",
+                                       "lib/lib*.so", "VERSION"]},
+    distclass=BinaryDistribution
 )

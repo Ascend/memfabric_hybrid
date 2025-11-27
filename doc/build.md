@@ -158,7 +158,7 @@ root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_smem
 ├── __init__.py
 ├── __pycache__
 │   └── __init__.cpython-311.pyc
-├── _pymf_smem.cpython-311-aarch64-linux-gnu.so
+├── _pymf_hybrid.cpython-311-aarch64-linux-gnu.so
 └── lib
     ├── libmf_hybm_core.so
     └── libmf_smem.so

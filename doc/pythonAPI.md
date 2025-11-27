@@ -3,10 +3,10 @@
 
 python接口为c接口的封装，功能一致，具体介绍可以在python中使用help函数获取，参考如下
 ```python
-import mf_smem  #导入memfabric_hybrid
-help(mf_smem)   #查看memfabric_hybrid基础函数介绍
-help(mf_smem.bm)    #查看big memory接口介绍
-help(mf_smem.shm)   #查看share memory接口介绍
+import memfabric_hybrid as mf  #导入memfabric_hybrid
+help(mf)   #查看memfabric_hybrid基础函数介绍
+help(mf.bm)    #查看big memory接口介绍
+help(mf.shm)   #查看share memory接口介绍
 ```
 
 ##### python接口列表
@@ -313,16 +313,6 @@ help(mf_smem.shm)   #查看share memory接口介绍
     |store_url|业务面地址，格式tcp:://ip:port|
     |返回值|成功返回0，其他为错误码|
 
-1.
-    ```python
-    def set_log_level(level: int) -> int
-    ```
-
-    |参数/返回值|含义|
-    |-|-|
-    |level|日志级别，0-debug 1-info 2-warn 3-error|
-    |返回值|成功返回0，其他为错误码|
-
 ##### transfer类
 1. TransferEngine类
     ```python
@@ -369,7 +359,7 @@ help(mf_smem.shm)   #查看share memory接口介绍
     |unInitialize方法|TRANS退出|
 
 
-1. TransferOpcode枚举类
+2. TransferOpcode枚举类
     ```python
     class TransferOpcode(Enum):
         READ

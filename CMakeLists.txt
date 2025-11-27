@@ -159,8 +159,8 @@ set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
 
 # set src base dir and output dir of adapter
-set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
-set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mooncake_adapter)
+set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem/csrc/python_wrapper/mk_transfer_adapter)
+set(PROJECT_ADAPTER_OUTPUT ${PROJECT_SOURCE_DIR}/output/mf_transfer)
 
 # set src base dir and output dir of acc_links
 set(PROJECT_ACCLINKS_SRC_BASE ${PROJECT_SOURCE_DIR}/src/acc_links)
