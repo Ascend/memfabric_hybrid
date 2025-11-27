@@ -50,13 +50,15 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
   Note: D为Device, RH为Remote Host
 
 MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
+
 ![one_copy](./doc/source/one_copy.png)
 
 
 ## 🔥性能表现
 
 ### 时延测试
-- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/yrewzjs/Mooncake/pull/1/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下：
+- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/yrewzjs/Mooncake/pull/1/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
+
 ![a3-Latency-performance](./doc/source/a3_latency.png)
 
 ### 带宽测试(单DIE)
