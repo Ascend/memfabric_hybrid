@@ -235,7 +235,6 @@ include_directories(
         ${PROJECT_UTIL_SRC_BASE}
 )
 
-add_subdirectory(3rdparty)
 add_subdirectory(src)
 
 if(BUILD_TESTS STREQUAL "ON")
