@@ -49,7 +49,6 @@ mkdir ${PKG_DIR}/${ARCH_OS}/wheel
 mkdir ${PKG_DIR}/${ARCH_OS}/script
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
 mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
-mkdir -p ${PKG_DIR}/${ARCH_OS}/include/driver
 mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
 
 # smem
@@ -59,9 +58,6 @@ cp ${OUTPUT_DIR}/smem/wheel/* ${PKG_DIR}/${ARCH_OS}/wheel
 # hybm
 cp -r ${OUTPUT_DIR}/hybm/include/* ${PKG_DIR}/${ARCH_OS}/include/hybm
 cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
-# driver
-cp -r ${OUTPUT_DIR}/driver/include/* ${PKG_DIR}/${ARCH_OS}/include/driver
-cp ${OUTPUT_DIR}/driver/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64/
 # mooncake_adapter
 cp -r ${OUTPUT_DIR}/mooncake_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 

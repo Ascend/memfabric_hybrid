@@ -23,7 +23,6 @@
 #include "hybm_ex_info_transfer.h"
 #include "hybm_gva.h"
 #include "hybm_logger.h"
-#include "hybm_gvm_user.h"
 #include "hybm_stream_manager.h"
 
 namespace ock {
@@ -1131,15 +1130,8 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
         BM_LOG_ERROR("Invalid memory size: " << size);
         return BM_INVALID_PARAM;
     }
-#ifndef USE_VMM
-    if (!HybmGvmHasInited()) {
-        BM_LOG_ERROR("gvm is not inited, skip register mem!");
-        return BM_OK;
-    }
-#endif
 
     size = (size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE * HYBM_LARGE_PAGE_SIZE;
-
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) && transportManager_ != nullptr) {
         transport::TransportMemoryRegion info;
         info.size = size;
@@ -1148,16 +1140,8 @@ int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
         auto ret = transportManager_->RegisterMemoryRegion(info);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to RegisterMem into rdma", ret);
     }
-#ifdef USE_VMM
+
     return BM_OK;
-#else
-    // only register hbm
-    if (!(addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR)) {
-        BM_LOG_ERROR("input addr is not hbm! addr:" << std::hex << addr);
-        return BM_ERROR;
-    }
-    return hybm_gvm_mem_register(addr, size, addr);
-#endif
 }
 
 int32_t MemEntityDefault::SetThreadAclDevice()

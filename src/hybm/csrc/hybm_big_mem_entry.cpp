@@ -14,7 +14,6 @@
 #include "hybm_big_mem.h"
 #include "dl_hal_api.h"
 #include "hybm_ex_info_transfer.h"
-#include "hybm_gvm_user.h"
 #include "mf_num_util.h"
 
 using namespace ock::mf;

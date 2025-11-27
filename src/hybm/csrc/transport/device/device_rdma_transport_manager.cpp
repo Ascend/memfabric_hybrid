@@ -781,7 +781,7 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
 {
     auto addr = mr.addr;
     // need register: dram except gvm
-    if ((mr.flags & REG_MR_FLAG_DRAM) && (addr < HYBM_GVM_START_ADDR || addr >= HYBM_GVM_END_ADDR)) {
+    if (mr.flags & REG_MR_FLAG_DRAM) {
         auto input = (void *)(ptrdiff_t)addr;
         void *output = nullptr;
         auto ret = DlHalApi::HalHostRegister(input, mr.size, HOST_MEM_MAP_DEV, deviceId_, &output);

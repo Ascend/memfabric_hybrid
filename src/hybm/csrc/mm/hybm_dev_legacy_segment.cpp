@@ -14,7 +14,6 @@
 #include "hybm_common_include.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_gva.h"
-#include "hybm_gvm_user.h"
 #include "hybm_logger.h"
 #include "hybm_networks_common.h"
 
@@ -80,16 +79,6 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
         BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
-#ifndef USE_VMM
-    if (HybmGvmHasInited()) {
-        ret = hybm_gvm_mem_fetch((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
-        if (ret != BM_OK) {
-            drv::HalGvaFree((uint64_t)(localVirtualBase + allocatedSize_), size);
-            BM_LOG_ERROR("Failed to fetch gvm memory failed: " << ret);
-            return BM_DL_FUNCTION_FAILED;
-        }
-    }
-#endif
 
     auto sliceAddr = localVirtualBase + allocatedSize_;
     allocatedSize_ += size;
@@ -288,15 +277,6 @@ Result HybmDevLegacySegment::Mmap() noexcept
             return -1;
         }
         mappedMem_.insert((uint64_t)remoteAddress);
-#ifndef USE_VMM
-        if (HybmGvmHasInited()) {
-            ret = hybm_gvm_mem_fetch((uint64_t)remoteAddress, im.size, im.sdid);
-            if (ret != BM_OK) {
-                drv::HalGvaClose((uint64_t)remoteAddress, 0);
-                BM_LOG_WARN("hybm_gvm_mem_fetch memory failed: " << ret);
-            }
-        }
-#endif
     }
     imports_.clear();
     return BM_OK;

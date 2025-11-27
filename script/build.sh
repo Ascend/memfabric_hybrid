@@ -14,7 +14,6 @@ BUILD_TESTS=${2:-OFF}
 BUILD_OPEN_ABI=${3:-ON}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
-USE_VMM=${6:-OFF}
 USE_CANN=${7:-ON}
 BUILD_COMPILER=${8:-gcc}
 BUILD_PACKAGE=${9:-ON}
@@ -46,7 +45,7 @@ PROJ_DIR=$(pwd)
 rm -rf ./build ./output
 
 mkdir build/
-cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_COMPILER="${BUILD_COMPILER}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_VMM="${USE_VMM}"  -DUSE_CANN="${USE_CANN}" -S . -B build/
+cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_COMPILER="${BUILD_COMPILER}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_CANN="${USE_CANN}" -S . -B build/
 make install -j32 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then
@@ -58,12 +57,10 @@ fi
 mkdir -p "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 \cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
-\cp -v "${PROJ_DIR}/output/driver/lib64/libhybm_gvm.so" "${PROJ_DIR}/src/smem/python/mf_smem/lib"
 
 mkdir -p ${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib
 cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
 cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
-\cp -v "${PROJ_DIR}/output/driver/lib64/libhybm_gvm.so" "${PROJ_DIR}/src/mooncake_adapter/python/mf_adapter/lib"
 
 GIT_COMMIT=`git rev-parse HEAD` || true
 {

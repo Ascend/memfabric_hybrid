@@ -13,7 +13,7 @@
 
 namespace ock {
 namespace mf {
-const std::string DRIVER_VER_V4 = "V100R001C23B035";
+const std::string DRIVER_VER_V4 = "V100R001C23SPC002B201";
 const std::string DRIVER_VER_V3 = "V100R001C21B035";
 const std::string DRIVER_VER_V2 = "V100R001C19SPC109B220";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
@@ -180,10 +180,6 @@ static bool DriverVersionCheck(const std::string &ver)
 
 int32_t HalGvaPrecheck()
 {
-#ifdef USE_VMM
-    checkVer = HYBM_GVA_V4;
-    return BM_OK;
-#endif
     if (DriverVersionCheck(DRIVER_VER_V4)) {
         BM_LOG_INFO("Driver version V4 found");
         checkVer = HYBM_GVA_V4;

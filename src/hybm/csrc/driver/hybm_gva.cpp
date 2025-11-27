@@ -7,7 +7,6 @@
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "hybm_cmd.h"
-#include "hybm_gvm_user.h"
 #include "hybm_functions.h"
 
 #include "hybm_gva.h"
@@ -16,14 +15,8 @@ namespace ock {
 namespace mf {
 
 namespace {
-bool initedGvm = false;
 int32_t initedLogicDeviceId = -1;
 } // namespace
-
-bool HybmGvmHasInited()
-{
-    return initedGvm;
-}
 
 int32_t HybmGetInitedLogicDeviceId()
 {
@@ -47,19 +40,6 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddre
         BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
         return BM_ERROR;
     }
-#ifndef USE_VMM
-    if (flags & HYBM_INIT_GVM_FLAG) {
-        ret = hybm_gvm_init(initedLogicDeviceId);
-        if (ret != 0) {
-            BM_LOG_ERROR("init hybm gvm failed: " << ret);
-            initedGvm = false;
-        } else {
-            initedGvm = true;
-        }
-    } else {
-        initedGvm = false;
-    }
-#endif
 
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间

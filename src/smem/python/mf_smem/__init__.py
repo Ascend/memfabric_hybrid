@@ -19,7 +19,7 @@ current_dir = os.path.dirname(current_path)
 sys.path.append(current_dir)
 
 lib_dir = os.path.join(current_dir, 'lib')
-for lib in ["libhybm_gvm.so", "libmf_hybm_core.so", "libmf_smem.so"]:
+for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
     ctypes.CDLL(os.path.join(lib_dir, lib))
 
 

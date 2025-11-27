@@ -75,8 +75,6 @@ halMemShareHandleSetAttributeFunc DlHalApi::pHalMemShareHandleSetAttribute = nul
 halMemTransShareableHandleFunc DlHalApi::pHalMemTransShareableHandle = nullptr;
 halMemGetAllocationGranularityFunc DlHalApi::pHalMemGetAllocationGranularity = nullptr;
 
-#ifdef USE_VMM
-
 Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
 {
     if (gvaVersion != HYBM_GVA_V4) {
@@ -100,7 +98,6 @@ Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
 
     return BM_OK;
 }
-#endif
 
 Result DlHalApi::LoadHybmV1V2Library(uint32_t gvaVersion)
 {
@@ -161,11 +158,7 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
                 "devmm_virt_normal_heap_update_info");
     DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
 
-#ifdef USE_VMM
     auto ret = LoadHybmV1V2Library(gvaVersion) | LoadHybmVmmLibrary(gvaVersion);
-#else
-    auto ret = LoadHybmV1V2Library(gvaVersion);
-#endif
     if (ret != 0) {
         return ret;
     }

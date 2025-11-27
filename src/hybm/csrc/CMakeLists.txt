@@ -26,8 +26,6 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/utils
         ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
-        ${PROJECT_DRIVER_BASE}/userspace/include
-        ${PROJECT_DRIVER_BASE}/hybm/userspace
         ${PROJECT_UTIL_SRC_BASE}/ptracer/include
 )
 
@@ -45,12 +43,12 @@ target_include_directories(hybmm_objects INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
 add_library(hybmm_static STATIC $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:ptracer_object>)
 set_target_properties(hybmm_static PROPERTIES OUTPUT_NAME "mf_hybm_core")
-target_link_libraries(hybmm_static PUBLIC pthread dl hybm_gvm_static)
+target_link_libraries(hybmm_static PUBLIC pthread dl)
 target_include_directories(hybmm_static INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
 add_library(hybmm_shared SHARED $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:ptracer_object>)
 set_target_properties(hybmm_shared PROPERTIES OUTPUT_NAME "mf_hybm_core")
-target_link_libraries(hybmm_shared PUBLIC pthread dl hybm_gvm_shared)
+target_link_libraries(hybmm_shared PUBLIC pthread dl)
 target_include_directories(hybmm_shared INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
 ## install header files

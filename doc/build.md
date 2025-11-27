@@ -85,8 +85,6 @@ bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 │   ├── aarch64-linux
 │   │   ├── bin
 │   │   ├── include
-│   │   │   ├── driver
-│   │   │   │   └── hybm_gvm_user.h
 │   │   │   ├── hybm
 │   │   │   │   ├── hybm.h
 │   │   │   │   ├── hybm_big_mem.h
@@ -108,8 +106,6 @@ bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 │   │   │           ├── smem_trans.h
 │   │   │           └── smem_trans_def.h
 │   │   ├── lib64
-│   │   │   ├── libhybm_gvm.a
-│   │   │   ├── libhybm_gvm.so
 │   │   │   ├── libmf_hybm_core.so
 │   │   │   └── libmf_smem.so
 │   │   ├── script
@@ -164,7 +160,6 @@ root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_smem
 │   └── __init__.cpython-311.pyc
 ├── _pymf_smem.cpython-311-aarch64-linux-gnu.so
 └── lib
-    ├── libhybm_gvm.so
     ├── libmf_hybm_core.so
     └── libmf_smem.so
 
@@ -176,7 +171,6 @@ root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_adapter
 │   └── __init__.cpython-311.pyc
 ├── _pymf_transfer.cpython-311-aarch64-linux-gnu.so
 └── lib
-    ├── libhybm_gvm.so
     ├── libmf_hybm_core.so
     └── libmf_smem.so 
 ```

@@ -10,7 +10,6 @@
 namespace ock {
 namespace mf {
 
-bool HybmGvmHasInited();
 int32_t HybmGetInitedLogicDeviceId();
 int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddress);
 

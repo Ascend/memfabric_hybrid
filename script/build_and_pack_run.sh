@@ -16,7 +16,6 @@ CURRENT_DIR=$(pwd)
 BUILD_MODE="RELEASE"
 BUILD_PYTHON="ON"
 USE_CANN="ON"
-USE_VMM="OFF"
 
 show_help() {
     echo "Usage: $0 [options]"
@@ -24,7 +23,6 @@ show_help() {
     echo "  --build_mode <mode>     Set build mode (RELEASE/DEBUG/ASAN), default: RELEASE"
     echo "  --build_python <ON/OFF> Enable/disable Python build, default: ON"
     echo "  --use_cann <ON/OFF>     Enable/disable CANN dependency, default: ON"
-    echo "  --use_vmm <ON/OFF>      Enable/disable VMM api, default: OFF"
     echo "  --help                  Show this help message"
     echo ""
     echo "Example:"
@@ -46,10 +44,6 @@ while [[ "$#" -gt 0 ]]; do
             USE_CANN="$2"
             shift 2
             ;;
-        --use_vmm)
-            USE_VMM="$2"
-            shift 2
-            ;;
         --help)
             show_help
             exit 0
@@ -66,11 +60,10 @@ done
 echo "BUILD_MODE: $BUILD_MODE"
 echo "BUILD_PYTHON: $BUILD_PYTHON"
 echo "USE_CANN: $USE_CANN"
-echo "USE_VMM: $USE_VMM"
 
 cd ${ROOT_PATH}
 
-bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${USE_VMM}" "${USE_CANN}"
+bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${USE_CANN}"
 
 bash run_pkg_maker/make_run.sh "${BUILD_PYTHON}" "${USE_CANN}"
 

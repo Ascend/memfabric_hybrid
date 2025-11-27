@@ -40,7 +40,6 @@ option(BUILD_GIT_COMMIT "build library version with commit" ON)
 option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
-option(USE_VMM "use vmm api" OFF)
 option(USE_CANN "BM implemented using CANN." ON)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -54,7 +53,6 @@ message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
 message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
-message(STATUS "USE_VMM = ${USE_VMM}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
@@ -102,9 +100,6 @@ endif ()
 if (USE_CANN STREQUAL "ON")
     add_definitions(-DUSE_CANN=ON)
     message("USE_CANN IS ON.")
-endif ()
-if (USE_VMM STREQUAL "ON")
-    add_definitions(-DUSE_VMM=ON)
 endif ()
 
 if (NOT BUILD_OPEN_ABI STREQUAL "ON")
@@ -162,10 +157,6 @@ set(PROJECT_MMC_OUTPUT ${PROJECT_SOURCE_DIR}/output/memcache)
 # set src base dir and output dir of smem
 set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
-
-# set src base dir and output dir of hybm driver
-set(PROJECT_DRIVER_BASE ${PROJECT_SOURCE_DIR}/src/driver)
-set(PROJECT_DRIVER_OUTPUT ${PROJECT_SOURCE_DIR}/output/driver)
 
 # set src base dir and output dir of adapter
 set(PROJECT_ADAPTER_SRC_BASE ${PROJECT_SOURCE_DIR}/src/mooncake_adapter)
