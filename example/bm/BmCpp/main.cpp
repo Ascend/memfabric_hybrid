@@ -34,19 +34,19 @@ do {                            \
 } while (0)
 
 const int32_t RANK_SIZE_MAX = 16;
-const int32_t COPY_SIZE = 20 * 1024 * 1024;
+const int32_t COPY_SIZE = 1024 * 1024 * 1024;
 const uint64_t GVA_SIZE = 4 * 1024ULL * 1024 * 1024;
 const int32_t RANDOM_MULTIPLIER = 23;
 const int32_t RANDOM_INCREMENT = 17;
 const int32_t NEGATIVE_RATIO_DIVISOR = 3;
-const smem_bm_data_op_type OP_TYPE = SMEMB_DATA_OP_DEVICE_RDMA;
-const int RUN_BATCH = 0;
+smem_bm_data_op_type OP_TYPE = SMEMB_DATA_OP_DEVICE_RDMA;
 
 BarrierUtil *g_barrier = nullptr;
 constexpr int RANK_SIZE_ARG_INDEX = 1;
 constexpr int RANK_NUM_ARG_INDEX = 2;
 constexpr int RANK_START_ARG_INDEX = 3;
 constexpr int IPPORT_ARG_INDEX = 4;
+constexpr int TRANSPORT_ARG_INDEX = 5;
 
 void GenerateData(void *ptr, int32_t rank, uint32_t len = COPY_SIZE)
 {
@@ -105,7 +105,6 @@ int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize,
     config.autoRanking = false;
     config.rankId = rankId;
 
-    config.flags = 2; // init gvm
     ret = smem_bm_init(ipPort.c_str(), rkSize, deviceId, &config);
     CHECK_RET_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rankId);
 
@@ -133,126 +132,6 @@ void FinalizeAll(aclrtStream *stream, uint32_t deviceId)
     aclFinalize();
 }
 
-constexpr uint32_t LAYER_BLOCK_NUM = 1024;
-constexpr uint32_t BATCH_COPY_NUM  = 20;
-constexpr uint32_t BATCH_COPY_LAYER  = 122;
-constexpr uint32_t BATCH_COPY_ARR_LEN = (BATCH_COPY_NUM * BATCH_COPY_LAYER);
-constexpr uint32_t BATCH_LAYER_OFFSET = 2;
-void CheckBatchCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t handle)
-{
-    int ret = 0;
-    uint64_t remote = (uint64_t)smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, (rankId + 1) % rkSize);
-
-    uint64_t rSrc[BATCH_COPY_LAYER];
-    uint64_t rSize[BATCH_COPY_LAYER];
-    for (uint32_t i = 0; i < BATCH_COPY_LAYER; i++) {
-        uint64_t len = 1024 * ((i & 1) ? 16 : 128) * LAYER_BLOCK_NUM;
-        void *ptr = nullptr;
-        ret = aclrtMalloc(&ptr, len, ACL_MEM_MALLOC_HUGE_FIRST);
-        CHECK_RET_VOID((ret != 0 || ptr == nullptr), "malloc device failed, ret:" << ret << " rank:" << rankId);
-        rSrc[i] = reinterpret_cast<uint64_t>(ptr);
-        rSize[i] = len;
-
-        if (OP_TYPE == SMEMB_DATA_OP_DEVICE_RDMA) {
-            smem_bm_register_user_mem(handle, rSrc[i], rSize[i]);
-        }
-    }
-
-    void* srcList[BATCH_COPY_ARR_LEN];
-    void* dstList[BATCH_COPY_ARR_LEN];
-    uint64_t sizeList[BATCH_COPY_ARR_LEN];
-    smem_batch_copy_params param = {(void **)srcList, dstList, sizeList, BATCH_COPY_ARR_LEN};
-
-    // LD2GH
-    void *hostSrc = malloc(COPY_SIZE);
-    GenerateData(hostSrc, rankId);
-
-    uint64_t offset = 0;
-    for (uint32_t i = 0; i < BATCH_COPY_NUM; i++) {
-        uint64_t ckLen = 0;
-        for (uint32_t j = 0; j < BATCH_COPY_LAYER; j++) {
-            uint64_t len = 1024 * ((j & 1) ? 16 : 128);
-            void *devPtr = reinterpret_cast<void *>(rSrc[j] + (i * BATCH_LAYER_OFFSET) * len);
-            ret = aclrtMemcpy(devPtr, len, (void *)((uint64_t)hostSrc + ckLen), len, ACL_MEMCPY_HOST_TO_DEVICE);
-            CHECK_RET_VOID(ret, "copy host to device failed, ret:" << ret << " rank:" << rankId);
-
-            srcList[i * BATCH_COPY_LAYER + j] = devPtr;
-            dstList[i * BATCH_COPY_LAYER + j] = reinterpret_cast<void *>(remote + offset);
-            sizeList[i * BATCH_COPY_LAYER + j] = len;
-            offset += len;
-            ckLen += len;
-        }
-    }
-
-    ret = smem_bm_copy_batch(handle, &param, SMEMB_COPY_L2G, 0);
-    CHECK_RET_VOID(ret, "copy hbm to gva failed, ret:" << ret << " rank:" << rankId);
-    LOG_INFO(" ==================== [TEST] bm copy end, rank:" << rankId << " task_num:" << BATCH_COPY_ARR_LEN
-        << " addr:" << std::hex << remote);
-}
-
-void CheckBatchCopy2(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t handle)
-{
-    int ret = 0;
-    uint64_t local = (uint64_t)smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, rankId);
-
-    LOG_INFO(" ==================== [TEST] bm check start, rank:" << rankId << " addr:" << std::hex << local);
-    uint64_t rSrc[BATCH_COPY_LAYER];
-    uint64_t rSize[BATCH_COPY_LAYER];
-    for (uint32_t i = 0; i < BATCH_COPY_LAYER; i++) {
-        uint64_t len = 1024 * ((i & 1) ? 16 : 128) * LAYER_BLOCK_NUM;
-        void *ptr = nullptr;
-        ret = aclrtMalloc(&ptr, len, ACL_MEM_MALLOC_HUGE_FIRST);
-        CHECK_RET_VOID((ret != 0 || ptr == nullptr), "malloc device failed, ret:" << ret << " rank:" << rankId);
-        rSrc[i] = reinterpret_cast<uint64_t>(ptr);
-        rSize[i] = len;
-
-        if (OP_TYPE == SMEMB_DATA_OP_DEVICE_RDMA) {
-            smem_bm_register_user_mem(handle, rSrc[i], rSize[i]);
-        }
-    }
-
-    void* srcList[BATCH_COPY_ARR_LEN];
-    void* dstList[BATCH_COPY_ARR_LEN];
-    uint64_t sizeList[BATCH_COPY_ARR_LEN];
-    smem_batch_copy_params param = {(void **)srcList, dstList, sizeList, BATCH_COPY_ARR_LEN};
-
-    uint64_t offset = 0;
-    for (uint32_t i = 0; i < BATCH_COPY_NUM; i++) {
-        for (uint32_t j = 0; j < BATCH_COPY_LAYER; j++) {
-            uint64_t len = 1024 * ((j & 1) ? 16 : 128);
-            void *devPtr = reinterpret_cast<void *>(rSrc[j] + (i * BATCH_LAYER_OFFSET) * len);
-
-            srcList[i * BATCH_COPY_LAYER + j] = reinterpret_cast<void *>(local + offset);
-            dstList[i * BATCH_COPY_LAYER + j] = devPtr;
-            sizeList[i * BATCH_COPY_LAYER + j] = len;
-            offset += len;
-        }
-    }
-    ret = smem_bm_copy_batch(handle, &param, SMEMB_COPY_G2L, 0);
-    CHECK_RET_VOID(ret, "copy gva to hbm failed, ret:" << ret << " rank:" << rankId);
-
-    void *hostSrc = malloc(COPY_SIZE);
-    void *hostDest = malloc(COPY_SIZE);
-    GenerateData(hostSrc, (rankId + rkSize - 1) % rkSize);
-
-    for (uint32_t i = 0; i < BATCH_COPY_NUM; i++) {
-        uint64_t ckLen = 0;
-        for (uint32_t j = 0; j < BATCH_COPY_LAYER; j++) {
-            uint64_t len = 1024 * ((j & 1) ? 16 : 128);
-            void *devPtr = reinterpret_cast<void *>(rSrc[j] + (i * BATCH_LAYER_OFFSET) * len);
-            ret = aclrtMemcpy(reinterpret_cast<void *>((uint64_t)hostDest + ckLen), len,
-                              devPtr, len, ACL_MEMCPY_DEVICE_TO_HOST);
-            CHECK_RET_VOID(ret, "copy host to device failed, ret:" << ret << " rank:" << rankId);
-            ckLen += len;
-        }
-        ret = CheckData(hostSrc, hostDest, 1024);
-        CHECK_RET_VOID((ret == false), "check G2H data failed, rank:" << rankId);
-    }
-    LOG_INFO(" ==================== [TEST] bm check ok, rank:" << rankId);
-}
-
-constexpr uint64_t bitCheckSize = 2 * 1024ULL * 1024 * 1024;
-constexpr int BIG_COPY_NUM = 2;
 void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t handle)
 {
     void *remote_host = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, (rankId + 1) % rkSize);
@@ -260,44 +139,68 @@ void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t hand
     void *remote_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, (rankId + 1) % rkSize);
     void *local_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, rankId);
 
-    GenerateData(local_host, rankId, bitCheckSize);
+    LOG_INFO(" ==================== [TEST] init, rank:" << rankId << " ptr:" << local_host << " " << local_dev << " " << remote_host << " " << remote_dev);
 
-    int ret;
-    for (int i = 0; i < BIG_COPY_NUM; i++) {
-        smem_copy_params params{};
-        params.dest = remote_dev;
-        params.src = local_host;
-        params.dataSize = bitCheckSize;
-        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2G, 0);
-        CHECK_RET_VOID(ret, "copy g2g failed, ret:" << ret << " rank:" << rankId <<
-            " ptr:" << local_host << " " << remote_dev);
-    }
-    LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId);
+    local_dev = (void *)(reinterpret_cast<uint64_t>(local_dev) + COPY_SIZE);
+    void *base = malloc(COPY_SIZE);
+    CHECK_RET_VOID(base == nullptr, "alloc host mem failed");
+    GenerateData(base, rankId, COPY_SIZE);
+    smem_copy_params params1 = {base, local_dev, COPY_SIZE};
+    int ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
+    CHECK_RET_VOID(ret, "copy local to global failed, ret:" << ret << " rank:" << rankId <<
+        " ptr:" << base << " " << local_dev);
+    free(base);
+
+    smem_copy_params params2 = {local_dev, remote_dev, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
+    CHECK_RET_VOID(ret, "copy hbm to remote hbm failed, ret:" << ret << " rank:" << rankId <<
+        " ptr:" << local_dev << " " << remote_dev);
+
+    smem_copy_params params3 = {local_dev, remote_host, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params3, SMEMB_COPY_G2G, 0);
+    CHECK_RET_VOID(ret, "copy hbm to remote dram failed, ret:" << ret << " rank:" << rankId <<
+                            " ptr:" << local_dev << " " << remote_host);
+    LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId << " size:" << COPY_SIZE);
 }
 
 void BigCopyCheck(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t handle)
 {
-    void *base = malloc(bitCheckSize);
-    GenerateData(base, (rankId + rkSize - 1) % rkSize, bitCheckSize);
+    void *base = malloc(COPY_SIZE);
+    void *receive = malloc(COPY_SIZE);
+    CHECK_RET_VOID(base == nullptr || receive == nullptr, "alloc host mem failed");
+    GenerateData(base, (rankId + rkSize - 1) % rkSize, COPY_SIZE);
 
     void *local_host = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, rankId);
     void *local_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, rankId);
 
     int ret;
-    for (int i = 0; i < BIG_COPY_NUM; i++) {
-        smem_copy_params params{};
-        params.dest = local_host;
-        params.src = local_dev;
-        params.dataSize = bitCheckSize;
-        ret = smem_bm_copy(handle, &params, SMEMB_COPY_G2G, 0);
-        CHECK_RET_VOID(ret, "copy g2g failed, ret:" << ret << " rank:" << rankId <<
-                                                    " ptr:" << local_host << " " << local_dev);
+    smem_copy_params params1 = {local_dev, receive, COPY_SIZE};
+    ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
+    CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId <<
+        " ptr:" << local_dev << " " << receive);
+    ret = CheckData(base, receive, COPY_SIZE);
+    CHECK_RET_VOID((ret == false), "check hbm data failed, rank:" << rankId);
+
+    if (OP_TYPE == SMEMB_DATA_OP_SDMA) {
+        smem_copy_params params2 = {local_host, local_dev, COPY_SIZE};
+        ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
+        CHECK_RET_VOID(ret, "copy hbm to host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_host
+            << " " << local_dev);
+
+        ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
+        CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId <<
+            " ptr:" << local_dev << " " << receive);
+
+        ret = CheckData(base, receive, COPY_SIZE);
+        CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
+    } else {
+        ret = CheckData(base, local_host, COPY_SIZE);
+        CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
     }
 
-    ret = CheckData(base, local_host, bitCheckSize);
-    free(base);
-    CHECK_RET_VOID((ret == false), "check G2G data failed, rank:" << rankId);
     LOG_INFO(" ==================== [TEST] bm check ok, rank:" << rankId);
+    free(base);
+    free(receive);
 }
 
 void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort)
@@ -317,19 +220,11 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
     CHECK_RET_VOID(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
     LOG_INFO(" ==================== [TEST] bm init ok, rank:" << rankId);
 
-    if (RUN_BATCH) {
-        CheckBatchCopy(deviceId, rankId, rkSize, handle);
-    } else {
-        BigCopy(deviceId, rankId, rkSize, handle);
-    }
+    BigCopy(deviceId, rankId, rkSize, handle);
     ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
 
-    if (RUN_BATCH) {
-        CheckBatchCopy2(deviceId, rankId, rkSize, handle);
-    } else {
-        BigCopyCheck(deviceId, rankId, rkSize, handle);
-    }
+    BigCopyCheck(deviceId, rankId, rkSize, handle);
     ret = g_barrier->Barrier();
     CHECK_RET_VOID(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
 
@@ -339,18 +234,23 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
 
 int main(int32_t argc, char* argv[])
 {
+    if (argc <= TRANSPORT_ARG_INDEX) {
+        LOG_ERROR("input param is invalid!");
+        return -1;
+    }
+
     int rankSize = atoi(argv[RANK_SIZE_ARG_INDEX]);
     int rankNum = atoi(argv[RANK_NUM_ARG_INDEX]);
     int rankStart = atoi(argv[RANK_START_ARG_INDEX]);
     std::string ipport = argv[IPPORT_ARG_INDEX];
+    int op = atoi(argv[TRANSPORT_ARG_INDEX]);
+
+    if (op == 0) OP_TYPE = SMEMB_DATA_OP_SDMA;
+    else OP_TYPE = SMEMB_DATA_OP_DEVICE_RDMA;
 
     LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
-        " input_ip:" << ipport);
+        " input_ip:" << ipport << " transport:" << (OP_TYPE == SMEMB_DATA_OP_SDMA ? "SDMA" : "RDMA"));
 
-    if (rankSize != (rankSize & (~(rankSize - 1)))) {
-        LOG_ERROR("input rank_size: " << rankSize << " is not the power of 2");
-        return -1;
-    }
     if (rankSize > RANK_SIZE_MAX) {
         LOG_ERROR("input rank_size: " << rankSize << " is large than " << RANK_SIZE_MAX);
         return -1;

@@ -185,8 +185,7 @@ int32_t DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 int32_t DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2LH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     if (ret != BM_OK) {
         BM_LOG_ERROR("[CopyLH2LH] AclrtMemcpy failed, ret: " << ret);
@@ -197,8 +196,7 @@ int32_t DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2LD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("[CopyLD2LD] AclrtMemcpy failed, ret: " << ret);
@@ -210,8 +208,7 @@ int32_t DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2LD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
         BM_LOG_ERROR("[CopyLH2LD] AclrtMemcpy failed, ret: " << ret);
@@ -223,8 +220,7 @@ int32_t DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2LH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != BM_OK) {
         BM_LOG_ERROR("[CopyLD2LH] AclrtMemcpy failed, ret: " << ret);
@@ -236,8 +232,7 @@ int32_t DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2GH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
@@ -252,8 +247,7 @@ int32_t DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2GD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
@@ -268,8 +262,7 @@ int32_t DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2GH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
@@ -284,8 +277,7 @@ int32_t DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2GD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyLD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
@@ -300,8 +292,7 @@ int32_t DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t length,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyRDMA] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                     << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyRDMA] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto src = (uint64_t)(ptrdiff_t)srcVA;
     auto dest = (uint64_t)(ptrdiff_t)destVA;
     int ret;
@@ -322,8 +313,7 @@ int32_t DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t len
 int32_t DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t length,
                                     const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2GH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
@@ -338,8 +328,7 @@ int32_t DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t length,
                                     const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2GH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
@@ -353,8 +342,7 @@ int32_t DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t length,
                                     const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2GD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
@@ -368,8 +356,7 @@ int32_t DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t length,
                                     const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2GD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
@@ -384,8 +371,7 @@ int32_t DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2LH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
@@ -400,8 +386,7 @@ int32_t DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2LH] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
@@ -416,8 +401,7 @@ int32_t DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2LD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
@@ -435,8 +419,7 @@ int32_t DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t le
 int32_t DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t length,
                                     const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2LD] srcVA=" << reinterpret_cast<uintptr_t>(srcVA)
-                                      << ", destVA=" << reinterpret_cast<uintptr_t>(destVA) << ", length=" << length);
+    BM_LOG_DEBUG("[CopyGD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     int32_t ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);

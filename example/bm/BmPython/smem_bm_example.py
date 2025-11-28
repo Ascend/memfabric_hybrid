@@ -13,7 +13,6 @@ from mf_smem import set_log_level
 
 COPY_SIZE = 4096
 GVA_SIZE = 1024 * 1024 * 1024
-HYBM_INIT_GVM_FLAG = 2
 
 
 def generate_host_tensor(seed: int):
@@ -40,7 +39,6 @@ def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_rank
     config.auto_ranking = auto_ranking
     if not auto_ranking:
         config.rank_id = rank_id
-    config.flags = HYBM_INIT_GVM_FLAG
     config.set_nic("tcp://127.0.0.1:1234")  # for device port
     ret = bm.initialize(store_url=url, world_size=rank_size, device_id=device_id, config=config)
     if ret != 0:

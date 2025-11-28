@@ -30,19 +30,20 @@ source /usr/local/memfabric_hybrid/set_env.sh
 编译完成后,会在当前目录生成bm_example可执行文件
 执行方式如下,支持多节点运行
   ```bash
-  ./bm_example [WORLD_SIZE] [LOCAL_RANK_SIZE] [RANK_START] [SERVER_IP]
+  ./bm_example [WORLD_SIZE] [LOCAL_RANK_SIZE] [RANK_START] [SERVER_IP] [TRANSPORT_TYPE]
   ```
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
     - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口
+    - TRANSPORT_TYPE: 数据访问方式(A2环境填1,表示RDMA;A3环境填0,表示SDMA)
 
   示例如下(假设期望指定监听8570端口)
   ```bash
   单节点运行2张卡: 
-  ./bm_example 2 2 0 tcp://127.0.0.1:8570
+  ./bm_example 2 2 0 tcp://127.0.0.1:8570 0
   
   两节点运行16张卡,每节点8张(假设nodeA的ip为x.x.x.x):
-  nodeA: ./bm_example 16 8 0 tcp://x.x.x.x:8570
-  nodeB: ./bm_example 16 8 8 tcp://x.x.x.x:8570
+  nodeA: ./bm_example 16 8 0 tcp://x.x.x.x:8570 0
+  nodeB: ./bm_example 16 8 8 tcp://x.x.x.x:8570 0
   ```
