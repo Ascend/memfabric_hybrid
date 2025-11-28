@@ -58,7 +58,7 @@ cp ${OUTPUT_DIR}/smem/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64
 cp -r ${OUTPUT_DIR}/hybm/include/* ${PKG_DIR}/${ARCH_OS}/include/hybm
 cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
 # mf_transfer
-cp -r ${OUTPUT_DIR}/mf_transfer/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+cp -r ${OUTPUT_DIR}/mk_transfer_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 # memfabric_hybrid
 cp -r ${OUTPUT_DIR}/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 

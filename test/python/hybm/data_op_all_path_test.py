@@ -16,7 +16,7 @@ import multiprocessing
 import sys
 from typing import Any, Dict, List
 
-import mf_smem
+import memfabric_hybrid as mf_hybrid
 import torch
 from torch_npu import npu
 
@@ -27,7 +27,7 @@ GB = 1024 * MB
 STORE_URL = "tcp://127.0.0.1:20028"
 LOCAL_HBM_SIZE: int = 1 * GB
 LOCAL_DRAM_SIZE: int = 8 * GB
-DATA_OP_TYPE = mf_smem.bm.BmDataOpType.DEVICE_RDMA
+DATA_OP_TYPE = memfabric_hybrid.bm.BmDataOpType.DEVICE_RDMA
 COPY_SIZE: int = 64 * MB
 
 DEVICES = [0, 1]
@@ -180,27 +180,27 @@ class BigMemoryContext:
         self.__store_url = store_url
         self.__device_id = device_id
         self.__rank_id = rank_id
-        self.__config = mf_smem.bm.BmConfig()
+        self.__config = mf_hybrid.bm.BmConfig()
         self.__config.start_store = True
         self.__config.rank_id = self.__rank_id
         self.__config.auto_ranking = False
         self.__config.start_store_only = False
-        self.__config.flags = mf_smem.bm.BmInitFlag.GVM
+        self.__config.flags = mf_hybrid.bm.BmInitFlag.GVM
         self.__config.set_nic("tcp://0.0.0.0/0:10005")
         self.__handle = None
 
     def prepare(self):
-        mf_smem.set_log_level(0)
+        mf_hybrid.set_log_level(0)
         try:
-            ret = mf_smem.initialize()
+            ret = mf_hybrid.initialize()
             if ret != 0:
                 raise RuntimeError(f"{ret=}")
         except Exception as e:
-            logging.error(f"mf_smem.initialize failed: {e}")
+            logging.error(f"mf_hybrid.initialize failed: {e}")
             return -1
 
         try:
-            ret = mf_smem.bm.initialize(
+            ret = mf_hybrid.bm.initialize(
                 store_url=self.__store_url,
                 world_size=2,
                 device_id=self.__device_id,
@@ -209,12 +209,12 @@ class BigMemoryContext:
             if ret != 0:
                 raise RuntimeError(f"{ret=}")
         except Exception as e:
-            logging.error(f"mf_smem.bm.initialize failed: {e}")
-            mf_smem.uninitialize()
+            logging.error(f"mf_hybrid.bm.initialize failed: {e}")
+            mf_hybrid.uninitialize()
             return -2
 
         try:
-            self.__handle = mf_smem.bm.create(
+            self.__handle = mf_hybrid.bm.create(
                 id=0,
                 local_dram_size=LOCAL_DRAM_SIZE,
                 local_hbm_size=LOCAL_HBM_SIZE,
@@ -225,14 +225,14 @@ class BigMemoryContext:
             logging.info(f"join in return {hex(res)}")
             npu.set_device(device=self.__device_id)
         except RuntimeError as e:
-            logging.error(f"mf_smem.bm.create failed: {e}")
-            mf_smem.bm.uninitialize()
-            mf_smem.uninitialize()
+            logging.error(f"mf_hybrid.bm.create failed: {e}")
+            mf_hybrid.bm.uninitialize()
+            mf_hybrid.uninitialize()
             return -1
 
         return 0
 
-    def get_handle(self) -> mf_smem.bm.BigMemory:
+    def get_handle(self) -> mf_hybrid.bm.BigMemory:
         return self.__handle
 
 
@@ -280,15 +280,15 @@ def create_tensor(device: str, size: int):
 def copy_kind(src: BigMemoryBlock, dst: BigMemoryBlock):
     kind = f"{src.kind}2{dst.kind}"
     if kind == "G2G":
-        return mf_smem.bm.BmCopyType.G2G
+        return mf_hybrid.bm.BmCopyType.G2G
     if kind == "L2G":
-        return mf_smem.bm.BmCopyType.L2G
+        return mf_hybrid.bm.BmCopyType.L2G
     if kind == "H2G":
-        return mf_smem.bm.BmCopyType.H2G
+        return mf_hybrid.bm.BmCopyType.H2G
     if kind == "G2L":
-        return mf_smem.bm.BmCopyType.G2L
+        return mf_hybrid.bm.BmCopyType.G2L
     if kind == "G2H":
-        return mf_smem.bm.BmCopyType.G2H
+        return mf_hybrid.bm.BmCopyType.G2H
     raise RuntimeError(f"invalid copy path: {src.tp} -> {dst.tp}")
 
 
@@ -322,25 +322,25 @@ class BigMemoryTest:
 
         if tp == RankMemType(MemType.GH, RankType.LOCAL):
             rank_id = self.test_rank_id
-            pos = mf_smem.bm.BmMemType.HOST
+            pos = mf_hybrid.bm.BmMemType.HOST
             base = ctx.get_handle().peer_rank_ptr(rank_id, pos)
             return BigMemoryBlock(tp, base + idx * COPY_SIZE, COPY_SIZE, None)
 
         if tp == RankMemType(MemType.GD, RankType.LOCAL):
             rank_id = self.test_rank_id
-            pos = mf_smem.bm.BmMemType.DEVICE
+            pos = mf_hybrid.bm.BmMemType.DEVICE
             base = ctx.get_handle().peer_rank_ptr(rank_id, pos)
             return BigMemoryBlock(tp, base + idx * COPY_SIZE, COPY_SIZE, None)
 
         if tp == RankMemType(MemType.GH, RankType.REMOTE):
             rank_id = self.peer_rank_id
-            pos = mf_smem.bm.BmMemType.HOST
+            pos = mf_hybrid.bm.BmMemType.HOST
             base = ctx.get_handle().peer_rank_ptr(rank_id, pos)
             return BigMemoryBlock(tp, base + idx * COPY_SIZE, COPY_SIZE, None)
 
         if tp == RankMemType(MemType.GD, RankType.REMOTE):
             rank_id = self.peer_rank_id
-            pos = mf_smem.bm.BmMemType.DEVICE
+            pos = mf_hybrid.bm.BmMemType.DEVICE
             base = ctx.get_handle().peer_rank_ptr(rank_id, pos)
             return BigMemoryBlock(tp, base + idx * COPY_SIZE, COPY_SIZE, None)
 
@@ -427,8 +427,8 @@ class BigMemoryTest:
         self.end_barrier.wait()
         logging.info("test exiting...")
         del ctx
-        mf_smem.bm.uninitialize()
-        mf_smem.uninitialize()
+        mf_hybrid.bm.uninitialize()
+        mf_hybrid.uninitialize()
         logging.info("test exited.")
 
     def run_peer(self, device_id: int):
@@ -449,8 +449,8 @@ class BigMemoryTest:
         self.end_barrier.wait()
         logging.info("peer exiting...")
         del context
-        mf_smem.bm.uninitialize()
-        mf_smem.uninitialize()
+        mf_hybrid.bm.uninitialize()
+        mf_hybrid.uninitialize()
         logging.info("peer exited.")
 
 

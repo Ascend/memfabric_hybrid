@@ -55,9 +55,9 @@ if [ "${BUILD_PYTHON}" != "ON" ]; then
 fi
 
 # mf_adapter
-mkdir -p ${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib
-cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
-cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
+mkdir -p ${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib
+cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
+cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
 
 # memfabric_hybrid
 mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
@@ -71,8 +71,8 @@ GIT_COMMIT=`git rev-parse HEAD` || true
   echo "git: ${GIT_COMMIT}"
 } > VERSION
 
-cp VERSION "${PROJ_DIR}/src/smem/csrc/python_wrapper/mf_smem/"
-cp VERSION "${PROJ_DIR}/src/smem/csrc/python_wrapper/mk_transfer_adapter/"
+cp VERSION "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
+cp VERSION "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/"
 rm -f VERSION
 
 readonly BACK_PATH_EVN=$PATH
@@ -110,19 +110,19 @@ do
     fi
 
     # mf_adapter
-    rm -rf "${PROJ_DIR}"/src/smem/python/mf_transfer/mk_transfer_adapter/_pymf_transfer.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/mf_transfer/mk_transfer_adapter/
-    mkdir -p ${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib
-    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
-    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mf_transfer/mk_transfer_adapter/lib"
-    cd "${PROJ_DIR}/src/smem/python/mf_transfer"
+    rm -rf "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/mf_adapter/_pymf_transfer.cpython*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/mf_adapter/
+    mkdir -p ${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib
+    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
+    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
+    cd "${PROJ_DIR}/src/smem/python/mk_transfer_adapter"
     rm -rf build mf_adapter.egg-info
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 
     # memfabric_hybrid
     rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mf_smem/_pymf_hybrid.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     rm -rf "${PROJ_DIR}"/src/python/memfabric_hybrid/_pymf_transfer.cpython*.so
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
@@ -136,9 +136,9 @@ do
 done
 
 # copy mf_transfer wheel package
-mkdir -p "${PROJ_DIR}/output/mf_transfer/wheel"
-cp "${PROJ_DIR}"/src/smem/python/mf_transfer/dist/*.whl "${PROJ_DIR}/output/mf_transfer/wheel"
-rm -rf "${PROJ_DIR}"/src/smem/python/mf_transfer/dist
+mkdir -p "${PROJ_DIR}/output/mk_transfer_adapter/wheel"
+cp "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/dist/*.whl "${PROJ_DIR}/output/mk_transfer_adapter/wheel"
+rm -rf "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/dist
 
 # memfabric_hybrid
 mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
@@ -150,7 +150,7 @@ if [ "${BUILD_PACKAGE}" == "ON" ]; then
     bash "${PROJ_DIR}"/script/run_pkg_maker/make_run.sh RELEASE ON
     rm -rf "${PROJ_DIR}"/package
     mkdir -p "${PROJ_DIR}"/package
-    cp "${PROJ_DIR}"/output/mf_transfer/wheel/*.whl "${PROJ_DIR}/package"
+    cp "${PROJ_DIR}"/output/mk_transfer_adapter/wheel/*.whl "${PROJ_DIR}/package"
     cp "${PROJ_DIR}"/output/memfabric_hybrid/wheel/*.whl "${PROJ_DIR}/package"
     cp "${PROJ_DIR}"/output/*.run "${PROJ_DIR}"/package
 fi

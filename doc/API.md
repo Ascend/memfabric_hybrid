@@ -1,4 +1,4 @@
-> 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/smem/csrc/python_wrapper/pysmem.cpp`。
+> 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/smem/csrc/python_wrapper/memfabric_hybrid/pymf_hybrid.cpp`。
 
 #### C接口
 安装完成run包并source安装路径下的set_env.sh后，会添加memfabric_hybrid安装路径的环境变量MEMFABRIC_HYBRID_HOME_PATH

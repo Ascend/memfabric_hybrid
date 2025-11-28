@@ -7,9 +7,9 @@ from typing import List
 import torch
 import torch_npu
 
-import mf_smem
-from mf_smem import bm
-from mf_smem import set_log_level
+import memfabric_hybrid
+from memfabric_hybrid import bm
+from memfabric_hybrid import set_log_level
 
 COPY_SIZE = 4096
 GVA_SIZE = 1024 * 1024 * 1024
@@ -30,7 +30,7 @@ def generate_host_tensor(seed: int):
 
 
 def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool):
-    ret = mf_smem.initialize()
+    ret = memfabric_hybrid.initialize()
     if ret != 0:
         logging.error(f'rank: {rank_id}, rank_size: {rank_size}, url: {url} initialize failed: {ret}')
         return ret

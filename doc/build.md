@@ -117,7 +117,7 @@ bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 │   │   │   └── mock_server
 │   │   └── wheel
 │   │       ├── mf_adapter-1.0.0-cp311-cp311-linux_aarch64.whl
-│   │       └── mf_smem-1.0.0-cp311-cp311-linux_aarch64.whl
+│   │       └── memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
 │   ├── uninstall.sh
 │   └── version.info
 ├── latest -> 1.0.0
@@ -129,8 +129,8 @@ bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 
 ```text
 
-root@localhost:/# pip show mf_smem
-Name: mf_smem
+root@localhost:/# pip show memfabric_hybrid
+Name: memfabric_hybrid
 Version: 1.0.0
 Summary: python api for smem
 Home-page: https://gitee.com/ascend/memfabric_hybrid
@@ -152,8 +152,8 @@ Location: /usr/local/lib/python3.11/site-packages
 Requires:
 Required-by:
 
-root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_smem
-/usr/local/lib/python3.11/site-packages/mf_smem
+root@localhost:/# tree /usr/local/lib/python3.11/site-packages/memfabric_hybrid
+/usr/local/lib/python3.11/site-packages/memfabric_hybrid
 ├── VERSION
 ├── __init__.py
 ├── __pycache__

@@ -15,19 +15,18 @@ add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
-        ${PROJECT_ADAPTER_SRC_BASE}/common
-        ${PROJECT_ADAPTER_SRC_BASE}/util
+        ${PROJECT_ADAPTER_SRC_BASE}/include
 )
 
 if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
-    file(GLOB_RECURSE MOONCAKE_SRC *.cpp)
+    file(GLOB_RECURSE MOONCAKE_SRC csrc/*.cpp)
     add_library(pytransfer OBJECT  ${MOONCAKE_SRC})
     find_package(pybind11 REQUIRED)
     include_directories(
             ${Python3_INCLUDE_DIRS}
             ${pybind11_INCLUDE_DIRS}
     )
-    pybind11_add_module(_pytransfer transfer/pytransfer.cpp util/transfer_util.cpp)
+    pybind11_add_module(_pytransfer csrc/pytransfer.cpp csrc/transfer_util.cpp)
     set_target_properties(_pytransfer PROPERTIES CXX_STANDARD 17)
     set_target_properties(_pytransfer PROPERTIES OUTPUT_NAME "_pymf_transfer")
     target_link_libraries(_pytransfer PRIVATE smem_shared)

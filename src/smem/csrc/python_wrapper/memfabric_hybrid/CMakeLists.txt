@@ -12,7 +12,7 @@ if (CMAKE_C_COMPILER STREQUAL "gcc")
     add_compile_options(-fabi-version=0)
 endif ()
 add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
-add_library(pysmem OBJECT pysmem.cpp)
+add_library(pymf_hybrid OBJECT pymf_hybrid.cpp)
 
 if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
@@ -40,9 +40,9 @@ print(os.path.dirname(pybind11.__file__),end='');"
             ${Python3_INCLUDE_DIRS}
             ${pybind11_INCLUDE_DIRS}
     )
-    pybind11_add_module(_pysmem pysmem.cpp)
-    set_target_properties(_pysmem PROPERTIES CXX_STANDARD 17)
-    set_target_properties(_pysmem PROPERTIES OUTPUT_NAME "_pymf_hybrid")
-    target_link_libraries(_pysmem PRIVATE smem_shared)
+    pybind11_add_module(_pymf_hybrid pymf_hybrid.cpp)
+    set_target_properties(_pymf_hybrid PROPERTIES CXX_STANDARD 17)
+    set_target_properties(_pymf_hybrid PROPERTIES OUTPUT_NAME "_pymf_hybrid")
+    target_link_libraries(_pymf_hybrid PRIVATE smem_shared)
 
 endif ()

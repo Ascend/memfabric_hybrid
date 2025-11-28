@@ -46,7 +46,7 @@ target_link_libraries(smem_shared PUBLIC pthread acc_tcp_net_static hybmm_shared
 
 if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
     add_subdirectory(python_wrapper/mk_transfer_adapter)
-    add_subdirectory(python_wrapper/mf_smem)
+    add_subdirectory(python_wrapper/memfabric_hybrid)
 endif()
 
 #install
