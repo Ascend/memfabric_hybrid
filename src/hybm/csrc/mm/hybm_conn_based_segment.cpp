@@ -27,12 +27,18 @@ Result HybmConnBasedSegment::ValidateOptions() noexcept
 
 Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
 {
+    static uint64_t usedOffset = 0U;
     BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
 
-    void *startAddr = reinterpret_cast<void *>(HYBM_HOST_GVA_START_ADDR);
+    void *startAddr = reinterpret_cast<void *>(HYBM_HOST_CONN_START_ADDR + usedOffset);
     uint64_t totalSize = options_.rankCnt * options_.size;
+    if (totalSize + usedOffset > HYBM_HOST_CONN_ADDR_SIZE) {
+        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " used:" << usedOffset <<
+                     " total:" << HYBM_HOST_CONN_ADDR_SIZE);
+        return BM_INVALID_PARAM;
+    }
     void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE,
                         MAP_FIXED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED) {
@@ -45,6 +51,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
     *address = globalVirtualAddress_;
+    usedOffset += totalSize;
     return BM_OK;
 }
 
@@ -218,12 +225,14 @@ bool HybmConnBasedSegment::MemoryInRange(const void *begin, uint64_t size) const
     return true;
 }
 
-void HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
 {
     if (!MemoryInRange(addr, size)) {
         rankId = options_.rankId;
+        return false;
     } else {
         rankId = (reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(globalVirtualAddress_)) / options_.size;
+        return true;
     }
 }
 

@@ -54,7 +54,8 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
     MemSegmentPtr tmpSeg;
     switch (options.segType) {
         case HYBM_MST_HBM:
-            if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C) {
+            if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
+                (options.dataOpType & HYBM_DOP_TYPE_MTE) == 0) {
                 tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
                 tmpSeg = std::make_shared<HybmDevLegacySegment>(options, entityId);

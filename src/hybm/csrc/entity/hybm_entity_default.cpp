@@ -200,7 +200,7 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
 
     auto addr = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(ptr));
     std::shared_ptr<MemSegment> segment = nullptr;
-    if (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HOST_REG_START_ADDR || !options_.globalUniqueAddress) {
+    if (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR || !options_.globalUniqueAddress) {
         segment = hbmSegment_;
     } else {
         segment = dramSegment_;
@@ -897,34 +897,22 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
 void MemEntityDefault::GenCopyExtOption(void* &src, void* &dest, uint64_t length, ExtOptions &options) noexcept
 {
     void *real = Valid48BitsAddress(src);
-    if (reinterpret_cast<uintptr_t>(real) >= HYBM_HOST_GVA_START_ADDR) {
-        if (dramSegment_ == nullptr) {
-            options.srcRankId = options_.rankId;
-        } else {
-            dramSegment_->GetRankIdByAddr(src, length, options.srcRankId);
-        }
+    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, options.srcRankId)) {
+        // nothing
+    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(src, length, options.srcRankId)) {
+        // nothing
     } else {
-        if (hbmSegment_ == nullptr) {
-            options.srcRankId = options_.rankId;
-        } else {
-            hbmSegment_->GetRankIdByAddr(src, length, options.srcRankId);
-        }
+        options.srcRankId = options_.rankId;
     }
     src = real;
 
     real = Valid48BitsAddress(dest);
-    if (reinterpret_cast<uintptr_t>(real) >= HYBM_HOST_GVA_START_ADDR) {
-        if (dramSegment_ == nullptr) {
-            options.destRankId = options_.rankId;
-        } else {
-            dramSegment_->GetRankIdByAddr(dest, length, options.destRankId);
-        }
+    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
+        // nothing
+    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
+        // nothing
     } else {
-        if (hbmSegment_ == nullptr) {
-            options.destRankId = options_.rankId;
-        } else {
-            hbmSegment_->GetRankIdByAddr(dest, length, options.destRankId);
-        }
+        options.srcRankId = options_.rankId;
     }
     dest = real;
 }

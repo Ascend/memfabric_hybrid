@@ -365,16 +365,17 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
     BM_LOG_INFO("close memory finish.");
 }
 
-void HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+bool HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
 {
     auto value = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(addr));
     auto rankIdBits = static_cast<uint16_t>(value >> 48);
     if (rankIdBits == 0U) {
         rankId = options_.rankId;
-        return;
+        return false;
     }
 
     rankId = rankIdBits - 1U;
+    return true;
 }
 
 bool HybmDevUserLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept

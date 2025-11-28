@@ -25,7 +25,6 @@ constexpr uint64_t MB = KB * 1024ULL;
 constexpr uint64_t GB = MB * 1024ULL;
 constexpr uint64_t TB = GB * 1024ULL;
 
-constexpr uint64_t HEIGHT_MAX = 256ULL;
 constexpr uint32_t RANK_MAX = 1024UL;
 constexpr uint64_t SMALL_PAGE_SIZE = 4U * KB;
 
@@ -50,27 +49,17 @@ constexpr uint32_t ACL_MEMCPY_HOST_TO_DEVICE = 1;
 constexpr uint32_t ACL_MEMCPY_DEVICE_TO_HOST = 2;
 constexpr uint32_t ACL_MEMCPY_DEVICE_TO_DEVICE = 3;
 
-constexpr uint64_t HYBM_HBM_START_ADDR = 0x0000100000000000UL;
-constexpr uint64_t HYBM_HOST_REG_START_ADDR = 0x0000180000000000UL;
-constexpr uint64_t HYBM_HOST_GVA_START_ADDR = 0x0000200000000000UL; // 32T
+constexpr uint64_t HYBM_HBM_START_ADDR = HYBM_DEVICE_VA_START;
+constexpr uint64_t HYBM_HBM_END_ADDR = HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE;
+constexpr uint64_t HYBM_HOST_CONN_START_ADDR = 0x200000000000UL; // 32T
+constexpr uint64_t HYBM_HOST_CONN_ADDR_SIZE = 0x80000000000UL; // 8T
 constexpr uint64_t HYBM_GVM_START_ADDR = 0x280000000000UL;      // 40T
 constexpr uint64_t HYBM_GVM_END_ADDR = 0xA80000000000UL;        // 168T
 
 constexpr uint64_t ENTITY_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE00UL;
 constexpr uint64_t HBM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE01UL;
 constexpr uint64_t DRAM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE02UL;
-constexpr uint64_t SDMA_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE03UL;
 constexpr uint64_t EXPORT_INFO_VERSION = 0x1UL;
-
-inline bool IsVirtualAddressNpu(uint64_t address)
-{
-    return (address >= HYBM_DEVICE_VA_START && address < (HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE));
-}
-
-inline bool IsVirtualAddressNpu(const void *address)
-{
-    return IsVirtualAddressNpu(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(address)));
-}
 
 inline uint64_t Valid48BitsAddress(uint64_t address)
 {
