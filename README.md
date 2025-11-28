@@ -64,16 +64,16 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 ### 带宽测试(单DIE)
 - 在昇腾A3超节点跨机数据访问性能(DRAM and HBM pooling over UB 1.0)如下：
 
-| 数据传输方向 | 单次数据大小（GB） | 带宽（GB/s） |
-| ----------- | -----------------| ------------ |
-| RH2D | 1 | 102.66 |
-| RH2D | 2 | 102.62 |
-| D2RH | 1 | 69.42 |
-| D2RH | 2 | 69.42 |
-| RD2D | 1 | 155.04 |
-| RD2D | 2 | 155.04 |
-| D2RD | 1 | 128.53 |
-| D2RD | 2 | 128.53 |
+| 数据传输方向&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 单次数据大小（GB）&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 带宽（GB/s）&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
+|--------------| -----------------| ------------ |
+| RH2D         | 1 | 102.66 |
+| RH2D         | 2 | 102.62 |
+| D2RH         | 1 | 69.42 |
+| D2RH         | 2 | 69.42 |
+| RD2D         | 1 | 155.04 |
+| RD2D         | 2 | 155.04 |
+| D2RD         | 1 | 128.53 |
+| D2RD         | 2 | 128.53 |
 
 - 在昇腾A2服务器跨机数据访问性能(DRAM and HBM pooling over Device RoCE)如下:
 
@@ -94,7 +94,7 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 │  ├── bm                                   # big memory样例
 │  └── shm                                  # share memory样例
 │  └── trans                                # batch data write/read样例
-│  └── decrypt                              # 自定义解密库示例
+│  └── decrypt                              # 自定义解密库示例(控制路径)
 ├── script                                  # 构建脚本
 │  ├── build_and_pack_run.sh                # 编译+加包脚本
 │  ├── build.sh                             # 编译脚本
@@ -104,9 +104,9 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 │  ├── python                               # python测试用例
 │  └── ut                                   # 单元测试用例
 ├── src                                     # 源码
-│  ├── acc_links                            # 内部通信层
-│  └── hybm                                 # 存储管理层
-│  └── smem                                 # big memory+trans+share memory接口实现
+│  ├── acc_links                            # 内部通信层 (用于进程间控制命令的通信, 基于Host TCP实现) 
+│  └── hybm                                 # 内存管理与内存访问层 (Global Memory Management、Data Operation、Transport Management)
+│  └── smem                                 # 语义与接口层 (big memory + transfer + share memory等语义与接口实现)
 │  └── util                                 # 公共函数
 ├── README.md
 ```
