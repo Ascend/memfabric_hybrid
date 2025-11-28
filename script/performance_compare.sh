@@ -45,7 +45,7 @@ function get_average()
 # obtain shmem, compile shmem
 mkdir -p ${PROJECT_PATH}
 cd ${PROJECT_PATH}
-git clone https://gitee.com/ascend/shmem.git
+git clone https://gitcode.com/Ascend/memfabric_hybrid
 bash $COMPARE_PATH/scripts/build.sh -examples
 
 # obtain original avg.

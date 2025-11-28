@@ -53,6 +53,31 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 
 ![one_copy](./doc/source/one_copy.png)
 
+在本机HBM到跨机DRAM的数据传输路径中，根据IO发起者（CPU或NPU）的不同，可选择以下传输协议：
+
+1. Host RDMA（主机RDMA）  
+   在主机（Host）层面实现的RDMA技术，允许网络节点间直接访问远程内存，显著降低CPU参与度，提升数据传输效率。
+2. Device RDMA（设备RDMA）  
+   在NPU等加速设备层面支持的RDMA技术，使设备能够直接与其他设备或主机进行内存访问，避免CPU介入，减少数据传输延迟。
+3. SDMA（System DMA，系统直接内存访问）  
+   NPU发起的异步数据传输机制，专为不同计算单元间高效数据传输设计，能有效提升系统整体计算性能和资源利用率。
+
+不同传输路径支持的传输协议如下：
+
+| 池化类型  | IO路径  | host rdma | device rdma | sdma    |
+|-------|-------|-----------|-------------|---------|
+| DRAM池 | LD2GH | 有         | 有           | A2不支持   |
+| DRAM池 | GH2LD | 有         | 有           | A2不支持   |
+| DRAM池 | LH2GH | 有         | 有           | A2不支持   |
+| DRAM池 | GH2LH | 有         | 有           | A2不支持   |
+| HBM池  | GD2LH | NA        | 有           | 有       |
+| HBM池  | LH2GD | NA        | 有           | 有       |
+| HBM池  | GD2LD | NA        | 有           | 有       |
+| HBM池  | LD2GD | NA        | 有           | 有       |
+| 混合池   | GH2GD | NA        | bm用例已补充     | A2不支持   |
+| 混合池   | GD2GH | NA        | bm用例已补充     | A2不支持   |
+| 混合池   | GH2GH | 待补充       | bm用例已补充     | A2不支持   |
+| 混合池   | GD2GD | NA        | bm用例已补充     | bm用例已补充 |
 
 ## 🔥性能表现
 

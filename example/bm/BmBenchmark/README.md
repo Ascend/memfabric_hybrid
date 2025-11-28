@@ -43,7 +43,8 @@ bash build_bm_perf_benchmark.sh
 ```
 
 ## 运行
-编译完成后,会在当前目录生成bm_example可执行文件
+
+编译完成后,会在当前目录生成bm_perf_benchmark可执行文件
 执行方式如下,支持多节点运行
   ```bash
   ./bm_perf_benchmark -bw -t [DATA_COPY_TYPE] -et[EXCUTE_TIMES] -s [BLOCK_SIZE] -bs[BATCH_SIZE] -d [DEVICE_START] -ws [WORLD_SIZE] -lrs [LOCAL_RANK_SIZE] -rs [RANK_START] -ip [SERVER_IP]

@@ -24,9 +24,8 @@ memfabric_hybrid编译不依赖CANN和HDK.
 
 1. 下载代码
 ```
-git clone https://gitee.com/ascend/memfabric_hybrid.git
+git clone https://gitcode.com/Ascend/memfabric_hybrid
 cd memfabric_hybrid
-git checkout br_opensource_memfabric
 git clean -xdf
 git reset --hard
 ```
@@ -133,7 +132,7 @@ root@localhost:/# pip show memfabric_hybrid
 Name: memfabric_hybrid
 Version: 1.0.0
 Summary: python api for smem
-Home-page: https://gitee.com/ascend/memfabric_hybrid
+Home-page: https://gitcode.com/Ascend/memfabric_hybrid
 Author:
 Author-email:
 License: Apache License Version 2.0
@@ -144,7 +143,7 @@ root@localhost:/# pip show mf_adapter
 Name: mf_adapter
 Version: 1.0.0
 Summary: python api for mf_adapter
-Home-page: https://gitee.com/ascend/memfabric_hybrid
+Home-page: https://gitcode.com/Ascend/memfabric_hybrid
 Author:
 Author-email:
 License: Apache License Version 2.0

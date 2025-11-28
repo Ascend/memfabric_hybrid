@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 BM_CPP_EXAMPLE_DIR=$(dirname $(readlink -f "$0"))
-PROJ_DIR=${BM_CPP_EXAMPLE_DIR}/../../../../
+PROJ_DIR=${BM_CPP_EXAMPLE_DIR}/../../../
 
 cd ${BM_CPP_EXAMPLE_DIR}
 mkdir build
