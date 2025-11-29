@@ -42,42 +42,41 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
 
 - **跨机跨介质直接访问**
 
-  基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问，典型跨节点跨介质的访问路径有：
+  基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问; 典型跨节点跨介质的访问路径有：
     - D2RH：本机HBM到跨机DRAM
     - RH2D：跨机DRAM到本机HBM
     - RH2H：跨机DRAM到本机DRAM
-
   Note: D为Device, RH为Remote Host
 
-MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
-
+  MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 ![one_copy](./doc/source/one_copy.png)
 
-在本机HBM到跨机DRAM的数据传输路径中，根据IO发起者（CPU或NPU）的不同，可选择以下传输协议：
+当前MemFabric池化的硬件支持情况如下：
+* 昇腾A3超节点：Device UB 1.0，Host rdma
+* 昇腾A2服务器：Device rdma，Host rdma
+* 鲲鹏服务器: Host rdma
 
-1. Host RDMA（主机RDMA）  
-   在主机（Host）层面实现的RDMA技术，允许网络节点间直接访问远程内存，显著降低CPU参与度，提升数据传输效率。
-2. Device RDMA（设备RDMA）  
-   在NPU等加速设备层面支持的RDMA技术，使设备能够直接与其他设备或主机进行内存访问，避免CPU介入，减少数据传输延迟。
-3. SDMA（System DMA，系统直接内存访问）  
-   NPU发起的异步数据传输机制，专为不同计算单元间高效数据传输设计，能有效提升系统整体计算性能和资源利用率。
+| 池化类型         | 访问方向  | host rdma | device rdma | Device UB 1.0   |
+|-----------------|----------|-----------|-------------|----------------|
+| DRAM POOL       |   LD2GH  | 支持      | 支持         | 支持           |
+| DRAM POOL       |   GH2LD  | 支持      | 支持         | 支持           |
+| DRAM POOL       |   LH2GH  | 支持      | 支持         | 支持           |
+| DRAM POOL       |   GH2LH  | 支持      | 支持         | 支持           |
+| HBM POOL        |   GD2LH  | 不支持    | 支持         | 支持           |
+| HBM POOL        |   LH2GD  | 不支持    | 支持         | 支持           |
+| HBM POOL        |   GD2LD  | 不支持    | 支持         | 支持           |
+| HBM POOL        |   LD2GD  | 不支持    | 支持         | 支持           |
+| HBM + DRAM POOL |   GH2GD  | 不支持    | 支持         | 支持           |
+| HBM + DRAM POOL |   GD2GH  | 不支持    | 支持         | 支持           |
+| HBM + DRAM POOL |   GH2GH  | 不支持    | 支持         | 支持           |
+| HBM + DRAM POOL |   GD2GD  | 不支持    | 支持         | 支持           |
 
-不同传输路径支持的传输协议如下：
-
-| 池化类型  | IO路径  | host rdma | device rdma | sdma    |
-|-------|-------|-----------|-------------|---------|
-| DRAM池 | LD2GH | 有         | 有           | A2不支持   |
-| DRAM池 | GH2LD | 有         | 有           | A2不支持   |
-| DRAM池 | LH2GH | 有         | 有           | A2不支持   |
-| DRAM池 | GH2LH | 有         | 有           | A2不支持   |
-| HBM池  | GD2LH | NA        | 有           | 有       |
-| HBM池  | LH2GD | NA        | 有           | 有       |
-| HBM池  | GD2LD | NA        | 有           | 有       |
-| HBM池  | LD2GD | NA        | 有           | 有       |
-| 混合池   | GH2GD | NA        | bm用例已补充     | A2不支持   |
-| 混合池   | GD2GH | NA        | bm用例已补充     | A2不支持   |
-| 混合池   | GH2GH | 待补充       | bm用例已补充     | A2不支持   |
-| 混合池   | GD2GD | NA        | bm用例已补充     | bm用例已补充 |
+**Note：** 
+L为Local，D为Device，G为Global，H为Host
+GH ：代表一块DRAM内存，其属于DRAM内存池空间，可能在本地，也可能在远端其他节点
+GD ：代表一块HBM显存，其属于HBM内存池空间，可能在本地，可能在远端其他节点
+LH ：代表一块DRAM内存，其不属于任何内存池空间，其位置在当前进程
+LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在当前进程
 
 ## 🔥性能表现
 
@@ -165,7 +164,7 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 - 配套驱动固件依赖(使用不同介质所需最低版本不同)：
 
   | 特性     | 最低版本需求|
-  |--------|----------|
+  |----------|----------|
   | HBM池化  | 24.1.RC2 |
   | DRAM池化 | 25.5.0 (*on going*)   |
 
