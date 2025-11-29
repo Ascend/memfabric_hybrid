@@ -71,12 +71,12 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
 | HBM + DRAM POOL |   GH2GH  | 不支持    | 支持         | 支持           |
 | HBM + DRAM POOL |   GD2GD  | 不支持    | 支持         | 支持           |
 
-**Note：** 
-L为Local，D为Device，G为Global，H为Host
-GH ：代表一块DRAM内存，其属于DRAM内存池空间，可能在本地，也可能在远端其他节点
-GD ：代表一块HBM显存，其属于HBM内存池空间，可能在本地，可能在远端其他节点
-LH ：代表一块DRAM内存，其不属于任何内存池空间，其位置在当前进程
-LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在当前进程
+**Note：**  
+L为Local，D为Device，G为Global，H为Host  
+GH ：代表一块DRAM内存，其属于DRAM内存池空间，可能在本地，也可能在远端其他节点  
+GD ：代表一块HBM显存，其属于HBM内存池空间，可能在本地，可能在远端其他节点  
+LH ：代表一块DRAM内存，其不属于任何内存池空间，其位置在当前进程  
+LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在当前进程    
 
 ## 🔥性能表现
 
