@@ -10,9 +10,9 @@
   - 将多节点的异构设备内存(DRAM|显存等)池化且提供高性能的全局内存直接访问的能力
   - 北向提供简单的内存语义访问接口(xcopy with global virtual address)，支持D2RH\RH2D\RH2H等内存直接访问
   - 南向支持多种DMA引擎及多种网络/灵衢互联 (Device UB、Device RoCE、Host UB、Host RoCE等)，对上屏蔽复杂性
-
+     
 ![architecture](./doc/source/architecture.png)
-
+      
 如上图所示, MemFabric主要分为四大模块: Global Memory Management、Data Operation、Transport Management、API
   * **Global Memory Management**: 实现GVA的全局编排、页表映射策略制定及通过驱动将映射策略注入页表
   * **Data Operation**: xcopy的实现，驱动xDMA、LD/ST实现全局内存直接读写
@@ -37,9 +37,9 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
   - 它是一个简单的uint64
   - 所有进程的gva的起始地址一致
   - 所有进程的gva按线性排布且一致
-
+       
 ![unified_global_address](./doc/source/unified_global_address.png)
-
+       
 - **跨机跨介质直接访问**
 
   基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问; 典型跨节点跨介质的访问路径有：
@@ -47,10 +47,11 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
     - RH2D：跨机DRAM到本机HBM
     - RH2H：跨机DRAM到本机DRAM
   Note: D为Device, RH为Remote Host
-
-  MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
+           
+  MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):  
+         
 ![one_copy](./doc/source/one_copy.png)
-
+      
 当前MemFabric池化的硬件支持情况如下：
 * 昇腾A3超节点：Device UB 1.0，Host rdma
 * 昇腾A2服务器：Device rdma，Host rdma
@@ -82,9 +83,9 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 
 ### 时延测试
 - 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/yrewzjs/Mooncake/pull/1/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
-
+    
 ![a3-Latency-performance](./doc/source/a3_latency.png)
-
+     
 ### 带宽测试(单DIE)
 - 在昇腾A3超节点跨机数据访问性能(DRAM and HBM pooling over UB 1.0)如下：
 
@@ -100,9 +101,9 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 | D2RD         | 2 | 128.53 |
 
 - 在昇腾A2服务器跨机数据访问性能(DRAM and HBM pooling over Device RoCE)如下:
-
+      
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
-
+      
 - 性能测试参考 [benchmark](./test/example/bm/BmBenchmark/README.md)
 
 ## 🔍目录结构
