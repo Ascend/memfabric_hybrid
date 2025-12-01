@@ -515,7 +515,7 @@ std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
 
 Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uint32_t flags)
 {
-    auto slice = hybm_register_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, address, size, 0);
+    auto slice = hybm_register_local_memory(entity_, address, size, 0);
     if (slice == nullptr) {
         SM_LOG_ERROR("register address with size: " << size << " failed!");
         return SM_ERROR;

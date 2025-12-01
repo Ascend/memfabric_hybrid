@@ -73,7 +73,6 @@ public:
     int32_t BatchCopyData(hybm_batch_copy_params &params,
                           hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept override;
     int32_t Wait() noexcept override;
-    int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
     hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept override;
 
