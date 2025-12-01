@@ -259,6 +259,8 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
 
 Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
+    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
+                                       reinterpret_cast<uint64_t>(addr), size);
     return BM_OK;
 }
 

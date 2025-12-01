@@ -92,8 +92,9 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
 
 Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
-    BM_LOG_ERROR("HybmDevLegacySegment NOT SUPPORT RegisterMemory");
-    return BM_NOT_SUPPORTED;
+    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
+                                       reinterpret_cast<uint64_t>(addr), size);
+    return BM_OK;
 }
 
 Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept

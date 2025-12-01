@@ -95,7 +95,7 @@ HYBM_API int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice,
     return entity->FreeLocalMemory(slice, flags);
 }
 
-HYBM_API hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType, const void *ptr,
+HYBM_API hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr,
                                                      uint64_t size, uint32_t flags)
 {
     BM_ASSERT_RETURN(e != nullptr, nullptr);
@@ -211,12 +211,4 @@ HYBM_API void hybm_unmap(hybm_entity_t e, uint32_t flags)
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RET_VOID(entity != nullptr);
     entity->Unmap();
-}
-
-HYBM_API int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size)
-{
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    return entity->RegisterMem(addr, size);
 }
