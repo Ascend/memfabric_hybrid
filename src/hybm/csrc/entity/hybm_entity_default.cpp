@@ -918,7 +918,7 @@ void MemEntityDefault::GenCopyExtOption(void* &src, void* &dest, uint64_t length
     } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
         // nothing
     } else {
-        options.srcRankId = options_.rankId;
+        options.destRankId = options_.rankId;
     }
     dest = real;
 }
