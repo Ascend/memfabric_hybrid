@@ -105,6 +105,7 @@ private:
     Result SendWatchRequest(const std::vector<uint8_t> &reqBody,
                             const std::function<void(int result, const std::vector<uint8_t> &)> &notify,
                             uint32_t &id) noexcept;
+    void HeartBeat() noexcept;
 
 private:
     AccStoreServerPtr accServer_;
@@ -124,6 +125,8 @@ private:
     std::atomic<bool> isConnect_{false};
     ConfigStoreReconnectHandler reconnectHandler{nullptr};
     ConfigStoreClientBrokenHandler brokenHandler_ = nullptr;
+    std::atomic<bool> isRunning_{false};
+    std::thread heartBeatThread_;
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
 }  // namespace smem

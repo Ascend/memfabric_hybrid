@@ -66,6 +66,12 @@ public:
         }
         return UINT32_MAX;
     }
+    
+    virtual void CleanUp() noexcept
+    {
+        BM_LOG_INFO("DataOperator not support");
+        return;
+    }
 
 protected:
     uint64_t gva_[HYBM_MEM_TYPE_BUTT] = {0};

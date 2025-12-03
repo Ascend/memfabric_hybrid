@@ -333,7 +333,8 @@ Result SmemTransEntry::WatchConnectTaskOneLoop()
             }
             return SM_OK;
         } else if (status == SM_ERROR) {
-            SM_LOG_ERROR("Reconnect failed, wait next connect.");
+            const uint32_t logInternal = 5;
+            SM_LOG_LIMIT_WARN(logInternal, "Reconnect failed, wait next connect.");
             return SM_ERROR;
         }
     }
@@ -400,7 +401,7 @@ void SmemTransEntry::CleanupRemoteSlices(const std::vector<const StoredSliceInfo
         }
         it->second.erase(sIt);
         if (it->second.empty()) {
-            SM_LOG_DEBUG("remove workId: " << uniqueToString(workerId.workerId) << " remote slice map.");
+            SM_LOG_INFO("remove workId: " << uniqueToString(workerId.workerId) << " remote slice map.");
             remoteSlices_.erase(it);
         }
     }

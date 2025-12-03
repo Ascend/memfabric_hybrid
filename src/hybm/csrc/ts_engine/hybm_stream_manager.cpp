@@ -19,9 +19,6 @@ namespace mf {
 HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t prio, uint32_t flags)
 {
     static thread_local HybmStreamPtr hybmStream_ = nullptr;
-    if (hybmStream_ != nullptr) {
-        return hybmStream_;
-    }
     hybmStream_ = std::make_shared<HybmStream>(devId, prio, flags);
     auto ret = hybmStream_->Initialize();
     if (ret != BM_OK) {

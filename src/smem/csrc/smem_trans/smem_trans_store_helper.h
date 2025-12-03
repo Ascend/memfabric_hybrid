@@ -31,27 +31,37 @@ const std::string CLUSTER_RANKS_INFO_KEY = "cluster_ranks_info";  // rank的基�
 
 const std::string SENDER_COUNT_KEY = "count_for_senders";
 const std::string SENDER_DEVICE_INFO_KEY = "devices_info_for_senders";
+const std::string SENDER_GET_DEVICE_ID_KEY = "get_devices_id_for_senders";
+
 const std::string RECEIVER_COUNT_KEY = "receiver_for_senders";
 const std::string RECEIVER_DEVICE_INFO_KEY = "devices_info_for_receivers";
+const std::string RECEIVER_GET_DEVICE_ID_KEY = "get_devices_id_for_receivers";
 
 const std::string RECEIVER_TOTAL_SLICE_COUNT_KEY = "receivers_total_slices_count";
 const std::string RECEIVER_SLICES_INFO_KEY = "receivers_all_slices_info";
+const std::string RECEIVER_GET_SLICES_ID_KEY = "get_receivers_all_slices_id";
 
 const std::string SENDER_TOTAL_SLICE_COUNT_KEY = "senders_total_slices_count";
 const std::string SENDER_SLICES_INFO_KEY = "senders_all_slices_info";
+const std::string SENDER_GET_SLICES_ID_KEY = "get_senders_all_slices_id";
 enum DataStatusType : uint8_t { ABNORMAL = 0, NORMAL};
 struct StoreKeys {
     std::string deviceCount;
     std::string sliceCount;
     std::string deviceInfo;
     std::string sliceInfo;
+    std::string getDeviceId;
+    std::string getSliceId;
 
     StoreKeys() noexcept {}
-    StoreKeys(std::string devCnt, std::string slcCnt, std::string devInfo, std::string slcInfo) noexcept
+    StoreKeys(std::string devCnt, std::string slcCnt, std::string devInfo, std::string slcInfo,
+              std::string getDId, std::string getSId) noexcept
         : deviceCount{std::move(devCnt)},
           sliceCount{std::move(slcCnt)},
           deviceInfo{std::move(devInfo)},
-          sliceInfo{std::move(slcInfo)}
+          sliceInfo{std::move(slcInfo)},
+          getDeviceId{std::move(getDId)},
+          getSliceId{std::move(getSId)}
     {
     }
 };
@@ -93,13 +103,6 @@ struct StoredSliceInfo {
     {
     }
 };
-
-struct RemoteLocalInfo {
-    bool isValid{false};
-    uint16_t deviceIdInRemote_;
-    std::queue<uint16_t> sliceIdInRemote_;
-};
-
 
 using FindRanksCbFunc = std::function<int(const std::vector<hybm_exchange_info> &)>;
 using FindSlicesCbFunc =
@@ -155,7 +158,6 @@ private:
     std::pair<uint16_t, std::vector<uint8_t>> storeRankIdInfo_;
     std::pair<uint16_t, std::vector<uint8_t>> storeDeviceInfo_;
     std::vector<std::pair<uint16_t, std::vector<uint8_t>>> storeSliceInfo_;
-    RemoteLocalInfo remoteRankInfo_;
 
     std::vector<uint8_t> remoteDeviceInfoLastTime_;
     std::vector<uint8_t> remoteSlicesInfoLastTime_;
