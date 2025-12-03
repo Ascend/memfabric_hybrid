@@ -38,14 +38,16 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
-                                             << ") address in use");
+        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
+                                                << ", rank=" << rankId
+                                                << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isSever=" << isServer << ", rank=" << rankId
-                                              << ") failed:" << ret);
+        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
+                                                 << ", rank=" << rankId
+                                                 << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;
     }
