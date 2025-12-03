@@ -110,7 +110,7 @@ using FindSlicesCbFunc =
 class SmemStoreHelper {
 public:
     SmemStoreHelper(std::string name, std::string storeUrl, smem_trans_role_t role) noexcept;
-    int Initialize(uint16_t entityId, int32_t maxRetry) noexcept;
+    int Initialize(uint16_t entityId, int32_t maxRetry, bool startConfigServer = false) noexcept;
     void Destroy() noexcept;
     void SetSliceExportSize(size_t sliceExportSize) noexcept;
     int GenerateRankId(const smem_trans_config_t &config, uint16_t &rankId) noexcept;

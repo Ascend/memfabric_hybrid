@@ -66,7 +66,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
         return SM_INVALID_PARAM;
     }
 
-    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout));
+    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout), config.startConfigServer);
     SM_VALIDATE_RETURN(ret == SM_OK, "store helper initialize failed: " << ret, ret);
 
     ret = storeHelper_.GenerateRankId(config, rankId_);
