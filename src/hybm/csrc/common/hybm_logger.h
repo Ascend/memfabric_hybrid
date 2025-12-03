@@ -18,6 +18,7 @@
 #define BM_LOG_INFO(ARGS) MF_OUT_LOG("[HYBM ", ock::mf::INFO_LEVEL, ARGS)
 #define BM_LOG_WARN(ARGS) MF_OUT_LOG("[HYBM ", ock::mf::WARN_LEVEL, ARGS)
 #define BM_LOG_ERROR(ARGS) MF_OUT_LOG("[HYBM ", ock::mf::ERROR_LEVEL, ARGS)
+#define BM_LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[HYBM ", ock::mf::ERROR_LEVEL, ARGS)
 
 #define BM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \

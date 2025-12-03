@@ -10,6 +10,7 @@
 #define STORE_LOG_INFO(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::INFO_LEVEL, ARGS)
 #define STORE_LOG_WARN(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::WARN_LEVEL, ARGS)
 #define STORE_LOG_ERROR(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
+#define STORE_LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
 
 // if ARGS is false, print error
 #define STORE_ASSERT_RETURN(ARGS, RET)              \

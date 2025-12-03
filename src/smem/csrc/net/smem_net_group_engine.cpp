@@ -350,7 +350,7 @@ void SmemNetGroupEngine::GroupListenEvent()
                                                std::placeholders::_2, std::placeholders::_3),
                                      wid);
             if (ret != SM_OK) {
-                SM_LOG_WARN("group watch failed, ret: " << ret);
+                SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
                 usleep(SMEM_GROUP_SLEEP_TIMEOUT);
                 continue;
             }

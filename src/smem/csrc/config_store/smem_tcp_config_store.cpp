@@ -506,7 +506,7 @@ TcpConfigStore::Watch(const std::string &key,
     auto ret = SendWatchRequest(
         packedRequest, [key, notify](int res, const std::vector<uint8_t> &value) { notify(res, key, value); }, wid);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send get for key: " << key << ", get null response");
+        STORE_LOG_ERROR_LIMIT("send get for key: " << key << ", get null response");
         return ret;
     }
 
@@ -691,7 +691,8 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     msgCtxLocker.unlock();
     auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret << ", Established: " << accClientLink_->Established());
+        STORE_LOG_ERROR_LIMIT("send message failed, result: " << ret
+                                                              << ", Established: " << accClientLink_->Established());
         return ret;
     }
 

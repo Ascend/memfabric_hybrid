@@ -488,7 +488,7 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
     int lastErrno = 0;
     auto [addrPtr, addrLen] = parser->GetPeerAddress(peerIp, port);
     while (timesRetried < maxRetryTimes) {
-        LOG_INFO("Trying to connect to " << ipAndPort);
+        LOG_INFO_LIMIT("Trying to connect to " << ipAndPort);
         errno = 0;
         if (::connect(tmpFD, addrPtr, addrLen) == 0) {
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
