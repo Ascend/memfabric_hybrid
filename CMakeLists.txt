@@ -150,10 +150,6 @@ set(PROJECT_UTIL_SRC_BASE ${PROJECT_SOURCE_DIR}/src/util/csrc)
 set(PROJECT_SMEM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/smem)
 set(PROJECT_SMEM_OUTPUT ${PROJECT_SOURCE_DIR}/output/smem)
 
-# set src base dir and output dir of memcache
-set(PROJECT_MMC_SRC_BASE ${PROJECT_SOURCE_DIR}/src/memcache)
-set(PROJECT_MMC_OUTPUT ${PROJECT_SOURCE_DIR}/output/memcache)
-
 # set src base dir and output dir of smem
 set(PROJECT_HYBM_SRC_BASE ${PROJECT_SOURCE_DIR}/src/hybm)
 set(PROJECT_HYBM_OUTPUT ${PROJECT_SOURCE_DIR}/output/hybm)
