@@ -571,6 +571,12 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
     }
 
     if (transportManager_ != nullptr) {
+        std::unique_lock<std::mutex> uniqueLock{importMutex_};
+        for (auto rank : ranks) {
+            importedRanks_.erase(rank);
+            importedMemories_.erase(rank);
+        }
+        uniqueLock.unlock();
         auto ret = transportManager_->RemoveRanks(ranks);
         if (ret != BM_OK) {
             BM_LOG_WARN("transport remove ranks failed: " << ret);

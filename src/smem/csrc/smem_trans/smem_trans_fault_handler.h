@@ -45,11 +45,6 @@ struct RankInfo {
     RankInfo(uint16_t rId, std::string rName) : rankId(rId), rankName(rName) {};
 };
 
-struct ServerFaultRankIndex {
-    uint16_t rankId;
-    uint16_t deviceInfoId;
-    std::vector<uint16_t> sliceInfoIdVec;
-};
 class SmemStoreFaultHandler {
 public:
     static SmemStoreFaultHandler &GetInstance();
@@ -70,8 +65,17 @@ private:
                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
     void ClearFaultInfo(const uint32_t linkId,
                            std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+
+    void ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
+                         std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+
+    void ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
+                        std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+
     std::unordered_map<uint32_t, RankInfo> linkIdToRankInfoMap_;
-    std::queue<ServerFaultRankIndex> faultRankIndexQueue_;
+    std::queue<uint16_t> faultRankIdQueue_;
+    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultDeviceIdQueue_;  // first->sender, second->receiver
+    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultSliceIdQueue_;   // first->sender, second->receiver
 };
 }
 }

@@ -71,6 +71,7 @@ private:
     Result ImportDeviceInfo(const std::string &info) noexcept;
     Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
     static void RollbackIpcMemory(void *addresses[], uint32_t count);
+    void RemoveSliceInfo(const uint32_t rankId) noexcept;
 
 private:
     uint16_t sliceCount_{0};
@@ -79,9 +80,10 @@ private:
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;
     std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
+    std::map<uint32_t, std::vector<std::shared_ptr<MemSlice>>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
-    std::vector<void *> registerAddrs_{};
+    std::set<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
 };
 }

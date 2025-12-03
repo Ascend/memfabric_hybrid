@@ -24,6 +24,7 @@ namespace smem {
 
 std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
 constexpr uint16_t MAX_U16_INDEX = 65535;
+constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
 
 AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept
     : listenIp_{std::move(ip)}, listenPort_{port}, worldSize_{worldSize},
@@ -34,7 +35,8 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
                        {MessageType::APPEND, &AccStoreServer::AppendHandler},
                        {MessageType::CAS, &AccStoreServer::CasHandler},
                        {MessageType::WRITE, &AccStoreServer::WriteHandler},
-                       {MessageType::WATCH_RANK_STATE, &AccStoreServer::WatchRankStateHandler}}
+                       {MessageType::WATCH_RANK_STATE, &AccStoreServer::WatchRankStateHandler},
+                       {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler}}
 {}
 
 Result AccStoreServer::Startup(const smem_tls_config& tlsConfig) noexcept
@@ -89,6 +91,7 @@ Result AccStoreServer::Startup(const smem_tls_config& tlsConfig) noexcept
 
     timerThread_ = std::thread{[this]() { TimerThreadTask(); }};
     rankStateThread_ = std::thread{[this]() { RankStateTask(); }};
+    checkerThread_ = std::thread{[this]() {CheckerThreadTask(); }};
     STORE_LOG_DEBUG("startup acc tcp server on port: " << listenPort_);
     return SM_OK;
 }
@@ -125,6 +128,9 @@ void AccStoreServer::Shutdown(bool afterFork) noexcept
     if (rankStateThread_.joinable()) {
         rankStateTaskCondition_.notify_one();
         rankStateThread_.join();
+    }
+    if (checkerThread_.joinable()) {
+        checkerThread_.join();
     }
     accTcpServer_ = nullptr;
     STORE_LOG_INFO("finished shutdown Acc Store Server");
@@ -218,7 +224,10 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         kvStore_.erase(pos);
         STORE_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
     }
-    if (aliveRankSet_.empty()) {
+    heartBeatMap_.erase(link->Id());
+    if (externalBrokenHandler_ != nullptr) {
+        externalBrokenHandler_(link->Id(), kvStore_);
+    } else if (aliveRankSet_.empty()) {
         STORE_LOG_INFO("all client link broken, will clear data");
         kvStore_.clear();
         waitCtx_.clear();
@@ -237,6 +246,17 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     rankStateWaiters_.erase(linkId);
     rankStateTaskQueue_.push(rankId);
     rankStateTaskCondition_.notify_one();
+    return SM_OK;
+}
+
+Result AccStoreServer::LinkBrokenHandler(const uint32_t linkId) noexcept
+{
+    STORE_LOG_INFO("inner detect link broken, linkId: " << linkId);
+    std::unique_lock<std::mutex> lockGuard{storeMutex_};
+    if (externalBrokenHandler_ != nullptr) {
+        externalBrokenHandler_(linkId, kvStore_);
+    }
+    heartBeatMap_.erase(linkId);
     return SM_OK;
 }
 
@@ -262,7 +282,7 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
 
     if (ExcuteHandle(MessageType::SET, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
-        STORE_LOG_DEBUG("SET REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
+        STORE_LOG_ERROR("SET REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
@@ -446,7 +466,7 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     if (valueNum > 0 && ExcuteHandle(MessageType::ADD, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
-        STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
+        STORE_LOG_ERROR("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
@@ -533,6 +553,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
     uint64_t newSize;
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
     std::vector<uint8_t> reqVal;
+    std::vector<uint8_t> appendValue = value;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(key);
     if (pos != kvStore_.end()) {
@@ -548,9 +569,9 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
         }
         kvStore_.emplace(key, std::move(value));
     }
-    if (ExcuteHandle(MessageType::APPEND, context.Link()->Id(), key, value) != SM_OK) {
+    if (ExcuteHandle(MessageType::APPEND, context.Link()->Id(), key, appendValue) != SM_OK) {
         lockGuard.unlock();
-        STORE_LOG_DEBUG("APPEND REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
+        STORE_LOG_ERROR("APPEND REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
@@ -599,7 +620,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     std::copy_n(value.data() + sizeof(uint32_t), realValSize, curValue.data() + offset);
     if (ExcuteHandle(MessageType::WRITE, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
-        STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
+        STORE_LOG_ERROR("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
@@ -683,6 +704,19 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
         return SM_REPEAT_CALL;
     }
     STORE_LOG_DEBUG("WATCH REQUEST(" << context.SeqNo() << ") for key(" << WATCH_RANK_DOWN_KEY << ") finished.");
+    return SM_OK;
+}
+
+Result AccStoreServer::HeartbeatHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
+{
+    if (request.keys.size() != 0 || request.values.size() != 0) {
+        STORE_LOG_ERROR("heart beat request(" << context.SeqNo() << ") handle invalid body");
+        return SM_INVALID_PARAM;
+    }
+    STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
+    uint32_t linkId = context.Link()->Id();
+    std::unique_lock<std::mutex> lockGuard{storeMutex_};
+    heartBeatMap_[linkId] = mf::StrUtil::GetNowTime();
     return SM_OK;
 }
 
@@ -799,6 +833,32 @@ void AccStoreServer::RankStateTask() noexcept
             ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
         }
     }
+}
+
+void AccStoreServer::CheckerThreadTask() noexcept
+{
+    std::unordered_set<uint32_t> brokenLinks;
+    std::unique_lock<std::mutex> lockerGuard{storeMutex_};
+    while (running_) {
+        auto curTime = mf::StrUtil::GetNowTime();
+        for (auto it = heartBeatMap_.begin(); it != heartBeatMap_.end();) {
+            if ((curTime - it->second) / HEARTBEAT_INTERVAL > HEARTBEAT_TIMEOUT) {
+                STORE_LOG_INFO("link(" << it->first << ") broken");
+                brokenLinks.insert(it->first);
+                it = heartBeatMap_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        lockerGuard.unlock();
+        for (auto linkId : brokenLinks) {
+            LinkBrokenHandler(linkId);
+        }
+        brokenLinks.clear();
+        lockerGuard.lock();
+        storeCond_.wait_for(lockerGuard, std::chrono::milliseconds(HEARTBEAT_INTERVAL), [this]() { return !running_; });
+    }
+    STORE_LOG_INFO("checker thread exit");
 }
 
 Result AccStoreServer::ExcuteHandle(int16_t opCode, uint32_t linkId, std::string &key,

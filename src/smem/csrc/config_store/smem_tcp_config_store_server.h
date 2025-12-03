@@ -89,6 +89,7 @@ private:
     Result ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
     Result LinkConnectedHandler(const ock::acc::AccConnReq &req, const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
     Result LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
+    Result LinkBrokenHandler(const uint32_t linkId) noexcept;
 
     /* business handler */
     Result SetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
@@ -99,6 +100,7 @@ private:
     Result CasHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result WatchRankStateHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result WriteHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result HeartbeatHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
 
     std::list<ock::acc::AccTcpRequestContext> GetOutWaitersInLock(const std::unordered_set<uint64_t> &ids) noexcept;
     void WakeupWaiters(const std::list<ock::acc::AccTcpRequestContext> &waiters,
@@ -108,6 +110,7 @@ private:
                           const std::vector<uint8_t> &message) noexcept;
     void TimerThreadTask() noexcept;
     void RankStateTask() noexcept;
+    void CheckerThreadTask() noexcept;
     Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result ExcuteHandle(int16_t opCode, uint32_t linkId, std::string &key, std::vector<uint8_t> &value) noexcept;
 
@@ -143,6 +146,8 @@ private:
     std::unordered_set<uint32_t> aliveRankSet_;
     std::unordered_map<int16_t, ConfigStoreServerOpHandler> externalOpHandlerMap_;
     ConfigStoreServerBrokenHandler externalBrokenHandler_{nullptr};
+    std::unordered_map<uint32_t, int64_t> heartBeatMap_;
+    std::thread checkerThread_;
 };
 using AccStoreServerPtr = SmRef<AccStoreServer>;
 }  // namespace smem

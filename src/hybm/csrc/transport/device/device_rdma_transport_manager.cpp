@@ -268,7 +268,9 @@ Result RdmaTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRan
         }
         notifyRemoteInfo_[rank] = std::make_pair(0U, 0U);
     }
-
+    for (auto &it : streamMask_) {
+        it.second = true;
+    }
     if (ranksSet.empty()) {
         return BM_OK;
     }
@@ -613,10 +615,20 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
     return true;
 }
 
+bool RdmaTransportManager::IsResetStream()
+{
+    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
+    auto it = streamMask_.find(tid);
+    if (it == streamMask_.end()) {
+        return true;
+    }
+    return it->second;
+}
+
 int RdmaTransportManager::PrepareThreadLocalStream()
 {
     lock_.LockRead();
-    if (stream_ != nullptr) {
+    if (stream_ != nullptr && !IsResetStream()) {
         lock_.UnLock();
         return BM_OK;
     }
@@ -633,6 +645,9 @@ int RdmaTransportManager::PrepareThreadLocalStream()
 
     auto ret = notify_->Init();
     BM_ASSERT_LOG_AND_RETURN(ret == 0, "notify init failed.", ret);
+    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
+    streamMask_[tid] = false;
+    BM_LOG_INFO("PrepareThreadLocalStream success, tid:" << tid);
     return BM_OK;
 }
 

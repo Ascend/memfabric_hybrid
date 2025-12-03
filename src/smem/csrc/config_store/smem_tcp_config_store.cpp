@@ -200,6 +200,8 @@ Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconne
         Shutdown();
         return result;
     }
+    isRunning_.store(true);
+    heartBeatThread_ = std::thread{[this]() {HeartBeat(); }};
     return result;
 }
 
@@ -222,6 +224,10 @@ Result TcpConfigStore::ServerStart(const smem_tls_config& tlsConfig, int reconne
 
 void TcpConfigStore::Shutdown(bool afterFork) noexcept
 {
+    isRunning_.store(false);
+    if (heartBeatThread_.joinable()) {
+        heartBeatThread_.join();
+    }
     accClientLink_ = nullptr;
 
     if (accClient_ != nullptr) {
@@ -306,7 +312,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     }
 
     value = std::move(responseBody.values[0]);
-    return 0;
+    return static_cast<Result>(responseCode);
 }
 
 Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &value) noexcept
@@ -692,5 +698,28 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     id = seqNo;
     return SM_OK;
 }
+
+void TcpConfigStore::HeartBeat() noexcept
+{
+    while (isRunning_.load()) {
+        if (isConnect_.load()) {
+            SmemMessage request{MessageType::HEARTBEAT};
+            auto packedRequest = SmemMessagePacker::Pack(request);
+            auto dataBuf = ock::acc::AccDataBuffer::Create(packedRequest.data(), packedRequest.size());
+            if (dataBuf == nullptr) {
+                STORE_LOG_ERROR("create data buffer falied, no enough mem");
+                continue;
+            }
+            auto ret = accClientLink_->NonBlockSend(0, 0, dataBuf, nullptr);
+            if (ret != SM_OK) {
+                STORE_LOG_ERROR("send message failed, result: " << ret);
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(HEARTBEAT_INTERVAL));
+    }
+
+    STORE_LOG_INFO("TcpConfigStore heart beat thread exit.");
+}
+
 }  // namespace smem
 }  // namespace ock

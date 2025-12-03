@@ -205,8 +205,58 @@ Result HybmDevUserLegacySegment::Import(const std::vector<std::string> &allExInf
 
 Result HybmDevUserLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
 {
-    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT RemoveImported");
-    return BM_NOT_SUPPORTED;
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
+    for (auto rankId : ranks) {
+        importedDeviceInfo_.erase(rankId);
+        RemoveSliceInfo(rankId);
+    }
+    uniqueLock.unlock();
+    return BM_OK;
+}
+
+void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
+{
+    // Clear Imported SliceInfo
+    auto it = rankToRemoteSlices_.find(rankId);
+    if (it == rankToRemoteSlices_.end()) {
+        return;
+    }
+    auto &remoteSliceVec = it->second;
+    for (auto &remoteSlice : remoteSliceVec) {
+        addressedSlices_.erase(remoteSlice->vAddress_);
+        registerAddrs_.erase(reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_)));
+        auto rIt = remoteSlices_.find(remoteSlice->index_);
+        if (rIt == remoteSlices_.end()) {
+            continue;
+        }
+        auto sIt = importedSliceInfo_.find(rIt->second.name);
+        if (sIt == importedSliceInfo_.end()) {
+            remoteSlices_.erase(remoteSlice->index_);
+            continue;
+        }
+        auto &sliceInfo = sIt->second;
+        if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
+            CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.deviceId)) {
+            void *address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_ << 16 >> 16));
+            BM_LOG_INFO("RtIpcCloseMemory start address=" << address
+                        << ", vAddress_ = " << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
+                        << ", deviceId=" << deviceId_ << ", sliceInfo.deviceId=" << sliceInfo.deviceId
+                        << ", sliceInfo.rankId=" << sliceInfo.rankId);
+            auto ret = DlAclApi::RtIpcCloseMemory(address);
+            if (ret != 0) {
+                BM_LOG_WARN("Failed to close memory, address=" << address
+                            << ", vAddress_" << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
+                            << ", deviceId=" << deviceId_ << ", sliceInfo.deviceId=" << sliceInfo.deviceId
+                            << ", sliceInfo.rankId=" << sliceInfo.rankId << ", ret:" << ret
+                            << ", This may affect future memory registration.");
+            }
+        }
+        BM_LOG_INFO("RemoveSliceInfo, rankId=" << rankId << ", remoteSlice->index_=" << remoteSlice->index_
+                    << ",slice name " << rIt->second.name);
+        importedSliceInfo_.erase(rIt->second.name);
+        remoteSlices_.erase(remoteSlice->index_);
+    }
+    rankToRemoteSlices_.erase(rankId);
 }
 
 Result HybmDevUserLegacySegment::Mmap() noexcept
@@ -310,6 +360,7 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
     }
 
     void *address = nullptr;
+    std::unique_lock<std::mutex> uniqueLock{mutex_};
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
          CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.deviceId)) {
         if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
@@ -329,7 +380,7 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
                          << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_DEBUG("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
+        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
                      << ", pid=" << pid_ << ", deviceId=" << deviceId_
                      << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
@@ -343,13 +394,15 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
 
     auto value = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(address)) | ((sliceInfo.rankId + 1UL) << 48);
     address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(value));
-    registerAddrs_.emplace_back(address);
+    registerAddrs_.insert(address);
 
     remoteSlice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                              reinterpret_cast<uint64_t>(address), sliceInfo.size);
+    rankToRemoteSlices_[sliceInfo.rankId].push_back(remoteSlice);
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
+    uniqueLock.unlock();
     return BM_OK;
 }
 
@@ -359,7 +412,6 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
         if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
             BM_LOG_WARN("Failed to close memory. This may affect future memory registration.");
         }
-        addr = nullptr;
     }
     registerAddrs_.clear();
     BM_LOG_INFO("close memory finish.");

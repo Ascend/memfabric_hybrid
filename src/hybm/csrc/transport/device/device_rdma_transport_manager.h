@@ -20,7 +20,7 @@
 #include <map>
 #include <mutex>
 #include <memory>
-
+#include <unordered_map>
 #include "hybm_define.h"
 #include "hybm_stream_manager.h"
 #include "hybm_stream_notify.h"
@@ -66,6 +66,7 @@ private:
     static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
     static bool RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle);
     int PrepareThreadLocalStream();
+    bool IsResetStream();
     void ClearAllRegisterMRs();
     int CheckPrepareOptions(const HybmTransPrepareOptions &options);
     int RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write, bool sync);
@@ -85,6 +86,7 @@ private: // RDMA HOST STARS
 private:
     static thread_local HybmStreamPtr stream_;
     static thread_local HybmStreamNotifyPtr notify_;
+    std::unordered_map<uint64_t, bool> streamMask_;
     RdmaNotifyInfo notifyInfo_;
     bool started_{false};
     uint32_t rankId_{0};

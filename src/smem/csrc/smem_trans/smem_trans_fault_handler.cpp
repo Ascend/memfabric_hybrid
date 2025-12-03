@@ -183,21 +183,28 @@ int32_t SmemStoreFaultHandler::GetFromFaultInfo(const uint32_t linkId, const std
                                                 std::vector<uint8_t> &value,
                                                 const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
 {
-    if (faultRankIndexQueue_.empty()) {
+    uint16_t id;
+    if (!faultRankIdQueue_.empty() && key.find(AUTO_RANK_KEY_PREFIX) != std::string::npos) {
+        id = faultRankIdQueue_.front();
+        faultRankIdQueue_.pop();
+    } else if (!faultDeviceIdQueue_.first.empty() &&key.find(SENDER_GET_DEVICE_ID_KEY) != std::string::npos) {
+        id = faultDeviceIdQueue_.first.front();
+        faultDeviceIdQueue_.first.pop();
+    } else if (!faultDeviceIdQueue_.second.empty() && key.find(RECEIVER_GET_DEVICE_ID_KEY) != std::string::npos) {
+        id = faultDeviceIdQueue_.second.front();
+        faultDeviceIdQueue_.second.pop();
+    } else if (!faultSliceIdQueue_.first.empty() &&key.find(SENDER_GET_SLICES_ID_KEY) != std::string::npos) {
+        id = faultSliceIdQueue_.first.front();
+        faultSliceIdQueue_.first.pop();
+    } else if (!faultSliceIdQueue_.second.empty() && key.find(RECEIVER_GET_SLICES_ID_KEY) != std::string::npos) {
+        id = faultSliceIdQueue_.second.front();
+        faultSliceIdQueue_.second.pop();
+    } else {
         return SM_OBJECT_NOT_EXISTS;
     }
-    if (key.find(AUTO_RANK_KEY_PREFIX) == std::string::npos) {
-        return SM_OBJECT_NOT_EXISTS;
-    }
-    // 适配多个slice
-    ServerFaultRankIndex &faultRankIndex = faultRankIndexQueue_.front();
-    uint8_t *data = reinterpret_cast<uint8_t*>(&faultRankIndex);
-    value.clear();
-    value.insert(value.end(), data, data + sizeof(faultRankIndex.rankId) + sizeof(faultRankIndex.deviceInfoId));
-    uint8_t *sliceData = reinterpret_cast<uint8_t*>(faultRankIndex.sliceInfoIdVec.data());
-    uint32_t byteSize = sizeof(uint16_t) * faultRankIndex.sliceInfoIdVec.size();
-    value.insert(value.end(), sliceData, sliceData + byteSize);
-    faultRankIndexQueue_.pop();
+    const size_t bitShift = 8;
+    value.push_back(static_cast<uint8_t>(id & 0xff));
+    value.push_back(static_cast<uint8_t>(id >> bitShift));
     return SM_GET_OBJIECT;
 }
 
@@ -208,52 +215,90 @@ void SmemStoreFaultHandler::ClearFaultInfo(const uint32_t linkId,
     if (linkIt == linkIdToRankInfoMap_.end()) {
         return;
     }
-    auto& rankInfo = linkIt->second;
+    RankInfo& rankInfo = linkIt->second;
+    ClearDeviceInfo(linkId, rankInfo, kvStore);
+    ClearSliceInfo(linkId, rankInfo, kvStore);
     kvStore.erase(rankInfo.rankName);
+    faultRankIdQueue_.push(rankInfo.rankId);
+    linkIdToRankInfoMap_.erase(linkId);
+}
+
+void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
+                                            std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+{
     // 清理deviceInfo信息
     auto dInfoIt = kvStore.find(rankInfo.dInfo.deviceInfoKey);
     if (dInfoIt != kvStore.end()) {
         auto& dInfoValue = dInfoIt->second;
         uint32_t offset = rankInfo.dInfo.deiviceInfoUint * rankInfo.dInfo.deviceInfoId;
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
-                    << ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
+        if (rankInfo.dInfo.deviceInfoKey.find(SENDER_DEVICE_INFO_KEY) != std::string::npos) {
+            SM_LOG_DEBUG("add sender device id: " << rankInfo.dInfo.deviceInfoId <<
+                ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
+            faultDeviceIdQueue_.first.push(rankInfo.dInfo.deviceInfoId);
+        } else {
+            SM_LOG_DEBUG("add receiver device id: " << rankInfo.dInfo.deviceInfoId <<
+                ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
+            faultDeviceIdQueue_.second.push(rankInfo.dInfo.deviceInfoId);
+        }
+        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                    ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
         dInfoValue[offset] = DataStatusType::ABNORMAL; // deviceInfo标记为异常, 正常节点client检测到异常状态会做清理
     }
     auto dCntIt = kvStore.find(rankInfo.dInfo.deviceCountKey);
     if (dCntIt != kvStore.end()) {
         std::string valueStr{dCntIt->second.begin(), dCntIt->second.end()};
-        long valueNum = 0;
-        mf::StrUtil::String2Int(valueStr, valueNum);
-        valueNum--;
-        std::string valueStrNew = std::to_string(valueNum);
-        dCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
-                    << ", new device count: " << valueNum);
+        long valueNum;
+        bool isCovert = mf::StrUtil::String2Int<long>(valueStr, valueNum);
+        if (isCovert) {
+            valueNum--;
+            std::string valueStrNew = std::to_string(valueNum);
+            dCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
+            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                        ", new device count: " << valueNum);
+        } else {
+            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                         ", String2Int failed");
+        }
     }
+}
+
+void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
+                                           std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+{
     // 清理sliceInfo信息
     auto sInfoIt = kvStore.find(rankInfo.sInfo.sliceInfoKey);
     if (sInfoIt != kvStore.end()) {
         auto& sInfoValue = sInfoIt->second;
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
-                    << ", sliceInfoId size: " << rankInfo.sInfo.sliceInfoId.size());
-        for (auto sliceInfo: rankInfo.sInfo.sliceInfoId) {
-            uint32_t offset = rankInfo.sInfo.sliceInfoUint * sliceInfo;
+        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                    ", sliceInfoId size: " << rankInfo.sInfo.sliceInfoId.size());
+        for (auto id: rankInfo.sInfo.sliceInfoId) {
+            uint32_t offset = rankInfo.sInfo.sliceInfoUint * id;
             sInfoValue[offset] = DataStatusType::ABNORMAL; // clientInfo标记为异常, 正常节点client检测到异常状态会做清理
+            if (rankInfo.sInfo.sliceInfoKey.find(SENDER_SLICES_INFO_KEY) != std::string::npos) {
+                SM_LOG_DEBUG("add sender slice id: " << id << ", sliceInfoKey:" << rankInfo.sInfo.sliceInfoKey);
+                faultSliceIdQueue_.first.push(id);
+            } else {
+                SM_LOG_DEBUG("add receiver slice id: " << id << ", sliceInfoKey:" << rankInfo.sInfo.sliceInfoKey);
+                faultSliceIdQueue_.second.push(id);
+            }
         }
     }
     auto sCntIt = kvStore.find(rankInfo.sInfo.sliceCountKey);
     if (sCntIt != kvStore.end()) {
         std::string valueStr{sCntIt->second.begin(), sCntIt->second.end()};
-        long valueNum = 0;
-        mf::StrUtil::String2Int(valueStr, valueNum);
-        valueNum -=rankInfo.sInfo.sliceInfoId.size();
-        std::string valueStrNew = std::to_string(valueNum);
-        sCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
-                    << ", new slice count: " << valueNum);
+        long valueNum;
+        bool isCovert = mf::StrUtil::String2Int<long>(valueStr, valueNum);
+        if (isCovert) {
+            valueNum -= rankInfo.sInfo.sliceInfoId.size();
+            std::string valueStrNew = std::to_string(valueNum);
+            sCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
+            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                        ", new slice count: " << valueNum);
+        } else {
+            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
+                         ", String2Int failed");
+        }
     }
-    faultRankIndexQueue_.push({rankInfo.rankId, rankInfo.dInfo.deviceInfoId, rankInfo.sInfo.sliceInfoId});
-    linkIdToRankInfoMap_.erase(linkId);
 }
 
 }

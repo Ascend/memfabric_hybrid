@@ -4,6 +4,8 @@
 #ifndef MEM_FABRIC_HYBRID_HYBM_DATA_OPERATOR_SDMA_H
 #define MEM_FABRIC_HYBRID_HYBM_DATA_OPERATOR_SDMA_H
 
+#include <unordered_map>
+#include "mf_rwlock.h"
 #include "hybm_data_operator.h"
 #include "hybm_stream.h"
 #include "hybm_rbtree_range_pool.h"
@@ -26,6 +28,8 @@ public:
                           const ExtOptions &options) noexcept override;
     int32_t Wait(int32_t waitId) noexcept override;
 
+    void CleanUp() noexcept override;
+
 private:
     int CopyLH2GD(void* gvaAddr, const void* hostAddr, size_t count, void* stream) noexcept;
     int CopyGD2LH(void* hostAddr, const void* gvaAddr, size_t count, void* stream) noexcept;
@@ -46,9 +50,15 @@ private:
                        uint32_t batchSize, void *stream) noexcept;
     int BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
                        uint32_t batchSize, void *stream) noexcept;
+    bool IsResetStream() noexcept;
+
+    int PrepareThreadLocalStream() noexcept;
 
 private:
     bool inited_ = false;
+    static thread_local HybmStreamPtr stream_;
+    ReadWriteLock lock_;
+    std::unordered_map<uint64_t, bool> streamMask_;
 };
 }
 }
