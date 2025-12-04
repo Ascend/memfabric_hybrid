@@ -152,6 +152,7 @@ Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRe
     result = ClientStart(tlsConfig, reconnectRetryTimes);
     if (result != 0) {
         STORE_LOG_ERROR("Failed to start config store client ret:" << result);
+        return result;
     }
     isConnect_.store(true);
     return result;
@@ -200,6 +201,8 @@ Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconne
         Shutdown();
         return result;
     }
+    isRunning_.store(true);
+    heartBeatThread_ = std::thread{[this]() {HeartBeat(); }};
     return result;
 }
 
@@ -222,6 +225,10 @@ Result TcpConfigStore::ServerStart(const smem_tls_config& tlsConfig, int reconne
 
 void TcpConfigStore::Shutdown(bool afterFork) noexcept
 {
+    isRunning_.store(false);
+    if (heartBeatThread_.joinable()) {
+        heartBeatThread_.join();
+    }
     accClientLink_ = nullptr;
 
     if (accClient_ != nullptr) {
@@ -306,7 +313,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     }
 
     value = std::move(responseBody.values[0]);
-    return 0;
+    return static_cast<Result>(responseCode);
 }
 
 Result TcpConfigStore::Add(const std::string &key, int64_t increment, int64_t &value) noexcept
@@ -500,7 +507,7 @@ TcpConfigStore::Watch(const std::string &key,
     auto ret = SendWatchRequest(
         packedRequest, [key, notify](int res, const std::vector<uint8_t> &value) { notify(res, key, value); }, wid);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send get for key: " << key << ", get null response");
+        STORE_LOG_ERROR_LIMIT("send get for key: " << key << ", get null response");
         return ret;
     }
 
@@ -570,7 +577,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, waitContext);
     msgCtxLocker.unlock();
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         STORE_LOG_ERROR("send message failed, result: " << ret);
         return nullptr;
@@ -587,9 +594,10 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
     connReq.rankId = rankId_;
     auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
-        STORE_LOG_ERROR("Reconnect to server failed, result.");
+        STORE_LOG_ERROR_LIMIT("Reconnect to server failed, result.");
         return result;
     }
+    STORE_LOG_INFO("Reconnect to server successful.");
     return SM_OK;
 }
 
@@ -683,14 +691,38 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, std::move(watchContext));
     msgCtxLocker.unlock();
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
-        STORE_LOG_ERROR("send message failed, result: " << ret << ", Established: " << accClientLink_->Established());
+        STORE_LOG_ERROR_LIMIT("send message failed, result: " << ret
+                                                              << ", Established: " << accClientLink_->Established());
         return ret;
     }
 
     id = seqNo;
     return SM_OK;
 }
+
+void TcpConfigStore::HeartBeat() noexcept
+{
+    while (isRunning_.load()) {
+        if (isConnect_.load()) {
+            SmemMessage request{MessageType::HEARTBEAT};
+            auto packedRequest = SmemMessagePacker::Pack(request);
+            auto dataBuf = ock::acc::AccDataBuffer::Create(packedRequest.data(), packedRequest.size());
+            if (dataBuf == nullptr) {
+                STORE_LOG_ERROR("create data buffer falied, no enough mem");
+                continue;
+            }
+            auto ret = LocalNonBlockSend(0, 0, dataBuf, nullptr);
+            if (ret != SM_OK) {
+                STORE_LOG_ERROR("send message failed, result: " << ret);
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(HEARTBEAT_INTERVAL));
+    }
+
+    STORE_LOG_INFO("TcpConfigStore heart beat thread exit.");
+}
+
 }  // namespace smem
 }  // namespace ock

@@ -1,11 +1,20 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- */
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 #include <algorithm>
 #include <cerrno>
 #include <cctype>
 #include <climits>
 #include "mf_num_util.h"
+#include "acc_def.h"
 #include "smem_store_factory.h"
 #include "smem_net_group_engine.h"
 
@@ -350,7 +359,7 @@ void SmemNetGroupEngine::GroupListenEvent()
                                                std::placeholders::_2, std::placeholders::_3),
                                      wid);
             if (ret != SM_OK) {
-                SM_LOG_WARN("group watch failed, ret: " << ret);
+                SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
                 usleep(SMEM_GROUP_SLEEP_TIMEOUT);
                 continue;
             }

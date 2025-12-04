@@ -574,7 +574,7 @@ Result HcomTransportManager::ConnectHcomChannel(uint32_t rankId, const std::stri
 void HcomTransportManager::DisConnectHcomChannel(uint32_t rankId, Hcom_Channel ch)
 {
     if (rankId >= rankCount_ || ch == 0) {
-        BM_LOG_ERROR("Failed to remove channel invalid rankId" << rankId << " ch: " << ch);
+        BM_LOG_ERROR_LIMIT("Failed to remove channel invalid rankId" << rankId << " ch: " << ch);
         return;
     }
     std::unique_lock<std::mutex> lock(channelMutex_[rankId]);

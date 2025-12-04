@@ -89,13 +89,12 @@ int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t
 /**
  * @brief Register memory at local side, registered memory can be accessed by remote.
  * @param e                [in] entity created by hybm_create_entity
- * @param mType            [in] memory type, device or host
  * @param ptr              [in] local memory start address
  * @param size             [in] size of memory
  * @param flags            [in] optional flags, default value 0
  * @return mem slice handle if successful, null ptr if failed
  */
-hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, hybm_mem_type mType, const void *ptr, uint64_t size,
+hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr, uint64_t size,
                                             uint32_t flags);
 
 /**
@@ -177,14 +176,6 @@ int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
  * @return 0 if successful
  */
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
-
-/**
- * @brief Register user mem, support sdma or rdma
- *
- * @param addr             [in] register addr
- * @param size             [in] register size
- */
-int32_t hybm_register_user_mem(hybm_entity_t e, uint64_t addr, uint64_t size);
 
 #ifdef __cplusplus
 }

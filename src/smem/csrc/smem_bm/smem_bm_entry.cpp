@@ -328,7 +328,12 @@ uint32_t SmemBmEntry::GetRankIdByGva(void *gva)
 Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    return hybm_register_user_mem(entity_, addr, size);
+    auto slice = hybm_register_local_memory(entity_, reinterpret_cast<void *>(addr), size, 0);
+    if (slice != nullptr) {
+        return SM_OK;
+    } else {
+        return SM_ERROR;
+    }
 }
 
 Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags)

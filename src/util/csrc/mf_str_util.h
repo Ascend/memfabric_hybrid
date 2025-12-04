@@ -16,6 +16,7 @@
 #include <vector>
 #include <sstream>
 #include <limits>
+#include <chrono>
 
 namespace ock {
 namespace mf {
@@ -32,6 +33,7 @@ public:
     static inline bool String2Uint(const std::string& str, UIntType& val);
     template <typename IntType>
     static inline bool String2Int(const std::string& str, IntType& val);
+    static inline int64_t GetNowTime();
 };
 
 inline std::string StrUtil::StrTrim(const std::string &input)
@@ -134,6 +136,14 @@ inline bool StrUtil::String2Int(const std::string& str, IntType& val)
 
     val = static_cast<IntType>(result);
     return true;
+}
+
+inline int64_t StrUtil::GetNowTime()
+{
+    auto now = std::chrono::system_clock::now();
+    auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
+    auto value = now_ms.time_since_epoch().count();
+    return static_cast<int64_t>(value);
 }
 }  // namespace mf
 }  // namespace ock

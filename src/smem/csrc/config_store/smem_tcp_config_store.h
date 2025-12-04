@@ -105,6 +105,18 @@ private:
     Result SendWatchRequest(const std::vector<uint8_t> &reqBody,
                             const std::function<void(int result, const std::vector<uint8_t> &)> &notify,
                             uint32_t &id) noexcept;
+    void HeartBeat() noexcept;
+
+    inline int32_t LocalNonBlockSend(int16_t msgType, uint32_t seqNo, const acc::AccDataBufferPtr &d,
+                                     const acc::AccDataBufferPtr &cbCtx)
+    {
+        auto ret = accClientLink_->NonBlockSend(msgType, seqNo, d, cbCtx);
+        if (ret == acc::ACC_LINK_ERROR) {
+            ReConnectAfterBroken(1UL);
+            ret = accClientLink_->NonBlockSend(msgType, seqNo, d, cbCtx);
+        }
+        return ret;
+    }
 
 private:
     AccStoreServerPtr accServer_;
@@ -124,6 +136,8 @@ private:
     std::atomic<bool> isConnect_{false};
     ConfigStoreReconnectHandler reconnectHandler{nullptr};
     ConfigStoreClientBrokenHandler brokenHandler_ = nullptr;
+    std::atomic<bool> isRunning_{false};
+    std::thread heartBeatThread_;
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
 }  // namespace smem

@@ -1,6 +1,14 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- */
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 #include "hybm_dev_legacy_segment.h"
 
 #include <cstring>
@@ -92,8 +100,9 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
 
 Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
-    BM_LOG_ERROR("HybmDevLegacySegment NOT SUPPORT RegisterMemory");
-    return BM_NOT_SUPPORTED;
+    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
+                                       reinterpret_cast<uint64_t>(addr), size);
+    return BM_OK;
 }
 
 Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept

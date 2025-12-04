@@ -1,6 +1,14 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- */
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 #include <iostream>
 #include <sstream>
 #include <map>
@@ -11,6 +19,8 @@
 #include <unistd.h>
 #include <random>
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 #include "acl/acl.h"
 
@@ -98,14 +108,14 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
 
         init_warmup_data(warmup_data, GVA_SIZE);
 
-        void *local_addr = smem_bm_ptr_by_mem_type(bm_handle, SMEM_MEM_TYPE_HOST, 0);
-        void *remote_addr = smem_bm_ptr_by_mem_type(bm_handle, SMEM_MEM_TYPE_HOST, 1);
+        void *localAddr = smem_bm_ptr_by_mem_type(bm_handle, SMEM_MEM_TYPE_DEVICE, 0);
+        void *remoteAddr = smem_bm_ptr_by_mem_type(bm_handle, SMEM_MEM_TYPE_DEVICE, 1);
         // warmup
         std::cout << "Warmup Start" << std::endl;
-        smem_copy_params copy_params_1 = {warmup_data, local_addr, GVA_SIZE};
+        smem_copy_params copy_params_1 = {warmup_data, localAddr, GVA_SIZE};
         ret = smem_bm_copy(bm_handle, &copy_params_1, SMEMB_COPY_H2G, 0);
         CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
-        smem_copy_params copy_params_2 = {local_addr, remote_addr, GVA_SIZE / 16};
+        smem_copy_params copy_params_2 = {localAddr, remoteAddr, GVA_SIZE / 16};
         ret = smem_bm_copy(bm_handle, &copy_params_2, SMEMB_COPY_L2G, 0);
         CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
         std::cout << "Warmup End" << std::endl;
@@ -117,7 +127,7 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
             struct timeval stop_tv;
             gettimeofday(&start_tv, nullptr);
             /* latency test */
-            smem_copy_params copy_params = {local_addr, remote_addr, block_size};
+            smem_copy_params copy_params = {localAddr, remoteAddr, block_size};
             for (uint32_t j = 0; j < times; j++) {
                 ret = smem_bm_copy(bm_handle, &copy_params, SMEMB_COPY_L2G, 0);
                 CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
@@ -136,8 +146,8 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
             raddrv.reserve(batch_size);
             lengthv.reserve(batch_size);
             for (uint32_t j = 0; j < batch_size; j++) {
-                void *laddr = (uint8_t *)local_addr + j * block_size;
-                void *raddr = (uint8_t *)remote_addr + j * block_size;
+                void *laddr = (uint8_t *)localAddr + j * block_size;
+                void *raddr = (uint8_t *)remoteAddr + j * block_size;
                 laddrv.push_back(laddr);
                 raddrv.push_back(raddr);
                 lengthv.push_back(block_size);
@@ -188,6 +198,16 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
                                      sizeof(void *), (char *)gather_addr, sizeof(void *) * 2U);
     CHECK_GOTO_ERR(ret, "failed to allgather dev memory, ret:" << ret, out);
 
+    ret = smem_shm_control_barrier(shm_handle);
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
+
+    if (rankId == 1) {
+        ret = smem_trans_register_mem(trans_handle, dev_addr, GVA_SIZE, 0);
+        CHECK_GOTO_ERR(ret, "failed to register device memory, ret:" << ret, out);
+    }
+    ret = smem_shm_control_barrier(shm_handle);
+    std::this_thread::sleep_for(std::chrono::seconds(10UL));  // wait for register
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
     if (rankId == 0) {
         uint32_t block_iteration = 10;
         uint32_t base_block_size = 32 << 10;    // 32k
@@ -208,10 +228,6 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
         ret = smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, base_block_size);
         CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId, out);
         std::cout << "Warmup End" << std::endl;
-
-        /* server dont need to register mem */
-
-        ret = smem_shm_control_barrier(shm_handle);
         CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
 
         std::cout << "Test Start" << std::endl;
@@ -223,9 +239,8 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
             /* latency test */
             for (uint32_t j = 0; j < times; j++) {
                 ret = smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, block_size);
-                CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId, out);
+                CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId << ", index:" << j, out);
             }
-
             gettimeofday(&stop_tv, nullptr);
             double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 +
                                 (stop_tv.tv_usec - start_tv.tv_usec);
@@ -264,17 +279,8 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
                     << calculateRate(batch_size * block_size, duration2) << std::endl;
         }
         std::cout << "Test End" << std::endl;
-    } else {
-        ret = smem_trans_register_mem(trans_handle, dev_addr, GVA_SIZE, 0);
-        CHECK_GOTO_ERR(ret, "failed to register device memory, ret:" << ret, out);
-
-        ret = smem_shm_control_barrier(shm_handle);
-        CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
     }
-
-    ret = smem_shm_control_barrier(shm_handle);
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
-
+    smem_shm_control_barrier(shm_handle);
 out:
     if (warmup_data) {
         free(warmup_data);
@@ -372,7 +378,12 @@ int32_t trans_test(int rankId, int rankSize, int deviceId, int useSdma, std::str
         sessionId = "127.0.0.1:10001";
     }
     config.deviceId = deviceId;
-
+    config.dataOpType = SMEMB_DATA_OP_SDMA;
+    ret = smem_trans_init(&config);
+    if (ret != 0) {
+        std::cout << "[Failed to init smem_trans, ret=" << ret << "]" << std::endl;
+        return ret;
+    }
     trans_handle = smem_trans_create(ipPort.c_str(), sessionId.c_str(), &config);
     CHECK_GOTO_ERR(!trans_handle, "smem trans create failed, ret:" << " rank:" << rankId, err1);
     std::cout << "[" << rankId << "]" << " smem trans create done" << std::endl;

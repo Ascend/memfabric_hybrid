@@ -18,9 +18,9 @@ namespace smem {
 namespace {
 
 const StoreKeys senderStoreKeys{SENDER_COUNT_KEY, SENDER_TOTAL_SLICE_COUNT_KEY, SENDER_DEVICE_INFO_KEY,
-                                SENDER_SLICES_INFO_KEY};
+                                SENDER_SLICES_INFO_KEY, SENDER_GET_DEVICE_ID_KEY, SENDER_GET_SLICES_ID_KEY};
 const StoreKeys receiveStoreKeys{RECEIVER_COUNT_KEY, RECEIVER_TOTAL_SLICE_COUNT_KEY, RECEIVER_DEVICE_INFO_KEY,
-                                 RECEIVER_SLICES_INFO_KEY};
+                                 RECEIVER_SLICES_INFO_KEY, RECEIVER_GET_DEVICE_ID_KEY, RECEIVER_GET_SLICES_ID_KEY};
 }
 
 SmemStoreHelper::SmemStoreHelper(std::string name, std::string storeUrl, smem_trans_role_t role) noexcept
@@ -30,7 +30,7 @@ SmemStoreHelper::SmemStoreHelper(std::string name, std::string storeUrl, smem_tr
 {
 }
 
-int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry) noexcept
+int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startConfigServer) noexcept
 {
     if (transRole_ == SMEM_TRANS_SENDER) {
         localKeys_ = senderStoreKeys;
@@ -48,8 +48,23 @@ int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry) noexcept
         return SM_INVALID_PARAM;
     }
 
-    auto tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, false, 0, maxRetry);
-    SM_VALIDATE_RETURN(tmpStore != nullptr, "create store client with url failed.", SM_NEW_OBJECT_FAILED);
+    StorePtr tmpStore = nullptr;
+    if (startConfigServer) {
+        uint32_t localIpv4;
+        std::string localIp;
+        auto ret = GetLocalIpWithTarget(urlExtraction_.ip, localIp, localIpv4);
+        SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
+        if (localIp == urlExtraction_.ip) {
+            tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, true, 0, -1, maxRetry);
+            SM_VALIDATE_RETURN(tmpStore != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE,
+                               "create store client with url failed.", SM_NEW_OBJECT_FAILED);
+        }
+    }
+    if (tmpStore == nullptr) {
+        tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, false, 0, -1, maxRetry);
+        SM_VALIDATE_RETURN(tmpStore != nullptr, "create store client with url failed.", SM_NEW_OBJECT_FAILED);
+    }
+
     store_ = StoreFactory::PrefixStore(tmpStore, std::string("/trans/").append(std::to_string(entityId).append("/")));
     SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 
@@ -97,21 +112,8 @@ int SmemStoreHelper::RecoverRankInformation(std::vector<uint8_t> rankIdValue, ui
 {
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;
-    uint16_t* dataPtr = reinterpret_cast<uint16_t *>(rankIdValue.data());
-    rankId = *(dataPtr++);
-    // 更新device sliceid
-    remoteRankInfo_.isValid = true;
-    remoteRankInfo_.deviceIdInRemote_ = *(dataPtr++);
-    uint16_t item = rankIdValue.size() / sizeof(uint16_t) - 2U;
-    SM_LOG_INFO("get info from server(" << name_ << ") rank id: " << rankId
-                << ", device id: " << remoteRankInfo_.deviceIdInRemote_);
-    std::queue<uint16_t> tmpQueue;
-    remoteRankInfo_.sliceIdInRemote_.swap(tmpQueue);
-    for (uint16_t i = 0; i < item; i++) {
-        remoteRankInfo_.sliceIdInRemote_.emplace(*(dataPtr++));
-        SM_LOG_INFO("get info from server(" << name_ << ") rank id: " << rankId
-                    << ", slice id: " << remoteRankInfo_.sliceIdInRemote_.back());
-    }
+    rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << BIT_SHIFT));
+    SM_LOG_INFO("get info from server, rank id: " << rankId);
     std::vector<uint8_t> value((const uint8_t *)(const void *)&cfg,
                                (const uint8_t *)(const void *)&cfg + sizeof(cfg));
     
@@ -194,8 +196,23 @@ int SmemStoreHelper::StoreDeviceInfo(const hybm_exchange_info &info) noexcept
     std::vector<uint8_t> value(1 + info.descLen); // data status + data
     value[0] = DataStatusType::NORMAL;
     std::copy_n(info.desc, info.descLen, value.data() + 1);
-    Result ret;
-    if (!remoteRankInfo_.isValid) {
+    std::vector<uint8_t> getValue;
+    Result ret = store_->Get(localKeys_.getDeviceId, getValue, 0);
+    if (ret == RESTORE) {
+        const size_t bitShift = 8;
+        uint16_t deviceId = (static_cast<uint16_t>(getValue[0]) |
+                            (static_cast<uint16_t>(getValue[1]) << bitShift));
+        uint32_t offset = deviceId * value.size();
+        SM_LOG_INFO("begin write(key=" << localKeys_.deviceInfo << ", value_size=" << value.size()
+            << ", device_id=" << deviceId << ", offset=" << offset << ")");
+        ret = store_->Write(localKeys_.deviceInfo, value, offset);
+        if (ret != 0) {
+            SM_LOG_ERROR("store write device info for sender failed: " << ret);
+            return SM_ERROR;
+        }
+        storeDeviceInfo_.first = deviceId;
+        storeDeviceInfo_.second = value;
+    } else {
         SM_LOG_DEBUG("begin append(key=" << localKeys_.deviceInfo << ", value_size=" << value.size() << ")");
         ret = store_->Append(localKeys_.deviceInfo, value, totalSize);
         if (ret != 0) {
@@ -205,19 +222,6 @@ int SmemStoreHelper::StoreDeviceInfo(const hybm_exchange_info &info) noexcept
         uint16_t offset = totalSize / value.size() - 1;
         storeDeviceInfo_.first = offset;
         storeDeviceInfo_.second = value;
-    } else {
-        // 理论上只进一次
-        SM_LOG_DEBUG("begin write(key=" << localKeys_.deviceInfo << ", value_size=" << value.size()
-            << ", device_id=" << remoteRankInfo_.deviceIdInRemote_ << ")");
-        uint32_t offset = remoteRankInfo_.deviceIdInRemote_ * value.size();
-        ret = store_->Write(localKeys_.deviceInfo, value, offset);
-        if (ret != 0) {
-            SM_LOG_ERROR("store write device info for sender failed: " << ret);
-            return SM_ERROR;
-        }
-        storeDeviceInfo_.first = remoteRankInfo_.deviceIdInRemote_;
-        storeDeviceInfo_.second = value;
-        remoteRankInfo_.isValid = false;
     }
 
     ret = store_->Add(localKeys_.deviceCount, 1L, totalValue);
@@ -252,14 +256,28 @@ int SmemStoreHelper::ReStoreDeviceInfo() noexcept
 
 int SmemStoreHelper::StoreSliceInfo(const hybm_exchange_info &info, const StoredSliceInfo &sliceInfo) noexcept
 {
-    Result ret;
     std::vector<uint8_t> value(1 + sizeof(sliceInfo) + info.descLen); // data status + data
     value[0] = DataStatusType::NORMAL; // default is normal
     uint32_t offset = 1;
     std::copy_n(reinterpret_cast<const uint8_t *>(&sliceInfo), sizeof(sliceInfo), value.data() + offset);
     offset += sizeof(sliceInfo);
     std::copy_n(info.desc, info.descLen, value.data() + offset);
-    if (remoteRankInfo_.sliceIdInRemote_.empty()) {
+    std::vector<uint8_t> getValue;
+    Result ret = store_->Get(localKeys_.getSliceId, getValue, 0);
+    if (ret == RESTORE) {
+        const size_t bitShift = 8;
+        uint16_t sliceId = (static_cast<uint16_t>(getValue[0]) |
+                            (static_cast<uint16_t>(getValue[1]) << bitShift));
+        uint32_t writeOffset = sliceId * value.size();
+        SM_LOG_INFO("begin write(key=" << localKeys_.sliceInfo << ", value_size=" << value.size()
+            << ", slice_id=" << sliceId << ", offset="<< writeOffset << ")");
+        ret =store_->Write(localKeys_.sliceInfo, value, writeOffset);
+        if (ret != 0) {
+            SM_LOG_ERROR("store write slice info failed: " << ret);
+            return SM_ERROR;
+        }
+        storeSliceInfo_.emplace_back(sliceId, value);
+    } else {
         uint64_t totalSize = 0;
         SM_LOG_DEBUG("begin append(key=" << localKeys_.sliceInfo << ", value_size=" << value.size() << ")");
         ret = store_->Append(localKeys_.sliceInfo, value, totalSize);
@@ -272,17 +290,6 @@ int SmemStoreHelper::StoreSliceInfo(const hybm_exchange_info &info, const Stored
         }
         SM_LOG_DEBUG("success append(key=" << localKeys_.sliceCount << ", value_size=" << value.size()
                                         << "), total_size=" << totalSize);
-    } else {
-        uint16_t sliceId = remoteRankInfo_.sliceIdInRemote_.front();
-        remoteRankInfo_.sliceIdInRemote_.pop();
-        SM_LOG_DEBUG("begin write(key=" << localKeys_.sliceInfo << ", value_size=" << value.size()
-            << ", slice_id=" << sliceId << ")");
-        ret =store_->Write(localKeys_.sliceInfo, value, sliceId * value.size());
-        if (ret != 0) {
-            SM_LOG_ERROR("store write slice info failed: " << ret);
-            return SM_ERROR;
-        }
-        storeSliceInfo_.emplace_back(sliceId, value);
     }
     int64_t nowCount = 0;
     ret = store_->Add(localKeys_.sliceCount, 1L, nowCount);

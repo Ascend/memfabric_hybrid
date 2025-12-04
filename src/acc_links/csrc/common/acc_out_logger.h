@@ -26,8 +26,10 @@
 
 #define LOG_DEBUG(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::DEBUG_LEVEL, ARGS)
 #define LOG_INFO(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
+#define LOG_INFO_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
 #define LOG_WARN(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::WARN_LEVEL, ARGS)
 #define LOG_ERROR(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::ERROR_LEVEL, ARGS)
+#define LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[AccLink ", ock::mf::ERROR_LEVEL, ARGS)
 
 #ifndef ENABLE_TRACE_LOG
 #define LOG_TRACE(x)

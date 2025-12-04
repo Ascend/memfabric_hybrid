@@ -489,7 +489,7 @@ inline Result AccTcpLinkComplexDefault::NonBlockSend(int16_t msgType, const AccD
     ASSERT_RETURN(d.Get() != nullptr, ACC_INVALID_PARAM);
 
     if (UNLIKELY(!Established())) {
-        LOG_ERROR("Failed to send message with message type " << msgType << " as the link is broken");
+        LOG_ERROR_LIMIT("Failed to send message with message type " << msgType << " as the link is broken");
         return ACC_LINK_ERROR;
     }
 
@@ -503,7 +503,7 @@ inline Result AccTcpLinkComplexDefault::NonBlockSend(int16_t msgType, uint32_t s
     ASSERT_RETURN(d.Get() != nullptr, ACC_INVALID_PARAM);
 
     if (UNLIKELY(!Established())) {
-        LOG_ERROR("Failed to send message with message type " << msgType << " as the link is broken");
+        LOG_ERROR_LIMIT("Failed to send message with message type " << msgType << " as the link is broken");
         return ACC_LINK_ERROR;
     }
 

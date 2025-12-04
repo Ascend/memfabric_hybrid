@@ -17,6 +17,7 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <atomic>
 #include <mutex>
 #include <unistd.h>
 #include <sstream>
@@ -44,6 +45,32 @@ enum LogLevel : int {
     ERROR_LEVEL,
     FATAL_LEVEL,
     BUTT_LEVEL  // no use
+};
+
+class LockFreeLogThrottler {
+public:
+    static bool ShouldLog()
+    {
+        using namespace std::chrono;
+        static thread_local ThrottleState state{0, 0};
+        const uint64_t now = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
+        uint64_t windowTime = state.windowStartTimeSec.load(std::memory_order_relaxed);
+        if (now - windowTime >= INTERVAL) {
+            state.windowStartTimeSec.store(now, std::memory_order_relaxed);
+            state.counter.store(1, std::memory_order_relaxed);
+            return true;
+        }
+        const auto count = state.counter.fetch_add(1, std::memory_order_relaxed);
+        return count < BURST;
+    }
+
+private:
+    struct ThrottleState {
+        std::atomic<uint64_t> windowStartTimeSec;
+        std::atomic<uint32_t> counter;
+    };
+    static constexpr uint64_t INTERVAL = 7ULL;
+    static constexpr uint64_t BURST = 5ULL;
 };
 
 class OutLogger {
@@ -79,6 +106,13 @@ public:
     static bool ValidateLevel(int level)
     {
         return level >= DEBUG_LEVEL && level < BUTT_LEVEL;
+    }
+
+    inline void LogLimit(int level, std::string logMsg)
+    {
+        if (LockFreeLogThrottler::ShouldLog()) {
+            Log(level, logMsg);
+        }
     }
 
     inline void Log(int level, std::string logMsg)
@@ -161,6 +195,16 @@ private:
         std::ostringstream oss;                                                       \
         oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
         ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());             \
+    } while (0)
+
+#define MF_OUT_LOG_LIMIT(TAG, LEVEL, ARGS)                                            \
+    do {                                                                              \
+        if (static_cast<int>(LEVEL) < ock::mf::OutLogger::Instance().GetLogLevel()) { \
+            break;                                                                    \
+        }                                                                             \
+        std::ostringstream oss;                                                       \
+        oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
+        ock::mf::OutLogger::Instance().LogLimit(static_cast<int>(LEVEL), oss.str());  \
     } while (0)
 
 #endif  // MEMFABRIC_HYBRID_LOGGER_H

@@ -1,6 +1,14 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- */
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 
 #ifndef MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H
 #define MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H
@@ -71,6 +79,7 @@ private:
     Result ImportDeviceInfo(const std::string &info) noexcept;
     Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
     static void RollbackIpcMemory(void *addresses[], uint32_t count);
+    void RemoveSliceInfo(const uint32_t rankId) noexcept;
 
 private:
     uint16_t sliceCount_{0};
@@ -79,9 +88,10 @@ private:
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;
     std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
+    std::map<uint32_t, std::vector<std::shared_ptr<MemSlice>>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
-    std::vector<void *> registerAddrs_{};
+    std::set<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
 };
 }

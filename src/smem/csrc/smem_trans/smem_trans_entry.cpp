@@ -66,7 +66,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
         return SM_INVALID_PARAM;
     }
 
-    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout));
+    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout), config.startConfigServer);
     SM_VALIDATE_RETURN(ret == SM_OK, "store helper initialize failed: " << ret, ret);
 
     ret = storeHelper_.GenerateRankId(config, rankId_);
@@ -333,7 +333,8 @@ Result SmemTransEntry::WatchConnectTaskOneLoop()
             }
             return SM_OK;
         } else if (status == SM_ERROR) {
-            SM_LOG_ERROR("Reconnect failed, wait next connect.");
+            const uint32_t logInternal = 5;
+            SM_LOG_LIMIT_WARN(logInternal, "Reconnect failed, wait next connect.");
             return SM_ERROR;
         }
     }
@@ -400,7 +401,7 @@ void SmemTransEntry::CleanupRemoteSlices(const std::vector<const StoredSliceInfo
         }
         it->second.erase(sIt);
         if (it->second.empty()) {
-            SM_LOG_DEBUG("remove workId: " << uniqueToString(workerId.workerId) << " remote slice map.");
+            SM_LOG_INFO("remove workId: " << uniqueToString(workerId.workerId) << " remote slice map.");
             remoteSlices_.erase(it);
         }
     }
@@ -515,7 +516,7 @@ std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
 
 Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uint32_t flags)
 {
-    auto slice = hybm_register_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, address, size, 0);
+    auto slice = hybm_register_local_memory(entity_, address, size, 0);
     if (slice == nullptr) {
         SM_LOG_ERROR("register address with size: " << size << " failed!");
         return SM_ERROR;

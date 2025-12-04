@@ -60,4 +60,6 @@ ENDFUNCTION()
 set(TEST_SRC_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 set(TEST_DEPEND_LIBS gtest dl acc_tcp_net_static smem_static hybmm_static gcov pthread)
 
+add_subdirectory(testcase)
 add_subdirectory(testcase/smem/common)
+add_subdirectory(testcase/utils)

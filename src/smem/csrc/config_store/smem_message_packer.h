@@ -21,12 +21,12 @@ namespace ock {
 namespace smem {
 
 constexpr const char *WATCH_RANK_DOWN_KEY = "WATCH_RANK_DOWN_KEY";
+constexpr uint32_t HEARTBEAT_INTERVAL = 2000; // ms
 const uint64_t MAX_KEY_COUNT = 10ULL;
 const uint64_t MAX_KEY_SIZE = 2048ULL;
 const uint64_t MAX_VALUE_COUNT = 10ULL;
 const uint64_t MAX_VALUE_SIZE = 64 * 1024 * 1024ULL;
-
-enum MessageType : int16_t { SET, GET, ADD, REMOVE, APPEND, CAS, WRITE, WATCH_RANK_STATE, INVALID_MSG };
+enum MessageType : int16_t { SET, GET, ADD, REMOVE, APPEND, CAS, WRITE, WATCH_RANK_STATE, HEARTBEAT, INVALID_MSG };
 
 struct SmemMessage {
     SmemMessage() noexcept : mt{MessageType::INVALID_MSG} {}

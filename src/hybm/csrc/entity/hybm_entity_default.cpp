@@ -193,14 +193,19 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
 int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, uint32_t flags,
                                               hybm_mem_slice_t &slice) noexcept
 {
-    if (ptr == nullptr || size == 0) {
+    if (ptr == nullptr || size == 0 || size > TB) {
         BM_LOG_ERROR("input ptr or size(" << size << ") is invalid");
+        return BM_INVALID_PARAM;
+    }
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("input size: " << size << " invalid, page size is: " << HYBM_LARGE_PAGE_SIZE);
         return BM_INVALID_PARAM;
     }
 
     auto addr = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(ptr));
+    bool isHbm = (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR);
     std::shared_ptr<MemSegment> segment = nullptr;
-    if (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR || !options_.globalUniqueAddress) {
+    if (isHbm || !options_.globalUniqueAddress) {
         segment = hbmSegment_;
     } else {
         segment = dramSegment_;
@@ -218,6 +223,7 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
         transport::TransportMemoryRegion mr;
         mr.addr = (uint64_t)(ptrdiff_t)ptr;
         mr.size = size;
+        mr.flags = (isHbm ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM);
         ret = transportManager_->RegisterMemoryRegion(mr);
         if (ret != 0) {
             BM_LOG_ERROR("register MR: " << mr << " to transport failed: " << ret);
@@ -565,6 +571,12 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
     }
 
     if (transportManager_ != nullptr) {
+        std::unique_lock<std::mutex> uniqueLock{importMutex_};
+        for (auto rank : ranks) {
+            importedRanks_.erase(rank);
+            importedMemories_.erase(rank);
+        }
+        uniqueLock.unlock();
         auto ret = transportManager_->RemoveRanks(ranks);
         if (ret != BM_OK) {
             BM_LOG_WARN("transport remove ranks failed: " << ret);
@@ -912,7 +924,7 @@ void MemEntityDefault::GenCopyExtOption(void* &src, void* &dest, uint64_t length
     } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
         // nothing
     } else {
-        options.srcRankId = options_.rankId;
+        options.destRankId = options_.rankId;
     }
     dest = real;
 }
@@ -1110,26 +1122,6 @@ void *MemEntityDefault::GetReservedMemoryPtr(hybm_mem_type memType) noexcept
     }
 
     return nullptr;
-}
-
-int32_t MemEntityDefault::RegisterMem(uint64_t addr, uint64_t size) noexcept
-{
-    if (size == 0 || size > TB) {
-        BM_LOG_ERROR("Invalid memory size: " << size);
-        return BM_INVALID_PARAM;
-    }
-
-    size = (size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE * HYBM_LARGE_PAGE_SIZE;
-    if ((options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) && transportManager_ != nullptr) {
-        transport::TransportMemoryRegion info;
-        info.size = size;
-        info.addr = addr;
-        info.flags = transport::REG_MR_FLAG_HBM;
-        auto ret = transportManager_->RegisterMemoryRegion(info);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to RegisterMem into rdma", ret);
-    }
-
-    return BM_OK;
 }
 
 int32_t MemEntityDefault::SetThreadAclDevice()

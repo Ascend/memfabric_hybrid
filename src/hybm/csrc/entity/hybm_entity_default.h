@@ -1,6 +1,14 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
- */
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 #ifndef MEM_FABRIC_HYBRID_HYBM_ENGINE_IMPL_H
 #define MEM_FABRIC_HYBRID_HYBM_ENGINE_IMPL_H
 
@@ -73,7 +81,6 @@ public:
     int32_t BatchCopyData(hybm_batch_copy_params &params,
                           hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept override;
     int32_t Wait() noexcept override;
-    int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
     hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept override;
 

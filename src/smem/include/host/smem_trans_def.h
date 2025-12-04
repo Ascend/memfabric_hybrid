@@ -41,6 +41,7 @@ typedef struct {
     uint32_t deviceId;      /* npu device id */
     uint32_t flags;         /* optional flags */
     smem_bm_data_op_type dataOpType;  /* data operation type */
+    bool startConfigServer; /* whether to start config store, default false */
 } smem_trans_config_t;
 
 #ifdef __cplusplus

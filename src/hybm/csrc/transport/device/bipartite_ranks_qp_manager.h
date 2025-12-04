@@ -1,6 +1,14 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
- */
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * MemFabric_Hybrid is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+*/
 
 #ifndef MF_HYBRID_BIPARTITE_RANKS_QP_MANAGER_H
 #define MF_HYBRID_BIPARTITE_RANKS_QP_MANAGER_H
@@ -36,7 +44,7 @@ public:
     void Shutdown() noexcept override;
     UserQpInfo *GetQpHandleWithRankId(uint32_t rankId) noexcept override;
     void PutQpHandle(UserQpInfo *qp) const noexcept override;
-
+    int RemoveRanks(const std::unordered_set<uint32_t> &ranks) noexcept override;
 private:
     void BackgroundProcess() noexcept;
     int ProcessServerAddWhitelistTask() noexcept;
@@ -71,6 +79,8 @@ private:
                                       std::vector<IpType> &types,
                                       std::unordered_set<uint32_t> &connectedRanks,
                                       uint32_t &successCount);
+    void ProcessRankRemoval(uint32_t rank, std::vector<HccpSocketCloseInfo>& socketCloseInfos,
+                            std::vector<HccpSocketWhiteListInfo>& whitelist) noexcept;
 
 private:
     void *rdmaHandle_{nullptr};
@@ -84,6 +94,7 @@ private:
     std::unordered_map<uint32_t, ConnectionChannel> connections_;
     std::vector<ConnectionChannel *> connectionView_;
     std::vector<UserQpInfo> userQpInfo_;
+    ReadWriteLock qpLock_;
 };
 }
 }
