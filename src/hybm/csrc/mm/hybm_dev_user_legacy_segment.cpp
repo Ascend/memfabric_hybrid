@@ -73,11 +73,14 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
         }
         ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.second.sdid, (int *)&remoteDev.second.pid, 1);
         if (ret != 0) {
-            BM_LOG_ERROR("set shm(" << name << ") for sdid=" << remoteDev.first << " pid=" << remoteDev.second.pid
+            BM_LOG_ERROR("set shm(" << name << ") for sdid=" << remoteDev.second.sdid
+                                    << " pid=" << remoteDev.second.pid
                                     << " failed: " << ret);
             DlAclApi::RtIpcDestroyMemoryName(name);
             return BM_DL_FUNCTION_FAILED;
         }
+        BM_LOG_INFO("set shm(" << name << ") for sdid=" << remoteDev.second.sdid
+                               << " pid=" << remoteDev.second.pid << " success.");
     }
 
     memNames_.emplace_back(name);
