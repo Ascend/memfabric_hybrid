@@ -14,6 +14,7 @@
 #include <cctype>
 #include <climits>
 #include "mf_num_util.h"
+#include "acc_def.h"
 #include "smem_store_factory.h"
 #include "smem_net_group_engine.h"
 

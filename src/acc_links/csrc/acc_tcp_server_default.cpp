@@ -506,7 +506,8 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
         }
 
         if (lastErrno != errno) {
-            LOG_INFO("Trying to connect to " << ipAndPort << " errno:" << errno << ", retry times:" << timesRetried);
+            LOG_INFO_LIMIT("Trying to connect to " << ipAndPort << " errno:" << errno
+                                                   << ", retry times:" << timesRetried);
             lastErrno = errno;
         }
 
@@ -516,7 +517,7 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
     }
 
     SafeCloseFd(tmpFD);
-    LOG_ERROR("Failed to connect to " << ipAndPort << " after tried " << timesRetried << " times");
+    LOG_ERROR_LIMIT("Failed to connect to " << ipAndPort << " after tried " << timesRetried << " times");
     return ACC_ERROR;
 }
 

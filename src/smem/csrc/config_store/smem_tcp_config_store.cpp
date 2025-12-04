@@ -152,6 +152,7 @@ Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRe
     result = ClientStart(tlsConfig, reconnectRetryTimes);
     if (result != 0) {
         STORE_LOG_ERROR("Failed to start config store client ret:" << result);
+        return result;
     }
     isConnect_.store(true);
     return result;
@@ -576,7 +577,7 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, waitContext);
     msgCtxLocker.unlock();
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         STORE_LOG_ERROR("send message failed, result: " << ret);
         return nullptr;
@@ -593,9 +594,10 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
     connReq.rankId = rankId_;
     auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
-        STORE_LOG_ERROR("Reconnect to server failed, result.");
+        STORE_LOG_ERROR_LIMIT("Reconnect to server failed, result.");
         return result;
     }
+    STORE_LOG_INFO("Reconnect to server successful.");
     return SM_OK;
 }
 
@@ -689,7 +691,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, std::move(watchContext));
     msgCtxLocker.unlock();
-    auto ret = accClientLink_->NonBlockSend(0, seqNo, dataBuf, nullptr);
+    auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
         STORE_LOG_ERROR_LIMIT("send message failed, result: " << ret
                                                               << ", Established: " << accClientLink_->Established());
@@ -711,7 +713,7 @@ void TcpConfigStore::HeartBeat() noexcept
                 STORE_LOG_ERROR("create data buffer falied, no enough mem");
                 continue;
             }
-            auto ret = accClientLink_->NonBlockSend(0, 0, dataBuf, nullptr);
+            auto ret = LocalNonBlockSend(0, 0, dataBuf, nullptr);
             if (ret != SM_OK) {
                 STORE_LOG_ERROR("send message failed, result: " << ret);
             }
