@@ -23,12 +23,13 @@ namespace device {
 const int delay = 5;
 static constexpr auto WAIT_DELAY_TIME = std::chrono::seconds(delay);
 constexpr uint32_t QP_MAX_CONNECTIONS = 1024;
-BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
-                                                 sockaddr_in devNet, bool server) noexcept
+BipartiteRanksQpManager::BipartiteRanksQpManager(uint32_t userDeviceId, uint32_t deviceId, uint32_t rankId,
+                                                 uint32_t rankCount, sockaddr_in devNet, bool server) noexcept
     : DeviceQpManager{deviceId, rankId, rankCount, devNet, server ? HYBM_ROLE_RECEIVER : HYBM_ROLE_SENDER}
 {
     connectionView_.resize(rankCount);
     userQpInfo_.resize(rankCount);
+    userDeviceId_ = userDeviceId;
 }
 
 BipartiteRanksQpManager::~BipartiteRanksQpManager() noexcept
@@ -149,7 +150,7 @@ void BipartiteRanksQpManager::PutQpHandle(UserQpInfo *qp) const noexcept
 
 void BipartiteRanksQpManager::BackgroundProcess() noexcept
 {
-    DlAclApi::AclrtSetDevice(deviceId_);
+    DlAclApi::AclrtSetDevice(userDeviceId_);
     while (managerRunning_.load()) {
         std::unique_lock<std::mutex> uniqueLock{mutex_};
         cond_.wait_for(uniqueLock, std::chrono::milliseconds(1));

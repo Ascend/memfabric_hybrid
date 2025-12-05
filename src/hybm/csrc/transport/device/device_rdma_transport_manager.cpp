@@ -98,7 +98,7 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
             qpManager_ = std::make_shared<JoinableRanksQpManager>(userId, deviceId_, rankId_, rankCount_, deviceAddr);
         }
     } else {
-        qpManager_ = std::make_shared<BipartiteRanksQpManager>(userId, rankId_, rankCount_, deviceAddr,
+        qpManager_ = std::make_shared<BipartiteRanksQpManager>(userId, deviceId_, rankId_, rankCount_, deviceAddr,
                                                                role_ == HYBM_ROLE_RECEIVER);
     }
 

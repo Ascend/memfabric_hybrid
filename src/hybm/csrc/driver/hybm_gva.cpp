@@ -41,7 +41,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddre
         BM_LOG_ERROR("Failed to get logic deviceId: " << deviceId);
         return BM_ERROR;
     }
-
+    BM_LOG_INFO("Success get deviceId: " << deviceId << ", logicDeviceId: " << initedLogicDeviceId);
     auto ret = DlAclApi::AclrtSetDevice(deviceId);
     if (ret != BM_OK) {
         DlApi::CleanupLibrary();

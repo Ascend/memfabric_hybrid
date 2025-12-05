@@ -68,7 +68,7 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
     }
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &remoteDev : importedDeviceInfo_) {
-        if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId, remoteDev.second.deviceId)) {
+        if (!CanSdmaReaches(remoteDev.second.superPodId, remoteDev.second.serverId, remoteDev.second.logicDeviceId)) {
             continue;
         }
         ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.second.sdid, (int *)&remoteDev.second.pid, 1);
@@ -116,7 +116,7 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
 
     HbmExportDeviceInfo info;
-    info.deviceId = deviceId_;
+    info.logicDeviceId = logicDeviceId_;
     info.rankId = options_.rankId;
     info.pid = HybmDevLegacySegment::pid_;
     HybmDevLegacySegment::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
@@ -127,7 +127,7 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
         return BM_ERROR;
     }
 
-    BM_LOG_DEBUG("export device info(sdid=" << sdid_ << ", pid=" << pid_ << ", deviceId=" << deviceId_ << ")");
+    BM_LOG_DEBUG("export device info(sdid=" << sdid_ << ", pid=" << pid_ << ", deviceId=" << logicDeviceId_ << ")");
     return BM_OK;
 }
 
@@ -143,7 +143,7 @@ Result HybmDevUserLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, 
     HbmExportSliceInfo info;
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
-    info.deviceId = static_cast<uint32_t>(deviceId_);
+    info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
     info.rankId = static_cast<uint16_t>(options_.rankId);
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
@@ -247,17 +247,18 @@ void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
         }
         auto &sliceInfo = sIt->second;
         if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
-            CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.deviceId)) {
+            CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
             void *address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_ << 16 >> 16));
             BM_LOG_INFO("RtIpcCloseMemory start address=" << address
                         << ", vAddress_ = " << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
-                        << ", deviceId=" << deviceId_ << ", sliceInfo.deviceId=" << sliceInfo.deviceId
+                        << ", deviceId=" << logicDeviceId_ << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId
                         << ", sliceInfo.rankId=" << sliceInfo.rankId);
             auto ret = DlAclApi::RtIpcCloseMemory(address);
             if (ret != 0) {
                 BM_LOG_WARN("Failed to close memory, address=" << address
                             << ", vAddress_" << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
-                            << ", deviceId=" << deviceId_ << ", sliceInfo.deviceId=" << sliceInfo.deviceId
+                            << ", deviceId=" << logicDeviceId_
+                            << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId
                             << ", sliceInfo.rankId=" << sliceInfo.rankId << ", ret:" << ret
                             << ", This may affect future memory registration.");
             }
@@ -324,19 +325,21 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
         return ret;
     }
 
-    if (deviceInfo.deviceId >= MAX_DEVICE_COUNT) {
-        BM_LOG_ERROR("Invalid deviceInfo device id: " << deviceInfo.deviceId);
+    if (deviceInfo.logicDeviceId >= MAX_DEVICE_COUNT) {
+        BM_LOG_ERROR("Invalid deviceInfo device id: " << deviceInfo.logicDeviceId);
         return BM_ERROR;
     }
 
-    if (deviceInfo.deviceId != deviceId_ && !enablePeerDevices_.test(deviceInfo.deviceId)) {
-        ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.deviceId, 0);
+    if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.logicDeviceId)) {
+        ret = DlAclApi::RtEnableP2P(deviceId_, deviceInfo.logicDeviceId, 0);
         if (ret != 0) {
-            BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << deviceInfo.deviceId << " failed: " << ret);
+            BM_LOG_ERROR("enable device access failed:"
+                         << ret << " local_device:" << deviceId_ << " logic_device:" << logicDeviceId_
+                         << " remote_logic_device:" << deviceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        enablePeerDevices_.set(deviceInfo.deviceId);
-        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.deviceId);
+        enablePeerDevices_.set(deviceInfo.logicDeviceId);
+        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.logicDeviceId);
     }
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &it : registerSlices_) {
@@ -365,35 +368,37 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
         return ret;
     }
 
-    if (sliceInfo.deviceId >= MAX_DEVICE_COUNT) {
-        BM_LOG_ERROR("Invalid sliceInfo device id: " << sliceInfo.deviceId);
+    if (sliceInfo.logicDeviceId >= MAX_DEVICE_COUNT) {
+        BM_LOG_ERROR("Invalid sliceInfo device id: " << sliceInfo.logicDeviceId);
         return BM_ERROR;
     }
 
     void *address = nullptr;
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
-         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.deviceId)) {
-        if (sliceInfo.deviceId != static_cast<uint32_t>(deviceId_) && !enablePeerDevices_.test(sliceInfo.deviceId)) {
-            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.deviceId, 0);
+         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
+        if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_)
+            && !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
+            ret = DlAclApi::RtEnableP2P(deviceId_, sliceInfo.logicDeviceId, 0);
             if (ret != 0) {
-                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.deviceId << " failed: " << ret);
+                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.logicDeviceId
+                             << " failed: " << ret);
                 return BM_DL_FUNCTION_FAILED;
             }
-            enablePeerDevices_.set(sliceInfo.deviceId);
-            BM_LOG_DEBUG("enable peer access for : " << sliceInfo.deviceId);
+            enablePeerDevices_.set(sliceInfo.logicDeviceId);
+            BM_LOG_DEBUG("enable peer access for : " << sliceInfo.logicDeviceId);
         }
 
         ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
         if (ret != 0) {
             BM_LOG_ERROR("IpcOpenMemory(" << sliceInfo.name << ") failed:" << ret << ",sdid=" << sdid_
-                         << ", pid=" << pid_ << ", deviceId=" << deviceId_
-                         << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
+                                          << ", pid=" << pid_ << ", deviceId=" << logicDeviceId_
+                                          << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_
-                     << ", pid=" << pid_ << ", deviceId=" << deviceId_
-                     << ", sliceInfo.deviceId=" << sliceInfo.deviceId);
+        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_ <<
+                    ", pid=" << pid_ << ", deviceId=" << logicDeviceId_ <<
+                    ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(sliceInfo.address));
     }

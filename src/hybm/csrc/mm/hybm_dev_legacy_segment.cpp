@@ -404,7 +404,7 @@ int HybmDevLegacySegment::SetDeviceInfo(int deviceId) noexcept
         BM_LOG_ERROR("Failed to get logic deviceId: " << deviceId);
         return BM_ERROR;
     }
-
+    BM_LOG_INFO("Success get deviceId: " << deviceId << ", logicDeviceId: " << logicDeviceId);
     uint32_t tgid = 0;
     auto ret = DlAclApi::RtDeviceGetBareTgid(&tgid);
     if (ret != BM_OK) {

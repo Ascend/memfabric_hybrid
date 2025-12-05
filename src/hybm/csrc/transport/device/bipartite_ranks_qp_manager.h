@@ -35,8 +35,8 @@ enum class IpType {
 
 class BipartiteRanksQpManager : public DeviceQpManager {
 public:
-    BipartiteRanksQpManager(uint32_t deviceId, uint32_t rankId, uint32_t rankCount, sockaddr_in devNet,
-                          bool server) noexcept;
+    BipartiteRanksQpManager(uint32_t userDeviceId, uint32_t deviceId, uint32_t rankId, uint32_t rankCount,
+                            sockaddr_in devNet, bool server) noexcept;
     ~BipartiteRanksQpManager() noexcept override;
 
     int SetRemoteRankInfo(const std::unordered_map<uint32_t, ConnectRankInfo> &ranks) noexcept override;
@@ -95,6 +95,7 @@ private:
     std::vector<ConnectionChannel *> connectionView_;
     std::vector<UserQpInfo> userQpInfo_;
     ReadWriteLock qpLock_;
+    uint32_t userDeviceId_{0};
 };
 }
 }
