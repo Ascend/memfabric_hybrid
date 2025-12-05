@@ -205,7 +205,8 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
     auto addr = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(ptr));
     bool isHbm = (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR);
     std::shared_ptr<MemSegment> segment = nullptr;
-    if (isHbm || !options_.globalUniqueAddress) {
+    // 只有trans场景才需要走hbmSegment_，bm场景优先走dramSegment_
+    if (!options_.globalUniqueAddress || dramSegment_ == nullptr) {
         segment = hbmSegment_;
     } else {
         segment = dramSegment_;

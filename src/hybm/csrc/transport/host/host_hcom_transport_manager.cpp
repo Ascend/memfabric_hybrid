@@ -120,7 +120,7 @@ Result HcomTransportManager::CloseDevice()
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0 && mr.flags == transport::REG_MR_FLAG_DRAM, BM_INVALID_PARAM);
 
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
@@ -162,7 +162,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0 && mr.flags == transport::REG_MR_FLAG_DRAM, BM_INVALID_PARAM);
 
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
