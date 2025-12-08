@@ -60,6 +60,8 @@ private:
                        uint32_t batchSize, const ExtOptions &options) noexcept;
     int BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
                        uint32_t batchSize, const ExtOptions &options) noexcept;
+    int BatchCopyGH2GH(void *destAddrs[], void *srcAddrs[], const uint64_t counts[],
+                       uint32_t batchSize, const ExtOptions &options) noexcept;
 
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
                           std::unordered_map<uint32_t, CopyDescriptor> &rmtRankMap,

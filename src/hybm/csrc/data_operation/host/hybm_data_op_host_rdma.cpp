@@ -19,7 +19,7 @@
 using namespace ock::mf;
 
 namespace {
-constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
+constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 1024;
 }
 
 int32_t HostDataOpRDMA::Initialize() noexcept
@@ -305,6 +305,13 @@ int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
             TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_GH_TO_LH, ret);
             break;
         }
+        case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
+            TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_BATCH_GH_TO_GH);
+            ret = BatchCopyGH2GH(params.destinations, params.sources, params.dataSizes,
+                                 params.batchSize, options);
+            TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_GH_TO_GH, ret);
+            break;
+        }
         default:
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
@@ -315,6 +322,7 @@ int32_t HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
 int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const uint64_t *counts,
                                    uint32_t batchSize, const ExtOptions &options) noexcept
 {
+    TP_TRACE_BEGIN(TP_HYBM_ACL_BATCH_LD_TO_LH);
     void *st = options.stream;
     auto ret = 0;
     for (size_t i = 0; i < batchSize; ++i) {
@@ -333,12 +341,14 @@ int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const u
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st));
     }
+    TP_TRACE_END(TP_HYBM_ACL_BATCH_LD_TO_LH, ret);
     return ret;
 }
 
 int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const uint64_t *counts,
                                    uint32_t batchSize, const ExtOptions &options) noexcept
 {
+    TP_TRACE_BEGIN(TP_HYBM_ACL_BATCH_LH_TO_LD);
     void *st = options.stream;
     auto ret = 0;
     for (size_t i = 0; i < batchSize; ++i) {
@@ -357,6 +367,7 @@ int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const u
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st));
     }
+    TP_TRACE_END(TP_HYBM_ACL_BATCH_LH_TO_LD, ret);
     return ret;
 }
 
@@ -622,4 +633,27 @@ int HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint
         }
     }
     return BM_OK;
+}
+
+int HostDataOpRDMA::BatchCopyGH2GH(void **destAddrs, void **srcAddrs, const uint64_t *counts, uint32_t batchSize,
+                                   const ExtOptions &options) noexcept
+{
+    Result ret = 0;
+    bool isPut = options.srcRankId == rankId_;
+    // 后续使用HCOM异步接口
+    for (auto i = 0U; i < batchSize; i++) {
+        if (isPut) {
+            ret = transportManager_->WriteRemote(options.destRankId, (uint64_t)srcAddrs[i],
+                                                 (uint64_t)destAddrs[i], counts[i]);
+        } else {
+            ret = transportManager_->ReadRemote(options.srcRankId, (uint64_t)destAddrs[i],
+                                                (uint64_t)srcAddrs[i], counts[i]);
+        }
+        if (ret != 0) {
+            BM_LOG_ERROR("Failed to copy gh to gh ret: " << ret << " srcRank:" << options.srcRankId
+                << " destRank:" << options.destRankId << " length:" << counts[i]);
+            return ret;
+        }
+    }
+    return ret;
 }
