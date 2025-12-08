@@ -101,6 +101,7 @@ private:
     hybm_exchange_info hbmSliceInfo_;
     hybm_exchange_info dramSliceInfo_;
     hybm_exchange_info entityInfo_;
+    hybm_mem_slice_t slice_ = nullptr;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

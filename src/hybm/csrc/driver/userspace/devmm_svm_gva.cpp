@@ -83,6 +83,11 @@ static int32_t InitGvaHeapMgmt(uint64_t st, uint64_t ed, int32_t deviceId)
     return 0;
 }
 
+static void UnInitGvaHeapMgr()
+{
+    g_gvaHeapMgr.inited = false;
+}
+
 static bool GvaHeapCheckInRange(uint64_t key, uint64_t len)
 {
     if (g_gvaHeapMgr.tree.empty()) {

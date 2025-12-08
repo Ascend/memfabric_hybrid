@@ -122,6 +122,7 @@ HYBM_API void hybm_uninit()
         return;
     }
 
+    drv::HalGvaFree(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
     auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     g_baseAddr = 0ULL;

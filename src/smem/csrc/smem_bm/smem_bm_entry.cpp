@@ -79,6 +79,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
             }
         }
 
+        slice_ = slice;
         bzero(&dramSliceInfo_, sizeof(hybm_exchange_info));
         if (options.hostVASpace > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_HOST, options.hostVASpace, flags);
@@ -122,10 +123,15 @@ void SmemBmEntry::UnInitalize()
     if (!inited_) {
         return;
     }
-    uint32_t flags = 0;
-    if (entity_ != nullptr) {
-        hybm_destroy_entity(entity_, flags);
+    if (entity_ == nullptr) {
+        return;
     }
+    uint32_t flags = 0;
+    if (slice_ != nullptr) {
+        hybm_free_local_memory(entity_, slice_, 1, flags);
+    }
+    hybm_unreserve_mem_space(entity_, flags);
+    hybm_destroy_entity(entity_, flags);
     inited_ = false;
 }
 
