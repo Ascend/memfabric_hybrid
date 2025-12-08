@@ -241,8 +241,8 @@ function check_path()
         exit 1
     fi
     username=$(whoami)
-    su - "${username}" -s /bin/bash -c "test -x ${parentPath}" >>/dev/null 2>&1
-    if [ $? -ne 0 ]; then
+    # Run permission check as current user: $(whoami)
+    if [ ! -x "${parentPath}" ]; then
         print "ERROR" "The ${username} do not have the permission to access ${parentPath}, please reset the directory to a right permission."
         exit 1
     fi
