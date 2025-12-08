@@ -38,7 +38,7 @@ public:
     {
         uint32_t resultOpType = 0;
         if (smemBmDataOpType & SMEMB_DATA_OP_SDMA) {
-            resultOpType |= (HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
+            resultOpType |= HYBM_DOP_TYPE_SDMA;
         }
 
         if (smemBmDataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
