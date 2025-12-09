@@ -166,10 +166,7 @@ void DlHccpApi::CleanupLibrary()
     gRaSendWr = nullptr;
     gRaPollCq = nullptr;
 
-    if (raHandle != nullptr) {
-        dlclose(raHandle);
-        raHandle = nullptr;
-    }
+    // close raHandle may lead to core dump
 
     if (tsdHandle != nullptr) {
         dlclose(tsdHandle);
