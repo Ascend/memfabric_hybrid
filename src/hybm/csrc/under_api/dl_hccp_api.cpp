@@ -66,7 +66,7 @@ Result DlHccpApi::LoadLibrary()
         return BM_OK;
     }
 
-    raHandle = dlopen(gRaLibName, RTLD_NOW);
+    raHandle = dlopen(gRaLibName, RTLD_NOW | RTLD_NODELETE);
     if (raHandle == nullptr) {
         BM_LOG_ERROR(
             "Failed to open library ["
@@ -76,7 +76,7 @@ Result DlHccpApi::LoadLibrary()
         return BM_DL_FUNCTION_FAILED;
     }
 
-    tsdHandle = dlopen(gTsdLibName, RTLD_NOW);
+    tsdHandle = dlopen(gTsdLibName, RTLD_NOW | RTLD_NODELETE);
     if (tsdHandle == nullptr) {
         BM_LOG_ERROR(
             "Failed to open library ["
@@ -166,7 +166,10 @@ void DlHccpApi::CleanupLibrary()
     gRaSendWr = nullptr;
     gRaPollCq = nullptr;
 
-    // close raHandle may lead to core dump
+    if (raHandle != nullptr) {
+        dlclose(raHandle);
+        raHandle = nullptr;
+    }
 
     if (tsdHandle != nullptr) {
         dlclose(tsdHandle);

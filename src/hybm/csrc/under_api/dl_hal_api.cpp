@@ -134,7 +134,7 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
         return BM_OK;
     }
 
-    halHandle = dlopen(gAscendHalLibName, RTLD_NOW);
+    halHandle = dlopen(gAscendHalLibName, RTLD_NOW | RTLD_NODELETE);
     if (halHandle == nullptr) {
         BM_LOG_ERROR("Failed to open library [" << gAscendHalLibName
             << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"

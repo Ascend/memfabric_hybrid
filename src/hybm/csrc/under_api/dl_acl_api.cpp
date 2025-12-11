@@ -69,7 +69,7 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     }
 
     /* dlopen library */
-    rtHandle = dlopen(realPath.c_str(), RTLD_NOW);
+    rtHandle = dlopen(realPath.c_str(), RTLD_NOW | RTLD_NODELETE);
     if (rtHandle == nullptr) {
         BM_LOG_ERROR("Failed to open library [" << realPath << "], error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;

@@ -2,6 +2,8 @@
 
 ## 🔄Latest News
 
+- [2025/12] MemFabric + MemCache已作为vllm-ascend backend使能大模型推理加速，详情查看vllm-ascend开源社区，相关pr: https://github.com/vllm-project/vllm-ascend/pull/4438
+
 - [2025/11] MemFabric项目于2025年11月开源，在昇腾上提供高效的多链路的D2RH,RH2D,RH2H,D2D,D2H,H2D等内存直接访问能力。
 
 ## 🎉概述

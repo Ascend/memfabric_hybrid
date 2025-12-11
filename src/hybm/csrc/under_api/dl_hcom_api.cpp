@@ -73,7 +73,7 @@ Result DlHcomApi::LoadLibrary()
     if (gLoaded) {
         return BM_OK;
     }
-    hcomHandle = dlopen(hcomLibName, RTLD_NOW);
+    hcomHandle = dlopen(hcomLibName, RTLD_NOW | RTLD_NODELETE);
     if (hcomHandle == nullptr) {
         BM_LOG_WARN("Failed to open library [" << hcomLibName << "], error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;
