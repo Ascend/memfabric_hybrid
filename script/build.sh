@@ -11,7 +11,7 @@
 
 BUILD_MODE=${1:-RELEASE}
 BUILD_TESTS=${2:-OFF}
-BUILD_OPEN_ABI=${3:-ON}
+BUILD_OPEN_ABI=${3:-OFF}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
 USE_CANN=${6:-ON}
@@ -45,7 +45,16 @@ PROJ_DIR=$(pwd)
 rm -rf ./build ./output
 
 mkdir build/
-cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_COMPILER="${BUILD_COMPILER}" -DBUILD_TESTS="${BUILD_TESTS}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -DBUILD_PYTHON="${BUILD_PYTHON}" -DENABLE_PTRACER="${ENABLE_PTRACER}" -DUSE_CANN="${USE_CANN}" -S . -B build/
+cmake \
+    -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
+    -DBUILD_COMPILER="${BUILD_COMPILER}" \
+    -DBUILD_TESTS="${BUILD_TESTS}" \
+    -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
+    -DBUILD_PYTHON="${BUILD_PYTHON}" \
+    -DENABLE_PTRACER="${ENABLE_PTRACER}" \
+    -DUSE_CANN="${USE_CANN}" \
+    -S . \
+    -B build/
 make install -j32 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then
@@ -64,10 +73,12 @@ mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
 \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 \cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 
+export MEMFABRIC_VERSION="${VERSION:-1.0.1}"
+
 GIT_COMMIT=`git rev-parse HEAD` || true
 {
   echo "mf version info:"
-  echo "mf version: 1.0.0"
+  echo "mf version: ${MEMFABRIC_VERSION}"
   echo "git: ${GIT_COMMIT}"
 } > VERSION
 
@@ -117,6 +128,7 @@ do
     cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
     cd "${PROJ_DIR}/src/smem/python/mk_transfer_adapter"
     rm -rf build mf_adapter.egg-info
+    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 
@@ -127,6 +139,7 @@ do
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
     rm -rf build memfabric_hybrid.egg-info
+    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 

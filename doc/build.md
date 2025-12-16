@@ -43,10 +43,10 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --use_c
 ```
 
 - build_and_pack_run.sh支持3个参数,按顺序分别是<build_mode> <build_python> <use_cann>
-- build_mode:编译类型,可填RELEASE或DEBUG
-- build_python:是否编译python的whl包,可填ON或OFF
-- use_cann: 编译需要CANN dependency。
-- 不填入参数情况下,默认执行build_and_pack_run.sh RELEASE ON ON
+- build_mode: 编译类型, 可填RELEASE或DEBUG, 默认RELEASE
+- build_python: 是否编译python的whl包,可填ON或OFF, 默认ON
+- use_cann: 是否需要在有CANN的环境下使用, 如果是通算场景, 可设置为OFF, 默认ON。
+
 4. ut运行
 
 支持直接执行如下脚本编译并运行ut

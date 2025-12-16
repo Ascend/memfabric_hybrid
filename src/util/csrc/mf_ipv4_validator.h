@@ -10,6 +10,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include "mf_str_util.h"
 
 namespace ock {

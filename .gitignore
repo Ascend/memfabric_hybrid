@@ -4,6 +4,7 @@
 /output/
 /build/
 /script/git_last_commit.txt
+package/*
 
 *.so
 *.whl

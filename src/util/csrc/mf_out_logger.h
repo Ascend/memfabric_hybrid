@@ -8,7 +8,7 @@
  * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
-*/
+ */
 
 #ifndef MEMFABRIC_HYBRID_BASE_LOGGER_H
 #define MEMFABRIC_HYBRID_BASE_LOGGER_H
@@ -52,7 +52,7 @@ public:
     static bool ShouldLog()
     {
         using namespace std::chrono;
-        static thread_local ThrottleState state{0, 0};
+        static thread_local ThrottleState state(0, 0);
         const uint64_t now = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
         uint64_t windowTime = state.windowStartTimeSec.load(std::memory_order_relaxed);
         if (now - windowTime >= INTERVAL) {
@@ -68,6 +68,9 @@ private:
     struct ThrottleState {
         std::atomic<uint64_t> windowStartTimeSec;
         std::atomic<uint32_t> counter;
+
+        ThrottleState(uint64_t time = 0, uint32_t count = 0) : windowStartTimeSec(time), counter(count)
+        {}
     };
     static constexpr uint64_t INTERVAL = 7ULL;
     static constexpr uint64_t BURST = 5ULL;
@@ -118,8 +121,8 @@ public:
     inline void Log(int level, std::string logMsg)
     {
         // LCOV_EXCL_START
-        logMsg.erase(std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }),
-                     logMsg.end());
+        logMsg.erase(
+            std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }), logMsg.end());
         if (logFunc_ != nullptr) {
             logFunc_(level, logMsg.c_str());
             return;
@@ -137,21 +140,21 @@ public:
         }
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", result) != 0) {
             const uint8_t TIME_WIDTH = 6U;
-            std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0')
-                      << tv.tv_usec << " " << LogLevelDesc(level) << " "
-                      << syscall(SYS_gettid) << " pid[" << getpid() << "] " << logMsg << std::endl;
-        } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid)
-                      << " pid[" << getpid() << "] " << " " << logMsg
+            std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0') << tv.tv_usec << " "
+                      << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " pid[" << getpid() << "] " << logMsg
                       << std::endl;
+        } else {
+            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " pid[" << getpid()
+                      << "] "
+                      << " " << logMsg << std::endl;
         }
         // LCOV_EXCL_STOP
     }
 
-    OutLogger(const OutLogger &)            = delete;
-    OutLogger(OutLogger &&)                 = delete;
+    OutLogger(const OutLogger &) = delete;
+    OutLogger(OutLogger &&) = delete;
     OutLogger &operator=(const OutLogger &) = delete;
-    OutLogger &operator=(OutLogger &&)      = delete;
+    OutLogger &operator=(OutLogger &&) = delete;
 
     ~OutLogger()
     {
@@ -171,7 +174,7 @@ private:
     }
 
 private:
-    LogLevel logLevel_   = ERROR_LEVEL;
+    LogLevel logLevel_ = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error", "fatal"};
@@ -194,7 +197,7 @@ private:
         }                                                                             \
         std::ostringstream oss;                                                       \
         oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
-        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());             \
+        ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());       \
     } while (0)
 
 #define MF_OUT_LOG_LIMIT(TAG, LEVEL, ARGS)                                            \
