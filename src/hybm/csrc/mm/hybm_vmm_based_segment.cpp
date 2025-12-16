@@ -101,7 +101,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
             prop = {MEM_DEV_SIDE, static_cast<uint32_t>(logicDeviceId_), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
             break;
         case HYBM_MST_DRAM:
-            prop = {MEM_HOST_SIDE, static_cast<uint32_t>(logicDeviceId_), 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
+            prop = {MEM_HOST_SIDE, 0, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
             break;
         default:
             BM_LOG_ERROR("invalid seg type: " << options_.segType);

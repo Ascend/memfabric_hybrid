@@ -48,7 +48,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
         return BM_INVALID_PARAM;
     }
     void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE,
-                        MAP_FIXED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
+                        MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED) {
         BM_LOG_ERROR("Failed to mmap size:" << totalSize << " error: " << errno);
         return BM_ERROR;
@@ -95,7 +95,7 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
     void *mapped = mmap(sliceAddr, size, PROT_READ | PROT_WRITE,
-                        MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+                        MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED) {
         BM_LOG_ERROR("Failed to alloc size:" << size << " error:" << errno << ", " << SafeStrError(errno));
         return BM_ERROR;
