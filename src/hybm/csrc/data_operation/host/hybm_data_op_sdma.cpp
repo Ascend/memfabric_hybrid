@@ -22,7 +22,7 @@ namespace ock {
 namespace mf {
 constexpr uint64_t HBM_SWAP_SPACE_SIZE = 128 * 1024 * 1024;
 thread_local HybmStreamPtr HostDataOpSDMA::stream_ = nullptr;
-HostDataOpSDMA::HostDataOpSDMA() noexcept = default;
+HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
 HostDataOpSDMA::~HostDataOpSDMA()
 {
