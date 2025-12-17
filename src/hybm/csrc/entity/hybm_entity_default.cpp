@@ -675,44 +675,70 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     if (stream == nullptr) {
         stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
-
-    ExtOptions options{};
-    options.flags = flags;
-    options.stream = stream;
-    GenCopyExtOption(params.sources[0], params.destinations[0], params.dataSizes[0], options);
-
     if (!options_.globalUniqueAddress) {
         for (auto i = 0U; i < params.batchSize; i++) {
             params.sources[i] = Valid48BitsAddress(params.sources[i]);
             params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
         }
     }
-
+    // 0. sdma 不需要rankId
+    ExtOptions sOptions{};
+    sOptions.flags = flags;
+    sOptions.stream = stream;
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0 && sdmaDataOperator_ != nullptr) {
-        ret = sdmaDataOperator_->BatchDataCopy(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
+        ret = sdmaDataOperator_->BatchDataCopy(params, direction, sOptions);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
+            return ret;
+        }
+        return ret;
+    }
+    // 1. 分组
+    std::unordered_map<ExtOptions, std::vector<uint32_t>, ExtOptionsHash> groupMap;
+    // 2. 遍历所有元素，收集分组
+    for (uint32_t i = 0; i < params.batchSize; ++i) {
+        ExtOptions options{};
+        options.flags = flags;
+        options.stream = stream;
+        GenCopyExtOption(params.sources[i], params.destinations[i], params.dataSizes[i], options);
+        BM_LOG_DEBUG("==========" << options << " " << (uint64_t)params.sources[i] << " " << params.destinations[i]
+                                  << " " << (uint64_t)params.dataSizes[i]);
+        groupMap[options].push_back(i);
+    }
+    // 3. 为每组调用batch_copy
+    for (auto &[options, indices] : groupMap) {
+        uint32_t groupSize = indices.size();
+        // 为当前组构建临时参数
+        std::vector<void *> sources_group(groupSize);
+        std::vector<void *> destinations_group(groupSize);
+        std::vector<size_t> dataSizes_group(groupSize);
+        // 填充组内参数
+        for (uint32_t j = 0; j < groupSize; ++j) {
+            uint32_t idx = indices[j];
+            sources_group[j] = params.sources[idx];
+            destinations_group[j] = params.destinations[idx];
+            dataSizes_group[j] = params.dataSizes[idx];
+        }
+        hybm_batch_copy_params copyParams = {sources_group.data(), destinations_group.data(), dataSizes_group.data(),
+                                             groupSize};
+        if (devRdmaDataOperator_ != nullptr) {
+            ret = devRdmaDataOperator_->BatchDataCopy(copyParams, direction, options);
+            if (ret == BM_OK) {
+                continue;
+            }
+            BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
         }
 
-        BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
+        if (hostRdmaDataOperator_ != nullptr) {
+            ret = hostRdmaDataOperator_->BatchDataCopy(copyParams, direction, options);
+            if (ret == BM_OK) {
+                continue;
+            }
+            BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
+        }
         return ret;
     }
 
-    if (devRdmaDataOperator_ != nullptr) {
-        ret = devRdmaDataOperator_->BatchDataCopy(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Device RDMA data copy direction: " << direction << ", failed : " << ret);
-    }
-
-    if (hostRdmaDataOperator_ != nullptr) {
-        ret = hostRdmaDataOperator_->BatchDataCopy(params, direction, options);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Host RDMA data copy direction: " << direction << ", failed : " << ret);
-    }
     return ret;
 }
 

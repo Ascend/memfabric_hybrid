@@ -12,6 +12,7 @@
 #ifndef MEM_FABRIC_HYBRID_HYBM_DATA_ACTION_H
 #define MEM_FABRIC_HYBRID_HYBM_DATA_ACTION_H
 
+#include <ostream>
 #include "hybm_common_include.h"
 #include "hybm_big_mem.h"
 
@@ -23,8 +24,28 @@ struct ExtOptions {
     uint32_t destRankId;
     void *stream;
     uint32_t flags;
+    friend bool operator==(const ExtOptions &lhs, const ExtOptions &rhs)
+    {
+        return lhs.srcRankId == rhs.srcRankId && lhs.destRankId == rhs.destRankId;
+    }
+    friend bool operator!=(const ExtOptions &lhs, const ExtOptions &rhs)
+    {
+        return !(lhs == rhs);
+    }
+    friend std::ostream &operator<<(std::ostream &os, const ExtOptions &obj)
+    {
+        return os << "srcRankId: " << obj.srcRankId << " destRankId: " << obj.destRankId;
+    }
 };
 
+struct ExtOptionsHash {
+    ExtOptionsHash() = default;
+    std::hash<std::string> strHash;
+    size_t operator()(const ExtOptions &options) const
+    {
+        return strHash(std::to_string(options.srcRankId) + "-" + std::to_string(options.destRankId));
+    }
+};
 typedef struct {
     std::vector<void *> localAddrs;
     std::vector<void *> globalAddrs;
