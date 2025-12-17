@@ -22,7 +22,6 @@ extern "C" {
 typedef void *smem_bm_t;
 #define SMEM_BM_TIMEOUT_MAX     UINT32_MAX /* all timeout must <= UINT32_MAX */
 #define ASYNC_COPY_FLAG (1UL << (0))
-#define SMEM_BM_INIT_GVM_FLAG (1ULL << 1ULL) // Init the GVM module, enable to use Host DRAM
 #define SMEM_TLS_PATH_SIZE 256
 /**
 * @brief Smem memory type

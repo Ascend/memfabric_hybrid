@@ -189,7 +189,6 @@ class BigMemoryContext:
         self.__config.rank_id = self.__rank_id
         self.__config.auto_ranking = False
         self.__config.start_store_only = False
-        self.__config.flags = mf_hybrid.bm.BmInitFlag.GVM
         self.__config.set_nic("tcp://0.0.0.0/0:10005")
         self.__handle = None
 

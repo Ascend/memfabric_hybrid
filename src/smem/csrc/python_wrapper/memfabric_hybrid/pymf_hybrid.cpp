@@ -387,11 +387,6 @@ Returns:
     m.doc() = LIB_VERSION;
 }
 
-// enum wrap for binding
-enum smem_bm_init_flag : uint32_t {
-    SMEM_BM_INIT_FLAG_GVM = SMEM_BM_INIT_GVM_FLAG,
-};
-
 void DefineShmConfig(py::module_ &m)
 {
     py::class_<smem_shm_config_t>(m, "ShmConfig")
@@ -424,8 +419,6 @@ void DefineBmConfig(py::module_ &m)
         .value("G2H", SMEMB_COPY_G2H, "copy data from global space to host memory")
         .value("H2G", SMEMB_COPY_H2G, "copy data from host memory to global space")
         .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space");
-
-    py::enum_<smem_bm_init_flag>(m, "BmInitFlag").value("GVM", SMEM_BM_INIT_FLAG_GVM, "enable GVM");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
