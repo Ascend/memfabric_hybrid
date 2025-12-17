@@ -14,6 +14,15 @@
 
 namespace ock {
 namespace mf {
+MemEntityFactory::~MemEntityFactory()
+{
+    for (const auto &engine : engines_) {
+        engine.second->UnInitialize();
+        // 防止在engine的析构函数里面调用UnInitialize
+    }
+    engines_.clear();
+    enginesFromAddress_.clear();
+}
 EngineImplPtr MemEntityFactory::GetOrCreateEngine(uint16_t id, uint32_t flags)
 {
     std::lock_guard<std::mutex> guard(enginesMutex_);

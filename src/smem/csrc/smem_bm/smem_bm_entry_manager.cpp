@@ -44,6 +44,19 @@ SmemBmEntryManager &SmemBmEntryManager::Instance()
     return instance;
 }
 
+SmemBmEntryManager::~SmemBmEntryManager()
+{
+    // 防止析构函数里面调用UnInitalize
+    for (auto &pair : ptr2EntryMap_) {
+        pair.second->UnInitalize();
+    }
+    ptr2EntryMap_.clear();
+    for (auto &map : entryIdMap_) {
+        map.second->UnInitalize();
+    }
+    entryIdMap_.clear();
+}
+
 Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                                       const smem_bm_config_t &config)
 {

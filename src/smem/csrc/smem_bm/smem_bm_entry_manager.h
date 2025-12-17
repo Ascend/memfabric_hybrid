@@ -26,7 +26,7 @@ public:
     static SmemBmEntryManager &Instance();
 
     SmemBmEntryManager() = default;
-    ~SmemBmEntryManager() = default;
+    ~SmemBmEntryManager();
 
     SmemBmEntryManager(const SmemBmEntryManager &) = delete;
     SmemBmEntryManager(SmemBmEntryManager &&) = delete;

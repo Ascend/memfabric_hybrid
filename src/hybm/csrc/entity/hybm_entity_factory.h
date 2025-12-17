@@ -27,7 +27,7 @@ public:
 
 public:
     MemEntityFactory() = default;
-    ~MemEntityFactory() = default;
+    ~MemEntityFactory();
 
     EngineImplPtr GetOrCreateEngine(uint16_t id, uint32_t flags);
     EngineImplPtr FindEngineByPtr(hybm_entity_t entity);
