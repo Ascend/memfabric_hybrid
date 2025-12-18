@@ -111,30 +111,30 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ## 🔍目录结构
 
 ```
-├── LICENSE                                 # LICENSE
-├── .clang-format                           # 格式化配置
-├── .gitmodules                             # git配置
-├── .gitignore                              # git忽视文件
-├── CMakeLists.txt                          # 项目的CMakeList
-├── doc                                     # 文档目录
-├── example                                 # 样例
-│  ├── bm                                   # big memory样例
-│  └── shm                                  # share memory样例
-│  └── trans                                # batch data write/read样例
-│  └── decrypt                              # 自定义解密库示例(控制路径)
-├── script                                  # 构建脚本
-│  ├── build_and_pack_run.sh                # 编译+加包脚本
-│  ├── build.sh                             # 编译脚本
-│  ├── run_ut.sh                            # 编译+运行ut脚本
-├── test                                    # test目录
-│  ├── certs                                # 证书生成脚本
-│  ├── python                               # python测试用例
-│  └── ut                                   # 单元测试用例
-├── src                                     # 源码
-│  ├── acc_links                            # 内部通信层 (用于进程间控制命令的通信, 基于Host TCP实现) 
-│  └── hybm                                 # 内存管理与内存访问层 (Global Memory Management、Data Operation、Transport Management)
-│  └── smem                                 # 语义与接口层 (big memory + transfer + share memory等语义与接口实现)
-│  └── util                                 # 公共函数
+├── LICENSE                    # LICENSE
+├── .clang-format              # 格式化配置
+├── .gitmodules                # git配置
+├── .gitignore                 # git忽视文件
+├── CMakeLists.txt             # 项目的CMakeList
+├── doc                        # 文档目录
+├── example                    # 样例
+│  ├── bm                      # big memory样例
+│  └── shm                     # share memory样例
+│  └── trans                   # batch data write/read样例
+│  └── decrypt                 # 自定义解密库示例(控制路径)
+├── script                     # 构建脚本
+│  ├── build_and_pack_run.sh   # 编译+加包脚本
+│  ├── build.sh                # 编译脚本
+│  ├── run_ut.sh               # 编译+运行ut脚本
+├── test                       # test目录
+│  ├── certs                   # 证书生成脚本
+│  ├── python                  # python测试用例
+│  └── ut                      # 单元测试用例
+├── src                        # 源码
+│  ├── acc_links               # 内部通信层 (用于进程间控制命令的通信, 基于Host TCP实现) 
+│  └── hybm                    # 内存管理与内存访问层 (Global Memory Management、Data Operation、Transport Management)
+│  └── smem                    # 语义与接口层 (big memory + transfer + share memory等语义与接口实现)
+│  └── util                    # 公共函数
 ├── README.md
 ```
 
