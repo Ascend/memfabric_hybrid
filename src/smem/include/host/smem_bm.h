@@ -169,6 +169,14 @@ int32_t smem_bm_wait(smem_bm_t handle);
 int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
 
 /**
+ * @brief UnRegister hbm mem, support sdma or drma
+ *
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param addr             [in] unregister addr
+ */
+int32_t smem_bm_unregister_user_mem(smem_bm_t handle, uint64_t addr);
+
+/**
  * @brief Get rank id of gva that belongs to
  *
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>

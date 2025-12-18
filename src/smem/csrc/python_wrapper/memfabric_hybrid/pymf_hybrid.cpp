@@ -217,6 +217,11 @@ public:
     {
         return smem_bm_register_user_mem(handle_, addr, size);
     }
+
+    int UnRegisterMem(uint64_t addr) noexcept
+    {
+        return smem_bm_unregister_user_mem(handle_, addr);
+    }
 private:
     smem_bm_t handle_;
     static uint32_t worldSize_;
@@ -597,6 +602,8 @@ Destroy the big memory handle.)")
         .def("register", &BigMemory::RegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"),
              py::arg("size"), R"(
 register user mem.)")
+        .def("unregister", &BigMemory::UnRegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"), R"(
+unregister user mem.)")
         .def("copy_data", &BigMemory::CopyData, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
              py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, R"(
 Data operation on Big Memory object.

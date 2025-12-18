@@ -279,6 +279,19 @@
     |参数/返回值|含义|
     |-|-|
     |handle|BM handle|
+    |addr|注册地址的起始地址指针|
+    |size|注册地址的大小|
+    |返回值|成功返回0，失败返回错误码|
+
+1. smem_bm_unregister_user_mem
+    ```c
+    int32_t smem_bm_unregister_user_mem(smem_bm_t handle, uint64_t addr);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |handle|BM handle|
+    |addr|注销地址的起始地址指针|
     |返回值|成功返回0，失败返回错误码|
 	
 1. 根据全局地址获取rankId

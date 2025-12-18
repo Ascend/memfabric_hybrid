@@ -60,6 +60,8 @@ public:
 
     Result RegisterMem(uint64_t addr, uint64_t size);
 
+    Result UnRegisterMem(uint64_t addr);
+
     uint32_t Id() const;
 
     uint32_t GetRankIdByGva(void *gva);
@@ -102,6 +104,7 @@ private:
     hybm_exchange_info dramSliceInfo_;
     hybm_exchange_info entityInfo_;
     hybm_mem_slice_t slice_ = nullptr;
+    std::map<uint64_t, std::pair<uint64_t, hybm_mem_slice_t>> registedSlice_;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

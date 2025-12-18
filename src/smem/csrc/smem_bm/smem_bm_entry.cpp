@@ -130,6 +130,10 @@ void SmemBmEntry::UnInitalize()
     if (slice_ != nullptr) {
         hybm_free_local_memory(entity_, slice_, 1, flags);
     }
+    for (auto& pair : registedSlice_) {
+        hybm_free_local_memory(entity_, pair.second.second, 1, flags);
+    }
+    registedSlice_.clear();
     hybm_unreserve_mem_space(entity_, flags);
     hybm_destroy_entity(entity_, flags);
     inited_ = false;
@@ -334,12 +338,39 @@ uint32_t SmemBmEntry::GetRankIdByGva(void *gva)
 Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = registedSlice_.find(addr);
+    if (iter != registedSlice_.end()) {
+        if (iter->second.first != size) {
+            SM_LOG_INFO("addr(" << addr << ") is already registered but size is not equal to input");
+            return SM_ERROR;
+        }
+        return SM_OK;
+    }
     auto slice = hybm_register_local_memory(entity_, reinterpret_cast<void *>(addr), size, 0);
     if (slice != nullptr) {
+        registedSlice_.emplace(std::make_pair(addr, std::make_pair(size, slice)));
         return SM_OK;
     } else {
         return SM_ERROR;
     }
+}
+
+Result SmemBmEntry::UnRegisterMem(uint64_t addr)
+{
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = registedSlice_.find(addr);
+    if (iter != registedSlice_.end()) {
+        auto ret = hybm_free_local_memory(entity_, iter->second.second, 1, 0);
+        if (ret != 0) {
+            return SM_ERROR;
+        } else {
+            registedSlice_.erase(iter);
+            return SM_OK;
+        }
+    }
+    return SM_OK;
 }
 
 Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags)

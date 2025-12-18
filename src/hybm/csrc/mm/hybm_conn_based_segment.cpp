@@ -269,11 +269,29 @@ Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, std
 {
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(addr), size);
+    slices_.emplace(slice->index_, slice);
     return BM_OK;
 }
 
 Result HybmConnBasedSegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
 {
+    if (slice == nullptr) {
+        BM_LOG_ERROR("input slice is nullptr");
+        return BM_INVALID_PARAM;
+    }
+
+    auto pos = slices_.find(slice->index_);
+    if (pos == slices_.end()) {
+        BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
+        return BM_INVALID_PARAM;
+    }
+
+    if (pos->second.slice != slice) {
+        BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
+        return BM_INVALID_PARAM;
+    }
+
+    slices_.erase(pos);
     return BM_OK;
 }
 

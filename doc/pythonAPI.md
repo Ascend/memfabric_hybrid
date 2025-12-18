@@ -192,7 +192,8 @@ help(mf.shm)   #查看share memory接口介绍
         def local_mem_size() -> int:
         def peer_rank_ptr(peer_rank) -> int:
         def destroy() -> None:
-        def register(addr, size) -> None:
+        def register(addr, size) -> int:
+        def unregister(addr) -> int:
         def copy_data(src_ptr, dst_ptr, size, type, flags) -> int:
         def copy_data_batch(src_addrs, dst_addrs, sizes, count, type, flags) -> int:
 
@@ -208,6 +209,11 @@ help(mf.shm)   #查看share memory接口介绍
     |local_mem_size返回值|本地贡献空间大小，单位byte|
     |peer_rank_ptr方法|获取rank id对应在gva上的地址位置|
     |destroy方法|销毁BM|
+    |register方法|注册内存到BM|
+    |register参数addr|注册地址的起始地址指针|
+    |register参数size|注册地址的大小|
+    |unregister方法|从BM中注销内存|
+    |unregister参数addr|注销地址的起始地址指针|
     |copy_data方法|拷贝数据对象|
     |copy_data参数src_ptr(int)|source gva of data|
     |copy_data参数dst_ptr(int)|destination gva of data|
