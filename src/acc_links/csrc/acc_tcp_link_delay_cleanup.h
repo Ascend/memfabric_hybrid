@@ -128,7 +128,7 @@ inline void AccTcpLinkDelayCleanup::RunInThread(std::atomic<bool> *started)
         }
     }
 
-    LOG_INFO("AccDelay cleanup thread thread exiting");
+    LOG_DEBUG("AccDelay cleanup thread thread exiting");
 }
 
 inline bool AccTcpLinkDelayCleanup::CheckAndPop(uint32_t periodSecond, AccTcpLinkCleanupItem &item)

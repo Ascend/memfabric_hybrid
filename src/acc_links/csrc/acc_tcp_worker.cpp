@@ -180,7 +180,7 @@ void AccTcpWorker::RunInThread(std::atomic<bool> *started)
         }
     }
 
-    LOG_INFO("Worker " << options_.Name() << " progress thread exiting");
+    LOG_DEBUG("Worker " << options_.Name() << " progress thread exiting");
 }
 }  // namespace acc
 }  // namespace ock

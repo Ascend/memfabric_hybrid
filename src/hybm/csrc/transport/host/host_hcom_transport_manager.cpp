@@ -97,9 +97,12 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
 
 Result HcomTransportManager::CloseDevice()
 {
+    DlHcomApi::SetExternalLogger([]([[maybe_unused]] int level, [[maybe_unused]] const char *msg) {});
     BM_ASSERT_RETURN(rpcService_ != 0, BM_OK);
     for (uint32_t i = 0; i < rankCount_; ++i) {
-        DisConnectHcomChannel(i, channels_[i]);
+        if (channels_[i] != 0) {
+            DisConnectHcomChannel(i, channels_[i]);
+        }
     }
 
     mf::MfTlsUtil::CloseTlsLib();

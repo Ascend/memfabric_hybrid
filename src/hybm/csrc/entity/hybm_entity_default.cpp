@@ -248,8 +248,7 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
     std::shared_ptr<MemSlice> memSlice;
     if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice)) != nullptr) {
         hbmSegment_->ReleaseSliceMemory(memSlice);
-    }
-    if (dramSegment_ != nullptr && (memSlice = dramSegment_->GetMemSlice(slice)) != nullptr) {
+    } else if (dramSegment_ != nullptr && (memSlice = dramSegment_->GetMemSlice(slice)) != nullptr) {
         dramSegment_->ReleaseSliceMemory(memSlice);
     }
 
@@ -1173,6 +1172,7 @@ void MemEntityDefault::ReleaseResources()
     if (!initialized) {
         return;
     }
+    HybmStreamManager::DestroyAllThreadHybmStream();
     hbmSegment_.reset();
     dramSegment_.reset();
     sdmaDataOperator_.reset();

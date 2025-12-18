@@ -367,7 +367,7 @@ int HostDataOpSDMA::PrepareThreadLocalStream() noexcept
     uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
     WriteGuard lockGuard(lock_);
     streamMask_[tid] = false;
-   
+
     BM_LOG_INFO("PrepareThreadLocalStream success, tid:" << tid);
     return BM_OK;
 }

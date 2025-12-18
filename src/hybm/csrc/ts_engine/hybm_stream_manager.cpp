@@ -10,22 +10,55 @@
  * See the Mulan PSL v2 for more details.
 */
 
-#include "hybm_stream_manager.h"
+#include <thread>
+#include <shared_mutex>
+#include <unordered_map>
 #include "dl_acl_api.h"
 #include "hybm_logger.h"
+#include "hybm_stream_manager.h"
 
 namespace ock {
 namespace mf {
+static std::shared_mutex g_allThreadStreamMutex;
+static std::unordered_map<std::thread::id, HybmStreamPtr> g_allThreadStreams;
 HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t prio, uint32_t flags)
 {
-    static thread_local HybmStreamPtr hybmStream_ = nullptr;
-    hybmStream_ = std::make_shared<HybmStream>(devId, prio, flags);
-    auto ret = hybmStream_->Initialize();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HybmStream init failed: " << ret);
-        hybmStream_ = nullptr;
+    std::thread::id thisId = std::this_thread::get_id();
+    {
+        std::shared_lock lock(g_allThreadStreamMutex);
+        auto it = g_allThreadStreams.find(thisId);
+        if (it != g_allThreadStreams.end()) {
+            return it->second;
+        }
+    }
+    HybmStreamPtr hybmStream_ = nullptr;
+    {
+        std::unique_lock lock(g_allThreadStreamMutex);
+        auto it = g_allThreadStreams.find(thisId);
+        if (it != g_allThreadStreams.end()) {
+            return it->second;
+        }
+        hybmStream_ = std::make_shared<HybmStream>(devId, prio, flags);
+        auto ret = hybmStream_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("HybmStream init failed: " << ret);
+            hybmStream_->Destroy();
+            return nullptr;
+        }
+        g_allThreadStreams[thisId] = hybmStream_;
     }
     return hybmStream_;
+}
+
+void HybmStreamManager::DestroyAllThreadHybmStream()
+{
+    std::unique_lock<std::shared_mutex> lock_guard(g_allThreadStreamMutex);
+    for (auto &stream : g_allThreadStreams) {
+        if (stream.second != nullptr) {
+            stream.second->Destroy();
+        }
+    }
+    g_allThreadStreams.clear();
 }
 
 class AclrtStream {

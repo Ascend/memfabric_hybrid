@@ -62,7 +62,7 @@ private:
     std::atomic<int64_t> runningTaskCount_{0};
     std::vector<StreamTask> taskList_;
     bool wqeFlag_ = false;
-    bool inited_ = false;
+    std::atomic_bool inited_ = false;
 };
 
 inline uint32_t HybmStream::GetId() const

@@ -148,7 +148,7 @@ static bool TryUpdateGvaHeap(uint64_t va, size_t len)
 static int32_t RemoveInGvaHeap(uint64_t va)
 {
     if (!g_gvaHeapMgr.inited) {
-        BM_LOG_ERROR("remove record in gva heap failed, gva heap not init.");
+        BM_LOG_WARN("remove record in gva heap failed, gva heap not init.");
         return -1;
     }
 
@@ -161,7 +161,7 @@ static int32_t RemoveInGvaHeap(uint64_t va)
 static void GvaHeapRemoveReserved(uint64_t va)
 {
     if (!g_gvaHeapMgr.inited) {
-        BM_LOG_ERROR("remove reserved in gva heap failed, gva heap not init.");
+        BM_LOG_WARN("remove reserved in gva heap failed, gva heap not init.");
         return;
     }
 

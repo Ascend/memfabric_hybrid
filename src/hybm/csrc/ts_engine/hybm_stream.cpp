@@ -168,7 +168,7 @@ int32_t HybmStream::AllocLogicCq()
 
 void HybmStream::Destroy()
 {
-    if (!inited_) {
+    if (!inited_.load()) {
         return;
     }
 

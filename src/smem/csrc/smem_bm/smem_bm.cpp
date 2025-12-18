@@ -181,8 +181,15 @@ SMEM_API void smem_bm_destroy(smem_bm_t handle)
 {
     SM_ASSERT_RET_VOID(handle != nullptr);
     SM_ASSERT_RET_VOID(g_smemBmInited);
-
-    auto ret = SmemBmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_WARN("input handle is invalid, result: " << ret);
+        return;
+    }
+    entry->UnInitalize();
+    entry = nullptr;
+    ret = SmemBmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
     SM_ASSERT_RET_VOID(ret == SM_OK);
 }
 
