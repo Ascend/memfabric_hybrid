@@ -83,9 +83,6 @@ SMEM_API int32_t smem_set_extern_logger(void (*func)(int, const char *))
 
 SMEM_API int32_t smem_set_log_level(int level)
 {
-    SM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
-                       "set log level failed, invalid param, level should be 0~3", ock::smem::SM_INVALID_PARAM);
-    ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
     return hybm_set_log_level(level);
 }
 

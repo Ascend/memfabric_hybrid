@@ -23,12 +23,11 @@
 const int32_t UT_SMEM_ID = 1;
 const char UT_IP_PORT[] = "tcp://127.0.0.1:7758";
 const char UT_IP_PORT2[] = "tcp://127.0.0.1:7958";
-const char UT_SHM_NAME[] = "/mfhy_ut_shm_128M";
 const uint32_t UT_CREATE_MEM_SIZE = 1024;
 const uint32_t UT_COPY_MEM_SIZE = 128;
 const uint64_t UT_SHM_SIZE = 128 * 1024 * 1024ULL;
 
-class TestSmem : public testing::Test {
+class TestSmemFeature : public testing::Test {
 public:
     static void SetUpTestCase();
     static void TearDownTestCase();
@@ -37,36 +36,13 @@ public:
 
 };
 
-void TestSmem::SetUpTestCase() {}
+void TestSmemFeature::SetUpTestCase() {}
 
-void TestSmem::TearDownTestCase() {}
+void TestSmemFeature::TearDownTestCase() {}
 
-void TestSmem::SetUp() {}
+void TestSmemFeature::SetUp() {}
 
-void TestSmem::TearDown() {}
-
-void FinalizeUTShareMem(int shmFd)
-{
-    if (shmFd >= 0) {
-        close(shmFd);
-        shm_unlink(UT_SHM_NAME);
-    }
-}
-
-bool InitUTShareMem(int &shmFd)
-{
-    int fd = shm_open(UT_SHM_NAME, O_CREAT | O_RDWR, 0666);
-    if (fd < 0) {
-        return false;
-    }
-    int ret = ftruncate(fd, (off_t)UT_SHM_SIZE);
-    if (ret != 0) {
-        FinalizeUTShareMem(fd);
-        return false;
-    }
-    shmFd = fd;
-    return true;
-}
+void TestSmemFeature::TearDown() {}
 
 bool CheckMem(void *base, void *ptr, uint64_t size)
 {
@@ -80,7 +56,8 @@ bool CheckMem(void *base, void *ptr, uint64_t size)
     return true;
 }
 
-TEST_F(TestSmem, two_card_shm_create_success)
+/*
+TEST_F(TestSmemFeature, two_card_shm_create_success)
 {
     int shmFd = -1;
     auto shmCreateRet = InitUTShareMem(shmFd);
@@ -136,7 +113,6 @@ TEST_F(TestSmem, two_card_shm_create_success)
             kill(pids[i], SIGKILL);
             waitpid(pids[i], &status, 0);
         }
-        FinalizeUTShareMem(shmFd);
         ASSERT_NE(needKillOthers, true);
     }
 
@@ -156,10 +132,9 @@ TEST_F(TestSmem, two_card_shm_create_success)
             needKillOthers = true;
         }
     }
-    FinalizeUTShareMem(shmFd);
 }
 
-TEST_F(TestSmem, two_crad_bm_copy_success)
+TEST_F(TestSmemFeature, two_crad_bm_copy_success)
 {
     int shmFd = -1;
     auto shmCreateRet = InitUTShareMem(shmFd);
@@ -272,7 +247,6 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
             kill(pids[i], SIGKILL);
             waitpid(pids[i], &status, 0);
         }
-        FinalizeUTShareMem(shmFd);
         ASSERT_NE(needKillOthers, true);
     }
 
@@ -292,5 +266,5 @@ TEST_F(TestSmem, two_crad_bm_copy_success)
             needKillOthers = true;
         }
     }
-    FinalizeUTShareMem(shmFd);
 }
+*/

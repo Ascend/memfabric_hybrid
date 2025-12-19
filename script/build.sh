@@ -16,7 +16,6 @@ BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
 USE_CANN=${6:-ON}
 BUILD_COMPILER=${7:-gcc}
-BUILD_PACKAGE=${8:-ON}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -157,15 +156,5 @@ rm -rf "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/dist
 mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 cp "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist/*.whl "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist
-
-if [ "${BUILD_PACKAGE}" == "ON" ]; then
-    # copy memfabric_hybrid wheel package && mf_transfer wheel package && mf_run package
-    bash "${PROJ_DIR}"/script/run_pkg_maker/make_run.sh RELEASE ON
-    rm -rf "${PROJ_DIR}"/package
-    mkdir -p "${PROJ_DIR}"/package
-    cp "${PROJ_DIR}"/output/mk_transfer_adapter/wheel/*.whl "${PROJ_DIR}/package"
-    cp "${PROJ_DIR}"/output/memfabric_hybrid/wheel/*.whl "${PROJ_DIR}/package"
-    cp "${PROJ_DIR}"/output/*.run "${PROJ_DIR}"/package
-fi
 
 cd ${CURRENT_DIR}

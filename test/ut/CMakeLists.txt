@@ -1,21 +1,35 @@
 file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         testcase/*
         ../stub/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/common/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/net/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm/*
-        ${PROJECT_SMEM_SRC_BASE}/csrc/smem.cpp
+
+        ${PROJECT_SMEM_SRC_BASE}/csrc/*
+        ${PROJECT_HYBM_SRC_BASE}/csrc/*
 )
 
 include_directories(
+        ${PROJECT_HYBM_SRC_BASE}/include
+        ${PROJECT_HYBM_SRC_BASE}/csrc/common
+        ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation
+        ${PROJECT_HYBM_SRC_BASE}/csrc/data_operation/host
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/userspace
+        ${PROJECT_HYBM_SRC_BASE}/csrc/driver/version
+        ${PROJECT_HYBM_SRC_BASE}/csrc/entity
+        ${PROJECT_HYBM_SRC_BASE}/csrc/mm
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/compose
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/utils
+        ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
+        ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
+        ${PROJECT_UTIL_SRC_BASE}/ptracer/include
+
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
-        ${PROJECT_SMEM_SRC_BASE}/csrc/under_api/hybm_core
         ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
 )
 
@@ -61,5 +75,3 @@ set(TEST_SRC_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 set(TEST_DEPEND_LIBS gtest dl acc_tcp_net_static smem_static hybmm_static gcov pthread)
 
 add_subdirectory(testcase)
-add_subdirectory(testcase/smem/common)
-add_subdirectory(testcase/utils)

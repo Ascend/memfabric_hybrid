@@ -173,7 +173,7 @@ else ()
 endif ()
 message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 
-if( (BUILD_PYTHON STREQUAL "ON") OR (BUILD_TESTS STREQUAL "ON") )
+if (BUILD_PYTHON STREQUAL "ON")
     # 获取Python头文件路径
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
     if(NOT PYTHON_EXECUTABLE)

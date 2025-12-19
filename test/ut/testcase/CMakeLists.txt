@@ -1,5 +1,5 @@
 file(GLOB_RECURSE memfabric_src
-        ${CMAKE_CURRENT_SOURCE_DIR}/smem/common/*
+        ${CMAKE_CURRENT_SOURCE_DIR}/smem/*
         ${CMAKE_CURRENT_SOURCE_DIR}/utils/*
 )
 ADD_UNIT_TEST(test_memfabric
