@@ -17,7 +17,7 @@
 #include "hybm_logger.h"
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
-#include "hybm_str_helper.h"
+#include "mf_str_util.h"
 
 using namespace ock::mf;
 using namespace ock::mf::transport;
@@ -50,17 +50,17 @@ Result ComposeTransportManager::OpenDeviceTransport(const TransportOptions &opti
 
 Result ComposeTransportManager::OpenDevice(const TransportOptions &options)
 {
-    std::vector<std::string> nicVec = StrHelper::Split(options.nic, NIC_DELIMITER);
+    std::vector<std::string> nicVec = StrUtil::Split(options.nic, NIC_DELIMITER);
 
     for (const auto &nic: nicVec) {
         Result ret = BM_ERROR;
-        if (StrHelper::StartsWith(nic, HOST_TRANSPORT_TYPE)) {
+        if (StrUtil::StartWith(nic, HOST_TRANSPORT_TYPE)) {
             TransportOptions option = options;
             option.nic = nic.substr(HOST_TRANSPORT_TYPE.length());
             ret = OpenHostTransport(option);
         }
 
-        if (StrHelper::StartsWith(nic, DEVICE_TRANSPORT_TYPE)) {
+        if (StrUtil::StartWith(nic, DEVICE_TRANSPORT_TYPE)) {
             TransportOptions option = options;
             option.nic = nic.substr(DEVICE_TRANSPORT_TYPE.length());
             ret = OpenDeviceTransport(option);
@@ -189,9 +189,9 @@ void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOption
     for (const auto &item: options) {
         auto rankId = item.first;
         TransportRankPrepareInfo info{};
-        std::vector<std::string> nicVec = StrHelper::Split(item.second.nic, NIC_DELIMITER);
+        std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
         for (const auto &nic: nicVec) {
-            if (StrHelper::StartsWith(nic, HOST_TRANSPORT_TYPE)) {
+            if (StrUtil::StartWith(nic, HOST_TRANSPORT_TYPE)) {
                 info.nic = nic.substr(HOST_TRANSPORT_TYPE.length());
             }
         }
@@ -212,9 +212,9 @@ void ComposeTransportManager::GetDevicePrepareOptions(const HybmTransPrepareOpti
     for (const auto &item: options) {
         auto rankId = item.first;
         TransportRankPrepareInfo info{};
-        std::vector<std::string> nicVec = StrHelper::Split(item.second.nic, NIC_DELIMITER);
+        std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
         for (const auto &nic: nicVec) {
-            if (StrHelper::StartsWith(nic, DEVICE_TRANSPORT_TYPE)) {
+            if (StrUtil::StartWith(nic, DEVICE_TRANSPORT_TYPE)) {
                 info.nic = nic.substr(DEVICE_TRANSPORT_TYPE.length());
             }
         }

@@ -14,12 +14,14 @@
 #include <cctype>
 #include <climits>
 #include "mf_num_util.h"
+#include "mf_monotonic_time.h"
 #include "acc_def.h"
 #include "smem_store_factory.h"
 #include "smem_net_group_engine.h"
 
 namespace ock {
 namespace smem {
+using namespace mf;
 
 const std::string SMEM_GROUP_SET_STR = "ok";
 const std::string SMEM_GROUP_EXIT_KEY = "EXIT";

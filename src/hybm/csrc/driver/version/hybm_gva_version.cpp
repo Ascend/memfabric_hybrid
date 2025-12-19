@@ -12,11 +12,11 @@
 
 #include <fstream>
 #include <string>
+#include <climits>
 
 #include "hybm_logger.h"
-#include "hybm_str_helper.h"
 #include "hybm_types.h"
-
+#include "mf_str_util.h"
 #include "hybm_gva_version.h"
 
 namespace ock {
@@ -128,7 +128,7 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
         }
     }
     val = -1;
-    auto ret = StrHelper::OckStol(tmp, val);
+    auto ret = StrUtil::String2Int<int32_t>(tmp, val);
     if (!ret) {
         BM_LOG_ERROR("tmp=" << tmp << ", val=" << val);
     }

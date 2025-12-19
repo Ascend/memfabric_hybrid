@@ -15,7 +15,7 @@
 #include "hybm_define.h"
 #include "hybm_types.h"
 #include "hybm_logger.h"
-#include "hybm_str_helper.h"
+#include "mf_str_util.h"
 
 namespace ock {
 namespace mf {
@@ -35,12 +35,12 @@ public:
             BM_LOG_INFO("Not set rt visible env return deviceId: " << deviceId);
             return deviceId;
         } else {
-            auto devList = StrHelper::Split(visibleDevStr, ',');
+            auto devList = StrUtil::Split(visibleDevStr, ',');
             if (devList.size() <= static_cast<uint32_t>(deviceId)) {
                 BM_LOG_ERROR("Failed to get visible devSize: " << devList.size() << " deviceId: " << deviceId);
                 return BM_ERROR;
             } else {
-                if (!StrHelper::OckStol(devList[deviceId], logicDeviceId)) {
+                if (!StrUtil::String2Int<int>(devList[deviceId], logicDeviceId)) {
                     BM_LOG_ERROR("Failed to get visible dev size: " << devList.size() << " deviceId: " << deviceId);
                     return BM_ERROR;
                 }

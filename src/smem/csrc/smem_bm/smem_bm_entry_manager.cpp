@@ -131,25 +131,22 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
 int32_t SmemBmEntryManager::AutoRanking()
 {
     std::string localIp;
-
-    do {
-        std::vector<uint8_t> rankIdDate;
-        auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate,
-                                                   SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-        if (ret == SM_OK && rankIdDate.size() == sizeof(uint32_t)) {
-            union Transfer {
-                uint32_t rankId;
-                uint8_t date[4];
-            } trans{};
-            std::copy_n(rankIdDate.begin(), sizeof(trans.date), trans.date);
-            config_.rankId = trans.rankId;
-            auto tcpConfigStore = Convert<ConfigStore, TcpConfigStore>(confStore_->GetCoreStore());
-            tcpConfigStore->SetRankId(config_.rankId);
-            SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: "
-                                                           << localIp << " deviceId: " << deviceId_);
-            return SM_OK;
-        }
-    } while (0);
+    std::vector<uint8_t> rankIdDate;
+    auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate,
+                                               SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+    if (ret == SM_OK && rankIdDate.size() == sizeof(uint32_t)) {
+        union Transfer {
+            uint32_t rankId;
+            uint8_t date[4];
+        } trans{};
+        std::copy_n(rankIdDate.begin(), sizeof(trans.date), trans.date);
+        config_.rankId = trans.rankId;
+        auto tcpConfigStore = Convert<ConfigStore, TcpConfigStore>(confStore_->GetCoreStore());
+        tcpConfigStore->SetRankId(config_.rankId);
+        SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: "
+                                                       << localIp << " deviceId: " << deviceId_);
+        return SM_OK;
+    }
     SM_LOG_ERROR("Failed to auto ranking deviceId: " << deviceId_);
     return SM_ERROR;
 }

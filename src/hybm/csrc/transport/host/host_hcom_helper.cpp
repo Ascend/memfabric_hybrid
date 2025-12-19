@@ -14,7 +14,7 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-#include "hybm_str_helper.h"
+#include "mf_str_util.h"
 #include "hybm_logger.h"
 
 using namespace ock::mf;
@@ -71,7 +71,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     protocol = match[PROT_MATCH_NUM].str();
     ipStr = match[IP_MATCH_NUM].str();
     std::string portStr = match[PORT_MATCH_NUM].str();
-    auto ret = StrHelper::OckStoULL(portStr, port);
+    auto ret = StrUtil::String2Uint<uint32_t>(portStr, port);
     if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
         return BM_INVALID_PARAM;
@@ -104,13 +104,13 @@ Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic,
     std::string token;
 
     int mask = MIN_VALID_MASK;
-    auto ret = StrHelper::OckStol(maskStr, mask);
+    auto ret = StrUtil::String2Int<int>(maskStr, mask);
     if (!ret || mask < MIN_VALID_MASK || mask > MAX_VALID_MASK) {
         BM_LOG_ERROR("Failed to analysis nic mask is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
 
-    ret = StrHelper::OckStoULL(portStr, port);
+    ret = StrUtil::String2Uint<uint32_t>(portStr, port);
     if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to analysis nic port is invalid: " << nic);
         return BM_INVALID_PARAM;

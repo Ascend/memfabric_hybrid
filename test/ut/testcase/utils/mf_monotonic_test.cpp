@@ -11,11 +11,11 @@
 */
 #include <gtest/gtest.h>
 
-#include "common/smem_monotonic_time.h"
+#include "mf_monotonic_time.h"
 
-using namespace ock::smem;
+using namespace ock::mf;
 
-class SmMonotonicTest : public testing::Test {
+class MfMonotonicTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
@@ -34,7 +34,7 @@ public:
     }
 };
 
-TEST_F(SmMonotonicTest, time_test)
+TEST_F(MfMonotonicTest, time_test)
 {
     ASSERT_EQ(MonotonicTime::TimeUs() != 0, true);
     ASSERT_EQ(MonotonicTime::TimeNs() != 0, true);

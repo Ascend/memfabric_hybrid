@@ -453,18 +453,5 @@ bool SmemBmEntry::AddrInDeviceGva(const void *address, uint64_t size)
 
     return true;
 }
-
-bool SmemBmEntry::AddressInRange(const void *address, uint64_t size)
-{
-    if (address < deviceGva_) {
-        return false;
-    }
-    auto totalSize = coreOptions_.deviceVASpace * coreOptions_.rankCount;
-    if ((const uint8_t *)address + size >= (const uint8_t *)deviceGva_ + totalSize) {
-        return false;
-    }
-
-    return true;
-}
 }  // namespace smem
 }  // namespace ock

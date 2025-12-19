@@ -19,7 +19,6 @@
 #include "smem_define.h"
 #include "smem_last_error.h"
 #include "smem_logger.h"
-#include "smem_monotonic_time.h"
 #include "smem_types.h"
 #include "smem_ref.h"
 #include "smem_timedwait.h"

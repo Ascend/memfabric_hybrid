@@ -25,7 +25,6 @@ const uint64_t GVA_SIZE = 4 * 1024ULL * 1024ULL * 1024ULL;
 const int32_t RANDOM_MULTIPLIER = 23;
 const int32_t RANDOM_INCREMENT = 17;
 const int32_t NEGATIVE_RATIO_DIVISOR = 3;
-const uint32_t INIT_GVM_FLAG = 2U;
 const uint16_t BARRIOR_PORT = 21666U;
 constexpr int32_t DIRECTION_TYPE_NUM_MAX = static_cast<int32_t>(CopyType::ALL_DIRECTION);
 
@@ -221,7 +220,6 @@ int32_t BandWidthCalculator::PreInit(uint32_t deviceId, BarrierUtil *&barrier, u
     if (rankId != 0) {
         config.startConfigStoreServer = false;
     }
-    config.flags = INIT_GVM_FLAG; // init gvm
     ret = smem_bm_init(cmdParam_.ipPort.c_str(), rkSize, deviceId, &config);
     CHECK_RET_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rankId);
 
