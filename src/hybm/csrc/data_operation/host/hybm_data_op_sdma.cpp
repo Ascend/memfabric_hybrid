@@ -285,6 +285,7 @@ void HostDataOpSDMA::CleanUp() noexcept
     WriteGuard lockGuard(lock_);
     for (auto &it : streamMask_) {
         it.second = true;
+        HybmStreamManager::ResetThreadHybmStream(it.first);
     }
 }
 

@@ -572,6 +572,10 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
         }
     }
 
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) && sdmaDataOperator_ != nullptr) {
+        sdmaDataOperator_->CleanUp();
+    }
+
     if (transportManager_ != nullptr) {
         std::unique_lock<std::mutex> uniqueLock{importMutex_};
         for (auto rank : ranks) {

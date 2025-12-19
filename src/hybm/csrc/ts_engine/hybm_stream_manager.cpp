@@ -20,10 +20,10 @@
 namespace ock {
 namespace mf {
 static std::shared_mutex g_allThreadStreamMutex;
-static std::unordered_map<std::thread::id, HybmStreamPtr> g_allThreadStreams;
+static std::unordered_map<uint64_t, HybmStreamPtr> g_allThreadStreams;
 HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t prio, uint32_t flags)
 {
-    std::thread::id thisId = std::this_thread::get_id();
+    const auto thisId = static_cast<uint64_t>(syscall(SYS_gettid));
     {
         std::shared_lock lock(g_allThreadStreamMutex);
         auto it = g_allThreadStreams.find(thisId);
@@ -48,6 +48,16 @@ HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t pr
         g_allThreadStreams[thisId] = hybmStream_;
     }
     return hybmStream_;
+}
+
+void HybmStreamManager::ResetThreadHybmStream(uint64_t tid) noexcept
+{
+    std::unique_lock lock_guard(g_allThreadStreamMutex);
+    auto find = g_allThreadStreams.find(tid);
+    if (find != g_allThreadStreams.end()) {
+        find->second->Destroy();
+        g_allThreadStreams.erase(find);
+    }
 }
 
 void HybmStreamManager::DestroyAllThreadHybmStream()

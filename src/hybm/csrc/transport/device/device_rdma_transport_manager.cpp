@@ -269,6 +269,7 @@ Result RdmaTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRan
         notifyRemoteInfo_[rank] = std::make_pair(0U, 0U);
     }
     for (auto &it : streamMask_) {
+        HybmStreamManager::ResetThreadHybmStream(it.first);
         it.second = true;
     }
     if (ranksSet.empty()) {
