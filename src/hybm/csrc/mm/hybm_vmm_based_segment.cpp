@@ -15,6 +15,7 @@
 #include "hybm_vmm_based_segment.h"
 #include "dl_acl_api.h"
 #include "hybm_types.h"
+#include "mf_numa_util.h"
 
 using namespace ock::mf;
 
@@ -82,6 +83,54 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
     return BM_OK;
 }
 
+Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept
+{
+    drv_mem_prop prop{};
+    prop = {MEM_HOST_NUMA_SIDE, devId, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
+    size_t granularity = 0;
+    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
+        prop.pg_type = MEM_HUGE_PAGE_TYPE;
+        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
+    }
+    Result ret = BM_OK;
+    int32_t numaNum = MfNumaUtil::GetNumaNum();
+    if (numaNum <= 0) {
+        prop.devid = -1;
+        auto start = std::chrono::high_resolution_clock::now();
+        ret = DlHalApi::HalMemCreate(handle, size, &prop, 0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        BM_LOG_INFO("Try HalMemCreate ret:" << ret << " numa:" << prop.devid << " spend time:"
+                                            << duration.count() << " size:" << size);
+        return ret;
+    }
+    for (int i = 0; i < numaNum; ++i) {
+        prop.devid = (devId + i) % numaNum;
+        auto start = std::chrono::high_resolution_clock::now();
+        ret = DlHalApi::HalMemCreate(handle, size, &prop, 0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        BM_LOG_INFO("Try HalMemCreate ret:" << ret << " numa:" << prop.devid << " spend time:"
+                                            << duration.count() << " size:" << size << " numaNum:" << numaNum);
+        if (ret == BM_OK) {
+            break;
+        }
+    }
+    return ret;
+}
+
+Result HybmVmmBasedSegment::MallocFromDevice(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept
+{
+    drv_mem_prop prop{};
+    prop = {MEM_DEV_SIDE, static_cast<uint32_t>(devId), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
+    size_t granularity = 0;
+    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
+        prop.pg_type = MEM_HUGE_PAGE_TYPE;
+        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
+    }
+    return DlHalApi::HalMemCreate(handle, size, &prop, 0);
+}
+
 Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
     if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
@@ -95,26 +144,20 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
     auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
     uint64_t allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
     drv_mem_handle_t *handle = nullptr;
-    drv_mem_prop prop{};
+    Result ret = BM_OK;
     switch (options_.segType) {
         case HYBM_MST_HBM:
-            prop = {MEM_DEV_SIDE, static_cast<uint32_t>(logicDeviceId_), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
+            ret = MallocFromDevice(size, logicDeviceId_, &handle);
             break;
         case HYBM_MST_DRAM:
-            prop = {MEM_HOST_SIDE, 0, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
+            ret = MallocFromHost(size, logicDeviceId_, &handle);
             break;
         default:
             BM_LOG_ERROR("invalid seg type: " << options_.segType);
             return BM_INVALID_PARAM;
     }
-    // check is support 1GB GIANT_PAGE
-    size_t granularity = 0;
-    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
-        prop.pg_type = MEM_HUGE_PAGE_TYPE;
-        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
-    }
-    auto ret = DlHalApi::HalMemCreate(&handle, size, &prop, 0);
-    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemCreate failed: " << ret, BM_DL_FUNCTION_FAILED);
+    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemCreate failed: " << ret  << " segType:" << options_.segType
+                       << " devId:" << logicDeviceId_ << " size:" << size, BM_DL_FUNCTION_FAILED);
 
     allocatedSize_ += size;
     auto memType = options_.segType == HYBM_MST_HBM ? MEM_TYPE_DEVICE_HBM : MEM_TYPE_HOST_DRAM;
@@ -142,7 +185,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
         DlHalApi::HalMemRelease(dHandle);
         return BM_DL_FUNCTION_FAILED;
     }
-    BM_LOG_DEBUG("alloc mem success, type:" << prop.mem_type << " addr:" << std::hex << allocAddr << " size:" << size);
+    BM_LOG_DEBUG("alloc mem success, type:" << memType << " addr:" << std::hex << allocAddr << " size:" << size);
     return BM_OK;
 }
 

@@ -68,6 +68,8 @@ public:
 private:
     Result GetDeviceInfo() noexcept;
     Result ExportInner(const std::shared_ptr<MemSlice> &slice, MemShareHandle &sHandle) noexcept;
+    Result MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
+    Result MallocFromDevice(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
 
     std::vector<HostSdmaExportInfo> imports_;
     uint8_t *globalVirtualAddress_{nullptr};

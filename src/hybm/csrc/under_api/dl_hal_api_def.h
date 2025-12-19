@@ -232,6 +232,7 @@ struct MemShareHandle {
 enum drv_mem_side {
     MEM_HOST_SIDE = 0,
     MEM_DEV_SIDE,
+    MEM_HOST_NUMA_SIDE,
     MEM_MAX_SIDE
 };
 

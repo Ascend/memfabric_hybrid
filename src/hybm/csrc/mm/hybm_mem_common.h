@@ -25,14 +25,14 @@ class HybmDevLegacySegment;
 using MemSlicePtr = std::shared_ptr<MemSlice>;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
-enum MemType : uint8_t {
+enum MemType : int32_t {
     MEM_TYPE_HOST_DRAM = 0,
     MEM_TYPE_DEVICE_HBM,
 
     MEM_TYPE_DEVICE_BUTT
 };
 
-enum MemPageTblType : uint8_t {
+enum MemPageTblType : int32_t {
     MEM_PT_TYPE_SVM = 0,
     MEM_PT_TYPE_GVM,
     MEM_PT_TYPE_HYM,
@@ -40,14 +40,14 @@ enum MemPageTblType : uint8_t {
     MEM_PT_TYPE_BUTT
 };
 
-enum MemAddrType : uint8_t {
+enum MemAddrType : int32_t {
     MEM_ADDR_TYPE_VIRTUAL = 0,
     MEM_ADDR_TYPE_PHYSICAL,
 
     MEM_ADDR_TYPE_BUTT
 };
 
-enum MemSegType : uint8_t {
+enum MemSegType : int32_t {
     HYBM_MST_HBM = 0,
     HYBM_MST_DRAM,
     HYBM_MST_HBM_USER,
@@ -55,7 +55,7 @@ enum MemSegType : uint8_t {
     HYBM_MST_BUTT
 };
 
-enum MemSegInfoExchangeType : uint8_t {
+enum MemSegInfoExchangeType : int32_t {
     HYBM_INFO_EXG_IN_NODE,
     HYBM_INFO_EXG_CROSS_NODE_HCCS,
     HYBM_INFO_EXG_CROSS_NODE_SDMA,
