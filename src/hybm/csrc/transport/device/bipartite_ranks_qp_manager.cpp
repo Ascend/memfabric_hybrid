@@ -218,13 +218,21 @@ int BipartiteRanksQpManager::ProcessServerAddWhitelistTask() noexcept
         return 0;
     }
 
-    auto ret = DlHccpApi::RaSocketWhiteListAdd(serverSocketHandle_, whitelist.data(), whitelist.size());
-    if (ret != 0) {
-        auto failedTimes = currTask.Failed(remotes);
-        BM_LOG_ERROR("RaSocketWhiteListAdd() with size=" << whitelist.size() << " failed: " << ret
-                                                         << ", times=" << failedTimes);
-        return 1;
+    uint32_t batchSize = 16;
+    for (size_t i = 0; i < whitelist.size(); i += batchSize) {
+        size_t currentBatchSize = (whitelist.size() - i) >= batchSize ? batchSize : (whitelist.size() - i);
+        auto batchStart = whitelist.begin() + i;
+        auto batchEnd = batchStart + currentBatchSize;
+        std::vector<HccpSocketWhiteListInfo> currentBatch(batchStart, batchEnd);
+        auto ret = DlHccpApi::RaSocketWhiteListAdd(serverSocketHandle_, currentBatch.data(), currentBatch.size());
+        if (ret != 0) {
+            auto failedTimes = currTask.Failed(remotes);
+            BM_LOG_ERROR("RaSocketWhiteListAdd() with size=" << currentBatch.size() << " failed: " << ret
+                                                             << ", times=" << failedTimes);
+            return BM_ERROR;
+        }
     }
+
     currTask.Success();
     auto &nextTask = connectionTasks_.queryConnectTask;
     for (auto &rank : remotes) {
