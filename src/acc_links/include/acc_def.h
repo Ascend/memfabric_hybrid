@@ -29,6 +29,7 @@ constexpr uint32_t MAX_RECV_BODY_LEN = 10 * 1024 * 1024; /* max receive body len
 constexpr uint32_t UNO_1024 = 1024;
 constexpr uint32_t UNO_500 = 500;
 constexpr uint32_t UNO_256 = 256;
+constexpr uint32_t UNO_128 = 128;
 constexpr uint32_t UNO_48 = 48;
 constexpr uint32_t UNO_32 = 32;
 constexpr uint32_t UNO_16 = 16;
@@ -102,7 +103,7 @@ struct AccTcpServerOptions {
     int16_t workerThreadPriority = 0;        /* priority of worker threads */
     int16_t workerPollTimeoutMs = UNO_500;   /* epoll timeout */
     int16_t workerStartCpuId = -1;           /* start cpu id of workers */
-    uint16_t linkSendQueueSize = UNO_1024;   /* send queue size */
+    uint16_t linkSendQueueSize = UNO_128;    /* send queue size */
     uint16_t keepaliveIdleTime = UNO_32;     /* tcp keepalive idle time */
     uint16_t keepaliveProbeTimes = UNO_7;    /* tcp keepalive probe times */
     uint16_t keepaliveProbeInterval = UNO_2; /* tcp keepalive probe interval */

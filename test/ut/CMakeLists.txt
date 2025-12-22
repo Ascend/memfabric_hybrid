@@ -1,9 +1,6 @@
 file(GLOB_RECURSE UT_SOURCE_FILES *.cpp
         testcase/*
         ../stub/*
-
-        ${PROJECT_SMEM_SRC_BASE}/csrc/*
-        ${PROJECT_HYBM_SRC_BASE}/csrc/*
 )
 
 include_directories(
@@ -30,6 +27,13 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
+
+        ${PROJECT_ACCLINKS_SRC_BASE}/include
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/common
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/security
+        ${PROJECT_ACCLINKS_SRC_BASE}/csrc/under_api/openssl
+
         ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
 )
 
@@ -38,7 +42,15 @@ FUNCTION(ADD_UNIT_TEST TEST_NAME)
     set(MULTI_VALUE_ARGS FILES BUILD_FLAGS DEPENDS INCLUDE_PATHS LINK_LIBRARIES THIRDPARTY_DEPENDS)
     cmake_parse_arguments(ADD_UNIT_TEST "" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN})
     set(TEST_TARGET_NAME ${TEST_NAME})
-    add_executable(${TEST_TARGET_NAME} ${ADD_UNIT_TEST_FILES} $<TARGET_OBJECTS:ptracer_object> $<TARGET_OBJECTS:config_store_object>)
+    add_executable(
+            ${TEST_TARGET_NAME}
+            ${ADD_UNIT_TEST_FILES}
+            $<TARGET_OBJECTS:ptracer_object>
+            $<TARGET_OBJECTS:config_store_object>
+            $<TARGET_OBJECTS:smem_objects>
+            $<TARGET_OBJECTS:hybmm_objects>
+            $<TARGET_OBJECTS:acc_tcp_net_object>
+    )
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_OUTPUT_PATH}/acc_links/lib64/)
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib/)
     target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${GTEST_BUILD_LIB_DIR}/lib)
@@ -72,6 +84,6 @@ FUNCTION(ADD_UNIT_TEST TEST_NAME)
 ENDFUNCTION()
 
 set(TEST_SRC_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
-set(TEST_DEPEND_LIBS gtest dl acc_tcp_net_static smem_static hybmm_static gcov pthread)
+set(TEST_DEPEND_LIBS gtest dl gcov pthread)
 
 add_subdirectory(testcase)
