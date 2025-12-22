@@ -46,22 +46,30 @@ bool HybmHasInited()
     return initialized > 0;
 }
 
-static inline int hybm_load_library()
+static inline Result hybm_load_library()
 {
     std::string libPath;
-#ifdef USE_CANN
+#if XPU_TYPE == XPU_NPU
     char *path = std::getenv("ASCEND_HOME_PATH");
-    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH not set.", BM_ERROR);
+    BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH is not set.", BM_ERROR);
     libPath = std::string(path).append("/lib64");
     if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
         BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
         return BM_ERROR;
     }
+#elif XPU_TYPE == XPU_GPU
+    char *path = std::getenv("CUDA_HOME");
+    BM_VALIDATE_RETURN(path != nullptr, "Environment CUDA_HOME is not set.", BM_ERROR);
+    libPath = std::string(path).append("/lib64");
+    if (!ock::mf::FileUtil::Realpath(libPath) || !ock::mf::FileUtil::IsDir(libPath)) {
+        BM_LOG_ERROR("Environment CUDA_HOME check failed.");
+        return BM_ERROR;
+    }
 #endif
 
     auto ret = DlApi::LoadLibrary(libPath, HybmGetGvaVersion());
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret);
-    return 0;
+    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "load library from path failed: " << ret << ", path:" << libPath);
+    return BM_OK;
 }
 
 HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)

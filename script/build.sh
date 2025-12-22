@@ -14,7 +14,7 @@ BUILD_TESTS=${2:-OFF}
 BUILD_OPEN_ABI=${3:-OFF}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
-USE_CANN=${6:-ON}
+export XPU_TYPE=${6:-NPU} # 导出环境变量用于后续构建whl包
 BUILD_COMPILER=${7:-gcc}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
@@ -51,7 +51,7 @@ cmake \
     -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
     -DBUILD_PYTHON="${BUILD_PYTHON}" \
     -DENABLE_PTRACER="${ENABLE_PTRACER}" \
-    -DUSE_CANN="${USE_CANN}" \
+    -DXPU_TYPE="${XPU_TYPE}" \
     -S . \
     -B build/
 make install -j32 -C build/

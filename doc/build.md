@@ -38,15 +38,15 @@ git submodule update --recursive --init
 3. 编译
 
 ```
-bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --use_cann ON
+bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU
 
 ```
 
-- build_and_pack_run.sh支持3个参数,按顺序分别是<build_mode> <build_python> <use_cann>
+- build_and_pack_run.sh支持3个参数,按顺序分别是<build_mode> <build_python> <xpu_type>
 - build_mode: 编译类型, 可填RELEASE或DEBUG, 默认RELEASE
 - build_python: 是否编译python的whl包,可填ON或OFF, 默认ON
-- use_cann: 是否需要在有CANN的环境下使用, 如果是通算场景, 可设置为OFF, 默认ON。
-
+- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本。
+- 不填入参数情况下,默认执行build_and_pack_run.sh RELEASE ON NPU
 4. ut运行
 
 支持直接执行如下脚本编译并运行ut

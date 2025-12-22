@@ -73,9 +73,6 @@ public:
 
     static inline Result AclrtSetDevice(int32_t deviceId, bool force = false)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#else
         if (pAclrtSetDevice == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -88,14 +85,10 @@ public:
         } else {
             return pAclrtSetDevice(deviceId);
         }
-#endif
     }
 
     static inline Result AclrtGetDevice(int32_t *deviceId)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtGetDevice == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -104,9 +97,6 @@ public:
 
     static inline Result AclrtDeviceEnablePeerAccess(int32_t peerDeviceId, uint32_t flags)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtDeviceEnablePeerAccess == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -115,9 +105,6 @@ public:
 
     static inline Result AclrtCreateStream(void **stream)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtCreateStream == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -126,9 +113,6 @@ public:
 
     static inline Result AclrtCreateStreamWithConfig(void **stream, uint32_t prot, uint32_t config)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtCreateStreamWithConfig == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -137,9 +121,6 @@ public:
 
     static inline Result AclrtDestroyStream(void *stream)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtDestroyStream == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -148,9 +129,6 @@ public:
 
     static inline Result AclrtSynchronizeStream(void *stream)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtSynchronizeStream == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -159,9 +137,6 @@ public:
 
     static inline Result AclrtMalloc(void **ptr, size_t count, uint32_t type)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtMalloc == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -170,9 +145,6 @@ public:
 
     static inline Result AclrtFree(void *ptr)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtFree == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -181,9 +153,6 @@ public:
 
     static inline Result AclrtMallocHost(void **ptr, size_t count)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtMallocHost == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -192,9 +161,6 @@ public:
 
     static inline Result AclrtFreeHost(void *ptr)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pAclrtFreeHost == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -203,47 +169,19 @@ public:
 
     static inline Result AclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind)
     {
-#ifndef USE_CANN
-        if (kind != ACL_MEMCPY_HOST_TO_HOST) {
-            return BM_INVALID_PARAM;
-        }
-        if (count > destMax) {
-            return BM_INVALID_PARAM;
-        }
-        // 将 void* 转为 char*
-        char *dst_char = static_cast<char *>(dst);
-        const char *src_char = static_cast<const char *>(src);
-        std::copy_n(src_char, count, dst_char);
-        return BM_OK;
-#else
         if (pAclrtMemcpy == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
         return pAclrtMemcpy(dst, destMax, src, count, kind);
-#endif
     }
 
     static inline Result AclrtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
                                           void *stream)
     {
-#ifndef USE_CANN
-        if (kind != ACL_MEMCPY_HOST_TO_HOST) {
-            return BM_INVALID_PARAM;
-        }
-        if (count > destMax) {
-            return BM_INVALID_PARAM;
-        }
-        // 将 void* 转为 char*
-        char *dst_char = static_cast<char *>(dst);
-        const char *src_char = static_cast<const char *>(src);
-        std::copy_n(src_char, count, dst_char);
-        return BM_OK;
-#else
         if (pAclrtMemcpyAsync == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
         return pAclrtMemcpyAsync(dst, destMax, src, count, kind, stream);
-#endif
     }
 
     static inline Result AclrtMemcpyBatch(void **dsts, size_t *destMax,
@@ -251,9 +189,6 @@ public:
                                           aclrtMemcpyBatchAttr *attrs, size_t *attrsIndexes,
                                           size_t numAttrs, size_t *failIndex)
     {
-#ifndef USE_CANN
-        return BM_ERROR;
-#endif
         if (pAclrtMemcpyBatch == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -263,9 +198,6 @@ public:
     static inline Result AclrtMemcpy2d(void *dst, size_t dpitch, const void *src, size_t spitch,
                                        size_t width, size_t height, uint32_t kind)
     {
-#ifndef USE_CANN
-        return BM_ERROR;
-#endif
         if (pAclrtMemcpy2d == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -275,9 +207,6 @@ public:
     static inline Result AclrtMemcpy2dAsync(void *dst, size_t dpitch, const void *src, size_t spitch,
                                             size_t width, size_t height, uint32_t kind, void *stream)
     {
-#ifndef USE_CANN
-        return BM_ERROR;
-#endif
         if (pAclrtMemcpy2dAsync == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -286,9 +215,6 @@ public:
 
     static inline Result AclrtMemset(void *dst, size_t destMax, int32_t value, size_t count)
     {
-#ifndef USE_CANN
-        return BM_ERROR;
-#endif
         if (pAclrtMemset == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -297,9 +223,6 @@ public:
 
     static inline Result RtDeviceGetBareTgid(uint32_t *pid)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtDeviceGetBareTgid == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -308,9 +231,6 @@ public:
 
     static inline Result RtGetDeviceInfo(uint32_t deviceId, int32_t moduleType, int32_t infoType, int64_t *val)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtGetDeviceInfo == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -319,9 +239,6 @@ public:
 
     static inline Result RtSetIpcMemorySuperPodPid(const char *name, uint32_t sdid, int32_t pid[], int32_t num)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtSetIpcMemorySuperPodPid == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -330,9 +247,6 @@ public:
 
     static inline Result RtIpcSetMemoryName(const void *ptr, uint64_t byteCount, char *name, uint32_t len)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtIpcSetMemoryName == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -341,9 +255,6 @@ public:
 
     static inline Result RtIpcDestroyMemoryName(const char *name)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtIpcDestroyMemoryName == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -352,9 +263,6 @@ public:
 
     static inline Result RtIpcOpenMemory(void **ptr, const char *name)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtIpcOpenMemory == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -363,9 +271,6 @@ public:
 
     static inline Result RtIpcCloseMemory(const void *ptr)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtIpcCloseMemory == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -374,17 +279,11 @@ public:
 
     static inline const char *AclrtGetSocName()
     {
-#ifndef USE_CANN
-        return "USE_CANN IS OFF";
-#endif
         return pAclrtGetSocName();
     }
 
     static inline Result RtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t flag)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtEnableP2P == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -393,9 +292,6 @@ public:
 
     static inline Result RtDisableP2P(uint32_t devIdDes, uint32_t phyIdSrc)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtDisableP2P == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
@@ -404,9 +300,6 @@ public:
 
     static inline Result RtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t * const logicDevId)
     {
-#ifndef USE_CANN
-        return BM_OK;
-#endif
         if (pRtGetLogicDevIdByUserDevId == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }

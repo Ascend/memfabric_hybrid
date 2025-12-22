@@ -10,11 +10,11 @@
  * See the Mulan PSL v2 for more details.
 */
 
-#include "hybm_data_op_host_rdma.h"
 #include <sys/mman.h>
-#include "dl_acl_api.h"
 #include "hybm_space_allocator.h"
 #include "hybm_ptracer.h"
+#include "dl_hybrid_api.h"
+#include "hybm_data_op_host_rdma.h"
 
 using namespace ock::mf;
 
@@ -118,7 +118,7 @@ int32_t HostDataOpRDMA::Wait(int32_t waitId) noexcept
 int32_t HostDataOpRDMA::CopyHost2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options)
 {
     if (options.destRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
+        return DlHybridApi::Memcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     }
 
     if (transportManager_ != nullptr) {
@@ -132,7 +132,7 @@ int32_t HostDataOpRDMA::CopyHost2Gva(const void *srcVA, void *destVA, uint64_t l
 int32_t HostDataOpRDMA::CopyGva2Host(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options)
 {
     if (options.srcRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
+        return DlHybridApi::Memcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     }
 
     if (transportManager_ != nullptr) {
@@ -146,7 +146,7 @@ int32_t HostDataOpRDMA::CopyGva2Host(const void *srcVA, void *destVA, uint64_t l
 int32_t HostDataOpRDMA::CopyDevice2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options)
 {
     if (options.destRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
+        return DlHybridApi::Memcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
     }
 
     if (transportManager_ != nullptr) {
@@ -160,7 +160,7 @@ int32_t HostDataOpRDMA::CopyDevice2Gva(const void *srcVA, void *destVA, uint64_t
 int32_t HostDataOpRDMA::CopyGva2Device(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options)
 {
     if (options.srcRankId == rankId_) {
-        return DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
+        return DlHybridApi::Memcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
     }
 
     if (transportManager_ != nullptr) {
@@ -206,10 +206,10 @@ int32_t ock::mf::HostDataOpRDMA::SafePut(const void *srcVA, void *destVA, uint64
         const void *currentSrc = reinterpret_cast<const void *>(srcBase + offset);
         void *currentDest = reinterpret_cast<void *>(destBase + offset);
         if (isLocalHost) {
-            ret = DlAclApi::AclrtMemcpy(tmpHost, currentChunkSize, currentSrc,
+            ret = DlHybridApi::Memcpy(tmpHost, currentChunkSize, currentSrc,
                 currentChunkSize, ACL_MEMCPY_HOST_TO_HOST);
         } else {
-            ret = DlAclApi::AclrtMemcpy(tmpHost, currentChunkSize, currentSrc,
+            ret = DlHybridApi::Memcpy(tmpHost, currentChunkSize, currentSrc,
                 currentChunkSize, ACL_MEMCPY_DEVICE_TO_HOST);
         }
         if (ret != BM_OK) {
@@ -255,10 +255,10 @@ int32_t ock::mf::HostDataOpRDMA::SafeGet(const void *srcVA, void *destVA, uint64
             return ret;
         }
         if (isLocalHost) {
-            ret = DlAclApi::AclrtMemcpy(currentDest, currentChunkSize, tmpHost,
+            ret = DlHybridApi::Memcpy(currentDest, currentChunkSize, tmpHost,
                 currentChunkSize, ACL_MEMCPY_HOST_TO_HOST);
         } else {
-            ret = DlAclApi::AclrtMemcpy(currentDest, currentChunkSize, tmpHost,
+            ret = DlHybridApi::Memcpy(currentDest, currentChunkSize, tmpHost,
                 currentChunkSize, ACL_MEMCPY_HOST_TO_DEVICE);
         }
         if (ret != BM_OK) {
@@ -329,7 +329,7 @@ int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const u
         auto destAddr = hostAddrs[i];
         auto srcAddr = deviceAddrs[i];
         auto count = counts[i];
-        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_HOST, st);
+        ret = DlHybridApi::MemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_DEVICE_TO_HOST, st);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on local device to local host failed: " << ret << " stream:"
                                                                               << reinterpret_cast<uintptr_t>(st));
@@ -337,7 +337,7 @@ int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const u
         }
     }
 
-    ret = DlAclApi::AclrtSynchronizeStream(st);
+    ret = DlHybridApi::StreamSynchronize(st);
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st));
     }
@@ -355,7 +355,7 @@ int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const u
         auto destAddr = deviceAddrs[i];
         auto srcAddr = hostAddrs[i];
         auto count = counts[i];
-        ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_HOST_TO_DEVICE, st);
+        ret = DlHybridApi::MemcpyAsync(destAddr, count, srcAddr, count, ACL_MEMCPY_HOST_TO_DEVICE, st);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on local host to local device failed: " << ret << " stream:"
                                                                               << reinterpret_cast<uintptr_t>(st));
@@ -363,7 +363,7 @@ int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const u
         }
     }
 
-    ret = DlAclApi::AclrtSynchronizeStream(st);
+    ret = DlHybridApi::StreamSynchronize(st);
     if (ret != 0) {
         BM_LOG_ERROR("aclrtSynchronizeStream failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st));
     }

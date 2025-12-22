@@ -40,7 +40,29 @@ option(BUILD_GIT_COMMIT "build library version with commit" ON)
 option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
-option(USE_CANN "BM implemented using CANN." ON)
+
+set(XPU_TYPE "NPU" CACHE STRING "XPU backend to use: NONE, NPU, or GPU")
+set_property(CACHE XPU_TYPE PROPERTY STRINGS NONE NPU GPU)
+
+if(NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL "GPU"))
+    message(FATAL_ERROR "Invalid XPU_TYPE value: '${XPU_TYPE}'. Allowed: NONE, NPU, GPU")
+endif()
+
+if(XPU_TYPE STREQUAL "NONE")
+    set(XPU_TYPE_ID 0)
+elseif(XPU_TYPE STREQUAL "NPU")
+    set(XPU_TYPE_ID 1)
+elseif(XPU_TYPE STREQUAL "GPU")
+    set(XPU_TYPE_ID 2)
+endif()
+
+
+add_definitions(-DXPU_TYPE=${XPU_TYPE_ID})
+add_definitions(
+        -DXPU_NONE=0
+        -DXPU_NPU=1
+        -DXPU_GPU=2
+)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -55,6 +77,7 @@ message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+message(STATUS "XPU_TYPE: ${XPU_TYPE} (ID=${XPU_TYPE_ID})")
 
 add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
 add_compile_options(-fpermissive -Wno-error)
@@ -92,14 +115,8 @@ if (BUILD_TESTS STREQUAL "ON")
     set(BUILD_OPEN_ABI "ON")
 endif ()
 
-
 if (ENABLE_PTRACER STREQUAL "ON")
     add_definitions(-DENABLE_PTRACER=ON)
-endif ()
-
-if (USE_CANN STREQUAL "ON")
-    add_definitions(-DUSE_CANN=ON)
-    message("USE_CANN IS ON.")
 endif ()
 
 if (NOT BUILD_OPEN_ABI STREQUAL "ON")

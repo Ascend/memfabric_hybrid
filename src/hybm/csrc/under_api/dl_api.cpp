@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 #include "dl_api.h"
-#include "dl_acl_api.h"
+#include "dl_hybrid_api.h"
 #include "dl_hal_api.h"
 #include "dl_hccp_api.h"
 #include "dl_hcom_api.h"
@@ -20,11 +20,11 @@ namespace mf {
 
 Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersion)
 {
-    auto result = DlAclApi::LoadLibrary(libDirPath);
+    auto result = DlHybridApi::LoadLibrary(libDirPath);
     if (result != BM_OK) {
         return result;
     }
-#ifdef USE_CANN
+#if XPU_TYPE == XPU_NPU
     result = DlHalApi::LoadLibrary(gvaVersion);
     if (result != BM_OK) {
         DlAclApi::CleanupLibrary();

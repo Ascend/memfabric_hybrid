@@ -76,10 +76,18 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
     auto options = GenerateHybmOptions();
     options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_DEFAULT);
     if (config.dataOpType & SMEMB_DATA_OP_SDMA) {
+#if XPU_TYPE != XPU_NPU
+        SM_LOG_ERROR("current memfabric-hybrid binary is not built for ascend npu, can not use device_smda optype.");
+        return SM_ERROR;
+#endif
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_SDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
     if (config.dataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
+#if XPU_TYPE != XPU_NPU
+        SM_LOG_ERROR("current memfabric-hybrid binary is not built for ascend npu, can not use device_rdma optype.");
+        return SM_ERROR;
+#endif
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }

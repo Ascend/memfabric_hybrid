@@ -70,10 +70,9 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         std::string ipMask = localIp_ + "/32";
         DlHcomApi::ServiceSetDeviceIpMask(rpcService_, ipMask.c_str());
     }
+
     DlHcomApi::ServiceBind(rpcService_, localNic_.c_str(), TransportRpcHcomNewEndPoint);
     ret = DlHcomApi::ServiceStart(rpcService_);
-    // 单节点不需要hcom
-#ifdef USE_CANN
     if (ret != 0) {
         BM_LOG_ERROR("Failed to start hcom service, nic: " << localNic_ << " type: " << enumProtocolType
                                                            << " ret: " << ret);
@@ -81,9 +80,6 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         rpcService_ = 0;
         return BM_DL_FUNCTION_FAILED;
     }
-#else
-    BM_LOG_INFO("End to start hcom service, nic: " << localNic_ << " type: " << enumProtocolType << " ret: " << ret);
-#endif
 
     rankId_ = options.rankId;
     rankCount_ = options.rankCount;
@@ -119,7 +115,7 @@ Result HcomTransportManager::CloseDevice()
     return BM_OK;
 }
 
-#ifdef USE_CANN
+#if XPU_TYPE == XPU_NPU
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);

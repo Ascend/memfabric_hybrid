@@ -10,7 +10,7 @@ version1="none"
 pkg_arch="none"
 os1="none"
 default_install_dir="/usr/local/memfabric_hybrid"
-echo "USE_CANN is OFF"
+
 function print_help() {
     echo "--install-path=<path>             Install to specific dir"
     echo "--uninstall                       Uninstall product"
@@ -122,7 +122,7 @@ function check_owner()
     if [ "${install_path_flag}" == "y" ]; then
         default_install_dir="${target_dir}"
     fi
-    print "INFO" "Check owner success, USE_CANN is true."
+    print "INFO" "Check owner success, XPU_TYPE is GPU or NONE."
 }
 
 function delete_install_files()

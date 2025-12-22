@@ -8,8 +8,9 @@
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
-USE_CANN=${2:-ON}
-echo "USE_CANN is ${USE_CANN}"
+
+XPU_TYPE=${2:-NPU}
+echo "XPU_TYPE is ${XPU_TYPE}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -65,13 +66,17 @@ cp -r ${OUTPUT_DIR}/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
 cp -r ${PROJECT_DIR}/test/certs ${PKG_DIR}/${ARCH_OS}/script
 
 mkdir -p ${PKG_DIR}/script
-if [[ "$USE_CANN" == "OFF" ]]; then
-   echo "in make_run.sh, USE_CANN is OFF"
+if [[ "$XPU_TYPE" == "NPU" ]]; then
+   echo "in make_run.sh, XPU_TYPE is NPU"
+   cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
+elif [[ "$XPU_TYPE" == "GPU" ]]; then
+   echo "in make_run.sh, XPU_TYPE is GPU"
    cp ${BASH_PATH}/no_cann/install.sh ${PKG_DIR}/script/
 else
-   echo "in make_run.sh, USE_CANN is ON"
-   cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
+   echo "in make_run.sh, XPU_TYPE is NONE"
+   cp ${BASH_PATH}/no_cann/install.sh ${PKG_DIR}/script/
 fi
+
 cp ${BASH_PATH}/uninstall.sh ${PKG_DIR}/script/
 
 # generate version.info
@@ -84,11 +89,30 @@ CommitId:${GIT_COMMIT}
 EOF
 
 # make run
-FILE_NAME=${PKG_DIR}-${VERSION}_${OS_NAME}_${ARCH}
+case "$XPU_TYPE" in
+    NPU)
+        XPU_SUFFIX=""
+        ;;
+    NONE)
+        XPU_SUFFIX="_cpu"
+        ;;
+    GPU)
+        XPU_SUFFIX="_gpu"
+        ;;
+    "")
+        echo "Error: Environment variable XPU_TYPE is not set. Must be exactly one of: NPU, NONE, GPU." >&2
+        exit 1
+        ;;
+    *)
+        echo "Error: Invalid value for XPU_TYPE: '$XPU_TYPE'. Must be exactly one of: NPU, NONE, GPU." >&2
+        exit 1
+        ;;
+esac
+
+FILE_NAME=${PKG_DIR}-${VERSION}_${OS_NAME}_${ARCH}${XPU_SUFFIX}
 tar -cvf ${FILE_NAME}.tar.gz ${PKG_DIR}/
 cat run_header.sh ${FILE_NAME}.tar.gz > ${FILE_NAME}.run
 mv ${FILE_NAME}.run ${OUTPUT_DIR}
-
 rm -rf ${PKG_DIR}
 rm -rf ${FILE_NAME}.tar.gz
 

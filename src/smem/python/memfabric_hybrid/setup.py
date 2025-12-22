@@ -37,7 +37,14 @@ build_open_abi = os.getenv("BUILD_OPEN_ABI", "OFF")
 build_mode = os.getenv("BUILD_MODE", "RELEASE")
 build_compiler = os.getenv("BUILD_COMPILER", "gcc")
 enable_ptracer = os.getenv("ENABLE_PTRACER", "ON")
-use_cann = os.getenv("USE_CANN", "ON")
+xpu_type = os.getenv("XPU_TYPE", "NPU")
+
+if xpu_type not in ("NPU", "NONE", "GPU"):
+    raise ValueError("XPU_TYPE must be exactly NPU, NONE, or GPU")
+if xpu_type == "NONE":
+    current_version += "+cpu"
+elif xpu_type == "GPU":
+    current_version += "+gpu"
 
 
 class BinaryDistribution(Distribution):
@@ -91,7 +98,7 @@ class CMakeBuildExt(build_ext):
                 f"-DBUILD_OPEN_ABI={build_open_abi}",
                 f"-DBUILD_COMPILER={build_compiler}",
                 f"-DENABLE_PTRACER={enable_ptracer}",
-                f"-DUSE_CANN={use_cann}",
+                f"-DXPU_TYPE={xpu_type}",
                 "-DBUILD_PYTHON=ON",
                 "-DBUILD_TESTS=OFF",
             ]

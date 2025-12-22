@@ -385,15 +385,18 @@ Result HybmDevLegacySegment::GetDeviceInfo() noexcept
     return BM_OK;
 }
 
-int HybmDevLegacySegment::SetDeviceInfo(int deviceId) noexcept
+Result HybmDevLegacySegment::SetDeviceInfo(int deviceId) noexcept
 {
+#if XPU_TYPE != XPU_NPU
+    return BM_OK;
+#endif
     if (deviceId < 0) {
         return BM_INVALID_PARAM;
     }
 
     if (deviceId_ >= 0) {
         if (deviceId == deviceId_) {
-            return 0;
+            return BM_OK;
         }
 
         return BM_INVALID_PARAM;

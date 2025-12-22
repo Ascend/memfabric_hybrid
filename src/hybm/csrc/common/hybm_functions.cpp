@@ -18,7 +18,7 @@ namespace mf {
 bool Func::Realpath(std::string &path)
 {
     if (path.empty() || path.size() > PATH_MAX) {
-        BM_LOG_ERROR("Failed to get realpath as path is invalid");
+        BM_LOG_ERROR("Failed to get realpath as path is invalid:" << path);
         return false;
     }
 

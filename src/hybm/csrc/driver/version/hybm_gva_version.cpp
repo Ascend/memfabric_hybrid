@@ -137,7 +137,7 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
 
 static bool DriverVersionCheck(const std::string &ver)
 {
-#ifndef USE_CANN
+#if XPU_TYPE != XPU_NPU
     return true;
 #else
     auto libPath = std::getenv("LD_LIBRARY_PATH");

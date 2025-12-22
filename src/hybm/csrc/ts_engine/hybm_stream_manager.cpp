@@ -92,6 +92,7 @@ void *HybmStreamManager::GetThreadAclStream(int32_t devId)
     if (stream_ != nullptr) {
         return stream_;
     }
+#if XPU_TYPE == XPU_NPU
     auto ret = DlAclApi::AclrtSetDevice(devId);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Set device id to be " << devId << " failed: " << ret);
@@ -102,7 +103,7 @@ void *HybmStreamManager::GetThreadAclStream(int32_t devId)
         BM_LOG_ERROR("create stream failed: " << ret);
         return nullptr;
     }
-
+#endif
     static thread_local AclrtStream aclrtStream_(stream_);
     return stream_;
 }

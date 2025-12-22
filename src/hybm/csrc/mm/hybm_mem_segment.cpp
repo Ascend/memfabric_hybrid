@@ -92,6 +92,9 @@ bool MemSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
 
 Result MemSegment::InitDeviceInfo()
 {
+#if XPU_TYPE != XPU_NPU
+    return BM_OK;
+#endif
     if (deviceInfoReady_) {
         return BM_OK;
     }
