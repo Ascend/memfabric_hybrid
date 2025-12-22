@@ -135,8 +135,9 @@ HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
     if (logger == nullptr) {
         return;
     }
-    if (ock::mf::OutLogger::Instance().GetLogExtraFunc() != nullptr) {
-        BM_LOG_WARN("logFunc will be rewriting");
+
+    if (ock::mf::OutLogger::Instance().GetExternalLogFunction() != nullptr) {
+        BM_LOG_WARN("External log function has already been set, which will be override with new log function");
     }
     ock::mf::OutLogger::Instance().SetExternalLogFunction(logger, true);
 }

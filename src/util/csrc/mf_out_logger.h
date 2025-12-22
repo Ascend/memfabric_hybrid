@@ -89,7 +89,7 @@ public:
         return logLevel_;
     }
 
-    inline ExternalLog GetLogExtraFunc() const
+    inline ExternalLog GetExternalLogFunction() const
     {
         return logFunc_;
     }
