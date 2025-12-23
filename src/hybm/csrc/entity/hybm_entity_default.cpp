@@ -678,17 +678,17 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     if (stream == nullptr) {
         stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
     }
-    if (!options_.globalUniqueAddress) {
-        for (auto i = 0U; i < params.batchSize; i++) {
-            params.sources[i] = Valid48BitsAddress(params.sources[i]);
-            params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
-        }
-    }
     // 0. sdma 不需要rankId
     ExtOptions sOptions{};
     sOptions.flags = flags;
     sOptions.stream = stream;
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0 && sdmaDataOperator_ != nullptr) {
+        if (!options_.globalUniqueAddress) {
+            for (auto i = 0U; i < params.batchSize; i++) {
+                params.sources[i] = Valid48BitsAddress(params.sources[i]);
+                params.destinations[i] = Valid48BitsAddress(params.destinations[i]);
+            }
+        }
         ret = sdmaDataOperator_->BatchDataCopy(params, direction, sOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("SDMA data copy direction: " << direction << ", failed : " << ret);
