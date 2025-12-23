@@ -51,7 +51,6 @@ using halSqCqAllocateFunc = int (*)(uint32_t, halSqCqInputInfo *, halSqCqOutputI
 using halSqCqFreeFunc = int (*)(uint32_t, halSqCqFreeInfo *);
 using halResourceIdAllocFunc = int (*)(uint32_t, struct halResourceIdInputInfo *, struct halResourceIdOutputInfo *);
 using halResourceIdFreeFunc = int (*)(uint32_t, struct halResourceIdInputInfo *);
-using halGetSsidFunc = int (*)(uint32_t, uint32_t *);
 using halResourceConfigFunc = int (*)(uint32_t, struct halResourceIdInputInfo *, struct halResourceConfigInfo *);
 using halSqCqQueryFunc = int (*)(uint32_t devId, struct halSqCqQueryInfo *info);
 using halHostRegisterFunc = int (*)(void *, uint64_t, uint32_t, uint32_t, void **);
@@ -315,14 +314,6 @@ public:
         return pHalResourceIdFree(devId, in);
     }
 
-    static inline int HalGetSsid(uint32_t devId, uint32_t *ssid)
-    {
-        if (pHalGetSsid == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return pHalGetSsid(devId, ssid);
-    }
-
     static inline int HalResourceConfig(uint32_t devId, struct halResourceIdInputInfo *in,
                                         struct halResourceConfigInfo *para)
     {
@@ -499,7 +490,6 @@ private:
     static halSqCqFreeFunc pHalSqCqFree;
     static halResourceIdAllocFunc pHalResourceIdAlloc;
     static halResourceIdFreeFunc pHalResourceIdFree;
-    static halGetSsidFunc pHalGetSsid;
     static halResourceConfigFunc pHalResourceConfig;
     static halSqCqQueryFunc pHalSqCqQuery;
     static halHostRegisterFunc pHalHostRegister;

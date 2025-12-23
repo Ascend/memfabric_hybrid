@@ -535,6 +535,10 @@ static int32_t FreeManagedNomal(uint64_t va)
 
 int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, uint64_t flags)
 {
+#ifdef UT_ENABLED
+    *address = HYBM_DEVICE_VA_START;
+    return BM_OK;
+#endif
     uint32_t advise = 0;
     struct DevVirtHeapType heap_type;
     size_t allocSize = ALIGN_UP(size, DEVMM_HEAP_SIZE);
@@ -584,12 +588,18 @@ int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, ui
 
 int32_t HalGvaUnreserveMemory(uint64_t address)
 {
+#ifdef UT_ENABLED
+    return BM_OK;
+#endif
     GvaHeapRemoveReserved(address);
     return BM_OK;
 }
 
 int32_t HalGvaAlloc(uint64_t address, size_t size, uint64_t flags)
 {
+#ifdef UT_ENABLED
+    return BM_OK;
+#endif
     uint64_t va = address;
     if ((va % DEVMM_MAP_ALIGN_SIZE != 0) || (size % DEVMM_MAP_ALIGN_SIZE != 0)) {
         BM_LOG_ERROR("open gva va check failed, size must the align of 2M. (size=0x" << std::hex << size << ")");
@@ -616,6 +626,9 @@ int32_t HalGvaAlloc(uint64_t address, size_t size, uint64_t flags)
 
 int32_t HalGvaFree(uint64_t address, size_t size)
 {
+#ifdef UT_ENABLED
+    return BM_OK;
+#endif
     if (RemoveInGvaHeap(address) == 0) {
         return DlHalApi::HalIoctlFreePages(address);
     } else {
@@ -651,6 +664,9 @@ static int32_t OpenGvaMalloc(uint64_t va, size_t len, uint64_t flags)
 
 int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t flags)
 {
+#ifdef UT_ENABLED
+    return BM_OK;
+#endif
     if (OpenGvaMalloc(address, size, flags) != 0) {
         BM_LOG_ERROR("HalGvaOpen malloc gva error. (size=0x" << std::hex << size << ")");
         return -1;
@@ -665,6 +681,9 @@ int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t fla
 
 int32_t HalGvaClose(uint64_t address, uint64_t flags)
 {
+#ifdef UT_ENABLED
+    return BM_OK;
+#endif
     auto ret = HybmUnmapShareMemory(reinterpret_cast<void *>(address), flags);
     if (ret != 0) {
         BM_LOG_ERROR("Close error. ret:" << ret);

@@ -16,15 +16,15 @@
 ```
 # transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{Ip}:{port}
 或者
-# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp6://{[Ip]}:{port}
+# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{[Ip]}:{port}
 
 # deviceId=2
 ./transfer_perf 2 0 2 1 1 tcp://127.0.0.1:12050
-(./transfer_perf 2 0 2 1 1 tcp6://[::1]:12050)
+(./transfer_perf 2 0 2 1 1 tcp://[::1]:12050)
 
 # deviceId=2
 ./transfer_perf 2 1 3 1 1 tcp://127.0.0.1:12050
-(./transfer_perf 2 1 3 1 1 tcp6://[::1]:12050)
+(./transfer_perf 2 1 3 1 1 tcp://[::1]:12050)
 ```
 
 ### 参数说明
@@ -38,7 +38,7 @@
 | deviceId          | 是  | 当前节点的deviceId                      |
 | useSdma             | 是  | 1使用SDMA，0使用RDMA                                      |
 | testBm     | 是  | 1测试BigMemory场景，0测试PD传输场景               |
-| tcp://{Ip}:{port}          | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp6://[ip]:port`     |
+| tcp://{Ip}:{port}          | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ip]:port`     |
 
 ### 运行步骤
 

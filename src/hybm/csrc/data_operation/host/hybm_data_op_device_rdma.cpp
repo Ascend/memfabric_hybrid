@@ -20,6 +20,7 @@
 #include "hybm_logger.h"
 #include "hybm_types.h"
 #include "hybm_ptracer.h"
+#include "hybm_stream_manager.h"
 
 namespace {
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
@@ -524,6 +525,10 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params
     void *st = options.stream;
     auto ret = 0;
     uint32_t batchNum = params.batchSize;
+    if (st == nullptr) {
+        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+    }
+
     for (size_t i = 0; i < batchNum; ++i) {
         auto destAddr = params.destinations[i];
         auto srcAddr = params.sources[i];

@@ -163,7 +163,6 @@ Result HybmDevLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std:
                                             sizeof(info.shmName));
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
 
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
     info.mappingOffset =
         slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
@@ -371,55 +370,6 @@ void HybmDevLegacySegment::FreeMemory() noexcept
         }
         globalVirtualAddress_ = nullptr;
     }
-}
-
-Result HybmDevLegacySegment::GetDeviceInfo() noexcept
-{
-    if (options_.devId < 0) {
-        return BM_INVALID_PARAM;
-    }
-
-    if (InitDeviceInfo() != BM_OK) {
-        return BM_ERROR;
-    }
-    return BM_OK;
-}
-
-Result HybmDevLegacySegment::SetDeviceInfo(int deviceId) noexcept
-{
-#if XPU_TYPE != XPU_NPU
-    return BM_OK;
-#endif
-    if (deviceId < 0) {
-        return BM_INVALID_PARAM;
-    }
-
-    if (deviceId_ >= 0) {
-        if (deviceId == deviceId_) {
-            return BM_OK;
-        }
-
-        return BM_INVALID_PARAM;
-    }
-
-    auto logicDeviceId = Func::GetLogicDeviceId(deviceId);
-    if (logicDeviceId < 0) {
-        BM_LOG_ERROR("Failed to get logic deviceId: " << deviceId);
-        return BM_ERROR;
-    }
-    BM_LOG_INFO("Success get deviceId: " << deviceId << ", logicDeviceId: " << logicDeviceId);
-    uint32_t tgid = 0;
-    auto ret = DlAclApi::RtDeviceGetBareTgid(&tgid);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("get bare tgid failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
-    }
-
-    deviceId_ = deviceId;
-    logicDeviceId_ = logicDeviceId;
-    pid_ = tgid;
-
-    return BM_OK;
 }
 
 void HybmDevLegacySegment::GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept

@@ -22,7 +22,7 @@ namespace mf {
 struct ExtOptions {
     uint32_t srcRankId;
     uint32_t destRankId;
-    void *stream;
+    void *stream = nullptr;
     uint32_t flags;
     friend bool operator==(const ExtOptions &lhs, const ExtOptions &rhs)
     {

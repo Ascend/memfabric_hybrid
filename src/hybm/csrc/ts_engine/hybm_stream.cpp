@@ -388,7 +388,7 @@ int HybmStream::Synchronize(uint32_t task) noexcept
         usleep(1U);
     }
 
-    return ret;
+    return (retry >= MAX_RETRY ? BM_TIMEOUT : ret);
 }
 }
 }

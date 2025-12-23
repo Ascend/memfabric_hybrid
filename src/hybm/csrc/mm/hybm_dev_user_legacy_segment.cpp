@@ -113,8 +113,6 @@ Result HybmDevUserLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSli
 
 Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
 {
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
-
     HbmExportDeviceInfo info;
     info.logicDeviceId = logicDeviceId_;
     info.rankId = options_.rankId;
@@ -469,12 +467,5 @@ bool HybmDevUserLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
     return pos->second.superPodId == superPodId;
 }
 
-Result HybmDevUserLegacySegment::GetDeviceInfo() noexcept
-{
-    if (InitDeviceInfo() != BM_OK) {
-        return BM_ERROR;
-    }
-    return BM_OK;
-}
 }  // namespace mf
 }  // namespace ock

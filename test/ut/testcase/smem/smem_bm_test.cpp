@@ -27,7 +27,7 @@ const uint32_t UT_CREATE_MEM_SIZE = 1024;
 const uint32_t UT_COPY_MEM_SIZE = 128;
 const uint64_t UT_SHM_SIZE = 128 * 1024 * 1024ULL;
 
-class TestSmemFeature : public testing::Test {
+class SmemBmTest : public testing::Test {
 public:
     static void SetUpTestCase();
     static void TearDownTestCase();
@@ -36,13 +36,13 @@ public:
 
 };
 
-void TestSmemFeature::SetUpTestCase() {}
+void SmemBmTest::SetUpTestCase() {}
 
-void TestSmemFeature::TearDownTestCase() {}
+void SmemBmTest::TearDownTestCase() {}
 
-void TestSmemFeature::SetUp() {}
+void SmemBmTest::SetUp() {}
 
-void TestSmemFeature::TearDown() {}
+void SmemBmTest::TearDown() {}
 
 bool CheckMem(void *base, void *ptr, uint64_t size)
 {
@@ -57,7 +57,7 @@ bool CheckMem(void *base, void *ptr, uint64_t size)
 }
 
 /*
-TEST_F(TestSmemFeature, two_card_shm_create_success)
+TEST_F(SmemBmTest, two_card_shm_create_success)
 {
     int shmFd = -1;
     auto shmCreateRet = InitUTShareMem(shmFd);
@@ -134,7 +134,7 @@ TEST_F(TestSmemFeature, two_card_shm_create_success)
     }
 }
 
-TEST_F(TestSmemFeature, two_crad_bm_copy_success)
+TEST_F(SmemBmTest, two_crad_bm_copy_success)
 {
     int shmFd = -1;
     auto shmCreateRet = InitUTShareMem(shmFd);

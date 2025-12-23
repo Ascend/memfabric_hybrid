@@ -93,7 +93,7 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     return SM_OK;
 }
 
-Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint32_t &ipv4)
+Result GetLocalIpWithTarget(const std::string &target, std::string &local)
 {
     struct ifaddrs *ifaddr;
     char localResultIp[64];
@@ -101,7 +101,7 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
 
     struct in_addr targetIp;
     if (inet_aton(target.c_str(), &targetIp) == 0) {
-        SM_LOG_ERROR("target ip address invalid. ");
+        SM_LOG_ERROR("target ip address invalid. " << target);
         return SM_INVALID_PARAM;
     }
 
@@ -126,7 +126,6 @@ Result GetLocalIpWithTarget(const std::string &target, std::string &local, uint3
             SM_LOG_ERROR("convert local ip to string failed. ");
             result = SM_ERROR;
         } else {
-            ipv4 = ntohl(localIp.s_addr);
             local = std::string(localResultIp);
             result = SM_OK;
         }

@@ -14,6 +14,7 @@
 #include "hybm_space_allocator.h"
 #include "hybm_ptracer.h"
 #include "dl_hybrid_api.h"
+#include "hybm_stream_manager.h"
 #include "hybm_data_op_host_rdma.h"
 
 using namespace ock::mf;
@@ -325,6 +326,10 @@ int HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, const u
     TP_TRACE_BEGIN(TP_HYBM_ACL_BATCH_LD_TO_LH);
     void *st = options.stream;
     auto ret = 0;
+    if (st == nullptr) {
+        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+    }
+
     for (size_t i = 0; i < batchSize; ++i) {
         auto destAddr = hostAddrs[i];
         auto srcAddr = deviceAddrs[i];
@@ -351,6 +356,10 @@ int HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, const u
     TP_TRACE_BEGIN(TP_HYBM_ACL_BATCH_LH_TO_LD);
     void *st = options.stream;
     auto ret = 0;
+    if (st == nullptr) {
+        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+    }
+
     for (size_t i = 0; i < batchSize; ++i) {
         auto destAddr = deviceAddrs[i];
         auto srcAddr = hostAddrs[i];
@@ -415,6 +424,8 @@ int HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyD
     tmpOptions.destRankId = rmtRankId;
     // 分批处理：每批最大不超过 RDMA_SWAP_SPACE_SIZE
     size_t batchSize = rmtCopyDescriptor.counts.size();
+    uint64_t *ptr = new uint64_t[batchSize * 3];
+    BM_ASSERT_RETURN(ptr != nullptr, BM_MALLOC_FAILED);
     uint64_t batchOffset = 0; // 当前处理的 rmtCopyDescriptor 索引
     while (batchOffset < batchSize) {
         // 计算当前批次能拷贝的最大数据量
@@ -430,7 +441,8 @@ int HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyD
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
                                                                       << RDMA_SWAP_SPACE_SIZE);
-            return BM_INVALID_PARAM;
+            ret = BM_INVALID_PARAM;
+            break;
         }
 
         // 分配当前批次的临时 HBM 内存
@@ -438,14 +450,15 @@ int HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyD
         void *tmpHost = tmpRdmaMemory.Address();
         if (tmpHost == nullptr) {
             BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchDataSize);
-            return BM_MALLOC_FAILED;
+            ret = BM_MALLOC_FAILED;
+            break;
         }
 
         // 先copy到tmp内存
         size_t currentBatchSize = batchEnd - batchOffset;
-        void *tmpRdmaAddrs[currentBatchSize];
-        void *tmplocalAddrs[currentBatchSize];
-        uint64_t tmpCounts[currentBatchSize];
+        void **tmpRdmaAddrs = reinterpret_cast<void **>(ptr);
+        void **tmplocalAddrs = reinterpret_cast<void **>(ptr + currentBatchSize);
+        uint64_t *tmpCounts = (ptr + currentBatchSize + currentBatchSize);
         uint64_t offset = 0;
         for (size_t i = batchOffset; i < batchEnd; ++i) {
             tmpRdmaAddrs[i - batchOffset] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
@@ -471,10 +484,10 @@ int HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyD
                              << ret << " localRankId:" << rankId_ << " remoteRankId:" << rmtRankId);
             }
         }
-
         // 下一次迭代
         batchOffset = batchEnd;
     }
+    delete[] ptr;
     return ret;
 }
 
@@ -486,6 +499,8 @@ int HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDe
     tmpOptions.srcRankId = rmtRankId;
     // 分批处理：每批最大不超过 RDMA_SWAP_SPACE_SIZE
     size_t batchSize = rmtCopyDescriptor.counts.size();
+    uint64_t *ptr = new uint64_t[batchSize * 3];
+    BM_ASSERT_RETURN(ptr != nullptr, BM_MALLOC_FAILED);
     uint64_t batchOffset = 0; // 当前处理的 rmtCopyDescriptor 索引
     while (batchOffset < batchSize) {
         // 计算当前批次能拷贝的最大数据量
@@ -501,7 +516,8 @@ int HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDe
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
                                                                       << RDMA_SWAP_SPACE_SIZE);
-            return BM_INVALID_PARAM;
+            ret = BM_INVALID_PARAM;
+            break;
         }
 
         // 分配当前批次的临时 HBM 内存
@@ -509,14 +525,15 @@ int HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDe
         void *tmpHost = tmpRdmaMemory.Address();
         if (tmpHost == nullptr) {
             BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchDataSize);
-            return BM_MALLOC_FAILED;
+            ret = BM_MALLOC_FAILED;
+            break;
         }
 
         // 先copy到tmp内存
         size_t currentBatchSize = batchEnd - batchOffset;
-        void *tmpRdmaAddrs[currentBatchSize];
-        void *tmplocalAddrs[currentBatchSize];
-        uint64_t tmpCounts[currentBatchSize];
+        void **tmpRdmaAddrs = reinterpret_cast<void **>(ptr);
+        void **tmplocalAddrs = reinterpret_cast<void **>(ptr + currentBatchSize);
+        uint64_t *tmpCounts = (ptr + currentBatchSize + currentBatchSize);
         uint64_t offset = 0;
         for (size_t i = batchOffset; i < batchEnd; ++i) {
             tmpRdmaAddrs[i - batchOffset] = reinterpret_cast<void *>(static_cast<uint8_t *>(tmpHost) + offset);
@@ -540,12 +557,12 @@ int HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDe
         ret = BatchCopyLH2LD((void **)tmplocalAddrs, (void **)tmpRdmaAddrs, tmpCounts, currentBatchSize, tmpOptions);
         if (ret != 0) {
             BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
-            return ret;
+            break;
         }
-
         // 下一次迭代
         batchOffset = batchEnd;
     }
+    delete[] ptr;
     return ret;
 }
 

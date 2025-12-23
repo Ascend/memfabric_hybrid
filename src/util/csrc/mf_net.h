@@ -20,22 +20,6 @@ enum IpType {
     IPNONE,
 };
 
-typedef struct {
-    union {
-        sockaddr_in ipv4;
-        sockaddr_in6 ipv6;
-    } ip;
-    IpType type {IPNONE};
-} mf_sockaddr;
-
-typedef struct {
-    union {
-        uint32_t addrv4;
-        uint8_t addrv6[16];
-    } addr;
-    IpType type {IPNONE};
-} mf_ip_addr;
-
 struct net_addr_t {
     union {
         struct in_addr ipv4;
@@ -52,7 +36,7 @@ struct net_addr_t {
         result.ip.ipv4 = addr;
         return result;
     }
-    
+
     static net_addr_t from_ipv6(const struct in6_addr& addr)
     {
         net_addr_t result;
@@ -60,7 +44,7 @@ struct net_addr_t {
         result.ip.ipv6 = addr;
         return result;
     }
-    
+
     bool operator==(const net_addr_t& other) const
     {
         if (type != other.type) return false;
@@ -82,9 +66,9 @@ namespace std {
         size_t operator()(const ock::mf::net_addr_t& addr) const
         {
             size_t result = 0;
-            
+
             hash_combine(result, static_cast<int>(addr.type));
-            
+
             if (addr.type == ock::mf::IpV4) {
                 hash_combine(result, addr.ip.ipv4.s_addr);
             } else if (addr.type == ock::mf::IpV6) {
@@ -93,10 +77,10 @@ namespace std {
                     hash_combine(result, bytes[i]);
                 }
             }
-            
+
             return result;
         }
-        
+
     private:
         static void hash_combine(size_t& seed, size_t value)
         {

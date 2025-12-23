@@ -75,7 +75,6 @@ public:
     bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
 
 private:
-    Result GetDeviceInfo() noexcept;
     Result ImportDeviceInfo(const std::string &info) noexcept;
     Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
     static void RollbackIpcMemory(void *addresses[], uint32_t count);

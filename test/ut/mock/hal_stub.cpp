@@ -9,13 +9,14 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
-
 #include <cstdint>
 #include <cstddef>
+#include "dl_hal_api.h"
 
 constexpr int32_t RETURN_OK = 0;
 constexpr int32_t RETURN_ERROR = -1;
 constexpr uint64_t baseAddr = 0x10000000000;
+constexpr uint32_t HYBM_SQCQ_DEPTH = 2048U;
 
 extern "C" {
 int *g_devmm_mem_dev;
@@ -108,5 +109,65 @@ void devmm_virt_normal_heap_update_info(void *a, void *b, void *c, void *d, uint
 void *devmm_va_to_heap(uint64_t a)
 {
     return nullptr;
+}
+
+thread_local uint64_t g_stubTaskNum = 0;
+int halSqTaskSend(uint32_t devId, struct halTaskSendInfo *info)
+{
+    g_stubTaskNum++;
+    return 0;
+}
+
+int halCqReportRecv(uint32_t devId, struct halReportRecvInfo *info)
+{
+    return 0;
+}
+
+int halSqCqAllocate(uint32_t devId, struct halSqCqInputInfo *in, struct halSqCqOutputInfo *out)
+{
+    return 0;
+}
+
+int halSqCqFree(uint32_t devId, struct halSqCqFreeInfo *info)
+{
+    return 0;
+}
+
+int halResourceIdAlloc(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceIdOutputInfo *out)
+{
+    return 0;
+}
+
+int halResourceIdFree(uint32_t devId, struct halResourceIdInputInfo *in)
+{
+    return 0;
+}
+
+int halResourceConfig(uint32_t devId, struct halResourceIdInputInfo *in, struct halResourceConfigInfo *para)
+{
+    return 0;
+}
+
+int halSqCqQuery(uint32_t devId, struct halSqCqQueryInfo *info)
+{
+    if (info->prop == DRV_SQCQ_PROP_SQ_HEAD) {
+        info->value[0] = g_stubTaskNum % HYBM_SQCQ_DEPTH;
+    }
+    return 0;
+}
+
+int halHostRegister(void *srcPtr, uint64_t size, uint32_t flag, uint32_t devid, void **dstPtr)
+{
+    return 0;
+}
+
+int halHostUnregisterEx(void *srcPtr, uint32_t devid, uint32_t flag)
+{
+    return 0;
+}
+
+int drvNotifyIdAddrOffset(uint32_t deviceId, struct drvNotifyInfo *drvInfo)
+{
+    return 0;
 }
 }

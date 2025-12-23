@@ -77,11 +77,9 @@ public:
     bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
 
 public:
-    static int SetDeviceInfo(int deviceId) noexcept;
     static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;
 
 protected:
-    Result GetDeviceInfo() noexcept;
     void FreeMemory() noexcept;
 
 protected:

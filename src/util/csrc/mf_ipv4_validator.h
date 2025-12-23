@@ -21,6 +21,7 @@ constexpr uint32_t DG_4 = 4;
 constexpr uint32_t DG_3 = 3;
 constexpr uint32_t DG_2 = 2;
 constexpr uint32_t DG_1 = 1;
+const std::string PROTOCOL_TCP = "tcp://";
 
 class Ipv4PortValidator {
 public:
@@ -224,12 +225,11 @@ private:
 
     bool ParseUrl(const std::string &url)
     {
-        const std::string tcp_prefix = "tcp://";
-        if (url.find(tcp_prefix) != 0) {
+        if (url.find(PROTOCOL_TCP) != 0) {
             return false;
         }
 
-        std::string host_port = url.substr(tcp_prefix.length());
+        std::string host_port = url.substr(PROTOCOL_TCP.length());
 
         size_t colon_pos = host_port.find_last_of(':');
         if (colon_pos == std::string::npos) {

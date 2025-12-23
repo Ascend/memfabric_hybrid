@@ -50,9 +50,8 @@ int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startC
 
     StorePtr tmpStore = nullptr;
     if (startConfigServer) {
-        uint32_t localIpv4;
         std::string localIp;
-        auto ret = GetLocalIpWithTarget(urlExtraction_.ip, localIp, localIpv4);
+        auto ret = GetLocalIpWithTarget(urlExtraction_.ip, localIp);
         SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
         if (localIp == urlExtraction_.ip) {
             tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, true, 0, -1, maxRetry);

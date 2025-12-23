@@ -56,7 +56,6 @@ halSqCqAllocateFunc DlHalApi::pHalSqCqAllocate = nullptr;
 halSqCqFreeFunc DlHalApi::pHalSqCqFree = nullptr;
 halResourceIdAllocFunc DlHalApi::pHalResourceIdAlloc = nullptr;
 halResourceIdFreeFunc DlHalApi::pHalResourceIdFree = nullptr;
-halGetSsidFunc DlHalApi::pHalGetSsid = nullptr;
 halResourceConfigFunc DlHalApi::pHalResourceConfig = nullptr;
 halSqCqQueryFunc DlHalApi::pHalSqCqQuery = nullptr;
 halHostRegisterFunc DlHalApi::pHalHostRegister = nullptr;
@@ -169,7 +168,6 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
     DL_LOAD_SYM(pHalSqCqFree, halSqCqFreeFunc, halHandle, "halSqCqFree");
     DL_LOAD_SYM(pHalResourceIdAlloc, halResourceIdAllocFunc, halHandle, "halResourceIdAlloc");
     DL_LOAD_SYM(pHalResourceIdFree, halResourceIdFreeFunc, halHandle, "halResourceIdFree");
-    DL_LOAD_SYM(pHalGetSsid, halGetSsidFunc, halHandle, "drvMemSmmuQuery");
     DL_LOAD_SYM(pHalResourceConfig, halResourceConfigFunc, halHandle, "halResourceConfig");
     DL_LOAD_SYM(pHalSqCqQuery, halSqCqQueryFunc, halHandle, "halSqCqQuery");
     DL_LOAD_SYM(pHalHostRegister, halHostRegisterFunc, halHandle, "halHostRegister");
@@ -214,7 +212,6 @@ void DlHalApi::CleanupHalApi()
     pHalSqCqFree = nullptr;
     pHalResourceIdAlloc = nullptr;
     pHalResourceIdFree = nullptr;
-    pHalGetSsid = nullptr;
     pHalResourceConfig = nullptr;
     pHalSqCqQuery = nullptr;
     pHalHostRegister = nullptr;

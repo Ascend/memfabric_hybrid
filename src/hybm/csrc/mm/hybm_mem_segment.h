@@ -129,8 +129,9 @@ public:
 
     virtual bool CheckSmdaReaches(uint32_t rankId) const noexcept;
 
+    static Result InitDeviceInfo(int devId);
+
 protected:
-    static Result InitDeviceInfo();
     static bool CanLocalHostReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
     static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
     static void FillSysBootIdInfo() noexcept;

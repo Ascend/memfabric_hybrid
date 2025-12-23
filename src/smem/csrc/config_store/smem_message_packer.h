@@ -21,7 +21,11 @@ namespace ock {
 namespace smem {
 
 constexpr const char *WATCH_RANK_DOWN_KEY = "WATCH_RANK_DOWN_KEY";
+#ifdef UT_ENABLED
+constexpr uint32_t HEARTBEAT_INTERVAL = 100; // ms
+#else
 constexpr uint32_t HEARTBEAT_INTERVAL = 2000; // ms
+#endif
 const uint64_t MAX_KEY_COUNT = 10ULL;
 const uint64_t MAX_KEY_SIZE = 2048ULL;
 const uint64_t MAX_VALUE_COUNT = 10ULL;

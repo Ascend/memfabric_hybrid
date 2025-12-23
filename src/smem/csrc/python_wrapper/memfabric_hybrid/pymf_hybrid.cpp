@@ -175,14 +175,21 @@ public:
     int32_t CopyDataBatch(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts, std::vector<size_t> sizes,
                           uint32_t count, smem_bm_copy_type type, uint32_t flags)
     {
-        void *sources[count];
-        void *destinations[count];
+        void **ptr = new void *[count + count];
+        if (ptr == nullptr) {
+            throw std::runtime_error(std::string("alloc mem failed."));
+        }
+
+        void **sources = ptr;
+        void **destinations = ptr + count;
         for (uint64_t i = 0; i < count; ++i) {
             sources[i] =  reinterpret_cast<void *>(srcs[i]);
             destinations[i] =  reinterpret_cast<void *>(dsts[i]);
         }
         smem_batch_copy_params batch_params = {sources, destinations, sizes.data(), count};
-        return smem_bm_copy_batch(handle_, &batch_params, type, flags);
+        auto ret = smem_bm_copy_batch(handle_, &batch_params, type, flags);
+        delete[] ptr;
+        return ret;
     }
 
     static int Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
@@ -537,7 +544,7 @@ void DefineBmClass(py::module_ &m)
 Initialize smem big memory library.
 
 Arguments:
-    store_url(str):   configure store url for control, e.g. tcp://ip:port or tcp6://[ip]:port
+    store_url(str):   configure store url for control, e.g. tcp://ip:port or tcp://[ip]:port
     world_size(int):  number of guys participating
     device_id(int):   device id
     config(BmConfig): extract config

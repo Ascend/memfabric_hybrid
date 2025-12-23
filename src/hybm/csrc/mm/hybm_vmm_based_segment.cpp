@@ -251,7 +251,6 @@ Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, 
     ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
     BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
 
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(GetDeviceInfo(), "get device info failed.");
     info.devId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? DRAM_SLICE_EXPORT_INFO_MAGIC : HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
@@ -476,16 +475,4 @@ bool HybmVmmBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint3
 bool HybmVmmBasedSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
 {
     return true;
-}
-
-Result HybmVmmBasedSegment::GetDeviceInfo() noexcept
-{
-    if (options_.devId < 0) {
-        return BM_INVALID_PARAM;
-    }
-
-    if (InitDeviceInfo() != BM_OK) {
-        return BM_ERROR;
-    }
-    return BM_OK;
 }

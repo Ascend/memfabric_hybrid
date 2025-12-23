@@ -9,7 +9,6 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
-
 #include <cstdint>
 #include <cstddef>
 
@@ -73,6 +72,9 @@ int32_t aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, ui
 int32_t aclrtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
                          void *stream)
 {
+    if (stream != nullptr) {
+        *reinterpret_cast<uint64_t *>(stream) += 1;
+    }
     return RETURN_OK;
 }
 
@@ -133,8 +135,46 @@ int32_t rtIpcOpenMemory(void **ptr, const char *name)
     return RETURN_OK;
 }
 
+int32_t aclrtCreateStreamWithConfig(void **stream, uint32_t prot, uint32_t config)
+{
+    return 0;
+}
+
+int32_t aclrtMallocHost(void **ptr, size_t count)
+{
+    (*ptr) = NULL;
+    return 0;
+}
+
+int32_t aclrtFreeHost(void *ptr)
+{
+    return 0;
+}
+
 int32_t rtIpcCloseMemory(const void *ptr)
 {
-    return RETURN_OK;
+    return 0;
+}
+
+char *aclrtGetSocName()
+{
+    static char soc[] = "Ascend910_93";
+    return soc;
+}
+
+int32_t rtEnableP2P(uint32_t devIdDes, uint32_t phyIdSrc, uint32_t flag)
+{
+    return 0;
+}
+
+int32_t rtDisableP2P(uint32_t devIdDes, uint32_t phyIdSrc)
+{
+    return 0;
+}
+
+int32_t rtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t * const logicDevId)
+{
+    *logicDevId = userDevId;
+    return 0;
 }
 }

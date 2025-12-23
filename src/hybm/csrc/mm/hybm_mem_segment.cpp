@@ -47,13 +47,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
         return nullptr;
     }
 
-    auto ret = HybmDevLegacySegment::SetDeviceInfo(options.devId);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HybmDevLegacySegment::GetDeviceId with devId: " << options.devId << " failed: " << ret);
-        return nullptr;
-    }
-
-    ret = MemSegment::InitDeviceInfo();
+    auto ret = MemSegment::InitDeviceInfo(options.devId);
     if (ret != BM_OK) {
         BM_LOG_ERROR("MemSegment::InitDeviceInfo failed: " << ret);
         return nullptr;
@@ -90,17 +84,18 @@ bool MemSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
     return false;
 }
 
-Result MemSegment::InitDeviceInfo()
+Result MemSegment::InitDeviceInfo(int devId)
 {
 #if XPU_TYPE != XPU_NPU
     return BM_OK;
 #endif
     if (deviceInfoReady_) {
-        return BM_OK;
+        return (deviceId_ == devId ? BM_OK : BM_INVALID_PARAM);
     }
 
     FillSysBootIdInfo();
 
+    deviceId_ = devId;
     auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
     if (ret != 0) {
         BM_LOG_ERROR("get device id failed: " << ret);

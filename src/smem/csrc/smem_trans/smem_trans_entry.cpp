@@ -201,16 +201,17 @@ static std::string uniqueToString(const WorkerId& unique)
 }
 
 Result SmemTransEntry::SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr,
-                                    size_t dataSize, smem_bm_copy_type opcode)
+                                    size_t dataSize, smem_bm_copy_type opcode, void *stream)
 {
     SM_VALIDATE_RETURN(localAddr != nullptr, "invalid localAddr, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(remoteAddr != nullptr, "invalid remoteAddr, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dataSize != 0, "invalid dataSize, which is 0", SM_INVALID_PARAM);
-    return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode);
+    return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode, stream);
 }
 
 Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
-                                         const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode)
+                                         const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode,
+                                         void *stream)
 {
     SM_VALIDATE_RETURN(localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
@@ -251,17 +252,19 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
         mappedAddress[i] =
             (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
     }
+
+    uint32_t flag = (stream != nullptr) ? ASYNC_COPY_FLAG : 0;
     switch (opcode) {
         case SMEMB_COPY_L2G:
             {
                 hybm_batch_copy_params copyParams = {localAddrs, mappedAddress.data(), dataSizes, batchSize};
-                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, nullptr, 0);
+                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, stream, flag);
             }
             break;
         case SMEMB_COPY_G2L:
             {
                 hybm_batch_copy_params copyParams = {mappedAddress.data(), localAddrs, dataSizes, batchSize};
-                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, nullptr, 0);
+                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, stream, flag);
             }
             break;
         default:
@@ -277,12 +280,7 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
 bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port)
 {
     UrlExtraction extraction;
-    int ret = -1;
-    if (name.find('.') != std::string::npos) {
-        ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
-    } else {
-        ret = extraction.ExtractIpPortFromUrl(std::string("tcp6://").append(name));
-    }
+    int ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
     if (ret != 0) {
         SM_LOG_ERROR("parse name failed: " << ret);
         return false;
@@ -330,7 +328,7 @@ Result SmemTransEntry::StartWatchConnectThread()
 
 Result SmemTransEntry::WatchConnectTaskOneLoop()
 {
-    if (!storeHelper_.CheckServerStatus()) { // ¼ì²éserver¶ËÊÇ·ñÕý³£Á¬½Ó
+    if (!storeHelper_.CheckServerStatus()) {
         auto status = storeHelper_.ReConnect();
         if (status == SM_RECONNECT) {
             storeHelper_.AlterServerStatus(true);

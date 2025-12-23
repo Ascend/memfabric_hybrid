@@ -150,6 +150,35 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
  */
 int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
                               const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize);
+
+/**
+ * @brief submit read task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddr        [in] Pointer to the start address of local received data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddr       [in] Pointer to the start address of remote data to be read
+ * @param dataSize         [in] Number of bytes for single read operation
+ * @param stream           [in] acl rt stream
+ * @return 0 if successful
+ */
+int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
+                               const void *remoteAddr, size_t dataSize, void *stream);
+
+/**
+ * @brief submit write task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddr        [in] Pointer to the start address of local source data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddr       [in] Pointer to the start address of remote target storage
+ * @param dataSize         [in] data size to be transferred
+ * @param stream           [in] acl rt stream
+ * @return 0 if successful
+ */
+int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
+                                void *remoteAddr, size_t dataSize, void *stream);
+
 #ifdef __cplusplus
 }
 #endif

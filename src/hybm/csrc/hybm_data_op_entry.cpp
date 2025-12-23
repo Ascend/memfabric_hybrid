@@ -113,6 +113,5 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
             return BM_INVALID_PARAM;
         }
     }
-
     return entity->BatchCopyData(*params, direction, stream, flags);
 }

@@ -58,13 +58,13 @@ int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LD, ret);
             break;
         }
@@ -82,31 +82,31 @@ int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GH);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GH, ret);
             break;
         }
@@ -124,7 +124,7 @@ int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LD, ret);
             break;
         }
@@ -151,7 +151,7 @@ int HostDataOpSDMA::CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t count,
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(gvaAddr, copyDevice, count);
+    auto result = CopyG2G(gvaAddr, copyDevice, count, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -170,7 +170,7 @@ int HostDataOpSDMA::CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t count,
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(copyDevice, gvaAddr, count);
+    auto result = CopyG2G(copyDevice, gvaAddr, count, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -194,13 +194,13 @@ int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LD, ret);
             break;
         }
@@ -218,25 +218,25 @@ int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
@@ -254,13 +254,13 @@ int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GH_ASYNC);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GH_ASYNC, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LD_ASYNC);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LD_ASYNC, ret);
             break;
         }
@@ -306,7 +306,7 @@ int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, 
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(destVA, copyDevice, length);
+    auto result = CopyG2G(destVA, copyDevice, length, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -326,7 +326,7 @@ int HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, 
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(copyDevice, srcVA, length);
+    auto result = CopyG2G(copyDevice, srcVA, length, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -419,7 +419,7 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
     sqe->dstOffsetHigh = 0U;
 }
 
-int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexcept
+int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
 {
     StreamTask task{};
     InitG2GStreamTask(task);
@@ -443,9 +443,12 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count) noexc
     return BM_OK;
 }
 
-int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) noexcept
+int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
 {
-    BM_LOG_DEBUG("CopyG2GAsync src:" << srcVA << " destVA:" << destVA << " length:" << count);
+    BM_LOG_DEBUG("CopyG2GAsync src:" << srcVA << " destVA:" << destVA << " length:" << count << " st:" << stream);
+    if (stream != nullptr) { // submit task into acl stream
+        return DlAclApi::AclrtMemcpyAsync(destVA, count, srcVA, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+    }
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -467,8 +470,7 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count) 
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
-                                 const uint64_t *counts, uint32_t batchSize) noexcept
+int HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     int32_t ret = 0;
     int32_t asyncRet = 0;
@@ -477,7 +479,8 @@ int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
     uint64_t len = 0U;
 
     auto asyncFunc = [&]() {
-        asyncRet = CopyG2GAsync(reinterpret_cast<void *>(dest), reinterpret_cast<void *>(src), len);
+        asyncRet = CopyG2GAsync(reinterpret_cast<void *>(dest), reinterpret_cast<void *>(src), len,
+                                (options.flags & ASYNC_COPY_FLAG) ? options.stream : nullptr);
         if (asyncRet != 0) {
             BM_LOG_ERROR("BatchCopyG2G failed:" << asyncRet << " src:" << src << " dest:" << dest << " length:" << len);
             ret = asyncRet;
@@ -485,10 +488,10 @@ int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
         return;
     };
 
-    for (auto i = 0U; i < batchSize; i++) {
-        uint64_t srcAddr = reinterpret_cast<uint64_t>(srcVAs[i]);
-        uint64_t destAddr = reinterpret_cast<uint64_t>(destVAs[i]);
-        uint64_t count = counts[i];
+    for (auto i = 0U; i < params.batchSize; i++) {
+        uint64_t srcAddr = reinterpret_cast<uint64_t>(params.sources[i]);
+        uint64_t destAddr = reinterpret_cast<uint64_t>(params.destinations[i]);
+        uint64_t count = params.dataSizes[i];
 
         if (len > 0 && src + len == srcAddr && dest + len == destAddr) {
             len += count;
@@ -504,12 +507,14 @@ int HostDataOpSDMA::BatchCopyG2G(void **destVAs, void **srcVAs,
     }
     asyncFunc();
 
-    TP_TRACE_BEGIN(TP_HYBM_SDMA_WAIT);
-    asyncRet = Wait(0);
-    TP_TRACE_END(TP_HYBM_SDMA_WAIT, ret);
-    if (asyncRet != 0) {
-        BM_LOG_ERROR("BatchCopyG2G wait copy failed:" << asyncRet);
-        ret = asyncRet;
+    if (!(options.flags & ASYNC_COPY_FLAG)) {
+        TP_TRACE_BEGIN(TP_HYBM_SDMA_WAIT);
+        asyncRet = Wait(0);
+        TP_TRACE_END(TP_HYBM_SDMA_WAIT, ret);
+        if (asyncRet != 0) {
+            BM_LOG_ERROR("BatchCopyG2G wait copy failed:" << asyncRet);
+            ret = asyncRet;
+        }
     }
     return ret;
 }
@@ -531,25 +536,25 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LD_TO_GH);
-            ret = BatchCopyG2G(params.destinations, params.sources, params.dataSizes, params.batchSize);
+            ret = BatchCopyG2G(params, options);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_LD);
-            ret = BatchCopyG2G(params.destinations, params.sources, params.dataSizes, params.batchSize);
+            ret = BatchCopyG2G(params, options);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_LD, ret);
             break;
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LD_TO_GD);
-            ret = BatchCopyG2G(params.destinations, params.sources, params.dataSizes, params.batchSize);
+            ret = BatchCopyG2G(params, options);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GD_TO_LD);
-            ret = BatchCopyG2G(params.destinations, params.sources, params.dataSizes, params.batchSize);
+            ret = BatchCopyG2G(params, options);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GD_TO_LD, ret);
             break;
         }
@@ -569,7 +574,7 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
         }
         default:
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_G_TO_G);
-            ret = BatchCopyG2G(params.destinations, params.sources, params.dataSizes, params.batchSize);
+            ret = BatchCopyG2G(params, options);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_G_TO_G, ret);
     }
     return ret;

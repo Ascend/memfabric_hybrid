@@ -191,7 +191,8 @@ SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, co
         return result;
     }
 
-    return entry->SyncTransfer(const_cast<void*>(localAddr), remoteUniqueId, remoteAddr, dataSize, SMEMB_COPY_L2G);
+    return entry->SyncTransfer(const_cast<void*>(localAddr), remoteUniqueId, remoteAddr, dataSize,
+                               SMEMB_COPY_L2G, nullptr);
 }
 
 SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
@@ -210,7 +211,7 @@ SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAd
     }
 
     return entry->BatchSyncTransfer(const_cast<void**>(localAddrs), remoteUniqueId, remoteAddrs, dataSizes,
-                                    batchSize, SMEMB_COPY_L2G);
+                                    batchSize, SMEMB_COPY_L2G, nullptr);
 }
 
 SMEM_API int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
@@ -228,7 +229,8 @@ SMEM_API int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const cha
         return result;
     }
 
-    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void*>(remoteAddr), dataSize, SMEMB_COPY_G2L);
+    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void*>(remoteAddr), dataSize,
+                               SMEMB_COPY_G2L, nullptr);
 }
 
 SMEM_API int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
@@ -247,5 +249,45 @@ SMEM_API int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], 
     }
 
     return entry->BatchSyncTransfer(localAddrs, remoteUniqueId, const_cast<void**>(remoteAddrs),
-                                    dataSizes, batchSize, SMEMB_COPY_G2L);
+                                    dataSizes, batchSize, SMEMB_COPY_G2L, nullptr);
+}
+
+SMEM_API int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
+                                         void *remoteAddr, size_t dataSize, void *stream)
+{
+    SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(remoteUniqueId != nullptr, "invalid remoteUniqueId, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(stream != nullptr, "invalid stream, which is null", SM_INVALID_PARAM);
+
+    /* get entry by ptr */
+    SmemTransEntryPtr entry;
+    auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (result != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
+        return result;
+    }
+
+    return entry->SyncTransfer(const_cast<void*>(localAddr), remoteUniqueId, remoteAddr, dataSize,
+                               SMEMB_COPY_L2G, stream);
+}
+
+SMEM_API int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
+                                        const void *remoteAddr, size_t dataSize, void *stream)
+{
+    SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(remoteUniqueId != nullptr, "invalid remoteUniqueId, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(stream != nullptr, "invalid stream, which is null", SM_INVALID_PARAM);
+
+    /* get entry by ptr */
+    SmemTransEntryPtr entry;
+    auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (result != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
+        return result;
+    }
+
+    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void*>(remoteAddr), dataSize,
+                               SMEMB_COPY_G2L, stream);
 }

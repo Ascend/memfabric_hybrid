@@ -85,7 +85,7 @@ add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wf
 
 if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
     #add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
-    add_compile_options(-fstack-protector-strong)
+    add_compile_options(-fstack-protector-strong -Wstack-usage=16384 -Werror)
     add_compile_options(-Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -fPIE -fPIC -ftrapv -s)
     add_compile_options(-D_FORTIFY_SOURCE=2 -O2)
     add_link_options(-Wl,-z,noexecstack,-z,relro,-z,now)

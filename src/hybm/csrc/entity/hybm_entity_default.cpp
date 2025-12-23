@@ -675,13 +675,10 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     }
 
     int32_t ret = BM_ERROR;
-    if (stream == nullptr) {
-        stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
-    }
     // 0. sdma 不需要rankId
     ExtOptions sOptions{};
-    sOptions.flags = flags;
     sOptions.stream = stream;
+    sOptions.flags = flags;
     if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0 && sdmaDataOperator_ != nullptr) {
         if (!options_.globalUniqueAddress) {
             for (auto i = 0U; i < params.batchSize; i++) {
@@ -1008,7 +1005,7 @@ Result MemEntityDefault::InitHbmSegment()
         BM_LOG_ERROR("Failed to create hbm segment");
         return BM_ERROR;
     }
-    return HybmDevLegacySegment::SetDeviceInfo(HybmGetInitDeviceId());
+    return BM_OK;
 }
 
 Result MemEntityDefault::InitDramSegment()
@@ -1033,8 +1030,7 @@ Result MemEntityDefault::InitDramSegment()
         BM_LOG_ERROR("Failed to create dram segment");
         return BM_ERROR;
     }
-
-    return HybmDevLegacySegment::SetDeviceInfo(HybmGetInitDeviceId());
+    return BM_OK;
 }
 
 Result MemEntityDefault::InitTransManager()

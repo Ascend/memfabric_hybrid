@@ -112,9 +112,8 @@ int32_t SmemBmEntryManager::PrepareStore()
 
 int32_t SmemBmEntryManager::RacingForStoreServer()
 {
-    uint32_t localIpv4;
     std::string localIp;
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp, localIpv4);
+    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp);
     SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
     if (localIp != storeUrlExtraction_.ip) {
         return SM_OK;

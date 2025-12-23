@@ -217,27 +217,30 @@ int32_t SmemShmEntry::InitStepExchangeSlice()
         return ret;
     }
 
-    hybm_exchange_info allExInfo[options_.rankCount];
+    hybm_exchange_info *allExInfo = new hybm_exchange_info[options_.rankCount];
+    SM_ASSERT_RETURN(allExInfo != nullptr, SM_MALLOC_FAILED);
     ret = globalGroup_->GroupAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
                                        sizeof(hybm_exchange_info) * options_.rankCount);
     if (ret != 0) {
         SM_LOG_ERROR("hybm gather export slice failed, result: " << ret);
+        delete[] allExInfo;
         return ret;
     }
 
     ret = hybm_import(entity_, allExInfo, options_.rankCount, nullptr, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import failed, result: " << ret);
+        delete[] allExInfo;
         return ret;
     }
 
     ret = globalGroup_->GroupBarrier();
     if (ret != 0) {
         SM_LOG_ERROR("hybm barrier for slice failed, result: " << ret);
-        return ret;
     }
 
-    return SM_OK;
+    delete[] allExInfo;
+    return ret;
 }
 
 int32_t SmemShmEntry::InitStepExchangeEntity()
@@ -254,27 +257,29 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
         return SM_OK;
     }
 
-    hybm_exchange_info allExInfo[options_.rankCount];
+    hybm_exchange_info *allExInfo = new hybm_exchange_info[options_.rankCount];
     ret = globalGroup_->GroupAllGather((char *)&exInfo, sizeof(hybm_exchange_info), (char *)allExInfo,
                                        sizeof(hybm_exchange_info) * options_.rankCount);
     if (ret != 0) {
         SM_LOG_ERROR("hybm gather export entity failed, result: " << ret);
+        delete[] allExInfo;
         return ret;
     }
 
     ret = hybm_import(entity_, allExInfo, options_.rankCount, nullptr, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import entity failed, result: " << ret);
+        delete[] allExInfo;
         return ret;
     }
 
     ret = globalGroup_->GroupBarrier();
     if (ret != 0) {
         SM_LOG_ERROR("hybm barrier for entity failed, result: " << ret);
-        return ret;
     }
 
-    return SM_OK;
+    delete[] allExInfo;
+    return ret;
 }
 
 int32_t SmemShmEntry::InitStepMap()

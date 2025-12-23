@@ -45,10 +45,10 @@ private:
     int CopyGH2LH(void* destVA, const void* srcVA, uint64_t length, void* stream) noexcept;
 
     void InitG2GStreamTask(StreamTask &task) noexcept;
-    int CopyG2G(void *destVA, const void *srcVA, size_t count) noexcept;
-    int BatchCopyG2G(void *destVAs[], void *srcVAs[], const uint64_t counts[], uint32_t batchSize) noexcept;
+    int CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
+    int BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
 
-    int CopyG2GAsync(void *destVA, const void *srcVA, size_t count) noexcept;
+    int CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
 
     int BatchCopyLH2GD(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[],
                        uint32_t batchSize, void *stream) noexcept;

@@ -45,7 +45,7 @@ public:
 #elif XPU_TYPE == XPU_GPU
         return DlCudaApi::CleanupLibrary();
 #endif
-        return BM_OK;
+        return;
     }
 
     static inline Result SetDevice(int device)
