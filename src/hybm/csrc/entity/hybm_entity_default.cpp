@@ -623,9 +623,7 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     }
 
     int32_t ret = BM_OK;
-    if (stream == nullptr) {
-        stream = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
-    }
+    HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());  // do set device
 
     ExtOptions options{};
     options.flags = flags;
@@ -675,6 +673,7 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     }
 
     int32_t ret = BM_ERROR;
+    HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());  // do set device
     // 0. sdma 不需要rankId
     ExtOptions sOptions{};
     sOptions.stream = stream;
