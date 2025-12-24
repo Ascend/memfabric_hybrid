@@ -106,7 +106,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
       
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
       
-- 性能测试参考 [benchmark](./test/example/bm/BmBenchmark/README.md)
+ 👆 性能测试参考 [benchmark](./example/bm/BmBenchmark/README.md)
 
 ## 🔍目录结构
 
@@ -139,18 +139,21 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ```
 
 ## 🔜 Incoming Features
+⬇️ 规划中
+- A5
+- A5 + K5 over UB
 
-以下是本项目未来计划开发以及正在开发的功能：
+➡️ 支持中
+- K5
+- device_rdma + device_sdma 异构网络池化
+- device_rdma + host_rdma 异构网络池化
 
-- [ ] (规划中)
-- [ ] (开发中)
-- [ ] (已完成 ✅)
 
 ## 🚀快速入门
 
 请访问以下文档获取简易教程。
 
-- [构建](./doc/build.md)：介绍组件编译和安装教程。
+- [编译构建](./doc/build.md)：介绍组件编译和安装教程。
 
 - [样例执行](./example/examples.md)：介绍如何端到端执行样例代码，包括C++和Python样例。
 
