@@ -1,5 +1,7 @@
 > 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/smem/csrc/python_wrapper/memfabric_hybrid/pymf_hybrid.cpp`。
 
+[TOC]
+
 #### C接口
 安装完成run包并source安装路径下的set_env.sh后，会添加memfabric_hybrid安装路径的环境变量MEMFABRIC_HYBRID_HOME_PATH
 
@@ -631,6 +633,40 @@
     |dataSizes[]|批量传输数据大小列表|
     |batchSize|批量传输数据数量|
     |返回值|成功返回0，其他为错误码|	
+
+1. 异步写提交接口
+
+    ```c
+    int32_t smem_trans_write_submit(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
+                                    void *destAddress, size_t dataSize, void *stream)
+    ```
+
+   | 参数/返回值       | 含义                   |
+   |--------------|----------------------|
+   | handle       | TRANS对象handle        |
+   | srcAddress   | 源地址的起始地址指针           |
+   | destUniqueId | 目的TRANS实例对应的标识       |
+   | destAddress  | 目的地址的起始地址指针          |
+   | dataSize     | 传输数据大小               |
+   | stream       | 需要将任务提交到的aclrtStream |
+   | 返回值          | 成功返回0，其他为错误码         |
+
+1. 异步读提交接口
+
+    ```c
+    int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
+                                   const void *remoteAddr, size_t dataSize, void *stream)
+    ```
+
+   | 参数/返回值       | 含义                   |
+   |--------------|----------------------|
+   | handle       | TRANS对象handle        |
+   | remoteAddr   | 源地址的起始地址指针           |
+   | destUniqueId | 目的TRANS实例对应的标识       |
+   | localAddr    | 目的地址的起始地址指针          |
+   | dataSize     | 传输数据大小               |
+   | stream       | 需要将任务提交到的aclrtStream |
+   | 返回值          | 成功返回0，其他为错误码         |
 
 ##### 环境变量
 |环境变量|含义|

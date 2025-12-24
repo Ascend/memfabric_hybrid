@@ -64,6 +64,18 @@ public:
                               std::vector<uintptr_t> peer_buffer_addresses,
                               std::vector<size_t> lengths);
 
+    int TransferAsyncReadSubmit(const char *destUniqueId,
+                                uintptr_t buffer,
+                                uintptr_t peer_buffer_address,
+                                size_t length,
+                                uintptr_t stream);
+
+    int TransferAsyncWriteSubmit(const char *destUniqueId,
+                                 uintptr_t buffer,
+                                 uintptr_t peer_buffer_address,
+                                 size_t length,
+                                 uintptr_t stream);
+
     int RegisterMemory(uintptr_t buffer_addr, size_t capacity);
 
     // must be called before TransferAdapterPy::~TransferAdapterPy()

@@ -159,7 +159,47 @@ int TransferAdapterPy::TransferSyncRead(const char *destUniqueId,
     // 调用底层SMEM API
     int ret = smem_trans_read(handle_, srcAddress, destUniqueId, destAddress, length);
     if (ret != 0) {
-        ADAPTER_LOG_ERROR("SMEM API smem_trans_write happen error, ret=" << ret);
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_read happen error, ret=" << ret);
+    }
+    return ret;
+}
+
+int TransferAdapterPy::TransferAsyncReadSubmit(const char *destUniqueId,
+                                               uintptr_t buffer,
+                                               uintptr_t peer_buffer_address,
+                                               size_t length,
+                                               uintptr_t stream)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    // 将uintptr_t类型的地址转换为指针类型
+    void *srcAddress = reinterpret_cast<void*>(buffer);
+    const void *destAddress = reinterpret_cast<const void*>(peer_buffer_address);
+    void *st = reinterpret_cast<void*>(stream);
+
+    // 调用底层SMEM API
+    int ret = smem_trans_read_submit(handle_, srcAddress, destUniqueId, destAddress, length, st);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_read_submit happen error, ret=" << ret);
+    }
+    return ret;
+}
+
+int TransferAdapterPy::TransferAsyncWriteSubmit(const char *destUniqueId,
+                                                uintptr_t buffer,
+                                                uintptr_t peer_buffer_address,
+                                                size_t length,
+                                                uintptr_t stream)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    // 将uintptr_t类型的地址转换为指针类型
+    const void *srcAddress = reinterpret_cast<const void*>(buffer);
+    void *destAddress = reinterpret_cast<void*>(peer_buffer_address);
+    void *st = reinterpret_cast<void*>(stream);
+
+    // 调用底层SMEM API
+    int ret = smem_trans_write_submit(handle_, srcAddress, destUniqueId, destAddress, length, st);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_write_submit happen error, ret=" << ret);
     }
     return ret;
 }
@@ -301,6 +341,12 @@ PYBIND11_MODULE(_pymf_transfer, m) {
                  py::arg("peer_buffers"), py::arg("lengths"))
             .def("transfer_sync_read", &TransferAdapterPy::TransferSyncRead, py::call_guard<py::gil_scoped_release>(),
                  py::arg("dest_session"), py::arg("buffer"), py::arg("peer_buffer"), py::arg("length"))
+            .def("transfer_async_write_submit", &TransferAdapterPy::TransferAsyncWriteSubmit,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffer"),
+                 py::arg("peer_buffer"), py::arg("length"), py::arg("stream"))
+            .def("transfer_async_read_submit", &TransferAdapterPy::TransferAsyncReadSubmit,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffer"),
+                 py::arg("peer_buffer"), py::arg("length"), py::arg("stream"))
             .def("batch_transfer_sync_read", &TransferAdapterPy::BatchTransferSyncRead,
                  py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
                  py::arg("peer_buffers"), py::arg("lengths"))

@@ -11,6 +11,8 @@ help(mf.bm)    #查看big memory接口介绍
 help(mf.shm)   #查看share memory接口介绍
 ```
 
+[TOC]
+
 ### 1）公共接口
 ### 接口函数
 1. 初始化运行环境
@@ -243,6 +245,8 @@ help(mf.shm)   #查看share memory接口介绍
         def get_rpc_port() -> int:
         def transfer_sync_write(destflag: str, buffer, peer_buffer_address, length) -> int:
         def batch_transfer_sync_write(destflag: str, buffers, peer_buffer_addresses, lengths) -> int:
+        def transfer_async_write_submit(destflag: str, buffer, peer_buffer_address, length, stream) -> int:
+        def transfer_async_read_submit(destflag: str, buffer, peer_buffer_address, length, stream) -> int:
         def register_memory(buffer_addr, capacity) -> int:
         def unregister_memory(buffer_addr) -> int:
         def batch_register_memory(buffer_addrs, capacities) -> int:
@@ -263,6 +267,8 @@ help(mf.shm)   #查看share memory接口介绍
     |transfer_sync_write参数buffer|源地址的起始地址指针|
     |transfer_sync_write参数peer_buffer_address|目的地址的起始地址指针|
     |transfer_sync_write参数length|传输数据大小|
+    |transfer_async_write_submit方法|异步写任务提交接口,成功返回0，其他为错误码|
+    |transfer_async_write_submit参数stream|需要提交到的acl.rt.stream|
     |batch_transfer_sync_write方法|批量同步写接口，成功返回0，其他为错误码|
     |batch_transfer_sync_write参数destflag|目的TRANS实例对应的标识|
     |batch_transfer_sync_write参数buffer|源地址的起始地址指针列表|
