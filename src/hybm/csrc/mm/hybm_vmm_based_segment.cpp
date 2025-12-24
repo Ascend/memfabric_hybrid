@@ -16,7 +16,6 @@
 #include "hybm_vmm_based_segment.h"
 #include "dl_acl_api.h"
 #include "hybm_types.h"
-#include "mf_numa_util.h"
 #include "mf_num_util.h"
 
 using namespace ock::mf;
