@@ -160,6 +160,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.hostVASpace = localDRAMSize;
     options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
+    options.flags = flags;
     bzero(options.transUrl, sizeof(options.transUrl));
 
     smem_tls_config hcomTlsConfig = manager.GetHcomTlsOption();

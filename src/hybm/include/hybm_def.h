@@ -86,6 +86,11 @@ typedef struct {
     char decrypterLibPath[HYBM_TLS_PATH_SIZE];
 } hybm_tls_config;
 
+#define HYBM_PERFORMANCE_MODE_FLAG_INDEX 7
+#define HYBM_PERFORMANCE_MODE_FLAG_LEN 1
+#define HYBM_BIND_NUMA_FLAG_INDEX 0
+#define HYBM_BIND_NUMA_FLAG_LEN 7
+
 typedef struct {
     hybm_type bmType;
     hybm_mem_type memType;
@@ -99,6 +104,7 @@ typedef struct {
     uint64_t preferredGVA;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
     hybm_role_type role;
+    uint32_t flags;
     char transUrl[64];
     hybm_tls_config tlsOption;
 } hybm_options;

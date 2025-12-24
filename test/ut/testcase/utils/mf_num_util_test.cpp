@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "mf_num_util.h"
+#include "hybm_def.h"
 
 using namespace ock::mf;
 
@@ -56,4 +57,18 @@ TEST_F(MFNumUtilTest, IsDigit_1)
 
     std::string str7 = "1234";
     EXPECT_TRUE(ock::mf::NumUtil::IsDigit(str7));
+}
+
+TEST_F(MFNumUtilTest, ExtractBits)
+{
+    uint32_t flags = 0b101010101010101010101010101010;
+
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, UINT32_WIDTH, 1), UINT32_MAX);
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, 0, UINT32_WIDTH), UINT32_MAX);
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, 0, 0), UINT32_MAX);
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, 1, UINT32_WIDTH), UINT32_MAX);
+
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX,
+        HYBM_PERFORMANCE_MODE_FLAG_LEN), 1);
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_BIND_NUMA_FLAG_INDEX, HYBM_BIND_NUMA_FLAG_LEN), 0b0101010);
 }

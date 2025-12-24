@@ -71,6 +71,15 @@ run包的默认安装根路径为 /usr/local/
 bash memfabric_hybrid-1.0.0_linux_aarch64.run
 source /usr/local/memfabric_hybrid/set_env.sh
 ```
+> 📌 **注意**： A2环境使用DRAM池化需要根据每台机器池化内存的大小来配置大页内存，否则初始化失败
+> 
+> 检查是否配置大页:
+> 
+> ```grep Huge | /proc/meminfo```
+> 
+> 配置大页内存，以配置1024个大页为例
+> 
+> ```echo 1024 > /proc/sys/vm/nr_hugepages```
 
 如果想要自定义安装路径，可以添加--install-path参数
 ```bash
@@ -174,9 +183,9 @@ root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_adapter
     └── libmf_smem.so 
 ```
 在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
-
-memfabric-hybrid 默认开启tls通信加密。如果想关闭，需要主动调用`smem_set_conf_store_tls`接口关闭：
-```c
-int32_t ret = smem_set_conf_store_tls(false, nullptr, 0);
+```bash
+# 检查是否安装memfabric_hybric
+pip show mmefabric_hybrid
+# 手动安装
+pip install memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
 ```
-具体细节详见安全声明章节

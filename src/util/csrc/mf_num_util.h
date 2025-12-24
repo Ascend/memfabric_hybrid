@@ -8,6 +8,7 @@
 #include <limits>
 #include <string>
 #include <cctype>
+#include <cstdint>
 
 namespace ock {
 namespace mf {
@@ -43,6 +44,29 @@ public:
      * @return true if the input is all digits else false
      */
     static bool IsDigit(const std::string& str);
+
+    /**
+    * Extracts a bit field from the given flag value.
+    *
+    * @param flag        The 32-bit source value.
+    * @param startBit    The starting bit position (0-based, 0 = least significant bit).
+    * @param bitLength   The number of bits to extract (1 to 32).
+    * @return            extraction flags value
+    */
+    static uint32_t ExtractBits(uint32_t flag, uint8_t startBit, uint8_t bitLength)
+    {
+        if (startBit >= UINT32_WIDTH) {
+            return UINT32_MAX;
+        }
+        if (bitLength == 0 || bitLength >= UINT32_WIDTH) {
+            return UINT32_MAX;
+        }
+        if (startBit + bitLength > UINT32_WIDTH) {
+            return UINT32_MAX;
+        }
+
+        return (flag >> startBit) & ((1U << bitLength) - 1);
+    }
 };
 
 template <typename T>

@@ -1000,6 +1000,7 @@ Result MemEntityDefault::InitHbmSegment()
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
     segmentOptions.dataOpType = options_.bmDataOpType;
+    segmentOptions.flags = options_.flags;
     hbmSegment_ = MemSegment::Create(segmentOptions, id_);
     if (hbmSegment_ == nullptr) {
         BM_LOG_ERROR("Failed to create hbm segment");
@@ -1022,6 +1023,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.rankId = options_.rankId;
     segmentOptions.rankCnt = options_.rankCount;
     segmentOptions.dataOpType = options_.bmDataOpType;
+    segmentOptions.flags = options_.flags;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         segmentOptions.shared = false;
     }

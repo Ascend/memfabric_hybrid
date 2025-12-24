@@ -73,6 +73,7 @@ struct MemSegmentOptions {
     uint64_t size = 0;
     uint32_t rankId = 0;  // must start from 0 and increase continuously
     uint32_t rankCnt = 0; // total rank count
+    uint32_t flags = 0;
 };
 }
 }
