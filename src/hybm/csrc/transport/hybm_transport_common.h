@@ -73,7 +73,7 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 }
 
 struct TransportMemoryKey {
-    uint64_t keys[12];
+    uint64_t keys[14];
 };
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryKey &key)

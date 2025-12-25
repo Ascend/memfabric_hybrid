@@ -31,10 +31,10 @@ typedef void *smem_bm_t;
 * @brief Smem memory type
 */
 typedef enum {
-    SMEM_MEM_TYPE_LOCAL_DEVICE = 0,    /* memory on local device */
-    SMEM_MEM_TYPE_LOCAL_HOST,          /* memory on local host */
-    SMEM_MEM_TYPE_DEVICE,              /* memory on global device */
-    SMEM_MEM_TYPE_HOST,                /* memory on global host */
+    SMEM_MEM_TYPE_LOCAL_DEVICE = 0, /* memory on local device */
+    SMEM_MEM_TYPE_LOCAL_HOST,       /* memory on local host */
+    SMEM_MEM_TYPE_DEVICE,           /* memory on global device */
+    SMEM_MEM_TYPE_HOST,             /* memory on global host */
 
     SMEM_MEM_TYPE_BUTT
 } smem_bm_mem_type;
@@ -46,6 +46,7 @@ typedef enum {
     SMEMB_DATA_OP_HOST_RDMA = 1U << 1,
     SMEMB_DATA_OP_HOST_TCP = 1U << 2,
     SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3,
+    SMEMB_DATA_OP_HOST_URMA = 1U << 4,
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 
@@ -53,15 +54,15 @@ typedef enum {
 * @brief Data copy direction
 */
 typedef enum {
-    SMEMB_COPY_L2G = 0,              /* copy data from local hbm to global space */
-    SMEMB_COPY_G2L = 1,              /* copy data from global space to local hbm */
-    SMEMB_COPY_G2H = 2,              /* copy data from global space to local host dram */
-    SMEMB_COPY_H2G = 3,              /* copy data from local host dram to global space */
-    SMEMB_COPY_L2GH = 4,              /* copy data from local space to global host space */
-    SMEMB_COPY_GH2L = 5,              /* copy data from global host space to local space */
-    SMEMB_COPY_GH2H = 6,              /* copy data from global host space to host memory */
-    SMEMB_COPY_H2GH = 7,              /* copy data from host memory to global host space */
-    SMEMB_COPY_G2G = 8,               /* copy data from global space to global space */
+    SMEMB_COPY_L2G = 0,  /* copy data from local hbm to global space */
+    SMEMB_COPY_G2L = 1,  /* copy data from global space to local hbm */
+    SMEMB_COPY_G2H = 2,  /* copy data from global space to local host dram */
+    SMEMB_COPY_H2G = 3,  /* copy data from local host dram to global space */
+    SMEMB_COPY_L2GH = 4, /* copy data from local space to global host space */
+    SMEMB_COPY_GH2L = 5, /* copy data from global host space to local space */
+    SMEMB_COPY_GH2H = 6, /* copy data from global host space to host memory */
+    SMEMB_COPY_H2GH = 7, /* copy data from host memory to global host space */
+    SMEMB_COPY_G2G = 8,  /* copy data from global space to global space */
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
@@ -100,8 +101,8 @@ typedef struct {
 } smem_copy_params;
 
 typedef struct {
-    void** sources;
-    void** destinations;
+    void **sources;
+    void **destinations;
     const uint64_t *dataSizes;
     uint32_t batchSize;
 } smem_batch_copy_params;
@@ -110,4 +111,4 @@ typedef struct {
 }
 #endif
 
-#endif  //__MEMFABRIC_SMEM_BM_DEF_H__
+#endif //__MEMFABRIC_SMEM_BM_DEF_H__

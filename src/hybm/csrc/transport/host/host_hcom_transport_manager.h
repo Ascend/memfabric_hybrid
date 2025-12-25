@@ -16,6 +16,8 @@
 #include <mutex>
 #include "hybm_transport_manager.h"
 #include "hcom_service_c_define.h"
+#include "host_hcom_counter_stream.h"
+#include "mf_rwlock.h"
 
 namespace ock {
 namespace mf {
@@ -117,7 +119,12 @@ private:
 
     static void KeyPassEraseCallBack(char *keyPass, int len);
 
+    int PrepareThreadLocalStream();
+
 private:
+    hybm_data_op_type bmOptype_{};
+    ReadWriteLock lock_;
+    static thread_local HcomCounterStreamPtr stream_;
     std::string localNic_{};
     std::string localIp_{};
     Hcom_Service rpcService_{0};

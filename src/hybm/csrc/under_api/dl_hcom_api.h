@@ -26,21 +26,20 @@ using serviceConnectFunc = int (*)(Hcom_Service, const char *, Hcom_Channel *, S
 using serviceDisConnectFunc = int (*)(Hcom_Service, Hcom_Channel);
 using serviceRegisterMemoryRegionFunc = int (*)(Hcom_Service, uint64_t, Service_MemoryRegion *);
 using serviceGetMemoryRegionInfoFunc = int (*)(Service_MemoryRegion, Service_MemoryRegionInfo *);
-using serviceRegisterAssignMemoryRegionFunc = int (*)(Hcom_Service, uintptr_t,
-                                                      uint64_t, Service_MemoryRegion *);
+using serviceRegisterAssignMemoryRegionFunc = int (*)(Hcom_Service, uintptr_t, uint64_t, Service_MemoryRegion *);
 using serviceDestroyMemoryRegionFunc = int (*)(Hcom_Service, Service_MemoryRegion);
-using serviceRegisterChannelBrokerHandlerFunc = void (*)(Hcom_Service, Service_ChannelHandler,
-                                                         Service_ChannelPolicy, uint64_t);
+using serviceRegisterChannelBrokerHandlerFunc = void (*)(Hcom_Service, Service_ChannelHandler, Service_ChannelPolicy,
+                                                         uint64_t);
 using serviceRegisterIdleHandlerFunc = void (*)(Hcom_Service, Service_IdleHandler, uint64_t);
-using serviceRegisterHandlerFunc = void (*)(Hcom_Service, Service_HandlerType, Service_RequestHandler,
-                                            uint64_t);
+using serviceRegisterHandlerFunc = void (*)(Hcom_Service, Service_HandlerType, Service_RequestHandler, uint64_t);
 using serviceAddWorkerGroupFunc = void (*)(Hcom_Service, int8_t, uint16_t, uint32_t, const char *);
 using serviceAddListenerFunc = void (*)(Hcom_Service, const char *, uint16_t);
 using serviceSetConnectLBPolicyFunc = void (*)(Hcom_Service, Service_LBPolicy);
 using serviceSetTlsOptionsFunc = void (*)(Hcom_Service service, bool enableTls, Service_TlsVersion version,
-    Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb, Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb);
-using serviceSetSecureOptionsFunc = void (*)(Hcom_Service, Service_SecType, Hcom_SecInfoProvider,
-                                             Hcom_SecInfoValidator, uint16_t, uint8_t);
+                                          Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb,
+                                          Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb);
+using serviceSetSecureOptionsFunc = void (*)(Hcom_Service, Service_SecType, Hcom_SecInfoProvider, Hcom_SecInfoValidator,
+                                             uint16_t, uint8_t);
 using serviceSetTcpUserTimeOutSecFunc = void (*)(Hcom_Service, uint16_t);
 using serviceSetTcpSendZCopyFunc = void (*)(Hcom_Service, bool);
 using serviceSetDeviceIpMaskFunc = void (*)(Hcom_Service, const char *);
@@ -70,14 +69,15 @@ using contextGetOpCodeFunc = uint64_t (*)(Service_Context);
 using contextGetMessageDataFunc = void *(*)(Service_Context);
 using contextGetMessageDataLenFunc = uint32_t (*)(Service_Context);
 using setExternalLoggerFunc = void (*)(Service_LogHandler);
+using SetUbsMode = void (*)(Service_Context service, UbsHcomServiceUbcMode ubcMode);
+using ImportUrmaSeg = int (*)(Service_Context service, uintptr_t address, uint64_t size, OneSideKey *key);
 
 class DlHcomApi {
 public:
     static Result LoadLibrary();
     static void CleanupLibrary();
 
-    static inline int
-    ServiceCreate(Service_Type t, const char *name, Service_Options options, Hcom_Service *service)
+    static inline int ServiceCreate(Service_Type t, const char *name, Service_Options options, Hcom_Service *service)
     {
         BM_ASSERT_RETURN(gServiceCreate != nullptr, BM_NOT_INITIALIZED);
         return gServiceCreate(t, name, options, service);
@@ -102,7 +102,7 @@ public:
     }
 
     static inline int ServiceConnect(Hcom_Service service, const char *serverUrl, Hcom_Channel *channel,
-                                      Service_ConnectOptions options)
+                                     Service_ConnectOptions options)
     {
         BM_ASSERT_RETURN(gServiceConnect != nullptr, BM_NOT_INITIALIZED);
         return gServiceConnect(service, serverUrl, channel, options);
@@ -114,8 +114,7 @@ public:
         return gServiceDisConnectFunc(service, channel);
     }
 
-    static inline int
-    ServiceRegisterMemoryRegion(Hcom_Service service, uint64_t size, Service_MemoryRegion *mr)
+    static inline int ServiceRegisterMemoryRegion(Hcom_Service service, uint64_t size, Service_MemoryRegion *mr)
     {
         BM_ASSERT_RETURN(gServiceRegisterMemoryRegion != nullptr, BM_NOT_INITIALIZED);
         return gServiceRegisterMemoryRegion(service, size, mr);
@@ -127,8 +126,8 @@ public:
         return gServiceGetMemoryRegionInfo(mr, info);
     }
 
-    static inline int ServiceRegisterAssignMemoryRegion(
-            Hcom_Service service, uintptr_t address, uint64_t size, Service_MemoryRegion *mr)
+    static inline int ServiceRegisterAssignMemoryRegion(Hcom_Service service, uintptr_t address, uint64_t size,
+                                                        Service_MemoryRegion *mr)
     {
         BM_ASSERT_RETURN(gServiceRegisterAssignMemoryRegion != nullptr, BM_NOT_INITIALIZED);
         return gServiceRegisterAssignMemoryRegion(service, address, size, mr);
@@ -141,7 +140,7 @@ public:
     }
 
     static inline void ServiceRegisterChannelBrokerHandler(Hcom_Service service, Service_ChannelHandler h,
-                                                            Service_ChannelPolicy policy, uint64_t usrCtx)
+                                                           Service_ChannelPolicy policy, uint64_t usrCtx)
     {
         BM_ASSERT_RET_VOID(gServiceRegisterChannelBrokerHandler != nullptr);
         gServiceRegisterChannelBrokerHandler(service, h, policy, usrCtx);
@@ -153,17 +152,15 @@ public:
         gServiceRegisterIdleHandler(service, h, usrCtx);
     }
 
-    static inline void
-    ServiceRegisterHandler(Hcom_Service service, Service_HandlerType t, Service_RequestHandler h,
-                            uint64_t usrCtx)
+    static inline void ServiceRegisterHandler(Hcom_Service service, Service_HandlerType t, Service_RequestHandler h,
+                                              uint64_t usrCtx)
     {
         BM_ASSERT_RET_VOID(gServiceRegisterHandler != nullptr);
         gServiceRegisterHandler(service, t, h, usrCtx);
     }
 
-    static inline void
-    ServiceAddWorkerGroup(Hcom_Service service, int8_t priority, uint16_t workerGroupId, uint32_t threadCount,
-                           const char *cpuIdsRange)
+    static inline void ServiceAddWorkerGroup(Hcom_Service service, int8_t priority, uint16_t workerGroupId,
+                                             uint32_t threadCount, const char *cpuIdsRange)
     {
         BM_ASSERT_RET_VOID(gServiceAddWorkerGroup != nullptr);
         gServiceAddWorkerGroup(service, priority, workerGroupId, threadCount, cpuIdsRange);
@@ -189,9 +186,9 @@ public:
         gServiceSetTlsOptions(service, enableTls, version, cipherSuite, certCb, priKeyCb, caCb);
     }
 
-    static inline void
-    ServiceSetSecureOptions(Hcom_Service service, Service_SecType secType, Hcom_SecInfoProvider provider,
-                             Hcom_SecInfoValidator validator, uint16_t magic, uint8_t version)
+    static inline void ServiceSetSecureOptions(Hcom_Service service, Service_SecType secType,
+                                               Hcom_SecInfoProvider provider, Hcom_SecInfoValidator validator,
+                                               uint16_t magic, uint8_t version)
     {
         BM_ASSERT_RET_VOID(gServiceSetSecureOptions != nullptr);
         gServiceSetSecureOptions(service, secType, provider, validator, magic, version);
@@ -270,7 +267,7 @@ public:
     }
 
     static inline void ServiceSetHeartBeatOptions(Hcom_Service service, uint16_t idleSec, uint16_t probeTimes,
-                                                   uint16_t intervalSec)
+                                                  uint16_t intervalSec)
     {
         BM_ASSERT_RET_VOID(gServiceSetHeartBeatOptions != nullptr);
         gServiceSetHeartBeatOptions(service, idleSec, probeTimes, intervalSec);
@@ -288,15 +285,15 @@ public:
         return gChannelSend(channel, req, cb);
     }
 
-    static inline int
-    ChannelCall(Hcom_Channel channel, Channel_Request req, Channel_Response *rsp, Channel_Callback *cb)
+    static inline int ChannelCall(Hcom_Channel channel, Channel_Request req, Channel_Response *rsp,
+                                  Channel_Callback *cb)
     {
         BM_ASSERT_RETURN(gChannelCall != nullptr, BM_NOT_INITIALIZED);
         return gChannelCall(channel, req, rsp, cb);
     }
 
-    static inline int
-    ChannelReply(Hcom_Channel channel, Channel_Request req, Channel_ReplyContext ctx, Channel_Callback *cb)
+    static inline int ChannelReply(Hcom_Channel channel, Channel_Request req, Channel_ReplyContext ctx,
+                                   Channel_Callback *cb)
     {
         BM_ASSERT_RETURN(gChannelReply != nullptr, BM_NOT_INITIALIZED);
         return gChannelReply(channel, req, ctx, cb);
@@ -320,8 +317,7 @@ public:
         return gChannelSetFlowControlConfig(channel, opt);
     }
 
-    static inline void
-    ChannelSetChannelTimeOut(Hcom_Channel channel, int16_t oneSideTimeout, int16_t twoSideTimeout)
+    static inline void ChannelSetChannelTimeOut(Hcom_Channel channel, int16_t oneSideTimeout, int16_t twoSideTimeout)
     {
         BM_ASSERT_RET_VOID(gChannelSetChannelTimeOut != nullptr);
         gChannelSetChannelTimeOut(channel, oneSideTimeout, twoSideTimeout);
@@ -373,6 +369,36 @@ public:
     {
         BM_ASSERT_RET_VOID(gSetExternalLogger != nullptr);
         gSetExternalLogger(h);
+    }
+
+    static void SetUbsModeFunc(Service_Context service, UbsHcomServiceUbcMode ubcMode)
+    {
+#if XPU_TYPE == XPU_NONE
+        BM_LOG_INFO("Set ubs mode to " << ubcMode);
+        BM_ASSERT_RET_VOID(gSetUbsMode != nullptr);
+        gSetUbsMode(service, ubcMode);
+#endif
+    }
+
+    static uint32_t ImportUrmaSegFunc(Service_Context service, uintptr_t address, uint64_t size, OneSideKey *key)
+    {
+#if XPU_TYPE == XPU_NONE
+        if (gImportUrmaSeg == nullptr) {
+            BM_LOG_ERROR("gImportUrmaSeg is nullptr.");
+            return BM_ERROR;
+        }
+        auto ret = gImportUrmaSeg(service, address, size, key);
+        if (ret != 0) {
+            BM_LOG_ERROR("gImportUrmaSeg returned: " << ret);
+            return ret;
+        }
+#endif
+        return BM_OK;
+    }
+
+    static bool SupportUrma() noexcept
+    {
+        return gImportUrmaSeg != nullptr;
     }
 
 private:
@@ -428,7 +454,9 @@ private:
     static contextGetMessageDataFunc gContextGetMessageData;
     static contextGetMessageDataLenFunc gContextGetMessageDataLen;
     static setExternalLoggerFunc gSetExternalLogger;
+    static SetUbsMode gSetUbsMode;
+    static ImportUrmaSeg gImportUrmaSeg;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 #endif // MF_HYBRID_DLHCOMAPI_H

@@ -54,21 +54,21 @@ typedef struct {
 
 class DataOperator {
 public:
-    virtual int32_t Initialize() noexcept = 0;
+    virtual Result Initialize() noexcept = 0;
     virtual void UnInitialize() noexcept = 0;
 
-    virtual int32_t DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
+    virtual Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                              const ExtOptions &options) noexcept = 0;
-    virtual int32_t BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+    virtual Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                   const ExtOptions &options) noexcept = 0;
     /*
      * 异步data copy
      * @return 0 if successful, > 0 is wait id, < 0 is error
      */
-    virtual int32_t DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
+    virtual Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                   const ExtOptions &options) noexcept = 0;
 
-    virtual int32_t Wait(int32_t waitId) noexcept = 0;
+    virtual Result Wait(int32_t waitId) noexcept = 0;
 
     virtual ~DataOperator() = default;
 

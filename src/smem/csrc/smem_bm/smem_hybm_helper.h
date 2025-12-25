@@ -49,6 +49,10 @@ public:
             resultOpType |= HYBM_DOP_TYPE_HOST_RDMA;
         }
 
+        if (smemBmDataOpType & SMEMB_DATA_OP_HOST_URMA) {
+            resultOpType |= HYBM_DOP_TYPE_HOST_URMA;
+        }
+
         if (smemBmDataOpType & SMEMB_DATA_OP_HOST_TCP) {
             resultOpType |= HYBM_DOP_TYPE_HOST_TCP;
         }

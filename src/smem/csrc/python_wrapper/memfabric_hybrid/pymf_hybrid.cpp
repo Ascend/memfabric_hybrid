@@ -535,6 +535,7 @@ void DefineBmClass(py::module_ &m)
     py::enum_<smem_bm_data_op_type>(m, "BmDataOpType")
         .value("SDMA", SMEMB_DATA_OP_SDMA)
         .value("HOST_RDMA", SMEMB_DATA_OP_HOST_RDMA)
+        .value("HOST_URMA", SMEMB_DATA_OP_HOST_URMA)
         .value("HOST_TCP", SMEMB_DATA_OP_HOST_TCP)
         .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA);
 

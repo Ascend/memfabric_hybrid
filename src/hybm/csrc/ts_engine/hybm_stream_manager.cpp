@@ -87,12 +87,12 @@ private:
 void *HybmStreamManager::GetThreadAclStream(int32_t devId)
 {
     static thread_local void *stream_ = nullptr;
-    static uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
-    static uint32_t ACL_STREAM_FAST_SYNC = 2U;
     if (stream_ != nullptr) {
         return stream_;
     }
 #if XPU_TYPE == XPU_NPU
+    static uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
+    static uint32_t ACL_STREAM_FAST_SYNC = 2U;
     auto ret = DlAclApi::AclrtSetDevice(devId);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Set device id to be " << devId << " failed: " << ret);

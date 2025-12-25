@@ -29,7 +29,7 @@ HostDataOpSDMA::~HostDataOpSDMA()
     HostDataOpSDMA::UnInitialize();
 }
 
-int32_t HostDataOpSDMA::Initialize() noexcept
+Result HostDataOpSDMA::Initialize() noexcept
 {
     if (inited_) {
         return BM_OK;
@@ -47,14 +47,14 @@ void HostDataOpSDMA::UnInitialize() noexcept
     inited_ = false;
 }
 
-int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                                 const ExtOptions &options) noexcept
+Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
+                                const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     if (options.flags & ASYNC_COPY_FLAG) {
         return DataCopyAsync(params, direction, options);
     }
-    int ret;
+    Result ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
@@ -135,7 +135,7 @@ int32_t HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direct
     return ret;
 }
 
-int HostDataOpSDMA::CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t count, void *stream) noexcept
 {
     void *copyDevice;
     auto ret = DlAclApi::AclrtMalloc(&copyDevice, count, 0);
@@ -161,7 +161,7 @@ int HostDataOpSDMA::CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t count,
     return BM_OK;
 }
 
-int HostDataOpSDMA::CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t count, void *stream) noexcept
 {
     void *copyDevice;
     auto ret = DlAclApi::AclrtMalloc(&copyDevice, count, 0);
@@ -187,10 +187,10 @@ int HostDataOpSDMA::CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t count,
     return BM_OK;
 }
 
-int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
-                                      hybm_data_copy_direction direction, const ExtOptions &options) noexcept
+Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
+                                     const ExtOptions &options) noexcept
 {
-    int ret;
+    Result ret;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
@@ -271,7 +271,7 @@ int32_t HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params,
     return ret;
 }
 
-int32_t HostDataOpSDMA::Wait(int32_t waitId) noexcept
+Result HostDataOpSDMA::Wait(int32_t waitId) noexcept
 {
     BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
     if (stream_ != nullptr) {
@@ -289,7 +289,7 @@ void HostDataOpSDMA::CleanUp() noexcept
     }
 }
 
-int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
+Result HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     // local host到dram池的拷贝
     void *copyDevice;
@@ -316,7 +316,7 @@ int HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, 
     return ret;
 }
 
-int HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
+Result HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
 {
     // dram池的拷贝到local host
     void *copyDevice;
@@ -354,7 +354,7 @@ bool HostDataOpSDMA::IsResetStream() noexcept
     return it->second;
 }
 
-int HostDataOpSDMA::PrepareThreadLocalStream() noexcept
+Result HostDataOpSDMA::PrepareThreadLocalStream() noexcept
 {
     if (stream_ != nullptr && !IsResetStream()) {
         return BM_OK;
@@ -419,7 +419,7 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
     sqe->dstOffsetHigh = 0U;
 }
 
-int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
 {
     StreamTask task{};
     InitG2GStreamTask(task);
@@ -427,13 +427,13 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void 
     BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
     sqe->length = count;
     sqe->src_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
     sqe->src_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
     sqe->dst_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
     sqe->dst_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     auto ret = stream_->SubmitTasks(task);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
@@ -443,7 +443,7 @@ int HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void 
     return BM_OK;
 }
 
-int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
 {
     BM_LOG_DEBUG("CopyG2GAsync src:" << srcVA << " destVA:" << destVA << " length:" << count << " st:" << stream);
     if (stream != nullptr) { // submit task into acl stream
@@ -455,13 +455,13 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, 
     BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
     sqe->length = count;
     sqe->src_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
     sqe->src_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
     sqe->dst_addr_low =
-            static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
     sqe->dst_addr_high = static_cast<uint32_t>(
-            (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
     auto ret = stream_->SubmitTasks(task);
@@ -470,10 +470,10 @@ int HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, 
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
-    int32_t ret = 0;
-    int32_t asyncRet = 0;
+    Result ret = 0;
+    Result asyncRet = 0;
     uint64_t src = 0U;
     uint64_t dest = 0U;
     uint64_t len = 0U;
@@ -519,19 +519,19 @@ int HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOption
     return ret;
 }
 
-int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                                      const ExtOptions &options) noexcept
+Result HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                                     const ExtOptions &options) noexcept
 {
     auto ret = 0;
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
-            ret = BatchCopyLH2GD(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyLH2GD(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST: {
-            ret = BatchCopyGD2LH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyGD2LH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             break;
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
@@ -560,15 +560,15 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
         }
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_LH_TO_GH);
-            ret = BatchCopyLH2GH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyLH2GH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_LH_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_BATCH_GH_TO_LH);
-            ret = BatchCopyGH2LH(params.destinations, params.sources, params.dataSizes,
-                                 params.batchSize, options.stream);
+            ret =
+                BatchCopyGH2LH(params.destinations, params.sources, params.dataSizes, params.batchSize, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_BATCH_GH_TO_LH, ret);
             break;
         }
@@ -580,8 +580,8 @@ int32_t HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_
     return ret;
 }
 
-int HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
+Result HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      void *stream) noexcept
 {
     auto ret = 0;
 
@@ -595,13 +595,13 @@ int HostDataOpSDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts,
-                                   uint32_t batchSize, void *stream) noexcept
+Result HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      void *stream) noexcept
 {
     auto ret = 0;
 
     for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyGH2LH(hostAddrs[i], gvaAddrs[i],  counts[i], stream);
+        ret = CopyGH2LH(hostAddrs[i], gvaAddrs[i], counts[i], stream);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on GVA to local host failed: " << ret);
             return ret;
@@ -610,8 +610,8 @@ int HostDataOpSDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
-                                   void *stream) noexcept
+Result HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      void *stream) noexcept
 {
     auto ret = 0;
 
@@ -625,8 +625,8 @@ int HostDataOpSDMA::BatchCopyLH2GD(void **gvaAddrs, void **hostAddrs, const uint
     return BM_OK;
 }
 
-int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
-                                   void *stream) noexcept
+Result HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
+                                      void *stream) noexcept
 {
     auto ret = 0;
 
@@ -639,5 +639,5 @@ int HostDataOpSDMA::BatchCopyGD2LH(void **hostAddrs, void **gvaAddrs, const uint
     }
     return BM_OK;
 }
-}
-}
+} // namespace mf
+} // namespace ock

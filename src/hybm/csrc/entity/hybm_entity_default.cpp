@@ -16,6 +16,7 @@
 #include "dl_api.h"
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
+#include "host_hcom_common.h"
 #include "hybm_data_op_host_rdma.h"
 #include "hybm_dev_legacy_segment.h"
 #include "hybm_data_op_sdma.h"
@@ -24,6 +25,7 @@
 #include "hybm_gva.h"
 #include "hybm_logger.h"
 #include "hybm_stream_manager.h"
+#include "host_hcom_transport_manager.h"
 
 namespace ock {
 namespace mf {
@@ -130,8 +132,8 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
 int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
 {
     if (!initialized) {
-        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
-        return BM_NOT_INITIALIZED;
+        BM_LOG_WARN("the object is not initialized, please check whether Initialize is called.");
+        return BM_OK;
     }
 
     if (hbmSegment_ != nullptr) {
@@ -480,6 +482,10 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
             return ret;
         }
         ret = transportManager_->Connect();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to prepare transport connect, ret: " << ret);
+            return ret;
+        }
     }
 
     BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to Connect transport: " << ret, ret);
@@ -803,7 +809,7 @@ int MemEntityDefault::LoadExtendLibrary() noexcept
         }
     }
 
-    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
+    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP)) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA);
         if (ret != 0) {
             BM_LOG_ERROR("LoadExtendLibrary for HOST RDMA failed: " << ret);
@@ -1041,7 +1047,7 @@ Result MemEntityDefault::InitTransManager()
         return BM_OK;
     }
 
-    auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP;
+    auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP;
     auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags;
     if ((options_.bmDataOpType & composeTransFlags) == 0) {
         BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
@@ -1097,7 +1103,7 @@ Result MemEntityDefault::InitDataOperator()
         }
     }
 
-    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP)) {
+    if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP)) {
         hostRdmaDataOperator_ = std::make_shared<HostDataOpRDMA>(options_.rankId, transportManager_);
         auto ret = hostRdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
@@ -1135,6 +1141,7 @@ hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) c
 
     if (hostRdmaDataOperator_ != nullptr) {
         supportDataOp |= HYBM_DOP_TYPE_HOST_RDMA;
+        supportDataOp |= HYBM_DOP_TYPE_HOST_URMA;
     }
 
     return static_cast<hybm_data_op_type>(supportDataOp);

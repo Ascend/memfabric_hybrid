@@ -381,8 +381,8 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    auto direct = TransToHybmDirection(t, params->sources[0], params->dataSizes[0],
-                                       params->destinations[0], params->dataSizes[0]);
+    auto direct = TransToHybmDirection(t, params->sources[0], params->dataSizes[0], params->destinations[0],
+                                       params->dataSizes[0]);
     if (direct == HYBM_DATA_COPY_DIRECTION_BUTT) {
         SM_LOG_ERROR("Failed to trans to hybm direct, smem direct: " << t << " src: " << params->sources[0]
                                                                      << " dest: " << params->destinations[0]);

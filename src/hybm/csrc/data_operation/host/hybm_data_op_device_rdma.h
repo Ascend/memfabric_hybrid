@@ -26,60 +26,60 @@ class DataOpDeviceRDMA : public DataOperator {
 public:
     DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> tm) noexcept;
     ~DataOpDeviceRDMA() override;
-    int32_t Initialize() noexcept override;
+    Result Initialize() noexcept override;
     void UnInitialize() noexcept override;
-    int32_t DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
+    Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                      const ExtOptions &options) noexcept override;
-    int32_t DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
+    Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                           const ExtOptions &options) noexcept override;
-    int32_t BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+    Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                           const ExtOptions &options) noexcept override;
-    int32_t Wait(int32_t waitId) noexcept override;
+    Result Wait(int32_t waitId) noexcept override;
 
 private:
-    int32_t CopyLH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyGD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyLD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
-    int32_t CopyRDMA(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyGD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyLD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
+    Result CopyRDMA(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept;
 
-    int32_t BatchCopyLH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGD2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyLD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
-    int32_t BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyLH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGD2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyLD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
+    Result BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
 
-    int32_t BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+    Result BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept;
-    int32_t BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction,
+    Result BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction,
                                const ExtOptions &options) noexcept;
-    int32_t BatchDataCopyLocalSync(hybm_batch_copy_params &params, int32_t direction,
+    Result BatchDataCopyLocalSync(hybm_batch_copy_params &params, int32_t direction,
                                    const ExtOptions &options) noexcept;
-    int32_t BatchDataCopyLocalAsync(hybm_batch_copy_params &params, int32_t direction,
+    Result BatchDataCopyLocalAsync(hybm_batch_copy_params &params, int32_t direction,
                                     const ExtOptions &options) noexcept;
-    int32_t BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
+    Result BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
                                     const ExtOptions &options) noexcept;
 
-    int32_t AllocSwapMemory();
+    Result AllocSwapMemory();
     void FreeSwapMemory();
 
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
@@ -87,14 +87,14 @@ private:
                           std::unordered_map<uint32_t, CopyDescriptor> &localed,
                           std::unordered_map<uint32_t, CopyDescriptor> &notRegistered,
                           uint32_t globalRankId) noexcept;
-    int32_t BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
+    Result BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
                            hybm_data_copy_direction direction) noexcept;
-    int32_t BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
+    Result BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
                           hybm_data_copy_direction direction) noexcept;
-    int32_t BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+    Result BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
                          hybm_data_copy_direction direction) noexcept;
-    int32_t SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
-    int32_t SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
+    Result SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
+    Result SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
 
 private:
     bool inited_{false};

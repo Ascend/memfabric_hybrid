@@ -37,7 +37,7 @@ public:
         if (hybmDop & HYBM_DOP_TYPE_HOST_TCP) {
             return C_SERVICE_TCP;
         }
-        if ((hybmDop & HYBM_DOP_TYPE_HOST_RDMA) && StrUtil::StartWith(nic, UBC_PROTOCOL_PREFIX)) {
+        if (hybmDop & HYBM_DOP_TYPE_HOST_URMA) {
             return C_SERVICE_UBC;
         }
         if (hybmDop & HYBM_DOP_TYPE_HOST_RDMA) {

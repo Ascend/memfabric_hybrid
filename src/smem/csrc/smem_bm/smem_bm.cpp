@@ -119,8 +119,8 @@ SMEM_API uint32_t smem_bm_get_rank_id()
 /* return 1 means check ok */
 static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
 {
-    constexpr uint32_t dataOpTypeMask =
-        SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+    constexpr uint32_t dataOpTypeMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
+                                        SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
     return (dataOpType & dataOpTypeMask) != 0;
 }
 

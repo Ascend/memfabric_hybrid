@@ -90,8 +90,8 @@ typedef int (*Hcom_TlsGetCertCb)(const char *name, char **certPath);
  * @param keyPass          [out] the keyPass
  * @param erase            [out] the erase function
  */
-typedef int (*Hcom_TlsGetPrivateKeyCb)(
-    const char *name, char **priKeyPath, char **keyPass, Hcom_TlsKeyPassErase *erase);
+typedef int (*Hcom_TlsGetPrivateKeyCb)(const char *name, char **priKeyPath, char **keyPass,
+                                       Hcom_TlsKeyPassErase *erase);
 
 /*
  * @brief Get the CA and verify
@@ -162,8 +162,8 @@ typedef enum {
 } Channel_CBType;
 
 typedef enum {
-    HIGH_LEVEL_BLOCK,   /* spin-wait by busy loop */
-    LOW_LEVEL_BLOCK,    /* full sleep */
+    HIGH_LEVEL_BLOCK, /* spin-wait by busy loop */
+    LOW_LEVEL_BLOCK,  /* full sleep */
 } Channel_FlowCtrlLevel;
 
 typedef enum {
@@ -242,8 +242,16 @@ typedef struct {
     uint16_t workerGroupThreadCount;
     Service_WorkerMode workerGroupMode;
     int8_t workerThreadPriority;
-    char workerGroupCpuRange[64];   // worker group cpu range, for example 6-10
+    char workerGroupCpuRange[64]; // worker group cpu range, for example 6-10
 } Service_Options;
+
+/*
+* @brief Enum for UBC mode
+*/
+typedef enum {
+    C_SERVICE_LOWLATENCY = 0,
+    C_SERVICE_HIGHBANDWIDTH = 1,
+} UbsHcomServiceUbcMode;
 
 typedef struct {
     Channel_CallbackFunc cb; // User callback function
@@ -251,24 +259,24 @@ typedef struct {
 } Channel_Callback;
 
 typedef struct {
-    uint16_t clientGroupId;     // worker group id of client
-    uint16_t serverGroupId;     // worker group id of server
-    uint8_t linkCount;     // actual link count of the channel
+    uint16_t clientGroupId; // worker group id of client
+    uint16_t serverGroupId; // worker group id of server
+    uint8_t linkCount;      // actual link count of the channel
     Service_ClientPollingMode mode;
     Channel_CBType cbType;
     char payLoad[512];
 } Service_ConnectOptions;
 
 typedef struct {
-    void *address;    /* pointer of data */
-    uint32_t size;              /* size of data */
+    void *address; /* pointer of data */
+    uint32_t size; /* size of data */
     uint16_t opcode;
 } Channel_Request;
 
 typedef struct {
-    void *address;              /* pointer of data */
-    uint32_t size;              /* size of data */
-    int16_t errorCode;          /* error code of response */
+    void *address;     /* pointer of data */
+    uint32_t size;     /* size of data */
+    int16_t errorCode; /* error code of response */
 } Channel_Response;
 
 typedef struct {
@@ -276,9 +284,13 @@ typedef struct {
     int16_t errorCode;
 } Channel_ReplyContext;
 
+#define URMA_EID_LENGTH 16
 typedef struct {
     uint64_t keys[4];
     uint64_t tokens[4];
+#if XPU_TYPE == XPU_NONE
+    uint8_t eid[URMA_EID_LENGTH];
+#endif
 } OneSideKey;
 
 /*
@@ -286,7 +298,7 @@ typedef struct {
  */
 typedef struct {
     uintptr_t lAddress; // local memory region address
-    OneSideKey lKey;      // local memory region key
+    OneSideKey lKey;    // local memory region key
     uint64_t size;      // data size
 } Service_MemoryRegionInfo;
 
@@ -320,31 +332,31 @@ int Service_RegisterMemoryRegion(Hcom_Service service, uint64_t size, Service_Me
 
 int Service_GetMemoryRegionInfo(Service_MemoryRegion mr, Service_MemoryRegionInfo *info);
 
-int Service_RegisterAssignMemoryRegion(
-    Hcom_Service service, uintptr_t address, uint64_t size, Service_MemoryRegion *mr);
+int Service_RegisterAssignMemoryRegion(Hcom_Service service, uintptr_t address, uint64_t size,
+                                       Service_MemoryRegion *mr);
 
 int Service_DestroyMemoryRegion(Hcom_Service service, Service_MemoryRegion mr);
 
-void Service_RegisterChannelBrokerHandler(Hcom_Service service, Service_ChannelHandler h,
-    Service_ChannelPolicy policy, uint64_t usrCtx);
+void Service_RegisterChannelBrokerHandler(Hcom_Service service, Service_ChannelHandler h, Service_ChannelPolicy policy,
+                                          uint64_t usrCtx);
 
 void Service_RegisterIdleHandler(Hcom_Service service, Service_IdleHandler h, uint64_t usrCtx);
 
-void Service_RegisterHandler(Hcom_Service service, Service_HandlerType t, Service_RequestHandler h,
-    uint64_t usrCtx);
+void Service_RegisterHandler(Hcom_Service service, Service_HandlerType t, Service_RequestHandler h, uint64_t usrCtx);
 
 void Service_AddWorkerGroup(Hcom_Service service, int8_t priority, uint16_t workerGroupId, uint32_t threadCount,
-    const char *cpuIdsRange);
+                            const char *cpuIdsRange);
 
 void Service_AddListener(Hcom_Service service, const char *url, uint16_t workerCount);
 
 void Service_SetConnectLBPolicy(Hcom_Service service, Service_LBPolicy lbPolicy);
 
 void Service_SetTlsOptions(Hcom_Service service, bool enableTls, Service_TlsVersion version,
-    Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb, Hcom_TlsGetPrivateKeyCb priKeyCb, Hcom_TlsGetCACb caCb);
+                           Service_CipherSuite cipherSuite, Hcom_TlsGetCertCb certCb, Hcom_TlsGetPrivateKeyCb priKeyCb,
+                           Hcom_TlsGetCACb caCb);
 
 void Service_SetSecureOptions(Hcom_Service service, Service_SecType secType, Hcom_SecInfoProvider provider,
-    Hcom_SecInfoValidator validator, uint16_t magic, uint8_t version);
+                              Hcom_SecInfoValidator validator, uint16_t magic, uint8_t version);
 
 void Service_SetTcpUserTimeOutSec(Hcom_Service service, uint16_t timeOutSec);
 

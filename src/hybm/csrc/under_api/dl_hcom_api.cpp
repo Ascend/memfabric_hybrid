@@ -66,6 +66,8 @@ contextGetOpCodeFunc DlHcomApi::gContextGetOpCode = nullptr;
 contextGetMessageDataFunc DlHcomApi::gContextGetMessageData = nullptr;
 contextGetMessageDataLenFunc DlHcomApi::gContextGetMessageDataLen = nullptr;
 setExternalLoggerFunc DlHcomApi::gSetExternalLogger = nullptr;
+SetUbsMode DlHcomApi::gSetUbsMode = nullptr;
+ImportUrmaSeg DlHcomApi::gImportUrmaSeg = nullptr;
 
 Result DlHcomApi::LoadLibrary()
 {
@@ -141,6 +143,8 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gContextGetMessageData, contextGetMessageDataFunc, hcomHandle, "ubs_hcom_context_get_data");
     DL_LOAD_SYM(gContextGetMessageDataLen, contextGetMessageDataLenFunc, hcomHandle, "ubs_hcom_context_get_datalen");
     DL_LOAD_SYM(gSetExternalLogger, setExternalLoggerFunc, hcomHandle, "ubs_hcom_set_log_handler");
+    DL_LOAD_SYM_OPTIONAL(gSetUbsMode, SetUbsMode, hcomHandle, "ubs_hcom_service_set_ubcmode");
+    DL_LOAD_SYM_OPTIONAL(gImportUrmaSeg, ImportUrmaSeg, hcomHandle, "ubs_hcom_reg_seg");
 
     gLoaded = true;
     return BM_OK;
@@ -198,6 +202,8 @@ void DlHcomApi::CleanupLibrary()
     gContextGetMessageData = nullptr;
     gContextGetMessageDataLen = nullptr;
     gSetExternalLogger = nullptr;
+    gSetUbsMode = nullptr;
+    gImportUrmaSeg = nullptr;
 
     if (hcomHandle != nullptr) {
         dlclose(hcomHandle);

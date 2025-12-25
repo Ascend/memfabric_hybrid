@@ -32,7 +32,7 @@ DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::T
     : rankId_{rankId}, transportManager_{std::move(tm)}
 {}
 
-int32_t DataOpDeviceRDMA::Initialize() noexcept
+Result DataOpDeviceRDMA::Initialize() noexcept
 {
     if (inited_) {
         return BM_OK;
@@ -64,7 +64,7 @@ void DataOpDeviceRDMA::UnInitialize() noexcept
     inited_ = false;
 }
 
-int32_t DataOpDeviceRDMA::AllocSwapMemory()
+Result DataOpDeviceRDMA::AllocSwapMemory()
 {
     void *ptr = nullptr;
     auto ret = DlAclApi::AclrtMallocHost(&ptr, RDMA_SWAP_SPACE_SIZE);
@@ -99,10 +99,10 @@ DataOpDeviceRDMA::~DataOpDeviceRDMA()
     inited_ = false;
 }
 
-int32_t DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                                   const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
+                                  const ock::mf::ExtOptions &options) noexcept
 {
-    int ret;
+    Result ret;
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_RDMA_LH_TO_GH);
@@ -183,8 +183,7 @@ int32_t DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
@@ -194,8 +193,7 @@ int32_t DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t le
     }
     return BM_OK;
 }
-int32_t DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_DEVICE);
@@ -206,8 +204,7 @@ int32_t DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t le
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
@@ -218,8 +215,7 @@ int32_t DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t le
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
@@ -230,11 +226,10 @@ int32_t DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t le
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GH] Failed to copy src to dest", ret);
@@ -245,11 +240,10 @@ int32_t DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GD] Failed to copy src to dest", ret);
@@ -260,11 +254,10 @@ int32_t DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GH] Failed to copy src to dest", ret);
@@ -275,11 +268,10 @@ int32_t DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyLD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GD] Failed to copy src to dest", ret);
@@ -290,13 +282,13 @@ int32_t DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t length,
-                                   const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t length,
+                                  const ock::mf::ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyRDMA] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
     auto src = (uint64_t)(ptrdiff_t)srcVA;
     auto dest = (uint64_t)(ptrdiff_t)destVA;
-    int ret;
+    Result ret;
     if (options.srcRankId == rankId_) {
         ret = transportManager_->WriteRemote(options.destRankId, src, dest, length);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyRDMA] Failed to write src to dest", ret);
@@ -311,11 +303,11 @@ int32_t DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t len
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t length,
+                                   const ock::mf::ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int ret;
+    Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GH] Failed to copy src to dest", ret);
@@ -326,11 +318,11 @@ int32_t DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t length,
+                                   const ock::mf::ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int ret;
+    Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GH] Failed to copy src to dest", ret);
@@ -340,11 +332,11 @@ int32_t DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t le
     }
     return ret;
 }
-int32_t DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t length,
+                                   const ock::mf::ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int ret;
+    Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GD] Failed to copy src to dest", ret);
@@ -354,11 +346,12 @@ int32_t DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t le
     }
     return ret;
 }
-int32_t DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ock::mf::ExtOptions &options) noexcept
+
+Result DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t length,
+                                   const ock::mf::ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int ret;
+    Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GD] Failed to copy src to dest", ret);
@@ -369,11 +362,10 @@ int32_t DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LH] Failed to copy src to dest", ret);
@@ -384,11 +376,10 @@ int32_t DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LH] Failed to copy src to dest", ret);
@@ -399,11 +390,10 @@ int32_t DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
@@ -417,11 +407,10 @@ int32_t DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t length,
-                                    const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
     BM_LOG_DEBUG("[CopyGD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
-    int32_t ret;
+    Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
@@ -435,23 +424,23 @@ int32_t DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t le
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::DataCopyAsync(hybm_copy_params &params,
-                                        hybm_data_copy_direction direction, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
+                                       const ExtOptions &options) noexcept
 {
     BM_LOG_ERROR("DataOpDeviceRDMA::DataCopyAsync Not Supported!");
     return BM_ERROR;
 }
 
-int32_t DataOpDeviceRDMA::Wait(int32_t waitId) noexcept
+Result DataOpDeviceRDMA::Wait(int32_t waitId) noexcept
 {
     // Since DataOpDeviceRDMA::DataCopyAsync is not supported, Wait should do nothing for now.
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                                               const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                                              const ExtOptions &options) noexcept
 {
-    int32_t ret;
+    Result ret;
     TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_DEFAULT);
     for (uint32_t i = 0; i < params.batchSize; i++) {
         hybm_copy_params pm = {params.sources[i], params.destinations[i], params.dataSizes[i]};
@@ -465,18 +454,18 @@ int32_t DataOpDeviceRDMA::BatchDataCopyDefault(hybm_batch_copy_params &params, h
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyLH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyLH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyWrite(params, options, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGD2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGD2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyRead(params, options, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction,
-                                             const ock::mf::ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction,
+                                            const ock::mf::ExtOptions &options) noexcept
 {
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
@@ -503,8 +492,8 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocal(hybm_batch_copy_params &params, int
     }
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopyLocalSync(hybm_batch_copy_params &params, int32_t direction,
-                                                 const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopyLocalSync(hybm_batch_copy_params &params, int32_t direction,
+                                                const ExtOptions &options) noexcept
 {
     for (size_t i = 0; i < params.batchSize; ++i) {
         auto destAddr = params.destinations[i];
@@ -519,8 +508,8 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalSync(hybm_batch_copy_params &params,
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params, int32_t direction,
-                                                  const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params, int32_t direction,
+                                                 const ExtOptions &options) noexcept
 {
     void *st = options.stream;
     auto ret = 0;
@@ -536,7 +525,8 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params
         ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, direction, st);
         if (ret != 0) {
             BM_LOG_ERROR("copy memory on local failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st)
-                << " direct:" << direction << std::hex << " src:" << srcAddr << " dst:" << destAddr);
+                                                         << " direct:" << direction << std::hex << " src:" << srcAddr
+                                                         << " dst:" << destAddr);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -547,8 +537,8 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
-                                                  const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
+                                                 const ExtOptions &options) noexcept
 {
     uint32_t batchNum = params.batchSize;
     std::vector<aclrtMemcpyBatchAttr> attrs(batchNum);
@@ -568,8 +558,8 @@ int32_t DataOpDeviceRDMA::BatchDataCopyLocalBatch(hybm_batch_copy_params &params
         sizes[i] = params.dataSizes[i];
     }
     size_t fail_idx = 0;
-    auto ret = DlAclApi::AclrtMemcpyBatch(params.destinations, sizes.data(), params.sources, sizes.data(),
-                                          sizes.size(), attrs.data(), attrsIds.data(), attrs.size(), &fail_idx);
+    auto ret = DlAclApi::AclrtMemcpyBatch(params.destinations, sizes.data(), params.sources, sizes.data(), sizes.size(),
+                                          attrs.data(), attrsIds.data(), attrs.size(), &fail_idx);
     if (ret != 0) {
         return BatchDataCopyLocalAsync(params, direction, options);
     }
@@ -630,8 +620,8 @@ void DataOpDeviceRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, c
     }
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
-                                         hybm_data_copy_direction direction) noexcept
+Result DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
+                                        hybm_data_copy_direction direction) noexcept
 {
     auto ret = 0;
     ExtOptions tmpOptions = options;
@@ -681,8 +671,8 @@ int32_t DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const E
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
-                                        hybm_data_copy_direction direction) noexcept
+Result DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
+                                       hybm_data_copy_direction direction) noexcept
 {
     auto ret = 0;
     ExtOptions tmpOptions = options;
@@ -731,33 +721,33 @@ int32_t DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ex
     return BM_OK;
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyLD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyLD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyWrite(params, options, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyLD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyWrite(params, options, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGH2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyRead(params, options, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGD2LD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyRead(params, options, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyLH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyWrite(params, options, HYBM_LOCAL_HOST_TO_GLOBAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
-                                       hybm_data_copy_direction direction) noexcept
+Result DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+                                      hybm_data_copy_direction direction) noexcept
 {
     auto ret = 0;
     auto batchSize = params.batchSize;
@@ -800,10 +790,10 @@ int32_t DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const Ext
     return ret;
 }
 
-int32_t DataOpDeviceRDMA::SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options,
-                                  bool srcIsHost)
+Result DataOpDeviceRDMA::SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options,
+                                 bool srcIsHost)
 {
-    int32_t ret = 0;
+    Result ret = 0;
     uintptr_t srcBase = reinterpret_cast<uintptr_t>(srcVA);
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
@@ -829,10 +819,10 @@ int32_t DataOpDeviceRDMA::SafePut(const void *srcVA, void *destVA, uint64_t leng
     return 0;
 }
 
-int32_t DataOpDeviceRDMA::SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options,
-                                  bool destIsHost)
+Result DataOpDeviceRDMA::SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options,
+                                 bool destIsHost)
 {
-    int32_t ret = 0;
+    Result ret = 0;
     uintptr_t srcBase = reinterpret_cast<uintptr_t>(srcVA);
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
@@ -858,33 +848,33 @@ int32_t DataOpDeviceRDMA::SafeGet(const void *srcVA, void *destVA, uint64_t leng
     return 0;
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGH2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyG2G(params, options, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGH2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyG2G(params, options, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGH2LH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyRead(params, options, HYBM_GLOBAL_HOST_TO_LOCAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGD2GH(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyG2G(params, options, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST);
 }
 
-int32_t DataOpDeviceRDMA::BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchCopyGD2GD(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
     return BatchCopyG2G(params, options, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE);
 }
 
-int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                                        const ExtOptions &options) noexcept
+Result DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
+                                       const ExtOptions &options) noexcept
 {
     auto ret = 0;
     switch (direction) {
@@ -942,7 +932,7 @@ int32_t DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_LD_TO_GH, ret);
             break;
         }
-        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {  // 7
+        case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: { // 7
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_GH_TO_LD);
             ret = BatchCopyGH2LD(params, options);
             TP_TRACE_END(TP_HYBM_RDMA_BATCH_GH_TO_LD, ret);
