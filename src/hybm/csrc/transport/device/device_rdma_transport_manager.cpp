@@ -829,15 +829,17 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
         }
 
         auto &pos = ranksMRs_[node];
-        if (!pos.empty()) {
-            continue;
-        }
-
         for (auto &key : it->second.memKeys) {
             keyUnion.commonKey = key;
             auto &devKey = keyUnion.deviceKey;
-            pos.emplace(devKey.address, devKey);
-
+            auto addrIter = pos.find(devKey.address);
+            if (addrIter == pos.end()) {
+                pos.emplace(devKey.address, devKey);
+            } else {
+                BM_LOG_INFO("OptionsToRankMRs devKey address: " << (void *)(ptrdiff_t)devKey.address
+                                                                << " already exists, skip emplace.");
+                continue;
+            }
             if (devKey.notifyAddr != 0ULL) {
                 notifyRemoteInfo_[node] = std::make_pair(devKey.notifyAddr, devKey.notifyRkey);
             }
