@@ -34,6 +34,7 @@ set(HYBM_PUBLIC_INCLUDE_DIR "${PROJECT_HYBM_SRC_BASE}/include")
 ## add files into src variables
 file(GLOB_RECURSE HYBMM_SRC_FILES
         ${PROJECT_HYBM_SRC_BASE}/csrc/*.cpp
+        ${PROJECT_HYBM_SRC_BASE}/csrc/*.h
 )
 
 ## build the static and shared library

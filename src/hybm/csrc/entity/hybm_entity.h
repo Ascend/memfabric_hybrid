@@ -19,6 +19,7 @@
 #include "hybm_common_include.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_mem_slice.h"
+#include "hybm_entity_tag_info.h"
 
 namespace ock {
 namespace mf {
@@ -61,6 +62,9 @@ public:
     virtual int32_t Wait() noexcept = 0;
 
     virtual ~MemEntity() noexcept = default;
+
+private:
+    HybmEntityTagInfo tagInfo_;
 };
 
 using MemEntityPtr = std::shared_ptr<MemEntity>;

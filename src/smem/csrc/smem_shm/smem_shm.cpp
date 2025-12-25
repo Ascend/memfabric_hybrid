@@ -58,7 +58,6 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.rankCount = rankSize;
     options.rankId = rankId;
     options.deviceVASpace = symmetricSize;
-    options.preferredGVA = 0;
     options.role = HYBM_ROLE_PEER;
     options.globalUniqueAddress = true;
     std::string defaultNic = "tcp://127.0.0.1:10002";

@@ -201,7 +201,6 @@ Result HybmConnBasedSegment::Unmap() noexcept
     return 0;
 }
 
-
 std::shared_ptr<MemSlice> HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);

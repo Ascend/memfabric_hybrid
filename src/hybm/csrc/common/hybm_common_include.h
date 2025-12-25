@@ -20,6 +20,7 @@
 #include "hybm_functions.h"
 #include "hybm_logger.h"
 #include "hybm_types.h"
+#include "mf_file_util.h"
 
 int32_t HybmGetInitDeviceId(void);
 

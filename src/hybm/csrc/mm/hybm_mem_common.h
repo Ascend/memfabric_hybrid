@@ -29,7 +29,7 @@ enum MemType : int32_t {
     MEM_TYPE_HOST_DRAM = 0,
     MEM_TYPE_DEVICE_HBM,
 
-    MEM_TYPE_DEVICE_BUTT
+    MEM_TYPE_BUTT
 };
 
 enum MemPageTblType : int32_t {

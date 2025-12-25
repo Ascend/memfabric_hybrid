@@ -563,7 +563,6 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.rankId = rankId_;
     options.devId = config_.deviceId;
     options.deviceVASpace = 0;
-    options.preferredGVA = 0;
     options.globalUniqueAddress = false;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.transUrl[0] = '\0';
