@@ -46,6 +46,12 @@ public:
         return logicDeviceId;
     }
 
+    static inline int64_t GetCurTid()
+    {
+        static thread_local int64_t tid = reinterpret_cast<int64_t>(syscall(SYS_gettid));
+        return tid;
+    }
+
 private:
     const static uint64_t gMagicBits = 0xFFFFFFFFFF; /* get lower 40bits */
 };

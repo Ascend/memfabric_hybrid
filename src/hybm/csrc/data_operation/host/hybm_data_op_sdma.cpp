@@ -21,7 +21,6 @@
 namespace ock {
 namespace mf {
 constexpr uint64_t HBM_SWAP_SPACE_SIZE = 128 * 1024 * 1024;
-thread_local HybmStreamPtr HostDataOpSDMA::stream_ = nullptr;
 HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
 HostDataOpSDMA::~HostDataOpSDMA()
@@ -273,20 +272,14 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
 
 Result HostDataOpSDMA::Wait(int32_t waitId) noexcept
 {
-    BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
-    if (stream_ != nullptr) {
-        return stream_->Synchronize();
-    }
-    return BM_OK;
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    return hStream->Synchronize();
 }
 
 void HostDataOpSDMA::CleanUp() noexcept
 {
-    WriteGuard lockGuard(lock_);
-    for (auto &it : streamMask_) {
-        it.second = true;
-        HybmStreamManager::ResetThreadHybmStream(it.first);
-    }
+    HybmStreamManager::DestroyAllThreadHybmStream();
 }
 
 Result HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept
@@ -343,49 +336,17 @@ Result HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t lengt
     return ret;
 }
 
-bool HostDataOpSDMA::IsResetStream() noexcept
-{
-    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
-    ReadGuard lockGuard(lock_);
-    auto it = streamMask_.find(tid);
-    if (it == streamMask_.end()) {
-        return true;
-    }
-    return it->second;
-}
-
-Result HostDataOpSDMA::PrepareThreadLocalStream() noexcept
-{
-    if (stream_ != nullptr && !IsResetStream()) {
-        return BM_OK;
-    }
-
-    stream_ = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId(), 0, 0);
-    if (stream_ == nullptr) {
-        BM_LOG_ERROR("HybmStream init failed");
-        return BM_ERROR;
-    }
-    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
-    WriteGuard lockGuard(lock_);
-    streamMask_[tid] = false;
-
-    BM_LOG_INFO("PrepareThreadLocalStream success, tid:" << tid);
-    return BM_OK;
-}
-
 void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
 {
-    if (PrepareThreadLocalStream() != BM_OK) {
-        BM_LOG_ERROR("Failed to get thread local hybmStream");
-        return;
-    }
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RET_VOID(hStream != nullptr);
     task.type = STREAM_TASK_TYPE_SDMA;
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
     sqe->header.type = RT_STARS_SQE_TYPE_SDMA;
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
-    sqe->header.wr_cqe = stream_->GetWqeFlag();
-    sqe->header.rt_stream_id = stream_->GetId();
+    sqe->header.wr_cqe = hStream->GetWqeFlag();
+    sqe->header.rt_stream_id = hStream->GetId();
     sqe->header.task_id = 0;
 
     sqe->kernelCredit = RT_STARS_DEFAULT_KERNEL_CREDIT;
@@ -424,7 +385,9 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, vo
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
-    BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+
     sqe->length = count;
     sqe->src_addr_low =
         static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
@@ -435,10 +398,10 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, vo
     sqe->dst_addr_high = static_cast<uint32_t>(
         (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
-    auto ret = stream_->SubmitTasks(task);
+    auto ret = hStream->SubmitTasks(task);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
 
-    ret = stream_->Synchronize();
+    ret = hStream->Synchronize();
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
 }
@@ -452,7 +415,9 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
-    BM_ASSERT_RETURN(PrepareThreadLocalStream() == BM_OK, BM_ERROR);
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+
     sqe->length = count;
     sqe->src_addr_low =
         static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
@@ -464,7 +429,7 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
         (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
-    auto ret = stream_->SubmitTasks(task);
+    auto ret = hStream->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;

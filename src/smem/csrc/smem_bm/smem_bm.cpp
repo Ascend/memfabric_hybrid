@@ -20,13 +20,8 @@
 
 using namespace ock::smem;
 using namespace ock::mf;
-#ifdef UT_ENABLED
-thread_local ReadWriteLock g_smemBmMutex_;
-thread_local bool g_smemBmInited = false;
-#else
 ReadWriteLock g_smemBmMutex_;
 bool g_smemBmInited = false;
-#endif
 
 SMEM_API int32_t smem_bm_config_init(smem_bm_config_t *config)
 {

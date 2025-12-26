@@ -627,10 +627,9 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
+    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
 
     int32_t ret = BM_OK;
-    HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());  // do set device
-
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
@@ -677,9 +676,9 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
+    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
 
     int32_t ret = BM_ERROR;
-    HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());  // do set device
     // 0. sdma 不需要rankId
     ExtOptions sOptions{};
     sOptions.stream = stream;
@@ -1183,7 +1182,6 @@ void MemEntityDefault::ReleaseResources()
     if (!initialized) {
         return;
     }
-    HybmStreamManager::DestroyAllThreadHybmStream();
     hbmSegment_.reset();
     dramSegment_.reset();
     sdmaDataOperator_.reset();

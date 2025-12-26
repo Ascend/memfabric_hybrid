@@ -113,6 +113,7 @@ void DlAclApi::CleanupLibrary()
     pAclrtSetDevice = nullptr;
     pAclrtDeviceEnablePeerAccess = nullptr;
     pAclrtCreateStream = nullptr;
+    pAclrtCreateStreamWithConfig = nullptr;
     pAclrtDestroyStream = nullptr;
     pAclrtSynchronizeStream = nullptr;
     pAclrtMalloc = nullptr;

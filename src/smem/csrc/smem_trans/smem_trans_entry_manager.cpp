@@ -19,11 +19,7 @@ namespace ock {
 namespace smem {
 SmemTransEntryManager &SmemTransEntryManager::Instance()
 {
-#ifdef UT_ENABLED
-    static thread_local SmemTransEntryManager instance;
-#else
     static SmemTransEntryManager instance;
-#endif
     return instance;
 }
 

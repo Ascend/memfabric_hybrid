@@ -327,7 +327,7 @@ Result HostDataOpRDMA::BatchCopyLD2LH(void **hostAddrs, void **deviceAddrs, cons
     void *st = options.stream;
     Result ret = BM_OK;
     if (st == nullptr) {
-        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+        st = HybmStreamManager::GetThreadAclStream();
     }
 
     for (size_t i = 0; i < batchSize; ++i) {
@@ -357,7 +357,7 @@ Result HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, cons
     void *st = options.stream;
     Result ret = BM_OK;
     if (st == nullptr) {
-        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+        st = HybmStreamManager::GetThreadAclStream();
     }
 
     for (size_t i = 0; i < batchSize; ++i) {

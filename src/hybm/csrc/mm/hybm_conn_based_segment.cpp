@@ -49,8 +49,9 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     }
     void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE,
                         MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
-    if (mapped == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to mmap size:" << totalSize << " error: " << errno);
+    if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)startAddr) {
+        BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" <<
+                     mapped << " error: " << errno);
         return BM_ERROR;
     }
     globalVirtualAddress_ = (uint8_t *) startAddr;
@@ -95,9 +96,10 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
     void *mapped = mmap(sliceAddr, size, PROT_READ | PROT_WRITE,
-                        MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
-    if (mapped == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to alloc size:" << size << " error:" << errno << ", " << SafeStrError(errno));
+                        MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+    if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)sliceAddr) {
+        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" <<
+                     mapped << " error:" << errno << ", " << SafeStrError(errno));
         return BM_ERROR;
     }
     LvaShmReservePhysicalMemory(sliceAddr, size);
@@ -105,7 +107,7 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
-    BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
+    BM_LOG_ERROR("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << " va:" << sliceAddr << ").");
 
     return BM_OK;
 }

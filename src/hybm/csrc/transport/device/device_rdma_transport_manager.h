@@ -65,8 +65,6 @@ private:
     static bool RaInit(uint32_t deviceId);
     static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
     static bool RaRdevInit(uint32_t deviceId, in_addr deviceIp, void *&rdmaHandle);
-    int PrepareThreadLocalStream();
-    bool IsResetStream();
     void ClearAllRegisterMRs();
     int CheckPrepareOptions(const HybmTransPrepareOptions &options);
     int RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write, bool sync);
@@ -78,15 +76,13 @@ private:
                       uint64_t &outputAddr, uint32_t &mrKey) const;
 
 private: // RDMA HOST STARS
-    void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command);
+    void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command, HybmStreamPtr st);
     uint64_t GetRoceDbAddrForRdmaDbSendTask();
     int32_t InitStreamNotifyBuf();
     int32_t Synchronize(void *qpHandle, uint32_t rankId);
 
 private:
-    static thread_local HybmStreamPtr stream_;
     static thread_local HybmStreamNotifyPtr notify_;
-    std::unordered_map<uint64_t, bool> streamMask_;
     RdmaNotifyInfo notifyInfo_;
     bool started_{false};
     uint32_t rankId_{0};

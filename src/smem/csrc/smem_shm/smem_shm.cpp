@@ -17,13 +17,8 @@
 #include "smem_shm.h"
 
 using namespace ock::smem;
-#ifdef UT_ENABLED
-thread_local std::mutex g_smemShmMutex_;
-thread_local bool g_smemShmInited = false;
-#else
 std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
-#endif
 
 SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
                                     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)

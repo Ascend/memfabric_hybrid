@@ -28,6 +28,8 @@ public:
 
     int32_t Wait();
 
+    HybmStreamPtr GetStream() const;
+
     uint64_t GetOffset() const;
 
 private:
@@ -42,6 +44,11 @@ private:
 inline uint64_t HybmStreamNotify::GetOffset() const
 {
     return offset_;
+}
+
+inline HybmStreamPtr HybmStreamNotify::GetStream() const
+{
+    return stream_;
 }
 
 using HybmStreamNotifyPtr = std::shared_ptr<HybmStreamNotify>;

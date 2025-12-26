@@ -17,18 +17,17 @@
 #include <cstring>
 #include <thread>
 
-#include "hybm_define.h"
-#include "hybm_logger.h"
+#include "hybm_common_include.h"
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "dl_hccp_api.h"
+#include "hybm_ptracer.h"
 #include "device_rdma_common.h"
 #include "device_rdma_helper.h"
 #include "fixed_ranks_qp_manager.h"
 #include "bipartite_ranks_qp_manager.h"
-#include "hybm_types.h"
-#include "hybm_ptracer.h"
 #include "joinable_ranks_qp_manager.h"
+#include "hybm_gva.h"
 
 namespace {
 constexpr auto QP_READY_CHECK_TIMEOUT_BASE = std::chrono::seconds(30);
@@ -48,7 +47,6 @@ constexpr int RT_STARS_SQE_TYPE_INVALID = 63;
 constexpr unsigned long RT_ASCEND910B1_ROCEE_BASE_ADDR = 0x2000000000UL;
 constexpr unsigned long RT_ASCEND910B1_ROCEE_VF_DB_CFG0_REG = 0x230UL;
 
-thread_local HybmStreamPtr RdmaTransportManager::stream_ = nullptr;
 thread_local HybmStreamNotifyPtr RdmaTransportManager::notify_ = nullptr;
 
 RdmaTransportManager::~RdmaTransportManager()
@@ -254,6 +252,9 @@ Result RdmaTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRan
     BM_ASSERT_RETURN(qpManager_ != nullptr, BM_MALLOC_FAILED);
     std::unordered_set<uint32_t> ranksSet;
     std::unordered_map<uint32_t, MemoryRegionMap> removedRankRegions;
+
+    HybmStreamManager::DestroyAllThreadHybmStream(); // clean all stream, maybe has some task on stream
+
     WriteGuard lockGuard(lock_);
     for (auto rank : removedRanks) {
         if (rank >= rankCount_) {
@@ -268,10 +269,7 @@ Result RdmaTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRan
         }
         notifyRemoteInfo_[rank] = std::make_pair(0U, 0U);
     }
-    for (auto &it : streamMask_) {
-        HybmStreamManager::ResetThreadHybmStream(it.first);
-        it.second = true;
-    }
+
     if (ranksSet.empty()) {
         return BM_OK;
     }
@@ -616,42 +614,6 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
     return true;
 }
 
-bool RdmaTransportManager::IsResetStream()
-{
-    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
-    auto it = streamMask_.find(tid);
-    if (it == streamMask_.end()) {
-        return true;
-    }
-    return it->second;
-}
-
-int RdmaTransportManager::PrepareThreadLocalStream()
-{
-    lock_.LockRead();
-    if (stream_ != nullptr && !IsResetStream()) {
-        lock_.UnLock();
-        return BM_OK;
-    }
-    lock_.UnLock();
-    WriteGuard lockGuard(lock_);
-    stream_ = HybmStreamManager::GetThreadHybmStream(deviceId_, 0, 0);
-    if (stream_ == nullptr) {
-        BM_LOG_ERROR("HybmStream init failed");
-        return BM_ERROR;
-    }
-
-    notify_ = std::make_shared<HybmStreamNotify>(stream_);
-    BM_ASSERT_LOG_AND_RETURN(notify_ != nullptr, "notify create failed.", BM_ERROR);
-
-    auto ret = notify_->Init();
-    BM_ASSERT_LOG_AND_RETURN(ret == 0, "notify init failed.", ret);
-    uint64_t tid = static_cast<uint64_t>(syscall(SYS_gettid));
-    streamMask_[tid] = false;
-    BM_LOG_INFO("PrepareThreadLocalStream success, tid:" << tid);
-    return BM_OK;
-}
-
 void RdmaTransportManager::ClearAllRegisterMRs()
 {
     WriteGuard lockGuard(lock_);
@@ -704,11 +666,8 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
         return BM_ERROR;
     }
 
-    auto ret = PrepareThreadLocalStream();
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("prepare stream error rankId: " << rankId);
-        return ret;
-    }
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
 
     struct send_wr_v2 wr = {};
     struct sg_list sgList = {.addr = lAddr, .len = (uint32_t)size, .lkey = 0};
@@ -718,7 +677,7 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     wr.op = write ? 0 : 4; /* RDMA_WRITE: 0  RDMA_READ: 4 */
     wr.send_flag = RA_SEND_SIGNALED;
     wr.wr_id = wrIdx_.fetch_add(1U);
-    ret = CorrectHostRegWr(rankId, lAddr, rAddr, size, wr);
+    auto ret = CorrectHostRegWr(rankId, lAddr, rAddr, size, wr);
     if (ret != BM_OK) {
         BM_LOG_ERROR("CorrectHostRegWr failed : " << ret);
         qpManager_->PutQpHandle(qp);
@@ -737,12 +696,12 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
 
     StreamTask task;
     task.type = STREAM_TASK_TYPE_RDMA;
-    ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe);
+    ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe, hStream);
     TP_TRACE_BEGIN(TP_HYBM_DEV_SUBMIT_TASK);
-    ret = stream_->SubmitTasks(task);
+    ret = hStream->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_DEV_SUBMIT_TASK, ret);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("stream_->SubmitTasks(task) failed: " << ret);
+        BM_LOG_ERROR("SubmitTasks(task) failed: " << ret);
         qpManager_->PutQpHandle(qp);
         return ret;
     }
@@ -847,9 +806,9 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
     }
 }
 
-void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command)
+void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command,
+                                                                   HybmStreamPtr st)
 {
-    BM_ASSERT_RET_VOID(stream_ != nullptr);
     static std::atomic<uint32_t> taskIdGenerator{1};
     auto sqe = &command.writeValueSqe;
 
@@ -859,8 +818,8 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
     sqe->header.ie = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.pre_p = RT_STARS_SQE_INT_DIR_NO;
     sqe->header.post_p = RT_STARS_SQE_INT_DIR_NO;
-    sqe->header.wr_cqe = stream_->GetWqeFlag();
-    sqe->header.rt_stream_id = static_cast<uint16_t>(stream_->GetId());
+    sqe->header.wr_cqe = st->GetWqeFlag();
+    sqe->header.rt_stream_id = static_cast<uint16_t>(st->GetId());
     sqe->header.task_id = taskId;
 
     sqe->va = 0U;
@@ -941,10 +900,18 @@ int32_t RdmaTransportManager::InitStreamNotifyBuf()
 
 int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
 {
-    BM_LOG_DEBUG("notify, rank: " << rankId);
-    BM_ASSERT_RETURN(stream_ != nullptr, BM_MALLOC_FAILED);
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
     auto &remoteMr = notifyRemoteInfo_[rankId];
     BM_ASSERT_LOG_AND_RETURN(remoteMr.second != 0, "remote notify not set! rank:" << rankId, BM_ERROR);
+
+    if (notify_ == nullptr || notify_->GetStream() != hStream) {
+        notify_ = std::make_shared<HybmStreamNotify>(hStream);
+        BM_ASSERT_LOG_AND_RETURN(notify_ != nullptr, "notify create failed.", BM_ERROR);
+
+        auto ret = notify_->Init();
+        BM_ASSERT_LOG_AND_RETURN(ret == 0, "notify init failed.", ret);
+    }
 
     struct send_wr_v2 wr = {};
     struct sg_list sgList = {
@@ -969,10 +936,10 @@ int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
 
     StreamTask task;
     task.type = STREAM_TASK_TYPE_RDMA;
-    ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe);
-    ret = stream_->SubmitTasks(task);
+    ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe, hStream);
+    ret = hStream->SubmitTasks(task);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("stream_->SubmitTasks(task) failed: " << ret);
+        BM_LOG_ERROR("SubmitTasks(task) failed: " << ret);
         return ret;
     }
 

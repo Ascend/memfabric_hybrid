@@ -160,7 +160,7 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 int32_t smem_bm_wait(smem_bm_t handle);
 
 /**
- * @brief Register hbm mem, support sdma or drma
+ * @brief Register hbm mem, support sdma or rdma
  *
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
  * @param addr             [in] register addr
@@ -169,7 +169,7 @@ int32_t smem_bm_wait(smem_bm_t handle);
 int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
 
 /**
- * @brief UnRegister hbm mem, support sdma or drma
+ * @brief UnRegister hbm mem, support sdma or rdma
  *
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
  * @param addr             [in] unregister addr

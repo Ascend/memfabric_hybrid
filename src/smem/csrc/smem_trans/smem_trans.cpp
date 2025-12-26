@@ -18,13 +18,8 @@
 
 using namespace ock::smem;
 
-#ifdef UT_ENABLED
-thread_local std::mutex g_smemTransMutex_;
-thread_local bool g_smemTransInited = false;
-#else
 std::mutex g_smemTransMutex_;
 bool g_smemTransInited = false;
-#endif
 
 SMEM_API int32_t smem_trans_config_init(smem_trans_config_t *config)
 {

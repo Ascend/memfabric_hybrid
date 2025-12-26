@@ -17,11 +17,7 @@ namespace ock {
 namespace smem {
 SmemShmEntryManager &SmemShmEntryManager::Instance()
 {
-#ifdef UT_ENABLED
-    static thread_local SmemShmEntryManager instance;
-#else
     static SmemShmEntryManager instance;
-#endif
     return instance;
 }
 

@@ -20,10 +20,10 @@
 namespace ock {
 namespace mf {
 static std::shared_mutex g_allThreadStreamMutex;
-static std::unordered_map<uint64_t, HybmStreamPtr> g_allThreadStreams;
-HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t prio, uint32_t flags)
+static std::unordered_map<int64_t, HybmStreamPtr> g_allThreadStreams;
+HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId)
 {
-    const auto thisId = static_cast<uint64_t>(syscall(SYS_gettid));
+    const auto thisId = Func::GetCurTid();
     {
         std::shared_lock lock(g_allThreadStreamMutex);
         auto it = g_allThreadStreams.find(thisId);
@@ -38,7 +38,7 @@ HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId, uint32_t pr
         if (it != g_allThreadStreams.end()) {
             return it->second;
         }
-        hybmStream_ = std::make_shared<HybmStream>(devId, prio, flags);
+        hybmStream_ = std::make_shared<HybmStream>(devId, 0, 0);
         auto ret = hybmStream_->Initialize();
         if (ret != BM_OK) {
             BM_LOG_ERROR("HybmStream init failed: " << ret);
@@ -84,7 +84,7 @@ private:
     void *stream_;
 };
 
-void *HybmStreamManager::GetThreadAclStream(int32_t devId)
+void *HybmStreamManager::GetThreadAclStream()
 {
     static thread_local void *stream_ = nullptr;
     if (stream_ != nullptr) {
@@ -93,12 +93,7 @@ void *HybmStreamManager::GetThreadAclStream(int32_t devId)
 #if XPU_TYPE == XPU_NPU
     static uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
     static uint32_t ACL_STREAM_FAST_SYNC = 2U;
-    auto ret = DlAclApi::AclrtSetDevice(devId);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("Set device id to be " << devId << " failed: " << ret);
-        return nullptr;
-    }
-    ret = DlAclApi::AclrtCreateStreamWithConfig(&stream_, 0, ACL_STREAM_FAST_LAUNCH | ACL_STREAM_FAST_SYNC);
+    auto ret = DlAclApi::AclrtCreateStreamWithConfig(&stream_, 0, ACL_STREAM_FAST_LAUNCH | ACL_STREAM_FAST_SYNC);
     if (ret != 0) {
         BM_LOG_ERROR("create stream failed: " << ret);
         return nullptr;

@@ -58,15 +58,9 @@ private:
                        uint32_t batchSize, void *stream) noexcept;
     Result BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
                        uint32_t batchSize, void *stream) noexcept;
-    bool IsResetStream() noexcept;
-
-    Result PrepareThreadLocalStream() noexcept;
 
 private:
     bool inited_ = false;
-    static thread_local HybmStreamPtr stream_;
-    ReadWriteLock lock_;
-    std::unordered_map<uint64_t, bool> streamMask_;
 };
 }
 }

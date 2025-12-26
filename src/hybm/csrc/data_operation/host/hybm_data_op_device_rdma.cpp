@@ -515,7 +515,7 @@ Result DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params,
     auto ret = 0;
     uint32_t batchNum = params.batchSize;
     if (st == nullptr) {
-        st = HybmStreamManager::GetThreadAclStream(HybmGetInitDeviceId());
+        st = HybmStreamManager::GetThreadAclStream();
     }
 
     for (size_t i = 0; i < batchNum; ++i) {

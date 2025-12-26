@@ -23,6 +23,7 @@
 #include "hybm_gva_version.h"
 #include "hybm_version.h"
 #include "mf_file_util.h"
+#include "hybm_stream_manager.h"
 #include "under_api/dl_api.h"
 
 using namespace ock::mf;
@@ -124,16 +125,16 @@ HYBM_API void hybm_uninit()
         return;
     }
 
-    ptracer_uninit();
-
     if (--initialized > 0L) {
         return;
     }
 
+    ptracer_uninit();
     drv::HalGvaFree(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
     auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
     BM_LOG_INFO("uninitialize GVA memory return: " << ret);
     g_baseAddr = 0ULL;
+    HybmStreamManager::DestroyAllThreadHybmStream();
     DlApi::CleanupLibrary();
     initialized = 0;
 }
