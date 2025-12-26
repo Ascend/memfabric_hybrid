@@ -9,6 +9,9 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers" // ignore pybind11 warning
+
 #include "pytransfer.h"
 #include <thread>
 #include <chrono>
@@ -362,3 +365,5 @@ PYBIND11_MODULE(_pymf_transfer, m) {
     adaptor_cls.attr("TransferOpcode") = transfer_opcode;
     adaptor_cls.attr("TransDataOpType") = transfer_type;
 }
+
+#pragma GCC diagnostic pop
