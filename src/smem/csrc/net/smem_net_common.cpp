@@ -93,8 +93,56 @@ Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
     return SM_OK;
 }
 
+static Result GetLocalIpV6WithTarget(const std::string &target, std::string &local)
+{
+    struct ifaddrs *ifaddr;
+    char localResultIp[INET6_ADDRSTRLEN];
+    Result result = SM_ERROR;
+    struct in6_addr targetIp;
+    if (inet_pton(AF_INET6, target.c_str(), &targetIp) != 1) {
+        SM_LOG_ERROR("target IPv6 address invalid. " << target);
+        return SM_INVALID_PARAM;
+    }
+    if (getifaddrs(&ifaddr) == -1) {
+        SM_LOG_ERROR("get local net interfaces failed: " << errno << ": " << strerror(errno));
+        return SM_ERROR;
+    }
+    for (auto ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+        if ((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6) || (ifa->ifa_netmask == nullptr)) {
+            continue;
+        }
+        auto localIp = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr)->sin6_addr;
+        auto localMask = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_netmask)->sin6_addr;
+        bool sameSubnet = true;
+        for (int i = 0; i < N16; ++i) {
+            uint8_t localByte = localIp.s6_addr[i] & localMask.s6_addr[i];
+            uint8_t targetByte = targetIp.s6_addr[i] & localMask.s6_addr[i];
+            if (localByte != targetByte) {
+                sameSubnet = false;
+                break;
+            }
+        }
+        if (!sameSubnet) {
+            continue;
+        }
+        if (inet_ntop(AF_INET6, &localIp, localResultIp, sizeof(localResultIp)) == nullptr) {
+            SM_LOG_ERROR("convert local IPv6 to string failed: " << errno << ": " << strerror(errno));
+            result = SM_ERROR;
+        } else {
+            local = std::string(localResultIp);
+            result = SM_OK;
+        }
+        break;
+    }
+    freeifaddrs(ifaddr);
+    return result;
+}
+
 Result GetLocalIpWithTarget(const std::string &target, std::string &local)
 {
+    if (!IsValidIpV4(target)) {
+        return GetLocalIpV6WithTarget(target, local);
+    }
     struct ifaddrs *ifaddr;
     char localResultIp[64];
     Result result = SM_ERROR;

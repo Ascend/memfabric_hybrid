@@ -301,6 +301,7 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
 
     (void)smem_bm_config_init(&config);
     config.rankId = rankId;
+    config.autoRanking = false;
     if (rankId == 0) {
         std::string s1 = "tcp://192.168.0.1/16:12005";
         std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
