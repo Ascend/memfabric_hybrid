@@ -9,7 +9,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
+BUILD_TEST=${1:-BUILD_TEST}
 XPU_TYPE=${2:-NPU}
+echo "BUILD_TEST is ${BUILD_TEST}"
 echo "XPU_TYPE is ${XPU_TYPE}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
@@ -42,42 +44,40 @@ VERSION="${VERSION:-1.0.1}"
 OUTPUT_DIR=${BASH_PATH}/../../output
 
 rm -rf ${PKG_DIR}
-mkdir -p ${PKG_DIR}/${ARCH_OS}
-mkdir ${PKG_DIR}/${ARCH_OS}/bin
-mkdir ${PKG_DIR}/${ARCH_OS}/include
-mkdir ${PKG_DIR}/${ARCH_OS}/lib64
-mkdir ${PKG_DIR}/${ARCH_OS}/wheel
-mkdir ${PKG_DIR}/${ARCH_OS}/script
-mkdir -p ${PKG_DIR}/${ARCH_OS}/include/smem
-mkdir -p ${PKG_DIR}/${ARCH_OS}/include/hybm
-mkdir -p ${PKG_DIR}/${ARCH_OS}/script/mock_server
+mkdir -p ${PKG_DIR}/"${ARCH_OS}"
+mkdir ${PKG_DIR}/"${ARCH_OS}"/include
+mkdir ${PKG_DIR}/"${ARCH_OS}"/lib64
+mkdir ${PKG_DIR}/"${ARCH_OS}"/wheel
+mkdir -p ${PKG_DIR}/"${ARCH_OS}"/include/smem
+mkdir -p ${PKG_DIR}/"${ARCH_OS}"/include/hybm
 
 # smem
-cp -r ${OUTPUT_DIR}/smem/include/* ${PKG_DIR}/${ARCH_OS}/include/smem
-cp ${OUTPUT_DIR}/smem/lib64/* ${PKG_DIR}/${ARCH_OS}/lib64
+cp -r "${OUTPUT_DIR}"/smem/include/ ${PKG_DIR}/"${ARCH_OS}"/include/smem/
+cp "${OUTPUT_DIR}"/smem/lib64/* ${PKG_DIR}/"${ARCH_OS}"/lib64
 # hybm
-cp -r ${OUTPUT_DIR}/hybm/include/* ${PKG_DIR}/${ARCH_OS}/include/hybm
-cp ${OUTPUT_DIR}/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/${ARCH_OS}/lib64/
-# mf_transfer
-cp -r ${OUTPUT_DIR}/mk_transfer_adapter/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+cp -r "${OUTPUT_DIR}"/hybm/include/* ${PKG_DIR}/"${ARCH_OS}"/include/hybm
+cp "${OUTPUT_DIR}"/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/"${ARCH_OS}"/lib64/
 # memfabric_hybrid
-cp -r ${OUTPUT_DIR}/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/${ARCH_OS}/wheel/
+cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel/
 
-cp -r ${PROJECT_DIR}/test/certs ${PKG_DIR}/${ARCH_OS}/script
+if [ "$BUILD_TEST" = "ON" ]; then
+    mkdir -p ${PKG_DIR}/"${ARCH_OS}"/script/mock_server
+    cp "${PROJECT_DIR}"/test/python/mock_server/server.py ${PKG_DIR}/"${ARCH_OS}"/script/mock_server
+fi
 
 mkdir -p ${PKG_DIR}/script
 if [[ "$XPU_TYPE" == "NPU" ]]; then
    echo "in make_run.sh, XPU_TYPE is NPU"
-   cp ${BASH_PATH}/install.sh ${PKG_DIR}/script/
+   cp "${BASH_PATH}"/install.sh ${PKG_DIR}/script/
 elif [[ "$XPU_TYPE" == "GPU" ]]; then
    echo "in make_run.sh, XPU_TYPE is GPU"
-   cp ${BASH_PATH}/no_cann/install.sh ${PKG_DIR}/script/
+   cp "${BASH_PATH}"/no_cann/install.sh ${PKG_DIR}/script/
 else
    echo "in make_run.sh, XPU_TYPE is NONE"
-   cp ${BASH_PATH}/no_cann/install.sh ${PKG_DIR}/script/
+   cp "${BASH_PATH}"/no_cann/install.sh ${PKG_DIR}/script/
 fi
 
-cp ${BASH_PATH}/uninstall.sh ${PKG_DIR}/script/
+cp "${BASH_PATH}"/uninstall.sh ${PKG_DIR}/script/
 
 # generate version.info
 touch ${PKG_DIR}/version.info
@@ -110,10 +110,10 @@ case "$XPU_TYPE" in
 esac
 
 FILE_NAME=${PKG_DIR}-${VERSION}_${OS_NAME}_${ARCH}${XPU_SUFFIX}
-tar -cvf ${FILE_NAME}.tar.gz ${PKG_DIR}/
-cat run_header.sh ${FILE_NAME}.tar.gz > ${FILE_NAME}.run
-mv ${FILE_NAME}.run ${OUTPUT_DIR}
+tar -cvf "${FILE_NAME}".tar.gz ${PKG_DIR}/
+cat run_header.sh "${FILE_NAME}".tar.gz > "${FILE_NAME}".run
+mv "${FILE_NAME}".run "${OUTPUT_DIR}"
 rm -rf ${PKG_DIR}
-rm -rf ${FILE_NAME}.tar.gz
+rm -rf "${FILE_NAME}".tar.gz
 
-cd ${CURRENT_DIR}
+cd "${CURRENT_DIR}"

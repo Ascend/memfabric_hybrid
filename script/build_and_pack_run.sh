@@ -16,13 +16,15 @@ CURRENT_DIR=$(pwd)
 BUILD_MODE="RELEASE"
 BUILD_PYTHON="ON"
 XPU_TYPE="NPU"
+BUILD_TEST="OFF"
 
 show_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  --build_mode <mode>         Set build mode (RELEASE/DEBUG/ASAN), default: RELEASE"
     echo "  --build_python <ON/OFF>     Enable/disable Python build, default: ON"
-    echo "  --xpu_type <GPU/NPU/NONE>    set xpu dependency(GPU:CUDA, NPU:CANN), set none without xpu, default: NPU"
+    echo "  --xpu_type <GPU/NPU/NONE>   Set xpu dependency(GPU:CUDA, NPU:CANN), set none without xpu, default: NPU"
+    echo "  --build_test <ON/OFF>       Enable/disable build and package test utilities and examples, default: OFF"
     echo "  --help                      Show this help message"
     echo ""
     echo "Example:"
@@ -42,6 +44,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --xpu_type)
             XPU_TYPE="$2"
+            shift 2
+            ;;
+        --build_test)
+            BUILD_TEST="$2"
             shift 2
             ;;
         --help)
@@ -65,6 +71,6 @@ cd ${ROOT_PATH}
 
 bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}"
 
-bash run_pkg_maker/make_run.sh "${BUILD_PYTHON}" "${XPU_TYPE}"
+bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}"
 
 cd ${CURRENT_DIR}

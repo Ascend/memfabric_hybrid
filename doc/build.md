@@ -42,11 +42,12 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 ```
 
-- build_and_pack_run.sh支持3个参数,按顺序分别是<build_mode> <build_python> <xpu_type>
-- build_mode: 编译类型, 可填RELEASE或DEBUG, 默认RELEASE
-- build_python: 是否编译python的whl包,可填ON或OFF, 默认ON
-- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本。
-- 不填入参数情况下,默认执行build_and_pack_run.sh RELEASE ON NPU
+- build_and_pack_run.sh支持4个参数，分别是<build_mode> <build_python> <xpu_type> <build_test>
+- build_mode: 编译类型，可填RELEASE或DEBUG，默认RELEASE
+- build_python: 是否编译python的whl包，可填ON或OFF，默认ON
+- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，默认NPU
+- build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
+
 4. ut运行
 
 支持直接执行如下脚本编译并运行ut
@@ -58,7 +59,7 @@ bash script/run_ut.sh
 
 memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
 
-其中，versin表示memfabric_hybrid的版本；os表示操作系统,如linux；arch表示架构，如x86或aarch64
+其中，versin表示memfabric_hybrid的版本；os表示操作系统，如linux；arch表示架构，如x86或aarch64
 
 ### run包安装
 
@@ -86,57 +87,19 @@ source /usr/local/memfabric_hybrid/set_env.sh
 bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 ```
 
-默认安装完成后目录结构如下
-```
-/usr/local/memfabric_hybrid
-├── 1.0.0
-│   ├── aarch64-linux
-│   │   ├── bin
-│   │   ├── include
-│   │   │   ├── hybm
-│   │   │   │   ├── hybm.h
-│   │   │   │   ├── hybm_big_mem.h
-│   │   │   │   ├── hybm_data_op.h
-│   │   │   │   └── hybm_def.h
-│   │   │   └── smem
-│   │   │       ├── device
-│   │   │       │   ├── smem_shm_aicore_base_api.h
-│   │   │       │   ├── smem_shm_aicore_base_copy.h
-│   │   │       │   ├── smem_shm_aicore_base_define.h
-│   │   │       │   ├── smem_shm_aicore_base_meta.h
-│   │   │       │   └── smem_shm_aicore_base_rdma.h
-│   │   │       └── host
-│   │   │           ├── smem.h
-│   │   │           ├── smem_bm.h
-│   │   │           ├── smem_bm_def.h
-│   │   │           ├── smem_shm.h
-│   │   │           ├── smem_shm_def.h
-│   │   │           ├── smem_trans.h
-│   │   │           └── smem_trans_def.h
-│   │   ├── lib64
-│   │   │   ├── libmf_hybm_core.so
-│   │   │   └── libmf_smem.so
-│   │   ├── script
-│   │   │   ├── certs
-│   │   │   │   ├── generate_client_cert.py
-│   │   │   │   ├── generate_crl.py
-│   │   │   │   ├── generate_root_cert.py
-│   │   │   │   └── generate_server_cert.py
-│   │   │   └── mock_server
-│   │   └── wheel
-│   │       ├── mf_adapter-1.0.0-cp311-cp311-linux_aarch64.whl
-│   │       └── memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
-│   ├── uninstall.sh
-│   └── version.info
-├── latest -> 1.0.0
-└── set_env.sh
+安装的run包可以通过如下命令查看版本（此处以默认安装路径为例）
 
 ```
+root@localhost:/# cat /usr/local/memfabric_hybrid/latest/version.info
+Version:1.0.1
+Platform:aarch64
+Kernel:linux
+CommitId:034c71e58f1d70fe691644b2b18e0b8418c40b7a
+```
 
-安装的python包如下
+安装的python包可以通过如下命令查看版本
 
 ```text
-
 root@localhost:/# pip show memfabric_hybrid
 Name: memfabric_hybrid
 Version: 1.0.0
@@ -148,43 +111,11 @@ License: Apache License Version 2.0
 Location: /usr/local/lib/python3.11/site-packages
 Requires:
 Required-by:
-root@localhost:/# pip show mf_adapter
-Name: mf_adapter
-Version: 1.0.0
-Summary: python api for mf_adapter
-Home-page: https://gitcode.com/Ascend/memfabric_hybrid
-Author:
-Author-email:
-License: Apache License Version 2.0
-Location: /usr/local/lib/python3.11/site-packages
-Requires:
-Required-by:
-
-root@localhost:/# tree /usr/local/lib/python3.11/site-packages/memfabric_hybrid
-/usr/local/lib/python3.11/site-packages/memfabric_hybrid
-├── VERSION
-├── __init__.py
-├── __pycache__
-│   └── __init__.cpython-311.pyc
-├── _pymf_hybrid.cpython-311-aarch64-linux-gnu.so
-└── lib
-    ├── libmf_hybm_core.so
-    └── libmf_smem.so
-
-root@localhost:/# tree /usr/local/lib/python3.11/site-packages/mf_adapter
-/usr/local/lib/python3.11/site-packages/mf_adapter
-├── VERSION
-├── __init__.py
-├── __pycache__
-│   └── __init__.cpython-311.pyc
-├── _pymf_transfer.cpython-311-aarch64-linux-gnu.so
-└── lib
-    ├── libmf_hybm_core.so
-    └── libmf_smem.so 
 ```
+
 在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
 ```bash
-# 检查是否安装memfabric_hybric
+# 检查是否安装memfabric_hybrid
 pip show mmefabric_hybrid
 # 手动安装
 pip install memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
