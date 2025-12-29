@@ -1,5 +1,6 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/googletest/googletest/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/googletest/googlemock/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mockcpp/include)
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host

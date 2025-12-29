@@ -106,6 +106,8 @@ typedef struct {
     hybm_role_type role;
     uint32_t flags;
     char transUrl[64];
+    char tag[32];
+    char tagOpInfo[128];
     hybm_tls_config tlsOption;
 } hybm_options;
 

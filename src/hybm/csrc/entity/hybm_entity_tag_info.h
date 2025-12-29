@@ -13,6 +13,8 @@
 #define MEM_FABRIC_HYBRID_HYBM_ENTITY_TAG_INFO_H
 
 #include <unordered_map>
+#include <shared_mutex>
+
 #include "hybm_common_include.h"
 
 namespace ock {
@@ -21,15 +23,33 @@ namespace mf {
 class HybmEntityTagInfo {
 public:
     Result TagInfoInit(hybm_options option);
-    Result AddTagOpInfo(std::string info);
+    /**
+     * AddTagOpInfo
+     * @param info eg: tag0:opType:tag1,tag0:opType:tag2
+     * opType should in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)
+     * @return 0 if Success
+     */
+    Result AddTagOpInfo(const std::string &info);
 
-    Result AddRankTag(uint32_t rankId, std::string tag);
-    Result RemoveRankTag(uint32_t rankId, std::string tag);
+    /**
+     * AddRankTag
+     * @param rankId rankId
+     * @param tag eg: support a~zA~Z_
+     * @return 0 if Success
+     */
+    Result AddRankTag(uint32_t rankId, const std::string &tag);
+    Result RemoveRankTag(uint32_t rankId, const std::string &tag);
     std::string GetTagByRank(uint32_t rankId);
-    hybm_data_op_type GetTag2TagOpType(std::string tag1, std::string tag2);
+    uint32_t GetTag2TagOpType(const std::string &tag1, const std::string &tag2);
+    uint32_t GetRank2RankOpType(uint32_t rankId1, uint32_t rankId2);
+
 private:
+    Result AddOneTagOpInfo(const std::string &info);
+private:
+    hybm_options options_;
+    std::shared_mutex mutex_;
     std::unordered_map<uint32_t, std::string> rankTagInfo_;
-    std::unordered_map<std::string, hybm_data_op_type> tagOpInfo_;
+    std::unordered_map<std::string, uint32_t> tagOpInfo_;
 };
 
 }
