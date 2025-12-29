@@ -29,8 +29,7 @@ import torch
 import torch_npu
 
 import memfabric_hybrid
-from memfabric_hybrid import bm, shm
-from mf_adapter import TransferEngine, create_config_store, set_log_level
+from memfabric_hybrid import bm, shm, TransferEngine, create_config_store, set_log_level
 
 globals_device_id = -1
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -55,7 +55,7 @@ c接口使用方式:
 3. 调用smem_trans_register_mem接口将内存注册给memfabric，然后调用smem_trans_write或smem_trans_read接口进行传输
 
 python接口使用方式:
-1. 调用mf_adapter.TransferEngine接口创建engine
+1. 调用memfabric_hybrid.TransferEngine接口创建engine
 2. 调用engine.initialize接口初始化
 3. 调用engine.register_memory接口将内存注册给memfabric，然后调用engine.transfer_sync_write接口进行传输
 ```

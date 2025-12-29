@@ -116,7 +116,7 @@ Required-by:
 在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
 ```bash
 # 检查是否安装memfabric_hybrid
-pip show mmefabric_hybrid
+pip show mefabric_hybrid
 # 手动安装
-pip install memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
+pip install memfabric_hybrid-1.0.1-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl
 ```
