@@ -42,9 +42,17 @@ cd ${ROOT_PATH}/..
 PROJ_DIR=$(pwd)
 
 rm -rf ./build ./output
-
+if command -v ninja &> /dev/null; then
+    echo "========= build by ninja ============"
+    export GENERATOR="Ninja"
+    export MAKE_CMD=ninja
+else
+    GENERATOR="Unix Makefiles"
+    export MAKE_CMD=make
+fi
 mkdir build/
 cmake \
+    -G "$GENERATOR"  \
     -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
     -DBUILD_COMPILER="${BUILD_COMPILER}" \
     -DBUILD_TESTS="${BUILD_TESTS}" \
@@ -54,7 +62,7 @@ cmake \
     -DXPU_TYPE="${XPU_TYPE}" \
     -S . \
     -B build/
-make install -j32 -C build/
+${MAKE_CMD} install -j32 -C build/
 
 if [ "${BUILD_PYTHON}" != "ON" ]; then
     echo "========= skip build python ============"
@@ -115,8 +123,8 @@ do
 
         rm -rf build/
         mkdir -p build/
-        cmake -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
-        make -j5 -C build
+        cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
+        ${MAKE_CMD} -j5 -C build
     fi
 
     # mf_adapter

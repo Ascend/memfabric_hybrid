@@ -9,6 +9,7 @@
 - gcc: 11.4+
 - python 3.11.10
 - pybind11 2.10.3
+- make 4.3 or ninja 1.10.1
 
 #### (编译选择CANN依赖时)需要NPU固件驱动和CANN包
 
