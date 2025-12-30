@@ -165,6 +165,8 @@ TEST_F(SmemTransTest, smem_trans_create_failed_invalid_param)
     EXPECT_EQ(smem_trans_create(STORE_URL_TEST1, UNIQUE_ID, &g_trans_options), nullptr);
     EXPECT_EQ(smem_trans_create(STORE_URL, UNIQUE_ID_TEST, &g_trans_options), nullptr);
     EXPECT_EQ(smem_trans_create(STORE_URL_IPV6, UNIQUE_ID_TEST, &g_trans_options), nullptr);
+
+    smem_trans_uninit(0);
 }
 
 TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)

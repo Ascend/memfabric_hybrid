@@ -356,6 +356,8 @@ TEST_F(AccLinksTest, test_server_send_should_return_error)
         ASSERT_TRUE(true != result);
     }
     std::cout << "server send msg" << std::endl;
+
+    free(data);
 }
 
 TEST_F(AccLinksTest, test_worker_ValidateOptions)
