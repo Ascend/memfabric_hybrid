@@ -84,7 +84,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ## 🔥性能表现
 
 ### 时延测试
-- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/yrewzjs/Mooncake/pull/1/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
+- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/memfabric-dev/Mooncake/pull/2/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
     
 ![a3-Latency-performance](./doc/source/a3_latency.png)
      
@@ -159,7 +159,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 
 ## 📑学习教程
 
-- [特性介绍](./doc/feature.md)：MemFabric提供的多种API的简介
+- [API介绍](./doc/feature.md)：MemFabric提供的多种API的简介
 
 - [C接口](./doc/API.md)：C接口介绍以及C接口对应的API列表
 
@@ -175,12 +175,14 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 - 配套软件：CANN 8.1.RC1及之后版本
 - cmake >= 3.19  
 - GLIBC >= 2.28
-- 配套驱动固件依赖(使用不同介质所需最低版本不同)：
+- HDK配套驱动（npu-driver）、固件（npu-firmware）依赖(使用不同介质所需最低版本不同)：
 
-  | 特性     | 最低版本需求|
+  | 特性     | HDK最低版本需求|
   |----------|----------|
   | HBM池化  | 24.1.RC2 |
   | DRAM池化 | 25.5.0 (*on going*)   |
+
+- LingQu Computing Network: 1.5.0  (*on going*)，A3 DRAM池化依赖
 
 ## 📝相关信息
 
