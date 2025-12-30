@@ -72,10 +72,10 @@ if [[ "$XPU_TYPE" == "NPU" ]]; then
    cp "${BASH_PATH}"/install.sh ${PKG_DIR}/script/
 elif [[ "$XPU_TYPE" == "GPU" ]]; then
    echo "in make_run.sh, XPU_TYPE is GPU"
-   cp "${BASH_PATH}"/no_cann/install.sh ${PKG_DIR}/script/
+   cp "${BASH_PATH}"/no_npu/install.sh ${PKG_DIR}/script/
 else
    echo "in make_run.sh, XPU_TYPE is NONE"
-   cp "${BASH_PATH}"/no_cann/install.sh ${PKG_DIR}/script/
+   cp "${BASH_PATH}"/no_npu/install.sh ${PKG_DIR}/script/
 fi
 
 cp "${BASH_PATH}"/uninstall.sh ${PKG_DIR}/script/

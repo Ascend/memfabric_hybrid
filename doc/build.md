@@ -39,14 +39,14 @@ git submodule update --recursive --init
 3. 编译
 
 ```
-bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU
+bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test OFF
 
 ```
 
 - build_and_pack_run.sh支持4个参数，分别是<build_mode> <build_python> <xpu_type> <build_test>
 - build_mode: 编译类型，可填RELEASE或DEBUG，默认RELEASE
 - build_python: 是否编译python的whl包，可填ON或OFF，默认ON
-- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，默认NPU
+- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
 - build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
 
 4. ut运行
