@@ -181,8 +181,11 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
   |----------|----------|
   | HBM池化  | 24.1.RC2 |
   | DRAM池化 | 25.5.0 (*on going*)   |
+  - [HDK安装指南](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)
 
 - LingQu Computing Network: 1.5.0  (*on going*)，A3 DRAM池化依赖
+  - [安装指南](https://support.huawei.com/enterprise/zh/ascend-computing/lingqu-computing-network-pid-258003841)
+  - [安装参考](./doc/CCLink.md)
 
 ## 📝相关信息
 
