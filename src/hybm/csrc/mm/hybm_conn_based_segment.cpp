@@ -47,7 +47,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
                      " total:" << HYBM_HOST_CONN_ADDR_SIZE);
         return BM_INVALID_PARAM;
     }
-    void *mapped = mmap(startAddr, totalSize, PROT_READ | PROT_WRITE,
+    void *mapped = mmap(startAddr, totalSize, PROT_NONE,
                         MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)startAddr) {
         BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" <<
