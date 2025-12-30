@@ -9,8 +9,6 @@ message("-- googletest: check if need to build at ${CHECK_FILE_LINKS}")
 
 if(EXISTS ${CHECK_FILE_LINKS})
     message("-- googletest: ${CHECK_FILE_LINKS}")
-    message("-- googletest: has been built, ignored")
-    return()
 endif()
 
 message("-- googletest: will build it")
