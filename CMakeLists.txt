@@ -49,21 +49,13 @@ if(NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL
     message(FATAL_ERROR "Invalid XPU_TYPE value: '${XPU_TYPE}'. Allowed: NONE, NPU, GPU")
 endif()
 
-if(XPU_TYPE STREQUAL "NONE")
-    set(XPU_TYPE_ID 0)
-elseif(XPU_TYPE STREQUAL "NPU")
-    set(XPU_TYPE_ID 1)
+if(XPU_TYPE STREQUAL "NPU")
+    add_definitions(-DASCEND_NPU)
 elseif(XPU_TYPE STREQUAL "GPU")
-    set(XPU_TYPE_ID 2)
+    add_definitions(-DNVIDIA_GPU)
+else()
+    add_definitions(-DNO_XPU)
 endif()
-
-
-add_definitions(-DXPU_TYPE=${XPU_TYPE_ID})
-add_definitions(
-        -DXPU_NONE=0
-        -DXPU_NPU=1
-        -DXPU_GPU=2
-)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -78,7 +70,7 @@ message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
-message(STATUS "XPU_TYPE: ${XPU_TYPE} (ID=${XPU_TYPE_ID})")
+message(STATUS "XPU_TYPE: ${XPU_TYPE}")
 message(STATUS "BUILD_TEST = ${BUILD_TEST}")
 find_program(NINJA_EXE NAMES ninja)
 if (NINJA_EXE)

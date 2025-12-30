@@ -140,7 +140,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.bmType = HYBM_TYPE_HOST_INITIATE;
     options.memType = SmemHybmHelper::TransHybmMemType(localDRAMSize, localHBMSize);
     options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(dataOpType);
-#if XPU_TYPE != XPU_NPU
+#if !defined(ASCEND_NPU)
     if ((options.bmDataOpType & HYBM_DOP_TYPE_SDMA) || (options.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed, invalid opType " << options.bmDataOpType
                                                       << " for non-cann based backend");

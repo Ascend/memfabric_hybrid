@@ -1161,7 +1161,7 @@ void *MemEntityDefault::GetReservedMemoryPtr(hybm_mem_type memType) noexcept
 
 int32_t MemEntityDefault::SetThreadAclDevice()
 {
-#if XPU_TYPE != XPU_NPU
+#if !defined(ASCEND_NPU)
     return BM_OK;
 #endif
     if (isSetDevice_) {

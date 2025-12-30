@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 
-#if XPU_TYPE == XPU_GPU
+#if defined(NVIDIA_GPU)
 #include <dlfcn.h>
 #include "dl_cuda_api.h"
 

@@ -20,7 +20,7 @@
 using namespace ock::mf;
 
 namespace {
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 1024 * 4ULL;
 #else
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 1024;

@@ -373,7 +373,7 @@ public:
 
     static void SetUbsModeFunc(Service_Context service, UbsHcomServiceUbcMode ubcMode)
     {
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
         BM_LOG_INFO("Set ubs mode to " << ubcMode);
         BM_ASSERT_RET_VOID(gSetUbsMode != nullptr);
         gSetUbsMode(service, ubcMode);
@@ -382,7 +382,7 @@ public:
 
     static uint32_t ImportUrmaSegFunc(Service_Context service, uintptr_t address, uint64_t size, OneSideKey *key)
     {
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
         if (gImportUrmaSeg == nullptr) {
             BM_LOG_ERROR("gImportUrmaSeg is nullptr.");
             return BM_ERROR;

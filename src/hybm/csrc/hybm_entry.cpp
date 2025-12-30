@@ -50,7 +50,7 @@ bool HybmHasInited()
 static inline Result hybm_load_library()
 {
     std::string libPath;
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
     char *path = std::getenv("ASCEND_HOME_PATH");
     BM_VALIDATE_RETURN(path != nullptr, "Environment ASCEND_HOME_PATH is not set.", BM_ERROR);
     libPath = std::string(path).append("/lib64");
@@ -58,7 +58,7 @@ static inline Result hybm_load_library()
         BM_LOG_ERROR("Environment ASCEND_HOME_PATH check failed.");
         return BM_ERROR;
     }
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
     char *path = std::getenv("CUDA_HOME");
     BM_VALIDATE_RETURN(path != nullptr, "Environment CUDA_HOME is not set.", BM_ERROR);
     libPath = std::string(path).append("/lib64");

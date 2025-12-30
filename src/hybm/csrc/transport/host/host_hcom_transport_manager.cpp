@@ -29,7 +29,7 @@ using namespace ock::mf::transport;
 using namespace ock::mf::transport::host;
 
 namespace {
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
 constexpr uint64_t HCOM_RECV_DATA_SIZE = 1024 * 1024UL;
 constexpr uint64_t HCOM_SEND_QUEUE_SIZE = 16384UL;
 constexpr uint64_t HCOM_RECV_QUEUE_SIZE = 16384UL;
@@ -58,7 +58,7 @@ static void CopyHcomOneSideKey(const OneSideKey &from, TransportMemoryKey &to)
 {
     std::copy_n(from.keys, std::size(from.keys), to.keys);
     std::copy_n(from.tokens, std::size(from.tokens), to.keys + std::size(from.keys));
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
     auto offset = std::size(from.tokens) + std::size(from.keys);
     std::copy_n(from.eid, URMA_EID_LENGTH, reinterpret_cast<uint8_t *>(to.keys + offset));
 #endif
@@ -68,7 +68,7 @@ static void CopyHcomOneSideKey(TransportMemoryKey &from, OneSideKey &to)
 {
     std::copy_n(from.keys, std::size(to.keys), to.keys);
     std::copy_n(from.keys + std::size(to.keys), std::size(to.tokens), to.tokens);
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
     auto offset = std::size(to.tokens) + std::size(to.keys);
     std::copy_n(reinterpret_cast<uint8_t *>(from.keys + offset), URMA_EID_LENGTH, to.eid);
 #endif
@@ -152,7 +152,7 @@ Result HcomTransportManager::CloseDevice()
     return BM_OK;
 }
 
-#if XPU_TYPE == XPU_NPU || XPU_TYPE == XPU_GPU
+#if defined(ASCEND_NPU) || defined(NVIDIA_GPU)
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);

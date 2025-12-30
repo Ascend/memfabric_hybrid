@@ -90,7 +90,7 @@ void *HybmStreamManager::GetThreadAclStream()
     if (stream_ != nullptr) {
         return stream_;
     }
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
     static uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
     static uint32_t ACL_STREAM_FAST_SYNC = 2U;
     auto ret = DlAclApi::AclrtCreateStreamWithConfig(&stream_, 0, ACL_STREAM_FAST_LAUNCH | ACL_STREAM_FAST_SYNC);

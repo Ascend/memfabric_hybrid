@@ -18,9 +18,9 @@
 #include <mutex>
 #include "dl_acl_api.h"
 
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
 #include "dl_acl_api.h"
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
 #include "dl_cuda_api.h"
 #endif
 
@@ -30,9 +30,9 @@ class DlHybridApi {
 public:
     static Result LoadLibrary(const std::string &libDirPath = "")
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::LoadLibrary(libDirPath);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::LoadLibrary(libDirPath);
 #endif
         return BM_OK;
@@ -40,18 +40,18 @@ public:
 
     static void CleanupLibrary()
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::CleanupLibrary();
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CleanupLibrary();
 #endif
     }
 
     static inline Result SetDevice(int device)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtSetDevice(device);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaSetDevice(device);
 #else
         return BM_NOT_SUPPORTED;
@@ -60,9 +60,9 @@ public:
 
     static inline Result GetDevice(int *device)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtGetDevice(device);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaGetDevice(device);
 #else
         return BM_NOT_SUPPORTED;
@@ -71,9 +71,9 @@ public:
 
     static inline Result StreamCreate(void **stream)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtCreateStream(stream);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaStreamCreate(stream);
 #else
         return BM_NOT_SUPPORTED;
@@ -82,9 +82,9 @@ public:
 
     static inline Result StreamDestroy(void *stream)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtDestroyStream(stream);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaStreamDestroy(stream);
 #else
         return BM_NOT_SUPPORTED;
@@ -93,9 +93,9 @@ public:
 
     static inline Result StreamSynchronize(void *stream)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtSynchronizeStream(stream);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaStreamSynchronize(stream);
 #else
         return BM_NOT_SUPPORTED;
@@ -104,9 +104,9 @@ public:
 
     static inline Result Malloc(void **ptr, size_t size, uint32_t type)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtMalloc(ptr, size, type);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         (void)type;
         return DlCudaApi::CudaMalloc(ptr, size);
 #else
@@ -116,9 +116,9 @@ public:
 
     static inline Result MallocHost(void **ptr, size_t size)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtMallocHost(ptr, size);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaMallocHost(ptr, size);
 #else
         return BM_NOT_SUPPORTED;
@@ -127,9 +127,9 @@ public:
 
     static inline Result Free(void *ptr)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtFree(ptr);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaFree(ptr);
 #else
         return BM_NOT_SUPPORTED;
@@ -138,9 +138,9 @@ public:
 
     static inline Result FreeHost(void *ptr)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtFreeHost(ptr);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaFreeHost(ptr);
 #else
         return BM_NOT_SUPPORTED;
@@ -149,9 +149,9 @@ public:
 
     static inline Result Memcpy(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtMemcpy(dst, destMax, src, count, kind);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         (void)destMax;
         return DlCudaApi::CudaMemcpy(dst, src, count, static_cast<int>(kind));
 #else
@@ -173,10 +173,10 @@ public:
                                      aclrtMemcpyBatchAttr *attrs, size_t *attrsIndexes, size_t numAttrs,
                                      size_t *failIndex)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtMemcpyBatch(dsts, destMax, srcs, sizes, numBatches, attrs, attrsIndexes, numAttrs,
                                           failIndex);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return BM_NOT_SUPPORTED;
 #else
         return BM_NOT_SUPPORTED;
@@ -186,9 +186,9 @@ public:
     static inline Result MemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
                                      void *stream)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtMemcpyAsync(dst, destMax, src, count, kind, stream);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         (void)destMax;
         return DlCudaApi::CudaMemcpyAsync(dst, src, count, static_cast<int>(kind), reinterpret_cast<void *>(stream));
 #else
@@ -198,9 +198,9 @@ public:
 
     static inline Result DeviceEnablePeerAccess(int32_t peerDeviceId, uint32_t flags)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtDeviceEnablePeerAccess(peerDeviceId, flags);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaDeviceEnablePeerAccess(peerDeviceId, flags);
 #else
         return BM_NOT_SUPPORTED;
@@ -209,9 +209,9 @@ public:
 
     static inline Result SynchronizeStream(void *stream)
     {
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
         return DlAclApi::AclrtSynchronizeStream(stream);
-#elif XPU_TYPE == XPU_GPU
+#elif defined(NVIDIA_GPU)
         return DlCudaApi::CudaStreamSynchronize(reinterpret_cast<void *>(stream));
 #else
         return BM_NOT_SUPPORTED;

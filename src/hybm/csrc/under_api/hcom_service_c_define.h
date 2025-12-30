@@ -288,7 +288,7 @@ typedef struct {
 typedef struct {
     uint64_t keys[4];
     uint64_t tokens[4];
-#if XPU_TYPE == XPU_NONE
+#if defined(NO_XPU)
     uint8_t eid[URMA_EID_LENGTH];
 #endif
 } OneSideKey;

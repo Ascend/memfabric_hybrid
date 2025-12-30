@@ -24,7 +24,7 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
     if (result != BM_OK) {
         return result;
     }
-#if XPU_TYPE == XPU_NPU
+#if defined(ASCEND_NPU)
     result = DlHalApi::LoadLibrary(gvaVersion);
     if (result != BM_OK) {
         DlAclApi::CleanupLibrary();
