@@ -11,6 +11,10 @@
   cmake . -B build
   make -C build
 ```
+或打包安装时同源码一起编译
+  ```bash
+bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
+  ```
 ### 基本命令格式
 
 ```

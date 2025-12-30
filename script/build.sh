@@ -10,17 +10,18 @@
 # See the Mulan PSL v2 for more details.
 
 BUILD_MODE=${1:-RELEASE}
-BUILD_TESTS=${2:-OFF}
+BUILD_UT=${2:-OFF}
 BUILD_OPEN_ABI=${3:-OFF}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
 export XPU_TYPE=${6:-NPU} # 导出环境变量用于后续构建whl包
 BUILD_COMPILER=${7:-gcc}
+BUILD_TEST=${8:-OFF}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
 
-if [ "${BUILD_TESTS}" == "ON" ]; then
+if [ "${BUILD_UT}" == "ON" ]; then
   readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
   readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
   dos2unix "$MOCKCPP_PATH/include/mockcpp/JmpCode.h"
@@ -55,11 +56,12 @@ cmake \
     -G "$GENERATOR"  \
     -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
     -DBUILD_COMPILER="${BUILD_COMPILER}" \
-    -DBUILD_TESTS="${BUILD_TESTS}" \
+    -DBUILD_UT="${BUILD_UT}" \
     -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
     -DBUILD_PYTHON="${BUILD_PYTHON}" \
     -DENABLE_PTRACER="${ENABLE_PTRACER}" \
     -DXPU_TYPE="${XPU_TYPE}" \
+    -DBUILD_TEST="${BUILD_TEST}" \
     -S . \
     -B build/
 ${MAKE_CMD} install -j32 -C build/

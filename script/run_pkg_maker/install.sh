@@ -314,12 +314,16 @@ function install_to_path()
 
 function generate_set_env()
 {
-    touch ${default_install_dir}/set_env.sh
-    cat>>${default_install_dir}/set_env.sh<<EOF
+    local env_file="${default_install_dir}/set_env.sh"
+    local test_dir="${default_install_dir}/latest/${pkg_arch}-${os1}/test"
+    cat >"${env_file}" <<EOF
 export MEMFABRIC_HYBRID_HOME_PATH=${default_install_dir}/latest
 export LD_LIBRARY_PATH=${default_install_dir}/latest/${pkg_arch}-${os1}/lib64:\$LD_LIBRARY_PATH
 export PATH=${default_install_dir}/latest/${pkg_arch}-${os1}/bin:\$PATH
 EOF
+    if [ -d "${test_dir}" ]; then
+        echo "export PATH=${test_dir}:\$PATH" >>"${env_file}"
+    fi
 }
 
 function install_process()

@@ -25,7 +25,10 @@ source /usr/local/memfabric_hybrid/set_env.sh
   cmake . -B build
   make -C build
   ```
-
+或打包安装时同源码一起编译
+  ```bash
+bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
+  ```
 ## 运行
 编译完成后,会在当前目录生成bm_example可执行文件
 执行方式如下,支持多节点运行

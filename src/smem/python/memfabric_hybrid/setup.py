@@ -100,7 +100,7 @@ class CMakeBuildExt(build_ext):
                 f"-DENABLE_PTRACER={enable_ptracer}",
                 f"-DXPU_TYPE={xpu_type}",
                 "-DBUILD_PYTHON=ON",
-                "-DBUILD_TESTS=OFF",
+                "-DBUILD_UT=OFF",
             ]
         )
         subprocess.check_call(

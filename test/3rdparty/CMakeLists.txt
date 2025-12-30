@@ -47,7 +47,8 @@ externalproject_add(googletest
         LOG_DOWNLOAD On
         LOG_CONFIGURE On
         LOG_BUILD On
-        LOG_INSTALL On)
+        LOG_INSTALL On
+        ${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib/libgtest.a)
 
 macro(TARGET_GTEST_HEADER target)
     add_dependencies(${target} googletest)
@@ -75,7 +76,8 @@ externalproject_add(mock_cpp
         LOG_DOWNLOAD On
         LOG_CONFIGURE On
         LOG_BUILD On
-        LOG_INSTALL On)
+        LOG_INSTALL On
+        BUILD_BYPRODUCTS ${PROJECT_3RDPARTY_BIN_DIR}/mockcpp/lib/libmockcpp.a)
 
 macro(TARGET_MOCKCPP_HEADER target)
     add_dependencies(${target} mock_cpp)

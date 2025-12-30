@@ -14,7 +14,7 @@ endif ()
 add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 add_library(pymf_hybrid OBJECT pymf_hybrid.cpp)
 
-if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_TESTS STREQUAL "ON"))
+if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_UT STREQUAL "ON"))
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
 
     # python

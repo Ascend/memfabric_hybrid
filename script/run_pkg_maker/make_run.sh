@@ -61,8 +61,9 @@ cp "${OUTPUT_DIR}"/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/"${ARCH_OS}"/lib64/
 cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel/
 
 if [ "$BUILD_TEST" = "ON" ]; then
-    mkdir -p ${PKG_DIR}/"${ARCH_OS}"/script/mock_server
-    cp "${PROJECT_DIR}"/test/python/mock_server/server.py ${PKG_DIR}/"${ARCH_OS}"/script/mock_server
+    mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
+    cp "${PROJECT_DIR}"/test/python/mock_server/server.py ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
+    cp ${OUTPUT_DIR}/smem/bin/* ${PKG_DIR}/"${ARCH_OS}"/test
 fi
 
 mkdir -p ${PKG_DIR}/script
