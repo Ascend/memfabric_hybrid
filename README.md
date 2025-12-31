@@ -25,7 +25,7 @@
   * 昇腾A3超节点: DRAM+HBM pooling over Device UB 1.0, DRAM pooling over Host RoCE
   * 昇腾A2服务器: DRAM+HBM pooling over Device RoCE, DRAM and HBM pooling over Host RoCE
   * 鲲鹏服务器: DRAM pooling over Host RoCE
-  * 鲲鹏超节点: on going
+  * 鲲鹏超节点: DRAM pooling over Host UB
 
 MemFabric以动态库的形式支持应用快速，简便的集成，支撑大模型KV缓存、生成式推荐缓存、强化训练参数Reshard、模型参数缓存、PD传输等多种业务场景。
 
@@ -144,9 +144,9 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 - A5 + K5 over UB
 
 ➡️ 支持中
-- K5
-- device_rdma + device_sdma 异构网络池化
-- device_rdma + host_rdma 异构网络池化
+- K5 over host UB
+- device_rdma + device_sdma 异构网络内存池化
+- device_rdma + host_rdma 异构网络内存池化
 
 
 ## 🚀快速入门
@@ -183,7 +183,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
   | DRAM池化 | 25.5.0 (*on going*)   |
   - [HDK安装指南](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)
 
-- LingQu Computing Network: 1.5.0  (*on going*)，A3 DRAM池化依赖
+- LingQu Computing Network: [1.5.0版本](https://support.huawei.com/enterprise/zh/ascend-computing/lingqu-computing-network-pid-258003841/software)，A3 DRAM池化需要配套升级1520 L1，升级指导书如下：
   - [安装指南](https://support.huawei.com/enterprise/zh/ascend-computing/lingqu-computing-network-pid-258003841)
   - [安装参考](./doc/CCLink.md)
 
