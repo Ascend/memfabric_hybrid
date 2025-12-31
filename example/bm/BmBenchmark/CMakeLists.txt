@@ -2,7 +2,8 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
     message(STATUS "ASCEND_CANN_PACKAGE_PATH = ${ASCEND_CANN_PACKAGE_PATH}")
     if ("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
-        message(FATAL_ERROR "ascend cann path not found!Please set the environment variable: ASCEND_COME_PATH")
+        message(WARNING "ascend cann path not found!Please set the environment variable: ASCEND_HOME_PATH")
+        return()
     endif ()
     file(GLOB BM_BENCHMARK_FILES *.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/*

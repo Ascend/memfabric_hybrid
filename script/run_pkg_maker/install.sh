@@ -122,28 +122,30 @@ function parse_script_args()
 function check_owner()
 {
     local cur_owner=$(whoami)
+    if [ "<<XPU_TYPE>>" == "NPU" ]; then
+        print "INFO" "Check ASCEND_TOOLKIT_HOME env..."
+        if [ "${ASCEND_TOOLKIT_HOME}" == "" ]; then
+            print "ERROR" "please check env ASCEND_TOOLKIT_HOME is set"
+            exit 1
+        fi
 
-    if [ "${ASCEND_TOOLKIT_HOME}" == "" ]; then
-        print "ERROR" "please check env ASCEND_TOOLKIT_HOME is set"
-        exit 1
-    fi
+        if [ "${ASCEND_HOME_PATH}" == "" ]; then
+            print "ERROR" "please check env ASCEND_HOME_PATH is set"
+            exit 1
+        else
+            cann_path=${ASCEND_HOME_PATH}
+        fi
 
-    if [ "${ASCEND_HOME_PATH}" == "" ]; then
-        print "ERROR" "please check env ASCEND_HOME_PATH is set"
-        exit 1
-    else
-        cann_path=${ASCEND_HOME_PATH}
-    fi
+        if [ ! -d "${cann_path}" ]; then
+            print "ERROR" "can not find ${cann_path}"
+            exit 1
+        fi
 
-    if [ ! -d "${cann_path}" ]; then
-        print "ERROR" "can not find ${cann_path}"
-        exit 1
-    fi
-
-    cann_owner=$(stat -c %U "${cann_path}")
-    if [ "${cann_owner}" != "${cur_owner}" ]; then
-        print "ERROR" "cur_owner is not same with CANN"
-        exit 1
+        cann_owner=$(stat -c %U "${cann_path}")
+        if [ "${cann_owner}" != "${cur_owner}" ]; then
+            print "ERROR" "cur_owner is not same with CANN"
+            exit 1
+        fi
     fi
 
     if [[ "${cur_owner}" != "root" && "${install_flag}" == "y" ]]; then
@@ -153,7 +155,8 @@ function check_owner()
     if [ "${install_path_flag}" == "y" ]; then
         default_install_dir="${target_dir}"
     fi
-    print "INFO" "Check owner success"
+
+    print "INFO" "Check owner success, XPU_TYPE is <<XPU_TYPE>>."
 }
 
 function delete_install_files()

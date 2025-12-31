@@ -67,17 +67,9 @@ if [ "$BUILD_TEST" = "ON" ]; then
 fi
 
 mkdir -p ${PKG_DIR}/script
-if [[ "$XPU_TYPE" == "NPU" ]]; then
-   echo "in make_run.sh, XPU_TYPE is NPU"
-   cp "${BASH_PATH}"/install.sh ${PKG_DIR}/script/
-elif [[ "$XPU_TYPE" == "GPU" ]]; then
-   echo "in make_run.sh, XPU_TYPE is GPU"
-   cp "${BASH_PATH}"/no_npu/install.sh ${PKG_DIR}/script/
-else
-   echo "in make_run.sh, XPU_TYPE is NONE"
-   cp "${BASH_PATH}"/no_npu/install.sh ${PKG_DIR}/script/
-fi
-
+echo "in make_run.sh, XPU_TYPE is $XPU_TYPE"
+cp "${BASH_PATH}"/install.sh ${PKG_DIR}/script/
+sed -i "s/<<XPU_TYPE>>/${XPU_TYPE}/g" ${PKG_DIR}/script/install.sh
 cp "${BASH_PATH}"/uninstall.sh ${PKG_DIR}/script/
 
 # generate version.info
