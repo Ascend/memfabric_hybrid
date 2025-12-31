@@ -75,7 +75,7 @@ else ()
 
     include_directories(
             ${CMAKE_CURRENT_SOURCE_DIR}/
-            ${MF_PATH}/${TARGET_ARCH}-linux/include/smem/include/host
+            ${MF_PATH}/include/smem/host
             ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/include/
     )
 

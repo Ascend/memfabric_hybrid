@@ -23,7 +23,7 @@ endif()
 ascendc_library(shm_allreduce_kernels SHARED ${CMAKE_CURRENT_LIST_DIR}/shm_all_reduce.cpp)
 ascendc_include_directories(shm_allreduce_kernels
         PUBLIC
-        ${MF_PATH}/aarch64-linux/include/smem/device/
+        ${MF_PATH}/include/smem/device/
 )
 
 add_executable(shm_example ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/data_utils.cpp ${CMAKE_CURRENT_SOURCE_DIR}/shm_all_reduce.cpp)
@@ -32,7 +32,7 @@ target_compile_options(shm_example PRIVATE
         -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -Werror
 )
 
-include_directories(${MF_PATH}/aarch64-linux/include/smem/host)
+include_directories(${MF_PATH}/include/smem/host)
 target_link_directories(shm_example PUBLIC ${MF_PATH}/aarch64-linux/lib64)
 
 target_link_libraries(shm_example PRIVATE

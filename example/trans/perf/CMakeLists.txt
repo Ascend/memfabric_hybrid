@@ -60,7 +60,7 @@ else ()
     )
 
     include_directories(
-            ${MF_PATH}/aarch64-linux/include/smem/include/host
+            ${MF_PATH}/include/smem/host
             ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/include/
     )
     target_link_directories(transfer_perf PUBLIC

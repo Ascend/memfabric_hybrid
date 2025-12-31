@@ -45,17 +45,17 @@ OUTPUT_DIR=${BASH_PATH}/../../output
 
 rm -rf ${PKG_DIR}
 mkdir -p ${PKG_DIR}/"${ARCH_OS}"
-mkdir ${PKG_DIR}/"${ARCH_OS}"/include
+mkdir ${PKG_DIR}/include
 mkdir ${PKG_DIR}/"${ARCH_OS}"/lib64
 mkdir ${PKG_DIR}/"${ARCH_OS}"/wheel
-mkdir -p ${PKG_DIR}/"${ARCH_OS}"/include/smem
-mkdir -p ${PKG_DIR}/"${ARCH_OS}"/include/hybm
+mkdir -p ${PKG_DIR}/include/smem
+mkdir -p ${PKG_DIR}/include/hybm
 
 # smem
-cp -r "${OUTPUT_DIR}"/smem/include/ ${PKG_DIR}/"${ARCH_OS}"/include/smem/
+cp -r "${OUTPUT_DIR}"/smem/include/* ${PKG_DIR}/include/smem/
 cp "${OUTPUT_DIR}"/smem/lib64/* ${PKG_DIR}/"${ARCH_OS}"/lib64
 # hybm
-cp -r "${OUTPUT_DIR}"/hybm/include/* ${PKG_DIR}/"${ARCH_OS}"/include/hybm
+cp -r "${OUTPUT_DIR}"/hybm/include/* ${PKG_DIR}/include/hybm/
 cp "${OUTPUT_DIR}"/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/"${ARCH_OS}"/lib64/
 # memfabric_hybrid
 cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel/
@@ -63,7 +63,7 @@ cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel
 if [ "$BUILD_TEST" = "ON" ]; then
     mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
     cp "${PROJECT_DIR}"/test/python/mock_server/server.py ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
-    cp ${OUTPUT_DIR}/smem/bin/* ${PKG_DIR}/"${ARCH_OS}"/test
+    cp ${OUTPUT_DIR}/smem/bin/* ${PKG_DIR}/"${ARCH_OS}"/test || true
 fi
 
 mkdir -p ${PKG_DIR}/script

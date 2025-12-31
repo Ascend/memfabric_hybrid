@@ -297,6 +297,7 @@ function install_to_path()
 
     cd ${install_dir}
     cp -r ${script_dir}/../${pkg_arch}-${os1} ${install_dir}/
+    cp -r ${script_dir}/../include ${install_dir}/
     cp -r ${script_dir}/uninstall.sh ${install_dir}/
     cp -r ${script_dir}/../version.info ${install_dir}/
 
