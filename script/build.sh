@@ -82,18 +82,19 @@ mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
 \cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 \cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 
-export MEMFABRIC_VERSION="${VERSION:-1.0.1}"
-
+VERSION="$(cat VERSION | tr -d '[:space:]')"
+export MEMFABRIC_VERSION="${VERSION}"
+echo "VERSION IS ${VERSION}"
 GIT_COMMIT=`git rev-parse HEAD` || true
 {
   echo "mf version info:"
   echo "mf version: ${MEMFABRIC_VERSION}"
   echo "git: ${GIT_COMMIT}"
-} > VERSION
+} > "${PROJ_DIR}/output/VERSION"
 
-cp VERSION "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
-cp VERSION "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/"
-rm -f VERSION
+cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
+cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/"
+rm -f "${PROJ_DIR}/output/VERSION"
 
 readonly BACK_PATH_EVN=$PATH
 

@@ -16,12 +16,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* version information */
-#define VERSION_MAJOR 1
-#define VERSION_MINOR 0
-#define VERSION_FIX 1
-
 /* second level marco define 'CON' to get string */
 #define CONCAT(x, y, z) x.##y.##z
 #define STR(x) #x
