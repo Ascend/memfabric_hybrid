@@ -34,6 +34,8 @@
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
 
+#define PID_TID " [" << getpid() << "-" << syscall(SYS_gettid) << "]"
+
 namespace ock {
 namespace mf {
 using ExternalLog = void (*)(int, const char *);
@@ -141,12 +143,10 @@ public:
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", result) != 0) {
             const uint8_t TIME_WIDTH = 6U;
             std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0') << tv.tv_usec << " "
-                      << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " pid[" << getpid() << "] " << logMsg
-                      << std::endl;
+                      << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
         } else {
-            std::cout << " Invalid time " << LogLevelDesc(level) << " " << syscall(SYS_gettid) << " pid[" << getpid()
-                      << "] "
-                      << " " << logMsg << std::endl;
+            std::cout << " Invalid time "
+                      << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
         }
         // LCOV_EXCL_STOP
     }
@@ -177,26 +177,26 @@ private:
     LogLevel logLevel_ = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
 
-    const char *logLevelDesc_[BUTT_LEVEL] = {"debug", "info", "warn", "error", "fatal"};
+    const char *logLevelDesc_[BUTT_LEVEL] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 };
 }  // namespace mf
 }  // namespace ock
 
 // macro for log
-#ifndef MF_LOG_FILENAME_SHORT
 #ifndef UT_ENABLED
 #define MF_LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #else
 #define MF_LOG_FILENAME_SHORT (__FILE__)
 #endif
-#endif
+
+#define MF_LOG_FORMAT MF_LOG_FILENAME_SHORT << ":" << __LINE__ << " " << __FUNCTION__ << "] "
 #define MF_OUT_LOG(TAG, LEVEL, ARGS)                                                  \
     do {                                                                              \
         if (static_cast<int>(LEVEL) < ock::mf::OutLogger::Instance().GetLogLevel()) { \
             break;                                                                    \
         }                                                                             \
         std::ostringstream oss;                                                       \
-        oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
+        oss << (TAG) << MF_LOG_FORMAT << ARGS;                                        \
         ock::mf::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());       \
     } while (0)
 
@@ -206,7 +206,7 @@ private:
             break;                                                                    \
         }                                                                             \
         std::ostringstream oss;                                                       \
-        oss << (TAG) << MF_LOG_FILENAME_SHORT << ":" << __LINE__ << "] " << ARGS;     \
+        oss << (TAG) << MF_LOG_FORMAT << ARGS;                                        \
         ock::mf::OutLogger::Instance().LogLimit(static_cast<int>(LEVEL), oss.str());  \
     } while (0)
 
