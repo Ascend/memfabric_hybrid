@@ -9,4 +9,3 @@ package/*
 *.so
 *.whl
 *.egg-info
-VERSION

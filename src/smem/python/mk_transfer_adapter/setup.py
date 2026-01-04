@@ -14,6 +14,7 @@
 """python api for mf_transfer."""
 
 import os
+import sys
 import platform
 import glob
 import shutil
@@ -32,7 +33,9 @@ def check_env_flag(name: str, default: str = "") -> bool:
 # 消除whl压缩包的时间戳差异
 os.environ["SOURCE_DATE_EPOCH"] = "0"
 
-current_version = os.getenv("MEMFABRIC_VERSION", "1.0.1")
+current_version = os.getenv("MEMFABRIC_VERSION")
+if not current_version:
+    print("Error: MEMFABRIC_VERSION environment variable must be set.", file=sys.stderr)
 is_manylinux = check_env_flag("IS_MANYLINUX", "FALSE")
 build_open_abi = os.getenv("BUILD_OPEN_ABI", "OFF")
 build_mode = os.getenv("BUILD_MODE", "RELEASE")

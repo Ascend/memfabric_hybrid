@@ -26,7 +26,7 @@
 
 memfabric_hybrid参考安装命令
 ```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run
+bash memfabric_hybrid-1.0.0_linux_aarch64.run # 以实际安装包路径和名称为准
 source /usr/local/memfabric_hybrid/set_env.sh
 ```
 

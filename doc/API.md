@@ -750,4 +750,4 @@ int32_t smem_trans_write_submit(smem_trans_t handle, const void *srcAddress, con
 |-|-|
 |LD_LIBRARY_PATH|动态链接库搜索路径|
 |ASCEND_HOME_PATH|cann包安装路径|
-|VERSION|编译whl包版本，默认1.0.0|
+|VERSION|编译whl包版本|
