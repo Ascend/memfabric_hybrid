@@ -286,6 +286,12 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
             registedLocalHbm_ = localHbm_;
         }
     }
+    if (cmdParam_.opType == SMEMB_DATA_OP_SDMA) {
+        auto gva = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, rankId);
+        CHECK_RET_ERR((len > GVA_SIZE || gva == nullptr || dataPtr == nullptr), "check memcpy param failed.");
+        memcpy(gva, dataPtr, len);
+        CHECK_RET_ERR((memcmp(gva, dataPtr, len) != 0), "check data failed, len:" << len);
+    }
     free(dataPtr);
     return 0;
 }
@@ -406,6 +412,9 @@ void BandWidthCalculator::PrintResult(std::vector<BwTestResult> &results)
 
 void BandWidthCalculator::SendResult(BwTestResult *results, int32_t pipeFdWrite)
 {
+    if (pipeFdWrite == 0) {
+        return;
+    }
     if (results[0].flag >= 0) {
         auto len = sizeof(BwTestResult) * DIRECTION_TYPE_NUM_MAX;
         auto ret = write(pipeFdWrite, results, len);

@@ -59,7 +59,6 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
     }
 
     uint64_t flag = MEM_RSV_TYPE_REMOTE_MAP;
-    flag |= options_.shared ? MEM_RSV_TYPE_DEVICE_SHARE : 0U; // DRAM need map into host
     auto ret = DlHalApi::HalMemAddressReserve(&base, totalVirtualSize_, 0,
         reinterpret_cast<void *>(expectSt), flag);
     if (ret != 0 || base != reinterpret_cast<void *>(expectSt)) {
@@ -181,16 +180,24 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
     }
 
     drv_mem_handle_t *dHandle = handle;
-    if (options_.segType == HYBM_MST_DRAM && options_.shared) {
-        ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &sHandle, logicDeviceId_, &dHandle);
-        BM_VALIDATE_RETURN(ret == BM_OK, "HalMemImport memory failed:" << ret, BM_ERROR);
-    }
 
     ret = DlHalApi::HalMemMap(reinterpret_cast<void *>(allocAddr), size, 0, dHandle, 0);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HalMemMap failed: " << ret);
         DlHalApi::HalMemRelease(dHandle);
         return BM_DL_FUNCTION_FAILED;
+    }
+    if (options_.segType == HYBM_MST_DRAM && options_.shared) {
+        struct drv_mem_access_desc desc[1];
+        desc[0].location.side = MEM_DEV_SIDE;
+        desc[0].location.id = logicDeviceId_;
+        desc[0].type = MEM_ACCESS_TYPE_READWRITE;
+        ret = DlHalApi::HalMemSetAccess(reinterpret_cast<void *>(allocAddr), size, desc, 1);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("HalMemSetAccess failed: " << ret);
+            DlHalApi::HalMemRelease(dHandle);
+            return BM_DL_FUNCTION_FAILED;
+        }
     }
     BM_LOG_DEBUG("alloc mem success, type:" << memType << " addr:" << std::hex << allocAddr << " size:" << size);
     return BM_OK;

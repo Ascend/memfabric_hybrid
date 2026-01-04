@@ -63,6 +63,7 @@ using halMemCreateFunc = int (*)(drv_mem_handle_t **, size_t, const struct drv_m
 using halMemReleaseFunc = int (*)(drv_mem_handle_t *);
 using halMemMapFunc = int (*)(void *, size_t, size_t, drv_mem_handle_t *, uint64_t);
 using halMemUnmapFunc = int (*)(void *);
+using halMemSetAccessFunc = int (*)(void *, size_t, struct drv_mem_access_desc *, size_t);
 using halMemExportFunc = int (*)(drv_mem_handle_t *, drv_mem_handle_type, uint64_t, struct MemShareHandle *);
 using halMemImportFunc = int (*)(drv_mem_handle_type, struct MemShareHandle *, uint32_t, drv_mem_handle_t **);
 using halMemShareHandleSetAttributeFunc = int (*)(uint64_t, enum ShareHandleAttrType, struct ShareHandleAttr);
@@ -403,6 +404,14 @@ static inline int HalMemAddressReserve(void **ptr, size_t size, size_t alignment
         return pHalMemUnmap(ptr);
     }
 
+    static inline int HalMemSetAccess(void *ptr, size_t size, struct drv_mem_access_desc *desc, size_t count)
+    {
+        if (pHalMemSetAccess == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pHalMemSetAccess(ptr, size, desc, count);
+    }
+
     static inline int HalMemExport(drv_mem_handle_t *handle, drv_mem_handle_type type, uint64_t flags,
                                    struct MemShareHandle *sHandle)
     {
@@ -502,6 +511,7 @@ private:
     static halMemReleaseFunc pHalMemRelease;
     static halMemMapFunc pHalMemMap;
     static halMemUnmapFunc pHalMemUnmap;
+    static halMemSetAccessFunc pHalMemSetAccess;
     static halMemExportFunc pHalMemExport;
     static halMemImportFunc pHalMemImport;
     static halMemShareHandleSetAttributeFunc pHalMemShareHandleSetAttribute;

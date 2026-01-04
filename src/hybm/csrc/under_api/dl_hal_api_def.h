@@ -273,6 +273,24 @@ enum ShareHandleAttrType {
     SHR_HANDLE_ATTR_TYPE_MAX
 };
 
+typedef enum {
+    MEM_ACCESS_TYPE_NONE = 0x0,
+    MEM_ACCESS_TYPE_READ = 0x1,
+    MEM_ACCESS_TYPE_READWRITE = 0x3,
+    MEM_ACCESS_TYPE_MAX = 0x7FFFFFFF
+} drv_mem_access_type;
+
+struct drv_mem_location {
+    uint32_t id; /* side is device: devid */
+    enum drv_mem_side side;
+};
+
+struct drv_mem_access_desc {
+    drv_mem_access_type type;
+    struct drv_mem_location location;
+    unsigned int rsv[2];
+};
+
 #define SHR_HANDLE_WLIST_ENABLE     0x0
 #define SHR_HANDLE_NO_WLIST_ENABLE  0x1
 struct ShareHandleAttr {
