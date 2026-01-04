@@ -143,7 +143,6 @@ void AccLinksTest::SetUp()
 
     auto linkBrokenMethod = [this](const AccTcpLinkComplexPtr &link) { return HandleLinkBroken(link); };
     mServer->RegisterLinkBrokenHandler(linkBrokenMethod);
-
     AccTcpServerOptions opts;
     opts.enableListener = true;
     opts.linkSendQueueSize = LINK_SEND_QUEUE_SIZE;
@@ -222,7 +221,7 @@ TEST_F(AccLinksTest, test_client_connect_send_should_return_ok)
     ASSERT_NE(dataBuf, nullptr);
     result = links->NonBlockSend(TEST_OP_REPLY_MSG, 0, dataBuf, nullptr);
     ASSERT_EQ(ACC_OK, result);
-    sleep(1);
+    usleep(10 * 1000); // 10ms
     ASSERT_EQ(1, g_replyCnt);
     links->Close();
     mClient->Stop();
@@ -286,7 +285,7 @@ TEST_F(AccLinksTest, test_client_connect_send_1_should_return_error)
     char buf[BUFF_SIZE];
     memset(buf, 0, BUFF_SIZE);
     mServer->Stop();
-    sleep(1);
+    usleep(10 * 1000); // 10ms
     auto dataBuf = ock::acc::AccDataBuffer::Create(reinterpret_cast<void *>(buf), 31);
     result = links->NonBlockSend(TEST_OP_REPLY_MSG, 0, dataBuf, nullptr);
     ASSERT_TRUE(result != true);
@@ -319,10 +318,10 @@ TEST_F(AccLinksTest, test_client_connect_1_should_return_error)
     ASSERT_TRUE(mClient != nullptr);
     int32_t result;
     mServer->Stop();
-    sleep(1);
+    usleep(10 * 1000); // 10ms
     result = mClient->ConnectToPeerServer("127.0.0.1", LISTEN_PORT, req, 1, links);
     ASSERT_EQ(ACC_ERROR, result);
-    sleep(1);
+    usleep(10 * 1000); // 10ms
     mClient->Stop();
 }
 
@@ -349,7 +348,7 @@ TEST_F(AccLinksTest, test_server_send_should_return_error)
 
     links->Close();
     mClient->Stop();
-    sleep(1);
+    usleep(10 * 1000); // 10ms
     for (auto it = g_rankLinkMap.begin(); it != g_rankLinkMap.end(); ++it) {
         AccTcpLinkComplexPtr link = it->second;
         result = link->NonBlockSend(TEST_OP_RESP_MSG, buffer, nullptr);
@@ -442,7 +441,7 @@ TEST_F(AccLinksTest, test_server_connect_to_peer_server_should_return_error)
     req.version = 1;
     AccTcpLinkComplexPtr nextLink;
     mServer->Stop();
-    sleep(UNO_2);
+    usleep(10 * 1000); // 10ms
     int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, 2, nextLink);
     ASSERT_EQ(ACC_ERROR, ret);
     std::cout << "finish" << std::endl;
@@ -457,7 +456,7 @@ TEST_F(AccLinksTest, test_server_connect_to_peer_server_1_should_return_error)
     req.magic = 0;
     req.version = 1;
     AccTcpLinkComplexPtr nextLink;
-    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, 2, nextLink);
+    int32_t ret = mServer->ConnectToPeerServer(nextIp, nextPort, req, 1, nextLink);
     ASSERT_EQ(ACC_ERROR, ret);
     std::cout << "finish" << std::endl;
 }

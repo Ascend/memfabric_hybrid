@@ -376,8 +376,8 @@ void SmemStoreHelper::FindNewRemoteSlices(const FindSlicesCbFunc &cb) noexcept
         return;
     }
     std::vector<hybm_exchange_info> addInfo;
-    std::vector<const StoredSliceInfo *> addStoreSs;
-    std::vector<const StoredSliceInfo *> removeStoreSs;
+    std::vector<StoredSliceInfo> addStoreSs;
+    std::vector<StoredSliceInfo> removeStoreSs;
     ExtraSliceChangeInfo(values, addInfo, addStoreSs, removeStoreSs);
     SM_LOG_DEBUG("FindNewRemoteSlices deal key(" << remoteKeys_.sliceInfo
                 << ", role: " << transRole_ << ", remote slice info size:" <<
@@ -473,8 +473,8 @@ void SmemStoreHelper::ExtraDeviceChangeInfo(std::vector<uint8_t> &values,
 
 void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<uint8_t> &values,
                                                 std::vector<hybm_exchange_info> &addInfo,
-                                                std::vector<const StoredSliceInfo *> &addStoreSs,
-                                                std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept
+                                                std::vector<StoredSliceInfo> &addStoreSs,
+                                                std::vector<StoredSliceInfo> &removeStoreSs) noexcept
 {
     // client故障：newCount >= curCount
     for (uint32_t i = 0; i < minCount; i++) {
@@ -487,7 +487,9 @@ void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<u
                 // 有卡重新拉起注册到server
                 SM_LOG_INFO("local slice is normal, remote slice is normal, i=" << i
                              << " but data is not same, will do add");
-                addStoreSs.emplace_back((const StoredSliceInfo *)(const void *)newDataPtr);
+                StoredSliceInfo sInfo{};
+                std::copy_n(newDataPtr, sizeof(StoredSliceInfo), reinterpret_cast<uint8_t *>(&sInfo));
+                addStoreSs.emplace_back(std::move(sInfo));
                 hybm_exchange_info info;
                 info.descLen = sliceExpSize_;
                 std::copy_n(newDataPtr + sizeof(StoredSliceInfo), sliceExpSize_, info.desc);
@@ -497,12 +499,16 @@ void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<u
         } else if (*curPtr == DataStatusType::NORMAL && *newPtr != DataStatusType::NORMAL) {
             // 有卡故障
             SM_LOG_INFO("local slice is normal, remote slice is not normal, i=" << i << " will do remove");
-            removeStoreSs.emplace_back((const StoredSliceInfo *)(const void *)curDataPtr);
+            StoredSliceInfo sInfo{};
+            std::copy_n(curDataPtr, sizeof(StoredSliceInfo), reinterpret_cast<uint8_t *>(&sInfo));
+            removeStoreSs.emplace_back(std::move(sInfo));
             *curPtr = DataStatusType::ABNORMAL;
         } else if (*curPtr != DataStatusType::NORMAL && *newPtr == DataStatusType::NORMAL) {
             // 故障卡重新拉起注册到server
             SM_LOG_INFO("local slice is not normal, remote slice is normal, i=" << i << " will do add");
-            addStoreSs.emplace_back((const StoredSliceInfo *)(const void *)newDataPtr);
+            StoredSliceInfo sInfo{};
+            std::copy_n(newDataPtr, sizeof(StoredSliceInfo), reinterpret_cast<uint8_t *>(&sInfo));
+            addStoreSs.emplace_back(std::move(sInfo));
             hybm_exchange_info info;
             info.descLen = sliceExpSize_;
             std::copy_n(newDataPtr + sizeof(StoredSliceInfo), sliceExpSize_, info.desc);
@@ -515,8 +521,8 @@ void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<u
 
 void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values,
                                            std::vector<hybm_exchange_info> &addInfo,
-                                           std::vector<const StoredSliceInfo *> &addStoreSs,
-                                           std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept
+                                           std::vector<StoredSliceInfo> &addStoreSs,
+                                           std::vector<StoredSliceInfo> &removeStoreSs) noexcept
 {
     if (remoteSlicesInfoLastTime_ == values) {
         SM_LOG_DEBUG("remote slice info has no change, remoteSlicesInfoLastTime_ szie="
@@ -541,7 +547,9 @@ void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values,
             if (*newPtr == DataStatusType::NORMAL) {
                 // 新增client
                 SM_LOG_DEBUG("local slice is none, remote slice is normal, i=" << i << " will do add");
-                addStoreSs.emplace_back((const StoredSliceInfo *)(const void *)newDataPtr);
+                StoredSliceInfo sInfo{};
+                std::copy_n(newDataPtr, sizeof(StoredSliceInfo), reinterpret_cast<uint8_t *>(&sInfo));
+                addStoreSs.emplace_back(std::move(sInfo));
                 hybm_exchange_info info;
                 info.descLen = sliceExpSize_;
                 std::copy_n(newDataPtr + sizeof(StoredSliceInfo), sliceExpSize_, info.desc);

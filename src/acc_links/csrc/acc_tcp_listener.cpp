@@ -17,6 +17,11 @@
 
 namespace ock {
 namespace acc {
+#ifndef UT_ENABLED
+constexpr int LISTEN_POLL_TIME = 500; // 500ms
+#else
+constexpr int LISTEN_POLL_TIME = 10; // 10ms
+#endif
 Result AccTcpListener::Start() noexcept
 {
     auto parser = mf::SocketAddressParserMgr::getInstance().GetParser(listenPort_);
@@ -135,7 +140,7 @@ void AccTcpListener::RunInThread() noexcept
             pollEventFd.events = POLLIN;
             pollEventFd.revents = 0;
 
-            int rc = poll(&pollEventFd, 1, 500L);
+            int rc = poll(&pollEventFd, 1, LISTEN_POLL_TIME);
             if (rc < 0 && errno != EINTR) {
                 LOG_ERROR("Get poll event failed  , errno " << strerror(errno));
                 break;

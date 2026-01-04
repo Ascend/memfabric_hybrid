@@ -38,6 +38,7 @@ git submodule update --recursive --init
 
 3. 编译
 
+执行如下命令进行编译，编译成功后，会生成run包在output目录下
 ```
 bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test OFF
 
@@ -48,13 +49,6 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 - build_python: 是否编译python的whl包，可填ON或OFF，默认ON
 - xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
 - build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
-
-4. ut运行
-
-支持直接执行如下脚本编译并运行ut
-```
-bash script/run_ut.sh
-```
 
 ## 安装使用
 

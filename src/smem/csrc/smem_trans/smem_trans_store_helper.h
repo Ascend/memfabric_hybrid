@@ -98,6 +98,7 @@ struct StoredSliceInfo {
     uint16_t rankId;
     uint8_t info[0];
 
+    StoredSliceInfo() {}
     StoredSliceInfo(WorkerUniqueId ws, const void *a, uint64_t s, uint16_t rId) noexcept
         : session(std::move(ws)), address{a}, size{s}, rankId{rId}
     {
@@ -107,8 +108,8 @@ struct StoredSliceInfo {
 using FindRanksCbFunc = std::function<int(const std::vector<hybm_exchange_info> &)>;
 using FindSlicesCbFunc =
     std::function<int(const std::vector<hybm_exchange_info> &,
-                      const std::vector<const StoredSliceInfo *> &,
-                      const std::vector<const StoredSliceInfo *> &)>;
+                      const std::vector<StoredSliceInfo> &,
+                      const std::vector<StoredSliceInfo> &)>;
 
 class SmemStoreHelper {
 public:
@@ -137,14 +138,14 @@ private:
                                     std::vector<hybm_exchange_info> &addInfo) noexcept;
     void CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<uint8_t> &values,
                                    std::vector<hybm_exchange_info> &addInfo,
-                                   std::vector<const StoredSliceInfo *> &addStoreSs,
-                                   std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept;
+                                   std::vector<StoredSliceInfo> &addStoreSs,
+                                   std::vector<StoredSliceInfo> &removeStoreSs) noexcept;
     void ExtraDeviceChangeInfo(std::vector<uint8_t> &values,
                                                 std::vector<hybm_exchange_info> &addInfo) noexcept;
     void ExtraSliceChangeInfo(std::vector<uint8_t> &values,
                               std::vector<hybm_exchange_info> &addInfo,
-                              std::vector<const StoredSliceInfo *> &addStoreSs,
-                              std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept;
+                              std::vector<StoredSliceInfo> &addStoreSs,
+                              std::vector<StoredSliceInfo> &removeStoreSs) noexcept;
     const std::string name_;
     const std::string storeURL_;
     const smem_trans_role_t transRole_;

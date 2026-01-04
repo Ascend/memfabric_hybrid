@@ -78,7 +78,7 @@ public:
 
 private:
     bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port);
-    void CleanupRemoteSlices(const std::vector<const StoredSliceInfo *> &rmSs);
+    void CleanupRemoteSlices(const std::vector<StoredSliceInfo> &rmSs);
     void RemoveRanks(std::set<uint32_t> &rankSet);
     Result StartWatchConnectThread();
     Result WatchConnectTaskOneLoop();

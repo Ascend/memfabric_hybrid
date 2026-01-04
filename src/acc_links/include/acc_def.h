@@ -27,9 +27,11 @@ namespace ock {
 namespace acc {
 constexpr uint32_t MAX_RECV_BODY_LEN = 10 * 1024 * 1024; /* max receive body len limit */
 constexpr uint32_t UNO_1024 = 1024;
+constexpr uint32_t UNO_1000 = 1000;
 constexpr uint32_t UNO_500 = 500;
 constexpr uint32_t UNO_256 = 256;
 constexpr uint32_t UNO_128 = 128;
+constexpr uint32_t UNO_100 = 100;
 constexpr uint32_t UNO_48 = 48;
 constexpr uint32_t UNO_32 = 32;
 constexpr uint32_t UNO_16 = 16;

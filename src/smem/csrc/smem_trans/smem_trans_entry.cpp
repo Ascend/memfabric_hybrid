@@ -392,16 +392,16 @@ void SmemTransEntry::WatchTaskFindNewRanks()
     storeHelper_.FindNewRemoteRanks(importNewRanks);
 }
 
-void SmemTransEntry::CleanupRemoteSlices(const std::vector<const StoredSliceInfo *> &rmSs)
+void SmemTransEntry::CleanupRemoteSlices(const std::vector<StoredSliceInfo> &rmSs)
 {
     for (auto i = 0U; i < rmSs.size(); i++) {
-        WorkerIdUnion workerId{rmSs[i]->session};
+        WorkerIdUnion workerId{rmSs[i].session};
         SM_LOG_DEBUG("remove remote slice for : " << uniqueToString(workerId.workerId));
         auto it = remoteSlices_.find(workerId.workerId);
         if (it == remoteSlices_.end()) {
             continue;
         }
-        auto sIt = it->second.find(rmSs[i]->address);
+        auto sIt = it->second.find(rmSs[i].address);
         if (sIt == it->second.end()) {
             continue;
         }
@@ -426,8 +426,8 @@ void SmemTransEntry::RemoveRanks(std::set<uint32_t> &rankSet)
 void SmemTransEntry::WatchTaskFindNewSlices()
 {
     auto importNewSlices = [this](const std::vector<hybm_exchange_info> &addInfo,
-                                  const std::vector<const StoredSliceInfo *> &addSs,
-                                  const std::vector<const StoredSliceInfo *> &rmSs) {
+                                  const std::vector<StoredSliceInfo> &addSs,
+                                  const std::vector<StoredSliceInfo> &rmSs) {
         int32_t ret;
         if (rmSs.size() != 0) {
             SM_LOG_DEBUG("remove slices count=" << rmSs.size());
@@ -435,7 +435,7 @@ void SmemTransEntry::WatchTaskFindNewSlices()
             CleanupRemoteSlices(rmSs);
             std::set<uint32_t> rankSet;
             for (auto i = 0U; i < rmSs.size(); i++) {
-                uint32_t rankId = static_cast<uint32_t>(rmSs[i]->rankId);
+                uint32_t rankId = static_cast<uint32_t>(rmSs[i].rankId);
                 rankSet.insert(rankId);
             }
             RemoveRanks(rankSet);
@@ -451,10 +451,10 @@ void SmemTransEntry::WatchTaskFindNewSlices()
 
             ock::mf::WriteGuard locker(remoteSliceRwMutex_);
             for (auto i = 0U; i < addSs.size(); i++) {
-                WorkerIdUnion workerId{addSs[i]->session};
+                WorkerIdUnion workerId{addSs[i].session};
                 SM_LOG_DEBUG("add remote slice for : " << uniqueToString(workerId.workerId));
-                remoteSlices_[workerId.workerId].emplace(addSs[i]->address,
-                                                         LocalMapAddress{addresses[i], addSs[i]->size});
+                remoteSlices_[workerId.workerId].emplace(addSs[i].address,
+                                                         LocalMapAddress{addresses[i], addSs[i].size});
             }
         }
         return 0;

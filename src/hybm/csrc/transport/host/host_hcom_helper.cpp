@@ -54,11 +54,11 @@ static Result AnalysisUBNic(const std::string &nic, std::string &protocol, std::
 
 Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
 {
+    static const std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
+    static const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
     if (StrUtil::StartWith(nic, UBC_PROTOCOL_PREFIX)) {
         return AnalysisUBNic(nic, protocol, ipStr, port);
     }
-    std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
-    std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
     if (std::regex_match(nic, ipPortMaskPattern)) {
         return AnalysisNicWithMask(nic, protocol, ipStr, port);
     }
@@ -87,8 +87,7 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
 Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic,
     std::string &protocol, std::string &ipStr, uint32_t &port)
 {
-    std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
-    std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
+    static const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
     std::smatch match;
     if (!std::regex_match(nic, match, ipPortMaskPattern)) {
         BM_LOG_ERROR("Failed to match nic, nic: " << nic);

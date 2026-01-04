@@ -18,7 +18,6 @@
 
 namespace ock {
 namespace mf {
-
 struct HostExportInfo {
     uint64_t magic{DRAM_SLICE_EXPORT_INFO_MAGIC};
     uint64_t version{EXPORT_INFO_VERSION};
@@ -30,6 +29,7 @@ struct HostExportInfo {
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
 };
+
 class HybmConnBasedSegment : public MemSegment {
 public:
     explicit HybmConnBasedSegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}

@@ -47,13 +47,13 @@ inline void Split(const std::string &src, const std::string &sep, std::vector<st
 
 inline bool IsValidIpV4(const std::string &address)
 {
+    static const std::regex ipV4Pattern("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
+    static const std::regex zeroPattern("^0+\\.0+\\.0+\\.0+$");
     // 校验输入长度，防止正则表达式栈溢出
     constexpr size_t maxIpLen = 15;
     if (address.size() > maxIpLen) {
         return false;
     }
-    std::regex ipV4Pattern("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
-    std::regex zeroPattern("^0+\\.0+\\.0+\\.0+$");
     if (std::regex_match(address, zeroPattern)) {
         return false;
     }

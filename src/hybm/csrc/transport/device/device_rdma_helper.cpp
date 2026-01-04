@@ -25,7 +25,7 @@ namespace transport {
 namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port)
 {
-    static std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://[0-9./]{0,24}:(\d{1,5})$)");
+    static const std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://[0-9./]{0,24}:(\d{1,5})$)");
 
     std::smatch match;
     if (!std::regex_search(nic, match, pattern)) {
@@ -46,7 +46,7 @@ Result ParseDeviceNic(const std::string &nic, uint16_t &port)
 
 Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
 {
-    static std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://([0-9.]{1,24}):(\d{1,5})$)");
+    static const std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://([0-9.]{1,24}):(\d{1,5})$)");
 
     std::smatch match;
     if (!std::regex_search(nic, match, pattern)) {

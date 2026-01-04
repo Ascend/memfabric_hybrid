@@ -120,7 +120,7 @@ inline void AccTcpLinkDelayCleanup::RunInThread(std::atomic<bool> *started)
     while (!stop) {
         auto gotItem = CheckAndPop(UNO_7, item);
         if (!gotItem) {
-            sleep(UNO_1);
+            usleep(UNO_100 * UNO_1000); // 100ms
         } else if (item.stop) {
             stop = true;
         } else {

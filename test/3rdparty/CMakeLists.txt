@@ -33,7 +33,7 @@ set(GTEST_CMAKE_ARGS
         ${THIRD_PARTY_CMAKE_ARGS}
         -DINSTALL_GTEST=ON
         -DBUILD_SHARED_LIBS=OFF
-        -Dgmock_build_test=OFF
+        -DBUILD_GMOCK=OFF
         -Dgtest_build_tests=OFF
         -Dgtest_build_samples=OFF)
 

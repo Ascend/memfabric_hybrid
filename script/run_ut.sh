@@ -51,7 +51,7 @@ else
     export MAKE_CMD=make
 fi
 cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE=ASAN -DBUILD_UT=ON -DBUILD_OPEN_ABI=ON -DBUILD_COMPILER=gcc -S . -B ${BUILD_PATH}
-${MAKE_CMD} install -j32 -C ${BUILD_PATH}
+${MAKE_CMD} install -j64 -C ${BUILD_PATH}
 export LD_LIBRARY_PATH=$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"

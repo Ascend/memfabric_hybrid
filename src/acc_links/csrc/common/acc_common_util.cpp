@@ -21,26 +21,12 @@ namespace ock {
 namespace acc {
 bool AccCommonUtil::IsValidIPv4(const std::string &ip)
 {
+    static const std::regex ipv4Regex("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
     constexpr size_t maxIpv4Len = 15;
     if (ip.size() > maxIpv4Len) {
         return false;
     }
-    std::regex ipv4Regex("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
     return std::regex_match(ip, ipv4Regex);
-}
-
-bool AccCommonUtil::IsValidIPv6(const std::string &ip)
-{
-    constexpr size_t maxIpv6Len = 39;
-    if (ip.size() > maxIpv6Len) {
-        return false;
-    }
-
-    const std::regex ipV6Pattern(
-        "^" + ock::mf::ipv6_common_core + "$"
-    );
-
-    return std::regex_match(ip, ipV6Pattern);
 }
 
 Result AccCommonUtil::SslShutdownHelper(SSL *ssl)
