@@ -98,9 +98,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     ptracer_config_t config{.tracerType = 1, .dumpFilePath = "/var/log/memfabric_hybrid"};
     auto ret = ptracer_init(&config);
     if (ret != BM_OK) {
-        DlApi::CleanupLibrary();
-        BM_LOG_ERROR("init ptracer module failed, result: " << ret);
-        return ret;
+        BM_LOG_WARN("init ptracer module failed, result: " << ret << ", error msg: " << ptracer_get_last_err_msg());
     }
 
     ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr);
