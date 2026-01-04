@@ -148,7 +148,7 @@ setup(
     description="python api for mf_adapter",
     packages=find_namespace_packages(exclude=("tests*",)),
     url="https://gitcode.com/Ascend/memfabric_hybrid",
-    license="Apache License Version 2.0",
+    license="Mulan PSL v2",
     python_requires=">=3.7",
     zip_safe=False,
     package_data={

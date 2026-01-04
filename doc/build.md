@@ -104,11 +104,11 @@ CommitId:034c71e58f1d70fe691644b2b18e0b8418c40b7a
 root@localhost:/# pip show memfabric_hybrid
 Name: memfabric_hybrid
 Version: 1.0.0
-Summary: python api for smem
+Summary: python api for memfabric hybrid
 Home-page: https://gitcode.com/Ascend/memfabric_hybrid
 Author:
 Author-email:
-License: Apache License Version 2.0
+License: Mulan PSL v2
 Location: /usr/local/lib/python3.11/site-packages
 Requires:
 Required-by:

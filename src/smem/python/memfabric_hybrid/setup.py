@@ -143,10 +143,10 @@ setup(
     version=current_version,
     author="",
     author_email="",
-    description="python api for memfabric_hybrid",
+    description="python api for memfabric hybrid",
     packages=find_namespace_packages(exclude=("tests*",)),
     url="https://gitcode.com/Ascend/memfabric_hybrid",
-    license="Apache License Version 2.0",
+    license="Mulan PSL v2",
     python_requires=">=3.7",
     zip_safe=False,
     package_data={

@@ -2,6 +2,8 @@
 
 ## 🔄Latest News
 
+- [2026/01] DRAM池化相关配套已发布支持，详见[软件硬件配套](#软件硬件配套说明)
+
 - [2025/12] MemFabric + MemCache已作为vllm-ascend backend使能大模型推理加速，详情查看vllm-ascend开源社区，相关pr: https://github.com/vllm-project/vllm-ascend/pull/4438
 
 - [2025/11] MemFabric项目于2025年11月开源，在昇腾上提供高效的多链路的D2RH,RH2D,RH2H,D2D,D2H,H2D等内存直接访问能力。
@@ -175,12 +177,12 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 - 配套软件：CANN 8.1.RC1及之后版本
 - cmake >= 3.19  
 - GLIBC >= 2.28
-- HDK配套驱动（npu-driver）、固件（npu-firmware）依赖(使用不同介质所需最低版本不同)：
+- Ascend HDK配套驱动（npu-driver）、固件（npu-firmware）依赖(使用不同介质所需最低版本不同)：
 
   | 特性     | HDK最低版本需求|
   |----------|----------|
   | HBM池化  | 24.1.RC2 |
-  | DRAM池化 | 25.5.0 (*on going*)   |
+  | DRAM池化 | [25.5.0](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743/software) |
   - [HDK安装指南](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)
 
 - LingQu Computing Network: [1.5.0版本](https://support.huawei.com/enterprise/zh/ascend-computing/lingqu-computing-network-pid-258003841/software)，A3 DRAM池化需要配套升级1520 L1，升级指导书如下：
