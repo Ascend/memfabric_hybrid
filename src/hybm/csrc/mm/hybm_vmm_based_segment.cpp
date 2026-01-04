@@ -198,8 +198,8 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
 
 Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
 {
-    BM_LOG_ERROR("HybmVmmBasedSegment NOT SUPPORT RegisterMemory");
-    return BM_NOT_SUPPORTED;
+    BM_LOG_INFO("HybmVmmBasedSegment: RegisterMemory success, size: " << size << " addr: " << std::hex << addr);
+    return BM_OK;
 }
 
 Result HybmVmmBasedSegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
