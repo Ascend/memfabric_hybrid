@@ -54,7 +54,7 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
 
-其中，versin表示memfabric_hybrid的版本；os表示操作系统，如linux；arch表示架构，如x86或aarch64
+其中，version表示memfabric_hybrid的版本；os表示操作系统，如linux；arch表示架构，如x86或aarch64
 
 ### run包安装
 
@@ -62,7 +62,7 @@ run包的默认安装根路径为 /usr/local/
 
 安装完成后需要source安装路径下的memfabric_hybrid/set_env.sh
 
-参考安装命令如下
+参考安装命令如下（此处以1.0.0版本为例）
 ```bash
 bash memfabric_hybrid-1.0.0_linux_aarch64.run
 source /usr/local/memfabric_hybrid/set_env.sh
@@ -86,7 +86,7 @@ bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
 
 ```
 root@localhost:/# cat /usr/local/memfabric_hybrid/latest/version.info
-Version:1.0.1
+Version:1.0.0
 Platform:aarch64
 Kernel:linux
 CommitId:034c71e58f1d70fe691644b2b18e0b8418c40b7a
@@ -112,6 +112,6 @@ Required-by:
 ```bash
 # 检查是否安装memfabric_hybrid
 pip show mefabric_hybrid
-# 手动安装
-pip install memfabric_hybrid-1.0.1-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl
+# 手动安装（此处以1.0.0版本为例）
+pip install memfabric_hybrid-1.0.0-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl
 ```
