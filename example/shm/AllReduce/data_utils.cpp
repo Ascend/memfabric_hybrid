@@ -88,7 +88,7 @@ void DoPrintHalfData(const aclFloat16 *data, size_t count, size_t elementsPerRow
     }
 }
 
-void PrintData(const void *data, size_t count, printDataType dataType, size_t elementsPerRow = 16)
+void PrintData(const void *data, size_t count, printDataType dataType, size_t elementsPerRow)
 {
     if (data == nullptr) {
         ERROR_LOG("Print data failed. data is nullptr");
