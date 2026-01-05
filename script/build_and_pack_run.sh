@@ -72,6 +72,6 @@ cd ${ROOT_PATH}
 
 bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" gcc "${BUILD_TEST}"
 
-bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}"
+bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}" "${BUILD_PYTHON}"
 
 cd ${CURRENT_DIR}

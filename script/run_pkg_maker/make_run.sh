@@ -11,8 +11,10 @@
 
 BUILD_TEST=${1:-BUILD_TEST}
 XPU_TYPE=${2:-NPU}
+BUILD_PYTHON=${3:-ON}
 echo "BUILD_TEST is ${BUILD_TEST}"
 echo "XPU_TYPE is ${XPU_TYPE}"
+echo "BUILD_PYTHON is ${BUILD_PYTHON}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -57,8 +59,10 @@ cp "${OUTPUT_DIR}"/smem/lib64/* ${PKG_DIR}/"${ARCH_OS}"/lib64
 # hybm
 cp -r "${OUTPUT_DIR}"/hybm/include/* ${PKG_DIR}/include/hybm/
 cp "${OUTPUT_DIR}"/hybm/lib64/libmf_hybm_core.so ${PKG_DIR}/"${ARCH_OS}"/lib64/
-# memfabric_hybrid
-cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel/
+# memfabric_hybrid wheel package
+if [ "${BUILD_PYTHON}" = "ON" ]; then
+    cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel/
+fi
 
 if [ "$BUILD_TEST" = "ON" ]; then
     mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
