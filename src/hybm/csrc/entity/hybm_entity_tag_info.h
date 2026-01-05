@@ -12,6 +12,7 @@
 #ifndef MEM_FABRIC_HYBRID_HYBM_ENTITY_TAG_INFO_H
 #define MEM_FABRIC_HYBRID_HYBM_ENTITY_TAG_INFO_H
 
+#include <memory>
 #include <unordered_map>
 #include <shared_mutex>
 
@@ -52,6 +53,7 @@ private:
     std::unordered_map<std::string, uint32_t> tagOpInfo_;
 };
 
+using HybmEntityTagInfoPtr = std::shared_ptr<HybmEntityTagInfo>;
 }
 }
 #endif // MEM_FABRIC_HYBRID_HYBM_ENTITY_TAG_INFO_H

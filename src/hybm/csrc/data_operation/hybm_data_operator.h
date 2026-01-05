@@ -107,6 +107,8 @@ protected:
     uint64_t localSpaceSize_[HYBM_MEM_TYPE_BUTT] = {0};
     uint64_t rankCount_[HYBM_MEM_TYPE_BUTT] = {0};
 };
+
+using DataOperatorPtr = std::shared_ptr<DataOperator>;
 }
 }
 
