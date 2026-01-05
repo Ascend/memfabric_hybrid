@@ -16,7 +16,7 @@ namespace ock {
 namespace mf {
 namespace tracer {
 /**
- * @brief A tracer with dump thread thread which periodically dumps tracepoints info into the file,
+ * @brief A tracer with dump thread which periodically dumps tracepoints info into the file,
  * then view the tracepoints info by 'cat filename'
  */
 class DefaultTracer {
@@ -45,6 +45,7 @@ public:
 
     int32_t StartUp(const std::string &dumpDir);
     void ShutDown();
+    int GenerateAllTpString(std::stringstream &ss, bool needTotal = false);
 
 public:
     DefaultTracer(const DefaultTracer &) = delete;
@@ -57,7 +58,6 @@ private:
     void StartDumpThread();
     void RunInThread();
     void DumpTracepoints();
-    int GenerateAllTpString(std::stringstream &ss, bool needTotal = false);
     void GenerateOneTpString(Tracepoint &tp, bool needTotal, std::stringstream &outSS, int32_t &tpCount);
     void WriteTracepoints(std::stringstream &ss);
     void OverrideWrite(std::stringstream &ss);

@@ -167,6 +167,8 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 
 - [python接口](./doc/pythonAPI.md)：python接口介绍以及python接口对应的API列表
 
+- [ptracer](./doc/ptracer.md)：MemFabric内置性能打点工具简介
+
 ## 📦软件硬件配套说明
 - 硬件型号支持
   - Atlas 200T A2 Box16

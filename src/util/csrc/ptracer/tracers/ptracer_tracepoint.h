@@ -92,9 +92,13 @@ public:
         return total_.load(std::memory_order_relaxed);
     }
 
-    __always_inline bool Valid() const
+    __always_inline bool Valid(const bool needTotal) const
     {
-        return nameValid_ && begin_.load(std::memory_order_relaxed) > previousBegin_;
+        if (needTotal) {
+            return nameValid_ && begin_.load(std::memory_order_relaxed) > 0;
+        } else {
+            return nameValid_ && begin_.load(std::memory_order_relaxed) > previousBegin_;
+        }
     }
 
     void UpdatePreviousData()

@@ -139,7 +139,7 @@ void DefaultTracer::WriteTracepoints(std::stringstream &ss)
 
 void DefaultTracer::GenerateOneTpString(Tracepoint &tp, bool needTotal, std::stringstream &outSS, int32_t &tpCount)
 {
-    if (!tp.Valid()) {
+    if (!tp.Valid(needTotal)) {
         return;
     }
 

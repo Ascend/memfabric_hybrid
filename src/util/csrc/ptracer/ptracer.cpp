@@ -106,3 +106,16 @@ PTRACER_API const char *ptracer_get_last_err_msg(void)
 {
     return ock::mf::tracer::LastError::Get();
 }
+
+PTRACER_API const char *ptracer_get_all_tp_string(void)
+{
+#ifdef ENABLE_PTRACER
+    thread_local static std::string allTpString;
+    std::stringstream ss;
+    ock::mf::tracer::DefaultTracer::GetInstance().GenerateAllTpString(ss, true);
+    allTpString = ss.str();
+    return allTpString.c_str();
+#else
+    return "";
+#endif
+}
