@@ -242,8 +242,8 @@ private:
         return (tpId & 0xFFFF);
     }
 };
-}  // namespace tracer
-}  // namespace mf
-}  // namespace ock
+} // namespace tracer
+} // namespace mf
+} // namespace ock
 
-#endif  // MEM_FABRIC_PTRACER_TRACEPOINT_H
+#endif // MEM_FABRIC_PTRACER_TRACEPOINT_H

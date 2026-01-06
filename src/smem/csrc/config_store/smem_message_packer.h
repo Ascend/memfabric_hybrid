@@ -80,27 +80,27 @@ class SmemMessagePacker {
 public:
     static std::vector<uint8_t> Pack(const SmemMessage &message) noexcept;
 
-    static bool Full(const uint8_t* buffer, const uint64_t bufferLen) noexcept;
+    static bool Full(const uint8_t *buffer, const uint64_t bufferLen) noexcept;
 
     static int64_t MessageSize(const std::vector<uint8_t> &buffer) noexcept;
 
-    static int64_t Unpack(const uint8_t* buffer, const uint64_t bufferLen, SmemMessage &message) noexcept;
+    static int64_t Unpack(const uint8_t *buffer, const uint64_t bufferLen, SmemMessage &message) noexcept;
 
-    template <class T>
+    template<class T>
     static std::vector<uint8_t> PackPod(const T &v) noexcept
     {
         auto begin = reinterpret_cast<const uint8_t *>(&v);
         return std::vector<uint8_t>{begin, begin + sizeof(T)};
     }
 
-    template <class T>
+    template<class T>
     static T UnpackPod(const std::vector<uint8_t> &vec) noexcept
     {
         return *reinterpret_cast<const T *>(vec.data());
     }
 
 private:
-    template <class T>
+    template<class T>
     static void PackValue(std::vector<uint8_t> &dest, T value) noexcept
     {
         dest.insert(dest.end(), reinterpret_cast<const uint8_t *>(&value),
@@ -112,7 +112,7 @@ private:
     static void PackBytes(std::vector<uint8_t> &dest, const std::vector<uint8_t> &bytes) noexcept;
 };
 
-}  // ock
-}  // smem
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_MESSAGE_PACKER_H
+#endif // SMEM_SMEM_MESSAGE_PACKER_H

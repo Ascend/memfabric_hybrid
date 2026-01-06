@@ -91,11 +91,11 @@ Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
     DL_LOAD_SYM(pHalMemSetAccess, halMemSetAccessFunc, halHandle, "halMemSetAccess");
     DL_LOAD_SYM(pHalMemExport, halMemExportFunc, halHandle, "halMemExportToShareableHandleV2");
     DL_LOAD_SYM(pHalMemImport, halMemImportFunc, halHandle, "halMemImportFromShareableHandleV2");
-    DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc,
-                halHandle, "halMemShareHandleSetAttribute");
+    DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc, halHandle,
+                "halMemShareHandleSetAttribute");
     DL_LOAD_SYM(pHalMemTransShareableHandle, halMemTransShareableHandleFunc, halHandle, "halMemTransShareableHandle");
-    DL_LOAD_SYM(pHalMemGetAllocationGranularity, halMemGetAllocationGranularityFunc,
-                halHandle, "halMemGetAllocationGranularity");
+    DL_LOAD_SYM(pHalMemGetAllocationGranularity, halMemGetAllocationGranularityFunc, halHandle,
+                "halMemGetAllocationGranularity");
 
     return BM_OK;
 }
@@ -137,7 +137,9 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
 
     halHandle = dlopen(gAscendHalLibName, RTLD_NOW | RTLD_NODELETE);
     if (halHandle == nullptr) {
-        BM_LOG_ERROR("Failed to open library [" << gAscendHalLibName
+        BM_LOG_ERROR(
+            "Failed to open library ["
+            << gAscendHalLibName
             << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"
             << " error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;

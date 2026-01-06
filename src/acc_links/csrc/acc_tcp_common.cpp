@@ -28,5 +28,5 @@ void SafeCloseFd(int &fd, bool needShutdown)
         close(tmpFd);
     }
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

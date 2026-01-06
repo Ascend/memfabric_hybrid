@@ -130,7 +130,7 @@ void SmemBmEntry::UnInitalize()
     if (slice_ != nullptr) {
         hybm_free_local_memory(entity_, slice_, 1, flags);
     }
-    for (auto& pair : registedSlice_) {
+    for (auto &pair : registedSlice_) {
         hybm_free_local_memory(entity_, pair.second.second, 1, flags);
     }
     registedSlice_.clear();
@@ -142,7 +142,7 @@ void SmemBmEntry::UnInitalize()
 Result SmemBmEntry::JoinHandle(uint32_t rk)
 {
     SM_LOG_INFO("do join func, local_rk: " << options_.rank << " receive_rk: " << rk
-        << ", rank size is: " << globalGroup_->GetRankSize());
+                                           << ", rank size is: " << globalGroup_->GetRankSize());
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
     std::vector<uint32_t> allRanks(globalGroup_->GetRankSize());
@@ -288,12 +288,21 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
     smem_bm_mem_type srcMemType = GetHybmMemTypeFromGva(src, srcSize);
     smem_bm_mem_type destMemType = GetHybmMemTypeFromGva(dest, destSize);
     switch (smemDirect) {
-        case SMEMB_COPY_L2G: srcMemType = SMEM_MEM_TYPE_LOCAL_DEVICE; break;
-        case SMEMB_COPY_G2L: destMemType = SMEM_MEM_TYPE_LOCAL_DEVICE; break;
-        case SMEMB_COPY_G2H: destMemType = SMEM_MEM_TYPE_LOCAL_HOST; break;
-        case SMEMB_COPY_H2G: srcMemType = SMEM_MEM_TYPE_LOCAL_HOST; break;
+        case SMEMB_COPY_L2G:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+            break;
+        case SMEMB_COPY_G2L:
+            destMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+            break;
+        case SMEMB_COPY_G2H:
+            destMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_H2G:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
         case SMEMB_COPY_G2G:
-        default: break;
+        default:
+            break;
     }
 
     return directMap[srcMemType][destMemType];
@@ -326,11 +335,11 @@ Result SmemBmEntry::Wait()
 uint32_t SmemBmEntry::GetRankIdByGva(void *gva)
 {
     if (AddrInHostGva(gva, 1UL)) {
-        return ((uint64_t) gva - (uint64_t) hostGva_) / coreOptions_.hostVASpace;
+        return ((uint64_t)gva - (uint64_t)hostGva_) / coreOptions_.hostVASpace;
     }
 
     if (AddrInDeviceGva(gva, 1UL)) {
-        return ((uint64_t) gva - (uint64_t) deviceGva_) / coreOptions_.deviceVASpace;
+        return ((uint64_t)gva - (uint64_t)deviceGva_) / coreOptions_.deviceVASpace;
     }
     return UINT32_MAX;
 }
@@ -453,5 +462,5 @@ bool SmemBmEntry::AddrInDeviceGva(const void *address, uint64_t size)
 
     return true;
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

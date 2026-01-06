@@ -43,9 +43,9 @@ public:
     TcpConfigStore(std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
-    Result Startup(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
-    Result ClientStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
-    Result ServerStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ClientStart(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
+    Result ServerStart(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
     void Shutdown(bool afterFork = false) noexcept;
 
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
@@ -140,7 +140,7 @@ private:
     std::thread heartBeatThread_;
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_TCP_CONFIG_STORE_H
+#endif // SMEM_SMEM_TCP_CONFIG_STORE_H

@@ -34,7 +34,7 @@ SMEM_API int32_t smem_init(uint32_t flags)
 
 SMEM_API int32_t smem_create_config_store(const char *storeUrl)
 {
-    static std::atomic<uint32_t> callNum = { 0 };
+    static std::atomic<uint32_t> callNum = {0};
 
     if (storeUrl == nullptr) {
         SM_LOG_ERROR("input store URL is null.");
@@ -54,14 +54,11 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl)
     }
     // only server need register fault handler
     ock::smem::SmemStoreFaultHandler::GetInstance().RegisterHandlerToStore(store);
-    
+
     if (callNum.fetch_add(1U) == 0) {
-        pthread_atfork(
-            []() {}, // 父进程 fork 前：释放锁等资源
-            []() {}, // 父进程 fork 后：无特殊操作
-            []() {
-                ock::smem::StoreFactory::DestroyStoreAll(true);
-            });
+        pthread_atfork([]() {}, // 父进程 fork 前：释放锁等资源
+                       []() {}, // 父进程 fork 后：无特殊操作
+                       []() { ock::smem::StoreFactory::DestroyStoreAll(true); });
     }
 
     return ock::smem::SM_OK;
@@ -101,8 +98,8 @@ SMEM_API const char *smem_get_and_clear_last_err_msg()
     return ock::smem::SmLastError::GetAndClear(true);
 }
 
-SMEM_API int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len,
-    const char *tls_pk_pw, const uint32_t tls_pk_pw_len, const smem_decrypt_handler h)
+SMEM_API int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len, const char *tls_pk_pw,
+                                               const uint32_t tls_pk_pw_len, const smem_decrypt_handler h)
 {
     return ock::smem::SM_OK;
 }

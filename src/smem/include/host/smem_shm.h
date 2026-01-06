@@ -160,4 +160,4 @@ void smem_shm_global_exit(smem_shm_t handle, int status);
 }
 #endif
 
-#endif  // __MEMFABRIC_SMEM_SHM_H__
+#endif // __MEMFABRIC_SMEM_SHM_H__

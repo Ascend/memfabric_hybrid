@@ -52,23 +52,23 @@ constexpr uint32_t SVM_MAX_AGENT_NUM = 65;
 #endif
 
 enum MemVal {
-    MEM_SVM_VAL          = 0X0,
-    MEM_DEV_VAL          = 0X1,
-    MEM_HOST_VAL         = 0X2,
-    MEM_DVPP_VAL         = 0X3,
-    MEM_HOST_AGENT_VAL   = 0X4,
-    MEM_RESERVE_VAL      = 0X5,
-    MEM_MAX_VAL          = 0X6
+    MEM_SVM_VAL = 0X0,
+    MEM_DEV_VAL = 0X1,
+    MEM_HOST_VAL = 0X2,
+    MEM_DVPP_VAL = 0X3,
+    MEM_HOST_AGENT_VAL = 0X4,
+    MEM_RESERVE_VAL = 0X5,
+    MEM_MAX_VAL = 0X6
 };
 
 enum DevHeapSubType {
-    SUB_SVM_TYPE = 0x0,     /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */
-    SUB_DEVICE_TYPE = 0x1,  /* user mode page is same as kernel page, just huge. the same as MEM_DEV_VAL */
-    SUB_HOST_TYPE = 0x2,   /* user mode page is same as kernel page just chunk. the same as MEM_HOST_VAL */
-    SUB_DVPP_TYPE = 0x3,   /* kernel page is huge, user mode page is chunk. the same as MEM_DVPP_VAL */
-    SUB_READ_ONLY_TYPE = 0x4,  /* kernel page is huge, user mode page is chunk. MEM_DEV_VAL */
-    SUB_RESERVE_TYPE = 0X5,    /* For halMemAddressReserve */
-    SUB_DEV_READ_ONLY_TYPE = 0x6,  /* kernel page is huge, user mode page is chunk. MEM_DEV_VAL */
+    SUB_SVM_TYPE = 0x0,           /* user mode page is same as kernel page, huge or chunk. the same as MEM_SVM_VAL */
+    SUB_DEVICE_TYPE = 0x1,        /* user mode page is same as kernel page, just huge. the same as MEM_DEV_VAL */
+    SUB_HOST_TYPE = 0x2,          /* user mode page is same as kernel page just chunk. the same as MEM_HOST_VAL */
+    SUB_DVPP_TYPE = 0x3,          /* kernel page is huge, user mode page is chunk. the same as MEM_DVPP_VAL */
+    SUB_READ_ONLY_TYPE = 0x4,     /* kernel page is huge, user mode page is chunk. MEM_DEV_VAL */
+    SUB_RESERVE_TYPE = 0X5,       /* For halMemAddressReserve */
+    SUB_DEV_READ_ONLY_TYPE = 0x6, /* kernel page is huge, user mode page is chunk. MEM_DEV_VAL */
     SUB_MAX_TYPE
 };
 
@@ -81,11 +81,7 @@ enum DevMemType {
     DEVMM_MEM_TYPE_MAX
 };
 
-enum DevPageType {
-    DEVMM_NORMAL_PAGE_TYPE = 0x0,
-    DEVMM_HUGE_PAGE_TYPE,
-    DEVMM_PAGE_TYPE_MAX
-};
+enum DevPageType { DEVMM_NORMAL_PAGE_TYPE = 0x0, DEVMM_HUGE_PAGE_TYPE, DEVMM_PAGE_TYPE_MAX };
 
 enum DevHeapListType {
     SVM_LIST,
@@ -127,11 +123,7 @@ struct DVirtListHead {
     struct DVirtListHead *next, *prev;
 };
 
-enum DMappedRbtreeType {
-    DEVMM_MAPPED_RW_TREE = 0,
-    DEVMM_MAPPED_RDONLY_TREE,
-    DEVMM_MAPPED_TREE_TYPE_MAX
-};
+enum DMappedRbtreeType { DEVMM_MAPPED_RW_TREE = 0, DEVMM_MAPPED_RDONLY_TREE, DEVMM_MAPPED_TREE_TYPE_MAX };
 
 struct ListNode {
     struct ListNode *next;
@@ -204,27 +196,27 @@ struct DevVirtComHeap {
     uint32_t heap_idx;
     bool is_base_heap;
 
-    uint64_t cur_cache_mem[DEVMM_MEMTYPE_MAX]; /* current cached mem */
-    uint64_t cache_mem_thres[DEVMM_MEMTYPE_MAX]; /* cached mem threshold */
-    uint64_t cur_alloc_cache_mem[DEVMM_MEMTYPE_MAX]; /* current alloc can cache total mem */
+    uint64_t cur_cache_mem[DEVMM_MEMTYPE_MAX];        /* current cached mem */
+    uint64_t cache_mem_thres[DEVMM_MEMTYPE_MAX];      /* cached mem threshold */
+    uint64_t cur_alloc_cache_mem[DEVMM_MEMTYPE_MAX];  /* current alloc can cache total mem */
     uint64_t peak_alloc_cache_mem[DEVMM_MEMTYPE_MAX]; /* peak alloc can cache */
-    time_t peak_alloc_cache_time[DEVMM_MEMTYPE_MAX]; /* the time peak alloc can cache */
-    uint32_t need_cache_thres[DEVMM_MEMTYPE_MAX]; /* alloc size need to cache threshold */
-    bool is_limited;    /* true: this kind of heap is resource-limited, not allowd to be alloced another new heap.
+    time_t peak_alloc_cache_time[DEVMM_MEMTYPE_MAX];  /* the time peak alloc can cache */
+    uint32_t need_cache_thres[DEVMM_MEMTYPE_MAX];     /* alloc size need to cache threshold */
+    bool is_limited; /* true: this kind of heap is resource-limited, not allowd to be alloced another new heap.
                            The heap's cache will be shrinked forcibly, when it's not enough for nocache's allocation */
-    bool is_cache;      /* true: follow the cache rule, devmm_get_free_threshold_by_type, used by normal heap.
+    bool is_cache;   /* true: follow the cache rule, devmm_get_free_threshold_by_type, used by normal heap.
                            false: no cache, free the heap immediately, used by specified va alloc. For example,
                                   alloc 2M success, free 2M success, alloc 2G will fail because of cache heap. */
     uint64_t start;
     uint64_t end;
 
-    uint32_t module_id;     /* used for large heap (>=512M) */
-    uint32_t side;          /* used for large heap (>=512M) */
-    uint32_t devid;         /* used for large heap (>=512M) */
+    uint32_t module_id; /* used for large heap (>=512M) */
+    uint32_t side;      /* used for large heap (>=512M) */
+    uint32_t devid;     /* used for large heap (>=512M) */
     uint64_t mapped_size;
 
     uint32_t chunk_size;
-    uint32_t kernel_page_size;  /* get from kernel */
+    uint32_t kernel_page_size; /* get from kernel */
     uint32_t map_size;
     uint64_t heap_size;
 
@@ -236,7 +228,7 @@ struct DevVirtComHeap {
     uint64_t sys_mem_alloced_num;
     uint64_t sys_mem_freed_num;
 
-    struct DVirtListHead list;       /* associated to base heap's DevHeapList */
+    struct DVirtListHead list; /* associated to base heap's DevHeapList */
     struct DevHeapRbtree rbtree_queue;
 };
 
@@ -254,12 +246,12 @@ struct DevVirtHeapMgmt {
     uint64_t start; /* svm page_size aligned */
     uint64_t end;   /* svm page_size aligned */
 
-    uint64_t dvpp_start;  /* dvpp vaddr start */
-    uint64_t dvpp_end;    /* dvpp vaddr end */
+    uint64_t dvpp_start; /* dvpp vaddr start */
+    uint64_t dvpp_end;   /* dvpp vaddr end */
     uint64_t dvpp_mem_size[DEVMM_MAX_PHY_DEVICE_NUM];
 
-    uint64_t read_only_start;  /* read vaddr start */
-    uint64_t read_only_end;    /* read vaddr end */
+    uint64_t read_only_start; /* read vaddr start */
+    uint64_t read_only_end;   /* read vaddr end */
 
     uint32_t svm_page_size;
     uint32_t local_page_size;
@@ -286,12 +278,12 @@ struct DevVirtHeapMgmtV2 {
     uint64_t start; /* svm page_size aligned */
     uint64_t end;   /* svm page_size aligned */
 
-    uint64_t dvpp_start;  /* dvpp vaddr start */
-    uint64_t dvpp_end;    /* dvpp vaddr end */
+    uint64_t dvpp_start; /* dvpp vaddr start */
+    uint64_t dvpp_end;   /* dvpp vaddr end */
     uint64_t dvpp_mem_size[DEVMM_MAX_PHY_DEVICE_NUM];
 
-    uint64_t read_only_start;  /* read vaddr start */
-    uint64_t read_only_end;    /* read vaddr end */
+    uint64_t read_only_start; /* read vaddr start */
+    uint64_t read_only_end;   /* read vaddr end */
 
     uint32_t svm_page_size;
     uint32_t local_page_size;

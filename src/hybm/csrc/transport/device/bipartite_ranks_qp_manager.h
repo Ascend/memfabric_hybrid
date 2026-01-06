@@ -45,6 +45,7 @@ public:
     UserQpInfo *GetQpHandleWithRankId(uint32_t rankId) noexcept override;
     void PutQpHandle(UserQpInfo *qp) const noexcept override;
     int RemoveRanks(const std::unordered_set<uint32_t> &ranks) noexcept override;
+
 private:
     void BackgroundProcess() noexcept;
     int ProcessServerAddWhitelistTask() noexcept;
@@ -75,12 +76,10 @@ private:
     int BatchConnectWithRetry(std::vector<HccpSocketConnectInfo> connectInfos, ClientConnectSocketTask &currTask,
                               std::unordered_map<uint32_t, sockaddr_in> &remotes) noexcept;
     void ProcessSocketConnectionsByIP(uint32_t getSize, std::vector<HccpSocketInfo> &socketInfos,
-                                      std::unordered_map<in_addr_t, uint32_t> &ip2rank,
-                                      std::vector<IpType> &types,
-                                      std::unordered_set<uint32_t> &connectedRanks,
-                                      uint32_t &successCount);
-    void ProcessRankRemoval(uint32_t rank, std::vector<HccpSocketCloseInfo>& socketCloseInfos,
-                            std::vector<HccpSocketWhiteListInfo>& whitelist) noexcept;
+                                      std::unordered_map<in_addr_t, uint32_t> &ip2rank, std::vector<IpType> &types,
+                                      std::unordered_set<uint32_t> &connectedRanks, uint32_t &successCount);
+    void ProcessRankRemoval(uint32_t rank, std::vector<HccpSocketCloseInfo> &socketCloseInfos,
+                            std::vector<HccpSocketWhiteListInfo> &whitelist) noexcept;
 
 private:
     void *rdmaHandle_{nullptr};
@@ -97,9 +96,9 @@ private:
     ReadWriteLock qpLock_;
     uint32_t userDeviceId_{0};
 };
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_BIPARTITE_RANKS_QP_MANAGER_H
+#endif // MF_HYBRID_BIPARTITE_RANKS_QP_MANAGER_H

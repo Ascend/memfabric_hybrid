@@ -45,12 +45,11 @@ const std::string AutoRankingStr = "AutoRanking#";
 using ConfigStoreReconnectHandler = std::function<int32_t(void)>;
 
 using ConfigStoreClientBrokenHandler = std::function<int()>;
-using ConfigStoreServerOpHandler = std::function<int32_t(const uint32_t, const std::string &,
-                                                         std::vector<uint8_t> &,
-                                                         const std::unordered_map<std::string,
-                                                         std::vector<uint8_t>> &)>;
-using ConfigStoreServerBrokenHandler = std::function<void(const uint32_t,
-                                                          std::unordered_map<std::string, std::vector<uint8_t>> &)>;
+using ConfigStoreServerOpHandler =
+    std::function<int32_t(const uint32_t, const std::string &, std::vector<uint8_t> &,
+                          const std::unordered_map<std::string, std::vector<uint8_t>> &)>;
+using ConfigStoreServerBrokenHandler =
+    std::function<void(const uint32_t, std::unordered_map<std::string, std::vector<uint8_t>> &)>;
 
 class ConfigStore : public SmReferable {
 public:
@@ -337,7 +336,7 @@ inline const char *ConfigStore::ErrStr(int16_t errCode)
     }
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_CONFIG_STORE_H
+#endif // SMEM_SMEM_CONFIG_STORE_H

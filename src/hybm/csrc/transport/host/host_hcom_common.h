@@ -30,9 +30,9 @@ union RegMemoryKeyUnion {
     TransportMemoryKey commonKey;
     RegMemoryKey hostKey;
 };
-}
-}
-}
-}
+} // namespace host
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HOST_HCOM_COMMON_H
+#endif // MF_HYBRID_HOST_HCOM_COMMON_H

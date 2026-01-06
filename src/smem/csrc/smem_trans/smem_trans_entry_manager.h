@@ -37,7 +37,7 @@ private:
     std::map<uintptr_t, SmemTransEntryPtr> ptr2EntryMap_;    /* lookup entry by ptr */
     std::map<std::string, SmemTransEntryPtr> name2EntryMap_; /* deduplicate entry by name */
 };
-}
-}
+} // namespace smem
+} // namespace ock
 
-#endif  // MF_SMEM_TRANS_ENTRY_MANAGER_H
+#endif // MF_SMEM_TRANS_ENTRY_MANAGER_H

@@ -26,8 +26,8 @@ int HybmUnmapShareMemory(void *expectAddr, uint64_t flags) noexcept;
 
 int HybmIoctlAllocAnddAdvice(uint64_t ptr, size_t size, uint32_t devid, uint32_t advise) noexcept;
 
-}
-}
-}
+} // namespace drv
+} // namespace mf
+} // namespace ock
 
-#endif  // HYBM_HYBM_CMD_H
+#endif // HYBM_HYBM_CMD_H

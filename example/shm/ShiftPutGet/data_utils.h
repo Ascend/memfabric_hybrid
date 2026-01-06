@@ -49,15 +49,15 @@ typedef enum {
 #define LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
-#define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
-#define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
+#define INFO_LOG(fmt, args...)  fprintf(stdout, "[INFO]  " fmt "\n", ##args)
+#define WARN_LOG(fmt, args...)  fprintf(stdout, "[WARN]  " fmt "\n", ##args)
 #define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
-#define CHECK_ACL(x)                                                                        \
-    do {                                                                                    \
-        aclError __ret = x;                                                                 \
-        if (__ret != ACL_ERROR_NONE) {                                                      \
+#define CHECK_ACL(x)                                                                                  \
+    do {                                                                                              \
+        aclError __ret = x;                                                                           \
+        if (__ret != ACL_ERROR_NONE) {                                                                \
             std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " aclError:" << __ret << std::endl; \
-        }                                                                                   \
+        }                                                                                             \
     } while (0)
 
 #define CHECK_ACL_RET(x, msg)                                              \
@@ -69,13 +69,12 @@ typedef enum {
         }                                                                  \
     } while (0)
 
-#define CHECK_EQUALS(x, y) \
-    do {                   \
-        if ((x) != (y)) {  \
-            std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " check not equal:" \
-                << (x) << " " << (y) << std::endl;  \
-        }   \
+#define CHECK_EQUALS(x, y)                                                                                 \
+    do {                                                                                                   \
+        if ((x) != (y)) {                                                                                  \
+            std::cerr << LOG_FILENAME_SHORT << ":" << __LINE__ << " check not equal:" << (x) << " " << (y) \
+                      << std::endl;                                                                        \
+        }                                                                                                  \
     } while (0)
-
 
 #endif // DATA_UTILS_H

@@ -70,7 +70,6 @@ int32_t smem_set_log_level(int level);
  */
 int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_t tls_info_len);
 
-
 /**
  * @brief Callback function definition of get private key password de-crypted, see smem_set_config_store_tls_key
  *
@@ -92,8 +91,7 @@ typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen
  * @param h               [in] handler
  */
 int32_t smem_set_config_store_tls_key(const char *tls_pk, const uint32_t tls_pk_len, const char *tls_pk_pw,
-    const uint32_t tls_pk_pw_len, const smem_decrypt_handler h);
-
+                                      const uint32_t tls_pk_pw_len, const smem_decrypt_handler h);
 
 /**
  * @brief Un-Initialize the smem running environment
@@ -118,4 +116,4 @@ const char *smem_get_and_clear_last_err_msg(void);
 }
 #endif
 
-#endif  // __MEMFABRIC_SMEM_H__
+#endif // __MEMFABRIC_SMEM_H__

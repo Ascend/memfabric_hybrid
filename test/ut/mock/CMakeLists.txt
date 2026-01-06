@@ -4,7 +4,7 @@ include_directories(
 )
 
 set(ACL_STUB_FILE
-    acl_stub.cpp
+        acl_stub.cpp
 )
 
 add_library(acl_object OBJECT ${ACL_STUB_FILE})
@@ -15,7 +15,7 @@ set_target_properties(acl_shared PROPERTIES OUTPUT_NAME "ascendcl")
 
 
 set(HAL_STUB_FILE
-    hal_stub.cpp
+        hal_stub.cpp
 )
 
 add_library(hal_object OBJECT ${HAL_STUB_FILE})

@@ -70,8 +70,7 @@ uint32_t smem_bm_get_rank_id(void);
  * @param flags            [in] optional flags
  * @return Big Memory object handle if successful, nullptr if failed
  */
-smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
-                         smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
                          uint64_t localHBMSize, uint32_t flags);
 
 /**
@@ -189,4 +188,4 @@ uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);
 }
 #endif
 
-#endif  //__MEMFABRIC_SMEM_BM_H__
+#endif //__MEMFABRIC_SMEM_BM_H__

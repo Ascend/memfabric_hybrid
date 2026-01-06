@@ -47,7 +47,7 @@ target_link_libraries(smem_shared PUBLIC pthread acc_tcp_net_static hybmm_shared
 if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_UT STREQUAL "ON"))
     add_subdirectory(python_wrapper/mk_transfer_adapter)
     add_subdirectory(python_wrapper/memfabric_hybrid)
-endif()
+endif ()
 
 #install
 file(GLOB HEADER_FILES ../include/host/*.h)
@@ -61,4 +61,4 @@ install(FILES ${DEVICE_HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/smem/incl
 install(TARGETS smem_shared
         LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/smem/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        )
+)

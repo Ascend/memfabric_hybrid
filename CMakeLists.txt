@@ -20,9 +20,9 @@ message(STATUS "in memfabric cmakefile BUILD_FROM_MEMCACHE: ${BUILD_FROM_MEMCACH
 list(GET PROJECT_VERSION_RAW 0 DUMMY)
 string(REPLACE "." ";" VERSION_LIST "${PROJECT_VERSION_RAW}")
 list(LENGTH VERSION_LIST VERSION_LIST_LEN)
-if(NOT VERSION_LIST_LEN EQUAL 3)
+if (NOT VERSION_LIST_LEN EQUAL 3)
     message(FATAL_ERROR "Expected exactly 3 version components, got: ${VERSION_LIST_LEN}")
-endif()
+endif ()
 list(GET VERSION_LIST 0 VERSION_MAJOR)
 list(GET VERSION_LIST 1 VERSION_MINOR)
 list(GET VERSION_LIST 2 VERSION_FIX)
@@ -67,17 +67,17 @@ option(BUILD_TEST "Enable/disable build and package test utilities and examples"
 set(XPU_TYPE "NPU" CACHE STRING "XPU backend to use: NONE, NPU, or GPU")
 set_property(CACHE XPU_TYPE PROPERTY STRINGS NONE NPU GPU)
 
-if(NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL "GPU"))
+if (NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL "GPU"))
     message(FATAL_ERROR "Invalid XPU_TYPE value: '${XPU_TYPE}'. Allowed: NONE, NPU, GPU")
-endif()
+endif ()
 
-if(XPU_TYPE STREQUAL "NPU")
+if (XPU_TYPE STREQUAL "NPU")
     add_definitions(-DASCEND_NPU)
-elseif(XPU_TYPE STREQUAL "GPU")
+elseif (XPU_TYPE STREQUAL "GPU")
     add_definitions(-DNVIDIA_GPU)
-else()
+else ()
     add_definitions(-DNO_XPU)
-endif()
+endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -133,7 +133,7 @@ if (BUILD_UT STREQUAL "ON")
     if (NOT CMAKE_COMPILER MATCHES bisheng)
         add_compile_options(-fprofile-arcs -ftest-coverage)
         add_link_options(-lgcov --coverage)
-    endif()
+    endif ()
     set(BUILD_OPEN_ABI "ON")
 endif ()
 
@@ -155,10 +155,10 @@ if (BUILD_GIT_COMMIT STREQUAL "ON")
     if (EXISTS ${GIT_EXECUTABLE})
         # get commit id from file
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-            RESULT_VARIABLE GIT_COMMIT_RESULT
-            OUTPUT_VARIABLE GIT_LAST_COMMIT
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
+                COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+                RESULT_VARIABLE GIT_COMMIT_RESULT
+                OUTPUT_VARIABLE GIT_LAST_COMMIT
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
         if (${GIT_COMMIT_RESULT} EQUAL 1)
             set(GIT_LAST_COMMIT "empty")
         endif ()
@@ -215,9 +215,9 @@ message(STATUS "install dir ${TARGET_INSTALL_DIR}")
 if (BUILD_PYTHON STREQUAL "ON")
     # 获取Python头文件路径
     find_program(PYTHON_EXECUTABLE NAMES python3 python)
-    if(NOT PYTHON_EXECUTABLE)
+    if (NOT PYTHON_EXECUTABLE)
         message(FATAL_ERROR "Python not found")
-    endif()
+    endif ()
 
     execute_process(
             COMMAND ${PYTHON_EXECUTABLE} -c
@@ -236,23 +236,23 @@ if (BUILD_PYTHON STREQUAL "ON")
     set(pybind11_cmake_dir "${PYTHON_PYBIND11_HOME}/share/cmake/pybind11")
 
     # 检查路径是否存在且是目录
-    if(NOT EXISTS "${pybind11_cmake_dir}" OR NOT IS_DIRECTORY "${pybind11_cmake_dir}")
+    if (NOT EXISTS "${pybind11_cmake_dir}" OR NOT IS_DIRECTORY "${pybind11_cmake_dir}")
         message(SEND_ERROR "Can not find pybind11 directory: ${pybind11_cmake_dir}\nPlease 'pip3 install pybind11 or pybind11-dev'")
-    endif()
-endif()
+    endif ()
+endif ()
 
 # 判断环境变量 CMAKE_PREFIX_PATH 是否存在
-if(DEFINED ENV{CMAKE_PREFIX_PATH})
+if (DEFINED ENV{CMAKE_PREFIX_PATH})
     # 如果环境变量存在，将其值赋给 CMake 变量
     set(CMAKE_PREFIX_PATH "$ENV{CMAKE_PREFIX_PATH}")
     list(APPEND CMAKE_PREFIX_PATH "${pybind11_cmake_dir}")
     message(STATUS "CMAKE_PREFIX_PATH is exist, and append: ${pybind11_cmake_dir}")
     message(STATUS "Now CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
-else()
+else ()
     # 如果环境变量不存在，设置 CMake 变量的默认值
     set(CMAKE_PREFIX_PATH "${pybind11_cmake_dir}")
     message(STATUS "Not set CMAKE_PREFIX_PATH, and initialize to: ${CMAKE_PREFIX_PATH}")
-endif()
+endif ()
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
@@ -263,11 +263,11 @@ include_directories(
 
 add_subdirectory(src)
 
-if(BUILD_UT STREQUAL "ON")
+if (BUILD_UT STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 17)
     message(STATUS "BUILD_UT = ON, add compile gov")
     add_subdirectory(test)
-endif()
+endif ()
 
 if ("${BUILD_TEST}" STREQUAL "ON")
     add_subdirectory(example/bm/BmCpp)

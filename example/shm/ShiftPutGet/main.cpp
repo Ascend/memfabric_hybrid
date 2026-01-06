@@ -38,7 +38,7 @@ static int32_t TestAllShift(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
     uint32_t *yHost;
     size_t inputSize = (gInputLen + 2) * sizeof(int64_t);
     size_t outputSize = (gInputLen + 2) * sizeof(int64_t);
-    CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize)); // size = 32
+    CHECK_ACL(aclrtMallocHost((void **)(&xHost), inputSize));  // size = 32
     CHECK_ACL(aclrtMallocHost((void **)(&yHost), outputSize)); // size = 48
     CHECK_ACL(aclrtMalloc((void **)&xDevice, inputSize, ACL_MEM_MALLOC_HUGE_FIRST));
     xHost[INDEX_0] = rankId;
@@ -82,12 +82,13 @@ static void TestContext(smem_shm_t handle)
     std::cout << "[OUTPUT] check set context ok" << std::endl;
 }
 
-int32_t main(int32_t argc, char* argv[])
+int32_t main(int32_t argc, char *argv[])
 {
     int rankSize = atoi(argv[INDEX_1]);
     int rankId = atoi(argv[INDEX_2]);
     std::string ipport = argv[INDEX_3];
-    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
+    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " << ipport
+              << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {
         std::cout << "[TEST] input rank_size: " << rankSize << " is not the power of 2" << std::endl;

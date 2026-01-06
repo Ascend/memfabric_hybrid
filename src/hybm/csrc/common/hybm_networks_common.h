@@ -20,6 +20,6 @@ namespace ock {
 namespace mf {
 std::vector<uint32_t> NetworkGetIpAddresses() noexcept;
 }
-}
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_NETWORKS_COMMON_H

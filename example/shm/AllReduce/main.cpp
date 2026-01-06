@@ -20,8 +20,8 @@
 
 static uint32_t gNpuNum = 16;
 static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
-static uint64_t gFlagOffset = 1024UL * 1024UL; // 前1M作为flag空间
-static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t);   // uint16_t represent half
+static uint64_t gFlagOffset = 1024UL * 1024UL;              // 前1M作为flag空间
+static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t); // uint16_t represent half
 enum Index : uint8_t {
     INDEX_0 = 0U,
     INDEX_1 = 1U,
@@ -36,7 +36,7 @@ uint32_t fnv1a_32(const void *data, size_t length)
     uint32_t hash = 0x811c9dc5; // FNV offset basis for 32-bit
 
     for (size_t i = 0; i < length; ++i) {
-        hash ^= p[i]; // XOR with byte
+        hash ^= p[i];       // XOR with byte
         hash *= 0x01000193; // Multiply by prime number
     }
 
@@ -59,13 +59,13 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     // 申请本地主机内存 和 device内存
     uint8_t *inputHost;
     uint8_t *outputHost;
-    CHECK_ACL(aclrtMallocHost((void**)(&inputHost), gDataByteSize));
-    CHECK_ACL(aclrtMallocHost((void**)(&outputHost), gDataByteSize));
+    CHECK_ACL(aclrtMallocHost((void **)(&inputHost), gDataByteSize));
+    CHECK_ACL(aclrtMallocHost((void **)(&outputHost), gDataByteSize));
 
     // 分配共享内存
-    uint8_t* localShm = gva + (rankId * gNpuMallocSpace) + gFlagOffset;
-    uint8_t* inputShm = localShm;
-    uint8_t* outputShm = inputShm;
+    uint8_t *localShm = gva + (rankId * gNpuMallocSpace) + gFlagOffset;
+    uint8_t *inputShm = localShm;
+    uint8_t *outputShm = inputShm;
 
     // 载入 input 数据到 device内存
     std::string fileNmae = "./input/input_" + std::to_string(rankId) + ".bin";
@@ -111,12 +111,13 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     return 0;
 }
 
-int32_t main(int32_t argc, char* argv[])
+int32_t main(int32_t argc, char *argv[])
 {
     int rankSize = atoi(argv[INDEX_1]);
     int rankId = atoi(argv[INDEX_2]);
     std::string ipport = argv[INDEX_3];
-    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
+    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " << ipport
+              << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {
         std::cout << "[TEST] input rank_size: " << rankSize << " is not the power of 2" << std::endl;

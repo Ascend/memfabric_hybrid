@@ -87,8 +87,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. "
-                << " config_ip: " << storeURL);
+    SM_LOG_INFO("smem_bm_init success. " << " config_ip: " << storeURL);
     return SM_OK;
 }
 
@@ -168,7 +167,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
 
     SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
-    (void) std::copy_n(manager.GetHcomUrl().c_str(),  manager.GetHcomUrl().size(), options.transUrl);
+    (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
 
     options.globalUniqueAddress = true;
     ret = entry->Initialize(options);

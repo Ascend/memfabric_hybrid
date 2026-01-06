@@ -72,8 +72,8 @@ private:
     uint32_t userDeviceId_{0};
 };
 
-}  // namespace device
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
-#endif  // MF_HYBRID_JOINABLE_RANKS_QP_MANAGER_H
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
+#endif // MF_HYBRID_JOINABLE_RANKS_QP_MANAGER_H

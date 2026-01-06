@@ -85,8 +85,8 @@ int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capac
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[],
-                                      uint32_t count, uint32_t flags);
+int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count,
+                                      uint32_t flags);
 
 /**
  * @brief De-register contiguous memory spaces that registered by smem_trans_register_mem(s)
@@ -107,8 +107,8 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  * @param dataSize         [in] data size to be transferred
  * @return 0 if successful
  */
-int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                         void *remoteAddr, size_t dataSize);
+int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId, void *remoteAddr,
+                         size_t dataSize);
 
 /**
  * @brief Transfer data to peer with write in batch
@@ -134,8 +134,8 @@ int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], co
  * @param dataSize         [in] Number of bytes for single read operation
  * @return 0 if successful
  */
-int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                        const void *remoteAddr, size_t dataSize);
+int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId, const void *remoteAddr,
+                        size_t dataSize);
 
 /**
  * @brief Read data from peer to local in batch
@@ -162,8 +162,8 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
  * @param stream           [in] acl rt stream
  * @return 0 if successful
  */
-int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                               const void *remoteAddr, size_t dataSize, void *stream);
+int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId, const void *remoteAddr,
+                               size_t dataSize, void *stream);
 
 /**
  * @brief submit write task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
@@ -183,4 +183,4 @@ int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, cons
 }
 #endif
 
-#endif  // MF_HYBRID_SMEM_TRANS_H
+#endif // MF_HYBRID_SMEM_TRANS_H

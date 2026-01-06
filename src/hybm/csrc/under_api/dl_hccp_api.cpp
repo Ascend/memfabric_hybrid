@@ -177,5 +177,5 @@ void DlHccpApi::CleanupLibrary()
     }
     gLoaded = false;
 }
-}
-}
+} // namespace mf
+} // namespace ock

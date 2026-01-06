@@ -45,8 +45,8 @@ typedef enum {
     BF16 = 27
 } printDataType;
 
-#define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
-#define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
+#define INFO_LOG(fmt, args...)  fprintf(stdout, "[INFO]  " fmt "\n", ##args)
+#define WARN_LOG(fmt, args...)  fprintf(stdout, "[WARN]  " fmt "\n", ##args)
 #define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
 #define CHECK_ACL(x)                                                                        \
     do {                                                                                    \
@@ -65,12 +65,11 @@ typedef enum {
         }                                                                  \
     } while (0)
 
-#define CHECK_EQUALS(x, y) \
-    do {                   \
-        if ((x) != (y)) {  \
-            std::cerr << __FILE__ << ":" << __LINE__ << " check not equal:" << (x) << " " << (y) << std::endl;  \
-        }   \
+#define CHECK_EQUALS(x, y)                                                                                     \
+    do {                                                                                                       \
+        if ((x) != (y)) {                                                                                      \
+            std::cerr << __FILE__ << ":" << __LINE__ << " check not equal:" << (x) << " " << (y) << std::endl; \
+        }                                                                                                      \
     } while (0)
-
 
 #endif // DATA_UTILS_H

@@ -106,7 +106,7 @@ public:
      * @return 0 if successfully
      */
     virtual int32_t ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
-        uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink) = 0;
+                                        uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink) = 0;
 
     /**
      * @brief Connect to another Tcp Server which started listener
@@ -118,7 +118,7 @@ public:
      * @return 0 if successfully
      */
     int32_t ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
-        AccTcpLinkComplexPtr &newLink);
+                                AccTcpLinkComplexPtr &newLink);
 
     /**
      * @brief Register the handler for handling new request
@@ -148,7 +148,7 @@ public:
      * @param h            [in] handler
      */
     virtual void RegisterNewLinkHandler(const AccNewLinkHandler &h) = 0;
-    
+
     /**
      * @brief Register the handler for decryption of private key password.
      * If the private key is encrypted, this handler is needed to be set.
@@ -174,7 +174,7 @@ inline int32_t AccTcpServer::Start(const ock::acc::AccTcpServerOptions &opt)
 }
 
 inline int32_t AccTcpServer::ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
-    AccTcpLinkComplexPtr &newLink)
+                                                 AccTcpLinkComplexPtr &newLink)
 {
     return ConnectToPeerServer(peerIp, port, req, 30U, newLink);
 }

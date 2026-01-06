@@ -52,8 +52,8 @@ using FuncSslIsServer = int (*)(SSL *);
 using FuncUsePrivKey = int (*)(SSL_CTX *ctx, EVP_PKEY *pkey);
 using FuncUsePrivKeyFile = int (*)(SSL_CTX *ctx, const char *, int);
 using FuncUseCertFile = int (*)(SSL_CTX *, const char *, int);
-using FuncPemReadX509 = X509 *(*)(FILE *fp, X509 **x, pem_password_cb *cb, void *u);
-using FuncX509Free = X509 *(*)(X509 *cert);
+using FuncPemReadX509 = X509 *(*)(FILE * fp, X509 **x, pem_password_cb *cb, void *u);
+using FuncX509Free = X509 *(*)(X509 * cert);
 using FuncAsn1Time2Tm = int (*)(const ASN1_TIME *s, struct tm *tm);
 using FuncSslCtxSetVerify = void (*)(SSL_CTX *, int mode, int (*)(int, X509_STORE_CTX *));
 using FuncSetDefaultPasswdCbUserdata = void (*)(SSL_CTX *, void *);
@@ -62,14 +62,14 @@ using FuncLoadVerifyLocations = int (*)(SSL_CTX *, const char *, const char *);
 using FuncCheckPrivateKey = int (*)(const SSL_CTX *);
 using FuncSslGetVerifyResult = long (*)(const SSL *);
 using FuncSslGetPeerCertificate = X509 *(*)(const SSL *);
-using FuncSsLCtxGet0Certificate =X509 *(*)(const SSL_CTX *ctx);
+using FuncSsLCtxGet0Certificate = X509 *(*)(const SSL_CTX *ctx);
 
 using FuncEvpAesCipher = const EVP_CIPHER *(*)();
 using FuncEvpCipherCtxNew = EVP_CIPHER_CTX *(*)();
 using FuncEvpCipherCtxFree = void (*)(EVP_CIPHER_CTX *);
 using FuncEvpCipherCtxCtrl = int (*)(EVP_CIPHER_CTX *, int, int, void *);
 using FuncEvpEncryptInitEx = int (*)(EVP_CIPHER_CTX *, const EVP_CIPHER *, ENGINE *, const unsigned char *,
-    const unsigned char *);
+                                     const unsigned char *);
 using FuncEvpEncryptUpdate = int (*)(EVP_CIPHER_CTX *, unsigned char *, int *, const unsigned char *, int);
 using FuncEvpEncryptFinalEx = int (*)(EVP_CIPHER_CTX *, unsigned char *, int *);
 using FuncEvpDecryptInitEx = FuncEvpEncryptInitEx;
@@ -84,8 +84,8 @@ using FuncRandSeed = void (*)(const void *, int);
 using FuncX509VerifyCert = int (*)(X509_STORE_CTX *ctx);
 using FuncX509VerifyCertErrorString = const char *(*)(long n);
 using FuncX509StoreCtxGetError = int (*)(const X509_STORE_CTX *ctx);
-using FuncPemReadBioX509Crl = X509_CRL *(*)(BIO *bp, X509_CRL **x, PEM_PASSWORD_CB *cb, void *u);
-using FuncPemReadBioPk = EVP_PKEY *(*)(BIO *bp, EVP_PKEY **x, PEM_PASSWORD_CB *cb, void *u);
+using FuncPemReadBioX509Crl = X509_CRL *(*)(BIO * bp, X509_CRL **x, PEM_PASSWORD_CB *cb, void *u);
+using FuncPemReadBioPk = EVP_PKEY *(*)(BIO * bp, EVP_PKEY **x, PEM_PASSWORD_CB *cb, void *u);
 using FuncBioSFile = const BIO_METHOD *(*)(void);
 using FuncBioNew = BIO *(*)(const BIO_METHOD *);
 using FuncBioNewMemBuf = BIO *(*)(const void *buf, int len);
@@ -101,7 +101,7 @@ using FuncX509CrlGet0ByCert = int (*)(X509_CRL *crl, X509_REVOKED **ret, X509 *x
 using FuncX509CrlGet0NextUpdate = const ASN1_TIME *(*)(const X509_CRL *crl);
 using FuncX509GetNotAfter = ASN1_TIME *(*)(const X509 *x);
 using FuncX509GetNotBefore = ASN1_TIME *(*)(const X509 *x);
-using FuncX509GetPubkey = EVP_PKEY *(*)(X509 *x);
+using FuncX509GetPubkey = EVP_PKEY *(*)(X509 * x);
 using FuncEvpPkeyBits = int (*)(const EVP_PKEY *pkey);
 using FuncEvpPkeyFree = void (*)(EVP_PKEY *pkey);
 
@@ -207,7 +207,7 @@ private:
     static int LoadSSLSymbols(void *sslHandle);
     static int LoadCryptoSymbols(void *cryptoHandle);
 };
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_OPENSSL_API_DL_H
+#endif // ACC_LINKS_OPENSSL_API_DL_H

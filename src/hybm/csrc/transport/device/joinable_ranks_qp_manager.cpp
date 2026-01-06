@@ -567,7 +567,7 @@ void JoinableRanksQpManager::RemoveRanksProcess(const std::set<uint32_t> &ranks)
     }
 }
 
-}  // namespace device
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock

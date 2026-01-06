@@ -1,4 +1,5 @@
 ## 目录结构介绍
+
 ```
 ├── AllReduce
 │   ├── scripts
@@ -10,7 +11,9 @@
 │   ├── build.sh                // 编译算子的脚本
 │   └── run.sh                  // 运行算子的脚本
 ```
+
 ## 代码实现介绍
+
 本样例中实现的是固定shape为16*2048的AllReduce算子。
 
 本样例需要在npu环境下编译运行
@@ -23,13 +26,16 @@
 ([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
 
 ## 运行样例算子
+
 - 打开样例目录   
   以命令行方式编译样例
 
   ```bash
   bash build.sh -v [SOC_VERSION]
   ```
-    - SOC_VERSION：昇腾AI处理器型号，如果无法确定具体的[SOC_VERSION]，则在安装昇腾AI处理器的服务器执行npu-smi info命令进行查询，在查询到的“Name”前增加Ascend信息，例如“Name”对应取值为xxxyy，实际配置的[SOC_VERSION]值为Ascendxxxyy。支持以下产品型号：
+    - SOC_VERSION：昇腾AI处理器型号，如果无法确定具体的[SOC_VERSION]，则在安装昇腾AI处理器的服务器执行npu-smi
+      info命令进行查询，在查询到的“Name”前增加Ascend信息，例如“Name”对应取值为xxxyy，实际配置的[SOC_VERSION]
+      值为Ascendxxxyy。支持以下产品型号：
         - Atlas 训练系列产品
         - Atlas 推理系列产品AI Core
         - Atlas A2训练系列产品/Atlas 800I A2推理产品

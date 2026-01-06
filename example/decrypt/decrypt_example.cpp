@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-int DecryptPassword(const char* cipherText, const size_t cipherTextLen, char* plainText, const int32_t plainTextLen)
+int DecryptPassword(const char *cipherText, const size_t cipherTextLen, char *plainText, const int32_t plainTextLen)
 {
     if (plainText == nullptr || cipherText == nullptr) {
         return -1;
@@ -27,7 +27,7 @@ int DecryptPassword(const char* cipherText, const size_t cipherTextLen, char* pl
     auto text = std::string(cipherText, cipherTextLen);
     std::reverse(text.begin(), text.end());
     std::copy_n(text.c_str(), plainTextLen, plainText);
-    
+
     return 0; // 成功
 }
 

@@ -76,7 +76,7 @@ int64_t CheckData(void *base, void *ptr, uint32_t len)
     return wrongNum;
 }
 
-std::string ReplacePort(const std::string& input, uint16_t newPort)
+std::string ReplacePort(const std::string &input, uint16_t newPort)
 {
     size_t colonPos = input.rfind(':');
     if (colonPos == std::string::npos) {
@@ -91,17 +91,28 @@ std::string ReplacePort(const std::string& input, uint16_t newPort)
 std::string CopyType2Str(CopyType type)
 {
     switch (type) {
-        case CopyType::HOST_TO_DEVICE: return "H2D";
-        case CopyType::DEVICE_TO_HOST: return "D2H";
-        case CopyType::HOST_TO_REMOTE_DEVICE: return "H2RD";
-        case CopyType::HOST_TO_REMOTE_HOST: return "H2RH";
-        case CopyType::DEVICE_TO_REMOTE_DEVICE: return "D2RD";
-        case CopyType::DEVICE_TO_REMOTE_HOST: return "D2RH";
-        case CopyType::REMOTE_HOST_TO_DEVICE: return "RH2D";
-        case CopyType::REMOTE_HOST_TO_HOST: return "RH2H";
-        case CopyType::REMOTE_DEVICE_TO_DEVICE: return "RD2D";
-        case CopyType::REMOTE_DEVICE_TO_HOST: return "RD2H";
-        default: return "UNKNOWN";
+        case CopyType::HOST_TO_DEVICE:
+            return "H2D";
+        case CopyType::DEVICE_TO_HOST:
+            return "D2H";
+        case CopyType::HOST_TO_REMOTE_DEVICE:
+            return "H2RD";
+        case CopyType::HOST_TO_REMOTE_HOST:
+            return "H2RH";
+        case CopyType::DEVICE_TO_REMOTE_DEVICE:
+            return "D2RD";
+        case CopyType::DEVICE_TO_REMOTE_HOST:
+            return "D2RH";
+        case CopyType::REMOTE_HOST_TO_DEVICE:
+            return "RH2D";
+        case CopyType::REMOTE_HOST_TO_HOST:
+            return "RH2H";
+        case CopyType::REMOTE_DEVICE_TO_DEVICE:
+            return "RD2D";
+        case CopyType::REMOTE_DEVICE_TO_HOST:
+            return "RD2H";
+        default:
+            return "UNKNOWN";
     }
     return "UNKNOWN";
 }
@@ -138,7 +149,7 @@ int32_t BandWidthCalculator::MultiProcessExecute()
             LOG_INFO("subprocess (" << i << ") start.");
             close(pipes[i][0]);
             auto ret = Execute(i + cmdParam_.deviceId, i + cmdParam_.localRankStart, cmdParam_.localRankSize,
-                cmdParam_.worldRankSize, pipes[i][1]);
+                               cmdParam_.worldRankSize, pipes[i][1]);
             LOG_INFO("subprocess (" << i << ") exited.");
             if (ret != 0) {
                 std::exit(1);
@@ -193,8 +204,8 @@ int32_t BandWidthCalculator::MultiThreadExecute()
     return 0;
 }
 
-int32_t BandWidthCalculator::PreInit(uint32_t deviceId, BarrierUtil *&barrier, uint32_t rankId,
-    uint32_t rkSize, aclrtStream *stream)
+int32_t BandWidthCalculator::PreInit(uint32_t deviceId, BarrierUtil *&barrier, uint32_t rankId, uint32_t rkSize,
+                                     aclrtStream *stream)
 {
     CHECK_RET_ERR(barrier != nullptr, "barrier is not nullptr, rank:" << rankId);
     auto ret = aclInit(nullptr);
@@ -261,13 +272,12 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
         void *tmpHostPtr = nullptr;
         ret = aclrtHostRegister(localDram_, len, ACL_HOST_REGISTER_MAPPED, &tmpHostPtr);
         if (ret != 0) {
-            LOG_WARN("register host dram failed, ret:" << ret << ", len:"
-                << len << ", addr:" << reinterpret_cast<uint64_t>(localDram_));
+            LOG_WARN("register host dram failed, ret:" << ret << ", len:" << len
+                                                       << ", addr:" << reinterpret_cast<uint64_t>(localDram_));
         } else {
             ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(tmpHostPtr), len);
             if (ret != 0) {
-                LOG_WARN("register hbm failed, ret:" << ret << ", len:"
-                    << len << ", addr:" << tmpHostPtr);
+                LOG_WARN("register hbm failed, ret:" << ret << ", len:" << len << ", addr:" << tmpHostPtr);
             } else {
                 registedLocalDram_ = tmpHostPtr;
             }
@@ -280,8 +290,8 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
         CHECK_RET_ERR((ret != 0), "memcpy data dram failed, len:" << len);
         ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(localHbm_), len);
         if (ret != 0) {
-            LOG_WARN("register hbm failed, ret:" << ret << ", len:"
-                << len << ", addr:" << reinterpret_cast<uint64_t>(localHbm_));
+            LOG_WARN("register hbm failed, ret:" << ret << ", len:" << len
+                                                 << ", addr:" << reinterpret_cast<uint64_t>(localHbm_));
         } else {
             registedLocalHbm_ = localHbm_;
         }
@@ -370,23 +380,16 @@ void BandWidthCalculator::PrintResult(std::vector<BwTestResult> &results)
         return a.devId < b.devId;
     });
 
-    std::cout << std::endl << "  copy_size:" << results[0].copySize
-            << "  copy_count:" << results[0].copyCount
-            <<"  batch_size:" << results[0].batchSize
-            << std::endl;
+    std::cout << std::endl
+              << "  copy_size:" << results[0].copySize << "  copy_count:" << results[0].copyCount
+              << "  batch_size:" << results[0].batchSize << std::endl;
     std::cout << "----------------------------------------------------------"
-        "Band Width Test----------------------------------------------------------\n";
+                 "Band Width Test----------------------------------------------------------\n";
     int32_t DIGIT_WIDTH = 10;
-    std::cout << std::left
-           << std::setw(DIGIT_WIDTH) << "Type"
-           << std::setw(DIGIT_WIDTH) << "NPU"
-           << std::setw(DIGIT_WIDTH) << "Rank"
-           << std::setw(20) << "TotalSize(KB)"
-           << std::setw(20) << "TotalTime(us)"
-           << std::setw(20) << "AvgTime(us)"
-           << std::setw(20) << "BW(GB/s)"
-           << std::setw(DIGIT_WIDTH) << "WrongBytes(B)"
-           << std::endl;
+    std::cout << std::left << std::setw(DIGIT_WIDTH) << "Type" << std::setw(DIGIT_WIDTH) << "NPU"
+              << std::setw(DIGIT_WIDTH) << "Rank" << std::setw(20) << "TotalSize(KB)" << std::setw(20)
+              << "TotalTime(us)" << std::setw(20) << "AvgTime(us)" << std::setw(20) << "BW(GB/s)"
+              << std::setw(DIGIT_WIDTH) << "WrongBytes(B)" << std::endl;
 
     for (const auto &r : sortedResults) {
         if (r.flag < 0) {
@@ -394,18 +397,12 @@ void BandWidthCalculator::PrintResult(std::vector<BwTestResult> &results)
         }
         uint64_t totalKB = r.copySize * r.copyCount * r.batchSize / 1024;
         uint64_t avgTimeUs = r.totalTimeUs / r.copyCount;
-        auto bandwidthGBps = totalKB  * 1000000.0 / r.totalTimeUs / 1024 / 1024;
+        auto bandwidthGBps = totalKB * 1000000.0 / r.totalTimeUs / 1024 / 1024;
 
-        std::cout << std::left
-            << std::setw(DIGIT_WIDTH) << r.typeName
-            << std::setw(DIGIT_WIDTH) << r.devId
-            << std::setw(DIGIT_WIDTH) << r.rankId
-            << std::setw(20) << totalKB
-            << std::setw(20) << r.totalTimeUs
-            << std::setw(20) << std::fixed << std::setprecision(0) << avgTimeUs
-            << std::setw(20) << std::fixed << std::setprecision(3) << bandwidthGBps
-            << std::setw(DIGIT_WIDTH) << r.wrongNum
-            << std::endl;
+        std::cout << std::left << std::setw(DIGIT_WIDTH) << r.typeName << std::setw(DIGIT_WIDTH) << r.devId
+                  << std::setw(DIGIT_WIDTH) << r.rankId << std::setw(20) << totalKB << std::setw(20) << r.totalTimeUs
+                  << std::setw(20) << std::fixed << std::setprecision(0) << avgTimeUs << std::setw(20) << std::fixed
+                  << std::setprecision(3) << bandwidthGBps << std::setw(DIGIT_WIDTH) << r.wrongNum << std::endl;
     }
     std::cout << std::endl;
 }
@@ -456,84 +453,84 @@ int32_t BandWidthCalculator::Execute(uint32_t deviceId, uint32_t rankId, uint32_
     }
     switch (cmdParam_.type) {
         case CopyType::HOST_TO_DEVICE:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                rankId, handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, rankId, handle, cmdParam_.type,
+                         testResults[0]);
             break;
         case CopyType::DEVICE_TO_HOST:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                rankId, handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, rankId, handle, cmdParam_.type,
+                         testResults[0]);
             break;
         case CopyType::HOST_TO_REMOTE_DEVICE:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::HOST_TO_REMOTE_HOST:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::DEVICE_TO_REMOTE_DEVICE:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::DEVICE_TO_REMOTE_HOST:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::REMOTE_HOST_TO_DEVICE:
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::REMOTE_HOST_TO_HOST:
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::REMOTE_DEVICE_TO_DEVICE:
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::REMOTE_DEVICE_TO_HOST:
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, cmdParam_.type, testResults[0]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, cmdParam_.type, testResults[0]);
             break;
         case CopyType::ALL_DIRECTION:
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                rankId, handle, CopyType::HOST_TO_DEVICE, testResults[0]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, rankId, handle, CopyType::HOST_TO_DEVICE,
+                         testResults[0]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                rankId, handle, CopyType::DEVICE_TO_HOST, testResults[1]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, rankId, handle, CopyType::DEVICE_TO_HOST,
+                         testResults[1]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::HOST_TO_REMOTE_DEVICE, testResults[2]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::HOST_TO_REMOTE_DEVICE, testResults[2]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::HOST_TO_REMOTE_HOST, testResults[3]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::HOST_TO_REMOTE_HOST, testResults[3]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::DEVICE_TO_REMOTE_DEVICE, testResults[4]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::DEVICE_TO_REMOTE_DEVICE, testResults[4]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::DEVICE_TO_REMOTE_HOST, testResults[5]);
+            BatchCopyPut(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::DEVICE_TO_REMOTE_HOST, testResults[5]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::REMOTE_HOST_TO_DEVICE, testResults[6]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::REMOTE_HOST_TO_DEVICE, testResults[6]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::REMOTE_HOST_TO_HOST, testResults[7]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_HOST, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::REMOTE_HOST_TO_HOST, testResults[7]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::REMOTE_DEVICE_TO_DEVICE, testResults[8]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_DEVICE, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::REMOTE_DEVICE_TO_DEVICE, testResults[8]);
             ret = barrier->Barrier();
             CHECK_RET_ERR(ret, "barrier failed after init, ret:" << ret << " rank:" << rankId);
-            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE,
-                GenRmtRankId(rankId, localRankNum, rkSize), handle, CopyType::REMOTE_DEVICE_TO_HOST, testResults[9]);
+            BatchCopyGet(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, GenRmtRankId(rankId, localRankNum, rkSize),
+                         handle, CopyType::REMOTE_DEVICE_TO_HOST, testResults[9]);
             break;
         default:
             std::cout << "not support copy type" << std::endl;
@@ -550,7 +547,7 @@ int32_t BandWidthCalculator::Execute(uint32_t deviceId, uint32_t rankId, uint32_
 }
 
 void BandWidthCalculator::BatchCopyPut(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId,
-    smem_bm_t handle, CopyType type, BwTestResult &result)
+                                       smem_bm_t handle, CopyType type, BwTestResult &result)
 {
     void *localAddrs[cmdParam_.batchSize];
     void *globalAddrs[cmdParam_.batchSize];
@@ -599,7 +596,7 @@ void BandWidthCalculator::BatchCopyPut(smem_bm_mem_type localMemType, smem_bm_me
 }
 
 void BandWidthCalculator::BatchCopyGet(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId,
-    smem_bm_t handle, CopyType type, BwTestResult &result)
+                                       smem_bm_t handle, CopyType type, BwTestResult &result)
 {
     void *localAddrs[cmdParam_.batchSize];
     void *globalAddrs[cmdParam_.batchSize];

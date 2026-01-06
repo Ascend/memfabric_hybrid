@@ -18,27 +18,15 @@
 
 using namespace ock::mf;
 
-using hybm_check_enum = enum {
-    OP_CHECK_IDX = 0U,
-    OP_CHECK_SRC,
-    OP_CHECK_DEST,
-    OP_CHECK_BUTT
-};
+using hybm_check_enum = enum { OP_CHECK_IDX = 0U, OP_CHECK_SRC, OP_CHECK_DEST, OP_CHECK_BUTT };
 
 static uint32_t g_checkMap[HYBM_DATA_COPY_DIRECTION_BUTT][OP_CHECK_BUTT] = {
-    {HYBM_LOCAL_HOST_TO_GLOBAL_HOST, false, true},
-    {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, false, true},
-    {HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, false, true},
-    {HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, false, true},
-    {HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, true, true},
-    {HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, true, true},
-    {HYBM_GLOBAL_HOST_TO_LOCAL_HOST, true, false},
-    {HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, true, false},
-    {HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, true, true},
-    {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, true, true},
-    {HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, true, false},
-    {HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, true, false}
-};
+    {HYBM_LOCAL_HOST_TO_GLOBAL_HOST, false, true},   {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, false, true},
+    {HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, false, true}, {HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, false, true},
+    {HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, true, true},   {HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, true, true},
+    {HYBM_GLOBAL_HOST_TO_LOCAL_HOST, true, false},   {HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, true, false},
+    {HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, true, true}, {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, true, true},
+    {HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, true, false}, {HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, true, false}};
 
 HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
                                 void *stream, uint32_t flags)

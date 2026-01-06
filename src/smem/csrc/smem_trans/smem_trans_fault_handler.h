@@ -48,9 +48,10 @@ struct RankInfo {
 class SmemStoreFaultHandler {
 public:
     static SmemStoreFaultHandler &GetInstance();
-    SmemStoreFaultHandler(const SmemStoreFaultHandler&) = delete;
-    SmemStoreFaultHandler& operator=(const SmemStoreFaultHandler&) = delete;
+    SmemStoreFaultHandler(const SmemStoreFaultHandler &) = delete;
+    SmemStoreFaultHandler &operator=(const SmemStoreFaultHandler &) = delete;
     void RegisterHandlerToStore(StorePtr store);
+
 private:
     SmemStoreFaultHandler() = default;
     int32_t BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
@@ -63,8 +64,7 @@ private:
                               const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
     int32_t GetFromFaultInfo(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
-    void ClearFaultInfo(const uint32_t linkId,
-                           std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+    void ClearFaultInfo(const uint32_t linkId, std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
 
     void ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
                          std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
@@ -74,9 +74,9 @@ private:
 
     std::unordered_map<uint32_t, RankInfo> linkIdToRankInfoMap_;
     std::queue<uint16_t> faultRankIdQueue_;
-    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultDeviceIdQueue_;  // first->sender, second->receiver
-    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultSliceIdQueue_;   // first->sender, second->receiver
+    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultDeviceIdQueue_; // first->sender, second->receiver
+    std::pair<std::queue<uint16_t>, std::queue<uint16_t>> faultSliceIdQueue_;  // first->sender, second->receiver
 };
-}
-}
+} // namespace smem
+} // namespace ock
 #endif

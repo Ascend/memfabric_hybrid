@@ -52,6 +52,6 @@ inline HybmStreamPtr HybmStreamNotify::GetStream() const
 }
 
 using HybmStreamNotifyPtr = std::shared_ptr<HybmStreamNotify>;
-}
-}
+} // namespace mf
+} // namespace ock
 #endif // MF_HYBRID_HYBM_STREAM_NOTIFY_H

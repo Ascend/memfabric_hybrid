@@ -18,21 +18,13 @@ using namespace ock::mf;
 
 class MFNumUtilTest : public testing::Test {
 public:
-    static void SetUpTestCase()
-    {
-    }
+    static void SetUpTestCase() {}
 
-    static void TearDownTestCase()
-    {
-    }
+    static void TearDownTestCase() {}
 
-    void SetUp() override
-    {
-    }
+    void SetUp() override {}
 
-    void TearDown() override
-    {
-    }
+    void TearDown() override {}
 };
 
 TEST_F(MFNumUtilTest, IsDigit_1)
@@ -68,7 +60,7 @@ TEST_F(MFNumUtilTest, ExtractBits)
     EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, 0, 0), UINT32_MAX);
     EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, 1, UINT32_WIDTH), UINT32_MAX);
 
-    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX,
-        HYBM_PERFORMANCE_MODE_FLAG_LEN), 1);
+    EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX, HYBM_PERFORMANCE_MODE_FLAG_LEN),
+              1);
     EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_BIND_NUMA_FLAG_INDEX, HYBM_BIND_NUMA_FLAG_LEN), 0b0101010);
 }

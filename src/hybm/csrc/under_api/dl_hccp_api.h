@@ -367,7 +367,7 @@ private:
     static tsdOpenFunc gTsdOpen;
 };
 
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBM_CORE_DL_HCCP_API_H
+#endif // MF_HYBM_CORE_DL_HCCP_API_H

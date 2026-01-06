@@ -26,5 +26,5 @@ Result AccTcpRequestContext::Reply(int16_t result, const AccDataBufferPtr &d) co
     AccMsgHeader replyHeader(header_.type, result, d->DataLen(), header_.seqNo);
     return link_->EnqueueAndModifyEpoll(replyHeader, d, nullptr);
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

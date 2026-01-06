@@ -34,13 +34,9 @@ struct HostSdmaExportInfo {
 
 class HybmVmmBasedSegment : public MemSegment {
 public:
-    explicit HybmVmmBasedSegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid}
-    {
-    }
+    explicit HybmVmmBasedSegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
 
-    ~HybmVmmBasedSegment() override
-    {
-    }
+    ~HybmVmmBasedSegment() override {}
 
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
@@ -80,7 +76,7 @@ private:
     std::map<uint16_t, std::string> exportMap_;
     std::map<uint64_t, drv_mem_handle_t *> mappedMem_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MF_HYBRID_HYBM_VMM_BASED_SEGMENT_H

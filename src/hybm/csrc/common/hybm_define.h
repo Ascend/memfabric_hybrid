@@ -29,8 +29,8 @@ constexpr uint32_t RANK_MAX = 1024UL;
 constexpr uint64_t SMALL_PAGE_SIZE = 4U * KB;
 
 constexpr uint64_t HYBM_LARGE_PAGE_SIZE = 2UL * 1024UL * 1024UL; // 大页的size, 2M
-constexpr uint64_t HYBM_DEVICE_VA_START = 0x100000000000UL;        // NPU上的地址空间起始: 16T
-constexpr uint64_t HYBM_DEVICE_VA_SIZE = 0x80000000000UL;          // NPU上的地址空间范围: 8T
+constexpr uint64_t HYBM_DEVICE_VA_START = 0x100000000000UL;      // NPU上的地址空间起始: 16T
+constexpr uint64_t HYBM_DEVICE_VA_SIZE = 0x80000000000UL;        // NPU上的地址空间范围: 8T
 constexpr uint64_t SVM_END_ADDR = HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE - (1UL << 30UL); // svm的结尾虚拟地址
 constexpr uint64_t HYBM_DEVICE_PRE_META_SIZE = 128UL;                                         // 128B
 constexpr uint64_t HYBM_DEVICE_GLOBAL_META_SIZE = HYBM_DEVICE_PRE_META_SIZE;                  // 128B
@@ -140,15 +140,9 @@ struct HybmDeviceMeta {
         }                                                                                            \
     } while (0)
 
-enum HybmGvaVersion : uint32_t {
-    HYBM_GVA_V1 = 0,
-    HYBM_GVA_V2 = 1,
-    HYBM_GVA_V3 = 2,
-    HYBM_GVA_V4 = 3,
-    HYBM_GVA_UNKNOWN
-};
+enum HybmGvaVersion : uint32_t { HYBM_GVA_V1 = 0, HYBM_GVA_V2 = 1, HYBM_GVA_V3 = 2, HYBM_GVA_V4 = 3, HYBM_GVA_UNKNOWN };
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_DEFINE_H

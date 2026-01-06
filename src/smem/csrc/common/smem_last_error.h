@@ -69,7 +69,7 @@ inline const char *SmLastError::GetAndClear(bool clear)
 
     return emptyString.c_str();
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H
+#endif // MEMFABRIC_HYBRID_SMEM_LAST_ERROR_H

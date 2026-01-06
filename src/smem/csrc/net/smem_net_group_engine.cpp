@@ -30,14 +30,14 @@ const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
-constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
-constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US; // 5s
+constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US;          // 100ms, unit: us
+constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;              // 5s
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
 
 struct JoinLeaveEventValue {
-    bool join;  // true => join, false => leave
+    bool join; // true => join, false => leave
     char evt;
     uint32_t rankId;
 
@@ -196,14 +196,15 @@ static void SortGatherRecv(std::vector<uint8_t> &vec, uint32_t preSize, uint32_t
     }
 }
 
-
 Result SmemNetGroupEngine::GroupBroadcastExit(int status)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
 
     auto ret = store_->Set(SMEM_GROUP_EXIT_KEY, std::to_string(status));
-    SM_VALIDATE_RETURN(ret == SM_OK, "store set key: " << store_->GetCompleteKey(SMEM_GROUP_EXIT_KEY)
-                                                       << " failed, result:" << ConfigStore::ErrStr(ret), SM_ERROR);
+    SM_VALIDATE_RETURN(ret == SM_OK,
+                       "store set key: " << store_->GetCompleteKey(SMEM_GROUP_EXIT_KEY)
+                                         << " failed, result:" << ConfigStore::ErrStr(ret),
+                       SM_ERROR);
     SM_LOG_DEBUG("store set key: " << store_->GetCompleteKey(SMEM_GROUP_EXIT_KEY));
     return ret;
 }
@@ -218,9 +219,10 @@ Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     globalExitHandler_ = exit;
     uint32_t wid;
-    auto ret = store_->Watch(SMEM_GROUP_EXIT_KEY, std::bind(&SmemNetGroupEngine::RankExit, this,
-                                                            std::placeholders::_1, std::placeholders::_2,
-                                                            std::placeholders::_3), wid);
+    auto ret = store_->Watch(SMEM_GROUP_EXIT_KEY,
+                             std::bind(&SmemNetGroupEngine::RankExit, this, std::placeholders::_1,
+                                       std::placeholders::_2, std::placeholders::_3),
+                             wid);
     if (ret != SM_OK) {
         SM_LOG_WARN("group watch failed, maybe link down, ret: " << ret);
         globalExitHandler_ = nullptr;
@@ -282,7 +284,7 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
-        uint32_t rmAllGatherGroupSn = allGatherGroupSn_- REMOVE_INTERVAL;
+        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - REMOVE_INTERVAL;
         std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
         std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
         /* There is no need to return ERROR, when the removed key is already not exist.
@@ -389,7 +391,7 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
 
-        if (!joined_) {  // maybe has leaved
+        if (!joined_) { // maybe has leaved
             continue;
         }
 
@@ -512,10 +514,11 @@ void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
 
     auto sizePair = SplitSizeAndVersion(tmpVal);
     auto version = sizePair.first;
-    auto rankSize = static_cast<uint32_t >(sizePair.second);
+    auto rankSize = static_cast<uint32_t>(sizePair.second);
     if (version != groupVersion_) {
         SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << version
-            << " groupVersion_:" << groupVersion_ << " local:" <<  option_.rank << " downRank:" << rankId);
+                                           << " groupVersion_:" << groupVersion_ << " local:" << option_.rank
+                                           << " downRank:" << rankId);
         UpdateGroupVersion(groupVersion_ + 1);
         option_.rankSize--;
     } else {
@@ -527,8 +530,8 @@ void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
         auto newValStr = std::to_string(newVal);
         std::string existStr;
         ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
-        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") local: " << option_.rank
-            << " downRank:" << rankId << " oldVal:" << std::hex << tmpVal << " newVal:" << newVal);
+        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") local: " << option_.rank << " downRank:"
+                                           << rankId << " oldVal:" << std::hex << tmpVal << " newVal:" << newVal);
         if (ret != SM_OK) {
             SM_LOG_ERROR("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
         }
@@ -563,10 +566,12 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
 void SmemNetGroupEngine::RemoteRankLinkDownCb(uint32_t remoteRankId)
 {
     SM_LOG_DEBUG("[DEBUG]RemoteRankLinkDownCb rank id: " << remoteRankId);
-    listenSignal_.OperateInLock([this, remoteRankId]() {
-        listenCtx_.ret = SM_OK;
-        listenCtx_.events.emplace_back(GroupEvent(remoteRankId));
-        }, true);
+    listenSignal_.OperateInLock(
+        [this, remoteRankId]() {
+            listenCtx_.ret = SM_OK;
+            listenCtx_.events.emplace_back(GroupEvent(remoteRankId));
+        },
+        true);
 }
 
 void SmemNetGroupEngine::ClearBitmapForRank(uint32_t rankId)
@@ -775,7 +780,7 @@ int32_t SmemNetGroupEngine::LinkReconnectHandler()
     auto newValStr = std::to_string(newVal);
     std::string existStr;
     SM_LOG_DEBUG("[DEBUG]Try cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << std::hex << version
-                                       << " rankSize:" << rankSize << " oldVar:" << tmpVal);
+                                           << " rankSize:" << rankSize << " oldVar:" << tmpVal);
     ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
     if (ret != SM_OK) {
         SM_LOG_WARN("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
@@ -807,5 +812,5 @@ void SmemNetGroupEngine::GroupSnClean()
         (void)store_->Remove(removeWaitIdx);
     }
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

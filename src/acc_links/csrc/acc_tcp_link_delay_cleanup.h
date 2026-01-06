@@ -22,7 +22,7 @@ namespace ock {
 namespace acc {
 struct AccTcpLinkCleanupItem {
     bool stop = false;
-    struct timeval enqueueTime {};
+    struct timeval enqueueTime{};
     AccTcpLinkPtr link;
 
     AccTcpLinkCleanupItem() = default;
@@ -55,7 +55,7 @@ private:
     std::mutex queueMutex_;
     std::list<AccTcpLinkCleanupItem> queue_;
     std::atomic<bool> started_{false};
-    std::atomic<bool> threadStarted_{ false };
+    std::atomic<bool> threadStarted_{false};
     std::thread cleanupThread_;
 };
 using AccTcpLinkDelayCleanupPtr = AccRef<AccTcpLinkDelayCleanup>;
@@ -144,7 +144,7 @@ inline bool AccTcpLinkDelayCleanup::CheckAndPop(uint32_t periodSecond, AccTcpLin
         return true;
     }
 
-    struct timeval currentTime {};
+    struct timeval currentTime{};
     gettimeofday(&currentTime, nullptr);
     if (currentTime.tv_sec - frontItem.enqueueTime.tv_sec >= periodSecond) {
         item = frontItem;
@@ -154,7 +154,7 @@ inline bool AccTcpLinkDelayCleanup::CheckAndPop(uint32_t periodSecond, AccTcpLin
 
     return false;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_LINK_DELAY_CLEANUP_H
+#endif // ACC_LINKS_ACC_TCP_LINK_DELAY_CLEANUP_H

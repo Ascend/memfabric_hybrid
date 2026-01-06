@@ -78,7 +78,7 @@ std::string LoadDriverVersionInfoFile(const std::string &realName, const std::st
         auto found = line.find(keyStr);
         // 刚好匹配前缀
         if (found == 0) {
-            uint32_t len = line.length() - keyStr.length(); // 版本字符串长度
+            uint32_t len = line.length() - keyStr.length();    // 版本字符串长度
             driverVersion = line.substr(keyStr.length(), len); // 从keyStr截断
             break;
         }

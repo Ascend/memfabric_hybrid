@@ -20,19 +20,18 @@
 
 namespace ock {
 namespace mf {
-static const std::string ipv6_common_core =
-    R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})|)"
-    R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?::)"
-    R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?)";
+static const std::string ipv6_common_core = R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})|)"
+                                            R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?::)"
+                                            R"((?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?)";
 class StrUtil {
 public:
     static std::string StrTrim(const std::string &str);
     static inline std::vector<std::string> Split(const std::string &str, char delimiter);
     static inline bool StartWith(const std::string &str, const std::string &prefix);
-    template <typename UIntType>
-    static inline bool String2Uint(const std::string& str, UIntType& val);
-    template <typename IntType>
-    static inline bool String2Int(const std::string& str, IntType& val);
+    template<typename UIntType>
+    static inline bool String2Uint(const std::string &str, UIntType &val);
+    template<typename IntType>
+    static inline bool String2Int(const std::string &str, IntType &val);
     static inline int64_t GetNowTime();
 };
 
@@ -72,8 +71,8 @@ inline bool StrUtil::StartWith(const std::string &str, const std::string &prefix
     return str.length() >= prefix.length() && str.compare(0, prefix.length(), prefix) == 0;
 }
 
-template <typename UIntType>
-inline bool StrUtil::String2Uint(const std::string& str, UIntType& val)
+template<typename UIntType>
+inline bool StrUtil::String2Uint(const std::string &str, UIntType &val)
 {
     if (str.empty()) {
         return false;
@@ -83,7 +82,7 @@ inline bool StrUtil::String2Uint(const std::string& str, UIntType& val)
         return false;
     }
 
-    char* end = nullptr;
+    char *end = nullptr;
     errno = 0;
 
     unsigned long long result = std::strtoull(str.c_str(), &end, 10);
@@ -107,14 +106,14 @@ inline bool StrUtil::String2Uint(const std::string& str, UIntType& val)
     return true;
 }
 
-template <typename IntType>
-inline bool StrUtil::String2Int(const std::string& str, IntType& val)
+template<typename IntType>
+inline bool StrUtil::String2Int(const std::string &str, IntType &val)
 {
     if (str.empty()) {
         return false;
     }
 
-    char* end = nullptr;
+    char *end = nullptr;
     errno = 0;
 
     int64_t result = std::strtoll(str.c_str(), &end, 10);
@@ -145,7 +144,7 @@ inline int64_t StrUtil::GetNowTime()
     auto value = now_ms.time_since_epoch().count();
     return static_cast<int64_t>(value);
 }
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #endif // MEMFABRIC_HYBRID_STR_UTIL_H

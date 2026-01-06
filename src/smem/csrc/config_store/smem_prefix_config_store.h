@@ -21,10 +21,8 @@ namespace smem {
 class PrefixConfigStore : public ConfigStore {
 public:
     PrefixConfigStore(const StorePtr &base, std::string prefix) noexcept
-        : baseStore_{base->GetCoreStore()},
-          keyPrefix_{base->GetCommonPrefix().append(std::move(prefix))}
-    {
-    }
+        : baseStore_{base->GetCoreStore()}, keyPrefix_{base->GetCommonPrefix().append(std::move(prefix))}
+    {}
 
     ~PrefixConfigStore() override = default;
 
@@ -155,7 +153,7 @@ private:
     const StorePtr baseStore_;
     const std::string keyPrefix_;
 };
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_PREFIX_CONFIG_STORE_H
+#endif // SMEM_SMEM_PREFIX_CONFIG_STORE_H

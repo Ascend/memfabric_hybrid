@@ -81,9 +81,9 @@ private:
     std::unordered_map<uint32_t, AiCoreConnChannel> clientConnections_;
     std::unordered_map<uint32_t, AiCoreConnChannel> serverConnections_;
 };
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_FIXED_RANKS_QP_MANAGER_H
+#endif // MF_HYBRID_FIXED_RANKS_QP_MANAGER_H

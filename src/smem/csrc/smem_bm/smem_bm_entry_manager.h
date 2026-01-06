@@ -30,8 +30,8 @@ public:
 
     SmemBmEntryManager(const SmemBmEntryManager &) = delete;
     SmemBmEntryManager(SmemBmEntryManager &&) = delete;
-    SmemBmEntryManager& operator=(const SmemBmEntryManager& other) = delete;
-    SmemBmEntryManager& operator=(SmemBmEntryManager &&) = delete;
+    SmemBmEntryManager &operator=(const SmemBmEntryManager &other) = delete;
+    SmemBmEntryManager &operator=(SmemBmEntryManager &&) = delete;
 
     Result Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                       const smem_bm_config_t &config);
@@ -86,7 +86,7 @@ private:
     StorePtr confStore_ = nullptr;
 };
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H
+#endif // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_MANAGER_H

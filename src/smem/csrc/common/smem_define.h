@@ -23,19 +23,19 @@ namespace smem {
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
 
-#define SM_SET_LAST_ERROR(msg)          \
-    do {                                \
-        std::stringstream tmpStr;       \
-        tmpStr << (msg);                  \
+#define SM_SET_LAST_ERROR(msg)                     \
+    do {                                           \
+        std::stringstream tmpStr;                  \
+        tmpStr << (msg);                           \
         ock::smem::SmLastError::Set(tmpStr.str()); \
     } while (0)
 
-#define SM_COUT_AND_SET_LAST_ERROR(msg) \
-    do {                                \
-        std::stringstream tmpStr;       \
-        tmpStr << (msg);                  \
+#define SM_COUT_AND_SET_LAST_ERROR(msg)            \
+    do {                                           \
+        std::stringstream tmpStr;                  \
+        tmpStr << (msg);                           \
         ock::smem::SmLastError::Set(tmpStr.str()); \
-        std::cout << (msg) << std::endl;  \
+        std::cout << (msg) << std::endl;           \
     } while (0)
 
 // if expression is true, print error
@@ -50,7 +50,7 @@ namespace smem {
 
 #define SMEM_API __attribute__((visibility("default")))
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // MEM_FABRIC_HYBRID_SMEM_DEFINE_H
+#endif // MEM_FABRIC_HYBRID_SMEM_DEFINE_H

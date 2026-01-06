@@ -21,7 +21,6 @@ libs_path = os.path.join(current_dir, 'lib')
 for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
     ctypes.CDLL(os.path.join(libs_path, lib))
 
-
 from _pymf_transfer import (
     TransferEngine,
     TransferOpcode,
@@ -39,7 +38,6 @@ from _pymf_hybrid import (
     set_conf_store_tls_key,
     get_and_clear_last_err_msg
 )
-
 
 __all__ = [
     'TransferEngine',

@@ -235,6 +235,6 @@ void DefaultTracer::RunInThread()
         DumpTracepoints();
     }
 }
-}  // namespace tracer
-}  // namespace mf
-}  // namespace ock
+} // namespace tracer
+} // namespace mf
+} // namespace ock

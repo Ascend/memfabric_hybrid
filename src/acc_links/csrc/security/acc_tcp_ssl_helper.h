@@ -67,7 +67,7 @@ private:
 
 private:
     AccDecryptHandler mDecryptHandler_ = nullptr; // 解密回调
-    std::pair<char *, int> mKeyPass = { nullptr, 0 };
+    std::pair<char *, int> mKeyPass = {nullptr, 0};
     std::thread checkExpiredThread;
     std::mutex mMutex;
     std::condition_variable mCond;
@@ -85,7 +85,7 @@ private:
     std::vector<std::string> tlsCrlPaths;
 };
 using AccTcpSslHelperPtr = AccRef<AccTcpSslHelper>;
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_SSL_HELPER_H
+#endif // ACC_LINKS_ACC_TCP_SSL_HELPER_H

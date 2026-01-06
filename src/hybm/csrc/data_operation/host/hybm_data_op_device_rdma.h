@@ -29,11 +29,11 @@ public:
     Result Initialize() noexcept override;
     void UnInitialize() noexcept override;
     Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                     const ExtOptions &options) noexcept override;
+                    const ExtOptions &options) noexcept override;
     Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
 
 private:
@@ -70,14 +70,13 @@ private:
 
     Result BatchDataCopyDefault(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept;
-    Result BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction,
-                               const ExtOptions &options) noexcept;
+    Result BatchDataCopyLocal(hybm_batch_copy_params &params, int32_t direction, const ExtOptions &options) noexcept;
     Result BatchDataCopyLocalSync(hybm_batch_copy_params &params, int32_t direction,
-                                   const ExtOptions &options) noexcept;
+                                  const ExtOptions &options) noexcept;
     Result BatchDataCopyLocalAsync(hybm_batch_copy_params &params, int32_t direction,
-                                    const ExtOptions &options) noexcept;
+                                   const ExtOptions &options) noexcept;
     Result BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
-                                    const ExtOptions &options) noexcept;
+                                   const ExtOptions &options) noexcept;
 
     Result AllocSwapMemory();
     void FreeSwapMemory();
@@ -85,14 +84,13 @@ private:
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
                           std::unordered_map<uint32_t, CopyDescriptor> &registered,
                           std::unordered_map<uint32_t, CopyDescriptor> &localed,
-                          std::unordered_map<uint32_t, CopyDescriptor> &notRegistered,
-                          uint32_t globalRankId) noexcept;
+                          std::unordered_map<uint32_t, CopyDescriptor> &notRegistered, uint32_t globalRankId) noexcept;
     Result BatchCopyWrite(hybm_batch_copy_params &params, const ExtOptions &options,
-                           hybm_data_copy_direction direction) noexcept;
-    Result BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
                           hybm_data_copy_direction direction) noexcept;
-    Result BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+    Result BatchCopyRead(hybm_batch_copy_params &params, const ExtOptions &options,
                          hybm_data_copy_direction direction) noexcept;
+    Result BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options,
+                        hybm_data_copy_direction direction) noexcept;
     Result SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
     Result SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
 
@@ -103,7 +101,7 @@ private:
     void *rdmaSwapBaseAddr_{nullptr};
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;
 };
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HYBM_DATA_OP_DEVICE_RDMA_H
+#endif // MF_HYBRID_HYBM_DATA_OP_DEVICE_RDMA_H

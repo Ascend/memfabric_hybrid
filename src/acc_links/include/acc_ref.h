@@ -47,14 +47,14 @@ protected:
 /**
  * @brief Smart ptr class
  */
-template <typename T>
+template<typename T>
 class AccRef {
 public:
     /* constructor */
     AccRef() noexcept = default;
 
     /* dont fix: can't be explicit */
-    AccRef(T* newObj) noexcept
+    AccRef(T *newObj) noexcept
     {
         // if new obj is not null, increase reference count and assign to mObj
         // else nothing need to do as mObj is nullptr by default
@@ -74,7 +74,7 @@ public:
         }
     }
 
-    AccRef(AccRef<T>&& other) noexcept : mObj(std::__exchange(other.mObj, nullptr))
+    AccRef(AccRef<T> &&other) noexcept : mObj(std::__exchange(other.mObj, nullptr))
     {
         // move constructor
         // since this mObj is null, just exchange
@@ -89,7 +89,7 @@ public:
     }
 
     // operator =
-    inline AccRef<T> &operator=(T* newObj)
+    inline AccRef<T> &operator=(T *newObj)
     {
         this->Set(newObj);
         return *this;
@@ -103,7 +103,7 @@ public:
         return *this;
     }
 
-    AccRef<T> &operator=(AccRef<T>&& other) noexcept
+    AccRef<T> &operator=(AccRef<T> &&other) noexcept
     {
         if (this != &other) {
             auto tmp = mObj;
@@ -121,7 +121,7 @@ public:
         return mObj == other.mObj;
     }
 
-    inline bool operator==(T* other) const
+    inline bool operator==(T *other) const
     {
         return mObj == other;
     }
@@ -131,23 +131,23 @@ public:
         return mObj != other.mObj;
     }
 
-    inline bool operator!=(T* other) const
+    inline bool operator!=(T *other) const
     {
         return mObj != other;
     }
 
     // get operator and set
-    inline T* operator->() const
+    inline T *operator->() const
     {
         return mObj;
     }
 
-    inline T* Get() const
+    inline T *Get() const
     {
         return mObj;
     }
 
-    inline void Set(T* newObj)
+    inline void Set(T *newObj)
     {
         if (newObj == mObj) {
             return;
@@ -165,17 +165,17 @@ public:
     }
 
 private:
-    T* mObj = nullptr;
+    T *mObj = nullptr;
 };
 
-template <class Src, class Des>
+template<class Src, class Des>
 static AccRef<Des> AccConvert(const AccRef<Src> &child)
 {
     if (child.Get() != nullptr) {
-        return AccRef<Des>(static_cast<Des*>(child.Get()));
+        return AccRef<Des>(static_cast<Des *>(child.Get()));
     }
     return nullptr;
 }
-}  // namespace acc
-}  // namespace ock
-#endif  // ACC_LINKS_ACC_REF_H
+} // namespace acc
+} // namespace ock
+#endif // ACC_LINKS_ACC_REF_H

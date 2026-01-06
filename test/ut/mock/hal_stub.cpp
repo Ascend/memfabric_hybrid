@@ -22,7 +22,7 @@ extern "C" {
 int *g_devmm_mem_dev;
 int32_t halGvaReserveMemory(void **address, size_t size, int32_t deviceId, uint64_t flags)
 {
-    *address = (void *) baseAddr;
+    *address = (void *)baseAddr;
     return RETURN_OK;
 }
 

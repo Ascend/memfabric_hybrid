@@ -151,7 +151,7 @@ protected:
     static std::string sysBoolId_;
     static AscendSocType socType_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_MEM_SEGMENT_H

@@ -24,7 +24,7 @@ public:
     static void DestroyAllThreadHybmStream();
     static void *GetThreadAclStream();
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MF_HYBRID_HYBM_STREAM_MANAGER_H

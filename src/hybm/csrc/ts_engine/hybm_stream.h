@@ -25,7 +25,10 @@ namespace mf {
 class HybmStream {
 public:
     HybmStream(uint32_t deviceId, uint32_t prio, uint32_t flags) noexcept;
-    ~HybmStream() { Destroy(); }
+    ~HybmStream()
+    {
+        Destroy();
+    }
 
     int Initialize() noexcept;
     void Destroy();
@@ -88,11 +91,11 @@ inline bool HybmStream::GetWqeFlag() const
 inline bool HybmStream::TaskInRange(uint32_t task) const
 {
     return task == UINT32_MAX ||
-        ((sqHead_ <= sqTail_) ? (task >= sqHead_ && task < sqTail_) : (task >= sqHead_ || task < sqTail_));
+           ((sqHead_ <= sqTail_) ? (task >= sqHead_ && task < sqTail_) : (task >= sqHead_ || task < sqTail_));
 }
 
 using HybmStreamPtr = std::shared_ptr<HybmStream>;
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MF_HYBRID_HYBM_STREAM_H

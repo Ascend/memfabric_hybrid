@@ -14,12 +14,12 @@
 
 namespace ock {
 namespace acc {
-AccDataBuffer::AccDataBuffer(uint32_t memSize) : memSize_{ memSize }, data_{ new (std::nothrow) uint8_t[memSize] } {}
+AccDataBuffer::AccDataBuffer(uint32_t memSize) : memSize_{memSize}, data_{new (std::nothrow) uint8_t[memSize]} {}
 
-AccDataBuffer::AccDataBuffer(const void *data, uint32_t size) : AccDataBuffer{ size }
+AccDataBuffer::AccDataBuffer(const void *data, uint32_t size) : AccDataBuffer{size}
 {
     if (data_ != nullptr) {
-        const uint8_t* src_ptr = static_cast<const uint8_t*>(data);
+        const uint8_t *src_ptr = static_cast<const uint8_t *>(data);
         std::copy(src_ptr, src_ptr + size, data_);
         dataSize_ = size;
     }

@@ -56,10 +56,8 @@ public:
 
 public:
     explicit SmemTransEntry(const std::string &name, SmemStoreHelper helper)
-        : name_(name),
-          storeHelper_{std::move(helper)}
-    {
-    }
+        : name_(name), storeHelper_{std::move(helper)}
+    {}
 
     ~SmemTransEntry() override;
 
@@ -117,9 +115,9 @@ private:
     bool watchConnectRunning_{true};
 
     ock::mf::ReadWriteLock remoteSliceRwMutex_;
-    std::unordered_map<
-        WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash> remoteSlices_;
-    std::map<std::string, WorkerId> nameToWorkerId;     /* To accelerate name parsed */
+    std::unordered_map<WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash>
+        remoteSlices_;
+    std::map<std::string, WorkerId> nameToWorkerId; /* To accelerate name parsed */
 };
 
 inline const std::string &SmemTransEntry::Name() const
@@ -131,7 +129,7 @@ inline const smem_trans_config_t &SmemTransEntry::Config() const
 {
     return config_;
 }
-}
-}
+} // namespace smem
+} // namespace ock
 
-#endif  // MF_SMEM_TRANS_ENTRY_H
+#endif // MF_SMEM_TRANS_ENTRY_H

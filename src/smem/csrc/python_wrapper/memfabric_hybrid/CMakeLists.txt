@@ -26,10 +26,10 @@ print(os.path.dirname(pybind11.__file__),end='');"
             RESULT_VARIABLE _PYTHON_SUCCESS
             OUTPUT_VARIABLE PYBIND11_DIR)
 
-    if(NOT _PYTHON_SUCCESS MATCHES 0)
+    if (NOT _PYTHON_SUCCESS MATCHES 0)
         message(STATUS "PYBIND11_DIR: ${PYBIND11_DIR}")
         message(FATAL_ERROR "Pybind11 config Error.")
-    endif()
+    endif ()
 
     # pybind11
     message(STATUS "PYBIND11_DIR = ${PYBIND11_DIR}")

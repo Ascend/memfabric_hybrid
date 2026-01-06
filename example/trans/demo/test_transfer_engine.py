@@ -27,9 +27,9 @@ def main():
     parser.add_argument('--store-url', type=str, required=True, help='URL for the store (e.g., tcp://xx.xx.xx.xx:xxxx)')
     parser.add_argument('--npu-id', type=int, default=0, help='NPU device ID')
     parser.add_argument('--dst-unique-id', type=str, help='Destination unique ID')
-    parser.add_argument('--log-level', type=int, default=0, choices=[0, 1, 2, 3], 
+    parser.add_argument('--log-level', type=int, default=0, choices=[0, 1, 2, 3],
                         help='Log level: 0 debug, 1 info, 2 warn, 3 error')
-    
+
     args = parser.parse_args()
 
     # 初始化引擎
@@ -53,13 +53,13 @@ def run_decode_role(engine, args, unique_id):
         args.role,
         args.npu_id,
     )
-    
+
     if ret_value != 0:
         print("Ascend Transfer Engine initialization failed.")
         raise RuntimeError("Ascend Transfer Engine initialization failed.")
-    
+
     print(f"AscendTransferEngine init success {args.store_url=} {unique_id=} {args.role=} {args.npu_id=}")
-    
+
     # 创建缓冲区
     total_buffer = torch.zeros(
         (10, 50, 40, 20, 60),
@@ -67,13 +67,13 @@ def run_decode_role(engine, args, unique_id):
         device='npu',
     )
     total_bytes = total_buffer.element_size() * total_buffer.numel()
-    
-    engine.register_memory(total_buffer.data_ptr(), total_bytes)\
-    # 等待并注册内存
+
+    engine.register_memory(total_buffer.data_ptr(), total_bytes) \
+        # 等待并注册内存
     time.sleep(5)
     print(f'register address={hex(total_buffer.data_ptr())}')
     print("register success.")
-    
+
     # 等待完成并读出处理数据
     while True:
         time.sleep(10)
@@ -92,7 +92,7 @@ def run_prefill_role(engine, args, unique_id):
     # 创建配置存储
     create_config_store(args.store_url)
     time.sleep(3)
-    
+
     # 初始化引擎
     ret_value = engine.initialize(
         args.store_url,
@@ -100,7 +100,7 @@ def run_prefill_role(engine, args, unique_id):
         args.role,
         args.npu_id,
     )
-    
+
     if ret_value != 0:
         print("Ascend Transfer Engine initialization failed.")
         raise RuntimeError("Ascend Transfer Engine initialization failed.")
@@ -110,10 +110,10 @@ def run_prefill_role(engine, args, unique_id):
         buffer = total_buffer[i]
         print(f'buffer address={hex(buffer.data_ptr())}')
         print(f'buffer sum={torch.sum(buffer)}')
-        
+
         total_bytes = buffer.element_size() * buffer.numel()
         print(f"total_bytes={total_bytes}")
-        
+
         engine.register_memory(buffer.data_ptr(), total_bytes)
         # 等待注册完成
         time.sleep(10)
@@ -121,7 +121,7 @@ def run_prefill_role(engine, args, unique_id):
         # 同步写入数据
         engine.transfer_sync_write(args.dst_unique_id, buffer.data_ptr(), peer_address, total_bytes)
         print(f"write success peer_address={hex(peer_address)}")
-    
+
     # 等待解码完成
     while True:
         time.sleep(20)

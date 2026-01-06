@@ -87,17 +87,17 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gServiceConnect, serviceConnectFunc, hcomHandle, "ubs_hcom_service_connect");
     DL_LOAD_SYM(gServiceDisConnectFunc, serviceDisConnectFunc, hcomHandle, "ubs_hcom_service_disconnect");
     DL_LOAD_SYM(gServiceRegisterMemoryRegion, serviceRegisterMemoryRegionFunc, hcomHandle,
-        "ubs_hcom_service_register_memory_region");
+                "ubs_hcom_service_register_memory_region");
     DL_LOAD_SYM(gServiceGetMemoryRegionInfo, serviceGetMemoryRegionInfoFunc, hcomHandle,
-        "ubs_hcom_service_get_memory_region_info");
+                "ubs_hcom_service_get_memory_region_info");
     DL_LOAD_SYM(gServiceRegisterAssignMemoryRegion, serviceRegisterAssignMemoryRegionFunc, hcomHandle,
-        "ubs_hcom_service_register_assign_memory_region");
+                "ubs_hcom_service_register_assign_memory_region");
     DL_LOAD_SYM(gServiceDestroyMemoryRegion, serviceDestroyMemoryRegionFunc, hcomHandle,
-        "ubs_hcom_service_destroy_memory_region");
+                "ubs_hcom_service_destroy_memory_region");
     DL_LOAD_SYM(gServiceRegisterChannelBrokerHandler, serviceRegisterChannelBrokerHandlerFunc, hcomHandle,
-        "ubs_hcom_service_register_broken_handler");
+                "ubs_hcom_service_register_broken_handler");
     DL_LOAD_SYM(gServiceRegisterIdleHandler, serviceRegisterIdleHandlerFunc, hcomHandle,
-        "ubs_hcom_service_register_idle_handler");
+                "ubs_hcom_service_register_idle_handler");
     DL_LOAD_SYM(gServiceRegisterHandler, serviceRegisterHandlerFunc, hcomHandle, "ubs_hcom_service_register_handler");
     DL_LOAD_SYM(gServiceAddWorkerGroup, serviceAddWorkerGroupFunc, hcomHandle, "ubs_hcom_service_add_workergroup");
     DL_LOAD_SYM(gServiceAddListener, serviceAddListenerFunc, hcomHandle, "ubs_hcom_service_add_listener");
@@ -105,35 +105,35 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gServiceSetTlsOptions, serviceSetTlsOptionsFunc, hcomHandle, "ubs_hcom_service_set_tls_opt");
     DL_LOAD_SYM(gServiceSetSecureOptions, serviceSetSecureOptionsFunc, hcomHandle, "ubs_hcom_service_set_secure_opt");
     DL_LOAD_SYM(gServiceSetTcpUserTimeOutSec, serviceSetTcpUserTimeOutSecFunc, hcomHandle,
-        "ubs_hcom_service_set_tcp_usr_timeout");
+                "ubs_hcom_service_set_tcp_usr_timeout");
     DL_LOAD_SYM(gServiceSetTcpSendZCopy, serviceSetTcpSendZCopyFunc, hcomHandle, "ubs_hcom_service_set_tcp_send_zcopy");
     DL_LOAD_SYM(gServiceSetDeviceIpMask, serviceSetDeviceIpMaskFunc, hcomHandle, "ubs_hcom_service_set_ipmask");
     DL_LOAD_SYM(gServiceSetDeviceIpGroup, serviceSetDeviceIpGroupFunc, hcomHandle, "ubs_hcom_service_set_ipgroup");
     DL_LOAD_SYM(gServiceSetCompletionQueueDepth, serviceSetCompletionQueueDepthFunc, hcomHandle,
-        "ubs_hcom_service_set_cq_depth");
+                "ubs_hcom_service_set_cq_depth");
     DL_LOAD_SYM(gServiceSetSendQueueSize, serviceSetSendQueueSizeFunc, hcomHandle, "ubs_hcom_service_set_sq_size");
     DL_LOAD_SYM(gServiceSetRecvQueueSize, serviceSetRecvQueueSizeFunc, hcomHandle, "ubs_hcom_service_set_rq_size");
     DL_LOAD_SYM(gServiceSetQueuePrePostSize, serviceSetQueuePrePostSizeFunc, hcomHandle,
-        "ubs_hcom_service_set_prepost_size");
+                "ubs_hcom_service_set_prepost_size");
     DL_LOAD_SYM(gServiceSetPollingBatchSize, serviceSetPollingBatchSizeFunc, hcomHandle,
-        "ubs_hcom_service_set_polling_batchsize");
+                "ubs_hcom_service_set_polling_batchsize");
     DL_LOAD_SYM(gServiceSetEventPollingTimeOutUs, serviceSetEventPollingTimeOutUsFunc, hcomHandle,
-        "ubs_hcom_service_set_polling_timeoutus");
+                "ubs_hcom_service_set_polling_timeoutus");
     DL_LOAD_SYM(gServiceSetTimeOutDetectionThreadNum, serviceSetTimeOutDetectionThreadNumFunc, hcomHandle,
-        "ubs_hcom_service_set_timeout_threadnum");
+                "ubs_hcom_service_set_timeout_threadnum");
     DL_LOAD_SYM(gServiceSetMaxConnectionCount, serviceSetMaxConnectionCountFunc, hcomHandle,
-        "ubs_hcom_service_set_max_connection_cnt");
+                "ubs_hcom_service_set_max_connection_cnt");
     DL_LOAD_SYM(gServiceSetHeartBeatOptions, serviceSetHeartBeatOptionsFunc, hcomHandle,
-        "ubs_hcom_service_set_heartbeat_opt");
+                "ubs_hcom_service_set_heartbeat_opt");
     DL_LOAD_SYM(gServiceSetMultiRailOptions, serviceSetMultiRailOptionsFunc, hcomHandle,
-        "ubs_hcom_service_set_multirail_opt");
+                "ubs_hcom_service_set_multirail_opt");
     DL_LOAD_SYM(gChannelSend, channelSendFunc, hcomHandle, "ubs_hcom_channel_send");
     DL_LOAD_SYM(gChannelCall, channelCallFunc, hcomHandle, "ubs_hcom_channel_call");
     DL_LOAD_SYM(gChannelReply, channelReplyFunc, hcomHandle, "ubs_hcom_channel_reply");
     DL_LOAD_SYM(gChannelPut, channelPutFunc, hcomHandle, "ubs_hcom_channel_put");
     DL_LOAD_SYM(gChannelGet, channelGetFunc, hcomHandle, "ubs_hcom_channel_get");
     DL_LOAD_SYM(gChannelSetFlowControlConfig, channelSetFlowControlConfigFunc, hcomHandle,
-        "ubs_hcom_channel_set_flowctl_cfg");
+                "ubs_hcom_channel_set_flowctl_cfg");
     DL_LOAD_SYM(gChannelSetChannelTimeOut, channelSetChannelTimeOutFunc, hcomHandle, "ubs_hcom_channel_set_timeout");
     DL_LOAD_SYM(gContextGetRspCtx, contextGetRspCtxFunc, hcomHandle, "ubs_hcom_context_get_rspctx");
     DL_LOAD_SYM(gContextGetChannel, contextGetChannelFunc, hcomHandle, "ubs_hcom_context_get_channel");

@@ -76,10 +76,10 @@ public:
     void Unmap() noexcept override;
 
     bool CheckAddressInEntity(const void *ptr, uint64_t length) const noexcept override;
-    int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction,
-                     void *stream, uint32_t flags) noexcept override;
-    int32_t BatchCopyData(hybm_batch_copy_params &params,
-                          hybm_data_copy_direction direction, void *stream, uint32_t flags) noexcept override;
+    int32_t CopyData(hybm_copy_params &params, hybm_data_copy_direction direction, void *stream,
+                     uint32_t flags) noexcept override;
+    int32_t BatchCopyData(hybm_batch_copy_params &params, hybm_data_copy_direction direction, void *stream,
+                          uint32_t flags) noexcept override;
     int32_t Wait() noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
     hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept override;
@@ -90,7 +90,7 @@ private:
     int UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
     int ImportForTransport(const ExchangeInfoReader desc[], uint32_t count) noexcept;
-    void GenCopyExtOption(void* &src, void* &dest, uint64_t length, ExtOptions &options) noexcept;
+    void GenCopyExtOption(void *&src, void *&dest, uint64_t length, ExtOptions &options) noexcept;
 
     Result InitSegment();
     Result InitHbmSegment();

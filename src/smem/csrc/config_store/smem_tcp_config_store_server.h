@@ -34,12 +34,8 @@ namespace smem {
 class StoreWaitContext {
 public:
     StoreWaitContext(int64_t tmMs, std::string key, const ock::acc::AccTcpRequestContext &reqCtx) noexcept
-        : id_{idGen_.fetch_add(1UL)},
-          timeoutMs_{tmMs},
-          key_{std::move(key)},
-          reqCtx_{reqCtx}
-    {
-    }
+        : id_{idGen_.fetch_add(1UL)}, timeoutMs_{tmMs}, key_{std::move(key)}, reqCtx_{reqCtx}
+    {}
 
     uint64_t Id() const noexcept
     {
@@ -79,7 +75,7 @@ public:
     AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept;
     ~AccStoreServer() override = default;
 
-    Result Startup(const smem_tls_config& tlsConfig) noexcept;
+    Result Startup(const smem_tls_config &tlsConfig) noexcept;
     void Shutdown(bool afterFork = false) noexcept;
     void RegisterBrokenLinkCHandler(const ConfigStoreServerBrokenHandler &handler) noexcept;
 
@@ -150,7 +146,7 @@ private:
     std::thread checkerThread_;
 };
 using AccStoreServerPtr = SmRef<AccStoreServer>;
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H
+#endif // SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H

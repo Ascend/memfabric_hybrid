@@ -30,14 +30,8 @@ struct SmemBmEntryOptions {
 class SmemBmEntry : public SmReferable {
 public:
     explicit SmemBmEntry(const SmemBmEntryOptions &options, const StorePtr &store)
-        : options_(options),
-          _configStore(store),
-          coreOptions_{},
-          dramSliceInfo_{},
-          hbmSliceInfo_{},
-          entityInfo_{}
-    {
-    }
+        : options_(options), _configStore(store), coreOptions_{}, dramSliceInfo_{}, hbmSliceInfo_{}, entityInfo_{}
+    {}
 
     ~SmemBmEntry() override
     {
@@ -132,7 +126,7 @@ inline void *SmemBmEntry::GetDeviceGvaAddress() const
     return deviceGva_;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
+#endif // MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H

@@ -61,7 +61,7 @@ public:
     Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
     Result GetExportSliceSize(size_t &size) noexcept override;
     Result Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept override;
-    Result RemoveImported(const std::vector<uint32_t>& ranks) noexcept override;
+    Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
@@ -93,7 +93,7 @@ private:
     std::set<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H
+#endif // MF_HYBRID_HYBM_DEV_USER_LEGACY_SEGMENT_H

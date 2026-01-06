@@ -33,8 +33,8 @@ public:
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
      * @return Newly created store
      */
-    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer,
-                                uint32_t worldSize = 0, int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
+    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize = 0,
+                                int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
     static StorePtr CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize = UINT32_MAX,
                                       int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
@@ -61,7 +61,7 @@ public:
 
     static int GetFailedReason() noexcept;
 
-    static void SetTlsInfo(const smem_tls_config& tlsOption) noexcept;
+    static void SetTlsInfo(const smem_tls_config &tlsOption) noexcept;
 
 private:
     static std::mutex storesMutex_;

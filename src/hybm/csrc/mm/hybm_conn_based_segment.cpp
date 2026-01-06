@@ -43,18 +43,18 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     void *startAddr = reinterpret_cast<void *>(HYBM_HOST_CONN_START_ADDR + usedOffset);
     uint64_t totalSize = options_.rankCnt * options_.size;
     if (totalSize + usedOffset > HYBM_HOST_CONN_ADDR_SIZE) {
-        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " used:" << usedOffset <<
-                     " total:" << HYBM_HOST_CONN_ADDR_SIZE);
+        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " used:" << usedOffset
+                                               << " total:" << HYBM_HOST_CONN_ADDR_SIZE);
         return BM_INVALID_PARAM;
     }
-    void *mapped = mmap(startAddr, totalSize, PROT_NONE,
-                        MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
+    void *mapped =
+        mmap(startAddr, totalSize, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)startAddr) {
-        BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" <<
-                     mapped << " error: " << errno);
+        BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" << mapped
+                                            << " error: " << errno);
         return BM_ERROR;
     }
-    globalVirtualAddress_ = (uint8_t *) startAddr;
+    globalVirtualAddress_ = (uint8_t *)startAddr;
     totalVirtualSize_ = totalSize;
     localVirtualBase_ = globalVirtualAddress_ + options_.size * options_.rankId;
     allocatedSize_ = 0UL;
@@ -95,11 +95,11 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
     }
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
-    void *mapped = mmap(sliceAddr, size, PROT_READ | PROT_WRITE,
-                        MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+    void *mapped =
+        mmap(sliceAddr, size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
     if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)sliceAddr) {
-        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" <<
-                     mapped << " error:" << errno << ", " << SafeStrError(errno));
+        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << mapped << " error:" << errno
+                                             << ", " << SafeStrError(errno));
         return BM_ERROR;
     }
     LvaShmReservePhysicalMemory(sliceAddr, size);

@@ -38,7 +38,7 @@ public:
     std::map<hybm_entity_t, uint16_t> enginesFromAddress_;
     std::mutex enginesMutex_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_ENGINE_FACTORY_H

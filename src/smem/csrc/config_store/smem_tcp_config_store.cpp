@@ -72,7 +72,7 @@ private:
 class ClientWatchContext : public ClientCommonContext {
 public:
     explicit ClientWatchContext(std::function<void(int, const std::vector<uint8_t> &)> nfy,
-        bool oneTime = true) noexcept
+                                bool oneTime = true) noexcept
         : notify_{std::move(nfy)}, onlyOneTime_{oneTime}
     {}
 
@@ -138,7 +138,7 @@ TcpConfigStore::~TcpConfigStore() noexcept
     Shutdown();
 }
 
-Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     if (isServer_) {
@@ -158,7 +158,7 @@ Result TcpConfigStore::Startup(const smem_tls_config& tlsConfig, int reconnectRe
     return result;
 }
 
-Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ClientStart(const smem_tls_config &tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
@@ -192,9 +192,9 @@ Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconne
     }
 
     ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_ >= 0 ?
-        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_)) :
-        ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
+    connReq.rankId =
+        rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
+                     : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
     result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
         STORE_LOG_ERROR("connect to server failed, result: " << result);
@@ -202,11 +202,11 @@ Result TcpConfigStore::ClientStart(const smem_tls_config& tlsConfig, int reconne
         return result;
     }
     isRunning_.store(true);
-    heartBeatThread_ = std::thread{[this]() {HeartBeat(); }};
+    heartBeatThread_ = std::thread{[this]() { HeartBeat(); }};
     return result;
 }
 
-Result TcpConfigStore::ServerStart(const smem_tls_config& tlsConfig, int reconnectRetryTimes) noexcept
+Result TcpConfigStore::ServerStart(const smem_tls_config &tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
     std::lock_guard<std::mutex> guard(mutex_);
@@ -724,5 +724,5 @@ void TcpConfigStore::HeartBeat() noexcept
     STORE_LOG_INFO("TcpConfigStore heart beat thread exit.");
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

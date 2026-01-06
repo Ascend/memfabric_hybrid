@@ -21,25 +21,25 @@
 #include "smem_bm.h"
 #include "barrier_util.h"
 
-#define LOG_INFO(msg) std::cout << __FILE__ << ":" << __LINE__ << "[INFO]" << msg << std::endl
-#define LOG_WARN(msg) std::cout << __FILE__ << ":" << __LINE__ << "[WARN]" << msg << std::endl
+#define LOG_INFO(msg)  std::cout << __FILE__ << ":" << __LINE__ << "[INFO]" << msg << std::endl
+#define LOG_WARN(msg)  std::cout << __FILE__ << ":" << __LINE__ << "[WARN]" << msg << std::endl
 #define LOG_ERROR(msg) std::cout << __FILE__ << ":" << __LINE__ << "[ERR]" << msg << std::endl
 
-#define CHECK_RET_ERR(x, msg)   \
-do {                            \
-    if ((x) != 0) {             \
-        LOG_ERROR(msg);         \
-        return -1;              \
-    }                           \
-} while (0)
+#define CHECK_RET_ERR(x, msg) \
+    do {                      \
+        if ((x) != 0) {       \
+            LOG_ERROR(msg);   \
+            return -1;        \
+        }                     \
+    } while (0)
 
-#define CHECK_RET_VOID(x, msg)  \
-do {                            \
-    if ((x) != 0) {             \
-        LOG_ERROR(msg);         \
-        return;                 \
-    }                           \
-} while (0)
+#define CHECK_RET_VOID(x, msg) \
+    do {                       \
+        if ((x) != 0) {        \
+            LOG_ERROR(msg);    \
+            return;            \
+        }                      \
+    } while (0)
 
 const int32_t RANK_SIZE_MAX = 16;
 const int32_t COPY_SIZE = 1024 * 1024 * 1024;
@@ -89,8 +89,7 @@ bool CheckData(void *base, void *ptr, uint32_t len = COPY_SIZE)
     return true;
 }
 
-int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize,
-    std::string ipPort, aclrtStream *stream)
+int32_t PreInit(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort, aclrtStream *stream)
 {
     auto ret = aclInit(nullptr);
     CHECK_RET_ERR(ret, "acl init failed, ret:" << ret << " rank:" << rankId);
@@ -147,7 +146,8 @@ void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t hand
     void *remote_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, (rankId + 1) % rkSize);
     void *local_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, rankId);
 
-    LOG_INFO(" ==================== [TEST] init, rank:" << rankId << " ptr:" << local_host << " " << local_dev << " " << remote_host << " " << remote_dev);
+    LOG_INFO(" ==================== [TEST] init, rank:" << rankId << " ptr:" << local_host << " " << local_dev << " "
+                                                        << remote_host << " " << remote_dev);
 
     local_dev = (void *)(reinterpret_cast<uint64_t>(local_dev) + COPY_SIZE);
     void *base = malloc(COPY_SIZE);
@@ -155,19 +155,19 @@ void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t hand
     GenerateData(base, rankId, COPY_SIZE);
     smem_copy_params params1 = {base, local_dev, COPY_SIZE};
     int ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
-    CHECK_RET_VOID(ret, "copy local to global failed, ret:" << ret << " rank:" << rankId <<
-        " ptr:" << base << " " << local_dev);
+    CHECK_RET_VOID(ret, "copy local to global failed, ret:" << ret << " rank:" << rankId << " ptr:" << base << " "
+                                                            << local_dev);
     free(base);
 
     smem_copy_params params2 = {local_dev, remote_dev, COPY_SIZE};
     ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
-    CHECK_RET_VOID(ret, "copy hbm to remote hbm failed, ret:" << ret << " rank:" << rankId <<
-        " ptr:" << local_dev << " " << remote_dev);
+    CHECK_RET_VOID(ret, "copy hbm to remote hbm failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
+                                                              << " " << remote_dev);
 
     smem_copy_params params3 = {local_dev, remote_host, COPY_SIZE};
     ret = smem_bm_copy(handle, &params3, SMEMB_COPY_G2G, 0);
-    CHECK_RET_VOID(ret, "copy hbm to remote dram failed, ret:" << ret << " rank:" << rankId <<
-                            " ptr:" << local_dev << " " << remote_host);
+    CHECK_RET_VOID(ret, "copy hbm to remote dram failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
+                                                               << " " << remote_host);
     LOG_INFO(" ==================== [TEST] bm copy ok, rank:" << rankId << " size:" << COPY_SIZE);
 }
 
@@ -184,20 +184,20 @@ void BigCopyCheck(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t
     int ret;
     smem_copy_params params1 = {local_dev, receive, COPY_SIZE};
     ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
-    CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId <<
-        " ptr:" << local_dev << " " << receive);
+    CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
+                                                              << " " << receive);
     ret = CheckData(base, receive, COPY_SIZE);
     CHECK_RET_VOID((ret == false), "check hbm data failed, rank:" << rankId);
 
     if (OP_TYPE == SMEMB_DATA_OP_SDMA) {
         smem_copy_params params2 = {local_host, local_dev, COPY_SIZE};
         ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
-        CHECK_RET_VOID(ret, "copy hbm to host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_host
-            << " " << local_dev);
+        CHECK_RET_VOID(ret, "copy hbm to host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_host << " "
+                                                            << local_dev);
 
         ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
-        CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId <<
-            " ptr:" << local_dev << " " << receive);
+        CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
+                                                                  << " " << receive);
 
         ret = CheckData(base, receive, COPY_SIZE);
         CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
@@ -240,7 +240,7 @@ void SubProcessRuning(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::
     FinalizeAll(&stream, deviceId);
 }
 
-int main(int32_t argc, char* argv[])
+int main(int32_t argc, char *argv[])
 {
     if (argc <= TRANSPORT_ARG_INDEX) {
         LOG_ERROR("input param is invalid!");
@@ -253,11 +253,13 @@ int main(int32_t argc, char* argv[])
     std::string ipport = argv[IPPORT_ARG_INDEX];
     int op = atoi(argv[TRANSPORT_ARG_INDEX]);
 
-    if (op == 0) OP_TYPE = SMEMB_DATA_OP_SDMA;
-    else OP_TYPE = SMEMB_DATA_OP_DEVICE_RDMA;
+    if (op == 0)
+        OP_TYPE = SMEMB_DATA_OP_SDMA;
+    else
+        OP_TYPE = SMEMB_DATA_OP_DEVICE_RDMA;
 
-    LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart <<
-        " input_ip:" << ipport << " transport:" << (OP_TYPE == SMEMB_DATA_OP_SDMA ? "SDMA" : "RDMA"));
+    LOG_INFO("input rank_size:" << rankSize << " local_size:" << rankNum << " rank_offset:" << rankStart << " input_ip:"
+                                << ipport << " transport:" << (OP_TYPE == SMEMB_DATA_OP_SDMA ? "SDMA" : "RDMA"));
 
     if (rankSize > RANK_SIZE_MAX) {
         LOG_ERROR("input rank_size: " << rankSize << " is large than " << RANK_SIZE_MAX);

@@ -46,7 +46,7 @@ std::vector<uint8_t> SmemMessagePacker::Pack(const SmemMessage &message) noexcep
     return result;
 }
 
-bool SmemMessagePacker::Full(const uint8_t* buffer, const uint64_t bufferLen) noexcept
+bool SmemMessagePacker::Full(const uint8_t *buffer, const uint64_t bufferLen) noexcept
 {
     constexpr uint64_t baseSize = 4U * sizeof(uint64_t) + sizeof(MessageType);
     if (bufferLen < baseSize) {
@@ -66,7 +66,7 @@ int64_t SmemMessagePacker::MessageSize(const std::vector<uint8_t> &buffer) noexc
     return *reinterpret_cast<const int64_t *>(buffer.data());
 }
 
-int64_t SmemMessagePacker::Unpack(const uint8_t* buffer, const uint64_t bufferLen, SmemMessage &message) noexcept
+int64_t SmemMessagePacker::Unpack(const uint8_t *buffer, const uint64_t bufferLen, SmemMessage &message) noexcept
 {
     SM_CHECK_CONDITION_RET(buffer == nullptr, -1);
     SM_CHECK_CONDITION_RET(!Full(buffer, bufferLen), -1);
@@ -132,5 +132,5 @@ void SmemMessagePacker::PackBytes(std::vector<uint8_t> &dest, const std::vector<
     PackValue(dest, static_cast<uint64_t>(bytes.size()));
     dest.insert(dest.end(), bytes.begin(), bytes.end());
 }
-}  // ock
-}  // smem
+} // namespace smem
+} // namespace ock

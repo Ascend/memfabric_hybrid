@@ -46,6 +46,7 @@ public:
 
 private:
     Result AddOneTagOpInfo(const std::string &info);
+
 private:
     hybm_options options_;
     std::shared_mutex mutex_;
@@ -54,6 +55,6 @@ private:
 };
 
 using HybmEntityTagInfoPtr = std::shared_ptr<HybmEntityTagInfo>;
-}
-}
+} // namespace mf
+} // namespace ock
 #endif // MEM_FABRIC_HYBRID_HYBM_ENTITY_TAG_INFO_H

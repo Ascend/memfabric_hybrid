@@ -73,14 +73,13 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
         }
         ret = DlAclApi::RtSetIpcMemorySuperPodPid(name, remoteDev.second.sdid, (int *)&remoteDev.second.pid, 1);
         if (ret != 0) {
-            BM_LOG_ERROR("set shm(" << name << ") for sdid=" << remoteDev.second.sdid
-                                    << " pid=" << remoteDev.second.pid
+            BM_LOG_ERROR("set shm(" << name << ") for sdid=" << remoteDev.second.sdid << " pid=" << remoteDev.second.pid
                                     << " failed: " << ret);
             DlAclApi::RtIpcDestroyMemoryName(name);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_INFO("set shm(" << name << ") for sdid=" << remoteDev.second.sdid
-                               << " pid=" << remoteDev.second.pid << " success.");
+        BM_LOG_INFO("set shm(" << name << ") for sdid=" << remoteDev.second.sdid << " pid=" << remoteDev.second.pid
+                               << " success.");
     }
 
     memNames_.emplace_back(name);
@@ -247,22 +246,23 @@ void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
         if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
             CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
             void *address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_ << 16 >> 16));
-            BM_LOG_INFO("RtIpcCloseMemory start address=" << address
+            BM_LOG_INFO("RtIpcCloseMemory start address="
+                        << address
                         << ", vAddress_ = " << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
                         << ", deviceId=" << logicDeviceId_ << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId
                         << ", sliceInfo.rankId=" << sliceInfo.rankId);
             auto ret = DlAclApi::RtIpcCloseMemory(address);
             if (ret != 0) {
-                BM_LOG_WARN("Failed to close memory, address=" << address
-                            << ", vAddress_" << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_))
-                            << ", deviceId=" << logicDeviceId_
-                            << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId
+                BM_LOG_WARN("Failed to close memory, address="
+                            << address << ", vAddress_"
+                            << reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_)) << ", deviceId="
+                            << logicDeviceId_ << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId
                             << ", sliceInfo.rankId=" << sliceInfo.rankId << ", ret:" << ret
                             << ", This may affect future memory registration.");
             }
         }
         BM_LOG_INFO("RemoveSliceInfo, rankId=" << rankId << ", remoteSlice->index_=" << remoteSlice->index_
-                    << ",slice name " << rIt->second.name);
+                                               << ",slice name " << rIt->second.name);
         importedSliceInfo_.erase(rIt->second.name);
         remoteSlices_.erase(remoteSlice->index_);
     }
@@ -331,9 +331,9 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
     if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.logicDeviceId)) {
         ret = DlAclApi::RtEnableP2P(deviceId_, deviceInfo.logicDeviceId, 0);
         if (ret != 0) {
-            BM_LOG_ERROR("enable device access failed:"
-                         << ret << " local_device:" << deviceId_ << " logic_device:" << logicDeviceId_
-                         << " remote_logic_device:" << deviceInfo.logicDeviceId);
+            BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
+                                                        << " logic_device:" << logicDeviceId_
+                                                        << " remote_logic_device:" << deviceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
         enablePeerDevices_.set(deviceInfo.logicDeviceId);
@@ -374,13 +374,13 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
     void *address = nullptr;
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
-         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
-        if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_)
-            && !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
+        CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
+        if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_) &&
+            !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
             ret = DlAclApi::RtEnableP2P(deviceId_, sliceInfo.logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.logicDeviceId
-                             << " failed: " << ret);
+                                                                        << " failed: " << ret);
                 return BM_DL_FUNCTION_FAILED;
             }
             enablePeerDevices_.set(sliceInfo.logicDeviceId);
@@ -394,9 +394,9 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
                                           << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_ <<
-                    ", pid=" << pid_ << ", deviceId=" << logicDeviceId_ <<
-                    ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
+        BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_ << ", pid=" << pid_
+                                     << ", deviceId=" << logicDeviceId_
+                                     << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(sliceInfo.address));
     }
@@ -467,5 +467,5 @@ bool HybmDevUserLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
     return pos->second.superPodId == superPodId;
 }
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock

@@ -17,18 +17,15 @@ namespace ock {
 namespace smem {
 namespace {
 
-const StoreKeys senderStoreKeys{SENDER_COUNT_KEY, SENDER_TOTAL_SLICE_COUNT_KEY, SENDER_DEVICE_INFO_KEY,
-                                SENDER_SLICES_INFO_KEY, SENDER_GET_DEVICE_ID_KEY, SENDER_GET_SLICES_ID_KEY};
-const StoreKeys receiveStoreKeys{RECEIVER_COUNT_KEY, RECEIVER_TOTAL_SLICE_COUNT_KEY, RECEIVER_DEVICE_INFO_KEY,
-                                 RECEIVER_SLICES_INFO_KEY, RECEIVER_GET_DEVICE_ID_KEY, RECEIVER_GET_SLICES_ID_KEY};
-}
+const StoreKeys senderStoreKeys{SENDER_COUNT_KEY,       SENDER_TOTAL_SLICE_COUNT_KEY, SENDER_DEVICE_INFO_KEY,
+                                SENDER_SLICES_INFO_KEY, SENDER_GET_DEVICE_ID_KEY,     SENDER_GET_SLICES_ID_KEY};
+const StoreKeys receiveStoreKeys{RECEIVER_COUNT_KEY,       RECEIVER_TOTAL_SLICE_COUNT_KEY, RECEIVER_DEVICE_INFO_KEY,
+                                 RECEIVER_SLICES_INFO_KEY, RECEIVER_GET_DEVICE_ID_KEY,     RECEIVER_GET_SLICES_ID_KEY};
+} // namespace
 
 SmemStoreHelper::SmemStoreHelper(std::string name, std::string storeUrl, smem_trans_role_t role) noexcept
-    : name_{std::move(name)},
-      storeURL_{std::move(storeUrl)},
-      transRole_{role}
-{
-}
+    : name_{std::move(name)}, storeURL_{std::move(storeUrl)}, transRole_{role}
+{}
 
 int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startConfigServer) noexcept
 {
@@ -106,16 +103,14 @@ void SmemStoreHelper::RegisterBrokenHandler(const ConfigStoreClientBrokenHandler
 }
 
 int SmemStoreHelper::RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint16_t &rankId,
-                                            const smem_trans_config_t &cfg, std::string key,
-                                            bool &isRestore) noexcept
+                                            const smem_trans_config_t &cfg, std::string key, bool &isRestore) noexcept
 {
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;
     rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << BIT_SHIFT));
     SM_LOG_INFO("get info from server, rank id: " << rankId);
-    std::vector<uint8_t> value((const uint8_t *)(const void *)&cfg,
-                               (const uint8_t *)(const void *)&cfg + sizeof(cfg));
-    
+    std::vector<uint8_t> value((const uint8_t *)(const void *)&cfg, (const uint8_t *)(const void *)&cfg + sizeof(cfg));
+
     auto ret = store_->Write(CLUSTER_RANKS_INFO_KEY, value, rankId * value.size());
     if (ret != SUCCESS) {
         SM_LOG_ERROR("write for key(" << key << ") failed: " << ret);
@@ -199,11 +194,10 @@ int SmemStoreHelper::StoreDeviceInfo(const hybm_exchange_info &info) noexcept
     Result ret = store_->Get(localKeys_.getDeviceId, getValue, 0);
     if (ret == RESTORE) {
         const size_t bitShift = 8;
-        uint16_t deviceId = (static_cast<uint16_t>(getValue[0]) |
-                            (static_cast<uint16_t>(getValue[1]) << bitShift));
+        uint16_t deviceId = (static_cast<uint16_t>(getValue[0]) | (static_cast<uint16_t>(getValue[1]) << bitShift));
         uint32_t offset = deviceId * value.size();
         SM_LOG_INFO("begin write(key=" << localKeys_.deviceInfo << ", value_size=" << value.size()
-            << ", device_id=" << deviceId << ", offset=" << offset << ")");
+                                       << ", device_id=" << deviceId << ", offset=" << offset << ")");
         ret = store_->Write(localKeys_.deviceInfo, value, offset);
         if (ret != 0) {
             SM_LOG_ERROR("store write device info for sender failed: " << ret);
@@ -236,7 +230,7 @@ int SmemStoreHelper::ReStoreDeviceInfo() noexcept
 {
     int64_t totalValue = 0;
     SM_LOG_INFO("begin recover device info, size = " << storeDeviceInfo_.second.size()
-                << ", key = " << localKeys_.deviceInfo);
+                                                     << ", key = " << localKeys_.deviceInfo);
     uint32_t offset = storeDeviceInfo_.first * storeDeviceInfo_.second.size();
     auto ret = store_->Write(localKeys_.deviceInfo, storeDeviceInfo_.second, offset);
     if (ret != 0) {
@@ -256,7 +250,7 @@ int SmemStoreHelper::ReStoreDeviceInfo() noexcept
 int SmemStoreHelper::StoreSliceInfo(const hybm_exchange_info &info, const StoredSliceInfo &sliceInfo) noexcept
 {
     std::vector<uint8_t> value(1 + sizeof(sliceInfo) + info.descLen); // data status + data
-    value[0] = DataStatusType::NORMAL; // default is normal
+    value[0] = DataStatusType::NORMAL;                                // default is normal
     uint32_t offset = 1;
     std::copy_n(reinterpret_cast<const uint8_t *>(&sliceInfo), sizeof(sliceInfo), value.data() + offset);
     offset += sizeof(sliceInfo);
@@ -265,12 +259,11 @@ int SmemStoreHelper::StoreSliceInfo(const hybm_exchange_info &info, const Stored
     Result ret = store_->Get(localKeys_.getSliceId, getValue, 0);
     if (ret == RESTORE) {
         const size_t bitShift = 8;
-        uint16_t sliceId = (static_cast<uint16_t>(getValue[0]) |
-                            (static_cast<uint16_t>(getValue[1]) << bitShift));
+        uint16_t sliceId = (static_cast<uint16_t>(getValue[0]) | (static_cast<uint16_t>(getValue[1]) << bitShift));
         uint32_t writeOffset = sliceId * value.size();
         SM_LOG_INFO("begin write(key=" << localKeys_.sliceInfo << ", value_size=" << value.size()
-            << ", slice_id=" << sliceId << ", offset="<< writeOffset << ")");
-        ret =store_->Write(localKeys_.sliceInfo, value, writeOffset);
+                                       << ", slice_id=" << sliceId << ", offset=" << writeOffset << ")");
+        ret = store_->Write(localKeys_.sliceInfo, value, writeOffset);
         if (ret != 0) {
             SM_LOG_ERROR("store write slice info failed: " << ret);
             return SM_ERROR;
@@ -288,7 +281,7 @@ int SmemStoreHelper::StoreSliceInfo(const hybm_exchange_info &info, const Stored
             return SM_ERROR;
         }
         SM_LOG_DEBUG("success append(key=" << localKeys_.sliceCount << ", value_size=" << value.size()
-                                        << "), total_size=" << totalSize);
+                                           << "), total_size=" << totalSize);
     }
     int64_t nowCount = 0;
     ret = store_->Add(localKeys_.sliceCount, 1L, nowCount);
@@ -305,7 +298,7 @@ int SmemStoreHelper::ReStoreSliceInfo() noexcept
 {
     int64_t totalValue = 0;
     SM_LOG_INFO("begin recover slice info, size = " << storeSliceInfo_.size() << ", key = " << localKeys_.sliceInfo);
-    for (auto &singleInfo: storeSliceInfo_) {
+    for (auto &singleInfo : storeSliceInfo_) {
         uint32_t offset = singleInfo.first * singleInfo.second.size();
         auto ret = store_->Write(localKeys_.sliceInfo, singleInfo.second, offset);
         if (ret != 0) {
@@ -343,9 +336,9 @@ void SmemStoreHelper::FindNewRemoteRanks(const FindRanksCbFunc &cb) noexcept
         SM_LOG_ERROR("store get devices info with key(" << remoteKeys_.deviceInfo << ") failed: " << ret);
         return;
     }
-    SM_LOG_DEBUG("FindNewRemoteRanks deal key(" << remoteKeys_.deviceInfo
-                << ", role: " << transRole_ << ", remote device info size:" << values.size()
-                << ", last local device info size:" << remoteDeviceInfoLastTime_.size());
+    SM_LOG_DEBUG("FindNewRemoteRanks deal key("
+                 << remoteKeys_.deviceInfo << ", role: " << transRole_ << ", remote device info size:" << values.size()
+                 << ", last local device info size:" << remoteDeviceInfoLastTime_.size());
 
     std::vector<hybm_exchange_info> addInfo;
     ExtraDeviceChangeInfo(values, addInfo);
@@ -379,9 +372,9 @@ void SmemStoreHelper::FindNewRemoteSlices(const FindSlicesCbFunc &cb) noexcept
     std::vector<StoredSliceInfo> addStoreSs;
     std::vector<StoredSliceInfo> removeStoreSs;
     ExtraSliceChangeInfo(values, addInfo, addStoreSs, removeStoreSs);
-    SM_LOG_DEBUG("FindNewRemoteSlices deal key(" << remoteKeys_.sliceInfo
-                << ", role: " << transRole_ << ", remote slice info size:" <<
-                values.size() << ", last local slice info size:" << remoteSlicesInfoLastTime_.size());
+    SM_LOG_DEBUG("FindNewRemoteSlices deal key("
+                 << remoteKeys_.sliceInfo << ", role: " << transRole_ << ", remote slice info size:" << values.size()
+                 << ", last local slice info size:" << remoteSlicesInfoLastTime_.size());
     ret = cb(addInfo, addStoreSs, removeStoreSs);
     if (ret != 0) {
         SM_LOG_ERROR("find new slices callback failed: " << ret);
@@ -399,10 +392,10 @@ void SmemStoreHelper::CompareAndUpdateDeviceInfo(uint32_t minCount, std::vector<
         uint8_t *curDataPtr = curPtr + 1;
         uint8_t *newDataPtr = newPtr + 1;
         if (*curPtr == DataStatusType::NORMAL && *newPtr == DataStatusType::NORMAL) {
-            if (memcmp(curDataPtr,  newDataPtr, deviceExpSize_) != 0) {
+            if (memcmp(curDataPtr, newDataPtr, deviceExpSize_) != 0) {
                 // 有卡重新拉起注册到server
-                SM_LOG_INFO("local device is normal, remote device is normal, i=" << i
-                             << " but data is not same, will do add");
+                SM_LOG_INFO(
+                    "local device is normal, remote device is normal, i=" << i << " but data is not same, will do add");
                 hybm_exchange_info info;
                 info.descLen = deviceExpSize_;
                 std::copy_n(newDataPtr, deviceExpSize_, info.desc);
@@ -434,15 +427,15 @@ void SmemStoreHelper::ExtraDeviceChangeInfo(std::vector<uint8_t> &values,
                                             std::vector<hybm_exchange_info> &addInfo) noexcept
 {
     if (remoteDeviceInfoLastTime_ == values) {
-        SM_LOG_DEBUG("remote device info has no change, remoteDeviceInfoLastTime_ size="
-                     << remoteDeviceInfoLastTime_.size());
+        SM_LOG_DEBUG(
+            "remote device info has no change, remoteDeviceInfoLastTime_ size=" << remoteDeviceInfoLastTime_.size());
         return; // 无变化
     }
     uint32_t newCount = values.size() / (deviceExpSize_ + 1); // 有一位为标志位，表示数据状态
     uint32_t curCount = remoteDeviceInfoLastTime_.size() / (deviceExpSize_ + 1);
     uint32_t minCount = std::min(newCount, curCount);
     SM_LOG_INFO("ExtraDeviceChangeInfo newCount= " << newCount << ", curCount=" << curCount
-                << ", minCount=" << minCount);
+                                                   << ", minCount=" << minCount);
     CompareAndUpdateDeviceInfo(minCount, values, addInfo);
 
     if (newCount > curCount) {
@@ -483,10 +476,10 @@ void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<u
         uint8_t *curDataPtr = curPtr + 1;
         uint8_t *newDataPtr = newPtr + 1;
         if (*curPtr == DataStatusType::NORMAL && *newPtr == DataStatusType::NORMAL) {
-            if (memcmp(curDataPtr,  newDataPtr, sliceExpSize_ + sizeof(StoredSliceInfo)) != 0) {
+            if (memcmp(curDataPtr, newDataPtr, sliceExpSize_ + sizeof(StoredSliceInfo)) != 0) {
                 // 有卡重新拉起注册到server
-                SM_LOG_INFO("local slice is normal, remote slice is normal, i=" << i
-                             << " but data is not same, will do add");
+                SM_LOG_INFO(
+                    "local slice is normal, remote slice is normal, i=" << i << " but data is not same, will do add");
                 StoredSliceInfo sInfo{};
                 std::copy_n(newDataPtr, sizeof(StoredSliceInfo), reinterpret_cast<uint8_t *>(&sInfo));
                 addStoreSs.emplace_back(std::move(sInfo));
@@ -519,21 +512,20 @@ void SmemStoreHelper::CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<u
     }
 }
 
-void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values,
-                                           std::vector<hybm_exchange_info> &addInfo,
+void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values, std::vector<hybm_exchange_info> &addInfo,
                                            std::vector<StoredSliceInfo> &addStoreSs,
                                            std::vector<StoredSliceInfo> &removeStoreSs) noexcept
 {
     if (remoteSlicesInfoLastTime_ == values) {
-        SM_LOG_DEBUG("remote slice info has no change, remoteSlicesInfoLastTime_ szie="
-                     << remoteSlicesInfoLastTime_.size());
+        SM_LOG_DEBUG(
+            "remote slice info has no change, remoteSlicesInfoLastTime_ szie=" << remoteSlicesInfoLastTime_.size());
         return; // 无变化
     }
     uint32_t newCount = values.size() / (sliceExpSize_ + sizeof(StoredSliceInfo) + 1); // 有一位为标志位，表示数据状态
     uint32_t curCount = remoteSlicesInfoLastTime_.size() / (sliceExpSize_ + sizeof(StoredSliceInfo) + 1);
     uint32_t minCount = std::min(newCount, curCount);
     SM_LOG_INFO("ExtraSliceChangeInfo newCount= " << newCount << ", curCount=" << curCount
-                << ", minCount=" << minCount);
+                                                  << ", minCount=" << minCount);
     // client故障：newCount >= curCount
     CompareAndUpdateSliceInfo(minCount, values, addInfo, addStoreSs, removeStoreSs);
     // 新增client：newCount > curCount
@@ -575,7 +567,7 @@ int SmemStoreHelper::ReRegisterToServer(uint16_t rankId) noexcept
     if (LIKELY(ret == NOT_EXIST)) {
         uint32_t offset = storeRankIdInfo_.second.size() * storeRankIdInfo_.first;
         SM_LOG_INFO("ReRegisterToServer storeRankIdInfo_ size:" << storeRankIdInfo_.second.size()
-                    << ", offset:" << offset);
+                                                                << ", offset:" << offset);
         ret = store_->Write(CLUSTER_RANKS_INFO_KEY, storeRankIdInfo_.second, offset);
         if (ret != SUCCESS) {
             SM_LOG_ERROR("recover for key(" << CLUSTER_RANKS_INFO_KEY << ") failed: " << ret);
@@ -601,5 +593,5 @@ int SmemStoreHelper::ReRegisterToServer(uint16_t rankId) noexcept
     SM_LOG_ERROR("recover for key(" << key << ") failed: " << ret);
     return SM_ERROR;
 }
-}
-}
+} // namespace smem
+} // namespace ock

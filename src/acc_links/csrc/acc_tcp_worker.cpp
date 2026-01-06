@@ -79,7 +79,7 @@ Result AccTcpWorker::AddLink(const AccTcpLinkComplexDefaultPtr &link, uint32_t e
     ASSERT_RETURN(link.Get(), ACC_INVALID_PARAM);
     ASSERT_RETURN(link->fd_ != -1, ACC_INVALID_PARAM);
 
-    struct epoll_event evNewFd {};
+    struct epoll_event evNewFd{};
     evNewFd.data.ptr = link.Get();
     evNewFd.events = events;
 
@@ -136,7 +136,7 @@ void AccTcpWorker::SetPropertiesForThread()
             LOG_WARN("Failed to bind worker " << options_.Name() << " to cpu " << options_.cpuId);
         }
     }
-    
+
     /* set thread name */
     pthread_setname_np(pthread_self(), options_.Name().c_str());
 
@@ -182,5 +182,5 @@ void AccTcpWorker::RunInThread(std::atomic<bool> *started)
 
     LOG_DEBUG("Worker " << options_.Name() << " progress thread exiting");
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

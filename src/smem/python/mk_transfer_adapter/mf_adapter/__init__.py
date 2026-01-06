@@ -24,5 +24,4 @@ for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
 # This package is part of memfabric_hybrid. It is recommended to use the full package memfabric_hybrid.
 from _pymf_transfer import TransferEngine, set_log_level, create_config_store, set_conf_store_tls
 
-
 __all__ = ['TransferEngine', 'set_log_level', 'create_config_store', 'set_conf_store_tls']

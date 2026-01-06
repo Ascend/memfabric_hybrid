@@ -19,13 +19,13 @@
 
 #ifdef UINTPTR_MAX
 using uintptr_t = ::uintptr_t;
-inline auto to_uintptr(const void* p) -> uintptr_t
+inline auto to_uintptr(const void *p) -> uintptr_t
 {
     return reinterpret_cast<uintptr_t>(p);
 }
 #else
 using uintptr_t = fallback_uintptr;
-inline auto to_uintptr(const void* p) -> fallback_uintptr
+inline auto to_uintptr(const void *p) -> fallback_uintptr
 {
     return fallback_uintptr(p);
 }
@@ -34,10 +34,8 @@ inline auto to_uintptr(const void* p) -> fallback_uintptr
 class TransferAdapterPy {
 public:
     enum class TransferOpcode { READ = 0, WRITE = 1 };
-    enum class TransDataOpType {
-        SDMA = SMEMB_DATA_OP_SDMA,
-        DEVICE_RDMA = SMEMB_DATA_OP_DEVICE_RDMA
-    };
+    enum class TransDataOpType { SDMA = SMEMB_DATA_OP_SDMA, DEVICE_RDMA = SMEMB_DATA_OP_DEVICE_RDMA };
+
 public:
     TransferAdapterPy();
 
@@ -48,33 +46,21 @@ public:
 
     int GetRpcPort();
 
-    int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer,
-                            uintptr_t peer_buffer_address, size_t length);
+    int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length);
 
-    int BatchTransferSyncWrite(const char *destUniqueId,
-                            std::vector<uintptr_t> buffers,
-                            std::vector<uintptr_t> peer_buffer_addresses,
-                            std::vector<size_t> lengths);
+    int BatchTransferSyncWrite(const char *destUniqueId, std::vector<uintptr_t> buffers,
+                               std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths);
 
-    int TransferSyncRead(const char *destUniqueId, uintptr_t buffer,
-                         uintptr_t peer_buffer_address, size_t length);
+    int TransferSyncRead(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length);
 
-    int BatchTransferSyncRead(const char *destUniqueId,
-                              std::vector<uintptr_t> buffers,
-                              std::vector<uintptr_t> peer_buffer_addresses,
-                              std::vector<size_t> lengths);
+    int BatchTransferSyncRead(const char *destUniqueId, std::vector<uintptr_t> buffers,
+                              std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths);
 
-    int TransferAsyncReadSubmit(const char *destUniqueId,
-                                uintptr_t buffer,
-                                uintptr_t peer_buffer_address,
-                                size_t length,
-                                uintptr_t stream);
+    int TransferAsyncReadSubmit(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address,
+                                size_t length, uintptr_t stream);
 
-    int TransferAsyncWriteSubmit(const char *destUniqueId,
-                                 uintptr_t buffer,
-                                 uintptr_t peer_buffer_address,
-                                 size_t length,
-                                 uintptr_t stream);
+    int TransferAsyncWriteSubmit(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address,
+                                 size_t length, uintptr_t stream);
 
     int RegisterMemory(uintptr_t buffer_addr, size_t capacity);
 

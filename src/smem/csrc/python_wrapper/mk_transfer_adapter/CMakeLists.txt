@@ -20,7 +20,7 @@ include_directories(
 
 if ((BUILD_PYTHON STREQUAL "ON") AND (NOT BUILD_UT STREQUAL "ON"))
     file(GLOB_RECURSE MOONCAKE_SRC csrc/*.cpp)
-    add_library(pytransfer OBJECT  ${MOONCAKE_SRC})
+    add_library(pytransfer OBJECT ${MOONCAKE_SRC})
     find_package(pybind11 REQUIRED)
     include_directories(
             ${Python3_INCLUDE_DIRS}

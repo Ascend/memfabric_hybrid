@@ -83,7 +83,7 @@ std::string GenerateDeviceNic(in_addr ip, uint16_t port)
     ss << "tcp://" << host << ":" << port;
     return ss.str();
 }
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock

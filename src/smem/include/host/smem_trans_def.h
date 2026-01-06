@@ -36,16 +36,16 @@ typedef enum {
  * @brief Transfer config
  */
 typedef struct {
-    smem_trans_role_t role; /* transfer role */
-    uint32_t initTimeout;   /* func timeout, default 120 seconds */
-    uint32_t deviceId;      /* npu device id */
-    uint32_t flags;         /* optional flags */
-    smem_bm_data_op_type dataOpType;  /* data operation type */
-    bool startConfigServer; /* whether to start config store, default false */
+    smem_trans_role_t role;          /* transfer role */
+    uint32_t initTimeout;            /* func timeout, default 120 seconds */
+    uint32_t deviceId;               /* npu device id */
+    uint32_t flags;                  /* optional flags */
+    smem_bm_data_op_type dataOpType; /* data operation type */
+    bool startConfigServer;          /* whether to start config store, default false */
 } smem_trans_config_t;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // MF_HYBRID_SMEM_TRANS_DEF_H
+#endif // MF_HYBRID_SMEM_TRANS_DEF_H

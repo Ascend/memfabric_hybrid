@@ -26,7 +26,7 @@ public:
     static std::shared_ptr<TransportManager> Create(TransportType type);
 
 public:
-    TransportManager()= default;
+    TransportManager() = default;
 
     virtual ~TransportManager() = default;
 
@@ -91,7 +91,7 @@ public:
     /**
      * 查询
      */
-    virtual const std::string &GetNic() const = 0;  // X
+    virtual const std::string &GetNic() const = 0; // X
 
     virtual const void *GetQpInfo() const;
 
@@ -115,8 +115,8 @@ protected:
 };
 
 using TransManagerPtr = std::shared_ptr<TransportManager>;
-}
-}
-}
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HYBM_TRANSPORT_MANAGER_H
+#endif // MF_HYBRID_HYBM_TRANSPORT_MANAGER_H

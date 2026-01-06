@@ -186,8 +186,8 @@ SMEM_API int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, co
         return result;
     }
 
-    return entry->SyncTransfer(const_cast<void*>(localAddr), remoteUniqueId, remoteAddr, dataSize,
-                               SMEMB_COPY_L2G, nullptr);
+    return entry->SyncTransfer(const_cast<void *>(localAddr), remoteUniqueId, remoteAddr, dataSize, SMEMB_COPY_L2G,
+                               nullptr);
 }
 
 SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
@@ -205,8 +205,8 @@ SMEM_API int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAd
         return result;
     }
 
-    return entry->BatchSyncTransfer(const_cast<void**>(localAddrs), remoteUniqueId, remoteAddrs, dataSizes,
-                                    batchSize, SMEMB_COPY_L2G, nullptr);
+    return entry->BatchSyncTransfer(const_cast<void **>(localAddrs), remoteUniqueId, remoteAddrs, dataSizes, batchSize,
+                                    SMEMB_COPY_L2G, nullptr);
 }
 
 SMEM_API int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
@@ -224,8 +224,8 @@ SMEM_API int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const cha
         return result;
     }
 
-    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void*>(remoteAddr), dataSize,
-                               SMEMB_COPY_G2L, nullptr);
+    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void *>(remoteAddr), dataSize, SMEMB_COPY_G2L,
+                               nullptr);
 }
 
 SMEM_API int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
@@ -243,8 +243,8 @@ SMEM_API int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], 
         return result;
     }
 
-    return entry->BatchSyncTransfer(localAddrs, remoteUniqueId, const_cast<void**>(remoteAddrs),
-                                    dataSizes, batchSize, SMEMB_COPY_G2L, nullptr);
+    return entry->BatchSyncTransfer(localAddrs, remoteUniqueId, const_cast<void **>(remoteAddrs), dataSizes, batchSize,
+                                    SMEMB_COPY_G2L, nullptr);
 }
 
 SMEM_API int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
@@ -263,8 +263,8 @@ SMEM_API int32_t smem_trans_write_submit(smem_trans_t handle, const void *localA
         return result;
     }
 
-    return entry->SyncTransfer(const_cast<void*>(localAddr), remoteUniqueId, remoteAddr, dataSize,
-                               SMEMB_COPY_L2G, stream);
+    return entry->SyncTransfer(const_cast<void *>(localAddr), remoteUniqueId, remoteAddr, dataSize, SMEMB_COPY_L2G,
+                               stream);
 }
 
 SMEM_API int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
@@ -283,6 +283,6 @@ SMEM_API int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, co
         return result;
     }
 
-    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void*>(remoteAddr), dataSize,
-                               SMEMB_COPY_G2L, stream);
+    return entry->SyncTransfer(localAddr, remoteUniqueId, const_cast<void *>(remoteAddr), dataSize, SMEMB_COPY_G2L,
+                               stream);
 }

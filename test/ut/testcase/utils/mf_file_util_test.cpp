@@ -18,22 +18,16 @@ using namespace ock::mf;
 
 class MFFileUtilTest : public testing::Test {
 public:
-    static void SetUpTestCase()
-    {
-    }
+    static void SetUpTestCase() {}
 
     static void TearDownTestCase()
     {
         GlobalMockObject::reset();
     }
 
-    void SetUp() override
-    {
-    }
+    void SetUp() override {}
 
-    void TearDown() override
-    {
-    }
+    void TearDown() override {}
 };
 
 TEST_F(MFFileUtilTest, GetFileSize_1)
@@ -50,7 +44,7 @@ TEST_F(MFFileUtilTest, GetFileSize_1)
     size_t size3 = FileUtil::GetFileSize(path1);
     EXPECT_TRUE(size3 == 0);
 
-    MOCKER(fopen).stubs().will(returnValue(static_cast<FILE*>(nullptr)));
+    MOCKER(fopen).stubs().will(returnValue(static_cast<FILE *>(nullptr)));
     size_t size4 = FileUtil::GetFileSize(path1);
     EXPECT_TRUE(size4 == 0);
 }

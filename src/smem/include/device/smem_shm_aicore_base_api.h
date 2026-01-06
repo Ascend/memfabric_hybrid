@@ -38,13 +38,13 @@ SMEM_SHM_INLINE_AICORE uint64_t smem_shm_get_symmetric_size(uint32_t shmemId = 0
  * @brief Get qp info address which is set by function smem_shm_create from host side
  * @param shmemId           [in] shm object id, default 0
  */
-SMEM_SHM_INLINE_AICORE __gm__ void* smem_shm_get_qp_info_address(uint32_t shmemId = 0);
+SMEM_SHM_INLINE_AICORE __gm__ void *smem_shm_get_qp_info_address(uint32_t shmemId = 0);
 
 /**
  * @brief Get user extra context addr (context is set by function smem_shm_set_extra_context from host side)
  * @param shmemId           [in] shm object id, default 0
  */
-SMEM_SHM_INLINE_AICORE __gm__ void* smem_shm_get_extra_context_addr(uint32_t shmemId = 0);
+SMEM_SHM_INLINE_AICORE __gm__ void *smem_shm_get_extra_context_addr(uint32_t shmemId = 0);
 
 /**
  * @brief Get user extra context size (context is set by function smem_shm_set_extra_context from host side)
@@ -61,7 +61,7 @@ SMEM_SHM_INLINE_AICORE uint32_t smem_shm_get_extra_context_size(uint32_t shmemId
  * @param enableL2          [in] whether to enable L2 cache hint
  */
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* srcUb, uint32_t size, bool enableL2);
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T *dstGva, __ubuf__ T *srcUb, uint32_t size, bool enableL2);
 
 /**
  * @brief Copy data from ub to gva(global virtual address) in Tensor, executed by MTE engine
@@ -72,7 +72,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(__gm__ T* dstGva, __ubuf__ T* sr
  */
 template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(const AscendC::GlobalTensor<T> &dstGva,
-    const AscendC::LocalTensor<T> &srcUb, uint32_t size);
+                                                const AscendC::LocalTensor<T> &srcUb, uint32_t size);
 
 /**
  * @brief Copy data from gva(global virtual address) to ub, executed by MTE engine
@@ -83,7 +83,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_ub2gm(const AscendC::GlobalTensor<T> &
  * @param enableL2          [in] whether to enable L2 cache hint
  */
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* srcGva, uint32_t size, bool enableL2);
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T *dstUb, __gm__ T *srcGva, uint32_t size, bool enableL2);
 
 /**
  * @brief Copy data from gva(global virtual address) to ub in Tensor, executed by MTE engine
@@ -94,7 +94,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(__ubuf__ T* dstUb, __gm__ T* src
  */
 template<typename T>
 SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(const AscendC::LocalTensor<T> &dstUb,
-    const AscendC::GlobalTensor<T> &srcGva, uint32_t size);
+                                                const AscendC::GlobalTensor<T> &srcGva, uint32_t size);
 
 /**
  * @brief Asynchronous RDMA Write function.
@@ -109,7 +109,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2ub(const AscendC::LocalTensor<T> &d
  */
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T *srcDmaAddr, __gm__ T *destDmaAddr, uint32_t destRankId,
                                                 uint32_t qpIdx, uint64_t messageLen,
                                                 AscendC::LocalTensor<uint64_t> ubLocal64,
                                                 AscendC::LocalTensor<uint32_t> ubLocal32);
@@ -126,17 +126,16 @@ SMEM_SHM_INLINE_AICORE void smem_shm_roce_write(__gm__ T* srcDmaAddr, __gm__ T* 
  */
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_read(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t srcRankId,
-                                                uint32_t qpIdx, uint64_t messageLen,
-                                                AscendC::LocalTensor<uint64_t> ubLocal64,
-                                                AscendC::LocalTensor<uint32_t> ubLocal32);
+SMEM_SHM_INLINE_AICORE void
+smem_shm_roce_read(__gm__ T *srcDmaAddr, __gm__ T *destDmaAddr, uint32_t srcRankId, uint32_t qpIdx, uint64_t messageLen,
+                   AscendC::LocalTensor<uint64_t> ubLocal64, AscendC::LocalTensor<uint32_t> ubLocal32);
 
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t* gva, uint32_t destRankId, uint32_t qpIdx);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_qpinfo_test(__gm__ uint8_t *gva, uint32_t destRankId, uint32_t qpIdx);
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T* srcDmaAddr, __gm__ T* destDmaAddr, uint32_t destRankId,
-                                                uint32_t qpIdx, uint64_t messageLen,
-                                                AscendC::LocalTensor<uint64_t> ubLocal64,
-                                                AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t* gva);
+SMEM_SHM_INLINE_AICORE void smem_shm_roce_pollcq_test(__gm__ T *srcDmaAddr, __gm__ T *destDmaAddr, uint32_t destRankId,
+                                                      uint32_t qpIdx, uint64_t messageLen,
+                                                      AscendC::LocalTensor<uint64_t> ubLocal64,
+                                                      AscendC::LocalTensor<uint32_t> ubLocal32, __gm__ uint8_t *gva);
 
 #endif // __MEMFABRIC_SMEM_AI_CORE_BASE_API_H__

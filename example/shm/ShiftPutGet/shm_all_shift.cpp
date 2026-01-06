@@ -21,7 +21,7 @@ __BLOCK_LOCAL__ __inline__ uint64_t gD2dUbuf;
 __BLOCK_LOCAL__ __inline__ uint32_t gUbufSize;
 
 template<typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_set_copy_ubuf(__ubuf__ T* srcUb, uint32_t size)
+SMEM_SHM_INLINE_AICORE void smem_shm_set_copy_ubuf(__ubuf__ T *srcUb, uint32_t size)
 {
     gD2dUbuf = reinterpret_cast<uint64_t>(srcUb);
     gUbufSize = size;
@@ -37,7 +37,7 @@ template<typename T>
 class SmemCopyGM2GM {
 public:
     __aicore__ inline SmemCopyGM2GM() {}
-    __aicore__ inline void Init(__gm__ T* dstGva, __gm__ T* srcGva, __ubuf__ T* tmpUb, uint32_t size, uint32_t ubSize)
+    __aicore__ inline void Init(__gm__ T *dstGva, __gm__ T *srcGva, __ubuf__ T *tmpUb, uint32_t size, uint32_t ubSize)
     {
         inputGm = srcGva;
         outputGm = dstGva;
@@ -51,7 +51,7 @@ public:
         int64_t i = 0;
         while (dataSizeRemain >= blockSize) {
             smem_shm_copy_gm2ub(transUb, inputGm + i * blockSize / sizeof(T), blockSize);
-            AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);  // 3等2
+            AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0); // 3等2
             AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
             smem_shm_copy_ub2gm(outputGm + i * blockSize / sizeof(T), transUb, blockSize);
             AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
@@ -61,7 +61,7 @@ public:
         }
         if (dataSizeRemain > 0) {
             smem_shm_copy_gm2ub(transUb, inputGm + i * blockSize / sizeof(T), dataSizeRemain);
-            AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);  // 3等2
+            AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0); // 3等2
             AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
             smem_shm_copy_ub2gm(outputGm + i * blockSize / sizeof(T), transUb, dataSizeRemain);
         }
@@ -70,29 +70,28 @@ public:
 private:
     int64_t dataSizeRemain = 0;
     uint32_t blockSize = 0;
-    __ubuf__ T* transUb = nullptr;
-    __gm__ T* inputGm = nullptr;
-    __gm__ T* outputGm = nullptr;
+    __ubuf__ T *transUb = nullptr;
+    __gm__ T *inputGm = nullptr;
+    __gm__ T *outputGm = nullptr;
 };
 
-template <typename T>
-SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2gm(__gm__ T* dstGva, __gm__ T* srcGva, uint32_t size)
+template<typename T>
+SMEM_SHM_INLINE_AICORE void smem_shm_copy_gm2gm(__gm__ T *dstGva, __gm__ T *srcGva, uint32_t size)
 {
     SmemCopyGM2GM<T> cpKernel;
-    cpKernel.Init(dstGva, srcGva, reinterpret_cast<__ubuf__ T*>(gD2dUbuf), size, gUbufSize);
+    cpKernel.Init(dstGva, srcGva, reinterpret_cast<__ubuf__ T *>(gD2dUbuf), size, gUbufSize);
     cpKernel.Process();
 }
 
-SMEM_SHM_INLINE_AICORE void smem_shm_put_int64(__gm__ int64_t *gva,
-    __gm__ int64_t *src, uint32_t rank, uint32_t count)
+SMEM_SHM_INLINE_AICORE void smem_shm_put_int64(__gm__ int64_t *gva, __gm__ int64_t *src, uint32_t rank, uint32_t count)
 {
     uint64_t offset = smem_shm_get_symmetric_size();
     uint64_t dst = reinterpret_cast<uint64_t>(gva) + offset * rank;
     smem_shm_copy_gm2gm<int64_t>(reinterpret_cast<__gm__ int64_t *>(dst), src, count * sizeof(int64_t));
 }
 
-SMEM_SHM_INLINE_AICORE void smem_shm_uput_int64(__gm__ int64_t *gva,
-    __ubuf__ int64_t *src, uint32_t rank, uint32_t count)
+SMEM_SHM_INLINE_AICORE void smem_shm_uput_int64(__gm__ int64_t *gva, __ubuf__ int64_t *src, uint32_t rank,
+                                                uint32_t count)
 {
     uint64_t offset = smem_shm_get_symmetric_size();
     uint64_t dst = reinterpret_cast<uint64_t>(gva) + offset * rank;
@@ -137,7 +136,7 @@ extern "C" __global__ __aicore__ void shm_all_shift(GM_ADDR gva, GM_ADDR localIn
     op.Process();
 }
 
-void shm_all_shift_do(void* stream, uint8_t* gva, int64_t *localInput)
+void shm_all_shift_do(void *stream, uint8_t *gva, int64_t *localInput)
 {
     shm_all_shift<<<1, nullptr, stream>>>(gva, localInput);
 }

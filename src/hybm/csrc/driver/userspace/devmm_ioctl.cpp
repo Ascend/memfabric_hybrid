@@ -27,13 +27,13 @@ namespace drv {
 
 namespace {
 const char DEVMM_SVM_MAGIC = 'M';
-#define DEVMM_SVM_IPC_MEM_OPEN      _IOW(DEVMM_SVM_MAGIC, 21, DevmmCommandMessage)
-#define DEVMM_SVM_PREFETCH          _IOW(DEVMM_SVM_MAGIC, 14, DevmmMemAdvisePara)
-#define DEVMM_SVM_IPC_MEM_QUERY     _IOWR(DEVMM_SVM_MAGIC, 29, DevmmMemQuerySizePara)
-#define DEVMM_SVM_ALLOC             _IOW(DEVMM_SVM_MAGIC, 3, DevmmCommandMessage)
-#define DEVMM_SVM_ADVISE            _IOW(DEVMM_SVM_MAGIC, 13, DevmmCommandMessage)
-#define DEVMM_SVM_FREE_PAGES        _IOW(DEVMM_SVM_MAGIC, 4, DevmmCommandMessage)
-#define DEVMM_SVM_IPC_MEM_CLOSE     _IOW(DEVMM_SVM_MAGIC, 22, DevmmCommandMessage)
+#define DEVMM_SVM_IPC_MEM_OPEN  _IOW(DEVMM_SVM_MAGIC, 21, DevmmCommandMessage)
+#define DEVMM_SVM_PREFETCH      _IOW(DEVMM_SVM_MAGIC, 14, DevmmMemAdvisePara)
+#define DEVMM_SVM_IPC_MEM_QUERY _IOWR(DEVMM_SVM_MAGIC, 29, DevmmMemQuerySizePara)
+#define DEVMM_SVM_ALLOC         _IOW(DEVMM_SVM_MAGIC, 3, DevmmCommandMessage)
+#define DEVMM_SVM_ADVISE        _IOW(DEVMM_SVM_MAGIC, 13, DevmmCommandMessage)
+#define DEVMM_SVM_FREE_PAGES    _IOW(DEVMM_SVM_MAGIC, 4, DevmmCommandMessage)
+#define DEVMM_SVM_IPC_MEM_CLOSE _IOW(DEVMM_SVM_MAGIC, 22, DevmmCommandMessage)
 
 int gDeviceId = -1;
 int gDeviceFd = -1;
@@ -138,6 +138,6 @@ int HybmIoctlAllocAnddAdvice(uint64_t ptr, size_t size, uint32_t devid, uint32_t
     return 0;
 }
 
-}
-}
-}
+} // namespace drv
+} // namespace mf
+} // namespace ock

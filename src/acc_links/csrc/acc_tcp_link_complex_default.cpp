@@ -59,5 +59,5 @@ Result AccTcpLinkComplexDefault::EnqueueAndModifyEpoll(const AccMsgHeader &h, co
 
     return worker_->ModifyLink(this, POLLIN | POLLOUT | EPOLLET);
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

@@ -24,55 +24,55 @@
 #include "mf_out_logger.h"
 
 #define ADAPTER_LOG_DEBUG(ARGS) MF_OUT_LOG("[ADAPTER ", ock::mf::DEBUG_LEVEL, ARGS)
-#define ADAPTER_LOG_INFO(ARGS) MF_OUT_LOG("[ADAPTER ", ock::mf::INFO_LEVEL, ARGS)
-#define ADAPTER_LOG_WARN(ARGS) MF_OUT_LOG("[ADAPTER ", ock::mf::WARN_LEVEL, ARGS)
+#define ADAPTER_LOG_INFO(ARGS)  MF_OUT_LOG("[ADAPTER ", ock::mf::INFO_LEVEL, ARGS)
+#define ADAPTER_LOG_WARN(ARGS)  MF_OUT_LOG("[ADAPTER ", ock::mf::WARN_LEVEL, ARGS)
 #define ADAPTER_LOG_ERROR(ARGS) MF_OUT_LOG("[ADAPTER ", ock::mf::ERROR_LEVEL, ARGS)
 
 // if ARGS is false, print error
-#define ADAPTER_ASSERT_RETURN(ARGS, RET)         \
+#define ADAPTER_ASSERT_RETURN(ARGS, RET)           \
+    do {                                           \
+        if (__builtin_expect(!(ARGS), 0) != 0) {   \
+            ADAPTER_LOG_ERROR("Assert " << #ARGS); \
+            return RET;                            \
+        }                                          \
+    } while (0)
+
+#define ADAPTER_ASSERT_RET_VOID(ARGS)              \
+    do {                                           \
+        if (__builtin_expect(!(ARGS), 0) != 0) {   \
+            ADAPTER_LOG_ERROR("Assert " << #ARGS); \
+            return;                                \
+        }                                          \
+    } while (0)
+
+#define ADAPTER_ASSERT_RETURN_NOLOG(ARGS, RET)   \
     do {                                         \
         if (__builtin_expect(!(ARGS), 0) != 0) { \
-            ADAPTER_LOG_ERROR("Assert " << #ARGS);    \
             return RET;                          \
         }                                        \
     } while (0)
 
-#define ADAPTER_ASSERT_RET_VOID(ARGS)            \
-    do {                                         \
-        if (__builtin_expect(!(ARGS), 0) != 0) { \
-            ADAPTER_LOG_ERROR("Assert " << #ARGS);    \
-            return;                              \
-        }                                        \
-    } while (0)
-
-#define ADAPTER_ASSERT_RETURN_NOLOG(ARGS, RET)        \
-    do {                                         \
-        if (__builtin_expect(!(ARGS), 0) != 0) { \
-            return RET;                          \
-        }                                        \
-    } while (0)
-
-#define ADAPTER_ASSERT(ARGS)                          \
-    do {                                         \
-        if (__builtin_expect(!(ARGS), 0) != 0) { \
-            ADAPTER_LOG_ERROR("Assert " << #ARGS);    \
-        }                                        \
+#define ADAPTER_ASSERT(ARGS)                       \
+    do {                                           \
+        if (__builtin_expect(!(ARGS), 0) != 0) {   \
+            ADAPTER_LOG_ERROR("Assert " << #ARGS); \
+        }                                          \
     } while (0)
 
 #define ADAPTER_LOG_ERROR_RETURN_IT_IF_NOT_OK(result, msg) \
-    do {                                              \
-        auto innerResult = (result);                  \
-        if (UNLIKELY(innerResult != 0)) {             \
+    do {                                                   \
+        auto innerResult = (result);                       \
+        if (UNLIKELY(innerResult != 0)) {                  \
             ADAPTER_LOG_ERROR(msg);                        \
-            return innerResult;                       \
-        }                                             \
+            return innerResult;                            \
+        }                                                  \
     } while (0)
 
-#define ADAPTER_RETURN_IT_IF_NOT_OK(result)    \
-    do {                                  \
-        auto innerResult = (result);      \
-        if (UNLIKELY(innerResult != 0)) { \
-            return innerResult;           \
-        }                                 \
+#define ADAPTER_RETURN_IT_IF_NOT_OK(result) \
+    do {                                    \
+        auto innerResult = (result);        \
+        if (UNLIKELY(innerResult != 0)) {   \
+            return innerResult;             \
+        }                                   \
     } while (0)
-#endif  // MEMFABRIC_HYBRID_ADAPTER_LOGGER_H
+#endif // MEMFABRIC_HYBRID_ADAPTER_LOGGER_H

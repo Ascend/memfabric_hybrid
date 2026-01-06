@@ -80,6 +80,7 @@ public:
             DlAclApi::AclrtDestroyStream(stream_);
         }
     }
+
 private:
     void *stream_;
 };
@@ -102,5 +103,5 @@ void *HybmStreamManager::GetThreadAclStream()
     static thread_local AclrtStream aclrtStream_(stream_);
     return stream_;
 }
-}
-}
+} // namespace mf
+} // namespace ock

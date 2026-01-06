@@ -61,7 +61,7 @@ void SafeCloseFd(int &fd, bool needShutdown = true);
 constexpr int16_t MIN_MSG_TYPE = 0;
 constexpr int16_t MAX_MSG_TYPE = UNO_48;
 constexpr uint32_t ACC_LINK_RECV_TIMEOUT = 1800;
-}
-}
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_COMMON_H
+#endif // ACC_LINKS_ACC_TCP_COMMON_H

@@ -45,7 +45,7 @@ public:
     static bool CheckPermission(const std::string &filePath, const mode_t &mode, bool onlyCurrentUserOp,
                                 std::string &errMsg);
 };
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
 #endif

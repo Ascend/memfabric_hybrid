@@ -30,13 +30,10 @@ namespace acc {
 class ACC_API AccTcpRequestContext {
 public:
     AccTcpRequestContext(const AccMsgHeader &h, const AccDataBufferPtr &d, const AccTcpLinkComplexPtr &l)
-        : header_(h),
-          data_(d),
-          link_(l)
-    {
-    }
+        : header_(h), data_(d), link_(l)
+    {}
 
-    AccTcpRequestContext(const AccTcpRequestContext &b): header_(b.header_), link_(b.link_)
+    AccTcpRequestContext(const AccTcpRequestContext &b) : header_(b.header_), link_(b.link_)
     {
         data_ = AccDataBuffer::Create(b.DataPtr(), b.DataLen());
     }
@@ -62,7 +59,7 @@ public:
      *
      * @return pointer of request data
      */
-    void* DataPtr() const;
+    void *DataPtr() const;
 
     /**
      * @brief Get length of data
@@ -103,7 +100,7 @@ inline int16_t AccTcpRequestContext::MsgType() const
     return header_.type;
 }
 
-inline void* AccTcpRequestContext::DataPtr() const
+inline void *AccTcpRequestContext::DataPtr() const
 {
     if (data_.Get() == nullptr) {
         return nullptr;
@@ -133,7 +130,7 @@ inline const AccTcpLinkComplexPtr &AccTcpRequestContext::Link() const
 {
     return link_;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_REQUEST_CONTEXT_H
+#endif // ACC_LINKS_ACC_TCP_REQUEST_CONTEXT_H

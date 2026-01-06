@@ -34,8 +34,8 @@ int32_t HalGvaOpen(uint64_t address, const char *name, size_t size, uint64_t fla
 
 int32_t HalGvaClose(uint64_t address, uint64_t flags);
 
-}
-}
-}
+} // namespace drv
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_DEVMM_SVM_GVA_H

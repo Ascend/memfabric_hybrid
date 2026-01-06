@@ -68,8 +68,8 @@ struct TransportMemoryRegion {
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryRegion &mr)
 {
-    output << "MemoryRegion(size=0x" << std::hex << mr.size << ", addr=0x" << mr.addr << ", access=0x" <<
-        mr.access << ", flags=0x" << mr.flags << ")";
+    output << "MemoryRegion(size=0x" << std::hex << mr.size << ", addr=0x" << mr.addr << ", access=0x" << mr.access
+           << ", flags=0x" << mr.flags << ")";
     return output;
 }
 

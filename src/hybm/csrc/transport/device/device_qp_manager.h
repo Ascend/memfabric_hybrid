@@ -33,8 +33,8 @@ struct UserQpInfo {
     void *qpHandle{nullptr};
     std::atomic<uint32_t> ref{0};
     UserQpInfo() : qpHandle{nullptr}, ref{0} {}
-    UserQpInfo& operator=(UserQpInfo&&) = delete;
-    UserQpInfo(UserQpInfo&& ot) noexcept : qpHandle(ot.qpHandle), ref(ot.ref.load())
+    UserQpInfo &operator=(UserQpInfo &&) = delete;
+    UserQpInfo(UserQpInfo &&ot) noexcept : qpHandle(ot.qpHandle), ref(ot.ref.load())
     {
         ot.qpHandle = nullptr;
         ot.ref = 0;
@@ -83,9 +83,9 @@ protected:
     sockaddr_in deviceAddress_;
     void *serverSocketHandle_{nullptr};
 };
-}  // namespace device
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_DEVICE_QP_MANAGER_H
+#endif // MF_HYBRID_DEVICE_QP_MANAGER_H

@@ -45,21 +45,21 @@ static std::string ExecShellCmd(const char *cmd)
 
 void PrintHelp()
 {
-    std::cout <<
-        "usage: bm_perf_benchmark [-h | --help]\n"
-        "               <command> [<option>] [<args>]\n\n"
-        "-h, --help                  Displays help information.\n"
-        "-bw, bandwidth              Performs a bandwidth test.\n"
-        "    -t,  --type             Indicates the test type (h2d,d2h,h2rd,h2rh,d2rh,d2rd,rh2d,rh2h,rd2h,rd2d,all).\n"
-        "    -s,  --size             Specifies block size (default 1024).\n"
-        "    -et, --execute-times    Specifies execution count (default 1000).\n"
-        "    -bs, --batch_size       Specifies block count (default 1).\n"
-        "    -d,  --device           Specifies starting device ID (default 0).\n"
-        "    -ws, --world-size       Specifies the total number of NPUs in the cluster.\n"
-        "    -lrs, --local-rank-size Specifies the number of NPUs on the local node.\n"
-        "    -rs, --rank-start       Specifies the starting rankId for the local node (default 0).\n"
-        "    -ip, --ip               Specifies the IP address and port (e.g., tcp://<ip>:<port>).\n"
-    << std::endl;
+    std::cout << "usage: bm_perf_benchmark [-h | --help]\n"
+                 "               <command> [<option>] [<args>]\n\n"
+                 "-h, --help                  Displays help information.\n"
+                 "-bw, bandwidth              Performs a bandwidth test.\n"
+                 "    -t,  --type             Indicates the test type "
+                 "(h2d,d2h,h2rd,h2rh,d2rh,d2rd,rh2d,rh2h,rd2h,rd2d,all).\n"
+                 "    -s,  --size             Specifies block size (default 1024).\n"
+                 "    -et, --execute-times    Specifies execution count (default 1000).\n"
+                 "    -bs, --batch_size       Specifies block count (default 1).\n"
+                 "    -d,  --device           Specifies starting device ID (default 0).\n"
+                 "    -ws, --world-size       Specifies the total number of NPUs in the cluster.\n"
+                 "    -lrs, --local-rank-size Specifies the number of NPUs on the local node.\n"
+                 "    -rs, --rank-start       Specifies the starting rankId for the local node (default 0).\n"
+                 "    -ip, --ip               Specifies the IP address and port (e.g., tcp://<ip>:<port>).\n"
+              << std::endl;
 }
 
 [[noreturn]] void ExitWithError(const std::string &msg)
@@ -234,7 +234,7 @@ void RunBwTest(BwTestParam &opts)
     }
 }
 
-int main(int32_t argc, char* argv[])
+int main(int32_t argc, char *argv[])
 {
     if (argc < 2) {
         PrintHelp();

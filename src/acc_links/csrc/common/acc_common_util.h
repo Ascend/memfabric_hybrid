@@ -31,7 +31,7 @@ public:
     static bool IsAllDigits(const std::string &str);
     static Result CheckTlsOptions(const AccTlsOption &tlsOption);
 };
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_COMMON_UTIL_H
+#endif // ACC_LINKS_ACC_COMMON_UTIL_H

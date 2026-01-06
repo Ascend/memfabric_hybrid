@@ -79,10 +79,8 @@ public:
 
 public:
     AccTcpLinkDefault(int fd, const std::string &ipPort, uint32_t id, SSL *ssl = nullptr)
-        : AccTcpLinkComplex(fd, ipPort, id),
-          ssl_(ssl)
-    {
-    }
+        : AccTcpLinkComplex(fd, ipPort, id), ssl_(ssl)
+    {}
 
     ~AccTcpLinkDefault() override
     {
@@ -199,7 +197,7 @@ public:
                     }
                     return -errorNumber;
                 }
-                if (result == 0) {  // link down
+                if (result == 0) { // link down
                     return ACC_LINK_ERROR;
                 }
             } else {
@@ -288,26 +286,26 @@ public:
     {
         ASSERT_RETURN(fd_ != -1, ACC_CONNECTION_NOT_READY);
 
-        struct timeval timeoutTV {};
+        struct timeval timeoutTV{};
         timeoutTV.tv_sec = static_cast<int64_t>(timeoutInUs) / (TIME_UNIT_INTERVAL * TIME_UNIT_INTERVAL);
         timeoutTV.tv_usec = static_cast<int64_t>(timeoutInUs) % (TIME_UNIT_INTERVAL * TIME_UNIT_INTERVAL);
 
-        return ::setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char *>(&timeoutTV), sizeof(timeoutTV)) < 0 ?
-            ACC_ERROR :
-            ACC_OK;
+        return ::setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char *>(&timeoutTV), sizeof(timeoutTV)) < 0
+                   ? ACC_ERROR
+                   : ACC_OK;
     }
 
     Result SetReceiveTimeout(uint32_t timeoutInUs) const override
     {
         ASSERT_RETURN(fd_ != -1, ACC_CONNECTION_NOT_READY);
 
-        struct timeval timeoutTV {};
+        struct timeval timeoutTV{};
         timeoutTV.tv_sec = static_cast<int64_t>(timeoutInUs) / (TIME_UNIT_INTERVAL * TIME_UNIT_INTERVAL);
         timeoutTV.tv_usec = static_cast<int64_t>(timeoutInUs) % (TIME_UNIT_INTERVAL * TIME_UNIT_INTERVAL);
 
-        return ::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&timeoutTV), sizeof(timeoutTV)) < 0 ?
-                   ACC_ERROR :
-                   ACC_OK;
+        return ::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char *>(&timeoutTV), sizeof(timeoutTV)) < 0
+                   ? ACC_ERROR
+                   : ACC_OK;
     }
 
     Result EnableNoBlocking() const override
@@ -319,7 +317,7 @@ public:
             return ACC_LINK_OPTION_ERROR;
         }
 
-        if ((value = fcntl(fd_, F_SETFL, static_cast<uint32_t>(value)  &~O_NONBLOCK)) == -1) {
+        if ((value = fcntl(fd_, F_SETFL, static_cast<uint32_t>(value) & ~O_NONBLOCK)) == -1) {
             LOG_ERROR("Failed to set control value of link " << ShortName() << ", errno:" << errno);
             return ACC_LINK_OPTION_ERROR;
         }
@@ -347,7 +345,7 @@ public:
             return false;
         }
         int infoLen = sizeof(info);
-        getsockopt(fd_, IPPROTO_TCP, TCP_INFO, &info, reinterpret_cast<socklen_t*>(&infoLen));
+        getsockopt(fd_, IPPROTO_TCP, TCP_INFO, &info, reinterpret_cast<socklen_t *>(&infoLen));
         return (info.tcpi_state == TCP_ESTABLISHED);
     }
 
@@ -364,10 +362,10 @@ public:
         return ACC_ERROR;
     }
 
-    Result NonBlockSend(int16_t msgType, int16_t opCode, uint32_t seqNo,
-                        const AccDataBufferPtr &d, const AccDataBufferPtr &cbCtx) override
+    Result NonBlockSend(int16_t msgType, int16_t opCode, uint32_t seqNo, const AccDataBufferPtr &d,
+                        const AccDataBufferPtr &cbCtx) override
     {
-        LOG_DEBUG("Not support non-blocking send, msgType " << msgType << ", opCode " << opCode<<", seqNo" << seqNo);
+        LOG_DEBUG("Not support non-blocking send, msgType " << msgType << ", opCode " << opCode << ", seqNo" << seqNo);
         return ACC_ERROR;
     }
 
@@ -379,12 +377,12 @@ public:
     }
 
 protected:
-    SSL* ssl_ = nullptr; /* ssl link ptr */
+    SSL *ssl_ = nullptr; /* ssl link ptr */
 
     friend class AccTcpWorker;
 };
 using AccTcpLinkDefaultPtr = AccRef<AccTcpLinkDefault>;
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_LINK_DEFAULT_H
+#endif // ACC_LINKS_ACC_TCP_LINK_DEFAULT_H

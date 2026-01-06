@@ -33,8 +33,8 @@ public:
 
     void StopAfterFork() override;
 
-    Result ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
-                               uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink) override;
+    Result ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req, uint32_t maxRetryTimes,
+                               AccTcpLinkComplexPtr &newLink) override;
 
     void RegisterNewRequestHandler(int16_t msgType, const AccNewReqHandler &h) override;
 
@@ -59,9 +59,9 @@ private:
     void StopAndCleanSSLHelper(bool afterFork = false);
 
     Result GenerateSslCtx();
-    Result CreateSSLLink(SSL* &ssl, int &tmpFD);
-    void ValidateSSLLink(SSL* &ssl, int &tmpFD);
-    Result LinkReceive(AccRef<AccTcpLinkComplexDefault>& tmpLink, const std::string &ipAndPort);
+    Result CreateSSLLink(SSL *&ssl, int &tmpFD);
+    void ValidateSSLLink(SSL *&ssl, int &tmpFD);
+    Result LinkReceive(AccRef<AccTcpLinkComplexDefault> &tmpLink, const std::string &ipAndPort);
 
     Result Handshake(int &fd, const AccConnReq &connReq, const std::string &ipAndPort, AccTcpLinkComplexPtr &newLink);
 
@@ -95,7 +95,7 @@ private:
     std::atomic<bool> started_{false};
     AccTcpServerOptions options_;
     AccTcpSslHelperPtr sslHelper_ = nullptr;
-    SSL_CTX* sslCtx_ = nullptr;
+    SSL_CTX *sslCtx_ = nullptr;
     AccTlsOption tlsOption_{};
 };
 using AccTcpServerDefaultPtr = AccRef<AccTcpServerDefault>;
@@ -174,7 +174,7 @@ inline Result AccTcpServerDefault::HandleLinkBroken(const AccTcpLinkComplexDefau
     }
 
     /* get un-sent messages and call upper */
-    AccLinkedMessageNode* node = link->TakeAwayMessages();
+    AccLinkedMessageNode *node = link->TakeAwayMessages();
     while (node != nullptr) {
         auto nextNode = node->next;
         HandleRequestSent(MSG_LINK_BROKEN, node->header, node->cbCtx);
@@ -210,7 +210,7 @@ inline Result AccTcpServerDefault::HandleLinkBroken(const AccTcpLinkComplexDefau
 
     return ACC_OK;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_SERVER_DEFAULT_H
+#endif // ACC_LINKS_ACC_TCP_SERVER_DEFAULT_H

@@ -12,13 +12,10 @@
 
 namespace ock {
 namespace mf {
-template <typename T>
+template<typename T>
 struct IsUnsignedNumber {
-    static constexpr bool value =
-        std::is_same<T, unsigned short>::value ||
-        std::is_same<T, unsigned int>::value ||
-        std::is_same<T, unsigned long>::value ||
-        std::is_same<T, unsigned long long>::value;
+    static constexpr bool value = std::is_same<T, unsigned short>::value || std::is_same<T, unsigned int>::value ||
+                                  std::is_same<T, unsigned long>::value || std::is_same<T, unsigned long long>::value;
 };
 
 class NumUtil {
@@ -34,7 +31,7 @@ public:
      * @param calc    [in] operation type: '+' for addition, '*' for multiplication
      * @return true if the operation overflow, false otherwise
      */
-    template <typename T>
+    template<typename T>
     static bool IsOverflowCheck(T a, T b, T max, char calc);
 
     /**
@@ -43,7 +40,7 @@ public:
      * @param str input string
      * @return true if the input is all digits else false
      */
-    static bool IsDigit(const std::string& str);
+    static bool IsDigit(const std::string &str);
 
     /**
     * Extracts a bit field from the given flag value.
@@ -69,7 +66,7 @@ public:
     }
 };
 
-template <typename T>
+template<typename T>
 inline bool NumUtil::IsOverflowCheck(T a, T b, T max, char calc)
 {
     if (!(IsUnsignedNumber<T>::value)) {
@@ -85,7 +82,7 @@ inline bool NumUtil::IsOverflowCheck(T a, T b, T max, char calc)
     }
 }
 
-inline bool NumUtil::IsDigit(const std::string& str)
+inline bool NumUtil::IsDigit(const std::string &str)
 {
     if (str.empty()) {
         return false;
@@ -102,6 +99,6 @@ inline bool NumUtil::IsDigit(const std::string& str)
     }
     return true;
 }
-}
-}
+} // namespace mf
+} // namespace ock
 #endif
