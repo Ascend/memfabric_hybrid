@@ -140,6 +140,25 @@ struct HybmDeviceMeta {
         }                                                                                            \
     } while (0)
 
+#define DL_LOAD_SYM_ALT(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME, SYMBOL_NAME_ALT) \
+    do {                                                                                              \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                          \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME) << " successfully");                       \
+            break;                                                                                    \
+        }                                                                                             \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME_ALT);                      \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME_ALT) << " successfully");                   \
+            break;                                                                                    \
+        }                                                                                             \
+        BM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << " or " << (SYMBOL_NAME_ALT)  \
+                                                     << ", error" << dlerror());                      \
+        dlclose(FILE_HANDLE);                                                                         \
+        FILE_HANDLE = nullptr;                                                                        \
+        return BM_DL_FUNCTION_FAILED;                                                                 \
+    } while (0)
+
 enum HybmGvaVersion : uint32_t { HYBM_GVA_V1 = 0, HYBM_GVA_V2 = 1, HYBM_GVA_V3 = 2, HYBM_GVA_V4 = 3, HYBM_GVA_UNKNOWN };
 
 } // namespace mf

@@ -58,14 +58,6 @@ public:
     static Result LoadLibrary();
     static void CleanupLibrary();
 
-    static inline int RaGetInterfaceVersion(uint32_t deviceId, uint32_t opcode, uint32_t &version)
-    {
-        if (gRaGetInterfaceVersion == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaGetInterfaceVersion(deviceId, opcode, &version);
-    }
-
     static inline int RaSocketInit(HccpNetworkMode mode, const HccpRdev &rdev, void *&socketHandle)
     {
         if (gRaSocketInit == nullptr) {
@@ -122,14 +114,6 @@ public:
         return gRaSocketBatchClose(conn, num);
     }
 
-    static inline int RaSocketBatchAbort(HccpSocketConnectInfo conn[], uint32_t num)
-    {
-        if (gRaSocketBatchAbort == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaSocketBatchAbort(conn, num);
-    }
-
     static inline int RaSocketListenStart(HccpSocketListenInfo conn[], uint32_t num)
     {
         if (gRaSocketListenStart == nullptr) {
@@ -152,22 +136,6 @@ public:
             return BM_UNDER_API_UNLOAD;
         }
         return gRaGetSockets(role, conn, num, &connectedNum);
-    }
-
-    static inline int RaSocketSend(const void *fd, const void *data, uint64_t size, uint64_t &sent)
-    {
-        if (gRaSocketSend == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaSocketSend(fd, data, size, &sent);
-    }
-
-    static inline int RaSocketRecv(const void *fd, void *data, uint64_t size, uint64_t &received)
-    {
-        if (gRaSocketRecv == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaSocketRecv(fd, data, size, &received);
     }
 
     static inline int RaGetIfNum(const HccpRaGetIfAttr &config, uint32_t &num)
@@ -258,22 +226,6 @@ public:
         return gRaDeregisterMR(rdmaHandle, mrHandle);
     }
 
-    static inline int RaMrReg(void *qpHandle, HccpMrInfo &info)
-    {
-        if (gRaMrReg == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaMrReg(qpHandle, &info);
-    }
-
-    static inline int RaMrDereg(void *qpHandle, HccpMrInfo &info)
-    {
-        if (gRaMrDereg == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaMrDereg(qpHandle, &info);
-    }
-
     static inline int RaSendWr(void *qp_handle, struct send_wr *wr, struct send_wr_rsp *op_rsp)
     {
         if (gRaSendWr == nullptr) {
@@ -288,14 +240,6 @@ public:
             return BM_UNDER_API_UNLOAD;
         }
         return gRaSendWrV2(qp_handle, wr, op_rsp);
-    }
-
-    static inline int RaPollCq(void *qp_handle, bool is_send_cq, unsigned int num_entries, void *wc)
-    {
-        if (gRaPollCq == nullptr) {
-            return BM_UNDER_API_UNLOAD;
-        }
-        return gRaPollCq(qp_handle, is_send_cq, num_entries, wc);
     }
 
     static inline uint32_t TsdOpen(uint32_t deviceId, uint32_t rankSize)
@@ -331,20 +275,15 @@ private:
     static const char *gTsdLibName;
 
     static raRdevGetHandleFunc gRaRdevGetHandle;
-
-    static raGetInterfaceVersionFunc gRaGetInterfaceVersion;
     static raInitFunc gRaInit;
     static raSocketInitFunc gRaSocketInit;
     static raSocketDeinitFunc gRaSocketDeinit;
     static raRdevInitV2Func gRaRdevInitV2;
     static raSocketBatchConnectFunc gRaSocketBatchConnect;
     static raSocketBatchCloseFunc gRaSocketBatchClose;
-    static raSocketBatchAbortFunc gRaSocketBatchAbort;
     static raSocketListenStartFunc gRaSocketListenStart;
     static raSocketListenStopFunc gRaSocketListenStop;
     static raGetSocketsFunc gRaGetSockets;
-    static raSocketSendFunc gRaSocketSend;
-    static raSocketRecvFunc gRaSocketRecv;
     static raGetIfNumFunc gRaGetIfNum;
     static raGetIfAddrsFunc gRaGetIfAddrs;
     static raSocketWhiteListAddFunc gRaSocketWhiteListAdd;
@@ -356,11 +295,8 @@ private:
     static raQpConnectAsyncFunc gRaQpConnectAsync;
     static raRegisterMrFunc gRaRegisterMR;
     static raDeregisterMrFunc gRaDeregisterMR;
-    static raMrRegFunc gRaMrReg;
-    static raMrDeregFunc gRaMrDereg;
     static raSendWrFunc gRaSendWr;
     static raSendWrV2Func gRaSendWrV2;
-    static raPollCqFunc gRaPollCq;
     static raGetNotifyBaseAddrFunc gRaGetNotifyBaseAddr;
     static raGetNotifyMrInfoFunc gRaGetNotifyMrInfo;
 
