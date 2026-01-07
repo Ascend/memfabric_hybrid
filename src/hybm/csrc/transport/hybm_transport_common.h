@@ -29,6 +29,7 @@ namespace mf {
 namespace transport {
 constexpr uint32_t REG_MR_FLAG_DRAM = 0x1U;
 constexpr uint32_t REG_MR_FLAG_HBM = 0x2U;
+constexpr uint32_t REG_MR_FLAG_SELF = 0x4U;
 
 constexpr int32_t REG_MR_ACCESS_FLAG_LOCAL_WRITE = 0x1;
 constexpr int32_t REG_MR_ACCESS_FLAG_REMOTE_WRITE = 0x2;

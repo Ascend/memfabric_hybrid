@@ -23,6 +23,7 @@
 #include "hybm_conn_based_segment.h"
 #include "hybm_vmm_based_segment.h"
 #include "hybm_gva_version.h"
+#include "hybm_va_manager.h"
 
 namespace ock {
 namespace mf {
@@ -52,7 +53,11 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
         BM_LOG_ERROR("MemSegment::InitDeviceInfo failed: " << ret);
         return nullptr;
     }
-
+    ret = HybmVaManager::GetInstance().Initialize(socType_);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("HybmVaManager Initialize failed: " << ret);
+        return nullptr;
+    }
     MemSegmentPtr tmpSeg;
     switch (options.segType) {
         case HYBM_MST_HBM:

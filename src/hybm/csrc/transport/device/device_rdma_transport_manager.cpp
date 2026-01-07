@@ -28,6 +28,7 @@
 #include "bipartite_ranks_qp_manager.h"
 #include "joinable_ranks_qp_manager.h"
 #include "hybm_gva.h"
+#include "hybm_va_manager.h"
 
 namespace {
 constexpr auto QP_READY_CHECK_TIMEOUT_BASE = std::chrono::seconds(30);
@@ -140,6 +141,15 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
     RegMemResult result{mr.addr, (uint64_t)(ptrdiff_t)info.addr, mr.size, mrHandle, info.lkey, info.rkey};
     BM_LOG_DEBUG("register MR result=" << result);
+    if ((mr.flags & REG_MR_FLAG_SELF) == 0) {
+        auto type = (mr.flags & REG_MR_FLAG_DRAM) ? HYBM_MEM_TYPE_HOST : HYBM_MEM_TYPE_DEVICE;
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({result.regAddress, mr.size, type, mr.addr}, rankId_);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Add va info failed, ret: " << ret << ", gva: " << result.regAddress);
+            DlHccpApi::RaDeregisterMR(rdmaHandle_, mrHandle);
+            return ret;
+        }
+    }
 
     WriteGuard lockGuard(lock_);
     registerMRS_.emplace(mr.addr, result);
@@ -148,6 +158,7 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
 Result RdmaTransportManager::UnregisterMemoryRegion(uint64_t addr)
 {
+    HybmVaManager::GetInstance().RemoveOneVaInfo(addr);
     WriteGuard lockGuard(lock_);
     auto pos = registerMRS_.find(addr);
     if (pos == registerMRS_.end()) {

@@ -25,6 +25,7 @@
 #include "hybm_gva.h"
 #include "hybm_logger.h"
 #include "hybm_stream_manager.h"
+#include "hybm_va_manager.h"
 #include "host_hcom_transport_manager.h"
 
 namespace ock {
@@ -178,6 +179,7 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
     info.flags =
         segment->GetMemoryType() == HYBM_MEM_TYPE_DEVICE ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM;
     if (transportManager_ != nullptr) {
+        info.flags |= transport::REG_MR_FLAG_SELF;
         ret = transportManager_->RegisterMemoryRegion(info);
         if (ret != 0) {
             BM_LOG_ERROR("register memory region allocate failed: " << ret << ", info: " << info);
@@ -248,7 +250,8 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_INVALID_PARAM;
     }
-
+    HybmVaManager::GetInstance().DumpReservedGvaInfo();
+    HybmVaManager::GetInstance().DumpAllocatedGvaInfo();
     std::shared_ptr<MemSlice> memSlice;
     if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice)) != nullptr) {
         hbmSegment_->ReleaseSliceMemory(memSlice);

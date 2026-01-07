@@ -28,7 +28,7 @@ constexpr uint32_t invalidServerId = 0x3FFU;
 struct HbmExportInfo {
     uint64_t magic{HBM_SLICE_EXPORT_INFO_MAGIC};
     uint64_t version{EXPORT_INFO_VERSION};
-    uint64_t mappingOffset{0};
+    uint64_t vAddress{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
     uint32_t serverId{0};

@@ -12,6 +12,7 @@
 #include "dl_acl_api.h"
 #include "hybm_networks_common.h"
 #include "hybm_ex_info_transfer.h"
+#include "hybm_va_manager.h"
 #include "hybm_dev_user_legacy_segment.h"
 
 namespace ock {
@@ -233,6 +234,7 @@ void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
     for (auto &remoteSlice : remoteSliceVec) {
         addressedSlices_.erase(remoteSlice->vAddress_);
         registerAddrs_.erase(reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_)));
+        HybmVaManager::GetInstance().RemoveOneVaInfo(remoteSlice->vAddress_);
         auto rIt = remoteSlices_.find(remoteSlice->index_);
         if (rIt == remoteSlices_.end()) {
             continue;
@@ -417,6 +419,10 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
     uniqueLock.unlock();
+    auto memType = HYBM_MEM_TYPE_DEVICE;
+    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->vAddress_, remoteSlice->size_, memType, 0},
+                                                             options_.rankId, sliceInfo.rankId);
+    BM_ASSERT_RETURN(ret == BM_OK, ret);
     return BM_OK;
 }
 
@@ -426,6 +432,7 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
         if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
             BM_LOG_WARN("Failed to close memory. This may affect future memory registration.");
         }
+        HybmVaManager::GetInstance().RemoveOneVaInfo((uint64_t)addr);
     }
     registerAddrs_.clear();
     BM_LOG_INFO("close memory finish.");

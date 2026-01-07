@@ -21,6 +21,7 @@
 #include "hybm_types.h"
 #include "hybm_ptracer.h"
 #include "hybm_stream_manager.h"
+#include "hybm_va_manager.h"
 
 namespace {
 constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
@@ -185,20 +186,20 @@ Result DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direc
 
 Result DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("[CopyLH2LH] AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
 }
 Result DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("[CopyLD2LD] AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -206,10 +207,10 @@ Result DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t len
 
 Result DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("[CopyLH2LD] AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -217,10 +218,10 @@ Result DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t len
 
 Result DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("[CopyLD2LH] AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -228,56 +229,56 @@ Result DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t len
 
 Result DataOpDeviceRDMA::CopyLH2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafePut(srcVA, destVA, length, options, true);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyLH2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafePut(srcVA, destVA, length, options, true);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLH2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyLD2GH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafePut(srcVA, destVA, length, options, false);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyLD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafePut(srcVA, destVA, length, options, false);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyLD2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
@@ -285,19 +286,19 @@ Result DataOpDeviceRDMA::CopyLD2GD(const void *srcVA, void *destVA, uint64_t len
 Result DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t length,
                                   const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyRDMA] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto src = (uint64_t)(ptrdiff_t)srcVA;
     auto dest = (uint64_t)(ptrdiff_t)destVA;
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = transportManager_->WriteRemote(options.destRankId, src, dest, length);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyRDMA] Failed to write src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
     } else if (options.destRankId == rankId_) {
         ret = transportManager_->ReadRemote(options.srcRankId, dest, src, length);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyRDMA] Failed to read src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to read src to dest", ret);
     } else {
-        BM_LOG_ERROR("[CopyRDMA] invalid param, local rank:" << rankId_ << ", srcId: " << options.srcRankId
-                                                             << ", dstId: " << options.destRankId);
+        BM_LOG_ERROR("Invalid param, local rank:" << rankId_ << ", srcId: " << options.srcRankId
+                                                  << ", dstId: " << options.destRankId);
         return BM_INVALID_PARAM;
     }
     return ret;
@@ -306,14 +307,14 @@ Result DataOpDeviceRDMA::CopyRDMA(const void *srcVA, void *destVA, uint64_t leng
 Result DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t length,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GH] Failed to rdma src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to rdma src to dest", ret);
     }
     return ret;
 }
@@ -321,28 +322,28 @@ Result DataOpDeviceRDMA::CopyGH2GH(const void *srcVA, void *destVA, uint64_t len
 Result DataOpDeviceRDMA::CopyGD2GH(const void *srcVA, void *destVA, uint64_t length,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2GH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GH] Failed to rdma src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to rdma src to dest", ret);
     }
     return ret;
 }
 Result DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t length,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2GD] Failed to rdma src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to rdma src to dest", ret);
     }
     return ret;
 }
@@ -350,76 +351,76 @@ Result DataOpDeviceRDMA::CopyGH2GD(const void *srcVA, void *destVA, uint64_t len
 Result DataOpDeviceRDMA::CopyGD2GD(const void *srcVA, void *destVA, uint64_t length,
                                    const ock::mf::ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2GD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_ && options.destRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2GD] Failed to rdma src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to rdma src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyGH2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, true);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyGD2LH(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2LH] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LH(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, true);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LH] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGH2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, false);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGH2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }
 
 Result DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options) noexcept
 {
-    BM_LOG_DEBUG("[CopyGD2LD] srcVA=" << srcVA << ", destVA=" << destVA << ", length=" << length);
+    BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
         ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, false);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "[CopyGD2LD] Failed to copy src to dest", ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     }
     return ret;
 }

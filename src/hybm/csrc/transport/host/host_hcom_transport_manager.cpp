@@ -23,6 +23,7 @@
 #include "host_hcom_helper.h"
 #include "mf_tls_util.h"
 #include "hybm_ptracer.h"
+#include "hybm_va_manager.h"
 
 using namespace ock::mf;
 using namespace ock::mf::transport;
@@ -191,6 +192,15 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
         mrs_[rankId_].push_back(mrInfo);
     }
+    if ((mr.flags & REG_MR_FLAG_SELF) == 0) {
+        auto type = (mr.flags & REG_MR_FLAG_DRAM) ? HYBM_MEM_TYPE_HOST : HYBM_MEM_TYPE_DEVICE;
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({mrInfo.addr, mr.size, type, mr.addr}, rankId_);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Add va info failed, ret: " << ret << ", gva: " << memoryRegionInfo.lAddress);
+            DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, memoryRegion);
+            return ret;
+        }
+    }
     BM_LOG_DEBUG("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0]);
     return BM_OK;
 }
@@ -240,6 +250,7 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
 {
     BM_ASSERT_RETURN(addr != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
+    HybmVaManager::GetInstance().RemoveOneVaInfo(addr);
 
     std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
     auto localMrs = mrs_[rankId_];

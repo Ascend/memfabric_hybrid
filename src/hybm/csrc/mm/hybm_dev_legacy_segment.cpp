@@ -24,6 +24,7 @@
 #include "hybm_gva.h"
 #include "hybm_logger.h"
 #include "hybm_networks_common.h"
+#include "hybm_va_manager.h"
 
 namespace ock {
 namespace mf {
@@ -94,7 +95,14 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
-
+    ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE, slice->vAddress_},
+                                                 options_.rankId);
+    if (ret != 0) {
+        BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
+        drv::HalGvaFree(slice->vAddress_, size);
+        slices_.erase(slice->index_);
+        return ret;
+    }
     return BM_OK;
 }
 
@@ -125,6 +133,7 @@ Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> 
 
     auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
     BM_LOG_INFO("free slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
+    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_);
 
     slices_.erase(pos);
     return BM_OK;
@@ -162,8 +171,7 @@ Result HybmDevLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std:
                                             sizeof(info.shmName));
     BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
 
-    info.mappingOffset =
-        slice->vAddress_ - (uint64_t)(ptrdiff_t)(globalVirtualAddress_ + options_.size * options_.rankId);
+    info.vAddress = slice->vAddress_;
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.deviceId = deviceId_;
     info.pid = pid_;
@@ -252,7 +260,14 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
             return BM_DL_FUNCTION_FAILED;
         }
     }
-
+    for (const auto &info : desInfos) {
+        if (info.rankId == options_.rankId) {
+            continue;
+        }
+        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {info.vAddress, info.size, HYBM_MEM_TYPE_DEVICE, 0}, options_.rankId, info.rankId);
+        BM_ASSERT_RETURN(ret == BM_OK, ret);
+    }
     return SafeCopy(desInfos.begin(), desInfos.end(), std::back_inserter(imports_));
 }
 
@@ -267,7 +282,7 @@ Result HybmDevLegacySegment::Mmap() noexcept
             continue;
         }
 
-        auto remoteAddress = globalVirtualAddress_ + options_.size * im.rankId + im.mappingOffset;
+        auto remoteAddress = im.vAddress;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped");
             continue;
@@ -293,6 +308,7 @@ Result HybmDevLegacySegment::Unmap() noexcept
 {
     for (auto va : mappedMem_) {
         (void)drv::HalGvaClose(va, 0);
+        HybmVaManager::GetInstance().RemoveOneVaInfo(va);
     }
     mappedMem_.clear();
 
@@ -314,6 +330,7 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
         auto st = it;
         while (it != mappedMem_.end() && (*it) < addr + options_.size) {
             (void)drv::HalGvaClose((*it), 0);
+            HybmVaManager::GetInstance().RemoveOneVaInfo(*it);
             it++;
         }
 
