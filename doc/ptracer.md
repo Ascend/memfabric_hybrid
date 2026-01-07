@@ -17,10 +17,10 @@ ptracer是否开启受编译宏ENABLE_PTRACER控制，使用build_and_package_ru
 ## 输出样例
 以下是一次测试中ptracer输出的一个周期内的打点数据示例
 ```
-TIME                   NAME                                    BEGIN          GOOD_END       BAD_END        ON_FLY         IOPS           MIN(us)        MAX(us)        AVG(us)        TOTAL(us)
-2026-01-05 14:57:03    TP_HYBM_RDMA_LH_TO_GD                   117            117            0              0              1.300          120.830        16193.220      713.658        83498.010
-2026-01-05 14:57:03    TP_MMC_LOCAL_BATCH_PUT                  30             30             0              0              0.333          124.620        16400.930      3353.871       100616.120
-2026-01-05 14:57:03    TP_ACC_SEND_ALLOC                       2              2              0              0              0.022          564.440        602.770        583.605        1167.210
+TIME                   NAME                                    BEGIN          GOOD_END       BAD_END        ON_FLY         MIN(us)        MAX(us)        AVG(us)        TOTAL(us)
+2026-01-05 14:57:03    TP_HYBM_RDMA_LH_TO_GD                   117            117            0              0              120.830        16193.220      713.658        83498.010
+2026-01-05 14:57:03    TP_MMC_LOCAL_BATCH_PUT                  30             30             0              0              124.620        16400.930      3353.871       100616.120
+2026-01-05 14:57:03    TP_ACC_SEND_ALLOC                       2              2              0              0              564.440        602.770        583.605        1167.210
 ```
 
 ## 字段描述

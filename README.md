@@ -25,7 +25,7 @@
 
 其中, Global Memory Management、Data Operation、Transport Management都实现了逻辑的抽象, 可以轻松扩展实现不同硬件的对接。当前已支持的南向包括:
   * 昇腾A3超节点: DRAM+HBM pooling over Device UB 1.0, DRAM pooling over Host RoCE
-  * 昇腾A2服务器: DRAM+HBM pooling over Device RoCE, DRAM and HBM pooling over Host RoCE
+  * 昇腾A2服务器: DRAM+HBM pooling over Device RoCE, DRAM pooling over Host RoCE
   * 鲲鹏服务器: DRAM pooling over Host RoCE
   * 鲲鹏超节点: DRAM pooling over Host UB
 

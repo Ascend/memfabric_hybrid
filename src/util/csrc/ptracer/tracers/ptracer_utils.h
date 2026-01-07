@@ -92,7 +92,6 @@ constexpr int32_t TIME_WIDTH = 23;
 constexpr int32_t NAME_WIDTH = 40;
 constexpr int32_t DIGIT_WIDTH = 15;
 constexpr int32_t UNIT_STEP = 1000;
-constexpr double IOPS_DIFF = 90.000;
 constexpr int32_t NUMBER_PRECISION = 3;
 constexpr int32_t WIDTH_FOUR = 4;
 constexpr int32_t WIDTH_TWO = 2;
@@ -143,30 +142,35 @@ inline std::string Func::CurrentTimeString()
 inline std::string Func::FormatString(std::string &name, uint64_t begin, uint64_t goodEnd, uint64_t badEnd,
                                       uint64_t min, uint64_t max, uint64_t total)
 {
-    std::string str;
-    std::ostringstream os(str);
+    auto onFly = (begin > goodEnd + badEnd) ? (begin - goodEnd - badEnd) : 0;
+    auto minTime = min == UINT64_MAX ? 0 : (static_cast<double>(min) / UNIT_STEP);
+    auto maxTime = static_cast<double>(max) / UNIT_STEP;
+    auto avgTime = goodEnd == 0 ? 0 : static_cast<double>(total) / static_cast<double>(goodEnd) / UNIT_STEP;
+    auto totalTime = static_cast<double>(total) / UNIT_STEP;
+
+    std::ostringstream os;
     os.flags(std::ios::fixed);
     os.precision(NUMBER_PRECISION);
-    os << std::left << std::setw(NAME_WIDTH) << name << std::left << std::setw(DIGIT_WIDTH) << begin << std::left
-       << std::setw(DIGIT_WIDTH) << goodEnd << std::left << std::setw(DIGIT_WIDTH) << badEnd << std::left
-       << std::setw(DIGIT_WIDTH) << ((begin > goodEnd + badEnd) ? (begin - goodEnd - badEnd) : 0) << std::left
-       << std::setw(DIGIT_WIDTH) << (static_cast<double>(begin) / IOPS_DIFF) << std::left << std::setw(DIGIT_WIDTH)
-       << (min == UINT64_MAX ? 0 : (static_cast<double>(min) / UNIT_STEP)) << std::left << std::setw(DIGIT_WIDTH)
-       << static_cast<double>(max) / UNIT_STEP << std::left << std::setw(DIGIT_WIDTH)
-       << (goodEnd == 0 ? 0 : static_cast<double>(total) / static_cast<double>(goodEnd) / UNIT_STEP) << std::left
-       << std::setw(DIGIT_WIDTH) << static_cast<double>(total) / UNIT_STEP;
+    os << std::left << std::setw(NAME_WIDTH) << name <<
+          std::left << std::setw(DIGIT_WIDTH) << begin <<
+          std::left << std::setw(DIGIT_WIDTH) << goodEnd <<
+          std::left << std::setw(DIGIT_WIDTH) << badEnd <<
+          std::left << std::setw(DIGIT_WIDTH) << onFly <<
+          std::left << std::setw(DIGIT_WIDTH) << minTime <<
+          std::left << std::setw(DIGIT_WIDTH) << maxTime <<
+          std::left << std::setw(DIGIT_WIDTH) << avgTime <<
+          std::left << std::setw(DIGIT_WIDTH) << totalTime;
     return os.str();
 }
 
 inline std::string Func::HeaderString()
 {
     std::stringstream ss;
-    ss << std::left << std::setw(TIME_WIDTH) << "TIME" << std::left << std::setw(NAME_WIDTH) << "NAME" << std::left
-       << std::setw(DIGIT_WIDTH) << "BEGIN" << std::left << std::setw(DIGIT_WIDTH) << "GOOD_END" << std::left
-       << std::setw(DIGIT_WIDTH) << "BAD_END" << std::left << std::setw(DIGIT_WIDTH) << "ON_FLY" << std::left
-       << std::setw(DIGIT_WIDTH) << "IOPS" << std::left << std::setw(DIGIT_WIDTH) << "MIN(us)" << std::left
-       << std::setw(DIGIT_WIDTH) << "MAX(us)" << std::left << std::setw(DIGIT_WIDTH) << "AVG(us)" << std::left
-       << std::setw(DIGIT_WIDTH) << "TOTAL(us)";
+    ss << std::left << std::setw(TIME_WIDTH) << "TIME" << std::left << std::setw(NAME_WIDTH) << "NAME" <<
+          std::left << std::setw(DIGIT_WIDTH) << "BEGIN" << std::left << std::setw(DIGIT_WIDTH) << "GOOD_END" <<
+          std::left << std::setw(DIGIT_WIDTH) << "BAD_END" << std::left << std::setw(DIGIT_WIDTH) << "ON_FLY" <<
+          std::left << std::setw(DIGIT_WIDTH) << "MIN(us)" << std::left << std::setw(DIGIT_WIDTH) << "MAX(us)" <<
+          std::left << std::setw(DIGIT_WIDTH) << "AVG(us)" << std::left << std::setw(DIGIT_WIDTH) << "TOTAL(us)";
     return ss.str();
 }
 
