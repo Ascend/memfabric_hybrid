@@ -407,7 +407,7 @@ bool HybmDevLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
     }
 }
 
-bool HybmDevLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
+bool HybmDevLegacySegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     auto pos = importMap_.find(static_cast<uint16_t>(rankId));
     if (pos == importMap_.end()) {

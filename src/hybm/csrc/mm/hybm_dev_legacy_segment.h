@@ -74,7 +74,7 @@ public:
         return HYBM_MEM_TYPE_DEVICE;
     }
 
-    bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
+    bool CheckSdmaReaches(uint32_t rankId) const noexcept override;
 
 public:
     static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;

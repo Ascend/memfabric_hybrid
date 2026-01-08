@@ -54,7 +54,7 @@ public:
     std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
-    bool CheckSmdaReaches(uint32_t rankId) const noexcept override;
+    bool CheckSdmaReaches(uint32_t rankId) const noexcept override;
 
     hybm_mem_type GetMemoryType() const noexcept override
     {

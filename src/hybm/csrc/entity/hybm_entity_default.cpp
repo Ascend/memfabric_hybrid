@@ -1122,11 +1122,11 @@ Result MemEntityDefault::InitDataOperator()
 bool MemEntityDefault::SdmaReaches(uint32_t remoteRank) const noexcept
 {
     if (hbmSegment_ != nullptr) {
-        return hbmSegment_->CheckSmdaReaches(remoteRank);
+        return hbmSegment_->CheckSdmaReaches(remoteRank);
     }
 
     if (dramSegment_ != nullptr) {
-        return dramSegment_->CheckSmdaReaches(remoteRank);
+        return dramSegment_->CheckSdmaReaches(remoteRank);
     }
 
     return false;

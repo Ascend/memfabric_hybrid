@@ -127,7 +127,7 @@ public:
      */
     virtual hybm_mem_type GetMemoryType() const noexcept = 0;
 
-    virtual bool CheckSmdaReaches(uint32_t rankId) const noexcept;
+    virtual bool CheckSdmaReaches(uint32_t rankId) const noexcept;
 
     static Result InitDeviceInfo(int devId);
 

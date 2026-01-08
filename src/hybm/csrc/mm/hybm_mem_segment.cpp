@@ -84,7 +84,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
     return tmpSeg;
 }
 
-bool MemSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
+bool MemSegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     return false;
 }

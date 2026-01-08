@@ -506,7 +506,7 @@ bool HybmVmmBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint3
     }
 }
 
-bool HybmVmmBasedSegment::CheckSmdaReaches(uint32_t rankId) const noexcept
+bool HybmVmmBasedSegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     return true;
 }

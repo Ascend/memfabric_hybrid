@@ -451,7 +451,7 @@ bool HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, 
     return true;
 }
 
-bool HybmDevUserLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
+bool HybmDevUserLegacySegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     auto pos = importedDeviceInfo_.find(rankId);
     if (pos == importedDeviceInfo_.end()) {
