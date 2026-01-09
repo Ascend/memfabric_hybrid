@@ -95,6 +95,17 @@ typedef struct {
 } smem_bm_config_t;
 
 typedef struct {
+    uint64_t maxDramSize;             /* the max size of all rank DRAM memory contributes to Big Memory object */
+    uint64_t maxHbmSize;              /* the max size of all rank HBM memory contributes to Big Memory object */
+    uint64_t localDRAMSize;           /* the size of local DRAM memory contributes to Big Memory object */
+    uint64_t localHBMSize;            /* the size of local HBM memory contributes to Big Memory object */
+    smem_bm_data_op_type dataOpType;  /* if tag or tagOpInfo is empty, use dataOpType */
+    uint32_t flags;                   /* optional flags, default 0 */
+    char tag[32];                     /* tag of bm, eg:tag_1 */
+    char tagOpInfo[256];              /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
+} smem_bm_create_option_t;
+
+typedef struct {
     const void *src;
     void *dest;
     size_t dataSize;

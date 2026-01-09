@@ -31,6 +31,7 @@ struct EntityExportInfo {
     uint16_t role{0};
     uint32_t reserved{0};
     char nic[64]{};
+    char tag[32]{};
 };
 struct SliceExportTransportKey {
     uint64_t magic;
@@ -97,29 +98,31 @@ private:
     Result InitDramSegment();
     Result InitTransManager();
     Result InitDataOperator();
+    Result InitTagManager();
 
     void ReleaseResources();
     int32_t SetThreadAclDevice();
     int32_t ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t flags);
+    int32_t ImportForTagManager();
+    int32_t ImportForTransportManager();
     int32_t ImportForTransportPrecheck(const ExchangeInfoReader *desc, uint32_t &count, bool &importInfoEntity);
 
 private:
     static thread_local bool isSetDevice_;
-    bool initialized;
+    bool initialized_{false};
     const int32_t id_; /* id of the engine */
     hybm_options options_{};
     void *hbmGva_{nullptr};
     void *dramGva_{nullptr};
     std::shared_ptr<MemSegment> hbmSegment_{nullptr};
     std::shared_ptr<MemSegment> dramSegment_{nullptr};
-    std::shared_ptr<DataOperator> sdmaDataOperator_;
-    std::shared_ptr<DataOperator> devRdmaDataOperator_;
-    std::shared_ptr<DataOperator> hostRdmaDataOperator_;
-    bool transportPrepared{false};
+    std::shared_ptr<DataOperator> dataOperator_;
+    bool transportPrepared_{false};
     std::mutex importMutex_;
     transport::TransManagerPtr transportManager_;
     std::unordered_map<uint32_t, EntityExportInfo> importedRanks_;
     std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> importedMemories_;
+    HybmEntityTagInfoPtr tagManager_;
 };
 using EngineImplPtr = std::shared_ptr<MemEntityDefault>;
 } // namespace mf

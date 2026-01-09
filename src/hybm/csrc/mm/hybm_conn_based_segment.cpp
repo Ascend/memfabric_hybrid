@@ -21,13 +21,13 @@ using namespace ock::mf;
 
 Result HybmConnBasedSegment::ValidateOptions() noexcept
 {
-    if (options_.segType != HYBM_MST_DRAM || options_.size == 0 || (options_.size % HYBM_LARGE_PAGE_SIZE) != 0) {
-        BM_LOG_ERROR("Validate options error type(" << options_.segType << ") size(" << options_.size);
+    if (options_.segType != HYBM_MST_DRAM || options_.maxSize == 0 || (options_.maxSize % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("Validate options error type(" << options_.segType << ") size(" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
-    if (UINT64_MAX / options_.size < options_.rankCnt) {
-        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.size);
+    if (UINT64_MAX / options_.maxSize < options_.rankCnt) {
+        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
@@ -40,7 +40,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
 
-    uint64_t totalSize = options_.rankCnt * options_.size;
+    uint64_t totalSize = options_.rankCnt * options_.maxSize;
     if (totalSize > HYBM_HOST_CONN_ADDR_SIZE) {
         BM_LOG_ERROR("Failed to reserve size:" << totalSize << " total:" << HYBM_HOST_CONN_ADDR_SIZE);
         return BM_INVALID_PARAM;
@@ -58,7 +58,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     }
     globalVirtualAddress_ = (uint8_t *)startAddr;
     totalVirtualSize_ = totalSize;
-    localVirtualBase_ = globalVirtualAddress_ + options_.size * options_.rankId;
+    localVirtualBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
     *address = globalVirtualAddress_;
@@ -88,23 +88,26 @@ void HybmConnBasedSegment::LvaShmReservePhysicalMemory(void *mappedAddress, uint
     *pos = 0;
 }
 
-Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept
 {
-    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.maxSize) {
         BM_LOG_ERROR("invalid allocate memory size : " << size << ", now used " << allocatedSize_ << " of "
-                                                       << options_.size);
+                                                       << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
-    void *mapped =
-        mmap(sliceAddr, size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
-    if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)sliceAddr) {
-        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << mapped << " error:" << errno
-                                             << ", " << SafeStrError(errno));
-        return BM_ERROR;
+    void *mapped = nullptr;
+    if (size > 0) {
+        mapped =
+            mmap(sliceAddr, size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+        if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)sliceAddr) {
+            BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << mapped <<
+                " error:" << errno << ", " << SafeStrError(errno));
+            return BM_ERROR;
+        }
+        LvaShmReservePhysicalMemory(sliceAddr, size);
     }
-    LvaShmReservePhysicalMemory(sliceAddr, size);
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
@@ -126,7 +129,7 @@ Result HybmConnBasedSegment::Export(std::string &exInfo) noexcept
     return BM_OK;
 }
 
-Result HybmConnBasedSegment::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result HybmConnBasedSegment::Export(const MemSlicePtr &slice, std::string &exInfo) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");
@@ -180,18 +183,6 @@ Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, v
         }
     }
 
-    uint32_t localIdx = UINT32_MAX;
-    for (auto i = 0U; i < deserializedInfos.size(); i++) {
-        if (deserializedInfos[i].magic != DRAM_SLICE_EXPORT_INFO_MAGIC) {
-            BM_LOG_ERROR("import info(" << i << ") magic(" << deserializedInfos[i].magic << ") invalid.");
-            return BM_INVALID_PARAM;
-        }
-
-        if (deserializedInfos[i].rankId == options_.rankId) {
-            localIdx = i;
-        }
-    }
-    BM_ASSERT_RETURN(localIdx < deserializedInfos.size(), BM_INVALID_PARAM);
     try {
         std::copy(deserializedInfos.begin(), deserializedInfos.end(), std::back_inserter(imports_));
     } catch (...) {
@@ -230,7 +221,7 @@ Result HybmConnBasedSegment::Unmap() noexcept
     return 0;
 }
 
-std::shared_ptr<MemSlice> HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);
@@ -267,7 +258,8 @@ bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
         rankId = options_.rankId;
         return false;
     } else {
-        rankId = (reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(globalVirtualAddress_)) / options_.size;
+        auto rankSize = options_.maxSize;
+        rankId = (reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(globalVirtualAddress_)) / rankSize;
         return true;
     }
 }
@@ -275,7 +267,7 @@ bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
 void HybmConnBasedSegment::FreeMemory() noexcept
 {
     if (localVirtualBase_ != nullptr) {
-        if (munmap(localVirtualBase_, options_.size) != 0) {
+        if (munmap(localVirtualBase_, allocatedSize_) != 0) {
             BM_LOG_ERROR("Failed to unmap local memory");
         }
         localVirtualBase_ = nullptr;
@@ -311,7 +303,7 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
     return BM_OK;
 }
 
-Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(addr), size);
@@ -319,7 +311,7 @@ Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, std
     return BM_OK;
 }
 
-Result HybmConnBasedSegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");

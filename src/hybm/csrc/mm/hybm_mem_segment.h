@@ -31,11 +31,11 @@ class MemSegment;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
 struct MemSliceStatus {
-    std::shared_ptr<MemSlice> slice;
+    MemSlicePtr slice;
     void *handle;
 
-    explicit MemSliceStatus(std::shared_ptr<MemSlice> s) noexcept : slice{std::move(s)}, handle(nullptr) {}
-    MemSliceStatus(std::shared_ptr<MemSlice> s, void *h) noexcept : slice{std::move(s)}, handle(h) {}
+    explicit MemSliceStatus(MemSlicePtr s) noexcept : slice{std::move(s)}, handle(nullptr) {}
+    MemSliceStatus(MemSlicePtr s, void *h) noexcept : slice{std::move(s)}, handle(h) {}
 };
 
 class MemSegment {
@@ -60,19 +60,19 @@ public:
      * Allocate memory according to segType
      * @return 0 if successful
      */
-    virtual Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
+    virtual Result AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept = 0;
 
     /*
      * register memory according to segType
      * @return 0 if successful
      */
-    virtual Result RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept = 0;
+    virtual Result RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept = 0;
 
     /*
      * release one slice
      * @return 0 if successful
      */
-    virtual Result ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept = 0;
+    virtual Result ReleaseSliceMemory(const MemSlicePtr &slice) noexcept = 0;
 
     /*
      * Export exchange info according to infoExType
@@ -80,7 +80,7 @@ public:
      */
     virtual Result Export(std::string &exInfo) noexcept = 0;
 
-    virtual Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept = 0;
+    virtual Result Export(const MemSlicePtr &slice, std::string &exInfo) noexcept = 0;
 
     virtual Result GetExportSliceSize(size_t &size) noexcept = 0;
 
@@ -108,7 +108,7 @@ public:
      */
     virtual Result Unmap() noexcept = 0;
 
-    virtual std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept = 0;
+    virtual MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept = 0;
 
     /*
      * check memery area in this segment

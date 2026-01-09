@@ -23,13 +23,13 @@ using namespace ock::mf;
 
 Result HybmVmmBasedSegment::ValidateOptions() noexcept
 {
-    if (options_.size == 0 || (options_.size % HYBM_LARGE_PAGE_SIZE) != 0) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.size);
+    if (options_.maxSize == 0 || (options_.maxSize % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
-    if (UINT64_MAX / options_.size < options_.rankCnt) {
-        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.size);
+    if (UINT64_MAX / options_.maxSize < options_.rankCnt) {
+        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
@@ -51,7 +51,7 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
     }
 
     void *base = nullptr;
-    totalVirtualSize_ = options_.rankCnt * options_.size;
+    totalVirtualSize_ = options_.rankCnt * options_.maxSize;
     if (totalVirtualSize_ > HYBM_GVM_END_ADDR) {
         BM_LOG_ERROR("reserve mem is too large! size: " << totalVirtualSize_);
         return BM_INVALID_PARAM;
@@ -139,17 +139,55 @@ Result HybmVmmBasedSegment::MallocFromDevice(size_t size, uint32_t devId, drv_me
     return DlHalApi::HalMemCreate(handle, size, &prop, 0);
 }
 
-Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmVmmBasedSegment::MallocEmptySlice(MemSlicePtr &slice) noexcept
 {
-    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
+    auto localVirtualBase = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    uint64_t allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
+    auto memType = options_.segType == HYBM_MST_HBM ? MEM_TYPE_DEVICE_HBM : MEM_TYPE_HOST_DRAM;
+    slice = std::make_shared<MemSlice>(sliceCount_++, memType, MEM_PT_TYPE_GVM, allocAddr, 0);
+    slices_.emplace(slice->index_, MemSliceStatus(slice, nullptr));
+    if (!options_.shared) {
+        BM_LOG_INFO("no need to share, skip export");
+        return BM_OK;
+    }
+    HostSdmaExportInfo info;
+    std::string exInfo;
+    info.devId = logicDeviceId_;
+    info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
+                                                     : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
+    info.version = EXPORT_INFO_VERSION;
+    info.vAddress = slice->vAddress_;
+    info.sliceIndex = static_cast<uint32_t>(slice->index_);
+    info.rankId = options_.rankId;
+    info.size = slice->size_;
+    info.sdid = sdid_;
+    info.serverId = serverId_;
+    info.superPodId = superPodId_;
+    auto ret = LiteralExInfoTranslater<HostSdmaExportInfo>{}.Serialize(info, exInfo);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("export info failed: " << ret);
+        return BM_ERROR;
+    }
+    BM_LOG_INFO("Success to export vmm segment info rank:" << info.rankId << " superPodId:"
+       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.devId
+       << " segType:" << options_.segType << " size:" << info.size);
+    exportMap_[slice->index_] = exInfo;
+    return BM_OK;
+}
+
+Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept
+{
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.maxSize) {
         BM_LOG_ERROR("invalid allocate memory size : " << size << ", now used " << allocatedSize_ << " of "
-                                                       << options_.size);
+                                                       << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
     BM_ASSERT_RETURN(globalVirtualAddress_ != nullptr, BM_NOT_INITIALIZED);
-
-    auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
+    if (size == 0) {
+        return MallocEmptySlice(slice);
+    }
+    auto localVirtualBase = globalVirtualAddress_ + options_.maxSize * options_.rankId;
     uint64_t allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
     drv_mem_handle_t *handle = nullptr;
     Result ret = BM_OK;
@@ -215,13 +253,13 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemS
     return BM_OK;
 }
 
-Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     BM_LOG_INFO("HybmVmmBasedSegment: RegisterMemory success, size: " << size << " addr: " << std::hex << addr);
     return BM_OK;
 }
 
-Result HybmVmmBasedSegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmVmmBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcept
 {
     BM_VALIDATE_RETURN(slice != nullptr, "input slice is nullptr", BM_INVALID_PARAM);
 
@@ -251,7 +289,7 @@ Result HybmVmmBasedSegment::Export(std::string &exInfo) noexcept
     return BM_OK;
 }
 
-Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, MemShareHandle &sHandle) noexcept
+Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle &sHandle) noexcept
 {
     if (!options_.shared) {
         BM_LOG_INFO("no need to share, skip export");
@@ -279,7 +317,8 @@ Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, 
     BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
 
     info.devId = logicDeviceId_;
-    info.magic = (options_.segType == HYBM_MST_DRAM) ? DRAM_SLICE_EXPORT_INFO_MAGIC : HBM_SLICE_EXPORT_INFO_MAGIC;
+    info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
+                                                     : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.vAddress = slice->vAddress_;
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
@@ -294,12 +333,15 @@ Result HybmVmmBasedSegment::ExportInner(const std::shared_ptr<MemSlice> &slice, 
         return BM_ERROR;
     }
 
+    BM_LOG_INFO("Success to export vmm segment info rank:" << info.rankId << " superPodId:"
+       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.devId
+       << " segType:" << options_.segType << " size:" << info.size);
     exportMap_[slice->index_] = exInfo;
     sHandle = info.shareHandle;
     return BM_OK;
 }
 
-Result HybmVmmBasedSegment::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result HybmVmmBasedSegment::Export(const MemSlicePtr &slice, std::string &exInfo) noexcept
 {
     BM_ASSERT_RETURN(slice != nullptr, BM_INVALID_PARAM);
     if (!options_.shared) {
@@ -334,29 +376,38 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
     }
     LiteralExInfoTranslater<HostSdmaExportInfo> translator;
     uint64_t exportMagic =
-        (options_.segType == HYBM_MST_DRAM) ? DRAM_SLICE_EXPORT_INFO_MAGIC : HBM_SLICE_EXPORT_INFO_MAGIC;
-    std::vector<HostSdmaExportInfo> deserializedInfos{allExInfo.size()};
+        (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC :
+        VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
+    std::vector<HostSdmaExportInfo> deserializedInfos;
+    Result ret = BM_ERROR;
     for (auto i = 0U; i < allExInfo.size(); i++) {
-        auto ret = translator.Deserialize(allExInfo[i], deserializedInfos[i]);
+        HostSdmaExportInfo info{};
+        ret = translator.Deserialize(allExInfo[i], info);
         if (ret != 0) {
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
-
-        if (deserializedInfos[i].magic != exportMagic) {
-            BM_LOG_ERROR("import info(" << i << ") magic(" << deserializedInfos[i].magic << ") invalid.");
-            return BM_INVALID_PARAM;
+        if (info.magic != exportMagic || info.size == 0) {
+            BM_LOG_WARN("import i(" << i << ") rank(" << info.rankId
+                << ") magic(" << info.magic << ") invalid skip it.");
+            continue;
         }
-        if (options_.segType == HYBM_MST_HBM && deserializedInfos[i].rankId != options_.rankId &&
-            CanLocalHostReaches(deserializedInfos[i].superPodId, deserializedInfos[i].serverId,
-                                deserializedInfos[i].devId)) {
-            ret = DlAclApi::RtEnableP2P(deviceId_, deserializedInfos[i].devId, 0);
+        deserializedInfos.push_back(info);
+    }
+
+    for (const auto &info: deserializedInfos) {
+        if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
+            CanLocalHostReaches(info.superPodId, info.serverId,
+                                info.devId)) {
+            ret = DlAclApi::RtEnableP2P(deviceId_, info.devId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                                                            << " remote_device:" << (int)deserializedInfos[i].devId);
+                                                            << " remote_device:" << (int)info.devId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
+        BM_LOG_INFO("Success to import rank:" << info.rankId << " superPodId:" << info.superPodId << " serverId:"
+            << info.serverId << " devId:" << info.devId << " segType:" << options_.segType  << " size:" << info.size);
     }
 
     try {
@@ -397,9 +448,9 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped: " << (void *)remoteAddress);
             continue;
         }
-
-        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to: " << (void *)remoteAddress
-                                             << ", size = " << im.size);
+        BM_LOG_INFO("Try to mmap rank:" << im.rankId << " superPodId:" << im.superPodId << " serverId:"
+                                        << im.serverId << " devId:" << im.devId << " segType:" << options_.segType
+                                        << " size:" << im.size << " addr:" << std::hex << remoteAddress);
         drv_mem_handle_t *handle = nullptr;
         auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
         BM_VALIDATE_RETURN(
@@ -408,7 +459,8 @@ Result HybmVmmBasedSegment::Mmap() noexcept
 
         ret = DlHalApi::HalMemMap(reinterpret_cast<void *>(remoteAddress), im.size, 0, handle, 0);
         if (ret != BM_OK) {
-            BM_LOG_ERROR("HalMemMap memory failed:" << ret);
+            BM_LOG_ERROR("HalMemMap memory failed:" << ret << " addr:" << std::hex << remoteAddress
+                << " size:" << im.size);
             DlHalApi::HalMemRelease(handle);
             return BM_ERROR;
         }
@@ -448,10 +500,10 @@ Result HybmVmmBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) n
     }
 
     for (auto &rank : ranks) {
-        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.size * rank;
+        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
-        while (it != mappedMem_.end() && (*it).first < addr + options_.size) {
+        while (it != mappedMem_.end() && (*it).first < addr + options_.maxSize) {
             DlHalApi::HalMemUnmap(reinterpret_cast<void *>((*it).first));
             DlHalApi::HalMemRelease((*it).second);
             HybmVaManager::GetInstance().RemoveOneVaInfo((*it).first);
@@ -465,7 +517,7 @@ Result HybmVmmBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) n
     return BM_OK;
 }
 
-std::shared_ptr<MemSlice> HybmVmmBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmVmmBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);
@@ -501,7 +553,7 @@ bool HybmVmmBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint3
         return false;
     } else {
         uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
-        rankId = offset / options_.size;
+        rankId = offset / options_.maxSize;
         return true;
     }
 }

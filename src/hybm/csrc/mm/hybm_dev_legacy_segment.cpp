@@ -30,14 +30,14 @@ namespace ock {
 namespace mf {
 Result HybmDevLegacySegment::ValidateOptions() noexcept
 {
-    if (options_.segType != HYBM_MST_HBM || options_.size == 0 || options_.devId < 0 ||
-        (options_.size % HYBM_LARGE_PAGE_SIZE) != 0) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.size);
+    if (options_.segType != HYBM_MST_HBM || options_.maxSize == 0 || options_.devId < 0 ||
+        (options_.maxSize % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
-    if (UINT64_MAX / options_.size < options_.rankCnt) {
-        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.size);
+    if (UINT64_MAX / options_.maxSize < options_.rankCnt) {
+        BM_LOG_ERROR("Validate options error rankCnt(" << options_.rankCnt << ") size(" << options_.maxSize);
         return BM_INVALID_PARAM;
     }
     return BM_OK;
@@ -53,7 +53,7 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_RETURN(address != nullptr, BM_INVALID_PARAM);
 
     uint64_t base = 0;
-    totalVirtualSize_ = options_.rankCnt * options_.size;
+    totalVirtualSize_ = options_.rankCnt * options_.maxSize;
     auto ret = drv::HalGvaReserveMemory(&base, totalVirtualSize_, logicDeviceId_, 0ULL);
     if (ret != 0 || base == 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
@@ -74,19 +74,21 @@ Result HybmDevLegacySegment::UnReserveMemorySpace() noexcept
     return BM_OK;
 }
 
-Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept
 {
-    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.size) {
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0UL || size + allocatedSize_ > options_.maxSize) {
         BM_LOG_ERROR("invalid allocate memory size : " << size << ", now used " << allocatedSize_ << " of "
-                                                       << options_.size);
+                                                       << options_.maxSize);
         return BM_INVALID_PARAM;
     }
 
-    auto localVirtualBase = globalVirtualAddress_ + options_.size * options_.rankId;
-    auto ret = drv::HalGvaAlloc((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
-        return BM_DL_FUNCTION_FAILED;
+    auto localVirtualBase = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    if (size > 0) {
+        auto ret = drv::HalGvaAlloc((uint64_t)(localVirtualBase + allocatedSize_), size, 0);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("HalGvaAlloc memory failed: " << ret);
+            return BM_DL_FUNCTION_FAILED;
+        }
     }
 
     auto sliceAddr = localVirtualBase + allocatedSize_;
@@ -95,8 +97,8 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
-    ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE, slice->vAddress_},
-                                                 options_.rankId);
+    auto ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE, slice->vAddress_},
+                                                      options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
         drv::HalGvaFree(slice->vAddress_, size);
@@ -106,14 +108,14 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, std::shared_ptr<Mem
     return BM_OK;
 }
 
-Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(addr), size);
     return BM_OK;
 }
 
-Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept
+Result HybmDevLegacySegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcept
 {
     if (slice == nullptr) {
         BM_LOG_ERROR("input slice is nullptr");
@@ -145,7 +147,7 @@ Result HybmDevLegacySegment::Export(std::string &exInfo) noexcept
 }
 
 // export不可重入
-Result HybmDevLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept
+Result HybmDevLegacySegment::Export(const MemSlicePtr &slice, std::string &exInfo) noexcept
 {
     BM_ASSERT_RETURN(slice != nullptr, BM_INVALID_PARAM);
 
@@ -167,9 +169,12 @@ Result HybmDevLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std:
     }
 
     HbmExportInfo info{};
-    auto ret = DlAclApi::RtIpcSetMemoryName((void *)(ptrdiff_t)slice->vAddress_, slice->size_, info.shmName,
-                                            sizeof(info.shmName));
-    BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret);
+    if (slice->size_ > 0) {
+        auto ret = DlAclApi::RtIpcSetMemoryName((void *)(ptrdiff_t)slice->vAddress_, slice->size_, info.shmName,
+                                                sizeof(info.shmName));
+        BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "set memory name failed: " << ret << " addr:"
+            << std::hex << slice->vAddress_ << " size:" << slice->size_);
+    }
 
     info.vAddress = slice->vAddress_;
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
@@ -185,7 +190,7 @@ Result HybmDevLegacySegment::Export(const std::shared_ptr<MemSlice> &slice, std:
     info.pageTblType = MEM_PT_TYPE_SVM;
     info.memSegType = HYBM_MST_HBM;
     info.exchangeType = HYBM_INFO_EXG_IN_NODE;
-    ret = LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
+    auto ret = LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
         DlAclApi::RtIpcDestroyMemoryName(info.shmName);
@@ -207,35 +212,32 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
 {
     std::map<uint16_t, HbmExportInfo> importMap;
     LiteralExInfoTranslater<HbmExportInfo> translator;
-    std::vector<HbmExportInfo> desInfos(allExInfo.size());
+    std::vector<HbmExportInfo> desInfos{};
+    uint32_t localIdx = UINT32_MAX;
     for (auto i = 0U; i < allExInfo.size(); i++) {
-        auto ret = translator.Deserialize(allExInfo[i], desInfos[i]);
+        HbmExportInfo info{};
+        auto ret = translator.Deserialize(allExInfo[i], info);
         if (ret != 0) {
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
-        importMap.emplace(desInfos[i].rankId, desInfos[i]);
+        if (info.magic != HBM_SLICE_EXPORT_INFO_MAGIC) {
+            BM_LOG_INFO("import rank(" << info.rankId <<  ") magic(" << info.magic << ") invalid skip it.");
+            continue;
+        }
+        if (info.rankId == options_.rankId) {
+            localIdx = desInfos.size();
+        }
+        importMap.emplace(info.rankId, info);
+        desInfos.push_back(std::move(info));
     }
     importMap_ = std::move(importMap);
-
-    uint32_t localIdx = UINT32_MAX;
-    for (auto i = 0U; i < desInfos.size(); i++) {
-        if (desInfos[i].magic != HBM_SLICE_EXPORT_INFO_MAGIC) {
-            BM_LOG_ERROR("import info(" << i << ") magic(" << desInfos[i].magic << ") invalid.");
-            return BM_INVALID_PARAM;
-        }
-
-        if (desInfos[i].rankId == options_.rankId) {
-            localIdx = i;
-        }
-    }
     BM_ASSERT_RETURN(localIdx < desInfos.size(), BM_INVALID_PARAM);
 
     for (auto i = 0U; i < desInfos.size(); i++) {
         if (desInfos[i].rankId == options_.rankId) {
             continue;
         }
-
         if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
             auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
@@ -251,13 +253,15 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
             continue;
         }
 
-        auto ret =
-            DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid, &desInfos[i].pid, 1);
-        if (ret != 0) {
-            BM_LOG_ERROR("enable white list for rank(" << desInfos[i].rankId << ") failed: " << ret
-                                                       << ", local rank = " << options_.rankId
-                                                       << ", shmName=" << desInfos[localIdx].shmName);
-            return BM_DL_FUNCTION_FAILED;
+        if (options_.size > 0) {
+            auto ret =
+                DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid, &desInfos[i].pid, 1);
+            if (ret != 0) {
+                BM_LOG_ERROR("enable white list for rank(" << desInfos[i].rankId << ") failed: " << ret
+                                                           << ", local rank = " << options_.rankId
+                                                           << ", shmName=" << desInfos[localIdx].shmName);
+                return BM_DL_FUNCTION_FAILED;
+            }
         }
     }
     for (const auto &info : desInfos) {
@@ -282,6 +286,11 @@ Result HybmDevLegacySegment::Mmap() noexcept
             continue;
         }
 
+        if (im.size == 0) {
+            BM_LOG_INFO("mmap rank(" << im.rankId <<  ") size(" << im.size << ") invalid skip it.");
+            continue;
+        }
+
         auto remoteAddress = im.vAddress;
         if (mappedMem_.find((uint64_t)remoteAddress) != mappedMem_.end()) {
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped");
@@ -292,7 +301,8 @@ Result HybmDevLegacySegment::Mmap() noexcept
             continue;
         }
 
-        BM_LOG_DEBUG("remote slice on rank(" << im.rankId << ") should map to" << ", size = " << im.size);
+        BM_LOG_INFO("remote slice on rank(" << im.rankId << ") should map addr:" << std::hex
+            << (void*) remoteAddress << ", size = " << im.size);
         auto ret = drv::HalGvaOpen((uint64_t)remoteAddress, im.shmName, im.size, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalGvaOpen memory failed:" << ret);
@@ -325,7 +335,7 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
     }
 
     for (auto &rank : ranks) {
-        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.size * rank;
+        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
         while (it != mappedMem_.end() && (*it) < addr + options_.size) {
@@ -341,7 +351,7 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
     return 0;
 }
 
-std::shared_ptr<MemSlice> HybmDevLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmDevLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);
@@ -402,7 +412,7 @@ bool HybmDevLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
         return false;
     } else {
         uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
-        rankId = offset / options_.size;
+        rankId = offset / options_.maxSize;
         return true;
     }
 }

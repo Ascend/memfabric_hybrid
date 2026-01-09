@@ -42,7 +42,7 @@ public:
 
 private:
     using DataOperators = std::vector<std::pair<std::string, DataOperatorPtr>>;
-    DataOperators GetAvailableOperators(const ExtOptions &options) noexcept;
+    DataOperators GetPrioritedDataOperators(const ExtOptions &options) noexcept;
 
 private:
     const hybm_options options_;

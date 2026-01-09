@@ -43,12 +43,13 @@ public:
     std::string GetTagByRank(uint32_t rankId);
     uint32_t GetTag2TagOpType(const std::string &tag1, const std::string &tag2);
     uint32_t GetRank2RankOpType(uint32_t rankId1, uint32_t rankId2);
+    uint32_t GetAllOpType();
+    static std::string GetOpTypeStr(hybm_data_op_type opType);
 
 private:
     Result AddOneTagOpInfo(const std::string &info);
 
 private:
-    hybm_options options_;
     std::shared_mutex mutex_;
     std::unordered_map<uint32_t, std::string> rankTagInfo_;
     std::unordered_map<std::string, uint32_t> tagOpInfo_;

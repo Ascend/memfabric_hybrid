@@ -16,6 +16,7 @@
 #include <memory>
 #include "hybm_types.h"
 #include "hybm_transport_common.h"
+#include "hybm_entity_tag_info.h"
 
 namespace ock {
 namespace mf {
@@ -23,7 +24,7 @@ namespace transport {
 
 class TransportManager {
 public:
-    static std::shared_ptr<TransportManager> Create(TransportType type);
+    static std::shared_ptr<TransportManager> Create(TransportType type, HybmEntityTagInfoPtr tagManager = nullptr);
 
 public:
     TransportManager() = default;
@@ -51,8 +52,6 @@ public:
     virtual bool QueryHasRegistered(uint64_t addr, uint64_t size) = 0;
 
     virtual Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) = 0;
-
-    virtual Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) = 0;
 
     /*
      * 3、建链前的准备工作

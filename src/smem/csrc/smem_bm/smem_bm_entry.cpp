@@ -64,7 +64,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
 
         bzero(&hbmSliceInfo_, sizeof(hybm_exchange_info));
-        if (options.deviceVASpace > 0) {
+        if (options.maxHBMSize > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_DEVICE, options.deviceVASpace, flags);
             if (slice == nullptr) {
                 SM_LOG_ERROR("alloc local device mem failed, size: " << options.deviceVASpace);
@@ -81,7 +81,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
 
         slice_ = slice;
         bzero(&dramSliceInfo_, sizeof(hybm_exchange_info));
-        if (options.hostVASpace > 0) {
+        if (options.maxDRAMSize > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_HOST, options.hostVASpace, flags);
             if (slice == nullptr) {
                 SM_LOG_ERROR("alloc local host mem failed, size: " << options.hostVASpace);
@@ -153,6 +153,10 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
+    if ((ret = ExchangeEntityForJoin()) != SM_OK) {
+        return ret;
+    }
+
     if ((ret = ExchangeSliceForJoin(hbmSliceInfo_)) != SM_OK) {
         return ret;
     }
@@ -165,10 +169,6 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     if (ret != 0) {
         SM_LOG_ERROR("hybm mmap failed, result: " << ret);
         return SM_ERROR;
-    }
-
-    if ((ret = ExchangeEntityForJoin()) != SM_OK) {
-        return ret;
     }
 
     globalGroup_->SetBitmapFromRanks(allRanks);
@@ -420,20 +420,7 @@ bool SmemBmEntry::AddrInHostGva(const void *address, uint64_t size)
         return false;
     }
 
-    if (coreOptions_.hostVASpace >
-        std::numeric_limits<uint64_t>::max() / static_cast<uint64_t>(coreOptions_.rankCount)) {
-        return false;
-    }
-    auto totalSize = coreOptions_.hostVASpace * coreOptions_.rankCount;
-    uintptr_t addrVal = reinterpret_cast<uintptr_t>(address);
-    uintptr_t hostVal = reinterpret_cast<uintptr_t>(hostGva_);
-    if (size > std::numeric_limits<uintptr_t>::max() - addrVal) {
-        return false;
-    }
-    if (totalSize > std::numeric_limits<uintptr_t>::max() - hostVal) {
-        return false;
-    }
-
+    auto totalSize = coreOptions_.maxDRAMSize * coreOptions_.rankCount;
     if ((const uint8_t *)address + size > (const uint8_t *)hostGva_ + totalSize) {
         return false;
     }
@@ -451,7 +438,7 @@ bool SmemBmEntry::AddrInDeviceGva(const void *address, uint64_t size)
         return false;
     }
 
-    auto totalSize = coreOptions_.deviceVASpace * coreOptions_.rankCount;
+    auto totalSize = coreOptions_.maxHBMSize * coreOptions_.rankCount;
     if ((const uint8_t *)address + size > (const uint8_t *)deviceGva_ + totalSize) {
         return false;
     }

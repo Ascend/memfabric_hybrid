@@ -18,9 +18,13 @@ namespace mf {
 
 Result HybmEntityTagInfo::TagInfoInit(hybm_options option)
 {
-    options_ = std::move(option);
-    rankTagInfo_.reserve(options_.rankCount);
-    auto ret = AddTagOpInfo(option.tagOpInfo);
+    rankTagInfo_.reserve(option.rankCount);
+    auto ret = AddRankTag(option.rankId, option.tag);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Failed to add rankId:" << option.rankId << " tag:" << option.tag);
+        return ret;
+    }
+    ret = AddTagOpInfo(option.tagOpInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to add tagOpInfo:" << option.tagOpInfo);
         return ret;
@@ -30,6 +34,10 @@ Result HybmEntityTagInfo::TagInfoInit(hybm_options option)
 
 Result HybmEntityTagInfo::AddRankTag(uint32_t rankId, const std::string &tag)
 {
+    if (tag.empty()) {
+        BM_LOG_WARN("Add an empty tag for rankId:" << rankId);
+        return BM_OK;
+    }
     static const std::regex tagPattern(R"(^[a-zA-Z0-9_]{1,30}$)");
     std::smatch match;
     if (!std::regex_match(tag, match, tagPattern)) {
@@ -37,7 +45,8 @@ Result HybmEntityTagInfo::AddRankTag(uint32_t rankId, const std::string &tag)
         return BM_INVALID_PARAM;
     }
     std::unique_lock lock(mutex_);
-    rankTagInfo_[rankId] = std::move(tag);
+    rankTagInfo_[rankId] = tag;
+    BM_LOG_INFO("Success to add tag:" << tag << " rankId:" << rankId);
     return BM_OK;
 }
 
@@ -45,11 +54,12 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
 {
     // tag:opType:tag
     static const std::regex tagOpInfoPattern(R"(^([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12}):([a-zA-Z0-9_]{1,30})$)");
-    static const std::map<std::string, hybm_data_op_type> opTypeMap = {
+    static const std::map<std::string, hybm_data_op_type> str2OpTypeMap = {
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
         {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA},
     };
+
     std::smatch match;
     if (!std::regex_match(tagOpInfo, match, tagOpInfoPattern)) {
         BM_LOG_ERROR("Failed to check tagOpInfo:"
@@ -60,8 +70,8 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     auto tag1 = match[1].str();
     auto opTypeStr = match[2].str();
     auto tag2 = match[3].str();
-    auto it = opTypeMap.find(opTypeStr);
-    if (it == opTypeMap.end()) {
+    auto it = str2OpTypeMap.find(opTypeStr);
+    if (it == str2OpTypeMap.end()) {
         BM_LOG_ERROR("Failed to check opType:"
                      << opTypeStr << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)");
         return BM_INVALID_PARAM;
@@ -70,11 +80,16 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     auto key = tag1 + ":" + tag2;
     std::unique_lock lock(mutex_);
     tagOpInfo_[key] = (opType | it->second);
+    BM_LOG_INFO("Success to update tag1:" << tag1 << " tag2:" << tag2 << " op:" << tagOpInfo_[key]);
     return BM_OK;
 }
 
 Result HybmEntityTagInfo::AddTagOpInfo(const std::string &tagOpInfo)
 {
+    if (tagOpInfo.empty()) {
+        BM_LOG_WARN("Add an empty tagOpInfo.");
+        return BM_OK;
+    }
     // tag:opType:tag,tag:opType:tag,tag:opType:tag
     auto tagOpInfoVec = StrUtil::Split(tagOpInfo, ',');
     for (const auto &item : tagOpInfoVec) {
@@ -128,7 +143,7 @@ uint32_t HybmEntityTagInfo::GetTag2TagOpType(const std::string &tag1, const std:
     if (it != tagOpInfo_.end()) {
         return it->second;
     }
-    BM_LOG_ERROR("Failed to find opType tag1:" << tag1 << " tag2:" << tag2);
+    BM_LOG_ERROR("Failed to get opType from tag1:" << tag1 << " to tag2:" << tag2);
     return HYBM_DOP_TYPE_DEFAULT;
 }
 
@@ -147,6 +162,29 @@ uint32_t HybmEntityTagInfo::GetRank2RankOpType(uint32_t rankId1, uint32_t rankId
     }
     auto tag2 = it->second;
     return GetTag2TagOpType(tag1, tag2);
+}
+
+uint32_t HybmEntityTagInfo::GetAllOpType()
+{
+    uint32_t opSet = 0;
+    for (const auto &item: tagOpInfo_) {
+        opSet |= item.second;
+    }
+    return opSet;
+}
+
+std::string HybmEntityTagInfo::GetOpTypeStr(hybm_data_op_type opType)
+{
+    static const std::map<hybm_data_op_type, std::string> opType2StrMap = {
+        {HYBM_DOP_TYPE_SDMA, "DEVICE_SDMA"},    {HYBM_DOP_TYPE_DEVICE_RDMA, "DEVICE_RDMA"},
+        {HYBM_DOP_TYPE_HOST_RDMA, "HOST_RDMA"}, {HYBM_DOP_TYPE_HOST_TCP, "HOST_TCP"},
+        {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"},
+    };
+    auto it = opType2StrMap.find(opType);
+    if (it != opType2StrMap.end()) {
+        return it->second;
+    }
+    return "OP_TYPE_BUTT";
 }
 
 } // namespace mf

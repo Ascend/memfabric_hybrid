@@ -157,7 +157,11 @@ Result HcomTransportManager::CloseDevice()
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0 && (mr.flags & transport::REG_MR_FLAG_DRAM), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    if (mr.flags != transport::REG_MR_FLAG_DRAM) {
+        BM_LOG_WARN("Only support register dram memory skip flag:" << mr.flags);
+        return BM_OK;
+    }
 
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
@@ -208,7 +212,10 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0 && (mr.flags & transport::REG_MR_FLAG_DRAM), BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    if (mr.flags != transport::REG_MR_FLAG_DRAM) {
+        return BM_OK;
+    }
 
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
@@ -288,20 +295,7 @@ Result HcomTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     CopyHcomOneSideKey(mrInfo.lKey, hostKey.hostKey.hcomInfo.lKey);
     hostKey.hostKey.hcomInfo.size = mrInfo.size;
     key = hostKey.commonKey;
-    return BM_OK;
-}
-
-Result HcomTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size)
-{
-    RegMemoryKeyUnion keyUnion{};
-    keyUnion.commonKey = key;
-    if (keyUnion.hostKey.type != TT_HCOM) {
-        BM_LOG_ERROR("parse key type invalid: " << keyUnion.hostKey.type);
-        return BM_ERROR;
-    }
-
-    addr = keyUnion.hostKey.hcomInfo.lAddress;
-    size = keyUnion.hostKey.hcomInfo.size;
+    BM_LOG_INFO("Success to query memory key addr:" << std::hex << mrInfo.addr << " size:" << mrInfo.size);
     return BM_OK;
 }
 
@@ -320,27 +314,9 @@ Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)
         auto rankId = item.first;
         auto nic = item.second.nic;
         nics_[rankId] = nic;
-
-        RegMemoryKeyUnion keyUnion{};
-        keyUnion.commonKey = item.second.memKeys[0];
-        HcomMemoryRegion mrInfo{};
-        mrInfo.addr = keyUnion.hostKey.hcomInfo.lAddress;
-        mrInfo.size = keyUnion.hostKey.hcomInfo.size;
-        if (rankId != rankId_ && (bmOptype_ & HYBM_DOP_TYPE_HOST_URMA)) {
-            auto ret =
-                DlHcomApi::ImportUrmaSegFunc(rpcService_, mrInfo.addr, mrInfo.size, &keyUnion.hostKey.hcomInfo.lKey);
-            BM_ASSERT_RETURN(ret == 0, ret);
-            BM_LOG_DEBUG("hcom returned, tokens: " << keyUnion.hostKey.hcomInfo.lKey.tokens[0]);
-        }
-        CopyHcomOneSideKey(keyUnion.hostKey.hcomInfo.lKey, mrInfo.lKey);
-        {
-            std::unique_lock<std::mutex> lock(mrMutex_[rankId]);
-            mrs_[rankId].push_back(mrInfo);
-        }
-        BM_LOG_DEBUG("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0]
-                                                             << ", rankId: " << rankId);
     }
-    return BM_OK;
+
+    return UpdateRankMrInfos(options);
 }
 
 Result HcomTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRanks)
@@ -383,25 +359,30 @@ Result HcomTransportManager::UpdateRankMrInfos(const std::unordered_map<uint32_t
         if (rankId == rankId_) {
             continue;
         }
-        RegMemoryKeyUnion keyUnion{};
-        keyUnion.commonKey = item.second.memKeys[0];
-        HcomMemoryRegion mrInfo{};
-        mrInfo.addr = keyUnion.hostKey.hcomInfo.lAddress;
-        mrInfo.size = keyUnion.hostKey.hcomInfo.size;
-        if (rankId != rankId_ && (bmOptype_ & HYBM_DOP_TYPE_HOST_URMA)) {
-            auto ret =
-                DlHcomApi::ImportUrmaSegFunc(rpcService_, mrInfo.addr, mrInfo.size, &keyUnion.hostKey.hcomInfo.lKey);
-            BM_ASSERT_RETURN(ret == 0, ret);
-            BM_LOG_DEBUG("hcom returned, tokens: " << keyUnion.hostKey.hcomInfo.lKey.tokens[0]);
+        for (const auto &memKey: item.second.memKeys) {
+            RegMemoryKeyUnion keyUnion{};
+            keyUnion.commonKey = memKey;
+            HcomMemoryRegion mrInfo{};
+            mrInfo.addr = keyUnion.hostKey.hcomInfo.lAddress;
+            mrInfo.size = keyUnion.hostKey.hcomInfo.size;
+            if (mrInfo.size == 0) {
+                continue;
+            }
+            if (rankId != rankId_ && (bmOptype_ & HYBM_DOP_TYPE_HOST_URMA)) {
+                auto ret = DlHcomApi::ImportUrmaSegFunc(rpcService_, mrInfo.addr, mrInfo.size,
+                                                        &keyUnion.hostKey.hcomInfo.lKey);
+                BM_ASSERT_RETURN(ret == 0, ret);
+                BM_LOG_DEBUG("hcom returned, tokens: " << keyUnion.hostKey.hcomInfo.lKey.tokens[0]);
+            }
+            CopyHcomOneSideKey(keyUnion.hostKey.hcomInfo.lKey, mrInfo.lKey);
+            {
+                std::unique_lock<std::mutex> lock(mrMutex_[rankId]);
+                mrs_[rankId].clear();
+                mrs_[rankId].push_back(mrInfo);
+            }
+            BM_LOG_INFO("Success to register to mr info rankId: " << rankId << " size: " << mrInfo.size
+                                                                  << " lKey: " << mrInfo.lKey.keys[0]);
         }
-        CopyHcomOneSideKey(keyUnion.hostKey.hcomInfo.lKey, mrInfo.lKey);
-        {
-            std::unique_lock<std::mutex> lock(mrMutex_[rankId]);
-            mrs_[rankId].clear();
-            mrs_[rankId].push_back(mrInfo);
-        }
-        BM_LOG_DEBUG("Success to register to mr info rankId: " << rankId << " size: " << mrInfo.size
-                                                               << " lKey: " << mrInfo.lKey.keys[0]);
     }
     return BM_OK;
 }

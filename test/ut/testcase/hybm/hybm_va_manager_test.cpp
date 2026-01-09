@@ -121,8 +121,6 @@ TEST_F(HybmVaManagerTest, AddRegisterVaInfo_ZeroParameters_ReturnsInvalidParam)
     EXPECT_TRUE(
         manager.AddVaInfoFromExternal({TEST_GVA_BASE_HOST, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_SIZE_ZERO},
                                       TEST_RANK_ZERO) == BM_OK);
-    EXPECT_TRUE(manager.AddVaInfoFromExternal({TEST_GVA_BASE_HOST, TEST_SIZE_ZERO, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
-                                              TEST_RANK_ZERO) != BM_OK);
 }
 
 // 测试4: AddVaInfoFromExternal 地址重叠

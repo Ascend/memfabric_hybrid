@@ -30,11 +30,13 @@ namespace transport {
 constexpr uint32_t REG_MR_FLAG_DRAM = 0x1U;
 constexpr uint32_t REG_MR_FLAG_HBM = 0x2U;
 constexpr uint32_t REG_MR_FLAG_SELF = 0x4U;
+constexpr uint32_t REG_MR_FLAG_ACL_DRAM = 0x8U;
 
 constexpr int32_t REG_MR_ACCESS_FLAG_LOCAL_WRITE = 0x1;
 constexpr int32_t REG_MR_ACCESS_FLAG_REMOTE_WRITE = 0x2;
 constexpr int32_t REG_MR_ACCESS_FLAG_REMOTE_READ = 0x4;
 constexpr int32_t REG_MR_ACCESS_FLAG_BOTH_READ_WRITE = 0x7;
+constexpr uint32_t KEY_SIZE = 14;
 
 enum TransportType {
     TT_HCCP = 0,
@@ -75,8 +77,28 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 }
 
 struct TransportMemoryKey {
-    uint64_t keys[14];
+    uint64_t keys[KEY_SIZE * 2];
 };
+
+inline void ReadDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys, KEY_SIZE, output.keys);
+}
+
+inline void ReadHcomMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys + KEY_SIZE, KEY_SIZE, output.keys);
+}
+
+inline void WriteDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys, KEY_SIZE, output.keys);
+}
+
+inline void WriteHcomMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys, KEY_SIZE, output.keys + KEY_SIZE);
+}
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryKey &key)
 {

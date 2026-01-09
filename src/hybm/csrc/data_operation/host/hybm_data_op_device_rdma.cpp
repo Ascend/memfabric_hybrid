@@ -45,7 +45,7 @@ Result DataOpDeviceRDMA::Initialize() noexcept
     transport::TransportMemoryRegion input;
     input.addr = reinterpret_cast<uint64_t>(rdmaSwapBaseAddr_);
     input.size = RDMA_SWAP_SPACE_SIZE;
-    input.flags = transport::REG_MR_FLAG_DRAM;
+    input.flags = transport::REG_MR_FLAG_ACL_DRAM;
     if (transportManager_ != nullptr) {
         ret = transportManager_->RegisterMemoryRegion(input);
         if (ret != BM_OK) {

@@ -30,11 +30,15 @@ Result HybmVaManager::Initialize(AscendSocType socType) noexcept
 
 Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
 {
-    if (info.base.gva == 0 || info.base.size == 0) {
+    if (info.base.gva == 0) {
         BM_LOG_ERROR("AddVaInfo failed: invalid parameters. gva=" << VaToStr(info.base.gva)
                                                                   << ",  lva=" << VaToStr(info.base.lva)
                                                                   << ", size=" << VaToStr(info.base.size));
         return BM_ERROR;
+    }
+    if (info.base.size == 0) {
+        BM_LOG_INFO("gva:" << info.base.gva  << " size:0, skip add va info");
+        return BM_OK;
     }
     if (info.base.memType >= HYBM_MEM_TYPE_BUTT) {
         BM_LOG_ERROR("AddVaInfo failed: invalid memType=" << info.base.memType);

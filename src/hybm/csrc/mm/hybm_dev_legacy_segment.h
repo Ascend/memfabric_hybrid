@@ -56,17 +56,17 @@ public:
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
     Result UnReserveMemorySpace() noexcept override;
-    Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
-    Result RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
-    Result ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept override;
+    Result AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept override;
+    Result RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept override;
+    Result ReleaseSliceMemory(const MemSlicePtr &slice) noexcept override;
     Result Export(std::string &exInfo) noexcept override;
-    Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
+    Result Export(const MemSlicePtr &slice, std::string &exInfo) noexcept override;
     Result GetExportSliceSize(size_t &size) noexcept override;
     Result Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept override;
     Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
-    std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
+    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
     hybm_mem_type GetMemoryType() const noexcept override

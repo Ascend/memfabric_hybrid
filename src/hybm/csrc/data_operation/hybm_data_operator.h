@@ -82,7 +82,7 @@ public:
         gva_[type] = gva;
         localSpaceSize_[type] = localSpaceSize;
         rankCount_[type] = rankCount;
-        BM_LOG_INFO("update type " << type << " gva: " << gva_[type] << ", space:" << localSpaceSize_[type]
+        BM_LOG_INFO("update type " << type << " gva: " << std::hex << gva_[type] << ", space:" << localSpaceSize_[type]
                                    << ", rankCnt:" << rankCount_[type]);
     };
 

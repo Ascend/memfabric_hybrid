@@ -74,6 +74,18 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type 
                          uint64_t localHBMSize, uint32_t flags);
 
 /**
+ * @brief Create a Big Memory object locally after initialized, this only create local memory segment and after
+ * call <i>smem_bm_join</i> the local memory segment will be joined into global space. One Big Memory object is
+ * a global memory space, data operation does work across different Big Memory object.
+ * We need to specify different <i>id</i> for different Big Memory object.
+ *
+ * @param id               [in] identity of the Big Memory object
+ * @param option           [in] smme bm create option
+ * @return Big Memory object handle if successful, nullptr if failed
+ */
+smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option);
+
+/**
  * @brief Destroy the Big Memory object
  *
  * @param handle           [in] the Big Memory object to be destroyed

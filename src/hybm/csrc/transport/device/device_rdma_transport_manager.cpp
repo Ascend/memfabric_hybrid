@@ -199,7 +199,7 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     ReadGuard lockGuard(lock_);
     auto pos = registerMRS_.lower_bound(addr);
     if (pos == registerMRS_.end() || pos->first + pos->second.size <= addr) {
-        BM_LOG_ERROR("input address not register");
+        BM_LOG_ERROR("input address not register, addr:" << std::hex << addr);
         return BM_INVALID_PARAM;
     }
 
@@ -208,20 +208,8 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     keyUnion.deviceKey.notifyRkey = notifyInfo_.srcRkey;
 
     key = keyUnion.commonKey;
-    return BM_OK;
-}
-
-Result RdmaTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size)
-{
-    RegMemKeyUnion keyUnion{};
-    keyUnion.commonKey = key;
-    if (keyUnion.deviceKey.type != TT_HCCP) {
-        BM_LOG_ERROR("parse memory key type invalid: " << keyUnion.deviceKey.type);
-        return BM_ERROR;
-    }
-
-    addr = keyUnion.deviceKey.address;
-    size = keyUnion.deviceKey.size;
+    BM_LOG_INFO("Success to query memory key rank:" << rankId_ << " addr:" << std::hex << keyUnion.deviceKey.address
+        << " size:" << keyUnion.deviceKey.size);
     return BM_OK;
 }
 
@@ -769,7 +757,7 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
 {
     auto addr = mr.addr;
     // need register: dram except gvm
-    if (mr.flags & REG_MR_FLAG_DRAM) {
+    if ((mr.flags & REG_MR_FLAG_DRAM) || (mr.flags & REG_MR_FLAG_ACL_DRAM)) {
         auto input = (void *)(ptrdiff_t)addr;
         void *output = nullptr;
         auto ret = DlHalApi::HalHostRegister(input, mr.size, HOST_MEM_MAP_DEV, deviceId_, &output);
@@ -804,6 +792,8 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
         for (auto &key : it->second.memKeys) {
             keyUnion.commonKey = key;
             auto &devKey = keyUnion.deviceKey;
+            BM_LOG_INFO("Success to query memory key rank:" << node << " addr:" << std::hex
+                << keyUnion.deviceKey.address << " size:" << keyUnion.deviceKey.size);
             auto addrIter = pos.find(devKey.address);
             if (addrIter == pos.end()) {
                 pos.emplace(devKey.address, devKey);

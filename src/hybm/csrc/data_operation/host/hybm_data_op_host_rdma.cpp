@@ -382,10 +382,14 @@ Result HostDataOpRDMA::BatchCopyLH2LD(void **deviceAddrs, void **hostAddrs, cons
 
 void HostDataOpRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
                                       std::unordered_map<uint32_t, CopyDescriptor> &rmtRankMap,
-                                      std::unordered_map<uint32_t, CopyDescriptor> &localRankMap) noexcept
+                                      std::unordered_map<uint32_t, CopyDescriptor> &localRankMap,
+                                      const uint32_t globalRankId) noexcept
 {
     for (size_t i = 0; i < batchSize; ++i) {
         uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
+        if (gvaRankId == UINT32_MAX) {
+            gvaRankId = globalRankId;
+        }
         if (gvaRankId == rankId_) {
             auto iter = localRankMap.find(gvaRankId);
             if (iter == localRankMap.end()) {
@@ -481,7 +485,7 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
                 break;
             }
         }
-        ret = transportManager_->Synchronize(rankId_);
+        ret = transportManager_->Synchronize(rmtRankId);
         if (ret != 0) {
             BM_LOG_ERROR("Failed to sync read remote ret: " << ret);
             return ret;
@@ -550,7 +554,7 @@ Result HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCop
                 break;
             }
         }
-        ret = transportManager_->Synchronize(rankId_);
+        ret = transportManager_->Synchronize(rmtRankId);
         if (ret != 0) {
             BM_LOG_ERROR("Failed to sync read remote ret: " << ret);
             return ret;
@@ -576,7 +580,7 @@ Result HostDataOpRDMA::BatchCopyLD2GH(void **destinations, void **sources, const
     ExtOptions tmpOptions = options;
     std::unordered_map<uint32_t, CopyDescriptor> rmtRankMap{};
     std::unordered_map<uint32_t, CopyDescriptor> localRankMap{};
-    ClassifyDataAddr(destinations, sources, counts, batchSize, rmtRankMap, localRankMap);
+    ClassifyDataAddr(destinations, sources, counts, batchSize, rmtRankMap, localRankMap, options.destRankId);
 
     for (auto &it : localRankMap) {
         tmpOptions.destRankId = it.first;
@@ -605,7 +609,7 @@ Result HostDataOpRDMA::BatchCopyGH2LD(void **destinations, void **sources, const
     ExtOptions tmpOptions = options;
     std::unordered_map<uint32_t, CopyDescriptor> rmtRankMap{};
     std::unordered_map<uint32_t, CopyDescriptor> localRankMap{};
-    ClassifyDataAddr(sources, destinations, counts, batchSize, rmtRankMap, localRankMap);
+    ClassifyDataAddr(sources, destinations, counts, batchSize, rmtRankMap, localRankMap, options.srcRankId);
 
     for (auto &it : localRankMap) {
         tmpOptions.srcRankId = it.first;
@@ -662,7 +666,7 @@ Result HostDataOpRDMA::InnerBatchReadRH2LH(const CopyDescriptor &rmtCopyDescript
         }
     }
     TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_WAIT);
-    ret = transportManager_->Synchronize(rankId_);
+    ret = transportManager_->Synchronize(options.srcRankId);
     TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_WAIT, ret);
     TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC, ret);
     if (ret != 0) {
@@ -794,7 +798,7 @@ Result HostDataOpRDMA::BatchCopyGH2GH(void **destAddrs, void **srcAddrs, const u
             break;
         }
     }
-    ret = transportManager_->Synchronize(rankId_);
+    ret = transportManager_->Synchronize(isPut ? options.destRankId : options.srcRankId);
     if (ret != 0) {
         BM_LOG_ERROR("Failed to sync host rdma tasks, ret: " << ret);
         return ret;

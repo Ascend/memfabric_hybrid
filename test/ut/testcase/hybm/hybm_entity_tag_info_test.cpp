@@ -45,7 +45,6 @@ TEST_F(HybmEntityTagInfoTest, TagInfoInit)
     hybm_options opt;
     opt.rankCount = 4;
     EXPECT_EQ(tagInfo_->TagInfoInit(opt), BM_OK);
-    EXPECT_EQ(tagInfo_->options_.rankCount, 4);
 }
 
 // ========================

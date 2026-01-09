@@ -100,6 +100,8 @@ typedef struct {
     uint16_t rankCount;
     uint16_t rankId;
     uint16_t devId;
+    uint64_t maxHBMSize;
+    uint64_t maxDRAMSize;
     uint64_t deviceVASpace;
     uint64_t hostVASpace;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
@@ -107,7 +109,7 @@ typedef struct {
     uint32_t flags;
     char transUrl[64];
     char tag[32];
-    char tagOpInfo[128];
+    char tagOpInfo[256];
     hybm_tls_config tlsOption;
 } hybm_options;
 

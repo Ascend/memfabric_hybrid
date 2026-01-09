@@ -66,7 +66,7 @@ private:
 
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
                           std::unordered_map<uint32_t, CopyDescriptor> &rmtRankMap,
-                          std::unordered_map<uint32_t, CopyDescriptor> &localRankMap) noexcept;
+                          std::unordered_map<uint32_t, CopyDescriptor> &localRankMap, const uint32_t rankId) noexcept;
     Result BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
     Result BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
 

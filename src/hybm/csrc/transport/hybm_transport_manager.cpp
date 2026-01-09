@@ -19,7 +19,7 @@
 using namespace ock::mf;
 using namespace ock::mf::transport;
 
-std::shared_ptr<TransportManager> TransportManager::Create(TransportType type)
+std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, HybmEntityTagInfoPtr tagManager)
 {
     switch (type) {
         case TT_HCOM:
@@ -27,7 +27,7 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type)
         case TT_HCCP:
             return std::make_shared<device::RdmaTransportManager>();
         case TT_COMPOSE:
-            return std::make_shared<ComposeTransportManager>();
+            return std::make_shared<ComposeTransportManager>(tagManager);
         default:
             BM_LOG_ERROR("Invalid trans type: " << type);
             return nullptr;

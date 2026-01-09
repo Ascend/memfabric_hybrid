@@ -121,14 +121,35 @@ static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
 SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
                                   uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
 {
+    smem_bm_create_option_t option{};
+    option.maxDramSize = localDRAMSize;
+    option.maxHbmSize = localHBMSize;
+    option.localDRAMSize = localDRAMSize;
+    option.localHBMSize = localHBMSize;
+    option.dataOpType = dataOpType;
+    option.flags = flags;
+    return smem_bm_create2(id, &option);
+}
+
+static inline bool SmemBmCreateOptionCheck(const smem_bm_create_option_t *option)
+{
+    SM_VALIDATE_RETURN(option != nullptr, "option is null", false);
+    SM_VALIDATE_RETURN(!(option->maxDramSize == 0UL && option->maxHbmSize == 0UL), "maxMemorySize is 0", false);
+    SM_VALIDATE_RETURN(option->localDRAMSize <= SMEM_LOCAL_DRAM_SIZE_MAX, "local DRAM size exceeded", false);
+    SM_VALIDATE_RETURN(option->localHBMSize <= SMEM_LOCAL_HBM_SIZE_MAX, "local HBM size exceeded", false);
+    SM_VALIDATE_RETURN(option->maxDramSize >= option->localDRAMSize, "maxDramSize less than localMemorySize", false);
+    SM_VALIDATE_RETURN(option->maxHbmSize >= option->localHBMSize, "maxHBMSize less than localMemorySize", false);
+    return true;
+}
+
+smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
+{
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
-    SM_VALIDATE_RETURN(!(localDRAMSize == 0UL && localHBMSize == 0UL), "localMemorySize is 0", nullptr);
-    SM_VALIDATE_RETURN(localDRAMSize <= SMEM_LOCAL_DRAM_SIZE_MAX, "local DRAM size exceeded", nullptr);
-    SM_VALIDATE_RETURN(localHBMSize <= SMEM_LOCAL_HBM_SIZE_MAX, "local HBM size exceeded", nullptr);
+    SM_VALIDATE_RETURN(SmemBmCreateOptionCheck(option), "option is invalid", nullptr);
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
-    SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(dataOpType), nullptr);
+    SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(option->dataOpType), nullptr);
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
@@ -137,8 +158,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
 
     hybm_options options{};
     options.bmType = HYBM_TYPE_HOST_INITIATE;
-    options.memType = SmemHybmHelper::TransHybmMemType(localDRAMSize, localHBMSize);
-    options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(dataOpType);
+    options.memType = SmemHybmHelper::TransHybmMemType(option->maxDramSize, option->maxHbmSize);
+    options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(option->dataOpType);
 #if !defined(ASCEND_NPU)
     if ((options.bmDataOpType & HYBM_DOP_TYPE_SDMA) || (options.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed, invalid opType " << options.bmDataOpType
@@ -150,11 +171,15 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
-    options.deviceVASpace = localHBMSize;
-    options.hostVASpace = localDRAMSize;
+    options.maxHBMSize = option->maxHbmSize;
+    options.maxDRAMSize = option->maxDramSize;
+    options.deviceVASpace = option->localHBMSize;
+    options.hostVASpace = option->localDRAMSize;
     options.role = HYBM_ROLE_PEER;
-    options.flags = flags;
+    options.flags = option->flags;
     bzero(options.transUrl, sizeof(options.transUrl));
+    bzero(options.tag, sizeof(options.tag));
+    bzero(options.tagOpInfo, sizeof(options.tagOpInfo));
 
     smem_tls_config hcomTlsConfig = manager.GetHcomTlsOption();
     options.tlsOption.tlsEnable = hcomTlsConfig.tlsEnable;
@@ -167,7 +192,9 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
 
     SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
-    (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
+    (void) std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
+    (void) std::copy_n(option->tag, sizeof(options.tag), options.tag);
+    (void) std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
 
     options.globalUniqueAddress = true;
     ret = entry->Initialize(options);
@@ -263,10 +290,10 @@ SMEM_API void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memTyp
     switch (memType) {
         case SMEM_MEM_TYPE_DEVICE:
             addr = entry->GetDeviceGvaAddress();
-            return static_cast<uint8_t *>(addr) + coreOption.deviceVASpace * peerRankId;
+            return static_cast<uint8_t *>(addr) + coreOption.maxHBMSize * peerRankId;
         case SMEM_MEM_TYPE_HOST:
             addr = entry->GetHostGvaAddress();
-            return static_cast<uint8_t *>(addr) + coreOption.hostVASpace * peerRankId;
+            return static_cast<uint8_t *>(addr) + coreOption.maxDRAMSize * peerRankId;
         default:
             SM_LOG_AND_SET_LAST_ERROR("input mem type is invalid, memType: " << memType);
             return nullptr;

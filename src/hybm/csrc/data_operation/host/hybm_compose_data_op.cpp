@@ -84,7 +84,7 @@ void HostComposeDataOp::UnInitialize() noexcept
 Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                    const ExtOptions &options) noexcept
 {
-    auto availableOps = GetAvailableOperators(options);
+    auto availableOps = GetPrioritedDataOperators(options);
     if (availableOps.empty()) {
         BM_LOG_ERROR("data copy from rank " << options.srcRankId << " to rank " << options.destRankId
                                             << " no data operator available");
@@ -109,7 +109,7 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
-    auto availableOps = GetAvailableOperators(options);
+    auto availableOps = GetPrioritedDataOperators(options);
     if (availableOps.empty()) {
         BM_LOG_ERROR("batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
                                                   << " no data operator available");
@@ -134,7 +134,7 @@ Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
 Result HostComposeDataOp::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
-    auto availableOps = GetAvailableOperators(options);
+    auto availableOps = GetPrioritedDataOperators(options);
     if (availableOps.empty()) {
         BM_LOG_ERROR("data copy async from rank " << options.srcRankId << " to rank " << options.destRankId
                                                   << " no data operator available");
@@ -170,7 +170,7 @@ Result HostComposeDataOp::Wait(int32_t waitId) noexcept
     return sdmaDataOperator_->Wait(waitId);
 }
 
-HostComposeDataOp::DataOperators HostComposeDataOp::GetAvailableOperators(const ExtOptions &options) noexcept
+HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(const ExtOptions &options) noexcept
 {
     HostComposeDataOp::DataOperators dataOperators;
     auto opTypes = entityTagInfo_->GetRank2RankOpType(options.srcRankId, options.destRankId);

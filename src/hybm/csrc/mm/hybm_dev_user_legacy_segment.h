@@ -21,10 +21,10 @@ namespace ock {
 namespace mf {
 constexpr size_t MAX_PEER_DEVICES = 16;
 struct RegisterSlice {
-    std::shared_ptr<MemSlice> slice;
+    MemSlicePtr slice;
     std::string name;
     RegisterSlice() = default;
-    RegisterSlice(std::shared_ptr<MemSlice> s, std::string n) noexcept : slice(std::move(s)), name(std::move(n)) {}
+    RegisterSlice(MemSlicePtr s, std::string n) noexcept : slice(std::move(s)), name(std::move(n)) {}
 };
 
 struct HbmExportDeviceInfo {
@@ -54,17 +54,17 @@ public:
     ~HybmDevUserLegacySegment() override;
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
-    Result AllocLocalMemory(uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
-    Result RegisterMemory(const void *addr, uint64_t size, std::shared_ptr<MemSlice> &slice) noexcept override;
-    Result ReleaseSliceMemory(const std::shared_ptr<MemSlice> &slice) noexcept override;
+    Result AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept override;
+    Result RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept override;
+    Result ReleaseSliceMemory(const MemSlicePtr &slice) noexcept override;
     Result Export(std::string &exInfo) noexcept override;
-    Result Export(const std::shared_ptr<MemSlice> &slice, std::string &exInfo) noexcept override;
+    Result Export(const MemSlicePtr &slice, std::string &exInfo) noexcept override;
     Result GetExportSliceSize(size_t &size) noexcept override;
     Result Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept override;
     Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
-    std::shared_ptr<MemSlice> GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
+    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     void CloseMemory() noexcept;
     hybm_mem_type GetMemoryType() const noexcept override
@@ -76,7 +76,7 @@ public:
 
 private:
     Result ImportDeviceInfo(const std::string &info) noexcept;
-    Result ImportSliceInfo(const std::string &info, std::shared_ptr<MemSlice> &remoteSlice) noexcept;
+    Result ImportSliceInfo(const std::string &info, MemSlicePtr &remoteSlice) noexcept;
     static void RollbackIpcMemory(void *addresses[], uint32_t count);
     void RemoveSliceInfo(const uint32_t rankId) noexcept;
 
@@ -87,7 +87,7 @@ private:
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;
     std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
-    std::map<uint32_t, std::vector<std::shared_ptr<MemSlice>>> rankToRemoteSlices_;
+    std::map<uint32_t, std::vector<MemSlicePtr>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
     std::set<void *> registerAddrs_{};

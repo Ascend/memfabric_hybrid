@@ -14,6 +14,7 @@
 #define MF_HYBRID_COMPOSE_TRANSPORT_MANAGER_H
 
 #include "hybm_transport_manager.h"
+#include "hybm_entity_tag_info.h"
 
 #include <mutex>
 
@@ -33,6 +34,8 @@ struct ComposeMemoryRegion {
 
 class ComposeTransportManager : public TransportManager {
 public:
+    explicit ComposeTransportManager(HybmEntityTagInfoPtr tag) noexcept : tagManager_{std::move(tag)}{};
+
     Result OpenDevice(const TransportOptions &options) override;
 
     Result CloseDevice() override;
@@ -44,8 +47,6 @@ public:
     bool QueryHasRegistered(uint64_t addr, uint64_t size) override;
 
     Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) override;
-
-    Result ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size) override;
 
     Result Prepare(const HybmTransPrepareOptions &options) override;
 
@@ -75,11 +76,8 @@ private:
     Result OpenHostTransport(const TransportOptions &options);
 
     Result OpenDeviceTransport(const TransportOptions &options);
-    static TransportType GetTransportTypeFromFlag(uint32_t flags);
-    std::shared_ptr<TransportManager> GetTransportFromType(TransportType type);
-    std::shared_ptr<TransportManager> GetTransportFromAddress(uint64_t addr);
-    static void GetHostPrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &hostOptions);
-    static void GetDevicePrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &DeviceOptions);
+    void GetHostPrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &hostOptions);
+    void GetDevicePrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &DeviceOptions);
 
 private:
     std::shared_ptr<TransportManager> deviceTransportManager_{nullptr};
@@ -87,7 +85,9 @@ private:
 
     std::string nicInfo_;
     std::mutex mrsMutex_;
-    std::unordered_map<uint64_t, ComposeMemoryRegion> mrs_;
+    std::map<uint64_t, ComposeMemoryRegion, std::greater<uint64_t>> mrs_;
+    TransportOptions options_{};
+    HybmEntityTagInfoPtr tagManager_{};
 };
 } // namespace transport
 } // namespace mf

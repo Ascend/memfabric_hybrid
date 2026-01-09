@@ -26,6 +26,7 @@ namespace {
 const char NIC_DELIMITER = ';';
 const std::string HOST_TRANSPORT_TYPE = "host#";
 const std::string DEVICE_TRANSPORT_TYPE = "device#";
+const uint32_t HOST_PROTOCOL = HYBM_DOP_TYPE_HOST_TCP | HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA;
 } // namespace
 
 Result ComposeTransportManager::OpenHostTransport(const TransportOptions &options)
@@ -50,38 +51,46 @@ Result ComposeTransportManager::OpenDeviceTransport(const TransportOptions &opti
 
 Result ComposeTransportManager::OpenDevice(const TransportOptions &options)
 {
-    std::vector<std::string> nicVec = StrUtil::Split(options.nic, NIC_DELIMITER);
-
-    for (const auto &nic : nicVec) {
-        Result ret = BM_ERROR;
-        if (StrUtil::StartWith(nic, HOST_TRANSPORT_TYPE)) {
-            TransportOptions option = options;
-            option.nic = nic.substr(HOST_TRANSPORT_TYPE.length());
-            ret = OpenHostTransport(option);
-        }
-
-        if (StrUtil::StartWith(nic, DEVICE_TRANSPORT_TYPE)) {
-            TransportOptions option = options;
-            option.nic = nic.substr(DEVICE_TRANSPORT_TYPE.length());
-            ret = OpenDeviceTransport(option);
-        }
-
+    options_ = options;
+    Result ret = BM_ERROR;
+    if (options_.protocol & HOST_PROTOCOL) {
+        ret = OpenHostTransport(options);
         if (ret != BM_OK) {
-            BM_LOG_ERROR("Failed to open device transport nic: " << nic);
+            BM_LOG_ERROR("Failed to open device transport nic: " << options.nic);
+            CloseDevice();
+            return BM_ERROR;
+        }
+    }
+
+    if (options_.protocol & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        ret = OpenDeviceTransport(options);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to open device transport nic: " << options.nic);
             CloseDevice();
             return BM_ERROR;
         }
     }
 
     std::stringstream ss;
-    if (hostTransportManager_) {
+    if ((options_.protocol & HOST_PROTOCOL)) {
+        if (hostTransportManager_ == nullptr) {
+            BM_LOG_ERROR("Failed to open host transport nic: " << options.nic);
+            CloseDevice();
+            return BM_ERROR;
+        }
         ss << HOST_TRANSPORT_TYPE << hostTransportManager_->GetNic() << NIC_DELIMITER;
     }
-    if (deviceTransportManager_) {
+    if ((options_.protocol & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+        if (deviceTransportManager_ == nullptr) {
+            BM_LOG_ERROR("Failed to open device transport nic: " << options.nic);
+            CloseDevice();
+            return BM_ERROR;
+        }
         ss << DEVICE_TRANSPORT_TYPE << deviceTransportManager_->GetNic() << NIC_DELIMITER;
     }
     nicInfo_ = ss.str();
-
+    BM_LOG_INFO("Success to open device rankId:" << options_.rankId
+        << " protocol:" << options_.protocol << " nic:" << nicInfo_);
     return BM_OK;
 }
 
@@ -100,15 +109,21 @@ Result ComposeTransportManager::CloseDevice()
 
 Result ComposeTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
-    auto type = GetTransportTypeFromFlag(mr.flags);
-    auto transport = GetTransportFromType(type);
-    BM_ASSERT_RETURN(transport != nullptr, BM_INVALID_PARAM);
-    Result ret = transport->RegisterMemoryRegion(mr);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to register memory region " << mr);
-        return ret;
+    if (deviceTransportManager_) {
+        Result ret = deviceTransportManager_->RegisterMemoryRegion(mr);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to register memory region " << mr);
+            return ret;
+        }
     }
-    ComposeMemoryRegion cmr{mr.addr, mr.size, type};
+    if (hostTransportManager_) {
+        Result ret = hostTransportManager_->RegisterMemoryRegion(mr);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to register memory region " << mr);
+            return ret;
+        }
+    }
+    ComposeMemoryRegion cmr{mr.addr, mr.size, TT_COMPOSE};
     std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
     mrs_.emplace(mr.addr, cmr);
     return BM_OK;
@@ -123,14 +138,19 @@ Result ComposeTransportManager::UnregisterMemoryRegion(uint64_t addr)
         BM_LOG_ERROR("input address not register!");
         return BM_INVALID_PARAM;
     }
-
-    auto transport = GetTransportFromType(pos->second.type);
-    BM_ASSERT_RETURN(transport != nullptr, BM_ERROR);
-    auto ret = transport->UnregisterMemoryRegion(addr);
-    if (ret != 0) {
-        uniqueLock.unlock();
-        BM_LOG_ERROR("Failed to unregister mr addr, ret: " << ret);
-        return BM_DL_FUNCTION_FAILED;
+    if (deviceTransportManager_) {
+        Result ret = deviceTransportManager_->UnregisterMemoryRegion(addr);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to unregister mr addr, ret: " << ret);
+            return ret;
+        }
+    }
+    if (hostTransportManager_) {
+        Result ret = hostTransportManager_->UnregisterMemoryRegion(addr);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to unregister mr addr, ret: " << ret);
+            return ret;
+        }
     }
     mrs_.erase(pos);
     return BM_OK;
@@ -139,47 +159,38 @@ Result ComposeTransportManager::UnregisterMemoryRegion(uint64_t addr)
 bool ComposeTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
 {
     std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
-    auto pos = mrs_.find(addr);
-    if (pos == mrs_.end()) {
+    auto pos = mrs_.lower_bound(addr);
+    if (pos == mrs_.end() || pos->first + pos->second.size < addr + size) {
         uniqueLock.unlock();
         return false;
     }
-    auto transport = GetTransportFromType(pos->second.type);
-    uniqueLock.unlock();
-    if (transport == nullptr) {
-        return false;
-    }
-    return transport->QueryHasRegistered(addr, size);
+    return true;
 }
 
 Result ComposeTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &key)
 {
-    std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
-    auto pos = mrs_.find(addr);
-    if (pos == mrs_.end()) {
-        uniqueLock.unlock();
-        BM_LOG_ERROR("input address not register!");
-        return BM_INVALID_PARAM;
-    }
-    auto transport = GetTransportFromType(pos->second.type);
-    BM_ASSERT_RETURN(transport != nullptr, BM_ERROR);
-    uniqueLock.unlock();
-    return transport->QueryMemoryKey(addr, key);
-}
-
-Result ComposeTransportManager::ParseMemoryKey(const TransportMemoryKey &key, uint64_t &addr, uint64_t &size)
-{
-    int ret = BM_ERROR;
-    if (key.keys[0] == TT_HCCP && deviceTransportManager_ != nullptr) {
-        return deviceTransportManager_->ParseMemoryKey(key, addr, size);
+    // device固定占0~13， host占14~27
+    if (deviceTransportManager_) {
+        TransportMemoryKey tmp{};
+        auto ret = deviceTransportManager_->QueryMemoryKey(addr, tmp);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Failed to query device transport memKey addr:" << std::hex << addr);
+            return ret;
+        }
+        WriteDeviceRdmaMemoryKey(tmp, key);
     }
 
-    if (key.keys[0] == TT_HCOM && hostTransportManager_ != nullptr) {
-        return hostTransportManager_->ParseMemoryKey(key, addr, size);
+    if (hostTransportManager_) {
+        TransportMemoryKey tmp{};
+        auto ret = hostTransportManager_->QueryMemoryKey(addr, tmp);
+        if (ret != BM_OK) {
+            BM_LOG_WARN("Failed to query host transport memKey addr:" << std::hex << addr);
+            // HCOM 无法处理HBM池，这里直接返回，兼容即开启HBM池又要走HCOM通信的场景
+        }
+        WriteHcomMemoryKey(tmp, key);
     }
 
-    BM_LOG_ERROR("ParseMemoryKey with type: " << key.keys[0] << " failed!");
-    return ret;
+    return BM_OK;
 }
 
 void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOptions &param,
@@ -188,6 +199,12 @@ void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOption
     auto options = param.options;
     for (const auto &item : options) {
         auto rankId = item.first;
+        uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+        if (!(opType & HOST_PROTOCOL)) {
+            BM_LOG_INFO("remote rank:" << rankId << " to local rank:" << options_.rankId
+                << " use protocol:" << opType << " skip host connect");
+            continue;
+        }
         TransportRankPrepareInfo info{};
         std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
         for (const auto &nic : nicVec) {
@@ -197,9 +214,9 @@ void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOption
         }
 
         for (auto &key : item.second.memKeys) {
-            if (key.keys[0] == TT_HCOM) {
-                info.memKeys.emplace_back(key);
-            }
+            TransportMemoryKey tmp{};
+            ReadHcomMemoryKey(key, tmp);
+            info.memKeys.emplace_back(tmp);
         }
         hostOptions.options.emplace(rankId, info);
     }
@@ -211,6 +228,12 @@ void ComposeTransportManager::GetDevicePrepareOptions(const HybmTransPrepareOpti
     auto options = param.options;
     for (const auto &item : options) {
         auto rankId = item.first;
+        uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+        if (!(opType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+            BM_LOG_INFO("remote rank:" << rankId << " to local rank:" << options_.rankId
+                                       << " use protocol:" << opType << " skip device_rdma connect");
+            continue;
+        }
         TransportRankPrepareInfo info{};
         std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
         for (const auto &nic : nicVec) {
@@ -220,9 +243,9 @@ void ComposeTransportManager::GetDevicePrepareOptions(const HybmTransPrepareOpti
         }
 
         for (auto &key : item.second.memKeys) {
-            if (key.keys[0] == TT_HCCP) {
-                info.memKeys.emplace_back(key);
-            }
+            TransportMemoryKey tmp{};
+            ReadDeviceRdmaMemoryKey(key, tmp);
+            info.memKeys.emplace_back(key);
         }
         deviceOptions.options.emplace(rankId, info);
     }
@@ -237,6 +260,7 @@ Result ComposeTransportManager::Prepare(const HybmTransPrepareOptions &options)
         ret = hostTransportManager_->Prepare(hostOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to prepare host ret: " << ret);
+            return ret;
         }
     }
     if (deviceTransportManager_) {
@@ -245,9 +269,10 @@ Result ComposeTransportManager::Prepare(const HybmTransPrepareOptions &options)
         ret = deviceTransportManager_->Prepare(deviceOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to prepare host ret: " << ret);
+            return ret;
         }
     }
-    return ret;
+    return BM_OK;
 }
 
 Result ComposeTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRanks)
@@ -339,81 +364,118 @@ const std::string &ComposeTransportManager::GetNic() const
 
 Result ComposeTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    auto transport = GetTransportFromAddress(lAddr);
-    BM_ASSERT_RETURN(transport != nullptr, BM_ERROR);
-    return transport->ReadRemote(rankId, lAddr, rAddr, size);
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    // 传输顺序 device_rdma -> host_rdma
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA) && deviceTransportManager_ != nullptr) {
+        auto ret = deviceTransportManager_->ReadRemote(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemote by device transport ret:" << ret);
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->ReadRemote(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemote by host transport ret:" << ret);
+    }
+
+    BM_LOG_ERROR("Failed to ReadRemote.");
+    return BM_ERROR;
 }
 
 Result ComposeTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    auto transport = GetTransportFromAddress(lAddr);
-    BM_ASSERT_RETURN(transport != nullptr, BM_ERROR);
-    return transport->WriteRemote(rankId, lAddr, rAddr, size);
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA) && deviceTransportManager_ != nullptr) {
+        auto ret = deviceTransportManager_->WriteRemote(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to WriteRemote by device transport ret:" << ret);
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->WriteRemote(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to WriteRemote by host transport ret:" << ret);
+    }
+
+    BM_LOG_ERROR("Failed to WriteRemote.");
+    return BM_ERROR;
 }
 
 Result ComposeTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_ERROR("not support ReadRemoteAsync!");
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA) && deviceTransportManager_ != nullptr) {
+        auto ret = deviceTransportManager_->ReadRemoteAsync(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by device transport ret:" << ret);
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->ReadRemoteAsync(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret);
+    }
+
+    BM_LOG_ERROR("Failed to WriteRemote.");
     return BM_ERROR;
 }
 
 Result ComposeTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_LOG_ERROR("not support WriteRemoteAsync!");
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA) && deviceTransportManager_ != nullptr) {
+        auto ret = deviceTransportManager_->WriteRemoteAsync(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by device transport ret:" << ret);
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->WriteRemoteAsync(rankId, lAddr, rAddr, size);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret);
+    }
+
+    BM_LOG_ERROR("Failed to WriteRemote.");
     return BM_ERROR;
 }
 
 Result ComposeTransportManager::Synchronize(uint32_t rankId)
 {
-    BM_LOG_ERROR("not support Synchronize!");
-    return BM_ERROR;
-}
-
-std::shared_ptr<TransportManager> ComposeTransportManager::GetTransportFromType(TransportType type)
-{
-    switch (type) {
-        case TT_HCCP:
-            return deviceTransportManager_;
-        case TT_HCOM:
-            return hostTransportManager_;
-        default:
-            return nullptr;
-    }
-}
-
-std::shared_ptr<TransportManager> ComposeTransportManager::GetTransportFromAddress(uint64_t addr)
-{
-    TransportType type = TT_BUTT;
-    std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
-    for (const auto &item : mrs_) {
-        auto mr = item.second;
-        if (mr.addr <= addr && mr.addr + mr.size >= addr) {
-            type = mr.type;
-            break;
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA) && deviceTransportManager_ != nullptr) {
+        auto ret = deviceTransportManager_->Synchronize(rankId);
+        if (ret == BM_OK) {
+            return BM_OK;
         }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by device transport ret:" << ret);
     }
-    switch (type) {
-        case TT_HCCP:
-            return deviceTransportManager_;
-        case TT_HCOM:
-            return hostTransportManager_;
-        default:
-            return nullptr;
-    }
-}
 
-TransportType ComposeTransportManager::GetTransportTypeFromFlag(uint32_t flags)
-{
-    // 取index开始的后两位作为TransportType
-    static uint8_t index = 0;
-    auto type = flags & ((3) << index);
-    if (type == REG_MR_FLAG_DRAM) {
-        return TT_HCOM;
+    if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
+        auto ret = hostTransportManager_->Synchronize(rankId);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret);
     }
-    if (type == REG_MR_FLAG_HBM) {
-        return TT_HCCP;
-    }
-    return TT_BUTT;
+
+    BM_LOG_ERROR("Failed to WriteRemote.");
+    return BM_ERROR;
 }
 
 Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions &options)
@@ -422,6 +484,7 @@ Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions 
     if (hostTransportManager_) {
         HybmTransPrepareOptions hostOptions{};
         GetHostPrepareOptions(options, hostOptions);
+        BM_LOG_INFO("Try to update host transport rank options: " << hostOptions);
         ret = hostTransportManager_->UpdateRankOptions(hostOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to prepare host ret: " << ret);
@@ -430,6 +493,7 @@ Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions 
     if (deviceTransportManager_) {
         HybmTransPrepareOptions deviceOptions{};
         GetDevicePrepareOptions(options, deviceOptions);
+        BM_LOG_INFO("Try to update host transport rank options: " << deviceOptions);
         ret = deviceTransportManager_->UpdateRankOptions(deviceOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to prepare host ret: " << ret);
