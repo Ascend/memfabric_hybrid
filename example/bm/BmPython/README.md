@@ -10,16 +10,9 @@ HDK固件驱动需要使用**25.0.RC1**
 及以上版本([社区版HDK下载链接](https://www.hiascend.com/hardware/firmware-drivers/community))
 
 安装完成后需要配置CANN环境变量
-([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
+([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html?Mode=PmIns&OS=Ubuntu&Software=cannToolKit))
 
-运行样例前请先编译安装**memfabric_hybrid的run包**,默认安装路径为/usr/local/,然后source安装路径下的set_env.sh
-
-memfabric_hybrid参考安装命令
-
-```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run # 以实际安装包路径和名称为准
-source /usr/local/memfabric_hybrid/set_env.sh
-```
+运行样例前请先安装**memfabric_hybrid的whl包**, 有两种安装方式，可参考[安装指南](../../../doc/installation.md)
 
 ## 运行
 

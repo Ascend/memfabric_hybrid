@@ -125,7 +125,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 │  └── trans                   # batch data write/read样例
 │  └── decrypt                 # 自定义解密库示例(控制路径)
 ├── script                     # 构建脚本
-│  ├── build_and_pack_run.sh   # 编译+加包脚本
+│  ├── build_and_pack_run.sh   # 编译+打包脚本
 │  ├── build.sh                # 编译脚本
 │  ├── run_ut.sh               # 编译+运行ut脚本
 ├── test                       # test目录
@@ -155,7 +155,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 
 请访问以下文档获取简易教程。
 
-- [编译构建](./doc/build.md)：介绍组件编译和安装教程。
+- [编译安装](./doc/installation.md)：介绍组件编译和安装教程。
 
 - [样例执行](./example/examples.md)：介绍如何端到端执行样例代码，包括C++和Python样例。
 

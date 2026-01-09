@@ -1,7 +1,6 @@
 # Python接口
-安装完成run包并source安装路径下的set_env.sh后，即可在python中通过**import memfabric_hybrid**导入memfabric的python包，然后调用python接口
-
-**Note: 后续支持pip安装**
+使用Python接口前需要安装memfabric_hybrid的whl包，有两种安装方式，可参考[安装指南](./installation.md)
+whl包安装完成后，即可在python中通过**import memfabric_hybrid**导入memfabric的python包，然后调用python接口
 
 python接口为c接口的封装，功能一致，具体介绍可以在python中使用help函数获取，参考如下
 ```python
@@ -134,7 +133,7 @@ def uninitialize(flags = 0) -> None
 #### create
 创建BM
 ```python
-def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
+def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMB_DATA_OP_SDMA, flags = 0) -> int
 ```
 
 |参数/返回值|含义|
@@ -142,9 +141,11 @@ def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMS_DATA_OP_MTE
 |id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
 |local_dram_size|本地dram内存大小|
 |local_hbm_size|本地hbm内存大小|
-|data_op_type|数据操作类型|
+|data_op_type|数据操作类型，参考smem_bm_data_op_type类型定义|
 |flags|预留参数|
 |返回值|SMEM对象handle|
+
+📌 **注意**：当dataOpType取值为SMEMB_DATA_OP_HOST_RDMA时，需要依赖libhcom.so，请参考[hcom项目](https://atomgit.com/openeuler/ubs-comm)获取最新的so文件。
 
 ### 3. 获取当前rank的id
 #### bm_rank_id
@@ -238,7 +239,7 @@ class BigMemory:
 |copy_data参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
 |copy_data参数flags(int)|optional flags|
 
-## SMEM接口
+## SHM接口
 ### 1. 初始化/退出接口
 #### initialize
 初始化运行环境
@@ -265,9 +266,9 @@ def uninitialize(flags = 0) -> None
 |-|-|
 |flags|int类型，预留参数|
 
-### 2. 创建SMEM
+### 2. 创建SHM
 #### create
-创建SMEM
+创建SHM
 ```python
 def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
 ```
@@ -331,7 +332,7 @@ class ShareMemory:
 class ShmDataOpType(Enum):
     MTE
     SDMA
-    ROCE
+    RDMA
 ```
 
 ## TRANSFER接口

@@ -191,6 +191,8 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
 |flags|创建标记位，预留|
 |返回值|成功返回BM handle，失败返回空指针|
 
+📌 **注意**：当dataOpType取值为SMEMB_DATA_OP_HOST_RDMA时，需要依赖libhcom.so，请参考[hcom项目](https://atomgit.com/openeuler/ubs-comm)获取最新的so文件。
+
 #### smem_bm_destroy
 销毁BM
 ```c
@@ -343,11 +345,11 @@ int32_t smem_bm_wait(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_c
 |handle|BM handle|
 |返回值|成功返回0，失败返回错误码|
 	
-## SMEM接口列表
+## SHM接口列表
 
-### 1.SEM初始化/退出
+### 1.SHM初始化/退出
 #### smem_shm_config_init
-SMEM配置初始化
+SHM配置初始化
 ```c
 int32_t smem_shm_config_init(smem_shm_config_t *config);
 ```
@@ -358,7 +360,7 @@ int32_t smem_shm_config_init(smem_shm_config_t *config);
 |返回值|成功返回0，失败返回错误码|
 
 #### smem_shm_init
-SMEM初始化
+SHM初始化
 ```c
 int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_t rankId, 
     uint16_t deviceId, smem_shm_config_t *config);
@@ -367,14 +369,14 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
 |参数/返回值|含义|
 |-|-|
 |configStoreIpPort|config store的IP和端口，格式tcp://ip:port或者tcp6://[ip]:port|
-|worldSize|参与SMEM初始化rank数量，最大支持1024|
+|worldSize|参与SHM初始化rank数量，最大支持1024|
 |rankId|当前rank id|
 |deviceId|当前rank的device id|
-|config|初始化SMEM配置|
+|config|初始化SHM配置|
 |返回值|成功返回0，失败返回错误码|
 
 #### smem_shm_uninit
-SMEM退出
+SHM退出
 ```c
 void smem_shm_uninit(uint32_t flags);
 ```
@@ -383,9 +385,9 @@ void smem_shm_uninit(uint32_t flags);
 |-|-|
 |flags|预留参数|
 
-### 2. 创建/销毁SMEM
+### 2. 创建/销毁SHM
 #### smem_shm_create
-创建SMEM
+创建SHM
 ```c
 smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva);
@@ -393,24 +395,24 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint
 
 |参数/返回值|含义|
 |-|-|
-|id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
-|rankSize|参与创建SMEM的rank数量，最大支持1024|
+|id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
+|rankSize|参与创建SHM的rank数量，最大支持1024|
 |rankId|当前rank id|
-|symmetricSize|每个rank贡献到创建SMEM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
+|symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
 |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
 |flags|预留参数|
 |gva|出参，gva空间地址|
-|返回值|SMEM对象handle|
+|返回值|SHM对象handle|
 
 #### smem_shm_destroy
-销毁SMEM
+销毁SHM
 ```c
 int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags);
 ```
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |flags|预留参数|
 |返回值|成功返回0，失败返回错误码|
 
@@ -433,8 +435,8 @@ uint32_t smem_shm_get_global_rank(smem_shm_t handle);
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
-|返回值|在SMEM里的rank id|
+|handle|SHM对象handle|
+|返回值|在SHM里的rank id|
 
 #### smem_shm_get_global_rank_size
 获取rank数量
@@ -444,8 +446,8 @@ uint32_t smem_shm_get_global_rank_size(smem_shm_t handle);
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
-|返回值|在SMEM里的rank个数|
+|handle|SHM对象handle|
+|返回值|在SHM里的rank个数|
 
 ### 4. 设置用户context
 #### smem_shm_set_extra_context
@@ -456,25 +458,25 @@ int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint3
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |context|用户context指针|
 |size|用户context大小，最大64K，单位字节|
 |返回值|成功返回0，失败返回错误码|
 
-### 5.  在SMEM对象执行barrier/allgather
+### 5.  在SHM对象执行barrier/allgather
 #### smem_shm_control_barrier
-在SMEM对象执行barrier
+在SHM对象执行barrier
 ```c
 int32_t smem_shm_control_barrier(smem_shm_t handle);
 ```
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |返回值|成功返回0，失败返回错误码|
 
 #### smem_shm_control_allgather
-在SMEM对象执行allgather
+在SHM对象执行allgather
 ```c
 int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, 
     char *recvBuf, uint32_t recvSize);
@@ -482,7 +484,7 @@ int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint3
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |sendBuf|发送数据buffer|
 |sendSize|发送数据大小，单位字节|
 |recvBuf|接收数据buffer|
@@ -498,7 +500,7 @@ int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |remoteRank|待检查rank id|
 |reachInfo|连通信息类型，参考smem_shm_data_op_type定义|
 |返回值|成功返回0，失败返回错误码|
@@ -512,7 +514,7 @@ int32_t smem_shm_register_exit(smem_shm_t handle, void (*exit)(int));
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |exit|退出函数|
 |返回值|成功返回0，失败返回错误码|
 
@@ -525,7 +527,7 @@ void smem_shm_global_exit(smem_shm_t handle, int status);
 
 |参数/返回值|含义|
 |-|-|
-|handle|SMEM对象handle|
+|handle|SHM对象handle|
 |status|退出状态|
 
 > 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/mooncake_adapter/csrc/transfer/pytransfer.cpp`。

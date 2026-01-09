@@ -1,8 +1,8 @@
-# 构建
+# 软件安装
 
-## 环境准备
+## 编译软件包
 
-#### 编译工具建议版本
+### 编译工具建议版本
 
 - OS: Ubuntu 22.04 LTS+
 - cmake: 3.20.x
@@ -11,15 +11,7 @@
 - pybind11 2.10.3
 - make 4.3 or ninja 1.10.1
 
-#### (编译选择CANN依赖时)需要NPU固件驱动和CANN包
-
-run包只能安装到npu环境上，且依赖于NPU固件驱动和CANN包，具体版本依赖详见下面的软件硬件配套说明
-
-请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
-
-安装完成后需要配置CANN环境变量([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html))
-
-## 编译
+### 编译
 
 memfabric_hybrid编译不依赖CANN和HDK.
 
@@ -50,7 +42,17 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 - xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
 - build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
 
-## 安装使用
+## 环境准备
+
+编译时xpu_type选择NPU时，编译出来的包在运行时，运行环境上需要安装NPU固件驱动和CANN包。
+
+依赖的NPU固件驱动和CANN包，具体版本详见下面的软件硬件配套说明
+
+请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
+
+安装完成后需要配置CANN环境变量([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html?Mode=PmIns&OS=Ubuntu&Software=cannToolKit))
+
+## 安装软件包
 
 memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
 
@@ -108,10 +110,37 @@ Requires:
 Required-by:
 ```
 
-在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装(安装包路径参考上面目录结构)
+### whl包安装
+在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装
+
 ```bash
 # 检查是否安装memfabric_hybrid
-pip show mefabric_hybrid
-# 手动安装（此处以1.0.0版本为例）
-pip install memfabric_hybrid-1.0.0-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl
+pip show memfabric_hybrid
 ```
+
+1. 用已安装的run包目录下的whl包进行安装（此处以默认安装路径为例）
+```bash
+# 手动安装（此处以1.0.0版本为例）
+pip install /usr/local/memfabric_hybrid/1.0.0/aarch64-linux/wheel/memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
+```
+2. whl包已发布到[pypi](https://pypi.org/project/memfabric-hybrid/#files)，可以直接进行在线安装
+```bash
+# 手动安装（这里以1.0.0版本为例）
+pip install memfabric_hybrid==1.0.0
+```
+
+## 卸载软件包
+### 卸载run包
+执行run包安装路径（此处以默认安装路径为例）下的卸载脚本进行卸载。
+```bash
+# 此处以1.0.0版本为例
+bash /usr/local/memfabric_hybrid/1.0.0/uninstall.sh
+```
+### 卸载whl包
+```bash
+pip uninstall memfabric_hybrid
+```
+
+## 开发样例及常见问题
+
+我们为用户提供了C++和Python的开发样例及使用中常见问题的解决方案，详情请参考：[开发样例及常见问题](../example/examples.md)
