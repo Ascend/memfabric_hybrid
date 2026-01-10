@@ -118,7 +118,7 @@ std::string HybmEntityTagInfo::GetTagByRank(uint32_t rankId)
     if (it != rankTagInfo_.end()) {
         return it->second;
     }
-    BM_LOG_ERROR("Failed to find tagInfo by rankId:" << rankId);
+    BM_LOG_WARN("Not find tagInfo by rankId:" << rankId);
     return "";
 }
 
@@ -143,7 +143,7 @@ uint32_t HybmEntityTagInfo::GetTag2TagOpType(const std::string &tag1, const std:
     if (it != tagOpInfo_.end()) {
         return it->second;
     }
-    BM_LOG_ERROR("Failed to get opType from tag1:" << tag1 << " to tag2:" << tag2);
+    BM_LOG_WARN("Not find opType from tag1:" << tag1 << " to tag2:" << tag2);
     return HYBM_DOP_TYPE_DEFAULT;
 }
 
@@ -151,13 +151,13 @@ uint32_t HybmEntityTagInfo::GetRank2RankOpType(uint32_t rankId1, uint32_t rankId
 {
     auto it = rankTagInfo_.find(rankId1);
     if (it == rankTagInfo_.end()) {
-        BM_LOG_ERROR("Failed to find tag rank1:" << rankId1);
+        BM_LOG_WARN("Not find tag rank1:" << rankId1);
         return HYBM_DOP_TYPE_DEFAULT;
     }
     auto tag1 = it->second;
     it = rankTagInfo_.find(rankId2);
     if (it == rankTagInfo_.end()) {
-        BM_LOG_ERROR("Failed to find tag rank2:" << rankId2);
+        BM_LOG_WARN("Not find tag rank2:" << rankId2);
         return HYBM_DOP_TYPE_DEFAULT;
     }
     auto tag2 = it->second;

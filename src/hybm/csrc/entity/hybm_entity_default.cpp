@@ -674,7 +674,7 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     }
 
     ret = dataOperator_->DataCopy(params, direction, options);
-    if (ret == BM_OK) {
+    if (ret != BM_OK) {
         BM_LOG_ERROR("failed to copy data ret:" << ret);
     }
     return ret;
