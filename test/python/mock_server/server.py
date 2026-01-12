@@ -27,6 +27,7 @@ from ctypes import CDLL
 
 import torch
 import torch_npu
+import acl
 
 import memfabric_hybrid
 from memfabric_hybrid import bm, shm, TransferEngine, create_config_store, set_log_level
@@ -67,7 +68,7 @@ class TestServer:
         self.thread_local = threading.local()
         self.thread_local.client_socket = None
         self._register_inner_command()
-        self._stream = None
+        self._stream = 0
 
     def _register_inner_command(self):
         self._commands = {
@@ -150,7 +151,7 @@ class TestServer:
 
     def _handle_client(self, client_socket: socket):
         self.thread_local.client_socket = client_socket
-        if self._stream is None:
+        if self._stream == 0:
             self._stream = set_device(globals_device_id)
         current_thread = threading.current_thread()
         logging.info(f"current thread: {current_thread.ident}")
@@ -215,7 +216,7 @@ def result_handler(func):
 
 def set_device(device_id: int):
     torch.npu.set_device(device=device_id)
-    _stream = torch_npu.npu.Stream(device=torch.npu.current_device())
+    _stream = acl.rt.create_stream()
     return _stream
 
 
@@ -298,6 +299,12 @@ class MfTest(TestServer):
             CliCommand("bm_peer_rank_ptr",
                        "Get peer gva by rank id, bm_peer_rank_ptr [handle_id] [peer_rank]",
                        self.bm_peer_rank_ptr),
+            CliCommand("bm_register",
+                       "Register user mem, bm_register [handle_id] [addr] [size]",
+                       self.bm_register),
+            CliCommand("bm_unregister",
+                       "Unregister user mem, bm_unregister [handle_id] [addr]",
+                       self.bm_unregister),
             CliCommand("bm_copy_data",
                        "Data operation on Big Memory object, copy_data "
                        "[handle_id] [src_ptr] [dst_ptr] [size] [copy_type] [flags]",
@@ -306,6 +313,10 @@ class MfTest(TestServer):
                        "Data operation on Big Memory object, copy_data "
                        "[handle_id] [src_ptr] [src_pitch] [dst_ptr] [dst_pitch] [width] [height] [copy_type] [flags]",
                        self.bm_copy_data_2d),
+            CliCommand("bm_copy_data_batch",
+                       "Data operation on Big Memory object, copy_data_batch "
+                       "[handle_id] [src_addrs_str] [dst_addrs_str] [sizes] [count] [copy_type] [flags]",
+                       self.bm_copy_data_batch),
             CliCommand("delete_bm_handle", "delete a bm handle, delete_bm_handle [handle_id]",
                        self.delete_bm_handle),
             CliCommand("shm_init",
@@ -372,6 +383,10 @@ class MfTest(TestServer):
                        "Transfer data between transfer engine, transfer_engine_transfer_sync_write "
                        "[handle_id] [transfer_data_id] [peer_buffer_addresses] [destSession]",
                        self.transfer_engine_transfer_sync_write),
+            CliCommand("transfer_engine_transfer_sync_read",
+                       "Transfer data between transfer engine, transfer_engine_transfer_sync_read "
+                       "[handle_id] [transfer_data_id] [peer_buffer_addresses] [destSession]",
+                       self.transfer_engine_transfer_sync_read),
             CliCommand("transfer_engine_batch_register_memory",
                        "Register batch memory for transfer engine, "
                        "transfer_engine_batch_register_memory [handle_id] [transfer_data_id]",
@@ -380,6 +395,18 @@ class MfTest(TestServer):
                        "Transfer batch data between transfer engine, transfer_engine_batch_transfer_sync_write "
                        "[handle_id] [transfer_data_id] [peer_buffer_addresses] [destSession]",
                        self.transfer_engine_batch_transfer_sync_write),
+            CliCommand("transfer_engine_batch_transfer_sync_read",
+                       "Transfer batch data between transfer engine, transfer_engine_batch_transfer_sync_read "
+                       "[handle_id] [transfer_data_id] [peer_buffer_addresses] [destSession]",
+                       self.transfer_engine_batch_transfer_sync_read),
+            CliCommand("transfer_engine_transfer_async_write_submit",
+                       "Transfer data between transfer engine, transfer_engine_transfer_async_write_submit "
+                       "[handle_id] [transfer_data_id] [peer_buffer_address] [destSession] [stream]",
+                       self.transfer_engine_transfer_async_write_submit),
+            CliCommand("transfer_engine_transfer_async_read_submit",
+                       "Transfer data between transfer engine, transfer_engine_transfer_async_read_submit "
+                       "[handle_id] [transfer_data_id] [peer_buffer_address] [destSession] [stream]",
+                       self.transfer_engine_transfer_async_read_submit),
             CliCommand("transfer_engine_unregister_memory",
                        "Destroy transfer engine handle, "
                        "transfer_engine_unregister_memory [handle_id] [transfer_data_id]",
@@ -583,13 +610,14 @@ class MfTest(TestServer):
     @result_handler
     def bm_join(self, handle_id: int, flags: int):
         handle = self._bm_handle_dic[handle_id]
-        addr = handle.join(flags=flags)
-        self.cli_print(f"global Big Memory space, GVA:{addr}")
+        ret = handle.join(flags=flags)
+        self.cli_print(f"bm join, ret:{ret}")
 
     @result_handler
     def bm_leave(self, handle_id: int, flags: int):
         handle = self._bm_handle_dic[handle_id]
-        handle.leave(flags)
+        ret = handle.leave(flags)
+        self.cli_print(f"bm leave, ret:{ret}")
 
     @result_handler
     def bm_local_mem_size(self, handle_id: int):
@@ -603,6 +631,18 @@ class MfTest(TestServer):
         ptr = handle.peer_rank_ptr(peer_rank=peer_rank)
         self.cli_print(f"peer rack ptr16:{hex(ptr)}")
         self.cli_print(f"peer rack ptr:{ptr}")
+
+    @result_handler
+    def bm_register(self, handle_id: int, addr: int, size: int):
+        handle = self._bm_handle_dic[handle_id]
+        ret = handle.register(addr=addr, size=size)
+        self.cli_print(f"bm register mem, ret:{ret}")
+
+    @result_handler
+    def bm_unregister(self, handle_id: int, addr: int):
+        handle = self._bm_handle_dic[handle_id]
+        ret = handle.unregister(addr=addr)
+        self.cli_print(f"bm unregister mem, ret:{ret}")
 
     @result_handler
     def bm_copy_data(self, handle_id: int, src_ptr: int, dst_ptr: int, size: int, copy_type: int, flags: int):
@@ -625,6 +665,17 @@ class MfTest(TestServer):
         self.cli_print(f"src_ptr={src_ptr}, src_pitch={src_pitch}, dst_ptr={hex(dst_ptr)}, dst_pitch={dst_pitch}, "
                        f"width={width}, height={height}, type={bm.BmCopyType(copy_type)}, flags={flags}")
         handle.copy_data_2d(copy_2d_config, type=bm.BmCopyType(copy_type), flags=flags)
+
+    @result_handler
+    def bm_copy_data_batch(self, handle_id: int, src_addrs_str: int, dst_addrs_str: int, sizes_str: int,
+                           count: int, copy_type: int, flags: int):
+        handle = self._bm_handle_dic[handle_id]
+        src_addrs = list(map(int, src_addrs.split(",")))
+        dst_addrs = list(map(int, dst_addrs_str.split(",")))
+        sizes = list(map(int, sizes_str.split(",")))
+        ret = handle.copy_data_batch(src_addrs=src_addrs, dst_addrs=dst_addrs, sizes=sizes, count=count,
+                                     type=bm.BmCopyType(copy_type), flags=flags)
+        self.cli_print(f"bm copy_data_abtch, ret:{ret}")
 
     @result_handler
     def delete_bm_handle(self, handle_id: int):
@@ -791,6 +842,14 @@ class MfTest(TestServer):
         self.cli_print(f"write data for transfer engine result is:{ret_value}")
 
     @result_handler
+    def transfer_engine_transfer_sync_read(self, handle_id: int, dest_session: str, buffers: int,
+                                            peer_buffer_addresses: int, length: int):
+        engine = self._transfer_engine_dic[handle_id]
+        ret_value = engine.transfer_sync_read(dest_session, buffers, peer_buffer_addresses, length)
+        time.sleep(5)
+        self.cli_print(f"read data for transfer engine result is:{ret_value}")
+
+    @result_handler
     def transfer_engine_batch_register_memory(self, handle_id: int, buffers_str: str, capacities_str: str):
         engine = self._transfer_engine_dic[handle_id]
         buffers = list(map(int, buffers_str.split(",")))
@@ -808,6 +867,37 @@ class MfTest(TestServer):
         ret_value = engine.batch_transfer_sync_write(dest_session, buffers, peer_buffer_addresses, lengths)
         time.sleep(5)
         self.cli_print(f"write batch data for transfer engine result is:{ret_value}")
+
+    @result_handler
+    def transfer_engine_batch_transfer_sync_read(self, handle_id: int, dest_session: str, buffers_str: str,
+                                                  peer_buffer_addresses_str: str, lengths_str: str):
+        buffers = list(map(int, buffers_str.split(",")))
+        peer_buffer_addresses = list(map(int, peer_buffer_addresses_str.split(",")))
+        lengths = list(map(int, lengths_str.split(",")))
+        engine = self._transfer_engine_dic[handle_id]
+        ret_value = engine.batch_transfer_sync_read(dest_session, buffers, peer_buffer_addresses, lengths)
+        time.sleep(5)
+        self.cli_print(f"read batch data for transfer engine result is:{ret_value}")
+
+    @result_handler
+    def transfer_engine_transfer_async_write_submit(self, handle_id: int, dest_session: str, buffers: int,
+                                            peer_buffer_addresses: int, length: int, stream: int):
+        engine = self._transfer_engine_dic[handle_id]
+        if stream != 0:
+            stream = self._stream
+        ret_value = engine.transfer_async_write_submit(dest_session, buffers, peer_buffer_addresses, length, stream)
+        time.sleep(5)
+        self.cli_print(f"async write data submit for transfer engine result is:{ret_value}")
+
+    @result_handler
+    def transfer_engine_transfer_async_read_submit(self, handle_id: int, dest_session: str, buffers: int,
+                                            peer_buffer_addresses: int, length: int, stream: int):
+        engine = self._transfer_engine_dic[handle_id]
+        if stream != 0:
+            stream = self._stream
+        ret_value = engine.transfer_async_read_submit(dest_session, buffers, peer_buffer_addresses, length, stream)
+        time.sleep(5)
+        self.cli_print(f"async read data submit for transfer engine result is:{ret_value}")
 
     @result_handler
     def transfer_engine_unregister_memory(self, handle_id: int, buffers: int):

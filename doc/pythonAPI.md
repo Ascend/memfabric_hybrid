@@ -166,14 +166,24 @@ class BmCopyType(Enum):
     G2L
     G2H
     H2G
+    L2GH
+    GH2L
+    GH2H
+    H2GH
+    G2G
 ```
 
 |属性|含义|
 |-|-|
-|L2G|将数据从本地空间复制到全局空间|
-|G2L|将数据从全局空间复制到本地空间|
+|L2G|将数据从本地HBM复制到全局空间|
+|G2L|将数据从全局空间复制到本地HBM|
 |G2H|将数据从全局空间复制到主机内存|
 |H2G|将数据从主机内存复制到全局空间|
+|L2GH|将数据从本地HBM复制到全局主机空间|
+|GH2L|将数据从全局主机空间复制到本地HBM|
+|GH2H|将数据从全局主机空间复制到主机内存|
+|H2GH|将数据从主机内存复制到全局主机空间|
+|G2G|将数据从全局空间复制到全局空间|
 
 #### BmConfig类
 ```python
@@ -206,7 +216,7 @@ class BmDataOpType(Enum):
 ```python
 class BigMemory:
     def join(flags = 0) -> int:
-    def leave(flags = 0) -> None:
+    def leave(flags = 0) -> int:
     def local_mem_size() -> int:
     def peer_rank_ptr(peer_rank) -> int:
     def destroy() -> None:

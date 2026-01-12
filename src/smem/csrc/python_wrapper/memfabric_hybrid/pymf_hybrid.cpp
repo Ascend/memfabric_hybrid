@@ -129,20 +129,14 @@ public:
         smem_bm_destroy(handle_);
     }
 
-    void Join(uint32_t flags)
+    int32_t Join(uint32_t flags)
     {
-        auto ret = smem_bm_join(handle_, flags);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("join bm failed:").append(std::to_string(ret)));
-        }
+        return smem_bm_join(handle_, flags);
     }
 
-    void Leave(uint32_t flags)
+    int32_t Leave(uint32_t flags)
     {
-        auto ret = smem_bm_leave(handle_, flags);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("leave bm failed:").append(std::to_string(ret)));
-        }
+        return smem_bm_leave(handle_, flags);
     }
 
     uint64_t LocalMemSize(smem_bm_mem_type memType)
@@ -426,10 +420,14 @@ void DefineBmConfig(py::module_ &m)
         .value("HOST", SMEM_MEM_TYPE_HOST, "memory type is HOST side.");
 
     py::enum_<smem_bm_copy_type>(m, "BmCopyType")
-        .value("L2G", SMEMB_COPY_L2G, "copy data from local space to global space")
-        .value("G2L", SMEMB_COPY_G2L, "copy data from global space to local space")
+        .value("L2G", SMEMB_COPY_L2G, "copy data from local hbm to global space")
+        .value("G2L", SMEMB_COPY_G2L, "copy data from global space to local hbm")
         .value("G2H", SMEMB_COPY_G2H, "copy data from global space to host memory")
         .value("H2G", SMEMB_COPY_H2G, "copy data from host memory to global space")
+        .value("L2GH", SMEMB_COPY_L2GH, "copy data from local hbm to global host space")
+        .value("GH2L", SMEMB_COPY_GH2L, "copy data from global host space to local hbm")
+        .value("GH2H", SMEMB_COPY_GH2H, "copy data from global host space to host memory")
+        .value("H2GH", SMEMB_COPY_H2GH, "copy data from host memory to global host space")
         .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
