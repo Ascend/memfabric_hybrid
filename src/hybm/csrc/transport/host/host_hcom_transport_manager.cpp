@@ -158,7 +158,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
-    if (mr.flags != transport::REG_MR_FLAG_DRAM) {
+    if (!(mr.flags & transport::REG_MR_FLAG_DRAM)) {
         BM_LOG_WARN("Only support register dram memory skip flag:" << mr.flags);
         return BM_OK;
     }
@@ -620,6 +620,9 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
 
 Result HcomTransportManager::Synchronize(const uint32_t rankId)
 {
+    if (stream_ == nullptr) {
+        return BM_OK;
+    }
     stream_->Synchronize(static_cast<int32_t>(rankId));
     return BM_OK;
 }
@@ -783,6 +786,7 @@ Result HcomTransportManager::GetMemoryRegionByAddr(const uint32_t &rankId, const
 {
     std::unique_lock<std::mutex> lock(mrMutex_[rankId]);
     for (const auto &mrInfo : mrs_[rankId]) {
+        BM_LOG_DEBUG("Find rankId:" << rankId << std::hex << " addr:" << mrInfo.addr << " size:" << mrInfo.size);
         if (mrInfo.addr <= addr && mrInfo.addr + mrInfo.size > addr) {
             mr = mrInfo;
             return BM_OK;

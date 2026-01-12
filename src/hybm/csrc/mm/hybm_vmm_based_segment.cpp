@@ -255,6 +255,9 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
 
 Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
+    auto memType = options_.segType == HYBM_MST_HBM ? MEM_TYPE_DEVICE_HBM : MEM_TYPE_HOST_DRAM;
+    slice = std::make_shared<MemSlice>(sliceCount_++, memType, MEM_PT_TYPE_SVM,
+                                       reinterpret_cast<uint64_t>(addr), size);
     BM_LOG_INFO("HybmVmmBasedSegment: RegisterMemory success, size: " << size << " addr: " << std::hex << addr);
     return BM_OK;
 }

@@ -425,10 +425,11 @@ Result ComposeTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr,
         if (ret == BM_OK) {
             return BM_OK;
         }
-        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret);
+        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret <<
+            " remote rankId:" << rankId << " lAddr:" << std::hex << lAddr << " rAddr:" << rAddr << " size:" << size);
     }
 
-    BM_LOG_ERROR("Failed to WriteRemote.");
+    BM_LOG_ERROR("Failed to ReadRemote.");
     return BM_ERROR;
 }
 
