@@ -25,6 +25,8 @@
 #include <sys/time.h>
 #include <sys/syscall.h>
 
+#include "mf_spinlock.h"
+
 // macro for gcc optimization for prediction of if/else
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
@@ -141,10 +143,14 @@ public:
         }
         if (strftime(strTime, sizeof strTime, "%Y-%m-%d %H:%M:%S.", result) != 0) {
             const uint8_t TIME_WIDTH = 6U;
+            consoleSpinLock_.lock();
             std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0') << tv.tv_usec << " "
                       << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
+            consoleSpinLock_.unlock();
         } else {
+            consoleSpinLock_.lock();
             std::cout << " Invalid time " << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
+            consoleSpinLock_.unlock();
         }
         // LCOV_EXCL_STOP
     }
@@ -161,6 +167,8 @@ public:
 
 private:
     OutLogger() = default;
+
+    mutable SpinLock consoleSpinLock_;
 
     const char *LogLevelDesc(const int level) const
     {

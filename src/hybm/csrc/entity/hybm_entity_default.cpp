@@ -212,12 +212,6 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
         BM_LOG_ERROR("input ptr or size(" << size << ") is invalid");
         return BM_INVALID_PARAM;
     }
-    if ((size % HYBM_LARGE_PAGE_SIZE) != 0) {
-        uint64_t originalSize = size;
-        size = ((size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE) * HYBM_LARGE_PAGE_SIZE;
-        BM_LOG_INFO("size: " << originalSize << " not aligned to large page (" << HYBM_LARGE_PAGE_SIZE
-                             << "), rounded to: " << size);
-    }
 
     auto addr = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(ptr));
     bool isHbm = (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR);
