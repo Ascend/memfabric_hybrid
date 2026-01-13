@@ -24,20 +24,15 @@ const char *DlHccpApi::gRaLibName = "libra.so";
 const char *DlHccpApi::gTsdLibName = "libtsdclient.so";
 
 raRdevGetHandleFunc DlHccpApi::gRaRdevGetHandle;
-
 raInitFunc DlHccpApi::gRaInit;
-raGetInterfaceVersionFunc DlHccpApi::gRaGetInterfaceVersion;
 raSocketInitFunc DlHccpApi::gRaSocketInit;
 raSocketDeinitFunc DlHccpApi::gRaSocketDeinit;
 raRdevInitV2Func DlHccpApi::gRaRdevInitV2;
 raSocketBatchConnectFunc DlHccpApi::gRaSocketBatchConnect;
 raSocketBatchCloseFunc DlHccpApi::gRaSocketBatchClose;
-raSocketBatchAbortFunc DlHccpApi::gRaSocketBatchAbort;
 raSocketListenStartFunc DlHccpApi::gRaSocketListenStart;
 raSocketListenStopFunc DlHccpApi::gRaSocketListenStop;
 raGetSocketsFunc DlHccpApi::gRaGetSockets;
-raSocketSendFunc DlHccpApi::gRaSocketSend;
-raSocketRecvFunc DlHccpApi::gRaSocketRecv;
 raGetIfNumFunc DlHccpApi::gRaGetIfNum;
 raGetIfAddrsFunc DlHccpApi::gRaGetIfAddrs;
 raSocketWhiteListAddFunc DlHccpApi::gRaSocketWhiteListAdd;
@@ -49,11 +44,8 @@ raGetQpStatusFunc DlHccpApi::gRaGetQpStatus;
 raQpConnectAsyncFunc DlHccpApi::gRaQpConnectAsync;
 raRegisterMrFunc DlHccpApi::gRaRegisterMR;
 raDeregisterMrFunc DlHccpApi::gRaDeregisterMR;
-raMrRegFunc DlHccpApi::gRaMrReg;
-raMrDeregFunc DlHccpApi::gRaMrDereg;
 raSendWrFunc DlHccpApi::gRaSendWr;
 raSendWrV2Func DlHccpApi::gRaSendWrV2;
-raPollCqFunc DlHccpApi::gRaPollCq;
 raGetNotifyBaseAddrFunc DlHccpApi::gRaGetNotifyBaseAddr;
 raGetNotifyMrInfoFunc DlHccpApi::gRaGetNotifyMrInfo;
 
@@ -89,38 +81,38 @@ Result DlHccpApi::LoadLibrary()
     }
 
     /* load sym */
-    DL_LOAD_SYM(gRaGetInterfaceVersion, raGetInterfaceVersionFunc, raHandle, "ra_get_interface_version");
-    DL_LOAD_SYM(gRaSocketInit, raSocketInitFunc, raHandle, "ra_socket_init");
-    DL_LOAD_SYM(gRaInit, raInitFunc, raHandle, "ra_init");
-    DL_LOAD_SYM(gRaSocketDeinit, raSocketDeinitFunc, raHandle, "ra_socket_deinit");
-    DL_LOAD_SYM(gRaRdevInitV2, raRdevInitV2Func, raHandle, "ra_rdev_init_v2");
-    DL_LOAD_SYM(gRaRdevGetHandle, raRdevGetHandleFunc, raHandle, "ra_rdev_get_handle");
-    DL_LOAD_SYM(gRaSocketBatchConnect, raSocketBatchConnectFunc, raHandle, "ra_socket_batch_connect");
-    DL_LOAD_SYM(gRaSocketBatchClose, raSocketBatchCloseFunc, raHandle, "ra_socket_batch_close");
-    DL_LOAD_SYM(gRaSocketBatchAbort, raSocketBatchAbortFunc, raHandle, "ra_socket_batch_abort");
-    DL_LOAD_SYM(gRaSocketListenStart, raSocketListenStartFunc, raHandle, "ra_socket_listen_start");
-    DL_LOAD_SYM(gRaSocketListenStop, raSocketListenStopFunc, raHandle, "ra_socket_listen_stop");
-    DL_LOAD_SYM(gRaGetSockets, raGetSocketsFunc, raHandle, "ra_get_sockets");
-    DL_LOAD_SYM(gRaSocketSend, raSocketSendFunc, raHandle, "ra_socket_send");
-    DL_LOAD_SYM(gRaSocketRecv, raSocketRecvFunc, raHandle, "ra_socket_recv");
-    DL_LOAD_SYM(gRaGetIfNum, raGetIfNumFunc, raHandle, "ra_get_ifnum");
-    DL_LOAD_SYM(gRaGetIfAddrs, raGetIfAddrsFunc, raHandle, "ra_get_ifaddrs");
-    DL_LOAD_SYM(gRaSocketWhiteListAdd, raSocketWhiteListAddFunc, raHandle, "ra_socket_white_list_add");
-    DL_LOAD_SYM(gRaSocketWhiteListDel, raSocketWhiteListDelFunc, raHandle, "ra_socket_white_list_del");
-    DL_LOAD_SYM(gRaQpCreate, raQpCreateFunc, raHandle, "ra_qp_create");
-    DL_LOAD_SYM(gRaQpAiCreate, raQpAiCreateFunc, raHandle, "ra_ai_qp_create");
-    DL_LOAD_SYM(gRaQpDestroy, raQpDestroyFunc, raHandle, "ra_qp_destroy");
-    DL_LOAD_SYM(gRaGetQpStatus, raGetQpStatusFunc, raHandle, "ra_get_qp_status");
-    DL_LOAD_SYM(gRaQpConnectAsync, raQpConnectAsyncFunc, raHandle, "ra_qp_connect_async");
-    DL_LOAD_SYM(gRaRegisterMR, raRegisterMrFunc, raHandle, "ra_register_mr");
-    DL_LOAD_SYM(gRaDeregisterMR, raDeregisterMrFunc, raHandle, "ra_deregister_mr");
-    DL_LOAD_SYM(gRaMrReg, raMrRegFunc, raHandle, "ra_mr_reg");
-    DL_LOAD_SYM(gRaMrDereg, raMrDeregFunc, raHandle, "ra_mr_dereg");
-    DL_LOAD_SYM(gRaSendWr, raSendWrFunc, raHandle, "ra_send_wr");
-    DL_LOAD_SYM(gRaSendWrV2, raSendWrV2Func, raHandle, "ra_send_wr_v2");
-    DL_LOAD_SYM(gRaPollCq, raPollCqFunc, raHandle, "ra_poll_cq");
-    DL_LOAD_SYM(gRaGetNotifyBaseAddr, raGetNotifyBaseAddrFunc, raHandle, "ra_get_notify_base_addr");
-    DL_LOAD_SYM(gRaGetNotifyMrInfo, raGetNotifyMrInfoFunc, raHandle, "ra_get_notify_mr_info");
+    DL_LOAD_SYM_ALT(gRaSocketInit, raSocketInitFunc, raHandle, "ra_socket_init", "RaSocketInit");
+    DL_LOAD_SYM_ALT(gRaInit, raInitFunc, raHandle, "ra_init", "RaInit");
+    DL_LOAD_SYM_ALT(gRaSocketDeinit, raSocketDeinitFunc, raHandle, "ra_socket_deinit", "RaSocketDeinit");
+    DL_LOAD_SYM_ALT(gRaRdevInitV2, raRdevInitV2Func, raHandle, "ra_rdev_init_v2", "RaRdevInitV2");
+    DL_LOAD_SYM_ALT(gRaRdevGetHandle, raRdevGetHandleFunc, raHandle, "ra_rdev_get_handle", "RaRdevGetHandle");
+    DL_LOAD_SYM_ALT(gRaSocketBatchConnect, raSocketBatchConnectFunc, raHandle,
+        "ra_socket_batch_connect", "RaSocketBatchConnect");
+    DL_LOAD_SYM_ALT(gRaSocketBatchClose, raSocketBatchCloseFunc, raHandle,
+        "ra_socket_batch_close", "RaSocketBatchClose");
+    DL_LOAD_SYM_ALT(gRaSocketListenStart, raSocketListenStartFunc, raHandle,
+        "ra_socket_listen_start", "RaSocketListenStart");
+    DL_LOAD_SYM_ALT(gRaSocketListenStop, raSocketListenStopFunc, raHandle,
+        "ra_socket_listen_stop", "RaSocketListenStop");
+    DL_LOAD_SYM_ALT(gRaGetSockets, raGetSocketsFunc, raHandle, "ra_get_sockets", "RaGetSockets");
+    DL_LOAD_SYM_ALT(gRaGetIfNum, raGetIfNumFunc, raHandle, "ra_get_ifnum", "RaGetIfnum");
+    DL_LOAD_SYM_ALT(gRaGetIfAddrs, raGetIfAddrsFunc, raHandle, "ra_get_ifaddrs", "RaGetIfaddrs");
+    DL_LOAD_SYM_ALT(gRaSocketWhiteListAdd, raSocketWhiteListAddFunc, raHandle,
+        "ra_socket_white_list_add", "RaSocketWhiteListAdd");
+    DL_LOAD_SYM_ALT(gRaSocketWhiteListDel, raSocketWhiteListDelFunc, raHandle,
+        "ra_socket_white_list_del", "RaSocketWhiteListDel");
+    DL_LOAD_SYM_ALT(gRaQpCreate, raQpCreateFunc, raHandle, "ra_qp_create", "RaQpCreate");
+    DL_LOAD_SYM_ALT(gRaQpAiCreate, raQpAiCreateFunc, raHandle, "ra_ai_qp_create", "RaAiQpCreate");
+    DL_LOAD_SYM_ALT(gRaQpDestroy, raQpDestroyFunc, raHandle, "ra_qp_destroy", "RaQpDestroy");
+    DL_LOAD_SYM_ALT(gRaGetQpStatus, raGetQpStatusFunc, raHandle, "ra_get_qp_status", "RaGetQpStatus");
+    DL_LOAD_SYM_ALT(gRaQpConnectAsync, raQpConnectAsyncFunc, raHandle, "ra_qp_connect_async", "RaQpConnectAsync");
+    DL_LOAD_SYM_ALT(gRaRegisterMR, raRegisterMrFunc, raHandle, "ra_register_mr", "RaRegisterMr");
+    DL_LOAD_SYM_ALT(gRaDeregisterMR, raDeregisterMrFunc, raHandle, "ra_deregister_mr", "RaDeregisterMr");
+    DL_LOAD_SYM_ALT(gRaSendWr, raSendWrFunc, raHandle, "ra_send_wr", "RaSendWr");
+    DL_LOAD_SYM_ALT(gRaSendWrV2, raSendWrV2Func, raHandle, "ra_send_wr_v2", "RaSendWrV2");
+    DL_LOAD_SYM_ALT(gRaGetNotifyBaseAddr, raGetNotifyBaseAddrFunc, raHandle,
+        "ra_get_notify_base_addr", "RaGetNotifyBaseAddr");
+    DL_LOAD_SYM_ALT(gRaGetNotifyMrInfo, raGetNotifyMrInfoFunc, raHandle, "ra_get_notify_mr_info", "RaGetNotifyMrInfo");
 
     DL_LOAD_SYM(gTsdOpen, tsdOpenFunc, tsdHandle, "TsdOpen");
     BM_LOG_INFO("LoadLibrary for DlHccpApi success");
@@ -137,18 +129,14 @@ void DlHccpApi::CleanupLibrary()
 
     gRaRdevGetHandle = nullptr;
     gRaInit = nullptr;
-    gRaGetInterfaceVersion = nullptr;
     gRaSocketInit = nullptr;
     gRaSocketDeinit = nullptr;
     gRaRdevInitV2 = nullptr;
     gRaSocketBatchConnect = nullptr;
     gRaSocketBatchClose = nullptr;
-    gRaSocketBatchAbort = nullptr;
     gRaSocketListenStart = nullptr;
     gRaSocketListenStop = nullptr;
     gRaGetSockets = nullptr;
-    gRaSocketSend = nullptr;
-    gRaSocketRecv = nullptr;
     gRaGetIfNum = nullptr;
     gRaGetIfAddrs = nullptr;
     gRaSocketWhiteListAdd = nullptr;
@@ -160,11 +148,11 @@ void DlHccpApi::CleanupLibrary()
     gRaQpConnectAsync = nullptr;
     gRaRegisterMR = nullptr;
     gRaDeregisterMR = nullptr;
-    gRaMrReg = nullptr;
-    gRaMrDereg = nullptr;
     gTsdOpen = nullptr;
     gRaSendWr = nullptr;
-    gRaPollCq = nullptr;
+    gRaSendWrV2 = nullptr;
+    gRaGetNotifyBaseAddr = nullptr;
+    gRaGetNotifyMrInfo = nullptr;
 
     if (raHandle != nullptr) {
         dlclose(raHandle);
