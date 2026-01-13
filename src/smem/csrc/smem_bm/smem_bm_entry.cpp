@@ -358,7 +358,7 @@ Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
     }
     auto slice = hybm_register_local_memory(entity_, reinterpret_cast<void *>(addr), size, 0);
     if (slice != nullptr) {
-        registedSlice_.emplace(std::make_pair(addr, std::make_pair(size, slice)));
+        registedSlice_.emplace(addr, std::make_pair(size, slice));
         return SM_OK;
     } else {
         return SM_ERROR;
