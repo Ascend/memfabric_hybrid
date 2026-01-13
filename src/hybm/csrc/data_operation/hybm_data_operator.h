@@ -93,6 +93,9 @@ public:
                 return (gva - gva_[type]) / localSpaceSize_[type];
             }
         }
+        BM_LOG_ERROR("failed to get rank id by gva: " << std::hex << gva <<
+            ", gva of device: " << std::hex << gva_[HYBM_MEM_TYPE_DEVICE] <<
+            ", gva of host: " << std::hex << gva_[HYBM_MEM_TYPE_HOST]);
         return UINT32_MAX;
     }
 
@@ -103,9 +106,9 @@ public:
     }
 
 protected:
-    uint64_t gva_[HYBM_MEM_TYPE_BUTT] = {0};
-    uint64_t localSpaceSize_[HYBM_MEM_TYPE_BUTT] = {0};
-    uint64_t rankCount_[HYBM_MEM_TYPE_BUTT] = {0};
+    static inline uint64_t gva_[HYBM_MEM_TYPE_BUTT] = {0};
+    static inline uint64_t localSpaceSize_[HYBM_MEM_TYPE_BUTT] = {0};
+    static inline uint64_t rankCount_[HYBM_MEM_TYPE_BUTT] = {0};
 };
 
 using DataOperatorPtr = std::shared_ptr<DataOperator>;
