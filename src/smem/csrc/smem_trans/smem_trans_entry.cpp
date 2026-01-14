@@ -568,6 +568,8 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     size_t max_chars = std::min(url.length(), NIC_SIZE - 1);
     std::copy_n(url.c_str(), max_chars, options.transUrl);
     options.transUrl[max_chars] = '\0';
+    options.tag[0] = '\0';
+    options.tagOpInfo[0] = '\0';
     return std::move(options);
 }
 
