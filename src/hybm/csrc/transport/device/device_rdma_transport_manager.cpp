@@ -755,11 +755,19 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
 int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, HccpMrInfo &info)
 {
     auto addr = mr.addr;
+    auto size = mr.size;
+
+    if ((size % HYBM_LARGE_PAGE_SIZE) != 0) {
+        BM_LOG_WARN("memory region size: " << size << " not aligned to 2M");
+        size = ((size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE) * HYBM_LARGE_PAGE_SIZE;
+        BM_LOG_WARN("memory region size aligned up to: " << size);
+    }
+
     // need register: dram except gvm
     if (mr.flags & REG_MR_FLAG_DRAM) {
         auto input = (void *)(ptrdiff_t)addr;
         void *output = nullptr;
-        auto ret = DlHalApi::HalHostRegister(input, mr.size, HOST_MEM_MAP_DEV, deviceId_, &output);
+        auto ret = DlHalApi::HalHostRegister(input, size, HOST_MEM_MAP_DEV, deviceId_, &output);
         if (ret != 0) {
             BM_LOG_ERROR("HalHostRegister failed: " << ret);
             return BM_DL_FUNCTION_FAILED;
