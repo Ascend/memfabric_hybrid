@@ -33,7 +33,6 @@ TIME                   NAME                                    BEGIN          GO
 | GOOD_END  | 执行成功次数        |
 | BAD_END   | 执行失败次数        |
 | ON_FLY    | 执行中的数量        |
-| IOPS      | 每秒调用次数        | 
 | MIN(us)   | 最低耗时（微秒）      |
 | MAX(us)   | 最高耗时（微秒）      |
 | AVG(us)   | 平均耗时（微秒）      |

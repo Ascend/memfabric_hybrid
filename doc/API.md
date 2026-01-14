@@ -100,14 +100,14 @@ int32_t smem_set_config_store_tls_key(
 |h| 密钥解密函数 |
 |返回值| 错误信息   |
 ```c
-typedef int (*smem_decrypt_handler)(const char *cipherText, int *cipherTextLen, char *plainText, int *plainTextLen);
+typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen, char *plainText, size_t &plainTextLen);
 ```
 |参数/返回值|含义|
 |-|-|
 |cipherText|密文（加密的用来加密私钥的密码）|
 |cipherTextLen|密文的长度|
 |plainText|解密后的密码（出参）|
-|plainTextLen|解密后的密码长度|
+|plainTextLen|解密后的密码长度（出参）|
 |返回值|错误信息|
 
 ### 5. 错误信息获取/清理
@@ -184,10 +184,10 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
 |参数/返回值|含义|
 |-|-|
 |id|BM id，用户自定义，BM之间取不同值|
-|memberSize|创建BM的rank数量，最大支持1024|
+|memberSize|创建BM的rank数量（保留参数，后续迭代使用）|
 |dataOpType|数据操作类型，取值内容参考smem_bm_data_op_type定义|
-|localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数（保留参数，后续迭代使用）|
-|localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
+|localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，范围为(0, 2TB]（保留参数，后续迭代使用）|
+|localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，范围为(0, 64GB]|
 |flags|创建标记位，预留|
 |返回值|成功返回BM handle，失败返回空指针|
 
@@ -350,7 +350,7 @@ int32_t smem_bm_unregister_user_mem(smem_bm_t handle, uint64_t addr);
 #### smem_bm_wait
 等待异步操作完成
 ```c
-int32_t smem_bm_wait(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_wait(smem_bm_t handle);
 ```
 
 |参数/返回值|含义|
@@ -411,7 +411,7 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint
 |id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
 |rankSize|参与创建SHM的rank数量，最大支持1024|
 |rankId|当前rank id|
-|symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
+|symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[0, 64GB]|
 |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
 |flags|预留参数|
 |gva|出参，gva空间地址|
@@ -664,10 +664,10 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
 |参数/返回值|含义|
 |-|---------|
 |handle|TRANS对象handle|
-|remoteAddr|源地址的起始地址指针|
-|destUniqueId|目的TRANS实例对应的标识|
-|localAddr|目的地址的起始地址指针|
-|dataSize|传输数据大小|
+|localAddr|本地用于接收读取数据的起始地址指针|
+|remoteUniqueId|远端TRANS实例对应的标识|
+|remoteAddr|远端待读取数据的起始地址指针|
+|dataSize|传输数据大小，单位字节|
 |返回值|成功返回0，其他为错误码|
 
 #### smem_trans_batch_read
@@ -681,46 +681,46 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
 |参数/返回值|含义|
 |-|--------|
 |handle|TRANS对象handle|
-|remoteAddrs[]|批量源地址的起始地址指针列表|
-|destUniqueId|目的TRANS实例对应的标识|
-|localAddrs[]|批量目的地址的起始地址指针列表|
-|dataSizes[]|批量传输数据大小列表|
-|batchSize|批量传输数据数量|
+|localAddrs[]|本地用于接收读取数据的起始地址指针列表|
+|remoteUniqueId|远端TRANS实例对应的标识|
+|remoteAddrs[]|批量远端待读取数据的起始地址指针列表|
+|dataSizes[]|批量传输数据大小列表，单位字节|
+|batchSize|批量读操作的任务数|
 |返回值|成功返回0，其他为错误码|	
 
 #### smem_trans_write
 同步写接口
 
 ```c
-int32_t smem_trans_write(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
-                              void *destAddress, size_t dataSize)
+int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
+                              void *remoteAddr, size_t dataSize)
 ```
 
 |参数/返回值|含义|
 |-|---------|
 |handle|TRANS对象handle|
-|srcAddress|源地址的起始地址指针|
-|destUniqueId|目的TRANS实例对应的标识|
-|destAddress|目的地址的起始地址指针|
-|dataSize|传输数据大小|
+|localAddr|本地待写数据起始地址指针|
+|remoteUniqueId|远端TRANS实例对应的标识|
+|remoteAddr|远端存储数据起始地址指针|
+|dataSize|传输数据大小，单位字节|
 |返回值|成功返回0，其他为错误码|
 
 #### smem_trans_batch_write
 批量同步写接口
 
 ```c
-int32_t smem_trans_batch_write(smem_trans_t handle, const void *srcAddresses[], const char *destUniqueId,
-                                    void *destAddresses[], size_t dataSizes[], uint32_t batchSize)
+int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
+                                    void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize)
 ```
 
 |参数/返回值|含义|
 |-|--------|
 |handle|TRANS对象handle|
-|srcAddresses[]|批量源地址的起始地址指针列表|
-|destUniqueId|目的TRANS实例对应的标识|
-|destAddresses[]|批量目的地址的起始地址指针列表|
-|dataSizes[]|批量传输数据大小列表|
-|batchSize|批量传输数据数量|
+|srcAddresses[]|批量本地待写数据起始地址指针列表|
+|destUniqueId|远端TRANS实例对应的标识|
+|destAddresses[]|批量远端存储数据起始地址指针列表|
+|dataSizes[]|批量传输数据大小列表，单位字节|
+|batchSize|批量写操作的任务数|
 |返回值|成功返回0，其他为错误码|
 
 ### 5. 异步读/写提交
@@ -735,10 +735,10 @@ int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char 
 | 参数/返回值       | 含义                   |
 |--------------|----------------------|
 | handle       | TRANS对象handle        |
-| remoteAddr   | 源地址的起始地址指针           |
-| destUniqueId | 目的TRANS实例对应的标识       |
-| localAddr    | 目的地址的起始地址指针          |
-| dataSize     | 传输数据大小               |
+| localAddr   | 本地用于接收读取数据的起始地址指针           |
+| remoteUniqueId | 远端TRANS实例对应的标识       |
+| remoteAddr    | 远端待读取数据的起始地址指针         |
+| dataSize     | 传输数据大小，单位字节               |
 | stream       | 需要将任务提交到的aclrtStream |
 | 返回值          | 成功返回0，其他为错误码         |
 
@@ -746,16 +746,16 @@ int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char 
 异步写提交接口
 
 ```c
-int32_t smem_trans_write_submit(smem_trans_t handle, const void *srcAddress, const char *destUniqueId,
-                                void *destAddress, size_t dataSize, void *stream)
+int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
+                                void *remoteAddr, size_t dataSize, void *stream)
 ```
 
 | 参数/返回值       | 含义                   |
 |--------------|----------------------|
 | handle       | TRANS对象handle        |
-| srcAddress   | 源地址的起始地址指针           |
-| destUniqueId | 目的TRANS实例对应的标识       |
-| destAddress  | 目的地址的起始地址指针          |
+| localAddr   |本地待写数据起始地址指针          |
+| remoteUniqueId | 远端TRANS实例对应的标识       |
+| remoteAddr  | 远端存储数据起始地址指针         |
 | dataSize     | 传输数据大小               |
 | stream       | 需要将任务提交到的aclrtStream |
 | 返回值          | 成功返回0，其他为错误码         |
