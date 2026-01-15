@@ -902,15 +902,16 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
     uniqueLock.unlock();
     if (importInfoEntity) {
         BM_ASSERT_LOG_AND_RETURN(ImportForTagManager() == BM_OK, "Failed import for tag manager", BM_ERROR);
+    }
+    if (transportManager_ != nullptr) {
+        ret = transportManager_->ConnectWithOptions(transOptions);
+        if (ret != 0) {
+            BM_LOG_ERROR("Transport Manager ConnectWithOptions failed: " << ret);
+            return ret;
+        }
+    }
+    if (importInfoEntity) {
         return UpdateHybmDeviceInfo(0);
-    }
-    if (transportManager_ == nullptr) {
-        return BM_OK;
-    }
-    ret = transportManager_->ConnectWithOptions(transOptions);
-    if (ret != 0) {
-        BM_LOG_ERROR("Transport Manager ConnectWithOptions failed: " << ret);
-        return ret;
     }
     return BM_OK;
 }

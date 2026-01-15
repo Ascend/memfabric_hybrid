@@ -257,10 +257,16 @@ int BipartiteRanksQpManager::CreateConnectInfos(std::unordered_map<uint32_t, soc
                 BM_LOG_ERROR("create local socket handle failed times: " << failedCount);
                 return 1;
             }
-            pos = connections_.emplace(it->first, ConnectionChannel{it->second, socketHandle}).first;
-            connectionView_[it->first] = &pos->second;
-            WriteGuard lockGuard(qpLock_);
-            userQpInfo_[it->first].qpHandle = connectionView_[it->first]->qpHandle;
+            if (auto [fst, snd] = connections_.emplace(it->first, ConnectionChannel{it->second, socketHandle}); snd) {
+                pos = fst;
+                connectionView_[it->first] = &pos->second;
+                WriteGuard lockGuard(qpLock_);
+                userQpInfo_[it->first].qpHandle = connectionView_[it->first]->qpHandle;
+                BM_LOG_INFO("add to userQpInfo_, rank: " << it->first <<
+                    ", handle: " << connectionView_[it->first]->qpHandle);
+            } else {
+                BM_LOG_ERROR("failed to emplace into ConnectionChannel map, rank: " << it->first);
+            }
         } else {
             socketHandle = pos->second.socketHandle;
         }
@@ -563,6 +569,7 @@ int BipartiteRanksQpManager::ProcessQueryQpStateTask() noexcept
         SetQpHandleRegisterMr(pos->second.qpHandle, remoteMrs, false);
         WriteGuard lockGuard(qpLock_);
         userQpInfo_[rank].qpHandle = pos->second.qpHandle;
+        BM_LOG_INFO("add to userQpInfo_, rank: " << rank << ", qpHandle: " << pos->second.qpHandle);
     }
 
     if (!currTask.ranks.empty()) {
