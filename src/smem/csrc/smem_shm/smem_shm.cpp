@@ -228,7 +228,8 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
         return SM_ERROR;
     }
 
-    ret = hybm_init(deviceId, config->flags);
+    uint64_t flags = static_cast<uint64_t>(config->flags) | HYBM_GVA_META_INIT_FLAG;
+    ret = hybm_init(deviceId, flags);
     if (ret != 0) {
         SmemShmEntryManager::Instance().Destroy();
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);

@@ -25,6 +25,7 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_FLAG_EXPORT_ENTITY 1U ///< export/import entity instead of slice
 
 #define HYBM_TLS_PATH_SIZE 256
+#define HYBM_GVA_META_INIT_FLAG (1ULL << 63)
 
 /**
  * @brief Determine whether the IO initiator is on the host or the device.

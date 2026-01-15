@@ -49,6 +49,15 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
         return BM_ERROR;
     }
 
+    if (flags & HYBM_GVA_META_INIT_FLAG == 0) {
+        BM_LOG_DEBUG("skip init gva meta space:" << flags);
+        baseAddress = 0;
+        return BM_OK;
+    } else {
+        BM_LOG_DEBUG("restore init gva flag");
+        flags &= ~HYBM_GVA_META_INIT_FLAG;
+    }
+
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间
     drv::HybmInitialize(initedLogicDeviceId, DlHalApi::GetFd());
