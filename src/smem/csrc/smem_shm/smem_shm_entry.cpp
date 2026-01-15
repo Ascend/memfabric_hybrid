@@ -24,20 +24,13 @@ SmemShmEntry::SmemShmEntry(uint32_t id) : id_{id}, entity_{nullptr}, gva_{nullpt
 {
     (void)smem_shm_config_init(&extraConfig_);
 
-    auto emptyRollback = []() {
-    };
+    auto emptyRollback = []() {};
     initSteps_.emplace_back(ShmEntryInitStep{"01_create_entity", [this]() { return InitStepCreateEntity(); },
-                                             [this]() {
-                                                 InitStepDestroyEntity();
-                                             }});
+                                             [this]() { InitStepDestroyEntity(); }});
     initSteps_.emplace_back(ShmEntryInitStep{"02_reserve_memory", [this]() { return InitStepReserveMemory(); },
-                                             [this]() {
-                                                 InitStepUnreserveMemory();
-                                             }});
+                                             [this]() { InitStepUnreserveMemory(); }});
     initSteps_.emplace_back(ShmEntryInitStep{"03_alloc_slice", [this]() { return InitStepAllocSlice(); },
-                                             [this]() {
-                                                 InitStepFreeSlice();
-                                             }});
+                                             [this]() { InitStepFreeSlice(); }});
     initSteps_.emplace_back(
         ShmEntryInitStep{"04_exchange_slice", [this]() { return InitStepExchangeSlice(); }, emptyRollback});
     initSteps_.emplace_back(
@@ -98,7 +91,7 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 
     globalGroup_ = group;
-    return globalGroup_->GroupBarrier();  // 保证所有rank都初始化了
+    return globalGroup_->GroupBarrier(); // 保证所有rank都初始化了
 }
 
 Result SmemShmEntry::Initialize(hybm_options &options)
@@ -322,5 +315,5 @@ Result SmemShmEntry::GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) cons
     return SM_OK;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

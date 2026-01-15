@@ -58,15 +58,15 @@ public:
     virtual void UnInitialize() noexcept = 0;
 
     virtual Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                             const ExtOptions &options) noexcept = 0;
+                            const ExtOptions &options) noexcept = 0;
     virtual Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                                  const ExtOptions &options) noexcept = 0;
+                                 const ExtOptions &options) noexcept = 0;
     /*
      * 异步data copy
      * @return 0 if successful, > 0 is wait id, < 0 is error
      */
     virtual Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
-                                  const ExtOptions &options) noexcept = 0;
+                                 const ExtOptions &options) noexcept = 0;
 
     virtual Result Wait(int32_t waitId) noexcept = 0;
 
@@ -95,7 +95,7 @@ public:
         }
         return UINT32_MAX;
     }
-    
+
     virtual void CleanUp() noexcept
     {
         BM_LOG_INFO("DataOperator not support");
@@ -107,7 +107,7 @@ protected:
     uint64_t localSpaceSize_[HYBM_MEM_TYPE_BUTT] = {0};
     uint64_t rankCount_[HYBM_MEM_TYPE_BUTT] = {0};
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_DATA_ACTION_H

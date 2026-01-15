@@ -25,7 +25,7 @@ int ra_get_interface_version(uint32_t deviceId, uint32_t opcode, uint32_t *versi
 
 int ra_socket_init(HccpNetworkMode mode, HccpRdev rdev, void **socketHandle)
 {
-    *socketHandle = reinterpret_cast<void*>(0x3);
+    *socketHandle = reinterpret_cast<void *>(0x3);
     return 0;
 }
 
@@ -41,7 +41,7 @@ int ra_socket_deinit(void *socketHandle)
 
 int ra_rdev_init_v2(const HccpRdevInitInfo info, const HccpRdev rdev, void **rdmaHandle)
 {
-    *rdmaHandle = reinterpret_cast<void*>(0x1);
+    *rdmaHandle = reinterpret_cast<void *>(0x1);
     return 0;
 }
 
@@ -115,13 +115,13 @@ int ra_socket_white_list_del(void *socket, const HccpSocketWhiteListInfo list[],
 
 int ra_qp_create(void *rdmaHandle, int flag, int qpMode, void **qpHandle)
 {
-    *qpHandle = reinterpret_cast<void*>(0x5);
+    *qpHandle = reinterpret_cast<void *>(0x5);
     return 0;
 }
 
 int ra_ai_qp_create(void *rdmaHandle, const HccpQpExtAttrs *attrs, HccpAiQpInfo *info, void **qpHandle)
 {
-    *qpHandle = reinterpret_cast<void*>(0x7);
+    *qpHandle = reinterpret_cast<void *>(0x7);
     return 0;
 }
 

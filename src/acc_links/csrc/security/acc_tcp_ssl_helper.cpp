@@ -23,7 +23,7 @@ constexpr uint32_t CHECK_PERIOD_HOURS = 7 * 24;
 constexpr uint32_t HOURS_OF_ONE_DAY = 24;
 constexpr std::pair<uint32_t, uint32_t> CERT_CHECK_AHEAD_DAYS_RANGE(7, 180);
 constexpr std::pair<uint32_t, uint32_t> CHECK_PERIOD_HOURS_RANGE(24, 30 * 24);
-}  // namespace
+} // namespace
 
 #define SSL_LAYER_CHECK_RET(_condition, _msg) \
     do {                                      \
@@ -36,7 +36,7 @@ constexpr std::pair<uint32_t, uint32_t> CHECK_PERIOD_HOURS_RANGE(24, 30 * 24);
 namespace ock {
 namespace acc {
 
-AccResult AccTcpSslHelper::Start(SSL_CTX* sslCtx, AccTlsOption &param)
+AccResult AccTcpSslHelper::Start(SSL_CTX *sslCtx, AccTlsOption &param)
 {
     SSL_LAYER_CHECK_RET(InitTlsPath(param) != ACC_OK, "Failed to initialize tls parameters");
 
@@ -101,13 +101,14 @@ void AccTcpSslHelper::Stop(bool afterFork)
     EraseDecryptData();
 }
 
-AccResult AccTcpSslHelper::InitSSL(SSL_CTX* sslCtx)
+AccResult AccTcpSslHelper::InitSSL(SSL_CTX *sslCtx)
 {
     auto ret = OpenSslApiWrapper::OpensslInitSsl(0, nullptr);
     SSL_LAYER_CHECK_RET((ret <= 0), "Failed to init openssl");
 
     ret = OpenSslApiWrapper::OpensslInitSsl(OpenSslApiWrapper::OPENSSL_INIT_LOAD_SSL_STRINGS |
-                                            OpenSslApiWrapper::OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
+                                                OpenSslApiWrapper::OPENSSL_INIT_LOAD_CRYPTO_STRINGS,
+                                            nullptr);
     SSL_LAYER_CHECK_RET((ret <= 0), "Failed to load error strings");
 
     auto sslRet = OpenSslApiWrapper::SslCtxCtrl(sslCtx, OpenSslApiWrapper::SSL_CTRL_SET_MIN_PROTO_VERSION,
@@ -131,11 +132,11 @@ AccResult AccTcpSslHelper::InitSSL(SSL_CTX* sslCtx)
     return ACC_OK;
 }
 
-AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
+AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX *sslCtx)
 {
     // 设置校验函数
-    OpenSslApiWrapper::SslCtxSetVerify(sslCtx, OpenSslApiWrapper::SSL_VERIFY_PEER |
-                                               OpenSslApiWrapper::SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    OpenSslApiWrapper::SslCtxSetVerify(
+        sslCtx, OpenSslApiWrapper::SSL_VERIFY_PEER | OpenSslApiWrapper::SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
 
     if (!tlsCrlPaths.empty()) {
         crlFullPath = "";
@@ -148,9 +149,8 @@ AccResult AccTcpSslHelper::LoadCaCert(SSL_CTX* sslCtx)
             }
             crlFullPath += crlFile;
         }
-        OpenSslApiWrapper::SslCtxSetCertVerifyCallback(sslCtx, CaVerifyCallback,
-                                                       reinterpret_cast<void *>
-                                                       (const_cast<char *>(crlFullPath.c_str())));
+        OpenSslApiWrapper::SslCtxSetCertVerifyCallback(
+            sslCtx, CaVerifyCallback, reinterpret_cast<void *>(const_cast<char *>(crlFullPath.c_str())));
     }
 
     for (auto &caFile : tlsCaPaths) {
@@ -180,8 +180,8 @@ AccResult AccTcpSslHelper::LoadServerCert(SSL_CTX *sslCtx)
     SSL_LAYER_CHECK_RET(!mf::FileUtil::Realpath(tmpPath), "get invalid cert path");
 
     /* load cert */
-    auto ret = OpenSslApiWrapper::SslCtxUseCertificateFile(sslCtx, tmpPath.c_str(),
-                                                           OpenSslApiWrapper::SSL_FILETYPE_PEM);
+    auto ret =
+        OpenSslApiWrapper::SslCtxUseCertificateFile(sslCtx, tmpPath.c_str(), OpenSslApiWrapper::SSL_FILETYPE_PEM);
     SSL_LAYER_CHECK_RET(ret <= 0, "TLS use certification file failed!");
 
     X509 *cert = OpenSslApiWrapper::SslCtxGet0Certificate(sslCtx);
@@ -267,7 +267,7 @@ void AccTcpSslHelper::EraseDecryptData()
     mKeyPass.second = 0;
 }
 
-AccResult AccTcpSslHelper::NewSslLink(bool isServer, int fd, SSL_CTX *ctx, SSL *& ssl)
+AccResult AccTcpSslHelper::NewSslLink(bool isServer, int fd, SSL_CTX *ctx, SSL *&ssl)
 {
     auto tmpSsl = OpenSslApiWrapper::SslNew(ctx);
     if (tmpSsl == nullptr) {
@@ -331,9 +331,9 @@ static X509_CRL *LoadCertRevokeListFile(const char *crlFile)
         return nullptr;
     }
 
-    const long result = OpenSslApiWrapper::BioCtrl(in, OpenSslApiWrapper::BIO_C_SET_FILENAME,
-                                                   OpenSslApiWrapper::BIO_CLOSE | OpenSslApiWrapper::BIO_FP_READ,
-                                                   realCrlPath);
+    const long result =
+        OpenSslApiWrapper::BioCtrl(in, OpenSslApiWrapper::BIO_C_SET_FILENAME,
+                                   OpenSslApiWrapper::BIO_CLOSE | OpenSslApiWrapper::BIO_FP_READ, realCrlPath);
     if (result <= 0) {
         (void)OpenSslApiWrapper::BioFree(in);
         free(realCrlPath);
@@ -362,7 +362,7 @@ int AccTcpSslHelper::CaVerifyCallback(X509_STORE_CTX *x509ctx, void *arg)
         return 0;
     }
 
-    const auto crlPath = static_cast<char*>(arg);
+    const auto crlPath = static_cast<char *>(arg);
     std::vector<std::string> paths;
     if (crlPath != nullptr) {
         std::string crlListStr(crlPath);
@@ -412,8 +412,8 @@ int AccTcpSslHelper::ProcessCrlAndVerifyCert(std::vector<std::string> paths, X50
     auto verifyResult = OpenSslApiWrapper::X509VerifyCert(x509ctx);
     if (verifyResult != 1U) {
         LOG_INFO("Verify failed in callback"
-            << " error: "
-            << OpenSslApiWrapper::X509VerifyCertErrorString(OpenSslApiWrapper::X509StoreCtxGetError(x509ctx)));
+                 << " error: "
+                 << OpenSslApiWrapper::X509VerifyCertErrorString(OpenSslApiWrapper::X509StoreCtxGetError(x509ctx)));
         return checkFailed;
     }
 
@@ -438,7 +438,7 @@ AccResult AccTcpSslHelper::CertVerify(X509 *cert) const
     }
 
     // The length of the private key of the verification certificate
-    EVP_PKEY* pkey = OpenSslApiWrapper::X509GetPubkey(cert);
+    EVP_PKEY *pkey = OpenSslApiWrapper::X509GetPubkey(cert);
     if (pkey == nullptr) {
         LOG_ERROR("get public key failed.");
         return ACC_ERROR;
@@ -484,7 +484,7 @@ AccResult AccTcpSslHelper::CertVerify(X509 *cert) const
 AccResult AccTcpSslHelper::StartCheckCertExpired()
 {
     {
-        std::unique_lock<std::mutex> lockGuard{ mMutex };
+        std::unique_lock<std::mutex> lockGuard{mMutex};
         checkExpiredRunning = true;
     }
 
@@ -493,7 +493,7 @@ AccResult AccTcpSslHelper::StartCheckCertExpired()
         return ACC_ERROR;
     }
 
-    checkExpiredThread = std::thread([this]() {  return CheckCertExpiredTask(); });
+    checkExpiredThread = std::thread([this]() { return CheckCertExpiredTask(); });
     return ret;
 }
 
@@ -501,7 +501,7 @@ AccResult AccTcpSslHelper::CheckCertExpiredTask()
 {
     while (true) {
         {
-            std::unique_lock<std::mutex> lockGuard {mMutex};
+            std::unique_lock<std::mutex> lockGuard{mMutex};
             if (!checkExpiredRunning) {
                 return ACC_ERROR;
             }
@@ -607,5 +607,5 @@ AccResult AccTcpSslHelper::CertExpiredCheck(std::string path, std::string type)
     }
     return ACC_OK;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

@@ -46,16 +46,15 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     // tag:opType:tag
     static const std::regex tagOpInfoPattern(R"(^([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12}):([a-zA-Z0-9_]{1,30})$)");
     static const std::map<std::string, hybm_data_op_type> opTypeMap = {
-        {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},
-        {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
-        {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA},
-        {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
+        {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
+        {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
         {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA},
     };
     std::smatch match;
     if (!std::regex_match(tagOpInfo, match, tagOpInfoPattern)) {
-        BM_LOG_ERROR("Failed to check tagOpInfo:" << tagOpInfo  <<
-            " is invalid must match (^([a-zA-Z0-9_]{1,30):([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12})$)");
+        BM_LOG_ERROR("Failed to check tagOpInfo:"
+                     << tagOpInfo
+                     << " is invalid must match (^([a-zA-Z0-9_]{1,30):([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12})$)");
         return BM_INVALID_PARAM;
     }
     auto tag1 = match[1].str();
@@ -63,8 +62,8 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     auto tag2 = match[3].str();
     auto it = opTypeMap.find(opTypeStr);
     if (it == opTypeMap.end()) {
-        BM_LOG_ERROR("Failed to check opType:" << opTypeStr <<
-            " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)");
+        BM_LOG_ERROR("Failed to check opType:"
+                     << opTypeStr << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)");
         return BM_INVALID_PARAM;
     }
     auto opType = GetTag2TagOpType(tag1, tag2);
@@ -78,7 +77,7 @@ Result HybmEntityTagInfo::AddTagOpInfo(const std::string &tagOpInfo)
 {
     // tag:opType:tag,tag:opType:tag,tag:opType:tag
     auto tagOpInfoVec = StrUtil::Split(tagOpInfo, ',');
-    for (const auto &item: tagOpInfoVec) {
+    for (const auto &item : tagOpInfoVec) {
         auto ret = AddOneTagOpInfo(item);
         if (ret != BM_OK) {
             return ret;
@@ -150,5 +149,5 @@ uint32_t HybmEntityTagInfo::GetRank2RankOpType(uint32_t rankId1, uint32_t rankId
     return GetTag2TagOpType(tag1, tag2);
 }
 
-}
-}
+} // namespace mf
+} // namespace ock

@@ -17,7 +17,6 @@ import os
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--ca_cert_path', type=str, help='The path to load the CA certificate',
                     default='/opt/ock/security/certs/ca.cert.pem')

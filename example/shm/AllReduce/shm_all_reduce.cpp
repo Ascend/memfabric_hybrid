@@ -13,14 +13,13 @@
 #include "smem_shm_aicore_base_api.h"
 #include "shm_all_reduce.h"
 
-constexpr uint64_t TOTAL_LENGTH = 16 * 2048;                            // total length of data
-constexpr int32_t USE_CORE_NUM = 8;                                   // num of core used
+constexpr uint64_t TOTAL_LENGTH = 16 * 2048; // total length of data
+constexpr int32_t USE_CORE_NUM = 8;          // num of core used
 constexpr int32_t RANK_SIZE_MAX = 32;
 constexpr int32_t FLAG_OFFSET = SMEM_SHM_ALIGN_SIZE / sizeof(int64_t);
 constexpr int64_t FLAG_MAGIC = 3285742LL;
 
-SMEM_SHM_INLINE_AICORE void smem_shm_set_flag(__ubuf__ int64_t *ubAddr,
-    __gm__ int64_t *gvaAddr, int64_t flagValue)
+SMEM_SHM_INLINE_AICORE void smem_shm_set_flag(__ubuf__ int64_t *ubAddr, __gm__ int64_t *gvaAddr, int64_t flagValue)
 {
     AscendC::PipeBarrier<PIPE_ALL>();
     *ubAddr = flagValue;
@@ -30,8 +29,7 @@ SMEM_SHM_INLINE_AICORE void smem_shm_set_flag(__ubuf__ int64_t *ubAddr,
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-SMEM_SHM_INLINE_AICORE void smem_shm_wait_flag(__ubuf__ int64_t *ubAddr,
-    __gm__ int64_t *gvaAddr, int64_t expectValue)
+SMEM_SHM_INLINE_AICORE void smem_shm_wait_flag(__ubuf__ int64_t *ubAddr, __gm__ int64_t *gvaAddr, int64_t expectValue)
 {
     while (true) {
         AscendC::PipeBarrier<PIPE_ALL>();
@@ -47,11 +45,11 @@ SMEM_SHM_INLINE_AICORE void smem_shm_wait_flag(__ubuf__ int64_t *ubAddr,
 class KernelAllReduce {
 public:
     __aicore__ inline KernelAllReduce() {}
-    __aicore__ inline void Init(GM_ADDR gva, uint64_t spaceOffset,
-        uint64_t flagOffset, uint32_t rankId, uint32_t rankSize)
+    __aicore__ inline void Init(GM_ADDR gva, uint64_t spaceOffset, uint64_t flagOffset, uint32_t rankId,
+                                uint32_t rankSize)
     {
         uint32_t coreOffset = USE_CORE_NUM * rankId + AscendC::GetBlockIdx(); // flag offset of each core
-        
+
         blockLen = TOTAL_LENGTH / rankSize / USE_CORE_NUM; // length computed of each core
         rankNum = rankSize;
         rank = rankId;
@@ -85,7 +83,7 @@ public:
 
         AscendC::DataCopy(calTensor, dataGm[0], blockLen);
         AscendC::PipeBarrier<PIPE_ALL>();
-        
+
         uint64_t copyMask = 128; // = 256 / sizeof(half)
         for (uint32_t rk = 1; rk < rankNum; rk++) {
             AscendC::DataCopy(inTensor, dataGm[rk], blockLen);
@@ -93,7 +91,7 @@ public:
             AscendC::Add(outTensor, inTensor, calTensor, blockLen);
             AscendC::PipeBarrier<PIPE_ALL>();
             if (rk + 1 < rankNum) {
-                AscendC::Copy(calTensor, outTensor, copyMask, blockLen / copyMask, { 1, 1, 8, 8 });
+                AscendC::Copy(calTensor, outTensor, copyMask, blockLen / copyMask, {1, 1, 8, 8});
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
         }
@@ -128,16 +126,16 @@ private:
     uint32_t rank = 0;
 };
 
-extern "C" __global__ __aicore__ void shm_all_reduce(GM_ADDR gva, uint64_t spaceOffset,
-    uint64_t flagOffset, uint32_t rankId, uint32_t rankSize)
+extern "C" __global__ __aicore__ void shm_all_reduce(GM_ADDR gva, uint64_t spaceOffset, uint64_t flagOffset,
+                                                     uint32_t rankId, uint32_t rankSize)
 {
     KernelAllReduce op;
     op.Init(gva, spaceOffset, flagOffset, rankId, rankSize);
     op.Process();
 }
 
-void shm_all_reduce_do(uint32_t coreDim, void* stream, uint8_t* gva, uint64_t spaceOffset,
-    uint64_t flagOffset, uint32_t rankId, uint32_t rankSize)
+void shm_all_reduce_do(uint32_t coreDim, void *stream, uint8_t *gva, uint64_t spaceOffset, uint64_t flagOffset,
+                       uint32_t rankId, uint32_t rankSize)
 {
     shm_all_reduce<<<coreDim, nullptr, stream>>>(gva, spaceOffset, flagOffset, rankId, rankSize);
 }

@@ -80,5 +80,5 @@ int32_t HybmStreamNotify::Wait()
     return BM_OK;
 }
 
-}
-}
+} // namespace mf
+} // namespace ock

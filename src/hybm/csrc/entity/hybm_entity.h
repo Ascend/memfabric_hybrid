@@ -68,7 +68,7 @@ private:
 };
 
 using MemEntityPtr = std::shared_ptr<MemEntity>;
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
-#endif  // __MF_HYBRID_BM_H__
+#endif // __MF_HYBRID_BM_H__

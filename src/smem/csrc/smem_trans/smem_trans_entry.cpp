@@ -106,7 +106,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
     ret = storeHelper_.StoreDeviceInfo(deviceInfo_);
     SM_VALIDATE_RETURN(ret == SM_OK, "store device info failed: " << ret, ret);
 
-    auto brokenHandler = [this] {return StartWatchConnectThread();};
+    auto brokenHandler = [this] { return StartWatchConnectThread(); };
     storeHelper_.RegisterBrokenHandler(brokenHandler);
     StartWatchThread();
     return SM_OK;
@@ -187,7 +187,7 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
     return SM_OK;
 }
 
-static std::string uniqueToString(const WorkerId& unique)
+static std::string uniqueToString(const WorkerId &unique)
 {
     std::ostringstream oss;
     constexpr int WIDTH = 2;
@@ -255,18 +255,14 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
 
     uint32_t flag = (stream != nullptr) ? ASYNC_COPY_FLAG : 0;
     switch (opcode) {
-        case SMEMB_COPY_L2G:
-            {
-                hybm_batch_copy_params copyParams = {localAddrs, mappedAddress.data(), dataSizes, batchSize};
-                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, stream, flag);
-            }
-            break;
-        case SMEMB_COPY_G2L:
-            {
-                hybm_batch_copy_params copyParams = {mappedAddress.data(), localAddrs, dataSizes, batchSize};
-                ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, stream, flag);
-            }
-            break;
+        case SMEMB_COPY_L2G: {
+            hybm_batch_copy_params copyParams = {localAddrs, mappedAddress.data(), dataSizes, batchSize};
+            ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, stream, flag);
+        } break;
+        case SMEMB_COPY_G2L: {
+            hybm_batch_copy_params copyParams = {mappedAddress.data(), localAddrs, dataSizes, batchSize};
+            ret = hybm_data_batch_copy(entity_, &copyParams, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, stream, flag);
+        } break;
         default:
             SM_LOG_ERROR("unexpect copy type[" << opcode << "] is invalid.");
             return SM_INVALID_PARAM;
@@ -496,8 +492,8 @@ void SmemTransEntry::AlignMemory(const void *&address, uint64_t &size)
     address = reinterpret_cast<const void *>(alignPtr);
 }
 
-std::vector<std::pair<const void *, size_t>> SmemTransEntry::CombineMemories(
-    std::vector<std::pair<const void *, size_t>> &input)
+std::vector<std::pair<const void *, size_t>>
+SmemTransEntry::CombineMemories(std::vector<std::pair<const void *, size_t>> &input)
 {
     std::sort(input.begin(), input.end());
     std::vector<std::pair<const void *, size_t>> result;
@@ -587,5 +583,5 @@ int32_t SmemTransEntry::ReInitialize()
 
     return SM_OK;
 }
-}
-}
+} // namespace smem
+} // namespace ock

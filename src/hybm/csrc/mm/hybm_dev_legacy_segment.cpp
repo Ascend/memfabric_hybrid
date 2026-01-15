@@ -130,7 +130,6 @@ Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> 
     return BM_OK;
 }
 
-
 Result HybmDevLegacySegment::Export(std::string &exInfo) noexcept
 {
     return BM_OK;
@@ -195,7 +194,6 @@ Result HybmDevLegacySegment::GetExportSliceSize(size_t &size) noexcept
     return BM_OK;
 }
 
-
 // import可重入
 Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
@@ -233,23 +231,24 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
         if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
             auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
-                BM_LOG_ERROR("enable device access failed:"
-                             << ret << " local_device:" << deviceId_ << " remote_device:"
-                             << (int)desInfos[i].deviceId << " logic_device:" << logicDeviceId_
-                             << " remote_logic_device:" << desInfos[i].logicDeviceId);
+                BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
+                                                            << " remote_device:" << (int)desInfos[i].deviceId
+                                                            << " logic_device:" << logicDeviceId_
+                                                            << " remote_logic_device:" << desInfos[i].logicDeviceId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
-        
+
         if (!CanSdmaReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
             continue;
         }
 
-        auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid,
-                                                       &desInfos[i].pid, 1);
+        auto ret =
+            DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid, &desInfos[i].pid, 1);
         if (ret != 0) {
             BM_LOG_ERROR("enable white list for rank(" << desInfos[i].rankId << ") failed: " << ret
-                << ", local rank = " << options_.rankId << ", shmName=" << desInfos[localIdx].shmName);
+                                                       << ", local rank = " << options_.rankId
+                                                       << ", shmName=" << desInfos[localIdx].shmName);
             return BM_DL_FUNCTION_FAILED;
         }
     }
@@ -408,5 +407,5 @@ bool HybmDevLegacySegment::CheckSmdaReaches(uint32_t rankId) const noexcept
 
     return pos->second.superPodId == superPodId_;
 }
-}
-}
+} // namespace mf
+} // namespace ock

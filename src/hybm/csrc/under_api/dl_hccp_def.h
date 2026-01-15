@@ -63,7 +63,7 @@ struct ra_qp_handle {
     int flag;
     unsigned int phy_id;
     unsigned int rdev_index;
-    struct ra_rdma_ops *rdma_ops;  // only ra use
+    struct ra_rdma_ops *rdma_ops; // only ra use
     int support_lite;
     struct rdma_lite_cq *send_lite_cq;
     struct rdma_lite_cq *recv_lite_cq;
@@ -460,7 +460,7 @@ struct send_wr_rsp {
  */
 using HcclComm = void *;
 
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_DL_HCCP_DEF_H
+#endif // MF_HYBRID_DL_HCCP_DEF_H

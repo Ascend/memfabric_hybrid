@@ -51,5 +51,5 @@ uint64_t MemSlice::GetIndexFrom(hybm_mem_slice_t slice) noexcept
     idUnion.address = slice;
     return idUnion.detail.index_;
 }
-}
-}
+} // namespace mf
+} // namespace ock

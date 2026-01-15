@@ -37,8 +37,8 @@ enum class CopyType {
 };
 
 typedef struct {
-    void** localAddrs;
-    void** globalAddrs;
+    void **localAddrs;
+    void **globalAddrs;
     uint64_t *dataSizes;
     uint32_t batchSize;
 } BatchCopyParam;
@@ -76,27 +76,27 @@ public:
 
     int32_t MultiProcessExecute();
     int32_t MultiThreadExecute();
+
 private:
-    int32_t PreInit(uint32_t deviceId, BarrierUtil *&barrier, uint32_t rankId,
-        uint32_t rkSize, aclrtStream *stream);
+    int32_t PreInit(uint32_t deviceId, BarrierUtil *&barrier, uint32_t rankId, uint32_t rkSize, aclrtStream *stream);
     void FinalizeAll(uint32_t deviceId, BarrierUtil *&barrier, aclrtStream *stream);
 
     int32_t PrepareLocalMem(smem_bm_t handle, uint32_t rankId);
-    int32_t PrepareCopyParam(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType,
-        uint32_t gvaRankId, smem_bm_t handle, BatchCopyParam &param);
-    int64_t CheckCopyResult(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType,
-        uint32_t gvaRankId, smem_bm_t handle);
+    int32_t PrepareCopyParam(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId,
+                             smem_bm_t handle, BatchCopyParam &param);
+    int64_t CheckCopyResult(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId,
+                            smem_bm_t handle);
 
     void PrintResult(std::vector<BwTestResult> &results);
     void SendResult(BwTestResult *results, int32_t pipeFdWrite);
 
-    int32_t Execute(uint32_t deviceId, uint32_t rankId, uint32_t localRankNum,
-        uint32_t rkSize, int32_t pipeFdWrite);
+    int32_t Execute(uint32_t deviceId, uint32_t rankId, uint32_t localRankNum, uint32_t rkSize, int32_t pipeFdWrite);
 
-    void BatchCopyPut(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType,
-        uint32_t gvaRankId, smem_bm_t handle, CopyType type, BwTestResult &result);
-    void BatchCopyGet(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType,
-        uint32_t gvaRankId, smem_bm_t handle, CopyType type, BwTestResult &result);
+    void BatchCopyPut(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId, smem_bm_t handle,
+                      CopyType type, BwTestResult &result);
+    void BatchCopyGet(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId, smem_bm_t handle,
+                      CopyType type, BwTestResult &result);
+
 private:
     BwTestParam cmdParam_;
     void *localDram_ = nullptr;

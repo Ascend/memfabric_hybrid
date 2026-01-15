@@ -222,7 +222,6 @@ public:
     }
 
 private:
-
     bool ParseUrl(const std::string &url)
     {
         if (url.find(PROTOCOL_TCP) != 0) {

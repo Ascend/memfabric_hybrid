@@ -202,8 +202,8 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
 
     auto addr = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(ptr));
     bool isHbm = (addr >= HYBM_HBM_START_ADDR && addr < HYBM_HBM_END_ADDR);
-    BM_LOG_INFO("Hbm: " << isHbm << std::hex << ", addrs: 0x" << addr
-                        << ", start: 0x" << HYBM_HBM_START_ADDR << ", end: 0x" << HYBM_HBM_END_ADDR);
+    BM_LOG_INFO("Hbm: " << isHbm << std::hex << ", addrs: 0x" << addr << ", start: 0x" << HYBM_HBM_START_ADDR
+                        << ", end: 0x" << HYBM_HBM_END_ADDR);
     std::shared_ptr<MemSegment> segment = nullptr;
     // 只有trans场景才需要走hbmSegment_，bm场景优先走dramSegment_
     if (!options_.globalUniqueAddress || dramSegment_ == nullptr) {
@@ -935,7 +935,7 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
     return BM_OK;
 }
 
-void MemEntityDefault::GenCopyExtOption(void* &src, void* &dest, uint64_t length, ExtOptions &options) noexcept
+void MemEntityDefault::GenCopyExtOption(void *&src, void *&dest, uint64_t length, ExtOptions &options) noexcept
 {
     void *real = Valid48BitsAddress(src);
     if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, options.srcRankId)) {

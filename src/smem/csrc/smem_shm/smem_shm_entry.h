@@ -29,11 +29,8 @@ struct ShmEntryInitStep {
     std::function<int32_t()> processor;
     std::function<void()> rollback;
     ShmEntryInitStep(std::string nm, std::function<int32_t()> p, std::function<void()> r)
-        : name{std::move(nm)},
-          processor{std::move(p)},
-          rollback{std::move(r)}
-    {
-    }
+        : name{std::move(nm)}, processor{std::move(p)}, rollback{std::move(r)}
+    {}
 };
 
 class SmemShmEntry : public SmReferable {
@@ -93,7 +90,7 @@ inline uint32_t SmemShmEntry::Id() const
 {
     return id_;
 }
-}
-}
+} // namespace smem
+} // namespace ock
 
 #endif // __SMEM_SHM_ENTRY_H__

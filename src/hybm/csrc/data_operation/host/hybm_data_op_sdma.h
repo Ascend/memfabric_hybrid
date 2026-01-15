@@ -29,20 +29,20 @@ public:
     void UnInitialize() noexcept override;
 
     Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                     const ExtOptions &options) noexcept override;
+                    const ExtOptions &options) noexcept override;
     Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
 
     void CleanUp() noexcept override;
 
 private:
-    Result CopyLH2GD(void* gvaAddr, const void* hostAddr, size_t count, void* stream) noexcept;
-    Result CopyGD2LH(void* hostAddr, const void* gvaAddr, size_t count, void* stream) noexcept;
-    Result CopyLH2GH(void* destVA, const void* srcVA, uint64_t length, void* stream) noexcept;
-    Result CopyGH2LH(void* destVA, const void* srcVA, uint64_t length, void* stream) noexcept;
+    Result CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t count, void *stream) noexcept;
+    Result CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t count, void *stream) noexcept;
+    Result CopyLH2GH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept;
+    Result CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept;
 
     void InitG2GStreamTask(StreamTask &task) noexcept;
     Result CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
@@ -50,19 +50,19 @@ private:
 
     Result CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
 
-    Result BatchCopyLH2GD(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    Result BatchCopyGD2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    Result BatchCopyLH2GH(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
-    Result BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[],
-                       uint32_t batchSize, void *stream) noexcept;
+    Result BatchCopyLH2GD(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[], uint32_t batchSize,
+                          void *stream) noexcept;
+    Result BatchCopyGD2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[], uint32_t batchSize,
+                          void *stream) noexcept;
+    Result BatchCopyLH2GH(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[], uint32_t batchSize,
+                          void *stream) noexcept;
+    Result BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[], uint32_t batchSize,
+                          void *stream) noexcept;
 
 private:
     bool inited_ = false;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MEM_FABRIC_HYBRID_HYBM_DATA_OPERATOR_SDMA_H
+#endif // MEM_FABRIC_HYBRID_HYBM_DATA_OPERATOR_SDMA_H

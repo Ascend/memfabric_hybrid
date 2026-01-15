@@ -23,7 +23,7 @@ namespace {
 constexpr long MIN_MALLOC_SIZE = 1;
 constexpr long DEFAULT_MAX_DATA_SIZE = 1024 * 1024 * 1024;
 constexpr mode_t PER_PERMISSION_MASK_RWX = 0b111;
-}  // namespace
+} // namespace
 
 namespace ock {
 namespace acc {
@@ -64,14 +64,14 @@ bool FileValidator::RegularFilePath(const std::string &filePath, const std::stri
         return false;
     }
 
-    char* path = new(std::nothrow) char[ock::mf::FileUtil::GetSafePathMax() + UNO_1];
+    char *path = new (std::nothrow) char[ock::mf::FileUtil::GetSafePathMax() + UNO_1];
     if (path == nullptr) {
         errMsg = "Memory allocation failed.";
         return false;
     }
     bzero(path, ock::mf::FileUtil::GetSafePathMax() + UNO_1);
 
-    char* ret = realpath(filePath.c_str(), path);
+    char *ret = realpath(filePath.c_str(), path);
     if (ret == nullptr) {
         errMsg = "The path realpath parsing failed.";
         delete[] path;
@@ -139,5 +139,5 @@ bool FileValidator::CheckPermission(const std::string &filePath, const mode_t &m
     }
     return true;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

@@ -35,7 +35,7 @@ int DeviceChipInfo::Init() noexcept
     dieId_ = static_cast<uint32_t>(infoValue);
 
     chipDieOffset_ = 0x10000000000UL; // RT_ASCEND910B1_DIE_ADDR_OFFSET;
-    chipOffset_ = 0x80000000000UL; // RT_ASCEND910B1_CHIP_ADDR_OFFSET;
+    chipOffset_ = 0x80000000000UL;    // RT_ASCEND910B1_CHIP_ADDR_OFFSET;
     chipBaseAddr_ = 0UL;
     ret = DlAclApi::RtGetDeviceInfo(deviceId_, 0, INFO_TYPE_ADDR_MODE, &infoValue);
     if (ret != 0) {
@@ -45,13 +45,13 @@ int DeviceChipInfo::Init() noexcept
     addrFlatDevice_ = (infoValue != 0L);
     if (addrFlatDevice_) {
         chipBaseAddr_ = 0x200000000000ULL; // RT_CHIP_BASE_ADDR;
-        chipOffset_ = 0x20000000000UL; // RT_ASCEND910B1_HCCS_CHIP_ADDR_OFFSET;
+        chipOffset_ = 0x20000000000UL;     // RT_ASCEND910B1_HCCS_CHIP_ADDR_OFFSET;
     }
 
     return 0;
 }
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
 
-}
+} // namespace ock

@@ -26,8 +26,8 @@ namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port);
 Result ParseDeviceNic(const std::string &nic, sockaddr_in &address);
 std::string GenerateDeviceNic(in_addr ip, uint16_t port);
-}
-}
-}
-}
-#endif  // MF_HYBRID_DEVICE_RDMA_HELPER_H
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
+#endif // MF_HYBRID_DEVICE_RDMA_HELPER_H

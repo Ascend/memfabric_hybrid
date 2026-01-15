@@ -155,9 +155,9 @@ struct ConnectionTasks {
     UpdateLocalMrTask updateMrTask;
     UpdateRemoteMrTask updateRemoteMrTask;
 };
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_DYNAMIC_RANKS_QP_DEF_H
+#endif // MF_HYBRID_DYNAMIC_RANKS_QP_DEF_H

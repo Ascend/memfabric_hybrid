@@ -21,7 +21,7 @@ namespace transport {
 namespace device {
 class DeviceChipInfo {
 public:
-    explicit DeviceChipInfo(uint32_t devId) noexcept: deviceId_{devId} {}
+    explicit DeviceChipInfo(uint32_t devId) noexcept : deviceId_{devId} {}
     int Init() noexcept;
 
 public:
@@ -59,9 +59,9 @@ private:
     uint64_t chipOffset_{0};
     uint64_t chipDieOffset_{0};
 };
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBM_CORE_DEVICE_CHIP_INFO_H
+#endif // MF_HYBM_CORE_DEVICE_CHIP_INFO_H

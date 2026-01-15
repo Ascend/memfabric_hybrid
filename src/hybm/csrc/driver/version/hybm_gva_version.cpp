@@ -212,5 +212,5 @@ int32_t HalGvaPrecheck()
     return BM_ERROR;
 }
 
-}
-}
+} // namespace mf
+} // namespace ock

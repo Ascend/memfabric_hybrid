@@ -35,7 +35,7 @@ static int BindTcpPortV4(int &sockfd, int port)
             bind_address_v4.sin_port = htons(port);
             bind_address_v4.sin_addr.s_addr = INADDR_ANY;
 
-            if (bind(sockfd, reinterpret_cast<sockaddr*>(&bind_address_v4), sizeof(bind_address_v4)) == 0) {
+            if (bind(sockfd, reinterpret_cast<sockaddr *>(&bind_address_v4), sizeof(bind_address_v4)) == 0) {
                 return 0;
             }
         }
@@ -56,7 +56,7 @@ static int BindTcpPortV6(int &sockfd, int port)
             bind_address_v6.sin6_port = htons(port);
             bind_address_v6.sin6_addr = in6addr_any;
 
-            if (bind(sockfd, reinterpret_cast<sockaddr*>(&bind_address_v6), sizeof(bind_address_v6)) == 0) {
+            if (bind(sockfd, reinterpret_cast<sockaddr *>(&bind_address_v6), sizeof(bind_address_v6)) == 0) {
                 return 0;
             }
         }
@@ -106,7 +106,7 @@ uint16_t findAvailableTcpPort(int &sockfd)
 int32_t pytransfer_create_config_store(const char *storeUrl)
 {
     const char *shmem_level = std::getenv("SHMEM_LOG_LEVEL");
-    const char* mf_level = std::getenv("ASCEND_MF_LOG_LEVEL");
+    const char *mf_level = std::getenv("ASCEND_MF_LOG_LEVEL");
     if (shmem_level == nullptr && mf_level != nullptr && strlen(mf_level) == 1) {
         unsigned char c = static_cast<unsigned char>(mf_level[0]);
         if (std::isdigit(c)) {
@@ -138,5 +138,5 @@ int32_t pytransfer_set_conf_store_tls(bool enable, std::string &tls_info)
     return smem_set_conf_store_tls(enable, tls_info.c_str(), tls_info.size());
 }
 
-}  // namespace adapter
-}  // namespace ock
+} // namespace adapter
+} // namespace ock

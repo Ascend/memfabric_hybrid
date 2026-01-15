@@ -46,7 +46,7 @@ enum LogLevel : int {
     WARN_LEVEL,
     ERROR_LEVEL,
     FATAL_LEVEL,
-    BUTT_LEVEL  // no use
+    BUTT_LEVEL // no use
 };
 
 class LockFreeLogThrottler {
@@ -71,8 +71,7 @@ private:
         std::atomic<uint64_t> windowStartTimeSec;
         std::atomic<uint32_t> counter;
 
-        ThrottleState(uint64_t time = 0, uint32_t count = 0) : windowStartTimeSec(time), counter(count)
-        {}
+        ThrottleState(uint64_t time = 0, uint32_t count = 0) : windowStartTimeSec(time), counter(count) {}
     };
     static constexpr uint64_t INTERVAL = 7ULL;
     static constexpr uint64_t BURST = 5ULL;
@@ -123,19 +122,19 @@ public:
     inline void Log(int level, std::string logMsg)
     {
         // LCOV_EXCL_START
-        logMsg.erase(
-            std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }), logMsg.end());
+        logMsg.erase(std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }),
+                     logMsg.end());
         if (logFunc_ != nullptr) {
             logFunc_(level, logMsg.c_str());
             return;
         }
 
-        struct timeval tv {};
+        struct timeval tv{};
         char strTime[24];
 
         gettimeofday(&tv, nullptr);
         time_t timeStamp = tv.tv_sec;
-        struct tm localTime {};
+        struct tm localTime{};
         auto result = localtime_r(&timeStamp, &localTime);
         if (result == nullptr) {
             return;
@@ -145,8 +144,7 @@ public:
             std::cout << strTime << std::setw(TIME_WIDTH) << std::setfill('0') << tv.tv_usec << " "
                       << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
         } else {
-            std::cout << " Invalid time "
-                      << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
+            std::cout << " Invalid time " << LogLevelDesc(level) << PID_TID << logMsg << std::endl;
         }
         // LCOV_EXCL_STOP
     }
@@ -179,8 +177,8 @@ private:
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 };
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 // macro for log
 #ifndef UT_ENABLED
@@ -210,4 +208,4 @@ private:
         ock::mf::OutLogger::Instance().LogLimit(static_cast<int>(LEVEL), oss.str());  \
     } while (0)
 
-#endif  // MEMFABRIC_HYBRID_LOGGER_H
+#endif // MEMFABRIC_HYBRID_LOGGER_H

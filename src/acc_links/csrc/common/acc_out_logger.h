@@ -24,11 +24,11 @@
 
 #include "mf_out_logger.h"
 
-#define LOG_DEBUG(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::DEBUG_LEVEL, ARGS)
-#define LOG_INFO(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
-#define LOG_INFO_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
-#define LOG_WARN(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::WARN_LEVEL, ARGS)
-#define LOG_ERROR(ARGS) MF_OUT_LOG("[AccLink ", ock::mf::ERROR_LEVEL, ARGS)
+#define LOG_DEBUG(ARGS)       MF_OUT_LOG("[AccLink ", ock::mf::DEBUG_LEVEL, ARGS)
+#define LOG_INFO(ARGS)        MF_OUT_LOG("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
+#define LOG_INFO_LIMIT(ARGS)  MF_OUT_LOG_LIMIT("[AccLink ", ock::mf::INFO_LEVEL, ARGS)
+#define LOG_WARN(ARGS)        MF_OUT_LOG("[AccLink ", ock::mf::WARN_LEVEL, ARGS)
+#define LOG_ERROR(ARGS)       MF_OUT_LOG("[AccLink ", ock::mf::ERROR_LEVEL, ARGS)
 #define LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[AccLink ", ock::mf::ERROR_LEVEL, ARGS)
 
 #ifndef ENABLE_TRACE_LOG
@@ -85,4 +85,4 @@
         }                                          \
     } while (0)
 
-#endif  // ACC_LINKS_ACC_OUT_LOGGER_H
+#endif // ACC_LINKS_ACC_OUT_LOGGER_H

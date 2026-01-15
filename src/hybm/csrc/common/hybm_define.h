@@ -29,8 +29,8 @@ constexpr uint32_t RANK_MAX = 1024UL;
 constexpr uint64_t SMALL_PAGE_SIZE = 4U * KB;
 
 constexpr uint64_t HYBM_LARGE_PAGE_SIZE = 2UL * 1024UL * 1024UL; // 大页的size, 2M
-constexpr uint64_t HYBM_DEVICE_VA_START = 0x100000000000UL;        // NPU上的地址空间起始: 16T
-constexpr uint64_t HYBM_DEVICE_VA_SIZE = 0x80000000000UL;          // NPU上的地址空间范围: 8T
+constexpr uint64_t HYBM_DEVICE_VA_START = 0x100000000000UL;      // NPU上的地址空间起始: 16T
+constexpr uint64_t HYBM_DEVICE_VA_SIZE = 0x80000000000UL;        // NPU上的地址空间范围: 8T
 constexpr uint64_t SVM_END_ADDR = HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE - (1UL << 30UL); // svm的结尾虚拟地址
 constexpr uint64_t HYBM_DEVICE_PRE_META_SIZE = 128UL;                                         // 128B
 constexpr uint64_t HYBM_DEVICE_GLOBAL_META_SIZE = HYBM_DEVICE_PRE_META_SIZE;                  // 128B
@@ -52,9 +52,9 @@ constexpr uint32_t ACL_MEMCPY_DEVICE_TO_DEVICE = 3;
 constexpr uint64_t HYBM_HBM_START_ADDR = HYBM_DEVICE_VA_START;
 constexpr uint64_t HYBM_HBM_END_ADDR = HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE;
 constexpr uint64_t HYBM_HOST_CONN_START_ADDR = 0x300000000000UL; // 48T
-constexpr uint64_t HYBM_HOST_CONN_ADDR_SIZE =  0x100000000000UL; // 16T
-constexpr uint64_t HYBM_GVM_START_ADDR =       0x400000000000UL; // 64T
-constexpr uint64_t HYBM_GVM_END_ADDR =         0xA80000000000UL; // 168T
+constexpr uint64_t HYBM_HOST_CONN_ADDR_SIZE = 0x100000000000UL;  // 16T
+constexpr uint64_t HYBM_GVM_START_ADDR = 0x400000000000UL;       // 64T
+constexpr uint64_t HYBM_GVM_END_ADDR = 0xA80000000000UL;         // 168T
 
 constexpr uint64_t ENTITY_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE00UL;
 constexpr uint64_t HBM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE01UL;
@@ -140,34 +140,28 @@ struct HybmDeviceMeta {
         }                                                                                            \
     } while (0)
 
-#define DL_LOAD_SYM_ALT(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME, SYMBOL_NAME_ALT) \
-    do {                                                                                              \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                          \
-        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
-            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME) << " successfully");                       \
-            break;                                                                                    \
-        }                                                                                             \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME_ALT);                      \
-        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
-            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME_ALT) << " successfully");                   \
-            break;                                                                                    \
-        }                                                                                             \
-        BM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << " or " << (SYMBOL_NAME_ALT)  \
-                                                     << ", error" << dlerror());                      \
-        dlclose(FILE_HANDLE);                                                                         \
-        FILE_HANDLE = nullptr;                                                                        \
-        return BM_DL_FUNCTION_FAILED;                                                                 \
+#define DL_LOAD_SYM_ALT(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME, SYMBOL_NAME_ALT)             \
+    do {                                                                                                          \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                                      \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                                       \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME) << " successfully");                                   \
+            break;                                                                                                \
+        }                                                                                                         \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME_ALT);                                  \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                                       \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME_ALT) << " successfully");                               \
+            break;                                                                                                \
+        }                                                                                                         \
+        BM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << " or " << (SYMBOL_NAME_ALT) << ", error" \
+                                                     << dlerror());                                               \
+        dlclose(FILE_HANDLE);                                                                                     \
+        FILE_HANDLE = nullptr;                                                                                    \
+        return BM_DL_FUNCTION_FAILED;                                                                             \
     } while (0)
 
-enum HybmGvaVersion : uint32_t {
-    HYBM_GVA_V1 = 0,
-    HYBM_GVA_V2 = 1,
-    HYBM_GVA_V3 = 2,
-    HYBM_GVA_V4 = 3,
-    HYBM_GVA_UNKNOWN
-};
+enum HybmGvaVersion : uint32_t { HYBM_GVA_V1 = 0, HYBM_GVA_V2 = 1, HYBM_GVA_V3 = 2, HYBM_GVA_V4 = 3, HYBM_GVA_UNKNOWN };
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #endif // MEM_FABRIC_HYBRID_HYBM_DEFINE_H

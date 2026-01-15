@@ -19,14 +19,12 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--ca_cert_path', type=str, help='The path to save the certificate of ca',
                     default='/opt/ock/security/certs/ca.cert.pem')
 parser.add_argument('--ca_key_path', type=str, help='The path to save the private key of ca',
                     default='/opt/ock/security/certs/ca.private.key.pem')
 args = parser.parse_args()
-
 
 # 生成根证书的私钥
 root_private_key = rsa.generate_private_key(

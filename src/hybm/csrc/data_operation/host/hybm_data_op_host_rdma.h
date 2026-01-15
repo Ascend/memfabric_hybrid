@@ -24,7 +24,7 @@ namespace mf {
 class HostDataOpRDMA : public DataOperator {
 public:
     HostDataOpRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> &transportManager) noexcept
-        :rankId_(rankId), transportManager_(transportManager) {};
+        : rankId_(rankId), transportManager_(transportManager) {};
 
     ~HostDataOpRDMA() override;
 
@@ -32,11 +32,11 @@ public:
     void UnInitialize() noexcept override;
 
     Result DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
-                     const ExtOptions &options) noexcept override;
+                    const ExtOptions &options) noexcept override;
     Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
-                          const ExtOptions &options) noexcept override;
+                         const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
 
 private:
@@ -81,6 +81,6 @@ private:
     std::shared_ptr<transport::TransportManager> transportManager_;
     std::shared_ptr<RbtreeRangePool> rdmaSwapMemoryAllocator_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 #endif // MF_HYBRID_HYBM_DATA_OP_HOST_RDMA_H

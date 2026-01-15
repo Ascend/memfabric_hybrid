@@ -53,7 +53,7 @@ inline int PrepareTlsForAccTcpServer(const acc::AccTcpServerPtr &server, smem_tl
     return SM_OK;
 }
 
-inline acc::AccTlsOption GetAccTlsOption(const smem_tls_config& config)
+inline acc::AccTlsOption GetAccTlsOption(const smem_tls_config &config)
 {
     acc::AccTlsOption option{};
     option.enableTls = config.tlsEnable;
@@ -74,7 +74,7 @@ inline acc::AccTlsOption GetAccTlsOption(const smem_tls_config& config)
     return option;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
 #endif

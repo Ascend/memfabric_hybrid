@@ -32,7 +32,7 @@ public:
 
 private:
     /* only ENABLE_CPU_MONOTONIC */
-    template <int32_t FAILURE_RET>
+    template<int32_t FAILURE_RET>
     static int32_t InitTickUs();
 };
 
@@ -74,7 +74,7 @@ public:
 
 #if defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__)
 
-template <int32_t FAILURE_RET>
+template<int32_t FAILURE_RET>
 inline int32_t MonotonicTime::InitTickUs()
 {
     /* get frequ */
@@ -110,7 +110,7 @@ inline uint64_t MonotonicTime::TimeNs()
 
 #else  /* defined(ENABLE_CPU_MONOTONIC) && defined(__aarch64__) */
 
-template <int32_t FAILURE_RET>
+template<int32_t FAILURE_RET>
 int32_t MonotonicTime::InitTickUs()
 {
     return 0;
@@ -118,14 +118,14 @@ int32_t MonotonicTime::InitTickUs()
 
 inline uint64_t MonotonicTime::TimeUs()
 {
-    struct timespec ts {};
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return static_cast<uint64_t>(ts.tv_sec * 1000000L + ts.tv_nsec / 1000L);
 }
 
 inline uint64_t MonotonicTime::TimeNs()
 {
-    struct timespec ts {};
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return static_cast<uint64_t>(ts.tv_sec * 1000000000L + ts.tv_nsec);
 }
@@ -162,7 +162,7 @@ inline uint64_t MonoPerfTrace::PeriodMs() const noexcept
     return (end - start) / 1000000L;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
-#endif  // MEMFABRIC_HYBRID_MONOTONIC_H
+#endif // MEMFABRIC_HYBRID_MONOTONIC_H

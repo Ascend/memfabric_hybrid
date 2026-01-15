@@ -26,8 +26,8 @@
 
 namespace ock {
 namespace smem {
-const std::string AUTO_RANK_KEY_PREFIX = "auto_ranking_key_";  // 每个rank的key公共前辍，用于记录对应的rankId
-const std::string CLUSTER_RANKS_INFO_KEY = "cluster_ranks_info";  // rank的基本信息，用于抢占rankId
+const std::string AUTO_RANK_KEY_PREFIX = "auto_ranking_key_";    // 每个rank的key公共前辍，用于记录对应的rankId
+const std::string CLUSTER_RANKS_INFO_KEY = "cluster_ranks_info"; // rank的基本信息，用于抢占rankId
 
 const std::string SENDER_COUNT_KEY = "count_for_senders";
 const std::string SENDER_DEVICE_INFO_KEY = "devices_info_for_senders";
@@ -44,7 +44,7 @@ const std::string RECEIVER_GET_SLICES_ID_KEY = "get_receivers_all_slices_id";
 const std::string SENDER_TOTAL_SLICE_COUNT_KEY = "senders_total_slices_count";
 const std::string SENDER_SLICES_INFO_KEY = "senders_all_slices_info";
 const std::string SENDER_GET_SLICES_ID_KEY = "get_senders_all_slices_id";
-enum DataStatusType : uint8_t { ABNORMAL = 0, NORMAL};
+enum DataStatusType : uint8_t { ABNORMAL = 0, NORMAL };
 struct StoreKeys {
     std::string deviceCount;
     std::string sliceCount;
@@ -54,16 +54,11 @@ struct StoreKeys {
     std::string getSliceId;
 
     StoreKeys() noexcept {}
-    StoreKeys(std::string devCnt, std::string slcCnt, std::string devInfo, std::string slcInfo,
-              std::string getDId, std::string getSId) noexcept
-        : deviceCount{std::move(devCnt)},
-          sliceCount{std::move(slcCnt)},
-          deviceInfo{std::move(devInfo)},
-          sliceInfo{std::move(slcInfo)},
-          getDeviceId{std::move(getDId)},
-          getSliceId{std::move(getSId)}
-    {
-    }
+    StoreKeys(std::string devCnt, std::string slcCnt, std::string devInfo, std::string slcInfo, std::string getDId,
+              std::string getSId) noexcept
+        : deviceCount{std::move(devCnt)}, sliceCount{std::move(slcCnt)}, deviceInfo{std::move(devInfo)},
+          sliceInfo{std::move(slcInfo)}, getDeviceId{std::move(getDId)}, getSliceId{std::move(getSId)}
+    {}
 };
 
 struct WorkerUniqueId {
@@ -75,11 +70,9 @@ struct WorkerUniqueId {
 using WorkerId = std::array<uint8_t, sizeof(WorkerUniqueId)>;
 
 struct WorkerIdHash {
-    size_t operator()(const WorkerId& id) const
+    size_t operator()(const WorkerId &id) const
     {
-        return std::hash<std::string>()(
-            std::string(id.begin(), id.end())
-        );
+        return std::hash<std::string>()(std::string(id.begin(), id.end()));
     }
 };
 
@@ -100,14 +93,12 @@ struct StoredSliceInfo {
 
     StoredSliceInfo(WorkerUniqueId ws, const void *a, uint64_t s, uint16_t rId) noexcept
         : session(std::move(ws)), address{a}, size{s}, rankId{rId}
-    {
-    }
+    {}
 };
 
 using FindRanksCbFunc = std::function<int(const std::vector<hybm_exchange_info> &)>;
 using FindSlicesCbFunc =
-    std::function<int(const std::vector<hybm_exchange_info> &,
-                      const std::vector<const StoredSliceInfo *> &,
+    std::function<int(const std::vector<hybm_exchange_info> &, const std::vector<const StoredSliceInfo *> &,
                       const std::vector<const StoredSliceInfo *> &)>;
 
 class SmemStoreHelper {
@@ -130,19 +121,16 @@ public:
     void RegisterBrokenHandler(const ConfigStoreClientBrokenHandler &handler);
 
 private:
-    int RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint16_t &rankId,
-                               const smem_trans_config_t &cfg, std::string key,
-                               bool &isRestore) noexcept;
+    int RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint16_t &rankId, const smem_trans_config_t &cfg,
+                               std::string key, bool &isRestore) noexcept;
     void CompareAndUpdateDeviceInfo(uint32_t minCount, std::vector<uint8_t> &values,
                                     std::vector<hybm_exchange_info> &addInfo) noexcept;
     void CompareAndUpdateSliceInfo(uint32_t minCount, std::vector<uint8_t> &values,
                                    std::vector<hybm_exchange_info> &addInfo,
                                    std::vector<const StoredSliceInfo *> &addStoreSs,
                                    std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept;
-    void ExtraDeviceChangeInfo(std::vector<uint8_t> &values,
-                                                std::vector<hybm_exchange_info> &addInfo) noexcept;
-    void ExtraSliceChangeInfo(std::vector<uint8_t> &values,
-                              std::vector<hybm_exchange_info> &addInfo,
+    void ExtraDeviceChangeInfo(std::vector<uint8_t> &values, std::vector<hybm_exchange_info> &addInfo) noexcept;
+    void ExtraSliceChangeInfo(std::vector<uint8_t> &values, std::vector<hybm_exchange_info> &addInfo,
                               std::vector<const StoredSliceInfo *> &addStoreSs,
                               std::vector<const StoredSliceInfo *> &removeStoreSs) noexcept;
     const std::string name_;
@@ -162,7 +150,7 @@ private:
     std::vector<uint8_t> remoteDeviceInfoLastTime_;
     std::vector<uint8_t> remoteSlicesInfoLastTime_;
 };
-}
-}
+} // namespace smem
+} // namespace ock
 
-#endif  // MF_HYBRID_SMEM_TRANS_STORE_HELPER_H
+#endif // MF_HYBRID_SMEM_TRANS_STORE_HELPER_H

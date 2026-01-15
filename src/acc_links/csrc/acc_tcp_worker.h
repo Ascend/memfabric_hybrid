@@ -29,9 +29,7 @@ using LinkBrokenHandlerInner = std::function<int32_t(const AccTcpLinkComplexDefa
  */
 class AccTcpWorker : public AccReferable {
 public:
-    explicit AccTcpWorker(AccTcpWorkerOptions options) : options_(std::move(options))
-    {
-    }
+    explicit AccTcpWorker(AccTcpWorkerOptions options) : options_(std::move(options)) {}
     ~AccTcpWorker() override
     {
         Stop();
@@ -50,13 +48,13 @@ public:
 
 private:
     void SetPropertiesForThread();
-    void RunInThread(std::atomic<bool>* started);
+    void RunInThread(std::atomic<bool> *started);
     Result ValidateOptions();
     void StopInner(bool afterFork);
     Result ProcessEvent(struct epoll_event &event) noexcept;
 
 private:
-    int epollFD_ = -1; /* epoll fd */
+    int epollFD_ = -1;      /* epoll fd */
     bool needStop_ = false; /* if the worker need to be stopped */
     AccNewReqHandler newRequestHandle_ = nullptr;
     AccReqSentHandler requestSentHandle_ = nullptr;
@@ -64,9 +62,9 @@ private:
 
     /* non-hot variables */
     std::mutex mutex_;
-    AccTcpWorkerOptions options_; /* worker options */
+    AccTcpWorkerOptions options_;      /* worker options */
     std::atomic<bool> started_{false}; /* if the worker started */
-    std::thread epollThread_; /* thread */
+    std::thread epollThread_;          /* thread */
     std::atomic<bool> threadStarted_{false};
 };
 using AccTcpWorkerPtr = AccRef<AccTcpWorker>;
@@ -78,7 +76,7 @@ inline Result AccTcpWorker::ModifyLink(const AccTcpLinkComplexDefaultPtr &link, 
     LOG_TRACE("Try to modify link " << link->ShortName() << " in sock worker " << options_.Name() << " with event "
                                     << events);
 
-    struct epoll_event evNewFd {};
+    struct epoll_event evNewFd{};
     evNewFd.data.ptr = link.Get();
     evNewFd.events = events;
 
@@ -93,7 +91,7 @@ inline Result AccTcpWorker::ModifyLink(const AccTcpLinkComplexDefaultPtr &link, 
 
 inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
 {
-    auto* link = static_cast<AccTcpLinkComplexDefault*>(event.data.ptr);
+    auto *link = static_cast<AccTcpLinkComplexDefault *>(event.data.ptr);
     if (UNLIKELY(link == nullptr)) {
         LOG_ERROR("Link is null in polled event for worker " << options_.Name());
         return ACC_EPOLL_ERROR;
@@ -109,19 +107,19 @@ inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
             return ACC_OK;
         } else if (result == ACC_LINK_EAGAIN) { /* need to continue read data */
             (void)ModifyLink(link, EPOLLIN | EPOLLOUT | EPOLLET);
-            return ACC_OK; /* not fully received, continue to process next event */
+            return ACC_OK;                     /* not fully received, continue to process next event */
         } else if (result == ACC_LINK_ERROR) { /* link error */
             (void)linkBrokenHandle_(link);
             return ACC_OK;
         }
 
-        return ACC_OK; /* ignore other error */
+        return ACC_OK;                    /* ignore other error */
     } else if (event.events & EPOLLOUT) { /* there is free out buffer */
         AccMsgHeader outHeader{};
         AccDataBufferPtr cbCtx;
         auto result = link->HandlePollOut(outHeader, cbCtx); /* call link to send something */
-        if (result == ACC_LINK_MSG_SENT) { /* if message sent */
-            if (requestSentHandle_ != nullptr) { /* call sent callback if set */
+        if (result == ACC_LINK_MSG_SENT) {                   /* if message sent */
+            if (requestSentHandle_ != nullptr) {             /* call sent callback if set */
                 (void)requestSentHandle_(MSG_SENT, outHeader, cbCtx);
             }
             /* ET mode, each loop only handle one message, need to add event again */
@@ -162,7 +160,7 @@ inline void AccTcpWorker::RegisterLinkBrokenHandler(const LinkBrokenHandlerInner
     ASSERT_RET_VOID(linkBrokenHandle_ == nullptr);
     linkBrokenHandle_ = h;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_WORKER_H
+#endif // ACC_LINKS_ACC_TCP_WORKER_H

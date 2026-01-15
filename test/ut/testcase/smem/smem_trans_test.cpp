@@ -48,9 +48,7 @@ void SmemTransTest::SetUpTestCase() {}
 
 void SmemTransTest::TearDownTestCase() {}
 
-void SmemTransTest::SetUp()
-{
-}
+void SmemTransTest::SetUp() {}
 
 void SmemTransTest::TearDown()
 {
@@ -176,7 +174,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* address = new int[10];
+        int *address = new int[10];
         size_t size = 10 * sizeof(int);
 
         // first create server
@@ -227,7 +225,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param_ipv6)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* address = new int[10];
+        int *address = new int[10];
         size_t size = 10 * sizeof(int);
 
         // first create server
@@ -274,14 +272,14 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param_ipv6)
 TEST_F(SmemTransTest, smem_trans_write)
 {
     uint32_t rankSize = 2;
-    int* sender_buffer = new int[500];
-    int* recv_buffer = new int[500];
+    int *sender_buffer = new int[500];
+    int *recv_buffer = new int[500];
     size_t capacities = 500 * sizeof(int);
     smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
-    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-                   std::vector<int*> addrPtrs, size_t capacities, const std::array<const char*, 2> unique_ids) {
+    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options, std::vector<int *> addrPtrs,
+                   size_t capacities, const std::array<const char *, 2> unique_ids) {
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
@@ -314,11 +312,8 @@ TEST_F(SmemTransTest, smem_trans_write)
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> unique_ids = {{
-        "127.0.0.1:5321",
-        "127.0.0.1:5322"
-    }};
-    std::vector<int*> addrPtrs = {sender_buffer, recv_buffer};
+    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
+    std::vector<int *> addrPtrs = {sender_buffer, recv_buffer};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
     pid_t pids[rankSize];
@@ -381,14 +376,14 @@ TEST_F(SmemTransTest, smem_trans_write)
 TEST_F(SmemTransTest, smem_trans_write_ipv6)
 {
     uint32_t rankSize = 2;
-    int* sender_buffer = new int[500];
-    int* recv_buffer = new int[500];
+    int *sender_buffer = new int[500];
+    int *recv_buffer = new int[500];
     size_t capacities = 500 * sizeof(int);
     smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
-    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-                   std::vector<int*> addrPtrs, size_t capacities, const std::array<const char*, 2> unique_ids) {
+    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options, std::vector<int *> addrPtrs,
+                   size_t capacities, const std::array<const char *, 2> unique_ids) {
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
@@ -421,11 +416,8 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> unique_ids = {{
-        "[::]:5321",
-        "[::]:5322"
-    }};
-    std::vector<int*> addrPtrs = {sender_buffer, recv_buffer};
+    const std::array<const char *, 2> unique_ids = {{"[::]:5321", "[::]:5322"}};
+    std::vector<int *> addrPtrs = {sender_buffer, recv_buffer};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
     pid_t pids[rankSize];
@@ -488,17 +480,17 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
 TEST_F(SmemTransTest, smem_trans_batch_write)
 {
     uint32_t rankSize = 2;
-    int* sender_buffer = new int[500];
-    int* recv_buffer = new int[500];
-    std::vector<void*> sender_addrPtrs = {sender_buffer};
-    std::vector<void*> recv_addrPtrs = {recv_buffer};
+    int *sender_buffer = new int[500];
+    int *recv_buffer = new int[500];
+    std::vector<void *> sender_addrPtrs = {sender_buffer};
+    std::vector<void *> recv_addrPtrs = {recv_buffer};
     std::vector<size_t> capacities = {500 * sizeof(int)};
     smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-                   std::vector<std::vector<void*>> addrPtrs, std::vector<size_t> capacities,
-                   const std::array<const char*, 2> unique_ids) {
+                   std::vector<std::vector<void *>> addrPtrs, std::vector<size_t> capacities,
+                   const std::array<const char *, 2> unique_ids) {
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
@@ -517,8 +509,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write)
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
-            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(),
-                                         capacities.data(), 1);
+            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1);
             if (ret != SM_OK) {
                 exit(4);
             }
@@ -528,11 +519,8 @@ TEST_F(SmemTransTest, smem_trans_batch_write)
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> unique_ids = {{
-        "127.0.0.1:5321",
-        "127.0.0.1:5322"
-    }};
-    std::vector<std::vector<void*>> addrPtrs = {sender_addrPtrs, recv_addrPtrs};
+    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
+    std::vector<std::vector<void *>> addrPtrs = {sender_addrPtrs, recv_addrPtrs};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
     pid_t pids[rankSize];
@@ -595,17 +583,17 @@ TEST_F(SmemTransTest, smem_trans_batch_write)
 TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
 {
     uint32_t rankSize = 2;
-    int* sender_buffer = new int[500];
-    int* recv_buffer = new int[500];
-    std::vector<void*> sender_addrPtrs = {sender_buffer};
-    std::vector<void*> recv_addrPtrs = {recv_buffer};
+    int *sender_buffer = new int[500];
+    int *recv_buffer = new int[500];
+    std::vector<void *> sender_addrPtrs = {sender_buffer};
+    std::vector<void *> recv_addrPtrs = {recv_buffer};
     std::vector<size_t> capacities = {500 * sizeof(int)};
     smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
     auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-                   std::vector<std::vector<void*>> addrPtrs, std::vector<size_t> capacities,
-                   const std::array<const char*, 2> unique_ids) {
+                   std::vector<std::vector<void *>> addrPtrs, std::vector<size_t> capacities,
+                   const std::array<const char *, 2> unique_ids) {
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
@@ -624,8 +612,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
-            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(),
-                                         capacities.data(), 1);
+            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1);
             if (ret != SM_OK) {
                 exit(4);
             }
@@ -635,11 +622,8 @@ TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> unique_ids = {{
-        "[::]:5321",
-        "[::]:5322"
-    }};
-    std::vector<std::vector<void*>> addrPtrs = {sender_addrPtrs, recv_addrPtrs};
+    const std::array<const char *, 2> unique_ids = {{"[::]:5321", "[::]:5322"}};
+    std::vector<std::vector<void *>> addrPtrs = {sender_addrPtrs, recv_addrPtrs};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
     pid_t pids[rankSize];
@@ -706,12 +690,12 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* srcPtr1 = new int[1000];
-        int* srcPtr2 = new int[2000];
-        std::vector<const void*> srcAddrPtrs = {srcPtr1, srcPtr2};
-        int* destPtr1 = new int[5000];
-        int* destPtr2 = new int[6000];
-        std::vector<void*> destAddrPtrs = {destPtr1, destPtr2};
+        int *srcPtr1 = new int[1000];
+        int *srcPtr2 = new int[2000];
+        std::vector<const void *> srcAddrPtrs = {srcPtr1, srcPtr2};
+        int *destPtr1 = new int[5000];
+        int *destPtr2 = new int[6000];
+        std::vector<void *> destAddrPtrs = {destPtr1, destPtr2};
         std::vector<size_t> dataSizes = {128U, 128U};
 
         // first create server
@@ -724,8 +708,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
 
         // handle = nullptr
-        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(),
-                                     dataSizes.data(), 2);
+        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 2);
         if (ret != SM_INVALID_PARAM) {
             flag = 2;
             goto cleanup;
@@ -785,12 +768,12 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* srcPtr1 = new int[1000];
-        int* srcPtr2 = new int[2000];
-        std::vector<const void*> srcAddrPtrs = {srcPtr1, srcPtr2};
-        int* destPtr1 = new int[5000];
-        int* destPtr2 = new int[6000];
-        std::vector<void*> destAddrPtrs = {destPtr1, destPtr2};
+        int *srcPtr1 = new int[1000];
+        int *srcPtr2 = new int[2000];
+        std::vector<const void *> srcAddrPtrs = {srcPtr1, srcPtr2};
+        int *destPtr1 = new int[5000];
+        int *destPtr2 = new int[6000];
+        std::vector<void *> destAddrPtrs = {destPtr1, destPtr2};
         std::vector<size_t> dataSizes = {128U, 128U};
 
         // first create server
@@ -803,8 +786,8 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
         auto handle = smem_trans_create(STORE_URL_IPV6, UNIQUE_IPV6_ID, &g_trans_options);
 
         // handle = nullptr
-        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(),
-                                     dataSizes.data(), 2);
+        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     2);
         if (ret != SM_INVALID_PARAM) {
             flag = 2;
             goto cleanup;
@@ -834,8 +817,8 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
             goto cleanup;
         }
         // batchSize = 0
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID,
-                                     destAddrPtrs.data(), dataSizes.data(), 0);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     0);
         if (ret != SM_INVALID_PARAM) {
             flag = 7;
             goto cleanup;
@@ -867,9 +850,9 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* address1 = new int[1000];
-        int* address2 = new int[2000];
-        std::vector<void*> addrPtrs = {address1, address2};
+        int *address1 = new int[1000];
+        int *address2 = new int[2000];
+        std::vector<void *> addrPtrs = {address1, address2};
         std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
         // first create server
@@ -911,9 +894,9 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
 
     if (pid == 0) {
         uint8_t flag = 0;
-        int* address1 = new int[1000];
-        int* address2 = new int[2000];
-        std::vector<void*> addrPtrs = {address1, address2};
+        int *address1 = new int[1000];
+        int *address2 = new int[2000];
+        std::vector<void *> addrPtrs = {address1, address2};
         std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
         // first create server
@@ -949,14 +932,14 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
 TEST_F(SmemTransTest, smem_trans_submit)
 {
     uint32_t rankSize = 2;
-    int* sender_buffer = new int[500];
-    int* recv_buffer = new int[500];
+    int *sender_buffer = new int[500];
+    int *recv_buffer = new int[500];
     size_t capacities = 500 * sizeof(int);
     smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
     smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
 
-    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
-                   std::vector<int*> addrPtrs, size_t capacities, const std::array<const char*, 2> unique_ids) {
+    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options, std::vector<int *> addrPtrs,
+                   size_t capacities, const std::array<const char *, 2> unique_ids) {
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
         if (ret != 0) {
@@ -975,8 +958,8 @@ TEST_F(SmemTransTest, smem_trans_submit)
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             uint64_t stream_cnt = 0;
-            ret = smem_trans_write_submit(handle, addrPtrs[0], unique_ids[1], addrPtrs[1],
-                                          capacities, (void *)&stream_cnt);
+            ret = smem_trans_write_submit(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities,
+                                          (void *)&stream_cnt);
             if (ret != SM_OK) {
                 exit(4);
             }
@@ -994,11 +977,8 @@ TEST_F(SmemTransTest, smem_trans_submit)
         smem_trans_uninit(0);
     };
 
-    const std::array<const char*, 2> unique_ids = {{
-        "127.0.0.1:5321",
-        "127.0.0.1:5322"
-    }};
-    std::vector<int*> addrPtrs = {sender_buffer, recv_buffer};
+    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
+    std::vector<int *> addrPtrs = {sender_buffer, recv_buffer};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
     pid_t pids[rankSize];

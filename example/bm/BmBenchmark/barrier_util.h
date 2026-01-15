@@ -23,9 +23,7 @@
 class BarrierUtil {
 public:
     BarrierUtil() {}
-    ~BarrierUtil()
-    {
-    }
+    ~BarrierUtil() {}
 
     int32_t Init(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, std::string ipPort)
     {
@@ -79,8 +77,9 @@ public:
         }
         return 0;
     }
+
 private:
-    std::vector<std::string> Split(const std::string& str, char delimiter)
+    std::vector<std::string> Split(const std::string &str, char delimiter)
     {
         std::vector<std::string> result;
         std::stringstream ss(str);

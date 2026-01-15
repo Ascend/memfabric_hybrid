@@ -32,8 +32,8 @@ extern "C" {
  * @param flags            [in] optional flags, default value 0.
  * @return 0 if reserved successful
  */
-int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
-                       void *stream, uint32_t flags);
+int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction, void *stream,
+                       uint32_t flags);
 
 /**
  * @brief batch copy data bytes from memory area <i>sources</i> to memory area <i>destinations</i>.
@@ -58,4 +58,4 @@ int32_t hybm_wait(hybm_entity_t e);
 }
 #endif
 
-#endif  // MF_HYBM_CORE_HYBM_DATA_OP_H
+#endif // MF_HYBM_CORE_HYBM_DATA_OP_H

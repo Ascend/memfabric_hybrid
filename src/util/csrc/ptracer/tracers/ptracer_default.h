@@ -78,8 +78,8 @@ private:
     int32_t DUMP_PERIOD_SECOND = 10;         /* dump every 10 seconds */
     size_t MAX_DUMP_SIZE = 10 * 1024 * 1024; /* 10MB */
 };
-}  // namespace tracer
-}  // namespace mf
-}  // namespace ock
+} // namespace tracer
+} // namespace mf
+} // namespace ock
 
-#endif  // MEM_FABRIC_PTRACER_DEFAULT_H
+#endif // MEM_FABRIC_PTRACER_DEFAULT_H

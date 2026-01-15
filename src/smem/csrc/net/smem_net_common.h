@@ -19,13 +19,13 @@ namespace ock {
 namespace smem {
 
 struct UrlExtraction {
-    std::string ip;           /* ip */
-    uint16_t port = 9980L;    /* listen port */
+    std::string ip;        /* ip */
+    uint16_t port = 9980L; /* listen port */
 
     Result ExtractIpPortFromUrl(const std::string &url);
 };
 
 Result GetLocalIpWithTarget(const std::string &target, std::string &local);
-}
-}
+} // namespace smem
+} // namespace ock
 #endif // MEM_FABRIC_HYBRID_SMEM_NET_COMMON_H

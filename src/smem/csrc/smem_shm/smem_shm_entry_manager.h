@@ -67,7 +67,7 @@ inline StorePtr SmemShmEntryManager::GetStoreClient() const
     return store_;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // SMEM_SMEM_SHM_ENTRY_MANAGER_H
+#endif // SMEM_SMEM_SHM_ENTRY_MANAGER_H

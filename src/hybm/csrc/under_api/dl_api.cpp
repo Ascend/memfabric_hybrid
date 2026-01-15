@@ -63,5 +63,5 @@ Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)
 
     return BM_OK;
 }
-}
-}
+} // namespace mf
+} // namespace ock

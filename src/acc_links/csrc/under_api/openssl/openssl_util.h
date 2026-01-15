@@ -14,7 +14,6 @@ namespace acc {
 Result SslShutdownHelper(SSL *s);
 
 }
-}
-
+} // namespace ock
 
 #endif

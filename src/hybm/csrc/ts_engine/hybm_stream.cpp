@@ -23,11 +23,8 @@ namespace mf {
 constexpr uint32_t HYBM_SQE_PRINT_WIDTH = 8U;
 
 HybmStream::HybmStream(uint32_t deviceId, uint32_t prio, uint32_t flags) noexcept
-    : deviceId_{deviceId},
-      prio_{prio},
-      flags_{flags}
-{
-}
+    : deviceId_{deviceId}, prio_{prio}, flags_{flags}
+{}
 
 int HybmStream::Initialize() noexcept
 {
@@ -44,8 +41,8 @@ int HybmStream::Initialize() noexcept
     ret = AllocLogicCq();
     BM_ASSERT_RETURN(ret == 0, ret);
 
-    BM_LOG_INFO("init stream ok, stream:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_
-        << " logic:" << logicCq_ << " ssid:" << ssid);
+    BM_LOG_INFO("init stream ok, stream:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_ << " logic:" << logicCq_
+                                          << " ssid:" << ssid);
     runningTaskCount_.store(0L);
     taskList_.resize(HYBM_SQCQ_DEPTH);
     inited_ = true;
@@ -205,7 +202,7 @@ void HybmStream::Destroy()
 
 void PrintSqe(const rtStarsSqe_t *sqe)
 {
-    const uint32_t * const cmd = reinterpret_cast<const uint32_t *>(sqe);
+    const uint32_t *const cmd = reinterpret_cast<const uint32_t *>(sqe);
     std::ostringstream info;
     for (size_t i = 0UL; i < (sizeof(rtStarsSqe_t) / sizeof(uint32_t)); i++) {
         info << " " << std::setw(HYBM_SQE_PRINT_WIDTH) << std::setfill('0') << std::hex << cmd[i];
@@ -282,23 +279,23 @@ static constexpr auto SDMA_CQE_ERROR_MAX = 16;
 static std::string GetCqeErrorStr(rtLogicCqReport_t &cqe)
 {
     static std::string sdmaCqeError[] = {
-        "normal",                                      // 0
-        "read response error or sqe invalid opcode",   // 1
-        "bit ecc",                                     // 2
-        "transfer page error, smmu return terminate",  // 3
-        "meeting TLBI",                                // 4
-        "non safe access",                             // 5
-        "DAW, MSD or address error",                   // 6
-        "operation fail",                              // 7
-        "sdma move DDRC ERROR",                        // 8
-        "sdma move COMPERR ERROR",                     // 9
-        "sdma move COMPDATAERR ERROR",                 // 10
-        "reduce overflow",                             // 11
-        "reduce float infinity",                       // 12
-        "reduce source data NaN",                      // 13
-        "reduce dest data NaN",                        // 14
-        "reduce both source and dest data NaN",        // 15
-        "data is not equal"                            // 16
+        "normal",                                     // 0
+        "read response error or sqe invalid opcode",  // 1
+        "bit ecc",                                    // 2
+        "transfer page error, smmu return terminate", // 3
+        "meeting TLBI",                               // 4
+        "non safe access",                            // 5
+        "DAW, MSD or address error",                  // 6
+        "operation fail",                             // 7
+        "sdma move DDRC ERROR",                       // 8
+        "sdma move COMPERR ERROR",                    // 9
+        "sdma move COMPDATAERR ERROR",                // 10
+        "reduce overflow",                            // 11
+        "reduce float infinity",                      // 12
+        "reduce source data NaN",                     // 13
+        "reduce dest data NaN",                       // 14
+        "reduce both source and dest data NaN",       // 15
+        "data is not equal"                           // 16
     };
 
     if (cqe.sqeType == RT_STARS_SQE_TYPE_SDMA) {
@@ -390,5 +387,5 @@ int HybmStream::Synchronize(uint32_t task) noexcept
 
     return (retry >= MAX_RETRY ? BM_TIMEOUT : ret);
 }
-}
-}
+} // namespace mf
+} // namespace ock

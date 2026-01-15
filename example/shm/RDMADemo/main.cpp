@@ -39,8 +39,8 @@ static int32_t TestRDMAPollCQ(aclrtStream stream, uint8_t *gva, uint32_t rankId,
         xHost[i] = rankId;
     }
 
-    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize,
-        xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize, xHost, messageSize,
+                          ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_pollcq_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -54,8 +54,9 @@ static int32_t TestRDMAPollCQ(aclrtStream stream, uint8_t *gva, uint32_t rankId,
         if (curRank == rankId) {
             continue;
         }
-        CHECK_ACL(aclrtMemcpy(xHost, DEBUG_PRINT_SIZE, gva + rankId * gNpuMallocSpace +
-                  rankSize * messageSize + curRank * DEBUG_PRINT_SIZE, DEBUG_PRINT_SIZE, ACL_MEMCPY_DEVICE_TO_HOST));
+        CHECK_ACL(aclrtMemcpy(xHost, DEBUG_PRINT_SIZE,
+                              gva + rankId * gNpuMallocSpace + rankSize * messageSize + curRank * DEBUG_PRINT_SIZE,
+                              DEBUG_PRINT_SIZE, ACL_MEMCPY_DEVICE_TO_HOST));
         for (uint32_t i = 0; i < DEBUG_PRINT_SIZE / sizeof(uint64_t); i++) {
             printf("PollCQ srcRank = %d, destRank = %d, index = %d, value = %lu\n", rankId, curRank, i, xHost[i]);
         }
@@ -75,8 +76,8 @@ static int32_t TestRDMAWrite(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
         xHost[i] = rankId;
     }
 
-    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize,
-        messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize, xHost, messageSize,
+                          ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_write_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -99,8 +100,8 @@ static int32_t TestRDMARead(aclrtStream stream, uint8_t *gva, uint32_t rankId, u
         xHost[i] = rankId;
     }
 
-    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize,
-        messageSize, xHost, messageSize, ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_ACL(aclrtMemcpy(gva + rankId * gNpuMallocSpace + rankId * messageSize, messageSize, xHost, messageSize,
+                          ACL_MEMCPY_HOST_TO_DEVICE));
     shm_rdma_write_test_do(stream, gva, gNpuMallocSpace);
     CHECK_ACL(aclrtSynchronizeStream(stream));
     sleep(1);
@@ -140,12 +141,13 @@ static int32_t TestGetQPInfo(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     return 0;
 }
 
-int32_t main(int32_t argc, char* argv[])
+int32_t main(int32_t argc, char *argv[])
 {
     int rankSize = atoi(argv[INDEX_1]);
     int rankId = atoi(argv[INDEX_2]);
     std::string ipport = argv[INDEX_3];
-    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " <<ipport << std::endl;
+    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " input_ip: " << ipport
+              << std::endl;
 
     if (rankSize != (rankSize & (~(rankSize - 1)))) {
         std::cout << "[TEST] input rank_size: " << rankSize << " is not the power of 2" << std::endl;

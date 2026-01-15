@@ -31,7 +31,7 @@ int32_t HybmGetInitedLogicDeviceId()
     return initedLogicDeviceId;
 }
 
-int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t& baseAddress)
+int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddress)
 {
 #if !defined(ASCEND_NPU)
     return BM_OK;

@@ -133,7 +133,7 @@ int OPENSSLAPIDL::GetLibPath(std::string &libDir, std::string &libSslPath, std::
     }
 
     std::string subFolder = "";
-#ifdef UT_ENABLED  // ut测试跳过shutdown操作
+#ifdef UT_ENABLED // ut测试跳过shutdown操作
     subFolder = "";
 #endif
 
@@ -301,5 +301,5 @@ int OPENSSLAPIDL::LoadOpensslAPI(const std::string &libPath)
     gLoaded = true;
     return 0;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

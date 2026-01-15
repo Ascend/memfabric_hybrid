@@ -31,8 +31,8 @@ Result AccTcpListener::Start() noexcept
     /* create socket */
     auto tmpFD = ::socket(parser->GetAddressFamily(), SOCK_STREAM, 0);
     if (tmpFD < 0) {
-        LOG_ERROR("Failed to create listen socket, error " << strerror(errno) <<
-            ", please check if running of fd limit");
+        LOG_ERROR("Failed to create listen socket, error " << strerror(errno)
+                                                           << ", please check if running of fd limit");
         return ACC_ERROR;
     }
 
@@ -84,10 +84,8 @@ Result AccTcpListener::StartAcceptThread() noexcept
     threadStarted_.store(false);
 
     try {
-        acceptThread_ = std::thread([this]() {
-            this->RunInThread();
-        });
-    } catch (const std::system_error& e) {
+        acceptThread_ = std::thread([this]() { this->RunInThread(); });
+    } catch (const std::system_error &e) {
         LOG_ERROR("Failed to create accept thread: " << e.what());
         return ACC_ERROR;
     } catch (...) {
@@ -146,7 +144,7 @@ void AccTcpListener::RunInThread() noexcept
                 continue;
             }
 
-            struct sockaddr_in addressIn {};
+            struct sockaddr_in addressIn{};
             socklen_t len = sizeof(addressIn);
             auto fd = ::accept(listenFd_, reinterpret_cast<struct sockaddr *>(&addressIn), &len);
             if (fd < 0) {
@@ -162,8 +160,8 @@ void AccTcpListener::RunInThread() noexcept
 
             ProcessNewConnection(fd, addressIn);
         } catch (std::exception &ex) {
-            LOG_WARN("Got exception in AccTcpListener::RunInThread, exception " << ex.what() <<
-                ", ignore and continue");
+            LOG_WARN("Got exception in AccTcpListener::RunInThread, exception " << ex.what()
+                                                                                << ", ignore and continue");
         } catch (...) {
             LOG_WARN("Got unknown error in AccTcpListener::RunInThread, ignore and continue");
         }
@@ -193,7 +191,7 @@ void AccTcpListener::ProcessNewConnection(int fd, struct sockaddr_in addressIn) 
         if (ret != ACC_OK) {
             LOG_ERROR("Failed to new connection ssl link");
             SafeCloseFd(fd);
-            return ;
+            return;
         }
     }
 
@@ -225,5 +223,5 @@ void AccTcpListener::ProcessNewConnection(int fd, struct sockaddr_in addressIn) 
         LOG_WARN("Failed to connect response to " << ipPort);
     }
 }
-}
-}
+} // namespace acc
+} // namespace ock

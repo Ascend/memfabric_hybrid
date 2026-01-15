@@ -95,7 +95,7 @@ public:
     /**
      * @brief Close file
      */
-    static void CloseFile(FILE* fp);
+    static void CloseFile(FILE *fp);
 
     /**
      * @brief Check if the file or dir is symbol link
@@ -217,18 +217,18 @@ inline bool FileUtil::RemoveDirRecursive(const std::string &path)
         return false;
     }
 
-    DIR* dir = opendir(realPath.c_str());
+    DIR *dir = opendir(realPath.c_str());
     if (dir == nullptr) {
         return false;
     }
 
-    struct dirent* entry = nullptr;
+    struct dirent *entry = nullptr;
     while ((entry = readdir(dir))) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        struct stat statBuf {};
+        struct stat statBuf{};
         std::string absPath = realPath + "/" + entry->d_name;
         if (!stat(absPath.c_str(), &statBuf) && S_ISDIR(statBuf.st_mode)) {
             RemoveDirRecursive(absPath);
@@ -250,11 +250,11 @@ inline bool FileUtil::Realpath(std::string &path)
     }
 
     /* It will allocate memory to store path */
-    char* tmp = new(std::nothrow) char[ock::mf::FileUtil::GetSafePathMax() + 1];
+    char *tmp = new (std::nothrow) char[ock::mf::FileUtil::GetSafePathMax() + 1];
     if (tmp == nullptr) {
         return false;
     }
-    char* realPath = realpath(path.c_str(), tmp);
+    char *realPath = realpath(path.c_str(), tmp);
     if (realPath == nullptr) {
         delete[] tmp;
         return false;
@@ -287,7 +287,7 @@ inline bool FileUtil::LibraryRealPath(const std::string &libDirPath, const std::
     return true;
 }
 
-inline void FileUtil::CloseFile(FILE* fp)
+inline void FileUtil::CloseFile(FILE *fp)
 {
     if (fp == nullptr) {
         return;
@@ -307,7 +307,7 @@ inline size_t FileUtil::GetFileSize(const std::string &path)
         return 0;
     }
 
-    FILE* fp = fopen(realFilePath.c_str(), "rb");
+    FILE *fp = fopen(realFilePath.c_str(), "rb");
     if (fp == nullptr) {
         return 0;
     }
@@ -390,14 +390,14 @@ inline constexpr size_t FileUtil::GetSafePathMax()
 
 inline bool FileUtil::CheckFileIsREG(std::string &file)
 {
-    struct stat st {};
+    struct stat st{};
     if (lstat(file.c_str(), &st) < 0) {
         return false;
     }
     return S_ISREG(st.st_mode);
 }
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #endif

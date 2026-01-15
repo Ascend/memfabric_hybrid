@@ -18,10 +18,7 @@
 namespace ock {
 namespace mf {
 
-enum class DlApiExtendLibraryType {
-    DL_EXT_LIB_DEVICE_RDMA,
-    DL_EXT_LIB_HOST_RDMA
-};
+enum class DlApiExtendLibraryType { DL_EXT_LIB_DEVICE_RDMA, DL_EXT_LIB_HOST_RDMA };
 
 class DlApi {
 public:
@@ -29,7 +26,7 @@ public:
     static void CleanupLibrary();
     static Result LoadExtendLibrary(DlApiExtendLibraryType libraryType);
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MEM_FABRIC_HYBRID_DL_API_H
+#endif // MEM_FABRIC_HYBRID_DL_API_H

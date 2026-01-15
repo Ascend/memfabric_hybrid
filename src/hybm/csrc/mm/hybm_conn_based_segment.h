@@ -73,7 +73,7 @@ private:
     std::map<uint16_t, std::string> exportMap_;
     std::vector<HostExportInfo> imports_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HYBM_CONN_BASED_SEGMENT_H
+#endif // MF_HYBRID_HYBM_CONN_BASED_SEGMENT_H

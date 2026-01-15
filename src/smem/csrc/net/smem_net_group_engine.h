@@ -147,6 +147,6 @@ inline uint32_t SmemNetGroupEngine::GetRankSize() const
     return option_.rankSize;
 }
 
-}  // namespace smem
-}  // namespace ock
-#endif  // SMEM_SMEM_NET_GROUP_ENGINE_H
+} // namespace smem
+} // namespace ock
+#endif // SMEM_SMEM_NET_GROUP_ENGINE_H

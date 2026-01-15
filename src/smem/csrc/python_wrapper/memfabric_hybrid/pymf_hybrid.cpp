@@ -103,7 +103,7 @@ public:
             throw std::runtime_error("create shm failed!");
         }
 
-        return new (std::nothrow)ShareMemory(handle, gva);
+        return new (std::nothrow) ShareMemory(handle, gva);
     }
 
     uint32_t QuerySupportDataOp() noexcept
@@ -186,8 +186,8 @@ public:
         void **sources = ptr;
         void **destinations = ptr + count;
         for (uint64_t i = 0; i < count; ++i) {
-            sources[i] =  reinterpret_cast<void *>(srcs[i]);
-            destinations[i] =  reinterpret_cast<void *>(dsts[i]);
+            sources[i] = reinterpret_cast<void *>(srcs[i]);
+            destinations[i] = reinterpret_cast<void *>(dsts[i]);
         }
         smem_batch_copy_params batch_params = {sources, destinations, sizes.data(), count};
         auto ret = smem_bm_copy_batch(handle_, &batch_params, type, flags);
@@ -232,6 +232,7 @@ public:
     {
         return smem_bm_unregister_user_mem(handle_, addr);
     }
+
 private:
     smem_bm_t handle_;
     static uint32_t worldSize_;
@@ -246,7 +247,8 @@ struct LoggerState {
 std::mutex LoggerState::mutex;
 std::shared_ptr<py::function> LoggerState::py_logger;
 
-static void cpp_logger_adapter(int level, const char* msg) {
+static void cpp_logger_adapter(int level, const char *msg)
+{
     std::lock_guard<std::mutex> lock(LoggerState::mutex);
 
     if (!LoggerState::py_logger) {
@@ -289,19 +291,17 @@ static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextL
     }
 }
 
-int32_t smem_set_conf_store_tls_key(std::string &tls_pk, std::string &tls_pk_pw,
-    py::function py_decrypt_func)
+int32_t smem_set_conf_store_tls_key(std::string &tls_pk, std::string &tls_pk_pw, py::function py_decrypt_func)
 {
     if (!py_decrypt_func || py_decrypt_func.is_none()) {
-        return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(),
-            tls_pk_pw.size(), nullptr);
+        return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(), tls_pk_pw.size(),
+                                             nullptr);
     }
 
     g_py_decrypt_func = py_decrypt_func;
-    return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(),
-        tls_pk_pw.size(), py_decrypt_handler_wrapper);
+    return smem_set_config_store_tls_key(tls_pk.c_str(), tls_pk.size(), tls_pk_pw.c_str(), tls_pk_pw.size(),
+                                         py_decrypt_handler_wrapper);
 }
-
 
 int32_t smem_set_conf_store_tls_adapt(bool enable, std::string &tls_info)
 {
@@ -359,9 +359,7 @@ Returns:
     0 if successful
 )");
 
-    m.add_object("_cleanup_capsule", py::capsule([]() {
-        LoggerState::py_logger.reset();
-    }));
+    m.add_object("_cleanup_capsule", py::capsule([]() { LoggerState::py_logger.reset(); }));
 
     m.def("get_last_err_msg", &smem_get_last_err_msg, py::call_guard<py::gil_scoped_release>(), R"(
 Get last error message.
@@ -375,9 +373,8 @@ Returns:
     error message string
 )");
 
-    m.def("set_conf_store_tls_key", &smem_set_conf_store_tls_key,
-          py::call_guard<py::gil_scoped_release>(), py::arg("tls_pk"), py::arg("tls_pk_pw"),
-          py::arg("py_decrypt_func"), R"(
+    m.def("set_conf_store_tls_key", &smem_set_conf_store_tls_key, py::call_guard<py::gil_scoped_release>(),
+          py::arg("tls_pk"), py::arg("tls_pk_pw"), py::arg("py_decrypt_func"), R"(
 Register a Python decrypt handler.
 Parameters:
     tls_pk (string): the content of tls private key string
@@ -406,7 +403,7 @@ void DefineShmConfig(py::module_ &m)
 {
     py::class_<smem_shm_config_t>(m, "ShmConfig")
         .def(py::init([]() {
-                 auto config = new (std::nothrow)smem_shm_config_t;
+                 auto config = new (std::nothrow) smem_shm_config_t;
                  smem_shm_config_init(config);
                  return config;
              }),
@@ -437,7 +434,7 @@ void DefineBmConfig(py::module_ &m)
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
-                 auto config = new (std::nothrow)smem_bm_config_t;
+                 auto config = new (std::nothrow) smem_bm_config_t;
                  smem_bm_config_init(config);
                  return config;
              }),
@@ -457,7 +454,8 @@ whether to start config store, default true)")
 automatically allocate rank IDs, default is false)")
         .def_readwrite("rank_id", &smem_bm_config_t::rankId, "user specified rank ID, valid for autoRanking is False")
         .def_readwrite("flags", &smem_bm_config_t::flags, "other flags, default 0")
-        .def("set_nic",
+        .def(
+            "set_nic",
             [](smem_bm_config_t &config, const std::string &nic) {
                 strncpy(config.hcomUrl, nic.c_str(), sizeof(config.hcomUrl));
             },
@@ -479,12 +477,13 @@ void DefineShmClass(py::module_ &m)
           py::arg("flags") = 0);
 
     py::class_<ShareMemory>(m, "ShareMemory")
-        .def("set_context",
-             [](ShareMemory &shm, py::bytes data) {
+        .def(
+            "set_context",
+            [](ShareMemory &shm, py::bytes data) {
                 auto str = py::bytes(data).cast<std::string>();
                 shm.SetExternContext(str.data(), str.size());
-             },
-             py::call_guard<py::gil_scoped_release>(), py::arg("context"), R"(
+            },
+            py::call_guard<py::gil_scoped_release>(), py::arg("context"), R"(
 Set user extra context of shm object.
 
 Arguments:
@@ -497,30 +496,34 @@ Get local rank of a shm object)")
 Get rank size of a shm object)")
         .def("destroy", &ShareMemory::Destroy, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
 Destroy the shm handle.)")
-        .def("query_support_data_operation", &ShareMemory::QuerySupportDataOp,
-            py::call_guard<py::gil_scoped_release>(), R"(
+        .def("query_support_data_operation", &ShareMemory::QuerySupportDataOp, py::call_guard<py::gil_scoped_release>(),
+             R"(
 Get supported data operations)")
         .def("barrier", &ShareMemory::Barrier, py::call_guard<py::gil_scoped_release>(), R"(
 Do barrier on a shm object, using control network.)")
-        .def("all_gather",
+        .def(
+            "all_gather",
             [](ShareMemory &shm, py::bytes data) {
                 auto str = py::bytes(data).cast<std::string>();
                 auto outputSize = str.size() * shm.RankSize();
                 std::string output;
                 output.resize(outputSize);
-                shm.AllGather(str.c_str(), str.size(), const_cast<char*>(output.data()), outputSize);
+                shm.AllGather(str.c_str(), str.size(), const_cast<char *>(output.data()), outputSize);
                 return py::bytes(output.c_str(), outputSize);
-            }, py::call_guard<py::gil_scoped_release>(), py::arg("local_data"), R"(
+            },
+            py::call_guard<py::gil_scoped_release>(), py::arg("local_data"), R"(
 Do all gather on a shm object, using control network
 
 Arguments:
     local_data(bytes): input data
 Returns:
     output data)")
-        .def("topology_can_reach",
+        .def(
+            "topology_can_reach",
             [](ShareMemory &shm, uint32_t remote_rank, uint32_t reach_info) {
                 return shm.TopologyCanReach(remote_rank, &reach_info);
-            }, py::call_guard<py::gil_scoped_release>(), py::arg("remote_rank"), py::arg("reach_info"), R"(
+            },
+            py::call_guard<py::gil_scoped_release>(), py::arg("remote_rank"), py::arg("reach_info"), R"(
 Query the topology reachability to a remote rank
 
 Arguments:
@@ -528,8 +531,9 @@ Arguments:
     reach_info (int): Reachability information
 Returns:
     int: 0 if successful)")
-        .def_property_readonly("gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
-                               py::call_guard<py::gil_scoped_release>(), R"(
+        .def_property_readonly(
+            "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
+            py::call_guard<py::gil_scoped_release>(), R"(
 get global virtual address created, it can be passed to kernel to data operations)");
 }
 
@@ -628,8 +632,8 @@ Arguments:
 Returns:
     0 if successful)")
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
-             py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"),
-             py::arg("type"), py::arg("flags"), R"(cop data with batch.)");
+             py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"), py::arg("type"),
+             py::arg("flags"), R"(cop data with batch.)");
 }
 } // namespace
 

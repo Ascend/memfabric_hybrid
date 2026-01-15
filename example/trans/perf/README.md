@@ -11,10 +11,13 @@
   cmake . -B build
   make -C build
 ```
+
 或打包安装时同源码一起编译
+
   ```bash
 bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
   ```
+
 ### 基本命令格式
 
 ```
@@ -33,20 +36,19 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 ### 参数说明
 
-
-
-| 参数名                  | 必选 | 说明                                                   |
-| -------------------- | -- | ---------------------------------------------------- |
-| rankSize               | 是  | 一共多少个rank                        |
-| rankId     | 是  | 当前节点的rankId                              |
-| deviceId          | 是  | 当前节点的deviceId                      |
-| useSdma             | 是  | 1使用SDMA，0使用RDMA                                      |
-| testBm     | 是  | 1测试BigMemory场景，0测试PD传输场景               |
-| tcp://{Ip}:{port}          | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ip]:port`     |
+| 参数名               | 必选 | 说明                                               |
+|-------------------|----|--------------------------------------------------|
+| rankSize          | 是  | 一共多少个rank                                        |
+| rankId            | 是  | 当前节点的rankId                                      |
+| deviceId          | 是  | 当前节点的deviceId                                    |
+| useSdma           | 是  | 1使用SDMA，0使用RDMA                                  |
+| testBm            | 是  | 1测试BigMemory场景，0测试PD传输场景                         |
+| tcp://{Ip}:{port} | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ip]:port` |
 
 ### 运行步骤
 
 修改run.sh中的参数后，可以通过直接运行run.sh获取性能
+
 ```
 bash run.sh
 ```

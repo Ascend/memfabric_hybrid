@@ -94,8 +94,7 @@ int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t
  * @param flags            [in] optional flags, default value 0
  * @return mem slice handle if successful, null ptr if failed
  */
-hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr, uint64_t size,
-                                            uint32_t flags);
+hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr, uint64_t size, uint32_t flags);
 
 /**
  * @brief Export exchange info for peer to import
@@ -181,4 +180,4 @@ int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t si
 }
 #endif
 
-#endif  // MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H
+#endif // MEM_FABRIC_HYBRID_HYBM_BIG_MEM_C_H

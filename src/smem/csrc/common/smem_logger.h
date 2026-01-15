@@ -25,17 +25,17 @@
 #include "mf_out_logger.h"
 #include "smem_last_error.h"
 
-#define SM_LOG_DEBUG(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::DEBUG_LEVEL, ARGS)
-#define SM_LOG_INFO(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::INFO_LEVEL, ARGS)
-#define SM_LOG_WARN(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::WARN_LEVEL, ARGS)
+#define SM_LOG_DEBUG(ARGS)      MF_OUT_LOG("[SMEM ", ock::mf::DEBUG_LEVEL, ARGS)
+#define SM_LOG_INFO(ARGS)       MF_OUT_LOG("[SMEM ", ock::mf::INFO_LEVEL, ARGS)
+#define SM_LOG_WARN(ARGS)       MF_OUT_LOG("[SMEM ", ock::mf::WARN_LEVEL, ARGS)
 #define SM_LOG_WARN_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[SMEM ", ock::mf::WARN_LEVEL, ARGS)
-#define SM_LOG_ERROR(ARGS) MF_OUT_LOG("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
+#define SM_LOG_ERROR(ARGS)      MF_OUT_LOG("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
 
-#define SM_CHECK_CONDITION_RET(condition, RET)   \
-    do {                                         \
-        if (condition) {                         \
-            return RET;                          \
-        }                                        \
+#define SM_CHECK_CONDITION_RET(condition, RET) \
+    do {                                       \
+        if (condition) {                       \
+            return RET;                        \
+        }                                      \
     } while (0)
 // if ARGS is false, print error
 #define SM_ASSERT_RETURN(ARGS, RET)              \
@@ -46,12 +46,12 @@
         }                                        \
     } while (0)
 
-#define SM_LOG_AND_SET_LAST_ERROR(msg)  \
-    do {                                \
-        std::stringstream tmpStr;       \
-        tmpStr << msg;                  \
+#define SM_LOG_AND_SET_LAST_ERROR(msg)             \
+    do {                                           \
+        std::stringstream tmpStr;                  \
+        tmpStr << msg;                             \
         ock::smem::SmLastError::Set(tmpStr.str()); \
-        SM_LOG_ERROR(tmpStr.str());     \
+        SM_LOG_ERROR(tmpStr.str());                \
     } while (0)
 
 #define SM_VALIDATE_RETURN(ARGS, msg, RET)       \
@@ -102,12 +102,12 @@
     } while (0)
 
 #define SM_LOG_LIMIT_WARN(limit, msg) \
-    do {                                \
-        static uint32_t printCnt = 0;   \
-        if (printCnt++ == (limit)) {      \
+    do {                              \
+        static uint32_t printCnt = 0; \
+        if (printCnt++ == (limit)) {  \
             SM_LOG_WARN(msg);         \
-            printCnt -= limit;          \
-        }                               \
+            printCnt -= limit;        \
+        }                             \
     } while (0)
 
-#endif  // MEMFABRIC_HYBRID_SMEM_LOGGER_H
+#endif // MEMFABRIC_HYBRID_SMEM_LOGGER_H

@@ -40,7 +40,8 @@ protected:
     int32_t mRefCount = 0;
 };
 
-template <typename T> class SmRef {
+template<typename T>
+class SmRef {
 public:
     // constructor
     SmRef() noexcept = default;
@@ -81,13 +82,13 @@ public:
     }
 
     // operator =
-    inline SmRef<T> &operator = (T *newObj)
+    inline SmRef<T> &operator=(T *newObj)
     {
         this->Set(newObj);
         return *this;
     }
 
-    inline SmRef<T> &operator = (const SmRef<T> &other)
+    inline SmRef<T> &operator=(const SmRef<T> &other)
     {
         if (this != &other) {
             this->Set(other.mObj);
@@ -95,7 +96,7 @@ public:
         return *this;
     }
 
-    SmRef<T> &operator = (SmRef<T> &&other) noexcept
+    SmRef<T> &operator=(SmRef<T> &&other) noexcept
     {
         if (this != &other) {
             auto tmp = mObj;
@@ -108,22 +109,22 @@ public:
     }
 
     // equal operator
-    inline bool operator == (const SmRef<T> &other) const
+    inline bool operator==(const SmRef<T> &other) const
     {
         return mObj == other.mObj;
     }
 
-    inline bool operator == (T *other) const
+    inline bool operator==(T *other) const
     {
         return mObj == other;
     }
 
-    inline bool operator != (const SmRef<T> &other) const
+    inline bool operator!=(const SmRef<T> &other) const
     {
         return mObj != other.mObj;
     }
 
-    inline bool operator != (T *other) const
+    inline bool operator!=(T *other) const
     {
         return mObj != other;
     }
@@ -160,7 +161,8 @@ private:
     T *mObj = nullptr;
 };
 
-template <class Src, class Des> SmRef<Des> inline Convert(const SmRef<Src> &child)
+template<class Src, class Des>
+SmRef<Des> inline Convert(const SmRef<Src> &child)
 {
     Des *converted = dynamic_cast<Des *>(child.Get());
     if (converted) {
@@ -169,11 +171,12 @@ template <class Src, class Des> SmRef<Des> inline Convert(const SmRef<Src> &chil
     return nullptr;
 }
 
-template <typename C, typename... ARGS> inline SmRef<C> SmMakeRef(ARGS... args)
+template<typename C, typename... ARGS>
+inline SmRef<C> SmMakeRef(ARGS... args)
 {
     return new (std::nothrow) C(args...);
 }
 
-}
-}
+} // namespace smem
+} // namespace ock
 #endif // MEMFABRIC_HYBRID_SMEM_REF_H

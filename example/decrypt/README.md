@@ -21,12 +21,14 @@ int DecryptPassword(const char* cipherText, const size_t cipherTextLen, char* pl
 ```
 
 参数说明：
+
 - `cipherText`: 加密的文本（输入）
 - `cipherTextLen`: 加密文本的长度（输入）
 - `plainText`: 解密文本缓冲区（输出）
 - `plainTextLen`: 解密缓冲区大小（输入）
 
 返回值：
+
 - 0: 成功
 - 非0: 失败
 
@@ -43,6 +45,7 @@ int DecryptPassword(const char* cipherText, const size_t cipherTextLen, char* pl
 ## 自定义实现
 
 您可以根据实际需求修改`decrypt_example.cpp`文件中的解密逻辑，例如：
+
 1. 实现真正的密码算法（如AES）
 2. 从外部源获取解密密钥
 3. 集成硬件安全模块（HSM）

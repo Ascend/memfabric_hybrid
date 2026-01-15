@@ -76,13 +76,9 @@ struct AccMsgHeader {
 
     AccMsgHeader() = default;
 
-    AccMsgHeader(int16_t t, uint32_t bLen, uint32_t sno) : type(t), bodyLen(bLen), seqNo(sno)
-    {
-    }
+    AccMsgHeader(int16_t t, uint32_t bLen, uint32_t sno) : type(t), bodyLen(bLen), seqNo(sno) {}
 
-    AccMsgHeader(int16_t t, int16_t r, uint32_t bLen, uint32_t sno) : type(t), result(r), bodyLen(bLen), seqNo(sno)
-    {
-    }
+    AccMsgHeader(int16_t t, int16_t r, uint32_t bLen, uint32_t sno) : type(t), result(r), bodyLen(bLen), seqNo(sno) {}
 
     std::string ToString() const
     {
@@ -122,8 +118,8 @@ struct AccTcpServerOptions {
  * @param plainText        [out] the decrypted text(private key password)
  * @param plaintextLen     [out] the length of plainText
  */
-using AccDecryptHandler = std::function<int(const char *cipherText, size_t cipherTextLen, char *plainText,
-                                            size_t plainTextLen)>;
+using AccDecryptHandler =
+    std::function<int(const char *cipherText, size_t cipherTextLen, char *plainText, size_t plainTextLen)>;
 
 /**
  * @brief Tls related option, required if TLS enabled
@@ -139,9 +135,7 @@ struct AccTlsOption {
     std::string tlsPk;                /* private key */
     std::string tlsPkPwd;             /* private key password, required, encrypt or plain both allowed */
 
-    AccTlsOption() : enableTls(false)
-    {
-    }
+    AccTlsOption() : enableTls(false) {}
 };
 
 /**
@@ -180,7 +174,7 @@ using AccTcpLinkPtr = AccRef<AccTcpLink>;
 using AccTcpLinkComplexPtr = AccRef<AccTcpLinkComplex>;
 
 #define ACC_API __attribute__((visibility("default")))
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_DEF_H
+#endif // ACC_LINKS_ACC_DEF_H

@@ -42,8 +42,8 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
         ip_ = option.ip;
         port_ = option.port;
     } else {
-        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false,
-            static_cast<int32_t>(rankId), static_cast<int32_t>(config->shmInitTimeout));
+        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false, static_cast<int32_t>(rankId),
+                                                      static_cast<int32_t>(config->shmInitTimeout));
         ip_ = option.ip;
         port_ = option.port;
     }
@@ -149,5 +149,5 @@ void SmemShmEntryManager::Destroy()
     store_ = nullptr;
     StoreFactory::DestroyStore(ip_, port_);
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

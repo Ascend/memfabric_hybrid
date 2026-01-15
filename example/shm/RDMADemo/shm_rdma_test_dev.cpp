@@ -37,13 +37,12 @@ extern "C" __global__ __aicore__ void shm_rdma_pollcq_test(GM_ADDR gva, uint64_t
             continue;
         }
         smem_shm_roce_pollcq_test(gva + myRank * heap_size + myRank * MESSAGE_SIZE,
-                                  gva + i * heap_size + myRank * MESSAGE_SIZE,
-                                  i, 0, MESSAGE_SIZE, ubLocal64, ubLocal32,
+                                  gva + i * heap_size + myRank * MESSAGE_SIZE, i, 0, MESSAGE_SIZE, ubLocal64, ubLocal32,
                                   gva + myRank * heap_size + totalRank * MESSAGE_SIZE + i * DEBUG_PRINT_SIZE);
     }
 }
 
-void shm_rdma_pollcq_test_do(void* stream, uint8_t* gva, uint64_t heap_size)
+void shm_rdma_pollcq_test_do(void *stream, uint8_t *gva, uint64_t heap_size)
 {
     shm_rdma_pollcq_test<<<1, nullptr, stream>>>(gva, heap_size);
 }
@@ -67,7 +66,7 @@ extern "C" __global__ __aicore__ void shm_rdma_read_test(GM_ADDR gva, uint64_t h
     }
 }
 
-void shm_rdma_read_test_do(void* stream, uint8_t* gva, uint64_t heap_size)
+void shm_rdma_read_test_do(void *stream, uint8_t *gva, uint64_t heap_size)
 {
     shm_rdma_read_test<<<1, nullptr, stream>>>(gva, heap_size);
 }
@@ -93,18 +92,17 @@ extern "C" __global__ __aicore__ void shm_rdma_write_test(GM_ADDR gva, uint64_t 
     }
 }
 
-void shm_rdma_write_test_do(void* stream, uint8_t* gva, uint64_t heap_size)
+void shm_rdma_write_test_do(void *stream, uint8_t *gva, uint64_t heap_size)
 {
     shm_rdma_write_test<<<1, nullptr, stream>>>(gva, heap_size);
 }
-
 
 extern "C" __global__ __aicore__ void shm_rdma_get_qpinfo_test(GM_ADDR gva, uint32_t rankId)
 {
     smem_shm_roce_qpinfo_test(gva, rankId, 0);
 }
 
-void shm_rdma_get_qpinfo_test_do(void* stream, uint8_t* gva, uint32_t rankId)
+void shm_rdma_get_qpinfo_test_do(void *stream, uint8_t *gva, uint32_t rankId)
 {
     shm_rdma_get_qpinfo_test<<<1, nullptr, stream>>>(gva, rankId);
 }

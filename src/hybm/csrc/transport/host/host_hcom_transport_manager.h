@@ -109,7 +109,7 @@ private:
     Result UpdateRankConnectInfos(const std::unordered_map<uint32_t, TransportRankPrepareInfo> &options);
 
     static int GetCACallBack(const char *name, char **caPath, char **crlPath, Hcom_PeerCertVerifyType *verifyType,
-        Hcom_TlsCertVerify *verify);
+                             Hcom_TlsCertVerify *verify);
 
     static int GetCertCallBack(const char *name, char **certPath);
 
@@ -139,9 +139,9 @@ private:
     static char keyPass_[KEYPASS_MAX_LEN];
     static std::mutex keyPassMutex;
 };
-}
-}
-}
-}
+} // namespace host
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_HOST_HCOM_TRANSPORT_MANAGER_H
+#endif // MF_HYBRID_HOST_HCOM_TRANSPORT_MANAGER_H

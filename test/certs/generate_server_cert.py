@@ -21,7 +21,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import (Encoding, PrivateFormat, NoEncryption, load_pem_private_key,
                                                           BestAvailableEncryption)
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--ca_cert_path', type=str, help='The path to load the certificate of ca',
                     default='/opt/ock/security/certs/ca.cert.pem')
@@ -32,10 +31,9 @@ parser.add_argument('--server_cert_path', type=str, help='The path to save the c
 parser.add_argument('--server_key_path', type=str, help='The path to save the private key of the server',
                     default='/opt/ock/security/certs/server.private.key.pem')
 parser.add_argument('--passphrase', type=str, help='Passphrase for encrypting the private key', default=None)
-parser.add_argument('--passphrase_file', type=str, help='File to save the passphrase', 
+parser.add_argument('--passphrase_file', type=str, help='File to save the passphrase',
                     default='/opt/ock/security/certs/server.passphrase')
 args = parser.parse_args()
-
 
 # 生成服务器证书的私钥
 server_private_key = rsa.generate_private_key(

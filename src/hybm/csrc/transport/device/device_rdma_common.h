@@ -239,9 +239,9 @@ struct RdmaNotifyInfo {
     uint32_t notifyLkey;
 };
 
-}  // namespace device
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock
 
-#endif  // MF_HYBRID_DEVICE_RDMA_COMMON_H
+#endif // MF_HYBRID_DEVICE_RDMA_COMMON_H

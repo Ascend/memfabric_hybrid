@@ -84,8 +84,8 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
     return BM_OK;
 }
 
-Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic,
-    std::string &protocol, std::string &ipStr, uint32_t &port)
+Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol, std::string &ipStr,
+                                           uint32_t &port)
 {
     std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
     std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
@@ -130,14 +130,14 @@ Result HostHcomHelper::SelectLocalIpByIpMask(const std::string &ipStr, const int
     uint32_t netMask = htonl((0xFFFFFFFF << (32 - mask)) & 0xFFFFFFFF);
     uint32_t targetNetwork = targetNet & netMask;
 
-    struct ifaddrs* ifAddsPtr = nullptr;
+    struct ifaddrs *ifAddsPtr = nullptr;
     if (getifaddrs(&ifAddsPtr) != 0) {
         BM_LOG_ERROR("Failed to get local ip list, ip: " << ipStr << " mask: " << mask);
         return BM_ERROR;
     }
 
     bool found = false;
-    for (struct ifaddrs* ifa = ifAddsPtr; ifa != nullptr; ifa = ifa->ifa_next) {
+    for (struct ifaddrs *ifa = ifAddsPtr; ifa != nullptr; ifa = ifa->ifa_next) {
         if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) {
             continue;
         }

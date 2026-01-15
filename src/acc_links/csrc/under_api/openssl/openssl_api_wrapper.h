@@ -299,14 +299,14 @@ public:
     }
 
     static inline int EvpEncryptInitEx(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher, ENGINE *impl,
-        const unsigned char *key, const unsigned char *iv)
+                                       const unsigned char *key, const unsigned char *iv)
     {
         VALIDATE_RETURN(OPENSSLAPIDL::evpEncryptInitEx != nullptr, "openssl handler not loaded", -1);
         return OPENSSLAPIDL::evpEncryptInitEx(ctx, cipher, impl, key, iv);
     }
 
     static inline int EvpEncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, const unsigned char *in,
-        int inl)
+                                       int inl)
     {
         VALIDATE_RETURN(OPENSSLAPIDL::evpEncryptUpdate != nullptr, "openssl handler not loaded", -1);
         return OPENSSLAPIDL::evpEncryptUpdate(ctx, out, outl, in, inl);
@@ -319,14 +319,14 @@ public:
     }
 
     static inline int EvpDecryptInitEx(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher, ENGINE *impl,
-        const unsigned char *key, const unsigned char *iv)
+                                       const unsigned char *key, const unsigned char *iv)
     {
         VALIDATE_RETURN(OPENSSLAPIDL::evpDecryptInitEx != nullptr, "openssl handler not loaded", -1);
         return OPENSSLAPIDL::evpDecryptInitEx(ctx, cipher, impl, key, iv);
     }
 
     static inline int EvpDecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl, const unsigned char *in,
-        int inl)
+                                       int inl)
     {
         VALIDATE_RETURN(OPENSSLAPIDL::evpDecryptUpdate != nullptr, "openssl handler not loaded", -1);
         return OPENSSLAPIDL::evpDecryptUpdate(ctx, out, outl, in, inl);
@@ -493,10 +493,8 @@ public:
         return OPENSSLAPIDL::LoadOpensslAPI(libPsth);
     }
 
-    static inline void UnLoad()
-    {
-    }
+    static inline void UnLoad() {}
 };
-}  // namespace acc
-}  // namespace ock
-#endif  // ACC_LINKS_OPENSSL_API_WRAPPER_H
+} // namespace acc
+} // namespace ock
+#endif // ACC_LINKS_OPENSSL_API_WRAPPER_H

@@ -39,7 +39,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
                        {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler}}
 {}
 
-Result AccStoreServer::Startup(const smem_tls_config& tlsConfig) noexcept
+Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (accTcpServer_ != nullptr) {
@@ -91,7 +91,7 @@ Result AccStoreServer::Startup(const smem_tls_config& tlsConfig) noexcept
 
     timerThread_ = std::thread{[this]() { TimerThreadTask(); }};
     rankStateThread_ = std::thread{[this]() { RankStateTask(); }};
-    checkerThread_ = std::thread{[this]() {CheckerThreadTask(); }};
+    checkerThread_ = std::thread{[this]() { CheckerThreadTask(); }};
     STORE_LOG_DEBUG("startup acc tcp server on port: " << listenPort_);
     return SM_OK;
 }
@@ -119,7 +119,7 @@ void AccStoreServer::Shutdown(bool afterFork) noexcept
         if (timerThread_.joinable()) {
             try {
                 timerThread_.join();
-            } catch (const std::system_error& e) {
+            } catch (const std::system_error &e) {
                 STORE_LOG_ERROR("thread join failed: " << e.what());
             }
         }
@@ -142,8 +142,7 @@ void AccStoreServer::RegisterOpHandler(int16_t opcode, const ConfigStoreServerOp
     externalOpHandlerMap_[opcode] = handler;
 }
 
-
-void  AccStoreServer::RegisterBrokenLinkCHandler(const ConfigStoreServerBrokenHandler &handler) noexcept
+void AccStoreServer::RegisterBrokenLinkCHandler(const ConfigStoreServerBrokenHandler &handler) noexcept
 {
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     externalBrokenHandler_ = handler;
@@ -329,7 +328,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     if (aliveRankSet_.size() >= worldSize_) {
         lockGuard.unlock();
         STORE_LOG_ERROR("Failed to insert rank, rank count:" << aliveRankSet_.size()
-                                                          << " equal worldSize: " << worldSize_);
+                                                             << " equal worldSize: " << worldSize_);
         ReplyWithMessage(context, StoreErrorCode::ERROR, "error: worldSize rankSize bigger than worldSize.");
         return SM_ERROR;
     }
@@ -352,7 +351,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
 
     responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
     STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") rankId:" << trans.rankId
-                               << " rankId_:" << rankIndex_);
+                                  << " rankId_:" << rankIndex_);
     auto response = SmemMessagePacker::Pack(responseMessage);
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
     return 0;
@@ -407,7 +406,7 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     }
 
     STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key
-        << ") waiting timeout=" << request.userDef);
+                                   << ") waiting timeout=" << request.userDef);
     auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(request.userDef);
     auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(timeout.time_since_epoch()).count();
     STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") waiting timeout=" << timeoutMs);
@@ -496,8 +495,8 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         responseValue = storedValueNum;
     }
     lockGuard.unlock();
-    STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key
-        << ") value(" << responseValue << ") end.");
+    STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << responseValue
+                                   << ") end.");
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, std::to_string(responseValue));
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, reqVal);
@@ -593,7 +592,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     }
     auto &key = request.keys[0];
     auto &value = request.values[0];
-    
+
     if (key.length() > MAX_KEY_LEN_SERVER) {
         STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
@@ -601,18 +600,18 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     uint32_t offset = *(reinterpret_cast<uint32_t *>(value.data()));
     size_t realValSize = value.size() - sizeof(uint32_t);
-    STORE_VALIDATE_RETURN(offset <= MAX_U16_INDEX * realValSize,
-                          "offset too large, offset:" << offset, StoreErrorCode::INVALID_KEY);
-    
-    STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key
-                << ") offset(" << offset << ") value size(" << realValSize << ")");
+    STORE_VALIDATE_RETURN(offset <= MAX_U16_INDEX * realValSize, "offset too large, offset:" << offset,
+                          StoreErrorCode::INVALID_KEY);
+
+    STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") offset(" << offset
+                                    << ") value size(" << realValSize << ")");
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
 
     if (kvStore_.find(key) == kvStore_.end()) {
         kvStore_.emplace(key, std::vector<uint8_t>(offset + realValSize, 0));
         STORE_LOG_INFO("write: not find key:" << key << ", new alloc mem: " << offset + realValSize);
     }
-    auto& curValue = kvStore_.find(key)->second;
+    auto &curValue = kvStore_.find(key)->second;
     if (offset + realValSize > curValue.size()) {
         curValue.resize(offset + realValSize, 0);
         STORE_LOG_INFO("write: not enough kvStore room, expansion size: " << (offset + realValSize));
@@ -871,5 +870,5 @@ Result AccStoreServer::ExcuteHandle(int16_t opCode, uint32_t linkId, std::string
     }
     return it->second(linkId, key, value, kvStore_);
 }
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

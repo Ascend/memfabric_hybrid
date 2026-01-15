@@ -26,14 +26,14 @@ constexpr uint32_t SMEM_SHM_ALIGN_SIZE = 32;
 #define SMEM_SHM_ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
 #endif
 
-#define SMEM_SHM_TYPE_FUNC(fun)     \
-    fun(int);                       \
-    fun(int8_t);                    \
-    fun(int16_t);                   \
-    fun(int64_t);                   \
-    fun(float);                     \
-    fun(float16_t);                 \
-    fun(bfloat16_t);                \
+#define SMEM_SHM_TYPE_FUNC(fun) \
+    fun(int);                   \
+    fun(int8_t);                \
+    fun(int16_t);               \
+    fun(int64_t);               \
+    fun(float);                 \
+    fun(float16_t);             \
+    fun(bfloat16_t);            \
     fun(half)
 
 #endif // __MEMFABRIC_SMEM_AI_CORE_BASE_DEFINE_H__

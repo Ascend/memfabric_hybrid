@@ -95,8 +95,7 @@ HYBM_API int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice,
     return entity->FreeLocalMemory(slice, flags);
 }
 
-HYBM_API hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr,
-                                                     uint64_t size, uint32_t flags)
+HYBM_API hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr, uint64_t size, uint32_t flags)
 {
     BM_ASSERT_RETURN(e != nullptr, nullptr);
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);

@@ -113,10 +113,10 @@ def is_valid_path(src: RankMemType, dst: RankMemType):
 
 
 def filter_path(
-    paths: List[RankDataCopyPath],
-    /,
-    src: RankMemType | None = None,
-    dst: RankMemType | None = None,
+        paths: List[RankDataCopyPath],
+        /,
+        src: RankMemType | None = None,
+        dst: RankMemType | None = None,
 ):
     if src is not None:
         paths = [x for x in paths if x.src == src]
@@ -126,10 +126,10 @@ def filter_path(
 
 
 def choose_path(
-    paths: List[RankDataCopyPath],
-    /,
-    src: RankMemType | None = None,
-    dst: RankMemType | None = None,
+        paths: List[RankDataCopyPath],
+        /,
+        src: RankMemType | None = None,
+        dst: RankMemType | None = None,
 ):
     temp = paths
     if src is not None:
@@ -296,7 +296,7 @@ def copy_kind(src: BigMemoryBlock, dst: BigMemoryBlock):
 
 
 def copy_data(
-    src: BigMemoryBlock, dst: BigMemoryBlock, size: int, ctx: BigMemoryContext
+        src: BigMemoryBlock, dst: BigMemoryBlock, size: int, ctx: BigMemoryContext
 ):
     kind = copy_kind(src, dst)
     size = min(size, src.size, dst.size)
@@ -313,7 +313,7 @@ class BigMemoryTest:
         pass
 
     def make_mem(
-        self, tp: RankMemType, idx: int, ctx: BigMemoryContext
+            self, tp: RankMemType, idx: int, ctx: BigMemoryContext
     ) -> BigMemoryBlock:
         if tp == RankMemType(MemType.LH, RankType.LOCAL):
             tensor = create_tensor("cpu", COPY_SIZE)
@@ -381,13 +381,13 @@ class BigMemoryTest:
 
         try:
             for idx in range(REPEAT_TIMES):
-                iter_mark = f"[{idx+1}/{REPEAT_TIMES}]"
+                iter_mark = f"[{idx + 1}/{REPEAT_TIMES}]"
                 path_resolver = BigMemoryCopyPathResolver()
                 nodes = path_resolver.find_eulerian_path()
                 mems = self.make_mems(nodes, ctx)
                 errors = []
                 for i in range(1, len(mems)):
-                    op_mark = f"[{i}/{len(mems)-1}]"
+                    op_mark = f"[{i}/{len(mems) - 1}]"
                     src = mems[i - 1]
                     dst = mems[i]
                     size = min(src.size, dst.size)
@@ -409,17 +409,17 @@ class BigMemoryTest:
                 dst_checksum_list.append(dst_checksum)
                 errors_list.append(errors)
                 print(
-                    f"{iter_mark} Checksum matches: {src_checksum==dst_checksum} {src_checksum} {dst_checksum}"
+                    f"{iter_mark} Checksum matches: {src_checksum == dst_checksum} {src_checksum} {dst_checksum}"
                 )
 
             print("\nTotal Results:")
             for idx in range(REPEAT_TIMES):
-                iter_mark = f"[{idx+1}/{REPEAT_TIMES}]"
+                iter_mark = f"[{idx + 1}/{REPEAT_TIMES}]"
                 src_checksum = src_checksum_list[idx]
                 dst_checksum = dst_checksum_list[idx]
                 errors = errors_list[idx]
                 print(
-                    f"{iter_mark} Checksum matches: {src_checksum==dst_checksum} {src_checksum} {dst_checksum}"
+                    f"{iter_mark} Checksum matches: {src_checksum == dst_checksum} {src_checksum} {dst_checksum}"
                 )
                 for error, action in errors:
                     print(f"{action} error: {error}")

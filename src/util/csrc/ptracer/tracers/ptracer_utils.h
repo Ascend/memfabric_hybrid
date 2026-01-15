@@ -39,9 +39,8 @@ public:
     static int32_t MakeDir(const std::string &name);
     static std::string CurrentTimeString();
     static std::string HeaderString();
-    static std::string FormatString(
-        std::string &name, uint64_t begin, uint64_t goodEnd, uint64_t badEnd, uint64_t min, uint64_t max,
-        uint64_t total);
+    static std::string FormatString(std::string &name, uint64_t begin, uint64_t goodEnd, uint64_t badEnd, uint64_t min,
+                                    uint64_t max, uint64_t total);
 
 private:
     static void StrSplit(const std::string &src, const std::string &sep, std::vector<std::string> &out);
@@ -84,7 +83,7 @@ inline uint64_t Monotonic::TimeNs()
 #else
     struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<uint64_t>(ts.tv_sec) * 1000000000UL +  static_cast<uint64_t>(ts.tv_nsec);
+    return static_cast<uint64_t>(ts.tv_sec) * 1000000000UL + static_cast<uint64_t>(ts.tv_nsec);
 #endif
 }
 
@@ -141,8 +140,8 @@ inline std::string Func::CurrentTimeString()
     return ss.str();
 }
 
-inline std::string Func::FormatString(
-    std::string &name, uint64_t begin, uint64_t goodEnd, uint64_t badEnd, uint64_t min, uint64_t max, uint64_t total)
+inline std::string Func::FormatString(std::string &name, uint64_t begin, uint64_t goodEnd, uint64_t badEnd,
+                                      uint64_t min, uint64_t max, uint64_t total)
 {
     std::string str;
     std::ostringstream os(str);
@@ -200,7 +199,7 @@ inline const char *LastError::Get()
 {
     return msg_.c_str();
 }
-}  // namespace tracer
-}  // namespace mf
-}  // namespace ock
-#endif  // MEM_FABRIC_PTRACE_UTILS_H
+} // namespace tracer
+} // namespace mf
+} // namespace ock
+#endif // MEM_FABRIC_PTRACE_UTILS_H

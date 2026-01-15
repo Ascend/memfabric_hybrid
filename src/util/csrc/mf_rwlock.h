@@ -85,7 +85,7 @@ public:
 private:
     ReadWriteLock &lock_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MF_HYBRID_MF_RWLOCK_H

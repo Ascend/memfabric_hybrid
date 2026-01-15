@@ -22,8 +22,8 @@ std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 smem_tls_config StoreFactory::tlsOption_{};
 
-StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer,
-                                   uint32_t worldSize, int32_t rankId, int32_t connMaxRetry) noexcept
+StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize,
+                                   int32_t rankId, int32_t connMaxRetry) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
 
@@ -38,16 +38,14 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
-                                                << ", rank=" << rankId
+        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer << ", rank=" << rankId
                                                 << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
         STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
-                                                 << ", rank=" << rankId
-                                                 << ") failed:" << ret);
+                                                 << ", rank=" << rankId << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;
     }
@@ -58,8 +56,8 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     return store.Get();
 }
 
-StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize,
-                                         int32_t rankId, int32_t connMaxRetry) noexcept
+StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize, int32_t rankId,
+                                         int32_t connMaxRetry) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
 
@@ -74,14 +72,14 @@ StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, u
 
     auto ret = store->ServerStart(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port
-            << " rankId:" << rankId << " is in use, ret:" << ret);
+        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port << " rankId:" << rankId
+                                                                   << " is in use, ret:" << ret);
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port
-            << " rankId:" << rankId << " ret:" << ret);
+        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port << " rankId:" << rankId
+                                                                   << " ret:" << ret);
         failedReason_ = ret;
         return nullptr;
     }
@@ -92,8 +90,8 @@ StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, u
     return store.Get();
 }
 
-StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize,
-                                         int32_t rankId, int32_t connMaxRetry) noexcept
+StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize, int32_t rankId,
+                                         int32_t connMaxRetry) noexcept
 {
     std::string storeKey = std::string(ip).append(":").append(std::to_string(port));
 
@@ -108,8 +106,8 @@ StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, u
 
     auto ret = store->ClientStart(tlsOption_, connMaxRetry);
     if (ret != 0) {
-        STORE_LOG_ERROR("Failed to start config store client, ip:" << ip << " port:" << port
-            << " rankId:" << rankId << " ret:" << ret);
+        STORE_LOG_ERROR("Failed to start config store client, ip:" << ip << " port:" << port << " rankId:" << rankId
+                                                                   << " ret:" << ret);
         failedReason_ = ret;
         return nullptr;
     }
@@ -135,7 +133,7 @@ void StoreFactory::DestroyStoreAll(bool afterFork) noexcept
         }
     } else {
         std::unique_lock<std::mutex> lockGuard{storesMutex_};
-        for (auto &e: storesMap_) {
+        for (auto &e : storesMap_) {
             Convert<ConfigStore, TcpConfigStore>(e.second)->Shutdown(afterFork);
         }
     }
@@ -157,10 +155,10 @@ int StoreFactory::GetFailedReason() noexcept
     return failedReason_;
 }
 
-void StoreFactory::SetTlsInfo(const smem_tls_config& tlsOption) noexcept
+void StoreFactory::SetTlsInfo(const smem_tls_config &tlsOption) noexcept
 {
     tlsOption_ = tlsOption;
 }
 
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock

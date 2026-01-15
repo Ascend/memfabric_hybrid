@@ -30,7 +30,7 @@ using Result = int32_t;
  * @param args             [in] args of object
  * @return Ref object, if new failed internal, an empty Ref object will be returned
  */
-template <typename C, typename... ARGS>
+template<typename C, typename... ARGS>
 inline AccRef<C> AccMakeRef(ARGS... args)
 {
     return new (std::nothrow) C(args...);
@@ -43,7 +43,7 @@ inline AccRef<C> AccMakeRef(ARGS... args)
 #ifndef UNLIKELY
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_INCLUDES_H
+#endif // ACC_LINKS_ACC_INCLUDES_H

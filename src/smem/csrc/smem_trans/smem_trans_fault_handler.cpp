@@ -14,7 +14,7 @@
 #include "smem_trans_fault_handler.h"
 namespace ock {
 namespace smem {
-SmemStoreFaultHandler& SmemStoreFaultHandler::GetInstance()
+SmemStoreFaultHandler &SmemStoreFaultHandler::GetInstance()
 {
     static SmemStoreFaultHandler instance;
     return instance;
@@ -25,47 +25,46 @@ void SmemStoreFaultHandler::RegisterHandlerToStore(StorePtr store)
     if (store == nullptr) {
         return;
     }
-    auto setHandler = [this] (const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto setHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
+                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         return BuildLinkIdToRankInfoMap(linkId, key, value, kvStore);
     };
     store->RegisterServerOpHandler(MessageType::SET, setHandler);
 
-    auto getHandler = [this] (const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto getHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
+                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         return GetFromFaultInfo(linkId, key, value, kvStore);
     };
     store->RegisterServerOpHandler(MessageType::GET, getHandler);
 
-    auto addHandler = [this] (const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto addHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
+                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         return AddRankInfoMap(linkId, key, value, kvStore);
     };
     store->RegisterServerOpHandler(MessageType::ADD, addHandler);
 
-    auto writeHandler = [this] (const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto writeHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
+                               const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         return WriteRankInfoMap(linkId, key, value, kvStore);
     };
     store->RegisterServerOpHandler(MessageType::WRITE, writeHandler);
 
-    auto appendHandler = [this] (const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                                 const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto appendHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
+                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         return AppendRankInfoMap(linkId, key, value, kvStore);
     };
     store->RegisterServerOpHandler(MessageType::APPEND, appendHandler);
 
-    auto clearHandler = [this] (const uint32_t linkId,
-                                std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
+    auto clearHandler = [this](const uint32_t linkId, std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
         ClearFaultInfo(linkId, kvStore);
     };
     store->RegisterServerBrokenHandler(clearHandler);
 }
 
-int32_t SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key,
-                                                        std::vector<uint8_t> &value,
-                                                        const std::unordered_map<std::string,
-                                                        std::vector<uint8_t>> &kvStore)
+int32_t
+SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key,
+                                                std::vector<uint8_t> &value,
+                                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
 {
     if (key.find(AUTO_RANK_KEY_PREFIX) != std::string::npos) {
         SM_ASSERT_RETURN(value.size() == 2, SM_ERROR); // rankId占2字节
@@ -82,25 +81,24 @@ int32_t SmemStoreFaultHandler::AddRankInfoMap(const uint32_t linkId, const std::
                                               std::vector<uint8_t> &value,
                                               const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
 {
-    if (key.find(SENDER_COUNT_KEY) != std::string::npos ||
-        key.find(RECEIVER_COUNT_KEY) != std::string::npos) {
+    if (key.find(SENDER_COUNT_KEY) != std::string::npos || key.find(RECEIVER_COUNT_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "add rankInfo failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "add rankInfo failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.dInfo.deviceCountKey = key;
         SM_LOG_INFO("add linkIdToRankInfoMap success, key" << key << ", linkId:" << linkId
-                    << ", deviceCountKey:" << key);
+                                                           << ", deviceCountKey:" << key);
         return SM_OK;
     }
-    
+
     if (key.find(SENDER_TOTAL_SLICE_COUNT_KEY) != std::string::npos ||
         key.find(RECEIVER_TOTAL_SLICE_COUNT_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "add rankInfo failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "add rankInfo failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.sInfo.sliceCountKey = key;
         SM_LOG_INFO("add linkIdToRankInfoMap success, key" << key << ", linkId:" << linkId
-                    << ", sliceCountKey:" << key);
+                                                           << ", sliceCountKey:" << key);
         return SM_OK;
     }
     return SM_OK;
@@ -113,33 +111,35 @@ int32_t SmemStoreFaultHandler::WriteRankInfoMap(const uint32_t linkId, const std
     uint32_t offset = *(reinterpret_cast<uint32_t *>(value.data()));
     size_t realValSize = value.size() - sizeof(uint32_t);
     uint16_t index = offset / realValSize;
-   
+
     if (key.find(SENDER_DEVICE_INFO_KEY) != std::string::npos ||
         key.find(RECEIVER_DEVICE_INFO_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "write rank info map failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "write rank info map failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.dInfo.deviceInfoId = index;
         it->second.dInfo.deiviceInfoUint = realValSize;
         it->second.dInfo.deviceInfoKey = key;
-        SM_LOG_INFO("write linkIdToRankInfoMap success, key" << key << ", linkId:" << linkId << ", deviceInfoKey:"
-            << key << ", deviceInfoUint:" << realValSize << ", deviceInfoId:" << index);
+        SM_LOG_INFO("write linkIdToRankInfoMap success, key"
+                    << key << ", linkId:" << linkId << ", deviceInfoKey:" << key << ", deviceInfoUint:" << realValSize
+                    << ", deviceInfoId:" << index);
         return SM_OK;
     }
     // 同一个client会注册多个slice info
     if (key.find(SENDER_SLICES_INFO_KEY) != std::string::npos ||
         key.find(RECEIVER_SLICES_INFO_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "write rank info map failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "write rank info map failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.sInfo.sliceInfoId.push_back(index);
         it->second.sInfo.sliceInfoUint = realValSize;
         it->second.sInfo.sliceInfoKey = key;
-        SM_LOG_INFO("write linkIdToRankInfoMap success, key" << key << ", linkId:" << linkId << ", deviceCountKey:"
-            << key << ", sliceInfoUint:" << realValSize << ", sliceInfoId:" << index);
+        SM_LOG_INFO("write linkIdToRankInfoMap success, key"
+                    << key << ", linkId:" << linkId << ", deviceCountKey:" << key << ", sliceInfoUint:" << realValSize
+                    << ", sliceInfoId:" << index);
         return SM_OK;
     }
-    
+
     return SM_OK;
 }
 
@@ -153,29 +153,29 @@ int32_t SmemStoreFaultHandler::AppendRankInfoMap(const uint32_t linkId, const st
     if (key.find(SENDER_DEVICE_INFO_KEY) != std::string::npos ||
         key.find(RECEIVER_DEVICE_INFO_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "append rank info map failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "append rank info map failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.dInfo.deviceInfoId = index;
         it->second.dInfo.deiviceInfoUint = value.size();
         it->second.dInfo.deviceInfoKey = key;
         SM_LOG_INFO("append linkIdToRankInfoMap success, key" << key << ",linkId:" << linkId << ", deviceInfoId:"
-            << index << ", deviceInfoUint:" << value.size());
+                                                              << index << ", deviceInfoUint:" << value.size());
         return SM_OK;
     }
     // 同一个client会注册多个slice info
     if (key.find(SENDER_SLICES_INFO_KEY) != std::string::npos ||
         key.find(RECEIVER_SLICES_INFO_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
-        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(),
-                           "append rank info map failed, not find key:" << key, SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(it != linkIdToRankInfoMap_.end(), "append rank info map failed, not find key:" << key,
+                           SM_INVALID_PARAM);
         it->second.sInfo.sliceInfoId.push_back(index);
         it->second.sInfo.sliceInfoUint = value.size();
         it->second.sInfo.sliceInfoKey = key;
-        SM_LOG_INFO("append linkIdToRankInfoMap success, key" << key << ",linkId:" << linkId << ", sliceInfoId:"
-            << index << ", sliceInfoUint:" << value.size());
+        SM_LOG_INFO("append linkIdToRankInfoMap success, key"
+                    << key << ",linkId:" << linkId << ", sliceInfoId:" << index << ", sliceInfoUint:" << value.size());
         return SM_OK;
     }
-    
+
     return SM_OK;
 }
 
@@ -187,13 +187,13 @@ int32_t SmemStoreFaultHandler::GetFromFaultInfo(const uint32_t linkId, const std
     if (!faultRankIdQueue_.empty() && key.find(AUTO_RANK_KEY_PREFIX) != std::string::npos) {
         id = faultRankIdQueue_.front();
         faultRankIdQueue_.pop();
-    } else if (!faultDeviceIdQueue_.first.empty() &&key.find(SENDER_GET_DEVICE_ID_KEY) != std::string::npos) {
+    } else if (!faultDeviceIdQueue_.first.empty() && key.find(SENDER_GET_DEVICE_ID_KEY) != std::string::npos) {
         id = faultDeviceIdQueue_.first.front();
         faultDeviceIdQueue_.first.pop();
     } else if (!faultDeviceIdQueue_.second.empty() && key.find(RECEIVER_GET_DEVICE_ID_KEY) != std::string::npos) {
         id = faultDeviceIdQueue_.second.front();
         faultDeviceIdQueue_.second.pop();
-    } else if (!faultSliceIdQueue_.first.empty() &&key.find(SENDER_GET_SLICES_ID_KEY) != std::string::npos) {
+    } else if (!faultSliceIdQueue_.first.empty() && key.find(SENDER_GET_SLICES_ID_KEY) != std::string::npos) {
         id = faultSliceIdQueue_.first.front();
         faultSliceIdQueue_.first.pop();
     } else if (!faultSliceIdQueue_.second.empty() && key.find(RECEIVER_GET_SLICES_ID_KEY) != std::string::npos) {
@@ -215,7 +215,7 @@ void SmemStoreFaultHandler::ClearFaultInfo(const uint32_t linkId,
     if (linkIt == linkIdToRankInfoMap_.end()) {
         return;
     }
-    RankInfo& rankInfo = linkIt->second;
+    RankInfo &rankInfo = linkIt->second;
     ClearDeviceInfo(linkId, rankInfo, kvStore);
     ClearSliceInfo(linkId, rankInfo, kvStore);
     kvStore.erase(rankInfo.rankName);
@@ -229,19 +229,19 @@ void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
     // 清理deviceInfo信息
     auto dInfoIt = kvStore.find(rankInfo.dInfo.deviceInfoKey);
     if (dInfoIt != kvStore.end()) {
-        auto& dInfoValue = dInfoIt->second;
+        auto &dInfoValue = dInfoIt->second;
         uint32_t offset = rankInfo.dInfo.deiviceInfoUint * rankInfo.dInfo.deviceInfoId;
         if (rankInfo.dInfo.deviceInfoKey.find(SENDER_DEVICE_INFO_KEY) != std::string::npos) {
-            SM_LOG_DEBUG("add sender device id: " << rankInfo.dInfo.deviceInfoId <<
-                ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
+            SM_LOG_DEBUG("add sender device id: " << rankInfo.dInfo.deviceInfoId
+                                                  << ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
             faultDeviceIdQueue_.first.push(rankInfo.dInfo.deviceInfoId);
         } else {
-            SM_LOG_DEBUG("add receiver device id: " << rankInfo.dInfo.deviceInfoId <<
-                ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
+            SM_LOG_DEBUG("add receiver device id: " << rankInfo.dInfo.deviceInfoId
+                                                    << ", deviceInfoKey:" << rankInfo.dInfo.deviceInfoKey);
             faultDeviceIdQueue_.second.push(rankInfo.dInfo.deviceInfoId);
         }
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                    ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
+        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
+                                            << ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
         dInfoValue[offset] = DataStatusType::ABNORMAL; // deviceInfo标记为异常, 正常节点client检测到异常状态会做清理
     }
     auto dCntIt = kvStore.find(rankInfo.dInfo.deviceCountKey);
@@ -253,11 +253,10 @@ void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
             valueNum--;
             std::string valueStrNew = std::to_string(valueNum);
             dCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
-            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                        ", new device count: " << valueNum);
+            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
+                                                << ", new device count: " << valueNum);
         } else {
-            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                         ", String2Int failed");
+            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId << ", String2Int failed");
         }
     }
 }
@@ -268,10 +267,10 @@ void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
     // 清理sliceInfo信息
     auto sInfoIt = kvStore.find(rankInfo.sInfo.sliceInfoKey);
     if (sInfoIt != kvStore.end()) {
-        auto& sInfoValue = sInfoIt->second;
-        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                    ", sliceInfoId size: " << rankInfo.sInfo.sliceInfoId.size());
-        for (auto id: rankInfo.sInfo.sliceInfoId) {
+        auto &sInfoValue = sInfoIt->second;
+        SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
+                                            << ", sliceInfoId size: " << rankInfo.sInfo.sliceInfoId.size());
+        for (auto id : rankInfo.sInfo.sliceInfoId) {
             uint32_t offset = rankInfo.sInfo.sliceInfoUint * id;
             sInfoValue[offset] = DataStatusType::ABNORMAL; // clientInfo标记为异常, 正常节点client检测到异常状态会做清理
             if (rankInfo.sInfo.sliceInfoKey.find(SENDER_SLICES_INFO_KEY) != std::string::npos) {
@@ -292,14 +291,13 @@ void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
             valueNum -= rankInfo.sInfo.sliceInfoId.size();
             std::string valueStrNew = std::to_string(valueNum);
             sCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
-            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                        ", new slice count: " << valueNum);
+            SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
+                                                << ", new slice count: " << valueNum);
         } else {
-            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId <<
-                         ", String2Int failed");
+            SM_LOG_ERROR("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId << ", String2Int failed");
         }
     }
 }
 
-}
-}
+} // namespace smem
+} // namespace ock

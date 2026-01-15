@@ -25,7 +25,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
 {
     SM_VALIDATE_RETURN(!(rankSize > SMEM_WORLD_SIZE_MAX || rankId >= rankSize),
                        "invalid param, input size: " << rankSize << " limit: " << SMEM_WORLD_SIZE_MAX
-                                                   << " input rank: " << rankId,
+                                                     << " input rank: " << rankId,
                        nullptr);
     SM_VALIDATE_RETURN(!(id > SMEM_ID_MAX), "invalid id, id range is: [0, " << SMEM_ID_MAX << "]", nullptr);
     SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", nullptr);
@@ -213,7 +213,7 @@ SMEM_API int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize
     SM_VALIDATE_RETURN(SmemShmConfigCheck(config) == 0, "config is invalid", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(!(worldSize > SMEM_WORLD_SIZE_MAX || rankId >= worldSize),
                        "invalid param, input size: " << worldSize << " limit: " << SMEM_WORLD_SIZE_MAX
-                                                   << " input rank: " << rankId,
+                                                     << " input rank: " << rankId,
                        SM_INVALID_PARAM);
 
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);

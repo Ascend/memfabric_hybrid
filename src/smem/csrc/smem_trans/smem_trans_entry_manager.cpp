@@ -124,5 +124,5 @@ Result SmemTransEntryManager::RemoveEntryByName(const std::string &name)
 
     return SM_OK;
 }
-}
-}
+} // namespace smem
+} // namespace ock

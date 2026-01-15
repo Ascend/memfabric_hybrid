@@ -11,12 +11,12 @@ add_library(decrypt SHARED decrypt_example.cpp)
 
 # 设置输出名称为libdecrypt.so
 set_target_properties(decrypt PROPERTIES
-    OUTPUT_NAME "decrypt"
-    PREFIX "lib"
-    SUFFIX ".so"
+        OUTPUT_NAME "decrypt"
+        PREFIX "lib"
+        SUFFIX ".so"
 )
 
 # 安装规则
 install(TARGETS decrypt
-    LIBRARY DESTINATION lib
+        LIBRARY DESTINATION lib
 )

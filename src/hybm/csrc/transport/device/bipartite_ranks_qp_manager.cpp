@@ -63,8 +63,8 @@ int BipartiteRanksQpManager::SetRemoteRankInfo(const std::unordered_map<uint32_t
         return BM_OK;
     }
 
-    BM_LOG_INFO("SetRemoteRankInfo currentRanksInfo_.size=: " << currentRanksInfo_.size()
-                << ", lastTimeRanksInfo.size=" << lastTimeRanksInfo.size());
+    BM_LOG_INFO("SetRemoteRankInfo currentRanksInfo_.size=: " << currentRanksInfo_.size() << ", lastTimeRanksInfo.size="
+                                                              << lastTimeRanksInfo.size());
     GenDiffInfoChangeRanks(lastTimeRanksInfo, addedRanks, addMrRanks);
     uniqueLock.unlock();
 
@@ -374,7 +374,7 @@ void BipartiteRanksQpManager::ProcessSocketConnectionsByIP(uint32_t getSize, std
             continue;
         }
         in_addr_t addr;
-        char* result {};
+        char *result{};
         addr = {socketInfos[i].remoteIp.addr.s_addr};
         result = inet_ntoa(socketInfos[i].remoteIp.addr);
         auto pos = ip2rank.find(addr);
@@ -411,8 +411,8 @@ int32_t BipartiteRanksQpManager::GetSocketConn(std::vector<HccpSocketInfo> &sock
         auto ret = DlHccpApi::RaGetSockets(socketRole, socketInfos.data(), getSize, cnt);
         if (ret != 0) {
             auto failedCount = currTask.Failed(ip2rank);
-            BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: "
-                                       << ret << ", count: " << failedCount);
+            BM_LOG_ERROR("socketRole(" << socketRole << ") side get sockets failed: " << ret
+                                       << ", count: " << failedCount);
             return 1;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -662,8 +662,8 @@ void BipartiteRanksQpManager::CloseServices() noexcept
     DestroyServerSocket();
 }
 
-void BipartiteRanksQpManager::ProcessRankRemoval(uint32_t rank, std::vector<HccpSocketCloseInfo>& socketCloseInfos,
-                                                 std::vector<HccpSocketWhiteListInfo>& whitelist) noexcept
+void BipartiteRanksQpManager::ProcessRankRemoval(uint32_t rank, std::vector<HccpSocketCloseInfo> &socketCloseInfos,
+                                                 std::vector<HccpSocketWhiteListInfo> &whitelist) noexcept
 {
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     auto it = connections_.find(rank);
@@ -844,7 +844,7 @@ void BipartiteRanksQpManager::SetQpHandleRegisterMr(void *qpHandle, const std::v
     }
     pthread_mutex_unlock(&qp->qp_mutex);
 }
-}
-}
-}
-}
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock

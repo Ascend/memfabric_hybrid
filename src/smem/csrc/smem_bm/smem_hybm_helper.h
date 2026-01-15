@@ -60,7 +60,7 @@ public:
         return static_cast<hybm_data_op_type>(resultOpType);
     }
 };
-}  // namespace smem
-}  // namespace ock
+} // namespace smem
+} // namespace ock
 
-#endif  // MF_HYBRID_SMEM_HYBM_HELPER_H
+#endif // MF_HYBRID_SMEM_HYBM_HELPER_H

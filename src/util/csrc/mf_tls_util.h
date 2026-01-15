@@ -12,12 +12,12 @@
 namespace ock {
 namespace mf {
 
-using DecryptFunc = int (*)(const char* cipherText, const size_t cipherTextLen, char* plainText, size_t plainTextLen);
+using DecryptFunc = int (*)(const char *cipherText, const size_t cipherTextLen, char *plainText, size_t plainTextLen);
 
 class MfTlsUtil {
 public:
-    static inline int32_t DefaultDecrypter(const char* cipherText, const size_t cipherTextLen,
-                                    char* plainText, const size_t plainTextLen)
+    static inline int32_t DefaultDecrypter(const char *cipherText, const size_t cipherTextLen, char *plainText,
+                                           const size_t plainTextLen)
     {
         std::copy_n(cipherText, plainTextLen, plainText);
         return 0;
@@ -25,11 +25,11 @@ public:
 
     static inline void **GetTlsLibHandler()
     {
-        static void* decryptLibHandle = nullptr;
+        static void *decryptLibHandle = nullptr;
         return &decryptLibHandle;
     }
 
-    static inline DecryptFunc LoadDecryptFunction(const char* decrypterLibPath)
+    static inline DecryptFunc LoadDecryptFunction(const char *decrypterLibPath)
     {
         void **decryptLibHandlePtr = GetTlsLibHandler();
         if (*decryptLibHandlePtr == nullptr) {
@@ -56,7 +56,7 @@ public:
         }
     }
 };
-}
-}
+} // namespace mf
+} // namespace ock
 
 #endif // MEMFABRIC_HYBRID_TLS_UTIL_H

@@ -27,11 +27,8 @@ struct ComposeMemoryRegion {
     TransportType type = TT_BUTT;
 
     ComposeMemoryRegion(const uint64_t addr, const uint64_t size, TransportType type)
-        : addr{addr},
-          size{size},
-          type{type}
-    {
-    }
+        : addr{addr}, size{size}, type{type}
+    {}
 };
 
 class ComposeTransportManager : public TransportManager {
@@ -92,7 +89,7 @@ private:
     std::mutex mrsMutex_;
     std::unordered_map<uint64_t, ComposeMemoryRegion> mrs_;
 };
-}
-}
-}
-#endif  // MF_HYBRID_COMPOSE_TRANSPORT_MANAGER_H
+} // namespace transport
+} // namespace mf
+} // namespace ock
+#endif // MF_HYBRID_COMPOSE_TRANSPORT_MANAGER_H

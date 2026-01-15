@@ -142,7 +142,6 @@ class CMakeBuildExt(build_ext):
 pkgs = find_namespace_packages()
 print(pkgs)
 
-
 setup(
     name="mf_adapter",
     version=current_version,

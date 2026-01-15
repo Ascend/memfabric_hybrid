@@ -22,13 +22,15 @@
 
 namespace ock {
 namespace mf {
-template <class DataType> class ExInfoTranslator {
+template<class DataType>
+class ExInfoTranslator {
 public:
     virtual int Serialize(const DataType &d, std::string &info) noexcept = 0;
     virtual int Deserialize(const std::string &info, DataType &d) noexcept = 0;
 };
 
-template <class DataType> class LiteralExInfoTranslater : public ExInfoTranslator<DataType> {
+template<class DataType>
+class LiteralExInfoTranslater : public ExInfoTranslator<DataType> {
 public:
     int Serialize(const DataType &d, std::string &info) noexcept override
     {
@@ -60,8 +62,7 @@ public:
 class ExchangeInfoReader {
 public:
     explicit ExchangeInfoReader(const hybm_exchange_info *info = nullptr) noexcept : exchangeInfo_{info}, readOffset_{0}
-    {
-    }
+    {}
 
     void Reset(const hybm_exchange_info *info = nullptr) noexcept
     {
@@ -128,13 +129,13 @@ public:
         return left;
     }
 
-    template <typename DataType>
+    template<typename DataType>
     inline int Test(DataType &data) const noexcept
     {
         return Test(static_cast<void *>(&data), sizeof(data));
     }
 
-    template <typename DataType>
+    template<typename DataType>
     inline int Read(DataType &data) const noexcept
     {
         return Read(static_cast<void *>(&data), sizeof(data));
@@ -172,7 +173,7 @@ public:
         return 0;
     }
 
-    template <class DataType>
+    template<class DataType>
     inline int Append(const DataType &data) noexcept
     {
         return Append(reinterpret_cast<const void *>(&data), sizeof(data));
@@ -181,6 +182,6 @@ public:
 private:
     hybm_exchange_info *exchangeInfo_;
 };
-}
-}
+} // namespace mf
+} // namespace ock
 #endif // MEM_FABRIC_HYBRID_HYBM_EX_INFO_TRANSFER_H

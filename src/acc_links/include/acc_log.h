@@ -33,7 +33,7 @@ extern "C" {
  * @param func             [in] external function
  * @return 0 if successfully
  */
-int32_t AccSetExternalLog(void (*func)(int level, const char* msg));
+int32_t AccSetExternalLog(void (*func)(int level, const char *msg));
 
 /**
  * @brief Set log level

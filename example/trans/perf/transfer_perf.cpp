@@ -50,26 +50,24 @@
 const uint64_t GVA_SIZE = 1024ULL * 1024 * 1024;
 constexpr uint32_t MAX_UINT32 = 0xFFFFFFFF;
 
-const static std::map<std::string, uint64_t> RATE_UNIT_MP = {
-    {"GB", 1000ull * 1000ull * 1000ull},
-    {"GiB", 1ull << 30},
-    {"Gb", 1000ull * 1000ull * 1000ull / 8},
-    {"MB", 1000ull * 1000ull},
-    {"MiB", 1ull << 20},
-    {"Mb", 1000ull * 1000ull / 8},
-    {"KB", 1000ull},
-    {"KiB", 1ull << 10},
-    {"Kb", 1000ull / 8}};
+const static std::map<std::string, uint64_t> RATE_UNIT_MP = {{"GB", 1000ull * 1000ull * 1000ull},
+                                                             {"GiB", 1ull << 30},
+                                                             {"Gb", 1000ull * 1000ull * 1000ull / 8},
+                                                             {"MB", 1000ull * 1000ull},
+                                                             {"MiB", 1ull << 20},
+                                                             {"Mb", 1000ull * 1000ull / 8},
+                                                             {"KB", 1000ull},
+                                                             {"KiB", 1ull << 10},
+                                                             {"Kb", 1000ull / 8}};
 
-static inline std::string calculateRate(uint64_t data_bytes,
-                                        double duration)
+static inline std::string calculateRate(uint64_t data_bytes, double duration)
 {
     const uint64_t MEGABYTES_PER_BYTE = 1000000;
     std::string report_unit = "GB";
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2U)
-        << 1.0 * data_bytes * MEGABYTES_PER_BYTE / duration / RATE_UNIT_MP.at(report_unit)
-        << " " << report_unit << "/s";
+        << 1.0 * data_bytes * MEGABYTES_PER_BYTE / duration / RATE_UNIT_MP.at(report_unit) << " " << report_unit
+        << "/s";
     return oss.str();
 }
 
@@ -80,9 +78,9 @@ static inline void init_warmup_data(char *&warmup_data, size_t length)
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<uint64_t> dis(0, MAX_UINT32);
-    p = reinterpret_cast<uint64_t*>(warmup_data);
+    p = reinterpret_cast<uint64_t *>(warmup_data);
     for (uint64_t i = 0; i < length; i += STEP_SIZE) {
-        p = reinterpret_cast<uint64_t*>(&warmup_data[i]);
+        p = reinterpret_cast<uint64_t *>(&warmup_data[i]);
         *p = static_cast<uint64_t>(dis(gen));
     }
 }
@@ -95,7 +93,7 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
 
     if (rankId == 0) {
         uint32_t block_iteration = 10;
-        uint32_t base_block_size = 32 << 10;    // 32k
+        uint32_t base_block_size = 32 << 10; // 32k
         uint32_t times = 10;
         uint32_t batch_size = 32;
 
@@ -134,10 +132,9 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
             }
 
             gettimeofday(&stop_tv, nullptr);
-            double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 +
-                                (stop_tv.tv_usec - start_tv.tv_usec);
+            double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
             duration1 /= times;
-            
+
             /* bw test */
             std::vector<void *> laddrv;
             std::vector<void *> raddrv;
@@ -153,20 +150,18 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
                 lengthv.push_back(block_size);
             }
             gettimeofday(&start_tv, nullptr);
-            smem_batch_copy_params batch_params = {const_cast<void**>(laddrv.data()), raddrv.data(),
+            smem_batch_copy_params batch_params = {const_cast<void **>(laddrv.data()), raddrv.data(),
                                                    (uint64_t *)lengthv.data(), static_cast<uint32_t>(lengthv.size())};
             for (uint32_t j = 0; j < times; j++) {
                 smem_bm_copy_batch(bm_handle, &batch_params, SMEMB_COPY_L2G, 0);
             }
 
             gettimeofday(&stop_tv, nullptr);
-            double duration2 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 +
-                                (stop_tv.tv_usec - start_tv.tv_usec);
+            double duration2 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
             duration2 /= times;
-            std::cout << "Test completed: latency " << duration1
-                    << "us, block size " << block_size / KB_SIZE << "KB, total size "
-                    << batch_size * block_size / KB_SIZE << "KB , throughput "
-                    << calculateRate(batch_size * block_size, duration2) << std::endl;
+            std::cout << "Test completed: latency " << duration1 << "us, block size " << block_size / KB_SIZE
+                      << "KB, total size " << batch_size * block_size / KB_SIZE << "KB , throughput "
+                      << calculateRate(batch_size * block_size, duration2) << std::endl;
         }
         std::cout << "Test End" << std::endl;
     }
@@ -194,8 +189,8 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
     std::cout << "[" << rankId << "]" << " malloc dev mem " << dev_addr << std::endl;
 
     /* gather peer addr */
-    ret = smem_shm_control_allgather(shm_handle, (char *)&dev_addr,
-                                     sizeof(void *), (char *)gather_addr, sizeof(void *) * 2U);
+    ret = smem_shm_control_allgather(shm_handle, (char *)&dev_addr, sizeof(void *), (char *)gather_addr,
+                                     sizeof(void *) * 2U);
     CHECK_GOTO_ERR(ret, "failed to allgather dev memory, ret:" << ret, out);
 
     ret = smem_shm_control_barrier(shm_handle);
@@ -206,11 +201,11 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
         CHECK_GOTO_ERR(ret, "failed to register device memory, ret:" << ret, out);
     }
     ret = smem_shm_control_barrier(shm_handle);
-    std::this_thread::sleep_for(std::chrono::seconds(10UL));  // wait for register
+    std::this_thread::sleep_for(std::chrono::seconds(10UL)); // wait for register
     CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
     if (rankId == 0) {
         uint32_t block_iteration = 10;
-        uint32_t base_block_size = 32 << 10;    // 32k
+        uint32_t base_block_size = 32 << 10; // 32k
         uint32_t times = 10;
         uint32_t batch_size = 32;
         std::string dstSessionId = "127.0.0.1:10001";
@@ -242,8 +237,7 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
                 CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId << ", index:" << j, out);
             }
             gettimeofday(&stop_tv, nullptr);
-            double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 +
-                                (stop_tv.tv_usec - start_tv.tv_usec);
+            double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
             duration1 /= times;
 
             /* bw test */
@@ -263,20 +257,19 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
             gettimeofday(&start_tv, nullptr);
 
             for (uint32_t j = 0; j < times; j++) {
-                ret = smem_trans_batch_write(trans_handle, const_cast<const void**>(laddrv.data()),
-                    dstSessionId.c_str(), raddrv.data(), (size_t *)lengthv.data(), lengthv.size());
+                ret =
+                    smem_trans_batch_write(trans_handle, const_cast<const void **>(laddrv.data()), dstSessionId.c_str(),
+                                           raddrv.data(), (size_t *)lengthv.data(), lengthv.size());
                 CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId, out);
             }
 
             gettimeofday(&stop_tv, nullptr);
-            double duration2 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 +
-                                (stop_tv.tv_usec - start_tv.tv_usec);
+            double duration2 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
             duration2 /= times;
 
-            std::cout << "Test completed: latency " << duration1
-                    << "us, block size " << (block_size / KB_SIZE) << "KB, total size "
-                    << batch_size * block_size / KB_SIZE << "KB , throughput "
-                    << calculateRate(batch_size * block_size, duration2) << std::endl;
+            std::cout << "Test completed: latency " << duration1 << "us, block size " << (block_size / KB_SIZE)
+                      << "KB, total size " << batch_size * block_size / KB_SIZE << "KB , throughput "
+                      << calculateRate(batch_size * block_size, duration2) << std::endl;
         }
         std::cout << "Test End" << std::endl;
     }
@@ -419,7 +412,7 @@ err1:
  * smem_perf {rankSize} {rankId} {deviceID} {useSdma} {testBm} tcp://{Ip}:{port}
  * smem_perf 2 0 2 1 1 tcp://127.0.0.1:12050
  */
-int32_t main(int32_t argc, char* argv[])
+int32_t main(int32_t argc, char *argv[])
 {
     int rankSize = atoi(argv[1]);
     int rankId = atoi(argv[2]);
@@ -427,9 +420,8 @@ int32_t main(int32_t argc, char* argv[])
     int useSdma = atoi(argv[4]);
     int testBm = atoi(argv[5]);
     std::string ipPort = argv[6];
-    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId
-              << " device_id: " << deviceId << " use_sdma: " << useSdma << " test_bm: " << testBm
-              << " store_ip: " << ipPort << std::endl;
+    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " device_id: " << deviceId
+              << " use_sdma: " << useSdma << " test_bm: " << testBm << " store_ip: " << ipPort << std::endl;
 
     const size_t RANK_ID_SIZE = 2;
     if (rankSize != RANK_ID_SIZE) {

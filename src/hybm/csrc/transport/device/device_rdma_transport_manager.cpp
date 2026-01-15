@@ -62,11 +62,13 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
     BM_LOG_DEBUG("begin to open device with " << options);
     auto ret = DlAclApi::AclrtGetDevice(&userId);
     BM_ASSERT_LOG_AND_RETURN(ret == 0 && userId >= 0,
-        "AclrtGetDevice() return=" << ret << ", output deviceId=" << userId, BM_DL_FUNCTION_FAILED);
+                             "AclrtGetDevice() return=" << ret << ", output deviceId=" << userId,
+                             BM_DL_FUNCTION_FAILED);
 
     ret = DlAclApi::RtGetLogicDevIdByUserDevId(userId, &logicId);
     BM_ASSERT_LOG_AND_RETURN(ret == 0 && logicId >= 0,
-        "RtGetLogicDevIdByUserDevId() return=" << ret << ", output deviceId=" << logicId, BM_DL_FUNCTION_FAILED);
+                             "RtGetLogicDevIdByUserDevId() return=" << ret << ", output deviceId=" << logicId,
+                             BM_DL_FUNCTION_FAILED);
 
     deviceId_ = static_cast<uint32_t>(logicId);
     rankId_ = options.rankId;
@@ -454,8 +456,8 @@ Result RdmaTransportManager::Synchronize(uint32_t rankId)
     return ret;
 }
 
-bool RdmaTransportManager::PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount,
-                                             in_addr &deviceIp, void *&rdmaHandle)
+bool RdmaTransportManager::PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
+                                             void *&rdmaHandle)
 {
     // If can get rdmaHandle, maybe the device has been opened, can try get rdmaHandle directly.
     if (DlHccpApi::RaRdevGetHandle(device, rdmaHandle) == 0) {
@@ -653,8 +655,8 @@ int RdmaTransportManager::CheckPrepareOptions(const ock::mf::transport::HybmTran
     return BM_OK;
 }
 
-int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size,
-                                   bool write, bool sync)
+int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size, bool write,
+                                   bool sync)
 {
     if (qpManager_ == nullptr) {
         BM_LOG_ERROR("ReadRemote(): connection manager not created.");
@@ -923,13 +925,10 @@ int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
 
     struct send_wr_v2 wr = {};
     struct sg_list sgList = {
-        .addr = notifyInfo_.notifyAddr + notify_->GetOffset(),
-        .len = notifyInfo_.len,
-        .lkey = notifyInfo_.notifyLkey
-    };
+        .addr = notifyInfo_.notifyAddr + notify_->GetOffset(), .len = notifyInfo_.len, .lkey = notifyInfo_.notifyLkey};
     wr.wr_id = wrIdx_.fetch_add(1U);
     wr.buf_list = &sgList;
-    wr.buf_num = 1;  // 此处list只有一个，设置为1
+    wr.buf_num = 1; // 此处list只有一个，设置为1
     wr.dst_addr = remoteMr.first;
     wr.rkey = remoteMr.second;
     wr.op = 4; /* RDMA_WRITE: 0  RDMA_READ: 4 */
@@ -955,7 +954,7 @@ int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
     return ret;
 }
 
-}  // namespace device
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
+} // namespace device
+} // namespace transport
+} // namespace mf
+} // namespace ock

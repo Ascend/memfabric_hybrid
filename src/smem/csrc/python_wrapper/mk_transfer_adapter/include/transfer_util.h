@@ -17,7 +17,7 @@
 namespace ock {
 namespace adapter {
 
-#define STR(x) #x
+#define STR(x)  #x
 #define STR2(x) STR(x)
 
 uint16_t findAvailableTcpPort(int &sockfd);
@@ -28,6 +28,6 @@ int32_t pytransfer_set_log_level(int level);
 
 int32_t pytransfer_set_conf_store_tls(bool enable, std::string &tls_info);
 
-}  // namespace adapter
-}  // namespace ock
+} // namespace adapter
+} // namespace ock
 #endif // PYTRANSFER_UITL_H

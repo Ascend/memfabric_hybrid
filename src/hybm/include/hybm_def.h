@@ -22,7 +22,7 @@ extern "C" {
 typedef void *hybm_entity_t;
 typedef void *hybm_mem_slice_t;
 
-#define HYBM_FLAG_EXPORT_ENTITY     1U      ///< export/import entity instead of slice
+#define HYBM_FLAG_EXPORT_ENTITY 1U ///< export/import entity instead of slice
 
 #define HYBM_TLS_PATH_SIZE 256
 
@@ -88,9 +88,9 @@ typedef struct {
 } hybm_tls_config;
 
 #define HYBM_PERFORMANCE_MODE_FLAG_INDEX 7
-#define HYBM_PERFORMANCE_MODE_FLAG_LEN 1
-#define HYBM_BIND_NUMA_FLAG_INDEX 0
-#define HYBM_BIND_NUMA_FLAG_LEN 7
+#define HYBM_PERFORMANCE_MODE_FLAG_LEN   1
+#define HYBM_BIND_NUMA_FLAG_INDEX        0
+#define HYBM_BIND_NUMA_FLAG_LEN          7
 
 typedef struct {
     hybm_type bmType;
@@ -138,8 +138,8 @@ typedef struct {
 } hybm_copy_params;
 
 typedef struct {
-    void** sources;
-    void** destinations;
+    void **sources;
+    void **destinations;
     const uint64_t *dataSizes;
     uint32_t batchSize;
 } hybm_batch_copy_params;

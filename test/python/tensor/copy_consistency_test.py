@@ -22,15 +22,15 @@ import acl
 
 class TensorCopyTest:
     def __init__(
-        self,
-        /,
-        task_id: int,
-        device_id: int,
-        copy_size: int,
-        repeat: int,
-        result_pipe: mp.Queue,
-        sync_after_create=False,
-        use_same_stream=False,
+            self,
+            /,
+            task_id: int,
+            device_id: int,
+            copy_size: int,
+            repeat: int,
+            result_pipe: mp.Queue,
+            sync_after_create=False,
+            use_same_stream=False,
     ) -> None:
         self.task_id = task_id
         self.device_id = device_id
@@ -147,7 +147,7 @@ class TensorCopyTest:
 
 def byte_size(size):
     """parse string argument with this type"""
-    units = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3}
+    units = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
     size = size.upper().strip()
     pattern = r"^(\d+(?:\.\d+)?)([A-Z]+)?$"
     match = re.match(pattern, size)
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         type=byte_size,
         default=2 * 1024 * 1024,
         help="the size of the memory to be copied in the test, supporting positive integers "
-        + "without units or with the following units (B, MB, GB) (default: %(default)s)",
+             + "without units or with the following units (B, MB, GB) (default: %(default)s)",
     )
     parser.add_argument(
         "--sync-create",
@@ -256,7 +256,7 @@ if __name__ == "__main__":
         "--same-stream",
         action="store_true",
         help="whether to use the same stream for the copy operation as the one used for "
-        + "creating the tensor (default: %(default)s)",
+             + "creating the tensor (default: %(default)s)",
     )
 
     args = parser.parse_args()

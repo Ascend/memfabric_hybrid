@@ -26,7 +26,7 @@ Result SslShutdownHelper(SSL *ssl)
     }
 
     const int sslShutdownTimes = 5;
-    const int sslRetryInterval = 1;  // s
+    const int sslRetryInterval = 1; // s
     int ret = OpenSslApiWrapper::SslShutdown(ssl);
     if (ret == 1) {
         return ACC_OK;
@@ -56,5 +56,5 @@ Result SslShutdownHelper(SSL *ssl)
     return ACC_ERROR;
 }
 
-}
-}
+} // namespace acc
+} // namespace ock

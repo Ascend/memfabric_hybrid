@@ -18,8 +18,8 @@
 extern "C" {
 #endif
 
-#define NET_SGE_MAX_IOV 4
-#define MAX_IP_LENGTH 16
+#define NET_SGE_MAX_IOV    4
+#define MAX_IP_LENGTH      16
 #define NET_C_FLAGS_BIT(i) (1UL << (i))
 
 /*
@@ -167,15 +167,15 @@ typedef enum {
  * @param size, size of data
  */
 typedef struct {
-    uintptr_t data;         // pointer of data to send to peer
-    uint32_t size;          // size of data
-    uint16_t upCtxSize;     // user context size
-    char upCtxData[16];     // user context
+    uintptr_t data;     // pointer of data to send to peer
+    uint32_t size;      // size of data
+    uint16_t upCtxSize; // user context size
+    char upCtxData[16]; // user context
 } Hcom_SendRequest;
 
 typedef struct {
     uint32_t seqNo;    // seq no
-    int16_t timeout;  // timeout
+    int16_t timeout;   // timeout
     int16_t errorCode; // error code
     uint8_t flags;     // flags
 } Hcom_OpInfo;
@@ -191,12 +191,12 @@ typedef struct {
  * @brief Read/write request for one side rdma operation
  */
 typedef struct {
-    uintptr_t lMRA;         // local memory region address
-    uintptr_t rMRA;         // remote memory region address
-    uint64_t lKey;          // local memory region key
-    uint64_t rKey;          // remote memory region key
-    uint32_t size;          // data size
-    uint16_t upCtxSize;     // user context size
+    uintptr_t lMRA;     // local memory region address
+    uintptr_t rMRA;     // remote memory region address
+    uint64_t lKey;      // local memory region key
+    uint64_t rKey;      // remote memory region key
+    uint32_t size;      // data size
+    uint16_t upCtxSize; // user context size
     char upCtxData[16]; // user context
 } Hcom_ReadWriteRequest;
 
@@ -209,10 +209,10 @@ typedef struct {
 } __attribute__((packed)) Hcom_ReadWriteSge;
 
 typedef struct {
-    Hcom_ReadWriteSge *iov;  // sgl array
+    Hcom_ReadWriteSge *iov; // sgl array
     uint16_t iovCount;      // max count:NUM_4
     uint16_t upCtxSize;     // user context size
-    char upCtxData[16]; // user context
+    char upCtxData[16];     // user context
 } __attribute__((packed)) Hcom_ReadWriteSglRequest;
 
 /*
@@ -231,14 +231,14 @@ typedef struct {
     Hcom_RequestType type;
     uint16_t opCode;   // for post send
     uint16_t flags;    // flags on the header
-    int16_t timeout;  // timeout
+    int16_t timeout;   // timeout
     int16_t errorCode; // error code
     int result;        // return 0 successful
     void *msgData;     // for receive operation or C_OP_REQUEST_RECEIVED callback
     uint32_t msgSize;  // for receive operation or C_OP_REQUEST_RECEIVED callback
     uint32_t seqNo;    // for post send raw
     Hcom_EndPoint ep;
-    Hcom_SendRequest originalSend;           // for C_OP_REQUEST_POSTED, copy struct information, not original
+    Hcom_SendRequest originalSend; // for C_OP_REQUEST_POSTED, copy struct information, not original
     // originalSend.data is self rdma address, not original input data address
     Hcom_ReadWriteRequest originalReq;       // for C_OP_READWRITE_DONE, copy struct information, not original
     Hcom_ReadWriteSglRequest originalSglReq; // for C_OP_READWRITE_DONE, copy struct information, not original
@@ -261,49 +261,49 @@ typedef struct {
  * @brief Options for driver initialization
  */
 typedef struct {
-    Hcom_DriverWorkingMode mode;        // polling mode
-    uint32_t mrSendReceiveSegCount;    // segment count of segment for send/receive
-    uint32_t mrSendReceiveSegSize;     // single segment size of send/receive memory region
-    char netDeviceIpMask[256];     // device ip mask, for multiple net device cases
-    char netDeviceIpGroup[1024];   // ip group for devices
-    uint16_t completionQueueDepth;     // rdma completion queue size
-    uint16_t maxPostSendCountPerQP;    // max post send count
-    uint16_t prePostReceiveSizePerQP;  // pre post receive size for one qp
-    uint16_t pollingBatchSize;         // polling wc size on at one time
-    uint32_t qpSendQueueSize;          // qp send queue size, by default is 256
-    uint32_t qpReceiveQueueSize;       // qp receive queue size, by default is 256
-    uint16_t dontStartWorkers;         // start worker or not, 1 means don't start, 0 means start
-    char workerGroups[64];         // worker groups, for example 1,3,3
-    char workerGroupsCpuSet[128];  // worker groups cpu set, for example 1-16
+    Hcom_DriverWorkingMode mode;      // polling mode
+    uint32_t mrSendReceiveSegCount;   // segment count of segment for send/receive
+    uint32_t mrSendReceiveSegSize;    // single segment size of send/receive memory region
+    char netDeviceIpMask[256];        // device ip mask, for multiple net device cases
+    char netDeviceIpGroup[1024];      // ip group for devices
+    uint16_t completionQueueDepth;    // rdma completion queue size
+    uint16_t maxPostSendCountPerQP;   // max post send count
+    uint16_t prePostReceiveSizePerQP; // pre post receive size for one qp
+    uint16_t pollingBatchSize;        // polling wc size on at one time
+    uint32_t qpSendQueueSize;         // qp send queue size, by default is 256
+    uint32_t qpReceiveQueueSize;      // qp receive queue size, by default is 256
+    uint16_t dontStartWorkers;        // start worker or not, 1 means don't start, 0 means start
+    char workerGroups[64];            // worker groups, for example 1,3,3
+    char workerGroupsCpuSet[128];     // worker groups cpu set, for example 1-16
     // worker thread priority [-20,20], 20 is the lowest, -20 is the highest, 0 (default) means do not set priority
     int workerThreadPriority;
-    uint16_t heartBeatIdleTime;        // heart beat idle time, in seconds
-    uint16_t heartBeatProbeTimes;      // heart beat probe times, in seconds
-    uint16_t heartBeatProbeInterval;   // heart beat probe interval, in seconds
+    uint16_t heartBeatIdleTime;      // heart beat idle time, in seconds
+    uint16_t heartBeatProbeTimes;    // heart beat probe times, in seconds
+    uint16_t heartBeatProbeInterval; // heart beat probe interval, in seconds
     // timeout during io (s), it should be [-1, 1024], -1 means do not set, 0 means never timeout during io
     int16_t tcpUserTimeout;
-    bool tcpEnableNoDelay;             // tcp TCP_NODELAY option, true in default
-    bool tcpSendZCopy;                 // tcp whether copy request to inner memory, false in default
+    bool tcpEnableNoDelay; // tcp TCP_NODELAY option, true in default
+    bool tcpSendZCopy;     // tcp whether copy request to inner memory, false in default
     /* The buffer sizes will be adjusted automatically when these two variables are 0, and the performance would be
      * better */
-    uint16_t tcpSendBufSize;           // tcp connection send buffer size in kernel, in KB
-    uint16_t tcpReceiveBufSize;        // tcp connection send receive buf size in kernel, in KB
-    uint16_t enableTls;                // value only in 0 and 1, value 1 means enable ssl and encrypt, 0 on the contrary
-    Hcom_DriverTlsMode tlsMode;         // tls mode, default is openssl
-    Hcom_DriverSecType secType;         // security type
-    Hcom_DriverTlsVersion tlsVersion;   // tls version, default TLS1.3 (772)
+    uint16_t tcpSendBufSize;          // tcp connection send buffer size in kernel, in KB
+    uint16_t tcpReceiveBufSize;       // tcp connection send receive buf size in kernel, in KB
+    uint16_t enableTls;               // value only in 0 and 1, value 1 means enable ssl and encrypt, 0 on the contrary
+    Hcom_DriverTlsMode tlsMode;       // tls mode, default is openssl
+    Hcom_DriverSecType secType;       // security type
+    Hcom_DriverTlsVersion tlsVersion; // tls version, default TLS1.3 (772)
     Hcom_DriverCipherSuite cipherSuite; // if tls enabled can set cipher suite, client and server should same
     Hcom_DriverOobType oobType;         // oob type, tcp or UDS, UDS cannot accept remote connection
-    uint8_t version;                   // program version used by connect validation
-    uint32_t maxConnectionNum;         // max connection number
-    char oobPortRange[16];         // port range when enable port auto selection
+    uint8_t version;                    // program version used by connect validation
+    uint32_t maxConnectionNum;          // max connection number
+    char oobPortRange[16];              // port range when enable port auto selection
 } Hcom_DriverOptions;
 
 /*
  * @brief Options for multiple listeners
  */
 typedef struct {
-    char ip[16];            // ip to be listened
+    char ip[16];                // ip to be listened
     uint16_t port;              // port to be listened
     uint16_t targetWorkerCount; // the count of workers can be dispatched to, for connections from this listener
 } Hcom_DriverOobListenOptions;
@@ -408,8 +408,8 @@ typedef int (*Hcom_TlsGetCertCb)(const char *name, char **certPath);
  * @param keyPass          [out] the keyPass
  * @param erase            [out] the erase function
  */
-typedef int (*Hcom_TlsGetPrivateKeyCb)
-        (const char *name, char **priKeyPath, char **keyPass, Hcom_TlsKeyPassErase *erase);
+typedef int (*Hcom_TlsGetPrivateKeyCb)(const char *name, char **priKeyPath, char **keyPass,
+                                       Hcom_TlsKeyPassErase *erase);
 
 /*
  * @brief Get the CA and verify
@@ -434,14 +434,14 @@ typedef void (*Hcom_LogHandler)(int level, const char *msg);
  * @brief Options for Memory Allocator
  */
 typedef struct {
-    uintptr_t address;                                  /* base address of large range of memory for allocator */
-    uint64_t size;                                      /* size of large memory chuck */
-    uint32_t minBlockSize;                              /* min size of block, more than 4 KB is required */
-    uint32_t bucketCount;                               /* default size of hash bucket */
-    uint16_t alignedAddress;                            /* force to align the memory block allocated, 0 means not align
+    uintptr_t address;                                   /* base address of large range of memory for allocator */
+    uint64_t size;                                       /* size of large memory chuck */
+    uint32_t minBlockSize;                               /* min size of block, more than 4 KB is required */
+    uint32_t bucketCount;                                /* default size of hash bucket */
+    uint16_t alignedAddress;                             /* force to align the memory block allocated, 0 means not align
                                                           1 means align */
-    uint16_t cacheTierCount;                            /* for DYNAMIC_SIZE_WITH_CACHE only */
-    uint16_t cacheBlockCountPerTier;                    /* for DYNAMIC_SIZE_WITH_CACHE only */
+    uint16_t cacheTierCount;                             /* for DYNAMIC_SIZE_WITH_CACHE only */
+    uint16_t cacheBlockCountPerTier;                     /* for DYNAMIC_SIZE_WITH_CACHE only */
     Hcom_MemoryAllocatorCacheTierPolicy cacheTierPolicy; /* tier policy */
 } Hcom_MemoryAllocatorOptions;
 

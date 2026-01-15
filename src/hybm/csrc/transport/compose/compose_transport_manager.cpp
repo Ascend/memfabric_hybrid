@@ -26,7 +26,7 @@ namespace {
 const char NIC_DELIMITER = ';';
 const std::string HOST_TRANSPORT_TYPE = "host#";
 const std::string DEVICE_TRANSPORT_TYPE = "device#";
-}
+} // namespace
 
 Result ComposeTransportManager::OpenHostTransport(const TransportOptions &options)
 {
@@ -52,7 +52,7 @@ Result ComposeTransportManager::OpenDevice(const TransportOptions &options)
 {
     std::vector<std::string> nicVec = StrUtil::Split(options.nic, NIC_DELIMITER);
 
-    for (const auto &nic: nicVec) {
+    for (const auto &nic : nicVec) {
         Result ret = BM_ERROR;
         if (StrUtil::StartWith(nic, HOST_TRANSPORT_TYPE)) {
             TransportOptions option = options;
@@ -186,11 +186,11 @@ void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOption
                                                     HybmTransPrepareOptions &hostOptions)
 {
     auto options = param.options;
-    for (const auto &item: options) {
+    for (const auto &item : options) {
         auto rankId = item.first;
         TransportRankPrepareInfo info{};
         std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
-        for (const auto &nic: nicVec) {
+        for (const auto &nic : nicVec) {
             if (StrUtil::StartWith(nic, HOST_TRANSPORT_TYPE)) {
                 info.nic = nic.substr(HOST_TRANSPORT_TYPE.length());
             }
@@ -209,11 +209,11 @@ void ComposeTransportManager::GetDevicePrepareOptions(const HybmTransPrepareOpti
                                                       HybmTransPrepareOptions &deviceOptions)
 {
     auto options = param.options;
-    for (const auto &item: options) {
+    for (const auto &item : options) {
         auto rankId = item.first;
         TransportRankPrepareInfo info{};
         std::vector<std::string> nicVec = StrUtil::Split(item.second.nic, NIC_DELIMITER);
-        for (const auto &nic: nicVec) {
+        for (const auto &nic : nicVec) {
             if (StrUtil::StartWith(nic, DEVICE_TRANSPORT_TYPE)) {
                 info.nic = nic.substr(DEVICE_TRANSPORT_TYPE.length());
             }
@@ -385,7 +385,7 @@ std::shared_ptr<TransportManager> ComposeTransportManager::GetTransportFromAddre
 {
     TransportType type = TT_BUTT;
     std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
-    for (const auto &item: mrs_) {
+    for (const auto &item : mrs_) {
         auto mr = item.second;
         if (mr.addr <= addr && mr.addr + mr.size >= addr) {
             type = mr.type;

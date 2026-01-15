@@ -53,8 +53,8 @@ private:
 
     static Result SelectLocalIpByIpMask(const std::string &ipStr, const int32_t &mask, std::string &localIp);
 };
-}  // namespace host
-}  // namespace transport
-}  // namespace mf
-}  // namespace ock
-#endif  // MF_HYBRID_HOST_HCOM_HELPER_H
+} // namespace host
+} // namespace transport
+} // namespace mf
+} // namespace ock
+#endif // MF_HYBRID_HOST_HCOM_HELPER_H

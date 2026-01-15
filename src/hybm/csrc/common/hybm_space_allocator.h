@@ -96,4 +96,4 @@ private:
 
 } // namespace ock::mf
 
-#endif  // MF_HYBM_SPACE_ALLOCATOR_H
+#endif // MF_HYBM_SPACE_ALLOCATOR_H

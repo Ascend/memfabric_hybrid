@@ -197,5 +197,5 @@ void MemSegment::FillSysBootIdInfo() noexcept
     ss >> std::hex >> bootIdHead_;
     BM_LOG_DEBUG("os-boot-id: " << sysBoolId_ << ", head u32: " << std::hex << bootIdHead_);
 }
-}
-}
+} // namespace mf
+} // namespace ock

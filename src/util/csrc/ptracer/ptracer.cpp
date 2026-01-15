@@ -60,9 +60,9 @@ void UnInitDefaultTracer(ptracer &tracer)
 #endif
 }
 
-}  // namespace tracer
-}  // namespace mf
-}  // namespace ock
+} // namespace tracer
+} // namespace mf
+} // namespace ock
 
 PTRACER_API int32_t ptracer_init(ptracer_config_t *config)
 {

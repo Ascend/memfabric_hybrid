@@ -42,14 +42,14 @@ public:
      *
      * @return data ptr
      */
-    uint8_t* DataPtr() const;
+    uint8_t *DataPtr() const;
 
     /**
      * @brief Get the data ptr
      *
      * @return  data ptr
      */
-    void* DataPtrVoid() const;
+    void *DataPtrVoid() const;
 
     /**
      * @brief Get the data ptr
@@ -98,7 +98,7 @@ inline uint8_t *AccDataBuffer::DataPtr() const
 
 inline void *AccDataBuffer::DataPtrVoid() const
 {
-    return static_cast<void*>(data_);
+    return static_cast<void *>(data_);
 }
 
 inline uintptr_t AccDataBuffer::DataIntPtr() const
@@ -120,7 +120,7 @@ inline void AccDataBuffer::SetDataSize(uint32_t size)
 {
     dataSize_ = size;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock
 
-#endif  // ACC_LINKS_ACC_TCP_SHARED_BUF_H
+#endif // ACC_LINKS_ACC_TCP_SHARED_BUF_H

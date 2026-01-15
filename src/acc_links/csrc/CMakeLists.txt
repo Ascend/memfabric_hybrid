@@ -24,7 +24,7 @@ target_link_libraries(acc_tcp_net_static
         -Wl,--start-group
         pthread dl rt
         -Wl,--end-group
-        )
+)
 
 add_library(acc_tcp_net_shared SHARED $<TARGET_OBJECTS:acc_tcp_net_object>)
 set_target_properties(acc_tcp_net_shared PROPERTIES OUTPUT_NAME "acc_tcp_net")
@@ -33,7 +33,7 @@ target_link_libraries(acc_tcp_net_shared
         -Wl,--start-group
         pthread dl rt
         -Wl,--end-group
-        )
+)
 
 file(GLOB HEADER_FILES ../include/*.h)
 install(FILES ${HEADER_FILES} DESTINATION ${TARGET_INSTALL_DIR}/acc_links/include)
@@ -41,4 +41,4 @@ install(TARGETS acc_tcp_net_shared acc_tcp_net_static
         LIBRARY DESTINATION ${TARGET_INSTALL_DIR}/acc_links/lib64
         ARCHIVE DESTINATION ${TARGET_INSTALL_DIR}/acc_links/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        )
+)

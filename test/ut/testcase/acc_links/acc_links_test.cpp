@@ -699,7 +699,7 @@ TEST_F(AccLinksTest, test_server_start_StartWorkers_validate_should_return_error
     opts.version = 1;
     opts.workerCount = WORKER_COUNT;
 
-    MOCKER_CPP(&AccTcpServerDefault::StartWorkers, int32_t(*)(AccTcpServerDefault *)).stubs().will(returnValue(-2));
+    MOCKER_CPP(&AccTcpServerDefault::StartWorkers, int32_t (*)(AccTcpServerDefault *)).stubs().will(returnValue(-2));
     int32_t ret = mServer->Start(opts);
     ASSERT_TRUE(ret != true);
 }
@@ -716,7 +716,7 @@ TEST_F(AccLinksTest, test_server_start_StartListener_validate_should_return_erro
     opts.magic = 0;
     opts.version = 1;
     opts.workerCount = WORKER_COUNT;
-    MOCKER_CPP(&AccTcpServerDefault::StartListener, int32_t(*)(AccTcpServerDefault *)).stubs().will(returnValue(-2));
+    MOCKER_CPP(&AccTcpServerDefault::StartListener, int32_t (*)(AccTcpServerDefault *)).stubs().will(returnValue(-2));
     int32_t ret = mServer->Start(opts);
     ASSERT_TRUE(ret != true);
 }
@@ -811,7 +811,7 @@ TEST_F(AccLinksTest, test_AccTcpLinkComplex_EnqueueAndModifyEpoll_mock_should_re
     AccDataBufferPtr buffer = AccMakeRef<AccDataBuffer>(0);
     int32_t ret = mLink->Initialize(255, 0, mWorker.Get());
     MOCKER_CPP(&AccLinkedMessageQueue::EnqueueBack,
-               int32_t(*)(const AccMsgHeader &, const AccDataBufferPtr &, const AccDataBufferPtr &))
+               int32_t (*)(const AccMsgHeader &, const AccDataBufferPtr &, const AccDataBufferPtr &))
         .stubs()
         .will(returnValue(-4));
     ret = mLink->EnqueueAndModifyEpoll(header, buffer, nullptr);

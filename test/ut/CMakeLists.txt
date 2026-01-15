@@ -51,33 +51,33 @@ FUNCTION(ADD_UNIT_TEST TEST_NAME)
             $<TARGET_OBJECTS:hybmm_objects>
             $<TARGET_OBJECTS:acc_tcp_net_object>
     )
-    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_OUTPUT_PATH}/acc_links/lib64/)
-    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib/)
-    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${GTEST_BUILD_LIB_DIR}/lib)
-    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${PROJECT_OUTPUT_PATH}/smem/lib64)
-    target_link_directories(${TEST_TARGET_NAME}  PUBLIC ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64)
+    target_link_directories(${TEST_TARGET_NAME} PUBLIC ${PROJECT_OUTPUT_PATH}/acc_links/lib64/)
+    target_link_directories(${TEST_TARGET_NAME} PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib/)
+    target_link_directories(${TEST_TARGET_NAME} PUBLIC ${GTEST_BUILD_LIB_DIR}/lib)
+    target_link_directories(${TEST_TARGET_NAME} PUBLIC ${PROJECT_OUTPUT_PATH}/smem/lib64)
+    target_link_directories(${TEST_TARGET_NAME} PUBLIC ${ASCEND_CANN_PACKAGE_PATH}/aarch64-linux/lib64)
     TARGET_MOCKCPP_HEADER(${TEST_TARGET_NAME})
-    if(NOT EXISTS ${CHECK_FILE_LINKS})
+    if (NOT EXISTS ${CHECK_FILE_LINKS})
         add_dependencies(${TEST_TARGET_NAME} googletest)
-    endif()
+    endif ()
     install(TARGETS ${TEST_TARGET_NAME}
             DESTINATION ${PROJECT_OUTPUT_PATH}/bin/ut/
             PERMISSIONS ${CACHE_INSTALL_EXE_PERMISSIONS})
-    IF(ADD_UNIT_TEST_INCLUDE_PATHS)
+    IF (ADD_UNIT_TEST_INCLUDE_PATHS)
         target_include_directories(${TEST_TARGET_NAME} PUBLIC ${ADD_UNIT_TEST_INCLUDE_PATHS})
-    ENDIF()
+    ENDIF ()
 
-    IF(ADD_UNIT_TEST_LINK_LIBRARIES)
+    IF (ADD_UNIT_TEST_LINK_LIBRARIES)
         target_link_libraries(${TEST_TARGET_NAME} ${ADD_UNIT_TEST_LINK_LIBRARIES})
-    ENDIF()
+    ENDIF ()
 
-    IF(ADD_UNIT_TEST_DEPENDS)
+    IF (ADD_UNIT_TEST_DEPENDS)
         add_dependencies(${TEST_TARGET_NAME} ${ADD_UNIT_TEST_DEPENDS})
-    ENDIF()
+    ENDIF ()
 
-    IF(ADD_UNIT_TEST_BUILD_FLAGS)
+    IF (ADD_UNIT_TEST_BUILD_FLAGS)
         target_compile_options(${TEST_TARGET_NAME} PUBLIC ${ADD_UNIT_TEST_BUILD_FLAGS})
-    ENDIF()
+    ENDIF ()
 
     add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_TARGET_NAME}>)
 

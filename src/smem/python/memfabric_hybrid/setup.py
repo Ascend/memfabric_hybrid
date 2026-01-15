@@ -140,7 +140,6 @@ class CMakeBuildExt(build_ext):
 pkgs = find_namespace_packages()
 print(pkgs)
 
-
 setup(
     name="memfabric_hybrid",
     version=current_version,

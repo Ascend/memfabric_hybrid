@@ -91,8 +91,8 @@ public:
         return pVirtAllocMemFromBase(mgmt, size, advise, allocPtr);
     }
 
-    static inline Result HalIoctlEnableHeap(uint32_t heapIdx, uint32_t heapType, uint32_t subType,
-                                                 uint64_t heapSize, uint32_t heapListType)
+    static inline Result HalIoctlEnableHeap(uint32_t heapIdx, uint32_t heapType, uint32_t subType, uint64_t heapSize,
+                                            uint32_t heapListType)
     {
         if (pIoctlEnableHeap == nullptr) {
             return BM_UNDER_API_UNLOAD;
@@ -355,7 +355,7 @@ public:
         return pDrvNotifyIdAddrOffset(deviceId, drvInfo);
     }
 
-static inline int HalMemAddressReserve(void **ptr, size_t size, size_t alignment, void *addr, uint64_t flag)
+    static inline int HalMemAddressReserve(void **ptr, size_t size, size_t alignment, void *addr, uint64_t flag)
     {
         if (pHalMemAddressReserve == nullptr) {
             return BM_UNDER_API_UNLOAD;
@@ -440,7 +440,7 @@ static inline int HalMemAddressReserve(void **ptr, size_t size, size_t alignment
     }
 
     static inline int HalMemGetAllocationGranularity(const struct drv_mem_prop *prop,
-                                           drv_mem_granularity_options option, size_t *granularity)
+                                                     drv_mem_granularity_options option, size_t *granularity)
     {
         if (pHalMemGetAllocationGranularity == nullptr) {
             return BM_UNDER_API_UNLOAD;

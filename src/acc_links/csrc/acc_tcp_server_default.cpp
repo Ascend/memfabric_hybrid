@@ -19,11 +19,10 @@
 
 namespace ock {
 namespace acc {
-template <class T>
+template<class T>
 class AtmoicRollback {
 public:
-    AtmoicRollback(std::atomic<T> &value, T failedValue) : value_(value), failedValue_(failedValue)
-    {}
+    AtmoicRollback(std::atomic<T> &value, T failedValue) : value_(value), failedValue_(failedValue) {}
 
     ~AtmoicRollback()
     {
@@ -94,8 +93,8 @@ Result AccTcpServerDefault::Start(const AccTcpServerOptions &opt, const AccTlsOp
 Result AccTcpServerDefault::LoadDynamicLib(const std::string &dynLibPath)
 {
     std::string libPath = dynLibPath;
-    if (ock::mf::FileUtil::IsSymlink(libPath) || !ock::mf::FileUtil::Realpath(libPath)
-        || !ock::mf::FileUtil::IsDir(libPath)) {
+    if (ock::mf::FileUtil::IsSymlink(libPath) || !ock::mf::FileUtil::Realpath(libPath) ||
+        !ock::mf::FileUtil::IsDir(libPath)) {
         LOG_ERROR("dynLibPath check failed");
         return ACC_ERROR;
     }
@@ -274,7 +273,7 @@ void AccTcpServerDefault::StopAndCleanWorkers(bool afterFork)
     } else {
         std::lock_guard<std::mutex> guard(mutex_);
         // HandleNewConnection时引用计数+1,未linkdown,计数不会自动-1,这里手动-1
-        for (auto &item: connectedLinks_) {
+        for (auto &item : connectedLinks_) {
             item.second->DecreaseRef();
         }
     }
@@ -436,7 +435,7 @@ Result AccTcpServerDefault::WorkerSelect()
 
 bool AccTcpServerDefault::WorkerLinkLimitCheck(uint32_t workerIdx)
 {
-    std::unique_lock<std::mutex> lockGuard{ linkCntMutex };
+    std::unique_lock<std::mutex> lockGuard{linkCntMutex};
 
     auto it = workerLinkCnt_.find(workerIdx);
     if (it == workerLinkCnt_.end()) {
@@ -452,7 +451,7 @@ bool AccTcpServerDefault::WorkerLinkLimitCheck(uint32_t workerIdx)
 
 void AccTcpServerDefault::WorkerLinkCntUpdate(uint32_t workerIdx)
 {
-    std::unique_lock<std::mutex> lockGuard{ linkCntMutex };
+    std::unique_lock<std::mutex> lockGuard{linkCntMutex};
     auto pos = workerLinkCnt_.find(workerIdx);
     if (pos == workerLinkCnt_.end()) {
         return;
@@ -480,7 +479,7 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
     }
 
     int flags = 1;
-    setsockopt(tmpFD, SOL_TCP, TCP_NODELAY, reinterpret_cast<void*>(&flags), sizeof(flags));
+    setsockopt(tmpFD, SOL_TCP, TCP_NODELAY, reinterpret_cast<void *>(&flags), sizeof(flags));
     int synCnt = 1; /* Set connect() retry time for quick connect */
     setsockopt(tmpFD, IPPROTO_TCP, TCP_SYNCNT, &synCnt, sizeof(synCnt));
 
@@ -573,7 +572,7 @@ Result AccTcpServerDefault::GenerateSslCtx()
     return ACC_OK;
 }
 
-Result AccTcpServerDefault::CreateSSLLink(SSL* &ssl, int &tmpFD)
+Result AccTcpServerDefault::CreateSSLLink(SSL *&ssl, int &tmpFD)
 {
     if (tlsOption_.enableTls) {
         auto result = AccTcpSslHelper::NewSslLink(false, tmpFD, sslCtx_, ssl);
@@ -586,7 +585,7 @@ Result AccTcpServerDefault::CreateSSLLink(SSL* &ssl, int &tmpFD)
     return ACC_OK;
 }
 
-void AccTcpServerDefault::ValidateSSLLink(SSL* &ssl, int &tmpFD)
+void AccTcpServerDefault::ValidateSSLLink(SSL *&ssl, int &tmpFD)
 {
     if (ssl != nullptr) {
         if (AccCommonUtil::SslShutdownHelper(ssl) != ACC_OK) {
@@ -676,5 +675,5 @@ Result AccTcpServerDefault::Handshake(int &tmpFD, const AccConnReq &connReq, con
     LOG_INFO("Connect to " << ipAndPort << " successfully, with ssl " << (tlsOption_.enableTls ? "enable" : "disable"));
     return ACC_OK;
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

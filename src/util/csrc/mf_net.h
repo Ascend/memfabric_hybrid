@@ -24,12 +24,12 @@ struct net_addr_t {
     union {
         struct in_addr ipv4;
         struct in6_addr ipv6;
-    } ip {};
-    IpType type {IPNONE};
+    } ip{};
+    IpType type{IPNONE};
 
     net_addr_t() : type(IPNONE) {}
 
-    static net_addr_t from_ipv4(const struct in_addr& addr)
+    static net_addr_t from_ipv4(const struct in_addr &addr)
     {
         net_addr_t result;
         result.type = IpV4;
@@ -37,7 +37,7 @@ struct net_addr_t {
         return result;
     }
 
-    static net_addr_t from_ipv6(const struct in6_addr& addr)
+    static net_addr_t from_ipv6(const struct in6_addr &addr)
     {
         net_addr_t result;
         result.type = IpV6;
@@ -45,50 +45,51 @@ struct net_addr_t {
         return result;
     }
 
-    bool operator==(const net_addr_t& other) const
+    bool operator==(const net_addr_t &other) const
     {
-        if (type != other.type) return false;
-        
+        if (type != other.type)
+            return false;
+
         if (type == IpV4) {
             return ip.ipv4.s_addr == other.ip.ipv4.s_addr;
         } else if (type == IpV6) {
             return std::memcmp(&ip.ipv6, &other.ip.ipv6, sizeof(struct in6_addr)) == 0;
         }
-        
+
         return true;
     }
 };
-}
-}
+} // namespace mf
+} // namespace ock
 namespace std {
-    template<>
-    struct hash<ock::mf::net_addr_t> {
-        size_t operator()(const ock::mf::net_addr_t& addr) const
-        {
-            size_t result = 0;
+template<>
+struct hash<ock::mf::net_addr_t> {
+    size_t operator()(const ock::mf::net_addr_t &addr) const
+    {
+        size_t result = 0;
 
-            hash_combine(result, static_cast<int>(addr.type));
+        hash_combine(result, static_cast<int>(addr.type));
 
-            if (addr.type == ock::mf::IpV4) {
-                hash_combine(result, addr.ip.ipv4.s_addr);
-            } else if (addr.type == ock::mf::IpV6) {
-                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&addr.ip.ipv6);
-                for (size_t i = 0; i < sizeof(struct in6_addr); ++i) {
-                    hash_combine(result, bytes[i]);
-                }
+        if (addr.type == ock::mf::IpV4) {
+            hash_combine(result, addr.ip.ipv4.s_addr);
+        } else if (addr.type == ock::mf::IpV6) {
+            const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&addr.ip.ipv6);
+            for (size_t i = 0; i < sizeof(struct in6_addr); ++i) {
+                hash_combine(result, bytes[i]);
             }
-
-            return result;
         }
 
-    private:
-        static void hash_combine(size_t& seed, size_t value)
-        {
-            constexpr size_t SHIFT_LEFT = 6;
-            constexpr size_t SHIFT_RIGHT = 2;
-            seed ^= value + 0x9e3779b9 + (seed << SHIFT_LEFT) + (seed >> SHIFT_RIGHT);
-        }
-    };
-}
+        return result;
+    }
+
+private:
+    static void hash_combine(size_t &seed, size_t value)
+    {
+        constexpr size_t SHIFT_LEFT = 6;
+        constexpr size_t SHIFT_RIGHT = 2;
+        seed ^= value + 0x9e3779b9 + (seed << SHIFT_LEFT) + (seed >> SHIFT_RIGHT);
+    }
+};
+} // namespace std
 
 #endif // MF_NET_H

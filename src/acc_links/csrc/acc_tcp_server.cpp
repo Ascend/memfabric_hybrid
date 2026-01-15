@@ -24,5 +24,5 @@ AccTcpServerPtr AccTcpServer::Create()
     }
     return server.Get();
 }
-}  // namespace acc
-}  // namespace ock
+} // namespace acc
+} // namespace ock

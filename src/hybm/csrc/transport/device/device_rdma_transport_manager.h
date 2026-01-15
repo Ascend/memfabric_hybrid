@@ -59,8 +59,8 @@ public:
     Result Synchronize(uint32_t rankId) override;
 
 private:
-    static bool PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount,
-                                  in_addr &deviceIp, void *&rdmaHandle);
+    static bool PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
+                                  void *&rdmaHandle);
     static bool OpenTsd(uint32_t deviceId, uint32_t rankCount);
     static bool RaInit(uint32_t deviceId);
     static bool RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp);
@@ -72,8 +72,8 @@ private:
     int ConvertHccpMrInfo(const TransportMemoryRegion &mr, HccpMrInfo &info);
     void OptionsToRankMRs(const HybmTransPrepareOptions &options);
     Result WaitQpReady();
-    int GetRegAddress(const MemoryRegionMap &map, uint64_t inputAddr, uint64_t size, bool isLocal,
-                      uint64_t &outputAddr, uint32_t &mrKey) const;
+    int GetRegAddress(const MemoryRegionMap &map, uint64_t inputAddr, uint64_t size, bool isLocal, uint64_t &outputAddr,
+                      uint32_t &mrKey) const;
 
 private: // RDMA HOST STARS
     void ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr_rsp &rspInfo, rtStarsSqe_t &command, HybmStreamPtr st);
