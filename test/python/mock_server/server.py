@@ -373,7 +373,7 @@ class MfTest(TestServer):
                        self.transfer_engine_set_log_level),
             CliCommand("transfer_engine_initialize",
                        "Initialize the transfer engine, transfer_engine_initialize "
-                       "[store_url] [session_id] [role] [device_id]",
+                       "[store_url] [session_id] [role] [device_id] [op_type]",
                        self.transfer_engine_initialize),
             CliCommand("transfer_engine_register_memory",
                        "Register memory for transfer engine, "
@@ -670,7 +670,7 @@ class MfTest(TestServer):
     def bm_copy_data_batch(self, handle_id: int, src_addrs_str: int, dst_addrs_str: int, sizes_str: int,
                            count: int, copy_type: int, flags: int):
         handle = self._bm_handle_dic[handle_id]
-        src_addrs = list(map(int, src_addrs.split(",")))
+        src_addrs = list(map(int, src_addrs_str.split(",")))
         dst_addrs = list(map(int, dst_addrs_str.split(",")))
         sizes = list(map(int, sizes_str.split(",")))
         ret = handle.copy_data_batch(src_addrs=src_addrs, dst_addrs=dst_addrs, sizes=sizes, count=count,
@@ -810,15 +810,24 @@ class MfTest(TestServer):
         self.cli_print("set log level for transfer engine successfully.")
 
     @result_handler
-    def transfer_engine_initialize(self, store_url: str, session_id: str, role: str, device_id: int):
+    def transfer_engine_initialize(self, store_url: str, session_id: str, role: str, device_id: int, op_type: int):
         engine = TransferEngine()
         # 只掉接口暂时不用
         port = engine.get_rpc_port()
+        if op_type == 1:
+            data_op_type = TransferEngine.TransDataOpType.SDMA
+        elif op_type == 2:
+            data_op_type = TransferEngine.TransDataOpType.DEVICE_RDMA
+        else:
+            logging.error("Invalid optype: %d", op_type)
+            return
+        self.cli_print(f"TransDataOpType:{data_op_type}")
         ret_value = engine.initialize(
             store_url,
             session_id,
             role,
             device_id,
+            data_op_type
         )
         if ret_value == 0:
             addr = id(engine)
