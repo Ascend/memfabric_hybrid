@@ -21,10 +21,12 @@ namespace mf {
 static constexpr uint64_t MB_OFFSET = 20UL;
 Result HybmVaManager::Initialize(AscendSocType socType) noexcept
 {
+#if defined(ASCEND_NPU)
     if (socType == AscendSocType::ASCEND_UNKNOWN) {
         BM_LOG_ERROR("soc type is unknown.");
         return BM_INVALID_PARAM;
     }
+#endif
     return BM_OK;
 }
 

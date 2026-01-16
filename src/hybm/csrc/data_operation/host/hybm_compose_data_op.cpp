@@ -186,6 +186,10 @@ HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(co
         dataOperators.emplace_back("HOST_RDMA", hostRdmaDataOperator_);
     }
 
+    if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_URMA)) != 0U) {
+        dataOperators.emplace_back("HOST_URMA", hostRdmaDataOperator_);
+    }
+
     return dataOperators;
 }
 } // namespace mf
