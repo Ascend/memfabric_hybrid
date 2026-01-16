@@ -217,8 +217,8 @@ class BmDataOpType(Enum):
 class BigMemory:
     def join(flags = 0) -> int:
     def leave(flags = 0) -> int:
-    def local_mem_size() -> int:
-    def peer_rank_ptr(peer_rank) -> int:
+    def local_mem_size(mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
+    def peer_rank_ptr(peer_rank, mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
     def destroy() -> None:
     def register(addr, size) -> int:
     def unregister(addr) -> int:
@@ -234,8 +234,11 @@ class BigMemory:
 |leave方法|退出BM|
 |leave参数flags|预置参数|
 |local_mem_size方法|获取创建BM本地贡献的空间大小|
+|local_mem_size参数mem_type|本地贡献空间的内存类型|
 |local_mem_size返回值|本地贡献空间大小，单位byte|
-|peer_rank_ptr方法|获取rank id对应在gva上的地址位置|
+|peer_rank_ptr方法|获取rank id对应的贡献空间在gva上的地址位置|
+|peer_rank_ptr参数peer_rank|指定的rank id|
+|peer_rank_ptr参数mem_type|指定的rank id的贡献空间的内存类型|
 |destroy方法|销毁BM|
 |register方法|注册内存到BM|
 |register参数addr|注册地址的起始地址指针|

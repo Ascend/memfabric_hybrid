@@ -277,6 +277,9 @@ class MfTest(TestServer):
             CliCommand("bm_uninitialize",
                        "uninitialize smem big memory library, bm_uninitialize [flags]",
                        self.bm_uninitialize),
+            CliCommand("bm_rank_id",
+                       "Get the rank id assigned during initialize, bm_rank_id ",
+                       self.bm_rank_id),
             CliCommand("bm_create",
                        "Create a big memory object locally after initialized, bm_create "
                        "[mem_id] [local_dram_size] [local_hbm_size] [data_op_type] [flags]",
@@ -294,11 +297,14 @@ class MfTest(TestServer):
                        self.bm_leave),
             CliCommand("bm_local_mem_size",
                        "Get size of local memory that contributed to global space, "
-                       "bm_local_mem_size [handle_id]",
+                       "bm_local_mem_size [handle_id] [mem_type]",
                        self.bm_local_mem_size),
             CliCommand("bm_peer_rank_ptr",
-                       "Get peer gva by rank id, bm_peer_rank_ptr [handle_id] [peer_rank]",
+                       "Get peer gva by rank id, bm_peer_rank_ptr [handle_id] [peer_rank] [mem_type]",
                        self.bm_peer_rank_ptr),
+            CliCommand("bm_get_rank_id_by_gva",
+                       "Get rank id of gva that belongs to, bm_get_rank_id_by_gva [handle_id] [gva]",
+                       self.bm_get_rank_id_by_gva),
             CliCommand("bm_register",
                        "Register user mem, bm_register [handle_id] [addr] [size]",
                        self.bm_register),
@@ -309,14 +315,13 @@ class MfTest(TestServer):
                        "Data operation on Big Memory object, copy_data "
                        "[handle_id] [src_ptr] [dst_ptr] [size] [copy_type] [flags]",
                        self.bm_copy_data),
-            CliCommand("bm_copy_data_2d",
-                       "Data operation on Big Memory object, copy_data "
-                       "[handle_id] [src_ptr] [src_pitch] [dst_ptr] [dst_pitch] [width] [height] [copy_type] [flags]",
-                       self.bm_copy_data_2d),
             CliCommand("bm_copy_data_batch",
                        "Data operation on Big Memory object, copy_data_batch "
                        "[handle_id] [src_addrs_str] [dst_addrs_str] [sizes] [count] [copy_type] [flags]",
                        self.bm_copy_data_batch),
+            CliCommand("bm_wait",
+                       "Wait all issued async copy(s) finish, bm_wait [handle_id]",
+                       self.bm_wait),
             CliCommand("delete_bm_handle", "delete a bm handle, delete_bm_handle [handle_id]",
                        self.delete_bm_handle),
             CliCommand("shm_init",
@@ -362,6 +367,14 @@ class MfTest(TestServer):
                        "Calculate the sum of buffer, generate_transfer_engine_npu_buffer_sum "
                        "[transfer_data_id] [is_batch]",
                        self.generate_transfer_engine_npu_buffer_sum),
+            CliCommand("generate_transfer_engine_cpu_tensor",
+                       "Generate the buffer which is to transfer data between engines, "
+                       "generate_transfer_engine_cpu_tensor [is_src]",
+                       self.generate_transfer_engine_cpu_tensor),
+            CliCommand("generate_transfer_engine_cpu_buffer_sum",
+                       "Calculate the sum of buffer, generate_transfer_engine_cpu_buffer_sum "
+                       "[transfer_data_id] [is_batch]",
+                       self.generate_transfer_engine_cpu_buffer_sum),
             CliCommand("transfer_engine_get_rpc_port",
                        "Generate a random port [handle_id]",
                        self.transfer_engine_get_rpc_port),
@@ -620,17 +633,23 @@ class MfTest(TestServer):
         self.cli_print(f"bm leave, ret:{ret}")
 
     @result_handler
-    def bm_local_mem_size(self, handle_id: int):
+    def bm_local_mem_size(self, handle_id: int, mem_type: int):
         handle = self._bm_handle_dic[handle_id]
-        mem_size = handle.local_mem_size()
-        self.cli_print(f"local memory size:{mem_size}")
+        mem_size = handle.local_mem_size(mem_type=bm.BmMemType(mem_type))
+        self.cli_print(f"local memory size:{mem_size}, type:{bm.BmMemType(mem_type)}")
 
     @result_handler
-    def bm_peer_rank_ptr(self, handle_id: int, peer_rank: int):
+    def bm_peer_rank_ptr(self, handle_id: int, peer_rank: int, mem_type: int):
         handle = self._bm_handle_dic[handle_id]
-        ptr = handle.peer_rank_ptr(peer_rank=peer_rank)
-        self.cli_print(f"peer rack ptr16:{hex(ptr)}")
-        self.cli_print(f"peer rack ptr:{ptr}")
+        ptr = handle.peer_rank_ptr(peer_rank=peer_rank, mem_type=bm.BmMemType(mem_type))
+        self.cli_print(f"peer rack ptr16:{hex(ptr)}, type:{bm.BmMemType(mem_type)}")
+        self.cli_print(f"peer rack ptr:{ptr}, type:{bm.BmMemType(mem_type)}")
+
+    @result_handler
+    def bm_get_rank_id_by_gva(self, handle_id: int, gva: int):
+        handle = self._bm_handle_dic[handle_id]
+        rank_id = handle.get_rank_id_by_gva(gva)
+        self.cli_print(f"bm rank id:{rank_id}")
 
     @result_handler
     def bm_register(self, handle_id: int, addr: int, size: int):
@@ -652,21 +671,6 @@ class MfTest(TestServer):
         handle.copy_data(src_ptr=src_ptr, dst_ptr=dst_ptr, size=size, type=bm.BmCopyType(copy_type), flags=flags)
 
     @result_handler
-    def bm_copy_data_2d(self, handle_id: int, src_ptr: int, src_pitch: int, dst_ptr: int, dst_pitch: int, width: int,
-                        height: int, copy_type: int, flags: int):
-        handle = self._bm_handle_dic[handle_id]
-        copy_2d_config = bm.CopyData2DParams()
-        copy_2d_config.src = src_ptr
-        copy_2d_config.spitch = src_pitch
-        copy_2d_config.dest = dst_ptr
-        copy_2d_config.dpitch = dst_pitch
-        copy_2d_config.width = width
-        copy_2d_config.height = height
-        self.cli_print(f"src_ptr={src_ptr}, src_pitch={src_pitch}, dst_ptr={hex(dst_ptr)}, dst_pitch={dst_pitch}, "
-                       f"width={width}, height={height}, type={bm.BmCopyType(copy_type)}, flags={flags}")
-        handle.copy_data_2d(copy_2d_config, type=bm.BmCopyType(copy_type), flags=flags)
-
-    @result_handler
     def bm_copy_data_batch(self, handle_id: int, src_addrs_str: int, dst_addrs_str: int, sizes_str: int,
                            count: int, copy_type: int, flags: int):
         handle = self._bm_handle_dic[handle_id]
@@ -676,6 +680,12 @@ class MfTest(TestServer):
         ret = handle.copy_data_batch(src_addrs=src_addrs, dst_addrs=dst_addrs, sizes=sizes, count=count,
                                      type=bm.BmCopyType(copy_type), flags=flags)
         self.cli_print(f"bm copy_data_abtch, ret:{ret}")
+
+    @result_handler
+    def bm_wait(self, handle_id: int):
+        handle = self._bm_handle_dic[handle_id]
+        ret = handle.wait()
+        self.cli_print(f"bm wait, ret:{ret}")
 
     @result_handler
     def delete_bm_handle(self, handle_id: int):
@@ -783,7 +793,56 @@ class MfTest(TestServer):
         self.cli_print(f"generate transfer engine data batch buffer bytes is:{batch_bytes[0]},{batch_bytes[1]}")
 
     @result_handler
+    def generate_transfer_engine_cpu_tensor(self, is_src: bool):
+        # 手动分配内存再切分
+        total_size_bytes = 4 * 1024 * 1024  # 4MB
+        device = 'cpu'
+        if is_src:
+            big_buffer = torch.ones((total_size_bytes,), dtype=torch.uint8, device=device)
+        else:
+            big_buffer = torch.zeros((total_size_bytes,), dtype=torch.uint8, device=device)
+
+        buffer = big_buffer[0:1 * 1024 * 1024].reshape(1024, 1024)
+        buffer_bytes = buffer.element_size() * buffer.numel()
+
+        batch_buffers = [
+            big_buffer[2 * 1024 * 1024:3 * 1024 * 1024].reshape(1024, 1024),
+            big_buffer[3 * 1024 * 1024:4 * 1024 * 1024].reshape(1024, 1024)
+        ]
+        batch_bytes = [b.element_size() * b.numel() for b in batch_buffers]
+
+        transfer_data = TransferEngineData(
+            buffer=buffer,
+            buffer_bytes=buffer_bytes,
+            batch_buffers=batch_buffers,
+            batch_bytes=batch_bytes
+        )
+        transfer_data_id = id(transfer_data)
+        self._transfer_engine_data_dic[transfer_data_id] = transfer_data
+        buffer_addrs = [b.data_ptr() for b in transfer_data.batch_buffers]
+        self.cli_print(f"generate transfer engine data id:{transfer_data_id}")
+        self.cli_print(f"generate transfer engine data buffer addr is:{buffer.data_ptr()}")
+        self.cli_print(f"generate transfer engine data buffer bytes is:{buffer_bytes}")
+        self.cli_print(f"generate transfer engine data batch buffer addr is:{buffer_addrs[0]},{buffer_addrs[1]}")
+        self.cli_print(f"generate transfer engine data batch buffer bytes is:{batch_bytes[0]},{batch_bytes[1]}")
+
+    @result_handler
     def generate_transfer_engine_npu_buffer_sum(self, transfer_data_id: int, is_batch: bool):
+        if transfer_data_id not in self._transfer_engine_data_dic:
+            self.cli_print(f"Transfer data with ID {transfer_data_id} not found")
+            return
+        transfer_data = self._transfer_engine_data_dic[transfer_data_id]
+        if is_batch:
+            buffer_sum = torch.sum(torch.cat(transfer_data.batch_buffers))
+        else:
+            buffer_sum = torch.sum(transfer_data.buffer)
+        self.cli_print(f"Calculate the buffer sum is:{buffer_sum}")
+
+    @result_handler
+    def generate_transfer_engine_cpu_buffer_sum(self, transfer_data_id: int, is_batch: bool):
+        if transfer_data_id not in self._transfer_engine_data_dic:
+            self.cli_print(f"Transfer data with ID {transfer_data_id} not found")
+            return
         transfer_data = self._transfer_engine_data_dic[transfer_data_id]
         if is_batch:
             buffer_sum = torch.sum(torch.cat(transfer_data.batch_buffers))

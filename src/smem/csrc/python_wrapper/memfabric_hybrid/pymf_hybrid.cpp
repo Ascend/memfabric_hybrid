@@ -36,12 +36,9 @@ public:
         smem_shm_destroy(handle_, 0);
     }
 
-    void SetExternContext(const void *context, uint32_t size)
+    int32_t SetExternContext(const void *context, uint32_t size)
     {
-        auto ret = smem_shm_set_extra_context(handle_, context, size);
-        if (ret != 0) {
-            throw std::runtime_error("set extern context failed:");
-        }
+        return smem_shm_set_extra_context(handle_, context, size);
     }
 
     uint32_t LocalRank() noexcept
@@ -54,28 +51,19 @@ public:
         return smem_shm_get_global_rank_size(handle_);
     }
 
-    void Barrier()
+    int32_t Barrier()
     {
-        auto ret = smem_shm_control_barrier(handle_);
-        if (ret != 0) {
-            throw std::runtime_error("barrier failed:");
-        }
+        return smem_shm_control_barrier(handle_);
     }
 
-    void Destroy(uint32_t flags)
+    int32_t Destroy(uint32_t flags)
     {
-        auto ret = smem_shm_destroy(handle_, flags);
-        if (ret != 0) {
-            throw std::runtime_error("destroy failed:");
-        }
+        return smem_shm_destroy(handle_, flags);
     }
 
-    void AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
+    int32_t AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
     {
-        auto ret = smem_shm_control_allgather(handle_, sendBuf, sendSize, recvBuf, recvSize);
-        if (ret != 0) {
-            throw std::runtime_error("all gather failed:");
-        }
+        return smem_shm_control_allgather(handle_, sendBuf, sendSize, recvBuf, recvSize);
     }
 
     void *Address() const noexcept
@@ -148,7 +136,7 @@ public:
     {
         auto ptr = smem_bm_ptr_by_mem_type(handle_, memType, rankId);
         if (ptr == nullptr) {
-            throw std::runtime_error(std::string("get remote ptr failed:"));
+            return 0;
         }
 
         return (uint64_t)(ptrdiff_t)ptr;
@@ -160,13 +148,10 @@ public:
         handle_ = nullptr;
     }
 
-    void CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
+    int32_t CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
     {
         smem_copy_params params = {(const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size};
-        auto ret = smem_bm_copy(handle_, &params, type, flags);
-        if (ret != 0) {
-            throw std::runtime_error(std::string("copy bm data failed:").append(std::to_string(ret)));
-        }
+        return smem_bm_copy(handle_, &params, type, flags);
     }
 
     int32_t CopyDataBatch(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts, std::vector<size_t> sizes,
@@ -189,7 +174,7 @@ public:
         return ret;
     }
 
-    static int Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
+    static int32_t Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
                           const smem_bm_config_t &config) noexcept
     {
         worldSize_ = worldSize;
@@ -206,6 +191,12 @@ public:
         return smem_bm_get_rank_id();
     }
 
+    uint32_t GetRankIdByGva(uintptr_t gva) noexcept
+    {
+        void *gvaPtr = reinterpret_cast<void *>(gva);
+        return smem_bm_get_rank_id_by_gva(handle_, gvaPtr);
+    }
+
     static BigMemory *Create(uint32_t id, uint64_t localDRAMSize, uint64_t localHBMSize,
                              smem_bm_data_op_type dataOpType, uint32_t flags)
     {
@@ -217,14 +208,19 @@ public:
         return new (std::nothrow) BigMemory{hd};
     }
 
-    int RegisterMem(uint64_t addr, uint64_t size) noexcept
+    int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept
     {
         return smem_bm_register_user_mem(handle_, addr, size);
     }
 
-    int UnRegisterMem(uint64_t addr) noexcept
+    int32_t UnRegisterMem(uint64_t addr) noexcept
     {
         return smem_bm_unregister_user_mem(handle_, addr);
+    }
+
+    int32_t Wait()
+    {
+        return smem_bm_wait(handle_);
     }
 
 private:
@@ -416,8 +412,10 @@ whether to start config store, default true)")
 void DefineBmConfig(py::module_ &m)
 {
     py::enum_<smem_bm_mem_type>(m, "BmMemType")
-        .value("DEVICE", SMEM_MEM_TYPE_DEVICE, "memory type is DEVICE side.")
-        .value("HOST", SMEM_MEM_TYPE_HOST, "memory type is HOST side.");
+        .value("LOCAL_DEVICE", SMEM_MEM_TYPE_LOCAL_DEVICE, "memory type is on local DEVICE side.")
+        .value("LOCAL_HOST", SMEM_MEM_TYPE_LOCAL_HOST, "memory type is on local HOST side.")
+        .value("DEVICE", SMEM_MEM_TYPE_DEVICE, "memory type is on global DEVICE side.")
+        .value("HOST", SMEM_MEM_TYPE_HOST, "memory type is on global HOST side.");
 
     py::enum_<smem_bm_copy_type>(m, "BmCopyType")
         .value("L2G", SMEMB_COPY_L2G, "copy data from local hbm to global space")
@@ -612,6 +610,8 @@ Returns:
     ptr of peer gva)")
         .def("destroy", &BigMemory::Destroy, py::call_guard<py::gil_scoped_release>(), R"(
 Destroy the big memory handle.)")
+        .def("get_rank_id_by_gva", &BigMemory::GetRankIdByGva, py::call_guard<py::gil_scoped_release>(), py::arg("gva"),
+             R"(Get rank id of gva that belongs to.)")
         .def("register", &BigMemory::RegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"),
              py::arg("size"), R"(
 register user mem.)")
@@ -631,7 +631,9 @@ Returns:
     0 if successful)")
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
              py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"), py::arg("type"),
-             py::arg("flags"), R"(cop data with batch.)");
+             py::arg("flags"), R"(cop data with batch.)")
+        .def("wait", &BigMemory::Wait, py::call_guard<py::gil_scoped_release>(), R"(
+Wait all issued async copy(s) finish.)");
 }
 } // namespace
 
