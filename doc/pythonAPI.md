@@ -165,14 +165,24 @@ class BmCopyType(Enum):
     G2L
     G2H
     H2G
+    L2GH
+    GH2L
+    GH2H
+    H2GH
+    G2G
 ```
 
 |属性|含义|
 |-|-|
-|L2G|将数据从本地空间复制到全局空间|
-|G2L|将数据从全局空间复制到本地空间|
+|L2G|将数据从本地HBM复制到全局空间|
+|G2L|将数据从全局空间复制到本地HBM|
 |G2H|将数据从全局空间复制到主机内存|
 |H2G|将数据从主机内存复制到全局空间|
+|L2GH|将数据从本地HBM复制到全局主机空间|
+|GH2L|将数据从全局主机空间复制到本地HBM|
+|GH2H|将数据从全局主机空间复制到主机内存|
+|H2GH|将数据从主机内存复制到全局主机空间|
+|G2G|将数据从全局空间复制到全局空间|
 
 #### BmConfig类
 ```python
@@ -205,9 +215,9 @@ class BmDataOpType(Enum):
 ```python
 class BigMemory:
     def join(flags = 0) -> int:
-    def leave(flags = 0) -> None:
-    def local_mem_size() -> int:
-    def peer_rank_ptr(peer_rank) -> int:
+    def leave(flags = 0) -> int:
+    def local_mem_size(mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
+    def peer_rank_ptr(peer_rank, mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
     def destroy() -> None:
     def register(addr, size) -> int:
     def unregister(addr) -> int:
@@ -223,8 +233,11 @@ class BigMemory:
 |leave方法|退出BM|
 |leave参数flags|预置参数|
 |local_mem_size方法|获取创建BM本地贡献的空间大小|
+|local_mem_size参数mem_type|本地贡献空间的内存类型|
 |local_mem_size返回值|本地贡献空间大小，单位byte|
-|peer_rank_ptr方法|获取rank id对应在gva上的地址位置|
+|peer_rank_ptr方法|获取rank id对应的贡献空间在gva上的地址位置|
+|peer_rank_ptr参数peer_rank|指定的rank id|
+|peer_rank_ptr参数mem_type|指定的rank id的贡献空间的内存类型|
 |destroy方法|销毁BM|
 |register方法|注册内存到BM|
 |register参数addr|注册地址的起始地址指针|
