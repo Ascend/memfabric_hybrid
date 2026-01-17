@@ -50,24 +50,9 @@ HybmStreamPtr HybmStreamManager::GetThreadHybmStream(uint32_t devId)
     return hybmStream_;
 }
 
-void HybmStreamManager::ResetThreadHybmStream(uint64_t tid) noexcept
-{
-    std::unique_lock lock_guard(g_allThreadStreamMutex);
-    auto find = g_allThreadStreams.find(tid);
-    if (find != g_allThreadStreams.end()) {
-        find->second->Destroy();
-        g_allThreadStreams.erase(find);
-    }
-}
-
 void HybmStreamManager::DestroyAllThreadHybmStream()
 {
     std::unique_lock<std::shared_mutex> lock_guard(g_allThreadStreamMutex);
-    for (auto &stream : g_allThreadStreams) {
-        if (stream.second != nullptr) {
-            stream.second->Destroy();
-        }
-    }
     g_allThreadStreams.clear();
 }
 
