@@ -20,7 +20,6 @@ namespace mf {
 class HybmStreamManager {
 public:
     static HybmStreamPtr GetThreadHybmStream(uint32_t devId);
-    static void ResetThreadHybmStream(uint64_t tid) noexcept;
     static void DestroyAllThreadHybmStream();
     static void *GetThreadAclStream();
 };
