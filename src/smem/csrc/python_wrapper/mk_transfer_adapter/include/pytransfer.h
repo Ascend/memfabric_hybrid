@@ -44,7 +44,7 @@ public:
     int Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
                    TransDataOpType dataOpType);
 
-    int GetRpcPort();
+    std::string GetRpcPort();
 
     int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length);
 

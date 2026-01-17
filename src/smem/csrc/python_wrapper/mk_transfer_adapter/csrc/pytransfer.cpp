@@ -80,11 +80,13 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
     return 0;
 }
 
-int TransferAdapterPy::GetRpcPort()
+std::string TransferAdapterPy::GetRpcPort()
 {
     int rpcPort = static_cast<int>(findAvailableTcpPort(sockfd_));
-    ADAPTER_LOG_INFO("Get rpcPort is " << rpcPort);
-    return rpcPort;
+    pid_t current_pid = getpid();
+    std::string port_with_pid = std::to_string(rpcPort) + "_" + std::to_string(current_pid);
+    ADAPTER_LOG_INFO("Get rpcPort (port_pid) is " << port_with_pid);
+    return port_with_pid;
 }
 
 int TransferAdapterPy::TransferSyncWrite(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address,

@@ -366,7 +366,7 @@ def create_config_store(store_url: str) -> int
 class TransferEngine:
     def __init__(self):
     def initialize(store_url: str, unique_id: str, role: str, device_id: int) -> int:
-    def get_rpc_port() -> int:
+    def get_rpc_port() -> str:
     def transfer_sync_write(destflag: str, buffer, peer_buffer_address, length) -> int:
     def batch_transfer_sync_write(destflag: str, buffers, peer_buffer_addresses, lengths) -> int:
     def transfer_async_write_submit(destflag: str, buffer, peer_buffer_address, length, stream) -> int:
@@ -382,7 +382,7 @@ class TransferEngine:
 |-|-|
 |initialize方法|TRANS配置初始化，成功返回0，其他为错误码|
 |initialize参数store_url|config store地址，格式tcp://ip:port|
-|initialize参数unique_id|该TRANS实例的唯一标识，格式ip:port|
+|initialize参数unique_id|该TRANS实例的唯一标识，格式ip:port_pid|
 |initialize参数role|当前进程的角色|
 |initialize参数device_id|当前设备的唯一标识|
 |get_rpc_port方法|获取可用的rpc端口|

@@ -62,10 +62,6 @@ SmemTransEntry::~SmemTransEntry()
 int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 {
     entityId_ = (16U << 3U) + 1U;
-    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port)) {
-        return SM_INVALID_PARAM;
-    }
-
     auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout), config.startConfigServer);
     SM_VALIDATE_RETURN(ret == SM_OK, "store helper initialize failed: " << ret, ret);
 
@@ -273,32 +269,6 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
     return ret;
 }
 
-bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port)
-{
-    UrlExtraction extraction;
-    int ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
-    if (ret != 0) {
-        SM_LOG_ERROR("parse name failed: " << ret);
-        return false;
-    }
-
-    struct in6_addr addr6;
-    if (inet_pton(AF_INET6, extraction.ip.c_str(), &addr6) == 1) {
-        ip.ip.ipv6 = addr6;
-        ip.type = ock::mf::IpV6;
-    } else {
-        struct in_addr addr4;
-        if (inet_pton(AF_INET, extraction.ip.c_str(), &addr4) != 1) {
-            SM_LOG_ERROR("Invalid IP address format: " << extraction.ip);
-            return false;
-        }
-        ip.ip.ipv4.s_addr = ntohl(addr4.s_addr);
-        ip.type = ock::mf::IpV4;
-    }
-    port = extraction.port;
-    return true;
-}
-
 Result SmemTransEntry::StartWatchConnectThread()
 {
     if (watchConnectThread_.joinable()) {
@@ -466,11 +436,6 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &un
         /* fast path */
         uniqueId = it->second;
         return SM_OK;
-    }
-    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port);
-    if (!success) {
-        SM_LOG_ERROR("parse name failed.");
-        return -1;
     }
 
     WorkerIdUnion workerId{workerUniqueId};

@@ -75,7 +75,6 @@ public:
                              const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode, void *stream);
 
 private:
-    bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port);
     void CleanupRemoteSlices(const std::vector<const StoredSliceInfo *> &rmSs);
     void RemoveRanks(std::set<uint32_t> &rankSet);
     Result StartWatchConnectThread();
