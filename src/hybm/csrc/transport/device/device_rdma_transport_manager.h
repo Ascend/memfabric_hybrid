@@ -84,6 +84,7 @@ private: // RDMA HOST STARS
 private:
     static thread_local HybmStreamNotifyPtr notify_;
     RdmaNotifyInfo notifyInfo_;
+    std::mutex mutex_;
     bool started_{false};
     uint32_t rankId_{0};
     uint32_t rankCount_{1};

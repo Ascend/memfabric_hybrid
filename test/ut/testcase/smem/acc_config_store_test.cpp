@@ -182,7 +182,7 @@ TEST_F(AccConfigStoreTest, get_when_server_exit)
     std::string value;
 
     std::thread child{[&finished, &ret, &store, &key, &value]() {
-        ret = store->Get(key, value);
+        ret = store->Get(key, value, 1000);
         finished = true;
     }};
     child.detach();

@@ -128,15 +128,12 @@ private:
     std::thread timerThread_;
     bool running_{false};
 
-    std::mutex rankStateMutex_;
-    std::condition_variable rankStateTaskCondition_;
     std::unordered_map<uint32_t, StoreWaitContext> rankStateWaiters_;
     std::queue<uint32_t> rankStateTaskQueue_;
     std::thread rankStateThread_;
 
     const std::string listenIp_;
     const uint16_t listenPort_;
-    std::mutex mutex_;
     uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;

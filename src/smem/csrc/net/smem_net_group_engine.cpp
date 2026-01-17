@@ -350,7 +350,7 @@ void SmemNetGroupEngine::GroupListenEvent()
     std::string prevEvent;
 
     listenThreadStarted_ = true;
-    while (!groupStoped_) {
+    while (!groupStoped_.load()) {
         if (!joined_) {
             usleep(SMEM_GROUP_SLEEP_TIMEOUT);
             continue;
@@ -377,7 +377,7 @@ void SmemNetGroupEngine::GroupListenEvent()
             contextRet = listenCtx_.ret;
         });
 
-        if (groupStoped_) {
+        if (groupStoped_.load()) {
             break;
         }
 
@@ -396,6 +396,10 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         for (auto &event : currentEvents) {
+            std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
+            if (event.remoteRankId != option_.rank) {
+                uniqueLock.unlock();
+            }
             if (event.eventType == GroupEventType::LUNCH_JOIN_LEAVE_EVENT) {
                 JoinLeaveEventProcess(event.value, prevEvent);
             } else if (event.eventType == GroupEventType::REMOTE_DOWN_EVENT) {
@@ -624,6 +628,7 @@ Result SmemNetGroupEngine::GroupJoin()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
+    std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
     if (joined_) {
         return SM_OK;
     }
@@ -676,6 +681,7 @@ Result SmemNetGroupEngine::GroupLeave()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
+    std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
 
     Result ret;
@@ -696,7 +702,7 @@ Result SmemNetGroupEngine::GroupLeave()
     static constexpr int MAX_RETRY = 100000;
     while (retry_count++ < MAX_RETRY) {
         ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK && old == val) {
+        if (ret == SM_OK && (old.empty() || old == val)) {
             break;
         }
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);

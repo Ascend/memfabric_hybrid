@@ -20,7 +20,7 @@ Result AccTcpRequestContext::Reply(int16_t result, const AccDataBufferPtr &d) co
     ASSERT_RETURN(link_.Get() != nullptr, ACC_LINK_ERROR);
     if (UNLIKELY(!link_->Established())) {
         LOG_ERROR("Failed to send reply message with message type " << header_.type << ", seqlo " << header_.seqNo
-                                                                    << " as the link is broken");
+                                                                    << " as the link is broken, id: " << link_->Id());
         return ACC_LINK_ERROR;
     }
     AccMsgHeader replyHeader(header_.type, result, d->DataLen(), header_.seqNo);

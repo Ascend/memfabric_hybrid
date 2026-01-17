@@ -58,7 +58,7 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
 {
     int32_t userId = -1;
     int32_t logicId = -1;
-
+    std::unique_lock<std::mutex> unique_lock(mutex_);
     BM_LOG_DEBUG("begin to open device with " << options);
     auto ret = DlAclApi::AclrtGetDevice(&userId);
     BM_ASSERT_LOG_AND_RETURN(ret == 0 && userId >= 0,
@@ -115,10 +115,17 @@ Result RdmaTransportManager::OpenDevice(const TransportOptions &options)
 
 Result RdmaTransportManager::CloseDevice()
 {
+    std::unique_lock<std::mutex> unique_lock(mutex_);
     if (qpManager_ != nullptr) {
         qpManager_->Shutdown();
         qpManager_ = nullptr;
     }
+    started_ = false;
+    rdmaHandle_ = nullptr;
+    ranksMRs_.clear();
+    notifyRemoteInfo_.clear();
+    deviceChipInfo_ = nullptr;
+    BM_LOG_INFO("CloseDevice successful.");
     return BM_OK;
 }
 
