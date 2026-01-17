@@ -172,6 +172,8 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     }
 
     globalGroup_->SetBitmapFromRanks(allRanks);
+    SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk
+                                           << ", rank size is: " << globalGroup_->GetRankSize());
     return SM_OK;
 }
 

@@ -293,7 +293,7 @@ Result TcpConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &val
     auto responseCode = response->Header().result;
     if (responseCode != 0 && responseCode != RESTORE) {
         if (responseCode != NOT_EXIST) {
-            STORE_LOG_ERROR("send get for key: " << key << ", resp code: " << responseCode << " timeout:" << timeoutMs);
+            STORE_LOG_WARN("send get for key: " << key << ", resp code: " << responseCode << " timeout:" << timeoutMs);
         }
         return responseCode;
     }
@@ -671,7 +671,7 @@ Result TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestConte
     msgCtxLocker.unlock();
 
     if (clientContext == nullptr) {
-        STORE_LOG_ERROR("receive response(" << context.SeqNo() << ") not sent request.");
+        STORE_LOG_WARN("receive response(" << context.SeqNo() << ") not sent request.");
         return SM_ERROR;
     }
 

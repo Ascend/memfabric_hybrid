@@ -85,7 +85,7 @@ int JoinableRanksQpManager::Startup(void *rdma) noexcept
         BM_LOG_ERROR("input rdma is null");
         return BM_INVALID_PARAM;
     }
-
+    std::unique_lock<std::mutex> unique_lock(mutex_);
     if (started_.load()) {
         BM_LOG_DEBUG("already started.");
         return BM_OK;
@@ -110,6 +110,22 @@ int JoinableRanksQpManager::Startup(void *rdma) noexcept
 
 void JoinableRanksQpManager::Shutdown() noexcept
 {
+    std::unique_lock<std::mutex> unique_lock(mutex_);
+    std::set<uint32_t> list;
+    for (uint32_t i = 0; i < connections_.size(); ++i) {
+        list.insert(i);
+    }
+    RemoveRanksProcess(list);
+    started_.store(false);
+    running_.store(false);
+    rdmaHandle_ = nullptr;
+    qpArray_.clear();
+    connections_.clear();
+    newClients_.clear();
+    newServers_.clear();
+    removedClientRanks_.clear();
+    removedServerRanks_.clear();
+    unique_lock.unlock();
     CloseServices();
 }
 
@@ -563,6 +579,8 @@ void JoinableRanksQpManager::RemoveRanksProcess(const std::set<uint32_t> &ranks)
         auto ret = DlHccpApi::RaSocketBatchClose(&closeInfo, 1U);
         if (ret != 0) {
             BM_LOG_WARN("close socket from " << rankId_ << " to " << it->first << " failed: " << ret);
+        } else {
+            BM_LOG_INFO("close socket from " << rankId_ << " to " << it->first << " successful: " << ret);
         }
     }
 }

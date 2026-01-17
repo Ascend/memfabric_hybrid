@@ -41,7 +41,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
 
 Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
 {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::mutex> guard(storeMutex_);
     if (accTcpServer_ != nullptr) {
         STORE_LOG_WARN("tcp store server already startup");
         return SM_OK;
@@ -85,9 +85,7 @@ Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
         return SM_ERROR;
     }
 
-    std::unique_lock<std::mutex> lockGuard{storeMutex_};
     running_ = true;
-    lockGuard.unlock();
 
     timerThread_ = std::thread{[this]() { TimerThreadTask(); }};
     rankStateThread_ = std::thread{[this]() { RankStateTask(); }};
@@ -99,40 +97,37 @@ Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
 void AccStoreServer::Shutdown(bool afterFork) noexcept
 {
     STORE_LOG_INFO("start to shutdown Acc Store Server");
-    if (accTcpServer_ == nullptr) {
-        return;
-    }
-
-    if (afterFork) {
-        accTcpServer_->StopAfterFork();
-        running_ = false;
-        if (timerThread_.joinable()) {
-            timerThread_.detach();
+    {
+        if (accTcpServer_ == nullptr) {
+            return;
         }
-    } else {
-        accTcpServer_->Stop();
+        if (afterFork) {
+            accTcpServer_->StopAfterFork();
+            if (timerThread_.joinable()) {
+                timerThread_.detach();
+            }
+        } else {
+            accTcpServer_->Stop();
+        }
         std::unique_lock<std::mutex> lockGuard{storeMutex_};
         running_ = false;
-        lockGuard.unlock();
-        storeCond_.notify_one();
-
-        if (timerThread_.joinable()) {
-            try {
-                timerThread_.join();
-            } catch (const std::system_error &e) {
-                STORE_LOG_ERROR("thread join failed: " << e.what());
-            }
-        }
+        storeCond_.notify_all();
+        accTcpServer_ = nullptr;
     }
 
+    if (timerThread_.joinable() && !afterFork) {
+        try {
+            timerThread_.join();
+        } catch (const std::system_error &e) {
+            STORE_LOG_ERROR("thread join failed: " << e.what());
+        }
+    }
     if (rankStateThread_.joinable()) {
-        rankStateTaskCondition_.notify_one();
         rankStateThread_.join();
     }
     if (checkerThread_.joinable()) {
         checkerThread_.join();
     }
-    accTcpServer_ = nullptr;
     STORE_LOG_INFO("finished shutdown Acc Store Server");
 }
 
@@ -205,7 +200,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
 
 Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    STORE_LOG_INFO("link broken, linkId: " << link->Id());
+    STORE_LOG_DEBUG("link broken, linkId: " << link->Id());
     uint32_t rankId = std::numeric_limits<uint32_t>::max();
     uint32_t linkId = link->Id();
 
@@ -228,30 +223,27 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         externalBrokenHandler_(link->Id(), kvStore_);
     } else if (aliveRankSet_.empty()) {
         STORE_LOG_INFO("all client link broken, will clear data");
+        rankIndex_ = 0;
         kvStore_.clear();
         waitCtx_.clear();
         keyWaiters_.clear();
         timedWaiters_.clear();
+        rankStateWaiters_.clear();
+        rankStateTaskQueue_ = {};
+    }
+    rankStateWaiters_.erase(linkId);
+    if (rankId == std::numeric_limits<uint32_t>::max()) {
+        STORE_LOG_WARN("broken link id: " << linkId << ", cannot find rank id.");
         return SM_OK;
     }
-    lockGuard.unlock();
-
-    if (rankId == std::numeric_limits<uint32_t>::max()) {
-        STORE_LOG_ERROR("broken link id: " << linkId << ", cannot find rank id.");
-        return SM_ERROR;
-    }
-
-    std::unique_lock<std::mutex> rankStateLock{rankStateMutex_};
-    rankStateWaiters_.erase(linkId);
     rankStateTaskQueue_.push(rankId);
-    rankStateTaskCondition_.notify_one();
+    storeCond_.notify_all();
     return SM_OK;
 }
 
 Result AccStoreServer::LinkBrokenHandler(const uint32_t linkId) noexcept
 {
     STORE_LOG_INFO("inner detect link broken, linkId: " << linkId);
-    std::unique_lock<std::mutex> lockGuard{storeMutex_};
     if (externalBrokenHandler_ != nullptr) {
         externalBrokenHandler_(linkId, kvStore_);
     }
@@ -313,7 +305,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
     auto linkId = context.Link()->Id();
     auto rankingKey = key + std::to_string(linkId);
-    STORE_LOG_INFO("GET rankingKey(" << rankingKey << ") success.");
+    STORE_LOG_DEBUG("GET rankingKey(" << rankingKey << ") start.");
     SmemMessage responseMessage{request.mt};
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(rankingKey);
@@ -351,7 +343,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
 
     responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
     STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") rankId:" << trans.rankId
-                                  << " rankId_:" << rankIndex_);
+                                  << " worldSize:" << worldSize_);
     auto response = SmemMessagePacker::Pack(responseMessage);
     ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
     return 0;
@@ -427,8 +419,6 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
             timerPos->second.emplace(pair.first->first);
         }
     }
-    lockGuard.unlock();
-
     return SM_OK;
 }
 
@@ -639,7 +629,6 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "invalid request: count(key)=1 & count(value)=2");
         return SM_INVALID_PARAM;
     }
-
     auto &key = request.keys[0];
     auto &expected = request.values[0];
     auto &exchange = request.values[1];
@@ -648,12 +637,12 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
         STORE_LOG_ERROR("key length too large, length: " << key.length());
         return StoreErrorCode::INVALID_KEY;
     }
-
+    std::string newValueStr = std::string{newValue.begin(), newValue.end()};
     std::vector<uint8_t> exists;
     SmemMessage responseMessage{request.mt};
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
-    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
-
+    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key
+                                   << ") start, newValueStr: " << newValueStr);
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
     auto pos = kvStore_.find(key);
     if (pos != kvStore_.end()) {
@@ -674,7 +663,8 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
         }
     }
     lockGuard.unlock();
-    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") finished.");
+    std::string existsStr = std::string{exists.begin(), exists.end()};
+    STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") finished, existsStr: " << existsStr);
 
     responseMessage.values.push_back(exists);
     auto response = SmemMessagePacker::Pack(responseMessage);
@@ -695,14 +685,15 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
     STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
     auto linkId = context.Link()->Id();
     StoreWaitContext waitContext{-1L, WATCH_RANK_DOWN_KEY, context};
-    std::unique_lock<std::mutex> uniqueLock{rankStateMutex_};
+    std::unique_lock<std::mutex> uniqueLock{storeMutex_};
     auto pair = rankStateWaiters_.emplace(linkId, waitContext);
     if (!pair.second) {
         uniqueLock.unlock();
         STORE_LOG_ERROR("link id : " << linkId << ", already watched for rank state.");
         return SM_REPEAT_CALL;
     }
-    STORE_LOG_DEBUG("WATCH REQUEST(" << context.SeqNo() << ") for key(" << WATCH_RANK_DOWN_KEY << ") finished.");
+    STORE_LOG_DEBUG("WATCH REQUEST(" << context.SeqNo() << ") for key(" << WATCH_RANK_DOWN_KEY
+                                     << ") finished, linkId: " << linkId);
     return SM_OK;
 }
 
@@ -748,6 +739,9 @@ void AccStoreServer::WakeupWaiters(const std::list<ock::acc::AccTcpRequestContex
     auto response = SmemMessagePacker::Pack(responseMessage);
     for (auto &context : waiters) {
         STORE_LOG_DEBUG("WAKEUP REQUEST(" << context.SeqNo() << ").");
+        if (!context.Link()->Established()) {
+            continue;
+        }
         ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
     }
 }
@@ -797,6 +791,10 @@ void AccStoreServer::TimerThreadTask() noexcept
 
         timeoutIds.clear();
         for (auto &ctx : timeoutContexts) {
+            if (!ctx.Link()->Established()) {
+                STORE_LOG_WARN("Link is not Established, reply timeout response for : " << ctx.SeqNo());
+                continue;
+            }
             STORE_LOG_DEBUG("reply timeout response for : " << ctx.SeqNo());
             ReplyWithMessage(ctx, StoreErrorCode::TIMEOUT, "<timeout>");
         }
@@ -809,8 +807,8 @@ void AccStoreServer::TimerThreadTask() noexcept
 void AccStoreServer::RankStateTask() noexcept
 {
     while (running_) {
-        std::unique_lock<std::mutex> lock(rankStateMutex_);
-        rankStateTaskCondition_.wait(lock, [this] { return !rankStateTaskQueue_.empty() || !running_; });
+        std::unique_lock<std::mutex> lock(storeMutex_);
+        storeCond_.wait(lock, [this] { return !rankStateTaskQueue_.empty() || !running_; });
         if (!running_) {
             return;
         }
@@ -828,6 +826,11 @@ void AccStoreServer::RankStateTask() noexcept
         responseMessage.values.push_back(value);
         auto response = SmemMessagePacker::Pack(responseMessage);
         for (auto it = rankStateWaiters_.begin(); it != rankStateWaiters_.end(); ++it) {
+            if (!it->second.ReqCtx().Link()->Established()) {
+                STORE_LOG_WARN("rankId: " << rankId << " down notify to linkId: " << it->first
+                                          << ", id: " << it->second.ReqCtx().Link()->Id());
+                continue;
+            }
             STORE_LOG_DEBUG("rankId: " << rankId << " down notify to linkId: " << it->first);
             ReplyWithMessage(it->second.ReqCtx(), StoreErrorCode::SUCCESS, response);
         }
@@ -849,12 +852,10 @@ void AccStoreServer::CheckerThreadTask() noexcept
                 ++it;
             }
         }
-        lockerGuard.unlock();
         for (auto linkId : brokenLinks) {
-            LinkBrokenHandler(linkId);
+            LinkBrokenHandler(linkId); // private func
         }
         brokenLinks.clear();
-        lockerGuard.lock();
         storeCond_.wait_for(lockerGuard, std::chrono::milliseconds(HEARTBEAT_INTERVAL), [this]() { return !running_; });
     }
     STORE_LOG_INFO("checker thread exit");

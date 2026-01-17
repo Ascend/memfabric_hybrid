@@ -129,9 +129,10 @@ private:
     std::thread listenThread_;
     SmemTimedwait listenSignal_;
     GroupListenContext listenCtx_;
-    bool joined_ = false;
+    mutable std::mutex groupEventHandleMutex_;
+    std::atomic_bool joined_ = false;
     std::atomic<bool> listenThreadStarted_{false};
-    bool groupStoped_ = false;
+    std::atomic_bool groupStoped_ = false;
     std::function<void(int)> globalExitHandler_;
     uint64_t joinedRanksBitmap_[RANK_BITS_U64_COUNT]{};
     mutable std::mutex rankBitmapMutex_;
