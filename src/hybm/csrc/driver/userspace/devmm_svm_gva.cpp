@@ -154,8 +154,12 @@ static int32_t RemoveInGvaHeap(uint64_t va)
     }
 
     (void)pthread_mutex_lock(&g_gvaHeapMgr.treeLock);
-    g_gvaHeapMgr.tree.erase(va);
+    const auto count = g_gvaHeapMgr.tree.erase(va);
     (void)pthread_mutex_unlock(&g_gvaHeapMgr.treeLock);
+
+    if (count == 0) {
+        return -1;
+    }
     return 0;
 }
 

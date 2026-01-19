@@ -102,6 +102,7 @@ Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, std
 {
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(addr), size);
+    slices_.emplace(slice->index_, slice);
     return BM_OK;
 }
 
@@ -123,8 +124,12 @@ Result HybmDevLegacySegment::ReleaseSliceMemory(const std::shared_ptr<MemSlice> 
         return BM_INVALID_PARAM;
     }
 
-    auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
-    BM_LOG_INFO("free slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
+    // If memory in range, va is allocated from memory pool, HalGvaFree should be called
+    // If memory is not in range, va is register from user local device
+    if (MemoryInRange(reinterpret_cast<void *>(slice->vAddress_), slice->size_)) {
+        auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
+        BM_LOG_INFO("free slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
+    }
 
     slices_.erase(pos);
     return BM_OK;
