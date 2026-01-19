@@ -62,6 +62,7 @@ using rtDisableP2PFunc = int32_t (*)(uint32_t, uint32_t);
 using rtGetLogicDevIdByUserDevIdFunc = int32_t (*)(const int32_t, int32_t *const);
 using rtIpcOpenMemoryFunc = int32_t (*)(void **, const char *);
 using rtIpcCloseMemoryFunc = int32_t (*)(const void *);
+using rtMemcpyAsyncFunc = int32_t (*)(void *, size_t, const void *, size_t, uint32_t, void *);
 using aclrtGetSocNameFunc = const char *(*)();
 using aclrtMemcpyBatchFunc = int32_t (*)(void **, size_t *, void **, size_t *, size_t, aclrtMemcpyBatchAttr *, size_t *,
                                          size_t, size_t *);
@@ -305,6 +306,15 @@ public:
         return pRtGetLogicDevIdByUserDevId(userDevId, logicDevId);
     }
 
+    static inline Result RtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
+                                       void *stream)
+    {
+        if (pRtMemcpyAsync == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pRtMemcpyAsync(dst, destMax, src, count, kind, stream);
+    }
+
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -338,6 +348,7 @@ private:
     static aclrtGetSocNameFunc pAclrtGetSocName;
     static rtEnableP2PFunc pRtEnableP2P;
     static rtDisableP2PFunc pRtDisableP2P;
+    static rtMemcpyAsyncFunc pRtMemcpyAsync;
     static rtGetLogicDevIdByUserDevIdFunc pRtGetLogicDevIdByUserDevId;
 };
 } // namespace mf

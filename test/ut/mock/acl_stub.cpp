@@ -11,6 +11,7 @@
 */
 #include <cstdint>
 #include <cstddef>
+#include <cstdlib>
 
 constexpr int32_t RETURN_OK = 0;
 constexpr int32_t RETURN_ERROR = -1;
@@ -70,6 +71,15 @@ int32_t aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, ui
 }
 
 int32_t aclrtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind, void *stream)
+{
+    if (stream != nullptr) {
+        *reinterpret_cast<uint64_t *>(stream) += 1;
+    }
+    return RETURN_OK;
+}
+
+int32_t rtMemcpyAsyncWithoutCheckKind(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
+                                      void *stream)
 {
     if (stream != nullptr) {
         *reinterpret_cast<uint64_t *>(stream) += 1;
@@ -141,12 +151,13 @@ int32_t aclrtCreateStreamWithConfig(void **stream, uint32_t prot, uint32_t confi
 
 int32_t aclrtMallocHost(void **ptr, size_t count)
 {
-    (*ptr) = NULL;
+    (*ptr) = malloc(count);
     return 0;
 }
 
 int32_t aclrtFreeHost(void *ptr)
 {
+    free(ptr);
     return 0;
 }
 

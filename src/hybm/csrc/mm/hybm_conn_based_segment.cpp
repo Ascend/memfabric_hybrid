@@ -335,5 +335,6 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
 
 Result HybmConnBasedSegment::GetExportSliceSize(size_t &size) noexcept
 {
+    size = sizeof(HostExportInfo);
     return BM_OK;
 }

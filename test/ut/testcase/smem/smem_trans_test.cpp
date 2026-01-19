@@ -269,7 +269,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param_ipv6)
     EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
-TEST_F(SmemTransTest, smem_trans_write)
+TEST_F(SmemTransTest, smem_trans_read_write)
 {
     uint32_t rankSize = 2;
     int *sender_buffer = new int[500];
@@ -297,7 +297,7 @@ TEST_F(SmemTransTest, smem_trans_write)
 
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
-            ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities);
+            ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities, 0);
             if (ret != SM_OK) {
                 exit(4);
             }
@@ -401,9 +401,33 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
 
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
-            ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities);
+            ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities, 0);
             if (ret != SM_OK) {
                 exit(4);
+            }
+
+            uint64_t stream_cnt = 0;
+            ret = smem_trans_write_submit(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities,
+                                          (void *)&stream_cnt, 0);
+            if (ret != SM_OK) {
+                exit(6);
+            }
+            if (stream_cnt != 1) {
+                exit(7);
+            }
+
+            ret = smem_trans_read(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities, 0);
+            if (ret != SM_OK) {
+                exit(8);
+            }
+            stream_cnt = 0;
+            ret = smem_trans_read_submit(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities,
+                                         (void *)&stream_cnt, 0);
+            if (ret != SM_OK) {
+                exit(9);
+            }
+            if (stream_cnt != 1) {
+                exit(10);
             }
         }
 
@@ -477,7 +501,7 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
     delete[] recv_buffer;
 }
 
-TEST_F(SmemTransTest, smem_trans_batch_write)
+TEST_F(SmemTransTest, smem_trans_batch_read_write)
 {
     uint32_t rankSize = 2;
     int *sender_buffer = new int[500];
@@ -509,9 +533,33 @@ TEST_F(SmemTransTest, smem_trans_batch_write)
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
-            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1);
+            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1, 0);
             if (ret != SM_OK) {
                 exit(4);
+            }
+
+            uint64_t stream_cnt = 0;
+            ret = smem_trans_batch_write_submit(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(),
+                                                1, (void *)&stream_cnt, 0);
+            if (ret != SM_OK) {
+                exit(6);
+            }
+            if (stream_cnt != 1) {
+                exit(7);
+            }
+
+            ret = smem_trans_batch_read(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1, 0);
+            if (ret != SM_OK) {
+                exit(4);
+            }
+            stream_cnt = 0;
+            ret = smem_trans_batch_read_submit(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(),
+                                               1, (void *)&stream_cnt, 0);
+            if (ret != SM_OK) {
+                exit(6);
+            }
+            if (stream_cnt != 1) {
+                exit(7);
             }
         }
 
@@ -612,7 +660,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
         std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
-            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1);
+            ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1, 0);
             if (ret != SM_OK) {
                 exit(4);
             }
@@ -708,37 +756,43 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
 
         // handle = nullptr
-        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 2;
             goto cleanup;
         }
         // srcAddresses = nullptr
-        ret = smem_trans_batch_write(handle, nullptr, UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, nullptr, UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 3;
             goto cleanup;
         }
         // destUniqueId = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 4;
             goto cleanup;
         }
         // destAddresses = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, nullptr, dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, nullptr, dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 5;
             goto cleanup;
         }
         // dataSizes = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), nullptr, 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), nullptr,
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 6;
             goto cleanup;
         }
         // batchSize = 0
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(), 0);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     0, 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 7;
             goto cleanup;
@@ -787,38 +841,42 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
 
         // handle = nullptr
         ret = smem_trans_batch_write(nullptr, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(),
-                                     2);
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 2;
             goto cleanup;
         }
         // srcAddresses = nullptr
-        ret = smem_trans_batch_write(handle, nullptr, UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, nullptr, UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 3;
             goto cleanup;
         }
         // destUniqueId = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), nullptr, destAddrPtrs.data(), dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 4;
             goto cleanup;
         }
         // destAddresses = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, nullptr, dataSizes.data(), 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, nullptr, dataSizes.data(),
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 5;
             goto cleanup;
         }
         // dataSizes = nullptr
-        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), nullptr, 2);
+        ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), nullptr,
+                                     dataSizes.size(), 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 6;
             goto cleanup;
         }
         // batchSize = 0
         ret = smem_trans_batch_write(handle, srcAddrPtrs.data(), UNIQUE_IPV6_ID, destAddrPtrs.data(), dataSizes.data(),
-                                     0);
+                                     0, 0);
         if (ret != SM_INVALID_PARAM) {
             flag = 7;
             goto cleanup;
@@ -864,7 +922,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &trans_options);
 
-        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), capacities.size(), 0);
         if (ret != SM_OK) {
             flag = 2;
             goto cleanup;
@@ -908,7 +966,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
         // client connect to server when initializing
         auto handle = smem_trans_create(STORE_URL_IPV6, UNIQUE_IPV6_ID, &trans_options);
 
-        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), 2, 0);
+        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), capacities.size(), 0);
         if (ret != SM_OK) {
             flag = 2;
             goto cleanup;
@@ -927,113 +985,4 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
 
     EXPECT_TRUE(WIFEXITED(status));
     EXPECT_EQ(WEXITSTATUS(status), 0);
-}
-
-TEST_F(SmemTransTest, smem_trans_submit)
-{
-    uint32_t rankSize = 2;
-    int *sender_buffer = new int[500];
-    int *recv_buffer = new int[500];
-    size_t capacities = 500 * sizeof(int);
-    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
-    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
-
-    auto func = [](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options, std::vector<int *> addrPtrs,
-                   size_t capacities, const std::array<const char *, 2> unique_ids) {
-        trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
-        int ret = smem_trans_init(&trans_options);
-        if (ret != 0) {
-            exit(1);
-        }
-        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
-        if (handle == nullptr) {
-            exit(2);
-        }
-
-        ret = smem_trans_register_mem(handle, addrPtrs[rank], capacities, 0);
-        if (ret != SM_OK) {
-            exit(3);
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
-        if (rank == 0) {
-            uint64_t stream_cnt = 0;
-            ret = smem_trans_write_submit(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities,
-                                          (void *)&stream_cnt);
-            if (ret != SM_OK) {
-                exit(4);
-            }
-            if (stream_cnt != 1) {
-                exit(6);
-            }
-        }
-
-        ret = smem_trans_deregister_mem(handle, addrPtrs[rank]);
-        if (ret != SM_OK) {
-            exit(5);
-        }
-
-        smem_trans_destroy(handle, 0);
-        smem_trans_uninit(0);
-    };
-
-    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
-    std::vector<int *> addrPtrs = {sender_buffer, recv_buffer};
-    std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
-
-    pid_t pids[rankSize];
-    uint32_t maxProcess = rankSize;
-    bool needKillOthers = false;
-    for (uint32_t i = 0; i < rankSize; ++i) {
-        pids[i] = fork();
-        EXPECT_NE(pids[i], -1);
-        if (pids[i] == -1) {
-            maxProcess = i;
-            needKillOthers = true;
-            break;
-        }
-        if (pids[i] == 0) {
-            smem_set_conf_store_tls(false, nullptr, 0);
-            if (i == 0) {
-                smem_create_config_store(STORE_URL);
-            }
-            func(i, rankSize, trans_options[i], addrPtrs, capacities, unique_ids);
-            exit(0);
-        }
-    }
-
-    if (needKillOthers) {
-        for (uint32_t i = 0; i < maxProcess; ++i) {
-            int status = 0;
-            kill(pids[i], SIGKILL);
-            waitpid(pids[i], &status, 0);
-        }
-        ASSERT_NE(needKillOthers, true);
-    }
-
-    for (uint32_t i = 0; i < rankSize; ++i) {
-        int status = 0;
-        waitpid(pids[i], &status, 0);
-        EXPECT_EQ(WIFEXITED(status), true);
-        if (WIFEXITED(status)) {
-            EXPECT_EQ(WEXITSTATUS(status), 0);
-            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
-                needKillOthers = true;
-                for (uint32_t j = 0; j < rankSize; ++j) {
-                    if (i != j && pids[j] > 0) {
-                        kill(pids[j], SIGKILL);
-                    }
-                }
-            }
-        } else {
-            needKillOthers = true;
-            for (uint32_t j = 0; j < rankSize; ++j) {
-                if (i != j && pids[j] > 0) {
-                    kill(pids[j], SIGKILL);
-                }
-            }
-        }
-    }
-    delete[] sender_buffer;
-    delete[] recv_buffer;
 }

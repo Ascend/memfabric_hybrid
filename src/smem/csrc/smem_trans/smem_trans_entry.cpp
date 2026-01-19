@@ -201,22 +201,20 @@ static std::string uniqueToString(const WorkerId &unique)
 }
 
 Result SmemTransEntry::SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr,
-                                    size_t dataSize, smem_bm_copy_type opcode, void *stream)
+                                    size_t dataSize, smem_bm_copy_type opcode, void *stream, uint32_t flags)
 {
-    SM_VALIDATE_RETURN(localAddr != nullptr, "invalid localAddr, which is null", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(remoteAddr != nullptr, "invalid remoteAddr, which is null", SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(dataSize != 0, "invalid dataSize, which is 0", SM_INVALID_PARAM);
-    return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode, stream);
+    return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode, stream, flags);
 }
 
 Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
                                          const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode,
-                                         void *stream)
+                                         void *stream, uint32_t flags)
 {
     SM_VALIDATE_RETURN(localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dataSizes != nullptr, "invalid dataSizes, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(batchSize != 0, "invalid batchSize, which is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(flags == 0 || flags == COPY_EXTEND_FLAG, "invalid flags", SM_INVALID_PARAM);
     for (auto i = 0U; i < batchSize; i++) {
         SM_VALIDATE_RETURN(localAddrs[i] != nullptr, "localAddrs, which is null", SM_INVALID_PARAM);
         SM_VALIDATE_RETURN(remoteAddrs[i] != nullptr, "remoteAddrs, which is null", SM_INVALID_PARAM);
@@ -253,7 +251,7 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
             (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
     }
 
-    uint32_t flag = (stream != nullptr) ? ASYNC_COPY_FLAG : 0;
+    uint32_t flag = flags | ((stream != nullptr) ? ASYNC_COPY_FLAG : 0);
     switch (opcode) {
         case SMEMB_COPY_L2G: {
             hybm_batch_copy_params copyParams = {localAddrs, mappedAddress.data(), dataSizes, batchSize};

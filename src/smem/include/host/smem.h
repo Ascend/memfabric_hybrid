@@ -19,6 +19,9 @@
 extern "C" {
 #endif
 
+#define ASYNC_COPY_FLAG                     (1UL << (0))
+#define COPY_EXTEND_FLAG                    (1UL << (1))
+
 /**
  * @brief Initialize the smem running environment
  *

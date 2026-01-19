@@ -397,7 +397,7 @@ void BandWidthCalculator::PrintResult(std::vector<BwTestResult> &results)
         }
         uint64_t totalKB = r.copySize * r.copyCount * r.batchSize / 1024;
         uint64_t avgTimeUs = r.totalTimeUs / r.copyCount;
-        auto bandwidthGBps = totalKB * 1000000.0 / r.totalTimeUs / 1024 / 1024;
+        auto bandwidthGBps = totalKB * 1024.0 / r.totalTimeUs / 1000.0;
 
         std::cout << std::left << std::setw(DIGIT_WIDTH) << r.typeName << std::setw(DIGIT_WIDTH) << r.devId
                   << std::setw(DIGIT_WIDTH) << r.rankId << std::setw(20) << totalKB << std::setw(20) << r.totalTimeUs

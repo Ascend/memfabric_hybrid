@@ -21,7 +21,6 @@ extern "C" {
 
 typedef void *smem_bm_t;
 #define SMEM_BM_TIMEOUT_MAX                 UINT32_MAX /* all timeout must <= UINT32_MAX */
-#define ASYNC_COPY_FLAG                     (1UL << (0))
 #define SMEM_BM_PERFORMANCE_MODE_FLAG_INDEX 7
 #define SMEM_BM_PERFORMANCE_MODE_FLAG_LEN   1
 #define SMEM_BM_BIND_NUMA_FLAG_INDEX        0

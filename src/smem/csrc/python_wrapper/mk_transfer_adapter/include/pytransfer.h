@@ -46,21 +46,37 @@ public:
 
     int GetRpcPort();
 
-    int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length);
+    int TransferSyncWrite(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length,
+                          uint32_t flags);
 
     int BatchTransferSyncWrite(const char *destUniqueId, std::vector<uintptr_t> buffers,
-                               std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths);
+                               std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths,
+                               uint32_t flags);
 
-    int TransferSyncRead(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length);
+    int TransferSyncRead(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address, size_t length,
+                         uint32_t flags);
 
     int BatchTransferSyncRead(const char *destUniqueId, std::vector<uintptr_t> buffers,
-                              std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths);
+                              std::vector<uintptr_t> peer_buffer_addresses, std::vector<size_t> lengths,
+                              uint32_t flags);
 
     int TransferAsyncReadSubmit(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address,
-                                size_t length, uintptr_t stream);
+                                size_t length, uintptr_t stream, uint32_t flags);
 
     int TransferAsyncWriteSubmit(const char *destUniqueId, uintptr_t buffer, uintptr_t peer_buffer_address,
-                                 size_t length, uintptr_t stream);
+                                 size_t length, uintptr_t stream, uint32_t flags);
+
+    int BatchTransferAsyncWriteSubmit(const char *destUniqueId,
+                                      std::vector<uintptr_t> buffers,
+                                      std::vector<uintptr_t> peer_buffer_addresses,
+                                      std::vector<size_t> lengths,
+                                      uintptr_t stream, uint32_t flags);
+
+    int BatchTransferAsyncReadSubmit(const char *destUniqueId,
+                                     std::vector<uintptr_t> buffers,
+                                     std::vector<uintptr_t> peer_buffer_addresses,
+                                     std::vector<size_t> lengths,
+                                     uintptr_t stream, uint32_t flags);
 
     int RegisterMemory(uintptr_t buffer_addr, size_t capacity);
 

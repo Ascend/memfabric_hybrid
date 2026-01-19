@@ -535,7 +535,7 @@ static int32_t FreeManagedNomal(uint64_t va)
 int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, uint64_t flags)
 {
 #ifdef UT_ENABLED
-    *address = HYBM_DEVICE_VA_START;
+    *address = SVM_END_ADDR - GB;
     return BM_OK;
 #endif
     uint32_t advise = 0;

@@ -14,6 +14,7 @@
 #include "dl_hal_api.h"
 #include "dl_hccp_api.h"
 #include "dl_hcom_api.h"
+#include "dl_hybm_copy_extend.h"
 
 namespace ock {
 namespace mf {
@@ -37,6 +38,8 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
         DlAclApi::CleanupLibrary();
         return result;
     }
+
+    (void)DlHybmExtendApi::TryLoadLibrary();
 #endif
 
     DlHcomApi::LoadLibrary();
@@ -49,6 +52,7 @@ void DlApi::CleanupLibrary()
     DlAclApi::CleanupLibrary();
     DlHalApi::CleanupLibrary();
     DlHcomApi::CleanupLibrary();
+    DlHybmExtendApi::CleanupLibrary();
 }
 
 Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)

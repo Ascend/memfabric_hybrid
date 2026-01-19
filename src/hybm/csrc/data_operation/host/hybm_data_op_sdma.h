@@ -45,10 +45,10 @@ private:
     Result CopyGH2LH(void *destVA, const void *srcVA, uint64_t length, void *stream) noexcept;
 
     void InitG2GStreamTask(StreamTask &task) noexcept;
-    Result CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
+    Result CopyG2G(void *destVA, const void *srcVA, size_t count, uint32_t flags, void *stream) noexcept;
     Result BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept;
 
-    Result CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept;
+    Result CopyG2GAsync(void *destVA, const void *srcVA, size_t count, uint32_t flags, void *stream) noexcept;
 
     Result BatchCopyLH2GD(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[], uint32_t batchSize,
                           void *stream) noexcept;
@@ -59,8 +59,15 @@ private:
     Result BatchCopyGH2LH(void *hostAddrs[], void *gvaAddrs[], const uint64_t counts[], uint32_t batchSize,
                           void *stream) noexcept;
 
+    Result BatchCopyExtend(hybm_batch_copy_params &params, void *stream, uint32_t flags) noexcept;
+    uint32_t TryGetOneParamSpace(void **ptr) noexcept;
+
 private:
     bool inited_ = false;
+
+    void *paramSpace_ = nullptr;
+    uint64_t paramOffset_ = 0;
+    uint32_t paramSpaceIdx_ = 0;
 };
 } // namespace mf
 } // namespace ock

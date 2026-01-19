@@ -237,11 +237,11 @@ int32_t smem_bm_join(smem_bm_t handle, uint32_t flags, void **localGvaAddress);
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 ```
 
-|参数/返回值|含义|
-|-|-|
-|handle|待退出BM handle|
-|flags|预留参数|
-|返回值|成功返回0，否则返回错误码|
+|参数/返回值| 含义                                                    |
+|-|-------------------------------------------------------|
+|handle| 待退出BM handle                                          |
+|flags| 预留参数 |
+|返回值| 成功返回0，否则返回错误码                                         |
 
 ### 4.拷贝/批量拷贝数据对象
 #### smem_bm_copy
@@ -251,13 +251,13 @@ int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params,
     smem_bm_copy_type t, uint32_t flags);
 ```
 
-|参数/返回值|含义|
-|-|-|
-|handle|BM handle|
-|params|拷贝数据的相关参数|
-|t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
-|flags|预留参数|
-|返回值|成功返回0，失败返回错误码|
+|参数/返回值| 含义                                                                     |
+|-|------------------------------------------------------------------------|
+|handle| BM handle                                                              |
+|params| 拷贝数据的相关参数                                                              |
+|t| 数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory |
+|flags| ASYNC_COPY_FLAG:异步执行;COPY_EXTEND_FLAG:A3超节点内使用MTE执行拷贝                                       |
+|返回值| 成功返回0，失败返回错误码                                                          |
 
 #### smem_bm_copy_batch
 批量拷贝数据对象
@@ -270,7 +270,7 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 |handle|BM handle|
 |params|拷贝数据的相关参数|
 |t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
-|flags|预留参数|
+|flags|ASYNC_COPY_FLAG:异步执行;COPY_EXTEND_FLAG:A3超节点内使用MTE执行拷贝|
 |返回值|成功返回0，失败返回错误码|
 
 ### 5.查询接口
@@ -658,7 +658,7 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address)
 
 ```c
 int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                    const void *remoteAddr, size_t dataSize)
+                    const void *remoteAddr, size_t dataSize, uint32_t flags)
 ```
 
 |参数/返回值|含义|
@@ -668,6 +668,7 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
 |remoteUniqueId|远端TRANS实例对应的标识|
 |remoteAddr|远端待读取数据的起始地址指针|
 |dataSize|传输数据大小，单位字节|
+| flags          | 标记位                |
 |返回值|成功返回0，其他为错误码|
 
 #### smem_trans_batch_read
@@ -675,7 +676,7 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
 
 ```c
 int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
-                          const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize)
+                          const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags)
 ```
 
 |参数/返回值|含义|
@@ -686,6 +687,7 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
 |remoteAddrs[]|批量远端待读取数据的起始地址指针列表|
 |dataSizes[]|批量传输数据大小列表，单位字节|
 |batchSize|批量读操作的任务数|
+| flags          | 标记位                |
 |返回值|成功返回0，其他为错误码|	
 
 #### smem_trans_write
@@ -693,7 +695,7 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
 
 ```c
 int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                              void *remoteAddr, size_t dataSize)
+                              void *remoteAddr, size_t dataSize, uint32_t flags)
 ```
 
 |参数/返回值|含义|
@@ -703,6 +705,7 @@ int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char 
 |remoteUniqueId|远端TRANS实例对应的标识|
 |remoteAddr|远端存储数据起始地址指针|
 |dataSize|传输数据大小，单位字节|
+| flags          | 标记位                |
 |返回值|成功返回0，其他为错误码|
 
 #### smem_trans_batch_write
@@ -710,7 +713,7 @@ int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char 
 
 ```c
 int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
-                                    void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize)
+                                    void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags)
 ```
 
 |参数/返回值|含义|
@@ -721,6 +724,7 @@ int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], co
 |destAddresses[]|批量远端存储数据起始地址指针列表|
 |dataSizes[]|批量传输数据大小列表，单位字节|
 |batchSize|批量写操作的任务数|
+| flags          | 标记位                |
 |返回值|成功返回0，其他为错误码|
 
 ### 5. 异步读/写提交
@@ -729,25 +733,26 @@ int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], co
 
 ```c
 int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                               const void *remoteAddr, size_t dataSize, void *stream)
+                               const void *remoteAddr, size_t dataSize, void *stream, uint32_t flags)
 ```
 
-| 参数/返回值       | 含义                   |
-|--------------|----------------------|
-| handle       | TRANS对象handle        |
-| localAddr   | 本地用于接收读取数据的起始地址指针           |
-| remoteUniqueId | 远端TRANS实例对应的标识       |
-| remoteAddr    | 远端待读取数据的起始地址指针         |
-| dataSize     | 传输数据大小，单位字节               |
-| stream       | 需要将任务提交到的aclrtStream |
-| 返回值          | 成功返回0，其他为错误码         |
+| 参数/返回值         | 含义                 |
+|----------------|--------------------|
+| handle         | TRANS对象handle      |
+| localAddr      | 本地用于接收读取数据的起始地址指针  |
+| remoteUniqueId | 远端TRANS实例对应的标识     |
+| remoteAddr     | 远端待读取数据的起始地址指针     |
+| dataSize       | 传输数据大小，单位字节        |
+| stream         | 需要将任务提交到的aclrtStream |
+| flags          | 标记位                |
+| 返回值            | 成功返回0，其他为错误码       |
 
 #### smem_trans_write_submit
 异步写提交接口
 
 ```c
 int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                                void *remoteAddr, size_t dataSize, void *stream)
+                                void *remoteAddr, size_t dataSize, void *stream, uint32_t flags)
 ```
 
 | 参数/返回值       | 含义                   |

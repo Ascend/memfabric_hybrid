@@ -105,10 +105,11 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
  * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
  * @param remoteAddr       [in] Pointer to the start address of remote target storage
  * @param dataSize         [in] data size to be transferred
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId, void *remoteAddr,
-                         size_t dataSize);
+                         size_t dataSize, uint32_t flags);
 
 /**
  * @brief Transfer data to peer with write in batch
@@ -119,10 +120,11 @@ int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char 
  * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote target storage
  * @param dataSizes        [in] Array of byte counts corresponding to batch transmitted data
  * @param batchSize        [in] Total number of tasks in batch transmission
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
-                               void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize);
+                               void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags);
 
 /**
  * @brief Read data from peer to local
@@ -132,10 +134,11 @@ int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], co
  * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
  * @param remoteAddr       [in] Pointer to the start address of remote data to be read
  * @param dataSize         [in] Number of bytes for single read operation
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId, const void *remoteAddr,
-                        size_t dataSize);
+                        size_t dataSize, uint32_t flags);
 
 /**
  * @brief Read data from peer to local in batch
@@ -146,10 +149,11 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
  * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote data to be read
  * @param dataSizes        [in] Array of byte counts corresponding to batch read data
  * @param batchSize        [in] Total number of tasks in batch read operation
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
-                              const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize);
+                              const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags);
 
 /**
  * @brief submit read task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
@@ -160,10 +164,11 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
  * @param remoteAddr       [in] Pointer to the start address of remote data to be read
  * @param dataSize         [in] Number of bytes for single read operation
  * @param stream           [in] acl rt stream
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId, const void *remoteAddr,
-                               size_t dataSize, void *stream);
+                               size_t dataSize, void *stream, uint32_t flags);
 
 /**
  * @brief submit write task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
@@ -174,10 +179,45 @@ int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char 
  * @param remoteAddr       [in] Pointer to the start address of remote target storage
  * @param dataSize         [in] data size to be transferred
  * @param stream           [in] acl rt stream
+ * @param flags            [in] optional flags
  * @return 0 if successful
  */
 int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                                void *remoteAddr, size_t dataSize, void *stream);
+                                void *remoteAddr, size_t dataSize, void *stream, uint32_t flags);
+
+/**
+ * @brief submit batch read task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddrs       [in] Array of pointers to the start addresses of batch local received data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote data to be read
+ * @param dataSizes        [in] Array of byte counts corresponding to batch read data
+ * @param batchSize        [in] Total number of tasks in batch read operation
+ * @param stream           [in] acl rt stream
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
+int32_t smem_trans_batch_read_submit(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
+                                     const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize,
+                                     void *stream, uint32_t flags);
+
+/**
+ * @brief submit batch write task into stream, only support dataOpType == SMEMB_DATA_OP_SDMA now
+ *
+ * @param handle           [in] transfer object handle
+ * @param localAddrs       [in] Array of pointers to the start addresses of batch local source data storage
+ * @param remoteUniqueId   [in] Unique identifier of the remote TRANS instance
+ * @param remoteAddrs      [in] Array of pointers to the start addresses of batch remote target storage
+ * @param dataSizes        [in] Array of byte counts corresponding to batch transmitted data
+ * @param batchSize        [in] Total number of tasks in batch transmission
+ * @param stream           [in] acl rt stream
+ * @param flags            [in] optional flags
+ * @return 0 if successful
+ */
+int32_t smem_trans_batch_write_submit(smem_trans_t handle, const void *localAddrs[],
+                                      const char *remoteUniqueId, void *remoteAddrs[], size_t dataSizes[],
+                                      uint32_t batchSize, void *stream, uint32_t flags);
 
 #ifdef __cplusplus
 }

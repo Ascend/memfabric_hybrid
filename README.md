@@ -93,16 +93,19 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ### 带宽测试(单DIE+单CPU)
 - 在昇腾A3超节点跨机数据访问性能(DRAM and HBM pooling over UB 1.0)如下：
 
-| 数据传输方向&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 单次数据大小（GB）&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 带宽（GB/s）&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
-|--------------| -----------------| ------------ |
-| RH2D         | 1 | 102.66 |
-| RH2D         | 2 | 102.62 |
-| D2RH         | 1 | 69.42 |
-| D2RH         | 2 | 69.42 |
-| RD2D         | 1 | 155.04 |
-| RD2D         | 2 | 155.04 |
-| D2RD         | 1 | 128.53 |
-| D2RD         | 2 | 128.53 |
+| 数据传输方向 | 单次数据大小（GB） | 带宽（GB/s）|
+|--------| -----------------| --------- |
+| RH2D   | 1 | 110.23 |
+| RH2D   | 2 | 110.19 |
+| D2RH   | 1 | 74.54 |
+| D2RH   | 2 | 74.54 |
+| RD2D   | 1 | 166.47 |
+| RD2D   | 2 | 166.47 |
+| D2RD   | 1 | 138.01 |
+| D2RD   | 2 | 138.01 |
+**注**：和昇腾官方带宽测试工具[ascend-dmi](https://www.hiascend.com/document/detail/zh/mindx-dl/600/toolbox/ascenddmi/toolboxug_0015.html)一样，A3超节点测试采用的通信带宽的统计方式，
+1 GB/s = 1000 * 1000 * 1000 B/s
+
 
 - 在昇腾A2服务器跨机数据访问性能(DRAM and HBM pooling over Device RoCE)如下:
       

@@ -13,6 +13,8 @@
 
 #include "hybm_logger.h"
 #include "dl_acl_api.h"
+#include "dl_hal_api.h"
+#include "dl_hybm_copy_extend.h"
 #include "hybm_ptracer.h"
 #include "hybm_data_op.h"
 #include "hybm_gva.h"
@@ -20,7 +22,12 @@
 
 namespace ock {
 namespace mf {
-constexpr uint64_t HBM_SWAP_SPACE_SIZE = 128 * 1024 * 1024;
+constexpr uint32_t HYBM_SINGLE_PARAM_NUM = 16 * 1024; // 16K
+constexpr uint64_t HYBM_SINGLE_PARAM_SIZE = HYBM_SINGLE_PARAM_NUM * 3 * 8; // 384K
+constexpr uint64_t HYBM_PARAM_SPACE_CAP = 170;
+constexpr uint64_t HYBM_PARAM_SPACE_SIZE = 64 * 1024 * 1024; // HYBM_SINGLE_PARAM_SIZE * HYBM_PARAM_SPACE_CAP = 63.75M
+constexpr uint64_t HYBM_PARAM_SPACE_META_OFFSET = 65534 * 1024; // HYBM_PARAM_SPACE_SIZE - 2K
+constexpr uint32_t HYBM_EXTEND_CONCURRENT = 32;
 HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
 HostDataOpSDMA::~HostDataOpSDMA()
@@ -34,6 +41,26 @@ Result HostDataOpSDMA::Initialize() noexcept
         return BM_OK;
     }
 
+    auto ret = DlAclApi::AclrtMallocHost(&paramSpace_, HYBM_PARAM_SPACE_SIZE);
+    BM_ASSERT_RETURN(ret == 0 && paramSpace_ != nullptr, BM_MALLOC_FAILED);
+
+    void *output = nullptr;
+    ret = DlHalApi::HalHostRegister(paramSpace_, HYBM_PARAM_SPACE_SIZE, HOST_MEM_MAP_DEV,
+                                    HybmGetInitedLogicDeviceId(), &output);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("register param space failed, ret:" << ret);
+        DlAclApi::AclrtFreeHost(paramSpace_);
+        paramSpace_ = nullptr;
+        return BM_ERROR;
+    }
+
+    auto mask = reinterpret_cast<uint64_t *>(reinterpret_cast<uint64_t>(paramSpace_) + HYBM_PARAM_SPACE_META_OFFSET);
+    for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
+        __atomic_store_n(mask + i, HYBM_EXTEND_CONCURRENT, __ATOMIC_RELEASE);
+    }
+
+    paramOffset_ = reinterpret_cast<uint64_t>(output) - reinterpret_cast<uint64_t>(paramSpace_);
+    paramSpaceIdx_ = 0;
     inited_ = true;
     return BM_OK;
 }
@@ -42,6 +69,12 @@ void HostDataOpSDMA::UnInitialize() noexcept
 {
     if (!inited_) {
         return;
+    }
+
+    if (paramSpace_ != nullptr) {
+        DlHalApi::HalHostUnregisterEx(paramSpace_, HybmGetInitedLogicDeviceId(), HOST_MEM_MAP_DEV);
+        DlAclApi::AclrtFreeHost(paramSpace_);
+        paramSpace_ = nullptr;
     }
     inited_ = false;
 }
@@ -57,13 +90,13 @@ Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LD, ret);
             break;
         }
@@ -81,31 +114,31 @@ Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GH);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GH, ret);
             break;
         }
@@ -123,7 +156,7 @@ Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LD);
-            ret = CopyG2G(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2G(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LD, ret);
             break;
         }
@@ -150,7 +183,7 @@ Result HostDataOpSDMA::CopyLH2GD(void *gvaAddr, const void *hostAddr, size_t cou
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(gvaAddr, copyDevice, count, nullptr);
+    auto result = CopyG2G(gvaAddr, copyDevice, count, 0, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -169,7 +202,7 @@ Result HostDataOpSDMA::CopyGD2LH(void *hostAddr, const void *gvaAddr, size_t cou
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(copyDevice, gvaAddr, count, nullptr);
+    auto result = CopyG2G(copyDevice, gvaAddr, count, 0, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -193,13 +226,13 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_LD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_LD, ret);
             break;
         }
@@ -217,25 +250,25 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GD_TO_GH);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GD_TO_GH, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_GD);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_GD, ret);
             break;
         }
@@ -253,13 +286,13 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
         }
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GH_ASYNC);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_LD_TO_GH_ASYNC, ret);
             break;
         }
         case HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_GH_TO_LD_ASYNC);
-            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.stream);
+            ret = CopyG2GAsync(params.dest, params.src, params.dataSize, options.flags, options.stream);
             TP_TRACE_END(TP_HYBM_SDMA_GH_TO_LD_ASYNC, ret);
             break;
         }
@@ -299,7 +332,7 @@ Result HostDataOpSDMA::CopyLH2GH(void *destVA, const void *srcVA, uint64_t lengt
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(destVA, copyDevice, length, nullptr);
+    auto result = CopyG2G(destVA, copyDevice, length, 0, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -319,7 +352,7 @@ Result HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t lengt
         return BM_DL_FUNCTION_FAILED;
     }
 
-    auto result = CopyG2G(copyDevice, srcVA, length, nullptr);
+    auto result = CopyG2G(copyDevice, srcVA, length, 0, nullptr);
     if (result != BM_OK) {
         DlAclApi::AclrtFree(copyDevice);
         return result;
@@ -380,8 +413,17 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
     sqe->dstOffsetHigh = 0U;
 }
 
-Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, uint32_t flags, void *stream) noexcept
 {
+    if (flags & COPY_EXTEND_FLAG) {
+        void *st = (stream != nullptr) ? stream : HybmStreamManager::GetThreadAclStream();
+        auto ret = DlHybmExtendApi::HybmCopyExtend(srcVA, destVA, count, HYBM_EXTEND_CONCURRENT, st);
+        BM_ASSERT_RETURN(ret == BM_OK, ret);
+        ret = DlAclApi::AclrtSynchronizeStream(stream);
+        BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
+        return BM_OK;
+    }
+    
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
@@ -406,11 +448,15 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, vo
     return BM_OK;
 }
 
-Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, void *stream) noexcept
+Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t count, uint32_t flags,
+                                    void *stream) noexcept
 {
-    BM_LOG_DEBUG("CopyG2GAsync src:" << srcVA << " destVA:" << destVA << " length:" << count << " st:" << stream);
-    if (stream != nullptr) { // submit task into acl stream
-        return DlAclApi::AclrtMemcpyAsync(destVA, count, srcVA, count, ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+    BM_LOG_DEBUG("src:" << srcVA << " destVA:" << destVA << " length:" << count << " st:" << stream);
+    if ((flags & ASYNC_COPY_FLAG) && stream != nullptr) { // submit task into acl stream
+        if (flags & COPY_EXTEND_FLAG) {
+            return DlHybmExtendApi::HybmCopyExtend(srcVA, destVA, count, HYBM_EXTEND_CONCURRENT, stream);
+        }
+        return DlAclApi::RtMemcpyAsync(destVA, count, srcVA, count, RT_MEMCPY_DEVICE_TO_DEVICE, stream);
     }
     StreamTask task{};
     InitG2GStreamTask(task);
@@ -435,8 +481,70 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
     return BM_OK;
 }
 
+uint32_t HostDataOpSDMA::TryGetOneParamSpace(void **ptr) noexcept
+{
+    auto mask = reinterpret_cast<uint64_t *>(reinterpret_cast<uint64_t>(paramSpace_) + HYBM_PARAM_SPACE_META_OFFSET);
+    uint32_t st = paramSpaceIdx_;
+    for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
+        uint32_t k = (i + st) % HYBM_PARAM_SPACE_CAP;
+        uint64_t tmp = HYBM_EXTEND_CONCURRENT;
+        if (mask[k] == HYBM_EXTEND_CONCURRENT &&
+            __atomic_compare_exchange_n(mask + k, &tmp, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+            *ptr = reinterpret_cast<void *>(mask + k);
+            paramSpaceIdx_ = k + 1U;
+            return k;
+        }
+    }
+    *ptr = nullptr;
+    return UINT32_MAX;
+}
+
+Result HostDataOpSDMA::BatchCopyExtend(hybm_batch_copy_params &params, void *stream, uint32_t flags) noexcept
+{
+    void *st = (stream != nullptr) ? stream : HybmStreamManager::GetThreadAclStream();
+    uint32_t taskNum = (params.batchSize + HYBM_SINGLE_PARAM_NUM - 1) / HYBM_SINGLE_PARAM_NUM;
+    for (uint32_t idx = 0; idx < taskNum; idx++) {
+        uint32_t nowBatchStart = idx * HYBM_SINGLE_PARAM_NUM;
+        uint32_t nowBatchSize = std::min(nowBatchStart + HYBM_SINGLE_PARAM_NUM, params.batchSize) - nowBatchStart;
+        void *maskPtr = nullptr;
+        uint32_t spaceId = TryGetOneParamSpace(&maskPtr);
+        if (spaceId >= HYBM_PARAM_SPACE_CAP) {
+            auto ret = DlAclApi::AclrtSynchronizeStream(st);
+            BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
+            spaceId = TryGetOneParamSpace(&maskPtr);
+        }
+        BM_VALIDATE_RETURN(spaceId < HYBM_PARAM_SPACE_CAP, "alloc param space failed!", BM_ERROR);
+
+        auto tmpParam = reinterpret_cast<uint64_t *>(
+            reinterpret_cast<uint64_t>(paramSpace_) + spaceId * HYBM_SINGLE_PARAM_SIZE);
+        for (uint32_t i = 0, j = 0; i < nowBatchSize; i++) {
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.sources[nowBatchStart + i]);
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.destinations[nowBatchStart + i]);
+            tmpParam[j++] = params.dataSizes[nowBatchStart + i];
+        }
+
+        void *remoteAddr = reinterpret_cast<void *>(reinterpret_cast<uint64_t>(tmpParam) + paramOffset_);
+        auto ret = DlHybmExtendApi::HybmBatchCopyExtend(remoteAddr, nowBatchSize,
+            reinterpret_cast<void *>(reinterpret_cast<uint64_t>(maskPtr) + paramOffset_), HYBM_EXTEND_CONCURRENT, st);
+        if (ret != 0) {
+            *reinterpret_cast<uint64_t *>(maskPtr) = 0U;
+            BM_LOG_ERROR("call HybmBatchCopyExtend failed, ret:" << ret);
+            return BM_ERROR;
+        }
+    }
+
+    if (!(flags & ASYNC_COPY_FLAG)) {
+        auto ret = DlAclApi::AclrtSynchronizeStream(st);
+        BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
+    }
+    return BM_OK;
+}
+
 Result HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {
+    if ((options.flags & COPY_EXTEND_FLAG)) {
+        return BatchCopyExtend(params, options.stream, options.flags);
+    }
     Result ret = 0;
     Result asyncRet = 0;
     uint64_t src = 0U;
@@ -445,7 +553,7 @@ Result HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOpt
 
     auto asyncFunc = [&]() {
         asyncRet = CopyG2GAsync(reinterpret_cast<void *>(dest), reinterpret_cast<void *>(src), len,
-                                (options.flags & ASYNC_COPY_FLAG) ? options.stream : nullptr);
+                                options.flags, options.stream);
         if (asyncRet != 0) {
             BM_LOG_ERROR("BatchCopyG2G failed:" << asyncRet << " src:" << src << " dest:" << dest << " length:" << len);
             ret = asyncRet;

@@ -20,7 +20,8 @@
 extern "C" {
 #endif
 
-#define ASYNC_COPY_FLAG (1UL << (0))
+#define ASYNC_COPY_FLAG  (1UL << (0))
+#define COPY_EXTEND_FLAG (1UL << (1))
 /**
  * @brief copies <i>count</i> bytes from memory area <i>src</i> to memory area <i>dest</i>.
  * @param e                [in] entity created by hybm_create_entity

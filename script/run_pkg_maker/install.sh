@@ -286,6 +286,26 @@ function install_wheel_package() {
     pip3 install "${wheel_package}" --force-reinstall
 }
 
+function try_install_extend()
+{
+    bisheng_path=$(which bisheng 2>/dev/null)
+    if [ -z "bisheng_path" ]; then
+        print "WARNING" "bisheng Not Found, skip install extend lib."
+        return
+    fi
+
+    cd ${script_dir}/../copy_extend
+    bisheng -x asc hybm_copy_kernel.cpp -shared -g -o libmf_hybm_copy_extend.so --npu-arch=dav-2201
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        cp ./*.so ${install_dir}//${pkg_arch}-${os1}/lib64
+        print "INFO" "install hybm extend lib success"
+    else
+        print "WARNING" "install extend lib failed, maybe cann version is old, latest 8.3.RC1"
+    fi
+}
+
 function install_to_path()
 {
     install_dir=${default_install_dir}/${version1}
@@ -322,6 +342,7 @@ function generate_set_env()
     local test_dir="${default_install_dir}/latest/${pkg_arch}-${os1}/test"
     cat >"${env_file}" <<EOF
 export MEMFABRIC_HYBRID_HOME_PATH=${default_install_dir}/latest
+export MEMFABRIC_HYBRID_EXTEND_LIB_PATH=${default_install_dir}/latest/${pkg_arch}-${os1}/lib64
 export LD_LIBRARY_PATH=${default_install_dir}/latest/${pkg_arch}-${os1}/lib64:\$LD_LIBRARY_PATH
 export PATH=${default_install_dir}/latest/${pkg_arch}-${os1}/bin:\$PATH
 EOF
@@ -341,6 +362,7 @@ function install_process()
 
     print "INFO" "memfabric_hybrid start install into ${default_install_dir}"
     install_to_path
+    try_install_extend
     generate_set_env
 }
 
