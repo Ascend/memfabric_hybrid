@@ -119,7 +119,7 @@ static int32_t TestGetQPInfo(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 {
     uint64_t *xHost;
     size_t totalSize = 120;
-    size_t elementCount = totalBytes / sizeof(uint64_t);
+    size_t elementCount = totalSize / sizeof(uint64_t);
     CHECK_ACL(aclrtMallocHost((void **)(&xHost), totalSize));
     std::fill(xHost, xHost + elementCount, 0);
 
@@ -159,8 +159,6 @@ int32_t main(int32_t argc, char *argv[])
     CHECK_ACL(aclrtSetDevice(deviceId));
     aclrtStream stream = nullptr;
     CHECK_ACL(aclrtCreateStream(&stream));
-
-    smem_set_log_level(0);
 
     auto ret = smem_init(0);
     if (ret != 0) {

@@ -41,7 +41,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
         return nullptr;
     }
 
-    hybm_options options;
+    hybm_options options{};
     options.bmType = HYBM_TYPE_AI_CORE_INITIATE;
     options.memType = HYBM_MEM_TYPE_DEVICE;
     options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_MTE | HYBM_DOP_TYPE_SDMA);
@@ -52,6 +52,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = rankSize;
     options.rankId = rankId;
+    options.maxHBMSize = symmetricSize;
     options.deviceVASpace = symmetricSize;
     options.role = HYBM_ROLE_PEER;
     options.globalUniqueAddress = true;
