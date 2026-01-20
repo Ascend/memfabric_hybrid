@@ -395,7 +395,27 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
                 << ") magic(" << info.magic << ") invalid skip it.");
             continue;
         }
-        deserializedInfos.push_back(info);
+
+        if (info.magic == ENTITY_EXPORT_INFO_MAGIC) {
+            continue;
+        }
+
+        if (info.magic != exportMagic) {
+            BM_LOG_ERROR("import info(" << i << ") magic(" << info.magic << ") invalid.");
+            return BM_INVALID_PARAM;
+        }
+        if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
+            CanLocalHostReaches(info.superPodId, info.serverId,
+                                info.devId)) {
+            ret = DlAclApi::RtEnableP2P(deviceId_, info.devId, 0);
+            if (ret != 0) {
+                BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
+                                                            << " remote_device:" << (int)info.devId);
+                return BM_DL_FUNCTION_FAILED;
+            }
+        }
+        addresses[i] = reinterpret_cast<void *>(info.vAddress);
+        deserializedInfos.emplace_back(info);
     }
 
     for (const auto &info: deserializedInfos) {
@@ -410,7 +430,7 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
             }
         }
         BM_LOG_INFO("Success to import rank:" << info.rankId << " superPodId:" << info.superPodId << " serverId:"
-            << info.serverId << " devId:" << info.devId << " segType:" << options_.segType  << " size:" << info.size);
+              << info.serverId << " devId:" << info.devId << " segType:" << options_.segType  << " size:" << info.size);
     }
 
     try {
@@ -444,6 +464,20 @@ Result HybmVmmBasedSegment::Mmap() noexcept
     for (auto &im : imports_) {
         if (im.rankId == options_.rankId) {
             continue;
+        }
+
+        if (im.magic == ENTITY_EXPORT_INFO_MAGIC) {
+            continue;
+        }
+
+        if (im.segmentType != SEGMENT_TYPE_VMM) {
+            BM_LOG_ERROR("mmap failed for invalid segment type in vmm:" << im.segmentType);
+            return BM_ERROR;
+        }
+
+        if (im.size == 0) {
+            BM_LOG_ERROR("mmap failed for invalid size 0");
+            return BM_ERROR;
         }
 
         auto remoteAddress = im.vAddress;
@@ -520,7 +554,7 @@ Result HybmVmmBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) n
     return BM_OK;
 }
 
-MemSlicePtr HybmVmmBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmVmmBasedSegment::GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);

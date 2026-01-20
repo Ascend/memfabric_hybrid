@@ -108,7 +108,12 @@ public:
      */
     virtual Result Unmap() noexcept = 0;
 
-    virtual MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept = 0;
+    /*
+     * Attempt to cast the generic slice pointer to a MemSlicePtr.
+     * Set 'quiet=true' to suppress error logging if this is part of a fallback or trial attempt.
+     * @return pointer to MemSlice
+     */
+    virtual MemSlicePtr GetMemSlice(hybm_mem_slice_t slice, bool quiet = false) const noexcept = 0;
 
     /*
      * check memery area in this segment
@@ -150,6 +155,10 @@ protected:
     static uint32_t bootIdHead_;
     static std::string sysBoolId_;
     static AscendSocType socType_;
+
+private:
+    static void ResetDeviceInfoInChild() noexcept;
+    static bool atforkRegistered_;
 };
 } // namespace mf
 } // namespace ock

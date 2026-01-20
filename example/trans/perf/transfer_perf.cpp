@@ -21,6 +21,8 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <atomic>
+#include <mutex>
 
 #include "acl/acl.h"
 
@@ -49,6 +51,11 @@
 
 const uint64_t GVA_SIZE = 1024ULL * 1024 * 1024;
 constexpr uint32_t MAX_UINT32 = 0xFFFFFFFF;
+constexpr uint32_t SEP_HALF_WIDTH = 50;
+constexpr uint32_t RUN_TRANS_PERF_WITH_DRAM_AND_HBM = 2;
+constexpr uint32_t RUN_TRANS_PERF_WITH_DRAM_ONLY = 1;
+constexpr uint32_t RUN_TRANS_PERF_WITH_HBM_ONLY = 0;
+constexpr uint32_t TRANS_PERF_CONCURRENCY = 2;
 
 const static std::map<std::string, uint64_t> RATE_UNIT_MP = {{"GB", 1000ull * 1000ull * 1000ull},
                                                              {"GiB", 1ull << 30},
@@ -85,13 +92,13 @@ static inline void init_warmup_data(char *&warmup_data, size_t length)
     }
 }
 
-int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
+int32_t bm_perf_test(smem_bm_t bm_handle, int rank_id)
 {
     char *warmup_data = nullptr;
     int32_t ret;
     const uint32_t KB_SIZE = 1024;
 
-    if (rankId == 0) {
+    if (rank_id == 0) {
         uint32_t block_iteration = 10;
         uint32_t base_block_size = 32 << 10; // 32k
         uint32_t times = 10;
@@ -112,10 +119,10 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
         std::cout << "Warmup Start" << std::endl;
         smem_copy_params copy_params_1 = {warmup_data, localAddr, GVA_SIZE};
         ret = smem_bm_copy(bm_handle, &copy_params_1, SMEMB_COPY_H2G, 0);
-        CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
+        CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rank_id, out);
         smem_copy_params copy_params_2 = {localAddr, remoteAddr, GVA_SIZE / 16};
         ret = smem_bm_copy(bm_handle, &copy_params_2, SMEMB_COPY_L2G, 0);
-        CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
+        CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rank_id, out);
         std::cout << "Warmup End" << std::endl;
 
         std::cout << "Test Start" << std::endl;
@@ -128,7 +135,7 @@ int32_t bm_perf_test(smem_bm_t bm_handle, int rankId)
             smem_copy_params copy_params = {localAddr, remoteAddr, block_size};
             for (uint32_t j = 0; j < times; j++) {
                 ret = smem_bm_copy(bm_handle, &copy_params, SMEMB_COPY_L2G, 0);
-                CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rankId, out);
+                CHECK_GOTO_ERR(ret, "copy host to gva failed, ret:" << ret << " rank:" << rank_id, out);
             }
 
             gettimeofday(&stop_tv, nullptr);
@@ -174,73 +181,116 @@ out:
     return 0;
 }
 
-int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int rankId)
+int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int rank_id, int use_malloc,
+                        int num_threads = 1)
 {
     char *warmup_data = nullptr;
-    int32_t ret;
+    int32_t ret = 0;
     void *dev_addr = nullptr;
     void *gather_addr[2];
     void *dst_dev_addr = nullptr;
     const uint32_t KB_SIZE = 1024;
 
     // malloc device mem
-    aclError aclret = aclrtMalloc(&dev_addr, GVA_SIZE, ACL_MEM_MALLOC_HUGE_FIRST);
-    CHECK_GOTO_ERR(aclret != ACL_ERROR_NONE, "failed to allocate device memory, ret:" << aclret, out);
-    std::cout << "[" << rankId << "]" << " malloc dev mem " << dev_addr << std::endl;
+    if (use_malloc) {
+        dev_addr = smem_trans_malloc(trans_handle, GVA_SIZE);
+        if (dev_addr == nullptr || dev_addr == nullptr) {
+            std::cout << "malloc dram failed" << std::endl;
+            return -1;
+        } else {
+            std::cout << "malloc dram success, dev_addr:" << dev_addr << std::endl;
+        }
+    } else {
+        aclError aclret = aclrtMalloc(&dev_addr, GVA_SIZE, ACL_MEM_MALLOC_HUGE_FIRST);
+        CHECK_GOTO_ERR(aclret != ACL_ERROR_NONE, "failed to allocate device memory, ret:" << aclret, out);
+    }
 
+    std::cout << "[" << rank_id << "]" << " malloc dev mem " << dev_addr << std::endl;
     /* gather peer addr */
     ret = smem_shm_control_allgather(shm_handle, (char *)&dev_addr, sizeof(void *), (char *)gather_addr,
                                      sizeof(void *) * 2U);
     CHECK_GOTO_ERR(ret, "failed to allgather dev memory, ret:" << ret, out);
 
     ret = smem_shm_control_barrier(shm_handle);
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, out);
 
-    if (rankId == 1) {
+    if (rank_id == 1 && !use_malloc) {
         ret = smem_trans_register_mem(trans_handle, dev_addr, GVA_SIZE, 0);
         CHECK_GOTO_ERR(ret, "failed to register device memory, ret:" << ret, out);
     }
     ret = smem_shm_control_barrier(shm_handle);
     std::this_thread::sleep_for(std::chrono::seconds(10UL)); // wait for register
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
-    if (rankId == 0) {
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, out);
+
+    if (rank_id == 0) {
         uint32_t block_iteration = 10;
         uint32_t base_block_size = 32 << 10; // 32k
-        uint32_t times = 10;
+        uint32_t times = 100;
         uint32_t batch_size = 32;
         std::string dstSessionId = "127.0.0.1:10001";
         dst_dev_addr = gather_addr[1];
         CHECK_GOTO_ERR(!dst_dev_addr, "dev memory error", out);
-        std::cout << "[" << rankId << "]" << " get dst dev addr " << dst_dev_addr << std::endl;
+        std::cout << "[" << rank_id << "]" << " get dst dev addr " << dst_dev_addr << std::endl;
 
         /* init warmup data */
         warmup_data = (char *)malloc(GVA_SIZE * sizeof(char));
         CHECK_GOTO_ERR(!warmup_data, "warmup data malloc failed", out);
-
         std::cout << "Warmup Start" << std::endl;
         init_warmup_data(warmup_data, GVA_SIZE);
-        aclrtMemcpy(dev_addr, GVA_SIZE, warmup_data, GVA_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
-        ret = smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, base_block_size);
-        CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId, out);
-        std::cout << "Warmup End" << std::endl;
-        CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, out);
+        if (!use_malloc) {
+            aclrtMemcpy(dev_addr, GVA_SIZE, warmup_data, GVA_SIZE, ACL_MEMCPY_HOST_TO_DEVICE);
+        } else {
+            memcpy(dev_addr, warmup_data, GVA_SIZE);
+        }
 
-        std::cout << "Test Start" << std::endl;
+        // warmup
+        ret = smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, base_block_size, 0);
+        CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rank_id, out);
+        std::cout << "Warmup End" << std::endl;
+        CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, out);
+
+        auto test_title = use_malloc ? "Dram Trans Test Start" : "HBM Trans Test Start";
+        std::string separator(SEP_HALF_WIDTH, '=');
+        std::cout << separator << test_title << separator << std::endl;
+
         for (uint32_t i = 0; i < block_iteration; i++) {
             uint32_t block_size = base_block_size * (1 << i);
-            struct timeval start_tv;
-            struct timeval stop_tv;
+            struct timeval start_tv, stop_tv;
+
             gettimeofday(&start_tv, nullptr);
-            /* latency test */
-            for (uint32_t j = 0; j < times; j++) {
-                ret = smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, block_size);
-                CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId << ", index:" << j, out);
+
+            std::vector<std::thread> threads;
+            std::atomic<int32_t> err_count{0};
+
+            for (int t = 0; t < num_threads; ++t) {
+                threads.emplace_back([&, t]() {
+                    for (uint32_t j = 0; j < times; j++) {
+                        int32_t local_ret =
+                            smem_trans_write(trans_handle, dev_addr, dstSessionId.c_str(), dst_dev_addr, block_size, 0);
+                        if (local_ret != 0) {
+                            err_count++;
+                            return;
+                        }
+                    }
+                });
             }
+
+            for (auto &th : threads) {
+                if (th.joinable())
+                    th.join();
+            }
+
+            if (err_count.load() > 0) {
+                std::cerr << "Latency test failed with errors" << std::endl;
+                ret = -1;
+                goto out;
+            }
+
             gettimeofday(&stop_tv, nullptr);
             double duration1 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
-            duration1 /= times;
 
-            /* bw test */
+            duration1 /= (num_threads * times);
+
             std::vector<void *> laddrv;
             std::vector<void *> raddrv;
             std::vector<uint64_t> lengthv;
@@ -254,37 +304,73 @@ int32_t trans_perf_test(smem_trans_t trans_handle, smem_shm_t shm_handle, int ra
                 raddrv.push_back(raddr);
                 lengthv.push_back(block_size);
             }
+
             gettimeofday(&start_tv, nullptr);
 
-            for (uint32_t j = 0; j < times; j++) {
-                ret =
-                    smem_trans_batch_write(trans_handle, const_cast<const void **>(laddrv.data()), dstSessionId.c_str(),
-                                           raddrv.data(), (size_t *)lengthv.data(), lengthv.size());
-                CHECK_GOTO_ERR(ret, "trans copy failed, ret:" << ret << " rank:" << rankId, out);
+            err_count = 0;
+            threads.clear();
+
+            for (int t = 0; t < num_threads; ++t) {
+                threads.emplace_back([&, t]() {
+                    for (uint32_t j = 0; j < times; j++) {
+                        int32_t local_ret = smem_trans_batch_write(
+                            trans_handle, const_cast<const void **>(laddrv.data()), dstSessionId.c_str(), raddrv.data(),
+                            reinterpret_cast<size_t *>(lengthv.data()), lengthv.size(), 0);
+                        if (local_ret != 0) {
+                            err_count++;
+                            return;
+                        }
+                    }
+                });
+            }
+
+            for (auto &th : threads) {
+                if (th.joinable())
+                    th.join();
+            }
+
+            if (err_count.load() > 0) {
+                std::cerr << "BW test failed with errors" << std::endl;
+                ret = -1;
+                goto out;
             }
 
             gettimeofday(&stop_tv, nullptr);
             double duration2 = (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
-            duration2 /= times;
+            duration2 /= (num_threads * times);
+            uint64_t total_bytes = static_cast<uint64_t>(num_threads) * times * batch_size * block_size;
+            double total_time_us =
+                (stop_tv.tv_sec - start_tv.tv_sec) * 1000000.0 + (stop_tv.tv_usec - start_tv.tv_usec);
 
             std::cout << "Test completed: latency " << duration1 << "us, block size " << (block_size / KB_SIZE)
-                      << "KB, total size " << batch_size * block_size / KB_SIZE << "KB , throughput "
-                      << calculateRate(batch_size * block_size, duration2) << std::endl;
+                      << "KB, "
+                      << "total threads=" << num_threads << ", per-thread times=" << times << ", "
+                      << "aggregated throughput " << calculateRate(total_bytes, total_time_us) << std::endl;
         }
-        std::cout << "Test End" << std::endl;
+        std::cout << separator << "Test End" << separator << std::endl;
     }
+
     smem_shm_control_barrier(shm_handle);
 out:
     if (warmup_data) {
         free(warmup_data);
     }
     if (dev_addr) {
-        aclrtFree(dev_addr);
+        if (use_malloc) {
+            ret = smem_trans_free(trans_handle, dev_addr);
+            if (ret != 0) {
+                std::cout << "free dram failed, dev_addr:" << dev_addr << std::endl;
+            } else {
+                std::cout << "free dram success, dev_addr:" << dev_addr << std::endl;
+            }
+        } else {
+            aclrtFree(dev_addr);
+        }
     }
-    return 0;
+    return ret;
 }
 
-int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string &ipPort)
+int32_t bm_test(int rank_id, int rank_size, int device_id, int use_sdma, std::string &ip_port)
 {
     void *shm_gva = nullptr;
     smem_bm_config_t config;
@@ -293,47 +379,47 @@ int32_t bm_test(int rankId, int rankSize, int deviceId, int useSdma, std::string
     smem_shm_t shm_handle;
 
     (void)smem_bm_config_init(&config);
-    config.rankId = rankId;
+    config.rankId = rank_id;
     config.autoRanking = false;
-    if (rankId == 0) {
+    if (rank_id == 0) {
         std::string s1 = "tcp://192.168.0.1/16:12005";
         std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
     } else {
         std::string s1 = "tcp://192.168.0.1/16:12006";
         std::copy_n(s1.c_str(), s1.length(), config.hcomUrl);
     }
-    auto ret = smem_bm_init(ipPort.c_str(), rankSize, deviceId, &config);
-    CHECK_GOTO_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rankId, err2);
+    auto ret = smem_bm_init(ip_port.c_str(), rank_size, device_id, &config);
+    CHECK_GOTO_ERR(ret, "smem bm init failed, ret:" << ret << " rank:" << rank_id, err2);
 
     (void)smem_shm_config_init(&config2);
     config2.startConfigStoreServer = false;
 
-    ret = smem_shm_init(ipPort.c_str(), rankSize, rankId, deviceId, &config2);
-    CHECK_GOTO_ERR(ret, "smem shmem init failed, ret:" << ret << " rank:" << rankId, err3);
+    ret = smem_shm_init(ip_port.c_str(), rank_size, rank_id, device_id, &config2);
+    CHECK_GOTO_ERR(ret, "smem shmem init failed, ret:" << ret << " rank:" << rank_id, err3);
 
-    if (useSdma) {
+    if (use_sdma) {
         bm_handle = smem_bm_create(0, 0, SMEMB_DATA_OP_SDMA, 0, GVA_SIZE, 0);
     } else {
         bm_handle = smem_bm_create(0, 0, SMEMB_DATA_OP_DEVICE_RDMA, GVA_SIZE, 0, 0);
     }
-    CHECK_GOTO_ERR((bm_handle == nullptr), "smem_bm_create failed, rank:" << rankId, err4);
-    std::cout << "[" << rankId << "]" << " smem bm create done sdma_flag " << useSdma << std::endl;
+    CHECK_GOTO_ERR((bm_handle == nullptr), "smem_bm_create failed, rank:" << rank_id, err4);
+    std::cout << "[" << rank_id << "]" << " smem bm create done sdma_flag " << use_sdma << std::endl;
 
     ret = smem_bm_join(bm_handle, 0);
-    CHECK_GOTO_ERR(ret, "smem_bm_join failed, ret:" << ret << " rank:" << rankId, err5);
+    CHECK_GOTO_ERR(ret, "smem_bm_join failed, ret:" << ret << " rank:" << rank_id, err5);
 
-    shm_handle = smem_shm_create(0, rankSize, rankId, GVA_SIZE, SMEMS_DATA_OP_MTE, 0, &shm_gva);
-    CHECK_GOTO_ERR((shm_handle == nullptr), "smem_shm_create failed, rank:" << rankId, err5);
-    std::cout << "[" << rankId << "]" << " smem shmem create done" << std::endl;
+    shm_handle = smem_shm_create(0, rank_size, rank_id, GVA_SIZE, SMEMS_DATA_OP_MTE, 0, &shm_gva);
+    CHECK_GOTO_ERR((shm_handle == nullptr), "smem_shm_create failed, rank:" << rank_id, err5);
+    std::cout << "[" << rank_id << "]" << " smem shmem create done" << std::endl;
 
     ret = smem_shm_control_barrier(shm_handle);
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, err6);
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, err6);
 
     /* Test */
-    bm_perf_test(bm_handle, rankId);
+    bm_perf_test(bm_handle, rank_id);
 
     ret = smem_shm_control_barrier(shm_handle);
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, err6);
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, err6);
 err6:
     smem_shm_destroy(shm_handle, 0);
 err5:
@@ -346,7 +432,7 @@ err2:
     return 0;
 }
 
-int32_t trans_test(int rankId, int rankSize, int deviceId, int useSdma, std::string &ipPort)
+int32_t trans_test(int rank_id, int rank_size, int device_id, int use_sdma, std::string &ip_port, int memType)
 {
     void *shm_gva = nullptr;
     smem_trans_config_t config;
@@ -356,13 +442,15 @@ int32_t trans_test(int rankId, int rankSize, int deviceId, int useSdma, std::str
     std::string sessionId;
     int32_t ret;
 
-    if (rankId == 0) {
-        ret = smem_create_config_store(ipPort.c_str());
-        CHECK_GOTO_ERR(ret, "smem create config store failed, ret:" << " rank:" << rankId, err1);
+    if (rank_id == 0) {
+        ret = smem_create_config_store(ip_port.c_str());
+        CHECK_GOTO_ERR(ret, "smem create config store failed, ret:" << " rank:" << rank_id, err1);
     }
 
+    std::cout << std::endl << std::endl;
+
     smem_trans_config_init(&config);
-    if (rankId == 0) {
+    if (rank_id == 0) {
         /* Prefill */
         config.role = SMEM_TRANS_SENDER;
         sessionId = "127.0.0.1:10000";
@@ -371,31 +459,35 @@ int32_t trans_test(int rankId, int rankSize, int deviceId, int useSdma, std::str
         config.role = SMEM_TRANS_RECEIVER;
         sessionId = "127.0.0.1:10001";
     }
-    config.deviceId = deviceId;
+    config.deviceId = device_id;
     config.dataOpType = SMEMB_DATA_OP_SDMA;
     ret = smem_trans_init(&config);
     if (ret != 0) {
         std::cout << "[Failed to init smem_trans, ret=" << ret << "]" << std::endl;
         return ret;
     }
-    trans_handle = smem_trans_create(ipPort.c_str(), sessionId.c_str(), &config);
-    CHECK_GOTO_ERR(!trans_handle, "smem trans create failed, ret:" << " rank:" << rankId, err1);
-    std::cout << "[" << rankId << "]" << " smem trans create done" << std::endl;
+    trans_handle = smem_trans_create(ip_port.c_str(), sessionId.c_str(), &config);
+    CHECK_GOTO_ERR(!trans_handle, "smem trans create failed, ret:" << " rank:" << rank_id, err1);
+    std::cout << "[" << rank_id << "]" << " smem trans create done" << std::endl;
 
     (void)smem_shm_config_init(&config2);
     config2.startConfigStoreServer = false;
 
-    ret = smem_shm_init(ipPort.c_str(), rankSize, rankId, deviceId, &config2);
-    CHECK_GOTO_ERR(ret, "smem shmem init failed, ret:" << ret << " rank:" << rankId, err2);
+    ret = smem_shm_init(ip_port.c_str(), rank_size, rank_id, device_id, &config2);
+    CHECK_GOTO_ERR(ret, "smem shmem init failed, ret:" << ret << " rank:" << rank_id, err2);
 
-    shm_handle = smem_shm_create(0, rankSize, rankId, GVA_SIZE, SMEMS_DATA_OP_MTE, 0, &shm_gva);
-    CHECK_GOTO_ERR((shm_handle == nullptr), "smem_shm_create failed, rank:" << rankId, err3);
-    std::cout << "[" << rankId << "]" << " smem shmem create done" << std::endl;
+    shm_handle = smem_shm_create(0, rank_size, rank_id, GVA_SIZE, SMEMS_DATA_OP_MTE, 0, &shm_gva);
+    CHECK_GOTO_ERR((shm_handle == nullptr), "smem_shm_create failed, rank:" << rank_id, err3);
+    std::cout << "[" << rank_id << "]" << " smem shmem create done" << std::endl;
 
     ret = smem_shm_control_barrier(shm_handle);
-    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rankId, err4);
-
-    trans_perf_test(trans_handle, shm_handle, rankId);
+    CHECK_GOTO_ERR(ret, "barrier failed, ret:" << ret << " rank:" << rank_id, err4);
+    if (memType == RUN_TRANS_PERF_WITH_DRAM_AND_HBM) {
+        trans_perf_test(trans_handle, shm_handle, rank_id, RUN_TRANS_PERF_WITH_HBM_ONLY, TRANS_PERF_CONCURRENCY);
+        trans_perf_test(trans_handle, shm_handle, rank_id, RUN_TRANS_PERF_WITH_DRAM_ONLY, TRANS_PERF_CONCURRENCY);
+    } else {
+        trans_perf_test(trans_handle, shm_handle, rank_id, memType, TRANS_PERF_CONCURRENCY);
+    }
 
 err4:
     smem_shm_destroy(shm_handle, 0);
@@ -409,44 +501,46 @@ err1:
 }
 
 /*
- * smem_perf {rankSize} {rankId} {deviceID} {useSdma} {testBm} tcp://{Ip}:{port}
- * smem_perf 2 0 2 1 1 tcp://127.0.0.1:12050
+ * smem_perf {rank_size} {rank_id} {deviceID} {use_sdma} {testBm} tcp://{Ip}:{port} {memType}
+ * smem_perf 2 0 2 1 1 tcp://127.0.0.1:12050 3
  */
 int32_t main(int32_t argc, char *argv[])
 {
-    int rankSize = atoi(argv[1]);
-    int rankId = atoi(argv[2]);
-    int deviceId = atoi(argv[3]);
-    int useSdma = atoi(argv[4]);
+    int rank_size = atoi(argv[1]);
+    int rank_id = atoi(argv[2]);
+    int device_id = atoi(argv[3]);
+    int use_sdma = atoi(argv[4]);
     int testBm = atoi(argv[5]);
-    std::string ipPort = argv[6];
-    std::cout << "[TEST] input rank_size: " << rankSize << " rank_id:" << rankId << " device_id: " << deviceId
-              << " use_sdma: " << useSdma << " test_bm: " << testBm << " store_ip: " << ipPort << std::endl;
+    std::string ip_port = argv[6];
+    int memType = atoi(argv[7]);
+    std::cout << "[TEST] input rank_size: " << rank_size << " rank_id:" << rank_id << " device_id: " << device_id
+              << " use_sdma: " << use_sdma << " test_bm: " << testBm << " store_ip: " << ip_port
+              << " memType(0:hbm 1:dram 3:hbm + dram):" << memType << std::endl;
 
     const size_t RANK_ID_SIZE = 2;
-    if (rankSize != RANK_ID_SIZE) {
-        std::cout << "[TEST] input rank_size: " << rankSize << " is not 2" << std::endl;
+    if (rank_size != RANK_ID_SIZE) {
+        std::cout << "[TEST] input rank_size: " << rank_size << " is not 2" << std::endl;
         return -1;
     }
 
     /* init aclrt */
     CHECK_ACL(aclInit(nullptr));
-    CHECK_ACL(aclrtSetDevice(deviceId));
+    CHECK_ACL(aclrtSetDevice(device_id));
 
     const uint32_t LOG_LEVEL_WARNING = 2;
     smem_set_log_level(LOG_LEVEL_WARNING);
     auto ret = smem_init(0);
-    CHECK_GOTO_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rankId, err1);
+    CHECK_GOTO_ERR(ret, "smem init failed, ret:" << ret << " rank:" << rank_id, err1);
 
     if (testBm) {
-        (void)bm_test(rankId, rankSize, deviceId, useSdma, ipPort);
+        (void)bm_test(rank_id, rank_size, device_id, use_sdma, ip_port);
     } else {
-        (void)trans_test(rankId, rankSize, deviceId, useSdma, ipPort);
+        (void)trans_test(rank_id, rank_size, device_id, use_sdma, ip_port, memType);
     }
 
     smem_uninit();
 err1:
-    CHECK_ACL(aclrtResetDevice(deviceId));
+    CHECK_ACL(aclrtResetDevice(device_id));
     CHECK_ACL(aclFinalize());
     return 0;
 }

@@ -49,13 +49,13 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
-    options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = rankSize;
     options.rankId = rankId;
     options.maxHBMSize = symmetricSize;
     options.deviceVASpace = symmetricSize;
+    options.maxHBMSize = symmetricSize;
     options.role = HYBM_ROLE_PEER;
-    options.globalUniqueAddress = true;
+    options.scene = HYBM_SCENE_SHM;
     std::string defaultNic = "tcp://127.0.0.1:10002";
     std::copy_n(defaultNic.c_str(), defaultNic.size() + 1, options.transUrl);
 

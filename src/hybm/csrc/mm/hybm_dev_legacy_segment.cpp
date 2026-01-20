@@ -357,7 +357,7 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
     return 0;
 }
 
-MemSlicePtr HybmDevLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmDevLegacySegment::GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);

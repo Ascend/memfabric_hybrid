@@ -65,6 +65,8 @@ public:
 
     int32_t ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
     int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
+    int32_t ImportExchangeInfo(const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
+                                               uint32_t flags) noexcept;
     int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
                                uint32_t flags) noexcept override;
     int32_t ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept override;
@@ -84,6 +86,7 @@ public:
     int32_t Wait() noexcept override;
     bool SdmaReaches(uint32_t remoteRank) const noexcept override;
     hybm_data_op_type CanReachDataOperators(uint32_t remoteRank) const noexcept override;
+    void *GetSliceVa(hybm_mem_slice_t slice);
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;

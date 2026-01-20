@@ -67,6 +67,8 @@ public:
     Result Initialize(const smem_trans_config_t &config);
     void UnInitialize();
 
+    void*  MallocDram(uint64_t size);
+    Result FreeDram(void *address);
     Result RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags);
     Result RegisterLocalMemories(const std::vector<std::pair<const void *, size_t>> &regMemories, uint32_t flags);
     Result SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr, size_t dataSize,
@@ -91,6 +93,9 @@ private:
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);
     hybm_options GenerateHybmOptions();
     int32_t ReInitialize();
+    Result ExportExchangeInfo();
+    void StoreSlice(hybm_mem_slice_t slice, void *vaAddr);
+    hybm_mem_slice_t RemoveSlice(void *addr);
 
 private:
     hybm_entity_t entity_ = nullptr;                       /* local hybm entity */
@@ -106,8 +111,7 @@ private:
     UrlExtraction storeUrlExtraction_;
     smem_trans_config_t config_{}; /* config of transfer entry */
     WorkerUniqueId workerUniqueId_;
-    uint32_t sliceInfoSize_{0};
-    hybm_exchange_info deviceInfo_{};
+    uint32_t sliceInfoSize_{0}; /* same in user dev legacy segment and vmm segment */
     std::thread watchThread_;
     std::thread watchConnectThread_;
     std::mutex watchMutex_;
@@ -119,6 +123,8 @@ private:
     std::unordered_map<WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash>
         remoteSlices_;
     std::map<std::string, WorkerId> nameToWorkerId; /* To accelerate name parsed */
+    std::unordered_map<void *, hybm_mem_slice_t> addrToSliceMap_;
+    mutable std::mutex addrMapMutex_;
 };
 
 inline const std::string &SmemTransEntry::Name() const

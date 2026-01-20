@@ -63,6 +63,12 @@ constexpr uint64_t VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE03UL;
 constexpr uint64_t VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE04UL;
 constexpr uint64_t EXPORT_INFO_VERSION = 0x1UL;
 
+constexpr uint16_t SEGMENT_TYPE_VMM = 0x1U;
+constexpr uint16_t SEGMENT_TYPE_USER_DEV = 0x2U;
+constexpr uint16_t SEGMENT_TYPE_DEFAULT = 0x10U;
+constexpr uint16_t SEGMENT_TYPE_OFFSET = 8U;
+constexpr uint16_t UNIFIED_EXCHANGE_SEG_INFO_SIZE = 184U; /* all exchange info padding to same size */
+
 inline bool IsDramSlice(uint64_t magic)
 {
     return magic == DRAM_SLICE_EXPORT_INFO_MAGIC || magic == VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC;
@@ -83,6 +89,11 @@ inline void *Valid48BitsAddress(void *address)
 {
     uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(address));
     return reinterpret_cast<void *>(static_cast<uintptr_t>(Valid48BitsAddress(addr)));
+}
+
+inline uint32_t GetExchangeInfoSegmentType(const void* data) {
+    const char* bytes = static_cast<const char*>(data);
+    return *reinterpret_cast<const uint32_t*>(bytes + SEGMENT_TYPE_OFFSET);
 }
 
 enum AscendSocType {

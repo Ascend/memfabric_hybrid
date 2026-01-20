@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "mf_syntactic_sugar.h"
 #include "hybm.h"
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
@@ -28,6 +29,9 @@
 
 namespace ock {
 namespace smem {
+// reserve 128GB dram va for malloc per rank, refine to configurable later
+constexpr uint64_t TRANS_RESERVE_DRAM_VA_SIZE = 1024ULL * 1024 * 1024 * 128;
+
 SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::string &storeUrl,
                                          const smem_trans_config_t &config)
 {
@@ -57,6 +61,23 @@ SmemTransEntry::~SmemTransEntry()
         hybm_destroy_entity(entity_, 0);
         entity_ = nullptr;
     }
+}
+
+Result SmemTransEntry::ExportExchangeInfo()
+{
+    hybm_exchange_info info;
+    auto ret = hybm_export(entity_, nullptr, 0, &info);
+    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
+
+    size_t outputSize;
+    ret = hybm_export_slice_size(entity_, &outputSize);
+    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
+    sliceInfoSize_ = outputSize;
+    storeHelper_.SetSliceExportSize(outputSize);
+
+    ret = storeHelper_.StoreDeviceInfo(info);
+    SM_VALIDATE_RETURN(ret == SM_OK, "store device info failed: " << ret, ret);
+    return SM_OK;
 }
 
 int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
@@ -94,17 +115,8 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
     entity_ = hybm_create_entity(entityId_, &options, 0);
     SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
 
-    ret = hybm_export(entity_, nullptr, 0, &deviceInfo_);
-    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
-
-    size_t outputSize;
-    ret = hybm_export_slice_size(entity_, &outputSize);
-    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
-    sliceInfoSize_ = outputSize;
-    storeHelper_.SetSliceExportSize(outputSize);
-
-    ret = storeHelper_.StoreDeviceInfo(deviceInfo_);
-    SM_VALIDATE_RETURN(ret == SM_OK, "store device info failed: " << ret, ret);
+    ret = ExportExchangeInfo();
+    SM_VALIDATE_RETURN(ret == SM_OK, "export user hbm failed.", SM_ERROR);
 
     auto brokenHandler = [this] { return StartWatchConnectThread(); };
     storeHelper_.RegisterBrokenHandler(brokenHandler);
@@ -135,6 +147,98 @@ void SmemTransEntry::UnInitialize()
         }
     }
     storeHelper_.Destroy();
+}
+
+void SmemTransEntry::StoreSlice(hybm_mem_slice_t slice, void *vaAddr)
+{
+    std::lock_guard<std::mutex> lock(addrMapMutex_);
+    addrToSliceMap_[vaAddr] = slice;
+}
+
+hybm_mem_slice_t SmemTransEntry::RemoveSlice(void *addr)
+{
+    if (addr == nullptr) {
+        SM_LOG_ERROR("failed to remove slice, addr is null");
+        return nullptr;
+    }
+
+    hybm_mem_slice_t slice = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(addrMapMutex_);
+        auto it = addrToSliceMap_.find(addr);
+        if (it == addrToSliceMap_.end()) {
+            return nullptr;
+        }
+        slice = it->second;
+        addrToSliceMap_.erase(it);
+    }
+    return slice;
+}
+
+void* SmemTransEntry::MallocDram(uint64_t size)
+{
+    if (size == 0) {
+        SM_LOG_ERROR("malloc failed, invalid size 0.");
+        return nullptr;
+    }
+
+    if (size > TRANS_RESERVE_DRAM_VA_SIZE) {
+        SM_LOG_ERROR("malloc failed, invalid size:" << size << ", should be less than or equal " << TRANS_RESERVE_DRAM_VA_SIZE);
+        return nullptr;
+    }
+
+    auto slice = hybm_alloc_local_memory(entity_, HYBM_MEM_TYPE_HOST, size, 0);
+    if (slice == nullptr) {
+        SM_LOG_ERROR("malloc address with size: " << size << " failed. maybe free mem is not enough");
+        return nullptr;
+    }
+
+    auto vaAddr = hybm_get_slice_va(entity_, slice);
+    if (vaAddr == nullptr) {
+        SM_LOG_ERROR("malloc address with size: " << size << " failed. maybe free mem is not enough");
+        return nullptr;
+    }
+
+    StoreSlice(slice, vaAddr);
+
+    hybm_exchange_info info;
+    auto ret = hybm_export(entity_, slice, 0, &info);
+    if (ret != 0) {
+        SM_LOG_ERROR("export slice for register address with size: " << size << " failed:" << ret);
+        hybm_free_local_memory(entity_, slice, size, 0);
+        return nullptr;
+    }
+
+    if (info.descLen != sliceInfoSize_) {
+        SM_LOG_ERROR("export slice info size: " << info.descLen << " should be:" << sliceInfoSize_);
+        hybm_free_local_memory(entity_, slice, size, 0);
+        return nullptr;
+    }
+
+    StoredSliceInfo sliceInfo(workerUniqueId_, vaAddr, size, rankId_);
+    ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
+    if (ret != 0) {
+        SM_LOG_ERROR("store for slice info failed: " << ret);
+        return nullptr;
+    }
+
+    return vaAddr;
+}
+
+Result SmemTransEntry::FreeDram(void *address)
+{
+    if (address == nullptr) {
+        SM_LOG_ERROR("invalid address pointer.");
+        return SM_INVALID_PARAM;
+    }
+
+    auto slice = RemoveSlice(address);
+    if (slice == nullptr) {
+        SM_LOG_ERROR("failed to free, invalid address:" << address);
+        return SM_ERROR;
+    }
+
+    return hybm_free_local_memory(entity_, slice, 0, 0);
 }
 
 Result SmemTransEntry::RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags)
@@ -238,7 +342,7 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
     for (auto i = 0U; i < batchSize; i++) {
         auto pos = it->second.lower_bound(remoteAddrs[i]);
         if (pos == it->second.end()) {
-            SM_LOG_ERROR("remote address[" << i << "] is invalid.");
+            SM_LOG_ERROR("remote address[" << i << "] " << remoteAddrs[i] << " is invalid.");
             return SM_INVALID_PARAM;
         }
 
@@ -249,6 +353,10 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
 
         mappedAddress[i] =
             (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
+        if (mappedAddress[i] == nullptr) {
+            SM_LOG_ERROR(" remote addr is null");
+            return SM_INVALID_PARAM;
+        }
     }
 
     uint32_t flag = flags | ((stream != nullptr) ? ASYNC_COPY_FLAG : 0);
@@ -449,6 +557,8 @@ void SmemTransEntry::WatchTaskFindNewSlices()
                 remoteSlices_[workerId.workerId].emplace(addSs[i].address,
                                                          LocalMapAddress{addresses[i], addSs[i].size});
             }
+
+            hybm_mmap(entity_, 0);
         }
         return 0;
     };
@@ -550,15 +660,17 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
 {
     hybm_options options;
     options.bmType = HYBM_TYPE_HOST_INITIATE;
-    options.memType = HYBM_MEM_TYPE_DEVICE;
-    options.bmScope = HYBM_SCOPE_CROSS_NODE;
+    options.memType = static_cast<hybm_mem_type>(HYBM_MEM_TYPE_DEVICE | HYBM_MEM_TYPE_HOST);
     options.rankCount = 512U;
     options.rankId = rankId_;
     options.devId = config_.deviceId;
     options.deviceVASpace = 0;
-    options.globalUniqueAddress = false;
+    options.hostVASpace = TRANS_RESERVE_DRAM_VA_SIZE;
+    options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
+    options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.transUrl[0] = '\0';
+    options.tagOpInfo[0] = '\0';
     uint16_t port = 11000 + entityId_;
     auto url = "tcp://127.0.0.1:" + std::to_string(port);
 
@@ -582,5 +694,6 @@ int32_t SmemTransEntry::ReInitialize()
 
     return SM_OK;
 }
+
 } // namespace smem
 } // namespace ock

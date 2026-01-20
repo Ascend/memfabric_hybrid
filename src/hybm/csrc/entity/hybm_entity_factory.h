@@ -28,8 +28,24 @@ public:
 public:
     MemEntityFactory() = default;
     ~MemEntityFactory();
+    
+    template<typename T = MemEntityDefault>
+    EngineImplPtr GetOrCreateEngine(uint16_t id, uint32_t flags)
+    {
+        static_assert(std::is_base_of_v<MemEntityDefault, T>,
+                      "T must derive from MemEntityDefault");
+        std::lock_guard<std::mutex> guard(enginesMutex_);
+        auto iter = engines_.find(id);
+        if (iter != engines_.end()) {
+            return iter->second;
+        }
 
-    EngineImplPtr GetOrCreateEngine(uint16_t id, uint32_t flags);
+        /* create new engine */
+        auto engine = std::make_shared<T>(id);
+        engines_.emplace(id, engine);
+        enginesFromAddress_.emplace(engine.get(), id);
+        return engine;
+    }
     EngineImplPtr FindEngineByPtr(hybm_entity_t entity);
     bool RemoveEngine(hybm_entity_t entity);
 

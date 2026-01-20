@@ -28,6 +28,8 @@ struct RegisterSlice {
 };
 
 struct HbmExportDeviceInfo {
+    uint64_t magic{ENTITY_EXPORT_INFO_MAGIC};
+    uint32_t segmentType{SEGMENT_TYPE_USER_DEV};
     uint32_t sdid{0};
     uint32_t pid{0};
     uint32_t serverId{0};
@@ -35,18 +37,33 @@ struct HbmExportDeviceInfo {
     uint32_t rankId{0};
     uint16_t logicDeviceId{0};
     uint16_t reserved{0};
+
+    // Padding to make total size UNIFIED_EXCHANGE_SEG_INFO_SIZE(184) bytes
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 36]{};
 };
+static_assert(sizeof(HbmExportDeviceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
+              "HbmExportDeviceInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(184) bytes,"
+              " compatible with HostSdmaExportInfo");
+static_assert(offsetof(HbmExportDeviceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 struct HbmExportSliceInfo {
+    uint64_t magic{HBM_SLICE_EXPORT_INFO_MAGIC};
+    uint32_t segmentType{SEGMENT_TYPE_USER_DEV};
+    uint32_t serverId{0};
     uint64_t address{0};
     uint64_t size{0};
-    uint32_t serverId{0};
     uint32_t superPodId{0};
     uint16_t rankId{0};
     uint16_t reserved{0};
     uint32_t logicDeviceId{0};
     char name[DEVICE_SHM_NAME_SIZE + 1]{};
+
+    // Padding to make total size 184 bytes
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 109]{};
 };
+static_assert(sizeof(HbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HbmExportSliceInfo must be 184 bytes,"
+                                                                            " compatible with HostSdmaExportInfo");
+static_assert(offsetof(HbmExportSliceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmDevUserLegacySegment : public HybmDevLegacySegment {
 public:
@@ -64,7 +81,7 @@ public:
     Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
-    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
+    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     void CloseMemory() noexcept;
     hybm_mem_type GetMemoryType() const noexcept override

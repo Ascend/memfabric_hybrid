@@ -373,6 +373,159 @@ TEST_F(SmemTransTest, smem_trans_read_write)
     delete[] recv_buffer;
 }
 
+TEST_F(SmemTransTest, smem_trans_malloc)
+{
+    size_t mallocTinySize = 0x8000000; // 128MB
+    size_t mallocMiddleSize = mallocTinySize * 8; // 1GB
+    size_t mallocHugeSize = mallocMiddleSize * 64; // 128GB
+    size_t mallocOversize = mallocHugeSize * 129; // 512GB
+
+    smem_trans_config_t trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0, SMEMB_DATA_OP_SDMA, 1};
+    auto ret = smem_trans_init(&trans_options);
+    EXPECT_EQ(ret, 0);
+    auto handle = smem_trans_create(STORE_URL, "127.0.0.1:5321", &trans_options);
+    EXPECT_NE(handle, nullptr);
+
+    auto ptr = smem_trans_malloc(handle, mallocTinySize);
+    EXPECT_NE(ptr, nullptr);
+    ret = smem_trans_free(handle, ptr);
+    EXPECT_EQ(ret, 0);
+
+    ptr = smem_trans_malloc(handle, mallocMiddleSize);
+    EXPECT_NE(ptr, nullptr);
+    ret = smem_trans_free(handle, ptr);
+    EXPECT_EQ(ret, 0);
+
+    ptr = smem_trans_malloc(handle, mallocHugeSize);
+    EXPECT_NE(ptr, nullptr);
+    ret = smem_trans_free(handle, ptr);
+    EXPECT_EQ(ret, 0);
+
+    ptr = smem_trans_malloc(handle, mallocOversize);
+    EXPECT_EQ(ptr, nullptr);
+    smem_trans_destroy(handle, 0);
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_dram)
+{
+    uint32_t rankSize = 2;
+    size_t capacities = 0x200000; // 最少2M对齐
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
+
+    int pipe_fd[2]; // C2 -> C1
+    EXPECT_NE(pipe(pipe_fd), -1);
+
+    auto func = [pipe_fd](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
+                          size_t capacities, const std::array<const char *, 2> unique_ids) {
+        if (rank == 1) {
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
+        }
+        trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
+        int ret = smem_trans_init(&trans_options);
+        if (ret != 0) {
+            exit(1);
+        }
+        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
+        if (handle == nullptr) {
+            exit(2);
+        }
+
+        // 申请内存
+        auto ptr = smem_trans_malloc(handle, capacities);
+        if (ptr == nullptr) {
+            exit(3);
+        }
+
+        // 接收dst addr
+        if (rank == 0) {
+            close(pipe_fd[1]);
+            void* dst_addr;
+            ssize_t n = read(pipe_fd[0], &dst_addr, sizeof(dst_addr));
+            close(pipe_fd[0]);
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
+            ret = smem_trans_write(handle, ptr, unique_ids[1], dst_addr, capacities, 0);
+            if (ret != SM_OK) {
+                exit(4);
+            }
+        } else {
+            close(pipe_fd[0]);
+            if (write(pipe_fd[1], &ptr, sizeof(ptr)) != sizeof(ptr)) {
+                std::cerr << "rank1 send addr failed" << std::endl;
+            }
+            close(pipe_fd[1]);
+        }
+        if (rank == 1) {
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
+        }
+        std::cerr << " will cleanup rank:" << rank << std::endl;
+        ret = smem_trans_free(handle, ptr);
+        if (ret != 0) {
+            exit(5);
+        }
+        smem_trans_destroy(handle, 0);
+        smem_trans_uninit(0);
+    };
+
+    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
+    std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            smem_set_conf_store_tls(false, nullptr, 0);
+            if (i == 0) {
+                smem_create_config_store(STORE_URL);
+            }
+            func(i, rankSize, trans_options[i], capacities, unique_ids);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
+                needKillOthers = true;
+                for (uint32_t j = 0; j < rankSize; ++j) {
+                    if (i != j && pids[j] > 0) {
+                        kill(pids[j], SIGKILL);
+                    }
+                }
+            }
+        } else {
+            needKillOthers = true;
+            for (uint32_t j = 0; j < rankSize; ++j) {
+                if (i != j && pids[j] > 0) {
+                    kill(pids[j], SIGKILL);
+                }
+            }
+        }
+    }
+}
+
 TEST_F(SmemTransTest, smem_trans_write_ipv6)
 {
     uint32_t rankSize = 2;
@@ -626,6 +779,139 @@ TEST_F(SmemTransTest, smem_trans_batch_read_write)
     }
     delete[] sender_buffer;
     delete[] recv_buffer;
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write_dram)
+{
+    uint32_t rankSize = 2;
+    size_t capacities = 0x200000; // 最少2M对齐
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
+
+    int pipe_fd[2]; // C2 -> C1
+    EXPECT_NE(pipe(pipe_fd), -1);
+
+    auto func = [pipe_fd](uint32_t rank, uint32_t rankCount, smem_trans_config_t trans_options,
+                          size_t capacities, const std::array<const char *, 2> unique_ids) {
+        if (rank == 1) {
+            // 确保传入的rank和内部生成的rank对应
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
+        int ret = smem_trans_init(&trans_options);
+        if (ret != 0) {
+            exit(1);
+        }
+        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
+        if (handle == nullptr) {
+            exit(2);
+        }
+
+        // 申请内存
+        auto ptr0 = smem_trans_malloc(handle, capacities);
+        if (ptr0 == nullptr) {
+            exit(3);
+        }
+
+        auto ptr1 = smem_trans_malloc(handle, capacities);
+        if (ptr1 == nullptr) {
+            exit(3);
+        }
+
+        const void *local_addrs[] = {ptr0, ptr1};
+        // 接收dst addr
+        if (rank == 0) {
+            close(pipe_fd[1]);
+            void* dst_addr1;
+            void* dst_addr2;
+            ssize_t n = read(pipe_fd[0], &dst_addr1, sizeof(dst_addr1));
+            n = read(pipe_fd[0], &dst_addr2, sizeof(dst_addr2));
+            close(pipe_fd[0]);
+            void *remote_addrs[] = {dst_addr1, dst_addr2};
+
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
+            size_t data_sizes[] = {capacities, capacities};
+
+            ret = smem_trans_batch_write(handle, local_addrs, unique_ids[1], remote_addrs, data_sizes, 2, 0);
+            if (ret != 0) {
+                exit(4);
+            }
+        } else {
+            close(pipe_fd[0]);
+            if (write(pipe_fd[1], &ptr0, sizeof(ptr0)) != sizeof(ptr0)) {
+                std::cerr << "rank1 send addr0 failed" << std::endl;
+            }
+            if (write(pipe_fd[1], &ptr1, sizeof(ptr1)) != sizeof(ptr1)) {
+                std::cerr << "rank1 send addr1 failed" << std::endl;
+            }
+            close(pipe_fd[1]);
+        }
+        if (rank == 1) {
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
+        }
+        std::cerr << " will cleanup rank:" << rank << std::endl;
+        smem_trans_free(handle, ptr0);
+        smem_trans_free(handle, ptr1);
+        smem_trans_destroy(handle, 0);
+        smem_trans_uninit(0);
+    };
+
+    const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
+    std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
+
+    pid_t pids[rankSize];
+    uint32_t maxProcess = rankSize;
+    bool needKillOthers = false;
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        pids[i] = fork();
+        EXPECT_NE(pids[i], -1);
+        if (pids[i] == -1) {
+            maxProcess = i;
+            needKillOthers = true;
+            break;
+        }
+        if (pids[i] == 0) {
+            smem_set_conf_store_tls(false, nullptr, 0);
+            if (i == 0) {
+                smem_create_config_store(STORE_URL);
+            }
+            func(i, rankSize, trans_options[i], capacities, unique_ids);
+            exit(0);
+        }
+    }
+
+    if (needKillOthers) {
+        for (uint32_t i = 0; i < maxProcess; ++i) {
+            int status = 0;
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], &status, 0);
+        }
+        ASSERT_NE(needKillOthers, true);
+    }
+
+    for (uint32_t i = 0; i < rankSize; ++i) {
+        int status = 0;
+        waitpid(pids[i], &status, 0);
+        EXPECT_EQ(WIFEXITED(status), true);
+        if (WIFEXITED(status)) {
+            EXPECT_EQ(WEXITSTATUS(status), 0);
+            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
+                needKillOthers = true;
+                for (uint32_t j = 0; j < rankSize; ++j) {
+                    if (i != j && pids[j] > 0) {
+                        kill(pids[j], SIGKILL);
+                    }
+                }
+            }
+        } else {
+            needKillOthers = true;
+            for (uint32_t j = 0; j < rankSize; ++j) {
+                if (i != j && pids[j] > 0) {
+                    kill(pids[j], SIGKILL);
+                }
+            }
+        }
+    }
 }
 
 TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)

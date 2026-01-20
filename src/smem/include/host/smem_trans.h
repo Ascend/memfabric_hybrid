@@ -65,10 +65,29 @@ smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const
 void smem_trans_destroy(smem_trans_t handle, uint32_t flags);
 
 /**
- * @brief Register a contiguous memory space to be transferred
+ * @brief Register a contiguous dram space used for transfer
+ *
+ * @param handle           [in] transfer object handle
+ * @param capacity         [in] size of contiguous memory space
+ * @return 0 if successful
+ */
+void* smem_trans_malloc(smem_trans_t handle, size_t capacity);
+
+/**
+ * @brief free dram space
  *
  * @param handle           [in] transfer object handle
  * @param address          [in] start address of the contiguous memory space
+ * @param capacity         [in] size of contiguous memory space
+ * @return 0 if successful
+ */
+int32_t smem_trans_free(smem_trans_t handle, void *address);
+
+/**
+ * @brief Free a contiguous memory space allocated by smem_trans_alloc_mem
+ *
+ * @param handle           [in] transfer object handle
+ * @param address          [in] address to be free
  * @param capacity         [in] size of contiguous memory space
  * @param flags            [in] optional flags
  * @return 0 if successful

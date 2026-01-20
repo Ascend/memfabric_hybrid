@@ -118,7 +118,6 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
     info.rankId = options_.rankId;
     info.pid = HybmDevLegacySegment::pid_;
     HybmDevLegacySegment::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
-
     auto ret = LiteralExInfoTranslater<HbmExportDeviceInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
@@ -145,7 +144,6 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     info.rankId = static_cast<uint16_t>(options_.rankId);
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
-
     auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
@@ -178,15 +176,16 @@ Result HybmDevUserLegacySegment::Import(const std::vector<std::string> &allExInf
     }
 
     Result ret = BM_ERROR;
-    uint32_t index = 0u;
+    uint32_t index = 0U;
     for (auto &info : allExInfo) {
         MemSlicePtr rms;
-        if (info.length() == sizeof(HbmExportDeviceInfo)) {
+        auto magic = *reinterpret_cast<const uint64_t*>(info.data());
+        if (magic == ENTITY_EXPORT_INFO_MAGIC) {
             ret = ImportDeviceInfo(info);
-        } else if (info.length() == sizeof(HbmExportSliceInfo)) {
+        } else if (magic == HBM_SLICE_EXPORT_INFO_MAGIC) {
             ret = ImportSliceInfo(info, rms);
         } else {
-            BM_LOG_ERROR("invalid import info size : " << info.length());
+            BM_LOG_ERROR("invalid import magic : " << magic);
             ret = BM_INVALID_PARAM;
         }
         if (addresses == nullptr) {
@@ -277,7 +276,7 @@ Result HybmDevUserLegacySegment::Mmap() noexcept
     return BM_NOT_SUPPORTED;
 }
 
-MemSlicePtr HybmDevUserLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmDevUserLegacySegment::GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept
 {
     MemSlicePtr target;
     auto index = MemSlice::GetIndexFrom(slice);
@@ -287,7 +286,11 @@ MemSlicePtr HybmDevUserLegacySegment::GetMemSlice(hybm_mem_slice_t slice) const 
     } else if ((pos = remoteSlices_.find(index)) != remoteSlices_.end()) {
         target = pos->second.slice;
     } else {
-        BM_LOG_ERROR("cannot get slice: " << slice);
+        if (quiet) {
+            BM_LOG_DEBUG("cannot get slice: " << slice);
+        } else {
+            BM_LOG_ERROR("cannot get slice: " << slice);
+        }
         return nullptr;
     }
 

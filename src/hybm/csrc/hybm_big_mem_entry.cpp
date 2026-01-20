@@ -22,7 +22,8 @@ HYBM_API hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options *optio
     BM_ASSERT_RETURN(HybmHasInited(), nullptr);
 
     auto &factory = MemEntityFactory::Instance();
-    auto entity = factory.GetOrCreateEngine(id, flags);
+    std::shared_ptr<MemEntityDefault> entity = nullptr;
+    entity =  factory.GetOrCreateEngine(id, flags);
     if (entity == nullptr) {
         BM_LOG_ERROR("create entity failed.");
         return nullptr;
@@ -68,6 +69,14 @@ HYBM_API void *hybm_get_memory_ptr(hybm_entity_t e, hybm_mem_type mType)
     auto entity = static_cast<MemEntity *>(e);
     BM_ASSERT_RETURN(entity != nullptr, nullptr);
     return entity->GetReservedMemoryPtr(mType);
+}
+
+HYBM_API void* hybm_get_slice_va(hybm_entity_t e, hybm_mem_slice_t slice)
+{
+    BM_ASSERT_RETURN(e != nullptr, nullptr);
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, nullptr);
+    return entity->GetSliceVa(slice);
 }
 
 HYBM_API hybm_mem_slice_t hybm_alloc_local_memory(hybm_entity_t e, hybm_mem_type mType, uint64_t size, uint32_t flags)
@@ -162,7 +171,6 @@ HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo
     if ((flags & HYBM_FLAG_EXPORT_ENTITY) != 0) {
         return entity->ImportEntityExchangeInfo(readers.data(), count, flags);
     }
-
     return entity->ImportExchangeInfo(readers.data(), count, addresses, flags);
 }
 

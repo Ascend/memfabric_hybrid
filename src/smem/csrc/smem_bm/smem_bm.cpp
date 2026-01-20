@@ -167,7 +167,6 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
         return nullptr;
     }
 #endif
-    options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = manager.GetWorldSize();
     options.rankId = manager.GetRankId();
     options.devId = manager.GetDeviceId();
@@ -196,7 +195,7 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
     (void) std::copy_n(option->tag, sizeof(options.tag), options.tag);
     (void) std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
 
-    options.globalUniqueAddress = true;
+    options.scene = HYBM_SCENE_DEFAULT;
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);

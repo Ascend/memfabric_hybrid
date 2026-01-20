@@ -84,6 +84,19 @@ void HostComposeDataOp::UnInitialize() noexcept
 Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                    const ExtOptions &options) noexcept
 {
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        if (sdmaDataOperator_ != nullptr && (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA)) {
+            return sdmaDataOperator_->DataCopy(params, direction, options);
+        }
+
+        if (devRdmaDataOperator_ != nullptr && (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+            return devRdmaDataOperator_->DataCopy(params, direction, options);
+        }
+
+        BM_LOG_ERROR("only support sdma or dev_rdma in trans currently");
+        return BM_INVALID_PARAM;
+    }
+
     auto availableOps = GetPrioritedDataOperators(options);
     if (availableOps.empty()) {
         BM_LOG_ERROR("data copy from rank " << options.srcRankId << " to rank " << options.destRankId
@@ -109,6 +122,19 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        if (sdmaDataOperator_ != nullptr && (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA)) {
+            return sdmaDataOperator_->BatchDataCopy(params, direction, options);
+        }
+
+        if (devRdmaDataOperator_ != nullptr && (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+            return devRdmaDataOperator_->BatchDataCopy(params, direction, options);
+        }
+
+        BM_LOG_ERROR("only support sdma or dev_rdma in trans currently");
+        return BM_INVALID_PARAM;
+    }
+
     auto availableOps = GetPrioritedDataOperators(options);
     if (availableOps.empty()) {
         BM_LOG_ERROR("batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId

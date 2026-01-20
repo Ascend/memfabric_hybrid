@@ -40,6 +40,21 @@ uint32_t MemSegment::superPodId_{0};
 std::string MemSegment::sysBoolId_{};
 uint32_t MemSegment::bootIdHead_{0};
 AscendSocType MemSegment::socType_{AscendSocType::ASCEND_UNKNOWN};
+bool MemSegment::atforkRegistered_{false};
+
+void MemSegment::ResetDeviceInfoInChild() noexcept
+{
+    MemSegment::deviceInfoReady_ = false;
+    MemSegment::deviceId_ = -1;
+    MemSegment::logicDeviceId_ = -1;
+    MemSegment::pid_ = 0;
+    MemSegment::sdid_ = 0;
+    MemSegment::serverId_ = 0;
+    MemSegment::superPodId_ = 0;
+    MemSegment::sysBoolId_.clear();
+    MemSegment::bootIdHead_ = 0;
+    MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_UNKNOWN;
+}
 
 MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
 {
@@ -94,6 +109,17 @@ Result MemSegment::InitDeviceInfo(int devId)
 #if !defined(ASCEND_NPU)
     return BM_OK;
 #endif
+
+    if (!atforkRegistered_) {
+        static std::once_flag flag;
+        std::call_once(flag, []() {
+            if (pthread_atfork(nullptr, nullptr,  []() { MemSegment::ResetDeviceInfoInChild();}) != 0) {
+                BM_LOG_ERROR("Failed to register pthread_atfork handler!");
+            }
+        });
+        atforkRegistered_ = true;
+    }
+
     if (deviceInfoReady_) {
         return (deviceId_ == devId ? BM_OK : BM_INVALID_PARAM);
     }
@@ -101,9 +127,9 @@ Result MemSegment::InitDeviceInfo(int devId)
     FillSysBootIdInfo();
 
     deviceId_ = devId;
-    auto ret = DlAclApi::AclrtGetDevice(&deviceId_);
+    auto ret = DlAclApi::AclrtSetDevice(devId, true);
     if (ret != 0) {
-        BM_LOG_ERROR("get device id failed: " << ret);
+        BM_LOG_ERROR("set device to:" << devId << "failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
 
@@ -167,6 +193,7 @@ Result MemSegment::InitDeviceInfo(int devId)
     BM_LOG_DEBUG("local sdid=0x" << std::hex << sdid_ << ", local server=0x" << std::hex << serverId_
                                  << ", spid=" << superPodId_ << ", socName=" << socName);
     deviceInfoReady_ = true;
+
     return BM_OK;
 }
 

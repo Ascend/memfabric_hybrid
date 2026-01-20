@@ -20,7 +20,8 @@ namespace ock {
 namespace mf {
 struct HostSdmaExportInfo {
     uint64_t magic{DRAM_SLICE_EXPORT_INFO_MAGIC};
-    uint64_t version{EXPORT_INFO_VERSION};
+    uint32_t segmentType{SEGMENT_TYPE_VMM};
+    uint32_t version{EXPORT_INFO_VERSION};
     uint64_t vAddress{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
@@ -30,7 +31,11 @@ struct HostSdmaExportInfo {
     uint32_t devId{0};
     uint64_t size{0};
     MemShareHandle shareHandle;
-};
+}; // 184B
+
+static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HostSdmaExportInfo must be 184 bytes, "
+                                                 "compatible with HbmExportDeviceInfo and HbmExportSliceInfo");
+static_assert(offsetof(HostSdmaExportInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmVmmBasedSegment : public MemSegment {
 public:
@@ -51,7 +56,7 @@ public:
     Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result Mmap() noexcept override;
     Result Unmap() noexcept override;
-    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice) const noexcept override;
+    MemSlicePtr GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
     bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
     bool CheckSdmaReaches(uint32_t rankId) const noexcept override;

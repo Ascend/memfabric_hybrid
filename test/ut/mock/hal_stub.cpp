@@ -170,4 +170,69 @@ int drvNotifyIdAddrOffset(uint32_t deviceId, struct drvNotifyInfo *drvInfo)
 {
     return 0;
 }
+
+int halMemMap(void *ptr, size_t size, size_t offset, drv_mem_handle_t *handle, uint64_t flag)
+{
+    return 0;
+}
+
+int halMemAddressReserve(void **ptr, size_t size, size_t alignment, void *addr, uint64_t flag)
+{
+    *ptr = addr;
+    return 0;
+}
+
+int halMemAddressFree(void *ptr)
+{
+    return 0;
+}
+
+int halMemCreate(drv_mem_handle_t **handle, size_t size, struct drv_mem_prop *prop, uint64_t flag)
+{
+    return 0;
+}
+
+int halMemRelease(drv_mem_handle_t *handle)
+{
+    return 0;
+}
+
+int halMemUnmap(void *ptr)
+{
+    return 0;
+}
+
+int halMemSetAccess(void *ptr, size_t size, struct drv_mem_access_desc *desc, size_t count)
+{
+    return 0;
+}
+
+int halMemExportToShareableHandleV2(drv_mem_handle_t *handle, drv_mem_handle_type type, uint64_t flags,
+                                    struct MemShareHandle *sHandle)
+{
+    return 0;
+}
+
+int halMemImportFromShareableHandleV2(drv_mem_handle_type type, struct MemShareHandle *sHandle, uint32_t devid,
+                                      drv_mem_handle_t **handle)
+{
+    return 0;
+}
+
+int halMemShareHandleSetAttribute(uint64_t handle, enum ShareHandleAttrType type, struct ShareHandleAttr attr)
+{
+    return 0;
+}
+
+int halMemTransShareableHandle(drv_mem_handle_type type, struct MemShareHandle *handle, uint32_t *serverId,
+                               uint64_t *shareableHandle)
+{
+    return 0;
+}
+
+int halMemGetAllocationGranularity(const struct drv_mem_prop *prop, drv_mem_granularity_options option,
+                                   size_t *granularity)
+{
+    return 0;
+}
 }

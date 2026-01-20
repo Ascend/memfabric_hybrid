@@ -87,6 +87,15 @@ hybm_mem_slice_t hybm_alloc_local_memory(hybm_entity_t e, hybm_mem_type mType, u
 int32_t hybm_free_local_memory(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t count, uint32_t flags);
 
 /**
+ * @brief get virtual address from slice
+ *
+ * @param e                [in] entity created by hybm_create_entity
+ * @param slice             [in] mf slice ptr
+ * @return non-null pointer to the virtual address of the slice or fail
+ */
+void* hybm_get_slice_va(hybm_entity_t e, hybm_mem_slice_t slice);
+
+/**
  * @brief Register memory at local side, registered memory can be accessed by remote.
  * @param e                [in] entity created by hybm_create_entity
  * @param ptr              [in] local memory start address

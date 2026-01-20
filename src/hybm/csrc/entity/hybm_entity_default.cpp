@@ -39,37 +39,43 @@ MemEntityDefault::~MemEntityDefault()
 
 Result MemEntityDefault::InitTagManager()
 {
+    if (options_.scene == HYBM_SCENE_TRANS || options_.scene == HYBM_SCENE_SHM) {
+        return BM_OK;
+    }
     const static std::string defaultTag = "HYBM_DEFAULT_TAG_FOR_EMPTY";
     BM_ASSERT_RETURN(tagManager_ == nullptr, BM_OK);
     std::string localTag = options_.tag;
     if (localTag.empty()) {
         localTag = defaultTag;
         std::copy_n(localTag.c_str(), localTag.size(), options_.tag);
+        if (sizeof(options_.tag) > defaultTag.size()) {
+            options_.tag[defaultTag.size()] = '\0';
+        }
     }
     tagManager_ = std::make_shared<HybmEntityTagInfo>();
-    BM_ASSERT_LOG_AND_RETURN(tagManager_->TagInfoInit(options_) == BM_OK,
-                             "Failed to init tagManager", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(tagManager_->TagInfoInit(options_) == BM_OK, "Failed to init tagManager",
+                             BM_INVALID_PARAM);
     // same tag use options_.bmDataOpType
     std::ostringstream compatibleInfo;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_DEVICE_RDMA) <<
-            ":" << localTag << ",";
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_DEVICE_RDMA) << ":"
+                       << localTag << ",";
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) {
-        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_SDMA) <<
-            ":" << localTag << ",";
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_SDMA) << ":" << localTag
+                       << ",";
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_RDMA) {
-        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_RDMA) <<
-            ":" << localTag << ",";
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_RDMA) << ":" << localTag
+                       << ",";
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_TCP) {
-        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_TCP) <<
-            ":" << localTag << ",";
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_TCP) << ":" << localTag
+                       << ",";
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_URMA) {
-        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_URMA) <<
-            ":" << localTag << ",";
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_URMA) << ":" << localTag
+                       << ",";
     }
     BM_ASSERT_LOG_AND_RETURN(tagManager_->AddTagOpInfo(compatibleInfo.str()) == BM_OK,
                              "Failed to add tagOpInfo:" << compatibleInfo.str(), BM_INVALID_PARAM);
@@ -82,8 +88,9 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(!initialized_, "the object is initialized.", BM_OK);
     BM_ASSERT_LOG_AND_RETURN((id_ >= 0 && (uint32_t)(id_) < HYBM_ENTITY_NUM_MAX),
-                             "input entity id is invalid, input: " << id_ << " must be less than: "
-                                                                   << HYBM_ENTITY_NUM_MAX, BM_INVALID_PARAM);
+                             "input entity id is invalid, input: " << id_
+                                                                   << " must be less than: " << HYBM_ENTITY_NUM_MAX,
+                             BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(CheckOptions(options) == BM_OK, "options is invalid.", BM_INVALID_PARAM);
     options_ = *options;
     // init tag info
@@ -219,7 +226,7 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
                         << ", end: 0x" << HYBM_HBM_END_ADDR);
     std::shared_ptr<MemSegment> segment = nullptr;
     // 只有trans场景才需要走hbmSegment_，bm场景优先走dramSegment_
-    if (!options_.globalUniqueAddress || dramSegment_ == nullptr) {
+    if (options_.scene == HYBM_SCENE_TRANS || dramSegment_ == nullptr) {
         segment = hbmSegment_;
     } else {
         segment = dramSegment_;
@@ -258,7 +265,7 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
     HybmVaManager::GetInstance().DumpReservedGvaInfo();
     HybmVaManager::GetInstance().DumpAllocatedGvaInfo();
     MemSlicePtr memSlice;
-    if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice)) != nullptr) {
+    if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice, true)) != nullptr) {
         hbmSegment_->ReleaseSliceMemory(memSlice);
     } else if (dramSegment_ != nullptr && (memSlice = dramSegment_->GetMemSlice(slice)) != nullptr) {
         dramSegment_->ReleaseSliceMemory(memSlice);
@@ -271,6 +278,19 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
         }
     }
     return BM_OK;
+}
+
+void *MemEntityDefault::GetSliceVa(hybm_mem_slice_t slice)
+{
+    std::shared_ptr<MemSlice> memSlice;
+    if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice, true)) != nullptr) {
+        return reinterpret_cast<void *>(memSlice->vAddress_);
+    } else if (dramSegment_ != nullptr && (memSlice = dramSegment_->GetMemSlice(slice)) != nullptr) {
+        return reinterpret_cast<void *>(memSlice->vAddress_);
+    }
+
+    BM_LOG_ERROR("failed to get slice va, invalid slice:" << slice);
+    return nullptr;
 }
 
 int32_t MemEntityDefault::ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept
@@ -322,10 +342,12 @@ int32_t MemEntityDefault::ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t 
         return ret;
     }
 
-    ret = ExportExchangeInfo(desc, flags);
-    if (ret != 0) {
-        BM_LOG_ERROR("ExportExchangeInfo failed: " << ret);
-        return ret;
+    if (flags & HYBM_FLAG_EXPORT_ENTITY) {
+        ret = ExportExchangeInfo(desc, flags);
+        if (ret != 0) {
+            BM_LOG_ERROR("ExportExchangeInfo failed: " << ret);
+            return ret;
+        }
     }
 
     ret = desc.Append(info.data(), info.size());
@@ -349,7 +371,7 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInf
     MemSlicePtr realSlice;
     std::shared_ptr<MemSegment> currentSegment;
     if (hbmSegment_ != nullptr) {
-        realSlice = hbmSegment_->GetMemSlice(slice);
+        realSlice = hbmSegment_->GetMemSlice(slice, true);
         currentSegment = hbmSegment_;
         exportMagic = HBM_SLICE_EXPORT_INFO_MAGIC;
     }
@@ -378,15 +400,19 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInf
                 return ret;
             }
         }
+        ret = desc.Append(transportKey);
+        if (ret != 0) {
+            BM_LOG_ERROR("append transport key failed: " << ret);
+            return ret;
+        }
     }
-    ret = desc.Append(transportKey);
-    if (ret != 0) {
-        BM_LOG_ERROR("append transport key failed: " << ret);
-        return ret;
-    }
-    BM_LOG_INFO("Success to export slice rankId:" << transportKey.rankId << " addr:" << transportKey.address <<
-                                                  " key:" << transportKey.key);
 
+    if (options_.scene != HYBM_SCENE_TRANS) {
+        BM_LOG_INFO("Success to export slice rankId:" << transportKey.rankId << " addr:" << transportKey.address <<
+                    " key:" << transportKey.key);
+    } else {
+        BM_LOG_INFO("Success to export slice rankId:" << options_.rankId << " addr:" << realSlice->vAddress_);
+    }
     ret = desc.Append(info.data(), info.size());
     if (ret != 0) {
         BM_LOG_ERROR("export to string wrong size: " << info.size());
@@ -414,10 +440,12 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
         return BM_ERROR;
     }
 
-    std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> tempKeyMap;
-    ret = ImportForTransport(desc, count);
-    if (ret != BM_OK) {
-        return ret;
+    if (transportManager_ != nullptr) {
+        std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> tempKeyMap;
+        ret = ImportForTransport(desc, count);
+        if (ret != BM_OK) {
+            return ret;
+        }
     }
 
     if (desc[0].LeftBytes() == 0) {
@@ -448,7 +476,10 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
 
 int32_t MemEntityDefault::ImportForTagManager()
 {
-    for (const auto &item: importedRanks_) {
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        return BM_OK;
+    }
+    for (const auto &item : importedRanks_) {
         auto rankId = item.first;
         auto &info = item.second;
         auto ret = tagManager_->AddRankTag(rankId, info.tag);
@@ -468,7 +499,7 @@ int32_t MemEntityDefault::ImportForTransportManager()
     }
     int32_t ret = BM_ERROR;
     transport::HybmTransPrepareOptions prepareOptions;
-    for (const auto &item: importedRanks_) {
+    for (const auto &item : importedRanks_) {
         auto &info = item.second;
         transport::TransportRankPrepareInfo prepareInfo;
         prepareInfo.nic = info.nic;
@@ -516,10 +547,30 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
             importedRanks_[deserializedInfo.rankId] = deserializedInfo;
         }
     }
-
     BM_ASSERT_LOG_AND_RETURN(ImportForTagManager() == BM_OK, "Failed import for tag manager", BM_ERROR);
     BM_ASSERT_LOG_AND_RETURN(ImportForTransportManager() == BM_OK, "Failed import for transport manager", BM_ERROR);
     return BM_OK;
+}
+
+int32_t MemEntityDefault::ImportExchangeInfo(const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
+                                             uint32_t flags) noexcept
+{
+    if (!initialized_) {
+        BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
+        return BM_NOT_INITIALIZED;
+    }
+
+    std::vector<ExchangeInfoReader> readers(count);
+    for (auto i = 0U; i < count; i++) {
+        readers[i].Reset(allExInfo + i);
+    }
+    auto desc = readers.data();
+    if (desc == nullptr) {
+        BM_LOG_ERROR("the input desc is nullptr.");
+        return BM_ERROR;
+    }
+
+    return ImportExchangeInfo(desc, count, addresses, flags);
 }
 
 int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) noexcept
@@ -569,7 +620,8 @@ int32_t MemEntityDefault::Mmap() noexcept
         return BM_NOT_INITIALIZED;
     }
 
-    if (hbmSegment_ != nullptr) {
+    // in trans scene, two segement work togather, but hbm do not need to mmap, and wrongly mmap will make dram mmap fail
+    if (hbmSegment_ != nullptr && options_.scene != HYBM_SCENE_TRANS) {
         auto ret = hbmSegment_->Mmap();
         if (ret != BM_OK) {
             return ret;
@@ -641,8 +693,9 @@ int32_t MemEntityDefault::GetExportSliceInfoSize(size_t &size) noexcept
         BM_LOG_ERROR("GetExportSliceSize for segment failed: " << ret);
         return ret;
     }
-
-    exportSize += sizeof(SliceExportTransportKey);
+    if (transportManager_ != nullptr) {
+        exportSize += sizeof(SliceExportTransportKey);
+    }
     size = exportSize;
     return BM_OK;
 }
@@ -662,7 +715,7 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     options.stream = stream;
     GenCopyExtOption(params.src, params.dest, params.dataSize, options);
 
-    if (options_.globalUniqueAddress) {
+    if (options_.scene != HYBM_SCENE_TRANS) {
         params.src = Valid48BitsAddress(params.src);
         params.dest = Valid48BitsAddress(params.dest);
     }
@@ -857,8 +910,8 @@ int32_t MemEntityDefault::ImportForTransportPrecheck(const ExchangeInfoReader de
                 importedMemories_[transportKey.rankId].clear();
             }
             importedMemories_[transportKey.rankId].emplace_back(transportKey.key);
-            BM_LOG_INFO("Success to import slice rankId:" << transportKey.rankId << " addr:"
-                << std::hex << transportKey.address);
+            BM_LOG_INFO("Success to import slice rankId:" << transportKey.rankId << " addr:" << std::hex
+                                                          << transportKey.address);
         } else {
             BM_LOG_ERROR("magic(" << std::hex << magic << ") invalid");
             ret = BM_ERROR;
@@ -956,6 +1009,15 @@ Result MemEntityDefault::InitSegment()
             BM_LOG_ERROR("InitDramSegment() failed: " << ret);
             return ret;
         }
+
+        if (options_.scene == HYBM_SCENE_TRANS) {
+            void *_{nullptr};
+            auto ret = dramSegment_->ReserveMemorySpace(&_);
+            if (ret != BM_OK) {
+                BM_LOG_ERROR("Failed to reserve dram va for user malloc");
+                return ret;
+            }
+        }
     }
 
     return BM_OK;
@@ -963,13 +1025,13 @@ Result MemEntityDefault::InitSegment()
 
 Result MemEntityDefault::InitHbmSegment()
 {
-    if (options_.globalUniqueAddress && options_.maxHBMSize == 0) {
+    if (options_.scene != HYBM_SCENE_TRANS && options_.maxHBMSize == 0) {
         BM_LOG_INFO("Hbm rank space is zero.");
         return BM_OK;
     }
 
     MemSegmentOptions segmentOptions;
-    if (options_.globalUniqueAddress) {
+    if (options_.scene != HYBM_SCENE_TRANS) {
         segmentOptions.size = options_.deviceVASpace;
         segmentOptions.maxSize = options_.maxHBMSize;
         segmentOptions.segType = HYBM_MST_HBM;

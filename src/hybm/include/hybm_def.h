@@ -52,18 +52,18 @@ typedef enum {
 } hybm_data_op_type;
 
 typedef enum {
-    HYBM_SCOPE_IN_NODE = 0U,
-    HYBM_SCOPE_CROSS_NODE,
-
-    HYBM_SCOPE_BUTT
-} hybm_scope;
-
-typedef enum {
     HYBM_MEM_TYPE_DEVICE = 1U << 0,
     HYBM_MEM_TYPE_HOST = 1U << 1,
 
     HYBM_MEM_TYPE_BUTT
 } hybm_mem_type;
+
+typedef enum {
+    HYBM_SCENE_DEFAULT = 1U << 0,
+    HYBM_SCENE_TRANS = 1U << 1,
+    HYBM_SCENE_SHM = 1U << 2,
+    HYBM_SCENE_BUTT
+} hybm_scene;
 
 typedef enum {
     HYBM_ROLE_PEER = 0, // peer to peer connect
@@ -97,7 +97,6 @@ typedef struct {
     hybm_type bmType;
     hybm_mem_type memType;
     hybm_data_op_type bmDataOpType;
-    hybm_scope bmScope;
     uint16_t rankCount;
     uint16_t rankId;
     uint16_t devId;
@@ -105,6 +104,7 @@ typedef struct {
     uint64_t maxDRAMSize;
     uint64_t deviceVASpace;
     uint64_t hostVASpace;
+    hybm_scene scene;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
     hybm_role_type role;
     uint32_t flags;

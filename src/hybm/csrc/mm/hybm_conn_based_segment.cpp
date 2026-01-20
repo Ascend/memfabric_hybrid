@@ -221,18 +221,26 @@ Result HybmConnBasedSegment::Unmap() noexcept
     return 0;
 }
 
-MemSlicePtr HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice) const noexcept
+MemSlicePtr HybmConnBasedSegment::GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
     auto pos = slices_.find(index);
     if (pos == slices_.end()) {
-        BM_LOG_ERROR("Failed to get slice, index(" << index << ") not find");
+        if (quiet) {
+            BM_LOG_DEBUG("Failed to get slice, index(" << index << ") not find");
+        } else {
+            BM_LOG_ERROR("Failed to get slice, index(" << index << ") not find");
+        }
         return nullptr;
     }
 
     auto target = pos->second.slice;
     if (!target->ValidateId(slice)) {
-        BM_LOG_ERROR("Failed to get slice, slice is invalid index(" << index << ")");
+        if (quiet) {
+            BM_LOG_DEBUG("Failed to get slice, slice is invalid index(" << index << ")");
+        } else {
+            BM_LOG_ERROR("Failed to get slice, slice is invalid index(" << index << ")");
+        }
         return nullptr;
     }
 
