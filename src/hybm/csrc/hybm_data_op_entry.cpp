@@ -40,6 +40,18 @@ HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_
     BM_ASSERT_RETURN(params->dataSize != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
 
+    if (direction == HYBM_DATA_COPY_DIRECTION_AUTO) {
+        auto& vaMgr = ock::mf::HybmVaManager::GetInstance();
+        direction = vaMgr.InferCopyDirection(reinterpret_cast<uint64_t>(params->src),
+                                             reinterpret_cast<uint64_t>(params->dest));
+        if (direction == HYBM_DATA_COPY_DIRECTION_BUTT) {
+            BM_LOG_ERROR("Failed to auto infer copy direction, src=0x"
+                         << std::hex << reinterpret_cast<uint64_t>(params->src) <<
+                         ", dest=0x" << reinterpret_cast<uint64_t>(params->dest));
+            return BM_INVALID_PARAM;
+        }
+    }
+
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
     BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
 

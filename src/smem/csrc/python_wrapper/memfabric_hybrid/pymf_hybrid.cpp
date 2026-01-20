@@ -426,7 +426,9 @@ void DefineBmConfig(py::module_ &m)
         .value("GH2L", SMEMB_COPY_GH2L, "copy data from global host space to local hbm")
         .value("GH2H", SMEMB_COPY_GH2H, "copy data from global host space to host memory")
         .value("H2GH", SMEMB_COPY_H2GH, "copy data from host memory to global host space")
-        .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space");
+        .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space")
+        .value("AUTO", SMEMB_COPY_AUTO,
+        "copy data automatically based on the memory type of the source and destination");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {

@@ -211,6 +211,30 @@ hybm_mem_type HybmVaManager::GetMemType(uint64_t va)
     return HYBM_MEM_TYPE_BUTT;
 }
 
+ock::mf::HybmVaManager::AddressCategory ock::mf::HybmVaManager::ClassifyAddress(uint64_t va)
+{
+    auto gvaType = GetMemType(va);
+    if (gvaType != HYBM_MEM_TYPE_BUTT) {
+        if (gvaType == HYBM_MEM_TYPE_DEVICE) return GLOBAL_DEVICE;
+        if (gvaType == HYBM_MEM_TYPE_HOST) return GLOBAL_HOST;
+    }
+    if (va >= HYBM_DEVICE_VA_START && va < (HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE)) {
+        return LOCAL_DEVICE;
+    }
+    return LOCAL_HOST;
+}
+
+hybm_data_copy_direction HybmVaManager::InferCopyDirection(uint64_t srcVa, uint64_t dstVa)
+{
+    auto src = static_cast<int>(ClassifyAddress(srcVa));
+    auto dst = static_cast<int>(ClassifyAddress(dstVa));
+    if (src >= 0 && src < ADDRESS_CATEGORY_BUTT &&
+        dst >= 0 && dst < ADDRESS_CATEGORY_BUTT) {
+        return COPY_DIRECTION_TABLE[src][dst];
+    }
+    return HYBM_DATA_COPY_DIRECTION_BUTT;
+}
+
 std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
 {
     if (gva == 0) {

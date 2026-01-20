@@ -203,6 +203,8 @@ public:
     // Checks if 'va' is within any AllocatedGvaInfo range (either LVA or GVA).
     bool IsValidAddr(uint64_t va);
 
+    hybm_data_copy_direction InferCopyDirection(uint64_t srcVa, uint64_t dstVa);
+
     // =============ReservedGvaInfo Management==============================
     ReservedGvaInfo AllocReserveGva(uint32_t localRankId, uint64_t size, hybm_mem_type memType);
     void FreeReserveGva(uint64_t addr);
@@ -237,6 +239,28 @@ private:
 
     uint64_t reserveStart_{HYBM_GVM_START_ADDR};
     uint64_t reserveEnd_{HYBM_GVM_END_ADDR};
+
+private:
+    typedef enum {
+        GLOBAL_DEVICE = 0,
+        GLOBAL_HOST,
+        LOCAL_DEVICE,
+        LOCAL_HOST,
+        ADDRESS_CATEGORY_BUTT
+    }AddressCategory;
+
+    static constexpr hybm_data_copy_direction COPY_DIRECTION_TABLE[ADDRESS_CATEGORY_BUTT][ADDRESS_CATEGORY_BUTT] = {
+    {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
+     HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST},
+    {HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+     HYBM_GLOBAL_HOST_TO_LOCAL_HOST},
+    {HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
+     HYBM_DATA_COPY_DIRECTION_BUTT},
+    {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
+     HYBM_DATA_COPY_DIRECTION_BUTT},
+};
+
+    AddressCategory ClassifyAddress(uint64_t va);
 };
 
 template<typename T>

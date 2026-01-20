@@ -318,7 +318,8 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    auto direct = TransToHybmDirection(t, src, size, dest, size);
+    hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO
+                                                             : TransToHybmDirection(t, src, size, dest, size);
     if (direct == HYBM_DATA_COPY_DIRECTION_BUTT) {
         SM_LOG_ERROR("Failed to trans to hybm direct, smem direct: " << t << " src: " << src << " dest: " << dest);
         return SM_INVALID_PARAM;
