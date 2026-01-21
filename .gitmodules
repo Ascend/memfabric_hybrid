@@ -6,3 +6,7 @@
 	path = test/3rdparty/mockcpp
 	url = https://github.com/sinojelly/mockcpp.git
 	branch = tags/v2.7
+[submodule "3rdparty/ubs-comm"]
+	path = 3rdparty/ubs-comm
+	url = https://atomgit.com/openeuler/ubs-comm.git
+	branch = dev-kvcache

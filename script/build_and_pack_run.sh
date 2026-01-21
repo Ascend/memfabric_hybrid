@@ -17,6 +17,7 @@ BUILD_MODE="RELEASE"
 BUILD_PYTHON="ON"
 XPU_TYPE="NPU"
 BUILD_TEST="OFF"
+BUILD_HCOM="OFF"
 
 show_help() {
     echo "Usage: $0 [options]"
@@ -25,6 +26,7 @@ show_help() {
     echo "  --build_python <ON/OFF>     Enable/disable Python build, default: ON"
     echo "  --xpu_type <GPU/NPU/NONE>   Set xpu dependency(GPU:CUDA, NPU:CANN), set none without xpu, default: NPU"
     echo "  --build_test <ON/OFF>       Enable/disable build and package test utilities and examples, default: OFF"
+    echo "  --build_hcom <ON/OFF>       Enable/disable build and package hcom, default: OFF"
     echo "  --help                      Show this help message"
     echo ""
     echo "Example:"
@@ -50,6 +52,10 @@ while [[ "$#" -gt 0 ]]; do
             BUILD_TEST="$2"
             shift 2
             ;;
+        --build_hcom)
+            BUILD_HCOM="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -67,11 +73,12 @@ echo "BUILD_MODE: $BUILD_MODE"
 echo "BUILD_PYTHON: $BUILD_PYTHON"
 echo "XPU_TYPE: $XPU_TYPE"
 echo "BUILD_TEST: $BUILD_TEST"
+echo "BUILD_HCOM: $BUILD_HCOM"
 
 cd ${ROOT_PATH}
 
-bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" gcc "${BUILD_TEST}"
+bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" gcc "${BUILD_TEST}" "${BUILD_HCOM}"
 
-bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}" "${BUILD_PYTHON}"
+bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}" "${BUILD_PYTHON}" "${BUILD_HCOM}"
 
 cd ${CURRENT_DIR}

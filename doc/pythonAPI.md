@@ -145,8 +145,6 @@ def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMB_DATA_OP_SDM
 |flags|预留参数|
 |返回值|SMEM对象handle|
 
-📌 **注意**：当dataOpType取值为SMEMB_DATA_OP_HOST_RDMA时，需要依赖libhcom.so，请参考[hcom项目](https://atomgit.com/openeuler/ubs-comm)获取最新的so文件。
-
 ### 3. 获取当前rank的id
 #### bm_rank_id
 获取当前rank的id

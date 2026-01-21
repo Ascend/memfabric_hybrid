@@ -32,15 +32,16 @@ git submodule update --recursive --init
 
 执行如下命令进行编译，编译成功后，会生成run包在output目录下
 ```
-bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test OFF
+bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test OFF --build_hcom OFF
 
 ```
 
-- build_and_pack_run.sh支持4个参数，分别是<build_mode> <build_python> <xpu_type> <build_test>
+- build_and_pack_run.sh支持5个参数，分别是<build_mode> <build_python> <xpu_type> <build_test> <build_hcom>
 - build_mode: 编译类型，可填RELEASE或DEBUG，默认RELEASE
 - build_python: 是否编译python的whl包，可填ON或OFF，默认ON
 - xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
 - build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
+- build_hcom: 是否编译hcom，可填ON或OFF，默认OFF（如果数据传输类型需要使用HOST_RDMA、HOST_TCP、HOST_URMA时，需要设置为ON，且环境需要安装libibverbs-dev，可通过apt install libibverbs-dev进行安装）
 
 ## 环境准备
 
@@ -120,8 +121,8 @@ pip show memfabric_hybrid
 
 1. 用已安装的run包目录下的whl包进行安装（此处以默认安装路径为例）
 ```bash
-# 手动安装（此处以1.0.0版本为例）
-pip install /usr/local/memfabric_hybrid/1.0.0/aarch64-linux/wheel/memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
+# 手动安装
+pip install /usr/local/memfabric_hybrid/latest/aarch64-linux/wheel/memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
 ```
 2. whl包已发布到[pypi](https://pypi.org/project/memfabric-hybrid/#files)，可以直接进行在线安装
 ```bash
@@ -129,12 +130,17 @@ pip install /usr/local/memfabric_hybrid/1.0.0/aarch64-linux/wheel/memfabric_hybr
 pip install memfabric_hybrid==1.0.0
 ```
 
+whl包安装完成后，需要设置LD_LIBRARY_PATH环境变量
+```bash
+# 此处以python3.11为例
+export LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/memfabric_hybrid/lib/:$LD_LIBRARY_PATH
+```bash
+
 ## 卸载软件包
 ### 卸载run包
 执行run包安装路径（此处以默认安装路径为例）下的卸载脚本进行卸载。
 ```bash
-# 此处以1.0.0版本为例
-bash /usr/local/memfabric_hybrid/1.0.0/uninstall.sh
+bash /usr/local/memfabric_hybrid/latest/uninstall.sh
 ```
 ### 卸载whl包
 ```bash

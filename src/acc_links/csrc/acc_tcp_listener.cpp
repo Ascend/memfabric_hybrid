@@ -55,7 +55,7 @@ Result AccTcpListener::Start() noexcept
         auto errorNum = errno;
         SafeCloseFd(tmpFD);
         if (errorNum == EADDRINUSE) {
-            LOG_INFO("address in use for bind listen on " << NameAndPort());
+            LOG_ERROR("address in use for bind listen on " << NameAndPort());
             return ACC_LINK_ADDRESS_IN_USE;
         }
         LOG_ERROR("Failed to bind or listen on " << NameAndPort() << " as errno " << strerror(errorNum));

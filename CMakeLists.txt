@@ -63,6 +63,7 @@ option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
 option(BUILD_TEST "Enable/disable build and package test utilities and examples" OFF)
+option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
 
 set(XPU_TYPE "NPU" CACHE STRING "XPU backend to use: NONE, NPU, or GPU")
 set_property(CACHE XPU_TYPE PROPERTY STRINGS NONE NPU GPU)
@@ -91,9 +92,11 @@ message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
+message(STATUS "CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 message(STATUS "XPU_TYPE: ${XPU_TYPE}")
 message(STATUS "BUILD_TEST = ${BUILD_TEST}")
+message(STATUS "BUILD_HCOM = ${BUILD_HCOM}")
 find_program(NINJA_EXE NAMES ninja)
 if (NINJA_EXE)
     set(MAKE_CMD ninja)
@@ -260,7 +263,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/src/util/include
         ${PROJECT_UTIL_SRC_BASE}
 )
-
+add_subdirectory(3rdparty)
 add_subdirectory(src)
 
 if (BUILD_UT STREQUAL "ON")

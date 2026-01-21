@@ -12,9 +12,11 @@
 BUILD_TEST=${1:-BUILD_TEST}
 XPU_TYPE=${2:-NPU}
 BUILD_PYTHON=${3:-ON}
+BUILD_HCOM=${4:-OFF}
 echo "BUILD_TEST is ${BUILD_TEST}"
 echo "XPU_TYPE is ${XPU_TYPE}"
 echo "BUILD_PYTHON is ${BUILD_PYTHON}"
+echo "BUILD_HCOM is ${BUILD_HCOM}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -52,7 +54,14 @@ mkdir ${PKG_DIR}/"${ARCH_OS}"/lib64
 mkdir ${PKG_DIR}/"${ARCH_OS}"/wheel
 mkdir -p ${PKG_DIR}/include/smem
 mkdir -p ${PKG_DIR}/include/hybm
+mkdir -p ${PKG_DIR}/include/hcom
 
+# hcom
+if [ "${BUILD_HCOM}" == "ON" ]; then
+cp "${PROJECT_DIR}"/output/3rdparty/hcom/lib/libhcom.so ${PKG_DIR}/"${ARCH_OS}"/lib64
+cp -v "${PROJECT_DIR}"/build/3rdparty/hcom-prefix/src/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
+       ${PKG_DIR}/"${ARCH_OS}"/lib64
+fi
 # smem
 cp -r "${OUTPUT_DIR}"/smem/include/* ${PKG_DIR}/include/smem/
 cp "${OUTPUT_DIR}"/smem/lib64/* ${PKG_DIR}/"${ARCH_OS}"/lib64

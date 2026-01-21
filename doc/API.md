@@ -191,7 +191,6 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
 |flags|创建标记位，预留|
 |返回值|成功返回BM handle，失败返回空指针|
 
-
 #### smem_bm_create2
 创建BM
  ```c
@@ -203,8 +202,6 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option);
 | id           | BM id，用户自定义，BM之间取不同值                                            |
 | option       | 创建BM的配置参数                                                       |
 | 返回值          | 成功返回BM handle，失败返回空指针                                           |
-
-📌 **注意**：当dataOpType取值为SMEMB_DATA_OP_HOST_RDMA时，需要依赖libhcom.so，请参考[hcom项目](https://atomgit.com/openeuler/ubs-comm)获取最新的so文件。
 
 #### smem_bm_destroy
 销毁BM
