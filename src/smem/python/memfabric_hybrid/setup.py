@@ -156,6 +156,9 @@ setup(
             "_pymf_hybrid.cpython*.so",
             "_pymf_transfer.cpython*.so",
             "lib/lib*.so",
+            "include/smem/host/*.h",
+            "include/smem/device/*.h",
+            "include/hybm/*.h",
             "VERSION",
         ]
     },
