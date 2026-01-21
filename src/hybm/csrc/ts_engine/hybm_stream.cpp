@@ -178,7 +178,7 @@ void HybmStream::Destroy()
 
     auto ret = DlHalApi::HalSqCqFree(deviceId_, &info);
     if (ret != 0) {
-        BM_LOG_ERROR("free sq_cq failed: " << ret);
+        BM_LOG_WARN("free sq_cq failed: " << ret);
         return;
     }
 

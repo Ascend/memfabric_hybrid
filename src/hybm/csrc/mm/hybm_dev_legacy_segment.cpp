@@ -42,6 +42,74 @@ Result HybmDevLegacySegment::ValidateOptions() noexcept
     return BM_OK;
 }
 
+uint64_t HybmDevLegacySegment::GetReserveChunkSize(size_t totalSize, size_t singleRankSize) noexcept
+{
+    if (totalSize == 0 || singleRankSize == 0) {
+        return 0;
+    }
+    constexpr uint64_t maxChunk = 128ULL * GB;
+    if (totalSize <= maxChunk) {
+        return totalSize;
+    }
+    uint64_t n = totalSize / singleRankSize;
+    uint64_t maxM = (128ULL * GB) / singleRankSize;
+    uint64_t baseM = 1;
+    uint64_t start = maxM;
+    for (uint64_t m = start; m >= 1; --m) {
+        if (n % m == 0) {
+            baseM = m;
+            break;
+        }
+    }
+    uint64_t result = baseM * singleRankSize;
+    BM_LOG_INFO("chunk size: " << (result / GB) << "G" << ", total size: " << (totalSize / GB) << "G");
+    if (totalSize % result != 0) {
+        BM_LOG_ERROR("chunk size: " << (result / GB) << "G" << ", total size: " << (totalSize / GB) << "G");
+        return 0;
+    }
+    return result;
+}
+
+int32_t GvaUnreserveMemory(uint64_t address, uint64_t total, size_t singleRankSize)
+{
+    uint64_t ptr = address;
+    size_t maxChunk = HybmDevLegacySegment::GetReserveChunkSize(total, singleRankSize);
+    while (ptr < address + total) {
+        auto ret = drv::HalGvaUnreserveMemory(ptr);
+        BM_ASSERT_RETURN(ret == 0, ret);
+        ptr += maxChunk;
+    }
+    return BM_OK;
+}
+
+static int32_t GvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, uint64_t flags, size_t singleRankSize)
+{
+    if (size == 0) {
+        return BM_ERROR;
+    }
+    size_t maxChunk = HybmDevLegacySegment::GetReserveChunkSize(size, singleRankSize);
+    std::vector<uint64_t> chunkMaps;
+    size_t reserved = 0;
+    while (reserved < size) {
+        uint64_t currentBase = chunkMaps.empty() ? 0 : *chunkMaps.rbegin();
+        size_t chunk = std::min(maxChunk, size - reserved);
+        auto ret = drv::HalGvaReserveMemory(&currentBase, chunk, deviceId, flags);
+        if (ret != 0 || currentBase == 0 || (!chunkMaps.empty() && currentBase + maxChunk != *chunkMaps.rbegin())) {
+            BM_LOG_ERROR("current_base: " << std::hex << currentBase << ", rbegin: " << *chunkMaps.rbegin());
+            for (const auto &ptr : chunkMaps) {
+                drv::HalGvaUnreserveMemory(ptr);
+                return BM_ERROR;
+            }
+        } else {
+            BM_LOG_INFO("current_base: " << std::hex << currentBase << ", size: " << chunk);
+        }
+        reserved += chunk;
+        chunkMaps.push_back(currentBase);
+    }
+    *address = (*chunkMaps.begin());
+    return BM_OK;
+}
+
 Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
@@ -53,7 +121,7 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
 
     uint64_t base = 0;
     totalVirtualSize_ = options_.rankCnt * options_.size;
-    auto ret = drv::HalGvaReserveMemory(&base, totalVirtualSize_, logicDeviceId_, 0ULL);
+    auto ret = GvaReserveMemory(&base, totalVirtualSize_, logicDeviceId_, 0ULL, options_.size);
     if (ret != 0 || base == 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -368,7 +436,8 @@ void HybmDevLegacySegment::FreeMemory() noexcept
     allocatedSize_ = 0;
     sliceCount_ = 0;
     if (globalVirtualAddress_ != nullptr) {
-        auto ret = drv::HalGvaUnreserveMemory((uint64_t)globalVirtualAddress_);
+        auto ret =
+            GvaUnreserveMemory(reinterpret_cast<uint64_t>(globalVirtualAddress_), totalVirtualSize_, options_.size);
         if (ret != 0) {
             BM_LOG_ERROR("HalGvaUnreserveMemory failed: " << ret);
         }
