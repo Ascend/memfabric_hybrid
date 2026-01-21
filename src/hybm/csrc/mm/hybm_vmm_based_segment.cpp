@@ -414,7 +414,9 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
                 return BM_DL_FUNCTION_FAILED;
             }
         }
-        addresses[i] = reinterpret_cast<void *>(info.vAddress);
+        if (addresses != nullptr) {
+            addresses[i] = reinterpret_cast<void *>(info.vAddress);
+        }
         deserializedInfos.emplace_back(info);
     }
 

@@ -39,7 +39,7 @@ MemEntityDefault::~MemEntityDefault()
 
 Result MemEntityDefault::InitTagManager()
 {
-    if (options_.scene == HYBM_SCENE_TRANS || options_.scene == HYBM_SCENE_SHM) {
+    if (options_.scene == HYBM_SCENE_TRANS) {
         return BM_OK;
     }
     const static std::string defaultTag = "HYBM_DEFAULT_TAG_FOR_EMPTY";

@@ -669,17 +669,17 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
-    options.transUrl[0] = '\0';
-    options.tagOpInfo[0] = '\0';
+    bzero(options.transUrl, sizeof(options.transUrl));
+    bzero(options.tag, sizeof(options.tag));
+    bzero(options.tagOpInfo, sizeof(options.tagOpInfo));
+
     uint16_t port = 11000 + entityId_;
     auto url = "tcp://127.0.0.1:" + std::to_string(port);
 
     constexpr size_t NIC_SIZE = sizeof(options.transUrl);
     size_t max_chars = std::min(url.length(), NIC_SIZE - 1);
     std::copy_n(url.c_str(), max_chars, options.transUrl);
-    options.transUrl[max_chars] = '\0';
-    options.tag[0] = '\0';
-    options.tagOpInfo[0] = '\0';
+
     return std::move(options);
 }
 

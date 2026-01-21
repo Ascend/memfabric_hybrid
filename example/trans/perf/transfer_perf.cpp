@@ -513,9 +513,9 @@ int32_t main(int32_t argc, char *argv[])
     int testBm = atoi(argv[5]);
     std::string ip_port = argv[6];
     int memType = atoi(argv[7]);
-    std::cout << "[TEST] input rank_size: " << rank_size << " rank_id:" << rank_id << " device_id: " << device_id
-              << " use_sdma: " << use_sdma << " test_bm: " << testBm << " store_ip: " << ip_port
-              << " memType(0:hbm 1:dram 3:hbm + dram):" << memType << std::endl;
+    std::cout << "[TEST] input rank_size: " << rank_size << " rank_id:" << rank_id << " device_id: " << device_id <<
+        " use_sdma: " << use_sdma << " test_bm: " << testBm << " store_ip: " << ip_port <<
+        " memType(0:hbm 1:dram 2:hbm + dram):" << memType << std::endl;
 
     const size_t RANK_ID_SIZE = 2;
     if (rank_size != RANK_ID_SIZE) {
