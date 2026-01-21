@@ -13,6 +13,7 @@
 #define MEMFABRIC_HYBRID_DL_HYBM_COPY_EXTEND_H
 
 #include "hybm_common_include.h"
+#include "hybm_ptracer.h"
 
 namespace ock {
 namespace mf {
@@ -30,7 +31,9 @@ public:
         if (pHybmCopyExtend == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
+        TP_TRACE_BEGIN(TP_HYBM_EXTEND_COPY);
         pHybmCopyExtend(const_cast<void *>(src), dst, len, concurrent, stream);
+        TP_TRACE_END(TP_HYBM_EXTEND_COPY, BM_OK);
         return BM_OK;
     }
 
@@ -39,7 +42,9 @@ public:
         if (pHybmBatchCopyExtend == nullptr) {
             return BM_UNDER_API_UNLOAD;
         }
+        TP_TRACE_BEGIN(TP_HYBM_EXTEND_BATCH_COPY);
         pHybmBatchCopyExtend(param, count, mask, concurrent, stream);
+        TP_TRACE_END(TP_HYBM_EXTEND_BATCH_COPY, BM_OK);
         return BM_OK;
     }
 

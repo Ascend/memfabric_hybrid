@@ -419,11 +419,11 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, ui
         void *st = (stream != nullptr) ? stream : HybmStreamManager::GetThreadAclStream();
         auto ret = DlHybmExtendApi::HybmCopyExtend(srcVA, destVA, count, HYBM_EXTEND_CONCURRENT, st);
         BM_ASSERT_RETURN(ret == BM_OK, ret);
-        ret = DlAclApi::AclrtSynchronizeStream(stream);
+        ret = DlAclApi::AclrtSynchronizeStream(st);
         BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
         return BM_OK;
     }
-    
+
     StreamTask task{};
     InitG2GStreamTask(task);
     rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);

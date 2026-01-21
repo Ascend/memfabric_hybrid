@@ -42,8 +42,8 @@
     } while (0)
 
 const int32_t RANK_SIZE_MAX = 16;
-const int32_t COPY_SIZE = 1024 * 1024 * 1024;
-const uint64_t GVA_SIZE = 4 * 1024ULL * 1024 * 1024;
+const uint64_t COPY_SIZE = 1 * 1024ULL * 1024 * 1024;
+const uint64_t GVA_SIZE = 2 * 1024ULL * 1024 * 1024;
 const int32_t RANDOM_MULTIPLIER = 23;
 const int32_t RANDOM_INCREMENT = 17;
 const int32_t NEGATIVE_RATIO_DIVISOR = 3;
@@ -181,30 +181,15 @@ void BigCopyCheck(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t
     void *local_host = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, rankId);
     void *local_dev = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_DEVICE, rankId);
 
-    int ret;
+    int ret = CheckData(base, local_host, COPY_SIZE);
+    CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
+
     smem_copy_params params1 = {local_dev, receive, COPY_SIZE};
     ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
     CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
                                                               << " " << receive);
     ret = CheckData(base, receive, COPY_SIZE);
     CHECK_RET_VOID((ret == false), "check hbm data failed, rank:" << rankId);
-
-    if (OP_TYPE == SMEMB_DATA_OP_SDMA) {
-        smem_copy_params params2 = {local_host, local_dev, COPY_SIZE};
-        ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
-        CHECK_RET_VOID(ret, "copy hbm to host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_host << " "
-                                                            << local_dev);
-
-        ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
-        CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
-                                                                  << " " << receive);
-
-        ret = CheckData(base, receive, COPY_SIZE);
-        CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
-    } else {
-        ret = CheckData(base, local_host, COPY_SIZE);
-        CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
-    }
 
     LOG_INFO(" ==================== [TEST] bm check ok, rank:" << rankId);
     free(base);

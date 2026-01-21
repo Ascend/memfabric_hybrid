@@ -77,10 +77,9 @@ extern "C" __global__ __aicore__ void hybm_copy_kernel(GM_ADDR dst, GM_ADDR src,
     uint32_t idx = AscendC::GetBlockIdx();
     uint32_t num = AscendC::GetBlockNum();
     uint64_t offset = ((len + SINGLE_COPY_SLICE - 1U) / SINGLE_COPY_SLICE + num - 1U) / num * SINGLE_COPY_SLICE;
-    uint32_t size = min(offset * (idx + 1), len);
+    uint64_t size = min(offset * (idx + 1), len);
     offset = offset * idx;
     size -= offset;
-
     copy_gm2gm(dst + offset, src + offset, 0, COPY_BUF_SIZE, size);
 }
 

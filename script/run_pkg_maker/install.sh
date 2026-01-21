@@ -302,7 +302,7 @@ function try_install_extend()
         cp ./*.so ${install_dir}//${pkg_arch}-${os1}/lib64
         print "INFO" "install hybm extend lib success"
     else
-        print "WARNING" "install extend lib failed, maybe cann version is old, latest 8.3.RC1"
+        print "WARNING" "install extend lib failed, maybe cann version is old, least 8.3.RC1"
     fi
 }
 
