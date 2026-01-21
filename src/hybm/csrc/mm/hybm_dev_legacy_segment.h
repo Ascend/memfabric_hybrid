@@ -78,6 +78,7 @@ public:
 
 public:
     static void GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uint32_t &superPodId) noexcept;
+    static uint64_t GetReserveChunkSize(size_t totalSize, size_t singleRankSize) noexcept;
 
 protected:
     void FreeMemory() noexcept;

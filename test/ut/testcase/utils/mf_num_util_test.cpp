@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "mf_num_util.h"
+#include "hybm_dev_legacy_segment.h"
 #include "hybm_def.h"
 
 using namespace ock::mf;
@@ -63,4 +64,20 @@ TEST_F(MFNumUtilTest, ExtractBits)
     EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX, HYBM_PERFORMANCE_MODE_FLAG_LEN),
               1);
     EXPECT_EQ(ock::mf::NumUtil::ExtractBits(flags, HYBM_BIND_NUMA_FLAG_INDEX, HYBM_BIND_NUMA_FLAG_LEN), 0b0101010);
+}
+
+TEST_F(MFNumUtilTest, GetReserveChunkSizetTest)
+{
+    auto ret = HybmDevLegacySegment::GetReserveChunkSize(127ULL * GB, 1ULL * GB);
+    EXPECT_EQ(ret, 127ULL * GB);
+    ret = HybmDevLegacySegment::GetReserveChunkSize(128ULL * GB, 1ULL * GB);
+    EXPECT_EQ(ret, 128ULL * GB);
+    ret = HybmDevLegacySegment::GetReserveChunkSize(256ULL * GB, 4ULL * GB);
+    EXPECT_EQ(ret, 128ULL * GB);
+    ret = HybmDevLegacySegment::GetReserveChunkSize(200ULL * GB, 4ULL * GB);
+    EXPECT_EQ(ret, 100ULL * GB);
+    ret = HybmDevLegacySegment::GetReserveChunkSize(0 * GB, 4ULL * GB);
+    EXPECT_EQ(ret, 0 * GB);
+    ret = HybmDevLegacySegment::GetReserveChunkSize(200ULL * GB, 2ULL * GB);
+    EXPECT_EQ(ret, 100ULL * GB);
 }
