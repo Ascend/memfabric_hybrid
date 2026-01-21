@@ -23,9 +23,6 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     )
     target_link_directories(bm_example PUBLIC
             ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64/plugin/opskernel
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64/lib64/plugin/nnengine
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/devlib
     )
 
     target_link_libraries(bm_example PRIVATE
