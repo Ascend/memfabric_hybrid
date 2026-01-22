@@ -58,8 +58,8 @@ int FixedRanksQpManager::Startup(void *rdma) noexcept
     }
 
     if (started_.load()) {
-        BM_LOG_ERROR("already started.");
-        return BM_ERROR;
+        BM_LOG_DEBUG("already started.");
+        return BM_OK;
     }
 
     rdmaHandle_ = rdma;

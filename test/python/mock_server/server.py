@@ -149,7 +149,11 @@ class TestServer:
                 client_socket, _ = self.server_socket.accept()
                 executor.submit(self._handle_client, client_socket)
 
-    def _handle_client(self, client_socket: socket):
+    def close(self):
+        self.server_socket.close()
+        os.remove(self.socket_file)
+
+    def _handle_client(self, client_socket: socket.socket):
         self.thread_local.client_socket = client_socket
         if self._stream == 0:
             self._stream = set_device(globals_device_id)
@@ -432,6 +436,7 @@ class MfTest(TestServer):
                        self.transfer_engine_uninitialize),
             CliCommand("delete_trans_handle", "delete a delete_trans_handle handle, delete_bm_handle [handle_id]",
                        self.delete_trans_handle),
+            CliCommand("close", "release the bound UDS socket file", self.close)
         ]
         self.register_command(cmds)
 

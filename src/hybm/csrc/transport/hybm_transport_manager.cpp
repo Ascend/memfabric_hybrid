@@ -21,6 +21,10 @@ using namespace ock::mf::transport;
 
 std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, HybmEntityTagInfoPtr tagManager)
 {
+    if (tagManager == nullptr) {
+        BM_LOG_ERROR("Failed to create transport manager, tag manager is nullptr");
+        return nullptr;
+    }
     switch (type) {
         case TT_HCOM:
             return host::HcomTransportManager::GetInstance();

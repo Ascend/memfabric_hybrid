@@ -79,6 +79,11 @@ int BipartiteRanksQpManager::Startup(void *rdma) noexcept
         return BM_INVALID_PARAM;
     }
 
+    if (managerRunning_.load()) {
+        BM_LOG_DEBUG("already started.");
+        return BM_OK;
+    }
+
     rdmaHandle_ = rdma;
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     if (rankRole_ == HYBM_ROLE_RECEIVER) {

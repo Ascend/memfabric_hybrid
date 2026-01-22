@@ -41,8 +41,8 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
 
     uint64_t totalSize = options_.rankCnt * options_.maxSize;
-    if (totalSize > HYBM_HOST_CONN_ADDR_SIZE) {
-        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " total:" << HYBM_HOST_CONN_ADDR_SIZE);
+    if (totalSize > HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR) {
+        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " total:" << HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR);
         return BM_INVALID_PARAM;
     }
     auto gva =
