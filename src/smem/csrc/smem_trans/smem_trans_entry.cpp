@@ -66,7 +66,7 @@ SmemTransEntry::~SmemTransEntry()
 Result SmemTransEntry::ExportExchangeInfo()
 {
     hybm_exchange_info info;
-    auto ret = hybm_export(entity_, nullptr, 0, &info);
+    auto ret = hybm_export(entity_, nullptr, HYBM_FLAG_EXPORT_ENTITY, &info);
     SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
 
     size_t outputSize;
@@ -112,6 +112,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
+
     entity_ = hybm_create_entity(entityId_, &options, 0);
     SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
 
@@ -483,7 +484,7 @@ void SmemTransEntry::WatchTaskFindNewRanks()
     auto importNewRanks = [this](const std::vector<hybm_exchange_info> &addInfo) {
         int32_t ret;
         if (!addInfo.empty()) {
-            ret = hybm_import(entity_, addInfo.data(), addInfo.size(), nullptr, 0);
+            ret = hybm_import(entity_, addInfo.data(), addInfo.size(), nullptr, HYBM_FLAG_EXPORT_ENTITY);
             if (ret != 0) {
                 SM_LOG_ERROR("import new ranks failed: " << ret);
             }

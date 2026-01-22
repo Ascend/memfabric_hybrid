@@ -39,9 +39,6 @@ MemEntityDefault::~MemEntityDefault()
 
 Result MemEntityDefault::InitTagManager()
 {
-    if (options_.scene == HYBM_SCENE_TRANS) {
-        return BM_OK;
-    }
     const static std::string defaultTag = "HYBM_DEFAULT_TAG_FOR_EMPTY";
     BM_ASSERT_RETURN(tagManager_ == nullptr, BM_OK);
     std::string localTag = options_.tag;
@@ -327,6 +324,25 @@ int32_t MemEntityDefault::ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t 
         return BM_ERROR;
     }
 
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        // 当前仅有trans的hbm使用的user_dev_legacy segment需要导出、导入hal相关信息才能使能p2p(sdma)相关功能
+        if (hbmSegment_ == nullptr) {
+            BM_LOG_ERROR("hbm segment is null, failed to export segment info in trans scene");
+            return BM_ERROR;
+        }
+        std::string segInfo;
+        ret = hbmSegment_->Export(segInfo);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("failed to export segment info in trans scene, ret: " << ret);
+            return BM_ERROR;
+        }
+        ret = desc.Append(segInfo.data(), segInfo.size());
+        if (ret != 0) {
+            BM_LOG_ERROR("export to string wrong size: " << segInfo.size());
+            return BM_ERROR;
+        }
+    }
+
     return BM_OK;
 }
 
@@ -439,7 +455,6 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
         BM_LOG_ERROR("the input desc is nullptr.");
         return BM_ERROR;
     }
-
     if (transportManager_ != nullptr) {
         std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> tempKeyMap;
         ret = ImportForTransport(desc, count);
@@ -476,9 +491,6 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
 
 int32_t MemEntityDefault::ImportForTagManager()
 {
-    if (options_.scene == HYBM_SCENE_TRANS) {
-        return BM_OK;
-    }
     for (const auto &item : importedRanks_) {
         auto rankId = item.first;
         auto &info = item.second;
@@ -549,6 +561,18 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
     }
     BM_ASSERT_LOG_AND_RETURN(ImportForTagManager() == BM_OK, "Failed import for tag manager", BM_ERROR);
     BM_ASSERT_LOG_AND_RETURN(ImportForTransportManager() == BM_OK, "Failed import for transport manager", BM_ERROR);
+
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        if (hbmSegment_ == nullptr) {
+            BM_LOG_ERROR("hbm segment is null, failed to import segment info in trans scene");
+            return BM_ERROR;
+        }
+        auto ret = hbmSegment_->Import({desc->LeftToString()}, nullptr);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("failed to import segment info in trans scene, ret: " << ret);
+            return BM_ERROR;
+        }
+    }
     return BM_OK;
 }
 
