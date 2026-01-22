@@ -579,8 +579,9 @@ bool RdmaTransportManager::RetireDeviceIp(uint32_t deviceId, in_addr &deviceIp)
         return false;
     }
 
+    auto ifName = std::string("eth").append(std::to_string(deviceId));
     for (auto &info : infos) {
-        if (info.family == AF_INET) {
+        if (info.family == AF_INET && ifName == info.ifname) {
             deviceIp = retiredIp = info.ifaddr.ip.addr;
             deviceIpRetired = true;
             BM_LOG_DEBUG("retire device ip success : " << DescribeIPv4(deviceIp));
