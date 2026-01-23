@@ -297,10 +297,10 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
         }
     }
     for (auto &rank : ranks) {
-        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.size * rank;
+        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
-        while (it != mappedMem_.end() && (*it) < addr + options_.size) {
+        while (it != mappedMem_.end() && (*it) < addr + options_.maxSize) {
             HybmVaManager::GetInstance().RemoveOneVaInfo(*it);
             ++it;
         }

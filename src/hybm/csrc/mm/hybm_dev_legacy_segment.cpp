@@ -122,7 +122,7 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
 
     uint64_t base = 0;
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
-    auto ret = GvaReserveMemory(&base, totalVirtualSize_, logicDeviceId_, 0ULL, options_.size);
+    auto ret = GvaReserveMemory(&base, totalVirtualSize_, logicDeviceId_, 0ULL, options_.maxSize);
     if (ret != 0 || base == 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -413,7 +413,7 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
         uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
         auto it = mappedMem_.lower_bound(addr);
         auto st = it;
-        while (it != mappedMem_.end() && (*it) < addr + options_.size) {
+        while (it != mappedMem_.end() && (*it) < addr + options_.maxSize) {
             (void)drv::HalGvaClose((*it), 0);
             HybmVaManager::GetInstance().RemoveOneVaInfo(*it);
             it++;
@@ -466,7 +466,7 @@ void HybmDevLegacySegment::FreeMemory() noexcept
     sliceCount_ = 0;
     if (globalVirtualAddress_ != nullptr) {
         auto ret =
-            GvaUnreserveMemory(reinterpret_cast<uint64_t>(globalVirtualAddress_), totalVirtualSize_, options_.size);
+            GvaUnreserveMemory(reinterpret_cast<uint64_t>(globalVirtualAddress_), totalVirtualSize_, options_.maxSize);
         if (ret != 0) {
             BM_LOG_ERROR("HalGvaUnreserveMemory failed: " << ret);
         }
