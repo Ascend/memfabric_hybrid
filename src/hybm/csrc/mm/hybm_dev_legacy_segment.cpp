@@ -313,7 +313,8 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
         if (desInfos[i].rankId == options_.rankId) {
             continue;
         }
-        if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)) {
+        if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)
+            && deviceId_ != static_cast<int>(desInfos[i].deviceId)) {
             auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_

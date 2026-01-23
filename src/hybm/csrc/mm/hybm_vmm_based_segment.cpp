@@ -423,7 +423,7 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
     for (const auto &info: deserializedInfos) {
         if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
             CanLocalHostReaches(info.superPodId, info.serverId,
-                                info.devId)) {
+                                info.devId) && deviceId_ != static_cast<int>(info.devId)) {
             ret = DlAclApi::RtEnableP2P(deviceId_, info.devId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
