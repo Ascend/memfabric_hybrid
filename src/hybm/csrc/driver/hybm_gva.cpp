@@ -48,7 +48,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
         return BM_ERROR;
     }
 
-    if (flags & HYBM_FLAG_INIT_SHMEM_META == 0) {
+    if ((flags & HYBM_FLAG_INIT_SHMEM_META) == 0) {
         BM_LOG_DEBUG("skip init shm meta space:" << flags);
         baseAddress = 0;
         return BM_OK;
