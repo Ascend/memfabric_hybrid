@@ -117,10 +117,11 @@ extern "C" __global__ __aicore__ void hybm_batch_copy_kernel(GM_ADDR param, uint
     }
 
     __gm__ uint64_t *ptr = reinterpret_cast<__gm__ uint64_t *>(mask);
-    if (*ptr == idx) {
-        *ptr = idx + 1;
+    do {
         dcci_cacheline(mask);
-    } // clear mask
+    } while (*ptr != idx);
+    *ptr = idx + 1;
+    dcci_cacheline(mask);
 }
 
 extern "C" void hybm_batch_copy_extend(void *param, uint32_t count, void *mask, uint32_t dim, void *stream)
