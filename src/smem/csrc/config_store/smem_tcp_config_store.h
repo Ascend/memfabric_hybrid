@@ -86,7 +86,7 @@ public:
         rankId_ = rankId;
     }
 
-    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept;
+    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept override;
     bool GetConnectStatus() noexcept override;
     void SetConnectStatus(bool status) noexcept override;
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept override;

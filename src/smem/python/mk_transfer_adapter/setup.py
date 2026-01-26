@@ -39,7 +39,6 @@ if not current_version:
 is_manylinux = check_env_flag("IS_MANYLINUX", "FALSE")
 build_open_abi = os.getenv("BUILD_OPEN_ABI", "OFF")
 build_mode = os.getenv("BUILD_MODE", "RELEASE")
-build_compiler = os.getenv("BUILD_COMPILER", "gcc")
 enable_ptracer = os.getenv("ENABLE_PTRACER", "ON")
 xpu_type = os.getenv("XPU_TYPE", "NPU")
 
@@ -99,7 +98,6 @@ class CMakeBuildExt(build_ext):
                 f"-DCMAKE_INSTALL_PREFIX={install_dir}",
                 f"-DCMAKE_BUILD_TYPE={build_mode}",
                 f"-DBUILD_OPEN_ABI={build_open_abi}",
-                f"-DBUILD_COMPILER={build_compiler}",
                 f"-DENABLE_PTRACER={enable_ptracer}",
                 f"-DXPU_TYPE={xpu_type}",
                 "-DBUILD_PYTHON=ON",

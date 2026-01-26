@@ -29,11 +29,12 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     )
 
     target_link_libraries(transfer_perf PRIVATE
+            stdc++
             hybmm_shared
             smem_shared
             ascendcl
     )
-    target_compile_options(transfer_perf PRIVATE -W)
+    target_compile_options(transfer_perf PRIVATE -w)
     target_compile_options(transfer_perf PRIVATE -Wno-sign-compare)
 
     set_target_properties(transfer_perf PROPERTIES OUTPUT_NAME "transfer_perf")

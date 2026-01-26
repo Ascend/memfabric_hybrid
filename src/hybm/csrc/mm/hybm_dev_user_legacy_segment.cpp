@@ -21,7 +21,7 @@ HybmDevUserLegacySegment::HybmDevUserLegacySegment(const MemSegmentOptions &opti
     : HybmDevLegacySegment{options, eid}
 {}
 
-HybmDevUserLegacySegment::~HybmDevUserLegacySegment() noexcept
+HybmDevUserLegacySegment::~HybmDevUserLegacySegment()
 {
     if (!memNames_.empty()) {
         for (auto &name : memNames_) {

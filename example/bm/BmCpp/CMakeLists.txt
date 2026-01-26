@@ -26,11 +26,12 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     )
 
     target_link_libraries(bm_example PRIVATE
+            stdc++
             hybmm_shared
             smem_shared
             ascendcl
     )
-    target_compile_options(bm_example PRIVATE -W)
+    target_compile_options(bm_example PRIVATE -w)
     target_compile_options(bm_example PRIVATE -Wno-sign-compare)
 
     set_target_properties(bm_example PROPERTIES OUTPUT_NAME "bm_example")
@@ -76,6 +77,7 @@ else ()
     )
 
     target_link_libraries(bm_example PRIVATE
+            stdc++
             mf_smem
             mf_hybm_core
             ascendcl

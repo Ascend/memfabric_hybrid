@@ -32,11 +32,12 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     )
 
     target_link_libraries(bm_perf_benchmark PRIVATE
+            stdc++
             hybmm_shared
             smem_shared
             ascendcl
     )
-    target_compile_options(bm_perf_benchmark PRIVATE -W)
+    target_compile_options(bm_perf_benchmark PRIVATE -w)
     target_compile_options(bm_perf_benchmark PRIVATE -Wno-sign-compare)
     target_compile_options(bm_perf_benchmark PRIVATE -Wno-stack-usage)
     set_target_properties(bm_perf_benchmark PROPERTIES OUTPUT_NAME "bm_perf_benchmark")

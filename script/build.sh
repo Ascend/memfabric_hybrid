@@ -15,8 +15,7 @@ BUILD_OPEN_ABI=${3:-OFF}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
 export XPU_TYPE=${6:-NPU} # 导出环境变量用于后续构建whl包
-BUILD_COMPILER=${7:-gcc}
-BUILD_TEST=${8:-OFF}
+BUILD_TEST=${7:-OFF}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -55,7 +54,6 @@ mkdir build/
 cmake \
     -G "$GENERATOR"  \
     -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
-    -DBUILD_COMPILER="${BUILD_COMPILER}" \
     -DBUILD_UT="${BUILD_UT}" \
     -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
     -DBUILD_PYTHON="${BUILD_PYTHON}" \

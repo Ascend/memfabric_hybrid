@@ -112,7 +112,7 @@ public:
         return baseStore_->RegisterReconnectHandler(callback);
     }
 
-    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept
+    Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept override
     {
         return baseStore_->ReConnectAfterBroken(reconnectRetryTimes);
     }
