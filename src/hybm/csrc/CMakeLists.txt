@@ -57,12 +57,12 @@ target_include_directories(hybmm_shared INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 file(GLOB HEADER_FILES ${PROJECT_HYBM_SRC_BASE}/include/*.h)
 install(
         FILES ${HEADER_FILES}
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/include
+        DESTINATION ${TARGET_INSTALL_DIR}/hybm/include
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
 ## install library
 install(
         TARGETS hybmm_static hybmm_shared
-        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64
+        DESTINATION ${TARGET_INSTALL_DIR}/hybm/lib64
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )

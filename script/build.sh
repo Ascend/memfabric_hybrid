@@ -15,7 +15,7 @@ BUILD_OPEN_ABI=${3:-OFF}
 BUILD_PYTHON=${4:-ON}
 ENABLE_PTRACER=${5:-ON}
 export XPU_TYPE=${6:-NPU} # 导出环境变量用于后续构建whl包
-BUILD_COMPILER=${7:-gcc}
+export BUILD_COMPILER=${7:-gcc}
 BUILD_TEST=${8:-OFF}
 BUILD_HCOM=${9:-OFF}
 
@@ -98,7 +98,7 @@ cp -v "${PROJ_DIR}/output/hybm/include/"*.h "${PROJ_DIR}/src/smem/python/memfabr
 if [ "${BUILD_HCOM}" == "ON" ]; then
     echo "========= copy hcom lib ============"
         \cp -v "${PROJ_DIR}"/output/3rdparty/hcom/lib/libhcom.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
-        \cp -v "${PROJ_DIR}"/build/3rdparty/hcom-prefix/src/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
+        \cp -v "${PROJ_DIR}"/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
                "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 fi
 

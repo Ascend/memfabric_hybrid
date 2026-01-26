@@ -1,59 +1,77 @@
-include(ExternalProject)
+if (${CMAKE_INSTALL_PREFIX} MATCHES "/usr/local")
+    set(DEPS_INSTALL_DIR ${PROJECT_OUTPUT_PATH}/3rdparty)
+elseif (NOT EXISTS ${CMAKE_INSTALL_PREFIX})
+    set(DEPS_INSTALL_DIR ${PROJECT_OUTPUT_PATH}/3rdparty)
+else ()
+    set(DEPS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/3rdparty)
+endif ()
 
-SET(THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty/)
-set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/output/3rdparty)
-set(THIRD_PARTY_CMAKE_ARGS
-        -DCMAKE_C_COMPILER=gcc
-        -DCMAKE_CXX_COMPILER=g++
-        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-        -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-        -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-        -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-        -DCMAKE_BUILD_TYPE=DEBUG
-        -DCMAKE_INSTALL_LIBDIR=${INSTALL_DIR}/lib
-        -DCMAKE_INSTALL_BINDIR=${INSTALL_DIR}/bin
-        -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/)
 ####################################################################
 # hcom
 ####################################################################
 message(STATUS "BUILD_HCOM=${BUILD_HCOM}")
-if (BUILD_HCOM)
+if(BUILD_HCOM)
     set(BUILD_TESTS OFF)
+    include(FetchContent)
 
-    SET(HCOM_CMAKE_ARGS
-        ${THIRD_PARTY_CMAKE_ARGS}
-        -DCMAKE_DEPENDS_USE_COMPILER=false
-        -DCMAKE_BUILD_TYPE=release
-        -DCMAKE_INSTALL_LIBDIR=${INSTALL_DIR}/hcom/lib
-        -DCMAKE_INSTALL_BINDIR=${INSTALL_DIR}/hcom/bin
-        -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/hcom)
+    find_program(CMAKE_C_COMPILER_PATH NAMES ${CMAKE_C_COMPILER} REQUIRED)
+    find_program(CMAKE_CXX_COMPILER_PATH NAMES ${CMAKE_CXX_COMPILER} REQUIRED)
 
-    EXTERNALPROJECT_ADD(hcom
-        URL ${THIRD_PARTY_DIR}/ubs-comm
-        CMAKE_ARGS ${HCOM_CMAKE_ARGS}
-        LOG_DOWNLOAD On
-        LOG_CONFIGURE On
-        LOG_BUILD On
-        LOG_INSTALL On)
+    set(CMAKE_C_COMPILER   ${CMAKE_C_COMPILER_PATH} CACHE FILEPATH "C compiler" FORCE)
+    set(CMAKE_CXX_COMPILER ${CMAKE_CXX_COMPILER_PATH} CACHE FILEPATH "CXX compiler" FORCE)
+    set(CMAKE_INSTALL_PREFIX ${DEPS_INSTALL_DIR}/hcom)
+    FetchContent_Declare(
+            hcom
+            GIT_REPOSITORY https://atomgit.com/openeuler/ubs-comm.git
+            GIT_TAG        dev-kvcache
+    )
 
-    EXTERNALPROJECT_GET_PROPERTY(hcom SOURCE_DIR)
-    EXTERNALPROJECT_GET_PROPERTY(hcom BINARY_DIR)
-    SET(HCOM_LIBS_DIR ${BINARY_DIR}/src PARENT_SCOPE)
-    SET(HCOM_INCLUDE_DIR ${SOURCE_DIR}/src PARENT_SCOPE)
+    message(STATUS "Configuring hcom with CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}, options: BUILD_WITH_RDMA:${BUILD_WITH_RDMA} BUILD_WITH_UB:${BUILD_WITH_UB}")
+    FetchContent_MakeAvailable(hcom)
 
-    MACRO(TARGET_HCOM target)
-    ADD_DEPENDENCIES(${target} hcom)
-    TARGET_INCLUDE_DIRECTORIES(${target} PUBLIC ${HCOM_INCLUDE_DIR})
-    TARGET_LINK_DIRECTORIES(${target} PUBLIC ${HCOM_LIBS_DIR})
-    ENDMACRO()
+    FetchContent_GetProperties(hcom)
+    set(HCOM_SOURCE_DIR ${hcom_SOURCE_DIR})
+    set(HCOM_BINARY_DIR ${hcom_BINARY_DIR})
+
+    set(HCOM_INCLUDE_DIR ${HCOM_SOURCE_DIR}/src)
+    set(HCOM_LIBS_DIR    ${HCOM_BINARY_DIR}/src)
+
+    set(HCOM_LIBS_DIR ${HCOM_LIBS_DIR} PARENT_SCOPE)
+    set(HCOM_INCLUDE_DIR ${HCOM_INCLUDE_DIR} PARENT_SCOPE)
 
     message(STATUS "HCOM_LIBS_DIR: ${HCOM_LIBS_DIR}")
     message(STATUS "HCOM_INCLUDE_DIR: ${HCOM_INCLUDE_DIR}")
 
-    MACRO(TARGET_HCOM_HEADER_ONLY target)
-    ADD_DEPENDENCIES(${target} hcom)
-    TARGET_INCLUDE_DIRECTORIES(${target} PUBLIC ${HCOM_INCLUDE_DIR})
-    ENDMACRO()
-endif()
+    set(HCOM_REAL_STATIC_LIB "${HCOM_BINARY_DIR}/src/hcom/libhcom_static.a")
+    set(HCOM_FAKE_STATIC_LIB  "${CMAKE_BINARY_DIR}/src/hcom/libhcom_static.a")
+
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/src/hcom")
+
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${HCOM_REAL_STATIC_LIB}" "${HCOM_FAKE_STATIC_LIB}"
+            RESULT_VARIABLE SYMLINK_RESULT
+    )
+
+    if(SYMLINK_RESULT EQUAL 0)
+        message(STATUS "Created symlink for hcom install: ${HCOM_FAKE_STATIC_LIB} -> ${HCOM_REAL_STATIC_LIB}")
+    else()
+        message(WARNING "Failed to create symlink for hcom static lib. Install may fail.")
+    endif()
+
+    macro(TARGET_HCOM target)
+        if(TARGET hcom)
+            target_link_libraries(${target} PUBLIC hcom)
+            target_include_directories(${target} PUBLIC ${HCOM_INCLUDE_DIR})
+        else()
+            add_dependencies(${target} hcom)
+            target_include_directories(${target} PUBLIC ${HCOM_INCLUDE_DIR})
+            target_link_directories(${target} PUBLIC ${HCOM_LIBS_DIR})
+        endif()
+    endmacro()
+
+    macro(TARGET_HCOM_HEADER_ONLY target)
+        add_dependencies(${target} hcom)
+        target_include_directories(${target} PUBLIC ${HCOM_INCLUDE_DIR})
+    endmacro()
+endif() 
