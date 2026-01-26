@@ -30,6 +30,7 @@ using namespace ock::mf::transport::host;
 
 namespace {
 #if defined(NO_XPU)
+constexpr uint64_t HCOM_MAX_SLICE_SIZE = 1024 * 1024 * 1024;
 constexpr uint64_t HCOM_RECV_DATA_SIZE = 1024 * 1024UL;
 constexpr uint64_t HCOM_SEND_QUEUE_SIZE = 16384UL;
 constexpr uint64_t HCOM_RECV_QUEUE_SIZE = 16384UL;
@@ -38,12 +39,13 @@ constexpr uint64_t HCOM_QUEUE_PRE_POST_SIZE = 1024UL;
 constexpr uint8_t HCOM_TRANS_EP_SIZE = 1;
 constexpr int8_t HCOM_THREAD_PRIORITY = -20;
 #else
-constexpr uint64_t HCOM_RECV_DATA_SIZE = 8192UL;
+constexpr uint64_t HCOM_MAX_SLICE_SIZE = 1024 * 1024UL;
+constexpr uint64_t HCOM_RECV_DATA_SIZE = HCOM_MAX_SLICE_SIZE + 1024;
 constexpr uint64_t HCOM_SEND_QUEUE_SIZE = 512UL;
 constexpr uint64_t HCOM_RECV_QUEUE_SIZE = 512UL;
 constexpr uint64_t HCOM_COMPLETE_QUEUE_SIZE = 8192;
 constexpr uint64_t HCOM_QUEUE_PRE_POST_SIZE = 256UL;
-constexpr uint8_t HCOM_TRANS_EP_SIZE = 16;
+constexpr uint8_t HCOM_TRANS_EP_SIZE = 1;
 constexpr int8_t HCOM_THREAD_PRIORITY = -20;
 #endif
 const char *HCOM_RPC_SERVICE_NAME = "hybm_hcom_service";
@@ -94,10 +96,6 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
     DlHcomApi::ServiceSetTlsOptions(rpcService_, options.tlsOption.tlsEnable, C_SERVICE_TLS_1_3, C_SERVICE_AES_GCM_256,
                                     GetCertCallBack, GetPrivateKeyCallBack, GetCACallBack);
     DlHcomApi::SetUbsModeFunc(rpcService_, UbsHcomServiceUbcMode::C_SERVICE_HIGHBANDWIDTH);
-    DlHcomApi::ServiceSetSendQueueSize(rpcService_, HCOM_SEND_QUEUE_SIZE);
-    DlHcomApi::ServiceSetRecvQueueSize(rpcService_, HCOM_RECV_QUEUE_SIZE);
-    DlHcomApi::ServiceSetQueuePrePostSize(rpcService_, HCOM_QUEUE_PRE_POST_SIZE);
-    DlHcomApi::ServiceSetCompletionQueueDepth(rpcService_, HCOM_COMPLETE_QUEUE_SIZE);
     DlHcomApi::ServiceRegisterChannelBrokerHandler(rpcService_, TransportRpcHcomEndPointBroken, C_CHANNEL_RECONNECT, 1);
     DlHcomApi::ServiceRegisterHandler(rpcService_, C_SERVICE_REQUEST_RECEIVED, TransportRpcHcomRequestReceived, 1);
     DlHcomApi::ServiceRegisterHandler(rpcService_, C_SERVICE_REQUEST_POSTED, TransportRpcHcomRequestPosted, 1);
@@ -191,7 +189,8 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
         mrs_[rankId_].push_back(mrInfo);
     }
-    BM_LOG_DEBUG("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0]);
+    BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " <<
+        mrInfo.lKey.keys[0] << std::hex << " laddr:" << mr.addr);
     return BM_OK;
 }
 #else
@@ -231,7 +230,8 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
         mrs_[rankId_].push_back(mrInfo);
     }
-    BM_LOG_DEBUG("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0]);
+    BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " <<
+        mrInfo.lKey.keys[0] << std::hex << " laddr:" << mr.addr);
     return BM_OK;
 }
 #endif
@@ -540,14 +540,16 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId << ", size: " << req.size << ", rAddr: " << rAddr);
+        BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " <<
+            req.size << std::hex << ", lAddr: " << lAddr);
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.lKey);
     mr.lKey = {};
     ret = GetMemoryRegionByAddr(rankId, rAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size << ", rAddr: " << rAddr);
+        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " <<
+            req.size << std::hex << ", rAddr: " << rAddr);
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.rKey);
@@ -566,13 +568,28 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         (void)context;
         static_cast<HostHcomCounterStream *>(arg)->FinishOne();
     };
-    stream_->SubmitTasks();
-    TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_HCOM_CH_GET);
-    ret = DlHcomApi::ChannelGet(channel, req, &channelCallback);
-    if (ret != 0) {
-        stream_->FinishOne(false);
+    uint64_t remain = size;
+    uint64_t offset = 0;
+    while (remain > 0) {
+        uint32_t sliceSize = remain > HCOM_MAX_SLICE_SIZE ? HCOM_MAX_SLICE_SIZE : remain;
+
+        req.rAddress = reinterpret_cast<void *>(rAddr + offset);
+        req.lAddress = reinterpret_cast<void *>(lAddr + offset);
+        req.size = sliceSize;
+        stream_->SubmitTasks();
+        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_HCOM_CH_GET);
+        ret = DlHcomApi::ChannelGet(channel, req, &channelCallback);
+        TP_TRACE_END(TP_HYBM_HOST_RDMA_HCOM_CH_GET, ret);
+        if (ret != 0) {
+            stream_->FinishOne(false);
+            Synchronize(rankId_);
+            BM_LOG_ERROR("Failed to submit read task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
+                std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
+            return ret;
+        }
+        offset += sliceSize;
+        remain -= sliceSize;
     }
-    TP_TRACE_END(TP_HYBM_HOST_RDMA_HCOM_CH_GET, ret);
     return ret;
 }
 
@@ -618,10 +635,25 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
         (void)context;
         static_cast<HostHcomCounterStream *>(arg)->FinishOne();
     };
-    stream_->SubmitTasks();
-    ret = DlHcomApi::ChannelPut(channel, req, &channelCallback);
-    if (ret != BM_OK) {
-        stream_->FinishOne(false);
+    uint64_t remain = size;
+    uint64_t offset = 0;
+    while (remain > 0) {
+        uint32_t sliceSize = remain > HCOM_MAX_SLICE_SIZE ? HCOM_MAX_SLICE_SIZE : remain;
+
+        req.rAddress = reinterpret_cast<void *>(rAddr + offset);
+        req.lAddress = reinterpret_cast<void *>(lAddr + offset);
+        req.size = sliceSize;
+        stream_->SubmitTasks();
+        ret = DlHcomApi::ChannelPut(channel, req, &channelCallback);
+        if (ret != BM_OK) {
+            stream_->FinishOne(false);
+            Synchronize(rankId_);
+            BM_LOG_ERROR("Failed to submit put task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
+                std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
+            return ret;
+        }
+        offset += sliceSize;
+        remain -= sliceSize;
     }
     return ret;
 }
@@ -692,6 +724,7 @@ Result HcomTransportManager::ConnectHcomChannel(uint32_t rankId, const std::stri
     }
     Hcom_Channel channel;
     Service_ConnectOptions options;
+    options.mode = C_CLIENT_WORKER_POLL;
     options.clientGroupId = 0;
     options.serverGroupId = 0;
     if (StrUtil::StartWith(url, UBC_PROTOCOL_PREFIX)) {
