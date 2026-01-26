@@ -77,7 +77,7 @@ echo "BUILD_HCOM: $BUILD_HCOM"
 
 cd ${ROOT_PATH}
 
-bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" gcc "${BUILD_TEST}" "${BUILD_HCOM}"
+bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" "${BUILD_TEST}" "${BUILD_HCOM}"
 
 bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}" "${BUILD_PYTHON}" "${BUILD_HCOM}"
 

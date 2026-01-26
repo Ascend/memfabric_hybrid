@@ -51,6 +51,7 @@ FUNCTION(ADD_UNIT_TEST TEST_NAME)
             $<TARGET_OBJECTS:hybmm_objects>
             $<TARGET_OBJECTS:acc_tcp_net_object>
     )
+    target_compile_options(${TEST_TARGET_NAME} PRIVATE -w)
     target_link_directories(${TEST_TARGET_NAME} PUBLIC ${PROJECT_OUTPUT_PATH}/acc_links/lib64/)
     target_link_directories(${TEST_TARGET_NAME} PUBLIC ${PROJECT_3RDPARTY_BIN_DIR}/spdlog/lib/)
     target_link_directories(${TEST_TARGET_NAME} PUBLIC ${GTEST_BUILD_LIB_DIR}/lib)
