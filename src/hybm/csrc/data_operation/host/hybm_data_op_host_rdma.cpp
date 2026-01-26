@@ -753,21 +753,8 @@ Result HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const u
         ret = BatchCopyLH2LH(hostAddrs, gvaAddrs, counts, batchSize);
         TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_LH_TO_LH, ret);
     } else {
-        std::vector<void *> localAddrs;
-        std::vector<void *> globalAddrs;
-        std::vector<uint64_t> countArr;
-        localAddrs.reserve(batchSize);
-        globalAddrs.reserve(batchSize);
-        countArr.reserve(batchSize);
-        for (uint32_t i = 0; i < batchSize; ++i) {
-            localAddrs.push_back(hostAddrs[i]);
-            globalAddrs.push_back(gvaAddrs[i]);
-            countArr.push_back(counts[i]);
-        }
-        CopyDescriptor desc{localAddrs, globalAddrs, countArr};
-        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_BATCH_RH_TO_LH);
-        ret = BatchReadRH2LH(desc, options);
-        TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_RH_TO_LH, ret);
+        // host memory must register
+        ret = BatchCopyGH2GH(hostAddrs, gvaAddrs, counts, batchSize, options);
     }
     if (ret != 0) {
         BM_LOG_ERROR("Failed to BatchCopyGH2LH ret: " << ret);
