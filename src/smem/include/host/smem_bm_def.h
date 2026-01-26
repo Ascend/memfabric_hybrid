@@ -26,8 +26,7 @@ typedef void *smem_bm_t;
 #define SMEM_BM_BIND_NUMA_FLAG_INDEX        0
 #define SMEM_BM_BIND_NUMA_FLAG_LEN          7
 #define SMEM_TLS_PATH_SIZE                  256
-#define SMEM_BM_WORLD_SIZE_DEFAULT          4096U
-#define SMEM_BM_INVALID_DEV_ID              (-1)
+
 /**
 * @brief Smem memory type
 */

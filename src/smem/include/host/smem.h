@@ -21,6 +21,8 @@ extern "C" {
 
 #define ASYNC_COPY_FLAG                     (1UL << (0))
 #define COPY_EXTEND_FLAG                    (1UL << (1))
+#define SMEM_WORLD_SIZE_MAX                 1024U
+#define SMEM_INVALID_DEV_ID                 (-1)
 
 /**
  * @brief Initialize the smem running environment
