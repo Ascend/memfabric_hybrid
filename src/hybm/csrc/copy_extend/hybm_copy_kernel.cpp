@@ -16,8 +16,7 @@
 const uint32_t COPY_BUF_SIZE = 64 * 1024; // 最大支持192KB
 const uint32_t SINGLE_COPY_SLICE = 128;
 
-HYBM_AICORE_KERNEL void copy_ub2gm(__gm__ uint8_t* dst, __ubuf__ uint8_t* src,
-                                   uint32_t size, bool toL2Cache)
+HYBM_AICORE_KERNEL void copy_ub2gm(__gm__ uint8_t* dst, __ubuf__ uint8_t* src, uint32_t size)
 {
     AscendC::LocalTensor<uint8_t> ubTensor;
     AscendC::GlobalTensor<uint8_t> gmTensor;
@@ -25,14 +24,11 @@ HYBM_AICORE_KERNEL void copy_ub2gm(__gm__ uint8_t* dst, __ubuf__ uint8_t* src,
     ubTensor.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::VECIN);
     ubTensor.address_.bufferAddr = reinterpret_cast<uint64_t>(src);
     gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t*>(dst));
-    if (!toL2Cache) {
-        gmTensor.SetL2CacheHint(AscendC::CacheMode::CACHE_MODE_DISABLE);
-    }
+
     AscendC::DataCopyPad(gmTensor, ubTensor, dataCopyParams);
 }
 
-HYBM_AICORE_KERNEL void copy_gm2ub(__ubuf__ uint8_t* dst, __gm__ uint8_t* src,
-                                   uint32_t size, bool toL2Cache)
+HYBM_AICORE_KERNEL void copy_gm2ub(__ubuf__ uint8_t* dst, __gm__ uint8_t* src, uint32_t size)
 {
     AscendC::LocalTensor<uint8_t> ubTensor;
     AscendC::GlobalTensor<uint8_t> gmTensor;
@@ -40,9 +36,7 @@ HYBM_AICORE_KERNEL void copy_gm2ub(__ubuf__ uint8_t* dst, __gm__ uint8_t* src,
     ubTensor.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::VECIN);
     ubTensor.address_.bufferAddr = reinterpret_cast<uint64_t>(dst);
     gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t*>(src));
-    if (!toL2Cache) {
-        gmTensor.SetL2CacheHint(AscendC::CacheMode::CACHE_MODE_DISABLE);
-    }
+
     AscendC::DataCopyPadExtParams<uint8_t> padParams;
     AscendC::DataCopyPad(ubTensor, gmTensor, dataCopyParams, padParams);
 }
@@ -54,18 +48,18 @@ HYBM_AICORE_KERNEL void copy_gm2gm(__gm__ uint8_t *dst, __gm__ uint8_t *src, __u
     uint64_t repeat_elem = ub_size;
     uint64_t remain = elem_size % ub_size;
     for (uint64_t i = 0; i < repeat_times; i++) {
-        copy_gm2ub(buf, src + i * repeat_elem, ub_size, true);
+        copy_gm2ub(buf, src + i * repeat_elem, ub_size);
         AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
-        copy_ub2gm(dst + i * repeat_elem, buf, ub_size, true);
+        copy_ub2gm(dst + i * repeat_elem, buf, ub_size);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
     }
     if (remain > 0) {
-        copy_gm2ub(buf, src + repeat_times * repeat_elem, remain, true);
+        copy_gm2ub(buf, src + repeat_times * repeat_elem, remain);
         AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
-        copy_ub2gm(dst + repeat_times * repeat_elem, buf, remain, true);
+        copy_ub2gm(dst + repeat_times * repeat_elem, buf, remain);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
     }

@@ -26,7 +26,8 @@ constexpr uint32_t HYBM_SINGLE_PARAM_NUM = 16 * 1024; // 16K
 constexpr uint64_t HYBM_SINGLE_PARAM_SIZE = HYBM_SINGLE_PARAM_NUM * 3 * 8; // 384K
 constexpr uint64_t HYBM_PARAM_SPACE_CAP = 170;
 constexpr uint64_t HYBM_PARAM_SPACE_SIZE = 64 * 1024 * 1024; // HYBM_SINGLE_PARAM_SIZE * HYBM_PARAM_SPACE_CAP = 63.75M
-constexpr uint64_t HYBM_PARAM_SPACE_META_OFFSET = 65534 * 1024; // HYBM_PARAM_SPACE_SIZE - 2K
+constexpr uint64_t HYBM_PARAM_SPACE_META_OFFSET = HYBM_SINGLE_PARAM_SIZE * HYBM_PARAM_SPACE_CAP; // last 256K
+constexpr uint64_t HYBM_PARAM_META_IDX_BASE = 8; // 8 * 8B = 64B, aicore cacheline is 64B
 constexpr uint32_t HYBM_EXTEND_CONCURRENT = 32;
 HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
@@ -56,7 +57,7 @@ Result HostDataOpSDMA::Initialize() noexcept
 
     auto mask = reinterpret_cast<uint64_t *>(reinterpret_cast<uint64_t>(paramSpace_) + HYBM_PARAM_SPACE_META_OFFSET);
     for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
-        __atomic_store_n(mask + i, HYBM_EXTEND_CONCURRENT, __ATOMIC_RELEASE);
+        __atomic_store_n(mask + i * HYBM_PARAM_META_IDX_BASE, HYBM_EXTEND_CONCURRENT, __ATOMIC_RELEASE);
     }
 
     paramOffset_ = reinterpret_cast<uint64_t>(output) - reinterpret_cast<uint64_t>(paramSpace_);
@@ -487,10 +488,11 @@ uint32_t HostDataOpSDMA::TryGetOneParamSpace(void **ptr) noexcept
     uint32_t st = paramSpaceIdx_;
     for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
         uint32_t k = (i + st) % HYBM_PARAM_SPACE_CAP;
+        uint32_t idx = k * HYBM_PARAM_META_IDX_BASE;
         uint64_t tmp = HYBM_EXTEND_CONCURRENT;
-        if (mask[k] == HYBM_EXTEND_CONCURRENT &&
-            __atomic_compare_exchange_n(mask + k, &tmp, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
-            *ptr = reinterpret_cast<void *>(mask + k);
+        if (mask[idx] == HYBM_EXTEND_CONCURRENT &&
+            __atomic_compare_exchange_n(mask + idx, &tmp, 0U, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+            *ptr = reinterpret_cast<void *>(mask + idx);
             paramSpaceIdx_ = k + 1U;
             return k;
         }
@@ -527,7 +529,7 @@ Result HostDataOpSDMA::BatchCopyExtend(hybm_batch_copy_params &params, void *str
         auto ret = DlHybmExtendApi::HybmBatchCopyExtend(remoteAddr, nowBatchSize,
             reinterpret_cast<void *>(reinterpret_cast<uint64_t>(maskPtr) + paramOffset_), HYBM_EXTEND_CONCURRENT, st);
         if (ret != 0) {
-            *reinterpret_cast<uint64_t *>(maskPtr) = 0U;
+            *reinterpret_cast<uint64_t *>(maskPtr) = HYBM_EXTEND_CONCURRENT;
             BM_LOG_ERROR("call HybmBatchCopyExtend failed, ret:" << ret);
             return BM_ERROR;
         }
