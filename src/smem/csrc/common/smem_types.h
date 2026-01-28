@@ -41,6 +41,7 @@ constexpr int32_t N64 = 64;
 constexpr int32_t N256 = 256;
 constexpr int32_t N1024 = 1024;
 constexpr int32_t N8192 = 8192;
+const uint32_t REGISTER_WAIT_TIME = 8;
 
 constexpr uint32_t UN2 = 2;
 constexpr uint32_t UN32 = 32;

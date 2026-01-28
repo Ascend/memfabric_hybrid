@@ -453,6 +453,9 @@ Result SmemTransEntry::WatchConnectTaskOneLoop()
 Result SmemTransEntry::StartWatchThread()
 {
     SM_LOG_DEBUG("start background thread");
+    if (storeHelper_.CheckServerStatus()) {
+        WatchTaskFindNewRanks();
+    }
     watchThread_ = std::thread([this]() {
         std::unique_lock<std::mutex> locker{watchMutex_};
         const std::chrono::seconds WATCH_INTERVAL(3);
@@ -472,7 +475,6 @@ void SmemTransEntry::WatchTaskOneLoop()
         return;
     }
     WatchTaskFindNewRanks();
-
     if (times >= 2U) {
         WatchTaskFindNewSlices();
     }

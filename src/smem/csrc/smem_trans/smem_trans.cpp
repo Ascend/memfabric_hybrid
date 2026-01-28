@@ -120,7 +120,8 @@ SMEM_API int32_t smem_trans_register_mem(smem_trans_t handle, void *address, siz
         SM_LOG_AND_SET_LAST_ERROR("register local failed, result: " << result);
         return result;
     }
-
+    // sleep 8s wait other rank import this slice
+    std::this_thread::sleep_for(std::chrono::seconds(REGISTER_WAIT_TIME));
     return SM_OK;
 }
 
@@ -201,6 +202,8 @@ SMEM_API int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addres
         SM_LOG_AND_SET_LAST_ERROR("register local failed, result: " << result);
         return result;
     }
+    // sleep 8s wait other rank import this slice
+    std::this_thread::sleep_for(std::chrono::seconds(REGISTER_WAIT_TIME));
     return SM_OK;
 }
 

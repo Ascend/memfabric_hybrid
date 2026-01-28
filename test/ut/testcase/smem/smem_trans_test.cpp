@@ -295,7 +295,6 @@ TEST_F(SmemTransTest, smem_trans_read_write)
             exit(3);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities, 0);
             if (ret != SM_OK) {
@@ -552,7 +551,6 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
             exit(3);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             ret = smem_trans_write(handle, addrPtrs[0], unique_ids[1], addrPtrs[1], capacities, 0);
             if (ret != SM_OK) {
@@ -683,7 +681,6 @@ TEST_F(SmemTransTest, smem_trans_batch_read_write)
             exit(3);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
             ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1, 0);
@@ -943,7 +940,6 @@ TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
             exit(3);
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         if (rank == 0) {
             const void *srcAddr[] = {addrPtrs[0][0]};
             ret = smem_trans_batch_write(handle, srcAddr, unique_ids[1], addrPtrs[1].data(), capacities.data(), 1, 0);
