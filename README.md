@@ -10,10 +10,10 @@
 
 ## 🎉概述
 
-  MemFabric是一款开源内存池化软件，面向昇腾超节点和服务器等，其设计目的是:
-  - 将多节点的异构设备内存(DRAM|显存等)池化且提供高性能的全局内存直接访问的能力
-  - 北向提供简单的内存语义访问接口(xcopy with global virtual address)，支持D2RH\RH2D\RH2H等内存直接访问
-  - 南向支持多种DMA引擎及多种网络/灵衢互联 (Device UB、Device RoCE、Host UB、Host RoCE等)，对上屏蔽复杂性
+  MemFabric是一款开源内存池化软件，面向昇腾超节点和服务器等，其设计目的与核心思想是:
+  - 异构设备的统一池化: 将多节点的异构设备内存(DRAM|HBM等)池化, 提供高性能的全局内存"直接访问"的能力
+  - 简单的北向接口: 提供内存语义访问接口, 即xcopy with global virtual address, 向传统的memcpy概念靠近, 支持D2RH\RH2D\RH2H\D2D等
+  - 南向高可扩展: 通过插件的方式支持多种DMA引擎和LD/ST及多种网络/灵衢互联(Device UB、Device RoCE、Host UB、Host RoCE等)
      
 ![architecture](./doc/source/architecture.png)
       
