@@ -146,7 +146,3 @@ bash /usr/local/memfabric_hybrid/latest/uninstall.sh
 ```bash
 pip uninstall memfabric_hybrid
 ```
-
-## 开发样例及常见问题
-
-我们为用户提供了C++和Python的开发样例及使用中常见问题的解决方案，详情请参考：[开发样例及常见问题](../example/examples.md)

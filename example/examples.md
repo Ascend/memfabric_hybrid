@@ -22,9 +22,3 @@
 | [shm_RDMADemo](./shm/RDMADemo/README.md)       | shm C++样例      | C++      |
 | [shm_ShiftPutGet](./shm/ShiftPutGet/README.md) | shm C++样例      | C++      |
 | [trans](./trans/perf/README.md)                | trans C++样例    | C++      |
-
-## 常见问题
-
-| 现象                                 | 介绍                                    |
-|------------------------------------|---------------------------------------|
-| 创建BM失败  ❗                     | [link](../doc/faq/bm_create_fail.md)      |

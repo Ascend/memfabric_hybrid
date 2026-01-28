@@ -194,6 +194,10 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
   - [安装指南](https://support.huawei.com/enterprise/zh/ascend-computing/lingqu-computing-network-pid-258003841)
   - [安装参考](./doc/CCLink.md)
 
+## 📌FAQ
+
+常见问题请参考：[FAQ](https://gitcode.com/Ascend/memfabric_hybrid/wiki/FAQ.md)
+
 ## 📝相关信息
 
 - [安全声明](./doc/SECURITYNOTE.md)
