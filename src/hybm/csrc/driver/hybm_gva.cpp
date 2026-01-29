@@ -49,6 +49,7 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
         return BM_ERROR;
     }
 
+    drv::HybmInitialize(initedLogicDeviceId, DlHalApi::GetFd());
     if ((flags & HYBM_FLAG_INIT_SHMEM_META) == 0) {
         BM_LOG_DEBUG("skip init shm meta space:" << flags);
         baseAddress = 0;
@@ -60,7 +61,6 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
 
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间
-    drv::HybmInitialize(initedLogicDeviceId, DlHalApi::GetFd());
     ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, initedLogicDeviceId, flags);
     if (ret != 0) {
         DlApi::CleanupLibrary();

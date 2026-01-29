@@ -106,7 +106,7 @@ static int32_t GvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId
         reserved += chunk;
         chunkMaps.push_back(currentBase);
     }
-    *address = (*chunkMaps.begin());
+    *address = chunkMaps.back();
     return BM_OK;
 }
 
