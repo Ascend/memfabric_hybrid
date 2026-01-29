@@ -163,7 +163,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
-        BM_LOG_ERROR("Failed to register mem region, addr already registered");
+        BM_LOG_ERROR("Failed to register mem region, addr: " << mr.addr << " already registered");
         return BM_ERROR;
     }
 
@@ -259,11 +259,12 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
     HybmVaManager::GetInstance().RemoveOneVaInfo(addr);
 
     std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
-    auto localMrs = mrs_[rankId_];
+    auto& localMrs = mrs_[rankId_];
     for (uint32_t i = 0; i < localMrs.size(); ++i) {
         if (localMrs[i].addr == addr) {
             DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, localMrs[i].mr);
             localMrs.erase(localMrs.begin() + i);
+            BM_LOG_INFO("Addr: " << addr << " unregistered");
             return BM_OK;
         }
     }
