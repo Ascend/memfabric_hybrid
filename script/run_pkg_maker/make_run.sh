@@ -63,6 +63,8 @@ cp -r "${OUTPUT_DIR}"/memfabric_hybrid/wheel/*.whl ${PKG_DIR}/"${ARCH_OS}"/wheel
 if [ "$BUILD_TEST" = "ON" ]; then
     mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
     cp "${PROJECT_DIR}"/test/python/mock_server/server.py ${PKG_DIR}/"${ARCH_OS}"/test/mock_server
+    mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/mock_server/smem_bm
+    cp "${PROJECT_DIR}"/test/python/mock_server/smem_bm/*.py ${PKG_DIR}/"${ARCH_OS}"/test/mock_server/smem_bm
     cp ${OUTPUT_DIR}/smem/bin/* ${PKG_DIR}/"${ARCH_OS}"/test || true
 fi
 
