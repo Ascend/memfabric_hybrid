@@ -25,6 +25,7 @@ const std::string DRIVER_VER_V4 = "V100R001C23SPC005B219";
 const std::string DRIVER_VER_V3 = "V100R001C21B035";
 const std::string DRIVER_VER_V2 = "V100R001C19SPC109B220";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
+const std::string DRIVER_INSTALL_INFO = "/etc/ascend_install.info";
 
 HybmGvaVersion checkVer = HYBM_GVA_UNKNOWN;
 
@@ -33,35 +34,7 @@ HybmGvaVersion HybmGetGvaVersion()
     return checkVer;
 }
 
-static std::string GetDriverVersionPath(const std::string &driverEnvStr, const std::string &keyStr)
-{
-    std::string driverVersionPath;
-    std::string tempPath; // 存放临时路径
-    // 查找driver安装路径
-    for (uint32_t i = 0; i < driverEnvStr.length(); ++i) {
-        // 环境变量中存放的每段路径之间以':'隔开
-        if (driverEnvStr[i] != ':') {
-            tempPath += driverEnvStr[i];
-        }
-        // 对存放driver版本文件的路径进行搜索
-        if (driverEnvStr[i] == ':' || i == driverEnvStr.length() - 1) {
-            auto found = tempPath.find(keyStr);
-            if (found == std::string::npos) {
-                tempPath.clear();
-                continue;
-            }
-            // 确保不是部分匹配
-            if (tempPath.length() <= found + keyStr.length() || tempPath[found + keyStr.length()] == '/') {
-                driverVersionPath = tempPath.substr(0, found);
-                break;
-            }
-            tempPath.clear();
-        }
-    }
-    return driverVersionPath;
-}
-
-static std::string LoadDriverVersionInfoFile(const std::string &realName, const std::string &keyStr)
+static std::string LoadValueInfoFile(const std::string &realName, const std::string &keyStr)
 {
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
@@ -99,15 +72,19 @@ static std::string LoadDriverVersionInfoFile(const std::string &realName, const 
     return driverVersion;
 }
 
-static std::string CastDriverVersion(const std::string &driverEnv)
+static std::string CastDriverVersion()
 {
-    std::string driverVersionPath = GetDriverVersionPath(driverEnv, "/driver/lib64");
+#ifdef UT_ENABLED
+    std::string driverVersionPath = std::getenv("ASCEND_HOME_PATH");
+#else
+    std::string driverVersionPath = LoadValueInfoFile(DRIVER_INSTALL_INFO, "Driver_Install_Path_Param=");
+#endif
     if (!driverVersionPath.empty()) {
         driverVersionPath += "/driver/version.info";
-        std::string driverVersion = LoadDriverVersionInfoFile(driverVersionPath, "Innerversion=");
+        std::string driverVersion = LoadValueInfoFile(driverVersionPath, "Innerversion=");
         return driverVersion;
     }
-    BM_LOG_WARN("cannot found version file in driverEnv.");
+    BM_LOG_WARN("cannot found version file in " << DRIVER_INSTALL_INFO);
     return "";
 }
 
@@ -140,13 +117,7 @@ static bool DriverVersionCheck(const std::string &ver)
 #if !defined(ASCEND_NPU)
     return true;
 #else
-    auto libPath = std::getenv("LD_LIBRARY_PATH");
-    if (libPath == nullptr) {
-        BM_LOG_ERROR("check driver version failed, Environment LD_LIBRARY_PATH not set.");
-        return false;
-    }
-
-    std::string readVer = CastDriverVersion(libPath);
+    std::string readVer = CastDriverVersion();
     if (readVer.empty()) {
         BM_LOG_ERROR("check driver version failed, read version is empty.");
         return false;

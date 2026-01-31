@@ -69,7 +69,6 @@ Result HybmConnBasedSegment::UnReserveMemorySpace() noexcept
 {
     BM_LOG_INFO("un-reserve memory space.");
     FreeMemory();
-    HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
     return BM_OK;
 }
 
@@ -284,6 +283,7 @@ void HybmConnBasedSegment::FreeMemory() noexcept
         if (munmap(globalVirtualAddress_, totalVirtualSize_) != 0) {
             BM_LOG_ERROR("Failed to unmap global memory");
         }
+        HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
         globalVirtualAddress_ = nullptr;
     }
 }

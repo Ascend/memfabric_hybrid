@@ -78,9 +78,9 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
 {
     if (globalVirtualAddress_ != nullptr) {
         DlHalApi::HalMemAddressFree(reinterpret_cast<void *>(globalVirtualAddress_));
+        HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
         globalVirtualAddress_ = nullptr;
     }
-    HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
     return BM_OK;
 }
 
