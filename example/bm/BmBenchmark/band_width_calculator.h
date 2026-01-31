@@ -27,12 +27,12 @@ enum class CopyType {
     DEVICE_TO_HOST,
     HOST_TO_REMOTE_DEVICE,
     HOST_TO_REMOTE_HOST,
-    DEVICE_TO_REMOTE_HOST,
     DEVICE_TO_REMOTE_DEVICE,
+    DEVICE_TO_REMOTE_HOST,
     REMOTE_HOST_TO_DEVICE,
     REMOTE_HOST_TO_HOST,
-    REMOTE_DEVICE_TO_HOST,
     REMOTE_DEVICE_TO_DEVICE,
+    REMOTE_DEVICE_TO_HOST,
     ALL_DIRECTION
 };
 
@@ -45,12 +45,13 @@ typedef struct {
 
 typedef struct {
     CopyType type{CopyType::HOST_TO_DEVICE};
-    smem_bm_data_op_type opType{SMEMB_DATA_OP_DEVICE_RDMA};
+    smem_bm_data_op_type opType{SMEMB_DATA_OP_BUTT};
     std::string ipPort{};
+    std::string rdmaIpPort{"tcp://0.0.0.0/0:10005"};
     uint32_t worldRankSize{8};
     uint32_t localRankSize{8};
     uint32_t localRankStart{0};
-    uint64_t executeTimes{1000};
+    uint64_t copyCount{1000};
     uint64_t copySize{1024};
     uint64_t batchSize{1};
     uint32_t deviceId{0};
@@ -92,13 +93,28 @@ private:
 
     int32_t Execute(uint32_t deviceId, uint32_t rankId, uint32_t localRankNum, uint32_t rkSize, int32_t pipeFdWrite);
 
+    int32_t BandWidthCalculation(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId,
+                              BwTestResult *results);
+
     void BatchCopyPut(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId, smem_bm_t handle,
                       CopyType type, BwTestResult &result);
     void BatchCopyGet(smem_bm_mem_type localMemType, smem_bm_mem_type rmtMemType, uint32_t gvaRankId, smem_bm_t handle,
                       CopyType type, BwTestResult &result);
 
+    void H2D(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void D2H(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void H2RD(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void H2RH(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void D2RD(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void D2RH(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void RH2D(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void RH2H(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void RD2D(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+    void RD2H(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId, uint32_t remoteRankId, BwTestResult *results);
+
 private:
     BwTestParam cmdParam_;
+    bool isMaster_ = false;
     void *localDram_ = nullptr;
     void *localHbm_ = nullptr;
     void *registedLocalDram_ = nullptr;
