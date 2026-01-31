@@ -17,6 +17,7 @@
 #include "mf_monotonic_time.h"
 #include "acc_def.h"
 #include "smem_store_factory.h"
+#include "mf_str_util.h"
 #include "smem_net_group_engine.h"
 
 namespace ock {
@@ -29,9 +30,9 @@ const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
 const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
-constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 100LL * 365 * 24 * 60 * 60 * 1000; // 100 years, unit: ms
-constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US;          // 100ms, unit: us
-constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;              // 5s
+constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 10LL * 1000;              // 10s, unit: ms
+constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
+constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;     // 5s
 
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
@@ -344,6 +345,42 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     return SM_OK;
 }
 
+bool SmemNetGroupEngine::ReWatch()
+{
+    uint32_t wid;
+    auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY,
+                             std::bind(&SmemNetGroupEngine::GroupWatchCb, this, std::placeholders::_1,
+                                       std::placeholders::_2, std::placeholders::_3),
+                             wid);
+    if (ret != SM_OK) {
+        SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
+        if (listenLinkStatusWatchId_.load() > 0) {
+            store_->Unwatch(listenLinkStatusWatchId_.load());
+            listenLinkStatusWatchId_.store(UINT32_MAX);
+        }
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+        return true;
+    }
+    SM_LOG_INFO("Watch group listen successfully, wid: " << wid);
+    listenCtx_.watchId = wid;
+    listenCtx_.ret = SM_OK;
+    if (listenLinkStatusWatchId_.load() == UINT32_MAX) {
+        ret = store_->Watch(
+            WatchRankType::WATCH_RANK_LINK_DOWN,
+            [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
+        if (ret != SM_OK) {
+            SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
+            store_->Unwatch(listenCtx_.watchId);
+            listenCtx_.watchId = UINT32_MAX;
+            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+            return true;
+        }
+        listenLinkStatusWatchId_.store(wid);
+        SM_LOG_INFO("Watch link down event successfully, wid: " << wid);
+    }
+    return false;
+}
+
 void SmemNetGroupEngine::GroupListenEvent()
 {
     std::string getVal;
@@ -357,17 +394,9 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         if (listenCtx_.watchId == UINT32_MAX) {
-            uint32_t wid;
-            auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY,
-                                     std::bind(&SmemNetGroupEngine::GroupWatchCb, this, std::placeholders::_1,
-                                               std::placeholders::_2, std::placeholders::_3),
-                                     wid);
-            if (ret != SM_OK) {
-                SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
-                usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+            if (ReWatch()) {
                 continue;
             }
-            listenCtx_.watchId = wid;
         }
 
         int contextRet = SM_OK;
@@ -388,6 +417,8 @@ void SmemNetGroupEngine::GroupListenEvent()
         if (contextRet != SM_OK) {
             store_->Unwatch(listenCtx_.watchId);
             listenCtx_.watchId = UINT32_MAX;
+            store_->Unwatch(listenLinkStatusWatchId_.load());
+            listenLinkStatusWatchId_.store(UINT32_MAX);
             continue;
         }
 
@@ -615,6 +646,7 @@ Result SmemNetGroupEngine::StartListenEvent()
         WatchRankType::WATCH_RANK_LINK_DOWN,
         [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
     SM_ASSERT_RETURN(ret == SM_OK, ret);
+    listenLinkStatusWatchId_.store(wid);
 
     std::thread th(&SmemNetGroupEngine::GroupListenEvent, this);
     while (!listenThreadStarted_) {
@@ -741,7 +773,7 @@ void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
     SM_LOG_DEBUG("[DEBUG]Update version(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
 }
 
-void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> rankIds)
+void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> &rankIds)
 {
     uint64_t tempBitmap[RANK_BITS_U64_COUNT];
     bzero(tempBitmap, sizeof(tempBitmap));
@@ -769,7 +801,10 @@ int32_t SmemNetGroupEngine::LinkReconnectHandler()
         WatchRankType::WATCH_RANK_LINK_DOWN,
         [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("Failed to watch rank link status, ret: " << ret);
+        SM_LOG_WARN("Failed to watch rank link status, ret: " << ret);
+    } else {
+        SM_LOG_INFO("Watch link down event successful wid: " << wid);
+        listenLinkStatusWatchId_.store(wid);
     }
 
     int64_t tmpVal = 0L;
@@ -786,10 +821,15 @@ int32_t SmemNetGroupEngine::LinkReconnectHandler()
     auto newValStr = std::to_string(newVal);
     std::string existStr;
     SM_LOG_DEBUG("[DEBUG]Try cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << std::hex << version
-                                           << " rankSize:" << rankSize << " oldVar:" << tmpVal);
+                                           << ", rankSize:" << rankSize << ", oldVar:" << tmpVal);
     ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
     if (ret != SM_OK) {
         SM_LOG_WARN("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
+    } else {
+        StrUtil::String2Int(existStr, newVal);
+        auto pair = SplitSizeAndVersion(newVal);
+        SM_LOG_INFO("Cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << version
+                                   << ", rankSize:" << rankSize << ", oldVar: " << pair.first << "_" << pair.second);
     }
     return SM_OK;
 }

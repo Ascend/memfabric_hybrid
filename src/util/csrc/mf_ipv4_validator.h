@@ -331,14 +331,10 @@ public:
         return obj;
     }
 
-    std::shared_ptr<SocketAddressParser> GetParser(const uint32_t port)
+    std::shared_ptr<SocketAddressParser> GetParser(const uint32_t serverPort)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        // 9966L 未赋值，来源acl
-        if (!port2Parsers_.empty() && port == 9966L) {
-            return port2Parsers_.begin()->second;
-        }
-        auto find = port2Parsers_.find(port);
+        auto find = port2Parsers_.find(serverPort);
         if (find == port2Parsers_.end()) {
             return nullptr;
         }

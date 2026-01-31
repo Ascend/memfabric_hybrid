@@ -591,13 +591,18 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
 {
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
     ock::acc::AccConnReq connReq;
-    connReq.rankId = rankId_;
+    connReq.rankId =
+        rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
+                     : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
     auto result = accClient_->ConnectToPeerServer(serverIp_, serverPort_, connReq, retryMaxTimes, accClientLink_);
     if (result != 0) {
         STORE_LOG_ERROR_LIMIT("Reconnect to server failed, result.");
         return result;
     }
     STORE_LOG_INFO("Reconnect to server successful.");
+    if (reconnectHandler) {
+        (void)reconnectHandler();
+    }
     return SM_OK;
 }
 
