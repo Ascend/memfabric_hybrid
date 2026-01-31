@@ -100,8 +100,13 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
             break;
         }
 
-        BM_LOG_ERROR("data copy from rank " << options.srcRankId << " to rank " << options.destRankId
-                                            << " with data op " << ops.first << " failed " << result);
+        BM_LOG_WARN("data copy from rank " << options.srcRankId << " to rank " << options.destRankId << " with data op "
+                                           << ops.first << " failed " << result);
+    }
+
+    if (result != BM_OK) {
+        BM_LOG_ERROR("data copy from rank " << options.srcRankId << " to rank " << options.destRankId << " failed "
+                                            << result);
     }
     return result;
 }
@@ -118,15 +123,53 @@ Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
 
     Result result = BM_ERROR;
     for (auto &ops : availableOps) {
-        BM_LOG_DEBUG("try batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
-                                                      << " with data op " << ops.first);
-        result = ops.second->BatchDataCopy(params, direction, options);
-        if (result == BM_OK) {
-            break;
+        // sdma无rank概念
+        if (ops.first == HYBM_DOP_TYPE_SDMA) {
+            result = ops.second->BatchDataCopy(params, direction, options);
+            if (result == BM_OK) {
+                return result;
+            }
+            BM_LOG_WARN("data batch copy by " << direction << " with sdma failed " << result);
+            continue;
         }
 
-        BM_LOG_ERROR("data batch copy from rank " << options.srcRankId << " to rank " << options.destRankId
-                                                  << " with data op " << ops.first << " failed " << result);
+        // 为每组调用batch_copy
+        for (auto &[p2pInfo, indices] : options.groupMap) {
+            uint32_t groupSize = indices.size();
+            // 为当前组构建临时参数
+            std::vector<void *> sources_group(groupSize);
+            std::vector<void *> destinations_group(groupSize);
+            std::vector<size_t> dataSizes_group(groupSize);
+            // 填充组内参数
+            for (uint32_t j = 0; j < groupSize; ++j) {
+                uint32_t idx = indices[j];
+                sources_group[j] = params.sources[idx];
+                destinations_group[j] = params.destinations[idx];
+                dataSizes_group[j] = params.dataSizes[idx];
+            }
+            hybm_batch_copy_params copyParams = {sources_group.data(), destinations_group.data(),
+                                                 dataSizes_group.data(), groupSize};
+            ExtOptions copyOptions{};
+            copyOptions.srcRankId = p2pInfo.first;
+            copyOptions.destRankId = p2pInfo.second;
+            copyOptions.stream = options.stream;
+            copyOptions.flags = options.flags;
+            result = ops.second->BatchDataCopy(copyParams, direction, copyOptions);
+            if (result != BM_OK) {
+                BM_LOG_WARN("data batch copy from rank " << copyOptions.srcRankId << " to rank "
+                                                         << copyOptions.destRankId << " with data op " << ops.first
+                                                         << " failed " << result);
+                break;
+            }
+        }
+
+        if (result == BM_OK) {
+            return result; // successs, no need use next op copy
+        }
+    }
+
+    if (result != BM_OK) {
+        BM_LOG_ERROR("data batch copy failed " << result);
     }
     return result;
 }
@@ -175,19 +218,19 @@ HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(co
     HostComposeDataOp::DataOperators dataOperators;
     auto opTypes = entityTagInfo_->GetRank2RankOpType(options.srcRankId, options.destRankId);
     if (sdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_SDMA)) != 0U) {
-        dataOperators.emplace_back("SDMA", sdmaDataOperator_);
+        dataOperators.emplace_back(HYBM_DOP_TYPE_SDMA, sdmaDataOperator_);
     }
 
     if (devRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_DEVICE_RDMA)) != 0U) {
-        dataOperators.emplace_back("DEV_RDMA", devRdmaDataOperator_);
+        dataOperators.emplace_back(HYBM_DOP_TYPE_DEVICE_RDMA, devRdmaDataOperator_);
     }
 
     if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_RDMA)) != 0U) {
-        dataOperators.emplace_back("HOST_RDMA", hostRdmaDataOperator_);
+        dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_RDMA, hostRdmaDataOperator_);
     }
 
     if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_URMA)) != 0U) {
-        dataOperators.emplace_back("HOST_URMA", hostRdmaDataOperator_);
+        dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_URMA, hostRdmaDataOperator_);
     }
 
     return dataOperators;

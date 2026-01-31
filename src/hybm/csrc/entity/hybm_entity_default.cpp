@@ -734,10 +734,13 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
     BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
 
     int32_t ret = BM_OK;
+    std::pair<uint32_t, uint32_t> p2pInfo;
+    LocateAddrAndRank(params.src, params.dest, params.dataSize, p2pInfo);
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
-    GenCopyExtOption(params.src, params.dest, params.dataSize, options);
+    options.srcRankId = p2pInfo.first;
+    options.destRankId = p2pInfo.second;
 
     if (options_.scene != HYBM_SCENE_TRANS) {
         params.src = Valid48BitsAddress(params.src);
@@ -761,48 +764,28 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
 
     int32_t ret = BM_ERROR;
-    // 0. sdma 不需要rankId
+    if (dataOperator_ == nullptr) {
+        BM_LOG_ERROR("Data copy failed, dataOperator_ is null.");
+        return ret;
+    }
+
     ExtOptions sOptions{};
     sOptions.stream = stream;
     sOptions.flags = flags;
-    // 1. 分组
-    std::unordered_map<ExtOptions, std::vector<uint32_t>, ExtOptionsHash> groupMap;
-    // 2. 遍历所有元素，收集分组
+    // 将所有地址按srcRank - dstRank分组，并且转换地址
     for (uint32_t i = 0; i < params.batchSize; ++i) {
-        ExtOptions options{};
-        options.flags = flags;
-        options.stream = stream;
-        GenCopyExtOption(params.sources[i], params.destinations[i], params.dataSizes[i], options);
-        BM_LOG_DEBUG("==========" << options << " " << (uint64_t)params.sources[i] << " " << params.destinations[i]
-                                  << " " << (uint64_t)params.dataSizes[i]);
-        groupMap[options].push_back(i);
-    }
-    // 3. 为每组调用batch_copy
-    for (auto &[options, indices] : groupMap) {
-        uint32_t groupSize = indices.size();
-        // 为当前组构建临时参数
-        std::vector<void *> sources_group(groupSize);
-        std::vector<void *> destinations_group(groupSize);
-        std::vector<size_t> dataSizes_group(groupSize);
-        // 填充组内参数
-        for (uint32_t j = 0; j < groupSize; ++j) {
-            uint32_t idx = indices[j];
-            sources_group[j] = params.sources[idx];
-            destinations_group[j] = params.destinations[idx];
-            dataSizes_group[j] = params.dataSizes[idx];
-        }
-        hybm_batch_copy_params copyParams = {sources_group.data(), destinations_group.data(), dataSizes_group.data(),
-                                             groupSize};
-        if (dataOperator_ != nullptr) {
-            ret = dataOperator_->BatchDataCopy(copyParams, direction, options);
-            if (ret == BM_OK) {
-                continue;
-            }
-            BM_LOG_ERROR("Data copy direction: " << direction << ", failed : " << ret);
-            return ret;
-        }
+        std::pair<uint32_t, uint32_t> p2pInfo;
+        LocateAddrAndRank(params.sources[i], params.destinations[i], params.dataSizes[i], p2pInfo);
+        BM_LOG_DEBUG("========== " << (uint64_t)params.sources[i] << " " << params.destinations[i] << " "
+                                   << (uint64_t)params.dataSizes[i]);
+        sOptions.groupMap[p2pInfo].push_back(i);
     }
 
+    ret = dataOperator_->BatchDataCopy(params, direction, sOptions);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("Data copy failed, ret: " << ret);
+        return ret;
+    }
     return ret;
 }
 
@@ -993,25 +976,26 @@ int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], ui
     return BM_OK;
 }
 
-void MemEntityDefault::GenCopyExtOption(void *&src, void *&dest, uint64_t length, ExtOptions &options) noexcept
+void MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, uint64_t length,
+                                         std::pair<uint32_t, uint32_t> &p2pInfo) noexcept
 {
     void *real = Valid48BitsAddress(src);
-    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, options.srcRankId)) {
+    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
         // nothing
-    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(src, length, options.srcRankId)) {
+    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
         // nothing
     } else {
-        options.srcRankId = options_.rankId;
+        p2pInfo.first = options_.rankId;
     }
     src = real;
 
     real = Valid48BitsAddress(dest);
-    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
+    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
         // nothing
-    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, options.destRankId)) {
+    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
         // nothing
     } else {
-        options.destRankId = options_.rankId;
+        p2pInfo.second = options_.rankId;
     }
     dest = real;
 }

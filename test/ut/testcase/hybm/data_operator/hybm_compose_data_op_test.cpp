@@ -556,6 +556,15 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_failed_dev_rdma_success)
 
     hybm_batch_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
+    void *sources[1];
+    void *dest[1];
+    uint64_t size[1];
+    copyParams.batchSize = 1;
+    copyParams.sources = sources;
+    copyParams.destinations = dest;
+    copyParams.dataSizes = size;
+    std::pair<uint32_t, uint32_t> p2pInfo{};
+    extOptions.groupMap[p2pInfo].push_back(0);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);

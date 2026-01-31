@@ -19,33 +19,28 @@
 namespace ock {
 namespace mf {
 
+struct PairHash {
+    std::size_t operator()(const std::pair<uint32_t, uint32_t> &p) const
+    {
+        return (static_cast<uint64_t>(p.first) << 32ULL) + static_cast<uint64_t>(p.second);
+    }
+};
+
+struct PairEqual {
+    bool operator()(const std::pair<uint32_t, uint32_t> &lhs, const std::pair<uint32_t, uint32_t> &rhs) const
+    {
+        return lhs.first == rhs.first && lhs.second == rhs.second;
+    }
+};
+
 struct ExtOptions {
     uint32_t srcRankId;
     uint32_t destRankId;
     void *stream = nullptr;
     uint32_t flags;
-    friend bool operator==(const ExtOptions &lhs, const ExtOptions &rhs)
-    {
-        return lhs.srcRankId == rhs.srcRankId && lhs.destRankId == rhs.destRankId;
-    }
-    friend bool operator!=(const ExtOptions &lhs, const ExtOptions &rhs)
-    {
-        return !(lhs == rhs);
-    }
-    friend std::ostream &operator<<(std::ostream &os, const ExtOptions &obj)
-    {
-        return os << "srcRankId: " << obj.srcRankId << " destRankId: " << obj.destRankId;
-    }
+    std::unordered_map<std::pair<uint32_t, uint32_t>, std::vector<uint32_t>, PairHash, PairEqual> groupMap;
 };
 
-struct ExtOptionsHash {
-    ExtOptionsHash() = default;
-    std::hash<std::string> strHash;
-    size_t operator()(const ExtOptions &options) const
-    {
-        return strHash(std::to_string(options.srcRankId) + "-" + std::to_string(options.destRankId));
-    }
-};
 typedef struct {
     std::vector<void *> localAddrs;
     std::vector<void *> globalAddrs;
