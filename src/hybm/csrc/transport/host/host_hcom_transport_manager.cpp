@@ -211,7 +211,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
-    if (mr.flags != transport::REG_MR_FLAG_DRAM) {
+    if ((mr.flags & transport::REG_MR_FLAG_DRAM) == 0) {
         return BM_OK;
     }
 
