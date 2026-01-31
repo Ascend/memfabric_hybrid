@@ -359,7 +359,9 @@ Result AccTcpServerDefault::HandleNewConnection(const AccConnReq &req, const Acc
 {
     ASSERT_RETURN(newLink.Get() != nullptr, ACC_INVALID_PARAM);
     if (req.magic != options_.magic) {
-        LOG_ERROR("New link connected but magic mismatched, refuse the link from " << newLink->ShortName());
+        LOG_ERROR("New link connected but magic mismatched, refuse the link from "
+                  << newLink->ShortName() << ", req: " << req.magic << ", options: " << options_.magic
+                  << ", listenPort: " << options_.listenPort);
         return ACC_ERROR;
     }
 
@@ -465,7 +467,7 @@ void AccTcpServerDefault::WorkerLinkCntUpdate(uint32_t workerIdx)
 Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req,
                                                 uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink)
 {
-    auto parser = mf::SocketAddressParserMgr::getInstance().GetParser(options_.listenPort);
+    auto parser = mf::SocketAddressParserMgr::getInstance().GetParser(port);
     ASSERT_RETURN(parser != nullptr, ACC_ERROR);
     if (!parser->IsIpv6()) {
         ASSERT_RETURN(AccCommonUtil::IsValidIPv4(peerIp), ACC_ERROR);
@@ -494,7 +496,8 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
             setsockopt(tmpFD, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
             auto ret = Handshake(tmpFD, req, ipAndPort, newLink);
             if (ret != ACC_OK) {
-                LOG_ERROR("Failed to Handshake to " << ipAndPort << " after tried " << timesRetried << " times");
+                LOG_ERROR("Failed to Handshake to " << ipAndPort << " after tried " << timesRetried << " times"
+                                                    << ", listenPort: " << options_.listenPort);
                 SafeCloseFd(tmpFD);
             }
             return ret;

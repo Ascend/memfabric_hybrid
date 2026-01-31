@@ -103,11 +103,12 @@ public:
 
     uint32_t GetRankSize() const;
 
-    void SetBitmapFromRanks(const std::vector<uint32_t> rankIds);
+    void SetBitmapFromRanks(const std::vector<uint32_t> &rankIds);
 
     void GroupSnClean();
 
 private:
+    bool ReWatch();
     void GroupListenEvent();
     void JoinLeaveEventProcess(const std::string &value, std::string &prevEventValue);
     void RankLinkDownEventProcess(uint32_t rankId, std::string &prevEventValue);
@@ -129,6 +130,7 @@ private:
     std::thread listenThread_;
     SmemTimedwait listenSignal_;
     GroupListenContext listenCtx_;
+    std::atomic_uint32_t listenLinkStatusWatchId_ = UINT32_MAX;
     mutable std::mutex groupEventHandleMutex_;
     std::atomic_bool joined_ = false;
     std::atomic<bool> listenThreadStarted_{false};
