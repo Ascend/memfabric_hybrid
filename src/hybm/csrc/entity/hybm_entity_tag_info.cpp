@@ -57,7 +57,7 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     static const std::map<std::string, hybm_data_op_type> str2OpTypeMap = {
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
-        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA},
+        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},
     };
 
     std::smatch match;
@@ -178,7 +178,7 @@ std::string HybmEntityTagInfo::GetOpTypeStr(hybm_data_op_type opType)
     static const std::map<hybm_data_op_type, std::string> opType2StrMap = {
         {HYBM_DOP_TYPE_SDMA, "DEVICE_SDMA"},    {HYBM_DOP_TYPE_DEVICE_RDMA, "DEVICE_RDMA"},
         {HYBM_DOP_TYPE_HOST_RDMA, "HOST_RDMA"}, {HYBM_DOP_TYPE_HOST_TCP, "HOST_TCP"},
-        {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"},
+        {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"}, {HYBM_DOP_TYPE_MTE, "DEVICE_MTE"},
     };
     auto it = opType2StrMap.find(opType);
     if (it != opType2StrMap.end()) {

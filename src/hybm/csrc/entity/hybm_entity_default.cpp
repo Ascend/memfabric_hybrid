@@ -62,6 +62,10 @@ Result MemEntityDefault::InitTagManager()
         compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_SDMA) << ":" << localTag
                        << ",";
     }
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_MTE) {
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_MTE) << ":" << localTag
+                       << ",";
+    }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_RDMA) {
         compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_HOST_RDMA) << ":" << localTag
                        << ",";

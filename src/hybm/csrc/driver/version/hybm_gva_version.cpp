@@ -97,9 +97,10 @@ static int32_t GetValueFromVersion(const std::string &ver, std::string key)
     }
 
     std::string tmp;
-    while (++found < ver.length()) {
+    found += key.length();
+    while (found < ver.length()) {
         if (std::isdigit(ver[found])) {
-            tmp += ver[found];
+            tmp += ver[found++];
         } else {
             break;
         }
@@ -126,21 +127,31 @@ static bool DriverVersionCheck(const std::string &ver)
     int32_t baseVal = GetValueFromVersion(ver, "V");
     int32_t readVal = GetValueFromVersion(readVer, "V");
     if (baseVal == -1 || readVal == -1 || baseVal != readVal) {
-        BM_LOG_DEBUG("Driver version mismatch, Version not equal");
+        BM_LOG_DEBUG("Driver version mismatch, Version not equal, read:" << readVer << " base:" << ver);
         return false;
     }
 
     baseVal = GetValueFromVersion(ver, "R");
     readVal = GetValueFromVersion(readVer, "R");
     if (baseVal == -1 || readVal == -1 || baseVal != readVal) {
-        BM_LOG_DEBUG("Driver version mismatch, Release not equal");
+        BM_LOG_DEBUG("Driver version mismatch, Release not equal, read:" << readVer << " base:" << ver);
         return false;
     }
 
     baseVal = GetValueFromVersion(ver, "C");
     readVal = GetValueFromVersion(readVer, "C");
     if (baseVal == -1 || readVal == -1 || readVal < baseVal) {
-        BM_LOG_DEBUG("Driver version mismatch, Customer is too low");
+        BM_LOG_DEBUG("Driver version mismatch, Customer is too low, read:" << readVer << " base:" << ver);
+        return false;
+    }
+    if (readVal > baseVal) {
+        return true;
+    }
+
+    baseVal = GetValueFromVersion(ver, "SPC");
+    readVal = GetValueFromVersion(readVer, "SPC");
+    if (readVal < baseVal) {
+        BM_LOG_DEBUG("Driver version mismatch, SPC is too low, read:" << readVer << " base:" << ver);
         return false;
     }
     if (readVal > baseVal) {
@@ -150,7 +161,7 @@ static bool DriverVersionCheck(const std::string &ver)
     baseVal = GetValueFromVersion(ver, "B");
     readVal = GetValueFromVersion(readVer, "B");
     if (baseVal == -1 || readVal == -1 || readVal < baseVal) {
-        BM_LOG_DEBUG("Driver version mismatch, Build is too low");
+        BM_LOG_DEBUG("Driver version mismatch, Build is too low, read:" << readVer << " base:" << ver);
         return false;
     }
     return true;

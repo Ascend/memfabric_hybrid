@@ -82,6 +82,37 @@ static void TestContext(smem_shm_t handle)
     std::cout << "[OUTPUT] check set context ok" << std::endl;
 }
 
+void TestSubGroup(smem_shm_t handle, uint32_t rankId, uint32_t rankSize)
+{
+    // 奇数一组,偶数一组
+    std::string key = (rankId & 1) ? "odd" : "even";
+    int ret;
+
+    uint32_t localSize = (rankSize + (rankId & 1)) / 2;
+    std::cout << "[TEST] begin barrier, rank:" << rankId << " key:" << key << std::endl;
+    ret = smem_shm_subgroup_barrier(handle, key.c_str(), localSize, rankId / 2);
+    std::cout << "[TEST] after barrier, rank:" << rankId << " key:" << key << std::endl;
+    CHECK_ACL(ret);
+
+    // 从中间分两组
+    uint32_t mid = rankSize / 2;
+    localSize = (rankId >= mid) ? (rankSize - mid) : mid;
+    key = (rankId >= mid) ? "second" : "first";
+    uint32_t localRank = (rankId >= mid) ? (rankId - mid) : rankId;
+    uint64_t localVal = rankId;
+    uint64_t globalBuf[32];
+    ret = smem_shm_subgroup_allgather(handle, key.c_str(), localSize, localRank, (char *)&localVal, 8, (char *)globalBuf, 8 * localSize);
+    CHECK_ACL(ret);
+    uint32_t base = (rankId >= mid) ? mid : 0;
+    for (uint32_t i = 0; i < localRank; i++) {
+        if (globalBuf[i] != base + i) {
+            std::cout << "[ERR] check gather failed, rank:" << rankId << " size:" << rankSize << " key:" << key
+                      << " idx:" << i << " val:" << globalBuf[i] << std::endl;
+        }
+    }
+    std::cout << "[TEST] after allgather, rank:" << rankId << " key:" << key << std::endl;
+}
+
 int32_t main(int32_t argc, char *argv[])
 {
     int rankSize = atoi(argv[INDEX_1]);
@@ -106,6 +137,8 @@ int32_t main(int32_t argc, char *argv[])
         ERROR_LOG("[TEST] smem init failed, ret:%d, rank:%d", ret, rankId);
         return -1;
     }
+
+    smem_set_log_level(2);
     smem_shm_config_t config;
     (void)smem_shm_config_init(&config);
     ret = smem_shm_init(ipport.c_str(), rankSize, rankId, deviceId, &config);
@@ -125,6 +158,17 @@ int32_t main(int32_t argc, char *argv[])
     TestContext(handle);
     TestAllShift(stream, (uint8_t *)gva, rankId, rankSize);
 
+    TestSubGroup(handle, rankId, rankSize);
+
+    uint32_t val;
+    ret = smem_shm_atomic_alloc_value(handle, 1024U, &val);
+    WARN_LOG("[TEST] smem_shm_atomic_alloc_value, val:%u ret:%d", val, ret);
+    smem_shm_control_barrier(handle);
+    ret = smem_shm_atomic_release_value(handle, val);
+    WARN_LOG("[TEST] smem_shm_atomic_release_value, val:%u ret:%d", val, ret);
+
+    smem_shm_control_barrier(handle);
+    sleep(1);
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;
     smem_shm_destroy(handle, flags);
 
