@@ -142,6 +142,22 @@ SMEM_API int32_t smem_shm_control_barrier(smem_shm_t handle)
     return group->GroupBarrier();
 }
 
+SMEM_API int32_t smem_shm_subgroup_barrier(smem_shm_t handle, const char *key, uint32_t rankSize, uint32_t rankId)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_VALIDATE_RETURN(group != nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GroupBarrier(key, rankSize, rankId);
+}
+
 SMEM_API int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, char *recvBuf,
                                             uint32_t recvSize)
 {
@@ -164,6 +180,28 @@ SMEM_API int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendB
     return group->GroupAllGather(sendBuf, sendSize, recvBuf, recvSize);
 }
 
+SMEM_API int32_t smem_shm_subgroup_allgather(smem_shm_t handle, const char *key, uint32_t rankSize, uint32_t rankId,
+                                             const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(sendBuf != nullptr, "invalid param, sendBuf is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(recvBuf != nullptr, "invalid param, recvBuf is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(!(sendSize == 0 || sendSize > UN65536), "Invalid sendSize, sendSize must be 1~65536",
+                       SM_INVALID_PARAM);
+
+    SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_VALIDATE_RETURN(group != nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->GroupAllGather(key, rankSize, rankId, sendBuf, sendSize, recvBuf, recvSize);
+}
+
 SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
@@ -179,6 +217,49 @@ SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteR
     }
 
     return entry->GetReachInfo(remoteRank, *reachInfo);
+}
+
+SMEM_API int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, uint32_t *retVal)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+    SM_VALIDATE_RETURN(retVal != nullptr, "invalid param, retVal is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(limit <= SMEM_SHM_ATOMIC_NUM_LIMIT, "invalid param, limit is too large", SM_INVALID_PARAM);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_VALIDATE_RETURN(group != nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    int32_t val = group->AllocNumber();
+    if (val >= static_cast<int>(limit)) {
+        group->ReleaseNumber(val);
+        return SM_ERROR;
+    } else if (val < 0) {
+        return val;
+    } else {
+        *retVal = static_cast<uint32_t>(val);
+        return SM_OK;
+    }
+}
+
+SMEM_API int32_t smem_shm_atomic_release_value(smem_shm_t handle, int32_t value)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+    auto group = entry->GetGroup();
+    SM_VALIDATE_RETURN(group != nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
+    return group->ReleaseNumber(value);
 }
 
 SMEM_API int32_t smem_shm_config_init(smem_shm_config_t *config)

@@ -20,22 +20,6 @@
 namespace ock {
 namespace smem {
 
-static void ReleaseAfterFailed(hybm_entity_t entity, hybm_mem_slice_t slice)
-{
-    uint32_t flags = 0;
-    if (entity != nullptr && slice != 0) {
-        hybm_free_local_memory(entity, slice, 1, flags);
-    }
-
-    if (entity != nullptr) {
-        hybm_unreserve_mem_space(entity, flags);
-    }
-
-    if (entity != nullptr) {
-        hybm_destroy_entity(entity, flags);
-    }
-}
-
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
     if (inited_) {
@@ -59,9 +43,11 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         ret = hybm_reserve_mem_space(entity, flags);
         if (ret != 0) {
             SM_LOG_ERROR("reserve mem failed, result: " << ret);
+            hybm_destroy_entity(entity, flags);
             ret = SM_ERROR;
             break;
         }
+        entity_ = entity;
 
         bzero(&hbmSliceInfo_, sizeof(hybm_exchange_info));
         if (options.deviceVASpace > 0) {
@@ -71,6 +57,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
                 ret = SM_ERROR;
                 break;
             }
+            hbmSlice_ = slice;
 
             ret = hybm_export(entity, slice, flags, &hbmSliceInfo_);
             if (ret != 0) {
@@ -79,7 +66,6 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
             }
         }
 
-        slice_ = slice;
         bzero(&dramSliceInfo_, sizeof(hybm_exchange_info));
         if (options.hostVASpace > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_HOST, options.hostVASpace, flags);
@@ -88,6 +74,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
                 ret = SM_ERROR;
                 break;
             }
+            dramSlice_ = slice;
 
             ret = hybm_export(entity, slice, flags, &dramSliceInfo_);
             if (ret != 0) {
@@ -105,13 +92,12 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     } while (0);
 
     if (ret != 0) {
-        ReleaseAfterFailed(entity, slice);
+        UnInitalize();
         globalGroup_ = nullptr;
         return ret;
     }
 
     coreOptions_ = options;
-    entity_ = entity;
     hostGva_ = hybm_get_memory_ptr(entity, HYBM_MEM_TYPE_HOST);
     deviceGva_ = hybm_get_memory_ptr(entity, HYBM_MEM_TYPE_DEVICE);
     inited_ = true;
@@ -127,8 +113,14 @@ void SmemBmEntry::UnInitalize()
         return;
     }
     uint32_t flags = 0;
-    if (slice_ != nullptr) {
-        hybm_free_local_memory(entity_, slice_, 1, flags);
+    if (dramSlice_ != nullptr) {
+        // todo, need to update hdk
+        // hybm_free_local_memory(entity_, dramSlice_, 1, flags);
+        dramSlice_ = nullptr;
+    }
+    if (hbmSlice_ != nullptr) {
+        hybm_free_local_memory(entity_, hbmSlice_, 1, flags);
+        hbmSlice_ = nullptr;
     }
     for (auto &pair : registedSlice_) {
         hybm_free_local_memory(entity_, pair.second.second, 1, flags);
@@ -136,6 +128,7 @@ void SmemBmEntry::UnInitalize()
     registedSlice_.clear();
     hybm_unreserve_mem_space(entity_, flags);
     hybm_destroy_entity(entity_, flags);
+    entity_ = nullptr;
     inited_ = false;
 }
 

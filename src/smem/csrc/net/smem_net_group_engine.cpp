@@ -19,6 +19,7 @@
 #include "smem_store_factory.h"
 #include "mf_str_util.h"
 #include "smem_net_group_engine.h"
+#include "smem_shm_def.h"
 
 namespace ock {
 namespace smem {
@@ -28,14 +29,20 @@ const std::string SMEM_GROUP_SET_STR = "ok";
 const std::string SMEM_GROUP_EXIT_KEY = "EXIT";
 const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
 const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
+const std::string SMEM_GROUP_CAS_ALLOC_NUM_KEY = "AT_NUM";
+constexpr uint32_t SMEM_ALLOC_NUM_SIZE = SMEM_SHM_ATOMIC_NUM_LIMIT;
+constexpr uint32_t SMEM_ALLOC_NUM_BUF_LEN = (SMEM_ALLOC_NUM_SIZE + 7) / 8; // uint8_t
 constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 10LL * 1000;              // 10s, unit: ms
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
 constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;     // 5s
 
+constexpr uint32_t UINT_BIT = 8U;
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
 constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
+
+constexpr uint32_t USER_GROUP_KEY_LEN_MAX = 64;
 
 struct JoinLeaveEventValue {
     bool join; // true => join, false => leave
@@ -132,6 +139,83 @@ Result SmemNetGroupEngine::GroupBarrier()
         uint32_t removeBarrierGroupSn = barrierGroupSn_ - REMOVE_INTERVAL;
         std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
         std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+
+    /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
+    if (val == size) {
+        ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+        SM_LOG_DEBUG("store set key: " << store_->GetCompleteKey(waitKey));
+    }
+
+    /* all guys wait for waitKey status with timeout, timeout happens if the ok status not set by the last guy */
+    MonoPerfTrace traceGetStatus;
+    std::string getVal;
+    ret = store_->Get(waitKey, getVal, option_.timeoutMs);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey)
+                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
+        return SM_ERROR;
+    }
+    traceGetStatus.RecordEnd();
+
+    if (getVal != SMEM_GROUP_SET_STR) {
+        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) << " val is not equal, val: "
+                                                    << getVal << " expect: " << SMEM_GROUP_SET_STR);
+        return SM_ERROR;
+    }
+    traceBarrier.RecordEnd();
+
+    SM_LOG_INFO("groupBarrier successfully, key: " << store_->GetCompleteKey(waitKey) << ", size: " << size
+                                                   << ", timeCostUs: total(" << traceBarrier.PeriodUs() << ") add("
+                                                   << traceAdd.PeriodUs() << ") getStatus(" << traceGetStatus.PeriodUs()
+                                                   << ")");
+    return SM_OK;
+}
+
+Result SmemNetGroupEngine::GroupBarrier(const char *key, uint32_t rankSize, uint32_t rankId)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
+                       "rankSize is invalid! input:" << rankSize<< " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankId < rankSize,
+                       "rankId is invalid! rank:" << rankId<< " size:" << rankSize, SM_INVALID_PARAM);
+
+    uint32_t size = rankSize;
+    std::string userKey = std::string(key);
+    uint32_t &localSn = userGroupBarrierSn_[userKey];
+    std::string idx = userKey + "_" + std::to_string(++localSn);
+    std::string addKey = idx + "_BA";
+    std::string waitKey = idx + "_BW";
+    int64_t val = 0;
+
+    MonoPerfTrace traceBarrier;
+    /* all guys add 1 to barrier key and get it */
+    MonoPerfTrace traceAdd;
+    auto ret = store_->Add(addKey, 1, val);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("store add key: " << store_->GetCompleteKey(addKey)
+                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
+        return SM_ERROR;
+    }
+    traceAdd.RecordEnd();
+    SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " value: " << val << " size:" << size);
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == 1 && localSn > REMOVE_INTERVAL) {
+        uint32_t removeBarrierGroupSn = localSn - REMOVE_INTERVAL;
+        std::string removeAddIdx = userKey + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
+        std::string removeWaitIdx = userKey + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
         /* There is no need to return ERROR, when the removed key is already not exist.
         The WARNING LOG is contained in the remove func itself, no need to print more log. */
         (void)store_->Remove(removeAddIdx);
@@ -342,6 +426,164 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
                 << ", timeCostUs: total(" << traceAllGather.PeriodUs() << ") append(" << traceAppend.PeriodUs()
                 << ") getStatus(" << traceGetStatus.PeriodUs() << ") getData(" << traceGetData.PeriodUs() << ")");
 
+    return SM_OK;
+}
+
+Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId,
+                                          const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
+                       "rankSize is invalid! input:" << rankSize<< " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankId < rankSize,
+                       "rankId is invalid! rank:" << rankId<< " size:" << rankSize, SM_INVALID_PARAM);
+
+    uint32_t size = rankSize;
+    SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
+
+    std::string userKey = std::string(key);
+    uint32_t &localSn = userGroupGatherSn_[userKey];
+    std::string idx = userKey + "_" + std::to_string(++localSn);
+    std::string addKey = idx + "_GA";
+    std::string waitKey = idx + "_GW";
+
+    std::vector<uint8_t> input(sendSize + SMEM_GATHER_PREFIX_SIZE);
+    GatherFillRank(input, rankId);
+    (void)std::copy_n(sendBuf, sendSize, input.data() + SMEM_GATHER_PREFIX_SIZE);
+
+    MonoPerfTrace traceAllGather;
+    /* append things and get the length of value */
+    MonoPerfTrace traceAppend;
+    uint64_t val = 0;
+    auto ret = store_->Append(addKey, input, val);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("store add key: " << store_->GetCompleteKey(addKey)
+                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
+        return SM_ERROR;
+    }
+    traceAppend.RecordEnd();
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - REMOVE_INTERVAL;
+        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
+        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
+        /* There is no need to return ERROR, when the removed key is already not exist.
+        The WARNING LOG is contained in the remove func itself, no need to print more log. */
+        (void)store_->Remove(removeAddIdx);
+        (void)store_->Remove(removeWaitIdx);
+    }
+
+    /* the last guy set ok status */
+    if (val == input.size() * size) {
+        ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+    }
+
+    /* all guys wait for ok status with timeout */
+    MonoPerfTrace traceGetStatus;
+    std::string getVal;
+    ret = store_->Get(waitKey, getVal, option_.timeoutMs);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey)
+                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
+        return SM_ERROR;
+    }
+    traceGetStatus.RecordEnd();
+
+    if (getVal != SMEM_GROUP_SET_STR) {
+        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) << " val is not equal, val: "
+                                                    << getVal << " expect: " << SMEM_GROUP_SET_STR);
+        return SM_ERROR;
+    }
+
+    /* get the whole value */
+    MonoPerfTrace traceGetData;
+    std::vector<uint8_t> output;
+    ret = store_->Get(addKey, output, option_.timeoutMs);
+    if (ret != SM_OK || output.size() != input.size() * size) {
+        SM_LOG_AND_SET_LAST_ERROR("after wait, store get key: "
+                                  << store_->GetCompleteKey(addKey) << " failed, result:" << ConfigStore::ErrStr(ret)
+                                  << " recv_size: " << output.size() << " input_size:" << input.size()
+                                  << " group_size:" << size);
+        return SM_ERROR;
+    }
+    traceGetData.RecordEnd();
+    traceAllGather.RecordEnd();
+
+    SortGatherRecv(output, sendSize, size, recvBuf);
+
+    SM_LOG_INFO("allGather successfully, key: "
+                << store_->GetCompleteKey(addKey) << ", rank: " << rankId << ", size: " << size
+                << ", timeCostUs: total(" << traceAllGather.PeriodUs() << ") append(" << traceAppend.PeriodUs()
+                << ") getStatus(" << traceGetStatus.PeriodUs() << ") getData(" << traceGetData.PeriodUs() << ")");
+
+    return SM_OK;
+}
+
+int32_t SmemNetGroupEngine::AllocNumber()
+{
+    std::vector<uint8_t> expect;
+    std::vector<uint8_t> value(SMEM_ALLOC_NUM_BUF_LEN, 0);
+    std::vector<uint8_t> old;
+    int32_t num;
+    int32_t ret;
+    do {
+        swap(expect, old);
+        if (expect.size() != 0) {
+            value = expect;
+        }
+        num = -1;
+        for (uint32_t i = 0; i < SMEM_ALLOC_NUM_SIZE; i++) {
+            if ((value[i / UINT_BIT] & (1U << (i % UINT_BIT))) == 0) {
+                num = static_cast<int32_t>(i);
+                value[i / UINT_BIT] ^= 1U << (i % UINT_BIT);
+                break;
+            }
+        }
+        if (num == -1) {
+            SM_LOG_ERROR("there is no free number available for allocation!");
+            return SM_ERROR;
+        }
+        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, old);
+    } while (ret != 0 || old != expect);
+    allocedSet_.insert(num);
+    return num;
+}
+
+Result SmemNetGroupEngine::ReleaseNumber(int32_t val)
+{
+    if (allocedSet_.count(val) == 0) {
+        SM_LOG_ERROR("key(" << val << ") is not exist!");
+        return SM_OBJECT_NOT_EXISTS;
+    }
+    allocedSet_.erase(val);
+
+    std::vector<uint8_t> expect;
+    std::vector<uint8_t> value(SMEM_ALLOC_NUM_BUF_LEN, 0);
+    std::vector<uint8_t> old;
+    int32_t ret;
+
+    value[val / UINT_BIT] ^= 1U << (val % UINT_BIT);
+    do {
+        swap(expect, old);
+        if (expect.size() != 0) {
+            value = expect;
+        }
+        if ((value[val / UINT_BIT] >> (val % UINT_BIT)) & 1U) {
+            value[val / UINT_BIT] ^= 1U << (val % UINT_BIT);
+        } else {
+            SM_LOG_WARN("key(" << val << ") has released!");
+            return SM_OK;
+        }
+        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, old);
+    } while (ret == 0 && old == expect);
     return SM_OK;
 }
 

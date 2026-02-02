@@ -87,11 +87,20 @@ public:
 
     Result GroupBarrier();
 
+    Result GroupBarrier(const char *key, uint32_t rankSize, uint32_t rankId);
+
     Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
+
+    Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId,
+                          const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
 
     Result GroupBroadcastExit(int status);
 
     Result RegisterExit(const std::function<void(int)> &exit);
+
+    int32_t AllocNumber();
+
+    Result ReleaseNumber(int32_t val);
 
     Result StartListenEvent();
 
@@ -138,6 +147,9 @@ private:
     std::function<void(int)> globalExitHandler_;
     uint64_t joinedRanksBitmap_[RANK_BITS_U64_COUNT]{};
     mutable std::mutex rankBitmapMutex_;
+    std::unordered_map<std::string, uint32_t> userGroupGatherSn_;
+    std::unordered_map<std::string, uint32_t> userGroupBarrierSn_;
+    std::set<int32_t> allocedSet_;
 };
 
 inline uint32_t SmemNetGroupEngine::GetLocalRank() const
