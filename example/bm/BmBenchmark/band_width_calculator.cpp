@@ -268,30 +268,26 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
     void *dataPtr = malloc(len);
     CHECK_RET_ERR((dataPtr == nullptr), "malloc data dram failed, len:" << len);
     GenerateData(dataPtr, static_cast<int32_t>(rankId), len);
-    if (localDram_ == nullptr) {
-        auto ret = aclrtMallocHost(&localDram_, len);
-        CHECK_RET_ERR((ret != 0 || localDram_ == nullptr), "malloc dram failed, len:" << len);
-        ret = aclrtMemcpy(localDram_, len, dataPtr, len, ACL_MEMCPY_HOST_TO_HOST);
+    do {
+        localDram_ = malloc(len);
+        CHECK_RET_ERR((localDram_ == nullptr), "malloc dram failed, len:" << len);
+        auto ret = aclrtMemcpy(localDram_, len, dataPtr, len, ACL_MEMCPY_HOST_TO_HOST);
         CHECK_RET_ERR((ret != 0), "memcpy data dram failed, len:" << len);
-        void *tmpHostPtr = nullptr;
-        ret = aclrtHostRegister(localDram_, len, ACL_HOST_REGISTER_MAPPED, &tmpHostPtr);
+        ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(localDram_), len);
         if (ret != 0) {
-            LOG_WARN("register host dram failed, ret:" << ret << ", len:" << len
-                                                       << ", addr:" << reinterpret_cast<uint64_t>(localDram_));
+            LOG_WARN("register dram failed, ret:" << ret << ", len:" << len << ", addr:" << localDram_);
         } else {
-            ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(tmpHostPtr), len);
-            if (ret != 0) {
-                LOG_WARN("register hbm failed, ret:" << ret << ", len:" << len << ", addr:" << tmpHostPtr);
-            } else {
-                registedLocalDram_ = tmpHostPtr;
-            }
+            registedLocalDram_ = localDram_;
         }
-    }
-    if (localHbm_ == nullptr) {
+    } while (0);
+    do {
         auto ret = aclrtMalloc(&localHbm_, len, ACL_MEM_MALLOC_HUGE_FIRST);
         CHECK_RET_ERR((ret != 0 || localHbm_ == nullptr), "malloc hbm failed, ret:" << ret << " len:" << len);
         ret = aclrtMemcpy(localHbm_, len, dataPtr, len, ACL_MEMCPY_HOST_TO_DEVICE);
         CHECK_RET_ERR((ret != 0), "memcpy data dram failed, len:" << len);
+        if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA || cmdParam_.opType == SMEMB_DATA_OP_SDMA) {
+            break;
+        }
         ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(localHbm_), len);
         if (ret != 0) {
             LOG_WARN("register hbm failed, ret:" << ret << ", len:" << len
@@ -299,7 +295,7 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
         } else {
             registedLocalHbm_ = localHbm_;
         }
-    }
+    } while (0);
     if (cmdParam_.opType == SMEMB_DATA_OP_SDMA) {
         auto gva = smem_bm_ptr_by_mem_type(handle, SMEM_MEM_TYPE_HOST, rankId);
         CHECK_RET_ERR((len > GVA_SIZE || gva == nullptr || dataPtr == nullptr), "check memcpy param failed.");
@@ -605,6 +601,11 @@ void BandWidthCalculator::BatchCopyGet(smem_bm_mem_type localMemType, smem_bm_me
 void BandWidthCalculator::H2D(BarrierUtil *barrier, smem_bm_t handle, uint32_t rankId,
                               uint32_t remoteRankId, BwTestResult *results)
 {
+    if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA) {
+        LOG_WARN("H2D(LH2GD) not support in HOST_RDMA mode");
+        barrier->Barrier();
+        return;
+    }
     BatchCopyPut(SMEM_MEM_TYPE_LOCAL_HOST, SMEM_MEM_TYPE_DEVICE, rankId, handle, CopyType::HOST_TO_DEVICE,
                  results[static_cast<int32_t>(CopyType::HOST_TO_DEVICE)]);
     auto ret = barrier->Barrier();
@@ -624,7 +625,7 @@ void BandWidthCalculator::H2RD(BarrierUtil *barrier, smem_bm_t handle, uint32_t 
                                uint32_t remoteRankId, BwTestResult *results)
 {
     if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA) {
-        LOG_WARN("H2RD not support in HOST_RDMA mode");
+        LOG_WARN("H2RD(LH2GD) not support in HOST_RDMA mode");
         barrier->Barrier();
         return;
     }
@@ -649,7 +650,7 @@ void BandWidthCalculator::D2RD(BarrierUtil *barrier, smem_bm_t handle, uint32_t 
                                uint32_t remoteRankId, BwTestResult *results)
 {
     if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA) {
-        LOG_WARN("D2RD not support in HOST_RDMA mode");
+        LOG_WARN("D2RD(LD2GD) not support in HOST_RDMA mode");
         barrier->Barrier();
         return;
     }
@@ -694,7 +695,7 @@ void BandWidthCalculator::RD2D(BarrierUtil *barrier, smem_bm_t handle, uint32_t 
                                uint32_t remoteRankId, BwTestResult *results)
 {
     if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA) {
-        LOG_WARN("RD2D not support in HOST_RDMA mode");
+        LOG_WARN("RD2D(GD2LD) not support in HOST_RDMA mode");
         barrier->Barrier();
         return;
     }
@@ -709,7 +710,7 @@ void BandWidthCalculator::RD2H(BarrierUtil *barrier, smem_bm_t handle, uint32_t 
                                uint32_t remoteRankId, BwTestResult *results)
 {
     if (cmdParam_.opType == SMEMB_DATA_OP_HOST_RDMA) {
-        LOG_WARN("RD2H not support in HOST_RDMA mode");
+        LOG_WARN("RD2H(GD2LH) not support in HOST_RDMA mode");
         barrier->Barrier();
         return;
     }

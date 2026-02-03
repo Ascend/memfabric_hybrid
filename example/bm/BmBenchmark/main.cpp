@@ -188,6 +188,7 @@ void CheckCmdBw(BwTestParam &opts)
 void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
 {
     bool hasType = false;
+    bool hasRdmaUrl = false;
 
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -251,6 +252,7 @@ void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
             opts.rdmaIpPort.clear();
             opts.rdmaIpPort = argv[++i];
             ParseIp(opts.rdmaIpPort);
+            hasRdmaUrl = true;
         } else {
             ExitWithError("unknown option: " + arg);
         }
@@ -258,6 +260,9 @@ void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
 
     if (!hasType) {
         ExitWithError("missing required option: -t / --type");
+    }
+    if (opts.opType == SMEMB_DATA_OP_HOST_RDMA && !hasRdmaUrl) {
+        ExitWithError("missing required option: -rdma / --rdma");
     }
 
     CheckCmdBw(opts);

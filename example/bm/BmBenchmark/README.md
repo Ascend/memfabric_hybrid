@@ -88,7 +88,11 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
   nodeA: ./bm_perf_benchmark -bw -ot device_rdma -t all -s 2097152 -ws 16 -lrs 8 -rs 0 -ip tcp://x.x.x.x:8570
   nodeB: ./bm_perf_benchmark -bw -ot device_rdma -t all -s 2097152 -ws 16 -lrs 8 -rs 8 -ip tcp://x.x.x.x:8570
 
-  两节点运行8张卡,每节点4张,A节点使用2-5卡,B节点使用4-7卡(假设nodeA的ip为x.x.x.x):
+  两节点运行8张卡,每节点4张,A节点使用2-5卡,B节点使用4-7卡,使用数据操作类型为device_rdma(假设nodeA的ip为x.x.x.x):
   nodeA: ./bm_perf_benchmark -bw -ot device_rdma -t all -s 2097152 -ws 8 -lrs 4 -rs 0 -d 2 -ip tcp://x.x.x.x:8570
-  nodeB: ./bm_perf_benchmark -bw -ot device_rdma -t all -s 2097152 -ws 8 -lrs 4 -rs 2 -d 4 -ip tcp://x.x.x.x:8570
+  nodeB: ./bm_perf_benchmark -bw -ot device_rdma -t all -s 2097152 -ws 8 -lrs 4 -rs 4 -d 4 -ip tcp://x.x.x.x:8570
+
+  两节点运行8张卡,每节点4张,A节点使用2-5卡,B节点使用4-7卡,使用数据操作类型为host_rdma(假设nodeA的ip为x.x.x.x,nodeA的rdma网卡ip为n.n.n.n,nodeB的rdma网卡ip为m.m.m.m):
+  nodeA: ./bm_perf_benchmark -bw -ot host_rdma -t all -s 2097152 -ws 8 -lrs 4 -rs 0 -d 2 -ip tcp://x.x.x.x:8570 -rdma tcp://n.n.n.n:18888
+  nodeB: ./bm_perf_benchmark -bw -ot host_rdma -t all -s 2097152 -ws 8 -lrs 4 -rs 4 -d 4 -ip tcp://x.x.x.x:8570 -rdma tcp://m.m.m.m:18888
   ```
