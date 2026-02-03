@@ -269,9 +269,9 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
     CHECK_RET_ERR((dataPtr == nullptr), "malloc data dram failed, len:" << len);
     GenerateData(dataPtr, static_cast<int32_t>(rankId), len);
     do {
-        localDram_ = malloc(len);
-        CHECK_RET_ERR((localDram_ == nullptr), "malloc dram failed, len:" << len);
-        auto ret = aclrtMemcpy(localDram_, len, dataPtr, len, ACL_MEMCPY_HOST_TO_HOST);
+        auto ret = posix_memalign(&localDram_, 4096, len);
+        CHECK_RET_ERR(ret, "malloc dram failed, len:" << len);
+        ret = aclrtMemcpy(localDram_, len, dataPtr, len, ACL_MEMCPY_HOST_TO_HOST);
         CHECK_RET_ERR((ret != 0), "memcpy data dram failed, len:" << len);
         ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(localDram_), len);
         if (ret != 0) {

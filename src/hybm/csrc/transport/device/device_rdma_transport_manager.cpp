@@ -766,12 +766,6 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
     auto addr = mr.addr;
     auto size = mr.size;
 
-    if ((size % HYBM_LARGE_PAGE_SIZE) != 0) {
-        BM_LOG_WARN("memory region size: " << size << " not aligned to 2M");
-        size = ((size + HYBM_LARGE_PAGE_SIZE - 1) / HYBM_LARGE_PAGE_SIZE) * HYBM_LARGE_PAGE_SIZE;
-        BM_LOG_WARN("memory region size aligned up to: " << size);
-    }
-
     // need register: dram except gvm
     if ((mr.flags & REG_MR_FLAG_DRAM) || (mr.flags & REG_MR_FLAG_ACL_DRAM)) {
         auto input = (void *)(ptrdiff_t)addr;
