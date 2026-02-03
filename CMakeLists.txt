@@ -8,30 +8,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 cmake_minimum_required(VERSION 3.12.0)
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" VERSION_CONTENT)
-string(STRIP "${VERSION_CONTENT}" PROJECT_VERSION_RAW)
-if (NOT PROJECT_VERSION_RAW MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
-    message(FATAL_ERROR "Invalid version format in VERSION file: '${PROJECT_VERSION_RAW}'")
-endif ()
-project(memfabric_hybrid VERSION ${PROJECT_VERSION_RAW} LANGUAGES CXX C)
-add_compile_definitions(PROJECT_VERSION_RAW=\"${PROJECT_VERSION_RAW}\")
-message(STATUS "in memfabric cmakefile BUILD_FROM_MEMCACHE: ${BUILD_FROM_MEMCACHE}, version: ${PROJECT_VERSION_RAW}.")
-
-list(GET PROJECT_VERSION_RAW 0 DUMMY)
-string(REPLACE "." ";" VERSION_LIST "${PROJECT_VERSION_RAW}")
-list(LENGTH VERSION_LIST VERSION_LIST_LEN)
-if (NOT VERSION_LIST_LEN EQUAL 3)
-    message(FATAL_ERROR "Expected exactly 3 version components, got: ${VERSION_LIST_LEN}")
-endif ()
-list(GET VERSION_LIST 0 VERSION_MAJOR)
-list(GET VERSION_LIST 1 VERSION_MINOR)
-list(GET VERSION_LIST 2 VERSION_FIX)
-add_compile_definitions(VERSION_MAJOR=${VERSION_MAJOR}
-        VERSION_MINOR=${VERSION_MINOR}
-        VERSION_FIX=${VERSION_FIX})
-message(STATUS "VERSION_MAJOR=${VERSION_MAJOR}")
-message(STATUS "VERSION_MINOR=${VERSION_MINOR}")
-message(STATUS "VERSION_FIX=${VERSION_FIX}")
+project(memfabric_hybrid LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 
@@ -41,26 +18,14 @@ option(BUILD_UT "build ut or not" OFF)
 option(BUILD_OPEN_ABI "build open _GLIBCXX_USE_CXX11_ABI" ON)
 option(ENABLE_CPU_MONOTONIC "enable monotonic time using cpu hard instruction" OFF)
 option(BUILD_GIT_COMMIT "build library version with commit" ON)
-option(BUILD_GIT_COMMIT_GEN_FILE "generate commit log file" ON)
 option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
 option(BUILD_TEST "Enable/disable build and package test utilities and examples" OFF)
 option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
 
-set(XPU_TYPE "NPU" CACHE STRING "XPU backend to use: NONE, NPU, or GPU")
-set_property(CACHE XPU_TYPE PROPERTY STRINGS NONE NPU GPU)
-
-if (NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL "GPU"))
-    message(FATAL_ERROR "Invalid XPU_TYPE value: '${XPU_TYPE}'. Allowed: NONE, NPU, GPU")
-endif ()
-
-if (XPU_TYPE STREQUAL "NPU")
-    add_definitions(-DASCEND_NPU)
-elseif (XPU_TYPE STREQUAL "GPU")
-    add_definitions(-DNVIDIA_GPU)
-else ()
-    add_definitions(-DNO_XPU)
-endif ()
+include(cmake/config_version.cmake)
+include(cmake/config_xpu.cmake)
+include(cmake/config_python.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
@@ -70,15 +35,15 @@ message(STATUS "BUILD_UT = ${BUILD_UT}")
 message(STATUS "BUILD_USE_CXX11_ABI = ${BUILD_OPEN_ABI}")
 message(STATUS "ENABLE_CPU_MONOTONIC = ${ENABLE_CPU_MONOTONIC}")
 message(STATUS "BUILD_GIT_COMMIT = ${BUILD_GIT_COMMIT}")
-message(STATUS "BUILD_GIT_COMMIT_GEN_FILE = ${BUILD_GIT_COMMIT_GEN_FILE}")
 message(STATUS "BUILD_PYTHON = ${BUILD_PYTHON}")
 message(STATUS "ENABLE_PTRACER = ${ENABLE_PTRACER}")
 message(STATUS "CMAKE_COMPILER = ${CMAKE_COMPILER}")
 message(STATUS "CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
-message(STATUS "XPU_TYPE: ${XPU_TYPE}")
+message(STATUS "XPU_TYPE = ${XPU_TYPE}")
 message(STATUS "BUILD_TEST = ${BUILD_TEST}")
 message(STATUS "BUILD_HCOM = ${BUILD_HCOM}")
+
 find_program(NINJA_EXE NAMES ninja)
 if (NINJA_EXE)
     set(MAKE_CMD ninja)
@@ -86,6 +51,7 @@ else ()
     set(MAKE_CMD make)
 endif ()
 message(STATUS "MAKE_CMD = ${MAKE_CMD}")
+
 add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
 add_compile_options(-fpermissive -Wno-error)
 add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra -Wno-deprecated-declarations)
@@ -98,7 +64,7 @@ if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
     add_link_options(-Wl,-z,noexecstack,-z,relro,-z,now)
     add_link_options(-s)
     set(CMAKE_SKIP_RPATH TRUE)
-    message(STATUS "build type set to RELEASE")
+    message(STATUS "added compile options for RELEASE")
 else ()
     add_compile_options(-g -ggdb3 -O0 -fno-omit-frame-pointer -rdynamic -fPIC)
 endif ()
@@ -132,30 +98,6 @@ endif ()
 
 if (ENABLE_CPU_MONOTONIC STREQUAL "ON")
     add_compile_options(-DENABLE_CPU_MONOTONIC)
-endif ()
-
-# set log commit into compile definition
-if (BUILD_GIT_COMMIT STREQUAL "ON")
-    find_program(GIT_EXECUTABLE NAMES git)
-    if (EXISTS ${GIT_EXECUTABLE})
-        # get commit id from file
-        execute_process(
-                COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-                RESULT_VARIABLE GIT_COMMIT_RESULT
-                OUTPUT_VARIABLE GIT_LAST_COMMIT
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if (${GIT_COMMIT_RESULT} EQUAL 1)
-            set(GIT_LAST_COMMIT "empty")
-        endif ()
-        add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
-        message(STATUS "add definition for last commit: ${GIT_LAST_COMMIT}")
-    else ()
-        add_definitions(-DGIT_LAST_COMMIT=empty)
-        message(STATUS "Failed to find git command, not GIT_LAST_COMMIT will be set")
-    endif ()
-else ()
-    add_definitions(-DGIT_LAST_COMMIT=empty)
-    message(STATUS "add definition for last commit: empty")
 endif ()
 
 if (ENABLE_TRACE_L0G)
@@ -195,36 +137,7 @@ elseif (NOT EXISTS ${CMAKE_INSTALL_PREFIX})
 else ()
     set(TARGET_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/)
 endif ()
-message(STATUS "install dir ${TARGET_INSTALL_DIR}")
-
-if (BUILD_PYTHON STREQUAL "ON")
-    # 获取Python头文件路径
-    find_program(PYTHON_EXECUTABLE NAMES python3 python)
-    if (NOT PYTHON_EXECUTABLE)
-        message(FATAL_ERROR "Python not found")
-    endif ()
-
-    execute_process(
-            COMMAND ${PYTHON_EXECUTABLE} -c
-            "import sysconfig; print(sysconfig.get_path('include'))"
-            OUTPUT_VARIABLE PYTHON_INCLUDE_DIR
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    execute_process(
-            COMMAND ${PYTHON_EXECUTABLE} -c
-            "import sys; import os; import pybind11; print(os.path.dirname(pybind11.__file__))"
-            OUTPUT_VARIABLE PYTHON_PYBIND11_HOME
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    set(pybind11_cmake_dir "${PYTHON_PYBIND11_HOME}/share/cmake/pybind11")
-
-    # 检查路径是否存在且是目录
-    if (NOT EXISTS "${pybind11_cmake_dir}" OR NOT IS_DIRECTORY "${pybind11_cmake_dir}")
-        message(SEND_ERROR "Can not find pybind11 directory: ${pybind11_cmake_dir}\nPlease 'pip3 install pybind11 or pybind11-dev'")
-    endif ()
-endif ()
+message(STATUS "TARGET_INSTALL_DIR = ${TARGET_INSTALL_DIR}")
 
 # 判断环境变量 CMAKE_PREFIX_PATH 是否存在
 if (DEFINED ENV{CMAKE_PREFIX_PATH})
@@ -245,7 +158,10 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/src/util/include
         ${PROJECT_UTIL_SRC_BASE}
 )
-add_subdirectory(3rdparty)
+
+# include hcom cmake after TARGET_INSTALL_DIR set
+include(cmake/config_hcom.cmake)
+
 add_subdirectory(src)
 
 if (BUILD_UT STREQUAL "ON")

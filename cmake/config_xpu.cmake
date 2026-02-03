@@ -1,0 +1,24 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+# MemFabric_Hybrid is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#          http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+
+set(XPU_TYPE "NPU" CACHE STRING "XPU backend to use: NONE, NPU, or GPU")
+set_property(CACHE XPU_TYPE PROPERTY STRINGS NONE NPU GPU)
+
+if (NOT (XPU_TYPE STREQUAL "NONE" OR XPU_TYPE STREQUAL "NPU" OR XPU_TYPE STREQUAL "GPU"))
+    message(FATAL_ERROR "Invalid XPU_TYPE value: '${XPU_TYPE}'. Allowed: NONE, NPU, GPU")
+endif ()
+
+if (XPU_TYPE STREQUAL "NPU")
+    add_definitions(-DASCEND_NPU)
+elseif (XPU_TYPE STREQUAL "GPU")
+    add_definitions(-DNVIDIA_GPU)
+else ()
+    add_definitions(-DNO_XPU)
+endif ()

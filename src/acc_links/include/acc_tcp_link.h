@@ -195,15 +195,15 @@ public:
                                  const AccDataBufferPtr &cbCtx) = 0;
 
     /**
- * @brief Put the data to be sent into queue and return
- *
- * @param msgType      [in] type of message
- * @param opCode      [in] opCode of message
- * @param seqNo        [in] seq no of this message
- * @param d            [in] data to be sent
- * @param cbCtx        [in] context data for sent callback function, it passed back by sent handle callback function
- * @return 0 if successfully
- */
+     * @brief Put the data to be sent into queue and return
+     *
+     * @param msgType      [in] type of message
+     * @param opCode       [in] opCode of message
+     * @param seqNo        [in] seq no of this message
+     * @param d            [in] data to be sent
+     * @param cbCtx        [in] context data for sent callback function, it passed back by sent handle callback function
+     * @return 0 if successfully
+     */
     virtual int32_t NonBlockSend(int16_t msgType, int16_t opCode, uint32_t seqNo, const AccDataBufferPtr &d,
                                  const AccDataBufferPtr &cbCtx) = 0;
 

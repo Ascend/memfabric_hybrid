@@ -84,9 +84,9 @@ int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags);
 /**
  * @brief Set user extra context of shm object
  *
- * @param handle            [in] the shm object to be set
- * @param context           [in] extra context ptr
- * @param size              [in] extra context size (max is 64K)
+ * @param handle           [in] the shm object to be set
+ * @param context          [in] extra context ptr
+ * @param size             [in] extra context size (max is 64K)
  * @return 0 if successful
  */
 int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size);
@@ -94,7 +94,7 @@ int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint3
 /**
  * @brief Get local rank of a shm object
  *
- * @param handle            [in] the shm object
+ * @param handle           [in] the shm object
  * @return local rank in the input object, return UINT32_MAX if error
  */
 uint32_t smem_shm_get_global_rank(smem_shm_t handle);
@@ -102,7 +102,7 @@ uint32_t smem_shm_get_global_rank(smem_shm_t handle);
 /**
  * @brief Get rank size of a shm object
  *
- * @param handle            [in] the shm object
+ * @param handle           [in] the shm object
  * @return rank size in the input object, return UINT32_MAX if error
  */
 uint32_t smem_shm_get_global_rank_size(smem_shm_t handle);
@@ -110,7 +110,7 @@ uint32_t smem_shm_get_global_rank_size(smem_shm_t handle);
 /**
  * @brief Do barrier on a shm object, using control network
  *
- * @param handle            [in] the shm object
+ * @param handle           [in] the shm object
  * @return 0 if successful, other is error
  */
 int32_t smem_shm_control_barrier(smem_shm_t handle);
@@ -118,11 +118,11 @@ int32_t smem_shm_control_barrier(smem_shm_t handle);
 /**
  * @brief Do all gather on a shm object, using control network
  *
- * @param handle            [in] the shm object
- * @param sendBuf           [in] input data buf
- * @param sendSize          [in] input data buf size
- * @param recvBuf           [in] output data buf
- * @param recvSize          [in] output data buf size
+ * @param handle           [in] the shm object
+ * @param sendBuf          [in] input data buf
+ * @param sendSize         [in] input data buf size
+ * @param recvBuf          [in] output data buf
+ * @param recvSize         [in] output data buf size
  * @return 0 if successful
  */
 int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint32_t sendSize, char *recvBuf,
