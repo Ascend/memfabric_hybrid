@@ -233,6 +233,10 @@ HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(co
         dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_URMA, hostRdmaDataOperator_);
     }
 
+    if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_TCP)) != 0U) {
+        dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_TCP, hostRdmaDataOperator_);
+    }
+
     return dataOperators;
 }
 } // namespace mf
