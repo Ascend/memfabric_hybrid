@@ -763,18 +763,15 @@ Result HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const u
         if (registered) {
             ret = BatchCopyGH2GH(hostAddrs, gvaAddrs, counts, batchSize, options);
         } else {
-            std::vector<void *> localAddrs;
-            std::vector<void *> globalAddrs;
-            std::vector<uint64_t> countArr;
-            localAddrs.reserve(batchSize);
-            globalAddrs.reserve(batchSize);
-            countArr.reserve(batchSize);
+            CopyDescriptor desc{};
+            desc.localAddrs.reserve(batchSize);
+            desc.globalAddrs.reserve(batchSize);
+            desc.counts.reserve(batchSize);
             for (uint32_t i = 0; i < batchSize; ++i) {
-                localAddrs.push_back(hostAddrs[i]);
-                globalAddrs.push_back(gvaAddrs[i]);
-                countArr.push_back(counts[i]);
+                desc.localAddrs.push_back(hostAddrs[i]);
+                desc.globalAddrs.push_back(gvaAddrs[i]);
+                desc.counts.push_back(counts[i]);
             }
-            CopyDescriptor desc{localAddrs, globalAddrs, countArr};
             ret = BatchReadRH2LH(desc, options);
         }
     }

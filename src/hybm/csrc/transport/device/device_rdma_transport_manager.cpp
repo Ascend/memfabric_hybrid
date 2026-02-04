@@ -768,6 +768,11 @@ int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, Hcc
 
     // need register: dram except gvm
     if ((mr.flags & REG_MR_FLAG_DRAM) || (mr.flags & REG_MR_FLAG_ACL_DRAM)) {
+        if (addr % SMALL_PAGE_SIZE != 0) {
+            BM_LOG_ERROR("DRAM buffer address: " << std::hex << addr <<
+                " is not aligned to 4K, HalHostRegister will fail");
+        }
+
         auto input = (void *)(ptrdiff_t)addr;
         void *output = nullptr;
         auto ret = DlHalApi::HalHostRegister(input, size, HOST_MEM_MAP_DEV, deviceId_, &output);
