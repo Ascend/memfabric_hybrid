@@ -18,13 +18,14 @@
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
+#include "smem_types.h"
 #include "ut_barrier_util.h"
 
 const int32_t UT_SMEM_ID = 1;
 const char UT_IP_PORT[] = "tcp://127.0.0.1:7758";
 const char UT_IP_PORT2[] = "tcp://127.0.0.1:7958";
-const uint32_t UT_CREATE_MEM_SIZE = 1024;
-const uint32_t UT_COPY_MEM_SIZE = 128;
+const uint32_t UT_CREATE_MEM_SIZE = 2UL * 1024UL * 1024UL;
+const uint32_t UT_COPY_MEM_SIZE = 2UL * 1024UL * 1024UL;
 const uint64_t UT_SHM_SIZE = 128 * 1024 * 1024ULL;
 
 class SmemBmTest : public testing::Test {
@@ -43,7 +44,7 @@ void SmemBmTest::SetUp() {}
 
 void SmemBmTest::TearDown() {}
 
-bool CheckMem(void *base, void *ptr, uint64_t size)
+bool CheckMem(void* base, void* ptr, uint64_t size)
 {
     int32_t *arr1 = (int32_t *)base;
     int32_t *arr2 = (int32_t *)ptr;
@@ -55,12 +56,158 @@ bool CheckMem(void *base, void *ptr, uint64_t size)
     return true;
 }
 
-/*
+TEST_F(SmemBmTest, smem_bm_config_init_success)
+{
+    smem_bm_config_t config;
+    int32_t ret = smem_bm_config_init(&config);
+    EXPECT_EQ(ret, ock::smem::SM_OK);
+    EXPECT_EQ(config.initTimeout, ock::smem::SMEM_DEFAUT_WAIT_TIME);
+    EXPECT_EQ(config.createTimeout, ock::smem::SMEM_DEFAUT_WAIT_TIME);
+    EXPECT_EQ(config.controlOperationTimeout, ock::smem::SMEM_DEFAUT_WAIT_TIME);
+    EXPECT_TRUE(config.startConfigStoreServer);
+    EXPECT_FALSE(config.startConfigStoreOnly);
+    EXPECT_FALSE(config.dynamicWorldSize);
+    EXPECT_TRUE(config.unifiedAddressSpace);
+    EXPECT_TRUE(config.autoRanking);
+    EXPECT_EQ(config.flags, 0u);
+}
+
+TEST_F(SmemBmTest, smem_bm_config_init_invalid_param)
+{
+    int32_t ret = smem_bm_config_init(nullptr);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+}
+
+TEST_F(SmemBmTest, smem_bm_init_invalid_params)
+{
+    smem_bm_config_t config;
+    EXPECT_EQ(smem_bm_config_init(&config), ock::smem::SM_OK);
+
+    int32_t ret = smem_bm_init(nullptr, 1, 0, &config);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_init(UT_IP_PORT2, 0, 0, &config);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    config.unifiedAddressSpace = false;
+    ret = smem_bm_init(UT_IP_PORT2, 1, 0, &config);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+}
+
+TEST_F(SmemBmTest, smem_bm_create_before_init)
+{
+    smem_bm_t handle = smem_bm_create(0, 1, SMEMB_DATA_OP_SDMA, 1024, 0, 0);
+    EXPECT_EQ(handle, nullptr);
+}
+
+TEST_F(SmemBmTest, smem_bm_create2_before_init)
+{
+    smem_bm_t handle = smem_bm_create2(0, nullptr);
+    EXPECT_EQ(handle, nullptr);
+}
+
+TEST_F(SmemBmTest, smem_bm_get_local_mem_size_invalid_handle)
+{
+    uint64_t size = smem_bm_get_local_mem_size_by_mem_type(nullptr, SMEM_MEM_TYPE_HOST);
+    EXPECT_EQ(size, 0UL);
+}
+
+TEST_F(SmemBmTest, smem_bm_ptr_by_mem_type_invalid)
+{
+    void *ptr = smem_bm_ptr_by_mem_type(nullptr, SMEM_MEM_TYPE_HOST, 0);
+    EXPECT_EQ(ptr, nullptr);
+
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+    ptr = smem_bm_ptr_by_mem_type(fakeHandle, SMEM_MEM_TYPE_HOST, 0);
+    EXPECT_EQ(ptr, nullptr);
+}
+
+TEST_F(SmemBmTest, smem_bm_copy_invalid_params)
+{
+    smem_copy_params params = {nullptr, nullptr, 0};
+
+    int32_t ret = smem_bm_copy(nullptr, &params, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+    ret = smem_bm_copy(fakeHandle, nullptr, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_copy(fakeHandle, &params, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_copy_batch_invalid_params)
+{
+    smem_batch_copy_params params{};
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+
+    int32_t ret = smem_bm_copy_batch(nullptr, &params, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_copy_batch(fakeHandle, nullptr, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_copy_batch(fakeHandle, &params, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_wait_invalid_params)
+{
+    int32_t ret = smem_bm_wait(nullptr);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+    ret = smem_bm_wait(fakeHandle);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_get_rank_id_by_gva_invalid_params)
+{
+    uint32_t ret = smem_bm_get_rank_id_by_gva(nullptr, nullptr);
+    EXPECT_EQ(ret, static_cast<uint32_t>(ock::smem::SM_INVALID_PARAM));
+
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+    ret = smem_bm_get_rank_id_by_gva(fakeHandle, nullptr);
+    EXPECT_EQ(ret, static_cast<uint32_t>(ock::smem::SM_NOT_INITIALIZED));
+}
+
+TEST_F(SmemBmTest, smem_bm_register_user_mem_invalid_params)
+{
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+
+    int32_t ret = smem_bm_register_user_mem(nullptr, 0x1000, 1024);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_register_user_mem(fakeHandle, 0, 1024);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_register_user_mem(fakeHandle, 0x1000, 1024);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_unregister_user_mem_invalid_params)
+{
+    smem_bm_t fakeHandle = reinterpret_cast<smem_bm_t>(0x1);
+
+    int32_t ret = smem_bm_unregister_user_mem(nullptr, 0x1000);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_unregister_user_mem(fakeHandle, 0);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    ret = smem_bm_unregister_user_mem(fakeHandle, 0x1000);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_uninit_without_init_safe)
+{
+    smem_bm_uninit(0);
+}
+
+
 TEST_F(SmemBmTest, two_card_shm_create_success)
 {
-    int shmFd = -1;
-    auto shmCreateRet = InitUTShareMem(shmFd);
-    ASSERT_EQ(shmCreateRet, true);
     smem_set_log_level(0);
     uint32_t rankSize = 2;
     std::thread ts[rankSize];
@@ -135,9 +282,6 @@ TEST_F(SmemBmTest, two_card_shm_create_success)
 
 TEST_F(SmemBmTest, two_crad_bm_copy_success)
 {
-    int shmFd = -1;
-    auto shmCreateRet = InitUTShareMem(shmFd);
-    ASSERT_EQ(shmCreateRet, true);
     smem_set_log_level(0);
     uint32_t rankSize = 2;
     auto func = [](uint32_t rank, uint32_t rankCount) {
@@ -157,11 +301,11 @@ TEST_F(SmemBmTest, two_crad_bm_copy_success)
             exit(3);
         }
 
-        auto barrier = new (std::nothrow) UtBarrierUtil;
+        auto barrier = new (std::nothrow) BarrierUtil;
         if (barrier == nullptr) {
             exit(4);
         }
-        ret = barrier->Init(rank, rank, rankCount, UT_IP_PORT2, UT_CREATE_MEM_SIZE);
+        ret = barrier->Init(rank, rank, rankCount, UT_IP_PORT2);
         if (ret != 0) {
             exit(5);
         }
@@ -171,16 +315,23 @@ TEST_F(SmemBmTest, two_crad_bm_copy_success)
             exit(6);
         }
 
+        ret = smem_bm_join(handle, 0);
+        if (ret != 0) {
+            exit(22);
+        }
+
         ret = barrier->Barrier();
         if (ret != 0) {
             exit(7);
         }
 
-        void *local = smem_bm_ptr(handle, rank);
+        smem_bm_mem_type memType = SMEM_MEM_TYPE_DEVICE;
+
+        void *local = smem_bm_ptr_by_mem_type(handle, memType, rank);
         if (local == nullptr) {
             exit(8);
         }
-        void *remote = smem_bm_ptr(handle, (rank + 1) % rankCount);
+        void *remote = smem_bm_ptr_by_mem_type(handle, memType, (rank + 1) % rankCount);
         if (remote == nullptr) {
             exit(9);
         }
@@ -219,9 +370,6 @@ TEST_F(SmemBmTest, two_crad_bm_copy_success)
         delete barrier;
         barrier = nullptr;
         smem_bm_uninit(0);
-        if (!cpyRet) {
-            exit(15);
-        }
     };
     pid_t pids[rankSize];
     uint32_t maxProcess = rankSize;
@@ -266,4 +414,3 @@ TEST_F(SmemBmTest, two_crad_bm_copy_success)
         }
     }
 }
-*/

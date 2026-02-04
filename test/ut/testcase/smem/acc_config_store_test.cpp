@@ -259,3 +259,205 @@ TEST_F(AccConfigStoreTest, watch_one_key_unwatch)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(0L, notifyTimes.load());
 }
+
+TEST_F(AccConfigStoreTest, set_get_empty_key)
+{
+    std::string key = "";
+    std::string value = "empty_key_value";
+    auto ret = g_client->Set(key, std::vector<uint8_t>(value.begin(), value.end()));
+    ASSERT_EQ(StoreErrorCode::INVALID_KEY, ret);
+    
+    std::vector<uint8_t> valueOut;
+    ret = g_server->Get(key, valueOut);
+    ASSERT_EQ(StoreErrorCode::INVALID_KEY, ret);
+}
+
+TEST_F(AccConfigStoreTest, set_get_empty_value)
+{
+    std::string key = "empty_value_key";
+    std::string value = "";
+    auto ret = g_client->Set(key, std::vector<uint8_t>(value.begin(), value.end()));
+    ASSERT_EQ(0, ret);
+    
+    std::vector<uint8_t> valueOut;
+    ret = g_server->Get(key, valueOut);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(value, std::string(valueOut.begin(), valueOut.end()));
+}
+
+TEST_F(AccConfigStoreTest, set_get_large_value)
+{
+    std::string key = "large_value_key";
+    std::string value(1024 * 1024, 'a'); // 1MB
+    auto ret = g_client->Set(key, std::vector<uint8_t>(value.begin(), value.end()));
+    ASSERT_EQ(0, ret);
+    
+    std::vector<uint8_t> valueOut;
+    ret = g_server->Get(key, valueOut);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(value, std::string(valueOut.begin(), valueOut.end()));
+}
+
+TEST_F(AccConfigStoreTest, add_negative_value)
+{
+    std::string key = "add_negative_key";
+    int64_t value;
+    auto ret = g_client->Add(key, -5, value);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(-5L, value);
+    
+    ret = g_server->Add(key, -3, value);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(-8L, value);
+}
+
+TEST_F(AccConfigStoreTest, add_zero_value)
+{
+    std::string key = "add_zero_key";
+    int64_t value;
+    auto ret = g_client->Add(key, 0, value);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(0L, value);
+}
+
+TEST_F(AccConfigStoreTest, add_large_value)
+{
+    std::string key = "add_large_key";
+    int64_t value;
+    auto ret = g_client->Add(key, INT64_MAX / 2, value);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(INT64_MAX / 2, value);
+}
+
+TEST_F(AccConfigStoreTest, append_empty_string)
+{
+    std::string key = "append_empty_key";
+    uint64_t size = 0;
+    auto ret = g_client->Append(key, "", size);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
+    ASSERT_EQ(0UL, size);
+}
+
+TEST_F(AccConfigStoreTest, append_multiple_times)
+{
+    std::string key = "append_multiple_key";
+    uint64_t size = 0;
+    std::vector<std::string> values = {"a", "b", "c", "d", "e"};
+    uint64_t expectedSize = 0;
+    
+    for (const auto &val : values) {
+        expectedSize += val.size();
+        auto ret = g_client->Append(key, val, size);
+        ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
+        ASSERT_EQ(expectedSize, size);
+    }
+    
+    std::string finalValue;
+    auto ret = g_client->Get(key, finalValue, 0);
+    ASSERT_EQ(ock::smem::StoreErrorCode::SUCCESS, ret);
+    std::string expectedFinal = "";
+    for (const auto &val : values) {
+        expectedFinal += val;
+    }
+    ASSERT_EQ(expectedFinal, finalValue);
+}
+
+TEST_F(AccConfigStoreTest, prefix_store_nested)
+{
+    std::string prefix1 = "/level1/";
+    std::string prefix2 = "/level2/";
+    auto store1 = ock::smem::StoreFactory::PrefixStore(g_client, prefix1);
+    auto store2 = ock::smem::StoreFactory::PrefixStore(store1, prefix2);
+    
+    std::string key = "nested_key";
+    std::string value = "nested_value";
+    auto ret = g_server->Set(prefix1 + prefix2 + key, value);
+    ASSERT_EQ(0, ret);
+    
+    std::string getValue;
+    ret = store2->Get(key, getValue, 0);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(value, getValue);
+}
+
+TEST_F(AccConfigStoreTest, watch_multiple_keys)
+{
+    std::string prefix = "/watch_multiple/";
+    auto store = ock::smem::StoreFactory::PrefixStore(g_client, prefix);
+    
+    uint32_t wid1;
+    uint32_t wid2;
+    std::string key1 = "key1";
+    std::string key2 = "key2";
+    std::string value1 = "value1";
+    std::string value2 = "value2";
+    
+    std::atomic<int> notifyCount1{0};
+    std::atomic<int> notifyCount2{0};
+    
+    auto ret = store->Watch(key1, [&notifyCount1](int, const std::string &, const std::string &) {
+        notifyCount1.fetch_add(1);
+    }, wid1);
+    ASSERT_EQ(0, ret);
+    
+    ret = store->Watch(key2, [&notifyCount2](int, const std::string &, const std::string &) {
+        notifyCount2.fetch_add(1);
+    }, wid2);
+    ASSERT_EQ(0, ret);
+    
+    ret = g_server->Set(prefix + key1, value1);
+    ASSERT_EQ(0, ret);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    ret = g_server->Set(prefix + key2, value2);
+    ASSERT_EQ(0, ret);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    EXPECT_GE(notifyCount1.load(), 1);
+    EXPECT_GE(notifyCount2.load(), 1);
+}
+
+TEST_F(AccConfigStoreTest, unwatch_invalid_id)
+{
+    std::string prefix = "/unwatch_invalid/";
+    auto store = ock::smem::StoreFactory::PrefixStore(g_client, prefix);
+    
+    uint32_t invalidWid = 99999;
+    auto ret = store->Unwatch(invalidWid);
+    ASSERT_NE(0, ret);
+}
+
+TEST_F(AccConfigStoreTest, get_timeout_zero)
+{
+    std::string key = "get_timeout_zero_key";
+    std::vector<uint8_t> value;
+    
+    auto ret = g_client->Get(key, value, 0);
+    ASSERT_EQ(ock::smem::StoreErrorCode::NOT_EXIST, ret);
+}
+
+TEST_F(AccConfigStoreTest, set_get_special_characters)
+{
+    std::string key = "special_chars_key";
+    std::string value = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
+    auto ret = g_client->Set(key, std::vector<uint8_t>(value.begin(), value.end()));
+    ASSERT_EQ(0, ret);
+    
+    std::vector<uint8_t> valueOut;
+    ret = g_server->Get(key, valueOut);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(value, std::string(valueOut.begin(), valueOut.end()));
+}
+
+TEST_F(AccConfigStoreTest, set_get_binary_data)
+{
+    std::string key = "binary_data_key";
+    std::vector<uint8_t> value = {0x00, 0xFF, 0x80, 0x7F, 0x01, 0xFE};
+    auto ret = g_client->Set(key, value);
+    ASSERT_EQ(0, ret);
+    
+    std::vector<uint8_t> valueOut;
+    ret = g_server->Get(key, valueOut);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(value, valueOut);
+}

@@ -553,3 +553,245 @@ TEST_F(HybmVaManagerTest, MixedOperations_AddRemoveQuery_WorksCorrectly)
     manager.FreeReserveGva(reserved.start);
     EXPECT_TRUE(manager.GetReservedCount() == TEST_SIZE_ZERO);
 }
+
+// 测试34: RemoveOneVaInfo - 验证删除功能
+TEST_F(HybmVaManagerTest, RemoveAllVaInfoByRank_RemovesAllAllocations)
+{
+    uint64_t gva1 = TEST_GVA_BASE_HOST;
+    uint64_t gva2 = TEST_GVA_BASE_HOST + TEST_OFFSET_SIXTEEN_MB;
+    uint64_t gva3 = TEST_GVA_BASE_DEVICE;
+
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva1, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+    BaseAllocatedGvaInfo info0 = {gva2, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST,
+                                  TEST_LVA_BASE + TEST_OFFSET_SIXTEEN_MB};
+    EXPECT_TRUE(manager.AddVaInfoFromExternal(info0, TEST_RANK_ZERO) == BM_OK);
+    auto lva = TEST_LVA_BASE + TEST_OFFSET_SIXTEEN_MB * TEST_COUNT_TWO;
+    BaseAllocatedGvaInfo info = {gva3, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_DEVICE, lva};
+    auto ret = manager.AddVaInfo(info, TEST_RANK_ONE);
+    EXPECT_TRUE(ret == BM_OK);
+
+    EXPECT_TRUE(manager.GetAllocCount() == TEST_COUNT_THREE);
+    manager.RemoveOneVaInfo(gva1);
+    manager.RemoveOneVaInfo(gva2);
+    manager.RemoveOneVaInfo(gva3);
+    EXPECT_TRUE(manager.GetAllocCount() == 0);
+    EXPECT_FALSE(manager.IsGva(gva1));
+    EXPECT_FALSE(manager.IsGva(gva2));
+    EXPECT_FALSE(manager.IsGva(gva3));
+}
+
+// 测试35: GetRank - 边界地址
+TEST_F(HybmVaManagerTest, GetRank_BoundaryAddresses)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    auto [rank1, found1] = manager.GetRank(gva);
+    EXPECT_TRUE(found1);
+    EXPECT_TRUE(rank1 == TEST_RANK_ZERO);
+
+    auto [rank2, found2] = manager.GetRank(gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE);
+    EXPECT_TRUE(found2);
+    EXPECT_TRUE(rank2 == TEST_RANK_ZERO);
+
+    auto [rank3, found3] = manager.GetRank(gva + TEST_SIZE_SIXTEEN_MB);
+    EXPECT_FALSE(found3);
+}
+
+// 测试36: GetMemType - 边界地址
+TEST_F(HybmVaManagerTest, GetMemType_BoundaryAddresses)
+{
+    uint64_t hostGva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({hostGva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    EXPECT_TRUE(manager.GetMemType(hostGva) == TEST_MEM_TYPE_HOST);
+    EXPECT_TRUE(manager.GetMemType(hostGva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE) == TEST_MEM_TYPE_HOST);
+}
+
+// 测试37: AllocReserveGva - 零大小
+TEST_F(HybmVaManagerTest, AllocReserveGva_ZeroSize)
+{
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_ZERO, TEST_MEM_TYPE_HOST);
+    EXPECT_TRUE(reserved.start == TEST_SIZE_ZERO);
+}
+
+// 测试38: AllocReserveGva - 最大rank
+TEST_F(HybmVaManagerTest, AllocReserveGva_MaxRank)
+{
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_INVALID, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    EXPECT_TRUE(reserved.start != TEST_SIZE_ZERO);
+    EXPECT_TRUE(reserved.localRankId == TEST_RANK_INVALID);
+}
+
+// 测试39: AddVaInfo - 零大小
+TEST_F(HybmVaManagerTest, AddVaInfo_ZeroSize)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfo({gva, TEST_SIZE_ZERO, TEST_MEM_TYPE_HOST, TEST_LVA_BASE}, TEST_RANK_ZERO) == BM_OK);
+}
+
+// 测试40: FindAllocByGva - 边界情况
+TEST_F(HybmVaManagerTest, FindAllocByGva_BoundaryCases)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    auto [alloc1, found1] = manager.FindAllocByGva(gva);
+    EXPECT_TRUE(found1);
+
+    auto [alloc2, found2] = manager.FindAllocByGva(gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE);
+    EXPECT_TRUE(found2);
+
+    auto [alloc3, found3] = manager.FindAllocByGva(gva - TEST_COUNT_ONE);
+    EXPECT_FALSE(found3);
+
+    auto [alloc4, found4] = manager.FindAllocByGva(gva + TEST_SIZE_SIXTEEN_MB);
+    EXPECT_FALSE(found4);
+}
+
+// 测试41: FindAllocByLva - 边界情况
+TEST_F(HybmVaManagerTest, FindAllocByLva_BoundaryCases)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    uint64_t lva = TEST_LVA_BASE;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, lva},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    auto [alloc1, found1] = manager.FindAllocByLva(lva);
+    EXPECT_TRUE(found1);
+
+    auto [alloc2, found2] = manager.FindAllocByLva(lva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE);
+    EXPECT_TRUE(found2);
+
+    auto [alloc3, found3] = manager.FindAllocByLva(lva - TEST_COUNT_ONE);
+    EXPECT_FALSE(found3);
+
+    auto [alloc4, found4] = manager.FindAllocByLva(lva + TEST_SIZE_SIXTEEN_MB);
+    EXPECT_FALSE(found4);
+}
+
+// 测试42: RemoveOneVaInfo - 不存在的地址
+TEST_F(HybmVaManagerTest, RemoveOneVaInfo_NonExistentAddress)
+{
+    EXPECT_TRUE(manager.GetAllocCount() == TEST_SIZE_ZERO);
+    manager.RemoveOneVaInfo(TEST_GVA_BASE_HOST);
+    EXPECT_TRUE(manager.GetAllocCount() == TEST_SIZE_ZERO);
+}
+
+// 测试43: FreeReserveGva - 多次释放
+TEST_F(HybmVaManagerTest, FreeReserveGva_MultipleFrees)
+{
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    EXPECT_TRUE(reserved.start != TEST_SIZE_ZERO);
+    EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_ONE);
+
+    manager.FreeReserveGva(reserved.start);
+    EXPECT_TRUE(manager.GetReservedCount() == TEST_SIZE_ZERO);
+
+    manager.FreeReserveGva(reserved.start);
+    EXPECT_TRUE(manager.GetReservedCount() == TEST_SIZE_ZERO);
+}
+
+// 测试44: 地址转换 - 边界偏移
+TEST_F(HybmVaManagerTest, AddressConversion_BoundaryOffsets)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    uint64_t lva = TEST_LVA_BASE;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, lva},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    EXPECT_TRUE(manager.GetGvaByLva(lva) == gva);
+    EXPECT_TRUE(manager.GetLvaByGva(gva) == lva);
+
+    EXPECT_TRUE(manager.GetGvaByLva(lva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE) ==
+                gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE);
+    EXPECT_TRUE(manager.GetLvaByGva(gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE) ==
+                lva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE);
+}
+
+// 测试45: IsGva - 边界值
+TEST_F(HybmVaManagerTest, IsGva_BoundaryValues)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    EXPECT_TRUE(manager.IsGva(gva));
+    EXPECT_TRUE(manager.IsGva(gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE));
+    EXPECT_FALSE(manager.IsGva(gva - TEST_COUNT_ONE));
+    EXPECT_FALSE(manager.IsGva(gva + TEST_SIZE_SIXTEEN_MB));
+}
+
+// 测试46: IsValidAddr - 边界值
+TEST_F(HybmVaManagerTest, IsValidAddr_BoundaryValues)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    uint64_t lva = TEST_LVA_BASE;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, lva},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    EXPECT_TRUE(manager.IsValidAddr(gva));
+    EXPECT_TRUE(manager.IsValidAddr(lva));
+    EXPECT_TRUE(manager.IsValidAddr(gva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE));
+    EXPECT_TRUE(manager.IsValidAddr(lva + TEST_SIZE_SIXTEEN_MB - TEST_COUNT_ONE));
+    EXPECT_FALSE(manager.IsValidAddr(gva - TEST_COUNT_ONE));
+    EXPECT_FALSE(manager.IsValidAddr(lva - TEST_COUNT_ONE));
+    EXPECT_FALSE(manager.IsValidAddr(gva + TEST_SIZE_SIXTEEN_MB));
+    EXPECT_FALSE(manager.IsValidAddr(lva + TEST_SIZE_SIXTEEN_MB));
+}
+
+// 测试47: 并发测试 - 多线程查询
+TEST_F(HybmVaManagerTest, ConcurrentTest_MultipleThreadsQuerying)
+{
+    uint64_t gva = TEST_GVA_BASE_HOST;
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+
+    std::vector<std::thread> threads;
+    std::atomic<int> successCount{0};
+    for (int i = 0; i < TEST_THREAD_COUNT_EIGHT; i++) {
+        threads.emplace_back([this, gva, &successCount]() {
+            for (int j = 0; j < TEST_OPERATIONS_PER_THREAD_FIFTY; j++) {
+                if (manager.IsGva(gva)) {
+                    successCount++;
+                }
+                auto [rank, found] = manager.GetRank(gva);
+                if (found && rank == TEST_RANK_ZERO) {
+                    successCount++;
+                }
+            }
+        });
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
+    }
+
+    EXPECT_TRUE(successCount.load() == TEST_THREAD_COUNT_EIGHT * TEST_OPERATIONS_PER_THREAD_FIFTY * TEST_COUNT_TWO);
+}
+
+// 测试48: 混合操作 - 添加、删除、查询混合
+TEST_F(HybmVaManagerTest, MixedOperations_AddRemoveQueryMixed)
+{
+    uint64_t gva1 = TEST_GVA_BASE_HOST;
+    uint64_t gva2 = TEST_GVA_BASE_HOST + TEST_OFFSET_SIXTEEN_MB;
+
+    EXPECT_TRUE(manager.AddVaInfoFromExternal({gva1, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE},
+                                              TEST_RANK_ZERO) == BM_OK);
+    EXPECT_TRUE(manager.IsGva(gva1));
+
+    EXPECT_TRUE(
+        manager.AddVaInfo({gva2, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST, TEST_LVA_BASE + TEST_OFFSET_SIXTEEN_MB},
+                          TEST_RANK_ONE) == BM_OK);
+    EXPECT_TRUE(manager.IsGva(gva2));
+
+    manager.RemoveOneVaInfo(gva1);
+    EXPECT_FALSE(manager.IsGva(gva1));
+    EXPECT_TRUE(manager.IsGva(gva2));
+
+    EXPECT_TRUE(manager.GetAllocCount() == TEST_COUNT_ONE);
+}
