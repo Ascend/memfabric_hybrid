@@ -49,16 +49,19 @@ void PrintHelp()
                  "               <command> [<option>] [<args>]\n\n"
                  "-h, --help                  Displays help information.\n"
                  "-bw, bandwidth              Performs a bandwidth test.\n"
-                 "    -t,  --type             Indicates the test type "
+                 "    -ot, --op-type          Indicates the data operation type.\n"
+                 "(sdma,device_rdma,host_rdma,host_urma,host_tcp)\n"
+                 "    -t,  --type             Indicates the data copy type.\n"
                  "(h2d,d2h,h2rd,h2rh,d2rh,d2rd,rh2d,rh2h,rd2h,rd2d,all).\n"
                  "    -s,  --size             Specifies block size (default 1024).\n"
-                 "    -et, --execute-times    Specifies execution count (default 1000).\n"
-                 "    -bs, --batch_size       Specifies block count (default 1).\n"
+                 "    -cc, --copy-count       Specifies copy count (default 1000).\n"
+                 "    -bs, --batch-size       Specifies block count (default 1).\n"
                  "    -d,  --device           Specifies starting device ID (default 0).\n"
                  "    -ws, --world-size       Specifies the total number of NPUs in the cluster.\n"
                  "    -lrs, --local-rank-size Specifies the number of NPUs on the local node.\n"
                  "    -rs, --rank-start       Specifies the starting rankId for the local node (default 0).\n"
                  "    -ip, --ip               Specifies the IP address and port (e.g., tcp://<ip>:<port>).\n"
+                 "    -rdma, --rdma           Specifies the host RDMA url (e.g., tcp://<ip>:<port>).\n"
               << std::endl;
 }
 
@@ -106,6 +109,26 @@ CopyType ParseType(const std::string &arg)
     ExitWithError("invalid type: " + arg + " (must be one of h2d/d2h/h2rd/h2rh/d2rh/d2rd/rh2d/rh2h/rd2h/rd2d/all)");
 }
 
+smem_bm_data_op_type ParseOpType(const std::string &arg)
+{
+    if (arg == "sdma") {
+        return SMEMB_DATA_OP_SDMA;
+    }
+    if (arg == "device_rdma") {
+        return SMEMB_DATA_OP_DEVICE_RDMA;
+    }
+    if (arg == "host_rdma") {
+        return SMEMB_DATA_OP_HOST_RDMA;
+    }
+    if (arg == "host_urma") {
+        return SMEMB_DATA_OP_HOST_URMA;
+    }
+    if (arg == "host_tcp") {
+        return SMEMB_DATA_OP_HOST_TCP;
+    }
+    ExitWithError("invalid Optype: " + arg + " (must be one of sdma/device_rdma/host_rdma/host_urma/host_tcp)");
+}
+
 uint64_t ParseUint64(const std::string &arg, const std::string &field)
 {
     try {
@@ -139,6 +162,9 @@ void ParseIp(const std::string &arg)
 
 void CheckCmdBw(BwTestParam &opts)
 {
+    if (opts.opType == SMEMB_DATA_OP_BUTT) {
+        ExitWithError("missing required option: -ot / --op-type");
+    }
     if (opts.worldRankSize == 0 || opts.localRankSize == 0) {
         ExitWithError("world-size and local-rank-size must be greater than 0");
     }
@@ -151,8 +177,8 @@ void CheckCmdBw(BwTestParam &opts)
     if (opts.worldRankSize > RANK_SIZE_MAX) {
         ExitWithError("world-size must be less than or equal to " + std::to_string(RANK_SIZE_MAX));
     }
-    if (opts.executeTimes == 0) {
-        ExitWithError("execute-times must be greater than 0");
+    if (opts.copyCount == 0) {
+        ExitWithError("copy-count must be greater than 0");
     }
     if (opts.copySize == 0) {
         ExitWithError("size must be greater than 0");
@@ -162,6 +188,7 @@ void CheckCmdBw(BwTestParam &opts)
 void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
 {
     bool hasType = false;
+    bool hasRdmaUrl = false;
 
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -172,17 +199,22 @@ void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
             }
             opts.type = ParseType(argv[++i]);
             hasType = true;
-        } else if (arg == "-s" || arg == "--size") {
+        } else if (arg == "-ot" || arg == "--op-type") {
+            if (i + 1 >= argc) {
+                ExitWithError("missing value for " + arg);
+            }
+            opts.opType = ParseOpType(argv[++i]);
+        }  else if (arg == "-s" || arg == "--size") {
             if (i + 1 >= argc) {
                 ExitWithError("missing value for " + arg);
             }
             opts.copySize = ParseUint64(argv[++i], "size");
-        } else if (arg == "-et" || arg == "--execute-times") {
+        } else if (arg == "-cc" || arg == "--copy-count") {
             if (i + 1 >= argc) {
                 ExitWithError("missing value for " + arg);
             }
-            opts.executeTimes = ParseUint64(argv[++i], "execute-times");
-        } else if (arg == "-bs" || arg == "--batch_size") {
+            opts.copyCount = ParseUint64(argv[++i], "copy-count");
+        } else if (arg == "-bs" || arg == "--batch-size") {
             if (i + 1 >= argc) {
                 ExitWithError("missing value for " + arg);
             }
@@ -213,6 +245,14 @@ void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
             }
             opts.ipPort = argv[++i];
             ParseIp(opts.ipPort);
+        } else if (arg == "-rdma" || arg == "--rdma") {
+            if (i + 1 >= argc) {
+                ExitWithError("missing value for " + arg);
+            }
+            opts.rdmaIpPort.clear();
+            opts.rdmaIpPort = argv[++i];
+            ParseIp(opts.rdmaIpPort);
+            hasRdmaUrl = true;
         } else {
             ExitWithError("unknown option: " + arg);
         }
@@ -220,6 +260,9 @@ void ParseCmdBw(int argc, char *argv[], BwTestParam &opts)
 
     if (!hasType) {
         ExitWithError("missing required option: -t / --type");
+    }
+    if (opts.opType == SMEMB_DATA_OP_HOST_RDMA && !hasRdmaUrl) {
+        ExitWithError("missing required option: -rdma / --rdma");
     }
 
     CheckCmdBw(opts);
@@ -241,19 +284,6 @@ int main(int32_t argc, char *argv[])
         return 0;
     }
 
-    // 检查硬件环境
-    std::string productName = ExecShellCmd("dmidecode | grep 'Product Name'");
-    smem_bm_data_op_type opType = SMEMB_DATA_OP_BUTT;
-    if (productName.find("A3") != std::string::npos) {
-        opType = SMEMB_DATA_OP_SDMA;
-        LOG_INFO("current machine is A3.\n");
-    } else if (productName.find("A2") != std::string::npos) {
-        opType = SMEMB_DATA_OP_DEVICE_RDMA;
-        LOG_INFO("current machine is A2.\n");
-    } else {
-        LOG_ERROR("unexcept machine, productName: " << productName);
-        return -1;
-    }
     std::string cmd = argv[1];
     if (cmd == "-h" || cmd == "--help") {
         PrintHelp();
@@ -261,7 +291,6 @@ int main(int32_t argc, char *argv[])
     } else if (cmd == "-bw" || cmd == "--bandwidth") {
         BwTestParam opts;
         ParseCmdBw(argc, argv, opts);
-        opts.opType = opType;
         RunBwTest(opts);
     } else {
         ExitWithError("unknown command: " + cmd);

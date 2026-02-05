@@ -308,7 +308,7 @@ uint32_t smem_bm_get_rank_id_by_gva(smem_bm_t handle, void *gva);
 
 ### 6. 用户内存register/unregister
 #### smem_bm_register_user_mem
-smem_bm_register_user_mem（废弃）
+注册一段本地的用户内存
 ```c
 int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size);
 ```
@@ -320,8 +320,11 @@ int32_t smem_bm_register_user_mem(smem_bm_t handle, uint64_t addr, uint64_t size
 |size|注册地址的大小|
 |返回值|成功返回0，失败返回错误码|
 
+**注意：**
+device_rdma场景下注册的DRAM buffer需要保证首地址4K对齐，否则无法注册成功
+
 #### smem_bm_unregister_user_mem
-smem_bm_unregister_user_mem
+对一段注册过的本地用户内存执行反注册
 ```c
 int32_t smem_bm_unregister_user_mem(smem_bm_t handle, uint64_t addr);
 ```
