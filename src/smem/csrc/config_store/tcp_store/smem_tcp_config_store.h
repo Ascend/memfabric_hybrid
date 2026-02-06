@@ -40,7 +40,8 @@ public:
 
 class TcpConfigStore : public ConfigStore {
 public:
-    TcpConfigStore(std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
+    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer,
+                   uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
     Result Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
@@ -138,6 +139,7 @@ private:
     ConfigStoreClientBrokenHandler brokenHandler_ = nullptr;
     std::atomic<bool> isRunning_{false};
     std::thread heartBeatThread_;
+    StoreBackendPtr backend_;
 };
 using TcpConfigStorePtr = SmRef<TcpConfigStore>;
 } // namespace smem

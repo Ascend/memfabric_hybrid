@@ -128,9 +128,10 @@ private:
 };
 
 std::atomic<uint32_t> TcpConfigStore::reqSeqGen_{0};
-TcpConfigStore::TcpConfigStore(std::string ip, uint16_t port, bool isServer, uint32_t worldSize,
-                               int32_t rankId) noexcept
-    : serverIp_{std::move(ip)}, serverPort_{port}, isServer_{isServer}, worldSize_{worldSize}, rankId_{rankId}
+TcpConfigStore::TcpConfigStore(StoreBackendPtr backend, std::string ip, uint16_t port, bool isServer,
+                               uint32_t worldSize, int32_t rankId) noexcept
+    : serverIp_{std::move(ip)}, serverPort_{port}, isServer_{isServer}, rankId_{rankId}, worldSize_{worldSize},
+      backend_(std::move(backend))
 {}
 
 TcpConfigStore::~TcpConfigStore() noexcept
@@ -210,7 +211,7 @@ Result TcpConfigStore::ServerStart(const smem_tls_config &tlsConfig, int reconne
 {
     Result result = SM_OK;
     std::lock_guard<std::mutex> guard(mutex_);
-    accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_);
+    accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_, backend_);
     if (accServer_ == nullptr) {
         Shutdown();
         return SM_NEW_OBJECT_FAILED;

@@ -26,46 +26,39 @@ void SmemStoreFaultHandler::RegisterHandlerToStore(StorePtr store)
         return;
     }
     auto setHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        return BuildLinkIdToRankInfoMap(linkId, key, value, kvStore);
+                             const StoreBackendPtr &backend) {
+        return BuildLinkIdToRankInfoMap(linkId, key, value, backend);
     };
     store->RegisterServerOpHandler(MessageType::SET, setHandler);
 
     auto getHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        return GetFromFaultInfo(linkId, key, value, kvStore);
-    };
+                             const StoreBackendPtr &backend) { return GetFromFaultInfo(linkId, key, value, backend); };
     store->RegisterServerOpHandler(MessageType::GET, getHandler);
 
     auto addHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        return AddRankInfoMap(linkId, key, value, kvStore);
-    };
+                             const StoreBackendPtr &backend) { return AddRankInfoMap(linkId, key, value, backend); };
     store->RegisterServerOpHandler(MessageType::ADD, addHandler);
 
     auto writeHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                               const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        return WriteRankInfoMap(linkId, key, value, kvStore);
+                               const StoreBackendPtr &backend) {
+        return WriteRankInfoMap(linkId, key, value, backend);
     };
     store->RegisterServerOpHandler(MessageType::WRITE, writeHandler);
 
     auto appendHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        return AppendRankInfoMap(linkId, key, value, kvStore);
+                                const StoreBackendPtr &backend) {
+        return AppendRankInfoMap(linkId, key, value, backend);
     };
     store->RegisterServerOpHandler(MessageType::APPEND, appendHandler);
 
-    auto clearHandler = [this](const uint32_t linkId, std::unordered_map<std::string, std::vector<uint8_t>> &kvStore) {
-        ClearFaultInfo(linkId, kvStore);
-    };
+    auto clearHandler = [this](const uint32_t linkId, StoreBackendPtr &backend) { ClearFaultInfo(linkId, backend); };
     store->RegisterServerBrokenHandler(clearHandler);
 }
 
-int32_t
-SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key,
-                                                std::vector<uint8_t> &value,
-                                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+int32_t SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key,
+                                                        std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
+    (void)backend;
     if (key.find(AUTO_RANK_KEY_PREFIX) != std::string::npos) {
         SM_ASSERT_RETURN(value.size() == 2, SM_ERROR); // rankId占2字节
         const uint16_t BIT_SHIFT = 8;
@@ -78,8 +71,7 @@ SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std
 }
 
 int32_t SmemStoreFaultHandler::AddRankInfoMap(const uint32_t linkId, const std::string &key,
-                                              std::vector<uint8_t> &value,
-                                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+                                              std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
     if (key.find(SENDER_COUNT_KEY) != std::string::npos || key.find(RECEIVER_COUNT_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
@@ -105,8 +97,7 @@ int32_t SmemStoreFaultHandler::AddRankInfoMap(const uint32_t linkId, const std::
 }
 
 int32_t SmemStoreFaultHandler::WriteRankInfoMap(const uint32_t linkId, const std::string &key,
-                                                std::vector<uint8_t> &value,
-                                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+                                                std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
     uint32_t offset = *(reinterpret_cast<uint32_t *>(value.data()));
     size_t realValSize = value.size() - sizeof(uint32_t);
@@ -144,12 +135,12 @@ int32_t SmemStoreFaultHandler::WriteRankInfoMap(const uint32_t linkId, const std
 }
 
 int32_t SmemStoreFaultHandler::AppendRankInfoMap(const uint32_t linkId, const std::string &key,
-                                                 std::vector<uint8_t> &value,
-                                                 const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+                                                 std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
-    auto pos = kvStore.find(key);
-    SM_VALIDATE_RETURN(pos != kvStore.end(), "kv store not find key:" << key, SM_INVALID_PARAM);
-    uint16_t index = pos->second.size() / value.size() - 1;
+    std::vector<uint8_t> oldValue;
+    auto ret = backend->Get(key, oldValue);
+    SM_VALIDATE_RETURN(ret == SUCCESS, "kv store not find key:" << key, SM_INVALID_PARAM);
+    uint16_t index = oldValue.size() / value.size() - 1;
     if (key.find(SENDER_DEVICE_INFO_KEY) != std::string::npos ||
         key.find(RECEIVER_DEVICE_INFO_KEY) != std::string::npos) {
         auto it = linkIdToRankInfoMap_.find(linkId);
@@ -180,9 +171,9 @@ int32_t SmemStoreFaultHandler::AppendRankInfoMap(const uint32_t linkId, const st
 }
 
 int32_t SmemStoreFaultHandler::GetFromFaultInfo(const uint32_t linkId, const std::string &key,
-                                                std::vector<uint8_t> &value,
-                                                const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+                                                std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
+    (void)backend;
     uint16_t id;
     if (!faultRankIdQueue_.empty() && key.find(AUTO_RANK_KEY_PREFIX) != std::string::npos) {
         id = faultRankIdQueue_.front();
@@ -208,28 +199,27 @@ int32_t SmemStoreFaultHandler::GetFromFaultInfo(const uint32_t linkId, const std
     return SM_GET_OBJIECT;
 }
 
-void SmemStoreFaultHandler::ClearFaultInfo(const uint32_t linkId,
-                                           std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+void SmemStoreFaultHandler::ClearFaultInfo(const uint32_t linkId, StoreBackendPtr &backend)
 {
     auto linkIt = linkIdToRankInfoMap_.find(linkId);
     if (linkIt == linkIdToRankInfoMap_.end()) {
         return;
     }
     RankInfo &rankInfo = linkIt->second;
-    ClearDeviceInfo(linkId, rankInfo, kvStore);
-    ClearSliceInfo(linkId, rankInfo, kvStore);
-    kvStore.erase(rankInfo.rankName);
+    ClearDeviceInfo(linkId, rankInfo, backend);
+    ClearSliceInfo(linkId, rankInfo, backend);
+    (void)backend->Delete(rankInfo.rankName);
     faultRankIdQueue_.push(rankInfo.rankId);
     linkIdToRankInfoMap_.erase(linkId);
 }
 
-void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
-                                            std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo, StoreBackendPtr &backend)
 {
     // 清理deviceInfo信息
-    auto dInfoIt = kvStore.find(rankInfo.dInfo.deviceInfoKey);
-    if (dInfoIt != kvStore.end()) {
-        auto &dInfoValue = dInfoIt->second;
+    std::vector<uint8_t> oldValue;
+    auto ret = backend->Get(rankInfo.dInfo.deviceInfoKey, oldValue);
+    if (ret == SUCCESS) {
+        auto &dInfoValue = oldValue;
         uint32_t offset = rankInfo.dInfo.deiviceInfoUint * rankInfo.dInfo.deviceInfoId;
         if (rankInfo.dInfo.deviceInfoKey.find(SENDER_DEVICE_INFO_KEY) != std::string::npos) {
             SM_LOG_DEBUG("add sender device id: " << rankInfo.dInfo.deviceInfoId
@@ -244,15 +234,17 @@ void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
                                             << ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
         dInfoValue[offset] = DataStatusType::ABNORMAL; // deviceInfo标记为异常, 正常节点client检测到异常状态会做清理
     }
-    auto dCntIt = kvStore.find(rankInfo.dInfo.deviceCountKey);
-    if (dCntIt != kvStore.end()) {
-        std::string valueStr{dCntIt->second.begin(), dCntIt->second.end()};
+    ret = backend->Get(rankInfo.dInfo.deviceCountKey, oldValue);
+    if (ret == SUCCESS) {
+        std::string valueStr{oldValue.begin(), oldValue.end()};
         long valueNum;
         bool isCovert = mf::StrUtil::String2Int<long>(valueStr, valueNum);
         if (isCovert) {
             valueNum--;
             std::string valueStrNew = std::to_string(valueNum);
-            dCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
+            ret = backend->Put(rankInfo.dInfo.deviceCountKey,
+                               std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end()), 0);
+            SM_ASSERT_RET_VOID(ret == SUCCESS);
             SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
                                                 << ", new device count: " << valueNum);
         } else {
@@ -261,13 +253,13 @@ void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
     }
 }
 
-void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
-                                           std::unordered_map<std::string, std::vector<uint8_t>> &kvStore)
+void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo, StoreBackendPtr &backend)
 {
     // 清理sliceInfo信息
-    auto sInfoIt = kvStore.find(rankInfo.sInfo.sliceInfoKey);
-    if (sInfoIt != kvStore.end()) {
-        auto &sInfoValue = sInfoIt->second;
+    std::vector<uint8_t> oldValue;
+    auto ret = backend->Get(rankInfo.sInfo.sliceInfoKey, oldValue);
+    if (ret == SUCCESS) {
+        auto &sInfoValue = oldValue;
         SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
                                             << ", sliceInfoId size: " << rankInfo.sInfo.sliceInfoId.size());
         for (auto id : rankInfo.sInfo.sliceInfoId) {
@@ -282,15 +274,17 @@ void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
             }
         }
     }
-    auto sCntIt = kvStore.find(rankInfo.sInfo.sliceCountKey);
-    if (sCntIt != kvStore.end()) {
-        std::string valueStr{sCntIt->second.begin(), sCntIt->second.end()};
+    ret = backend->Get(rankInfo.sInfo.sliceCountKey, oldValue);
+    if (ret == SUCCESS) {
+        std::string valueStr{oldValue.begin(), oldValue.end()};
         long valueNum;
         bool isCovert = mf::StrUtil::String2Int<long>(valueStr, valueNum);
         if (isCovert) {
             valueNum -= rankInfo.sInfo.sliceInfoId.size();
             std::string valueStrNew = std::to_string(valueNum);
-            sCntIt->second = std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end());
+            ret = backend->Put(rankInfo.sInfo.sliceCountKey,
+                               std::vector<uint8_t>(valueStrNew.begin(), valueStrNew.end()), 0);
+            SM_ASSERT_RET_VOID(ret == SUCCESS);
             SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
                                                 << ", new slice count: " << valueNum);
         } else {

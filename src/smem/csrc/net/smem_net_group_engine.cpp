@@ -92,6 +92,11 @@ SmemNetGroupEngine::~SmemNetGroupEngine()
     if (listenCtx_.watchId != UINT32_MAX) {
         (void)store_->Unwatch(listenCtx_.watchId);
     }
+    uint32_t linkStatusWatchId = listenLinkStatusWatchId_.load(std::memory_order_acquire);
+    if (linkStatusWatchId != UINT32_MAX) {
+        (void)store_->Unwatch(linkStatusWatchId);
+        listenLinkStatusWatchId_.store(UINT32_MAX, std::memory_order_release);
+    }
     if (listenThread_.joinable()) {
         listenSignal_.PthreadSignal();
         listenThread_.join();
@@ -187,9 +192,9 @@ Result SmemNetGroupEngine::GroupBarrier(const char *key, uint32_t rankSize, uint
     SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
-                       "rankSize is invalid! input:" << rankSize<< " option:" << option_.rankSize, SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(rankId < rankSize,
-                       "rankId is invalid! rank:" << rankId<< " size:" << rankSize, SM_INVALID_PARAM);
+                       "rankSize is invalid! input:" << rankSize << " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankId < rankSize, "rankId is invalid! rank:" << rankId << " size:" << rankSize,
+                       SM_INVALID_PARAM);
 
     uint32_t size = rankSize;
     std::string userKey = std::string(key);
@@ -429,16 +434,16 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     return SM_OK;
 }
 
-Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId,
-                                          const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
+Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId, const char *sendBuf,
+                                          uint32_t sendSize, char *recvBuf, uint32_t recvSize)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
-                       "rankSize is invalid! input:" << rankSize<< " option:" << option_.rankSize, SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(rankId < rankSize,
-                       "rankId is invalid! rank:" << rankId<< " size:" << rankSize, SM_INVALID_PARAM);
+                       "rankSize is invalid! input:" << rankSize << " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankId < rankSize, "rankId is invalid! rank:" << rankId << " size:" << rankSize,
+                       SM_INVALID_PARAM);
 
     uint32_t size = rankSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);

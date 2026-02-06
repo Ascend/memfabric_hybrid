@@ -12,7 +12,6 @@
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
-        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans
@@ -32,6 +31,7 @@ file(GLOB_RECURSE PLATFORM_SRC
 
 ## build the static and shared library
 add_library(smem_objects OBJECT ${PLATFORM_SRC})
+target_link_libraries(smem_objects PUBLIC config_store_object)
 
 target_link_libraries(smem_objects PUBLIC smem)
 target_compile_options(smem_objects PRIVATE -fPIC)

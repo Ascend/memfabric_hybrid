@@ -55,22 +55,20 @@ public:
 private:
     SmemStoreFaultHandler() = default;
     int32_t BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                                     const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+                                     const StoreBackendPtr &backend);
     int32_t AddRankInfoMap(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                           const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+                           const StoreBackendPtr &backend);
     int32_t WriteRankInfoMap(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+                             const StoreBackendPtr &backend);
     int32_t AppendRankInfoMap(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                              const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+                              const StoreBackendPtr &backend);
     int32_t GetFromFaultInfo(const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
-                             const std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
-    void ClearFaultInfo(const uint32_t linkId, std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+                             const StoreBackendPtr &backend);
+    void ClearFaultInfo(const uint32_t linkId, StoreBackendPtr &backend);
 
-    void ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
-                         std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+    void ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo, StoreBackendPtr &backend);
 
-    void ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo,
-                        std::unordered_map<std::string, std::vector<uint8_t>> &kvStore);
+    void ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo, StoreBackendPtr &backend);
 
     std::unordered_map<uint32_t, RankInfo> linkIdToRankInfoMap_;
     std::queue<uint16_t> faultRankIdQueue_;

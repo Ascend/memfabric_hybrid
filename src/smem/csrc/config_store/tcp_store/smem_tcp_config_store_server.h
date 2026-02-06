@@ -26,6 +26,7 @@
 #include "acc_tcp_server.h"
 #include "smem_bm_def.h"
 #include "smem_config_store.h"
+#include "smem_config_store_backend.h"
 #include "smem_message_packer.h"
 #include "smem_ref.h"
 
@@ -72,7 +73,7 @@ private:
 
 class AccStoreServer : public SmReferable {
 public:
-    AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept;
+    AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend) noexcept;
     ~AccStoreServer() override = default;
 
     Result Startup(const smem_tls_config &tlsConfig) noexcept;
@@ -120,7 +121,7 @@ private:
 
     std::mutex storeMutex_;
     std::condition_variable storeCond_;
-    std::unordered_map<std::string, std::vector<uint8_t>> kvStore_;
+    StoreBackendPtr backend_;
     std::unordered_map<uint64_t, StoreWaitContext> waitCtx_;
     std::unordered_map<std::string, std::unordered_set<uint64_t>> keyWaiters_;
     ock::acc::AccTcpServerPtr accTcpServer_;

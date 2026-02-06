@@ -13,6 +13,7 @@
 #include "config_store_log.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
+#include "smem_local_memory_backend.h"
 #include "smem_store_factory.h"
 
 namespace ock {
@@ -32,8 +33,11 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-
-    auto store = SmMakeRef<TcpConfigStore>(ip, port, isServer, worldSize, rankId);
+    auto storeBackendPtr = SmMakeRef<SmemLocalMemoryBackend>();
+    STORE_ASSERT_RETURN(storeBackendPtr != nullptr, nullptr);
+    STORE_ASSERT_RETURN(storeBackendPtr->Initialize(ip, "", "") == SUCCESS, nullptr);
+    auto store = SmMakeRef<TcpConfigStore>(Convert<SmemLocalMemoryBackend, ConfigStoreBackend>(storeBackendPtr), ip,
+                                           port, isServer, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
@@ -66,8 +70,11 @@ StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, u
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-
-    auto store = SmMakeRef<TcpConfigStore>(ip, port, true, worldSize, rankId);
+    auto storeBackendPtr = SmMakeRef<SmemLocalMemoryBackend>();
+    STORE_ASSERT_RETURN(storeBackendPtr != nullptr, nullptr);
+    STORE_ASSERT_RETURN(storeBackendPtr->Initialize(ip, "", "") == SUCCESS, nullptr);
+    auto store = SmMakeRef<TcpConfigStore>(Convert<SmemLocalMemoryBackend, ConfigStoreBackend>(storeBackendPtr), ip,
+                                           port, true, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->ServerStart(tlsOption_, connMaxRetry);
@@ -100,8 +107,11 @@ StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, u
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-
-    auto store = SmMakeRef<TcpConfigStore>(ip, port, false, worldSize, rankId);
+    auto storeBackendPtr = SmMakeRef<SmemLocalMemoryBackend>();
+    STORE_ASSERT_RETURN(storeBackendPtr != nullptr, nullptr);
+    STORE_ASSERT_RETURN(storeBackendPtr->Initialize(ip, "", "") == SUCCESS, nullptr);
+    auto store = SmMakeRef<TcpConfigStore>(Convert<SmemLocalMemoryBackend, ConfigStoreBackend>(storeBackendPtr), ip,
+                                           port, false, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->ClientStart(tlsOption_, connMaxRetry);

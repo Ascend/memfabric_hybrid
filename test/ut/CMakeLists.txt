@@ -27,6 +27,9 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/backend
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/ha
+        ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/tcp_store
 
         ${PROJECT_ACCLINKS_SRC_BASE}/include
         ${PROJECT_ACCLINKS_SRC_BASE}/csrc

@@ -1,0 +1,1 @@
+# Election-aware High Availability (HA) Config Store

@@ -22,19 +22,11 @@
 
 #include "smem_types.h"
 #include "smem_ref.h"
+#include "smem_config_store_backend.h"
+#include "config_store_errno.h"
 
 namespace ock {
 namespace smem {
-enum StoreErrorCode : int16_t {
-    SUCCESS = SM_OK,
-    ERROR = SM_ERROR,
-    INVALID_MESSAGE = -400,
-    INVALID_KEY = -401,
-    NOT_EXIST = -404,
-    RESTORE = -405,
-    TIMEOUT = -601,
-    IO_ERROR = -602
-};
 
 enum WatchRankType : uint32_t {
     WATCH_RANK_LINK_DOWN = 0,
@@ -46,10 +38,8 @@ using ConfigStoreReconnectHandler = std::function<int32_t(void)>;
 
 using ConfigStoreClientBrokenHandler = std::function<int()>;
 using ConfigStoreServerOpHandler =
-    std::function<int32_t(const uint32_t, const std::string &, std::vector<uint8_t> &,
-                          const std::unordered_map<std::string, std::vector<uint8_t>> &)>;
-using ConfigStoreServerBrokenHandler =
-    std::function<void(const uint32_t, std::unordered_map<std::string, std::vector<uint8_t>> &)>;
+    std::function<int32_t(const uint32_t, const std::string &, std::vector<uint8_t> &, const StoreBackendPtr &)>;
+using ConfigStoreServerBrokenHandler = std::function<void(const uint32_t, StoreBackendPtr &)>;
 
 class ConfigStore : public SmReferable {
 public:

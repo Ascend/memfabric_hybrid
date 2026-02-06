@@ -12,6 +12,7 @@
 #include "smem_tcp_config_store_server.h"
 
 #include <algorithm>
+#include <utility>
 #include "acc_tcp_server.h"
 #include "config_store_log.h"
 #include "smem_message_packer.h"
@@ -26,9 +27,8 @@ std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
 constexpr uint16_t MAX_U16_INDEX = 65535;
 constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
 
-AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize) noexcept
-    : listenIp_{std::move(ip)}, listenPort_{port}, worldSize_{worldSize},
-      requestHandlers_{{MessageType::SET, &AccStoreServer::SetHandler},
+AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend) noexcept
+    : requestHandlers_{{MessageType::SET, &AccStoreServer::SetHandler},
                        {MessageType::GET, &AccStoreServer::GetHandler},
                        {MessageType::ADD, &AccStoreServer::AddHandler},
                        {MessageType::REMOVE, &AccStoreServer::RemoveHandler},
@@ -36,7 +36,8 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
                        {MessageType::CAS, &AccStoreServer::CasHandler},
                        {MessageType::WRITE, &AccStoreServer::WriteHandler},
                        {MessageType::WATCH_RANK_STATE, &AccStoreServer::WatchRankStateHandler},
-                       {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler}}
+                       {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler}},
+      backend_(std::move(backend)), listenIp_{std::move(ip)}, listenPort_{port}, worldSize_{worldSize}
 {}
 
 Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
@@ -192,7 +193,8 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     trans.rankId = rankId;
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    kvStore_[autoRankingStr] = std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data));
+    auto ret = backend_->Put(autoRankingStr, std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data)), 0);
+    STORE_ASSERT_RETURN(ret == SUCCESS, ret);
     aliveRankSet_.insert(rankId);
 
     return SM_OK;
@@ -210,21 +212,22 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
     } trans{};
     std::string autoRankingStr = autoRankingStr_ + std::to_string(linkId);
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(autoRankingStr);
-    if (pos != kvStore_.end()) {
-        std::copy(pos->second.begin(), pos->second.end(), trans.data);
+    std::vector<uint8_t> outValue;
+    auto ret = backend_->Get(autoRankingStr, outValue);
+    if (ret == SUCCESS) {
+        std::copy(outValue.begin(), outValue.end(), trans.data);
         rankId = trans.rankId;
         aliveRankSet_.erase(rankId);
-        kvStore_.erase(pos);
+        STORE_ASSERT_RETURN(backend_->Delete(autoRankingStr) == SUCCESS, SM_ERROR);
         STORE_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
     }
     heartBeatMap_.erase(link->Id());
     if (externalBrokenHandler_ != nullptr) {
-        externalBrokenHandler_(link->Id(), kvStore_);
+        externalBrokenHandler_(link->Id(), backend_);
     } else if (aliveRankSet_.empty()) {
         STORE_LOG_INFO("all client link broken, will clear data");
         rankIndex_ = 0;
-        kvStore_.clear();
+        backend_->Clear();
         waitCtx_.clear();
         keyWaiters_.clear();
         timedWaiters_.clear();
@@ -245,7 +248,7 @@ Result AccStoreServer::LinkBrokenHandler(const uint32_t linkId) noexcept
 {
     STORE_LOG_INFO("inner detect link broken, linkId: " << linkId);
     if (externalBrokenHandler_ != nullptr) {
-        externalBrokenHandler_(linkId, kvStore_);
+        externalBrokenHandler_(linkId, backend_);
     }
     heartBeatMap_.erase(linkId);
     return SM_OK;
@@ -277,21 +280,21 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
-    auto pos = kvStore_.find(key);
-    if (pos == kvStore_.end()) {
+    auto ret = backend_->Exist(key);
+    if (ret != SUCCESS) {
         auto wPos = keyWaiters_.find(key);
         if (wPos != keyWaiters_.end()) {
             wakeupWaiters = GetOutWaitersInLock(wPos->second);
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        kvStore_.emplace(key, std::move(value));
+        ret = backend_->Put(key, std::move(value), 0);
     } else {
-        pos->second = std::move(value);
+        ret = backend_->Put(key, std::move(value), 0);
     }
     lockGuard.unlock();
 
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, "success");
+    ReplyWithMessage(context, ret, ret == SUCCESS ? "success" : "error");
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, reqVal);
     }
@@ -308,9 +311,10 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     STORE_LOG_DEBUG("GET rankingKey(" << rankingKey << ") start.");
     SmemMessage responseMessage{request.mt};
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(rankingKey);
-    if (pos != kvStore_.end()) {
-        responseMessage.values.emplace_back(pos->second);
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(rankingKey, oldValue);
+    if (ret == SUCCESS) {
+        responseMessage.values.emplace_back(oldValue);
         lockGuard.unlock();
         STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") success.");
         auto response = SmemMessagePacker::Pack(responseMessage);
@@ -338,14 +342,14 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     } trans{};
     trans.rankId = rankIndex_;
     std::vector<uint8_t> data{trans.date, trans.date + sizeof(trans.date)};
-    kvStore_.emplace(rankingKey, std::move(data));
+    ret = backend_->Put(rankingKey, std::move(data), 0);
     lockGuard.unlock();
 
     responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
     STORE_LOG_INFO("GET REQUEST(" << context.SeqNo() << ") for key(" << rankingKey << ") rankId:" << trans.rankId
                                   << " worldSize:" << worldSize_);
     auto response = SmemMessagePacker::Pack(responseMessage);
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
+    ReplyWithMessage(context, ret, response);
     return 0;
 }
 
@@ -370,9 +374,10 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     SmemMessage responseMessage{request.mt};
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(key);
-    if (pos != kvStore_.end()) {
-        responseMessage.values.push_back(pos->second);
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(key, oldValue);
+    if (ret == SUCCESS) {
+        responseMessage.values.push_back(oldValue);
         lockGuard.unlock();
 
         STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") success.");
@@ -459,17 +464,18 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
-    auto pos = kvStore_.find(key);
-    if (pos == kvStore_.end()) {
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(key, oldValue);
+    if (ret != SUCCESS) {
         auto wPos = keyWaiters_.find(key);
         if (wPos != keyWaiters_.end()) {
             wakeupWaiters = GetOutWaitersInLock(wPos->second);
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        kvStore_.emplace(key, std::move(value));
+        ret = backend_->Put(key, std::move(value), 0);
     } else {
-        std::string oldValueStr{pos->second.begin(), pos->second.end()};
+        std::string oldValueStr{oldValue.begin(), oldValue.end()};
         long storedValueNum = 0;
         auto ret = mf::StrUtil::String2Int<long>(oldValueStr, storedValueNum);
         if ((storedValueNum == 0 && oldValueStr != "0") || !ret) {
@@ -481,13 +487,13 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
 
         storedValueNum += valueNum;
         auto storedValueStr = std::to_string(storedValueNum);
-        pos->second = std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end());
+        ret = backend_->Put(key, std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end()), 0);
         responseValue = storedValueNum;
     }
     lockGuard.unlock();
     STORE_LOG_DEBUG("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << ") value(" << responseValue
                                    << ") end.");
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, std::to_string(responseValue));
+    ReplyWithMessage(context, ret, std::to_string(responseValue));
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, reqVal);
     }
@@ -511,9 +517,9 @@ Result AccStoreServer::RemoveHandler(const ock::acc::AccTcpRequestContext &conte
     STORE_LOG_DEBUG("REMOVE REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
     bool removed = false;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(key);
-    if (pos != kvStore_.end()) {
-        kvStore_.erase(pos);
+    auto ret = backend_->Exist(key);
+    if (ret == SUCCESS) {
+        (void)backend_->Delete(key);
         removed = true;
     }
     lockGuard.unlock();
@@ -544,10 +550,12 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
     std::vector<uint8_t> reqVal;
     std::vector<uint8_t> appendValue = value;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(key);
-    if (pos != kvStore_.end()) {
-        pos->second.insert(pos->second.end(), value.begin(), value.end());
-        newSize = pos->second.size();
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(key, oldValue);
+    if (ret == SUCCESS) {
+        oldValue.insert(oldValue.end(), value.begin(), value.end());
+        newSize = oldValue.size();
+        ret = backend_->Put(key, oldValue, 0);
     } else {
         newSize = value.size();
         auto wPos = keyWaiters_.find(key);
@@ -556,7 +564,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        kvStore_.emplace(key, std::move(value));
+        ret = backend_->Put(key, std::move(value), 0);
     }
     if (ExcuteHandle(MessageType::APPEND, context.Link()->Id(), key, appendValue) != SM_OK) {
         lockGuard.unlock();
@@ -565,7 +573,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
         return StoreErrorCode::ERROR;
     }
     lockGuard.unlock();
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, std::to_string(newSize));
+    ReplyWithMessage(context, ret, std::to_string(newSize));
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, value);
     }
@@ -596,12 +604,19 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") offset(" << offset
                                     << ") value size(" << realValSize << ")");
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-
-    if (kvStore_.find(key) == kvStore_.end()) {
-        kvStore_.emplace(key, std::vector<uint8_t>(offset + realValSize, 0));
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(key, oldValue);
+    if (ret != SUCCESS) {
         STORE_LOG_INFO("write: not find key:" << key << ", new alloc mem: " << offset + realValSize);
+        ret = backend_->Put(key, std::vector<uint8_t>(offset + realValSize, 0), 0);
+        if (ret != SUCCESS) {
+            STORE_LOG_ERROR("put failed, key=" << key << ", ret: " << ret);
+            ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
+            return StoreErrorCode::ERROR;
+        }
     }
-    auto &curValue = kvStore_.find(key)->second;
+    ret = backend_->Get(key, oldValue);
+    auto &curValue = oldValue;
     if (offset + realValSize > curValue.size()) {
         curValue.resize(offset + realValSize, 0);
         STORE_LOG_INFO("write: not enough kvStore room, expansion size: " << (offset + realValSize));
@@ -614,7 +629,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
         return StoreErrorCode::ERROR;
     }
     lockGuard.unlock();
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, "success");
+    ReplyWithMessage(context, ret, "success");
     return SM_OK;
 }
 
@@ -644,17 +659,19 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
     STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key
                                    << ") start, newValueStr: " << newValueStr);
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto pos = kvStore_.find(key);
-    if (pos != kvStore_.end()) {
-        if (expected == pos->second) {
-            exists = std::move(pos->second);
-            pos->second = std::move(exchange);
+    std::vector<uint8_t> oldValue;
+    auto ret = backend_->Get(key, oldValue);
+    if (ret == SUCCESS) {
+        if (expected == oldValue) {
+            exists = std::move(oldValue);
+            ret = backend_->Put(key, exchange, 0);
         } else {
-            exists = pos->second;
+            exists = oldValue;
         }
     } else {
+        ret = SUCCESS;
         if (expected.empty()) {
-            kvStore_.emplace(key, std::move(exchange));
+            ret = backend_->Put(key, exchange, 0);
             auto wPos = keyWaiters_.find(key);
             if (wPos != keyWaiters_.end()) {
                 wakeupWaiters = GetOutWaitersInLock(wPos->second);
@@ -668,7 +685,7 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
 
     responseMessage.values.push_back(exists);
     auto response = SmemMessagePacker::Pack(responseMessage);
-    ReplyWithMessage(context, StoreErrorCode::SUCCESS, response);
+    ReplyWithMessage(context, ret, response);
     if (!wakeupWaiters.empty()) {
         WakeupWaiters(wakeupWaiters, newValue);
     }
@@ -869,7 +886,7 @@ Result AccStoreServer::ExcuteHandle(int16_t opCode, uint32_t linkId, std::string
         STORE_LOG_DEBUG("excute handle map not find opCode:" << opCode);
         return SM_OK;
     }
-    return it->second(linkId, key, value, kvStore_);
+    return it->second(linkId, key, value, backend_);
 }
 } // namespace smem
 } // namespace ock
