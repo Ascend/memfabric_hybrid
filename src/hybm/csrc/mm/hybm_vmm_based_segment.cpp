@@ -256,9 +256,23 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
 
 Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
-    auto memType = options_.segType == HYBM_MST_HBM ? MEM_TYPE_DEVICE_HBM : MEM_TYPE_HOST_DRAM;
-    slice = std::make_shared<MemSlice>(sliceCount_++, memType, MEM_PT_TYPE_SVM,
-                                       reinterpret_cast<uint64_t>(addr), size);
+    bool isHbm = (reinterpret_cast<uint64_t>(addr) >= HYBM_HBM_START_ADDR
+        && reinterpret_cast<uint64_t>(addr) < HYBM_HBM_END_ADDR);
+    if (isHbm) {
+        slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
+            reinterpret_cast<uint64_t>(addr), size);
+    } else {
+        void *output = nullptr;
+        auto ret = DlHalApi::HalHostRegister(const_cast<void *>(addr), size,
+            HOST_MEM_MAP_DEV, options_.devId, &output);
+        if (ret != 0) {
+            BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr << " ret: " << ret);
+            return ret;
+        }
+        slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
+            reinterpret_cast<uint64_t>(output), size);
+    }
+    registerSlices_.emplace(slice->index_, std::make_pair(slice, reinterpret_cast<uint64_t>(addr)));
     BM_LOG_INFO("HybmVmmBasedSegment: RegisterMemory success, size: " << size << " addr: " << std::hex << addr);
     return BM_OK;
 }
@@ -268,24 +282,39 @@ Result HybmVmmBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcep
     BM_VALIDATE_RETURN(slice != nullptr, "input slice is nullptr", BM_INVALID_PARAM);
 
     auto pos = slices_.find(slice->index_);
-    if (pos == slices_.end()) {
-        BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
-        return BM_INVALID_PARAM;
+    if (pos != slices_.end()) {
+        if (pos->second.slice != slice) {
+            BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
+            return BM_INVALID_PARAM;
+        }
+        auto res = DlHalApi::HalMemUnmap(reinterpret_cast<void *>(slice->vAddress_));
+        BM_LOG_INFO("unmap slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
+
+        res = DlHalApi::HalMemRelease(reinterpret_cast<drv_mem_handle_t *>(pos->second.handle));
+        BM_LOG_INFO("release slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
+        HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_);
+
+        slices_.erase(pos);
+        return BM_OK;
     }
-    if (pos->second.slice != slice) {
-        BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
-        return BM_INVALID_PARAM;
+    auto registerPos = registerSlices_.find(slice->index_);
+    if (registerPos != registerSlices_.end()) {
+        if (registerPos->second.first.slice != slice) {
+            BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
+            return BM_INVALID_PARAM;
+        }
+        uint64_t realAddr = registerPos->second.second;
+        bool isHbm = (realAddr >= HYBM_HBM_START_ADDR && realAddr < HYBM_HBM_END_ADDR);
+        if (!isHbm) {
+            auto ret = DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(realAddr),
+                options_.devId, HOST_MEM_MAP_DEV);
+            BM_LOG_INFO("unregister slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << ret);
+        }
+        registerSlices_.erase(registerPos);
+        return BM_OK;
     }
-
-    auto res = DlHalApi::HalMemUnmap(reinterpret_cast<void *>(slice->vAddress_));
-    BM_LOG_INFO("unmap slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
-
-    res = DlHalApi::HalMemRelease(reinterpret_cast<drv_mem_handle_t *>(pos->second.handle));
-    BM_LOG_INFO("release slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
-    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_);
-
-    slices_.erase(pos);
-    return BM_OK;
+    BM_LOG_ERROR("input slice(idx:" << slice->index_ << ") not exist.");
+    return BM_INVALID_PARAM;
 }
 
 Result HybmVmmBasedSegment::Export(std::string &exInfo) noexcept
@@ -560,13 +589,16 @@ Result HybmVmmBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) n
 MemSlicePtr HybmVmmBasedSegment::GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept
 {
     auto index = MemSlice::GetIndexFrom(slice);
+    MemSlicePtr target = nullptr;
     auto pos = slices_.find(index);
-    if (pos == slices_.end()) {
-        return nullptr;
+    auto registerPos = registerSlices_.find(index);
+    if (pos != slices_.end()) {
+        target = pos->second.slice;
+    } else if (registerPos != registerSlices_.end()) {
+        target = registerPos->second.first.slice;
     }
 
-    auto target = pos->second.slice;
-    if (!target->ValidateId(slice)) {
+    if (target == nullptr || !target->ValidateId(slice)) {
         return nullptr;
     }
 

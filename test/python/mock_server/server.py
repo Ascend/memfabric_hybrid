@@ -220,7 +220,7 @@ def result_handler(func):
 
 def set_device(device_id: int):
     torch.npu.set_device(device=device_id)
-    _stream = acl.rt.create_stream()
+    _stream, ret = acl.rt.create_stream()
     return _stream
 
 

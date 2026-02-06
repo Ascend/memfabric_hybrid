@@ -79,6 +79,7 @@ private:
     uint16_t sliceCount_{0};
 
     std::map<uint16_t, MemSliceStatus> slices_;
+    std::map<uint16_t, std::pair<MemSliceStatus, uint64_t>> registerSlices_;
     std::map<uint16_t, std::string> exportMap_;
     std::map<uint64_t, drv_mem_handle_t *> mappedMem_;
 };
