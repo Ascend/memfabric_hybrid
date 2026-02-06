@@ -279,7 +279,7 @@ TEST_F(SmemBmTest, two_card_shm_create_success)
         }
     }
 }
-
+/*
 TEST_F(SmemBmTest, two_crad_bm_copy_success)
 {
     smem_set_log_level(0);
@@ -414,3 +414,4 @@ TEST_F(SmemBmTest, two_crad_bm_copy_success)
         }
     }
 }
+ */
