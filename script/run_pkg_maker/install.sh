@@ -289,7 +289,7 @@ function install_wheel_package() {
 function try_install_extend()
 {
     bisheng_path=$(which bisheng 2>/dev/null)
-    if [ -z "bisheng_path" ]; then
+    if [ -z "${bisheng_path}" ]; then
         print "WARNING" "bisheng Not Found, skip install extend lib."
         return
     fi
