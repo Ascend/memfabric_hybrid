@@ -140,7 +140,7 @@ int32_t SmemBmEntryManager::AutoRanking()
         } trans{};
         std::copy_n(rankIdDate.begin(), sizeof(trans.date), trans.date);
         config_.rankId = trans.rankId;
-        auto tcpConfigStore = Convert<ConfigStore, TcpConfigStore>(confStore_->GetCoreStore());
+        auto tcpConfigStore = Convert<ConfigStore, ConfigStoreManager>(confStore_);
         tcpConfigStore->SetRankId(config_.rankId);
         SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: " << localIp
                                                        << " deviceId: " << deviceId_);

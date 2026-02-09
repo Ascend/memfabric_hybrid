@@ -138,7 +138,7 @@ private:
     UrlExtraction urlExtraction_;
     StoreKeys localKeys_;
     StoreKeys remoteKeys_;
-    StorePtr store_ = nullptr;
+    StoreManagerPtr store_ = nullptr;
     size_t deviceExpSize_ = 0;
     size_t sliceExpSize_ = 0;
 

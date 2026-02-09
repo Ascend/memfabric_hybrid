@@ -74,7 +74,7 @@ public:
     static SmemGroupEnginePtr Create(const StorePtr &store, const SmemGroupOption &option);
 
 public:
-    SmemNetGroupEngine(const StorePtr &store, const SmemGroupOption &option) : store_(store), option_(option)
+    SmemNetGroupEngine(const StoreManagerPtr &store, const SmemGroupOption &option) : store_(store), option_(option)
     {
         joined_ = !option_.dynamic;
         if (option_.dynamic) {
@@ -91,8 +91,8 @@ public:
 
     Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
 
-    Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId,
-                          const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
+    Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId, const char *sendBuf, uint32_t sendSize,
+                          char *recvBuf, uint32_t recvSize);
 
     Result GroupBroadcastExit(int status);
 
@@ -130,7 +130,7 @@ private:
     int32_t LinkReconnectHandler();
     void RankExit(int result, const std::string &key, const std::string &value);
 
-    StorePtr store_ = nullptr;
+    StoreManagerPtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
     uint32_t allGatherGroupSn_ = 0;

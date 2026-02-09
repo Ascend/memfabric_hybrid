@@ -61,7 +61,8 @@ int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startC
         SM_VALIDATE_RETURN(tmpStore != nullptr, "create store client with url failed.", SM_NEW_OBJECT_FAILED);
     }
 
-    store_ = StoreFactory::PrefixStore(tmpStore, std::string("/trans/").append(std::to_string(entityId).append("/")));
+    tmpStore = StoreFactory::PrefixStore(tmpStore, std::string("/trans/").append(std::to_string(entityId).append("/")));
+    store_ = Convert<ConfigStore, ConfigStoreManager>(tmpStore);
     SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 
     return SM_OK;

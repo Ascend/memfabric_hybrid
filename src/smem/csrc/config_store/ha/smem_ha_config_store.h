@@ -22,7 +22,7 @@
 namespace ock {
 namespace smem {
 
-class HaConfigStore : public ConfigStore {
+class HaConfigStore : public ConfigStoreManager {
 public:
     explicit HaConfigStore(TcpConfigStorePtr clientDelegate) noexcept;
     ~HaConfigStore() noexcept override;
@@ -57,7 +57,7 @@ public:
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept override;
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override;
     void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override;
-    void SetRankId(const int32_t &rankId) noexcept;
+    void SetRankId(const int32_t &rankId) noexcept override;
 
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override;

@@ -18,10 +18,11 @@
 namespace ock {
 namespace smem {
 
-class PrefixConfigStore : public ConfigStore {
+class PrefixConfigStore : public ConfigStoreManager {
 public:
     PrefixConfigStore(const StorePtr &base, std::string prefix) noexcept
-        : baseStore_{base->GetCoreStore()}, keyPrefix_{base->GetCommonPrefix().append(std::move(prefix))}
+        : baseStore_(Convert<ConfigStore, ConfigStoreManager>(base->GetCoreStore())),
+          keyPrefix_{base->GetCommonPrefix().append(std::move(prefix))}
     {}
 
     ~PrefixConfigStore() override = default;
@@ -101,7 +102,7 @@ public:
 
     StorePtr GetCoreStore() noexcept override
     {
-        return baseStore_;
+        return Convert<ConfigStoreManager, ConfigStore>(baseStore_);
     }
 
     void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept override
@@ -150,7 +151,7 @@ protected:
     }
 
 private:
-    const StorePtr baseStore_;
+    const StoreManagerPtr baseStore_;
     const std::string keyPrefix_;
 };
 } // namespace smem

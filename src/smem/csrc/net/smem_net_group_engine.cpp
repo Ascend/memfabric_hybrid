@@ -108,8 +108,9 @@ SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr &store, const SmemG
     std::string prefix = (option.dynamic ? "D_" : "S_");
     StorePtr ss = StoreFactory::PrefixStore(store, prefix);
     SM_ASSERT_RETURN(ss != nullptr, nullptr);
-
-    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(ss, option);
+    StoreManagerPtr managerPtr = Convert<ConfigStore, ConfigStoreManager>(ss);
+    SM_ASSERT_RETURN(managerPtr != nullptr, nullptr);
+    SmemGroupEnginePtr group = SmMakeRef<SmemNetGroupEngine>(managerPtr, option);
     SM_ASSERT_RETURN(group != nullptr, nullptr);
 
     if (option.dynamic) {

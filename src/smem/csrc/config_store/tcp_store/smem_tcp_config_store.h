@@ -38,10 +38,10 @@ public:
     }
 };
 
-class TcpConfigStore : public ConfigStore {
+class TcpConfigStore : public ConfigStoreManager {
 public:
-    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer,
-                   uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
+    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0,
+                   int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
     Result Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
@@ -82,7 +82,7 @@ public:
         reconnectHandler = callback;
     }
 
-    void SetRankId(const int32_t &rankId) noexcept
+    void SetRankId(const int32_t &rankId) noexcept override
     {
         rankId_ = rankId;
     }

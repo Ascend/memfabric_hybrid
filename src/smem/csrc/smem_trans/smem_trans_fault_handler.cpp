@@ -25,34 +25,36 @@ void SmemStoreFaultHandler::RegisterHandlerToStore(StorePtr store)
     if (store == nullptr) {
         return;
     }
+    StoreManagerPtr managerPtr = Convert<ConfigStore, ConfigStoreManager>(store);
+    SM_ASSERT_RET_VOID(managerPtr != nullptr);
     auto setHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                              const StoreBackendPtr &backend) {
         return BuildLinkIdToRankInfoMap(linkId, key, value, backend);
     };
-    store->RegisterServerOpHandler(MessageType::SET, setHandler);
+    managerPtr->RegisterServerOpHandler(MessageType::SET, setHandler);
 
     auto getHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                              const StoreBackendPtr &backend) { return GetFromFaultInfo(linkId, key, value, backend); };
-    store->RegisterServerOpHandler(MessageType::GET, getHandler);
+    managerPtr->RegisterServerOpHandler(MessageType::GET, getHandler);
 
     auto addHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                              const StoreBackendPtr &backend) { return AddRankInfoMap(linkId, key, value, backend); };
-    store->RegisterServerOpHandler(MessageType::ADD, addHandler);
+    managerPtr->RegisterServerOpHandler(MessageType::ADD, addHandler);
 
     auto writeHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                                const StoreBackendPtr &backend) {
         return WriteRankInfoMap(linkId, key, value, backend);
     };
-    store->RegisterServerOpHandler(MessageType::WRITE, writeHandler);
+    managerPtr->RegisterServerOpHandler(MessageType::WRITE, writeHandler);
 
     auto appendHandler = [this](const uint32_t linkId, const std::string &key, std::vector<uint8_t> &value,
                                 const StoreBackendPtr &backend) {
         return AppendRankInfoMap(linkId, key, value, backend);
     };
-    store->RegisterServerOpHandler(MessageType::APPEND, appendHandler);
+    managerPtr->RegisterServerOpHandler(MessageType::APPEND, appendHandler);
 
     auto clearHandler = [this](const uint32_t linkId, StoreBackendPtr &backend) { ClearFaultInfo(linkId, backend); };
-    store->RegisterServerBrokenHandler(clearHandler);
+    managerPtr->RegisterServerBrokenHandler(clearHandler);
 }
 
 int32_t SmemStoreFaultHandler::BuildLinkIdToRankInfoMap(const uint32_t linkId, const std::string &key,

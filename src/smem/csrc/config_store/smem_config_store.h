@@ -221,25 +221,64 @@ public:
 
     virtual SmRef<ConfigStore> GetCoreStore() noexcept = 0;
 
-    virtual void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept = 0;
-
-    virtual Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept = 0;
-
-    virtual bool GetConnectStatus() noexcept = 0;
-
-    virtual void SetConnectStatus(bool status) noexcept = 0;
-
-    virtual void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept = 0;
-
-    virtual void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept = 0;
-
-    virtual void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept = 0;
-
 protected:
     virtual Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept = 0;
     static constexpr uint32_t MAX_KEY_LEN_CLIENT = 1024U;
 };
 using StorePtr = SmRef<ConfigStore>;
+
+class ConfigStoreManager : public ConfigStore {
+public:
+    ~ConfigStoreManager() override = default;
+
+public:
+    /**
+     * @brief Register reconnect handler for broken connection recovery
+     * @param callback     [in] callback function to be invoked on reconnection
+     */
+    virtual void RegisterReconnectHandler(ConfigStoreReconnectHandler callback) noexcept = 0;
+
+    /**
+     * @brief Reconnect after connection broken
+     * @param reconnectRetryTimes [in] number of retry times for reconnection
+     * @return 0 if successfully done
+     */
+    virtual Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept = 0;
+
+    /**
+     * @brief Get current connection status
+     * @return true if connected, false otherwise
+     */
+    virtual bool GetConnectStatus() noexcept = 0;
+
+    /**
+     * @brief Set connection status
+     * @param status       [in] connection status to be set
+     */
+    virtual void SetConnectStatus(bool status) noexcept = 0;
+
+    /**
+     * @brief Register client broken handler
+     * @param handler      [in] handler to be invoked when client connection is broken
+     */
+    virtual void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept = 0;
+
+    /**
+     * @brief Register server broken handler
+     * @param handler      [in] handler to be invoked when server connection is broken
+     */
+    virtual void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept = 0;
+
+    /**
+     * @brief Register server operation handler
+     * @param opCode       [in] operation code
+     * @param handler      [in] handler to be invoked for the specified operation
+     */
+    virtual void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept = 0;
+
+    virtual void SetRankId(const int32_t &rankId) noexcept {}
+};
+using StoreManagerPtr = SmRef<ConfigStoreManager>;
 
 inline Result ConfigStore::Set(const std::string &key, const std::string &value) noexcept
 {
