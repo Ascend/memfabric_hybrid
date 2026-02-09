@@ -94,6 +94,18 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
     BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
     BM_LOG_DEBUG("Src[0]: " << VaToInfo(params->sources[0]) << ", dest[0]: " << VaToInfo(params->destinations[0]));
 
+    if (direction == HYBM_DATA_COPY_DIRECTION_AUTO) {
+        auto &vaMgr = ock::mf::HybmVaManager::GetInstance();
+        direction = vaMgr.InferCopyDirection(reinterpret_cast<uint64_t>(params->sources[0]),
+                                             reinterpret_cast<uint64_t>(params->destinations[0]));
+        if (UNLIKELY(direction == HYBM_DATA_COPY_DIRECTION_BUTT)) {
+            BM_LOG_ERROR("Failed to auto infer copy direction, src=0x"
+                         << std::hex << reinterpret_cast<uint64_t>(params->sources[0]) << ", dest=0x" <<
+                         std::hex << reinterpret_cast<uint64_t>(params->destinations[0]));
+            return BM_INVALID_PARAM;
+        }
+    }
+
     bool addressValid = true;
     auto entity = (MemEntity *)e;
     bool check_dst = g_checkMap[direction][OP_CHECK_DEST];
