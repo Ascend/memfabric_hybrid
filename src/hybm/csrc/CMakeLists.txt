@@ -37,6 +37,7 @@ file(GLOB_RECURSE HYBMM_SRC_FILES
         ${PROJECT_HYBM_SRC_BASE}/csrc/*.h
 )
 list(FILTER HYBMM_SRC_FILES EXCLUDE REGEX ${PROJECT_HYBM_SRC_BASE}/csrc/copy_extend/*)
+list(FILTER HYBMM_SRC_FILES EXCLUDE REGEX "${PROJECT_HYBM_SRC_BASE}/csrc/driver/npu_direct_rdma/.*")
 
 ## build the static and shared library
 add_library(hybmm_objects OBJECT ${HYBMM_SRC_FILES})

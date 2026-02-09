@@ -49,8 +49,14 @@ uint64_t (*g_kallsymsLookupName)(const char *) = NULL;
 
 #define NPU_PAGE_SHIFT   12
 #define NPU_PAGE_SIZE    ((u64)1 << NPU_PAGE_SHIFT)
-#define NPU_PAGE_OFFSET  (NPU_PAGE_SIZE-1)
+#define NPU_PAGE_OFFSET  (NPU_PAGE_SIZE - 1)
 #define NPU_PAGE_MASK    (~NPU_PAGE_OFFSET)
+
+struct process_id {
+    int hostpid;
+    unsigned int devid;
+    unsigned int vfid;
+};
 
 // svm agent context
 struct svm_agent_context {
@@ -69,6 +75,10 @@ struct svm_agent_context {
     uint64_t aligned_size;
     uint32_t page_size;
     uint32_t pa_num;
+
+    int get_flag;
+    struct process_id process_id;
+    void* pa_list;
 };
 
 DECLARE_RWSEM(svm_context_sem);
@@ -320,7 +330,9 @@ int NDRPeerMemDmaMap(struct sg_table *sg_head, void *agent_ctx,
         sg_dma_address(sg) = dma_addr;
         sg_dma_len(sg) = page_size;
 
-        sg_set_page(sg, NULL, page_size, 0); // Explicitly clear page association, mark as "device-only memory"
+        sg->page_link = 0UL;
+        sg->length = (unsigned int)page_size;
+        sg->offset = 0;
 
         NDR_PEER_MEM_INFO("Mapped PA[%d]=0x%llx to DMA=0x%llx (VA offset ~0x%llx)\n",
                           i, page_table->pages_info[i].pa, (u64)dma_addr,

@@ -1,4 +1,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+# MemFabric_Hybrid is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#          http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
 
 cmake_minimum_required(VERSION 3.14.1)
 project(NDR C CXX)
@@ -45,6 +53,22 @@ endif()
 # Other targets depend on target under src.
 add_subdirectory(3rdparty)
 add_subdirectory(src)
+
+
+# ========== Unit Test Build Option ==========
+message(STATUS "Checking BUILD_TESTS option...")
+
+option(BUILD_TESTS "Build unit tests" OFF)
+
+if(BUILD_TESTS)
+    message(STATUS "BUILD_TESTS is ON —> Adding test subdirectory")
+    add_subdirectory(test)
+else()
+    message(STATUS "BUILD_TESTS is OFF —> Skipping unit tests")
+endif()
+
+message(STATUS "Finished processing BUILD_TESTS option")
+# ===========================================
 
 # Build example
 if (NDR_BUILD_EXAMPLE STREQUAL "ON")

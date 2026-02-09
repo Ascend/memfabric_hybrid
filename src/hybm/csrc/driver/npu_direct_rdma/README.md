@@ -10,8 +10,9 @@ rdma_core: https://github.com/linux-rdma/rdma-core
 
 编译命令
 1. `cd npu_direct_rdma`
-2. `bash scripts/build.sh` (需要root权限)
-
+2. 默认编译(无测试) `bash scripts/build.sh` (需要root权限)
+3. 编译测试 `bash scripts/build.sh --build_test ON`
+4. 查看帮助 `bash scripts/build.sh --help`
 
 # perftest
 使用perftest测试rdma相关性能
