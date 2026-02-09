@@ -607,7 +607,7 @@ bool RdmaTransportManager::RaRdevInit(uint32_t deviceId, in_addr deviceIp, void 
 
     info.mode = NETWORK_OFFLINE;
     info.notifyType = NOTIFY;
-    info.enabled2mbLite = false;
+    info.enabled2mbLite = true; // support 64k os
     rdev.phyId = deviceId;
     rdev.family = AF_INET;
     rdev.localIp.addr = deviceIp;
