@@ -26,6 +26,7 @@ const std::string DRIVER_VER_V3 = "V100R001C21B035";
 const std::string DRIVER_VER_V2 = "V100R001C19SPC109B220";
 const std::string DRIVER_VER_V1 = "V100R001C18B100";
 const std::string DRIVER_INSTALL_INFO = "/etc/ascend_install.info";
+const std::string DRIVER_DEFAULT_PATH = "/usr/local/Ascend";
 
 HybmGvaVersion checkVer = HYBM_GVA_UNKNOWN;
 
@@ -34,13 +35,13 @@ HybmGvaVersion HybmGetGvaVersion()
     return checkVer;
 }
 
-static std::string LoadValueInfoFile(const std::string &realName, const std::string &keyStr)
+static std::string LoadValueFromFile(const std::string &realName, const std::string &keyStr)
 {
     std::string driverVersion;
     // 打开该文件前，判断该文件路径是否有效、规范
     char realFile[PATH_MAX] = {0};
     if (realpath(realName.c_str(), realFile) == nullptr) {
-        BM_LOG_WARN("driver version path is not a valid real path.");
+        BM_LOG_WARN("driver version path is not a valid real path:" << realName);
         return "";
     }
 
@@ -57,7 +58,7 @@ static std::string LoadValueInfoFile(const std::string &realName, const std::str
     while (getline(infile, line)) {
         --maxRows;
         if (maxRows < 0) {
-            BM_LOG_WARN("driver version file content is too long.");
+            BM_LOG_WARN("driver version file content is too long:" << realFile);
             return "";
         }
         auto found = line.find(keyStr);
@@ -77,15 +78,15 @@ static std::string CastDriverVersion()
 #ifdef UT_ENABLED
     std::string driverVersionPath = std::getenv("ASCEND_HOME_PATH");
 #else
-    std::string driverVersionPath = LoadValueInfoFile(DRIVER_INSTALL_INFO, "Driver_Install_Path_Param=");
-#endif
-    if (!driverVersionPath.empty()) {
-        driverVersionPath += "/driver/version.info";
-        std::string driverVersion = LoadValueInfoFile(driverVersionPath, "Innerversion=");
-        return driverVersion;
+    std::string driverVersionPath = LoadValueFromFile(DRIVER_INSTALL_INFO, "Driver_Install_Path_Param=");
+    if (driverVersionPath.empty()) {
+        BM_LOG_INFO("cannot found version file in " << DRIVER_INSTALL_INFO << ", use path:" << DRIVER_DEFAULT_PATH);
+        driverVersionPath = DRIVER_DEFAULT_PATH;
     }
-    BM_LOG_WARN("cannot found version file in " << DRIVER_INSTALL_INFO);
-    return "";
+#endif
+    driverVersionPath += "/driver/version.info";
+    std::string driverVersion = LoadValueFromFile(driverVersionPath, "Innerversion=");
+    return driverVersion;
 }
 
 static int32_t GetValueFromVersion(const std::string &ver, std::string key)
