@@ -661,7 +661,7 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
 
 hybm_options SmemTransEntry::GenerateHybmOptions()
 {
-    hybm_options options;
+    hybm_options options{};
     options.bmType = HYBM_TYPE_HOST_INITIATE;
     options.memType = static_cast<hybm_mem_type>(HYBM_MEM_TYPE_DEVICE | HYBM_MEM_TYPE_HOST);
     options.rankCount = 512U;
@@ -672,6 +672,7 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
+    options.dramShmFd = -1;
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

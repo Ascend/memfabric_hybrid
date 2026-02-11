@@ -61,6 +61,8 @@ public:
 
 private:
     void FreeMemory() noexcept;
+    Result PrepareShareMemoryFd() const noexcept;
+    Result MapSlice(uint64_t lvOffset, uint64_t size) noexcept;
     static void LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept;
 
 private:

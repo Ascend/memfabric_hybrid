@@ -87,7 +87,8 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. " << " config_ip: " << storeURL);
+    SM_LOG_INFO("smem_bm_init success. "
+                << " config_ip: " << storeURL);
     return SM_OK;
 }
 
@@ -127,7 +128,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     option.localDRAMSize = localDRAMSize;
     option.localHBMSize = localHBMSize;
     option.dataOpType = dataOpType;
-    option.flags = flags;
+    option.flags = (flags & (~SMEM_BM_FLAG_CREATE_WITH_SHM));
+    option.dramShmFd = -1;
     return smem_bm_create2(id, &option);
 }
 
@@ -139,7 +141,21 @@ static inline bool SmemBmCreateOptionCheck(const smem_bm_create_option_t *option
     SM_VALIDATE_RETURN(option->localHBMSize <= SMEM_LOCAL_HBM_SIZE_MAX, "local HBM size exceeded", false);
     SM_VALIDATE_RETURN(option->maxDramSize >= option->localDRAMSize, "maxDramSize less than localMemorySize", false);
     SM_VALIDATE_RETURN(option->maxHbmSize >= option->localHBMSize, "maxHBMSize less than localMemorySize", false);
+    SM_VALIDATE_RETURN(
+        (option->flags & SMEM_BM_FLAG_CREATE_WITH_SHM) == 0U || (option->dramShmFd >= 0 && option->localDRAMSize > 0),
+        "share memory flag set, but input fd invalid: " << option->dramShmFd << ", or local dram size zero.", false);
     return true;
+}
+
+static void SmemBmFillDramFdInOptions(const smem_bm_create_option_t &smemOpts, hybm_options &hybmOpts)
+{
+    if (smemOpts.dramShmFd >= 0) {
+        hybmOpts.flags |= HYBM_FLAG_CREATE_WITH_SHM;
+        hybmOpts.dramShmFd = smemOpts.dramShmFd;
+    } else {
+        hybmOpts.flags &= (~HYBM_FLAG_CREATE_WITH_SHM);
+        hybmOpts.dramShmFd = -1;
+    }
 }
 
 smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
@@ -196,6 +212,7 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
     (void) std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
 
     options.scene = HYBM_SCENE_DEFAULT;
+    SmemBmFillDramFdInOptions(*option, options);
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);

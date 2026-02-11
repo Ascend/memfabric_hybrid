@@ -26,6 +26,7 @@ typedef void *hybm_mem_slice_t;
 
 #define HYBM_TLS_PATH_SIZE 256
 #define HYBM_FLAG_INIT_SHMEM_META (1ULL << 63)
+#define HYBM_FLAG_CREATE_WITH_SHM (1U << 8)
 
 /**
  * @brief Determine whether the IO initiator is on the host or the device.
@@ -112,6 +113,7 @@ typedef struct {
     char tag[32];
     char tagOpInfo[256];
     hybm_tls_config tlsOption;
+    int dramShmFd;
 } hybm_options;
 
 typedef enum {

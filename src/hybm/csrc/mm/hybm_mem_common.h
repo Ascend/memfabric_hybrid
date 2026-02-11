@@ -75,6 +75,7 @@ struct MemSegmentOptions {
     uint32_t rankId = 0;  // must start from 0 and increase continuously
     uint32_t rankCnt = 0; // total rank count
     uint32_t flags = 0;
+    int shmFd = -1;
 };
 } // namespace mf
 } // namespace ock

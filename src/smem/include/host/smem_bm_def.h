@@ -26,6 +26,7 @@ typedef void *smem_bm_t;
 #define SMEM_BM_BIND_NUMA_FLAG_INDEX        0
 #define SMEM_BM_BIND_NUMA_FLAG_LEN          7
 #define SMEM_TLS_PATH_SIZE                  256
+#define SMEM_BM_FLAG_CREATE_WITH_SHM        (1U << 8)
 
 /**
 * @brief Smem memory type
@@ -104,6 +105,7 @@ typedef struct {
     uint32_t flags;                   /* optional flags, default 0 */
     char tag[32];                     /* tag of bm, eg:tag_1 */
     char tagOpInfo[256];              /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
+    int dramShmFd;
 } smem_bm_create_option_t;
 
 typedef struct {

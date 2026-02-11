@@ -94,6 +94,10 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
                              BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(CheckOptions(options) == BM_OK, "options is invalid.", BM_INVALID_PARAM);
     options_ = *options;
+    if ((options_.flags & HYBM_FLAG_CREATE_WITH_SHM) == 0) {
+        options_.dramShmFd = -1;
+    }
+
     // init tag info
     BM_ASSERT_LOG_AND_RETURN(InitTagManager() == BM_OK, "Failed to init tag manager.", BM_ERROR);
     // load dlopen lib
@@ -834,6 +838,12 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
         return BM_INVALID_PARAM;
     }
 
+    if ((options->flags & HYBM_FLAG_CREATE_WITH_SHM) != 0 && options->dramShmFd < 0) {
+        BM_LOG_ERROR("local rank id: " << options->rankId << ", create with share memory flag set but fd: "
+                                       << options->dramShmFd << " invalid.");
+        return BM_INVALID_PARAM;
+    }
+
     return BM_OK;
 }
 
@@ -1026,7 +1036,7 @@ Result MemEntityDefault::InitSegment()
 
         if (options_.scene == HYBM_SCENE_TRANS) {
             void *_{nullptr};
-            auto ret = dramSegment_->ReserveMemorySpace(&_);
+            ret = dramSegment_->ReserveMemorySpace(&_);
             if (ret != BM_OK) {
                 BM_LOG_ERROR("Failed to reserve dram va for user malloc");
                 return ret;
@@ -1083,6 +1093,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.rankCnt = options_.rankCount;
     segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.flags = options_.flags;
+    segmentOptions.shmFd = options_.dramShmFd;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         segmentOptions.shared = false;
     }

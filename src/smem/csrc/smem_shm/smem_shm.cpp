@@ -60,6 +60,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));
     std::string defaultNic = "tcp://127.0.0.1:10002";
     std::copy_n(defaultNic.c_str(), defaultNic.size() + 1, options.transUrl);
+    options.dramShmFd = -1;
 
     ret = entry->Initialize(options);
     if (ret != 0) {

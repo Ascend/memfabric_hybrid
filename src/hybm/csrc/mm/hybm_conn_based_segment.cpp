@@ -11,7 +11,10 @@
 */
 #include "hybm_conn_based_segment.h"
 
+#include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
@@ -39,6 +42,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(PrepareShareMemoryFd() == BM_OK, "PrepareShareMemoryFd failed.", BM_ERROR);
 
     uint64_t totalSize = options_.rankCnt * options_.maxSize;
     if (totalSize > HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR) {
@@ -97,26 +101,20 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
     void *mapped = nullptr;
-    if (size > 0) {
-        mapped =
-            mmap(sliceAddr, size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
-        if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)sliceAddr) {
-            BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << mapped <<
-                " error:" << errno << ", " << SafeStrError(errno));
-            return BM_ERROR;
-        }
-        LvaShmReservePhysicalMemory(sliceAddr, size);
+    auto ret = MapSlice(allocatedSize_, size);
+    if (ret != BM_OK) {
+        return ret;
     }
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << " va:" << sliceAddr << ").");
-    auto ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_HOST, slice->vAddress_},
-                                                      options_.rankId);
+    ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_HOST, slice->vAddress_},
+                                                 options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
-        munmap(mapped, size);
+        mmap(mapped, size, PROT_NONE, MAP_FIXED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
         slices_.erase(slice->index_);
         return ret;
     }
@@ -273,12 +271,7 @@ bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
 
 void HybmConnBasedSegment::FreeMemory() noexcept
 {
-    if (localVirtualBase_ != nullptr) {
-        if (munmap(localVirtualBase_, allocatedSize_) != 0) {
-            BM_LOG_ERROR("Failed to unmap local memory");
-        }
-        localVirtualBase_ = nullptr;
-    }
+    localVirtualBase_ = nullptr;
     if (globalVirtualAddress_ != nullptr) {
         if (munmap(globalVirtualAddress_, totalVirtualSize_) != 0) {
             BM_LOG_ERROR("Failed to unmap global memory");
@@ -286,6 +279,62 @@ void HybmConnBasedSegment::FreeMemory() noexcept
         HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
         globalVirtualAddress_ = nullptr;
     }
+}
+
+Result HybmConnBasedSegment::PrepareShareMemoryFd() const noexcept
+{
+    if (options_.shmFd < 0) {
+        return BM_OK;
+    }
+
+    struct stat buf {};
+    auto ret = fstat(options_.shmFd, &buf);
+    if (ret != 0) {
+        BM_LOG_ERROR("share mem fd: " << options_.shmFd << " stat failed: " << errno << ":" << strerror(errno));
+        return BM_INVALID_PARAM;
+    }
+
+    if (static_cast<uint64_t>(buf.st_size) >= options_.size) {
+        return BM_OK;
+    }
+
+    ret = ftruncate(options_.shmFd, static_cast<off_t>(options_.size));
+    if (ret != 0) {
+        BM_LOG_ERROR("share mem fd: " << options_.shmFd << " truncate from " << buf.st_size << " to " << options_.size
+                                      << " failed: " << errno << ":" << strerror(errno));
+        return BM_ERROR;
+    }
+
+    return BM_OK;
+}
+
+Result HybmConnBasedSegment::MapSlice(uint64_t lvOffset, uint64_t size) noexcept
+{
+    if (size == 0) {
+        return BM_OK;
+    }
+
+    void *addr = nullptr;
+    auto sliceAddr = localVirtualBase_ + allocatedSize_;
+    auto prot = PROT_READ | PROT_WRITE;
+    auto flags = MAP_FIXED;
+#ifndef UT_ENABLED
+    flags |= MAP_HUGETLB;
+#endif
+    if (options_.shmFd < 0) {
+        addr = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    } else {
+        addr = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
+    }
+
+    if (addr == MAP_FAILED || addr != sliceAddr) {
+        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << addr << " error:" << errno
+                                             << ", " << SafeStrError(errno));
+        return BM_ERROR;
+    }
+
+    LvaShmReservePhysicalMemory(sliceAddr, size);
+    return BM_OK;
 }
 
 Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
