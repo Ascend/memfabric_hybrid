@@ -628,8 +628,16 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
+    ret = backend_->Put(key, curValue, 0);
+    if (ret != SUCCESS) {
+        lockGuard.unlock();
+        STORE_LOG_ERROR("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key
+                                         << ") persist update failed, ret:" << ret);
+        ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
+        return StoreErrorCode::ERROR;
+    }
     lockGuard.unlock();
-    ReplyWithMessage(context, ret, "success");
+    ReplyWithMessage(context, StoreErrorCode::SUCCESS, "success");
     return SM_OK;
 }
 
