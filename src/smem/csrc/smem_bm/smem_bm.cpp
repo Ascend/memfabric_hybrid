@@ -149,7 +149,7 @@ static inline bool SmemBmCreateOptionCheck(const smem_bm_create_option_t *option
 
 static void SmemBmFillDramFdInOptions(const smem_bm_create_option_t &smemOpts, hybm_options &hybmOpts)
 {
-    if (smemOpts.dramShmFd >= 0) {
+    if (smemOpts.dramShmFd >= 0 && (smemOpts.flags & SMEM_BM_FLAG_CREATE_WITH_SHM) != 0) {
         hybmOpts.flags |= HYBM_FLAG_CREATE_WITH_SHM;
         hybmOpts.dramShmFd = smemOpts.dramShmFd;
     } else {
