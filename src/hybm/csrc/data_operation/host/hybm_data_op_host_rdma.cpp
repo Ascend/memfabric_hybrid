@@ -835,7 +835,7 @@ Result HostDataOpRDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const u
             }
         }
         if (registered) {
-            ret = BatchCopyGH2GH(hostAddrs, gvaAddrs, counts, batchSize, options);
+            ret = BatchCopyGH2GH(gvaAddrs, hostAddrs, counts, batchSize, options);
         } else {
             std::vector<void *> localAddrs;
             std::vector<void *> globalAddrs;
