@@ -77,6 +77,11 @@ private:
                                size_t batchEnd, void *tmpRdmaAddrs[]) const;
     Result InnerBatchWriteLH2RH(const CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options,
         uint64_t batchOffset, size_t batchEnd, void *tmpRdmaAddrs[]) const;
+    void *GetLocalMrAddr(hybm_copy_params &params, hybm_data_copy_direction direction) noexcept;
+    void PreRegisterLocalMr(hybm_copy_params &params, hybm_data_copy_direction direction) noexcept;
+    void BatchPreRegisterLocalMr(hybm_batch_copy_params &params, hybm_data_copy_direction direction) noexcept;
+    void BatchUnRegisterLocalMr(hybm_batch_copy_params &params, hybm_data_copy_direction direction) noexcept;
+
     bool inited_{false};
     uint32_t rankId_{0};
     void *rdmaSwapBaseAddr_{nullptr};

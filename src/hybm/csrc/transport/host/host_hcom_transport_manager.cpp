@@ -268,7 +268,8 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
             return BM_OK;
         }
     }
-    return BM_ERROR;
+    BM_LOG_WARN("Addr: " << addr << " not registered");
+    return BM_OK;
 }
 
 bool HcomTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)

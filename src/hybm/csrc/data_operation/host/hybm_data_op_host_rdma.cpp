@@ -15,6 +15,7 @@
 #include "hybm_ptracer.h"
 #include "dl_hybrid_api.h"
 #include "hybm_stream_manager.h"
+#include "hybm_va_manager.h"
 #include "hcom_service_c_define.h"
 #include "hybm_data_op_host_rdma.h"
 
@@ -79,11 +80,50 @@ HostDataOpRDMA::~HostDataOpRDMA()
     UnInitialize();
 }
 
+void *HostDataOpRDMA::GetLocalMrAddr(hybm_copy_params &params, hybm_data_copy_direction direction) noexcept
+{
+    auto realDirection = direction;
+    if (UNLIKELY(direction == HYBM_DATA_COPY_DIRECTION_AUTO)) {
+        auto &vaMgr = ock::mf::HybmVaManager::GetInstance();
+        realDirection =
+            vaMgr.InferCopyDirection(reinterpret_cast<uint64_t>(params.src), reinterpret_cast<uint64_t>(params.dest));
+    }
+
+    // tbm: 后续使用静态断言或抽函数保证下面的判断不失效
+    if (realDirection <= HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE) {
+        return params.src;
+    } else {
+        return params.dest;
+    }
+}
+
+void HostDataOpRDMA::PreRegisterLocalMr(hybm_copy_params &params, hybm_data_copy_direction direction) noexcept
+{
+    if (UNLIKELY(transportManager_ == nullptr) || params.dataSize <= HYBM_PRE_REG_SIZE_THRES) {
+        return;
+    }
+
+    transport::TransportMemoryRegion mr;
+    mr.size = params.dataSize;
+    mr.flags = transport::REG_MR_FLAG_DRAM;
+    mr.addr = reinterpret_cast<uint64_t>(GetLocalMrAddr(params, direction));
+
+    if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(mr.addr), mr.size)) {
+        return;
+    }
+
+    auto ret = transportManager_->RegisterMemoryRegion(mr);
+    if (ret != BM_OK) {
+        BM_LOG_WARN("Failed to pre register host rdma mr, addr:" << mr.addr << " size: " << mr.size);
+    }
+}
+
 Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     Result ret;
+    PreRegisterLocalMr(params, direction);
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
             ret = CopyHost2Gva(params.src, params.dest, params.dataSize, options);
@@ -104,6 +144,7 @@ Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
     }
+    transportManager_->UnregisterMemoryRegion(reinterpret_cast<uint64_t>(GetLocalMrAddr(params, direction)));
     return ret;
 }
 
@@ -278,10 +319,30 @@ Result ock::mf::HostDataOpRDMA::SafeGet(const void *srcVA, void *destVA, uint64_
     return ret;
 }
 
+void HostDataOpRDMA::BatchPreRegisterLocalMr(hybm_batch_copy_params &params,
+                                             hybm_data_copy_direction direction) noexcept
+{
+    for (size_t i = 0; i < params.batchSize; i++) {
+        hybm_copy_params param = {
+            .src = &params.sources[i], .dest = &params.destinations[i], .dataSize = params.dataSizes[i]};
+        PreRegisterLocalMr(param, direction);
+    }
+}
+
+void HostDataOpRDMA::BatchUnRegisterLocalMr(hybm_batch_copy_params &params, hybm_data_copy_direction direction) noexcept
+{
+    for (size_t i = 0; i < params.batchSize; i++) {
+        hybm_copy_params param = {
+            .src = &params.sources[i], .dest = &params.destinations[i], .dataSize = params.dataSizes[i]};
+        transportManager_->UnregisterMemoryRegion(reinterpret_cast<uint64_t>(GetLocalMrAddr(param, direction)));
+    }
+}
+
 Result HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                      const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BatchPreRegisterLocalMr(params, direction);
     Result ret = BM_OK;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
@@ -318,6 +379,7 @@ Result HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_c
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
     }
+    BatchUnRegisterLocalMr(params, direction);
     return ret;
 }
 

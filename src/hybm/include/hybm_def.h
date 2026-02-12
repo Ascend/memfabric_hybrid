@@ -28,6 +28,8 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_FLAG_INIT_SHMEM_META (1ULL << 63)
 #define HYBM_FLAG_CREATE_WITH_SHM (1U << 8)
 
+#define HYBM_PRE_REG_SIZE_THRES (8192U * 1024) // local buffer larger than 8MB maybe preregister to mr
+
 /**
  * @brief Determine whether the IO initiator is on the host or the device.
  */
