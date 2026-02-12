@@ -1,12 +1,33 @@
-# MemFabric
+<div align="center">
+  <img src=doc/source/memfabric_icon.png style="width: 50%" />
+  <hr style="display:block; border:none; height:0; border-top:2px solid #008000; width:100%; max-width:1250px; margin:20px auto;">
+  <h2 align="center">
+DDR&HBM hybrid pooling, memory semantic interface, high-performance cross-machine memory direct access
+  </h2>
+
+[![Docs](https://img.shields.io/badge/docs-live-brightgreen)](https://gitcode.com/Ascend/memfabric_hybrid)
+[![PyPI](https://img.shields.io/pypi/v/memfabric-hybrid)](https://pypi.org/project/memfabric-hybrid/#history)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/memfabric-hybrid)](https://pypi.org/project/memfabric-hybrid/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/memfabric-hybrid)](https://pypi.org/project/memfabric-hybrid/)
+[![GitCode commit activity](https://img.shields.io/badge/commit_activity-high-light)](https://gitcode.com/Ascend/memfabric_hybrid/analysis)
+[![license](https://img.shields.io/badge/license-MulanPSL2-orange)](https://gitcode.com/Ascend/memcache/blob/master/LICENSE)
+
+</div>
+<br/>
 
 ## 🔄Latest News
 
 - [2026/01] DRAM池化相关配套已发布支持，详见[软件硬件配套](#软件硬件配套说明)
 
-- [2025/12] MemFabric + MemCache已作为vllm-ascend backend使能大模型推理加速，详情查看vllm-ascend开源社区，相关pr: https://github.com/vllm-project/vllm-ascend/pull/4438
+- [2025/12] MemFabric + MemCache已作为vllm-ascend backend使能大模型推理加速，详情查看vllm-ascend开源社区，[使用示例](https://github.com/vllm-project/vllm-ascend/blob/main/docs/source/user_guide/feature_guide/kv_pool.md#example-of-using-memcache-as-a-kv-pool-backend)
 
 - [2025/11] MemFabric项目于2025年11月开源，在昇腾上提供高效的多链路的D2RH,RH2D,RH2H,D2D,D2H,H2D等内存直接访问能力。
+
+
+## 🔜 Roadmap
+
+MemFabric roadmap和版本分支策略详见： [**Roadmap**](https://gitcode.com/Ascend/memfabric_hybrid/wiki/Roadmap.md)
+
 
 ## 🎉概述
 
@@ -142,17 +163,6 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 │  └── util                    # 公共函数
 ├── README.md
 ```
-
-## 🔜 Incoming Features
-⬇️ 规划中
-- A5
-- A5 + K5 over UB
-
-➡️ 支持中
-- K5 over host UB
-- device_rdma + device_sdma 异构网络内存池化
-- device_rdma + host_rdma 异构网络内存池化
-
 
 ## 🚀快速入门
 
