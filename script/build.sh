@@ -94,10 +94,29 @@ cp -v "${PROJ_DIR}/output/hybm/include/"*.h "${PROJ_DIR}/src/smem/python/memfabr
 
 # hcom
 if [ "${BUILD_HCOM}" == "ON" ]; then
+
     echo "========= copy hcom lib ============"
-        \cp -v "${PROJ_DIR}"/output/3rdparty/hcom/lib/libhcom.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
-        \cp -v "${PROJ_DIR}"/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
-               "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
+
+    LIBBOUNDSCHECK_INSTALL_PATH="${PROJ_DIR}/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/"
+    # Check if the source code compilation output directory of libboundscheck exists
+    if [ ! -d "$LIBBOUNDSCHECK_INSTALL_PATH" ]; then
+        mkdir -p "$LIBBOUNDSCHECK_INSTALL_PATH"
+    fi
+    
+    # Check if libboundscheck.so exists in the compilation output directory; if not, copy it from the system library directories.
+    if [ ! -f "$LIBBOUNDSCHECK_INSTALL_PATH/libboundscheck.so" ]; then
+        if [ -f "/usr/lib64/libboundscheck.so" ]; then
+            cp -v /usr/lib64/libboundscheck.so "$LIBBOUNDSCHECK_INSTALL_PATH"
+        elif [ -f "/usr/lib/libboundscheck.so" ]; then
+            cp -v /usr/lib/libboundscheck.so "$LIBBOUNDSCHECK_INSTALL_PATH"
+        else
+            echo "Error: libboundscheck.so not found"
+        fi
+    fi
+
+    cp -v "${PROJ_DIR}"/output/3rdparty/hcom/lib/libhcom.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
+    cp -v "${LIBBOUNDSCHECK_INSTALL_PATH}"/libboundscheck.so \
+          "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 fi
 
 VERSION="$(cat VERSION | tr -d '[:space:]')"
