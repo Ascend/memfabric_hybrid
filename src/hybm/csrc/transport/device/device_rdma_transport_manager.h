@@ -56,7 +56,17 @@ public:
     Result ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) override;
     Result WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) override;
     Result Synchronize(uint32_t rankId) override;
+    Result ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override
+    {
+        BM_LOG_ERROR("ReadRemoteBatchAsync not implment.");
+        return BM_INVALID_PARAM;
+    }
 
+    Result WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override
+    {
+        BM_LOG_ERROR("WriteRemoteBatchAsync not implment.");
+        return BM_INVALID_PARAM;
+    }
 private:
     static bool PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
                                   void *&rdmaHandle);

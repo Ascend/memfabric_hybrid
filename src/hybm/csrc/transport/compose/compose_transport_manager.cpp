@@ -404,7 +404,6 @@ Result ComposeTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uin
         }
         BM_LOG_ERROR("Failed to WriteRemote by host transport ret:" << ret);
     }
-
     BM_LOG_ERROR("Failed to WriteRemote.");
     return BM_ERROR;
 }
@@ -433,6 +432,26 @@ Result ComposeTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr,
     return BM_ERROR;
 }
 
+Result ComposeTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor)
+{
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by device transport, it is not supported.");
+        return BM_NOT_SUPPORTED;
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->ReadRemoteBatchAsync(rankId, descriptor);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by host transport ret:" << ret << " remote rankId:" << rankId);
+    }
+
+    BM_LOG_ERROR("Failed to ReadRemote.");
+    return BM_ERROR;
+}
+
 Result ComposeTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
     uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
@@ -449,7 +468,26 @@ Result ComposeTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr
         if (ret == BM_OK) {
             return BM_OK;
         }
-        BM_LOG_ERROR("Failed to ReadRemoteAsync by host transport ret:" << ret);
+        BM_LOG_ERROR("Failed to WriteRemoteAsync by host transport ret:" << ret);
+    }
+
+    BM_LOG_ERROR("Failed to WriteRemote.");
+    return BM_ERROR;
+}
+Result ComposeTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor)
+{
+    uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
+    if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
+        BM_LOG_ERROR("Failed to WriteRemoteBatchAsync by device transport, it is not supported.");
+        return BM_NOT_SUPPORTED;
+    }
+
+    if (opType & HOST_PROTOCOL) {
+        auto ret = hostTransportManager_->WriteRemoteBatchAsync(rankId, descriptor);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to WriteRemoteBatchAsync by host transport ret:" << ret);
     }
 
     BM_LOG_ERROR("Failed to WriteRemote.");

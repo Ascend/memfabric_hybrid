@@ -33,7 +33,6 @@ file(GLOB_RECURSE PLATFORM_SRC
 add_library(smem_objects OBJECT ${PLATFORM_SRC})
 target_link_libraries(smem_objects PUBLIC config_store_object)
 
-target_link_libraries(smem_objects PUBLIC smem)
 target_compile_options(smem_objects PRIVATE -fPIC)
 
 add_library(smem_static STATIC $<TARGET_OBJECTS:smem_objects> $<TARGET_OBJECTS:config_store_object>)

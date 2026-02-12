@@ -19,6 +19,9 @@
 extern "C" {
 #endif
 
+#define HCOM_IOV_BATCH_SIZE (4)
+#define SMALL_IO_LIMIT_SIZE (1024 * 8) // 应小于 HCOM_MAX_SLICE_SIZE / HCOM_IOV_BATCH_SIZE
+
 typedef uintptr_t Hcom_Channel;
 /*
  * @brief Service context, which used for callback as param
@@ -307,6 +310,11 @@ typedef struct {
     OneSideKey rKey;
     uint32_t size;
 } Channel_OneSideRequest;
+
+typedef struct {
+    Channel_OneSideRequest iov[HCOM_IOV_BATCH_SIZE];
+    uint16_t iovCount;
+} Channel_OneSideRequestSgl;
 
 typedef struct {
     uint16_t intervalTimeMs;

@@ -41,12 +41,6 @@ struct ExtOptions {
     std::unordered_map<std::pair<uint32_t, uint32_t>, std::vector<uint32_t>, PairHash, PairEqual> groupMap;
 };
 
-typedef struct {
-    std::vector<void *> localAddrs;
-    std::vector<void *> globalAddrs;
-    std::vector<uint64_t> counts;
-} CopyDescriptor;
-
 class DataOperator {
 public:
     virtual Result Initialize() noexcept = 0;

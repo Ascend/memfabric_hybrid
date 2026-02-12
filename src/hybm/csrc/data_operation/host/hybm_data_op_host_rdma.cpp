@@ -15,6 +15,7 @@
 #include "hybm_ptracer.h"
 #include "dl_hybrid_api.h"
 #include "hybm_stream_manager.h"
+#include "hcom_service_c_define.h"
 #include "hybm_data_op_host_rdma.h"
 
 using namespace ock::mf;
@@ -190,8 +191,8 @@ Result HostDataOpRDMA::CopyGva2Gva(const void *srcVA, void *destVA, uint64_t len
     return BM_INVALID_PARAM;
 }
 
-Result ock::mf::HostDataOpRDMA::SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options,
-                                        bool isLocalHost)
+Result ock::mf::HostDataOpRDMA::SafePut(const void *srcVA,
+    void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost)
 {
     Result ret = 0;
     uintptr_t srcBase = reinterpret_cast<uintptr_t>(srcVA);
@@ -474,10 +475,10 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
 
         Result errorCode = BM_OK;
         for (size_t i = batchOffset; i < batchEnd; ++i) {
-            auto glabalAddr = rmtCopyDescriptor.globalAddrs[i];
+            auto globalAddr = rmtCopyDescriptor.globalAddrs[i];
             auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
             auto count = rmtCopyDescriptor.counts[i];
-            ret = transportManager_->WriteRemoteAsync(rmtRankId, (uint64_t)tmpAddr, (uint64_t)glabalAddr, count);
+            ret = transportManager_->WriteRemoteAsync(rmtRankId, (uint64_t)tmpAddr, (uint64_t)globalAddr, count);
             if (ret != BM_OK) {
                 errorCode = ret;
                 BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: "
@@ -543,10 +544,10 @@ Result HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCop
         }
         Result errorCode = BM_OK;
         for (size_t i = batchOffset; i < batchEnd; ++i) {
-            auto glabalAddr = rmtCopyDescriptor.globalAddrs[i];
+            auto globalAddr = rmtCopyDescriptor.globalAddrs[i];
             auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
             auto count = rmtCopyDescriptor.counts[i];
-            ret = transportManager_->ReadRemoteAsync(rmtRankId, (uint64_t)tmpAddr, (uint64_t)glabalAddr, count);
+            ret = transportManager_->ReadRemoteAsync(rmtRankId, (uint64_t)tmpAddr, (uint64_t)globalAddr, count);
             if (ret != BM_OK) {
                 errorCode = ret;
                 BM_LOG_ERROR("Failed to copy swap memory to remote host memory ret: "
@@ -652,11 +653,11 @@ Result HostDataOpRDMA::InnerBatchReadRH2LH(const CopyDescriptor &rmtCopyDescript
     TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC);
     Result errorCode = BM_OK;
     for (size_t i = batchOffset; i < batchEnd; ++i) {
-        auto glabalAddr = rmtCopyDescriptor.globalAddrs[i];
+        auto globalAddr = rmtCopyDescriptor.globalAddrs[i];
         auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
         auto count = rmtCopyDescriptor.counts[i];
         TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_SUBMIT);
-        ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)tmpAddr, (uint64_t)glabalAddr, count);
+        ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)tmpAddr, (uint64_t)globalAddr, count);
         TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_SUBMIT, ret);
         if (ret != BM_OK) {
             errorCode = ret;
@@ -730,19 +731,134 @@ Result HostDataOpRDMA::BatchReadRH2LH(CopyDescriptor &rmtCopyDescriptor, const E
     return ret;
 }
 
+Result HostDataOpRDMA::InnerBatchWriteLH2RH(const CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options,
+    uint64_t batchOffset, size_t batchEnd, void *tmpRdmaAddrs[]) const
+{
+    Result ret;
+
+    Result errorCode = BM_OK;
+    for (size_t i = batchOffset; i < batchEnd; ++i) {
+        auto globalAddr = rmtCopyDescriptor.globalAddrs[i];
+        auto tmpAddr = tmpRdmaAddrs[i - batchOffset];
+        auto count = rmtCopyDescriptor.counts[i];
+        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_SUBMIT);
+        ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)tmpAddr, (uint64_t)globalAddr, count);
+        TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE_ASYNC_SUBMIT, ret);
+        if (ret != BM_OK) {
+            errorCode = ret;
+            BM_LOG_ERROR("Failed to Call ReadRemoteAsync ret: " << ret << " localRankId:" << rankId_
+                                                                << " remoteRankId:" << options.srcRankId);
+            break;
+        }
+    }
+    ret = transportManager_->Synchronize(options.destRankId);
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to sync read remote ret: " << ret);
+        return ret;
+    }
+    if (errorCode != BM_OK) {
+        return errorCode;
+    }
+    return ret;
+}
+
+Result HostDataOpRDMA::BatchWriteLH2RH(CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept
+{
+    Result ret = BM_OK;
+    size_t batchSize = rmtCopyDescriptor.counts.size();
+    uint64_t batchOffset = 0;
+    while (batchOffset < batchSize) {
+        uint64_t currentBatchDataSize = 0;
+        size_t batchEnd = batchOffset;
+        while (batchEnd < batchSize &&
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+            currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
+            ++batchEnd;
+        }
+        if (currentBatchDataSize == 0) {
+            BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
+                                                                      << RDMA_SWAP_SPACE_SIZE);
+            return BM_INVALID_PARAM;
+        }
+        auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentBatchDataSize);
+        void *tmpHost = tmpRdmaMemory.Address();
+        if (tmpHost == nullptr) {
+            BM_LOG_ERROR("Failed to malloc swap length: " << currentBatchDataSize);
+            return BM_MALLOC_FAILED;
+        }
+        size_t currentBatchSize = batchEnd - batchOffset;
+        std::vector<void *> tmpRdmaAddrs(currentBatchSize);
+        std::vector<void *> tmplocalAddrs(currentBatchSize);
+        std::vector<uint64_t> tmpCounts(currentBatchSize);
+        uint64_t offset = 0;
+        for (size_t i = batchOffset; i < batchEnd; ++i) {
+            tmpRdmaAddrs[i - batchOffset] = static_cast<uint8_t *>(tmpHost) + offset;
+            tmplocalAddrs[i - batchOffset] = rmtCopyDescriptor.localAddrs[i];
+            tmpCounts[i - batchOffset] = rmtCopyDescriptor.counts[i];
+            offset += rmtCopyDescriptor.counts[i];
+        }
+        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_BATCH_LOCAL_COPY);
+        ret = BatchCopyLH2LH(tmpRdmaAddrs.data(), tmplocalAddrs.data(), tmpCounts.data(), currentBatchSize);
+        if (ret != 0) {
+            BM_LOG_ERROR("Failed to copy local device to swap memory: " << ret);
+            return ret;
+        }
+        TP_TRACE_END(TP_HYBM_HOST_RDMA_BATCH_LOCAL_COPY, ret);
+
+        ret = InnerBatchWriteLH2RH(rmtCopyDescriptor, options, batchOffset, batchEnd, tmpRdmaAddrs.data());
+        if (ret != BM_OK) {
+            return ret;
+        }
+        batchOffset = batchEnd;
+    }
+    return ret;
+}
+
 Result HostDataOpRDMA::BatchCopyLH2GH(void **gvaAddrs, void **hostAddrs, const uint64_t *counts, uint32_t batchSize,
                                       const ExtOptions &options) noexcept
 {
     Result ret = BM_OK;
-    for (auto i = 0U; i < batchSize; i++) {
-        ret = CopyHost2Gva(hostAddrs[i], gvaAddrs[i], counts[i], options);
-        if (ret != 0) {
-            BM_LOG_ERROR("copy local host to GVA failed: " << ret);
-            return ret;
+    if (options.destRankId == rankId_) {
+        for (auto i = 0U; i < batchSize; i++) {
+            auto ret = DlHybridApi::Memcpy(gvaAddrs[i], counts[i], hostAddrs[i], counts[i], ACL_MEMCPY_HOST_TO_HOST);
+            if (ret != 0) {
+                BM_LOG_ERROR("copy local host to GVA failed: " << ret);
+                return ret;
+            }
         }
+    } else {
+        bool registered = true;
+        for (uint32_t i = 0U; i < batchSize; i++) {
+            if (!transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(hostAddrs[i]), counts[i])) {
+                registered = false;
+                break;
+            }
+        }
+        if (registered) {
+            ret = BatchCopyGH2GH(hostAddrs, gvaAddrs, counts, batchSize, options);
+        } else {
+            std::vector<void *> localAddrs;
+            std::vector<void *> globalAddrs;
+            std::vector<uint64_t> countArr;
+            localAddrs.reserve(batchSize);
+            globalAddrs.reserve(batchSize);
+            countArr.reserve(batchSize);
+            for (uint32_t i = 0; i < batchSize; ++i) {
+                localAddrs.push_back(hostAddrs[i]);
+                globalAddrs.push_back(gvaAddrs[i]);
+                countArr.push_back(counts[i]);
+            }
+            CopyDescriptor desc{localAddrs, globalAddrs, countArr};
+            ret = BatchWriteLH2RH(desc, options);
+        }
+    }
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to BatchCopyGH2LH ret: " << ret);
+        return ret;
     }
     return BM_OK;
 }
+
 
 Result HostDataOpRDMA::BatchCopyGH2LH(void **hostAddrs, void **gvaAddrs, const uint64_t *counts, uint32_t batchSize,
                                       const ExtOptions &options) noexcept
@@ -788,22 +904,53 @@ Result HostDataOpRDMA::BatchCopyGH2GH(void **destAddrs, void **srcAddrs, const u
     Result ret = BM_OK;
     bool isPut = options.srcRankId == rankId_;
     Result errorCode = BM_OK;
+
+    CopyDescriptor smallIoDes;
+    CopyDescriptor bigIoDes;
     for (auto i = 0U; i < batchSize; i++) {
-        if (isPut) {
-            ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)srcAddrs[i], (uint64_t)destAddrs[i],
-                                                      counts[i]);
+        if (counts[i] <= SMALL_IO_LIMIT_SIZE) {
+            smallIoDes.localAddrs.emplace_back(srcAddrs[i]);
+            smallIoDes.globalAddrs.emplace_back(destAddrs[i]);
+            smallIoDes.counts.emplace_back(counts[i]);
         } else {
-            ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)destAddrs[i], (uint64_t)srcAddrs[i],
-                                                     counts[i]);
-        }
-        if (ret != 0) {
-            errorCode = ret;
-            BM_LOG_ERROR("Failed to submit host rdma task, ret: " << ret << " srcRank:" << options.srcRankId
-                                                                  << " destRank:" << options.destRankId
-                                                                  << " length:" << counts[i]);
-            break;
+            bigIoDes.localAddrs.emplace_back(srcAddrs[i]);
+            bigIoDes.globalAddrs.emplace_back(destAddrs[i]);
+            bigIoDes.counts.emplace_back(counts[i]);
         }
     }
+
+    if (!smallIoDes.counts.empty()) {
+        if (isPut) {
+            ret = transportManager_->WriteRemoteBatchAsync(options.destRankId, smallIoDes);
+        } else {
+            ret = transportManager_->ReadRemoteBatchAsync(options.srcRankId, smallIoDes);
+        }
+    }
+    if (ret == 0) {
+        for (auto i = 0U; i < bigIoDes.counts.size(); i++) {
+            if (isPut) {
+                ret = transportManager_->WriteRemoteAsync(options.destRankId,
+                    reinterpret_cast<uint64_t>(bigIoDes.localAddrs[i]),
+                    reinterpret_cast<uint64_t>(bigIoDes.globalAddrs[i]), bigIoDes.counts[i]);
+            } else {
+                ret = transportManager_->ReadRemoteAsync(options.srcRankId,
+                    reinterpret_cast<uint64_t>(bigIoDes.globalAddrs[i]),
+                    reinterpret_cast<uint64_t>(bigIoDes.localAddrs[i]), bigIoDes.counts[i]);
+            }
+            if (ret != 0) {
+                errorCode = ret;
+                BM_LOG_ERROR("Failed to submit host rdma task, ret: " << ret << " srcRank:" << options.srcRankId
+                                                                      << " destRank:" << options.destRankId
+                                                                      << " length:" << counts[i]);
+                break;
+            }
+        }
+    } else {
+        BM_LOG_ERROR("Failed to submit host rdma task, ret: " << ret << " srcRank:" << options.srcRankId
+                                                              << " destRank:" << options.destRankId);
+        errorCode = ret;
+    }
+
     ret = transportManager_->Synchronize(isPut ? options.destRankId : options.srcRankId);
     if (ret != 0) {
         BM_LOG_ERROR("Failed to sync host rdma tasks, ret: " << ret);

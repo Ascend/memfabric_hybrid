@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <cstdint>
 #include <cstddef>
+#include <vector>
 #include "mf_out_logger.h"
 
 namespace ock {
@@ -126,6 +127,12 @@ struct HybmDeviceMeta {
     uint64_t qpInfoAddress;
     uint64_t reserved[12]; // total 128B, equal HYBM_DEVICE_PRE_META_SIZE
 };
+
+typedef struct {
+    std::vector<void *> localAddrs;
+    std::vector<void *> globalAddrs;
+    std::vector<uint64_t> counts;
+} CopyDescriptor;
 
 // macro for gcc optimization for prediction of if/else
 #ifndef LIKELY

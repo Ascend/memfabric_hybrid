@@ -109,6 +109,9 @@ public:
 
     virtual Result Remove(const std::vector<uint32_t> &removeList);
 
+    virtual Result WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) = 0;
+
+    virtual Result ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) = 0;
 protected:
     bool connected_{false};
 };

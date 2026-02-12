@@ -72,6 +72,9 @@ public:
 
     Result Synchronize(uint32_t rankId) override;
 
+    Result WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override;
+
+    Result ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override;
 private:
     Result OpenHostTransport(const TransportOptions &options);
 

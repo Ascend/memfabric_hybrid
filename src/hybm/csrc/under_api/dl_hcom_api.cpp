@@ -55,7 +55,10 @@ channelSendFunc DlHcomApi::gChannelSend = nullptr;
 channelCallFunc DlHcomApi::gChannelCall = nullptr;
 channelReplyFunc DlHcomApi::gChannelReply = nullptr;
 channelPutFunc DlHcomApi::gChannelPut = nullptr;
+channelBatchPutFunc DlHcomApi::gChannelBatchPut = nullptr;
 channelGetFunc DlHcomApi::gChannelGet = nullptr;
+channelBatchGetFunc DlHcomApi::gChannelBatchGet = nullptr;
+
 channelSetFlowControlConfigFunc DlHcomApi::gChannelSetFlowControlConfig = nullptr;
 channelSetChannelTimeOutFunc DlHcomApi::gChannelSetChannelTimeOut = nullptr;
 contextGetRspCtxFunc DlHcomApi::gContextGetRspCtx = nullptr;
@@ -131,7 +134,9 @@ Result DlHcomApi::LoadLibrary()
     DL_LOAD_SYM(gChannelCall, channelCallFunc, hcomHandle, "ubs_hcom_channel_call");
     DL_LOAD_SYM(gChannelReply, channelReplyFunc, hcomHandle, "ubs_hcom_channel_reply");
     DL_LOAD_SYM(gChannelPut, channelPutFunc, hcomHandle, "ubs_hcom_channel_put");
+    DL_LOAD_SYM(gChannelBatchPut, channelBatchPutFunc, hcomHandle, "ubs_hcom_channel_putv");
     DL_LOAD_SYM(gChannelGet, channelGetFunc, hcomHandle, "ubs_hcom_channel_get");
+    DL_LOAD_SYM(gChannelBatchGet, channelBatchGetFunc, hcomHandle, "ubs_hcom_channel_getv");
     DL_LOAD_SYM(gChannelSetFlowControlConfig, channelSetFlowControlConfigFunc, hcomHandle,
                 "ubs_hcom_channel_set_flowctl_cfg");
     DL_LOAD_SYM(gChannelSetChannelTimeOut, channelSetChannelTimeOutFunc, hcomHandle, "ubs_hcom_channel_set_timeout");
@@ -191,7 +196,9 @@ void DlHcomApi::CleanupLibrary()
     gChannelCall = nullptr;
     gChannelReply = nullptr;
     gChannelPut = nullptr;
+    gChannelBatchPut = nullptr;
     gChannelGet = nullptr;
+    gChannelBatchGet = nullptr;
     gChannelSetFlowControlConfig = nullptr;
     gChannelSetChannelTimeOut = nullptr;
     gContextGetRspCtx = nullptr;

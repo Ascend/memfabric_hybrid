@@ -253,7 +253,7 @@ Result SmemBmEntry::Leave(uint32_t flags)
     return SM_OK;
 }
 
-static hybm_data_copy_direction directMap[SMEMB_COPY_BUTT + 1][SMEM_MEM_TYPE_BUTT + 1] = {
+static hybm_data_copy_direction directMap[SMEM_MEM_TYPE_BUTT + 1][SMEM_MEM_TYPE_BUTT + 1] = {
     {HYBM_DATA_COPY_DIRECTION_BUTT, HYBM_DATA_COPY_DIRECTION_BUTT, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE,
      HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT},
     {HYBM_DATA_COPY_DIRECTION_BUTT, HYBM_DATA_COPY_DIRECTION_BUTT, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE,
@@ -294,6 +294,12 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
             break;
         case SMEMB_COPY_H2G:
             srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_H2GH:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_GH2H:
+            destMemType = SMEM_MEM_TYPE_LOCAL_HOST;
             break;
         case SMEMB_COPY_G2G:
         default:

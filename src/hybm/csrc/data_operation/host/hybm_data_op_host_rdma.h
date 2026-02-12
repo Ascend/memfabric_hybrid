@@ -45,9 +45,9 @@ private:
     Result CopyDevice2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
     Result CopyGva2Device(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
     Result CopyGva2Gva(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options);
-    Result SafePut(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
+    Result SafePut(const void *srcVA, void *destVA, uint64_t length,
+        const ExtOptions &options, bool isLocalHost);
     Result SafeGet(const void *srcVA, void *destVA, uint64_t length, const ExtOptions &options, bool isLocalHost);
-
     Result BatchCopyLH2LH(void *gvaAddrs[], void *hostAddrs[], const uint64_t counts[], uint32_t batchSize) noexcept;
     Result BatchCopyLD2LH(void *hostAddrs[], void *deviceAddrs[], const uint64_t counts[], uint32_t batchSize,
                           const ExtOptions &options) noexcept;
@@ -71,10 +71,12 @@ private:
     Result BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
 
     Result BatchReadRH2LH(CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
-
+    Result BatchWriteLH2RH(CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept;
 private:
     Result InnerBatchReadRH2LH(const CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options, uint64_t batchOffset,
                                size_t batchEnd, void *tmpRdmaAddrs[]) const;
+    Result InnerBatchWriteLH2RH(const CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options,
+        uint64_t batchOffset, size_t batchEnd, void *tmpRdmaAddrs[]) const;
     bool inited_{false};
     uint32_t rankId_{0};
     void *rdmaSwapBaseAddr_{nullptr};
