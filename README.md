@@ -2,7 +2,7 @@
   <img src=doc/source/memfabric_icon.png style="width: 50%" />
   <hr style="display:block; border:none; height:0; border-top:2px solid #008000; width:100%; max-width:1250px; margin:20px auto;">
   <h2 align="center">
-DDR&HBM hybrid pooling, memory semantic interface, high-performance cross-machine memory direct access
+DRAM&HBM hybrid pooling, memory semantic interface, high-performance cross-machine memory direct access
   </h2>
 
 [![Docs](https://img.shields.io/badge/docs-live-brightgreen)](https://gitcode.com/Ascend/memfabric_hybrid)
@@ -107,7 +107,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ## 🔥性能表现
 
 ### 时延测试
-- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [对接参考代码](https://github.com/memfabric-dev/Mooncake/pull/2/files)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
+- 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [memfabric对接mooncake代码](https://gitcode.com/openFuyao/mooncake/blob/v0.3.7-dev/doc/zh/ub_transport.md)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
     
 ![a3-Latency-performance](./doc/source/a3_latency.png)
      
