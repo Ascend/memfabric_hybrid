@@ -150,6 +150,7 @@ extern bool g_fail_kcalloc;
 extern bool g_hal_put_pages_should_fail;
 extern int g_hal_put_pages_ret_val;
 extern int g_mock_hal_put_pages_call_count;
+extern int g_sg_free_call_count;
 
 extern "C" {
 int printk(const char *fmt, ...);

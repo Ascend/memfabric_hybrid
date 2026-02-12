@@ -8,13 +8,13 @@
 #define NPU_PAGE_SIZE 4096
 #define NPU_PAGE_SIZE_ONE_HUNDRED (4096 * 100)
 #define NPU_PAGE_SIZE_FIVE (4096 * 5)
-#define SZ_1M   (1024 * 1024)
-#define SZ_2M   (2 * SZ_1M)
+#define SZ_1M (1024 * 1024)
+#define SZ_2M (2 * SZ_1M)
 #define NPU_PAGE_MASK (~(NPU_PAGE_SIZE - 1UL))
 #define EXPECTED_DMA_MAP_COUNT_THREE (3)
 #define EXPECTED_DMA_MAP_COUNT_TWO (2)
-#define TEST_SMALL_PAGE_COUNT   (100)    /* 40KB buffer for basic functionality test */
-#define TEST_HOST_PID (1234)
+#define TEST_SMALL_PAGE_COUNT (100) /* 40KB buffer for basic functionality test */
+#define TEST_HOST_PID_ONE_TWO_THREE_FOUR (1234)
 #define TEST_PROCESS_ID_VID (2)
 #define TEST_DMA_MAP_FAIL_INDEX (2)
 
@@ -117,9 +117,11 @@ TEST_F(NDRAcquireTest, AcquireSuccess_NormalVa)
     EXPECT_EQ(sctx->len, size);
     EXPECT_EQ(sctx->inited_flag, 1);
     EXPECT_NE(sctx->page_table, nullptr);
-    EXPECT_GE(sctx->aligned_size, size);
+    EXPECT_GT(sctx->aligned_size, size);
     EXPECT_EQ(sctx->va_aligned_start, va & NPU_PAGE_MASK);
-    EXPECT_EQ(sctx->va_aligned_end, (va + size + NPU_PAGE_SIZE - 1) & NPU_PAGE_MASK);
+    unsigned long expected_end = (va + size + NPU_PAGE_SIZE - 1) & NPU_PAGE_MASK;
+    EXPECT_EQ(sctx->va_aligned_end, expected_end);
+
     EXPECT_EQ(sctx->pa_num, sctx->page_table->page_num);
     EXPECT_EQ(sctx->page_size, 4096UL);
 
@@ -189,7 +191,7 @@ protected:
 
         struct svm_agent_context *sctx = (struct svm_agent_context *)valid_ctx;
         sctx->get_flag                 = 0;
-        sctx->process_id.hostpid       = TEST_HOST_PID;
+        sctx->process_id.hostpid       = TEST_HOST_PID_ONE_TWO_THREE_FOUR;
         sctx->process_id.devid         = 1;
         sctx->process_id.vfid          = TEST_PROCESS_ID_VID;
         sctx->pa_list                  = nullptr;
@@ -316,16 +318,16 @@ TEST_F(NDRGetPagesTest, GetPagesSuccess_VaNotAlignedWarning)
 // DmaMap Fixture + Tests
 // ============================================================
 // Test constants
-static constexpr uint64_t TEST_VA_BASE      = 0x10000000UL;
-static constexpr size_t   NUM_PAGES         = 5;
-static constexpr size_t   TEST_PAGE_SIZE    = NPU_PAGE_SIZE; // 复用已有宏
-static constexpr uint64_t TEST_LEN          = TEST_PAGE_SIZE * NUM_PAGES;
-static constexpr uint64_t TEST_VA_END       = TEST_VA_BASE + TEST_LEN;
+static constexpr uint64_t TEST_VA_BASE = 0x10000000UL;
+static constexpr size_t NUM_PAGES      = 5;
+static constexpr size_t TEST_PAGE_SIZE = NPU_PAGE_SIZE;  // 复用已有宏
+static constexpr uint64_t TEST_LEN     = TEST_PAGE_SIZE * NUM_PAGES;
+static constexpr uint64_t TEST_VA_END  = TEST_VA_BASE + TEST_LEN;
 
 // Process ID mock values
-static constexpr int      TEST_HOST_PID     = 1234;
-static constexpr int      TEST_DEV_ID       = 1;
-static constexpr int      TEST_VF_ID        = 2;
+static constexpr int TEST_HOST_PID = 1234;
+static constexpr int TEST_DEV_ID   = 1;
+static constexpr int TEST_VF_ID    = 2;
 
 class NDRDmaMapTest : public ::testing::Test {
 protected:
@@ -358,19 +360,19 @@ protected:
         struct svm_agent_context *sctx = (struct svm_agent_context *)valid_ctx;
 
         mutex_init(&sctx->context_mutex);
-        sctx->va               = TEST_VA_BASE;
-        sctx->len              = TEST_LEN;
-        sctx->aligned_size     = TEST_LEN;
-        sctx->va_aligned_start = TEST_VA_BASE;
-        sctx->va_aligned_end   = TEST_VA_END;
-        sctx->page_size        = TEST_PAGE_SIZE;
-        sctx->inited_flag      = 1;
-        sctx->get_flag         = 0;
-        sctx->page_table       = nullptr;
-        sctx->sg_head          = nullptr;
-        sctx->dma_addr_list    = nullptr;
-        sctx->dma_mapped_count = 0;
-        sctx->process_id.hostpid = TEST_HOST_PID;
+        sctx->va                 = TEST_VA_BASE;
+        sctx->len                = TEST_LEN;
+        sctx->aligned_size       = TEST_LEN;
+        sctx->va_aligned_start   = TEST_VA_BASE;
+        sctx->va_aligned_end     = TEST_VA_END;
+        sctx->page_size          = TEST_PAGE_SIZE;
+        sctx->inited_flag        = 1;
+        sctx->get_flag           = 0;
+        sctx->page_table         = nullptr;
+        sctx->sg_head            = nullptr;
+        sctx->dma_addr_list      = nullptr;
+        sctx->dma_mapped_count   = 0;
+        sctx->process_id.hostpid = TEST_HOST_PID_ONE_TWO_THREE_FOUR;
         sctx->process_id.devid   = TEST_DEV_ID;
         sctx->process_id.vfid    = TEST_VF_ID;
         sctx->pa_list            = nullptr;
@@ -620,7 +622,7 @@ protected:
         sctx->page_size          = NPU_PAGE_SIZE;
         sctx->inited_flag        = 1;
         sctx->get_flag           = 0;
-        sctx->process_id.hostpid = TEST_HOST_PID;
+        sctx->process_id.hostpid = TEST_HOST_PID_ONE_TWO_THREE_FOUR;
         sctx->process_id.devid   = 1;
         sctx->process_id.vfid    = TEST_PROCESS_ID_VID;
 
@@ -701,4 +703,175 @@ TEST_F(NDRPutPagesTest, PutPages_ContextNotInited)
 
     ndr_mem_put_pages(&sg_head, uninit_ctx);
     kfree(uninit_ctx);
+}
+
+// ============================================================
+// 9. DmaUnmap Fixture + Tests
+// ============================================================
+class NDRDmaUnmapTest : public ::testing::Test {
+protected:
+    void *ctx = nullptr;
+    struct sg_table mapped_sg {};
+    struct device mock_dev {};
+
+    void SetUp() override
+    {
+        hal_get_pages_func     = mock_hal_get_pages;
+        g_fail_dma_map         = false;
+        g_dma_map_fail_index   = -1;
+        g_dma_map_call_count   = 0;
+        g_dma_unmap_call_count = 0;
+        g_sg_free_call_count   = 0;
+
+        unsigned long va = 0x10000000UL;
+        size_t size      = 4096 * 5;
+        bool acquire_ret = ndr_mem_acquire(va, size, nullptr, nullptr, &ctx);
+        ASSERT_TRUE(acquire_ret);
+
+        sg_alloc_table(&mapped_sg, 5, 0);
+
+        int nmap    = 0;
+        int map_ret = ndr_mem_dma_map(&mapped_sg, ctx, &mock_dev, 0, &nmap);
+        ASSERT_EQ(map_ret, 0);
+        ASSERT_EQ(nmap, 5);
+        ASSERT_EQ(g_dma_map_call_count, 5);
+    }
+
+    void TearDown() override
+    {
+        if (ctx) {
+            ndr_mem_release(ctx);
+            ctx = nullptr;
+        }
+        g_dma_unmap_call_count = 0;
+        g_sg_free_call_count   = 0;
+    }
+};
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_NullCtx)
+{
+    struct sg_table dummy_sg {};
+    sg_alloc_table(&dummy_sg, 1, 0);
+
+    int ret = ndr_mem_dma_unmap(&dummy_sg, nullptr, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+
+    sg_free_table(&dummy_sg);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_NullSgHead)
+{
+    int ret = ndr_mem_dma_unmap(nullptr, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_NotInitialized)
+{
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    sctx->inited_flag              = 0;
+
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_SgHeadMismatch)
+{
+    struct sg_table wrong_sg {};
+    sg_alloc_table(&wrong_sg, 1, 0);
+
+    int ret = ndr_mem_dma_unmap(&wrong_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+
+    sg_free_table(&wrong_sg);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_PageTableNull)
+{
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    sctx->page_table               = nullptr;
+
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_PageSizeZero)
+{
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    sctx->page_table->page_size    = 0;
+
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapFail_NoDeviceFallback)
+{
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    sctx->dma_device               = nullptr;
+
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, nullptr);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapSuccess_WithFallbackDevice)
+{
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    sctx->dma_device               = nullptr;
+
+    struct device fallback_dev {};
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &fallback_dev);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(g_dma_unmap_call_count, 5);
+    EXPECT_EQ(g_sg_free_call_count, 1);
+    EXPECT_EQ(sctx->dma_mapped_count, 0);
+    EXPECT_EQ(sctx->dma_addr_list, nullptr);
+    EXPECT_EQ(sctx->sg_head, nullptr);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapSuccess_Normal)
+{
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(g_dma_unmap_call_count, 5);
+    EXPECT_EQ(g_sg_free_call_count, 1);
+
+    struct svm_agent_context *sctx = (struct svm_agent_context *)ctx;
+    EXPECT_EQ(sctx->dma_mapped_count, 0);
+    EXPECT_EQ(sctx->dma_addr_list, nullptr);
+    EXPECT_EQ(sctx->sg_head, nullptr);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapSuccess_NoMapping)
+{
+    ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+
+    g_dma_unmap_call_count = 0;
+    g_sg_free_call_count   = 0;
+
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &mock_dev);
+    EXPECT_EQ(ret, -EINVAL);
+    EXPECT_EQ(g_dma_unmap_call_count, 0);
+    EXPECT_EQ(g_sg_free_call_count, 0);
+}
+
+TEST_F(NDRDmaUnmapTest, UnmapSuccess_DeviceMismatchWarn)
+{
+    struct device wrong_dev {};
+    int ret = ndr_mem_dma_unmap(&mapped_sg, ctx, &wrong_dev);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(g_dma_unmap_call_count, 5);
+    EXPECT_EQ(g_sg_free_call_count, 1);
 }

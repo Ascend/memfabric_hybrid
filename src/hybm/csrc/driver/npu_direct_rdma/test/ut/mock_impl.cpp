@@ -34,6 +34,7 @@ int g_mock_hal_put_pages_call_count = 0;
 typedef void (*free_callback_t)(void *);
 int g_devmm_get_mem_pa_list_ret_val = 0;
 int g_devmm_call_count              = 0;
+int g_sg_free_call_count            = 0;
 
 extern "C" {
 int printk(const char *fmt, ...)
@@ -119,7 +120,7 @@ int sg_alloc_table(struct sg_table *table, unsigned int nents, int gfp_mask)
     }
 
     table->nents = nents;
-    table->sgl = (struct scatterlist *)calloc(nents, sizeof(struct scatterlist));
+    table->sgl   = (struct scatterlist *)calloc(nents, sizeof(struct scatterlist));
     if (!table->sgl) {
         return -ENOMEM;
     }
@@ -127,11 +128,12 @@ int sg_alloc_table(struct sg_table *table, unsigned int nents, int gfp_mask)
 }
 void sg_free_table(struct sg_table *table)
 {
-    if (table->sgl) {
+    g_sg_free_call_count++;
+    if (table && table->sgl) {
         free(table->sgl);
+        table->sgl   = NULL;
+        table->nents = 0;
     }
-
-    table->sgl = NULL;
 }
 dma_addr_t dma_map_resource(struct device *dev, u64 phys_addr, size_t size, int dir, unsigned long attrs)
 {
