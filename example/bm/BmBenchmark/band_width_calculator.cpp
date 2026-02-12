@@ -428,7 +428,13 @@ int32_t BandWidthCalculator::Execute(uint32_t deviceId, uint32_t rankId, uint32_
     auto ret = PreInit(deviceId, barrier, rankId, rkSize, &stream);
     CHECK_RET_ERR(ret, "pre init failed, ret:" << ret << " rank:" << rankId);
 
-    smem_bm_t handle = smem_bm_create(0, 0, cmdParam_.opType, GVA_SIZE, GVA_SIZE, 0);
+    uint32_t flags = 0;
+    if (cmdParam_.opType == SMEMB_DATA_OP_SDMA) {
+        uint32_t performanceFlag = (1U << HYBM_PERFORMANCE_MODE_FLAG_INDEX);
+        uint32_t numaflag = HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG;
+        flags |= (performanceFlag | numaflag);
+    }
+    smem_bm_t handle = smem_bm_create(0, 0, cmdParam_.opType, GVA_SIZE, GVA_SIZE, flags);
     CHECK_RET_ERR((handle == nullptr), "smem_bm_create failed, rank:" << rankId);
 
     ret = smem_bm_join(handle, 0);

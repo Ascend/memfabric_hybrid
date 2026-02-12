@@ -93,6 +93,7 @@ typedef struct {
 #define HYBM_PERFORMANCE_MODE_FLAG_LEN   1
 #define HYBM_BIND_NUMA_FLAG_INDEX        0
 #define HYBM_BIND_NUMA_FLAG_LEN          7
+#define HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << HYBM_BIND_NUMA_FLAG_LEN) - 1)
 
 typedef struct {
     hybm_type bmType;

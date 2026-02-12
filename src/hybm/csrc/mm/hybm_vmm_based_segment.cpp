@@ -105,7 +105,12 @@ Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_
                                                          << " flag len:" << HYBM_BIND_NUMA_FLAG_LEN);
             return BM_INVALID_PARAM;
         }
-        prop.devid = numaIndex;
+        if (numaIndex == HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG) {
+            prop.side = MEM_HOST_SIDE;
+            prop.devid = 0;
+        } else {
+            prop.devid = numaIndex;
+        }
         auto start = std::chrono::high_resolution_clock::now();
         ret = DlHalApi::HalMemCreate(handle, size, &prop, 0);
         auto end = std::chrono::high_resolution_clock::now();

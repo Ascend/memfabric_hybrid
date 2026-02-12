@@ -21,6 +21,7 @@
 #include "acl/acl.h"
 #include "smem.h"
 #include "smem_bm.h"
+#include "hybm_def.h"
 
 enum class CopyType {
     HOST_TO_DEVICE = 0,
