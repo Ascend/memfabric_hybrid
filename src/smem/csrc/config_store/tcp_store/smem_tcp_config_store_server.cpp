@@ -274,7 +274,7 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
     std::vector<uint8_t> reqVal;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
 
-    if (ExcuteHandle(MessageType::SET, context.Link()->Id(), key, value) != SM_OK) {
+    if (ExecuteHandle(MessageType::SET, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
         STORE_LOG_ERROR("SET REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -387,7 +387,7 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     }
 
     std::vector<uint8_t> outValue;
-    if (ExcuteHandle(MessageType::GET, context.Link()->Id(), key, outValue) == SM_GET_OBJIECT) {
+    if (ExecuteHandle(MessageType::GET, context.Link()->Id(), key, outValue) == SM_GET_OBJIECT) {
         responseMessage.values.push_back(std::move(outValue));
         lockGuard.unlock();
         STORE_LOG_DEBUG("GET REQUEST(" << context.SeqNo() << ") for key(" << key << ") from falut info success.");
@@ -458,7 +458,7 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
     std::list<ock::acc::AccTcpRequestContext> wakeupWaiters;
     std::vector<uint8_t> reqVal;
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    if (valueNum > 0 && ExcuteHandle(MessageType::ADD, context.Link()->Id(), key, value) != SM_OK) {
+    if (valueNum > 0 && ExecuteHandle(MessageType::ADD, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
         STORE_LOG_ERROR("ADD REQUEST(" << context.SeqNo() << ") for key(" << key << "), excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -566,7 +566,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
         }
         ret = backend_->Put(key, std::move(value), 0);
     }
-    if (ExcuteHandle(MessageType::APPEND, context.Link()->Id(), key, appendValue) != SM_OK) {
+    if (ExecuteHandle(MessageType::APPEND, context.Link()->Id(), key, appendValue) != SM_OK) {
         lockGuard.unlock();
         STORE_LOG_ERROR("APPEND REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -622,7 +622,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
         STORE_LOG_INFO("write: not enough kvStore room, expansion size: " << (offset + realValSize));
     }
     std::copy_n(value.data() + sizeof(uint32_t), realValSize, curValue.data() + offset);
-    if (ExcuteHandle(MessageType::WRITE, context.Link()->Id(), key, value) != SM_OK) {
+    if (ExecuteHandle(MessageType::WRITE, context.Link()->Id(), key, value) != SM_OK) {
         lockGuard.unlock();
         STORE_LOG_ERROR("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") excute handle failed.");
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -886,12 +886,12 @@ void AccStoreServer::CheckerThreadTask() noexcept
     STORE_LOG_INFO("checker thread exit");
 }
 
-Result AccStoreServer::ExcuteHandle(int16_t opCode, uint32_t linkId, std::string &key,
-                                    std::vector<uint8_t> &value) noexcept
+Result AccStoreServer::ExecuteHandle(int16_t opCode, uint32_t linkId, std::string &key,
+                                     std::vector<uint8_t> &value) noexcept
 {
     auto it = externalOpHandlerMap_.find(opCode);
     if (it == externalOpHandlerMap_.end()) {
-        STORE_LOG_DEBUG("excute handle map not find opCode:" << opCode);
+        STORE_LOG_DEBUG("execute handle map not find opCode:" << opCode);
         return SM_OK;
     }
     return it->second(linkId, key, value, backend_);

@@ -109,7 +109,7 @@ private:
     void RankStateTask() noexcept;
     void CheckerThreadTask() noexcept;
     Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    Result ExcuteHandle(int16_t opCode, uint32_t linkId, std::string &key, std::vector<uint8_t> &value) noexcept;
+    Result ExecuteHandle(int16_t opCode, uint32_t linkId, std::string &key, std::vector<uint8_t> &value) noexcept;
 
 private:
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;

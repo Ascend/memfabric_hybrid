@@ -519,14 +519,13 @@ void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values, std::ve
 {
     if (remoteSlicesInfoLastTime_ == values) {
         SM_LOG_DEBUG(
-            "remote slice info has no change, remoteSlicesInfoLastTime_ szie=" << remoteSlicesInfoLastTime_.size());
+            "remote slice info has no change, remoteSlicesInfoLastTime_ size=" << remoteSlicesInfoLastTime_.size());
         return; // 无变化
     }
     uint32_t newCount = values.size() / (sliceExpSize_ + sizeof(StoredSliceInfo) + 1); // 有一位为标志位，表示数据状态
     uint32_t curCount = remoteSlicesInfoLastTime_.size() / (sliceExpSize_ + sizeof(StoredSliceInfo) + 1);
     uint32_t minCount = std::min(newCount, curCount);
-    SM_LOG_INFO("ExtraSliceChangeInfo newCount= " << newCount << ", curCount=" << curCount
-                                                  << ", minCount=" << minCount);
+    SM_LOG_INFO("newCount=" << newCount << ", curCount=" << curCount << ", minCount=" << minCount);
     // client故障：newCount >= curCount
     CompareAndUpdateSliceInfo(minCount, values, addInfo, addStoreSs, removeStoreSs);
     // 新增client：newCount > curCount

@@ -235,6 +235,8 @@ void SmemStoreFaultHandler::ClearDeviceInfo(uint32_t linkId, RankInfo &rankInfo,
         SM_LOG_INFO("link broken, linkId: " << linkId << ", rankId: " << rankInfo.rankId
                                             << ", deviceInfoId: " << rankInfo.dInfo.deviceInfoId);
         dInfoValue[offset] = DataStatusType::ABNORMAL; // deviceInfo标记为异常, 正常节点client检测到异常状态会做清理
+        ret = backend->Put(rankInfo.dInfo.deviceInfoKey, dInfoValue, 0);
+        SM_ASSERT_RET_VOID(ret == SUCCESS);
     }
     ret = backend->Get(rankInfo.dInfo.deviceCountKey, oldValue);
     if (ret == SUCCESS) {
@@ -275,6 +277,8 @@ void SmemStoreFaultHandler::ClearSliceInfo(uint32_t linkId, RankInfo &rankInfo, 
                 faultSliceIdQueue_.second.push(id);
             }
         }
+        ret = backend->Put(rankInfo.sInfo.sliceInfoKey, sInfoValue, 0);
+        SM_ASSERT_RET_VOID(ret == SUCCESS);
     }
     ret = backend->Get(rankInfo.sInfo.sliceCountKey, oldValue);
     if (ret == SUCCESS) {
