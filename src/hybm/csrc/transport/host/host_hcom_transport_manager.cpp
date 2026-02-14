@@ -39,6 +39,7 @@ constexpr uint64_t HCOM_COMPLETE_QUEUE_SIZE = 8192;
 constexpr uint64_t HCOM_QUEUE_PRE_POST_SIZE = 1024UL;
 constexpr uint8_t HCOM_TRANS_EP_SIZE = 1;
 constexpr int8_t HCOM_THREAD_PRIORITY = -20;
+constexpr uint64_t UB_SEGMENT_ADDR_ALIGN_SIZE  = 4096UL;
 #else
 constexpr uint64_t HCOM_MAX_SLICE_SIZE = 1024 * 1024UL;
 constexpr uint64_t HCOM_RECV_DATA_SIZE = HCOM_MAX_SLICE_SIZE + 1024;
@@ -215,6 +216,11 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         return BM_OK;
     }
 
+    if ((bmOptype_ == HYBM_DOP_TYPE_HOST_URMA) && (mr.addr & (UB_SEGMENT_ADDR_ALIGN_SIZE - 1)) != 0) {
+        BM_LOG_ERROR("Failed to register ub mem region, whose addr must be 4k aligned");
+        return BM_INVALID_PARAM;
+    }
+
     HcomMemoryRegion info{};
     if (GetMemoryRegionByAddr(rankId_, mr.addr, info) == BM_OK) {
         BM_LOG_ERROR("Failed to register mem region, addr already registered");
@@ -225,16 +231,19 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     int32_t ret = DlHcomApi::ServiceRegisterAssignMemoryRegion(rpcService_, mr.addr, mr.size, &memoryRegion);
     // 单rank不需要hcom,目的是在无网卡的情况下也可以测试
     if (ret != 0) {
-        BM_LOG_WARN("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
+        BM_LOG_ERROR("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
                                                             << " service: " << rpcService_ << " ret: " << ret);
+        return BM_ERROR;
     }
+
     Service_MemoryRegionInfo memoryRegionInfo;
     if (ret == 0) {
         ret = DlHcomApi::ServiceGetMemoryRegionInfo(memoryRegion, &memoryRegionInfo);
     }
     if (ret != 0) {
-        BM_LOG_WARN("Failed to get mem region info, size: " << mr.size << " service: " << rpcService_
+        BM_LOG_ERROR("Failed to get mem region info, size: " << mr.size << " service: " << rpcService_
                                                             << " ret: " << ret);
+        return BM_ERROR;
     }
 
     HcomMemoryRegion mrInfo{};
