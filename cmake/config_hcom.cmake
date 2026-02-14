@@ -33,7 +33,7 @@ if (BUILD_HCOM)
     FetchContent_Declare(
             hcom
             GIT_REPOSITORY https://atomgit.com/openeuler/ubs-comm.git
-            GIT_TAG dev-kvcache
+            GIT_TAG br_dev_container_20260228
     )
 
     message(STATUS "Configuring hcom with CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}, options: BUILD_WITH_RDMA:${BUILD_WITH_RDMA} BUILD_WITH_UB:${BUILD_WITH_UB}")

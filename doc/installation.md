@@ -41,7 +41,9 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 - build_python: 是否编译python的whl包，可填ON或OFF，默认ON
 - xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
 - build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
-- build_hcom: 是否编译hcom，可填ON或OFF，默认OFF（如果数据传输类型需要使用HOST_RDMA、HOST_TCP、HOST_URMA时，需要设置为ON，且环境需要安装libibverbs-dev，可通过apt install libibverbs-dev进行安装）
+- build_hcom: 是否编译hcom，可填ON或OFF，默认OFF（如果数据传输类型需要使用HOST_RDMA、HOST_TCP、HOST_URMA时，需要设置为ON）
+- build_hcom_rdma: 在开启编hcom的情况下，指定编译的hcom是否启用rdma，若启用，当前编译环境需要安装libibverbs-dev，可通过apt install libibverbs-dev进行安装，可填ON或OFF，默认为ON
+- build_hcom_ub: 在开启编hcom的情况下，指定编译的hcom是否启用ub(urma),默认为OFF。注：rdma和ub可以同时指定为ON，两者不冲突
 
 ## 环境准备
 

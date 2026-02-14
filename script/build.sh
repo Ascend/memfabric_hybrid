@@ -17,6 +17,8 @@ ENABLE_PTRACER=${5:-ON}
 export XPU_TYPE=${6:-NPU} # 导出环境变量用于后续构建whl包
 BUILD_TEST=${7:-OFF}
 BUILD_HCOM=${8:-OFF}
+BUILD_HCOM_WITH_RDMA=${9:-ON}
+BUILD_HCOM_WITH_UB=${10:-OFF}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -62,6 +64,8 @@ cmake \
     -DXPU_TYPE="${XPU_TYPE}" \
     -DBUILD_TEST="${BUILD_TEST}" \
     -DBUILD_HCOM="${BUILD_HCOM}" \
+    -DBUILD_WITH_RDMA="${BUILD_HCOM_WITH_RDMA}" \
+    -DBUILD_WITH_UB="${BUILD_HCOM_WITH_UB}" \
     -S . \
     -B build/
 ${MAKE_CMD} install -j32 -C build/
