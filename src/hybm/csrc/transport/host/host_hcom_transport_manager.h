@@ -102,6 +102,8 @@ private:
 
     void DisConnectHcomChannel(uint32_t rankId, Hcom_Channel ch);
 
+    void HcomChannelDisconnected(uint32_t rankId, Hcom_Channel ch);
+
     void ForceReConnectHcomChannel(uint32_t rankId);
 
     Result GetMemoryRegionByAddr(const uint32_t &rankId, const uint64_t &addr, HcomMemoryRegion &mr);

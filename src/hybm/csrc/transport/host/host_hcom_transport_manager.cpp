@@ -767,7 +767,8 @@ Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uin
         BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
         return BM_ERROR;
     }
-    GetInstance()->DisConnectHcomChannel(rankId, ch);
+
+    GetInstance()->HcomChannelDisconnected(rankId, ch);
     return BM_OK;
 }
 
@@ -819,6 +820,13 @@ Result HcomTransportManager::ConnectHcomChannel(uint32_t rankId, const std::stri
     BM_LOG_DEBUG("Success to connect to hcom service rankId: " << rankId << " url: " << url
                                                                << " channel: " << (void *)channel);
     return BM_OK;
+}
+
+void HcomTransportManager::HcomChannelDisconnected(uint32_t rankId, Hcom_Channel ch)
+{
+    if (channels_[rankId] == ch) {
+        channels_[rankId] = 0;
+    }
 }
 
 void HcomTransportManager::DisConnectHcomChannel(uint32_t rankId, Hcom_Channel ch)
