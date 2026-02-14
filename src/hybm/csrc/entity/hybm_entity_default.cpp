@@ -107,7 +107,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     // init transManager
     BM_ASSERT_LOG_AND_RETURN(InitTransManager() == BM_OK, "Failed to InitTransManager", BM_ERROR);
     // init dataOperator
-    BM_ASSERT_LOG_AND_RETURN(InitDataOperator() == BM_OK, "Failed to InitTransManager", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(InitDataOperator() == BM_OK, "Failed to InitDataOperator", BM_ERROR);
 
     initialized_ = true;
     return BM_OK;
