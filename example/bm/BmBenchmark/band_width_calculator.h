@@ -118,8 +118,6 @@ private:
     bool isMaster_ = false;
     void *localDram_ = nullptr;
     void *localHbm_ = nullptr;
-    void *registedLocalDram_ = nullptr;
-    void *registedLocalHbm_ = nullptr;
 };
 
 #endif

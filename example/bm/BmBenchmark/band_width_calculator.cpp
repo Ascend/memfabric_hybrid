@@ -276,8 +276,6 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
         ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(localDram_), len);
         if (ret != 0) {
             LOG_WARN("register dram failed, ret:" << ret << ", len:" << len << ", addr:" << localDram_);
-        } else {
-            registedLocalDram_ = localDram_;
         }
     } while (0);
     do {
@@ -292,8 +290,6 @@ int32_t BandWidthCalculator::PrepareLocalMem(smem_bm_t handle, uint32_t rankId)
         if (ret != 0) {
             LOG_WARN("register hbm failed, ret:" << ret << ", len:" << len
                                                  << ", addr:" << reinterpret_cast<uint64_t>(localHbm_));
-        } else {
-            registedLocalHbm_ = localHbm_;
         }
     } while (0);
     if (cmdParam_.opType == SMEMB_DATA_OP_SDMA) {
@@ -315,9 +311,9 @@ int32_t BandWidthCalculator::PrepareCopyParam(smem_bm_mem_type localMemType, sme
     }
     void *localPtr = nullptr;
     if (localMemType == SMEM_MEM_TYPE_LOCAL_DEVICE) {
-        localPtr = registedLocalHbm_ == nullptr ? localHbm_ : registedLocalHbm_;
+        localPtr = localHbm_;
     } else if (localMemType == SMEM_MEM_TYPE_LOCAL_HOST) {
-        localPtr = registedLocalDram_ == nullptr ? localDram_ : registedLocalDram_;
+        localPtr = localDram_;
     }
     CHECK_RET_ERR((localPtr == nullptr), "localPtr is nullptr, localMemType:" << localMemType);
     uint64_t gva = (uint64_t)smem_bm_ptr_by_mem_type(handle, rmtMemType, gvaRankId);

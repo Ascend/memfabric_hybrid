@@ -158,7 +158,7 @@ Result HybmVmmBasedSegment::MallocEmptySlice(MemSlicePtr &slice) noexcept
     }
     HostSdmaExportInfo info;
     std::string exInfo;
-    info.devId = logicDeviceId_;
+    info.logicDevId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
                                                      : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
@@ -175,7 +175,7 @@ Result HybmVmmBasedSegment::MallocEmptySlice(MemSlicePtr &slice) noexcept
         return BM_ERROR;
     }
     BM_LOG_INFO("Success to export vmm segment info rank:" << info.rankId << " superPodId:"
-       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.devId
+       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.logicDevId
        << " segType:" << options_.segType << " size:" << info.size);
     exportMap_[slice->index_] = exInfo;
     return BM_OK;
@@ -354,7 +354,7 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
     ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
     BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
 
-    info.devId = logicDeviceId_;
+    info.logicDevId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
                                                      : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
@@ -372,7 +372,7 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
     }
 
     BM_LOG_INFO("Success to export vmm segment info rank:" << info.rankId << " superPodId:"
-       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.devId
+       << info.superPodId << " serverId:" << info.serverId << " devId:" << info.logicDevId
        << " segType:" << options_.segType << " size:" << info.size);
     exportMap_[slice->index_] = exInfo;
     sHandle = info.shareHandle;
@@ -440,12 +440,12 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
             return BM_INVALID_PARAM;
         }
         if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
-            CanLocalHostReaches(info.superPodId, info.serverId,
-                                info.devId)) {
-            ret = DlAclApi::RtEnableP2P(deviceId_, info.devId, 0);
+            logicDeviceId_ != static_cast<int>(info.logicDevId) &&
+            CanLocalHostReaches(info.superPodId, info.serverId, info.logicDevId)) {
+            ret = DlAclApi::RtEnableP2P(deviceId_, info.logicDevId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                                                            << " remote_device:" << (int)info.devId);
+                                                            << " remote_device:" << (int)info.logicDevId);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
@@ -453,21 +453,9 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
             addresses[i] = reinterpret_cast<void *>(info.vAddress);
         }
         deserializedInfos.emplace_back(info);
-    }
-
-    for (const auto &info: deserializedInfos) {
-        if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
-            CanLocalHostReaches(info.superPodId, info.serverId,
-                                info.devId) && deviceId_ != static_cast<int>(info.devId)) {
-            ret = DlAclApi::RtEnableP2P(deviceId_, info.devId, 0);
-            if (ret != 0) {
-                BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                                                            << " remote_device:" << (int)info.devId);
-                return BM_DL_FUNCTION_FAILED;
-            }
-        }
         BM_LOG_INFO("Success to import rank:" << info.rankId << " superPodId:" << info.superPodId << " serverId:"
-              << info.serverId << " devId:" << info.devId << " segType:" << options_.segType  << " size:" << info.size);
+            << info.serverId << " devId:" << info.logicDevId << " segType:"
+            << options_.segType  << " size:" << info.size);
     }
 
     try {
@@ -523,7 +511,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             continue;
         }
         BM_LOG_INFO("Try to mmap rank:" << im.rankId << " superPodId:" << im.superPodId << " serverId:"
-                                        << im.serverId << " devId:" << im.devId << " segType:" << options_.segType
+                                        << im.serverId << " devId:" << im.logicDevId << " segType:" << options_.segType
                                         << " size:" << im.size << " addr:" << std::hex << remoteAddress);
         drv_mem_handle_t *handle = nullptr;
         auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
