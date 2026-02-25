@@ -43,6 +43,32 @@ static hal_get_pages_t hal_get_pages_func = NULL;
 typedef int (*hal_put_pages_t)(struct p2p_page_table *);
 static hal_put_pages_t hal_put_pages_func = NULL;
 
+/* ==================== Superset architecture compatible with CX5 and CloudPulse network cards ==================== */
+/* The Yunmai network card adds two function pointers (located at the end) to the original peer_memory_client. */
+struct peer_memory_client_compat {
+    char name[64];
+    char version[16];
+    int (*acquire)(unsigned long addr, size_t size, void *peer_mem_private_data, char *peer_mem_name,
+                   void **client_context);
+    int (*get_pages)(unsigned long addr, size_t size, int write, int force, struct sg_table *sg_head,
+                     void *client_context, u64 core_context);
+    int (*dma_map)(struct sg_table *sg_head, void *client_context, struct device *dma_device, int dmasync, int *nmap);
+    int (*dma_unmap)(struct sg_table *sg_head, void *client_context, struct device *dma_device);
+    void (*put_pages)(struct sg_table *sg_head, void *client_context);
+    unsigned long (*get_page_size)(void *client_context);
+    void (*release)(void *client_context);
+    void *(*get_context_private_data)(u64 peer_id);
+    void (*put_context_private_data)(void *context);
+};
+
+/* Compatible with both registration/unregistration function pointer types */
+typedef void *(*ib_register_peer_memory_client_t)(const struct peer_memory_client_compat *peer_client,
+                                                  void **invalidate_callback);
+typedef void (*ib_unregister_peer_memory_client_t)(void *reg_handle);
+
+static ib_register_peer_memory_client_t func_ib_register_peer_memory_client     = NULL;
+static ib_unregister_peer_memory_client_t func_ib_unregister_peer_memory_client = NULL;
+
 uint64_t (*g_kallsymsLookupName)(const char *) = NULL;
 
 #define NPU_PAGE_SHIFT 12
@@ -81,6 +107,23 @@ struct svm_agent_context {
 
 DECLARE_RWSEM(svm_context_sem);
 
+/**
+ * @brief Retrieve the hardware page size of an NPU memory region from its SVM context.
+ *
+ * This function safely extracts the physical page size (e.g., 4KB) from a pre-acquired
+ * SVM (Shared Virtual Memory) context registered via ndr_mem_acquire(). It performs
+ * thread-safe access using a read semaphore to protect context integrity, validates
+ * context initialization state before access, and returns the page size required by
+ * the RDMA Core for proper memory region alignment during peer memory registration.
+ * This callback fulfills the get_page_size() requirement of the MLNX_OFED peer memory
+ * client interface.
+ *
+ * @param client_context  Pointer to the svm_agent_context returned by ndr_mem_acquire().
+ *                        Must be non-NULL and fully initialized (inited_flag == 1).
+ * @return                Page size in bytes (e.g., 4096) on success; 0 on invalid context.
+ *                        Note: 0 is an invalid page size per RDMA specification and will
+ *                        cause MR registration failure in the RDMA stack.
+ */
 unsigned long ndr_mem_get_page_size(void *client_context)
 {
     struct svm_agent_context *svm_agent_context = (struct svm_agent_context *)client_context;
@@ -142,6 +185,7 @@ int ndr_mem_acquire(unsigned long va, size_t size, void *peer_mem_data, char *pe
     struct svm_agent_context *svm_agent_context = NULL;
     int ret                                     = 0;
     unsigned long end_va;
+    unsigned long roundup_va;
 
     if (!client_context) {
         NDR_PEER_MEM_ERR("client_context is NULL\n");
@@ -156,7 +200,16 @@ int ndr_mem_acquire(unsigned long va, size_t size, void *peer_mem_data, char *pe
 
     end_va = va + size;
     if (end_va < va) {
-        NDR_PEER_MEM_ERR("va + size overflow: va=%lx, size=%zu\n", va, size);
+        NDR_PEER_MEM_ERR("va + size overflow: va=%pK, size=%zu\n",
+                         (void *)va, size);
+        kfree(svm_agent_context);
+        return false;
+    }
+
+    roundup_va = end_va + (NPU_PAGE_SIZE - 1);
+    if (roundup_va < end_va) {
+        NDR_PEER_MEM_ERR("va + size + page_offset overflow: va=%pK, size=%zu\n",
+                         (void *)va, size);
         kfree(svm_agent_context);
         return false;
     }
@@ -257,8 +310,8 @@ int ndr_mem_get_pages(unsigned long va, size_t size, int write, int force, struc
     }
 
     // 5. Record and log key information
-    NDR_PEER_MEM_INFO("GetPages succeeded: page_num=%u, page_size=%u", (unsigned int)ctx->page_table->page_num,
-                      (unsigned int)ctx->page_table->page_size);
+    NDR_PEER_MEM_INFO("GetPages succeeded: page_num=%llu, page_size=%llu", ctx->page_table->page_num,
+                      ctx->page_table->page_size);
 
     // 6. Alignment check (based on actual page size)
     if (va & (ctx->page_table->page_size - 1)) {
@@ -476,7 +529,7 @@ int ndr_mem_dma_unmap(struct sg_table *sg_head, void *context, struct device *dm
     if (ctx->dma_addr_list && ctx->dma_mapped_count > 0) {
         for (i = 0; i < ctx->dma_mapped_count; i++) {
             if (ctx->dma_addr_list[i]) {
-                dma_unmap_resource(ctx->dma_device, ctx->dma_addr_list[i], page_size, DMA_BIDIRECTIONAL, 0);
+                dma_unmap_resource(unmap_device, ctx->dma_addr_list[i], page_size, DMA_BIDIRECTIONAL, 0);
                 ctx->dma_addr_list[i] = 0;
             }
         }
@@ -652,16 +705,19 @@ void ndr_mem_release(void *agent_ctx)
 }
 
 static void *reg_handle                               = NULL;
-static struct peer_memory_client roce_peer_mem_client = {
-    .name          = DRV_ROCE_PEER_MEM_NAME,
-    .version       = DRV_ROCE_PEER_MEM_VERSION,
-    .acquire       = ndr_mem_acquire,
-    .get_pages     = ndr_mem_get_pages,
-    .dma_map       = ndr_mem_dma_map,
-    .dma_unmap     = ndr_mem_dma_unmap,
-    .put_pages     = ndr_mem_put_pages,
-    .get_page_size = ndr_mem_get_page_size,
-    .release       = ndr_mem_release,
+/* Peer_memory_client compatible with CX5 and Yunmai network cards (using a superset structure) */
+static struct peer_memory_client_compat roce_peer_mem_client = {
+    DRV_ROCE_PEER_MEM_NAME,     // char name[64]
+    DRV_ROCE_PEER_MEM_VERSION,  // char version[16]
+    ndr_mem_acquire,
+    ndr_mem_get_pages,
+    ndr_mem_dma_map,
+    ndr_mem_dma_unmap,
+    ndr_mem_put_pages,
+    ndr_mem_get_page_size,
+    ndr_mem_release,
+    NULL,  // get_context_private_data
+    NULL   // put_context_private_data
 };
 
 typedef int (*invalidate_peer_memory)(void *reg_handle, u64 core_context);
@@ -690,6 +746,22 @@ static int ndr_mem_kallsym_lookup(void)
         NDR_PEER_MEM_ERR("hal_put_pages_t is not inited.\n");
         return -ENOENT;
     }
+
+    /* IB Peer Memory */
+    func_ib_register_peer_memory_client =
+        (ib_register_peer_memory_client_t)g_kallsymsLookupName("ib_register_peer_memory_client");
+    if (!func_ib_register_peer_memory_client) {
+        NDR_PEER_MEM_ERR("ib_register_peer_memory_client lookup failed.\n");
+        return -ENOENT;
+    }
+
+    func_ib_unregister_peer_memory_client =
+        (ib_unregister_peer_memory_client_t)g_kallsymsLookupName("ib_unregister_peer_memory_client");
+    if (!func_ib_unregister_peer_memory_client) {
+        NDR_PEER_MEM_ERR("ib_unregister_peer_memory_client lookup failed.\n");
+        return -ENOENT;
+    }
+
     return 0;
 }
 
@@ -705,7 +777,7 @@ static int __init ndr_mem_agent_init(void)
         return -EINVAL;
     }
 
-    reg_handle = ib_register_peer_memory_client(&roce_peer_mem_client, &mem_invalidate_callback);
+    reg_handle = func_ib_register_peer_memory_client(&roce_peer_mem_client, (void **)&mem_invalidate_callback);
     if (reg_handle == NULL) {
         NDR_PEER_MEM_ERR("ib register failed");
         return -ENODEV;
@@ -718,7 +790,7 @@ static int __init ndr_mem_agent_init(void)
 static void __exit ndr_mem_agent_de_init(void)
 {
     if (reg_handle) {
-        ib_unregister_peer_memory_client(reg_handle);
+        func_ib_unregister_peer_memory_client(reg_handle);
         reg_handle = NULL;
     }
     NDR_PEER_MEM_INFO("Exit Peer Mem!\n");

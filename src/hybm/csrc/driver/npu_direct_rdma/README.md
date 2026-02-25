@@ -14,6 +14,15 @@ rdma_core: https://github.com/linux-rdma/rdma-core
 3. 编译测试 `bash scripts/build.sh --build_test ON`
 4. 查看帮助 `bash scripts/build.sh --help`
 
+运行UT
+1. `./build/test/run_tests`
+
+安装 & 卸载
+1. 安装完成之后在 `output/NDR/lib`路径下会生成 `ndr_peer_mem.ko`, 安装命令 `insmod ndr_peer_mem.ko`
+2. 查看安装情况: `lsmod | grep ndr`
+3. 查看内核日志（确认初始化是否成功）: `dmesg | tail -20`
+4. 卸载: `rmmod ndr_peer_mem`
+
 # perftest
 使用perftest测试rdma相关性能
 ## build
