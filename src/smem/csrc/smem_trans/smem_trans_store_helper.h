@@ -22,6 +22,7 @@
 #include "mf_net.h"
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
+#include "smem_net_common.h"
 #include "smem_trans_def.h"
 
 namespace ock {
