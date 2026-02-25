@@ -114,7 +114,7 @@ void HostDataOpRDMA::PreRegisterLocalMr(hybm_copy_params &params, hybm_data_copy
 
     auto ret = transportManager_->RegisterMemoryRegion(mr);
     if (ret != BM_OK) {
-        BM_LOG_WARN("Failed to pre register host rdma mr, addr:" << mr.addr << " size: " << mr.size);
+        BM_LOG_WARN("Failed to pre register host rdma mr, addr:" << (void *)mr.addr << " size: " << mr.size);
     }
 }
 
@@ -324,16 +324,21 @@ void HostDataOpRDMA::BatchPreRegisterLocalMr(hybm_batch_copy_params &params,
 {
     for (size_t i = 0; i < params.batchSize; i++) {
         hybm_copy_params param = {
-            .src = &params.sources[i], .dest = &params.destinations[i], .dataSize = params.dataSizes[i]};
+            .src = params.sources[i], .dest = params.destinations[i], .dataSize = params.dataSizes[i]};
         PreRegisterLocalMr(param, direction);
     }
 }
 
 void HostDataOpRDMA::BatchUnRegisterLocalMr(hybm_batch_copy_params &params, hybm_data_copy_direction direction) noexcept
 {
+    if (UNLIKELY(transportManager_ == nullptr)) {
+        BM_LOG_INFO("transportManager is null, skip unregister local mr");
+        return;
+    }
+
     for (size_t i = 0; i < params.batchSize; i++) {
         hybm_copy_params param = {
-            .src = &params.sources[i], .dest = &params.destinations[i], .dataSize = params.dataSizes[i]};
+            .src = params.sources[i], .dest = params.destinations[i], .dataSize = params.dataSizes[i]};
         transportManager_->UnregisterMemoryRegion(reinterpret_cast<uint64_t>(GetLocalMrAddr(param, direction)));
     }
 }
