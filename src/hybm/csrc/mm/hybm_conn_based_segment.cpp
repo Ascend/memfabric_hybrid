@@ -328,8 +328,8 @@ Result HybmConnBasedSegment::MapSlice(uint64_t lvOffset, uint64_t size) noexcept
     }
 
     if (addr == MAP_FAILED || addr != sliceAddr) {
-        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " ret:" << addr << " error:" << errno
-                                             << ", " << SafeStrError(errno));
+        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" <<  static_cast<void *>(sliceAddr)
+            << " ret:" << addr << " error:" << errno << ", " << SafeStrError(errno));
         return BM_ERROR;
     }
 
