@@ -19,6 +19,7 @@
 #include "hybm_dev_legacy_segment.h"
 #include "hybm_conn_based_segment.h"
 #include "hybm_vmm_based_segment.h"
+#include "hybm_dev_user_legacy_segment.h"
 #undef private
 #undef protected
 
@@ -26,7 +27,6 @@
 #include "hybm_ex_info_transfer.h"
 #include "hybm_gva_version.h"
 
-// 方便 mock 成员函数 / C 接口
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
 class HybmMemSegmentTest : public ::testing::Test {
@@ -34,12 +34,15 @@ protected:
     void SetUp() override
     {
         GlobalMockObject::reset();
+        auto ret = hybm_init(0, 0);
+        EXPECT_EQ(ret, ock::mf::BM_OK);
     }
 
     void TearDown() override
     {
         GlobalMockObject::verify();
         GlobalMockObject::reset();
+        hybm_uninit();
     }
 };
 
@@ -74,6 +77,8 @@ TEST_F(HybmMemSegmentTest, Create_Fails_When_InitDeviceInfo_Failed)
     opt.rankId = 0;
     opt.segType = ock::mf::HYBM_MST_HBM;
     opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+
+    MOCKER(ock::mf::MemSegment::InitDeviceInfo).stubs().will(returnValue(-1));
 
     auto seg = ock::mf::MemSegment::Create(opt, 0);
     EXPECT_EQ(seg, nullptr);
@@ -234,6 +239,11 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ValidateOptions)
     opt.maxSize = 0;
     ock::mf::HybmDevLegacySegment segZero(opt, 0);
     EXPECT_EQ(segZero.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
+
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE * UINT32_MAX;
+    opt.rankCnt = UINT32_MAX;
+    ock::mf::HybmDevLegacySegment segMax(opt, 0);
+    EXPECT_EQ(segMax.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
 }
 
 /**
@@ -253,6 +263,11 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_ValidateOptions)
     opt.maxSize = 0;
     ock::mf::HybmVmmBasedSegment segZero(opt, 0);
     EXPECT_EQ(segZero.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
+
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE * UINT32_MAX;
+    opt.rankCnt = UINT32_MAX;
+    ock::mf::HybmVmmBasedSegment segMax(opt, 0);
+    EXPECT_EQ(segMax.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
 }
 
 /**
@@ -272,6 +287,11 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ValidateOptions)
     opt.segType = ock::mf::HYBM_MST_HBM;
     ock::mf::HybmConnBasedSegment segBadType(opt, 0);
     EXPECT_EQ(segBadType.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
+
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE * UINT32_MAX;
+    opt.rankCnt = UINT32_MAX;
+    ock::mf::HybmConnBasedSegment segMax(opt, 0);
+    EXPECT_EQ(segMax.ValidateOptions(), ock::mf::BM_INVALID_PARAM);
 }
 
 /**
@@ -302,6 +322,47 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_GetReserveChunkSize_BasicCases)
     // 异常场景：入参为 0
     EXPECT_EQ(HybmSeg::GetReserveChunkSize(0, single), 0U);
     EXPECT_EQ(HybmSeg::GetReserveChunkSize(total, 0), 0U);
+}
+
+/**
+* HybmDevLegacySegment_Import_WhenShareDisabled
+*  - 当 options_.shared=false 时，Import 会立即返回 BM_OK，不解析任何交换信息。
+*/
+TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
+{
+    ock::mf::MemSegmentOptions opt{};
+    opt.segType = ock::mf::HYBM_MST_DRAM;
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 2;
+    opt.rankId = 0;  // 本地 rank 0
+
+    ock::mf::HybmDevLegacySegment seg(opt, 0);
+
+    // 构造一个来自 rank1 的 HostExportInfo，并序列化
+    ock::mf::HbmExportInfo info{};
+    info.vAddress = 0x1000;
+    info.sliceIndex = 1;
+    info.rankId = 0;
+    info.size = 0x2000;
+    info.pageTblType = ock::mf::MEM_PT_TYPE_SVM;
+    info.memSegType = ock::mf::HYBM_MST_DRAM;
+    info.exchangeType = ock::mf::HYBM_INFO_EXG_IN_NODE;
+
+    std::string encoded;
+    auto serRet = ock::mf::LiteralExInfoTranslater<ock::mf::HbmExportInfo>{}.Serialize(info, encoded);
+    ASSERT_EQ(serRet, ock::mf::BM_OK);
+
+    std::vector<std::string> allExInfo{encoded};
+
+    void* addresses[1]{};
+    auto ret = seg.Import(allExInfo, addresses);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    // imports_ 应该包含一条记录
+    EXPECT_EQ(seg.imports_.size(), 1U);
+    EXPECT_EQ(seg.imports_[0].vAddress, info.vAddress);
+
+    ret = seg.RemoveImported({1});
+    EXPECT_EQ(ret, ock::mf::BM_OK);
 }
 
 // =========================
@@ -376,6 +437,11 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_UsesCache)
         std::make_shared<ock::mf::MemSlice>(1, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x2000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
+    auto getSlice = seg.GetMemSlice(&slice, true);
+    EXPECT_EQ(getSlice, nullptr);
+    getSlice = seg.GetMemSlice(&slice, false);
+    EXPECT_EQ(getSlice, nullptr);
+
     // 预置缓存
     std::string cached = "export-info-cache";
     seg.exportMap_[slice->index_] = cached;
@@ -384,6 +450,34 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_UsesCache)
     auto ret = seg.Export(slice, exInfo);
     EXPECT_EQ(ret, ock::mf::BM_OK);
     EXPECT_EQ(exInfo, cached);
+}
+
+// 第一次导出构造 HostExportInfo
+TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_Not_UsesCache)
+{
+    ock::mf::MemSegmentOptions opt{};
+    opt.segType = ock::mf::HYBM_MST_DRAM;
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 2;
+    opt.rankId = 0;
+
+    ock::mf::HybmConnBasedSegment seg(opt, 0);
+
+    // 构造一个 slice，并放入内部 map
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(255, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x2000);
+    seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
+
+    auto getSlice = seg.GetMemSlice(&slice, true);
+    EXPECT_EQ(getSlice, nullptr);
+    getSlice = seg.GetMemSlice(&slice, false);
+    EXPECT_EQ(getSlice, nullptr);
+
+    std::string exInfo;
+    auto ret = seg.Export(slice, exInfo);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    ret = seg.Export(exInfo);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
 }
 
 /**
@@ -404,6 +498,10 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_InvalidSlice)
         std::make_shared<ock::mf::MemSlice>(2, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x2000, 0x1000);
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    // slice 为 空
+    ret = seg.Export(nullptr, exInfo);
     EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
 }
 
@@ -445,6 +543,9 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
     // imports_ 应该包含一条记录
     EXPECT_EQ(seg.imports_.size(), 1U);
     EXPECT_EQ(seg.imports_[0].vAddress, info.vAddress);
+
+    ret = seg.RemoveImported({1});
+    EXPECT_EQ(ret, ock::mf::BM_OK);
 }
 
 /**
@@ -487,6 +588,237 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_MmapAndUnmap_IntegratesWithVaManager
     EXPECT_TRUE(seg.mappedMem_.empty());
 }
 
+/**
+* HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaManager
+*  - Mmap：将 imports_ 中除本 rank 外的记录加入 mappedMem_，并清空 imports_。
+*/
+TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaManager)
+{
+    ock::mf::MemSegmentOptions opt{};
+    opt.segType = ock::mf::HYBM_MST_DRAM;
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 2;
+    opt.rankId = 0;
+
+    ock::mf::HybmDevLegacySegment seg(opt, 0);
+
+    ock::mf::HbmExportInfo local{};
+    local.vAddress = 0x1000;
+    local.rankId = 0;
+    local.size = 0x1000;
+
+    ock::mf::HbmExportInfo remote{};
+    remote.vAddress = 0x2000;
+    remote.rankId = 1;
+    remote.size = 0x1000;
+    remote.superPodId = 1;
+
+    seg.imports_.push_back(local);
+    seg.imports_.push_back(remote);
+
+    MOCKER_CPP(&ock::mf::MemSegment::CanSdmaReaches,
+               bool (*)(ock::mf::MemSegment *, uint32_t, uint32_t, uint32_t)).stubs().will(returnValue(true));
+
+    // Mmap 只处理远端 rank
+    auto ret = seg.Mmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_TRUE(seg.imports_.empty());
+    EXPECT_EQ(seg.mappedMem_.size(), 1U);
+    EXPECT_EQ(*seg.mappedMem_.begin(), remote.vAddress);
+
+    ret = seg.Unmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_TRUE(seg.mappedMem_.empty());
+}
+
+/**
+* HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaManager
+*  - Mmap：将 imports_ 中除本 rank 外的记录加入 mappedMem_，并清空 imports_。
+*  - Unmap：调用 HybmVaManager::RemoveOneVaInfo 清理所有映射，再清空 mappedMem_。
+*/
+TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaManager)
+{
+    ock::mf::MemSegmentOptions opt{};
+    opt.segType = ock::mf::HYBM_MST_DRAM;
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 2;
+    opt.rankId = 0;
+
+    ock::mf::HybmVmmBasedSegment seg(opt, 0);
+
+    ock::mf::HostSdmaExportInfo local{};
+    local.vAddress = 0x1000;
+    local.rankId = 0;
+    local.size = 0x1000;
+
+    ock::mf::HostSdmaExportInfo remote{};
+    remote.vAddress = 0x2000;
+    remote.rankId = 1;
+    remote.size = 0x1000;
+
+    seg.imports_.push_back(local);
+    seg.imports_.push_back(remote);
+
+    // Mmap 只处理远端 rank
+    auto ret = seg.Mmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_TRUE(seg.imports_.empty());
+    EXPECT_EQ(seg.mappedMem_.size(), 1U);
+
+    ret = seg.Unmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_TRUE(seg.mappedMem_.empty());
+}
+
+// 测试 MemSegment 内存范围检查
+TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_MemoryInRange)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    auto segment = ock::mf::HybmConnBasedSegment::Create(options, 600);
+    if (segment) {
+        // 测试内存范围检查
+        bool inRange = segment->MemoryInRange(nullptr, 0);
+        EXPECT_EQ(inRange, true);
+
+        uint32_t rankId = 0;
+        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
+        EXPECT_EQ(getRank, false);
+
+        // 测试获取内存类型
+        hybm_mem_type memType = segment->GetMemoryType();
+        EXPECT_EQ(memType, HYBM_MEM_TYPE_HOST);
+    }
+}
+
+// 测试 MemSegment 内存范围检查
+TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MemoryInRange)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    auto segment = ock::mf::HybmVmmBasedSegment::Create(options, 600);
+    if (segment) {
+        // 测试内存范围检查
+        bool inRange = segment->MemoryInRange(nullptr, 0);
+        EXPECT_EQ(inRange, true);
+
+        uint32_t rankId = 0;
+        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
+        EXPECT_EQ(getRank, false);
+
+        // 测试获取内存类型
+        hybm_mem_type memType = segment->GetMemoryType();
+        EXPECT_EQ(memType, HYBM_MEM_TYPE_HOST);
+    }
+}
+
+TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MemoryInRange)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    auto segment = ock::mf::HybmDevLegacySegment::Create(options, 600);
+    if (segment) {
+        // 测试内存范围检查
+        bool inRange = segment->MemoryInRange(nullptr, 0);
+        EXPECT_EQ(inRange, true);
+
+        uint32_t rankId = 0;
+        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
+        EXPECT_EQ(getRank, false);
+
+        // 测试获取内存类型
+        hybm_mem_type memType = segment->GetMemoryType();
+        EXPECT_EQ(memType, HYBM_MEM_TYPE_HOST);
+    }
+}
+
+/**
+* ConnBasedSegment_GetExportSliceSize_ReturnsStructSize
+*/
+TEST_F(HybmMemSegmentTest, ConnBasedSegment_GetExportSliceSize_ReturnsStructSize)
+{
+    ock::mf::MemSegmentOptions opt{};
+    opt.segType = ock::mf::HYBM_MST_DRAM;
+    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 1;
+    opt.rankId = 0;
+
+    ock::mf::HybmConnBasedSegment seg(opt, 0);
+    size_t size = 0;
+    auto ret = seg.GetExportSliceSize(size);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(size, sizeof(ock::mf::HostExportInfo));
+
+    // slice 获取
+    ock::mf::MemSlicePtr slice;
+    ret = seg.RegisterMemory(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = seg.ReleaseSliceMemory(slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = seg.GetExportSliceSize(size);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+}
+
+// 测试 HybmConnBasedSegment ReserveMemorySpace 功能
+TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_ReserveMemorySpace)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    // 测试构造和参数验证
+    ock::mf::HybmConnBasedSegment segment(options, 100);
+    auto validateRet = segment.ValidateOptions();
+    EXPECT_EQ(validateRet, ock::mf::BM_OK);
+
+    // 测试内存预留
+    void* address;
+    auto reserveRet = segment.ReserveMemorySpace(&address);
+    EXPECT_EQ(reserveRet, ock::mf::BM_OK);
+
+    // AllocLocalMemory
+    ock::mf::MemSlicePtr slice;
+    auto ret = segment.AllocLocalMemory(1, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    ret = segment.AllocLocalMemory(0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = segment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    // 测试内存释放
+    auto unreserveRet = segment.UnReserveMemorySpace();
+    EXPECT_EQ(unreserveRet, ock::mf::BM_OK);
+}
+
+// 测试 MemSegment SDMA 可达性检查
+TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_CheckSdmaReaches)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+    options.rankId = 0;
+
+    ock::mf::HybmConnBasedSegment segment(options, 100);
+    // 测试 SDMA 可达性检查
+    bool sdmaReaches = segment.CheckSdmaReaches(0);
+    EXPECT_EQ(sdmaReaches, false);
+}
+
 // =========================
 // 5. HybmDevLegacySegment 更深入的导出逻辑
 // =========================
@@ -519,6 +851,54 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_UsesCache)
     EXPECT_EQ(exInfo, cached);
 }
 
+// 测试 HybmDevLegacySegment 功能
+TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_ValidateOptions)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_HBM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    // 测试构造和参数验证
+    ock::mf::HybmDevLegacySegment segment(options, 300);
+    auto validateRet = segment.ValidateOptions();
+    EXPECT_EQ(validateRet, ock::mf::BM_OK);
+}
+
+// 测试 HybmVmmBasedSegment ReserveMemorySpace 功能
+TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_ReserveMemorySpace)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_HBM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    // 测试构造和参数验证
+    ock::mf::HybmDevLegacySegment segment(options, 100);
+    auto validateRet = segment.ValidateOptions();
+    EXPECT_EQ(validateRet, ock::mf::BM_OK);
+
+    // 测试内存预留
+    void* address;
+    auto reserveRet = segment.ReserveMemorySpace(&address);
+    EXPECT_EQ(reserveRet, ock::mf::BM_OK);
+
+    // AllocLocalMemory
+    ock::mf::MemSlicePtr slice;
+    auto ret = segment.AllocLocalMemory(1, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    ret = segment.AllocLocalMemory(0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = segment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    // 测试内存释放
+    auto unreserveRet = segment.UnReserveMemorySpace();
+    EXPECT_EQ(unreserveRet, ock::mf::BM_OK);
+}
+
 /**
 * DevLegacySegment_ExportSlice_InvalidSlice
 *  - slices_ 中找不到 slice 或句柄不匹配时，返回 BM_INVALID_PARAM。
@@ -539,6 +919,34 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_InvalidSlice)
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
     EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+}
+
+// 测试 MemSegment SDMA 可达性检查
+TEST_F(HybmMemSegmentTest, DevLegacySegment_CheckSdmaReaches)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+    options.rankId = 0;
+
+    ock::mf::HybmDevLegacySegment segment(options, 100);
+    ock::mf::HbmExportInfo exportInfo;
+    exportInfo.superPodId = 0;
+    segment.importMap_[0] = exportInfo;
+    segment.superPodId_ = 0;
+    // 测试 SDMA 可达性检查
+    bool sdmaReaches = segment.CheckSdmaReaches(0);
+    EXPECT_EQ(sdmaReaches, true);
+
+    uint64_t addr;
+    ock::mf::MemSlicePtr slice;
+    auto ret = segment.RegisterMemory(&addr, 0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    hybm_mem_slice_t memLice;
+    auto retGet = segment.GetMemSlice(memLice, true);
+    EXPECT_EQ(retGet, nullptr);
 }
 
 // =========================
@@ -604,4 +1012,112 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_Import_WhenShareDisabled)
     void* addresses[1]{};
     auto ret = seg.Import(allExInfo, addresses);
     EXPECT_EQ(ret, ock::mf::BM_OK);
+    ret = seg.RemoveImported({0});
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+}
+
+// 测试 HybmVmmBasedSegment ReserveMemorySpace 功能
+TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_ReserveMemorySpace)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    // 测试构造和参数验证
+    ock::mf::HybmVmmBasedSegment segment(options, 100);
+    auto validateRet = segment.ValidateOptions();
+    EXPECT_EQ(validateRet, ock::mf::BM_OK);
+
+    // 测试内存预留
+    void* address;
+    auto reserveRet = segment.ReserveMemorySpace(&address);
+    EXPECT_EQ(reserveRet, ock::mf::BM_OK);
+
+    // AllocLocalMemory
+    options.segType = ock::mf::HYBM_MST_HBM;
+    ock::mf::MemSlicePtr slice;
+    auto ret = segment.AllocLocalMemory(1, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    ret = segment.AllocLocalMemory(0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = segment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    // 无效type
+    options.segType = ock::mf::HYBM_MST_HBM_USER;
+    ret = segment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    // 测试内存释放
+    auto unreserveRet = segment.UnReserveMemorySpace();
+    EXPECT_EQ(unreserveRet, ock::mf::BM_OK);
+}
+
+// 测试 MemSegment SDMA 可达性检查
+TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_CheckSdmaReaches)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    ock::mf::HybmVmmBasedSegment segment(options, 100);
+    // 测试 SDMA 可达性检查
+    bool sdmaReaches = segment.CheckSdmaReaches(0);
+    EXPECT_EQ(sdmaReaches, true);
+}
+
+// 测试 MemSegment SDMA 可达性检查
+TEST_F(HybmMemSegmentTest, HybmDevUserLegacySegment_CheckSdmaReaches)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+    options.rankId = 0;
+
+    ock::mf::HybmDevUserLegacySegment segment(options, 100);
+    ock::mf::HbmExportDeviceInfo exportInfo;
+    exportInfo.superPodId = 0;
+    segment.importedDeviceInfo_[0] = exportInfo;
+    segment.superPodId_ = 0;
+    // 测试 SDMA 可达性检查
+    bool sdmaReaches = segment.CheckSdmaReaches(0);
+    EXPECT_EQ(sdmaReaches, true);
+}
+
+// 测试 HybmVmmBasedSegment ReserveMemorySpace 功能
+TEST_F(HybmMemSegmentTest, HybmDevUserLegacySegment_ReserveMemorySpace)
+{
+    ock::mf::MemSegmentOptions options{};
+    options.segType = ock::mf::HYBM_MST_HBM;
+    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.rankCnt = 1;
+
+    // 测试构造和参数验证
+    ock::mf::HybmDevUserLegacySegment segment(options, 100);
+    auto validateRet = segment.ValidateOptions();
+    EXPECT_EQ(validateRet, ock::mf::BM_OK);
+
+    // 测试内存预留
+    void* address;
+    auto reserveRet = segment.ReserveMemorySpace(&address);
+    EXPECT_EQ(reserveRet, ock::mf::BM_NOT_SUPPORTED);
+
+    // AllocLocalMemory
+    options.segType = ock::mf::HYBM_MST_DRAM;
+    ock::mf::MemSlicePtr slice;
+
+    auto ret = segment.RegisterMemory(nullptr, 0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    uint64_t addr;
+    ret = segment.RegisterMemory(&addr, 0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+
+    ret = segment.AllocLocalMemory(0, slice);
+    EXPECT_EQ(ret, ock::mf::BM_NOT_SUPPORTED);
 }

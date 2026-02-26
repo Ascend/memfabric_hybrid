@@ -36,12 +36,15 @@ public:
     void SetUp() override
     {
         GlobalMockObject::reset();
+        auto ret = hybm_init(0, 0);
+        EXPECT_EQ(ret, ock::mf::BM_OK);
     }
 
     void TearDown() override
     {
         GlobalMockObject::verify();
         GlobalMockObject::reset();
+        hybm_uninit();
     }
 };
 
@@ -189,7 +192,7 @@ TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
 
     // 测试内存注册（未初始化的情况）
     int buf = 0;
-    hybm_mem_slice_t slice;
+    hybm_mem_slice_t slice = nullptr;
     auto ret = entity.RegisterLocalMemory(&buf, sizeof(buf), 0, slice);
     EXPECT_EQ(slice, nullptr);
     EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
@@ -217,7 +220,7 @@ TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
     EXPECT_EQ(initRet, ock::mf::BM_OK);
 
     ret = entity.RegisterLocalMemory(&buf, sizeof(buf), 0, slice);
-    EXPECT_EQ(ret, ock::mf::BM_UNDER_API_UNLOAD);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
 }
 
 // 测试 MemEntityDefault 导出交换信息

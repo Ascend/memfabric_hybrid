@@ -155,7 +155,7 @@ HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
 HYBM_API int32_t hybm_set_log_level(int level)
 {
     BM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
-                       "set log level failed, invalid param, level should be 0~3", -1);
+                       "set log level failed, invalid param, level should be 0~4", -1);
     ock::mf::OutLogger::Instance().SetLogLevel(static_cast<ock::mf::LogLevel>(level));
     return 0;
 }
