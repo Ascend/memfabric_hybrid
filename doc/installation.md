@@ -36,7 +36,7 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 ```
 
-- build_and_pack_run.sh支持5个参数，分别是<build_mode> <build_python> <xpu_type> <build_test> <build_hcom>
+- build_and_pack_run.sh支持7个参数，分别是<build_mode> <build_python> <xpu_type> <build_test> <build_hcom> <build_hcom_rdma> <build_hcom_ub>
 - build_mode: 编译类型，可填RELEASE或DEBUG，默认RELEASE
 - build_python: 是否编译python的whl包，可填ON或OFF，默认ON
 - xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
@@ -136,7 +136,7 @@ whl包安装完成后，需要设置LD_LIBRARY_PATH环境变量
 ```bash
 # 此处以python3.11为例
 export LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/memfabric_hybrid/lib/:$LD_LIBRARY_PATH
-```bash
+```
 
 ## 卸载软件包
 ### 卸载run包

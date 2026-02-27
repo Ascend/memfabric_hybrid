@@ -199,7 +199,7 @@ class BmConfig:
 |start_store_only属性|仅启动配置存储|
 |dynamic_world_size属性|成员不能动态连接|
 |unified_address_space属性|SVM统一地址|
-|auto_ranking属性|自动分配排名ID，默认为false|
+|auto_ranking属性|自动分配排名ID，默认为true（由 smem_bm_config_init 设置）|
 |rank_id属性|用户指定的RankId，对autoRanking有效为False|
 |flags属性|预留参数|
 
