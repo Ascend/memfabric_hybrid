@@ -25,6 +25,8 @@ extern "C" {
 #define RESOURCE_CONFIG_INFO_LENGTH 7
 #define RESOURCEID_RESV_LENGTH      8
 
+#define HAL_OUT_OF_MEMORY_ERROR     6
+
 #define HOST_MEM_MAP_DEV 3
 
 typedef enum tagDrvSqCqType {

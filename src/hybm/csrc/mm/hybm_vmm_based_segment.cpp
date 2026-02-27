@@ -85,15 +85,8 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
     return BM_OK;
 }
 
-Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept
+Result HybmVmmBasedSegment::HalMemCreateAdapterFromHost(size_t size, drv_mem_handle_t **handle, drv_mem_prop prop)
 {
-    drv_mem_prop prop{};
-    prop = {MEM_HOST_NUMA_SIDE, devId, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
-    size_t granularity = 0;
-    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
-        prop.pg_type = MEM_HUGE_PAGE_TYPE;
-        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
-    }
     Result ret = BM_ERROR;
     uint32_t performance =
         NumUtil::ExtractBits(options_.flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX, HYBM_PERFORMANCE_MODE_FLAG_LEN);
@@ -125,6 +118,24 @@ Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         BM_LOG_INFO("Try HalMemCreate ret:" << ret << " numa:" << prop.devid << " spend time:" << duration.count()
                                             << " size:" << size);
+    }
+    return ret;
+}
+
+Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept
+{
+    drv_mem_prop prop{};
+    prop = {MEM_HOST_NUMA_SIDE, devId, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
+    size_t granularity = 0;
+    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
+        prop.pg_type = MEM_HUGE_PAGE_TYPE;
+        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
+    }
+    int32_t ret = HalMemCreateAdapterFromHost(size, handle, prop);
+    if (ret == HAL_OUT_OF_MEMORY_ERROR && prop.pg_type == MEM_GIANT_PAGE_TYPE) {
+        BM_LOG_INFO("Try HalMemCreate use 1GB page failed, ret:" << ret << ", than try 2MB page");
+        prop.pg_type = MEM_HUGE_PAGE_TYPE;
+        ret = HalMemCreateAdapterFromHost(size, handle, prop);
     }
     if (ret != BM_OK) {
         BM_LOG_ERROR("Try HalMemCreate failed ret:" << ret << " numa:" << prop.devid << " spend time:"
