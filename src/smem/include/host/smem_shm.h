@@ -135,10 +135,10 @@ int32_t smem_shm_control_allgather(smem_shm_t handle, const char *sendBuf, uint3
  * b) key should be the same for all participators (i.e. same in the sub group)
  * c) key should be different with other sub group, otherwise it will be messed up
  *
- * @param handle            [in] the shm object
- * @param key               [in] key name for this barrier, which should be same in sub group but unique in the world
- * @param rankSize          [in] the size of sub group
- * @param rankId            [in] rank id in sub group
+ * @param handle           [in] the shm object
+ * @param key              [in] key name for this barrier, which should be same in sub group but unique in the world
+ * @param rankSize         [in] the size of sub group
+ * @param rankId           [in] rank id in sub group
  * @return 0 if successful, other is error
  */
 int32_t smem_shm_subgroup_barrier(smem_shm_t handle, const char *key, uint32_t rankSize, uint32_t rankId);
@@ -150,14 +150,14 @@ int32_t smem_shm_subgroup_barrier(smem_shm_t handle, const char *key, uint32_t r
  * b) key should be the same for all participators (i.e. same in the sub group)
  * c) key should be different with other sub group, otherwise it will be messed up
  *
- * @param handle            [in] the shm object
- * @param key               [in] key name for this all-gather, which should be same in sub group but unique in the world
- * @param rankSize          [in] the size of sub group
- * @param rankId            [in] rank id in sub group
- * @param sendBuf           [in] input data buf
- * @param sendSize          [in] input data buf size
- * @param recvBuf           [in] output data buf
- * @param recvSize          [in] output data buf size
+ * @param handle           [in] the shm object
+ * @param key              [in] key name for this all-gather, which should be same in sub group but unique in the world
+ * @param rankSize         [in] the size of sub group
+ * @param rankId           [in] rank id in sub group
+ * @param sendBuf          [in] input data buf
+ * @param sendSize         [in] input data buf size
+ * @param recvBuf          [in] output data buf
+ * @param recvSize         [in] output data buf size
  * @return 0 if successful
  */
 int32_t smem_shm_subgroup_allgather(smem_shm_t handle, const char *key, uint32_t rankSize, uint32_t rankId,
@@ -166,28 +166,32 @@ int32_t smem_shm_subgroup_allgather(smem_shm_t handle, const char *key, uint32_t
 /**
  * @brief Query if remote rank can ranch
  *
- * @param handle            [in] shm object
- * @param remoteRank        [in] remote rank
- * @param reachInfo         [out] reach info, the set of smem_shm_data_op_type
+ * @param handle           [in] shm object
+ * @param remoteRank       [in] remote rank
+ * @param reachInfo        [out] reach info, the set of smem_shm_data_op_type
  * @return 0 if successful
  */
 int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint32_t *reachInfo);
 
 /**
- * @brief alloc one global number in the shm object which begin from zero
+ * @brief Allocate a global number in the shm object which begin from zero, more description:
+ * 1) the number is unique within the scope of the shm object
+ * 2) recorded in config store along with shm object
+ * 3) starts from 0
+ * 4) need to release after used
  *
- * @param handle            [in] shm object
- * @param limit             [in] the returned number must be less than 'limit' (limit <= SMEM_SHM_ATOMIC_NUM_LIMIT)
- * @param retVal            [out] alloced number
+ * @param handle           [in] shm object
+ * @param limit            [in] the returned number must be less than 'limit' (limit <= SMEM_SHM_ATOMIC_NUM_LIMIT)
+ * @param value            [out] allocated number
  * @return 0 if successful
  */
-int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, uint32_t *retVal);
+int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, uint32_t *value);
 
 /**
- * @brief release one global number which is alloced
+ * @brief Release the global number which is allocated by <i>smem_shm_atomic_alloc_value</i>
  *
- * @param handle            [in] shm object
- * @param limit             [in] the number
+ * @param handle           [in] shm object
+ * @param value            [in] the number
  * @return 0 if successful
  */
 int32_t smem_shm_atomic_release_value(smem_shm_t handle, int32_t value);
