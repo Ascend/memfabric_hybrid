@@ -37,3 +37,7 @@ strings libmf_smem.so | grep commit
 
 library version: 1.0.0, build time: Apr 27 2025 08:46:17, commit: 4ad27e5b4bd3353c5c20f16e8f3b6da41268d4e0
 ```
+
+## Unit Test
+
+See [run_ut.md](run_ut.md) for unit test usage including fast incremental build mode.
