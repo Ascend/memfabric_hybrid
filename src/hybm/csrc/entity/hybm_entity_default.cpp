@@ -1102,6 +1102,10 @@ Result MemEntityDefault::InitDramSegment()
         BM_LOG_ERROR("Failed to create dram segment");
         return BM_ERROR;
     }
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0U && !dramSegment_->CheckSdmaReaches(options_.rankId)) {
+        BM_LOG_ERROR("dram segment does not support sdma in current environment, rankId: " << options_.rankId);
+        return BM_ERROR;
+    }
     return BM_OK;
 }
 

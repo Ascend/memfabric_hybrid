@@ -38,7 +38,7 @@ public:
     {
         options.bmType = HYBM_TYPE_HOST_INITIATE;
         options.memType = HYBM_MEM_TYPE_HOST;
-        options.bmDataOpType = HYBM_DOP_TYPE_SDMA;
+        options.bmDataOpType = HYBM_DOP_TYPE_DEFAULT;
         options.rankCount = 2U;
         options.rankId = 0;
         options.devId = -1;

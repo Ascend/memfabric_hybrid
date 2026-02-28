@@ -79,17 +79,17 @@ TEST_F(SmemTransTest, smem_trans_create_success)
 
         int32_t ret = smem_create_config_store(STORE_URL);
         if (ret != 0) {
-            exit(1);
+            _exit(1u);
         }
 
         ret = smem_trans_init(&g_trans_options);
         if (ret != 0) {
-            exit(2);
+            _exit(2u);
         }
 
         auto handle = smem_trans_create(STORE_URL, UNIQUE_ID, &g_trans_options);
         if (handle == nullptr) {
-            exit(3);
+            _exit(3u);
         }
 
         smem_trans_destroy(handle, 0);
@@ -443,10 +443,13 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
             void* dst_addr;
             ssize_t n = read(pipe_fd[0], &dst_addr, sizeof(dst_addr));
             close(pipe_fd[0]);
+            if (n != static_cast<ssize_t>(sizeof(dst_addr))) {
+                _exit(4);
+            }
             std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
             ret = smem_trans_write(handle, ptr, unique_ids[1], dst_addr, capacities, 0);
             if (ret != SM_OK) {
-                exit(4);
+                _exit(5u);
             }
         } else {
             close(pipe_fd[0]);
@@ -461,7 +464,7 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
         std::cerr << " will cleanup rank:" << rank << std::endl;
         ret = smem_trans_free(handle, ptr);
         if (ret != 0) {
-            exit(5);
+            _exit(6);
         }
         smem_trans_destroy(handle, 0);
         smem_trans_uninit(0);
@@ -487,7 +490,7 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
                 smem_create_config_store(STORE_URL);
             }
             func(i, rankSize, trans_options[i], capacities, unique_ids);
-            exit(0);
+            _exit(0);
         }
     }
 
