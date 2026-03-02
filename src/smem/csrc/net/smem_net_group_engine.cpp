@@ -609,7 +609,7 @@ bool SmemNetGroupEngine::ReWatch()
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
         return true;
     }
-    SM_LOG_INFO("Watch group listen successfully, wid: " << wid);
+    SM_LOG_DEBUG("Watch group listen successfully, wid: " << wid);
     listenCtx_.watchId = wid;
     listenCtx_.ret = SM_OK;
     if (listenLinkStatusWatchId_.load() == UINT32_MAX) {
