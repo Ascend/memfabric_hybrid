@@ -288,6 +288,10 @@ class MfTest(TestServer):
                        "Create a big memory object locally after initialized, bm_create "
                        "[mem_id] [local_dram_size] [local_hbm_size] [data_op_type] [flags]",
                        self.bm_create),
+            CliCommand("bm_create2",
+                       "Create a big memory object locally after initialized, bm_create2 "
+                       "[mem_id] [local_dram_size] [max_dram_size]  [local_hbm_size] [max_hbm_size] [data_op_type] [is_second_mapping] [flags]",
+                       self.bm_create2),
             CliCommand("bm_destroy",
                        "Destroy big memory by a big memory handle. bm_destroy [handle_id]",
                        self.bm_destroy),
@@ -621,6 +625,22 @@ class MfTest(TestServer):
         self.cli_print(f"create a big memory object:{addr}")
 
     @result_handler
+    def bm_create2(self, mem_id: int, local_dram_size: int, max_dram_size: int, local_hbm_size: int, max_hbm_size: int,
+                   data_op_type: int, is_second_mapping: bool, flags: int):
+        handle = bm.create2(id=mem_id, local_dram_size=local_dram_size, max_dram_size=max_dram_size,
+                            local_hbm_size=local_hbm_size, max_hbm_size=max_hbm_size,
+                            data_op_type=bm.BmDataOpType(data_op_type), is_second_mapping=is_second_mapping,
+                            flags=flags)
+        self.cli_print(f"id={mem_id}, local_dram_size={local_dram_size}, local_hbm_size={local_hbm_size}, "
+                       f"data_op_type={bm.BmDataOpType(data_op_type),} flags={flags}")
+        if handle is not None:
+            addr = id(handle)
+            self._bm_handle_dic[addr] = handle
+        else:
+            addr = 0
+        self.cli_print(f"create a big memory object:{addr}")
+
+    @result_handler
     def bm_destroy(self, handle_id: int):
         handle = self._bm_handle_dic[handle_id]
         handle.destroy()
@@ -916,7 +936,7 @@ class MfTest(TestServer):
 
     @result_handler
     def transfer_engine_transfer_sync_read(self, handle_id: int, dest_session: str, buffers: int,
-                                            peer_buffer_addresses: int, length: int):
+                                           peer_buffer_addresses: int, length: int):
         engine = self._transfer_engine_dic[handle_id]
         ret_value = engine.transfer_sync_read(dest_session, buffers, peer_buffer_addresses, length)
         time.sleep(5)
@@ -943,7 +963,7 @@ class MfTest(TestServer):
 
     @result_handler
     def transfer_engine_batch_transfer_sync_read(self, handle_id: int, dest_session: str, buffers_str: str,
-                                                  peer_buffer_addresses_str: str, lengths_str: str):
+                                                 peer_buffer_addresses_str: str, lengths_str: str):
         buffers = list(map(int, buffers_str.split(",")))
         peer_buffer_addresses = list(map(int, peer_buffer_addresses_str.split(",")))
         lengths = list(map(int, lengths_str.split(",")))
@@ -954,7 +974,7 @@ class MfTest(TestServer):
 
     @result_handler
     def transfer_engine_transfer_async_write_submit(self, handle_id: int, dest_session: str, buffers: int,
-                                            peer_buffer_addresses: int, length: int, stream: int):
+                                                    peer_buffer_addresses: int, length: int, stream: int):
         engine = self._transfer_engine_dic[handle_id]
         if stream != 0:
             stream = self._stream
@@ -964,7 +984,7 @@ class MfTest(TestServer):
 
     @result_handler
     def transfer_engine_transfer_async_read_submit(self, handle_id: int, dest_session: str, buffers: int,
-                                            peer_buffer_addresses: int, length: int, stream: int):
+                                                   peer_buffer_addresses: int, length: int, stream: int):
         engine = self._transfer_engine_dic[handle_id]
         if stream != 0:
             stream = self._stream

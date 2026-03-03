@@ -53,8 +53,7 @@ Result HybmDevUserLegacySegment::AllocLocalMemory(uint64_t size, MemSlicePtr &sl
     return BM_NOT_SUPPORTED;
 }
 
-Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
-                                                MemSlicePtr &slice) noexcept
+Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     if (addr == nullptr || size == 0) {
         BM_LOG_ERROR("input address parameter is invalid.");
@@ -84,8 +83,8 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
     }
 
     memNames_.emplace_back(name);
-    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
-                                       reinterpret_cast<uint64_t>(addr), size);
+    slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM,
+                                       reinterpret_cast<uint64_t>(addr), reinterpret_cast<uint64_t>(addr), size);
     registerSlices_.emplace(slice->index_, RegisterSlice{slice, name});
     addressedSlices_.emplace(slice->vAddress_, slice->size_);
     uniqueLock.unlock();
@@ -138,6 +137,7 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
 
     uint32_t sdId;
     HbmExportSliceInfo info;
+    info.gva = pos->second.slice->gva_;
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
@@ -179,7 +179,7 @@ Result HybmDevUserLegacySegment::Import(const std::vector<std::string> &allExInf
     uint32_t index = 0U;
     for (auto &info : allExInfo) {
         MemSlicePtr rms;
-        auto magic = *reinterpret_cast<const uint64_t*>(info.data());
+        auto magic = *reinterpret_cast<const uint64_t *>(info.data());
         if (magic == ENTITY_EXPORT_INFO_MAGIC) {
             ret = ImportDeviceInfo(info);
         } else if (magic == HBM_SLICE_EXPORT_INFO_MAGIC) {
@@ -233,7 +233,7 @@ void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
     for (auto &remoteSlice : remoteSliceVec) {
         addressedSlices_.erase(remoteSlice->vAddress_);
         registerAddrs_.erase(reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_)));
-        HybmVaManager::GetInstance().RemoveOneVaInfo(remoteSlice->vAddress_);
+        HybmVaManager::GetInstance().RemoveOneVaInfo(remoteSlice->gva_);
         auto rIt = remoteSlices_.find(remoteSlice->index_);
         if (rIt == remoteSlices_.end()) {
             continue;
@@ -360,8 +360,7 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
     return BM_OK;
 }
 
-Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
-                                                 MemSlicePtr &remoteSlice) noexcept
+Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSlicePtr &remoteSlice) noexcept
 {
     HbmExportSliceInfo sliceInfo;
     LiteralExInfoTranslater<HbmExportSliceInfo> translator;
@@ -415,7 +414,7 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
     address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(value));
     registerAddrs_.insert(address);
 
-    remoteSlice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_DEVICE_HBM, MEM_PT_TYPE_SVM,
+    remoteSlice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, sliceInfo.gva,
                                              reinterpret_cast<uint64_t>(address), sliceInfo.size);
     rankToRemoteSlices_[sliceInfo.rankId].push_back(remoteSlice);
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
@@ -423,7 +422,7 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info,
     addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
     uniqueLock.unlock();
     auto memType = HYBM_MEM_TYPE_DEVICE;
-    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->vAddress_, remoteSlice->size_, memType, 0},
+    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->gva_, 0, 0, remoteSlice->size_, memType},
                                                              options_.rankId, sliceInfo.rankId);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     return BM_OK;
@@ -435,8 +434,11 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
         if (DlAclApi::RtIpcCloseMemory(addr) != 0) {
             BM_LOG_WARN("Failed to close memory. This may affect future memory registration.");
         }
-        HybmVaManager::GetInstance().RemoveOneVaInfo((uint64_t)addr);
     }
+    for (auto &it : registerSlices_) {
+        HybmVaManager::GetInstance().RemoveOneVaInfo(it.second.slice->gva_);
+    }
+
     registerAddrs_.clear();
     BM_LOG_INFO("close memory finish.");
 }

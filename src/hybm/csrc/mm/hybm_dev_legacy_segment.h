@@ -28,7 +28,8 @@ constexpr uint32_t invalidServerId = 0x3FFU;
 struct HbmExportInfo {
     uint64_t magic{HBM_SLICE_EXPORT_INFO_MAGIC};
     uint64_t version{EXPORT_INFO_VERSION};
-    uint64_t vAddress{0};
+    uint64_t gva{0};
+    uint64_t deviceVa{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
     uint32_t serverId{0};
@@ -86,11 +87,11 @@ protected:
 protected:
     uint8_t *globalVirtualAddress_{nullptr};
     uint64_t totalVirtualSize_{0UL};
+    uint8_t *lvaBase_{nullptr}; // device lva base
     uint64_t allocatedSize_{0UL};
-    uint16_t sliceCount_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::string> exportMap_;
-    std::set<uint64_t> mappedMem_;
+    std::set<uint64_t> mappedGvaMem_; // gva sets
     std::vector<HbmExportInfo> imports_;
     std::map<uint16_t, HbmExportInfo> importMap_;
 };

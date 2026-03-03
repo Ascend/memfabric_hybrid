@@ -31,6 +31,7 @@ namespace ock {
 namespace smem {
 // reserve 128GB dram va for malloc per rank, refine to configurable later
 constexpr uint64_t TRANS_RESERVE_DRAM_VA_SIZE = 1024ULL * 1024 * 1024 * 128;
+constexpr uint64_t TRANS_RESERVE_HBM_VA_SIZE = 1024ULL * 1024 * 1024 * 64;
 
 SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::string &storeUrl,
                                          const smem_trans_config_t &config)
@@ -184,7 +185,8 @@ void* SmemTransEntry::MallocDram(uint64_t size)
     }
 
     if (size > TRANS_RESERVE_DRAM_VA_SIZE) {
-        SM_LOG_ERROR("malloc failed, invalid size:" << size << ", should be less than or equal " << TRANS_RESERVE_DRAM_VA_SIZE);
+        SM_LOG_ERROR("malloc failed, invalid size:" << size << ", should be less than or equal "
+                                                    << TRANS_RESERVE_DRAM_VA_SIZE);
         return nullptr;
     }
 
@@ -669,10 +671,12 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.devId = config_.deviceId;
     options.deviceVASpace = 0;
     options.hostVASpace = TRANS_RESERVE_DRAM_VA_SIZE;
+    options.maxHBMSize = TRANS_RESERVE_HBM_VA_SIZE;
     options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.dramShmFd = -1;
+    options.isSecondMapping = false; // trans disabled
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

@@ -136,6 +136,8 @@ public:
 
     static Result InitDeviceInfo(int devId);
 
+    Result RegisterMemCommon(const void *addr, uint64_t size, MemSlicePtr &slice);
+
 protected:
     static bool CanLocalHostReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
     static bool CanSdmaReaches(uint32_t superPodId, uint32_t serverId, uint32_t deviceId) noexcept;
@@ -155,6 +157,7 @@ protected:
     static uint32_t bootIdHead_;
     static std::string sysBoolId_;
     static AscendSocType socType_;
+    uint16_t sliceCount_{0};
 
 private:
     static void ResetDeviceInfoInChild() noexcept;

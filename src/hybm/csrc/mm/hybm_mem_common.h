@@ -25,26 +25,12 @@ class HybmDevLegacySegment;
 using MemSlicePtr = std::shared_ptr<MemSlice>;
 using MemSegmentPtr = std::shared_ptr<MemSegment>;
 
-enum MemType : int32_t {
-    MEM_TYPE_HOST_DRAM = 0,
-    MEM_TYPE_DEVICE_HBM,
-
-    MEM_TYPE_BUTT
-};
-
 enum MemPageTblType : int32_t {
     MEM_PT_TYPE_SVM = 0,
     MEM_PT_TYPE_GVM,
     MEM_PT_TYPE_HYM,
 
     MEM_PT_TYPE_BUTT
-};
-
-enum MemAddrType : int32_t {
-    MEM_ADDR_TYPE_VIRTUAL = 0,
-    MEM_ADDR_TYPE_PHYSICAL,
-
-    MEM_ADDR_TYPE_BUTT
 };
 
 enum MemSegType : int32_t {
@@ -72,10 +58,11 @@ struct MemSegmentOptions {
     bool shared = true;
     uint64_t size = 0;
     uint64_t maxSize = 0;
-    uint32_t rankId = 0;  // must start from 0 and increase continuously
-    uint32_t rankCnt = 0; // total rank count
+    uint32_t rankId = 0;               // must start from 0 and increase continuously
+    uint32_t rankCnt = 0;              // total rank count
     uint32_t flags = 0;
     int shmFd = -1;
+    bool isSecondMapping = false;
 };
 } // namespace mf
 } // namespace ock

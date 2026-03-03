@@ -340,7 +340,7 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
 
     // 构造一个来自 rank1 的 HostExportInfo，并序列化
     ock::mf::HbmExportInfo info{};
-    info.vAddress = 0x1000;
+    info.gva = 0x1000;
     info.sliceIndex = 1;
     info.rankId = 0;
     info.size = 0x2000;
@@ -359,7 +359,13 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
     EXPECT_EQ(ret, ock::mf::BM_OK);
     // imports_ 应该包含一条记录
     EXPECT_EQ(seg.imports_.size(), 1U);
-    EXPECT_EQ(seg.imports_[0].vAddress, info.vAddress);
+    EXPECT_EQ(seg.imports_[0].gva, info.gva);
+
+    ret = seg.Mmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+
+    ret = seg.Unmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
 
     ret = seg.RemoveImported({1});
     EXPECT_EQ(ret, ock::mf::BM_OK);
@@ -433,8 +439,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_UsesCache)
     ock::mf::HybmConnBasedSegment seg(opt, 0);
 
     // 构造一个 slice，并放入内部 map
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(1, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x2000);
+    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
+                                                     0x1000, 0x1000, 0x2000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     auto getSlice = seg.GetMemSlice(&slice, true);
@@ -461,11 +467,18 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_Not_UsesCache)
     opt.rankCnt = 2;
     opt.rankId = 0;
 
+    ock::mf::AllocatedGvaInfo info{};
+    info.base.va[ock::mf::HVM_HVA] = 0x1000;
+    info.base.size = 0x2000;
+    info.base.memType = HYBM_MEM_TYPE_HOST;
+
     ock::mf::HybmConnBasedSegment seg(opt, 0);
+    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
+    EXPECT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfo(info), ock::mf::BM_OK);
 
     // 构造一个 slice，并放入内部 map
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(255, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x2000);
+    auto slice = std::make_shared<ock::mf::MemSlice>(255, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
+                                                     0x1000, 0x1000, 0x2000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     auto getSlice = seg.GetMemSlice(&slice, true);
@@ -477,6 +490,7 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_Not_UsesCache)
     auto ret = seg.Export(slice, exInfo);
     EXPECT_EQ(ret, ock::mf::BM_OK);
     ret = seg.Export(exInfo);
+    ock::mf::HybmVaManager::GetInstance().RemoveOneVaInfo(0x1000, ock::mf::HVM_HVA);
     EXPECT_EQ(ret, ock::mf::BM_OK);
 }
 
@@ -494,8 +508,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_InvalidSlice)
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
 
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(2, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_SVM, 0x2000, 0x1000);
+    auto slice = std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
+                                                     0x2000, 0x2000, 0x1000);
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
     EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
@@ -520,12 +534,13 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
     opt.rankId = 0;  // 本地 rank 0
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
+    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
 
     // 构造一个来自 rank1 的 HostExportInfo，并序列化
     ock::mf::HostExportInfo info{};
-    info.vAddress = 0x1000;
-    info.sliceIndex = 1;
     info.rankId = 1;
+    info.gva = opt.maxSize * info.rankId;
+    info.sliceIndex = 1;
     info.size = 0x2000;
     info.pageTblType = ock::mf::MEM_PT_TYPE_SVM;
     info.memSegType = ock::mf::HYBM_MST_DRAM;
@@ -542,8 +557,11 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
     EXPECT_EQ(ret, ock::mf::BM_OK);
     // imports_ 应该包含一条记录
     EXPECT_EQ(seg.imports_.size(), 1U);
-    EXPECT_EQ(seg.imports_[0].vAddress, info.vAddress);
-
+    EXPECT_EQ(seg.imports_[0].gva, info.gva);
+    ret = seg.Mmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    ret = seg.Unmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
     ret = seg.RemoveImported({1});
     EXPECT_EQ(ret, ock::mf::BM_OK);
 }
@@ -564,12 +582,12 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_MmapAndUnmap_IntegratesWithVaManager
     ock::mf::HybmConnBasedSegment seg(opt, 0);
 
     ock::mf::HostExportInfo local{};
-    local.vAddress = 0x1000;
+    local.gva = 0x1000;
     local.rankId = 0;
     local.size = 0x1000;
 
     ock::mf::HostExportInfo remote{};
-    remote.vAddress = 0x2000;
+    remote.gva = 0x2000;
     remote.rankId = 1;
     remote.size = 0x1000;
 
@@ -580,12 +598,12 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_MmapAndUnmap_IntegratesWithVaManager
     auto ret = seg.Mmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
     EXPECT_TRUE(seg.imports_.empty());
-    EXPECT_EQ(seg.mappedMem_.size(), 1U);
-    EXPECT_EQ(*seg.mappedMem_.begin(), remote.vAddress);
+    EXPECT_EQ(seg.mappedGvaMem_.size(), 1U);
+    EXPECT_EQ(*seg.mappedGvaMem_.begin(), remote.gva);
 
     ret = seg.Unmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
-    EXPECT_TRUE(seg.mappedMem_.empty());
+    EXPECT_TRUE(seg.mappedGvaMem_.empty());
 }
 
 /**
@@ -603,12 +621,12 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaMan
     ock::mf::HybmDevLegacySegment seg(opt, 0);
 
     ock::mf::HbmExportInfo local{};
-    local.vAddress = 0x1000;
+    local.gva = 0x1000;
     local.rankId = 0;
     local.size = 0x1000;
 
     ock::mf::HbmExportInfo remote{};
-    remote.vAddress = 0x2000;
+    remote.gva = 0x2000;
     remote.rankId = 1;
     remote.size = 0x1000;
     remote.superPodId = 1;
@@ -623,12 +641,12 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaMan
     auto ret = seg.Mmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
     EXPECT_TRUE(seg.imports_.empty());
-    EXPECT_EQ(seg.mappedMem_.size(), 1U);
-    EXPECT_EQ(*seg.mappedMem_.begin(), remote.vAddress);
+    EXPECT_EQ(seg.mappedGvaMem_.size(), 1U);
+    EXPECT_EQ(*seg.mappedGvaMem_.begin(), remote.gva);
 
     ret = seg.Unmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
-    EXPECT_TRUE(seg.mappedMem_.empty());
+    EXPECT_TRUE(seg.mappedGvaMem_.empty());
 }
 
 /**
@@ -647,12 +665,12 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaMana
     ock::mf::HybmVmmBasedSegment seg(opt, 0);
 
     ock::mf::HostSdmaExportInfo local{};
-    local.vAddress = 0x1000;
+    local.gva = 0x1000;
     local.rankId = 0;
     local.size = 0x1000;
 
     ock::mf::HostSdmaExportInfo remote{};
-    remote.vAddress = 0x2000;
+    remote.gva = 0x2000;
     remote.rankId = 1;
     remote.size = 0x1000;
 
@@ -663,11 +681,11 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaMana
     auto ret = seg.Mmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
     EXPECT_TRUE(seg.imports_.empty());
-    EXPECT_EQ(seg.mappedMem_.size(), 1U);
+    EXPECT_EQ(seg.mappedGvaMem_.size(), 1U);
 
     ret = seg.Unmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
-    EXPECT_TRUE(seg.mappedMem_.empty());
+    EXPECT_TRUE(seg.mappedGvaMem_.empty());
 }
 
 // 测试 MemSegment 内存范围检查
@@ -838,8 +856,8 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_UsesCache)
     opt.devId = 0;
 
     ock::mf::HybmDevLegacySegment seg(opt, 0);
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(1, ock::mf::MEM_TYPE_DEVICE_HBM, ock::mf::MEM_PT_TYPE_SVM, 0x3000, 0);
+    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM,
+                                                     0x3000, 0x3000, 0);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     std::string cached = "hbm-export-cache";
@@ -913,8 +931,8 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_InvalidSlice)
     opt.devId = 0;
 
     ock::mf::HybmDevLegacySegment seg(opt, 0);
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(2, ock::mf::MEM_TYPE_DEVICE_HBM, ock::mf::MEM_PT_TYPE_SVM, 0x4000, 0x1000);
+    auto slice = std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM,
+                                                     0x4000, 0x4000, 0x1000);
 
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
@@ -985,8 +1003,8 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_Export_WhenShareDisabled)
     opt.shared = false;
 
     ock::mf::HybmVmmBasedSegment seg(opt, 0);
-    auto slice =
-        std::make_shared<ock::mf::MemSlice>(1, ock::mf::MEM_TYPE_HOST_DRAM, ock::mf::MEM_PT_TYPE_GVM, 0x5000, 0x1000);
+    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_GVM,
+                                                     0x5000, 0x5000, 0x1000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice, nullptr));
 
     std::string exInfo;
@@ -1011,6 +1029,10 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_Import_WhenShareDisabled)
     std::vector<std::string> allExInfo = {"dummy-info"};
     void* addresses[1]{};
     auto ret = seg.Import(allExInfo, addresses);
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    ret = seg.Mmap();
+    EXPECT_EQ(ret, ock::mf::BM_OK);
+    ret = seg.Unmap();
     EXPECT_EQ(ret, ock::mf::BM_OK);
     ret = seg.RemoveImported({0});
     EXPECT_EQ(ret, ock::mf::BM_OK);

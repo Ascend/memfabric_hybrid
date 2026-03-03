@@ -19,27 +19,28 @@
 namespace ock {
 namespace mf {
 static constexpr uint64_t MB_OFFSET = 20UL;
-Result HybmVaManager::Initialize(AscendSocType socType) noexcept
+Result HybmVaManager::Initialize(AscendSocType socType, bool isSecondMapping) noexcept
 {
 #if defined(ASCEND_NPU)
     if (socType == AscendSocType::ASCEND_UNKNOWN) {
         BM_LOG_ERROR("soc type is unknown.");
         return BM_INVALID_PARAM;
     }
+
+    if (inited_ && (isSecondMapping_ != isSecondMapping)) {
+        BM_LOG_ERROR("isSecondMapping_ is not equal old.");
+        return BM_INVALID_PARAM;
+    }
+    isSecondMapping_ = isSecondMapping;
 #endif
+    inited_ = true;
     return BM_OK;
 }
 
 Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
 {
-    if (info.base.gva == 0) {
-        BM_LOG_ERROR("AddVaInfo failed: invalid parameters. gva=" << VaToStr(info.base.gva)
-                                                                  << ",  lva=" << VaToStr(info.base.lva)
-                                                                  << ", size=" << VaToStr(info.base.size));
-        return BM_ERROR;
-    }
     if (info.base.size == 0) {
-        BM_LOG_INFO("gva:" << info.base.gva  << " size:0, skip add va info");
+        BM_LOG_INFO("gva:" << info.base.va[HVM_GVA] << " size:0, skip add va info");
         return BM_OK;
     }
     if (info.base.memType >= HYBM_MEM_TYPE_BUTT) {
@@ -47,20 +48,24 @@ Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
         return BM_ERROR;
     }
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    auto old = CheckOverlap(info.base.gva, info.base.size, info.base.memType);
-    if (old.first && old.second != info) {
-        BM_LOG_ERROR("AddVaInfo failed: address overlap. gva="
-                     << VaToStr(info.base.gva) << ", size=" << VaToStr(info.base.size)
-                     << ", localRankId=" << info.RankId() << ", importedRankId=" << info.RankId()
-                     << ", memType=" << info.base.memType << ", old: " << old.second);
-        return BM_ERROR;
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (info.base.va[i] != 0) {
+            auto old = CheckOverlap(info.base.va[i], info.base.size, i);
+            if (old.first) {
+                BM_LOG_ERROR("AddVaInfo failed: address overlap. va="
+                             << VaToStr(info.base.va[i]) << ", size=" << VaToStr(info.base.size) << ", vaType=" << i
+                             << ", localRankId=" << info.RankId() << ", importedRankId=" << info.RankId()
+                             << ", memType=" << info.base.memType << ", old: " << old.second);
+                return BM_ERROR;
+            }
+        }
     }
-    if (old.second == info) {
-        return BM_OK;
+
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (info.base.va[i] != 0) {
+            allocatedMap_[i][info.base.va[i]] = info;
+        }
     }
-    allocatedLookupMapByGva_[info.base.gva] = info;
-    allocatedLookupMapByLva_[info.base.lva] = info;
-    allocatedLookupMapByMemType_[info.base.memType].push_back(info);
     return BM_OK;
 }
 
@@ -72,8 +77,7 @@ Result HybmVaManager::AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo
 Result HybmVaManager::AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId,
                                             uint32_t importedRankId)
 {
-    AllocatedGvaInfo info(baseInfo.gva, baseInfo.size, localRankId, importedRankId, baseInfo.memType, baseInfo.lva);
-    info.registered = importedRankId == INVALID_RANK_ID;
+    AllocatedGvaInfo info(baseInfo, localRankId, importedRankId);
     const auto ret = AddVaInfo(info);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     BM_LOG_INFO("AddVaInfoFromExternal success: " << info);
@@ -82,84 +86,66 @@ Result HybmVaManager::AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo
 
 Result HybmVaManager::AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId)
 {
-    AllocatedGvaInfo info(baseInfo.gva, baseInfo.size, localRankId, baseInfo.memType, baseInfo.lva);
+    AllocatedGvaInfo info(baseInfo, localRankId);
     const auto ret = AddVaInfo(info);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     BM_LOG_INFO("AddVaInfo success: " << info);
     return BM_OK;
 }
 
-void HybmVaManager::RemoveOneVaInfo(uint64_t va)
+void HybmVaManager::RemoveOneVaInfo(uint64_t va, uint32_t type)
 {
-    auto gva = va;
-    if (!IsGva(va)) {
-        gva = GetGvaByLva(va);
-    }
-    if (gva == 0) {
+    if (va == 0 || type >= HVM_BUTT) {
         return;
     }
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByGva_.find(gva);
-    if (it == allocatedLookupMapByGva_.end()) {
-        BM_LOG_WARN("RemoveOneVaInfo failed: address not found. gva=" << VaToStr(gva));
+    auto it = allocatedMap_[type].find(va);
+    if (it == allocatedMap_[type].end()) {
+        BM_LOG_WARN("RemoveOneVaInfo failed: address not found. va=" << VaToStr(va) << " type=" << type);
         return;
     }
     const AllocatedGvaInfo &info = it->second;
     BM_LOG_DEBUG("Removing VaInfo: " << info);
-    auto lvaIt = allocatedLookupMapByLva_.find(info.base.lva);
-    if (lvaIt != allocatedLookupMapByLva_.end() && lvaIt->second.base.gva == gva) {
-        allocatedLookupMapByLva_.erase(lvaIt);
-    }
-    auto typeIt = allocatedLookupMapByMemType_.find(info.base.memType);
-    if (typeIt != allocatedLookupMapByMemType_.end()) {
-        auto &typeList = typeIt->second;
-        typeList.erase(std::remove_if(typeList.begin(), typeList.end(),
-                                      [gva](const AllocatedGvaInfo &item) { return item.base.gva == gva; }),
-                       typeList.end());
-        if (typeList.empty()) {
-            allocatedLookupMapByMemType_.erase(typeIt);
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (i == type) {
+            continue;
+        }
+        auto its = allocatedMap_[i].find(info.base.va[i]);
+        if (its != allocatedMap_[i].end() && its->second.base.va[i] == info.base.va[i]) {
+            allocatedMap_[i].erase(its);
         }
     }
-    allocatedLookupMapByGva_.erase(it);
-    BM_LOG_INFO("RemoveOneVaInfo success: gva=" << VaToStr(gva));
+    allocatedMap_[type].erase(it);
+    BM_LOG_INFO("RemoveOneGvaInfo success: gva=" << VaToStr(va) << " type=" << type);
 }
 
-uint64_t HybmVaManager::GetGvaByLva(uint64_t lva)
+uint64_t HybmVaManager::TransformVa(uint64_t va, uint32_t inputType, uint32_t outputType)
 {
-    BM_ASSERT_RETURN(lva > 0, 0);
+    BM_VALIDATE_RETURN(va > 0 && inputType < HVM_BUTT && outputType < HVM_BUTT,
+                       "input is invalid, va=" << VaToStr(va) << " Itype=" << inputType << " Otype=" << inputType, 0);
+
+    if (inputType == outputType) {
+        return va;
+    }
+
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByLva_.upper_bound(lva);
-    if (it != allocatedLookupMapByLva_.begin()) {
+    if (allocatedMap_[inputType].empty()) {
+        BM_LOG_WARN("No allocated spaces found.");
+        return 0;
+    }
+    auto it = allocatedMap_[inputType].upper_bound(va);
+    if (it != allocatedMap_[inputType].begin()) {
         --it;
-        if (it->second.ContainsByLva(lva)) {
+        if (it->second.Contains(va, inputType) && it->second.base.va[outputType] != 0) {
             // Calculate the corresponding GVA
-            uint64_t offset = lva - it->second.base.lva;
-            uint64_t gva = it->second.base.gva + offset;
-            BM_LOG_DEBUG("GetGvaByLva range mapping: lva=" << VaToStr(lva) << " -> gva=" << VaToStr(gva)
-                                                           << " (offset=" << VaToStr(offset) << ")");
-            return gva;
+            uint64_t offset = va - it->second.base.va[inputType];
+            uint64_t outputVa = it->second.base.va[outputType] + offset;
+            BM_LOG_DEBUG("GetGvaByLva range mapping: input_va=" << VaToStr(va) << " -> output_va=" << VaToStr(outputVa)
+                                                                << " (offset=" << VaToStr(offset) << ")");
+            return outputVa;
         }
     }
-    BM_LOG_DEBUG("GetGvaByLva: no mapping found for lva=" << VaToStr(lva));
-    return 0;
-}
-
-uint64_t HybmVaManager::GetLvaByGva(uint64_t gva)
-{
-    BM_ASSERT_RETURN(gva > 0, 0);
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByGva_.upper_bound(gva);
-    if (it != allocatedLookupMapByGva_.begin()) {
-        --it;
-        if (it->second.Contains(gva)) {
-            uint64_t offset = gva - it->second.base.gva;
-            uint64_t lva = it->second.base.lva + offset;
-            BM_LOG_DEBUG("GetLvaByGva: gva=" << VaToStr(gva) << " -> lva=" << VaToStr(lva)
-                                             << " (offset=" << VaToStr(offset) << ")");
-            return lva;
-        }
-    }
-    BM_LOG_DEBUG("GetLvaByGva: no mapping found for gva=" << VaToStr(gva));
+    BM_LOG_DEBUG("TransformVa: no mapping found for lva=" << VaToStr(va));
     return 0;
 }
 
@@ -167,11 +153,15 @@ bool HybmVaManager::IsGva(uint64_t va)
 {
     BM_ASSERT_RETURN(va > 0, false);
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByGva_.upper_bound(va);
-    if (it != allocatedLookupMapByGva_.begin()) {
+    if (allocatedMap_[HVM_GVA].empty()) {
+        BM_LOG_WARN("No allocated spaces found.");
+        return false;
+    }
+    auto it = allocatedMap_[HVM_GVA].upper_bound(va);
+    if (it != allocatedMap_[HVM_GVA].begin()) {
         --it;
     }
-    if (it->second.Contains(va)) {
+    if (it->second.Contains(va, HVM_GVA)) {
         BM_LOG_DEBUG("IsGva: va=" << VaToStr(va) << " is a valid GVA");
         return true;
     }
@@ -181,42 +171,56 @@ bool HybmVaManager::IsGva(uint64_t va)
 
 hybm_mem_type HybmVaManager::GetMemType(uint64_t va)
 {
-    BM_ASSERT_RETURN(va > 0, HYBM_MEM_TYPE_DEVICE);
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto allocIt = allocatedLookupMapByGva_.upper_bound(va);
-    if (allocIt != allocatedLookupMapByGva_.begin()) {
-        --allocIt;
-    }
-    if (allocIt->second.Contains(va)) {
-        BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << allocIt->second.base.memType);
-        return allocIt->second.base.memType;
-    }
-    auto allocItL = allocatedLookupMapByLva_.upper_bound(va);
-    if (allocItL != allocatedLookupMapByLva_.begin()) {
-        --allocItL;
-    }
-    if (allocItL->second.ContainsByLva(va)) {
-        BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << allocIt->second.base.memType);
-        return allocIt->second.base.memType;
-    }
-    auto reservedIt = reservedLookupMapByGva_.upper_bound(va);
-    if (reservedIt != reservedLookupMapByGva_.begin()) {
-        --reservedIt;
-    }
-    if (reservedIt->second.Contains(va)) {
-        BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << reservedIt->second.memType << " (reserved)");
-        return reservedIt->second.memType;
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (allocatedMap_[i].empty()) {
+            BM_LOG_WARN("No allocated spaces found.");
+            continue;
+        }
+        auto it = allocatedMap_[i].upper_bound(va);
+        if (it != allocatedMap_[i].begin()) {
+            --it;
+        }
+        if (it->second.Contains(va, i)) {
+            BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << it->second.base.memType);
+            return it->second.base.memType;
+        }
     }
     BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " not found, returning default type");
     return HYBM_MEM_TYPE_BUTT;
+}
+
+std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
+{
+    if (gva == 0) {
+        BM_LOG_WARN("GetRank: va=0 is invalid");
+        return {0, false};
+    }
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    if (allocatedMap_[HVM_GVA].empty()) {
+        BM_LOG_WARN("No allocated spaces found.");
+        return {0, false};
+    }
+    auto it = allocatedMap_[HVM_GVA].upper_bound(gva);
+    if (it != allocatedMap_[HVM_GVA].begin()) {
+        --it;
+    }
+    if (it->second.Contains(gva, HVM_GVA)) {
+        BM_LOG_DEBUG("GetRank: va=" << VaToStr(gva) << " localRankId=" << it->second.RankId());
+        return {it->second.RankId(), true};
+    }
+    BM_LOG_DEBUG("GetRank: va=" << VaToStr(gva) << " not found");
+    return {0, false};
 }
 
 ock::mf::HybmVaManager::AddressCategory ock::mf::HybmVaManager::ClassifyAddress(uint64_t va)
 {
     auto gvaType = GetMemType(va);
     if (gvaType != HYBM_MEM_TYPE_BUTT) {
-        if (gvaType == HYBM_MEM_TYPE_DEVICE) return GLOBAL_DEVICE;
-        if (gvaType == HYBM_MEM_TYPE_HOST) return GLOBAL_HOST;
+        if (gvaType == HYBM_MEM_TYPE_DEVICE)
+            return GLOBAL_DEVICE;
+        if (gvaType == HYBM_MEM_TYPE_HOST)
+            return GLOBAL_HOST;
     }
     if (va >= HYBM_DEVICE_VA_START && va < (HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE)) {
         return LOCAL_DEVICE;
@@ -228,35 +232,15 @@ hybm_data_copy_direction HybmVaManager::InferCopyDirection(uint64_t srcVa, uint6
 {
     auto src = static_cast<int>(ClassifyAddress(srcVa));
     auto dst = static_cast<int>(ClassifyAddress(dstVa));
-    if (src >= 0 && src < ADDRESS_CATEGORY_BUTT &&
-        dst >= 0 && dst < ADDRESS_CATEGORY_BUTT) {
+    if (src >= 0 && src < ADDRESS_CATEGORY_BUTT && dst >= 0 && dst < ADDRESS_CATEGORY_BUTT) {
         return COPY_DIRECTION_TABLE[src][dst];
     }
     return HYBM_DATA_COPY_DIRECTION_BUTT;
 }
 
-std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
-{
-    if (gva == 0) {
-        BM_LOG_WARN("GetRank: va=0 is invalid");
-        return {0, false};
-    }
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByGva_.upper_bound(gva);
-    if (it != allocatedLookupMapByGva_.begin()) {
-        --it;
-    }
-    if (it->second.Contains(gva)) {
-        BM_LOG_DEBUG("GetRank: va=" << VaToStr(gva) << " localRankId=" << it->second.RankId());
-        return {it->second.RankId(), true};
-    }
-    BM_LOG_DEBUG("GetRank: va=" << VaToStr(gva) << " not found");
-    return {0, false};
-}
-
 bool HybmVaManager::IsValidAddr(uint64_t va)
 {
-    bool isValid = IsGva(va) || (GetGvaByLva(va) != 0);
+    bool isValid = (GetMemType(va) != HYBM_MEM_TYPE_BUTT);
     BM_LOG_DEBUG("IsValidAddr: va=" << VaToStr(va) << " is " << (isValid ? "valid" : "invalid"));
     return isValid;
 }
@@ -268,23 +252,76 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
         BM_LOG_ERROR("AllocReserveGva failed: size=0");
         return result;
     }
+    uint64_t upperLimit = HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR;
+    uint64_t startAddr = HYBM_GVM_START_ADDR;
+    uint64_t endAddr = HYBM_GVM_END_ADDR;
+    uint32_t t = HVM_DVA; // reserve device va all
+    if (isSecondMapping_) {
+        // overwrite variables
+        upperLimit = HYBM_GVM_END_ADDR_8P - HYBM_GVM_START_ADDR_4P;
+        startAddr = HYBM_GVM_START_ADDR_4P;
+        endAddr = HYBM_GVM_END_ADDR_8P;
+    }
+    if (size > upperLimit) {
+        BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
+        return result;
+    }
+
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    uint64_t startAddr = reserveStart_;
-    uint64_t endAddr = reserveEnd_;
-    BM_LOG_DEBUG("AllocReserveGva: searching in HOST range " << VaToStr(startAddr) << "-" << VaToStr(endAddr));
+    BM_LOG_DEBUG("AllocReserveGva, isSecondMapping:" << isSecondMapping_ << ", searching in HOST range "
+                                                     << VaToStr(startAddr) << "-" << VaToStr(endAddr));
     // Find free space
-    auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size);
+    auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, HVM_GVA);
     if (!found) {
         BM_LOG_ERROR("AllocReserveGva failed: no free space found for size=" << VaToStr(size));
         return result;
     }
-    result.start = freeAddr;
+
+    if (isSecondMapping_) {
+        uint64_t lva = AllocReserveLva(localRankId, size, t);
+        if (lva == 0) {
+            return result;
+        }
+        result.va[t] = lva;
+    } else {
+        result.va[t] = freeAddr;
+    }
+
+    result.va[HVM_GVA] = freeAddr;
     result.size = size;
     result.memType = memType;
     result.localRankId = localRankId;
-    reservedLookupMapByGva_[freeAddr] = result;
+    reservedMap_[HVM_GVA][result.va[HVM_GVA]] = result;
+    reservedMap_[t][result.va[t]] = result;
     BM_LOG_INFO("AllocReserveGva success: " << result);
     return result;
+}
+
+uint64_t HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size, uint32_t type)
+{
+    if (size == 0) {
+        BM_LOG_ERROR("AllocReserveLva failed: size=0");
+        return 0;
+    }
+    uint64_t upperLimit = HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR;
+    uint64_t startAddr = HYBM_GVM_START_ADDR;
+    uint64_t endAddr = HYBM_GVM_END_ADDR;
+    if (size > upperLimit) {
+        BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
+        return 0;
+    }
+
+    BM_LOG_DEBUG("AllocReserveLva, isSecondMapping:" << isSecondMapping_ << ", searching in HOST range "
+                                                     << VaToStr(startAddr) << "-" << VaToStr(endAddr));
+    // Find free space
+    auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, type);
+    if (!found) {
+        BM_LOG_ERROR("AllocReserveLva failed: no free space found for size=" << VaToStr(size));
+        return 0;
+    }
+
+    BM_LOG_INFO("AllocReserveLva success: " << VaToStr(freeAddr));
+    return freeAddr;
 }
 
 void HybmVaManager::FreeReserveGva(uint64_t addr)
@@ -294,28 +331,30 @@ void HybmVaManager::FreeReserveGva(uint64_t addr)
         return;
     }
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    auto it = reservedLookupMapByGva_.find(addr);
-    if (it == reservedLookupMapByGva_.end()) {
+    auto it = reservedMap_[HVM_GVA].find(addr);
+    if (it == reservedMap_[HVM_GVA].end()) {
         BM_LOG_WARN("FreeReserveGva failed: reserved space not found at addr=" << VaToStr(addr));
         return;
     }
     const ReservedGvaInfo &info = it->second;
     BM_LOG_INFO("FreeReserveGva: " << info);
-    reservedLookupMapByGva_.erase(it);
+    auto type = (info.va[HVM_DVA] != 0 ? HVM_DVA : HVM_HVA);
+    reservedMap_[type].erase(info.va[type]);
+    reservedMap_[HVM_GVA].erase(it);
     BM_LOG_DEBUG("FreeReserveGva success: addr=" << VaToStr(addr));
 }
 
 void HybmVaManager::DumpReservedGvaInfo() const
 {
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    BM_LOG_DEBUG("Total reserved spaces: " << reservedLookupMapByGva_.size());
-    if (reservedLookupMapByGva_.empty()) {
+    BM_LOG_DEBUG("Total reserved spaces: " << reservedMap_[HVM_GVA].size());
+    if (reservedMap_[HVM_GVA].empty()) {
         BM_LOG_WARN("No reserved spaces found.");
         return;
     }
     int index = 1;
     uint64_t totalSizeMB = 0;
-    for (const auto &pair : reservedLookupMapByGva_) {
+    for (const auto &pair : reservedMap_[HVM_GVA]) {
         const ReservedGvaInfo &info = pair.second;
         BM_LOG_DEBUG(index << ". " << info);
         totalSizeMB += (info.size >> MB_OFFSET);
@@ -327,14 +366,14 @@ void HybmVaManager::DumpReservedGvaInfo() const
 void HybmVaManager::DumpAllocatedGvaInfo() const
 {
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    BM_LOG_DEBUG("Total allocated spaces: " << allocatedLookupMapByGva_.size());
-    if (allocatedLookupMapByGva_.empty()) {
+    BM_LOG_DEBUG("Total allocated spaces: " << allocatedMap_[HVM_GVA].size());
+    if (allocatedMap_[HVM_GVA].empty()) {
         BM_LOG_WARN("No allocated spaces found.");
         return;
     }
     int index = 1;
     uint64_t totalSizeMB = 0;
-    for (const auto &pair : allocatedLookupMapByGva_) {
+    for (const auto &pair : allocatedMap_[HVM_GVA]) {
         const AllocatedGvaInfo &info = pair.second;
         BM_LOG_DEBUG(index << ". " << info);
         totalSizeMB += (info.base.size >> MB_OFFSET);
@@ -343,7 +382,7 @@ void HybmVaManager::DumpAllocatedGvaInfo() const
     BM_LOG_DEBUG("Total allocated size: " << totalSizeMB << "MB");
     std::map<hybm_mem_type, uint64_t> sizeByType;
     std::map<hybm_mem_type, size_t> countByType;
-    for (const auto &pair : allocatedLookupMapByGva_) {
+    for (const auto &pair : allocatedMap_[HVM_GVA]) {
         const AllocatedGvaInfo &info = pair.second;
         sizeByType[info.base.memType] += (info.base.size >> MB_OFFSET);
         countByType[info.base.memType]++;
@@ -356,23 +395,33 @@ void HybmVaManager::DumpAllocatedGvaInfo() const
     }
 }
 
-std::pair<bool, AllocatedGvaInfo> HybmVaManager::CheckOverlap(const uint64_t gva, const uint64_t size,
-                                                              const hybm_mem_type memType)
+std::pair<bool, AllocatedGvaInfo> HybmVaManager::CheckOverlap(const uint64_t va, const uint64_t size, uint32_t type)
 {
-    const uint64_t end = gva + size;
-    auto typeIt = allocatedLookupMapByMemType_.find(memType);
-    if (typeIt != allocatedLookupMapByMemType_.end()) {
-        for (const auto &info : typeIt->second) {
-            if ((gva >= info.base.gva && gva < info.End()) || (gva <= info.base.gva && end > info.base.gva)) {
-                BM_LOG_INFO("CheckOverlap: overlap with allocated space " << info);
-                return {true, info};
-            }
+    const uint64_t end = va + size;
+    if (allocatedMap_[type].empty()) {
+        return {false, {}};
+    }
+    auto it = allocatedMap_[type].upper_bound(va);
+    if (it != allocatedMap_[type].end()) {
+        uint64_t st = it->first;
+        uint64_t ed = it->second.base.size + st;
+        if ((st <= va && va < ed) || (va <= st && st < end)) {
+            return {true, it->second};
+        }
+    }
+
+    if (it != allocatedMap_[type].begin()) {
+        it--;
+        uint64_t st = it->first;
+        uint64_t ed = it->second.base.size + st;
+        if ((st <= va && va < ed) || (va <= st && st < end)) {
+            return {true, it->second};
         }
     }
     return {false, {}};
 }
 
-std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t end, uint64_t size) const
+std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t end, uint64_t size, uint32_t type)
 {
     if (size == 0 || start >= end || size > (end - start)) {
         BM_LOG_ERROR("FindFreeSpace: invalid parameters. start=" << VaToStr(start) << ", end=" << VaToStr(end)
@@ -380,10 +429,10 @@ std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t 
         return {0, false};
     }
     std::vector<std::pair<uint64_t, uint64_t>> usedRanges;
-    for (const auto &pair : reservedLookupMapByGva_) {
+    for (const auto &pair : reservedMap_[type]) {
         const ReservedGvaInfo &info = pair.second;
-        if (info.start >= start && info.start < end) {
-            usedRanges.emplace_back(info.start, info.End());
+        if (info.va[type] >= start && info.va[type] < end) {
+            usedRanges.emplace_back(info.va[type], info.va[type] + info.size);
         }
     }
     BM_LOG_DEBUG("FindFreeSpace: found " << usedRanges.size() << " used ranges in target area");
@@ -416,49 +465,27 @@ std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t 
     return {0, false};
 }
 
-std::pair<AllocatedGvaInfo, bool> HybmVaManager::FindAllocByGva(uint64_t gva) const
+std::pair<AllocatedGvaInfo, bool> HybmVaManager::FindAllocByVa(uint64_t va, uint32_t type) const
 {
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByGva_.upper_bound(gva);
-    if (it != allocatedLookupMapByGva_.begin()) {
+    if (allocatedMap_[type].empty()) {
+        BM_LOG_WARN("No allocated spaces found.");
+        return {AllocatedGvaInfo{}, false};
+    }
+    auto it = allocatedMap_[type].upper_bound(va);
+    if (it != allocatedMap_[type].begin()) {
         --it;
     }
-    if (it->second.Contains(gva)) {
+    if (it->second.Contains(va, type)) {
         return {it->second, true};
     }
     return {AllocatedGvaInfo{}, false};
-}
-
-std::pair<AllocatedGvaInfo, bool> HybmVaManager::FindAllocByLva(uint64_t lva) const
-{
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = allocatedLookupMapByLva_.upper_bound(lva);
-    if (it != allocatedLookupMapByLva_.begin()) {
-        --it;
-    }
-    if (it->second.ContainsByLva(lva)) {
-        return {it->second, true};
-    }
-    return {AllocatedGvaInfo{}, false};
-}
-
-std::pair<ReservedGvaInfo, bool> HybmVaManager::FindReservedByAddr(uint64_t addr) const
-{
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    auto it = reservedLookupMapByGva_.upper_bound(addr);
-    if (it != reservedLookupMapByGva_.begin()) {
-        --it;
-    }
-    if (it->second.Contains(addr)) {
-        return {it->second, true};
-    }
-    return {ReservedGvaInfo{}, false};
 }
 
 size_t HybmVaManager::GetAllocCount() const
 {
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    size_t count = allocatedLookupMapByGva_.size();
+    size_t count = allocatedMap_[HVM_GVA].size();
     BM_LOG_DEBUG("GetAllocCount: " << count);
     return count;
 }
@@ -466,7 +493,7 @@ size_t HybmVaManager::GetAllocCount() const
 size_t HybmVaManager::GetReservedCount() const
 {
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    size_t count = reservedLookupMapByGva_.size();
+    size_t count = reservedMap_[HVM_GVA].size();
     BM_LOG_DEBUG("GetReservedCount: " << count);
     return count;
 }
@@ -474,12 +501,12 @@ size_t HybmVaManager::GetReservedCount() const
 void HybmVaManager::ClearAll()
 {
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    BM_LOG_DEBUG("Alloc count before clear: " << allocatedLookupMapByGva_.size());
-    BM_LOG_DEBUG("Reserved count before clear: " << reservedLookupMapByGva_.size());
-    allocatedLookupMapByGva_.clear();
-    allocatedLookupMapByLva_.clear();
-    reservedLookupMapByGva_.clear();
-    allocatedLookupMapByMemType_.clear();
+    BM_LOG_DEBUG("Alloc count before clear: " << allocatedMap_[HVM_GVA].size());
+    BM_LOG_DEBUG("Reserved count before clear: " << reservedMap_[HVM_GVA].size());
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        allocatedMap_[i].clear();
+        reservedMap_[i].clear();
+    }
 }
 } // namespace mf
 } // namespace ock

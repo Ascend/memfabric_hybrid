@@ -15,11 +15,11 @@
 
 #include <cstdint>
 
-constexpr uint64_t DEVMM_MAP_ALIGN_SIZE = 0x200000U;
-constexpr uint64_t DEVMM_HEAP_SIZE = (1UL << 30UL);
-constexpr size_t DEVMM_SVM_MEM_SIZE = (1UL << 43UL);
-constexpr uint64_t DEVMM_SVM_MEM_START = 0x100000000000ULL;
-constexpr uint32_t DEVMM_MAX_HEAP_NUM = (DEVMM_SVM_MEM_SIZE >> 30);
+constexpr uint64_t DEVMM_MAP_ALIGN_SIZE = 0x200000U;                // 2M
+constexpr uint64_t DEVMM_HEAP_SIZE = (1UL << 30UL);                 // 1G
+constexpr size_t DEVMM_SVM_MEM_SIZE = (1UL << 43UL);                // 8T
+constexpr uint64_t DEVMM_SVM_MEM_START = 0x100000000000ULL;         // 16T
+constexpr uint32_t DEVMM_MAX_HEAP_NUM = (DEVMM_SVM_MEM_SIZE >> 30); // 8T/1G = 8192
 
 constexpr uint32_t DV_ADVISE_DDR = 0x0001;
 constexpr uint32_t DV_ADVISE_HBM = 0x0002;

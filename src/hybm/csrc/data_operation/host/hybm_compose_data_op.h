@@ -39,6 +39,10 @@ public:
     Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                          const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
+    void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept override
+    {
+        return;
+    }
 
 private:
     using DataOperators = std::vector<std::pair<hybm_data_op_type, DataOperatorPtr>>;

@@ -175,7 +175,7 @@ public:
     }
 
     static int32_t Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
-                          const smem_bm_config_t &config) noexcept
+                              const smem_bm_config_t &config) noexcept
     {
         worldSize_ = worldSize;
         return smem_bm_init(storeURL.c_str(), worldSize, deviceId, &config);
@@ -201,6 +201,26 @@ public:
                              smem_bm_data_op_type dataOpType, uint32_t flags)
     {
         auto hd = smem_bm_create(id, worldSize_, dataOpType, localDRAMSize, localHBMSize, flags);
+        if (hd == nullptr) {
+            throw std::runtime_error(std::string("create bm handle failed."));
+        }
+
+        return new (std::nothrow) BigMemory{hd};
+    }
+
+    static BigMemory *Create2(uint32_t id, uint64_t localDRAMSize, uint64_t localMaxDRAMSize, uint64_t localHBMSize,
+                              uint64_t localMaxHBMSize, smem_bm_data_op_type dataOpType, bool isSecondMapping,
+                              uint32_t flags)
+    {
+        smem_bm_create_option_t option{};
+        option.maxDramSize = localMaxDRAMSize;
+        option.maxHbmSize = localMaxHBMSize;
+        option.localDRAMSize = localDRAMSize;
+        option.localHBMSize = localHBMSize;
+        option.dataOpType = dataOpType;
+        option.isSecondMapping = isSecondMapping;
+        option.flags = flags;
+        auto hd = smem_bm_create2(id, &option);
         if (hd == nullptr) {
             throw std::runtime_error(std::string("create bm handle failed."));
         }
@@ -428,7 +448,7 @@ void DefineBmConfig(py::module_ &m)
         .value("H2GH", SMEMB_COPY_H2GH, "copy data from host memory to global host space")
         .value("G2G", SMEMB_COPY_G2G, "copy data from global space to global space")
         .value("AUTO", SMEMB_COPY_AUTO,
-        "copy data automatically based on the memory type of the source and destination");
+               "copy data automatically based on the memory type of the source and destination");
 
     py::class_<smem_bm_config_t>(m, "BmConfig")
         .def(py::init([]() {
@@ -488,11 +508,9 @@ Arguments:
     context(bytes): extra context
 Returns:
     0 if successful)")
-        .def_property_readonly("local_rank", py::cpp_function(
-            &ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>()), R"(
+        .def_property_readonly("local_rank", &ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>(), R"(
 Get local rank of a shm object)")
-        .def_property_readonly("rank_size", py::cpp_function(
-            &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>()), R"(
+        .def_property_readonly("rank_size", &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>(), R"(
 Get rank size of a shm object)")
         .def("destroy", &ShareMemory::Destroy, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
 Destroy the shm handle.)")
@@ -532,12 +550,8 @@ Arguments:
 Returns:
     int: 0 if successful)")
         .def_property_readonly(
-            "gva", py::cpp_function(
-                [](const ShareMemory &shm) {
-                    return (uint64_t)(ptrdiff_t)shm.Address();
-                },
-                py::call_guard<py::gil_scoped_release>()
-            ), R"(
+            "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
+            py::call_guard<py::gil_scoped_release>(), R"(
 get global virtual address created, it can be passed to kernel to data operations)");
 }
 
@@ -577,6 +591,18 @@ Returns:
     m.def("create", &BigMemory::Create, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
           py::arg("local_dram_size"), py::arg("local_hbm_size"), py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
           py::arg("flags") = 0, R"(
+Create a big memory object locally after initialized.
+
+Arguments:
+    id(int):                     identity of the big memory object
+    local_dram_size(int):         the size of local dram memory contributes to big memory object
+    local_hbm_size(int):         the size of local hbm memory contributes to big memory object
+    data_op_type(BmDataOpType):  data operation type, SDMA or RoCE etc
+    flags(int):                  optional flags)");
+
+    m.def("create2", &BigMemory::Create2, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
+          py::arg("local_dram_size"), py::arg("max_dram_size"), py::arg("local_hbm_size"), py::arg("max_hbm_size"),
+          py::arg("data_op_type") = SMEMB_DATA_OP_SDMA, py::arg("is_second_mapping") = false, py::arg("flags") = 0, R"(
 Create a big memory object locally after initialized.
 
 Arguments:

@@ -130,6 +130,8 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     option.dataOpType = dataOpType;
     option.flags = (flags & (~SMEM_BM_FLAG_CREATE_WITH_SHM));
     option.dramShmFd = -1;
+    option.isSecondMapping = false;
+    option.flags = flags;
     return smem_bm_create2(id, &option);
 }
 
@@ -192,6 +194,7 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
     options.hostVASpace = option->localDRAMSize;
     options.role = HYBM_ROLE_PEER;
     options.flags = option->flags;
+    options.isSecondMapping = option->isSecondMapping;
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

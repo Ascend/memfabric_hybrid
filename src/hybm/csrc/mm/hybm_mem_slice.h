@@ -18,9 +18,9 @@
 namespace ock {
 namespace mf {
 struct MemSlice {
-    MemSlice(uint16_t index, MemType mType, MemPageTblType tbType, uint64_t va, uint64_t size)
+    MemSlice(uint16_t index, hybm_mem_type mType, MemPageTblType tbType, uint64_t gva, uint64_t lva, uint64_t size)
         : magic_(Func::MakeObjectMagic(uint64_t(this))), index_(index), memType_(mType), memPageTblType_(tbType),
-          vAddress_(va), size_(size)
+          gva_(gva), vAddress_(lva), size_(size)
     {}
 
     hybm_mem_slice_t ConvertToId() const noexcept;
@@ -31,7 +31,8 @@ struct MemSlice {
     const uint64_t index_ : 16;         /* id of mem slice  */
     const uint64_t memType_ : 4;        /* device or host memory */
     const uint64_t memPageTblType_ : 2; /* use CANN SVM page table or HyBM page table */
-    const uint64_t vAddress_;           /* address of memory */
+    const uint64_t gva_;                /* global virtual address of memory */
+    const uint64_t vAddress_;           /* local address of memory: hostVa or deviceVa */
     const uint64_t size_;
 };
 } // namespace mf

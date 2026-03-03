@@ -121,6 +121,8 @@ Result RdmaTransportManager::CloseDevice()
         qpManager_->Shutdown();
         qpManager_ = nullptr;
     }
+    // must clear MRs before set `rdmaHandle_ = nullptr`
+    ClearAllRegisterMRs();
     started_ = false;
     rdmaHandle_ = nullptr;
     ranksMRs_.clear();
@@ -147,16 +149,7 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
 
     RegMemResult result{mr.addr, (uint64_t)(ptrdiff_t)info.addr, mr.size, mrHandle, info.lkey, info.rkey};
-    BM_LOG_DEBUG("register MR result=" << result);
-    if ((mr.flags & REG_MR_FLAG_SELF) == 0) {
-        auto type = (mr.flags & REG_MR_FLAG_DRAM) ? HYBM_MEM_TYPE_HOST : HYBM_MEM_TYPE_DEVICE;
-        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({result.regAddress, mr.size, type, mr.addr}, rankId_);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("Add va info failed, ret: " << ret << ", gva: " << result.regAddress);
-            DlHccpApi::RaDeregisterMR(rdmaHandle_, mrHandle);
-            return ret;
-        }
-    }
+    BM_LOG_DEBUG("register mr.addr:0x" << std::hex << mr.addr << ", MR result=" << result);
 
     WriteGuard lockGuard(lock_);
     registerMRS_.emplace(mr.addr, result);
@@ -165,7 +158,6 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
 Result RdmaTransportManager::UnregisterMemoryRegion(uint64_t addr)
 {
-    HybmVaManager::GetInstance().RemoveOneVaInfo(addr);
     WriteGuard lockGuard(lock_);
     auto pos = registerMRS_.find(addr);
     if (pos == registerMRS_.end()) {
@@ -211,6 +203,7 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     }
 
     keyUnion.deviceKey = pos->second;
+    keyUnion.deviceKey.address = HybmVaManager::GetInstance().TransformVa(keyUnion.deviceKey.address, HVM_HVA, HVM_GVA);
     keyUnion.deviceKey.notifyAddr = notifyInfo_.srcAddr;
     keyUnion.deviceKey.notifyRkey = notifyInfo_.srcRkey;
 
@@ -627,6 +620,9 @@ void RdmaTransportManager::ClearAllRegisterMRs()
 {
     WriteGuard lockGuard(lock_);
     for (auto it = registerMRS_.begin(); it != registerMRS_.end(); ++it) {
+        if (rdmaHandle_ == nullptr) {
+            break;
+        }
         auto ret = DlHccpApi::RaDeregisterMR(rdmaHandle_, it->second.mrHandle);
         if (ret != 0) {
             BM_LOG_WARN("Unregister:" << (void *)(ptrdiff_t)it->first << " : " << it->second << " failed: " << ret);
@@ -730,7 +726,8 @@ int RdmaTransportManager::GetRegAddress(const MemoryRegionMap &map, uint64_t inp
 {
     auto pos = map.lower_bound(inputAddr);
     if (pos == map.end() || pos->first + pos->second.size < inputAddr + size) {
-        BM_LOG_ERROR("[GetRegAddress] Input address not register: size: " << size);
+        BM_LOG_ERROR("[GetRegAddress] Input address not register: size: " << size << ", map: " << map
+                                                                          << ", inputAddr:0x" << std::hex << inputAddr);
         return BM_INVALID_PARAM;
     }
     outputAddr = pos->second.regAddress + (inputAddr - pos->first);
@@ -764,23 +761,20 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
 int RdmaTransportManager::ConvertHccpMrInfo(const TransportMemoryRegion &mr, HccpMrInfo &info)
 {
     auto addr = mr.addr;
-    auto size = mr.size;
 
     // need register: dram except gvm
     if ((mr.flags & REG_MR_FLAG_DRAM) || (mr.flags & REG_MR_FLAG_ACL_DRAM)) {
         if (addr % SMALL_PAGE_SIZE != 0) {
             BM_LOG_ERROR("DRAM buffer address: " << std::hex << addr <<
                 " is not aligned to 4K, HalHostRegister will fail");
+            return BM_INVALID_PARAM;
         }
 
-        auto input = (void *)(ptrdiff_t)addr;
-        void *output = nullptr;
-        auto ret = DlHalApi::HalHostRegister(input, size, HOST_MEM_MAP_DEV, deviceId_, &output);
-        if (ret != 0) {
-            BM_LOG_ERROR("HalHostRegister failed: " << ret);
-            return BM_DL_FUNCTION_FAILED;
+        addr = HybmVaManager::GetInstance().TransformVa(addr, HVM_HVA, HVM_DVA);
+        if (addr == 0) {
+            BM_LOG_ERROR("get device va failed, address: " << std::hex << mr.addr);
+            return BM_INVALID_PARAM;
         }
-        addr = (uint64_t)(ptrdiff_t)output;
     }
 
     info.addr = (void *)(ptrdiff_t)addr;
@@ -804,12 +798,16 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
         }
 
         auto &pos = ranksMRs_[node];
+        // 对于不支持sdma的环境,va_manager中仅记录gva;对于支持sdma的环境,va_maanger中会记录dva,data_operator优先使用dva给transport
         for (auto &key : it->second.memKeys) {
             keyUnion.commonKey = key;
             auto &devKey = keyUnion.deviceKey;
-            BM_LOG_INFO("Success to query memory key rank:" << node << " addr:" << std::hex
-                                                            << keyUnion.deviceKey.address
-                                                            << " size:" << keyUnion.deviceKey.size);
+            uint64_t dva = HybmVaManager::GetInstance().TransformVa(devKey.address, HVM_GVA, HVM_DVA);
+            BM_LOG_INFO("Success to query memory key rank:" << node << " gva:" << std::hex
+                        << keyUnion.deviceKey.address << " dva:" << dva << " size:" << keyUnion.deviceKey.size);
+            if (dva != 0) {
+                devKey.address = dva;
+            }
             auto addrIter = pos.find(devKey.address);
             if (addrIter == pos.end()) {
                 pos.emplace(devKey.address, devKey);

@@ -54,6 +54,8 @@ constexpr uint32_t SMEM_DEFAUT_WAIT_TIME = 120; // 120s
 constexpr uint32_t SMEM_ID_MAX = 63;
 constexpr uint64_t SMEM_LOCAL_HBM_SIZE_MAX = 64ULL << 30; // 64G
 constexpr uint64_t SMEM_LOCAL_DRAM_SIZE_MAX = 2ULL << 40; // 2T
+constexpr uint64_t HYBM_MAX_POOL_SIZE = 128ULL << 40;     // 128T, 910C暂时只做到128TB, 910B无此限制
+constexpr uint64_t HYBM_HBM_SIZE_ALIGNMENT = 1ULL << 30;  // 1GB
 } // namespace smem
 } // namespace ock
 

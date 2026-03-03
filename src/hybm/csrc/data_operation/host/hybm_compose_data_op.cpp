@@ -95,7 +95,8 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
     for (auto &ops : availableOps) {
         BM_LOG_DEBUG("try data copy from rank " << options.srcRankId << " to rank " << options.destRankId
                                                 << " with data op " << ops.first);
-        result = ops.second->DataCopy(params, direction, options);
+        hybm_copy_params param2 = params;
+        result = ops.second->DataCopy(param2, direction, options);
         if (result == BM_OK) {
             break;
         }

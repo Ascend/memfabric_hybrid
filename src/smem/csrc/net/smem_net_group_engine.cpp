@@ -788,6 +788,7 @@ void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId, std::string &
 void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
 {
     SM_ASSERT_RET_VOID(store_ != nullptr);
+    SM_LOG_INFO("do leave by link down, loca_rank:" << option_.rank << " leave_rank:" << rankId);
     int64_t tmpVal = 0L;
     auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
     if (ret != SM_OK) {
@@ -963,6 +964,7 @@ Result SmemNetGroupEngine::GroupLeave()
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
     std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
+    SM_LOG_INFO("do leave by user, rank:" << option_.rank);
 
     Result ret;
     uint32_t watchId = 0;

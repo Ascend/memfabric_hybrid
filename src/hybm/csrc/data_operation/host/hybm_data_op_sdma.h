@@ -36,6 +36,7 @@ public:
                          const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
 
+    void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept override;
     void CleanUp() noexcept override;
 
 private:

@@ -15,10 +15,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstddef>
 
 #include "hybm_logger.h"
 #include "hybm_ex_info_transfer.h"
 #include "hybm_va_manager.h"
+#include "dl_hal_api.h"
 
 using namespace ock::mf;
 
@@ -43,26 +45,30 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(address != nullptr, "Invalid param, address is NULL.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(PrepareShareMemoryFd() == BM_OK, "PrepareShareMemoryFd failed.", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(options_.rankId < options_.rankCnt,
+                             "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
     uint64_t totalSize = options_.rankCnt * options_.maxSize;
-    if (totalSize > HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR) {
-        BM_LOG_ERROR("Failed to reserve size:" << totalSize << " total:" << HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR);
-        return BM_INVALID_PARAM;
-    }
-    auto gva =
-        HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalSize, hybm_mem_type::HYBM_MEM_TYPE_HOST);
-    BM_ASSERT_LOG_AND_RETURN(gva.start > 0, "Invalid param, start is 0.", BM_ERROR);
-    void *startAddr = reinterpret_cast<void *>(gva.start);
-    void *mapped =
-        mmap(startAddr, totalSize, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
-    if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)startAddr) {
-        BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" << mapped
-                                            << " error: " << errno);
-        return BM_ERROR;
+    auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalSize, HYBM_MEM_TYPE_HOST);
+    BM_ASSERT_LOG_AND_RETURN(gvaInfo.va[HVM_GVA] > 0, "Invalid param, start is 0.", BM_ERROR);
+    void *startAddr = reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
+    if (!options_.isSecondMapping) {
+        void *mapped = mmap(startAddr, totalSize, PROT_NONE,
+                            MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
+
+        if (mapped == MAP_FAILED || (uint64_t)mapped != (uint64_t)startAddr) {
+            BM_LOG_ERROR("Failed to mmap size:" << totalSize << " addr:" << startAddr << " ret:" << mapped
+                                                << " error: " << errno);
+            return BM_ERROR;
+        }
     }
     globalVirtualAddress_ = (uint8_t *)startAddr;
     totalVirtualSize_ = totalSize;
-    localVirtualBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    if (options_.isSecondMapping) {
+        localVirtualBase_ = (uint8_t *)gvaInfo.va[HVM_DVA];
+    } else {
+        localVirtualBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    }
     allocatedSize_ = 0UL;
     sliceCount_ = 0;
     *address = globalVirtualAddress_;
@@ -98,26 +104,24 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
                                                        << options_.maxSize);
         return BM_INVALID_PARAM;
     }
+    if (options_.isSecondMapping && options_.shmFd >= 0) {
+        BM_LOG_ERROR("do not support memory pool greater 128TB, isSecondMapping: " << options_.isSecondMapping
+                     << ", shmFd:" << options_.shmFd);
+        return BM_INVALID_PARAM;
+    }
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
+    auto gva = reinterpret_cast<uint64_t>(globalVirtualAddress_ + options_.maxSize * options_.rankId + allocatedSize_);
     void *mapped = nullptr;
-    auto ret = MapSlice(allocatedSize_, size);
+    auto ret = MapSlice(mapped, sliceAddr, allocatedSize_, size, gva);
     if (ret != BM_OK) {
         return ret;
     }
     allocatedSize_ += size;
-    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
-                                       reinterpret_cast<uint64_t>(sliceAddr), size);
+    slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, gva,
+                                       reinterpret_cast<uint64_t>(mapped), size);
     slices_.emplace(slice->index_, slice);
-    BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << " va:" << sliceAddr << ").");
-    ret = HybmVaManager::GetInstance().AddVaInfo({slice->vAddress_, size, HYBM_MEM_TYPE_HOST, slice->vAddress_},
-                                                 options_.rankId);
-    if (ret != 0) {
-        BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
-        mmap(mapped, size, PROT_NONE, MAP_FIXED | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
-        slices_.erase(slice->index_);
-        return ret;
-    }
+    BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << " va:" << mapped << ").");
     return BM_OK;
 }
 
@@ -149,9 +153,14 @@ Result HybmConnBasedSegment::Export(const MemSlicePtr &slice, std::string &exInf
         exInfo = exp->second;
         return BM_OK;
     }
+    auto [gvaInfo, stat] = HybmVaManager::GetInstance().FindAllocByVa(slice->vAddress_, HVM_HVA);
+    if (!stat) {
+        BM_LOG_ERROR("input host va(" << slice->vAddress_ << ") not match.");
+        return BM_INVALID_PARAM;
+    }
 
     HostExportInfo info;
-    info.vAddress = slice->vAddress_;
+    info.gva = gvaInfo.base.va[HVM_GVA];
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.rankId = options_.rankId;
     info.size = slice->size_;
@@ -190,8 +199,10 @@ Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, v
         if (import.rankId == options_.rankId) {
             continue;
         }
+
         auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
-            {import.vAddress, import.size, HYBM_MEM_TYPE_HOST, 0}, options_.rankId, import.rankId);
+            {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId,
+            import.rankId);
         BM_ASSERT_RETURN(ret == BM_OK, ret);
     }
     return BM_OK;
@@ -203,7 +214,7 @@ Result HybmConnBasedSegment::Mmap() noexcept
         if (import.rankId == options_.rankId) {
             continue;
         }
-        mappedMem_.insert(import.vAddress);
+        mappedGvaMem_.insert(import.gva);
     }
     imports_.clear();
     return 0;
@@ -211,10 +222,10 @@ Result HybmConnBasedSegment::Mmap() noexcept
 
 Result HybmConnBasedSegment::Unmap() noexcept
 {
-    for (auto va : mappedMem_) {
-        HybmVaManager::GetInstance().RemoveOneVaInfo(va);
+    for (auto gva : mappedGvaMem_) {
+        HybmVaManager::GetInstance().RemoveOneVaInfo(gva);
     }
-    mappedMem_.clear();
+    mappedGvaMem_.clear();
     return 0;
 }
 
@@ -271,8 +282,21 @@ bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint
 
 void HybmConnBasedSegment::FreeMemory() noexcept
 {
-    localVirtualBase_ = nullptr;
-    if (globalVirtualAddress_ != nullptr) {
+    while (!slices_.empty()) {
+        auto slice = slices_.begin()->second.slice;
+        ReleaseSliceMemory(slice);
+    }
+
+    if (localVirtualBase_ != nullptr) {
+        if (munmap(localVirtualBase_, allocatedSize_) != 0) {
+            BM_LOG_ERROR("Failed to unmap local memory");
+        }
+        localVirtualBase_ = nullptr;
+    }
+
+    if (options_.isSecondMapping) {
+        globalVirtualAddress_ = localVirtualBase_ = nullptr;
+    } else if (globalVirtualAddress_ != nullptr) {
         if (munmap(globalVirtualAddress_, totalVirtualSize_) != 0) {
             BM_LOG_ERROR("Failed to unmap global memory");
         }
@@ -287,7 +311,7 @@ Result HybmConnBasedSegment::PrepareShareMemoryFd() const noexcept
         return BM_OK;
     }
 
-    struct stat buf {};
+    struct stat buf{};
     auto ret = fstat(options_.shmFd, &buf);
     if (ret != 0) {
         BM_LOG_ERROR("share mem fd: " << options_.shmFd << " stat failed: " << errno << ":" << strerror(errno));
@@ -308,32 +332,49 @@ Result HybmConnBasedSegment::PrepareShareMemoryFd() const noexcept
     return BM_OK;
 }
 
-Result HybmConnBasedSegment::MapSlice(uint64_t lvOffset, uint64_t size) noexcept
+Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset,
+                                      uint64_t size, uint64_t gva) noexcept
 {
     if (size == 0) {
         return BM_OK;
     }
 
-    void *addr = nullptr;
-    auto sliceAddr = localVirtualBase_ + allocatedSize_;
     auto prot = PROT_READ | PROT_WRITE;
     auto flags = MAP_FIXED;
+    void *dva = nullptr;
 #ifndef UT_ENABLED
     flags |= MAP_HUGETLB;
 #endif
     if (options_.shmFd < 0) {
-        addr = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        mapped = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     } else {
-        addr = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
+        mapped = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
     }
 
-    if (addr == MAP_FAILED || addr != sliceAddr) {
-        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" <<  static_cast<void *>(sliceAddr)
-            << " ret:" << addr << " error:" << errno << ", " << SafeStrError(errno));
+    if (mapped == MAP_FAILED || mapped != sliceAddr) {
+        BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " mapped:" << mapped
+                                             << " error:" << errno << ", " << SafeStrError(errno));
         return BM_ERROR;
     }
 
-    LvaShmReservePhysicalMemory(sliceAddr, size);
+    if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        auto ret = DlHalApi::HalHostRegister(sliceAddr, size, HOST_MEM_MAP_DEV, options_.devId, &dva);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("register host va failed, ret:" << ret);
+            munmap(sliceAddr, size);
+            return BM_ERROR;
+        }
+    }
+    int ret = HybmVaManager::GetInstance().AddVaInfo({gva, (uint64_t)dva, (uint64_t)sliceAddr, size,
+                                                     HYBM_MEM_TYPE_HOST}, options_.rankId);
+    if (ret != 0) {
+        BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
+        DlHalApi::HalHostUnregisterEx(sliceAddr, options_.devId, HOST_MEM_MAP_DEV);
+        munmap(sliceAddr, size);
+        return ret;
+    }
+
+    LvaShmReservePhysicalMemory(mapped, size);
     return BM_OK;
 }
 
@@ -346,15 +387,15 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
         }
     }
     for (auto &rank : ranks) {
-        uint64_t addr = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
-        auto it = mappedMem_.lower_bound(addr);
+        uint64_t gvaLocal = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
+        auto it = mappedGvaMem_.lower_bound(gvaLocal);
         auto st = it;
-        while (it != mappedMem_.end() && (*it) < addr + options_.maxSize) {
+        while (it != mappedGvaMem_.end() && (*it) < gvaLocal + options_.maxSize) {
             HybmVaManager::GetInstance().RemoveOneVaInfo(*it);
             ++it;
         }
         if (st != it) {
-            mappedMem_.erase(st, it);
+            mappedGvaMem_.erase(st, it);
         }
     }
     return BM_OK;
@@ -362,8 +403,8 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
 
 Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
-    slice = std::make_shared<MemSlice>(sliceCount_++, MEM_TYPE_HOST_DRAM, MEM_PT_TYPE_SVM,
-                                       reinterpret_cast<uint64_t>(addr), size);
+    auto ret = RegisterMemCommon(addr, size, slice);
+    BM_ASSERT_RETURN(ret == BM_OK, ret);
     slices_.emplace(slice->index_, slice);
     return BM_OK;
 }
@@ -385,7 +426,7 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
         BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
         return BM_INVALID_PARAM;
     }
-    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_);
+    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->gva_);
     slices_.erase(pos);
     return BM_OK;
 }

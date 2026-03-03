@@ -190,17 +190,17 @@ public:
 
         // 添加一些虚拟地址信息
         BaseAllocatedGvaInfo srcInfo;
-        srcInfo.gva = 0x1000;
+        srcInfo.va[HVM_GVA] = 0x1000;
         srcInfo.size = 1024;
         srcInfo.memType = HYBM_MEM_TYPE_HOST;
-        srcInfo.lva = 0x1000;
+        srcInfo.va[HVM_HVA] = 0x1000;
         vaManager.AddVaInfoFromExternal(srcInfo, 0);
 
         BaseAllocatedGvaInfo destInfo;
-        destInfo.gva = 0x2000;
+        destInfo.va[HVM_GVA] = 0x2000;
         destInfo.size = 1024;
         destInfo.memType = HYBM_MEM_TYPE_HOST;
-        destInfo.lva = 0x2000;
+        destInfo.va[HVM_HVA] = 0x2000;
         vaManager.AddVaInfoFromExternal(destInfo, 0);
     }
 

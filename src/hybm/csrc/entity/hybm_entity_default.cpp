@@ -101,13 +101,13 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     // init tag info
     BM_ASSERT_LOG_AND_RETURN(InitTagManager() == BM_OK, "Failed to init tag manager.", BM_ERROR);
     // load dlopen lib
-    BM_ASSERT_LOG_AND_RETURN(LoadExtendLibrary() == BM_OK, "Load extend library failed.", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(LoadExtendLibrary() == BM_OK, "Failed to load extend library.", BM_ERROR);
     // init segment
-    BM_ASSERT_LOG_AND_RETURN(InitSegment() == BM_OK, "Failed to initSegment.", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(InitSegment() == BM_OK, "Failed to init segment.", BM_ERROR);
     // init transManager
-    BM_ASSERT_LOG_AND_RETURN(InitTransManager() == BM_OK, "Failed to InitTransManager", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(InitTransManager() == BM_OK, "Failed to init trans manager.", BM_ERROR);
     // init dataOperator
-    BM_ASSERT_LOG_AND_RETURN(InitDataOperator() == BM_OK, "Failed to InitDataOperator", BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(InitDataOperator() == BM_OK, "Failed to init data operator.", BM_ERROR);
 
     initialized_ = true;
     return BM_OK;
@@ -123,6 +123,13 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
     if (!initialized_) {
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
+    }
+    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA) {
+        if (options_.rankCount * (options_.maxHBMSize + options_.maxDRAMSize) > HYBM_GVM_MAX_POOL_SIZE) {
+            BM_LOG_ERROR("Total memory pool size > 128T. size:" << options_.rankCount *
+                                                                       (options_.maxHBMSize + options_.maxDRAMSize));
+            return BM_INVALID_PARAM;
+        }
     }
 
     if (hbmSegment_ != nullptr) {
@@ -197,12 +204,11 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
 
     slice = realSlice->ConvertToId();
     transport::TransportMemoryRegion info;
-    info.size = realSlice->size_;
     info.addr = realSlice->vAddress_;
+    info.size = realSlice->size_;
     info.flags =
         segment->GetMemoryType() == HYBM_MEM_TYPE_DEVICE ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM;
     if (transportManager_ != nullptr && size > 0) {
-        info.flags |= transport::REG_MR_FLAG_SELF;
         ret = transportManager_->RegisterMemoryRegion(info);
         if (ret != 0) {
             BM_LOG_ERROR("register memory region allocate failed: " << ret << ", info: " << info);
@@ -417,7 +423,7 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInf
         return ret;
     }
 
-    SliceExportTransportKey transportKey{exportMagic, options_.rankId, realSlice->vAddress_};
+    SliceExportTransportKey transportKey{exportMagic, options_.rankId, realSlice->gva_};
     if (transportManager_ != nullptr) {
         if (realSlice->size_ > 0) {
             ret = transportManager_->QueryMemoryKey(realSlice->vAddress_, transportKey.key);
@@ -434,8 +440,8 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInf
     }
 
     if (options_.scene != HYBM_SCENE_TRANS) {
-        BM_LOG_INFO("Success to export slice rankId:" << transportKey.rankId << " addr:" << transportKey.address <<
-                    " key:" << transportKey.key);
+        BM_LOG_INFO("Success to export slice rankId:" << transportKey.rankId << " addr:" << transportKey.address
+                                                      << " key:" << transportKey.key);
     } else {
         BM_LOG_INFO("Success to export slice rankId:" << options_.rankId << " addr:" << realSlice->vAddress_);
     }
@@ -443,6 +449,34 @@ int32_t MemEntityDefault::ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInf
     if (ret != 0) {
         BM_LOG_ERROR("export to string wrong size: " << info.size());
         return BM_ERROR;
+    }
+
+    return BM_OK;
+}
+
+int32_t MemEntityDefault::ImportForSegment(const ExchangeInfoReader desc[], uint32_t count, void *addresses[]) noexcept
+{
+    if (desc[0].LeftBytes() == 0) {
+        BM_LOG_INFO("no segment need import.");
+        return BM_OK;
+    }
+
+    uint64_t magic;
+    if (desc[0].Test(magic) < 0) {
+        BM_LOG_ERROR("left import data no magic size.");
+        return BM_OK;
+    }
+
+    auto currentSegment = IsDramSlice(magic) ? dramSegment_ : hbmSegment_;
+    std::vector<std::string> infos;
+    for (auto i = 0U; i < count; i++) {
+        infos.emplace_back(desc[i].LeftToString());
+    }
+
+    auto ret = currentSegment->Import(infos, addresses);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("segment import infos failed: " << ret);
+        return ret;
     }
 
     return BM_OK;
@@ -465,35 +499,26 @@ int32_t MemEntityDefault::ImportExchangeInfo(const ExchangeInfoReader desc[], ui
         BM_LOG_ERROR("the input desc is nullptr.");
         return BM_ERROR;
     }
-    if (transportManager_ != nullptr) {
-        std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> tempKeyMap;
-        ret = ImportForTransport(desc, count);
+
+    bool importInfoEntity = false;
+    if (transportManager_ != nullptr) { // 先解析transport的内容
+        ret = ImportForTransportPrecheck(desc, count, importInfoEntity);
         if (ret != BM_OK) {
             return ret;
         }
     }
 
-    if (desc[0].LeftBytes() == 0) {
-        BM_LOG_INFO("no segment need import.");
-        return BM_OK;
-    }
-
-    uint64_t magic;
-    if (desc[0].Test(magic) < 0) {
-        BM_LOG_ERROR("left import data no magic size.");
-        return BM_OK;
-    }
-
-    auto currentSegment = IsDramSlice(magic) ? dramSegment_ : hbmSegment_;
-    std::vector<std::string> infos;
-    for (auto i = 0U; i < count; i++) {
-        infos.emplace_back(desc[i].LeftToString());
-    }
-
-    ret = currentSegment->Import(infos, addresses);
+    ret = ImportForSegment(desc, count, addresses);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("segment import infos failed: " << ret);
         return ret;
+    }
+
+    // transport要在segment之后import
+    if (transportManager_ != nullptr) {
+        ret = ImportForTransport(importInfoEntity);
+        if (ret != BM_OK) {
+            return ret;
+        }
     }
 
     return BM_OK;
@@ -745,17 +770,19 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
 
     int32_t ret = BM_OK;
     std::pair<uint32_t, uint32_t> p2pInfo;
-    LocateAddrAndRank(params.src, params.dest, params.dataSize, p2pInfo);
+    if (options_.scene == HYBM_SCENE_TRANS) {
+        LocateAddrAndRank(params.src, params.dest, params.dataSize, p2pInfo);
+    } else {
+        auto [rank1, found1] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(params.src));
+        p2pInfo.first = found1 ? rank1 : options_.rankId;
+        auto [rank2, found2] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(params.dest));
+        p2pInfo.second = found2 ? rank2 : options_.rankId;
+    }
     ExtOptions options{};
     options.flags = flags;
     options.stream = stream;
     options.srcRankId = p2pInfo.first;
     options.destRankId = p2pInfo.second;
-
-    if (options_.scene != HYBM_SCENE_TRANS) {
-        params.src = Valid48BitsAddress(params.src);
-        params.dest = Valid48BitsAddress(params.dest);
-    }
 
     ret = dataOperator_->DataCopy(params, direction, options);
     if (ret != BM_OK) {
@@ -948,15 +975,9 @@ int32_t MemEntityDefault::ImportForTransportPrecheck(const ExchangeInfoReader de
     return BM_OK;
 }
 
-int32_t MemEntityDefault::ImportForTransport(const ExchangeInfoReader desc[], uint32_t count) noexcept
+int32_t MemEntityDefault::ImportForTransport(bool importInfoEntity) noexcept
 {
     int ret = BM_OK;
-    bool importInfoEntity = false;
-    ret = ImportForTransportPrecheck(desc, count, importInfoEntity);
-    if (ret != BM_OK) {
-        return ret;
-    }
-
     transport::HybmTransPrepareOptions transOptions;
     std::unique_lock<std::mutex> uniqueLock{importMutex_};
     for (auto &rank : importedRanks_) {
@@ -1061,6 +1082,8 @@ Result MemEntityDefault::InitHbmSegment()
         segmentOptions.segType = HYBM_MST_HBM;
         BM_LOG_INFO("create entity global unified memory space.");
     } else {
+        segmentOptions.size = options_.deviceVASpace;
+        segmentOptions.maxSize = options_.maxHBMSize;
         segmentOptions.segType = HYBM_MST_HBM_USER;
         BM_LOG_INFO("create entity user defined memory space.");
     }
@@ -1069,6 +1092,7 @@ Result MemEntityDefault::InitHbmSegment()
     segmentOptions.rankCnt = options_.rankCount;
     segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.flags = options_.flags;
+    segmentOptions.isSecondMapping = options_.isSecondMapping;
     hbmSegment_ = MemSegment::Create(segmentOptions, id_);
     if (hbmSegment_ == nullptr) {
         BM_LOG_ERROR("Failed to create hbm segment");
@@ -1094,6 +1118,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.flags = options_.flags;
     segmentOptions.shmFd = options_.dramShmFd;
+    segmentOptions.isSecondMapping = options_.isSecondMapping;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         segmentOptions.shared = false;
     }
@@ -1102,7 +1127,8 @@ Result MemEntityDefault::InitDramSegment()
         BM_LOG_ERROR("Failed to create dram segment");
         return BM_ERROR;
     }
-    if ((options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0U && !dramSegment_->CheckSdmaReaches(options_.rankId)) {
+    if (options_.scene != HYBM_SCENE_TRANS && (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) != 0U &&
+        !dramSegment_->CheckSdmaReaches(options_.rankId)) {
         BM_LOG_ERROR("dram segment does not support sdma in current environment, rankId: " << options_.rankId);
         return BM_ERROR;
     }

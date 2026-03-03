@@ -22,7 +22,9 @@ struct HostSdmaExportInfo {
     uint64_t magic{DRAM_SLICE_EXPORT_INFO_MAGIC};
     uint32_t segmentType{SEGMENT_TYPE_VMM};
     uint32_t version{EXPORT_INFO_VERSION};
-    uint64_t vAddress{0};
+    uint64_t gva{0};
+    uint64_t deviceVa{0};
+    uint64_t hostVa{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
     uint32_t serverId{0};
@@ -31,10 +33,11 @@ struct HostSdmaExportInfo {
     uint32_t logicDevId{0};
     uint64_t size{0};
     MemShareHandle shareHandle;
-}; // 184B
+}; // 200B
 
-static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HostSdmaExportInfo must be 184 bytes, "
-                                                 "compatible with HbmExportDeviceInfo and HbmExportSliceInfo");
+static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
+              "HostSdmaExportInfo must be 200 bytes, "
+              "compatible with HbmExportDeviceInfo and HbmExportSliceInfo");
 static_assert(offsetof(HostSdmaExportInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmVmmBasedSegment : public MemSegment {
@@ -74,15 +77,15 @@ private:
     Result HalMemCreateAdapterFromHost(size_t size, drv_mem_handle_t **handle, drv_mem_prop prop);
 
     std::vector<HostSdmaExportInfo> imports_;
-    uint8_t *globalVirtualAddress_{nullptr};
-    uint64_t totalVirtualSize_{0UL};
+    uint8_t *globalVirtualAddress_{nullptr}; // gva, if total size < 128t, it equal lva
+    uint8_t *localVirtualAddress_{nullptr};  // lva, the address in 910C pod for sdma
+    uint64_t totalVirtualSize_{0UL};         // total gva size
     uint64_t allocatedSize_{0UL};
-    uint16_t sliceCount_{0};
 
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::pair<MemSliceStatus, uint64_t>> registerSlices_;
     std::map<uint16_t, std::string> exportMap_;
-    std::map<uint64_t, drv_mem_handle_t *> mappedMem_;
+    std::map<uint64_t, drv_mem_handle_t *> mappedGvaMem_; // mapped gva
 };
 } // namespace mf
 } // namespace ock

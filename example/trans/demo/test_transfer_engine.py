@@ -31,6 +31,7 @@ def main():
                         help='Log level: 0 debug, 1 info, 2 warn, 3 error')
 
     args = parser.parse_args()
+    torch.npu.set_device(device=args.npu_id)
 
     # 初始化引擎
     engine = TransferEngine()

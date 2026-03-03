@@ -103,7 +103,7 @@ private:
     uint16_t devicePort_{0};
     void *rdmaHandle_{nullptr};
     std::string nicInfo_;
-    MemoryRegionMap registerMRS_;
+    MemoryRegionMap registerMRS_; // key: hostVa, value: regMR
     std::vector<MemoryRegionMap> ranksMRs_;
     std::shared_ptr<DeviceQpManager> qpManager_;
     std::vector<std::pair<uint64_t, uint32_t>> notifyRemoteInfo_;

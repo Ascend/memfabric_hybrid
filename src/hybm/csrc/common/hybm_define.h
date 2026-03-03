@@ -53,8 +53,12 @@ constexpr uint32_t RT_MEMCPY_DEVICE_TO_DEVICE = 3;
 
 constexpr uint64_t HYBM_HBM_START_ADDR = HYBM_DEVICE_VA_START;
 constexpr uint64_t HYBM_HBM_END_ADDR = HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE;
-constexpr uint64_t HYBM_GVM_START_ADDR = 0x280000000000UL;      // 40T
-constexpr uint64_t HYBM_GVM_END_ADDR = 0xA80000000000UL;        // 168T
+constexpr uint64_t HYBM_GVM_START_ADDR = 0x280000000000UL; // 40T
+constexpr uint64_t HYBM_GVM_END_ADDR = 0xA80000000000UL;   // 168T
+constexpr uint64_t HYBM_GVM_MAX_POOL_SIZE = 128ULL << 40;  // 128T, 910C暂时只做到128TB, 910B无此限制
+
+constexpr uint64_t HYBM_GVM_START_ADDR_4P = 4ULL << 50; // 4P, GVA for > 128T memory pool case
+constexpr uint64_t HYBM_GVM_END_ADDR_8P = 8ULL << 50;   // 8P, GVA for > 128T memory pool case
 
 constexpr uint64_t ENTITY_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE00UL;
 constexpr uint64_t HBM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE01UL;
@@ -67,7 +71,7 @@ constexpr uint16_t SEGMENT_TYPE_VMM = 0x1U;
 constexpr uint16_t SEGMENT_TYPE_USER_DEV = 0x2U;
 constexpr uint16_t SEGMENT_TYPE_DEFAULT = 0x10U;
 constexpr uint16_t SEGMENT_TYPE_OFFSET = 8U;
-constexpr uint16_t UNIFIED_EXCHANGE_SEG_INFO_SIZE = 184U; /* all exchange info padding to same size */
+constexpr uint16_t UNIFIED_EXCHANGE_SEG_INFO_SIZE = 200U; /* all exchange info padding to same size */
 
 inline bool IsDramSlice(uint64_t magic)
 {

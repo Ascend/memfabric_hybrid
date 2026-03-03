@@ -68,7 +68,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
         BM_LOG_ERROR("MemSegment::InitDeviceInfo failed: " << ret);
         return nullptr;
     }
-    ret = HybmVaManager::GetInstance().Initialize(socType_);
+    ret = HybmVaManager::GetInstance().Initialize(socType_, options.isSecondMapping);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HybmVaManager Initialize failed: " << ret);
         return nullptr;
@@ -102,6 +102,43 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
 bool MemSegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     return false;
+}
+
+Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePtr &slice)
+{
+    uint64_t va = reinterpret_cast<uint64_t>(addr);
+    bool isHbm = (va >= HYBM_HBM_START_ADDR && va < HYBM_HBM_END_ADDR);
+    int ret;
+    if (isHbm) {
+        slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, 0, va, size);
+        ret = HybmVaManager::GetInstance().AddVaInfo({0, va, va, size, HYBM_MEM_TYPE_DEVICE}, options_.rankId);
+        if (ret != 0) {
+            BM_LOG_ERROR("add va info failed, va:" << VaToStr(va) << " ret:" << ret);
+            return ret;
+        }
+    } else {
+        void *output = nullptr;
+#if defined(ASCEND_NPU)
+        ret = DlHalApi::HalHostRegister(const_cast<void *>(addr), size,
+                                        HOST_MEM_MAP_DEV, options_.devId, &output);
+        if (ret != 0) {
+            BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr << " ret: " << ret);
+            return ret;
+        }
+#endif
+        auto dva = reinterpret_cast<uint64_t>(output);
+        slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, 0, dva, size);
+        ret = HybmVaManager::GetInstance().AddVaInfo({0, dva, va, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
+        if (ret != 0) {
+            BM_LOG_ERROR("add va info failed, va:" << VaToStr(va) << " ret:" << ret);
+#if defined(ASCEND_NPU)
+            DlHalApi::HalHostUnregisterEx(const_cast<void *>(addr), options_.devId, HOST_MEM_MAP_DEV);
+#endif
+            return ret;
+        }
+    }
+
+    return BM_OK;
 }
 
 Result MemSegment::InitDeviceInfo(int devId)

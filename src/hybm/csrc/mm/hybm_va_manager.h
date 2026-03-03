@@ -21,9 +21,17 @@
 #include <unordered_map>
 #include <iomanip>
 #include "hybm_common_include.h"
+#include "hybm_mem_common.h"
 
 namespace ock {
 namespace mf {
+enum HybmVaMgrType : uint32_t {
+    HVM_GVA = 0,
+    HVM_DVA = 1, // device va
+    HVM_HVA = 2, // host va
+    HVM_BUTT
+};
+
 inline std::ostream &operator<<(std::ostream &os, hybm_mem_type obj)
 {
     switch (obj) {
@@ -54,33 +62,28 @@ std::string VaToStr(T v)
 
 // Reserved virtual address ranges; GVA ranges of all types must not overlap.
 struct ReservedGvaInfo {
-    uint64_t start{};                            // >0
-    uint64_t size{};                             // >0
-    hybm_mem_type memType{HYBM_MEM_TYPE_DEVICE}; // Must be set
-    uint32_t localRankId{};                      // Must be set >=0; currently only one localRankId per process
+    uint64_t va[HVM_BUTT]{};                   // >0
+    uint64_t size{};                           // >0
+    hybm_mem_type memType{HYBM_MEM_TYPE_BUTT}; // Must be set
+    uint32_t localRankId{};                    // Must be set >=0; currently only one localRankId per process
     friend std::ostream &operator<<(std::ostream &os, const ReservedGvaInfo &obj)
     {
-        os << "ReservedGvaInfo{start: " << VaToStr(obj.start) << ", size: " << VaToStr(obj.size)
+        os << "ReservedGvaInfo{va: " << VaToStr(obj.va[HVM_GVA]) << " " << VaToStr(obj.va[HVM_DVA])
+           << " " << VaToStr(obj.va[HVM_DVA]) << ", size: " << VaToStr(obj.size)
            << ", memType: " << obj.memType << ", localRankId: " << obj.localRankId << "}";
         return os;
     }
 
     [[nodiscard]] bool Contains(const uint64_t addr) const
     {
-        return addr >= start && addr < start + size;
-    }
-
-    [[nodiscard]] uint64_t End() const
-    {
-        return start + size;
+        return addr >= va[HVM_GVA] && addr < va[HVM_GVA] + size;
     }
 };
 constexpr uint32_t INVALID_RANK_ID = std::numeric_limits<uint32_t>::max();
 struct BaseAllocatedGvaInfo {
-    uint64_t gva{};                              // >0
+    uint64_t va[HVM_BUTT];
     uint64_t size{};                             // >0
     hybm_mem_type memType{HYBM_MEM_TYPE_DEVICE}; // Must be set
-    uint64_t lva{};
 };
 // Actually allocated memory segments. LVA is an address directly accessible by the XPU, which may equal GVA.
 // For the current segment, lva == gva.
@@ -88,47 +91,21 @@ struct BaseAllocatedGvaInfo {
 // For imported memory: lva = 0.
 struct AllocatedGvaInfo {
     BaseAllocatedGvaInfo base;
-    bool registered{false}; // Indicates memory allocated by the localRankId itself, not externally registered
     uint32_t localRankId{INVALID_RANK_ID};    // Must be set >=0
     uint32_t importedRankId{INVALID_RANK_ID}; // can be set >=0
 
     AllocatedGvaInfo() = default;
-    AllocatedGvaInfo(uint64_t gva, uint64_t size, uint32_t localRankId, hybm_mem_type type, uint64_t lva)
-        : base{gva, size, type, lva}, registered(false), localRankId(localRankId)
+    AllocatedGvaInfo(BaseAllocatedGvaInfo b, uint32_t localRankId)
+        : base{b}, localRankId(localRankId)
     {}
 
-    AllocatedGvaInfo(uint64_t gva, uint64_t size, uint32_t localRankId, hybm_mem_type type, uint64_t lva,
-                     bool registeredFlag)
-        : base{gva, size, type, lva}, registered(registeredFlag), localRankId(localRankId)
+    AllocatedGvaInfo(BaseAllocatedGvaInfo b, uint32_t localRankId, uint32_t importedRankId)
+        : base{b}, localRankId(localRankId), importedRankId(importedRankId)
     {}
 
-    AllocatedGvaInfo(uint64_t gva, uint64_t size, uint32_t localRankId, uint32_t importedRankId, hybm_mem_type type,
-                     uint64_t lva)
-        : base{gva, size, type, lva}, registered(false), localRankId(localRankId), importedRankId(importedRankId)
-    {}
-
-    // Checks if gvaInfo lies entirely within this segment.
-    [[nodiscard]] bool In(const AllocatedGvaInfo &gvaInfo) const
+    [[nodiscard]] bool Contains(uint64_t addr, uint32_t t) const
     {
-        return gvaInfo.base.gva >= base.gva && (gvaInfo.base.gva + gvaInfo.base.size) <= (base.gva + base.size);
-    }
-
-    [[nodiscard]] bool Contains(uint64_t addr) const
-    {
-        return addr >= base.gva && addr < base.gva + base.size;
-    }
-
-    [[nodiscard]] bool ContainsByLva(uint64_t addr) const
-    {
-        if (base.lva == 0) {
-            return false;
-        }
-        return addr >= base.lva && addr < base.lva + base.size;
-    }
-
-    [[nodiscard]] uint64_t End() const
-    {
-        return base.gva + base.size;
+        return t < HVM_BUTT && addr >= base.va[t] && addr < base.va[t] + base.size;
     }
 
     [[nodiscard]] uint32_t RankId() const noexcept
@@ -138,27 +115,30 @@ struct AllocatedGvaInfo {
 
     friend std::ostream &operator<<(std::ostream &os, const AllocatedGvaInfo &obj)
     {
-        os << "AllocatedGvaInfo{gva: " << VaToStr(obj.base.gva) << ", size: " << VaToStr(obj.base.size)
-           << ", rankId: " << obj.RankId() << ", registered: " << (obj.registered ? "true" : "false")
-           << ", memType: " << obj.base.memType << ", lva: " << VaToStr(obj.base.lva) << "}";
+        os << "AllocatedGvaInfo{gva: " << VaToStr(obj.base.va[HVM_GVA]) << ", size: " << VaToStr(obj.base.size)
+           << ", rankId: " << obj.RankId()
+           << ", memType: " << obj.base.memType << ", deviceVa: " << VaToStr(obj.base.va[HVM_DVA])
+           << ", hostVa: " << VaToStr(obj.base.va[HVM_HVA]) << "}";
         return os;
     }
 
     [[nodiscard]] std::string ToString() const
     {
         auto type = base.memType == hybm_mem_type::HYBM_MEM_TYPE_HOST ? "H" : "D";
-        auto remote = base.lva > 0 ? "L" : "R";
+        auto remote = base.va[HVM_DVA] > 0 or base.va[HVM_HVA] > 0 ? "L" : "R";
         std::stringstream os;
-        os << "{gva: " << VaToStr(base.gva) << ", ";
+        os << "{gva: " << VaToStr(base.va[HVM_GVA]) << ", ";
         os << remote << type << "(";
-        os << localRankId << "), lva: " << VaToStr(base.lva) << "}";
+        os << localRankId << "), deviceVa: " << VaToStr(base.va[HVM_DVA]);
+        os << ", hostVa: " << VaToStr(base.va[HVM_HVA]) << "}";
         return os.str();
     }
 };
 
 inline bool operator==(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
 {
-    return lhs.base.gva == rhs.base.gva && lhs.base.size == rhs.base.size && lhs.RankId() == rhs.RankId();
+    return lhs.base.va[HVM_GVA] == rhs.base.va[HVM_GVA] && lhs.base.size == rhs.base.size
+        && lhs.RankId() == rhs.RankId();
 }
 
 inline bool operator!=(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
@@ -182,23 +162,20 @@ public:
         static HybmVaManager instance;
         return instance;
     }
-    Result Initialize(AscendSocType socType) noexcept;
+    Result Initialize(AscendSocType socType, bool isSecondMapping = false) noexcept;
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId, uint32_t importedRankId);
     Result AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
     Result AddVaInfo(const AllocatedGvaInfo &info);
-    void RemoveOneVaInfo(uint64_t va);
+    void RemoveOneVaInfo(uint64_t va, uint32_t type = HVM_GVA);
 
     // Returns 0 if not found.
-    uint64_t GetGvaByLva(uint64_t lva);
-    // Returns 0 if not found.
-    uint64_t GetLvaByGva(uint64_t gva);
-    std::pair<AllocatedGvaInfo, bool> FindAllocByGva(uint64_t gva) const;
-    std::pair<AllocatedGvaInfo, bool> FindAllocByLva(uint64_t lva) const;
+    uint64_t TransformVa(uint64_t va, uint32_t inputType, uint32_t outputType);
+    std::pair<AllocatedGvaInfo, bool> FindAllocByVa(uint64_t gva, uint32_t type = HVM_GVA) const;
 
     // Checks if 'va' falls within any AllocatedGvaInfo range.
     bool IsGva(uint64_t va);
-    hybm_mem_type GetMemType(uint64_t va); // Supports both LVA and GVA
+    hybm_mem_type GetMemType(uint64_t gva); // Supports both LVA and GVA
     std::pair<uint32_t, bool> GetRank(uint64_t gva);
     // Checks if 'va' is within any AllocatedGvaInfo range (either LVA or GVA).
     bool IsValidAddr(uint64_t va);
@@ -221,44 +198,33 @@ private:
 
     ~HybmVaManager() = default;
 
-    std::pair<bool, AllocatedGvaInfo> CheckOverlap(uint64_t gva, uint64_t size, hybm_mem_type memType);
+    std::pair<bool, AllocatedGvaInfo> CheckOverlap(uint64_t va, uint64_t size, uint32_t type);
 
-    std::pair<uint64_t, bool> FindFreeSpace(uint64_t start, uint64_t end, uint64_t size) const;
+    uint64_t AllocReserveLva(uint32_t localRankId, uint64_t size, uint32_t type);
 
-    std::pair<ReservedGvaInfo, bool> FindReservedByAddr(uint64_t addr) const;
+    std::pair<uint64_t, bool> FindFreeSpace(uint64_t start, uint64_t end, uint64_t size, uint32_t type);
 
 private:
     mutable std::shared_mutex mutex_{};
+    bool isSecondMapping_ = false;
+    bool inited_ = false;
 
-    std::map<uint64_t, AllocatedGvaInfo> allocatedLookupMapByGva_{};
-    std::map<uint64_t, AllocatedGvaInfo> allocatedLookupMapByLva_{};
-
-    std::map<uint64_t, ReservedGvaInfo> reservedLookupMapByGva_{};
-
-    std::map<hybm_mem_type, std::vector<AllocatedGvaInfo>> allocatedLookupMapByMemType_{};
-
-    uint64_t reserveStart_{HYBM_GVM_START_ADDR};
-    uint64_t reserveEnd_{HYBM_GVM_END_ADDR};
+    std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]; // map<va, allocInfo>
+    std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{}; // map<va, reserveInfo>  (HVM_HVA not used now)
 
 private:
-    typedef enum {
-        GLOBAL_DEVICE = 0,
-        GLOBAL_HOST,
-        LOCAL_DEVICE,
-        LOCAL_HOST,
-        ADDRESS_CATEGORY_BUTT
-    }AddressCategory;
+    typedef enum { GLOBAL_DEVICE = 0, GLOBAL_HOST, LOCAL_DEVICE, LOCAL_HOST, ADDRESS_CATEGORY_BUTT } AddressCategory;
 
     static constexpr hybm_data_copy_direction COPY_DIRECTION_TABLE[ADDRESS_CATEGORY_BUTT][ADDRESS_CATEGORY_BUTT] = {
-    {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
-     HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST},
-    {HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
-     HYBM_GLOBAL_HOST_TO_LOCAL_HOST},
-    {HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
-     HYBM_DATA_COPY_DIRECTION_BUTT},
-    {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
-     HYBM_DATA_COPY_DIRECTION_BUTT},
-};
+        {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
+         HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST},
+        {HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE,
+         HYBM_GLOBAL_HOST_TO_LOCAL_HOST},
+        {HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
+         HYBM_DATA_COPY_DIRECTION_BUTT},
+        {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
+         HYBM_DATA_COPY_DIRECTION_BUTT},
+    };
 
     AddressCategory ClassifyAddress(uint64_t va);
 };
@@ -272,13 +238,12 @@ std::string VaToInfo(T v)
     } else {
         v64 = static_cast<uint64_t>(v);
     }
-    auto info = HybmVaManager::GetInstance().FindAllocByGva(v64);
-    if (info.second) {
-        return info.first.ToString();
-    }
-    info = HybmVaManager::GetInstance().FindAllocByLva(v64);
-    if (info.second) {
-        return info.first.ToString();
+
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        auto info = HybmVaManager::GetInstance().FindAllocByVa(v64, i);
+        if (info.second) {
+            return info.first.ToString();
+        }
     }
     return VaToStr(v64);
 }

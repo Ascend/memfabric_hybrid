@@ -66,7 +66,7 @@ public:
     int32_t ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
     int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
     int32_t ImportExchangeInfo(const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
-                                               uint32_t flags) noexcept;
+                               uint32_t flags) noexcept;
     int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
                                uint32_t flags) noexcept override;
     int32_t ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept override;
@@ -90,10 +90,11 @@ public:
 
 private:
     static int CheckOptions(const hybm_options *options) noexcept;
-    int LoadExtendLibrary() noexcept;
-    int UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
+    int32_t LoadExtendLibrary() noexcept;
+    int32_t UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
-    int ImportForTransport(const ExchangeInfoReader desc[], uint32_t count) noexcept;
+    int32_t ImportForTransport(bool importInfoEntity) noexcept;
+    int32_t ImportForSegment(const ExchangeInfoReader desc[], uint32_t count, void *addresses[]) noexcept;
     void LocateAddrAndRank(void *&src, void *&dest, uint64_t length, std::pair<uint32_t, uint32_t> &p2pInfo) noexcept;
 
     Result InitSegment();
@@ -115,8 +116,8 @@ private:
     bool initialized_{false};
     const int32_t id_; /* id of the engine */
     hybm_options options_{};
-    void *hbmGva_{nullptr};
-    void *dramGva_{nullptr};
+    void *hbmGva_{nullptr};  // the hbm medium, started gva, no rankId offset
+    void *dramGva_{nullptr}; // the dram medium, started gva, no rankId offset
     std::shared_ptr<MemSegment> hbmSegment_{nullptr};
     std::shared_ptr<MemSegment> dramSegment_{nullptr};
     std::shared_ptr<DataOperator> dataOperator_;

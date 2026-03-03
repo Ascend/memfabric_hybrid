@@ -28,6 +28,7 @@ public:
                                   const ock::mf::ExtOptions &options) noexcept override;
     ock::mf::Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                   const ock::mf::ExtOptions &options) noexcept override;
+    void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept override;
     ock::mf::Result Wait(int32_t waitId) noexcept override;
     void Reset() noexcept;
 
@@ -97,6 +98,10 @@ void DataOperatorMock::Reset() noexcept
     batchDataCopyResult = ock::mf::BErrorCode::BM_OK;
     dataCopyAsyncResult = ock::mf::BErrorCode::BM_OK;
     waitResult = ock::mf::BErrorCode::BM_OK;
+}
+
+void DataOperatorMock::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
+{
 }
 
 class HybmComposeDataOpTest : public testing::Test {

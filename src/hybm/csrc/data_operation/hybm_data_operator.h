@@ -59,6 +59,8 @@ public:
 
     virtual Result Wait(int32_t waitId) noexcept = 0;
 
+    virtual void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept = 0;
+
     virtual ~DataOperator() = default;
 
 public:
@@ -71,8 +73,8 @@ public:
         gva_[type] = gva;
         localSpaceSize_[type] = localSpaceSize;
         rankCount_[type] = rankCount;
-        BM_LOG_INFO("update type " << type << " gva: " << std::hex << gva_[type] << ", space:" << localSpaceSize_[type]
-                                   << ", rankCnt:" << rankCount_[type]);
+        BM_LOG_INFO("update type " << type << ", gva:0x" << std::hex << gva_[type] << ", space:" << std::dec
+                                   << localSpaceSize_[type] << ", rankCnt:" << rankCount_[type]);
     };
 
     uint32_t GetRankIdByGva(uint64_t gva) noexcept
@@ -82,9 +84,9 @@ public:
                 return (gva - gva_[type]) / localSpaceSize_[type];
             }
         }
-        BM_LOG_DEBUG("failed to get rank id by gva: " << std::hex << gva <<
-            ", gva of device: " << std::hex << gva_[HYBM_MEM_TYPE_DEVICE] <<
-            ", gva of host: " << std::hex << gva_[HYBM_MEM_TYPE_HOST]);
+        BM_LOG_DEBUG("failed to get rank id by gva: " << std::hex << gva << ", gva of device:0x" << std::hex
+                                                      << gva_[HYBM_MEM_TYPE_DEVICE] << ", gva of host:0x"
+                                                      << gva_[HYBM_MEM_TYPE_HOST]);
         return UINT32_MAX;
     }
 

@@ -21,7 +21,7 @@ namespace mf {
 struct HostExportInfo {
     uint64_t magic{DRAM_SLICE_EXPORT_INFO_MAGIC};
     uint64_t version{EXPORT_INFO_VERSION};
-    uint64_t vAddress{0};
+    uint64_t gva{0};
     uint32_t sliceIndex{0};
     uint32_t rankId{0};
     uint64_t size{0};
@@ -62,7 +62,7 @@ public:
 private:
     void FreeMemory() noexcept;
     Result PrepareShareMemoryFd() const noexcept;
-    Result MapSlice(uint64_t lvOffset, uint64_t size) noexcept;
+    Result MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset, uint64_t size, uint64_t gva) noexcept;
     static void LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept;
 
 private:
@@ -70,11 +70,10 @@ private:
     uint64_t totalVirtualSize_{0UL};
     uint8_t *localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
-    uint16_t sliceCount_{0};
     std::map<uint16_t, MemSliceStatus> slices_;
     std::map<uint16_t, std::string> exportMap_;
     std::vector<HostExportInfo> imports_;
-    std::set<uint64_t> mappedMem_;
+    std::set<uint64_t> mappedGvaMem_; // gva sets
 };
 } // namespace mf
 } // namespace ock

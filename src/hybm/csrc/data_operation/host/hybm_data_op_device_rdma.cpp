@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "dl_acl_api.h"
+#include "dl_hal_api.h"
 #include "hybm_def.h"
 #include "hybm_define.h"
 #include "hybm_logger.h"
@@ -29,6 +30,37 @@ constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 
 namespace ock {
 namespace mf {
+static hybm_mem_type HybmDirectionSrcMemType[HYBM_DATA_COPY_DIRECTION_BUTT] = {
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_BUTT
+};
+static hybm_mem_type HybmDirectionDestMemType[HYBM_DATA_COPY_DIRECTION_BUTT] = {
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_HOST,
+    HYBM_MEM_TYPE_DEVICE,
+    HYBM_MEM_TYPE_BUTT
+};
+
 DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> tm) noexcept
     : rankId_{rankId}, transportManager_{std::move(tm)}
 {}
@@ -65,6 +97,23 @@ void DataOpDeviceRDMA::UnInitialize() noexcept
     inited_ = false;
 }
 
+void DataOpDeviceRDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
+{
+    // DRAM需要输入host va, HBM需要输入device va, transport才能识别
+    uint64_t out;
+    uint32_t oType = (HybmDirectionSrcMemType[direction] == HYBM_MEM_TYPE_HOST) ? HVM_HVA : HVM_DVA;
+    out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(src), HVM_GVA, oType);
+    if (out != 0) {
+        src = reinterpret_cast<void *>(out);
+    }
+
+    oType = (HybmDirectionDestMemType[direction] == HYBM_MEM_TYPE_HOST) ? HVM_HVA : HVM_DVA;
+    out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(dst), HVM_GVA, oType);
+    if (out != 0) {
+        dst = reinterpret_cast<void *>(out);
+    }
+}
+
 Result DataOpDeviceRDMA::AllocSwapMemory()
 {
     void *ptr = nullptr;
@@ -73,6 +122,22 @@ Result DataOpDeviceRDMA::AllocSwapMemory()
         BM_LOG_ERROR("Failed to AclrtMallocHost rdma swap memory, size: " << RDMA_SWAP_SPACE_SIZE);
         return BM_MALLOC_FAILED;
     }
+
+    void *output;
+    ret = DlHalApi::HalHostRegister(ptr, RDMA_SWAP_SPACE_SIZE,
+                                    HOST_MEM_MAP_DEV, HybmGetInitDeviceId(), &output);
+    if (ret != 0) {
+        BM_LOG_ERROR("Register swap mem failed, addr: " << ptr << " ret: " << ret);
+        return ret;
+    }
+    ret = HybmVaManager::GetInstance().AddVaInfo({0, reinterpret_cast<uint64_t>(output),
+        reinterpret_cast<uint64_t>(ptr), RDMA_SWAP_SPACE_SIZE,HYBM_MEM_TYPE_HOST}, rankId_);
+    if (ret != 0) {
+        BM_LOG_ERROR("add va info failed, va:" << ptr << " ret:" << ret);
+        FreeSwapMemory();
+        return ret;
+    }
+
     rdmaSwapBaseAddr_ = ptr;
     return BM_OK;
 }
@@ -86,10 +151,12 @@ void DataOpDeviceRDMA::FreeSwapMemory()
                 BM_LOG_ERROR("Failed to UnregisterMemoryRegion, ret: " << ret);
             }
         }
+        DlHalApi::HalHostUnregisterEx(rdmaSwapBaseAddr_, HybmGetInitDeviceId(), HOST_MEM_MAP_DEV);
         const auto ret = DlAclApi::AclrtFreeHost(rdmaSwapBaseAddr_);
         if (ret != 0) {
             BM_LOG_ERROR("Failed to AclrtFreeHost swap memory, ret: " << ret);
         }
+        HybmVaManager::GetInstance().RemoveOneVaInfo(reinterpret_cast<uint64_t>(rdmaSwapBaseAddr_), HVM_HVA);
         rdmaSwapBaseAddr_ = nullptr;
     }
 }
@@ -104,6 +171,7 @@ Result DataOpDeviceRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direc
                                   const ock::mf::ExtOptions &options) noexcept
 {
     Result ret;
+    TransformVa(params.src, params.dest, direction);
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: {
             TP_TRACE_BEGIN(TP_HYBM_RDMA_LH_TO_GH);
@@ -189,7 +257,8 @@ Result DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
+                     " dest=" << VaToInfo(destVA) << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -199,7 +268,8 @@ Result DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
+                     " dest=" << VaToInfo(destVA) << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -210,7 +280,8 @@ Result DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
+                     " dest=" << VaToInfo(destVA) << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -221,7 +292,8 @@ Result DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
+                     " dest=" << VaToInfo(destVA) << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -882,6 +954,9 @@ Result DataOpDeviceRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data
                                        const ExtOptions &options) noexcept
 {
     auto ret = 0;
+    for (uint32_t i = 0; i < params.batchSize; i++) {
+        TransformVa(params.sources[i], params.destinations[i], direction);
+    }
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST: { // 0
             TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_LH_TO_GH);

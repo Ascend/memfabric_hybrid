@@ -110,6 +110,7 @@ typedef struct {
     uint64_t hostVASpace;
     hybm_scene scene;
     bool globalUniqueAddress; // 是否使用全局统一内存地址
+    bool isSecondMapping;       // 是否应该支持大于128T的内存池
     hybm_role_type role;
     uint32_t flags;
     char transUrl[64];

@@ -37,6 +37,7 @@ public:
                          const ExtOptions &options) noexcept override;
     Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                          const ExtOptions &options) noexcept override;
+    void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
 
 private:

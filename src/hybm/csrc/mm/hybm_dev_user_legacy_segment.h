@@ -42,7 +42,7 @@ struct HbmExportDeviceInfo {
     char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 36]{};
 };
 static_assert(sizeof(HbmExportDeviceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
-              "HbmExportDeviceInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(184) bytes,"
+              "HbmExportDeviceInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(200) bytes,"
               " compatible with HostSdmaExportInfo");
 static_assert(offsetof(HbmExportDeviceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
@@ -50,7 +50,8 @@ struct HbmExportSliceInfo {
     uint64_t magic{HBM_SLICE_EXPORT_INFO_MAGIC};
     uint32_t segmentType{SEGMENT_TYPE_USER_DEV};
     uint32_t serverId{0};
-    uint64_t address{0};
+    uint64_t gva{0};     // gva
+    uint64_t address{0}; // lva (host_va or device_va)
     uint64_t size{0};
     uint32_t superPodId{0};
     uint16_t rankId{0};
@@ -58,10 +59,10 @@ struct HbmExportSliceInfo {
     uint32_t logicDeviceId{0};
     char name[DEVICE_SHM_NAME_SIZE + 1]{};
 
-    // Padding to make total size 184 bytes
-    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 109]{};
+    // Padding to make total size 200 bytes
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 117]{};
 };
-static_assert(sizeof(HbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HbmExportSliceInfo must be 184 bytes,"
+static_assert(sizeof(HbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HbmExportSliceInfo must be 200 bytes,"
                                                                             " compatible with HostSdmaExportInfo");
 static_assert(offsetof(HbmExportSliceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
@@ -98,7 +99,6 @@ private:
     void RemoveSliceInfo(const uint32_t rankId) noexcept;
 
 private:
-    uint16_t sliceCount_{0};
     std::mutex mutex_;
     std::bitset<MAX_PEER_DEVICES> enablePeerDevices_;
     std::map<uint16_t, RegisterSlice> registerSlices_;

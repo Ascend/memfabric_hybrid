@@ -19,6 +19,7 @@
 #include "hybm_data_op.h"
 #include "hybm_gva.h"
 #include "hybm_stream_manager.h"
+#include "hybm_va_manager.h"
 
 namespace ock {
 namespace mf {
@@ -29,6 +30,7 @@ constexpr uint64_t HYBM_PARAM_SPACE_SIZE = 64 * 1024 * 1024; // HYBM_SINGLE_PARA
 constexpr uint64_t HYBM_PARAM_SPACE_META_OFFSET = HYBM_SINGLE_PARAM_SIZE * HYBM_PARAM_SPACE_CAP; // last 256K
 constexpr uint64_t HYBM_PARAM_META_IDX_BASE = 8; // 8 * 8B = 64B, aicore cacheline is 64B
 constexpr uint32_t HYBM_EXTEND_CONCURRENT = 32;
+
 HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
 HostDataOpSDMA::~HostDataOpSDMA()
@@ -84,10 +86,12 @@ Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
                                 const ExtOptions &options) noexcept
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+
     if (options.flags & ASYNC_COPY_FLAG) {
         return DataCopyAsync(params, direction, options);
     }
     Result ret;
+    TransformVa(params.src, params.dest, direction);
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
@@ -224,6 +228,7 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
                                      const ExtOptions &options) noexcept
 {
     Result ret;
+    TransformVa(params.src, params.dest, direction);
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE: {
             TP_TRACE_BEGIN(TP_HYBM_SDMA_LD_TO_GD);
@@ -302,6 +307,19 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
             ret = BM_INVALID_PARAM;
     }
     return ret;
+}
+
+void HostDataOpSDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
+{
+    uint64_t out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(src), HVM_GVA, HVM_DVA);
+    if (out != 0) {
+        src = reinterpret_cast<void *>(out);
+    }
+
+    out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(dst), HVM_GVA, HVM_DVA);
+    if (out != 0) {
+        dst = reinterpret_cast<void *>(out);
+    }
 }
 
 Result HostDataOpSDMA::Wait(int32_t waitId) noexcept
@@ -598,6 +616,9 @@ Result HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_c
                                      const ExtOptions &options) noexcept
 {
     auto ret = 0;
+    for (uint32_t i = 0; i < params.batchSize; i++) {
+        TransformVa(params.sources[i], params.destinations[i], direction);
+    }
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE: {
             ret =
