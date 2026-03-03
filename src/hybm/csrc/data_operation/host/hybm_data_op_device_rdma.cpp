@@ -398,9 +398,6 @@ Result DataOpDeviceRDMA::CopyGH2LD(const void *srcVA, void *destVA, uint64_t len
     if (options.srcRankId == rankId_) {
         ret = CopyLH2LD(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
-    } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
-        ret = CopyRDMA(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, false);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
@@ -414,9 +411,6 @@ Result DataOpDeviceRDMA::CopyGD2LD(const void *srcVA, void *destVA, uint64_t len
     Result ret;
     if (options.srcRankId == rankId_) {
         ret = CopyLD2LD(srcVA, destVA, length, options);
-        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
-    } else if (transportManager_->QueryHasRegistered(reinterpret_cast<uint64_t>(destVA), length)) {
-        ret = CopyRDMA(srcVA, destVA, length, options);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy src to dest", ret);
     } else {
         ret = SafeGet(srcVA, destVA, length, options, false);
@@ -799,6 +793,11 @@ Result DataOpDeviceRDMA::SafePut(const void *srcVA, void *destVA, uint64_t lengt
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
     uint64_t offset = 0;
+    if (transportManager_->QueryHasRegistered(srcBase, length)) {
+        ret = CopyRDMA(srcVA, destVA, length, options);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
+        return ret;
+    }
     while (remainingLength > 0) {
         uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);
@@ -828,6 +827,11 @@ Result DataOpDeviceRDMA::SafeGet(const void *srcVA, void *destVA, uint64_t lengt
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
     uint64_t offset = 0;
+    if (transportManager_->QueryHasRegistered(destBase, length)) {
+        ret = CopyRDMA(srcVA, destVA, length, options);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
+        return ret;
+    }
     while (remainingLength > 0) {
         uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);

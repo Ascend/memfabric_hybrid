@@ -337,11 +337,11 @@ Result SmemBmEntry::Wait()
 uint32_t SmemBmEntry::GetRankIdByGva(void *gva)
 {
     if (AddrInHostGva(gva, 1UL)) {
-        return ((uint64_t)gva - (uint64_t)hostGva_) / coreOptions_.hostVASpace;
+        return ((uint64_t)gva - (uint64_t)hostGva_) / coreOptions_.maxDRAMSize;
     }
 
     if (AddrInDeviceGva(gva, 1UL)) {
-        return ((uint64_t)gva - (uint64_t)deviceGva_) / coreOptions_.deviceVASpace;
+        return ((uint64_t)gva - (uint64_t)deviceGva_) / coreOptions_.maxHBMSize;
     }
     return UINT32_MAX;
 }

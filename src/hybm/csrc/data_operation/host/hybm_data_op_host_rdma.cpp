@@ -240,6 +240,13 @@ Result ock::mf::HostDataOpRDMA::SafePut(const void *srcVA,
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
     uint64_t offset = 0;
+    if (transportManager_->QueryHasRegistered(srcBase, length)) {
+        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE)
+        ret = transportManager_->WriteRemote(options.destRankId, srcBase, destBase, length);
+        TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE, ret)
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
+        return ret;
+    }
     while (remainingLength > 0) {
         uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);
@@ -282,6 +289,13 @@ Result ock::mf::HostDataOpRDMA::SafeGet(const void *srcVA, void *destVA, uint64_
     uintptr_t destBase = reinterpret_cast<uintptr_t>(destVA);
     uint64_t remainingLength = length;
     uint64_t offset = 0;
+    if (transportManager_->QueryHasRegistered(destBase, length)) {
+        TP_TRACE_BEGIN(TP_HYBM_HOST_RDMA_READ_REMOTE)
+        ret = transportManager_->ReadRemote(options.srcRankId, destBase, srcBase, length);
+        TP_TRACE_END(TP_HYBM_HOST_RDMA_READ_REMOTE, ret)
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
+        return ret;
+    }
     while (remainingLength > 0) {
         uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);
