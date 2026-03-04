@@ -78,28 +78,6 @@ inline bool IsDramSlice(uint64_t magic)
     return magic == DRAM_SLICE_EXPORT_INFO_MAGIC || magic == VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC;
 }
 
-inline uint64_t Valid48BitsAddress(uint64_t address)
-{
-    return address & 0xffffffffffffUL;
-}
-
-inline const void *Valid48BitsAddress(const void *address)
-{
-    uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(address));
-    return reinterpret_cast<const void *>(static_cast<uintptr_t>(Valid48BitsAddress(addr)));
-}
-
-inline void *Valid48BitsAddress(void *address)
-{
-    uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(address));
-    return reinterpret_cast<void *>(static_cast<uintptr_t>(Valid48BitsAddress(addr)));
-}
-
-inline uint32_t GetExchangeInfoSegmentType(const void* data) {
-    const char* bytes = static_cast<const char*>(data);
-    return *reinterpret_cast<const uint32_t*>(bytes + SEGMENT_TYPE_OFFSET);
-}
-
 enum AscendSocType {
     ASCEND_UNKNOWN = 0,
     ASCEND_910B,

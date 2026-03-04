@@ -473,7 +473,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_Not_UsesCache)
     info.base.memType = HYBM_MEM_TYPE_HOST;
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
-    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
+    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt,
+                                                          opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
     EXPECT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfo(info), ock::mf::BM_OK);
 
     // 构造一个 slice，并放入内部 map
@@ -534,7 +535,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
     opt.rankId = 0;  // 本地 rank 0
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
-    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
+    ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt,
+                                                          opt.maxSize * opt.rankCnt, HYBM_MEM_TYPE_HOST);
 
     // 构造一个来自 rank1 的 HostExportInfo，并序列化
     ock::mf::HostExportInfo info{};
@@ -1127,7 +1129,7 @@ TEST_F(HybmMemSegmentTest, HybmDevUserLegacySegment_ReserveMemorySpace)
     // 测试内存预留
     void* address;
     auto reserveRet = segment.ReserveMemorySpace(&address);
-    EXPECT_EQ(reserveRet, ock::mf::BM_NOT_SUPPORTED);
+    EXPECT_EQ(reserveRet, ock::mf::BM_INVALID_PARAM);
 
     // AllocLocalMemory
     options.segType = ock::mf::HYBM_MST_DRAM;

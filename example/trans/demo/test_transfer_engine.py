@@ -106,21 +106,20 @@ def run_prefill_role(engine, args, unique_id):
         print("Ascend Transfer Engine initialization failed.")
         raise RuntimeError("Ascend Transfer Engine initialization failed.")
 
+    engine.register_memory(total_buffer.data_ptr(), total_buffer.element_size() * total_buffer.numel())
+    time.sleep(10)
+
     # 传输数据
     for i in range(10):
-        buffer = total_buffer[i]
-        print(f'buffer address={hex(buffer.data_ptr())}')
-        print(f'buffer sum={torch.sum(buffer)}')
+        print(f'buffer address={hex(total_buffer[i].data_ptr())}')
+        print(f'buffer sum={torch.sum(total_buffer[i])}')
 
-        total_bytes = buffer.element_size() * buffer.numel()
+        total_bytes = total_buffer[i].element_size() * total_buffer[i].numel()
         print(f"total_bytes={total_bytes}")
 
-        engine.register_memory(buffer.data_ptr(), total_bytes)
-        # 等待注册完成
-        time.sleep(10)
-        peer_address = buffer.data_ptr()  # 对端目的地址信息和buffer应该相同
+        peer_address = total_buffer[i].data_ptr()  # 对端目的地址信息和buffer应该相同
         # 同步写入数据
-        engine.transfer_sync_write(args.dst_unique_id, buffer.data_ptr(), peer_address, total_bytes)
+        engine.transfer_sync_write(args.dst_unique_id, total_buffer[i].data_ptr(), peer_address, total_bytes)
         print(f"write success peer_address={hex(peer_address)}")
 
     # 等待解码完成

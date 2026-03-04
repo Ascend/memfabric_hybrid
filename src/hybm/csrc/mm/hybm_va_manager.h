@@ -116,7 +116,7 @@ struct AllocatedGvaInfo {
     friend std::ostream &operator<<(std::ostream &os, const AllocatedGvaInfo &obj)
     {
         os << "AllocatedGvaInfo{gva: " << VaToStr(obj.base.va[HVM_GVA]) << ", size: " << VaToStr(obj.base.size)
-           << ", rankId: " << obj.RankId()
+           << ", localRankId: " << obj.localRankId << ", importRankId: " << obj.importedRankId
            << ", memType: " << obj.base.memType << ", deviceVa: " << VaToStr(obj.base.va[HVM_DVA])
            << ", hostVa: " << VaToStr(obj.base.va[HVM_HVA]) << "}";
         return os;
@@ -137,8 +137,9 @@ struct AllocatedGvaInfo {
 
 inline bool operator==(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
 {
-    return lhs.base.va[HVM_GVA] == rhs.base.va[HVM_GVA] && lhs.base.size == rhs.base.size
-        && lhs.RankId() == rhs.RankId();
+    return lhs.base.va[HVM_GVA] == rhs.base.va[HVM_GVA] && lhs.base.va[HVM_DVA] == rhs.base.va[HVM_DVA]
+           && lhs.base.va[HVM_HVA] == rhs.base.va[HVM_HVA] && lhs.base.size == rhs.base.size
+           && lhs.RankId() == rhs.RankId();
 }
 
 inline bool operator!=(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
@@ -162,7 +163,7 @@ public:
         static HybmVaManager instance;
         return instance;
     }
-    Result Initialize(AscendSocType socType, bool isSecondMapping = false) noexcept;
+    Result Initialize(AscendSocType socType) noexcept;
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId, uint32_t importedRankId);
     Result AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
@@ -183,7 +184,8 @@ public:
     hybm_data_copy_direction InferCopyDirection(uint64_t srcVa, uint64_t dstVa);
 
     // =============ReservedGvaInfo Management==============================
-    ReservedGvaInfo AllocReserveGva(uint32_t localRankId, uint64_t size, hybm_mem_type memType);
+    ReservedGvaInfo AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize, hybm_mem_type memType,
+                                    bool secondMapping = false);
     void FreeReserveGva(uint64_t addr);
 
     void DumpReservedGvaInfo() const;
@@ -206,8 +208,6 @@ private:
 
 private:
     mutable std::shared_mutex mutex_{};
-    bool isSecondMapping_ = false;
-    bool inited_ = false;
 
     std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]; // map<va, allocInfo>
     std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{}; // map<va, reserveInfo>  (HVM_HVA not used now)

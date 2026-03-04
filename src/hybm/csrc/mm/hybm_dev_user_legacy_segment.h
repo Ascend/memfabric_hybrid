@@ -103,7 +103,6 @@ private:
     std::bitset<MAX_PEER_DEVICES> enablePeerDevices_;
     std::map<uint16_t, RegisterSlice> registerSlices_;
     std::map<uint16_t, RegisterSlice> remoteSlices_;
-    std::map<uint64_t, uint64_t, std::greater<uint64_t>> addressedSlices_;
     std::map<uint32_t, std::vector<MemSlicePtr>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;

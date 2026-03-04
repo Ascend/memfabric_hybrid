@@ -277,7 +277,8 @@ TEST_F(HybmVaManagerTest, FindAllocByLva_ValidAndInvalidAddresses_ReturnsCorrect
 // 测试14: AllocReserveGva 基本功能
 TEST_F(HybmVaManagerTest, AllocReserveGva_ValidParameters_ReturnsReservedInfo)
 {
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
 
     EXPECT_TRUE(reserved.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(reserved.size == TEST_SIZE_SIXTEEN_MB);
@@ -289,20 +290,24 @@ TEST_F(HybmVaManagerTest, AllocReserveGva_ValidParameters_ReturnsReservedInfo)
 // 测试15: AllocReserveGva 重复分配
 TEST_F(HybmVaManagerTest, AllocReserveGva_DuplicateAllocation_ReturnsEmptyReservedInfo)
 {
-    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved1.va[HVM_GVA] != TEST_SIZE_ZERO);
 
-    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved2.va[HVM_GVA] != TEST_SIZE_ZERO);
 }
 
 // 测试16: AllocReserveGva 不同Rank分配
 TEST_F(HybmVaManagerTest, AllocReserveGva_DifferentRanks_ReturnsReservedInfo)
 {
-    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved1.va[HVM_GVA] != TEST_SIZE_ZERO);
 
-    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ONE, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ONE, TEST_SIZE_SIXTEEN_MB,
+                                                        TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved2.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_TWO);
 }
@@ -310,10 +315,12 @@ TEST_F(HybmVaManagerTest, AllocReserveGva_DifferentRanks_ReturnsReservedInfo)
 // 测试17: AllocReserveGva 不同内存类型分配
 TEST_F(HybmVaManagerTest, AllocReserveGva_DifferentMemTypes_ReturnsReservedInfo)
 {
-    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved1 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved1.va[HVM_GVA] != TEST_SIZE_ZERO);
 
-    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_DEVICE);
+    ReservedGvaInfo reserved2 = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_DEVICE);
     EXPECT_TRUE(reserved2.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_TWO);
 }
@@ -321,7 +328,8 @@ TEST_F(HybmVaManagerTest, AllocReserveGva_DifferentMemTypes_ReturnsReservedInfo)
 // 测试18: FreeReserveGva 功能测试
 TEST_F(HybmVaManagerTest, FreeReserveGva_ValidAddress_RemovesReservation)
 {
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_ONE);
 
@@ -392,7 +400,7 @@ TEST_F(HybmVaManagerTest, GetReservedCount_MultipleReservations_ReturnsCorrectCo
     EXPECT_TRUE(manager.GetReservedCount() == TEST_SIZE_ZERO);
 
     for (size_t i = TEST_INDEX_ZERO; i < TEST_COUNT_THREE; i++) {
-        manager.AllocReserveGva(i, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+        manager.AllocReserveGva(i, TEST_SIZE_SIXTEEN_MB, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     }
 
     EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_THREE);
@@ -409,7 +417,7 @@ TEST_F(HybmVaManagerTest, ClearAll_MultipleAllocationsAndReservations_ClearsAll)
     }
 
     for (size_t i = TEST_INDEX_ZERO; i < TEST_COUNT_THREE; i++) {
-        manager.AllocReserveGva(i, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+        manager.AllocReserveGva(i, TEST_SIZE_SIXTEEN_MB, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     }
 
     EXPECT_TRUE(manager.GetAllocCount() == TEST_COUNT_FIVE);
@@ -441,7 +449,8 @@ TEST_F(HybmVaManagerTest, FormatMemorySize_VariousSizes_ReturnsFormattedString)
 TEST_F(HybmVaManagerTest, PrintAllReservedGvaInfo_EmptyAndNonEmpty_DoesNotCrash)
 {
     EXPECT_NO_THROW(manager.DumpReservedGvaInfo());
-    manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_NO_THROW(manager.DumpReservedGvaInfo());
 }
 
@@ -515,7 +524,8 @@ TEST_F(HybmVaManagerTest, MixedOperations_AddRemoveQuery_WorksCorrectly)
     EXPECT_TRUE(
         manager.AddVaInfo({{gva2, 0, TEST_LVA_BASE + TEST_OFFSET_SIXTEEN_MB}, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST},
                           TEST_RANK_ONE) == BM_OK);
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_TWO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_DEVICE);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_TWO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_DEVICE);
     EXPECT_TRUE(reserved.va[HVM_GVA] != TEST_SIZE_ZERO);
 
     EXPECT_TRUE(manager.IsGva(gva1));
@@ -576,14 +586,16 @@ TEST_F(HybmVaManagerTest, GetMemType_BoundaryAddresses)
 // 测试37: AllocReserveGva - 零大小
 TEST_F(HybmVaManagerTest, AllocReserveGva_ZeroSize)
 {
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_ZERO, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_ZERO, TEST_SIZE_ZERO,
+                                                       TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved.va[HVM_GVA] == TEST_SIZE_ZERO);
 }
 
 // 测试38: AllocReserveGva - 最大rank
 TEST_F(HybmVaManagerTest, AllocReserveGva_MaxRank)
 {
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_INVALID, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_INVALID, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(reserved.localRankId == TEST_RANK_INVALID);
 }
@@ -648,7 +660,8 @@ TEST_F(HybmVaManagerTest, RemoveOneVaInfo_NonExistentAddress)
 // 测试43: FreeReserveGva - 多次释放
 TEST_F(HybmVaManagerTest, FreeReserveGva_MultipleFrees)
 {
-    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
+    ReservedGvaInfo reserved = manager.AllocReserveGva(TEST_RANK_ZERO, TEST_SIZE_SIXTEEN_MB,
+                                                       TEST_SIZE_SIXTEEN_MB, TEST_MEM_TYPE_HOST);
     EXPECT_TRUE(reserved.va[HVM_GVA] != TEST_SIZE_ZERO);
     EXPECT_TRUE(manager.GetReservedCount() == TEST_COUNT_ONE);
 

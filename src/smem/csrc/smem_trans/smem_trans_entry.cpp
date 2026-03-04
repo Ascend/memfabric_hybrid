@@ -31,7 +31,7 @@ namespace ock {
 namespace smem {
 // reserve 128GB dram va for malloc per rank, refine to configurable later
 constexpr uint64_t TRANS_RESERVE_DRAM_VA_SIZE = 1024ULL * 1024 * 1024 * 128;
-constexpr uint64_t TRANS_RESERVE_HBM_VA_SIZE = 1024ULL * 1024 * 1024 * 64;
+constexpr uint64_t TRANS_RESERVE_HBM_VA_SIZE = 1024ULL * 1024 * 1024 * 1024; // 1T
 
 SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::string &storeUrl,
                                          const smem_trans_config_t &config)
@@ -116,6 +116,9 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 
     entity_ = hybm_create_entity(entityId_, &options, 0);
     SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
+
+    ret = hybm_reserve_mem_space(entity_, 0);
+    SM_VALIDATE_RETURN(ret == SM_OK, "rserve mem failed.", SM_ERROR);
 
     ret = ExportExchangeInfo();
     SM_VALIDATE_RETURN(ret == SM_OK, "export user hbm failed.", SM_ERROR);
@@ -676,7 +679,7 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.dramShmFd = -1;
-    options.isSecondMapping = false; // trans disabled
+    options.isSecondMapping = true; // trans enabled
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

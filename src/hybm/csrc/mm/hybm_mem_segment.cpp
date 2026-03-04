@@ -68,7 +68,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
         BM_LOG_ERROR("MemSegment::InitDeviceInfo failed: " << ret);
         return nullptr;
     }
-    ret = HybmVaManager::GetInstance().Initialize(socType_, options.isSecondMapping);
+    ret = HybmVaManager::GetInstance().Initialize(socType_);
     if (ret != BM_OK) {
         BM_LOG_ERROR("HybmVaManager Initialize failed: " << ret);
         return nullptr;

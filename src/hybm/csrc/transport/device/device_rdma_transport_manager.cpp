@@ -741,7 +741,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     ReadGuard lockGuard(lock_);
     auto ret = GetRegAddress(registerMRS_, lAddr, size, true, wr.buf_list->addr, wr.buf_list->lkey);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("lAddr not register: size: " << size);
+        BM_LOG_ERROR("lAddr not register: size: " << size << " " << std::hex << lAddr);
         return ret;
     }
     auto &it = ranksMRs_[rankId];
@@ -751,7 +751,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     }
     ret = GetRegAddress(it, rAddr, size, false, wr.dst_addr, wr.rkey);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("rAddr not register: size: " << size);
+        BM_LOG_ERROR("rAddr not register: size: " << size << " " << std::hex << lAddr);
         return ret;
     }
 

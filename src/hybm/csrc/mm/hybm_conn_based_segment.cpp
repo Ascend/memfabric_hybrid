@@ -49,7 +49,9 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
                              "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
     uint64_t totalSize = options_.rankCnt * options_.maxSize;
-    auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalSize, HYBM_MEM_TYPE_HOST);
+    uint64_t localSize = options_.isSecondMapping ? options_.maxSize : totalSize;
+    auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalSize, localSize,
+                                                                HYBM_MEM_TYPE_HOST, options_.isSecondMapping);
     BM_ASSERT_LOG_AND_RETURN(gvaInfo.va[HVM_GVA] > 0, "Invalid param, start is 0.", BM_ERROR);
     void *startAddr = reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     if (!options_.isSecondMapping) {

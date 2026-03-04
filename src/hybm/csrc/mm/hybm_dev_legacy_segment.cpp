@@ -131,7 +131,8 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
     lvaBase_ = reinterpret_cast<uint8_t *>(base) + options_.maxSize * options_.rankId;
     if (options_.isSecondMapping) {
         auto gvaInfo =
-            HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, HYBM_MEM_TYPE_DEVICE);
+            HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, totalVirtualSize_,
+                                                         HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
         globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     } else {
         globalVirtualAddress_ = reinterpret_cast<uint8_t *>(base);

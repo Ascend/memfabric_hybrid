@@ -19,21 +19,14 @@
 namespace ock {
 namespace mf {
 static constexpr uint64_t MB_OFFSET = 20UL;
-Result HybmVaManager::Initialize(AscendSocType socType, bool isSecondMapping) noexcept
+Result HybmVaManager::Initialize(AscendSocType socType) noexcept
 {
 #if defined(ASCEND_NPU)
     if (socType == AscendSocType::ASCEND_UNKNOWN) {
         BM_LOG_ERROR("soc type is unknown.");
         return BM_INVALID_PARAM;
     }
-
-    if (inited_ && (isSecondMapping_ != isSecondMapping)) {
-        BM_LOG_ERROR("isSecondMapping_ is not equal old.");
-        return BM_INVALID_PARAM;
-    }
-    isSecondMapping_ = isSecondMapping;
 #endif
-    inited_ = true;
     return BM_OK;
 }
 
@@ -51,10 +44,10 @@ Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
     for (uint32_t i = 0; i < HVM_BUTT; i++) {
         if (info.base.va[i] != 0) {
             auto old = CheckOverlap(info.base.va[i], info.base.size, i);
-            if (old.first) {
-                BM_LOG_ERROR("AddVaInfo failed: address overlap. va="
+            if (old.first && old.second != info) {
+                BM_LOG_ERROR("AddVaInfo failed: address overlap. gva=" << VaToStr(info.base.va[0]) << " va:"
                              << VaToStr(info.base.va[i]) << ", size=" << VaToStr(info.base.size) << ", vaType=" << i
-                             << ", localRankId=" << info.RankId() << ", importedRankId=" << info.RankId()
+                             << ", localRankId=" << info.localRankId << ", importedRankId=" << info.importedRankId
                              << ", memType=" << info.base.memType << ", old: " << old.second);
                 return BM_ERROR;
             }
@@ -245,49 +238,45 @@ bool HybmVaManager::IsValidAddr(uint64_t va)
     return isValid;
 }
 
-ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t size, hybm_mem_type memType)
+ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize,
+                                               hybm_mem_type memType, bool secondMapping)
 {
     ReservedGvaInfo result;
-    if (size == 0) {
-        BM_LOG_ERROR("AllocReserveGva failed: size=0");
-        return result;
-    }
-    uint64_t upperLimit = HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR;
-    uint64_t startAddr = HYBM_GVM_START_ADDR;
-    uint64_t endAddr = HYBM_GVM_END_ADDR;
     uint32_t t = HVM_DVA; // reserve device va all
-    if (isSecondMapping_) {
-        // overwrite variables
-        upperLimit = HYBM_GVM_END_ADDR_8P - HYBM_GVM_START_ADDR_4P;
-        startAddr = HYBM_GVM_START_ADDR_4P;
-        endAddr = HYBM_GVM_END_ADDR_8P;
-    }
-    if (size > upperLimit) {
-        BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
-        return result;
-    }
+    BM_VALIDATE_RETURN(size != 0, "size must > 0.", result);
+    BM_VALIDATE_RETURN(localSize != 0 || secondMapping, "local size must > 0 when no second mapping.", result);
 
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    BM_LOG_DEBUG("AllocReserveGva, isSecondMapping:" << isSecondMapping_ << ", searching in HOST range "
-                                                     << VaToStr(startAddr) << "-" << VaToStr(endAddr));
-    // Find free space
-    auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, HVM_GVA);
-    if (!found) {
-        BM_LOG_ERROR("AllocReserveGva failed: no free space found for size=" << VaToStr(size));
-        return result;
-    }
-
-    if (isSecondMapping_) {
-        uint64_t lva = AllocReserveLva(localRankId, size, t);
+    uint64_t lva = 0;
+    if (localSize > 0) {
+        lva = AllocReserveLva(localRankId, localSize, t);
         if (lva == 0) {
             return result;
         }
-        result.va[t] = lva;
-    } else {
-        result.va[t] = freeAddr;
     }
 
-    result.va[HVM_GVA] = freeAddr;
+    uint64_t gva = lva;
+    if (secondMapping) {
+        uint64_t startAddr = HYBM_GVM_START_ADDR_4P;
+        uint64_t endAddr = HYBM_GVM_END_ADDR_8P;
+        uint64_t upperLimit = endAddr - startAddr;
+        if (size > upperLimit) {
+            BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
+            return result;
+        }
+
+        BM_LOG_DEBUG("secondMapping searching in GVA range " << VaToStr(startAddr) << "-" << VaToStr(endAddr));
+        // Find free space
+        auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, HVM_GVA);
+        if (!found) {
+            BM_LOG_ERROR("AllocReserveGva failed: no free space found for size=" << VaToStr(size));
+            return result;
+        }
+        gva = freeAddr;
+    }
+
+    result.va[HVM_GVA] = gva;
+    result.va[t] = lva;
     result.size = size;
     result.memType = memType;
     result.localRankId = localRankId;
@@ -311,8 +300,7 @@ uint64_t HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size, uin
         return 0;
     }
 
-    BM_LOG_DEBUG("AllocReserveLva, isSecondMapping:" << isSecondMapping_ << ", searching in HOST range "
-                                                     << VaToStr(startAddr) << "-" << VaToStr(endAddr));
+    BM_LOG_DEBUG("AllocReserveLva, searching in HOST range " << VaToStr(startAddr) << "-" << VaToStr(endAddr));
     // Find free space
     auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, type);
     if (!found) {

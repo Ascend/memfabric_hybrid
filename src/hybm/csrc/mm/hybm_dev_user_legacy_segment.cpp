@@ -43,8 +43,18 @@ Result HybmDevUserLegacySegment::ValidateOptions() noexcept
 
 Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
 {
-    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT ReserveMemorySpace");
-    return BM_NOT_SUPPORTED;
+    BM_ASSERT_RETURN(address != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(options_.isSecondMapping == true, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(options_.rankId < options_.rankCnt,
+                             "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
+
+    totalVirtualSize_ = options_.rankCnt * options_.maxSize;
+    auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, 0,
+                                                                HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
+    BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
+    globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
+    lvaBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    return BM_OK;
 }
 
 Result HybmDevUserLegacySegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept
@@ -82,11 +92,21 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
                                << " success.");
     }
 
-    memNames_.emplace_back(name);
+    uint64_t gva = reinterpret_cast<uint64_t>(lvaBase_) + allocatedSize_;
     slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM,
-                                       reinterpret_cast<uint64_t>(addr), reinterpret_cast<uint64_t>(addr), size);
+                                       gva, reinterpret_cast<uint64_t>(addr), size);
+    ret = HybmVaManager::GetInstance().AddVaInfo(
+        {gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE}, options_.rankId);
+    if (ret != 0) {
+        BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
+        DlAclApi::RtIpcDestroyMemoryName(name);
+        slice = nullptr;
+        return ret;
+    }
+
+    memNames_.emplace_back(name);
     registerSlices_.emplace(slice->index_, RegisterSlice{slice, name});
-    addressedSlices_.emplace(slice->vAddress_, slice->size_);
+    allocatedSize_ += size;
     uniqueLock.unlock();
     return BM_OK;
 }
@@ -105,7 +125,6 @@ Result HybmDevUserLegacySegment::ReleaseSliceMemory(const MemSlicePtr &slice) no
         return BM_DL_FUNCTION_FAILED;
     }
 
-    addressedSlices_.erase(pos->second.slice->vAddress_);
     registerSlices_.erase(pos);
     return BM_OK;
 }
@@ -203,7 +222,7 @@ Result HybmDevUserLegacySegment::Import(const std::vector<std::string> &allExInf
 
         void *address = nullptr;
         if (rms != nullptr) {
-            address = (void *)(ptrdiff_t)(rms->vAddress_);
+            address = (void *)(ptrdiff_t)(rms->gva_);
         }
         addresses[index++] = address;
     }
@@ -231,7 +250,6 @@ void HybmDevUserLegacySegment::RemoveSliceInfo(const uint32_t rankId) noexcept
     }
     auto &remoteSliceVec = it->second;
     for (auto &remoteSlice : remoteSliceVec) {
-        addressedSlices_.erase(remoteSlice->vAddress_);
         registerAddrs_.erase(reinterpret_cast<void *>(static_cast<ptrdiff_t>(remoteSlice->vAddress_)));
         HybmVaManager::GetInstance().RemoveOneVaInfo(remoteSlice->gva_);
         auto rIt = remoteSlices_.find(remoteSlice->index_);
@@ -305,17 +323,6 @@ Result HybmDevUserLegacySegment::Unmap() noexcept
 {
     BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT Unmap");
     return BM_NOT_SUPPORTED;
-}
-
-bool HybmDevUserLegacySegment::MemoryInRange(const void *begin, uint64_t size) const noexcept
-{
-    auto address = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(begin));
-    auto pos = addressedSlices_.lower_bound(address);
-    if (pos == addressedSlices_.end()) {
-        return false;
-    }
-
-    return (pos->first + pos->second >= address + size);
 }
 
 Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexcept
@@ -401,29 +408,20 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
         BM_LOG_INFO("IpcOpenMemory(" << sliceInfo.name << ") success, sdid=" << sdid_ << ", pid=" << pid_
                                      << ", deviceId=" << logicDeviceId_
                                      << ", sliceInfo.logicDeviceId=" << sliceInfo.logicDeviceId);
+        registerAddrs_.insert(address);
     } else if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(sliceInfo.address));
+        address = nullptr;
     }
-
-    if (address == nullptr) {
-        BM_LOG_ERROR("import slice failed, sdma not reaches, rdma not opened.");
-        return BM_ERROR;
-    }
-
-    auto value = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(address)) | ((sliceInfo.rankId + 1UL) << 48);
-    address = reinterpret_cast<void *>(static_cast<ptrdiff_t>(value));
-    registerAddrs_.insert(address);
 
     remoteSlice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, sliceInfo.gva,
                                              reinterpret_cast<uint64_t>(address), sliceInfo.size);
     rankToRemoteSlices_[sliceInfo.rankId].push_back(remoteSlice);
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
-    addressedSlices_.emplace(remoteSlice->vAddress_, remoteSlice->size_);
     uniqueLock.unlock();
     auto memType = HYBM_MEM_TYPE_DEVICE;
-    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->gva_, 0, 0, remoteSlice->size_, memType},
-                                                             options_.rankId, sliceInfo.rankId);
+    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->gva_, remoteSlice->vAddress_, 0,
+        remoteSlice->size_, memType}, options_.rankId, sliceInfo.rankId);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     return BM_OK;
 }
@@ -443,17 +441,29 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
     BM_LOG_INFO("close memory finish.");
 }
 
-bool HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+bool HybmDevUserLegacySegment::MemoryInRange(const void *begin, uint64_t size) const noexcept
 {
-    auto value = static_cast<uint64_t>(reinterpret_cast<ptrdiff_t>(addr));
-    auto rankIdBits = static_cast<uint16_t>(value >> 48);
-    if (rankIdBits == 0U) {
-        rankId = options_.rankId;
+    if (begin < globalVirtualAddress_) {
         return false;
     }
 
-    rankId = rankIdBits - 1U;
+    if (reinterpret_cast<const uint8_t *>(begin) + size > globalVirtualAddress_ + totalVirtualSize_) {
+        return false;
+    }
+
     return true;
+}
+
+bool HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
+{
+    if (!MemoryInRange(addr, size)) {
+        rankId = options_.rankId;
+        return false;
+    } else {
+        uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
+        rankId = offset / options_.maxSize;
+        return true;
+    }
 }
 
 bool HybmDevUserLegacySegment::CheckSdmaReaches(uint32_t rankId) const noexcept

@@ -124,7 +124,7 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA) {
+    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA && options_.scene != HYBM_SCENE_TRANS) {
         if (options_.rankCount * (options_.maxHBMSize + options_.maxDRAMSize) > HYBM_GVM_MAX_POOL_SIZE) {
             BM_LOG_ERROR("Total memory pool size > 128T. size:" << options_.rankCount *
                                                                        (options_.maxHBMSize + options_.maxDRAMSize));
@@ -1016,7 +1016,6 @@ int32_t MemEntityDefault::ImportForTransport(bool importInfoEntity) noexcept
 void MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, uint64_t length,
                                          std::pair<uint32_t, uint32_t> &p2pInfo) noexcept
 {
-    void *real = Valid48BitsAddress(src);
     if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
         // nothing
     } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
@@ -1024,9 +1023,7 @@ void MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, uint64_t lengt
     } else {
         p2pInfo.first = options_.rankId;
     }
-    src = real;
 
-    real = Valid48BitsAddress(dest);
     if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
         // nothing
     } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
@@ -1034,7 +1031,6 @@ void MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, uint64_t lengt
     } else {
         p2pInfo.second = options_.rankId;
     }
-    dest = real;
 }
 
 Result MemEntityDefault::InitSegment()
@@ -1053,15 +1049,6 @@ Result MemEntityDefault::InitSegment()
         if (ret != BM_OK) {
             BM_LOG_ERROR("InitDramSegment() failed: " << ret);
             return ret;
-        }
-
-        if (options_.scene == HYBM_SCENE_TRANS) {
-            void *_{nullptr};
-            ret = dramSegment_->ReserveMemorySpace(&_);
-            if (ret != BM_OK) {
-                BM_LOG_ERROR("Failed to reserve dram va for user malloc");
-                return ret;
-            }
         }
     }
 
