@@ -971,12 +971,15 @@ Result SmemNetGroupEngine::GroupLeave()
     listenSignal_.OperateInLock(
         [&watchId, this]() {
             watchId = listenCtx_.watchId;
+            listenCtx_.watchId = UINT32_MAX;
             groupStoped_ = true;
         },
         true);
-    ret = store_->Unwatch(watchId);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("unwatch id: " << watchId << " failed: " << ret);
+    if (watchId != UINT32_MAX) {
+        ret = store_->Unwatch(watchId);
+        if (ret != SM_OK && ret != StoreErrorCode::NOT_EXIST) {
+            SM_LOG_ERROR("unwatch id: " << watchId << " failed: " << ret);
+        }
     }
     std::string old;
     std::string val = "L" + std::to_string(option_.rank);
