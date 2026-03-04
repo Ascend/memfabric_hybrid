@@ -152,6 +152,8 @@ int32_t main(int32_t argc, char *argv[])
         return -1;
     }
     WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", static_cast<unsigned long long>(gNpuMallocSpace), rankId);
+    gNpuMallocSpace = smem_shm_get_symmetric_size(handle);
+    INFO_LOG("[TEST] smem_shm_get_symmetric_size, size %lu, rank:%d", gNpuMallocSpace, rankId);
     TestAllReduce(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;

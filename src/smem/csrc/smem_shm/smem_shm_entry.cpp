@@ -100,6 +100,8 @@ Result SmemShmEntry::Initialize(hybm_options &options)
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
 
     options_ = options;
+    localSize_ = options_.deviceVASpace;
+    options_.deviceVASpace = ALIGN_UP(localSize_, SMEM_1G_SIZE);
     for (auto it = initSteps_.begin(); it != initSteps_.end(); ++it) {
         SM_LOG_DEBUG("process init step : " << it->name);
         auto stepRet = it->processor();
@@ -137,6 +139,11 @@ Result SmemShmEntry::SetExtraContext(const void *context, uint32_t size)
 void *SmemShmEntry::GetGva() const
 {
     return gva_;
+}
+
+uint64_t SmemShmEntry::GetHbmMaxSize() const
+{
+    return options_.deviceVASpace;
 }
 
 int32_t SmemShmEntry::InitStepCreateEntity()
@@ -180,9 +187,9 @@ void SmemShmEntry::InitStepUnreserveMemory()
 
 int32_t SmemShmEntry::InitStepAllocSlice()
 {
-    auto slice = hybm_alloc_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, options_.deviceVASpace, 0);
+    auto slice = hybm_alloc_local_memory(entity_, HYBM_MEM_TYPE_DEVICE, localSize_, 0);
     if (slice == nullptr) {
-        SM_LOG_ERROR("alloc local mem failed, size: " << options_.deviceVASpace);
+        SM_LOG_ERROR("alloc local mem failed, size: " << localSize_);
         return SM_ERROR;
     }
 

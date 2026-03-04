@@ -20,7 +20,7 @@ using namespace ock::smem;
 std::mutex g_smemShmMutex_;
 bool g_smemShmInited = false;
 
-SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
+SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t localSize,
                                     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva)
 {
     SM_VALIDATE_RETURN(!(rankSize > SMEM_WORLD_SIZE_MAX || rankId >= rankSize),
@@ -30,7 +30,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     SM_VALIDATE_RETURN(!(id > SMEM_ID_MAX), "invalid id, id range is: [0, " << SMEM_ID_MAX << "]", nullptr);
     SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", nullptr);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", nullptr);
-    SM_VALIDATE_RETURN(symmetricSize <= SMEM_LOCAL_HBM_SIZE_MAX, "symmetric size exceeded", nullptr);
+    SM_VALIDATE_RETURN(localSize <= SMEM_LOCAL_HBM_SIZE_MAX, "symmetric size exceeded", nullptr);
 
     std::lock_guard<std::mutex> guard(g_smemShmMutex_);
     SmemShmEntryPtr entry = nullptr;
@@ -52,7 +52,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.bmScope = HYBM_SCOPE_CROSS_NODE;
     options.rankCount = rankSize;
     options.rankId = rankId;
-    options.deviceVASpace = symmetricSize;
+    options.deviceVASpace = localSize;
     options.role = HYBM_ROLE_PEER;
     options.globalUniqueAddress = true;
     std::string defaultNic = "tcp://127.0.0.1:10002";
@@ -67,6 +67,17 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
 
     *gva = entry->GetGva();
     return reinterpret_cast<void *>(entry.Get());
+}
+
+uint64_t smem_shm_get_symmetric_size(smem_shm_t handle)
+{
+    SmemShmEntryPtr entry = nullptr;
+    auto ret = SmemShmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return 0U;
+    }
+    return entry->GetHbmMaxSize();
 }
 
 SMEM_API int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
@@ -219,7 +230,7 @@ SMEM_API int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteR
     return entry->GetReachInfo(remoteRank, *reachInfo);
 }
 
-SMEM_API int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, uint32_t *retVal)
+SMEM_API int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, int32_t *retVal)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
@@ -235,13 +246,14 @@ SMEM_API int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, 
     auto group = entry->GetGroup();
     SM_VALIDATE_RETURN(group != nullptr, "smem shm not init group yet", SM_NOT_INITIALIZED);
     int32_t val = group->AllocNumber();
+    *retVal = -1;
     if (val >= static_cast<int>(limit)) {
         group->ReleaseNumber(val);
         return SM_ERROR;
     } else if (val < 0) {
         return val;
     } else {
-        *retVal = static_cast<uint32_t>(val);
+        *retVal = val;
         return SM_OK;
     }
 }

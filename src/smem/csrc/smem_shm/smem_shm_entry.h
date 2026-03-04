@@ -48,6 +48,8 @@ public:
 
     SmemGroupEnginePtr GetGroup() const;
 
+    uint64_t GetHbmMaxSize() const;
+
     uint32_t Id() const;
 
     Result GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) const;
@@ -73,6 +75,7 @@ private:
     bool inited_ = false;
     const uint32_t id_;
     uint32_t localRank_ = UINT32_MAX;
+    uint64_t localSize_  = 0;
     hybm_entity_t entity_ = nullptr;
     void *gva_ = nullptr;
     hybm_mem_slice_t slice_ = nullptr;
