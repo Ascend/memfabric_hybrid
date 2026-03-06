@@ -127,6 +127,7 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 |------  |-----------------|-------------|--------------------------------------------|-------------------|
 | 依赖三方库  |  https://github.com/google/googletest.git | .gitmodules | https://github.com/google/googletest.git   | 单元测试框架依赖 |
 | 依赖三方库  | https://github.com/sinojelly/mockcpp.git  | .gitmodules | https://github.com/sinojelly/mockcpp.git   | 单元测试框架依赖 |
+| 依赖三方库  | https://atomgit.com/openeuler/ubs-comm.git  | cmake/config_hcom.cmake | https://atomgit.com/openeuler/ubs-comm.git   | UBS通信库依赖 |
 | license 地址 | 不涉及  | LICENSE | http://www.apache.org/licenses/            | license文件 |
 | license 地址 |  不涉及 |  LICENSE | http://www.apache.org/licenses/LICENSE-2.0 | license文件  |
 | 代码仓地址 |  https://gitcode.com/Ascend/memfabric_hybrid | 不涉及 | https://gitcode.com/Ascend/memfabric_hybrid | shmem 仓库地址信息 |
