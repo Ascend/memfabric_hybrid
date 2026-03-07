@@ -34,9 +34,9 @@ function print()
 function get_version_in_file()
 {
     if [ -f ${script_dir}/../version.info ]; then
-        version1=`cat ${script_dir}/../version.info | awk -F ':' '$1=="Version" {print $2}'`
-        pkg_arch=`cat ${script_dir}/../version.info | awk -F ':' '$1=="Platform" {print $2}'`
-        os1=`cat ${script_dir}/../version.info | awk -F ':' '$1=="Kernel" {print $2}'`
+        version1=$(awk -F ':' '$1=="Version" {gsub(/^[ \t]+|[ \t\r\n]+$/, "", $2); print $2}' ${script_dir}/../version.info)
+        pkg_arch=$(awk -F ':' '$1=="Platform" {gsub(/^[ \t]+|[ \t\r\n]+$/, "", $2); print $2}' ${script_dir}/../version.info)
+        os1=$(awk -F ':' '$1=="Kernel" {gsub(/^[ \t]+|[ \t\r\n]+$/, "", $2); print $2}' ${script_dir}/../version.info)
     fi
     print "INFO" "memfabric_hybrid version: ${version1} arch: ${pkg_arch} os: ${os1}"
 }
@@ -277,12 +277,19 @@ function install_wheel_package() {
         return
     fi
 
-    wheel_package=$(find "${wheel_dir}" -name "${wheel_name}-${version1}-cp${python_version}*" -print -quit)
+    wheel_package=$(find "${wheel_dir}" -name "${wheel_name}-${version1}-cp${python_version}*" -print -quit 2>/dev/null)
+    if [ -z "${wheel_package}" ]; then
+        # Fallback to same Python ABI even if version string in wheel does not exactly match version.info.
+        wheel_package=$(find "${wheel_dir}" -name "${wheel_name}-*-cp${python_version}*" -print -quit 2>/dev/null)
+    fi
     if [ -z "${wheel_package}" ]; then
         print "WARNING" "not found wheel package ${wheel_name} for python-${python_version}, skip install wheel."
+        print "INFO" "available wheel packages:"
+        find "${wheel_dir}" -maxdepth 1 -name "${wheel_name}-*.whl" -printf "  %f\n" 2>/dev/null
         return
     fi
 
+    print "INFO" "install wheel package: $(basename "${wheel_package}")"
     pip3 install "${wheel_package}" --force-reinstall
 }
 
