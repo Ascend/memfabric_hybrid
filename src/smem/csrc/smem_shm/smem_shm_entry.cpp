@@ -139,6 +139,11 @@ void *SmemShmEntry::GetGva() const
     return gva_;
 }
 
+uint64_t SmemShmEntry::GetHbmMaxSize() const
+{
+    return options_.maxHBMSize;
+}
+
 int32_t SmemShmEntry::InitStepCreateEntity()
 {
     auto entity = hybm_create_entity(id_ << 1, &options_, 0);

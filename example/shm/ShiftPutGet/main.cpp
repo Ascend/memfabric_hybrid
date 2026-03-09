@@ -20,7 +20,7 @@
 #include "acl/acl.h"
 
 static uint32_t gNpuNum = 16;
-static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
+uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t gInputLen = 4;
 static uint32_t ctxSize = 16;
 enum Index : uint8_t {
@@ -154,7 +154,9 @@ int32_t main(int32_t argc, char *argv[])
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create, size %lu, rank:%d", gNpuMallocSpace, rankId);
+    INFO_LOG("[TEST] smem_shm_create, size %lu, rank:%d", gNpuMallocSpace, rankId);
+    gNpuMallocSpace = smem_shm_get_symmetric_size(handle);
+    INFO_LOG("[TEST] smem_shm_get_symmetric_size size %lu, rank:%d", gNpuMallocSpace, rankId);
     TestContext(handle);
     TestAllShift(stream, (uint8_t *)gva, rankId, rankSize);
 
@@ -162,10 +164,18 @@ int32_t main(int32_t argc, char *argv[])
 
     uint32_t val;
     ret = smem_shm_atomic_alloc_value(handle, 1024U, &val);
-    WARN_LOG("[TEST] smem_shm_atomic_alloc_value, val:%u ret:%d", val, ret);
+    if (ret == 0) {
+        INFO_LOG("[TEST] smem_shm_atomic_alloc_value ok, val:%u ret:%d", val, ret);
+    } else {
+        ERROR_LOG("[TEST] smem_shm_atomic_alloc_value failed, val:%u ret:%d", val, ret);
+    }
     smem_shm_control_barrier(handle);
     ret = smem_shm_atomic_release_value(handle, val);
-    WARN_LOG("[TEST] smem_shm_atomic_release_value, val:%u ret:%d", val, ret);
+    if (ret == 0) {
+        INFO_LOG("[TEST] smem_shm_atomic_release_value ok, val:%u ret:%d", val, ret);
+    } else {
+        ERROR_LOG("[TEST] smem_shm_atomic_release_value failed, val:%u ret:%d", val, ret);
+    }
 
     smem_shm_control_barrier(handle);
     sleep(1);

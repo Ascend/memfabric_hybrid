@@ -20,7 +20,7 @@
 #include "acl/acl.h"
 
 static uint32_t gNpuNum = 16;
-static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
+uint64_t gNpuMallocSpace = 1024UL * 1024UL * 64;
 static uint32_t messageSize = 64;
 constexpr uint32_t DEBUG_PRINT_SIZE = 120;
 enum Index : uint8_t {
@@ -181,6 +181,8 @@ int32_t main(int32_t argc, char *argv[])
         return -1;
     }
     INFO_LOG("[TEST] smem_shm_create gva %p, size %lu, rank:%d", gva, gNpuMallocSpace, rankId);
+    gNpuMallocSpace = smem_shm_get_symmetric_size(handle);
+    INFO_LOG("[TEST] smem_shm_get_symmetric_size size %lu, rank:%d", gNpuMallocSpace, rankId);
     TestGetQPInfo(stream, (uint8_t *)gva, rankId, rankSize);
     sleep(1);
     TestRDMAWrite(stream, (uint8_t *)gva, rankId, rankSize);

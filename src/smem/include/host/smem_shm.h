@@ -63,14 +63,21 @@ uint32_t smem_shm_query_support_data_operation(void);
  * @param id               [in] id of the shm object
  * @param rankSize         [in] rank count
  * @param rankId           [in] my rank id
- * @param symmetricSize    [in] local memory contributed to the shm object, all ranks must the same size
+ * @param localSize        [in] local memory contributed to the shm object, all ranks must the same size
  * @param dataOpType       [in] data operation engine type, i.e. MTE, SDMA, RDMA etc
  * @param flags            [in] optional flags
  * @param gva              [out] global virtual address created, it can be passed to kernel to data operations
  * @return shm object created if successful, null if failed, use @ref smem_get_last_error_msg to get last error message
  */
-smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
+smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t localSize,
                            smem_shm_data_op_type dataOpType, uint32_t flags, void **gva);
+
+/**
+      * @brief Query symmetric_size, that address of the i-th rank is gva + symmetric_size * i
+      * @param handle           [in] the shm object
+      * @return symmetric_size
+      */
+uint64_t smem_shm_get_symmetric_size(smem_shm_t handle);
 
 /**
  * @brief Destroy shm object
@@ -185,7 +192,7 @@ int32_t smem_shm_topology_can_reach(smem_shm_t handle, uint32_t remoteRank, uint
  * @param value            [out] allocated number
  * @return 0 if successful
  */
-int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, uint32_t *value);
+int32_t smem_shm_atomic_alloc_value(smem_shm_t handle, uint32_t limit, int32_t *value);
 
 /**
  * @brief Release the global number which is allocated by <i>smem_shm_atomic_alloc_value</i>

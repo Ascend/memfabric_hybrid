@@ -23,6 +23,10 @@ namespace smem {
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
 
+#ifndef ALIGN_UP
+#define ALIGN_UP(val, al) (((val) + ((al) - 1)) & ~((al) - 1))
+#endif
+
 #define SM_SET_LAST_ERROR(msg)                     \
     do {                                           \
         std::stringstream tmpStr;                  \

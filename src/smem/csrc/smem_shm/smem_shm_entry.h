@@ -48,6 +48,8 @@ public:
 
     SmemGroupEnginePtr GetGroup() const;
 
+    uint64_t GetHbmMaxSize() const;
+
     uint32_t Id() const;
 
     Result GetReachInfo(uint32_t remoteRank, uint32_t &reachInfo) const;
