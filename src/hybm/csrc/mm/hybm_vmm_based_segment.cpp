@@ -165,12 +165,7 @@ Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_
 Result HybmVmmBasedSegment::MallocFromDevice(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept
 {
     drv_mem_prop prop{};
-    prop = {MEM_DEV_SIDE, static_cast<uint32_t>(devId), 0, MEM_GIANT_PAGE_TYPE, MEM_HBM_TYPE, 0};
-    size_t granularity = 0;
-    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
-        prop.pg_type = MEM_HUGE_PAGE_TYPE;
-        BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
-    }
+    prop = {MEM_DEV_SIDE, static_cast<uint32_t>(devId), 0, MEM_HUGE_PAGE_TYPE, MEM_HBM_TYPE, 0};
     return DlHalApi::HalMemCreate(handle, size, &prop, 0);
 }
 
