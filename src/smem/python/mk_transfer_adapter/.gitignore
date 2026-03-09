@@ -1,6 +1,0 @@
-*.so
-lib/
-build/
-dist/
-*.egg-info/
-VERSION

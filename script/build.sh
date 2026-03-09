@@ -76,11 +76,6 @@ if [ "${BUILD_PYTHON}" != "ON" ]; then
         exit 0
 fi
 
-# mf_adapter
-mkdir -p ${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib
-cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
-cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
-
 # memfabric_hybrid
 mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
 # --- 动态库：lib/ ---
@@ -134,7 +129,6 @@ GIT_COMMIT=`git rev-parse HEAD` || true
 } > "${PROJ_DIR}/output/VERSION"
 
 cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
-cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/"
 rm -f "${PROJ_DIR}/output/VERSION"
 
 readonly BACK_PATH_EVN=$PATH
@@ -171,18 +165,6 @@ do
         ${MAKE_CMD} -j5 -C build
     fi
 
-    # mf_adapter
-    rm -rf "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/mf_adapter/_pymf_transfer.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/mf_adapter/
-    mkdir -p ${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib
-    cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
-    cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib"
-    cd "${PROJ_DIR}/src/smem/python/mk_transfer_adapter"
-    rm -rf build mf_adapter.egg-info
-    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/mk_transfer_adapter/mf_adapter/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
-    python3 setup.py bdist_wheel
-    cd "${PROJ_DIR}"
-
     # memfabric_hybrid
     rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid.cpython*.so
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
@@ -198,11 +180,6 @@ do
         break
     fi
 done
-
-# copy mf_transfer wheel package
-mkdir -p "${PROJ_DIR}/output/mk_transfer_adapter/wheel"
-cp "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/dist/*.whl "${PROJ_DIR}/output/mk_transfer_adapter/wheel"
-rm -rf "${PROJ_DIR}"/src/smem/python/mk_transfer_adapter/dist
 
 # memfabric_hybrid
 mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
