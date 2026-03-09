@@ -561,7 +561,7 @@ Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
         return NOT_EXIST;
     }
 
-    STORE_LOG_INFO("unwatch for id: " << wid << " success.");
+    STORE_LOG_DEBUG("unwatch for id: " << wid << " success.");
     return SM_OK;
 }
 
@@ -699,6 +699,9 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
     msgCtxLocker.unlock();
     auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
+        msgCtxLocker.lock();
+        msgClientContext_.erase(seqNo);
+        msgCtxLocker.unlock();
         STORE_LOG_ERROR_LIMIT("send message failed, result: " << ret
                                                               << ", Established: " << accClientLink_->Established());
         return ret;

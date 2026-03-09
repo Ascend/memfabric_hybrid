@@ -91,6 +91,7 @@ SmemNetGroupEngine::~SmemNetGroupEngine()
     groupStoped_ = true;
     if (listenCtx_.watchId != UINT32_MAX) {
         (void)store_->Unwatch(listenCtx_.watchId);
+        listenCtx_.watchId = UINT32_MAX;
     }
     uint32_t linkStatusWatchId = listenLinkStatusWatchId_.load(std::memory_order_acquire);
     if (linkStatusWatchId != UINT32_MAX) {
@@ -595,14 +596,18 @@ Result SmemNetGroupEngine::ReleaseNumber(int32_t val)
 
 bool SmemNetGroupEngine::ReWatch()
 {
+    if (listenCtx_.watchId != UINT32_MAX) {
+        store_->Unwatch(listenCtx_.watchId);
+        listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
+    }
     uint32_t wid;
     auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY,
                              std::bind(&SmemNetGroupEngine::GroupWatchCb, this, std::placeholders::_1,
                                        std::placeholders::_2, std::placeholders::_3),
                              wid);
-    if (ret != SM_OK) {
-        SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
-        if (listenLinkStatusWatchId_.load() > 0) {
+    if (ret != SM_OK || wid == UINT32_MAX) {
+        SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret << ", wid: " << wid);
+        if (listenLinkStatusWatchId_.load() != UINT32_MAX) {
             store_->Unwatch(listenLinkStatusWatchId_.load());
             listenLinkStatusWatchId_.store(UINT32_MAX);
         }
@@ -612,20 +617,22 @@ bool SmemNetGroupEngine::ReWatch()
     SM_LOG_DEBUG("Watch group listen successfully, wid: " << wid);
     listenCtx_.watchId = wid;
     listenCtx_.ret = SM_OK;
-    if (listenLinkStatusWatchId_.load() == UINT32_MAX) {
-        ret = store_->Watch(
-            WatchRankType::WATCH_RANK_LINK_DOWN,
-            [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
-        if (ret != SM_OK) {
-            SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
-            store_->Unwatch(listenCtx_.watchId);
-            listenCtx_.watchId = UINT32_MAX;
-            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
-            return true;
-        }
-        listenLinkStatusWatchId_.store(wid);
-        SM_LOG_INFO("Watch link down event successfully, wid: " << wid);
+    if (listenLinkStatusWatchId_.load() != UINT32_MAX) {
+        return false;
     }
+    ret = store_->Watch(
+        WatchRankType::WATCH_RANK_LINK_DOWN,
+        [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
+    if (ret != SM_OK || wid == UINT32_MAX) {
+        SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
+        store_->Unwatch(listenCtx_.watchId);
+        listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+        return true;
+    }
+
+    listenLinkStatusWatchId_.store(wid);
+    SM_LOG_INFO("Watch link down event successfully, wid: " << wid);
     return false;
 }
 
@@ -641,7 +648,7 @@ void SmemNetGroupEngine::GroupListenEvent()
             continue;
         }
 
-        if (listenCtx_.watchId == UINT32_MAX) {
+        if (listenCtx_.watchId == UINT32_MAX || listenLinkStatusWatchId_.load() == UINT32_MAX) {
             if (ReWatch()) {
                 continue;
             }
@@ -663,10 +670,16 @@ void SmemNetGroupEngine::GroupListenEvent()
         }
 
         if (contextRet != SM_OK) {
-            store_->Unwatch(listenCtx_.watchId);
-            listenCtx_.watchId = UINT32_MAX;
-            store_->Unwatch(listenLinkStatusWatchId_.load());
+            if (listenCtx_.watchId != UINT32_MAX) {
+                store_->Unwatch(listenCtx_.watchId);
+            }
+            listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
+            auto watchId = listenLinkStatusWatchId_.load();
+            if (watchId != UINT32_MAX) {
+                store_->Unwatch(watchId);
+            }
             listenLinkStatusWatchId_.store(UINT32_MAX);
+            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << contextRet);
             continue;
         }
 
@@ -693,7 +706,14 @@ void SmemNetGroupEngine::GroupListenEvent()
 
 void SmemNetGroupEngine::JoinLeaveEventProcess(const std::string &value, std::string &prevEventValue)
 {
-    listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
+    uint32_t oldWatchId = UINT32_MAX;
+    listenSignal_.OperateInLock([this, &oldWatchId]() {
+        oldWatchId = listenCtx_.watchId;
+        listenCtx_.watchId = UINT32_MAX;
+    });
+    if (oldWatchId != UINT32_MAX) {
+        (void)store_->Unwatch(oldWatchId);
+    }
 
     JoinLeaveEventValue eVal;
     if (eVal.Parse(value) != SM_OK) {
