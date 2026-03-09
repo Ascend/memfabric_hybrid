@@ -859,6 +859,25 @@ TEST_F(AccLinksTest, test_tcp_link_connect_send_len_should_return_error)
     ASSERT_TRUE(ret != ACC_OK);
 }
 
+TEST_F(AccLinksTest, test_tcp_link_connect_send_closed_peer_should_return_reconnect)
+{
+    int socketPair[2];
+    ASSERT_EQ(::socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair), 0);
+
+    char buf[BUFF_SIZE];
+    memset(buf, 0, BUFF_SIZE);
+    AccTcpLinkDefaultPtr link =
+        AccMakeRef<AccTcpLinkDefault>(socketPair[0], "127.0.0.1:8100", AccTcpLinkDefault::NewId());
+    ASSERT_TRUE(link != nullptr);
+
+    ::shutdown(socketPair[1], SHUT_RDWR);
+    ::close(socketPair[1]);
+    socketPair[1] = -1;
+
+    int32_t ret = link->BlockSend(buf, BUFF_SIZE);
+    ASSERT_EQ(ret, ACC_LINK_NEED_RECONN);
+}
+
 TEST_F(AccLinksTest, test_tcp_link_connect_receive_fd_should_return_error)
 {
     char buf[BUFF_SIZE];
@@ -907,6 +926,27 @@ TEST_F(AccLinksTest, link_send_post_process)
     ASSERT_TRUE(ACC_LINK_EAGAIN == retEagain);
     auto retLinkError = tmpLink->SendPostProcess(0);
     ASSERT_TRUE(ACC_LINK_ERROR == retLinkError);
+}
+
+TEST_F(AccLinksTest, link_poll_out_write_closed_peer_should_return_epipe)
+{
+    int socketPair[2];
+    ASSERT_EQ(::socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair), 0);
+
+    SSL *ssl = nullptr;
+    AccTcpLinkComplexDefaultPtr link =
+        AccMakeRef<AccTcpLinkComplexDefault>(socketPair[0], "127.0.0.1", AccTcpLinkDefault::NewId(), ssl);
+    ASSERT_TRUE(link != nullptr);
+
+    ::shutdown(socketPair[1], SHUT_RDWR);
+    ::close(socketPair[1]);
+    socketPair[1] = -1;
+
+    char buf[BUFF_SIZE];
+    memset(buf, 0, BUFF_SIZE);
+    auto ret = link->PollOutWrite(buf, BUFF_SIZE);
+    ASSERT_LT(ret, 0);
+    ASSERT_EQ(errno, EPIPE);
 }
 
 TEST_F(AccLinksTest, fileUtils_regularFilePath_voidPath)

@@ -14,6 +14,7 @@
 #include "hybm_space_allocator.h"
 #include "hybm_ptracer.h"
 #include "dl_hybrid_api.h"
+#include "mf_env_util.h"
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
 #include "hcom_service_c_define.h"
@@ -34,28 +35,35 @@ Result HostDataOpRDMA::Initialize() noexcept
     if (inited_) {
         return BM_OK;
     }
+    rdmaSwapSpaceSize_ = MfEnvUtil::GetOptionalUintOrDefault("HYBM_RDMA_SWAP_SPACE_SIZE", RDMA_SWAP_SPACE_SIZE);
+    if (rdmaSwapSpaceSize_ == 0) {
+        inited_ = true;
+        return BM_OK;
+    }
     rdmaSwapBaseAddr_ =
-        mmap(nullptr, RDMA_SWAP_SPACE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+        mmap(nullptr, rdmaSwapSpaceSize_, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
     if (rdmaSwapBaseAddr_ == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to alloc size:" << RDMA_SWAP_SPACE_SIZE << " error:" << errno << ", "
+        BM_LOG_ERROR("Failed to alloc size:" << rdmaSwapSpaceSize_ << " error:" << errno << ", "
                                              << SafeStrError(errno));
+        rdmaSwapSpaceSize_ = 0;
         return BM_ERROR;
     }
-    BM_LOG_INFO("Allocated memory for swap buffer, buffer size : " << RDMA_SWAP_SPACE_SIZE);
+    BM_LOG_INFO("Allocated memory for swap buffer, size: " << rdmaSwapSpaceSize_);
     transport::TransportMemoryRegion input;
     input.addr = reinterpret_cast<uint64_t>(rdmaSwapBaseAddr_);
-    input.size = RDMA_SWAP_SPACE_SIZE;
+    input.size = rdmaSwapSpaceSize_;
     input.flags = transport::REG_MR_FLAG_DRAM;
     if (transportManager_ != nullptr) {
         auto ret = transportManager_->RegisterMemoryRegion(input);
         if (ret != BM_OK) {
-            BM_LOG_ERROR("Failed to register rdma swap memory, size: " << RDMA_SWAP_SPACE_SIZE);
+            BM_LOG_ERROR("Failed to register rdma swap memory, size: " << rdmaSwapSpaceSize_);
             free(rdmaSwapBaseAddr_);
             rdmaSwapBaseAddr_ = nullptr;
+            rdmaSwapSpaceSize_ = 0;
             return BM_MALLOC_FAILED;
         }
     }
-    rdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *)rdmaSwapBaseAddr_, RDMA_SWAP_SPACE_SIZE);
+    rdmaSwapMemoryAllocator_ = std::make_shared<RbtreeRangePool>((uint8_t *)rdmaSwapBaseAddr_, rdmaSwapSpaceSize_);
     inited_ = true;
     return BM_OK;
 }
@@ -69,9 +77,10 @@ void HostDataOpRDMA::UnInitialize() noexcept
         transportManager_->UnregisterMemoryRegion(reinterpret_cast<uint64_t>(rdmaSwapBaseAddr_));
     }
     if (rdmaSwapBaseAddr_ != nullptr) {
-        munmap(rdmaSwapBaseAddr_, RDMA_SWAP_SPACE_SIZE);
+        munmap(rdmaSwapBaseAddr_, rdmaSwapSpaceSize_);
         rdmaSwapBaseAddr_ = nullptr;
     }
+    rdmaSwapSpaceSize_ = 0;
     inited_ = false;
 }
 
@@ -261,8 +270,13 @@ Result ock::mf::HostDataOpRDMA::SafePut(const void *srcVA,
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
         return ret;
     }
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled and memory not registered, srcVa: "
+                     << srcBase << " destVa: " << destBase << " length: " << length);
+        return BM_ERROR;
+    }
     while (remainingLength > 0) {
-        uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
+        uint64_t currentChunkSize = std::min(remainingLength, rdmaSwapSpaceSize_);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);
         auto tmpHost = tmpRdmaMemory.Address();
         if (tmpHost == nullptr) {
@@ -310,8 +324,13 @@ Result ock::mf::HostDataOpRDMA::SafeGet(const void *srcVA, void *destVA, uint64_
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to copy rdma", ret);
         return ret;
     }
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled and memory not registered, srcVa: "
+                     << srcBase << " destVa: " << destBase << " length: " << length);
+        return BM_ERROR;
+    }
     while (remainingLength > 0) {
-        uint64_t currentChunkSize = std::min(remainingLength, RDMA_SWAP_SPACE_SIZE);
+        uint64_t currentChunkSize = std::min(remainingLength, rdmaSwapSpaceSize_);
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentChunkSize);
         auto tmpHost = tmpRdmaMemory.Address();
         if (tmpHost == nullptr) {
@@ -522,6 +541,10 @@ void HostDataOpRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, con
 Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor,
                                        const ExtOptions &options) noexcept
 {
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled, cannot batch write to remote host");
+        return BM_ERROR;
+    }
     Result ret = BM_OK;
     ExtOptions tmpOptions = options;
     tmpOptions.destRankId = rmtRankId;
@@ -533,7 +556,7 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
         uint64_t currentBatchDataSize = 0;
         size_t batchEnd = batchOffset;
         while (batchEnd < batchSize &&
-               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= rdmaSwapSpaceSize_) {
             currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
             ++batchEnd;
         }
@@ -541,7 +564,7 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
         // 如果连一个都放不下，说明单个 count 太大
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
-                                                                      << RDMA_SWAP_SPACE_SIZE);
+                                                                      << rdmaSwapSpaceSize_);
             ret = BM_INVALID_PARAM;
             break;
         }
@@ -601,6 +624,10 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
 Result HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCopyDescriptor,
                                       const ExtOptions &options) noexcept
 {
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled, cannot batch read from remote host");
+        return BM_ERROR;
+    }
     Result ret = BM_OK;
     ExtOptions tmpOptions = options;
     tmpOptions.srcRankId = rmtRankId;
@@ -612,13 +639,13 @@ Result HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCop
         uint64_t currentBatchDataSize = 0;
         size_t batchEnd = batchOffset;
         while (batchEnd < batchSize &&
-               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= rdmaSwapSpaceSize_) {
             currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
             ++batchEnd;
         }
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
-                                                                      << RDMA_SWAP_SPACE_SIZE);
+                                                                      << rdmaSwapSpaceSize_);
             ret = BM_INVALID_PARAM;
             break;
         }
@@ -780,6 +807,10 @@ Result HostDataOpRDMA::InnerBatchReadRH2LH(const CopyDescriptor &rmtCopyDescript
 
 Result HostDataOpRDMA::BatchReadRH2LH(CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept
 {
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled, cannot batch read from remote host");
+        return BM_ERROR;
+    }
     Result ret = BM_OK;
     size_t batchSize = rmtCopyDescriptor.counts.size();
     uint64_t batchOffset = 0;
@@ -787,13 +818,13 @@ Result HostDataOpRDMA::BatchReadRH2LH(CopyDescriptor &rmtCopyDescriptor, const E
         uint64_t currentBatchDataSize = 0;
         size_t batchEnd = batchOffset;
         while (batchEnd < batchSize &&
-               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= rdmaSwapSpaceSize_) {
             currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
             ++batchEnd;
         }
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
-                                                                      << RDMA_SWAP_SPACE_SIZE);
+                                                                      << rdmaSwapSpaceSize_);
             return BM_INVALID_PARAM;
         }
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentBatchDataSize);
@@ -862,6 +893,10 @@ Result HostDataOpRDMA::InnerBatchWriteLH2RH(const CopyDescriptor &rmtCopyDescrip
 
 Result HostDataOpRDMA::BatchWriteLH2RH(CopyDescriptor &rmtCopyDescriptor, const ExtOptions &options) noexcept
 {
+    if (rdmaSwapSpaceSize_ == 0) {
+        BM_LOG_ERROR("Swap space is disabled, cannot batch write to remote host");
+        return BM_ERROR;
+    }
     Result ret = BM_OK;
     size_t batchSize = rmtCopyDescriptor.counts.size();
     uint64_t batchOffset = 0;
@@ -869,13 +904,13 @@ Result HostDataOpRDMA::BatchWriteLH2RH(CopyDescriptor &rmtCopyDescriptor, const 
         uint64_t currentBatchDataSize = 0;
         size_t batchEnd = batchOffset;
         while (batchEnd < batchSize &&
-               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= RDMA_SWAP_SPACE_SIZE) {
+               currentBatchDataSize + rmtCopyDescriptor.counts[batchEnd] <= rdmaSwapSpaceSize_) {
             currentBatchDataSize += rmtCopyDescriptor.counts[batchEnd];
             ++batchEnd;
         }
         if (currentBatchDataSize == 0) {
             BM_LOG_ERROR("Single count exceeds HBM_SWAP_SPACE_SIZE: " << rmtCopyDescriptor.counts[batchOffset] << " > "
-                                                                      << RDMA_SWAP_SPACE_SIZE);
+                                                                      << rdmaSwapSpaceSize_);
             return BM_INVALID_PARAM;
         }
         auto tmpRdmaMemory = rdmaSwapMemoryAllocator_->Allocate(currentBatchDataSize);

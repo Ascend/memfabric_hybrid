@@ -615,7 +615,7 @@ Result AccTcpServerDefault::Handshake(int &tmpFD, const AccConnReq &connReq, con
                                       AccTcpLinkComplexPtr &newLink)
 {
     /* send connection request */
-    auto result = ::send(tmpFD, reinterpret_cast<const void *>(&connReq), sizeof(connReq), 0);
+    auto result = SocketSendNoSignal(tmpFD, reinterpret_cast<const void *>(&connReq), sizeof(connReq));
     if (result != sizeof(connReq)) {
         LOG_ERROR("Failed to send connecting handshake to " << ipAndPort << ", errno " << errno);
         SafeCloseFd(tmpFD);

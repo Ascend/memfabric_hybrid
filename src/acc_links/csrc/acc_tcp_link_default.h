@@ -104,14 +104,14 @@ public:
         ssize_t result = 0;
         while (remain > 0) {
             if (LIKELY(ssl_ == nullptr)) {
-                result = ::send(fd_, data, remain, 0);
+                result = SocketSendNoSignal(fd_, data, remain);
                 if (UNLIKELY(result < 0)) {
                     auto errorNumber = errno;
                     if (errorNumber == EINTR) { /* interrupted */
                         continue;
                     }
                     LOG_WARN("Failed to send data to " << ipPort_ << ", errno " << errorNumber);
-                    if (g_errnoToReconn.count(-errorNumber) > 0) {
+                    if (g_errnoToReconn.count(errorNumber) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
                     return -errorNumber;
@@ -125,7 +125,7 @@ public:
                     if (g_errnoToReconnSsl.count(sslErr) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
-                    if (sslErr == SSL_ERROR_SYSCALL && g_errnoToReconn.count(-errorNumber) > 0) {
+                    if (sslErr == SSL_ERROR_SYSCALL && g_errnoToReconn.count(errorNumber) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
                     return ACC_LINK_MSG_INVALID;
@@ -155,7 +155,7 @@ public:
 
         ssize_t result = 0;
         if (LIKELY(ssl_ == nullptr)) {
-            result = ::writev(fd_, iov, len);
+            result = SocketSendVectorNoSignal(fd_, iov, len);
             if (LIKELY(result == totalDataLen)) {
                 return ACC_OK;
             }
@@ -192,7 +192,7 @@ public:
                         continue;
                     }
                     LOG_WARN("Failed to read data from " << ipPort_ << ", errno " << errorNumber);
-                    if (g_errnoToReconn.count(-errorNumber) > 0) {
+                    if (g_errnoToReconn.count(errorNumber) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
                     return -errorNumber;
@@ -209,7 +209,7 @@ public:
                     if (g_errnoToReconnSsl.count(sslErr) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
-                    if (sslErr == SSL_ERROR_SYSCALL && g_errnoToReconn.count(-errorNumber) > 0) {
+                    if (sslErr == SSL_ERROR_SYSCALL && g_errnoToReconn.count(errorNumber) > 0) {
                         return ACC_LINK_NEED_RECONN;
                     }
                     return ACC_LINK_MSG_INVALID;

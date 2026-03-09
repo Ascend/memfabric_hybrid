@@ -328,7 +328,7 @@ inline ssize_t AccTcpLinkComplexDefault::PollInRecv(void *ptr, ssize_t len) noex
 inline ssize_t AccTcpLinkComplexDefault::PollOutWrite(void *ptr, ssize_t len) noexcept
 {
     if (LIKELY(ssl_ == nullptr)) {
-        return ::write(fd_, ptr, len);
+        return SocketSendNoSignal(fd_, ptr, len);
     } else {
         return OpenSslApiWrapper::SslWrite(ssl_, ptr, len);
     }

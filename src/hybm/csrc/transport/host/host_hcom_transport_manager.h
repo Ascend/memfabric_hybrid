@@ -24,6 +24,11 @@ namespace mf {
 namespace transport {
 namespace host {
 
+struct HcomRuntimeConfig {
+    uint64_t maxSliceSize;
+    uint64_t recvDataSize;
+};
+
 struct HcomMemoryRegion {
     uint64_t addr;
     uint64_t size;
@@ -132,6 +137,7 @@ private:
     std::string localNic_{};
     std::string localIp_{};
     Hcom_Service rpcService_{0};
+    HcomRuntimeConfig runtimeConfig_{};
     uint32_t rankId_{UINT32_MAX};
     uint32_t rankCount_{0};
     std::vector<std::mutex> mrMutex_;

@@ -18,6 +18,7 @@
 #include <sys/epoll.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unordered_map>
@@ -57,6 +58,27 @@ struct AccTcpWorkerOptions {
  * @param fd               [in] fd to be closed
  */
 void SafeCloseFd(int &fd, bool needShutdown = true);
+
+inline ssize_t SocketSendNoSignal(int fd, const void *buf, size_t len, int flags = 0)
+{
+#ifdef MSG_NOSIGNAL
+    return ::send(fd, buf, len, flags | MSG_NOSIGNAL);
+#else
+    return ::send(fd, buf, len, flags);
+#endif
+}
+
+inline ssize_t SocketSendVectorNoSignal(int fd, const struct iovec *iov, int iovcnt)
+{
+#ifdef MSG_NOSIGNAL
+    struct msghdr msg {};
+    msg.msg_iov = const_cast<struct iovec *>(iov);
+    msg.msg_iovlen = iovcnt;
+    return ::sendmsg(fd, &msg, MSG_NOSIGNAL);
+#else
+    return ::writev(fd, iov, iovcnt);
+#endif
+}
 
 constexpr int16_t MIN_MSG_TYPE = 0;
 constexpr int16_t MAX_MSG_TYPE = UNO_48;

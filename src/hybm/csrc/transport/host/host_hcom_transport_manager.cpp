@@ -19,6 +19,7 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include "dl_hcom_api.h"
+#include "mf_env_util.h"
 #include "host_hcom_common.h"
 #include "host_hcom_helper.h"
 #include "mf_tls_util.h"
@@ -39,7 +40,7 @@ constexpr uint64_t HCOM_COMPLETE_QUEUE_SIZE = 8192;
 constexpr uint64_t HCOM_QUEUE_PRE_POST_SIZE = 1024UL;
 constexpr uint8_t HCOM_TRANS_EP_SIZE = 1;
 constexpr int8_t HCOM_THREAD_PRIORITY = -20;
-constexpr uint64_t UB_SEGMENT_ADDR_ALIGN_SIZE  = 4096UL;
+constexpr uint64_t UB_SEGMENT_ADDR_ALIGN_SIZE = 4096UL;
 #else
 constexpr uint64_t HCOM_MAX_SLICE_SIZE = 1024 * 1024UL;
 constexpr uint64_t HCOM_RECV_DATA_SIZE = HCOM_MAX_SLICE_SIZE + 1024;
@@ -51,6 +52,38 @@ constexpr uint8_t HCOM_TRANS_EP_SIZE = 1;
 constexpr int8_t HCOM_THREAD_PRIORITY = -20;
 #endif
 const char *HCOM_RPC_SERVICE_NAME = "hybm_hcom_service";
+
+HcomRuntimeConfig LoadHcomRuntimeConfig()
+{
+    HcomRuntimeConfig runtimeConfig{};
+    runtimeConfig.maxSliceSize = HCOM_MAX_SLICE_SIZE;
+    runtimeConfig.recvDataSize = HCOM_RECV_DATA_SIZE;
+    runtimeConfig.maxSliceSize = MfEnvUtil::GetUintOrDefault("HCOM_MAX_SLICE_SIZE", HCOM_MAX_SLICE_SIZE);
+    runtimeConfig.recvDataSize = MfEnvUtil::GetUintOrDefault("HCOM_RECV_DATA_SIZE", HCOM_RECV_DATA_SIZE);
+    return runtimeConfig;
+}
+
+void HcomExternalLoggerAdapter(int level, const char *msg)
+{
+    const char *safeMsg = (msg == nullptr) ? "" : msg;
+    switch (level) {
+        case ock::mf::DEBUG_LEVEL:
+            BM_LOG_DEBUG("[HCOM] " << safeMsg);
+            break;
+        case ock::mf::INFO_LEVEL:
+            BM_LOG_INFO("[HCOM] " << safeMsg);
+            break;
+        case ock::mf::WARN_LEVEL:
+            BM_LOG_WARN("[HCOM] " << safeMsg);
+            break;
+        case ock::mf::ERROR_LEVEL:
+            BM_LOG_ERROR("[HCOM] " << safeMsg);
+            break;
+        default:
+            BM_LOG_INFO("[HCOM-" << level << "] " << safeMsg);
+            break;
+    }
+}
 } // namespace
 
 hybm_tls_config HcomTransportManager::tlsConfig_ = {};
@@ -82,9 +115,11 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
 {
     BM_ASSERT_RETURN(rpcService_ == 0, BM_OK);
     BM_ASSERT_RETURN(CheckTransportOptions(options) == BM_OK, BM_INVALID_PARAM);
+    runtimeConfig_ = LoadHcomRuntimeConfig();
+    DlHcomApi::SetExternalLogger(HcomExternalLoggerAdapter);
     Service_Options opt{};
     opt.workerGroupMode = C_SERVICE_BUSY_POLLING;
-    opt.maxSendRecvDataSize = HCOM_RECV_DATA_SIZE;
+    opt.maxSendRecvDataSize = runtimeConfig_.recvDataSize;
     opt.workerThreadPriority = HCOM_THREAD_PRIORITY;
     Service_Type enumProtocolType = HostHcomHelper::HybmDopTransHcomProtocol(options.protocol, options.nic);
     int ret = DlHcomApi::ServiceCreate(enumProtocolType, HCOM_RPC_SERVICE_NAME, opt, &rpcService_);
@@ -144,6 +179,7 @@ Result HcomTransportManager::CloseDevice()
     localIp_ = "";
     rankId_ = UINT32_MAX;
     rankCount_ = 0;
+    runtimeConfig_ = {};
     mrMutex_.clear();
     mrs_.clear();
     channelMutex_.clear();
@@ -563,7 +599,7 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     uint64_t remain = size;
     uint64_t offset = 0;
     while (remain > 0) {
-        uint32_t sliceSize = remain > HCOM_MAX_SLICE_SIZE ? HCOM_MAX_SLICE_SIZE : remain;
+        uint32_t sliceSize = remain > runtimeConfig_.maxSliceSize ? runtimeConfig_.maxSliceSize : remain;
 
         req.rAddress = reinterpret_cast<void *>(rAddr + offset);
         req.lAddress = reinterpret_cast<void *>(lAddr + offset);
@@ -630,7 +666,7 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
     uint64_t remain = size;
     uint64_t offset = 0;
     while (remain > 0) {
-        uint32_t sliceSize = remain > HCOM_MAX_SLICE_SIZE ? HCOM_MAX_SLICE_SIZE : remain;
+        uint32_t sliceSize = remain > runtimeConfig_.maxSliceSize ? runtimeConfig_.maxSliceSize : remain;
 
         req.rAddress = reinterpret_cast<void *>(rAddr + offset);
         req.lAddress = reinterpret_cast<void *>(lAddr + offset);
@@ -669,7 +705,7 @@ Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDe
         for (uint32_t i = index * HCOM_IOV_BATCH_SIZE; i < std::min(allBatch, (index + 1) * HCOM_IOV_BATCH_SIZE); ++i) {
             Channel_OneSideRequest req;
             req.rAddress = descriptor.globalAddrs[i];
-            req.lAddress  = descriptor.localAddrs[i];
+            req.lAddress = descriptor.localAddrs[i];
             req.size = static_cast<uint32_t>(descriptor.counts[i]);
             HcomMemoryRegion mr{};
             auto ret = GetMemoryRegionByAddr(rankId_, reinterpret_cast<uint64_t>(req.lAddress), mr);
@@ -892,7 +928,7 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
         for (uint32_t i = index * HCOM_IOV_BATCH_SIZE; i < std::min(allBatch, (index + 1) * HCOM_IOV_BATCH_SIZE); ++i) {
             Channel_OneSideRequest req;
             req.lAddress = descriptor.globalAddrs[i];
-            req.rAddress  = descriptor.localAddrs[i];
+            req.rAddress = descriptor.localAddrs[i];
             req.size = static_cast<uint32_t>(descriptor.counts[i]);
             HcomMemoryRegion mr{};
             auto ret = GetMemoryRegionByAddr(rankId_, reinterpret_cast<uint64_t>(req.lAddress), mr);
@@ -944,7 +980,6 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
     }
     return BM_OK;
 }
-
 
 Result HcomTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
