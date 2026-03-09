@@ -22,6 +22,7 @@ option(BUILD_PYTHON "build python file" ON)
 option(ENABLE_PTRACER "build ptracer" OFF)
 option(BUILD_TEST "Enable/disable build and package test utilities and examples" OFF)
 option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
+option(BUILD_ETCD_BACKEND "Enable/disable build etcd backend so" OFF)
 
 include(cmake/config_version.cmake)
 include(cmake/config_xpu.cmake)
@@ -161,6 +162,7 @@ include_directories(
 
 # include hcom cmake after TARGET_INSTALL_DIR set
 include(cmake/config_hcom.cmake)
+include(cmake/config_etcd.cmake)
 
 add_subdirectory(src)
 

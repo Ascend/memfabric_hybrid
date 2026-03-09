@@ -13,10 +13,12 @@ BUILD_TEST=${1:-BUILD_TEST}
 XPU_TYPE=${2:-NPU}
 BUILD_PYTHON=${3:-ON}
 BUILD_HCOM=${4:-OFF}
+BUILD_ETCD_BACKEND=${5:-OFF}
 echo "BUILD_TEST is ${BUILD_TEST}"
 echo "XPU_TYPE is ${XPU_TYPE}"
 echo "BUILD_PYTHON is ${BUILD_PYTHON}"
 echo "BUILD_HCOM is ${BUILD_HCOM}"
+echo "BUILD_ETCD_BACKEND is ${BUILD_ETCD_BACKEND}"
 set -e
 readonly BASH_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
@@ -61,6 +63,11 @@ if [ "${BUILD_HCOM}" == "ON" ]; then
 cp "${PROJECT_DIR}"/output/3rdparty/hcom/lib/libhcom.so ${PKG_DIR}/"${ARCH_OS}"/lib64
 cp -v "${PROJECT_DIR}"/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
        ${PKG_DIR}/"${ARCH_OS}"/lib64
+fi
+# etcd
+if [ "${BUILD_ETCD_BACKEND}" == "ON" ]; then
+    echo "========= package etcd client ============"
+    cp "${PROJECT_DIR}"/output/etcd/lib64/libetcd_client_v3.so ${PKG_DIR}/"${ARCH_OS}"/lib64
 fi
 # smem
 cp -r "${OUTPUT_DIR}"/smem/include/* ${PKG_DIR}/include/smem/

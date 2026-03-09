@@ -19,6 +19,7 @@ BUILD_TEST=${7:-OFF}
 BUILD_HCOM=${8:-OFF}
 BUILD_HCOM_WITH_RDMA=${9:-ON}
 BUILD_HCOM_WITH_UB=${10:-OFF}
+BUILD_ETCD_BACKEND=${11:-OFF}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -66,6 +67,7 @@ cmake \
     -DBUILD_HCOM="${BUILD_HCOM}" \
     -DBUILD_WITH_RDMA="${BUILD_HCOM_WITH_RDMA}" \
     -DBUILD_WITH_UB="${BUILD_HCOM_WITH_UB}" \
+    -DBUILD_ETCD_BACKEND="${BUILD_ETCD_BACKEND}" \
     -S . \
     -B build/
 ${MAKE_CMD} install -j32 -C build/
@@ -185,5 +187,6 @@ done
 mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 cp "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist/*.whl "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist
+rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/include
 
 cd ${CURRENT_DIR}
