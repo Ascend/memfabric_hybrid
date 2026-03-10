@@ -32,6 +32,8 @@ constexpr uint16_t K_PORT_ZERO = 0;
 constexpr uint16_t K_PORT_COMMON = 8080;
 constexpr uint16_t K_PORT_ETCD = 2379;
 constexpr uint16_t K_PORT_TCP_TEST = 12335;
+constexpr uint16_t K_PORT_TCP_NIC_SUFFIX = 12005;
+constexpr uint16_t K_PORT_TCP_NIC_ANY_ADDR = 10005;
 constexpr uint16_t K_PORT_ROUND_TRIP = 12345;
 constexpr uint16_t K_PORT_ROUND_TRIP_IPV6 = 9999;
 constexpr uint16_t K_PORT_TWO_PARAM = 9000;
@@ -100,6 +102,30 @@ TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_etcd_ipv6_bracketed)
     EXPECT_EQ(ip_, "2001:db8::1");
     EXPECT_EQ(port_, K_PORT_COMMON);
     EXPECT_EQ(type_, BackendType::ETCD);
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_ipv4_with_nic_suffix)
+{
+    const std::string endpoint = "tcp://192.168.0.1/16:" + std::to_string(K_PORT_TCP_NIC_SUFFIX);
+    EXPECT_TRUE(NetworkEndpointUtil::ExtractIpAndPort(endpoint, ip_, port_, type_));
+    EXPECT_EQ(ip_, "192.168.0.1");
+    EXPECT_EQ(port_, K_PORT_TCP_NIC_SUFFIX);
+    EXPECT_EQ(type_, BackendType::TCP);
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_any_addr_with_nic_suffix)
+{
+    const std::string endpoint = "tcp://0.0.0.0/0:" + std::to_string(K_PORT_TCP_NIC_ANY_ADDR);
+    EXPECT_TRUE(NetworkEndpointUtil::ExtractIpAndPort(endpoint, ip_, port_, type_));
+    EXPECT_EQ(ip_, "0.0.0.0");
+    EXPECT_EQ(port_, K_PORT_TCP_NIC_ANY_ADDR);
+    EXPECT_EQ(type_, BackendType::TCP);
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_ipv4_with_invalid_nic_suffix)
+{
+    const std::string endpoint = "tcp://192.168.0.1/eth0:" + std::to_string(K_PORT_TCP_NIC_SUFFIX);
+    EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort(endpoint, ip_, port_, type_));
 }
 
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_port_min)
@@ -174,6 +200,16 @@ TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_ipv6_missing_colon_after_bracke
     EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("tcp://[::1]8080", ip_, port_, type_));
 }
 
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_non_bracketed_ipv6_with_port)
+{
+    EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("tcp://2001:db8::1:8080", ip_, port_, type_));
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_non_bracketed_ipv6_missing_port)
+{
+    EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("tcp://2001:db8::1", ip_, port_, type_));
+}
+
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_empty_after_scheme)
 {
     EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("tcp://", ip_, port_, type_));
@@ -182,6 +218,24 @@ TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_empty_after_scheme)
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_trailing_colon_no_port)
 {
     EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("tcp://127.0.0.1:", ip_, port_, type_));
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_ipv4_with_mask_out_of_range)
+{
+    const std::string endpoint = "tcp://192.168.0.1/33:" + std::to_string(K_PORT_TCP_NIC_SUFFIX);
+    EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort(endpoint, ip_, port_, type_));
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_failure_resets_output)
+{
+    ip_ = "10.0.0.2";
+    port_ = K_PORT_COMMON;
+    type_ = BackendType::TCP;
+
+    EXPECT_FALSE(NetworkEndpointUtil::ExtractIpAndPort("bad://10.0.0.1:9000", ip_, port_, type_));
+    EXPECT_TRUE(ip_.empty());
+    EXPECT_EQ(port_, K_PORT_ZERO);
+    EXPECT_EQ(type_, BackendType::UNKNOWN);
 }
 
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_two_param_success)

@@ -19,6 +19,7 @@
 #include <map>
 #include <regex>
 #include "mf_ipv4_validator.h"
+#include "network_endpoint_util.h"
 #include "mf_str_util.h"
 
 namespace ock {
@@ -66,8 +67,9 @@ inline bool IsValidIpV4(const std::string &address)
 
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
 {
-    std::map<std::string, std::string> details;
-    auto parser = mf::SocketAddressParserMgr::getInstance().CreateParser(url);
+    auto tcpUrl = url;
+    NetworkEndpointUtil::ConvertToTcpUrl(tcpUrl);
+    auto parser = mf::SocketAddressParserMgr::getInstance().CreateParser(tcpUrl);
     SM_ASSERT_RETURN(parser != nullptr, SM_ERROR);
 
     std::string ipStr = parser->GetIp();

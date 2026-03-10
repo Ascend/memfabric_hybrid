@@ -12,13 +12,15 @@
 #include "smem_tcp_config_store_server.h"
 
 #include <algorithm>
+#include <cstring>
 #include <utility>
 #include "acc_tcp_server.h"
-#include "config_store_log.h"
+#include "smem_config_store_logger.h"
 #include "smem_message_packer.h"
 #include "smem_config_store.h"
 #include "smem_tcp_config_store_ssl_helper.h"
 #include "mf_str_util.h"
+#include "smem_logger.h"
 
 namespace ock {
 namespace smem {
@@ -26,6 +28,8 @@ namespace smem {
 std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
 constexpr uint16_t MAX_U16_INDEX = 65535;
 constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
+constexpr int32_t EPHEMERAL_KEY_TTL_SEC = 5;
+constexpr int32_t PERSISTENT_KEY_TTL_SEC = 0;
 
 AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend) noexcept
     : requestHandlers_{{MessageType::SET, &AccStoreServer::SetHandler},
@@ -42,7 +46,7 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
 
 Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
 {
-    std::lock_guard<std::mutex> guard(storeMutex_);
+    std::unique_lock<std::mutex> guard(storeMutex_);
     if (accTcpServer_ != nullptr) {
         STORE_LOG_WARN("tcp store server already startup");
         return SM_OK;
@@ -92,6 +96,15 @@ Result AccStoreServer::Startup(const smem_tls_config &tlsConfig) noexcept
     rankStateThread_ = std::thread{[this]() { RankStateTask(); }};
     checkerThread_ = std::thread{[this]() { CheckerThreadTask(); }};
     STORE_LOG_DEBUG("startup acc tcp server on port: " << listenPort_);
+    if (!backend_->IsDistributed()) {
+        return SM_OK;
+    }
+    if (LaunchCleanupThread() != SM_OK) {
+        SM_LOG_ERROR("LaunchCleanupThread failed");
+        guard.unlock();
+        Shutdown(false);
+        return SM_ERROR;
+    }
     return SM_OK;
 }
 
@@ -112,6 +125,7 @@ void AccStoreServer::Shutdown(bool afterFork) noexcept
         }
         std::unique_lock<std::mutex> lockGuard{storeMutex_};
         running_ = false;
+        shouldStop_.store(true);
         storeCond_.notify_all();
         accTcpServer_ = nullptr;
     }
@@ -128,6 +142,10 @@ void AccStoreServer::Shutdown(bool afterFork) noexcept
     }
     if (checkerThread_.joinable()) {
         checkerThread_.join();
+    }
+    shouldStop_.store(true);
+    if (cleanupThread_.joinable()) {
+        cleanupThread_.join();
     }
     STORE_LOG_INFO("finished shutdown Acc Store Server");
 }
@@ -174,10 +192,12 @@ Result AccStoreServer::ReceiveMessageHandler(const ock::acc::AccTcpRequestContex
 Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
                                             const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
-    STORE_LOG_INFO("new link connected, linkId: " << link->Id() << ", rank: " << std::hex << req.rankId);
     uint32_t worldSize = static_cast<uint32_t>(req.rankId >> 32);
     uint32_t rankId = static_cast<uint32_t>(req.rankId & 0xFFFFFFFF);
+    STORE_LOG_INFO("New link connected, linkId: " << link->Id() << ", worldSize: " << worldSize
+                                                  << ", rankId: " << rankId);
     if (worldSize_ == std::numeric_limits<uint32_t>::max()) {
+        SM_ASSERT_RETURN(PersistWorldSize(worldSize) == SUCCESS, SM_ERROR);
         worldSize_ = worldSize;
         STORE_LOG_INFO("Success to fix world size:" << worldSize_);
     }
@@ -193,10 +213,11 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     trans.rankId = rankId;
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    auto ret = backend_->Put(autoRankingStr, std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data)), 0);
+    auto ret = backend_->Put(autoRankingStr, std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data)),
+                             EPHEMERAL_KEY_TTL_SEC);
     STORE_ASSERT_RETURN(ret == SUCCESS, ret);
     aliveRankSet_.insert(rankId);
-
+    SM_ASSERT_RETURN(PersistAliveRankIds(aliveRankSet_) == SUCCESS, SM_ERROR);
     return SM_OK;
 }
 
@@ -219,6 +240,7 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         rankId = trans.rankId;
         aliveRankSet_.erase(rankId);
         STORE_ASSERT_RETURN(backend_->Delete(autoRankingStr) == SUCCESS, SM_ERROR);
+        PersistAliveRankIds(aliveRankSet_);
         STORE_LOG_INFO("link broken, linkId: " << linkId << " remove rankId: " << rankId);
     }
     heartBeatMap_.erase(link->Id());
@@ -233,6 +255,7 @@ Result AccStoreServer::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
         timedWaiters_.clear();
         rankStateWaiters_.clear();
         rankStateTaskQueue_ = {};
+        (void)backend_->Delete(KEY_ALIVE_RANK_LIST);
     }
     rankStateWaiters_.erase(linkId);
     if (rankId == std::numeric_limits<uint32_t>::max()) {
@@ -288,9 +311,9 @@ Result AccStoreServer::SetHandler(const ock::acc::AccTcpRequestContext &context,
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        ret = backend_->Put(key, std::move(value), 0);
+        ret = backend_->Put(key, std::move(value), EPHEMERAL_KEY_TTL_SEC);
     } else {
-        ret = backend_->Put(key, std::move(value), 0);
+        ret = backend_->Put(key, std::move(value), EPHEMERAL_KEY_TTL_SEC);
     }
     lockGuard.unlock();
 
@@ -332,6 +355,10 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
         rankIndex_ %= worldSize_;
         if (aliveRankSet_.find(rankIndex_) == aliveRankSet_.end()) {
             aliveRankSet_.insert(rankIndex_);
+            if (PersistAliveRankIds(aliveRankSet_) != SUCCESS) {
+                aliveRankSet_.erase(rankIndex_);
+                return SM_ERROR;
+            }
             break;
         }
         rankIndex_++;
@@ -342,7 +369,7 @@ Result AccStoreServer::FindOrInsertRank(const ock::acc::AccTcpRequestContext &co
     } trans{};
     trans.rankId = rankIndex_;
     std::vector<uint8_t> data{trans.date, trans.date + sizeof(trans.date)};
-    ret = backend_->Put(rankingKey, std::move(data), 0);
+    ret = backend_->Put(rankingKey, std::move(data), EPHEMERAL_KEY_TTL_SEC);
     lockGuard.unlock();
 
     responseMessage.values.emplace_back(trans.date, trans.date + sizeof(trans.date));
@@ -368,6 +395,10 @@ Result AccStoreServer::GetHandler(const ock::acc::AccTcpRequestContext &context,
     }
 
     if (key.compare(0, autoRankingStr_.size(), autoRankingStr_) == 0) {
+        if (!GetStatus()) {
+            ReplyWithMessage(context, StoreErrorCode::ERROR, "leader status inactive");
+            return SM_ERROR;
+        }
         return FindOrInsertRank(context, request);
     }
 
@@ -473,7 +504,7 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        ret = backend_->Put(key, std::move(value), 0);
+        ret = backend_->Put(key, std::move(value), EPHEMERAL_KEY_TTL_SEC);
     } else {
         std::string oldValueStr{oldValue.begin(), oldValue.end()};
         long storedValueNum = 0;
@@ -487,7 +518,8 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
 
         storedValueNum += valueNum;
         auto storedValueStr = std::to_string(storedValueNum);
-        ret = backend_->Put(key, std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end()), 0);
+        ret = backend_->Put(key, std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end()),
+                            EPHEMERAL_KEY_TTL_SEC);
         responseValue = storedValueNum;
     }
     lockGuard.unlock();
@@ -555,7 +587,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
     if (ret == SUCCESS) {
         oldValue.insert(oldValue.end(), value.begin(), value.end());
         newSize = oldValue.size();
-        ret = backend_->Put(key, oldValue, 0);
+        ret = backend_->Put(key, oldValue, EPHEMERAL_KEY_TTL_SEC);
     } else {
         newSize = value.size();
         auto wPos = keyWaiters_.find(key);
@@ -564,7 +596,7 @@ Result AccStoreServer::AppendHandler(const ock::acc::AccTcpRequestContext &conte
             reqVal = value;
             keyWaiters_.erase(wPos);
         }
-        ret = backend_->Put(key, std::move(value), 0);
+        ret = backend_->Put(key, std::move(value), EPHEMERAL_KEY_TTL_SEC);
     }
     if (ExecuteHandle(MessageType::APPEND, context.Link()->Id(), key, appendValue) != SM_OK) {
         lockGuard.unlock();
@@ -608,7 +640,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     auto ret = backend_->Get(key, oldValue);
     if (ret != SUCCESS) {
         STORE_LOG_INFO("write: not find key:" << key << ", new alloc mem: " << offset + realValSize);
-        ret = backend_->Put(key, std::vector<uint8_t>(offset + realValSize, 0), 0);
+        ret = backend_->Put(key, std::vector<uint8_t>(offset + realValSize, 0), EPHEMERAL_KEY_TTL_SEC);
         if (ret != SUCCESS) {
             STORE_LOG_ERROR("put failed, key=" << key << ", ret: " << ret);
             ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -628,7 +660,7 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
         ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
         return StoreErrorCode::ERROR;
     }
-    ret = backend_->Put(key, curValue, 0);
+    ret = backend_->Put(key, curValue, EPHEMERAL_KEY_TTL_SEC);
     if (ret != SUCCESS) {
         lockGuard.unlock();
         STORE_LOG_ERROR("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key
@@ -672,14 +704,14 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
     if (ret == SUCCESS) {
         if (expected == oldValue) {
             exists = std::move(oldValue);
-            ret = backend_->Put(key, exchange, 0);
+            ret = backend_->Put(key, exchange, EPHEMERAL_KEY_TTL_SEC);
         } else {
             exists = oldValue;
         }
     } else {
         ret = SUCCESS;
         if (expected.empty()) {
-            ret = backend_->Put(key, exchange, 0);
+            ret = backend_->Put(key, exchange, EPHEMERAL_KEY_TTL_SEC);
             auto wPos = keyWaiters_.find(key);
             if (wPos != keyWaiters_.end()) {
                 wakeupWaiters = GetOutWaitersInLock(wPos->second);
@@ -895,6 +927,230 @@ Result AccStoreServer::ExecuteHandle(int16_t opCode, uint32_t linkId, std::strin
         return SM_OK;
     }
     return it->second(linkId, key, value, backend_);
+}
+
+Result AccStoreServer::RestoreFromBackend() noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return SM_OK;
+    }
+    SM_LOG_INFO("Starting restore from backend...");
+
+    if (auto ret = RecoverAliveRankIds(aliveRankFromBackend_); ret != StoreErrorCode::SUCCESS) {
+        SM_LOG_WARN("Failed to recover alive rank IDs from backend");
+        return SM_OK;
+    }
+
+    SM_LOG_INFO("Restore from backend completed, alive ranks: " << aliveRankFromBackend_.size());
+    return SM_OK;
+}
+
+bool AccStoreServer::GetStatus() noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return true;
+    }
+    static constexpr int retries = 5;
+    static constexpr int retryIntervalSec = 2;
+    for (int attempt = 0; attempt <= retries; ++attempt) {
+        std::string status;
+        auto ret = backend_->Get(KEY_LEADER_STATUS, status);
+        if (ret != 0) {
+            SM_LOG_WARN("Failed to get leader status from backend, error code: "
+                        << ret << ", attempt: " << (attempt + 1) << "/" << (retries + 1));
+        } else if (status == "true") {
+            SM_LOG_DEBUG("Leader status: active");
+            return true;
+        } else {
+            SM_LOG_DEBUG("Leader status: inactive, attempt: " << (attempt + 1) << "/" << (retries + 1));
+        }
+        if (attempt < retries) {
+            std::this_thread::sleep_for(std::chrono::seconds(retryIntervalSec));
+        }
+    }
+    SM_LOG_WARN("Leader status check failed after " << (retries + 1) << " attempts");
+    return false;
+}
+
+Result AccStoreServer::UpdateStatus(bool status) noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return SM_OK;
+    }
+    Result ret;
+    if (status) {
+        ret = backend_->Put(KEY_LEADER_STATUS, "true", EPHEMERAL_KEY_TTL_SEC);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("Failed to set leader status to active");
+        } else {
+            SM_LOG_INFO("Leader status set to active");
+        }
+    } else {
+        ret = backend_->Delete(KEY_LEADER_STATUS);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("Failed to remove leader status");
+        } else {
+            SM_LOG_INFO("Leader status removed");
+        }
+    }
+
+    return ret;
+}
+
+StoreErrorCode AccStoreServer::PersistWorldSize(uint32_t size) noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return StoreErrorCode::SUCCESS;
+    }
+    const std::string str = std::to_string(size);
+    const std::vector<uint8_t> data(str.begin(), str.end());
+    auto ret = backend_->Put(KEY_WORLD_SIZE, data, EPHEMERAL_KEY_TTL_SEC);
+    if (ret != SUCCESS) {
+        SM_LOG_ERROR("Failed to persist world size: " << size);
+    } else {
+        SM_LOG_INFO("World size persisted: " << size);
+    }
+    return ret;
+}
+
+StoreErrorCode AccStoreServer::PersistAliveRankIds(const std::unordered_set<uint32_t> &ranks) noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return SUCCESS;
+    }
+    if (ranks.empty()) {
+        auto ret = backend_->Delete(KEY_ALIVE_RANK_LIST);
+        if (ret != SUCCESS) {
+            SM_LOG_ERROR("Failed to remove alive ranks key from backend");
+            return ret;
+        }
+        SM_LOG_INFO("Alive ranks cleared in backend");
+        return SUCCESS;
+    }
+    std::stringstream ss;
+    auto it = ranks.begin();
+    ss << *it;
+
+    for (++it; it != ranks.end(); ++it) {
+        ss << "," << *it;
+    }
+    const std::string str = ss.str();
+    const std::vector<uint8_t> data(str.begin(), str.end());
+    auto ret = backend_->Put(KEY_ALIVE_RANK_LIST, data, 0);
+    if (ret != SUCCESS) {
+        SM_LOG_ERROR("Failed to persist alive ranks, count: " << ranks.size());
+    } else {
+        SM_LOG_INFO("Alive ranks persisted, count: " << ranks.size());
+    }
+    return ret;
+}
+
+StoreErrorCode AccStoreServer::RecoverAliveRankIds(std::unordered_set<uint32_t> &outRanks) noexcept
+{
+    if (!backend_->IsDistributed()) {
+        return SUCCESS;
+    }
+    outRanks.clear();
+    std::string rankStr;
+    auto ret = backend_->Get(KEY_ALIVE_RANK_LIST, rankStr);
+    if (ret != 0) {
+        SM_LOG_WARN("Failed to get alive ranks from backend, error code: " << ret);
+        return SUCCESS;
+    }
+    if (rankStr.empty()) {
+        SM_LOG_INFO("No alive ranks found in backend");
+        return SUCCESS;
+    }
+
+    auto list = mf::StrUtil::Split(rankStr, ',');
+    for (const auto &idStr : list) {
+        if (idStr.empty()) {
+            continue;
+        }
+        uint32_t val;
+        if (!mf::StrUtil::String2Uint(idStr, val)) {
+            SM_LOG_ERROR("Rank ID check failed: " << idStr);
+            outRanks.clear();
+            return ERROR;
+        }
+        outRanks.insert(static_cast<uint32_t>(val));
+    }
+
+    // Remove from backend only after successful parsing
+    ret = backend_->Delete(KEY_ALIVE_RANK_LIST);
+    if (ret != SUCCESS) {
+        SM_LOG_WARN("Failed to remove alive ranks key after recovery");
+    }
+
+    SM_LOG_INFO("Recovered alive ranks from backend, count: " << outRanks.size());
+    return SUCCESS;
+}
+
+Result AccStoreServer::LaunchCleanupThread()
+{
+    const bool isFirstUpdate = aliveRankFromBackend_.empty();
+    // First status update
+    if (UpdateStatus(isFirstUpdate) != SM_OK) {
+        SM_LOG_ERROR("backend update status failed.");
+        return SM_ERROR;
+    }
+
+    // Launch cleanup thread only for non-first update
+    if (!isFirstUpdate) {
+        if (cleanupThread_.joinable()) {
+            cleanupThread_.join();
+        }
+
+        cleanupThread_ = std::thread([this]() { CleanupStaleRanks(); });
+    }
+    SM_LOG_INFO("Started cleanup thread successful, old rank size: " << aliveRankFromBackend_.size());
+    return SM_OK;
+}
+
+void AccStoreServer::CleanupStaleRanks() noexcept
+{
+    // Wait 5 seconds before cleanup
+    {
+        std::unique_lock<std::mutex> lock{storeMutex_};
+        if (storeCond_.wait_for(lock, std::chrono::seconds(STORE_WAIT_TIMEOUT_SEC),
+                                [this] { return shouldStop_.load(std::memory_order_acquire); })) {
+            return;
+        }
+    }
+
+    std::unordered_set<uint32_t> ranksToRemove;
+    {
+        std::lock_guard<std::mutex> lock{storeMutex_};
+        for (const uint32_t rank : aliveRankSet_) {
+            aliveRankFromBackend_.erase(rank);
+        }
+        ranksToRemove = aliveRankFromBackend_;
+    }
+
+    // Process removals
+    for (uint32_t rankId : ranksToRemove) {
+        {
+            std::lock_guard<std::mutex> lock{storeMutex_};
+            rankStateTaskQueue_.push(rankId);
+        }
+        STORE_LOG_INFO("Remove old rankId: " << rankId);
+    }
+
+    // Notify and wait again
+    storeCond_.notify_all();
+    {
+        std::unique_lock<std::mutex> lock{storeMutex_};
+        if (storeCond_.wait_for(lock, std::chrono::seconds(STORE_WAIT_TIMEOUT_SEC),
+                                [this] { return shouldStop_.load(std::memory_order_acquire); })) {
+            return;
+        }
+    }
+
+    // Final status update
+    if (UpdateStatus(true) != SM_OK) {
+        SM_LOG_ERROR("backend final update status failed in cleanup thread.");
+    }
+    SM_LOG_INFO("backend final update status successful in cleanup thread.");
 }
 } // namespace smem
 } // namespace ock

@@ -21,9 +21,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <charconv>
 #include <cerrno>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <system_error>
 #include <string_view>
 
 namespace ock {
@@ -297,36 +300,45 @@ bool NetworkEndpointUtil::FindAvailablePort(uint16_t &port, bool isIpv6) noexcep
 bool NetworkEndpointUtil::ExtractIpAndPort(const std::string &endpoint, std::string &ip, uint16_t &port,
                                            BackendType &type) noexcept
 {
-    if (endpoint.empty()) {
-        SM_LOG_ERROR("endpoint is empty.");
-        return false;
-    }
-
+    ip.clear();
+    port = 0;
     type = BackendType::UNKNOWN;
 
+    auto resetAndFail = [&]() noexcept {
+        ip.clear();
+        port = 0;
+        type = BackendType::UNKNOWN;
+        return false;
+    };
+
+    if (endpoint.empty()) {
+        SM_LOG_ERROR("endpoint is empty.");
+        return resetAndFail();
+    }
+
     constexpr const char *kTcpPrefix = "tcp://";
-    constexpr const char *kHttpPrefix = "etcd://";
+    constexpr const char *kEtcdPrefix = "etcd://";
     constexpr size_t kTcpPrefixLen = 6;
-    constexpr size_t kHttpPrefixLen = 7;
+    constexpr size_t kEtcdPrefixLen = 7;
     constexpr size_t kBracketPortOffset = 2; // "]:" length
     constexpr uint32_t kMaxPort = 65535U;
-    constexpr uint32_t kBase10 = 10U;
+    constexpr uint32_t kIpv4MaskMax = 32U;
 
     std::string processed;
     if (endpoint.compare(0, kTcpPrefixLen, kTcpPrefix) == 0) {
         processed = endpoint.substr(kTcpPrefixLen);
         type = BackendType::TCP;
-    } else if (endpoint.compare(0, kHttpPrefixLen, kHttpPrefix) == 0) {
-        processed = endpoint.substr(kHttpPrefixLen);
+    } else if (endpoint.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0) {
+        processed = endpoint.substr(kEtcdPrefixLen);
         type = BackendType::ETCD;
     } else {
         SM_LOG_ERROR("protocol not supported, endpoint=" << endpoint);
-        return false;
+        return resetAndFail();
     }
 
     if (processed.empty()) {
         SM_LOG_ERROR("empty host:port part, endpoint=" << endpoint);
-        return false;
+        return resetAndFail();
     }
 
     std::string ipStr;
@@ -337,7 +349,7 @@ bool NetworkEndpointUtil::ExtractIpAndPort(const std::string &endpoint, std::str
         if (closeBracket == std::string::npos || closeBracket + 1 >= processed.size() ||
             processed[closeBracket + 1] != ':') {
             SM_LOG_ERROR("invalid bracketed ipv6 endpoint, processed=" << processed);
-            return false;
+            return resetAndFail();
         }
 
         ipStr = processed.substr(1, closeBracket - 1);
@@ -346,40 +358,72 @@ bool NetworkEndpointUtil::ExtractIpAndPort(const std::string &endpoint, std::str
         const size_t colonPos = processed.rfind(':');
         if (colonPos == std::string::npos || colonPos == 0 || colonPos == processed.size() - 1) {
             SM_LOG_ERROR("invalid host:port format, processed=" << processed);
-            return false;
+            return resetAndFail();
         }
 
         ipStr = processed.substr(0, colonPos);
         portStr = processed.substr(colonPos + 1);
+
+        // Enforce bracketed IPv6 endpoint format to avoid ambiguous parsing.
+        if (ipStr.find(':') != std::string::npos) {
+            SM_LOG_ERROR("non-bracketed ipv6 endpoint is not supported, endpoint=" << endpoint);
+            return resetAndFail();
+        }
+    }
+
+    // Keep compatibility with mask suffix format: tcp://<ip>/<mask>:<port>
+    if (type == BackendType::TCP && processed[0] != '[') {
+        const size_t maskPos = ipStr.find('/');
+        if (maskPos != std::string::npos) {
+            if (maskPos == 0 || maskPos + 1 >= ipStr.size()) {
+                SM_LOG_ERROR("invalid mask suffix, ip=" << ipStr << ", endpoint=" << endpoint);
+                return resetAndFail();
+            }
+            for (size_t i = maskPos + 1; i < ipStr.size(); ++i) {
+                const char c = ipStr[i];
+                if (!std::isdigit(static_cast<unsigned char>(c))) {
+                    SM_LOG_ERROR("invalid mask suffix, ip=" << ipStr << ", endpoint=" << endpoint);
+                    return resetAndFail();
+                }
+            }
+
+            const std::string maskStr = ipStr.substr(maskPos + 1);
+            uint32_t maskValue = 0;
+            const char *maskBegin = maskStr.data();
+            const char *maskEnd = maskBegin + maskStr.size();
+            const auto maskRet = std::from_chars(maskBegin, maskEnd, maskValue);
+            if (maskRet.ec != std::errc() || maskRet.ptr != maskEnd || maskValue > kIpv4MaskMax) {
+                SM_LOG_ERROR("mask out of range, mask=" << maskStr << ", endpoint=" << endpoint);
+                return resetAndFail();
+            }
+
+            ipStr = ipStr.substr(0, maskPos);
+        }
     }
 
     const AddressFamily family = DetectAddressFamily(ipStr);
     if (family == AddressFamily::STORE_UNKNOWN) {
         SM_LOG_ERROR("invalid ip, ip=" << ipStr << ", endpoint=" << endpoint);
-        return false;
+        return resetAndFail();
     }
 
     if (portStr.empty()) {
         SM_LOG_ERROR("empty port, endpoint=" << endpoint);
-        return false;
+        return resetAndFail();
     }
 
     uint32_t portValue = 0;
-    for (const char c : portStr) {
-        if (c < '0' || c > '9') {
-            SM_LOG_ERROR("non-digit port char, portStr=" << portStr << ", endpoint=" << endpoint);
-            return false;
-        }
-        portValue = (portValue * kBase10) + static_cast<uint32_t>(c - '0');
-        if (portValue > kMaxPort) {
-            SM_LOG_ERROR("port out of range, portStr=" << portStr << ", endpoint=" << endpoint);
-            return false;
-        }
+    const char *portBegin = portStr.data();
+    const char *portEnd = portBegin + portStr.size();
+    const auto portRet = std::from_chars(portBegin, portEnd, portValue);
+    if (portRet.ec != std::errc() || portRet.ptr != portEnd) {
+        SM_LOG_ERROR("invalid port, portStr=" << portStr << ", endpoint=" << endpoint);
+        return resetAndFail();
     }
 
-    if (portValue == 0U) {
-        SM_LOG_ERROR("port cannot be zero, endpoint=" << endpoint);
-        return false;
+    if (portValue == 0U || portValue > kMaxPort) {
+        SM_LOG_ERROR("port out of range, port=" << portValue << ", endpoint=" << endpoint);
+        return resetAndFail();
     }
 
     port = static_cast<uint16_t>(portValue);

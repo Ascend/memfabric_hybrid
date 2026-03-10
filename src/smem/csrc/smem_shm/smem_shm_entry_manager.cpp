@@ -36,16 +36,12 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
     UrlExtraction option;
     std::string url(configStoreIpPort);
     SM_ASSERT_RETURN(option.ExtractIpPortFromUrl(url) == SM_OK, SM_INVALID_PARAM);
-
+    storeUrl_ = url;
     if (rankId == 0 && config->startConfigStoreServer) {
-        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, true, 0);
-        ip_ = option.ip;
-        port_ = option.port;
+        store_ = ock::smem::StoreFactory::CreateStoreByUrl(storeUrl_, true, 0);
     } else {
-        store_ = ock::smem::StoreFactory::CreateStore(option.ip, option.port, false, static_cast<int32_t>(rankId),
+        store_ = ock::smem::StoreFactory::CreateStoreByUrl(storeUrl_, false, static_cast<int32_t>(rankId),
                                                       static_cast<int32_t>(config->shmInitTimeout));
-        ip_ = option.ip;
-        port_ = option.port;
     }
     SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 
@@ -147,7 +143,7 @@ void SmemShmEntryManager::Destroy()
 {
     inited_ = false;
     store_ = nullptr;
-    StoreFactory::DestroyStore(ip_, port_);
+    StoreFactory::DestroyStore(storeUrl_);
 }
 } // namespace smem
 } // namespace ock

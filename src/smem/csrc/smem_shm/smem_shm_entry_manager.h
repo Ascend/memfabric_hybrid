@@ -51,8 +51,7 @@ private:
     smem_shm_config_t config_{};
     uint16_t deviceId_ = 0;
     bool inited_ = false;
-    std::string ip_;
-    uint16_t port_ = 9980L;
+    std::string storeUrl_;
 
     StorePtr store_ = nullptr;
 };

@@ -82,10 +82,7 @@ public:
         reconnectHandler = callback;
     }
 
-    void SetRankId(const int32_t &rankId) noexcept override
-    {
-        rankId_ = rankId;
-    }
+    void SetRankId(const int32_t &rankId) noexcept override;
 
     Result ReConnectAfterBroken(int reconnectRetryTimes) noexcept override;
     bool GetConnectStatus() noexcept override;
@@ -95,6 +92,22 @@ public:
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override;
 
     void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override;
+
+    // return started
+    bool SetServerInfo(const std::string &ip, uint16_t port)
+    {
+        std::unique_lock<std::mutex> guard(mutex_);
+        if (serverIp_ == ip && port == serverPort_) {
+            return rankId_ >= 0;
+        }
+        serverIp_ = ip;
+        serverPort_ = port;
+        if (accClientLink_ != nullptr && accClientLink_->Established()) {
+            accClientLink_->Close();
+            accClientLink_ = nullptr;
+        }
+        return rankId_ >= 0;
+    }
 
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override;
@@ -129,14 +142,15 @@ private:
     static std::atomic<uint32_t> reqSeqGen_;
 
     std::mutex mutex_;
-    const std::string serverIp_;
-    const uint16_t serverPort_;
+    std::string serverIp_;
+    uint16_t serverPort_;
     const bool isServer_;
     int32_t rankId_;
     const uint32_t worldSize_;
     std::atomic<bool> isConnect_{false};
     ConfigStoreReconnectHandler reconnectHandler{nullptr};
-    ConfigStoreClientBrokenHandler brokenHandler_ = nullptr;
+    std::mutex brokenHandlerMutex_;
+    std::vector<ConfigStoreClientBrokenHandler> brokenHandler_;
     std::atomic<bool> isRunning_{false};
     std::thread heartBeatThread_;
     StoreBackendPtr backend_;

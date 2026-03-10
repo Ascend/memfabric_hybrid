@@ -92,9 +92,8 @@ int32_t SmemBmEntryManager::PrepareStore()
     StoreFactory::SetTlsInfo(config_.storeTlsConfig);
     if (!config_.autoRanking) {
         SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
-        confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port,
-                                               (config_.rankId == 0 && config_.startConfigStoreServer), worldSize_,
-                                               static_cast<int>(config_.rankId));
+        confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, (config_.rankId == 0 && config_.startConfigStoreServer),
+                                                    worldSize_, static_cast<int>(config_.rankId));
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
     } else {
         if (config_.startConfigStoreServer) {
@@ -103,7 +102,7 @@ int32_t SmemBmEntryManager::PrepareStore()
         }
 
         if (confStore_ == nullptr) {
-            confStore_ = StoreFactory::CreateStoreClient(storeUrlExtraction_.ip, storeUrlExtraction_.port, worldSize_);
+            confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, false, worldSize_);
             SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
         }
     }
@@ -120,7 +119,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
         return SM_OK;
     }
 
-    confStore_ = StoreFactory::CreateStore(storeUrlExtraction_.ip, storeUrlExtraction_.port, true, worldSize_);
+    confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, true, worldSize_);
     if (confStore_ != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE) {
         return SM_OK;
     }
@@ -130,23 +129,22 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
 
 int32_t SmemBmEntryManager::AutoRanking()
 {
-    std::string localIp;
-    std::vector<uint8_t> rankIdDate;
-    auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdDate, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
-    if (ret == SM_OK && rankIdDate.size() == sizeof(uint32_t)) {
+    std::vector<uint8_t> rankIdData;
+    auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdData, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+    if (ret == SM_OK && rankIdData.size() == sizeof(uint32_t)) {
         union Transfer {
             uint32_t rankId;
-            uint8_t date[4];
+            uint8_t data[4];
         } trans{};
-        std::copy_n(rankIdDate.begin(), sizeof(trans.date), trans.date);
+        std::copy_n(rankIdData.begin(), sizeof(trans.data), trans.data);
         config_.rankId = trans.rankId;
         auto tcpConfigStore = Convert<ConfigStore, ConfigStoreManager>(confStore_);
         tcpConfigStore->SetRankId(config_.rankId);
-        SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " localIp: " << localIp
-                                                       << " deviceId: " << deviceId_);
+        SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " deviceId: " << deviceId_);
         return SM_OK;
     }
-    SM_LOG_ERROR("Failed to auto ranking deviceId: " << deviceId_);
+    SM_LOG_ERROR("Failed to auto ranking deviceId: " << deviceId_ << ", ret: " << ret
+                                                     << ", dataSize: " << rankIdData.size());
     return SM_ERROR;
 }
 
@@ -241,7 +239,7 @@ void SmemBmEntryManager::Destroy()
     std::lock_guard<std::mutex> guard(entryMutex_);
     inited_ = false;
     confStore_ = nullptr;
-    StoreFactory::DestroyStore(storeUrlExtraction_.ip, storeUrlExtraction_.port);
+    StoreFactory::DestroyStore(storeURL_);
 }
 
 } // namespace smem

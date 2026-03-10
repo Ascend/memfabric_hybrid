@@ -49,6 +49,23 @@ public:
      */
     static void DestroyStore(const std::string &ip, uint16_t port) noexcept;
 
+    /**
+     * @brief create a new store
+     * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or redis://127.0.0.1:12335
+     * @param isServer is local store server side
+     * @param rankId rank id, default 0
+     * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
+     * @return Newly created store
+     */
+    static StorePtr CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize = 0,
+                                     int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
+
+    /**
+    * @brief destroy on exist store
+    * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335
+    */
+    static void DestroyStore(const std::string &storeUrl) noexcept;
+
     static void DestroyStoreAll(bool afterFork = false) noexcept;
 
     /**
@@ -64,6 +81,8 @@ public:
     static void SetTlsInfo(const smem_tls_config &tlsOption) noexcept;
 
 private:
+    static StorePtr CreateHaStore(const StoreBackendPtr &backend, const std::string &storeUrl,
+                                  uint32_t worldSize) noexcept;
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
     static smem_tls_config tlsOption_;

@@ -23,7 +23,7 @@
 #include "smem_types.h"
 #include "smem_ref.h"
 #include "smem_config_store_backend.h"
-#include "config_store_errno.h"
+#include "smem_config_store_errno.h"
 
 namespace ock {
 namespace smem {

@@ -11,7 +11,7 @@
  */
 
 #include <mutex>
-#include "config_store_log.h"
+#include "smem_config_store_logger.h"
 #include "smem_local_memory_backend.h"
 
 namespace ock {
@@ -76,19 +76,20 @@ bool SmemLocalMemoryBackend::SupportsTTL() const noexcept
 
 StoreErrorCode SmemLocalMemoryBackend::AcquireDistributedLock(const std::string &name) noexcept
 {
-    STORE_LOG_ERROR("Not implemented yet");
+    STORE_LOG_ERROR("Distributed lock is not supported by local memory backend, lock name: " << name);
     return StoreErrorCode::ERROR;
 }
 
 StoreErrorCode SmemLocalMemoryBackend::ReleaseDistributedLock(const std::string &name) noexcept
 {
-    STORE_LOG_ERROR("Not implemented yet");
+    STORE_LOG_ERROR("Distributed lock is not supported by local memory backend, lock name: " << name);
     return StoreErrorCode::ERROR;
 }
 
 StoreErrorCode SmemLocalMemoryBackend::TryAcquireDistributedLock(const std::string &name, int64_t timeoutMs) noexcept
 {
-    STORE_LOG_ERROR("Not implemented yet");
+    (void)timeoutMs;
+    STORE_LOG_ERROR("Distributed lock is not supported by local memory backend, lock name: " << name);
     return StoreErrorCode::ERROR;
 }
 

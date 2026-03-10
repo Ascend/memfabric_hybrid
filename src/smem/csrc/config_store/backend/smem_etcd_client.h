@@ -19,6 +19,7 @@
 #include <atomic>
 #include <mutex>
 #include "dl_etcd_api.h"
+#include "smem_logger.h"
 
 namespace ock::smem {
 
@@ -50,7 +51,14 @@ public:
     {
         // Fast path: already initialized
         if (client_.load(std::memory_order_acquire) != nullptr) {
-            SM_LOG_INFO("Client already initialized, skipping re-initialization");
+            // Warn if parameters differ from initial configuration
+            if (endpoints != nullptr && endpoints_ != endpoints) {
+                SM_LOG_WARN("Client already initialized with different endpoints. "
+                            << "Current: " << endpoints_ << ", Requested: " << endpoints
+                            << ". Using existing connection.");
+            } else {
+                SM_LOG_INFO("Client already initialized, skipping re-initialization");
+            }
             return 0;
         }
 
@@ -58,7 +66,14 @@ public:
 
         // Double-check after acquiring lock
         if (client_.load(std::memory_order_relaxed) != nullptr) {
-            SM_LOG_INFO("Client already initialized after lock acquisition, skipping");
+            // Warn if parameters differ from initial configuration
+            if (endpoints != nullptr && endpoints_ != endpoints) {
+                SM_LOG_WARN("Client already initialized after lock with different endpoints. "
+                            << "Current: " << endpoints_ << ", Requested: " << endpoints
+                            << ". Using existing connection.");
+            } else {
+                SM_LOG_INFO("Client already initialized after lock acquisition, skipping");
+            }
             return 0;
         }
 
@@ -71,6 +86,10 @@ public:
             return -1;
         }
 
+        // Store initial endpoints for comparison on re-initialization attempts
+        if (endpoints != nullptr) {
+            endpoints_ = endpoints;
+        }
         client_.store(rawClient, std::memory_order_release);
         SM_LOG_INFO("Etcd client initialized successfully, endpoints: " << endpoints);
         return 0;
@@ -129,7 +148,7 @@ public:
         size_t rawLen = 0;
         int32_t ret = EtcdApi::EtcdGet(cli, key.data(), &rawBuf, &rawLen);
         if (ret != 0) {
-            SM_LOG_ERROR("GetValue failed: EtcdGet returned " << ret << ", key: " << key
+            SM_LOG_WARN("GetValue failed: EtcdGet returned " << ret << ", key: " << key
                                                               << ", error: " << smem::EtcdApi::EtcdGetLastError(cli));
             return -1;
         }
@@ -208,6 +227,7 @@ private:
 
     std::atomic<EtcdClient *> client_;
     std::mutex initMutex_;
+    std::string endpoints_;  // Store initial endpoints for comparison
 };
 
 class EtcdLockGuard {

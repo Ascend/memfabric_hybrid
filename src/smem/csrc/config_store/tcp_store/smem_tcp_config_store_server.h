@@ -82,6 +82,10 @@ public:
 
     void RegisterOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept;
 
+    Result RestoreFromBackend() noexcept;
+    bool GetStatus() noexcept;
+    Result UpdateStatus(bool status) noexcept;
+
 private:
     Result ReceiveMessageHandler(const ock::acc::AccTcpRequestContext &context) noexcept;
     Result LinkConnectedHandler(const ock::acc::AccConnReq &req, const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
@@ -112,7 +116,13 @@ private:
     Result ExecuteHandle(int16_t opCode, uint32_t linkId, std::string &key, std::vector<uint8_t> &value) noexcept;
 
 private:
+    StoreErrorCode PersistWorldSize(uint32_t size) noexcept;
+    StoreErrorCode PersistAliveRankIds(const std::unordered_set<uint32_t> &ranks) noexcept;
+    StoreErrorCode RecoverAliveRankIds(std::unordered_set<uint32_t> &outRanks) noexcept;
+    Result LaunchCleanupThread();
+    void CleanupStaleRanks() noexcept;
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;
+    static constexpr uint32_t STORE_WAIT_TIMEOUT_SEC = 5U;
     // prevent access broken global value during global static destructor
     const std::string autoRankingStr_ = AutoRankingStr;
 
@@ -128,7 +138,9 @@ private:
     std::unordered_map<int64_t, std::unordered_set<uint64_t>> timedWaiters_;
     std::thread timerThread_;
     bool running_{false};
-
+    std::atomic<bool> shouldStop_{false};
+    std::thread cleanupThread_;
+    std::unordered_set<uint32_t> aliveRankFromBackend_;
     std::unordered_map<uint32_t, StoreWaitContext> rankStateWaiters_;
     std::queue<uint32_t> rankStateTaskQueue_;
     std::thread rankStateThread_;

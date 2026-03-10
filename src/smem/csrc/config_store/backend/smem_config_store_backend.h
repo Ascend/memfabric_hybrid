@@ -22,11 +22,17 @@
 #include <vector>
 
 #include "smem_ref.h"
-#include "config_store_errno.h"
+#include "smem_config_store_errno.h"
 #include "smem_types.h"
 
 namespace ock {
 namespace smem {
+
+constexpr auto KEY_LEADER = "/memfabric_hybrid/config_store/meta/leader";
+constexpr auto KEY_LEADER_STATUS = "/memfabric_hybrid/config_store/meta/leader_status";
+constexpr auto KEY_ELECTION_LOCK = "/memfabric_hybrid/config_store/lock/election";
+constexpr auto KEY_WORLD_SIZE = "/memfabric_hybrid/config_store/data/world_size";
+constexpr auto KEY_ALIVE_RANK_LIST = "/memfabric_hybrid/config_store/data/alive_rank_list";
 
 /**
  * @brief Abstract interface for configuration store backend implementations

@@ -35,10 +35,10 @@ void smem_uninit();
 int32_t smem_create_config_store(const char *storeUrl);
 ```
 
-|参数/返回值| 含义                                                            |
-|-|---------------------------------------------------------------|
-|storeUrl| 业务面地址，格式tcp:://ip:port，如tcp://[::1]:5124，tcp://127.0.0.1:5124 |
-|返回值| 成功返回0，其他为错误码                                                  |
+| 参数/返回值   | 含义                                                                                   |
+|----------|--------------------------------------------------------------------------------------|
+| storeUrl | 业务面地址，格式tcp:://ip:port，如tcp://[::1]:5124，tcp://127.0.0.1:5124, etcd://127.0.0.1:5124 |
+| 返回值      | 成功返回0，其他为错误码                                                                         |
 
 
 ### 3. 日志设置
@@ -153,13 +153,13 @@ int32_t smem_bm_config_init(smem_bm_config_t *config);
 int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId, const smem_bm_config_t *config);
 ```
 
-|参数/返回值|含义|
-|-|-|
-|storeURL|config store地址，格式tcp://ip:port|
-|worldSize|参与初始化BM的rank数量，最大支持1024|
-|deviceId|当前rank的deviceId|
-|config|BM初始化配置|
-|返回值|成功返回0，其他为错误码|
+| 参数/返回值    | 含义                                                |
+|-----------|---------------------------------------------------|
+| storeURL  | config store地址，格式tcp://ip:port  or etcd://ip:port |
+| worldSize | 参与初始化BM的rank数量，最大支持1024                           |
+| deviceId  | 当前rank的deviceId                                   |
+| config    | BM初始化配置                                           |
+| 返回值       | 成功返回0，其他为错误码                                      |
 
 #### smem_bm_uninit
 BM退出

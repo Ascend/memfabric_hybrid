@@ -51,13 +51,13 @@ int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startC
         auto ret = GetLocalIpWithTarget(urlExtraction_.ip, localIp);
         SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
         if (localIp == urlExtraction_.ip) {
-            tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, true, 0, -1, maxRetry);
+            tmpStore = StoreFactory::CreateStoreByUrl(storeURL_, true, 0, -1, maxRetry);
             SM_VALIDATE_RETURN(tmpStore != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE,
                                "create store client with url failed.", SM_NEW_OBJECT_FAILED);
         }
     }
     if (tmpStore == nullptr) {
-        tmpStore = StoreFactory::CreateStore(urlExtraction_.ip, urlExtraction_.port, false, 0, -1, maxRetry);
+        tmpStore = StoreFactory::CreateStoreByUrl(storeURL_, false, 0, -1, maxRetry);
         SM_VALIDATE_RETURN(tmpStore != nullptr, "create store client with url failed.", SM_NEW_OBJECT_FAILED);
     }
 
@@ -71,7 +71,7 @@ int SmemStoreHelper::Initialize(uint16_t entityId, int32_t maxRetry, bool startC
 void SmemStoreHelper::Destroy() noexcept
 {
     store_ = nullptr;
-    StoreFactory::DestroyStore(urlExtraction_.ip, urlExtraction_.port);
+    StoreFactory::DestroyStore(storeURL_);
 }
 
 void SmemStoreHelper::SetSliceExportSize(size_t sliceExportSize) noexcept

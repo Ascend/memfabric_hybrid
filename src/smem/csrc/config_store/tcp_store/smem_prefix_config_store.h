@@ -143,6 +143,8 @@ public:
         baseStore_->RegisterServerOpHandler(opCode, handler);
     }
 
+    void SetRankId(const int32_t &rankId) noexcept override;
+
 protected:
     Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept override
     {
@@ -154,6 +156,11 @@ private:
     const StoreManagerPtr baseStore_;
     const std::string keyPrefix_;
 };
+
+inline void PrefixConfigStore::SetRankId(const int32_t &rankId) noexcept
+{
+    baseStore_->SetRankId(rankId);
+}
 } // namespace smem
 } // namespace ock
 

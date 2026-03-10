@@ -51,7 +51,7 @@ Result EtcdApi::LoadLibrary()
     }
     libraryHandle_ = dlopen(kLibraryName, RTLD_NOW | RTLD_NODELETE);
     if (libraryHandle_ == nullptr) {
-        SM_LOG_WARN("Failed to open library [" << kLibraryName << "], error: " << dlerror());
+        SM_LOG_ERROR("Failed to open library [" << kLibraryName << "], error: " << dlerror());
         return SM_ERROR;
     }
     bool success = true;

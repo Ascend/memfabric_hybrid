@@ -11,7 +11,7 @@
 */
 
 #include "smem_tcp_config_store.h"
-#include "config_store_log.h"
+#include "smem_config_store_logger.h"
 #include "smem_message_packer.h"
 #include "smem_tcp_config_store_ssl_helper.h"
 #include "mf_str_util.h"
@@ -227,6 +227,7 @@ Result TcpConfigStore::ServerStart(const smem_tls_config &tlsConfig, int reconne
 void TcpConfigStore::Shutdown(bool afterFork) noexcept
 {
     isRunning_.store(false);
+    SetConnectStatus(false);
     if (heartBeatThread_.joinable()) {
         heartBeatThread_.join();
     }
@@ -580,12 +581,21 @@ TcpConfigStore::SendMessageBlocked(const std::vector<uint8_t> &reqBody) noexcept
     msgCtxLocker.unlock();
     auto ret = LocalNonBlockSend(0, seqNo, dataBuf, nullptr);
     if (ret != SM_OK) {
+        std::unique_lock<std::mutex> msgCtxLocker0{msgCtxMutex_};
+        msgClientContext_.erase(seqNo);
+        msgCtxLocker0.unlock();
         STORE_LOG_ERROR("send message failed, result: " << ret);
         return nullptr;
     }
 
     auto response = waitContext->WaitFinished();
     return response;
+}
+
+void TcpConfigStore::SetRankId(const int32_t &rankId) noexcept
+{
+    rankId_ = rankId;
+    STORE_LOG_INFO("Set rankId: " << rankId_);
 }
 
 Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
@@ -600,7 +610,8 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
         STORE_LOG_ERROR_LIMIT("Reconnect to server failed, result.");
         return result;
     }
-    STORE_LOG_INFO("Reconnect to server successful.");
+    STORE_LOG_INFO("Reconnect to server successful, rankId: " << rankId_);
+    SetConnectStatus(true);
     if (reconnectHandler) {
         (void)reconnectHandler();
     }
@@ -619,7 +630,8 @@ void TcpConfigStore::SetConnectStatus(bool status) noexcept
 
 void TcpConfigStore::RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept
 {
-    brokenHandler_ = std::move(handler);
+    std::lock_guard<std::mutex> guard(brokenHandlerMutex_);
+    brokenHandler_.push_back(handler);
 }
 
 void TcpConfigStore::RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept
@@ -644,8 +656,14 @@ Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &l
 {
     STORE_LOG_WARN("link broken, linkId: " << link->Id());
     SetConnectStatus(false);
-    if (brokenHandler_ != nullptr) {
-        brokenHandler_();
+    std::vector<ConfigStoreClientBrokenHandler> handlers;
+    {
+        std::lock_guard<std::mutex> guard(brokenHandlerMutex_);
+        handlers = brokenHandler_;
+    }
+    for (auto &handler : handlers) {
+        STORE_LOG_INFO("link broken, linkId: " << link->Id() << ", call extern handler.");
+        (void)handler();
     }
     std::unordered_map<uint32_t, std::shared_ptr<ClientCommonContext>> tempContext;
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
@@ -719,7 +737,7 @@ void TcpConfigStore::HeartBeat() noexcept
             auto packedRequest = SmemMessagePacker::Pack(request);
             auto dataBuf = ock::acc::AccDataBuffer::Create(packedRequest.data(), packedRequest.size());
             if (dataBuf == nullptr) {
-                STORE_LOG_ERROR("create data buffer falied, no enough mem");
+                STORE_LOG_ERROR("create data buffer failed, no enough mem");
                 continue;
             }
             auto ret = LocalNonBlockSend(0, 0, dataBuf, nullptr);
