@@ -20,16 +20,18 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/utils
         ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine
         ${PROJECT_HYBM_SRC_BASE}/csrc/under_api
-        ${PROJECT_UTIL_SRC_BASE}/ptracer/include
 
+        ${PROJECT_UTIL_SRC_BASE}/ptracer/include
         ${PROJECT_SMEM_SRC_BASE}/include/host
         ${PROJECT_SMEM_SRC_BASE}/csrc
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_SMEM_SRC_BASE}/csrc/net
         ${PROJECT_SMEM_SRC_BASE}/csrc/common
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/backend
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/ha
         ${PROJECT_SMEM_SRC_BASE}/csrc/config_store/tcp_store
+        ${PROJECT_SMEM_SRC_BASE}/csrc/smem_bm
 
         ${PROJECT_ACCLINKS_SRC_BASE}/include
         ${PROJECT_ACCLINKS_SRC_BASE}/csrc
