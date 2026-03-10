@@ -44,7 +44,7 @@ class HybmVmmBasedSegment : public MemSegment {
 public:
     explicit HybmVmmBasedSegment(const MemSegmentOptions &options, int eid) : MemSegment{options, eid} {}
 
-    ~HybmVmmBasedSegment() override {}
+    ~HybmVmmBasedSegment() override;
 
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;

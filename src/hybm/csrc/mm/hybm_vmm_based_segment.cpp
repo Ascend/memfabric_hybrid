@@ -21,6 +21,20 @@
 
 using namespace ock::mf;
 
+HybmVmmBasedSegment::~HybmVmmBasedSegment()
+{
+    if (globalVirtualAddress_ == nullptr && localVirtualAddress_ == nullptr && slices_.empty()) {
+        return;
+    }
+
+    auto ret = UnReserveMemorySpace();
+    if (ret != BM_OK) {
+        BM_LOG_WARN("Destructor cleanup failed, ret:" << ret
+                                                      << " gva:" << reinterpret_cast<void *>(globalVirtualAddress_)
+                                                      << " lva:" << reinterpret_cast<void *>(localVirtualAddress_));
+    }
+}
+
 Result HybmVmmBasedSegment::ValidateOptions() noexcept
 {
     auto checkAlignment = [&](uint64_t size, uint64_t align) -> bool {
@@ -89,17 +103,34 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
 
 Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
 {
-    BM_LOG_INFO("UnReserveMemorySpace gva:" << reinterpret_cast<void *>(globalVirtualAddress_) 
-        << ", lva:" << reinterpret_cast<void *>(localVirtualAddress_));
+    BM_LOG_INFO("UnReserveMemorySpace gva:" << reinterpret_cast<void *>(globalVirtualAddress_)
+                                            << ", lva:" << reinterpret_cast<void *>(localVirtualAddress_));
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
-        ReleaseSliceMemory(slice);
+        auto ret = ReleaseSliceMemory(slice);
+        if (ret != BM_OK) {
+            BM_LOG_WARN("ReleaseSliceMemory failed during unreserve, ret:" << ret << " slice:" << slice);
+            return ret;
+        }
     }
     if (localVirtualAddress_ != nullptr) {
-        DlHalApi::HalMemAddressFree(reinterpret_cast<void *>(localVirtualAddress_));
+        auto ret = DlHalApi::HalMemAddressFree(reinterpret_cast<void *>(localVirtualAddress_));
+        BM_LOG_INFO("free reserved address lva:" << reinterpret_cast<void *>(localVirtualAddress_)
+                                                 << " return:" << ret);
+        if (ret != BM_OK) {
+            BM_LOG_WARN("HalMemAddressFree failed, keep reserved VA state. ret:"
+                        << ret << " gva:" << reinterpret_cast<void *>(globalVirtualAddress_)
+                        << " lva:" << reinterpret_cast<void *>(localVirtualAddress_));
+            return BM_DL_FUNCTION_FAILED;
+        }
         localVirtualAddress_ = nullptr;
     }
-    HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
+    if (globalVirtualAddress_ != nullptr) {
+        HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
+        globalVirtualAddress_ = nullptr;
+    }
+    totalVirtualSize_ = 0UL;
+    allocatedSize_ = 0UL;
     return BM_OK;
 }
 
