@@ -39,7 +39,7 @@ std::mutex initMutex;
 
 int32_t HybmGetInitDeviceId()
 {
-    return initedDeviceId;
+    return initedDeviceId; // userDeviceId
 }
 
 bool HybmHasInited()

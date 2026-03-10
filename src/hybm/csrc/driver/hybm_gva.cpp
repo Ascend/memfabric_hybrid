@@ -28,7 +28,7 @@ int32_t initedLogicDeviceId = -1;
 
 int32_t HybmGetInitedLogicDeviceId()
 {
-    return initedLogicDeviceId;
+    return initedLogicDeviceId; // logicDeviceId
 }
 
 int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddress)

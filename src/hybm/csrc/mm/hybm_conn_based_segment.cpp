@@ -360,7 +360,7 @@ Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t l
     }
 
     if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        auto ret = DlHalApi::HalHostRegister(sliceAddr, size, HOST_MEM_MAP_DEV, options_.devId, &dva);
+        auto ret = DlHalApi::HalHostRegister(sliceAddr, size, HOST_MEM_MAP_DEV, logicDeviceId_, &dva);
         if (ret != BM_OK) {
             BM_LOG_ERROR("register host va failed, ret:" << ret);
             munmap(sliceAddr, size);
@@ -371,7 +371,7 @@ Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t l
                                                      HYBM_MEM_TYPE_HOST}, options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
-        DlHalApi::HalHostUnregisterEx(sliceAddr, options_.devId, HOST_MEM_MAP_DEV);
+        DlHalApi::HalHostUnregisterEx(sliceAddr, logicDeviceId_, HOST_MEM_MAP_DEV);
         munmap(sliceAddr, size);
         return ret;
     }

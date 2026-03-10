@@ -120,7 +120,7 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
         void *output = nullptr;
 #if defined(ASCEND_NPU)
         ret = DlHalApi::HalHostRegister(const_cast<void *>(addr), size,
-                                        HOST_MEM_MAP_DEV, options_.devId, &output);
+                                        HOST_MEM_MAP_DEV, logicDeviceId_, &output);
         if (ret != 0) {
             BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr << " ret: " << ret);
             return ret;
@@ -132,7 +132,7 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
         if (ret != 0) {
             BM_LOG_ERROR("add va info failed, va:" << VaToStr(va) << " ret:" << ret);
 #if defined(ASCEND_NPU)
-            DlHalApi::HalHostUnregisterEx(const_cast<void *>(addr), options_.devId, HOST_MEM_MAP_DEV);
+            DlHalApi::HalHostUnregisterEx(const_cast<void *>(addr), logicDeviceId_, HOST_MEM_MAP_DEV);
 #endif
             return ret;
         }

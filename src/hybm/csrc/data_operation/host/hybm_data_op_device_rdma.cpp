@@ -21,6 +21,7 @@
 #include "hybm_logger.h"
 #include "hybm_types.h"
 #include "hybm_ptracer.h"
+#include "hybm_gva.h"
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
 
@@ -125,7 +126,7 @@ Result DataOpDeviceRDMA::AllocSwapMemory()
 
     void *output;
     ret = DlHalApi::HalHostRegister(ptr, RDMA_SWAP_SPACE_SIZE,
-                                    HOST_MEM_MAP_DEV, HybmGetInitDeviceId(), &output);
+                                    HOST_MEM_MAP_DEV, HybmGetInitedLogicDeviceId(), &output);
     if (ret != 0) {
         BM_LOG_ERROR("Register swap mem failed, addr: " << ptr << " ret: " << ret);
         return ret;

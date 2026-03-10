@@ -363,7 +363,7 @@ Result HybmVmmBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcep
         bool isHbm = (realAddr >= HYBM_HBM_START_ADDR && realAddr < HYBM_HBM_END_ADDR);
         if (!isHbm) {
             auto ret = DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(realAddr),
-                options_.devId, HOST_MEM_MAP_DEV);
+                logicDeviceId_, HOST_MEM_MAP_DEV);
             BM_LOG_INFO("unregister slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << ret);
         }
         registerSlices_.erase(registerPos);
