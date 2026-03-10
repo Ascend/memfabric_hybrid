@@ -693,7 +693,8 @@ class MfTest(TestServer):
         handle = self._bm_handle_dic[handle_id]
         self.cli_print(
             f"src_ptr={src_ptr}, dst_ptr={hex(dst_ptr)}, size={size}, type={bm.BmCopyType(copy_type)}, flags={flags}")
-        handle.copy_data(src_ptr=src_ptr, dst_ptr=dst_ptr, size=size, type=bm.BmCopyType(copy_type), flags=flags)
+        ret = handle.copy_data(src_ptr=src_ptr, dst_ptr=dst_ptr, size=size, type=bm.BmCopyType(copy_type), flags=flags)
+        self.cli_print(f"bm copy_data, ret:{ret}")
 
     @result_handler
     def bm_copy_data_batch(self, handle_id: int, src_addrs_str: int, dst_addrs_str: int, sizes_str: int,
@@ -704,7 +705,7 @@ class MfTest(TestServer):
         sizes = list(map(int, sizes_str.split(",")))
         ret = handle.copy_data_batch(src_addrs=src_addrs, dst_addrs=dst_addrs, sizes=sizes, count=count,
                                      type=bm.BmCopyType(copy_type), flags=flags)
-        self.cli_print(f"bm copy_data_abtch, ret:{ret}")
+        self.cli_print(f"bm copy_data_batch, ret:{ret}")
 
     @result_handler
     def bm_wait(self, handle_id: int):
