@@ -346,10 +346,10 @@ class MmcTest(TestServer):
         config = FlatConfigParser(conf_path)
         smem_config = SmemBmClientConfig(
             config_store_url=config.get('ock.mmc.local_service.config_store_url'),
-            world_size=int(config.get('ock.mmc.local_service.world_size')),
+            world_size=int(config.get('ock.mmc.local_service.world_size', '256')),
             protocol=config.get('ock.mmc.local_service.protocol'),
-            dram_size=size_to_bytes(config.get('ock.mmc.local_service.dram.size')),
-            hbm_size=size_to_bytes(config.get('ock.mmc.local_service.hbm.size')),
+            dram_size=size_to_bytes(config.get('ock.mmc.local_service.dram.size', '0')),
+            hbm_size=size_to_bytes(config.get('ock.mmc.local_service.hbm.size', '0')),
             nic=str(config.get('ock.mmc.local_service.hcom_url'))
         )
         return smem_config
@@ -507,7 +507,7 @@ if __name__ == "__main__":
         _, ip_str, port_str, device_id_str, rank_id_str = sys.argv
         server = MmcTest(ip_str, port_str, int(device_id_str), int(rank_id_str))
     else:
-        print("Please input ip and port when starting the process.")
+        print("Please input ip and port when starting the process.", flush=True)
         sys.exit(1)
-    print(f"Start app_id: {ip_str}:{port_str}")
+    print(f"Start app_id: {ip_str}:{port_str}", flush=True)
     server.start()
