@@ -130,9 +130,8 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
     }
     lvaBase_ = reinterpret_cast<uint8_t *>(base) + options_.maxSize * options_.rankId;
     if (options_.isSecondMapping) {
-        auto gvaInfo =
-            HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, totalVirtualSize_,
-                                                         HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
+        auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(
+            options_.rankId, totalVirtualSize_, totalVirtualSize_, HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
         globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     } else {
         globalVirtualAddress_ = reinterpret_cast<uint8_t *>(base);
@@ -176,13 +175,15 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
     slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, gva,
                                        reinterpret_cast<uint64_t>(sliceAddr), size);
     slices_.emplace(slice->index_, slice);
-    auto ret = HybmVaManager::GetInstance().AddVaInfo(
-        {gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE}, options_.rankId);
-    if (ret != 0) {
-        BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
-        drv::HalGvaFree(slice->vAddress_, size);
-        slices_.erase(slice->index_);
-        return ret;
+    if (size > 0) {
+        auto ret = HybmVaManager::GetInstance().AddVaInfo(
+            {gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE}, options_.rankId);
+        if (ret != 0) {
+            BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
+            drv::HalGvaFree(slice->vAddress_, size);
+            slices_.erase(slice->index_);
+            return ret;
+        }
     }
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << ").");
     return BM_OK;
@@ -325,8 +326,8 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
         if (desInfos[i].rankId == options_.rankId) {
             continue;
         }
-        if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId)
-            && logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) { // 应当用logic id判断是否需要p2p
+        if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId) &&
+            logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) { // 应当用logic id判断是否需要p2p
             auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_

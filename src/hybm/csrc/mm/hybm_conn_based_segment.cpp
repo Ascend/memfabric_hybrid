@@ -108,7 +108,7 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
     }
     if (options_.isSecondMapping && options_.shmFd >= 0) {
         BM_LOG_ERROR("do not support memory pool greater 128TB, isSecondMapping: " << options_.isSecondMapping
-                     << ", shmFd:" << options_.shmFd);
+                                                                                   << ", shmFd:" << options_.shmFd);
         return BM_INVALID_PARAM;
     }
 
@@ -155,10 +155,14 @@ Result HybmConnBasedSegment::Export(const MemSlicePtr &slice, std::string &exInf
         exInfo = exp->second;
         return BM_OK;
     }
-    auto [gvaInfo, stat] = HybmVaManager::GetInstance().FindAllocByVa(slice->vAddress_, HVM_HVA);
-    if (!stat) {
-        BM_LOG_ERROR("input host va(" << slice->vAddress_ << ") not match.");
-        return BM_INVALID_PARAM;
+    AllocatedGvaInfo gvaInfo{};
+    if (slice->size_ > 0) {
+        bool found = false;
+        std::tie(gvaInfo, found) = HybmVaManager::GetInstance().FindAllocByVa(slice->vAddress_, HVM_HVA);
+        if (!found) {
+            BM_LOG_ERROR("input host va(" << slice->vAddress_ << ") not match.");
+            return BM_INVALID_PARAM;
+        }
     }
 
     HostExportInfo info;
@@ -201,10 +205,12 @@ Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, v
         if (import.rankId == options_.rankId) {
             continue;
         }
+        if (import.size == 0) {
+            continue;
+        }
 
         auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
-            {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId,
-            import.rankId);
+            {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId, import.rankId);
         BM_ASSERT_RETURN(ret == BM_OK, ret);
     }
     return BM_OK;
@@ -289,7 +295,7 @@ void HybmConnBasedSegment::FreeMemory() noexcept
         ReleaseSliceMemory(slice);
     }
 
-    if (localVirtualBase_ != nullptr) {
+    if (localVirtualBase_ != nullptr && allocatedSize_ > 0) {
         if (munmap(localVirtualBase_, allocatedSize_) != 0) {
             BM_LOG_ERROR("Failed to unmap local memory");
         }
@@ -367,8 +373,8 @@ Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t l
             return BM_ERROR;
         }
     }
-    int ret = HybmVaManager::GetInstance().AddVaInfo({gva, (uint64_t)dva, (uint64_t)sliceAddr, size,
-                                                     HYBM_MEM_TYPE_HOST}, options_.rankId);
+    int ret = HybmVaManager::GetInstance().AddVaInfo(
+        {gva, (uint64_t)dva, (uint64_t)sliceAddr, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
         DlHalApi::HalHostUnregisterEx(sliceAddr, logicDeviceId_, HOST_MEM_MAP_DEV);

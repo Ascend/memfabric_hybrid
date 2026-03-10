@@ -45,8 +45,9 @@ Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
         if (info.base.va[i] != 0) {
             auto old = CheckOverlap(info.base.va[i], info.base.size, i);
             if (old.first && old.second != info) {
-                BM_LOG_ERROR("AddVaInfo failed: address overlap. gva=" << VaToStr(info.base.va[0]) << " va:"
-                             << VaToStr(info.base.va[i]) << ", size=" << VaToStr(info.base.size) << ", vaType=" << i
+                BM_LOG_ERROR("AddVaInfo failed: address overlap. gva="
+                             << VaToStr(info.base.va[0]) << " va:" << VaToStr(info.base.va[i])
+                             << ", size=" << VaToStr(info.base.size) << ", vaType=" << i
                              << ", localRankId=" << info.localRankId << ", importedRankId=" << info.importedRankId
                              << ", memType=" << info.base.memType << ", old: " << old.second);
                 return BM_ERROR;

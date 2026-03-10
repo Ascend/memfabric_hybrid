@@ -81,7 +81,7 @@ struct ReservedGvaInfo {
 };
 constexpr uint32_t INVALID_RANK_ID = std::numeric_limits<uint32_t>::max();
 struct BaseAllocatedGvaInfo {
-    uint64_t va[HVM_BUTT];
+    uint64_t va[HVM_BUTT]{};
     uint64_t size{};                             // >0
     hybm_mem_type memType{HYBM_MEM_TYPE_DEVICE}; // Must be set
 };
@@ -172,7 +172,7 @@ public:
 
     // Returns 0 if not found.
     uint64_t TransformVa(uint64_t va, uint32_t inputType, uint32_t outputType);
-    std::pair<AllocatedGvaInfo, bool> FindAllocByVa(uint64_t gva, uint32_t type = HVM_GVA) const;
+    std::pair<AllocatedGvaInfo, bool> FindAllocByVa(uint64_t va, uint32_t type = HVM_GVA) const;
 
     // Checks if 'va' falls within any AllocatedGvaInfo range.
     bool IsGva(uint64_t va);
