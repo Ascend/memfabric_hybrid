@@ -128,6 +128,8 @@ private:
 
     static void KeyPassEraseCallBack(char *keyPass, int len);
 
+    static void ChannelAsyncCallback(void *arg, Service_Context context);
+
     int PrepareThreadLocalStream();
 
 private:

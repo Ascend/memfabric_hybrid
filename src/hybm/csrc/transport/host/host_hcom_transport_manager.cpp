@@ -592,10 +592,7 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
     Channel_Callback channelCallback;
     channelCallback.arg = stream_.get();
-    channelCallback.cb = [](void *arg, Service_Context context) -> void {
-        (void)context;
-        static_cast<HostHcomCounterStream *>(arg)->FinishOne();
-    };
+    channelCallback.cb = ChannelAsyncCallback;
     uint64_t remain = size;
     uint64_t offset = 0;
     while (remain > 0) {
@@ -609,7 +606,7 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         ret = DlHcomApi::ChannelGet(channel, req, &channelCallback);
         TP_TRACE_END(TP_HYBM_HOST_RDMA_HCOM_CH_GET, ret);
         if (ret != 0) {
-            stream_->FinishOne(false);
+            stream_->FailedOne(false);
             Synchronize(rankId_);
             BM_LOG_ERROR("Failed to submit read task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
                 std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
@@ -659,10 +656,7 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
     BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
     Channel_Callback channelCallback;
     channelCallback.arg = stream_.get();
-    channelCallback.cb = [](void *arg, Service_Context context) -> void {
-        (void)context;
-        static_cast<HostHcomCounterStream *>(arg)->FinishOne();
-    };
+    channelCallback.cb = ChannelAsyncCallback;
     uint64_t remain = size;
     uint64_t offset = 0;
     while (remain > 0) {
@@ -674,7 +668,7 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
         stream_->SubmitTasks();
         ret = DlHcomApi::ChannelPut(channel, req, &channelCallback);
         if (ret != BM_OK) {
-            stream_->FinishOne(false);
+            stream_->FailedOne(false);
             Synchronize(rankId_);
             BM_LOG_ERROR("Failed to submit put task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
                 std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
@@ -737,16 +731,13 @@ Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDe
         BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
         Channel_Callback channelCallback;
         channelCallback.arg = stream_.get();
-        channelCallback.cb = [](void *arg, Service_Context context) -> void {
-            (void)context;
-            static_cast<HostHcomCounterStream *>(arg)->FinishOne();
-        };
+        channelCallback.cb = ChannelAsyncCallback;
 
         stream_->SubmitTasks();
         BM_LOG_INFO("DlHcomApi::ChannelPutV start, sglReq iocount " << sglReq.iovCount);
         auto ret = DlHcomApi::ChannelPutV(channel, sglReq, &channelCallback);
         if (ret != BM_OK) {
-            stream_->FinishOne(false);
+            stream_->FailedOne(false);
             Synchronize(rankId_);
             BM_LOG_ERROR("Failed to submit put task lRank:" << rankId_ << " rRank:" << rankId);
             return ret;
@@ -760,8 +751,7 @@ Result HcomTransportManager::Synchronize(const uint32_t rankId)
     if (stream_ == nullptr) {
         return BM_OK;
     }
-    stream_->Synchronize(static_cast<int32_t>(rankId));
-    return BM_OK;
+    return stream_->Synchronize(static_cast<int32_t>(rankId));
 }
 
 Result HcomTransportManager::CheckTransportOptions(const TransportOptions &options)
@@ -961,10 +951,7 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
         BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
         Channel_Callback channelCallback;
         channelCallback.arg = stream_.get();
-        channelCallback.cb = [](void *arg, Service_Context context) -> void {
-            (void)context;
-            static_cast<HostHcomCounterStream *>(arg)->FinishOne();
-        };
+        channelCallback.cb = ChannelAsyncCallback;
 
         BM_LOG_INFO("ChannelGetV start, sglReq.iovCount " << sglReq.iovCount);
         stream_->SubmitTasks();
@@ -972,7 +959,7 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
         auto ret = DlHcomApi::ChannelGetV(channel, sglReq, &channelCallback);
         TP_TRACE_END(TP_HYBM_HOST_RDMA_HCOM_CH_GET, ret);
         if (ret != 0) {
-            stream_->FinishOne(false);
+            stream_->FailedOne(false);
             Synchronize(rankId_);
             BM_LOG_ERROR("Failed to submit read task lRank:" << rankId_ << " rRank:" << rankId);
             return ret;
@@ -1090,5 +1077,21 @@ void HcomTransportManager::KeyPassEraseCallBack(char *keyPass, int len)
 {
     for (int i = 0; i < len; i++) {
         keyPass[i] = 0;
+    }
+}
+
+void HcomTransportManager::ChannelAsyncCallback(void *arg, Service_Context context)
+{
+    int res = -1;
+    auto ret = DlHcomApi::ContextGetResult(context, &res);
+    if (ret != 0) {
+        res = ret;
+    }
+
+    auto counterStream = static_cast<HostHcomCounterStream *>(arg);
+    if (res == 0) {
+        counterStream->FinishOne();
+    } else {
+        counterStream->FailedOne();
     }
 }
