@@ -73,10 +73,10 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint
                            smem_shm_data_op_type dataOpType, uint32_t flags, void **gva);
 
 /**
-      * @brief Query symmetric_size, that address of the i-th rank is gva + symmetric_size * i
-      * @param handle           [in] the shm object
-      * @return symmetric_size
-      */
+ * @brief Query symmetric_size, that address of the i-th rank is gva + symmetric_size * i
+ * @param handle           [in] the shm object
+ * @return symmetric_size
+ */
 uint64_t smem_shm_get_symmetric_size(smem_shm_t handle);
 
 /**

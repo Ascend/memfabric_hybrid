@@ -194,9 +194,9 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 - GLIBC >= 2.28
 - Ascend HDK配套驱动（npu-driver）、固件（npu-firmware）依赖(使用不同介质所需最低版本不同)：
 
-  | 特性     | HDK最低版本需求                                                                                      | HDK推荐版本                                                                                        |
-        |----------|------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-  | HBM池化  | 24.1.RC2                                                                                       | 24.1.RC2                                                                                       |
+  | 特性     | HDK最低版本需求   | HDK推荐版本           |
+  |----------|--------------------|------------------------|
+  | HBM池化  | 24.1.RC2            | 24.1.RC2                     |
   | DRAM池化 | [25.5.0](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743/software) | [25.5.1](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743/software) |
   - [HDK安装指南](https://support.huawei.com/enterprise/zh/undefined/ascend-hdk-pid-252764743)
 
