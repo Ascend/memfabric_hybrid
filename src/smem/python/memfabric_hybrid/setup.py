@@ -40,6 +40,7 @@ build_open_abi = os.getenv("BUILD_OPEN_ABI", "OFF")
 build_mode = os.getenv("BUILD_MODE", "RELEASE")
 enable_ptracer = os.getenv("ENABLE_PTRACER", "ON")
 xpu_type = os.getenv("XPU_TYPE", "NPU")
+build_tool = os.getenv("BUILD_TOOL", "cmake")
 
 if xpu_type not in ("NPU", "NONE", "GPU"):
     raise ValueError("XPU_TYPE must be exactly NPU, NONE, or GPU")
@@ -48,6 +49,8 @@ if xpu_type == "NONE":
 elif xpu_type == "GPU":
     current_version += "+gpu"
 
+if build_tool not in ("cmake", "bazel"):
+    raise ValueError("BUILD_TOOL must be exactly cmake or bazel")
 
 class BinaryDistribution(Distribution):
     """Distribution which always forces a binary package with platform name"""
@@ -90,32 +93,62 @@ class CMakeBuildExt(build_ext):
         config_mode = "Release"
         if build_mode == "DEBUG":
             config_mode = "Debug"
-        subprocess.check_call(
-            [
-                "cmake",
-                f"-S{root_dir}",
-                f"-B{build_dir}",
-                f"-DCMAKE_INSTALL_PREFIX={install_dir}",
-                f"-DCMAKE_BUILD_TYPE={build_mode}",
-                f"-DBUILD_OPEN_ABI={build_open_abi}",
-                f"-DENABLE_PTRACER={enable_ptracer}",
-                f"-DXPU_TYPE={xpu_type}",
-                "-DBUILD_PYTHON=ON",
-                "-DBUILD_UT=OFF",
-            ]
-        )
-        subprocess.check_call(
-            [
-                "cmake",
-                "--build",
-                build_dir,
-                "--config",
-                config_mode,
-                "--target",
-                "install",
-                "-j8",
-            ]
-        )
+        if build_tool == "cmake":
+            subprocess.check_call(
+                [
+                    "cmake",
+                    f"-S{root_dir}",
+                    f"-B{build_dir}",
+                    f"-DCMAKE_INSTALL_PREFIX={install_dir}",
+                    f"-DCMAKE_BUILD_TYPE={build_mode}",
+                    f"-DBUILD_OPEN_ABI={build_open_abi}",
+                    f"-DENABLE_PTRACER={enable_ptracer}",
+                    f"-DXPU_TYPE={xpu_type}",
+                    "-DBUILD_PYTHON=ON",
+                    "-DBUILD_UT=OFF",
+                ]
+            )
+            subprocess.check_call(
+                [
+                    "cmake",
+                    "--build",
+                    build_dir,
+                    "--config",
+                    config_mode,
+                    "--target",
+                    "install",
+                    "-j8",
+                ]
+            )
+        else:
+            bazel_cmd = ["bazel", "build", "//..."]
+            if build_mode == "DEBUG":
+                bazel_cmd.append("--compilation_mode=dbg")
+            else:
+                bazel_cmd.append("--compilation_mode=opt")
+
+            if (build_open_abi == "ON"):
+                bazel_cmd.append("--copt=-D_GLIBCXX_USE_CXX11_ABI=1")
+            else:
+                bazel_cmd.append("--copt=-D_GLIBCXX_USE_CXX11_ABI=0")
+
+            if (enable_ptracer == "ON"):
+                bazel_cmd.append("--copt=-DENABLE_PTRACER")
+
+            if xpu_type == "NPU":
+                bazel_cmd.append("--copt=-DASCEND_NPU")
+            elif xpu_type == "GPU":
+                bazel_cmd.append("--copt=-DNVIDIA_GPU")
+            else:
+                bazel_cmd.append("--copt=-DNO_XPU")
+            
+            bazel_cmd.append("--explain=explain.log")
+            bazel_cmd.append("--verbose_explanations")
+
+            print(bazel_cmd)
+            subprocess.check_call(
+                bazel_cmd
+            )
         super().run()
 
     def build_extension(self, ext):
@@ -151,8 +184,8 @@ setup(
     zip_safe=False,
     package_data={
         "memfabric_hybrid": [
-            "_pymf_hybrid.cpython*.so",
-            "_pymf_transfer.cpython*.so",
+            "_pymf_hybrid*.so",
+            "_pymf_transfer*.so",
             "lib/lib*.so",
             "include/smem/host/*.h",
             "include/smem/device/*.h",

@@ -21,6 +21,7 @@ BUILD_HCOM="OFF"
 BUILD_HCOM_WITH_RDMA="ON"
 BUILD_HCOM_WITH_UB="OFF"
 BUILD_ETCD_BACKEND="OFF"
+BUILD_TOOL="cmake"
 
 show_help() {
     echo "Usage: $0 [options]"
@@ -33,6 +34,7 @@ show_help() {
     echo "  --build_hcom_rdma <ON/OFF>  Enable/disable build and package hcom with rdma, default: ON"
     echo "  --build_hcom_ub <ON/OFF>    Enable/disable build and package hcom with ub, default: OFF"
     echo "  --build_etcd_backend <ON/OFF> Enable/disable build and package etcd backend so, default: OFF"
+    echo "  --build_tool <cmake/bazel>  Set build tool (cmake/bazel), default: cmake"
     echo "  --help                      Show this help message"
     echo ""
     echo "Example:"
@@ -74,6 +76,10 @@ while [[ "$#" -gt 0 ]]; do
             BUILD_ETCD_BACKEND="$2"
             shift 2
             ;;
+        --build_tool)
+            BUILD_TOOL="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -95,10 +101,11 @@ echo "BUILD_HCOM: $BUILD_HCOM"
 echo "BUILD_HCOM_RDMA: $BUILD_HCOM_WITH_RDMA"
 echo "BUILD_HCOM_WITH_UB: $BUILD_HCOM_WITH_UB"
 echo "BUILD_ETCD_BACKEND: $BUILD_ETCD_BACKEND"
+echo "BUILD_TOOL: $BUILD_TOOL"
 
 cd ${ROOT_PATH}
 
-bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" "${BUILD_TEST}" "${BUILD_HCOM}" "${BUILD_HCOM_WITH_RDMA}" "${BUILD_HCOM_WITH_UB}" "${BUILD_ETCD_BACKEND}"
+bash build.sh "${BUILD_MODE}" OFF OFF "${BUILD_PYTHON}" ON "${XPU_TYPE}" "${BUILD_TEST}" "${BUILD_HCOM}" "${BUILD_HCOM_WITH_RDMA}" "${BUILD_HCOM_WITH_UB}" "${BUILD_ETCD_BACKEND}" "${BUILD_TOOL}"
 
 bash run_pkg_maker/make_run.sh "${BUILD_TEST}" "${XPU_TYPE}" "${BUILD_PYTHON}" "${BUILD_HCOM}" "${BUILD_ETCD_BACKEND}"
 

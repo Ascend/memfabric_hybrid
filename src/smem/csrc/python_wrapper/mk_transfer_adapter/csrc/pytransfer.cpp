@@ -25,7 +25,8 @@ using namespace ock::adapter;
 namespace py = pybind11;
 
 static const char *PY_TRANSFER_LIB_VERSION =
-    "library version: " PROJECT_VERSION_RAW ", build time: " __DATE__ " " __TIME__ ", commit: " STR2(GIT_LAST_COMMIT);
+    "library version: " STR2(PROJECT_VERSION_RAW) ", build time: " __DATE__ " " __TIME__\
+    ", commit: " STR2(GIT_LAST_COMMIT);
 constexpr uint64_t MAX_BATCH_COUNT = 1024 * 1024;
 
 TransferAdapterPy::TransferAdapterPy() : handle_(nullptr), sockfd_(-1) {}

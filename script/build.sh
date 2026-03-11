@@ -20,6 +20,9 @@ BUILD_HCOM=${8:-OFF}
 BUILD_HCOM_WITH_RDMA=${9:-ON}
 BUILD_HCOM_WITH_UB=${10:-OFF}
 BUILD_ETCD_BACKEND=${11:-OFF}
+BUILD_TOOL=${12:-cmake}
+export BUILD_TOOL=${12:-cmake}
+
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
@@ -42,56 +45,123 @@ set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
 
+if [ "${BUILD_PYTHON}" == "ON" ]; then
+    readonly BACK_PATH_EVN=$PATH
+
+    # 如果 PYTHON_HOME 不存在，则设置默认值
+    if [ -z "$PYTHON_HOME" ]; then
+        # 定义要检查的目录路径
+        CHECK_DIR="/usr/local/python3.11"
+        # 判断目录是否存在
+        if [ -d "$CHECK_DIR" ]; then
+            export PYTHON_HOME="$CHECK_DIR"
+        else
+            export PYTHON_HOME="/usr/local/"
+        fi
+        echo "Not set PYTHON_HOME, and use $PYTHON_HOME"
+    fi
+
+    export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
+    export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
+    export CMAKE_PREFIX_PATH=$PYTHON_HOME
+    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
+fi
+
+copy_bazel_artifacts()
+{
+    echo "========= copy bazel artifacts to dist directory========="
+    # copy from bazel-bin to output
+    mkdir -p ${PROJ_DIR}/output/smem/lib64/
+    cp -v "${PROJ_DIR}/bazel-bin/src/smem/csrc/libmf_smem.so" "${PROJ_DIR}/output/smem/lib64/"
+    mkdir -p ${PROJ_DIR}/output/hybm/lib64/
+    cp -v "${PROJ_DIR}/bazel-bin/src/hybm/csrc/libmf_hybm_core.so" "${PROJ_DIR}/output/hybm/lib64/"
+    mkdir -p ${PROJ_DIR}/output/smem/include/host/
+    cp -v "${PROJ_DIR}/src/smem/include/host/"*.h "${PROJ_DIR}/output/smem/include/host/"
+    mkdir -p ${PROJ_DIR}/output/smem/include/device/
+    cp -v "${PROJ_DIR}/src/smem/include/device/"*.h "${PROJ_DIR}/output/smem/include/device/"
+    mkdir -p ${PROJ_DIR}/output/hybm/include/
+    cp -v "${PROJ_DIR}/src/hybm/include/"*.h "${PROJ_DIR}/output/hybm/include/"
+
+    # copy from bazel-bin to build
+    if [ "${BUILD_PYTHON}" == "ON" ]; then
+        mkdir -p "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/
+        cp -v "${PROJ_DIR}"/bazel-bin/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.so "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/
+        mkdir -p "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/
+        cp -v "${PROJ_DIR}"/bazel-bin/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid.so "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/
+    fi
+}
+
 cd ${ROOT_PATH}/..
 PROJ_DIR=$(pwd)
 
-rm -rf ./build ./output
-if command -v ninja &> /dev/null; then
-    echo "========= build by ninja ============"
-    export GENERATOR="Ninja"
-    export MAKE_CMD=ninja
+if [ "${BUILD_TOOL}" == "cmake" ]; then
+    rm -rf ./build ./output
+    if command -v ninja &> /dev/null; then
+        echo "========= build by ninja ============"
+        export GENERATOR="Ninja"
+        export MAKE_CMD=ninja
+    else
+        GENERATOR="Unix Makefiles"
+        export MAKE_CMD=make
+    fi
+    mkdir build/
+    cmake \
+        -G "$GENERATOR"  \
+        -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
+        -DBUILD_UT="${BUILD_UT}" \
+        -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
+        -DBUILD_PYTHON="${BUILD_PYTHON}" \
+        -DENABLE_PTRACER="${ENABLE_PTRACER}" \
+        -DXPU_TYPE="${XPU_TYPE}" \
+        -DBUILD_TEST="${BUILD_TEST}" \
+        -DBUILD_HCOM="${BUILD_HCOM}" \
+        -DBUILD_WITH_RDMA="${BUILD_HCOM_WITH_RDMA}" \
+        -DBUILD_WITH_UB="${BUILD_HCOM_WITH_UB}" \
+        -DBUILD_ETCD_BACKEND="${BUILD_ETCD_BACKEND}" \
+        -S . \
+        -B build/
+    ${MAKE_CMD} install -j32 -C build/
 else
-    GENERATOR="Unix Makefiles"
-    export MAKE_CMD=make
-fi
-mkdir build/
-cmake \
-    -G "$GENERATOR"  \
-    -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
-    -DBUILD_UT="${BUILD_UT}" \
-    -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
-    -DBUILD_PYTHON="${BUILD_PYTHON}" \
-    -DENABLE_PTRACER="${ENABLE_PTRACER}" \
-    -DXPU_TYPE="${XPU_TYPE}" \
-    -DBUILD_TEST="${BUILD_TEST}" \
-    -DBUILD_HCOM="${BUILD_HCOM}" \
-    -DBUILD_WITH_RDMA="${BUILD_HCOM_WITH_RDMA}" \
-    -DBUILD_WITH_UB="${BUILD_HCOM_WITH_UB}" \
-    -DBUILD_ETCD_BACKEND="${BUILD_ETCD_BACKEND}" \
-    -S . \
-    -B build/
-${MAKE_CMD} install -j32 -C build/
+    BAZEL_ARGS=()
 
-if [ "${BUILD_PYTHON}" != "ON" ]; then
-    echo "========= skip build python ============"
-        cd ${CURRENT_DIR}
-        exit 0
-fi
+    if [ "${BUILD_MODE}" == "DEBUG" ]; then
+        BAZEL_ARGS+=("--compilation_mode=dbg")
+    else
+        BAZEL_ARGS+=("--compilation_mode=opt")
+    fi
 
-# memfabric_hybrid
-mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
-# --- 动态库：lib/ ---
-\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib/"
-\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib/"
-# --- 头文件：smem/include/host/ ---
-mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/host
-cp -v "${PROJ_DIR}/output/smem/include/host/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/host/"
-# --- 头文件：smem/include/device/ ---
-mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/device
-cp -v "${PROJ_DIR}/output/smem/include/device/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/device/"
-# --- 头文件：hybm/include/ ---
-mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/hybm
-cp -v "${PROJ_DIR}/output/hybm/include/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/hybm/"
+    if [ "${BUILD_UT}" == "ON" ]; then
+        BAZEL_ARGS+=("--copt=-DUT_ENABLED")
+    fi
+
+    if [ "${BUILD_OPEN_ABI}" == "OFF" ]; then
+        BAZEL_ARGS+=("--copt=-D_GLIBCXX_USE_CXX11_ABI=0")
+    fi
+
+    if [ "${ENABLE_PTRACER}" == "ON" ]; then
+        BAZEL_ARGS+=("--copt=-DENABLE_PTRACER")
+    fi
+
+    if [ "${XPU_TYPE}" == "NPU" ]; then
+        BAZEL_ARGS+=("--copt=-DASCEND_NPU")
+    elif [ "${XPU_TYPE}" == "GPU" ]; then
+        BAZEL_ARGS+=("--copt=-DNVIDIA_GPU")
+    else
+        BAZEL_ARGS+=("--copt=-DNO_XPU")
+    fi
+
+    BAZEL_ARGS+=("--explain=explain.log")
+    BAZEL_ARGS+=("--verbose_explanations")
+
+    echo "bazel build arguments: ${BAZEL_ARGS[@]}"
+
+    rm -rf ./output
+    rm -rf ./build
+
+    bazel clean --expunge
+    bazel build //... "${BAZEL_ARGS[@]}"
+    copy_bazel_artifacts
+fi
 
 # hcom
 if [ "${BUILD_HCOM}" == "ON" ]; then
@@ -114,7 +184,31 @@ if [ "${BUILD_HCOM}" == "ON" ]; then
             echo "Error: libboundscheck.so not found"
         fi
     fi
+fi
 
+if [ "${BUILD_PYTHON}" != "ON" ]; then
+    echo "========= skip build python ============"
+        cd ${CURRENT_DIR}
+        exit 0
+fi
+
+# memfabric_hybrid
+mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
+# --- 动态库：lib/ ---
+\cp -v "${PROJ_DIR}/output/smem/lib64/libmf_smem.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib/"
+\cp -v "${PROJ_DIR}/output/hybm/lib64/libmf_hybm_core.so" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib/"
+# --- 头文件：smem/include/host/ ---
+mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/host
+cp -v "${PROJ_DIR}/output/smem/include/host/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/host/"
+# --- 头文件：smem/include/device/ ---
+mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/device
+cp -v "${PROJ_DIR}/output/smem/include/device/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/smem/device/"
+# --- 头文件：hybm/include/ ---
+mkdir -p ${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/hybm
+cp -v "${PROJ_DIR}/output/hybm/include/"*.h "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/include/hybm/"
+
+if [ "${BUILD_HCOM}" == "ON" ]; then
+    echo "========= copy hcom lib to wheel pkg ============"
     cp -v "${PROJ_DIR}"/output/3rdparty/hcom/lib/libhcom.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
     cp -v "${LIBBOUNDSCHECK_INSTALL_PATH}"/libboundscheck.so \
           "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
@@ -133,8 +227,6 @@ GIT_COMMIT=`git rev-parse HEAD` || true
 cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
 rm -f "${PROJ_DIR}/output/VERSION"
 
-readonly BACK_PATH_EVN=$PATH
-
 # 如果 PYTHON_HOME 不存在，则设置默认值
 if [ -z "$PYTHON_HOME" ]; then
     # 定义要检查的目录路径
@@ -148,10 +240,6 @@ if [ -z "$PYTHON_HOME" ]; then
     echo "Not set PYTHON_HOME，and use $PYTHON_HOME"
 fi
 
-export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
-export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
-export CMAKE_PREFIX_PATH=$PYTHON_HOME
-
 python_path_list=("/opt/buildtools/python-3.8.5" "/opt/buildtools/python-3.9.11" "/opt/buildtools/python-3.10.2" "/opt/buildtools/python-3.11.4")
 for python_path in "${python_path_list[@]}"
 do
@@ -163,15 +251,21 @@ do
 
         rm -rf build/
         mkdir -p build/
-        cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
-        ${MAKE_CMD} -j5 -C build
+        if [ "${BUILD_TOOL}" == "cmake" ]; then
+            cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
+            ${MAKE_CMD} -j5 -C build
+        else
+            bazel clean --expunge
+            bazel build //... "${BAZEL_ARGS[@]}"
+            copy_bazel_artifacts
+        fi
     fi
 
     # memfabric_hybrid
-    rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
-    rm -rf "${PROJ_DIR}"/src/python/memfabric_hybrid/_pymf_transfer.cpython*.so
-    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer.cpython*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
+    rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
+    rm -rf "${PROJ_DIR}"/src/python/memfabric_hybrid/_pymf_transfer*.so
+    \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
     rm -rf build memfabric_hybrid.egg-info
     export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
@@ -188,5 +282,6 @@ mkdir -p "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 cp "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist/*.whl "${PROJ_DIR}/output/memfabric_hybrid/wheel"
 rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/dist
 rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/include
+rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib
 
 cd ${CURRENT_DIR}

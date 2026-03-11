@@ -19,7 +19,7 @@ if (NOT PROJECT_VERSION_RAW MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
     message(FATAL_ERROR "Invalid version format in VERSION file: '${PROJECT_VERSION_RAW}'")
 endif ()
 
-add_compile_definitions(PROJECT_VERSION_RAW=\"${PROJECT_VERSION_RAW}\")
+add_compile_definitions(PROJECT_VERSION_RAW=${PROJECT_VERSION_RAW})
 message(STATUS "in memfabric cmakefile BUILD_FROM_MEMCACHE: ${BUILD_FROM_MEMCACHE}, version: ${PROJECT_VERSION_RAW}.")
 
 # split it version string into single field
