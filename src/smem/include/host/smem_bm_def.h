@@ -122,6 +122,11 @@ typedef struct {
     uint32_t batchSize;
 } smem_batch_copy_params;
 
+typedef struct {
+    int32_t *results;
+    uint32_t batchSize;
+} smem_batch_copy_result;
+
 #ifdef __cplusplus
 }
 #endif

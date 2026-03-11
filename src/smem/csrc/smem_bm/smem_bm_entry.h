@@ -13,6 +13,7 @@
 #define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
 
 #include "hybm_def.h"
+#include "smem_thread_pool.h"
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
 #include "smem_net_group_engine.h"
@@ -30,7 +31,8 @@ struct SmemBmEntryOptions {
 class SmemBmEntry : public SmReferable {
 public:
     explicit SmemBmEntry(const SmemBmEntryOptions &options, const StorePtr &store)
-        : options_(options), _configStore(store), coreOptions_{}, dramSliceInfo_{}, hbmSliceInfo_{}, entityInfo_{}
+        : options_(options), _configStore(store), executorService_{8U}, coreOptions_{}, dramSliceInfo_{},
+          hbmSliceInfo_{}, entityInfo_{}
     {}
 
     ~SmemBmEntry() override
@@ -49,6 +51,9 @@ public:
     Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
     Result DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+
+    Result DataCopyBatchConcurrent(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags,
+                                   smem_batch_copy_result *results);
 
     Result Wait();
 
@@ -93,6 +98,7 @@ private:
     SmemBmEntryOptions options_;
     hybm_options coreOptions_;
     StorePtr _configStore;
+    ExecutorService executorService_;
     hybm_exchange_info hbmSliceInfo_;
     hybm_exchange_info dramSliceInfo_;
     hybm_exchange_info entityInfo_;

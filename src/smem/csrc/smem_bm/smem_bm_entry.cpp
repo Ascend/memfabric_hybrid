@@ -31,6 +31,8 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     Result ret = SM_ERROR;
 
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(options.rankCount, options.rankId), "create global team failed");
+    SM_ASSERT_RETURN(executorService_.Start(), SM_ERROR);
+    executorService_.SetThreadName("batch-copy");
 
     do {
         entity = hybm_create_entity((Id() << 1) + 1U, &options, flags);
@@ -106,6 +108,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
 
 void SmemBmEntry::UnInitalize()
 {
+    executorService_.Stop();
     if (!inited_) {
         return;
     }
@@ -178,7 +181,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
 
     globalGroup_->SetBitmapFromRanks(allRanks);
     SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk
-                                           << ", rank size is: " << globalGroup_->GetRankSize());
+                                            << ", rank size is: " << globalGroup_->GetRankSize());
     return SM_OK;
 }
 
@@ -329,8 +332,8 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO
-                                                             : TransToHybmDirection(t, src, size, dest, size);
+    hybm_data_copy_direction direct =
+        (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO : TransToHybmDirection(t, src, size, dest, size);
     if (direct == HYBM_DATA_COPY_DIRECTION_BUTT) {
         SM_LOG_ERROR("Failed to trans to hybm direct, smem direct: " << t << " src: " << src << " dest: " << dest);
         return SM_INVALID_PARAM;
@@ -404,10 +407,10 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO
-                                                             : TransToHybmDirection(t,
-                                                               params->sources[0], params->dataSizes[0],
-                                                               params->destinations[0], params->dataSizes[0]);
+    hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO)
+                                          ? HYBM_DATA_COPY_DIRECTION_AUTO
+                                          : TransToHybmDirection(t, params->sources[0], params->dataSizes[0],
+                                                                 params->destinations[0], params->dataSizes[0]);
     if (direct == HYBM_DATA_COPY_DIRECTION_BUTT) {
         SM_LOG_ERROR("Failed to trans to hybm direct, smem direct: " << t << " src: " << params->sources[0]
                                                                      << " dest: " << params->destinations[0]);
@@ -415,6 +418,66 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     }
     hybm_batch_copy_params copyParams = {params->sources, params->destinations, params->dataSizes, params->batchSize};
     return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
+}
+
+Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags,
+                                            smem_batch_copy_result *results)
+{
+    SM_VALIDATE_RETURN(params->sources != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->destinations != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->batchSize != 0, "invalid param, size is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(results != nullptr, "results is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(results->results, "results inner pointer is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(results->batchSize == params->batchSize, "result batch size invalid", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+
+    std::mutex finishMutex;
+    std::condition_variable finishCond;
+    uint32_t finishedCount = 0;
+    for (auto i = 0U; i < params->batchSize; i++) {
+        auto submitSuccess =
+            executorService_.Execute([this, &finishedCount, &finishMutex, &finishCond, i, t, params, flags, results]() {
+                hybm_copy_params singleParam{};
+                singleParam.src = params->sources[i];
+                singleParam.dest = params->destinations[i];
+                singleParam.dataSize = params->dataSizes[i];
+                auto direct = (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO
+                                  : TransToHybmDirection(t, params->sources[i], params->dataSizes[i],
+                                                         params->destinations[i], params->dataSizes[i]);
+                auto ret = hybm_data_copy(entity_, &singleParam, direct, nullptr, flags);
+                SM_LOG_DEBUG("copy index: " << i << ", result:" << ret);
+                results->results[i] = ret;
+
+                std::unique_lock<std::mutex> locker{finishMutex};
+                if (++finishedCount >= params->batchSize) {
+                    locker.unlock();
+                    finishCond.notify_one();
+                }
+                SM_LOG_DEBUG("copy index: " << i << ", run exit:");
+            });
+        if (!submitSuccess) {
+            std::unique_lock<std::mutex> locker{finishMutex};
+            ++finishedCount;
+            results->results[i] = SM_ERROR;
+        }
+    }
+
+    std::unique_lock<std::mutex> locker{finishMutex};
+    finishCond.wait(locker, [&](){ return finishedCount >= params->batchSize; });
+    locker.unlock();
+    auto hasSuccess = std::any_of(results->results, results->results + results->batchSize, [](int r){ return r == 0;});
+    auto hasFail = std::any_of(results->results, results->results + results->batchSize, [](int r){ return r != 0;});
+    SM_LOG_DEBUG("has success = " << hasSuccess << ", has failed = " << hasFail);
+    if (!hasFail) {
+        return SM_OK;
+    }
+
+    if (!hasSuccess) {
+        return SM_ERROR;
+    }
+
+    return SM_PARTIAL_FAILED;
 }
 
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)

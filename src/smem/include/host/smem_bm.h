@@ -165,6 +165,24 @@ int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_ty
 int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 
 /**
+  * @brief Perform batch data copy operations on Big Memory
+  * @param handle           [in] Big Memory object handle, created and returned by the smem_bm_create function,
+  *                              used to identify the target shared memory instance
+  * @param params           [in] Pointer to the batch copy parameter structure
+  *                              - sources: Pointer to an array of source addresses
+  *                              - destinations: Pointer to an array of destination addresses
+  *                              - dataSizes: Pointer to an array of data lengths
+  *                              - batchSize: Number of copy groups in the batch
+  * @param t                [in] copy type, L2G, G2L, G2H, H2G
+  * @param flags            [in] optional flags
+  * @param result           [out] When the error code is SM_PARTIAL_FAILED, the code indicates which operations are
+  *                               successful and which operations have failed.
+  * @return 0 if successful
+  */
+int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,
+                                           uint32_t flags, smem_batch_copy_result *result);
+
+/**
  * @brief Wait all issued async copy(s) finish
  *
  * @return 0 if successful

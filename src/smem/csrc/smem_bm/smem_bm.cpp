@@ -10,6 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 #include <algorithm>
+#include <numeric>
 #include "smem_common_includes.h"
 #include "hybm_big_mem.h"
 #include "smem_logger.h"
@@ -213,9 +214,9 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
     std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
 
     SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
-    (void) std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
-    (void) std::copy_n(option->tag, sizeof(options.tag), options.tag);
-    (void) std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
+    (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
+    (void)std::copy_n(option->tag, sizeof(options.tag), options.tag);
+    (void)std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
 
     options.scene = HYBM_SCENE_DEFAULT;
     SmemBmFillDramFdInOptions(*option, options);
@@ -352,6 +353,35 @@ SMEM_API int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *pa
         return SM_INVALID_PARAM;
     }
 
+    return entry->DataCopyBatch(params, t, flags);
+}
+
+SMEM_API int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch_copy_params *params,
+                                                    smem_bm_copy_type t, uint32_t flags, smem_batch_copy_result *result)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->batchSize != 0, "batch size is zero", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(result != nullptr, "result is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(result->results != nullptr, "results pointer is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(result->batchSize == params->batchSize,
+                       "result batch size: " << result->batchSize
+                                             << " non-match param batch size: " << params->batchSize,
+                       SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    auto totalSize = std::accumulate(params->dataSizes, params->dataSizes + params->batchSize, 0UL);
+    auto averageSize = totalSize / params->batchSize;
+    if (params->batchSize > 1U && averageSize > 4U * 1024UL * 1024UL) {
+        return entry->DataCopyBatchConcurrent(params, t, flags, result);
+    }
     return entry->DataCopyBatch(params, t, flags);
 }
 
