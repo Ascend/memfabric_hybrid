@@ -101,7 +101,7 @@ private:
     hybm_entity_t entity_ = nullptr;                       /* local hybm entity */
     std::map<PeerEntryKey, PeerEntryValue> peerEntries_{}; /* peer transfer entry look up map */
 
-    uint16_t rankId_ = 0;
+    uint32_t rankId_ = 0;
     uint16_t entityId_ = 0;
     SmemStoreHelper storeHelper_;
 

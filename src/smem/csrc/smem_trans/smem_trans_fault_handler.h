@@ -36,13 +36,13 @@ struct ConfigServerSliceInfo {
 };
 
 struct RankInfo {
-    uint16_t rankId;
+    uint32_t rankId;
     std::string rankName;
     ConfigServerDeviceInfo dInfo;
     ConfigServerSliceInfo sInfo;
 
     RankInfo() = default;
-    RankInfo(uint16_t rId, std::string rName) : rankId(rId), rankName(rName) {};
+    RankInfo(uint32_t rId, std::string rName) : rankId(rId), rankName(rName) {};
 };
 
 class SmemStoreFaultHandler {

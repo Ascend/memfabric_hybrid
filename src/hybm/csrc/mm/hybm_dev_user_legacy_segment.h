@@ -54,8 +54,7 @@ struct HbmExportSliceInfo {
     uint64_t address{0}; // lva (host_va or device_va)
     uint64_t size{0};
     uint32_t superPodId{0};
-    uint16_t rankId{0};
-    uint16_t reserved{0};
+    uint32_t rankId{0};
     uint32_t logicDeviceId{0};
     char name[DEVICE_SHM_NAME_SIZE + 1]{};
 

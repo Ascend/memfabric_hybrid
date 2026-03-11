@@ -103,12 +103,12 @@ void SmemStoreHelper::RegisterBrokenHandler(const ConfigStoreClientBrokenHandler
     store_->RegisterClientBrokenHandler(handler);
 }
 
-int SmemStoreHelper::RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint16_t &rankId,
+int SmemStoreHelper::RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint32_t &rankId,
                                             const smem_trans_config_t &cfg, std::string key, bool &isRestore) noexcept
 {
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;
-    rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << BIT_SHIFT));
+    rankId = (static_cast<uint32_t>(rankIdValue[0]) | (static_cast<uint32_t>(rankIdValue[1]) << BIT_SHIFT));
     SM_LOG_INFO("get info from server, rank id: " << rankId);
     std::vector<uint8_t> value((const uint8_t *)(const void *)&cfg, (const uint8_t *)(const void *)&cfg + sizeof(cfg));
 
@@ -132,7 +132,7 @@ int SmemStoreHelper::RecoverRankInformation(std::vector<uint8_t> rankIdValue, ui
     return SUCCESS;
 }
 
-int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &rankId) noexcept
+int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint32_t &rankId) noexcept
 {
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;
@@ -150,7 +150,7 @@ int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &ra
             return SM_ERROR;
         }
 
-        rankId = static_cast<uint16_t>(currentSize / sizeof(cfg)) - 1U;
+        rankId = static_cast<uint32_t>(currentSize / sizeof(cfg)) - 1U;
         storeRankIdInfo_.first = rankId;
         storeRankIdInfo_.second = value;
         rankIdValue[0] = static_cast<uint8_t>(rankId & 0xff);
@@ -174,7 +174,7 @@ int SmemStoreHelper::GenerateRankId(const smem_trans_config_t &cfg, uint16_t &ra
             return SM_ERROR;
         }
 
-        rankId = (static_cast<uint16_t>(rankIdValue[0]) | (static_cast<uint16_t>(rankIdValue[1]) << BIT_SHIFT));
+        rankId = (static_cast<uint32_t>(rankIdValue[0]) | (static_cast<uint32_t>(rankIdValue[1]) << BIT_SHIFT));
         SM_LOG_INFO("generate for engine(" << name_ << ") success, rank: " << rankId);
         return SM_OK;
     }
@@ -557,7 +557,7 @@ void SmemStoreHelper::ExtraSliceChangeInfo(std::vector<uint8_t> &values, std::ve
     // server重拉：newCount > curCount不清理本地缓存
 }
 
-int SmemStoreHelper::ReRegisterToServer(uint16_t rankId) noexcept
+int SmemStoreHelper::ReRegisterToServer(uint32_t rankId) noexcept
 {
     const uint16_t BIT_SHIFT = 8;
     const size_t RANK_ID_SIZE = 2;

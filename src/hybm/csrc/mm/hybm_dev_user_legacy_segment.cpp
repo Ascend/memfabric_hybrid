@@ -160,7 +160,7 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
-    info.rankId = static_cast<uint16_t>(options_.rankId);
+    info.rankId = options_.rankId;
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
     auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);

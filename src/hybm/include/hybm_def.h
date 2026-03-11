@@ -101,8 +101,8 @@ typedef struct {
     hybm_type bmType;
     hybm_mem_type memType;
     hybm_data_op_type bmDataOpType;
-    uint16_t rankCount;
-    uint16_t rankId;
+    uint32_t rankCount;
+    uint32_t rankId;
     uint16_t devId;
     uint64_t maxHBMSize;
     uint64_t maxDRAMSize;

@@ -175,7 +175,7 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
   *                              - batchSize: Number of copy groups in the batch
   * @param t                [in] copy type, L2G, G2L, G2H, H2G
   * @param flags            [in] optional flags
-  * @param result           [out] When the error code is SM_PARTIAL_FAILED, the code indicates which operations are
+  * @param result           [out] When the error code is SMEM_PARTIAL_FAILED, the code indicates which operations are
   *                               successful and which operations have failed.
   * @return 0 if successful
   */

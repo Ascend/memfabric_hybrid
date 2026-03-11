@@ -27,20 +27,20 @@ namespace mf {
 struct EntityExportInfo {
     uint64_t magic{ENTITY_EXPORT_INFO_MAGIC};
     uint64_t version{EXPORT_INFO_VERSION};
-    uint16_t rankId{0};
+    uint32_t rankId{0};
     uint16_t role{0};
-    uint32_t reserved{0};
+    uint16_t reserved{0};
     char nic[64]{};
     char tag[32]{};
 };
 struct SliceExportTransportKey {
     uint64_t magic;
-    uint16_t rankId;
-    uint16_t reserved[3]{};
+    uint32_t rankId;
+    uint16_t reserved[2]{};
     uint64_t address;
     transport::TransportMemoryKey key;
     SliceExportTransportKey() : SliceExportTransportKey{0, 0, 0} {}
-    SliceExportTransportKey(uint64_t mag, uint16_t rank, uint64_t addr)
+    SliceExportTransportKey(uint64_t mag, uint32_t rank, uint64_t addr)
         : magic{mag}, rankId{rank}, address{addr}, key{0}
     {}
 };

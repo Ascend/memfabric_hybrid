@@ -93,7 +93,7 @@ protected:
     std::map<uint16_t, std::string> exportMap_;
     std::set<uint64_t> mappedGvaMem_; // gva sets
     std::vector<HbmExportInfo> imports_;
-    std::map<uint16_t, HbmExportInfo> importMap_;
+    std::map<uint32_t, HbmExportInfo> importMap_;
 };
 } // namespace mf
 } // namespace ock

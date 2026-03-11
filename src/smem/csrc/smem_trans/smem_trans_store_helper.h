@@ -89,11 +89,11 @@ struct StoredSliceInfo {
     WorkerUniqueId session;
     const void *address;
     uint64_t size;
-    uint16_t rankId;
+    uint32_t rankId;
     uint8_t info[0];
 
     StoredSliceInfo() {}
-    StoredSliceInfo(WorkerUniqueId ws, const void *a, uint64_t s, uint16_t rId) noexcept
+    StoredSliceInfo(WorkerUniqueId ws, const void *a, uint64_t s, uint32_t rId) noexcept
         : session(std::move(ws)), address{a}, size{s}, rankId{rId}
     {}
 };
@@ -108,21 +108,21 @@ public:
     int Initialize(uint16_t entityId, int32_t maxRetry, bool startConfigServer = false) noexcept;
     void Destroy() noexcept;
     void SetSliceExportSize(size_t sliceExportSize) noexcept;
-    int GenerateRankId(const smem_trans_config_t &config, uint16_t &rankId) noexcept;
+    int GenerateRankId(const smem_trans_config_t &config, uint32_t &rankId) noexcept;
     int StoreDeviceInfo(const hybm_exchange_info &info) noexcept;
     int StoreSliceInfo(const hybm_exchange_info &info, const StoredSliceInfo &sliceInfo) noexcept;
     int ReStoreDeviceInfo() noexcept;
     int ReStoreSliceInfo() noexcept;
     void FindNewRemoteRanks(const FindRanksCbFunc &cb) noexcept;
     void FindNewRemoteSlices(const FindSlicesCbFunc &cb) noexcept;
-    int ReRegisterToServer(uint16_t rankId) noexcept;
+    int ReRegisterToServer(uint32_t rankId) noexcept;
     int CheckServerStatus() noexcept;
     void AlterServerStatus(bool status) noexcept;
     int ReConnect() noexcept;
     void RegisterBrokenHandler(const ConfigStoreClientBrokenHandler &handler);
 
 private:
-    int RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint16_t &rankId, const smem_trans_config_t &cfg,
+    int RecoverRankInformation(std::vector<uint8_t> rankIdValue, uint32_t &rankId, const smem_trans_config_t &cfg,
                                std::string key, bool &isRestore) noexcept;
     void CompareAndUpdateDeviceInfo(uint32_t minCount, std::vector<uint8_t> &values,
                                     std::vector<hybm_exchange_info> &addInfo) noexcept;

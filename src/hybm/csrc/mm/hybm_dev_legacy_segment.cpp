@@ -298,7 +298,7 @@ Result HybmDevLegacySegment::GetExportSliceSize(size_t &size) noexcept
 // import可重入
 Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, void *addresses[]) noexcept
 {
-    std::map<uint16_t, HbmExportInfo> importMap;
+    std::map<uint32_t, HbmExportInfo> importMap;
     LiteralExInfoTranslater<HbmExportInfo> translator;
     std::vector<HbmExportInfo> desInfos{};
     uint32_t localIdx = UINT32_MAX;
