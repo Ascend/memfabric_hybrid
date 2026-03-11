@@ -100,9 +100,7 @@ void DataOperatorMock::Reset() noexcept
     waitResult = ock::mf::BErrorCode::BM_OK;
 }
 
-void DataOperatorMock::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
-{
-}
+void DataOperatorMock::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept {}
 
 class HybmComposeDataOpTest : public testing::Test {
 public:
@@ -489,7 +487,17 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_sdma_success)
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     hybm_batch_copy_params copyParams{};
+    void *sources[2ULL];
+    void *dest[2ULL];
+    uint64_t size[2ULL];
+    copyParams.batchSize = 2ULL;
+    copyParams.sources = sources;
+    copyParams.destinations = dest;
+    copyParams.dataSizes = size;
+
+    std::pair<uint32_t, uint32_t> p2pInfo{0, 1};
     ock::mf::ExtOptions extOptions{};
+    extOptions.groupMap[p2pInfo].push_back(0);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
@@ -523,7 +531,15 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_first_success)
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 
     hybm_batch_copy_params copyParams{};
+    std::vector<void *> sourcesVec = {nullptr};
+    std::vector<void *> destinationsVec = {nullptr};
+    std::vector<uint64_t> dataSizesVec = {1ULL};
+    copyParams.sources = sourcesVec.data();
+    copyParams.destinations = destinationsVec.data();
+    copyParams.dataSizes = dataSizesVec.data();
+
     ock::mf::ExtOptions extOptions{};
+    extOptions.groupMap.emplace(std::make_pair<uint32_t, uint32_t>(0, 1), std::vector<uint32_t>{0});
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
@@ -571,13 +587,59 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_failed_dev_rdma_success)
     std::pair<uint32_t, uint32_t> p2pInfo{};
     extOptions.groupMap[p2pInfo].push_back(0);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
-    ASSERT_EQ(1UL, devRdmaDataOpMock->batchDataCopyCount);
+    ASSERT_EQ(0UL, devRdmaDataOpMock->batchDataCopyCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->batchDataCopyCount);
 
     dataOp.UnInitialize();
     ASSERT_EQ(1UL, sdmaDataOpMock->uninitializeCount);
+}
+
+TEST_F(HybmComposeDataOpTest, batch_data_copy_non_rank0_rdma_success)
+{
+    hybm_options options{};
+    options.bmType = HYBM_TYPE_HOST_INITIATE;
+    options.bmDataOpType =
+        static_cast<hybm_data_op_type>(OpOr(HYBM_DOP_TYPE_DEVICE_RDMA));
+    auto tag = std::make_shared<ock::mf::HybmEntityTagInfo>();
+    tag->TagInfoInit(options);
+
+    union {
+        uint32_t (ock::mf::HybmEntityTagInfo::*getRank2RankOpType)(uint32_t rankId1, uint32_t rankId2);
+        uint32_t (*mocker)(ock::mf::HybmEntityTagInfo *, uint32_t, uint32_t);
+    } u;
+    u.getRank2RankOpType = &ock::mf::HybmEntityTagInfo::GetRank2RankOpType;
+    MOCKER(u.mocker).stubs().will(
+        returnValue(OpOr(HYBM_DOP_TYPE_DEVICE_RDMA)));
+    MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
+    MOCKER(ock::mf::DataOperatorFactory::CreateDevRdmaDataOperator).stubs().will(invoke(CreateDevRdmaDataOperator));
+    MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
+    sdmaDataOpMock->batchDataCopyResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+
+    ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
+    auto ret = dataOp.Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params copyParams{};
+    ock::mf::ExtOptions extOptions{};
+    void *sources[2ULL];
+    void *dest[2ULL];
+    uint64_t size[2ULL];
+    copyParams.batchSize = 2ULL;
+    copyParams.sources = sources;
+    copyParams.destinations = dest;
+    copyParams.dataSizes = size;
+    std::pair<uint32_t, uint32_t> p2pInfo{0, 1};
+    std::pair<uint32_t, uint32_t> p2pInfo2{2, 3};
+    extOptions.groupMap[p2pInfo].push_back(0);
+    extOptions.groupMap[p2pInfo2].push_back(1);
+    ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(2UL, devRdmaDataOpMock->batchDataCopyCount);
+
+    dataOp.UnInitialize();
+    ASSERT_EQ(1UL, devRdmaDataOpMock->uninitializeCount);
 }
 
 TEST_F(HybmComposeDataOpTest, data_copy_async_sdma_success)

@@ -502,7 +502,7 @@ err1:
 
 /*
  * smem_perf {rank_size} {rank_id} {deviceID} {use_sdma} {testBm} tcp://{Ip}:{port} {memType}
- * smem_perf 2 0 2 1 1 tcp://127.0.0.1:12050 3
+ * smem_perf 2 0 2 1 1 tcp://127.0.0.1:12050 2
  */
 int32_t main(int32_t argc, char *argv[])
 {

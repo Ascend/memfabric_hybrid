@@ -602,7 +602,12 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
             BM_LOG_ERROR("hbm segment is null, failed to import segment info in trans scene");
             return BM_ERROR;
         }
-        auto ret = hbmSegment_->Import({desc->LeftToString()}, nullptr);
+
+        std::vector<std::string> infos;
+        for (auto i = 0U; i < count; i++) {
+            infos.emplace_back(desc[i].LeftToString());
+        }
+        auto ret = hbmSegment_->Import(infos, nullptr);
         if (ret != BM_OK) {
             BM_LOG_ERROR("failed to import segment info in trans scene, ret: " << ret);
             return BM_ERROR;

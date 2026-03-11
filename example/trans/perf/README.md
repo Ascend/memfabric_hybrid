@@ -14,42 +14,49 @@
 
 或打包安装时同源码一起编译
 
-  ```bash
+```bash
 bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
-  ```
+
+bash output/memfabric_hybrid-1.0.0_linux_aarch64.run # 修改为实际编译出来的run文件
+```
+
+默认编译的二进制`transfer_perf`在目录`output/smem/bin/`下面。
 
 ### 基本命令格式
 
 ```
-# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{Ip}:{port}
+# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{ip}:{port} {memType}
 或者
-# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{[Ip]}:{port}
+# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{[ipv6]}:{port} {memType}
 
 # deviceId=2
-./transfer_perf 2 0 2 1 1 tcp://127.0.0.1:12050
-(./transfer_perf 2 0 2 1 1 tcp://[::1]:12050)
+./transfer_perf 2 0 2 1 1 tcp://127.0.0.1:12050 0
+(./transfer_perf 2 0 2 1 1 tcp://[::1]:12050) 0
 
 # deviceId=2
-./transfer_perf 2 1 3 1 1 tcp://127.0.0.1:12050
-(./transfer_perf 2 1 3 1 1 tcp://[::1]:12050)
+./transfer_perf 2 1 3 1 1 tcp://127.0.0.1:12050 0
+(./transfer_perf 2 1 3 1 1 tcp://[::1]:12050) 0
 ```
 
 ### 参数说明
 
-| 参数名               | 必选 | 说明                                               |
-|-------------------|----|--------------------------------------------------|
-| rankSize          | 是  | 一共多少个rank                                        |
-| rankId            | 是  | 当前节点的rankId                                      |
-| deviceId          | 是  | 当前节点的deviceId                                    |
-| useSdma           | 是  | 1使用SDMA，0使用RDMA                                  |
-| testBm            | 是  | 1测试BigMemory场景，0测试PD传输场景                         |
-| tcp://{Ip}:{port} | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ip]:port` |
+| 参数名                | 必选 | 说明                                                 |
+|--------------------|----|----------------------------------------------------|
+| rankSize           | 是  | 一共多少个rank                                          |
+| rankId             | 是  | 当前节点的rankId                                        |
+| deviceId           | 是  | 当前节点的deviceId                                      |
+| useSdma            | 是  | 1使用SDMA，0使用RDMA                                    |
+| testBm             | 是  | 1测试BigMemory场景，0测试PD传输场景                           |
+| tcp://{Ip}:{port}  | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ipv6]:port` |
+| memType            | 是  | 内存介质类型, 0:hbm 1:dram 2:hbm + dram                  |
 
 ### 运行步骤
 
 修改run.sh中的参数后，可以通过直接运行run.sh获取性能
 
 ```
+source /usr/local/memfabric_hybrid/set_env.sh
+
 bash run.sh
 ```
 

@@ -115,64 +115,42 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
-    auto availableOps = GetPrioritedDataOperators(options);
-    if (availableOps.empty()) {
-        BM_LOG_ERROR("batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
-                                                  << " no data operator available");
-        return BM_INVALID_PARAM;
-    }
-
-    Result result = BM_ERROR;
-    for (auto &ops : availableOps) {
-        // sdma无rank概念
-        if (ops.first == HYBM_DOP_TYPE_SDMA) {
-            result = ops.second->BatchDataCopy(params, direction, options);
-            if (result == BM_OK) {
-                return result;
-            }
-            BM_LOG_WARN("data batch copy by " << direction << " with sdma failed " << result);
-            continue;
+    // 为每组调用batch_copy
+    for (auto &[p2pInfo, indices] : options.groupMap) {
+        uint32_t groupSize = indices.size();
+        // 为当前组构建临时参数
+        std::vector<void *> sources_group(groupSize);
+        std::vector<void *> destinations_group(groupSize);
+        std::vector<size_t> dataSizes_group(groupSize);
+        // 填充组内参数
+        for (uint32_t j = 0; j < groupSize; ++j) {
+            uint32_t idx = indices[j];
+            sources_group[j] = params.sources[idx];
+            destinations_group[j] = params.destinations[idx];
+            dataSizes_group[j] = params.dataSizes[idx];
         }
-
-        // 为每组调用batch_copy
-        for (auto &[p2pInfo, indices] : options.groupMap) {
-            uint32_t groupSize = indices.size();
-            // 为当前组构建临时参数
-            std::vector<void *> sources_group(groupSize);
-            std::vector<void *> destinations_group(groupSize);
-            std::vector<size_t> dataSizes_group(groupSize);
-            // 填充组内参数
-            for (uint32_t j = 0; j < groupSize; ++j) {
-                uint32_t idx = indices[j];
-                sources_group[j] = params.sources[idx];
-                destinations_group[j] = params.destinations[idx];
-                dataSizes_group[j] = params.dataSizes[idx];
-            }
-            hybm_batch_copy_params copyParams = {sources_group.data(), destinations_group.data(),
-                                                 dataSizes_group.data(), groupSize};
-            ExtOptions copyOptions{};
-            copyOptions.srcRankId = p2pInfo.first;
-            copyOptions.destRankId = p2pInfo.second;
-            copyOptions.stream = options.stream;
-            copyOptions.flags = options.flags;
-            result = ops.second->BatchDataCopy(copyParams, direction, copyOptions);
-            if (result != BM_OK) {
-                BM_LOG_WARN("data batch copy from rank " << copyOptions.srcRankId << " to rank "
-                                                         << copyOptions.destRankId << " with data op " << ops.first
-                                                         << " failed " << result);
-                break;
-            }
+        hybm_batch_copy_params copyParams = {sources_group.data(), destinations_group.data(), dataSizes_group.data(),
+                                             groupSize};
+        ExtOptions copyOptions{};
+        copyOptions.srcRankId = p2pInfo.first;
+        copyOptions.destRankId = p2pInfo.second;
+        copyOptions.stream = options.stream;
+        copyOptions.flags = options.flags;
+        auto availableOps = GetPrioritedDataOperators(copyOptions);
+        if (availableOps.empty()) {
+            BM_LOG_ERROR("batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
+                                                      << " no data operator available");
+            return BM_INVALID_PARAM;
         }
-
-        if (result == BM_OK) {
-            return result; // successs, no need use next op copy
+        // 暂时不做多路径拷贝失败重试
+        auto result = availableOps.front().second->BatchDataCopy(copyParams, direction, copyOptions);
+        if (result != BM_OK) {
+            BM_LOG_ERROR("data batch copy failed: " << result << " src:" << copyOptions.srcRankId
+                                                    << " dest: " << copyOptions.destRankId);
+            return result;
         }
     }
-
-    if (result != BM_OK) {
-        BM_LOG_ERROR("data batch copy failed " << result);
-    }
-    return result;
+    return BM_OK;
 }
 
 Result HostComposeDataOp::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
