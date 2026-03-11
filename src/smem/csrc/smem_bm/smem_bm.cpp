@@ -100,8 +100,11 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
         return;
     }
 
-    hybm_uninit();
+    // Destroy entries first (may call GroupLeave and hybm_* cleanup) before tearing
+    // down the underlying hybm layer. Reversing the old order prevents use-after-free
+    // when UnInitalize() accesses entity_ or hybm resources during Destroy().
     SmemBmEntryManager::Instance().Destroy();
+    hybm_uninit();
     g_smemBmInited = false;
     SM_LOG_INFO("smem_bm_uninit finished");
 }

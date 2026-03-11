@@ -237,6 +237,16 @@ Result SmemBmEntryManager::RemoveEntryByPtr(uintptr_t ptr)
 void SmemBmEntryManager::Destroy()
 {
     std::lock_guard<std::mutex> guard(entryMutex_);
+    // Uninitialize any entries that were not explicitly destroyed by the caller.
+    // This ensures graceful group leave and resource release even if smem_bm_destroy()
+    // was not called for every handle before smem_bm_uninit().
+    for (auto &pair : ptr2EntryMap_) {
+        if (pair.second != nullptr) {
+            pair.second->UnInitalize();
+        }
+    }
+    ptr2EntryMap_.clear();
+    entryIdMap_.clear();
     inited_ = false;
     confStore_ = nullptr;
     StoreFactory::DestroyStore(storeURL_);

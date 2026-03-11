@@ -104,6 +104,8 @@ public:
 
     Result StartListenEvent();
 
+    bool IsJoined() const { return joined_.load(); }
+
     Result GroupJoin();
 
     Result GroupLeave();

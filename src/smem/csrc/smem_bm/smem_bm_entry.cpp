@@ -112,6 +112,18 @@ void SmemBmEntry::UnInitalize()
     if (entity_ == nullptr) {
         return;
     }
+    // Perform a graceful group leave so that peer ranks can synchronously clean up
+    // their imported state via LeaveHandle(). This must happen before the local entity
+    // is destroyed because the leave callback on the peer side still references entity_.
+    if (globalGroup_ != nullptr && globalGroup_->IsJoined()) {
+        auto ret = globalGroup_->GroupLeave();
+        if (ret != SM_OK) {
+            SM_LOG_WARN("group leave failed during uninitialize, ret: " << ret);
+        }
+    }
+    // Stop the group engine listen thread before releasing the entity.
+    globalGroup_ = nullptr;
+
     uint32_t flags = 0;
     if (dramSlice_ != nullptr) {
         // todo, need to update hdk
