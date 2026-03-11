@@ -78,8 +78,10 @@ TEST_F(ExecutorServiceTest, task_queue_full)
     service = std::make_shared<ock::smem::ExecutorService>(threadNum, queueCapacity);
     ASSERT_TRUE(service->Start());
 
+    std::atomic<uint32_t> startedCount{0U};
     std::atomic<bool> finished{false};
-    auto initTask = [&finished]() {
+    auto initTask = [&finished, &startedCount]() {
+        startedCount.fetch_add(1U);
         for (auto i = 0U; i < 10000U && !finished; i++) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -88,6 +90,11 @@ TEST_F(ExecutorServiceTest, task_queue_full)
     for (auto i = 0U; i < threadNum; i++) {
         auto success = service->Execute(initTask);
         EXPECT_TRUE(success) << "failed execute init task : " << i;
+    }
+
+    uint32_t retryTimes = 0;
+    while (startedCount.load() < 2U && ++retryTimes < 10000U) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     std::atomic<uint32_t> waitingRunCount{0U};
