@@ -65,6 +65,7 @@ private:
     Result ExportInner(const std::shared_ptr<MemSlice> &slice, MemShareHandle &sHandle) noexcept;
     Result MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
     Result MallocFromDevice(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
+    Result HalMemCreateAdapterFromHost(size_t size, drv_mem_handle_t **handle, drv_mem_prop prop);
 
     std::vector<HostSdmaExportInfo> imports_;
     uint8_t *globalVirtualAddress_{nullptr};
