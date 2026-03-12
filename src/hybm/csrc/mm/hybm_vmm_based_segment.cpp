@@ -484,13 +484,9 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
-        if (info.magic != exportMagic || info.size == 0) {
+        if (info.magic != exportMagic || info.magic == ENTITY_EXPORT_INFO_MAGIC) {
             BM_LOG_WARN("import i(" << i << ") rank(" << info.rankId << ") magic(" << info.magic
                                     << ") invalid skip it.");
-            continue;
-        }
-
-        if (info.magic == ENTITY_EXPORT_INFO_MAGIC) {
             continue;
         }
 
@@ -510,6 +506,9 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
         }
         if (addresses != nullptr) {
             addresses[i] = reinterpret_cast<void *>(info.gva);
+        }
+        if (info.size == 0) {
+            continue;
         }
         deserializedInfos.emplace_back(info);
         BM_LOG_INFO("Success to import rank:" << info.rankId << " superPodId:" << info.superPodId << " serverId:"
