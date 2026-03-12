@@ -270,6 +270,26 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 |flags|ASYNC_COPY_FLAG:异步执行;COPY_EXTEND_FLAG:A3超节点内使用MTE执行拷贝|
 |返回值|成功返回0，失败返回错误码|
 
+#### smem_bm_copy_batch_partial_succeed
+批量拷贝数据对象，批量中部分失败时，可以通过出参判断具体哪个成功哪个失败
+```c
+int32_t smem_bm_copy_batch_partial_succeed(
+        smem_bm_t handle,
+        smem_batch_copy_params *params,
+        smem_bm_copy_type t,
+        uint32_t flags, smem_batch_copy_result *result
+);
+```
+
+|参数/返回值|含义|
+|-|-|
+|handle|BM handle|
+|params|拷贝数据的相关参数|
+|t|数据拷贝类型，L2G/G2L/G2H/H2G，L=local HBM memory，G=global space，H=Host memory|
+|flags|ASYNC_COPY_FLAG:异步执行;COPY_EXTEND_FLAG:A3超节点内使用MTE执行拷贝|
+|result|出参：当部分失败时，此出参会指定具体哪个成功，哪个失败|
+|返回值|成功返回0，部分失败返回SMEM_PARTIAL_FAILED(-2012)，其它失败返回对应错误码|
+
 ### 5.查询接口
 #### smem_bm_get_rank_id
 获取当前rank的id
