@@ -24,6 +24,7 @@
 #include "hybm_version.h"
 #include "mf_file_util.h"
 #include "hybm_stream_manager.h"
+#include "hybm_va_manager.h"
 #include "under_api/dl_api.h"
 
 using namespace ock::mf;
@@ -164,4 +165,33 @@ HYBM_API const char *hybm_get_error_string(int32_t errCode)
 {
     static thread_local std::string info = std::string("error(").append(std::to_string(errCode)).append(")");
     return info.c_str();
+}
+
+HYBM_API int32_t hybm_gva_to_va(uint64_t gva, hybm_mem_type vaMemType, uint64_t *va)
+{
+    if (va == nullptr) {
+        BM_LOG_ERROR("input va is null.");
+        return BM_ERROR;
+    }
+
+    if (!HybmHasInited()) {
+        BM_LOG_ERROR("hybm not initialized.");
+        return BM_ERROR;
+    }
+
+    // Validate memory type
+    if (vaMemType >= HYBM_MEM_TYPE_BUTT) {
+        BM_LOG_ERROR("invalid memory type: " << vaMemType);
+        return BM_ERROR;
+    }
+    // Determine output VA type based on memory type
+    uint32_t outputType = vaMemType == HYBM_MEM_TYPE_DEVICE ? HVM_DVA : HVM_HVA;
+    uint64_t convertedVa = HybmVaManager::GetInstance().TransformVa(gva, HVM_GVA, outputType);
+    if (convertedVa == 0) {
+        BM_LOG_ERROR("GVA to VA conversion failed for address: 0x" << std::hex << gva);
+        return BM_ERROR;
+    }
+
+    *va = convertedVa;
+    return BM_OK;
 }

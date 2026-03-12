@@ -185,6 +185,16 @@ int32_t hybm_remove_imported(hybm_entity_t e, uint32_t rank, uint32_t flags);
  */
 int32_t hybm_set_extra_context(hybm_entity_t e, const void *context, uint32_t size);
 
+/**
+ * @brief Convert GVA (Global Virtual Address) to VA (Virtual Address) with specified memory type
+ *
+ * @param gva              [in] Global Virtual Address to convert
+ * @param vaMemType        [in] Output va memory type, HYBM_MEM_TYPE_DEVICE or HYBM_MEM_TYPE_HOST
+ * @param va               [out] Converted Virtual Address
+ * @return 0 if successful, error code otherwise
+ */
+int32_t hybm_gva_to_va(uint64_t gva, hybm_mem_type vaMemType, uint64_t *va);
+
 #ifdef __cplusplus
 }
 #endif

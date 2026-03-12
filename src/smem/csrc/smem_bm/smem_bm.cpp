@@ -88,8 +88,7 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
     }
 
     g_smemBmInited = true;
-    SM_LOG_INFO("smem_bm_init success. "
-                << " config_ip: " << storeURL);
+    SM_LOG_INFO("smem_bm_init success. " << " config_ip: " << storeURL);
     return SM_OK;
 }
 
@@ -321,6 +320,30 @@ SMEM_API void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memTyp
             SM_LOG_AND_SET_LAST_ERROR("input mem type is invalid, memType: " << memType);
             return nullptr;
     }
+}
+
+SMEM_API int32_t smem_bm_gva_to_va(smem_bm_t handle, void *gva, smem_bm_mem_type vaMemType, void **va)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(gva != nullptr, "invalid param, gva is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(va != nullptr, "invalid param, va is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+    SM_VALIDATE_RETURN(vaMemType == SMEM_MEM_TYPE_LOCAL_DEVICE || vaMemType == SMEM_MEM_TYPE_LOCAL_HOST,
+                       "invalid param, memType must be SMEM_MEM_TYPE_LOCAL_DEVICE or SMEM_MEM_TYPE_LOCAL_HOST",
+                       SM_INVALID_PARAM);
+
+    uint64_t convertedVa = 0;
+    // Convert vaMemType to hybm_mem_type
+    hybm_mem_type hybmMemType = vaMemType == SMEM_MEM_TYPE_LOCAL_DEVICE ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
+    // Convert GVA to VA using hybm_gva_to_va
+    auto ret = hybm_gva_to_va(reinterpret_cast<uint64_t>(gva), hybmMemType, &convertedVa);
+    if (ret != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("hybm_gva_to_va failed, result: " << ret);
+        return SM_ERROR;
+    }
+
+    *va = reinterpret_cast<void *>(convertedVa);
+    return SM_OK;
 }
 
 SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags)

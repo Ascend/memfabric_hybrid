@@ -20,6 +20,7 @@
 #include "smem.h"
 #include "smem_shm.h"
 #include "smem_bm.h"
+#include "hybm_big_mem.h"
 #include "smem_types.h"
 #include "ut_barrier_util.h"
 #include "hybm.h"
@@ -557,6 +558,69 @@ TEST_F(SmemBmTest, smem_bm_unregister_user_mem_invalid_params)
 
 TEST_F(SmemBmTest, smem_bm_uninit_without_init_safe)
 {
+    smem_bm_uninit(0);
+}
+
+TEST_F(SmemBmTest, smem_bm_gva_to_va_nullptr)
+{
+    smem_bm_t handle = nullptr;
+    void *gva = (void *)(uintptr_t)(0x1000);
+    smem_bm_mem_type memType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+    void *va = nullptr;
+
+    auto ret = smem_bm_gva_to_va(handle, gva, memType, &va);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    // Test with null va pointer
+    handle = reinterpret_cast<smem_bm_t>(0x1);
+    ret = smem_bm_gva_to_va(handle, gva, memType, nullptr);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+}
+
+TEST_F(SmemBmTest, smem_bm_gva_to_va_not_initialized)
+{
+    smem_bm_t handle = reinterpret_cast<smem_bm_t>(0x1);
+    void *gva = (void *)(uintptr_t)(0x1000);
+    smem_bm_mem_type memType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+    void *va = nullptr;
+
+    auto ret = smem_bm_gva_to_va(handle, gva, memType, &va);
+    EXPECT_EQ(ret, ock::smem::SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_gva_to_va_invalid_mem_type)
+{
+    smem_bm_t handle = MockInitAndCreateHandle(9); // 9
+    void *gva = (void *)(uintptr_t)(0x1000);
+    smem_bm_mem_type memType = static_cast<smem_bm_mem_type>(2); // Invalid mem type
+    void *va = nullptr;
+
+    auto ret = smem_bm_gva_to_va(handle, gva, memType, &va);
+    EXPECT_EQ(ret, ock::smem::SM_INVALID_PARAM);
+
+    smem_bm_destroy(handle);
+    smem_bm_uninit(0);
+}
+
+TEST_F(SmemBmTest, smem_bm_gva_to_va_valid_address)
+{
+    smem_bm_t handle = MockInitAndCreateHandle(10); // 10
+    void *gva = (void *)(uintptr_t)(0x1000);
+    smem_bm_mem_type memType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+    void *va = nullptr;
+
+    // Mock hybm_gva_to_va to return success
+    MOCKER_CPP(&hybm_gva_to_va, int32_t (*)(uint64_t, hybm_mem_type, uint64_t *)).stubs().will(returnValue(0));
+
+    auto ret = smem_bm_gva_to_va(handle, gva, memType, &va);
+    EXPECT_EQ(ret, ock::smem::SM_OK);
+
+    // Test with HOST mem type
+    memType = SMEM_MEM_TYPE_LOCAL_HOST;
+    ret = smem_bm_gva_to_va(handle, gva, memType, &va);
+    EXPECT_EQ(ret, ock::smem::SM_OK);
+
+    smem_bm_destroy(handle);
     smem_bm_uninit(0);
 }
 

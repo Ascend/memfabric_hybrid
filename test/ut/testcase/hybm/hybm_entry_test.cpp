@@ -20,6 +20,7 @@
 #include "hybm_ptracer.h"
 #include "hybm_stream_manager.h"
 #include "dl_api.h"
+#include "hybm_va_manager.h"
 #include "hybm_gva_version.h"
 
 using namespace ock::mf;
@@ -333,5 +334,70 @@ TEST_F(HybmEntryTest, hybm_init_ptracer_failure)
     auto ret = hybm_init(0, 0);
     EXPECT_EQ(ret, 0);
     EXPECT_TRUE(HybmHasInited());
+    hybm_uninit();
+}
+
+TEST_F(HybmEntryTest, hybm_gva_to_va_not_initialized)
+{
+    uint64_t va = 0;
+    auto ret = hybm_gva_to_va(0x1000, HYBM_MEM_TYPE_DEVICE, &va);
+    EXPECT_EQ(ret, BM_ERROR);
+}
+
+TEST_F(HybmEntryTest, hybm_gva_to_va_nullptr)
+{
+    MockHybmInitSuccess();
+    auto ret = hybm_init(0, 0);
+    EXPECT_EQ(ret, 0);
+
+    auto ret_gva_to_va = hybm_gva_to_va(0x1000, HYBM_MEM_TYPE_DEVICE, nullptr);
+    EXPECT_EQ(ret_gva_to_va, BM_ERROR);
+
+    hybm_uninit();
+}
+
+TEST_F(HybmEntryTest, hybm_gva_to_va_invalid_address)
+{
+    MockHybmInitSuccess();
+    auto ret = hybm_init(0, 0);
+    EXPECT_EQ(ret, 0);
+
+    uint64_t va = 0;
+    auto ret_gva_to_va = hybm_gva_to_va(0x1000, HYBM_MEM_TYPE_DEVICE, &va);
+    EXPECT_EQ(ret_gva_to_va, BM_ERROR);
+
+    hybm_uninit();
+}
+
+TEST_F(HybmEntryTest, hybm_gva_to_va_valid_address)
+{
+    MockHybmInitSuccess();
+    auto ret = hybm_init(0, 0);
+    EXPECT_EQ(ret, 0);
+
+    // Add a test VA mapping
+    uint64_t gva = 0x100000000000; // 16T
+    uint64_t hva = 0x10000000;     // 4GB
+    BaseAllocatedGvaInfo baseInfo = {{gva, 0, hva}, 0x1000, HYBM_MEM_TYPE_HOST};
+    HybmVaManager::GetInstance().AddVaInfoFromExternal(baseInfo, 0);
+
+    uint64_t va = 0;
+    auto ret_gva_to_va = hybm_gva_to_va(gva, HYBM_MEM_TYPE_HOST, &va);
+    EXPECT_EQ(ret_gva_to_va, BM_OK);
+    EXPECT_EQ(va, hva);
+
+    hybm_uninit();
+}
+
+TEST_F(HybmEntryTest, hybm_gva_to_va_invalid_mem_type)
+{
+    MockHybmInitSuccess();
+    auto ret = hybm_init(0, 0);
+    EXPECT_EQ(ret, 0);
+
+    uint64_t va = 0;
+    auto ret_gva_to_va = hybm_gva_to_va(0x1000, HYBM_MEM_TYPE_BUTT, &va);
+    EXPECT_EQ(ret_gva_to_va, BM_ERROR);
+
     hybm_uninit();
 }

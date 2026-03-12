@@ -142,6 +142,16 @@ public:
         return (uint64_t)(ptrdiff_t)ptr;
     }
 
+    uint64_t GvaToVa(uintptr_t gva, smem_bm_mem_type memType)
+    {
+        void *va = nullptr;
+        auto ret = smem_bm_gva_to_va(handle_, reinterpret_cast<void *>(gva), memType, &va);
+        if (ret != 0) {
+            return 0;
+        }
+        return (uint64_t)(ptrdiff_t)va;
+    }
+
     void Destroy()
     {
         smem_bm_destroy(handle_);
@@ -642,6 +652,16 @@ Arguments:
     mem_type(BmMemType): memory type, DEVICE or HOST, default is DEVICE
 Returns:
     ptr of peer gva)")
+        .def("gva_to_va", &BigMemory::GvaToVa, py::call_guard<py::gil_scoped_release>(), py::arg("gva"),
+             py::arg("mem_type") = SMEM_MEM_TYPE_LOCAL_HOST,
+             R"(
+    Convert GVA (Global Virtual Address) to VA (Virtual Address).
+
+    Arguments:
+        gva(int): Global Virtual Address to convert
+        mem_type(BmMemType): memory type, LOCAL_DEVICE or LOCAL_HOST, default is LOCAL_HOST
+    Returns:
+        Converted Virtual Address, 0 if failed)")
         .def("destroy", &BigMemory::Destroy, py::call_guard<py::gil_scoped_release>(), R"(
 Destroy the big memory handle.)")
         .def("get_rank_id_by_gva", &BigMemory::GetRankIdByGva, py::call_guard<py::gil_scoped_release>(), py::arg("gva"),

@@ -132,6 +132,19 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
 void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
 
 /**
+ * @brief Convert GVA (Global Virtual Address) to VA (Virtual Address) with specified memory type
+ *
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param gva              [in] Global virtual address
+ * @param vaMemType        [in] Output va memory type, only SMEM_MEM_TYPE_LOCAL_DEVICE or SMEM_MEM_TYPE_LOCAL_HOST
+ *                              are supported
+ * @param va               [out] Converted virtual address
+ * @return 0 if successful, error code otherwise
+ */
+
+int32_t smem_bm_gva_to_va(smem_bm_t handle, void *gva, smem_bm_mem_type vaMemType, void **va);
+
+/**
  * @brief Data copy on Big Memory object, several copy types supported:
  * L2G: local memory to global space
  * G2L: global space to local memory
