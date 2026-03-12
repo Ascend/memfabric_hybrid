@@ -279,6 +279,10 @@ public:
 
     static inline const char *AclrtGetSocName()
     {
+        if (pAclrtGetSocName == nullptr) {
+            BM_LOG_ERROR("pAclrtGetSocName is nullptr, bm under api unload.");
+            return nullptr;
+        }
         return pAclrtGetSocName();
     }
 
