@@ -41,9 +41,15 @@ Result HostDataOpRDMA::Initialize() noexcept
         return BM_OK;
     }
     rdmaSwapBaseAddr_ =
-        mmap(nullptr, rdmaSwapSpaceSize_, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_HUGETLB | MAP_PRIVATE, -1, 0);
+        mmap(nullptr, rdmaSwapSpaceSize_, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB, -1, 0);
     if (rdmaSwapBaseAddr_ == MAP_FAILED) {
-        BM_LOG_ERROR("Failed to alloc size:" << rdmaSwapSpaceSize_ << " error:" << errno << ", "
+        BM_LOG_WARN("Failed to alloc with huge page, size:" << rdmaSwapSpaceSize_ << " error:" << errno << ", "
+                     << SafeStrError(errno) << ". fallback to mmap with regular pagesize");
+        rdmaSwapBaseAddr_ =
+            mmap(nullptr, rdmaSwapSpaceSize_, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    }
+    if (rdmaSwapBaseAddr_ == MAP_FAILED) {
+        BM_LOG_ERROR("Failed to alloc with size:" << rdmaSwapSpaceSize_ << " error:" << errno << ", "
                                              << SafeStrError(errno));
         rdmaSwapSpaceSize_ = 0;
         return BM_ERROR;
@@ -146,7 +152,6 @@ Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
     Result ret;
     TransformVa(params.src, params.dest, direction);
-    PreRegisterLocalMr(params, direction);
     switch (direction) {
         case HYBM_LOCAL_HOST_TO_GLOBAL_HOST:
             ret = CopyHost2Gva(params.src, params.dest, params.dataSize, options);
@@ -167,7 +172,6 @@ Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
     }
-    transportManager_->UnregisterMemoryRegion(reinterpret_cast<uint64_t>(GetLocalMrAddr(params, direction)));
     return ret;
 }
 
@@ -397,7 +401,6 @@ Result HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_c
     for (uint32_t i = 0; i < params.batchSize; i++) {
         TransformVa(params.sources[i], params.destinations[i], direction);
     }
-    BatchPreRegisterLocalMr(params, direction);
     Result ret = BM_OK;
     switch (direction) {
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST: {
@@ -434,7 +437,6 @@ Result HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_c
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
     }
-    BatchUnRegisterLocalMr(params, direction);
     return ret;
 }
 

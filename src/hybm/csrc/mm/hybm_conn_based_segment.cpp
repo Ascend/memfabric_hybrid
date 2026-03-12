@@ -348,15 +348,24 @@ Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t l
     }
 
     auto prot = PROT_READ | PROT_WRITE;
-    auto flags = MAP_FIXED;
+    auto flags = MAP_FIXED | MAP_HUGETLB;
     void *dva = nullptr;
-#ifndef UT_ENABLED
-    flags |= MAP_HUGETLB;
-#endif
     if (options_.shmFd < 0) {
         mapped = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     } else {
         mapped = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
+    }
+
+    if (mapped == MAP_FAILED || mapped != sliceAddr) {
+        BM_LOG_WARN("Failed to alloc size:" << size << " addr:" << sliceAddr << " mapped:" << mapped
+                                            << " with huge page, error:" << errno << ", " << SafeStrError(errno)
+                                            << ". fallback to mmap with regular pagesize");
+        flags &= ~MAP_HUGETLB;
+        if (options_.shmFd < 0) {
+            mapped = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        } else {
+            mapped = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
+        }
     }
 
     if (mapped == MAP_FAILED || mapped != sliceAddr) {
