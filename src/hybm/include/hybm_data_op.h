@@ -55,6 +55,15 @@ int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *params, hy
  */
 int32_t hybm_wait(hybm_entity_t e);
 
+/**
+ * @brief batch copy data bytes from memory area <i>sources</i> to memory area <i>destinations</i> with quantization
+ *        Note: only support copy between with hbm and global dram using MTE
+ * @param e                [in] entity created by hybm_create_entity
+ * @param params           [in] batch data copy parameters.
+ * @return 0 if successful
+ */
+int32_t hybm_data_quant_copy(hybm_entity_t e, hybm_quant_copy_params *params);
+
 #ifdef __cplusplus
 }
 #endif

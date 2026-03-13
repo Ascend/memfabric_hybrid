@@ -44,6 +44,20 @@ typedef struct {
     bool startConfigServer;          /* whether to start config store, default false */
 } smem_trans_config_t;
 
+typedef struct {
+    const char *remoteUniqueId;
+    void **localAddrs;
+    void **remoteAddrs;
+    size_t *dataSizes;
+    float **scale;                  /* quant scale which is address of the remote uniqueId */
+    float **offset;                 /* quant offset which is address of the remote uniqueId */
+    uint32_t batchSize;
+    uint32_t unitNum;               /* pretoken tensor size */
+    void *stream;                   /* if stream != null, submit task on this stream async */
+    uint32_t inputType;             /* inputType = 0, input type is bfloat16; inputType = 1, input type is float16 */
+    uint32_t flags;                 /* unused */
+} smem_trans_quant_copy_param_t;
+
 #ifdef __cplusplus
 }
 #endif

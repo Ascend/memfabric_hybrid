@@ -154,6 +154,19 @@ typedef struct {
     uint32_t batchSize;
 } hybm_batch_copy_params;
 
+typedef struct {
+    void **sources;
+    void **destinations;
+    const uint64_t *dataSizes;
+    void **scale;                   /* quant scale */
+    void **offset;                  /* quant offset */
+    uint32_t batchSize;
+    uint32_t unitNum;               /* pretoken tensor size */
+    void *stream;
+    uint32_t inputType;             /* inputType = 0, input type is bfloat16; inputType = 1, input type is float16 */
+    uint32_t flags;
+} hybm_quant_copy_params;
+
 #ifndef __cplusplus
 }
 #endif

@@ -116,7 +116,7 @@ void HybmVaManager::RemoveOneVaInfo(uint64_t va, uint32_t type)
 uint64_t HybmVaManager::TransformVa(uint64_t va, uint32_t inputType, uint32_t outputType)
 {
     BM_VALIDATE_RETURN(va > 0 && inputType < HVM_BUTT && outputType < HVM_BUTT,
-                       "input is invalid, va=" << VaToStr(va) << " Itype=" << inputType << " Otype=" << inputType, 0);
+                       "input is invalid, va=" << VaToStr(va) << " Itype=" << inputType << " Otype=" << outputType, 0);
 
     if (inputType == outputType) {
         return va;

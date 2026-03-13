@@ -142,7 +142,8 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
         return BM_ERROR;
     }
 
-    BM_LOG_DEBUG("export device info(sdid=" << sdid_ << ", pid=" << pid_ << ", deviceId=" << logicDeviceId_ << ")");
+    BM_LOG_DEBUG("export device info(sdid=" << sdid_ << " pid=" << pid_ << " rank=" << info.rankId
+                                            << " deviceId=" << logicDeviceId_ << ")");
     return BM_OK;
 }
 
@@ -169,7 +170,8 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
         return BM_ERROR;
     }
 
-    BM_LOG_DEBUG("export slice success.");
+    BM_LOG_DEBUG("export slice success. addr:" << VaToStr(info.address) << " size:" << VaToStr(info.size)
+                                               << " name:" << info.name << " rank:" << options_.rankId);
     return BM_OK;
 }
 
@@ -359,7 +361,8 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
             return BM_DL_FUNCTION_FAILED;
         }
         BM_LOG_DEBUG("set whitelist for shm(" << it.second.name << ") sdid=" << deviceInfo.sdid
-                                              << ", pid=" << deviceInfo.pid);
+                                              << " pid=" << deviceInfo.pid << " rank=" << deviceInfo.rankId
+                                              << " devId=" << deviceInfo.logicDeviceId);
     }
 
     importedDeviceInfo_.emplace(deviceInfo.rankId, deviceInfo);
@@ -438,6 +441,9 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
     }
 
     registerAddrs_.clear();
+    HybmVaManager::GetInstance().FreeReserveGva(reinterpret_cast<uint64_t>(globalVirtualAddress_));
+    globalVirtualAddress_ = lvaBase_ = nullptr;
+    totalVirtualSize_ = 0;
     BM_LOG_INFO("close memory finish.");
 }
 

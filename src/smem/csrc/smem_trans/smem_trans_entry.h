@@ -48,6 +48,7 @@ struct LocalMapAddress {
 
 class SmemTransEntry;
 using SmemTransEntryPtr = SmRef<SmemTransEntry>;
+using Local2GlobalMap = std::map<const void *, LocalMapAddress, std::greater<const void *>>;
 
 class SmemTransEntry : public SmReferable {
 public:
@@ -76,6 +77,7 @@ public:
     Result BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
                              const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode, void *stream,
                              uint32_t flags);
+    Result BatchQuantTransfer(smem_trans_quant_copy_param_t *params, smem_bm_copy_type opcode);
 
 private:
     bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port);
@@ -96,6 +98,8 @@ private:
     Result ExportExchangeInfo();
     void StoreSlice(hybm_mem_slice_t slice, void *vaAddr);
     hybm_mem_slice_t RemoveSlice(void *addr);
+    Result TransformAddr(Local2GlobalMap &maps, std::vector<void *> &addr, void *remoteAddrs[],
+                         const size_t dataSizes[], uint32_t size);
 
 private:
     hybm_entity_t entity_ = nullptr;                       /* local hybm entity */
@@ -120,7 +124,7 @@ private:
     bool watchConnectRunning_{true};
 
     ock::mf::ReadWriteLock remoteSliceRwMutex_;
-    std::unordered_map<WorkerId, std::map<const void *, LocalMapAddress, std::greater<const void *>>, WorkerIdHash>
+    std::unordered_map<WorkerId, Local2GlobalMap, WorkerIdHash>
         remoteSlices_;
     std::map<std::string, WorkerId> nameToWorkerId; /* To accelerate name parsed */
     std::unordered_map<void *, hybm_mem_slice_t> addrToSliceMap_;

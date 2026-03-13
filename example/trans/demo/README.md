@@ -41,8 +41,8 @@ python test\_transfer\_engine.py \[参数]
 ```
 python test_transfer_engine.py \
     --role Decode \
-    --src-unique-id "192.168.1.100:50051" \
-    --store-url tcp://192.168.1.100:8000 \
+    --src-unique-id "127.0.0.1:50051" \
+    --store-url tcp://127.0.0.1:8000 \
     --npu-id 0 \
     --log-level 1
 ```
@@ -52,10 +52,10 @@ python test_transfer_engine.py \
 ```
 python test_transfer_engine.py \
     --role Prefill \
-    --src-unique-id "192.168.1.100:50052" \
-    --store-url tcp://192.168.1.1000:8000 \
+    --src-unique-id "127.0.0.1:50052" \
+    --store-url tcp://127.0.0.1:8000 \
     --npu-id 1 \
-    --dst-unique-id "192.168.1.100:50051" \
+    --dst-unique-id "127.0.0.1:50051" \
     --log-level 1
 ```
 
@@ -77,6 +77,10 @@ python test_transfer_engine.py \
 * Prefill 节点生成随机张量数据，注册内存后通过`transfer_sync_write`方法将数据传输到 Decode 节点
 
 * 数据通过直接内存访问方式传输，避免数据拷贝
+
+3. **随路量化测试**
+
+* 将测试脚本由test_transfer_engine.py替换为test_quant_trans.py,参数不变即可，需要手动观测日志打印的ret_quant和ret_scale的sum是否误差在可接受范围内
 
 ## 故障排查
 

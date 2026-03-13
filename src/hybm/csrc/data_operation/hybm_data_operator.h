@@ -57,6 +57,11 @@ public:
     virtual Result DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                  const ExtOptions &options) noexcept = 0;
 
+    virtual Result QuantCopy(hybm_quant_copy_params &params) noexcept
+    {
+        return BM_NOT_SUPPORTED;
+    }
+
     virtual Result Wait(int32_t waitId) noexcept = 0;
 
     virtual void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept = 0;

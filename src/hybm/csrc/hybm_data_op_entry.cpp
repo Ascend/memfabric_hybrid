@@ -78,7 +78,8 @@ HYBM_API int32_t hybm_wait(hybm_entity_t e)
         BM_LOG_ERROR("input parameter invalid, e: 0x" << std::hex << e);
         return BM_INVALID_PARAM;
     }
-    auto entity = static_cast<MemEntity *>(e);
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
     return entity->Wait();
 }
 
@@ -129,4 +130,29 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
         }
     }
     return entity->BatchCopyData(*params, direction, stream, flags);
+}
+
+HYBM_API int32_t hybm_data_quant_copy(hybm_entity_t e, hybm_quant_copy_params *params)
+{
+    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->sources != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->destinations != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->scale != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(params->offset != nullptr, BM_INVALID_PARAM);
+    BM_VALIDATE_RETURN(params->unitNum <= 32U * KB, "unit is " << params->unitNum << " large than 32K",
+                       BM_INVALID_PARAM);
+
+    uint32_t unitSize = params->unitNum * 2;
+    for (uint32_t i = 0; i < params->batchSize; i++) {
+        BM_VALIDATE_RETURN(params->dataSizes[i] % unitSize == 0,
+                           "dataSize:" << params->dataSizes[i] << " is not a multiple of unitSize:" << unitSize,
+                           BM_INVALID_PARAM);
+    }
+
+    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
+    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    return entity->QuantCopy(*params);
 }

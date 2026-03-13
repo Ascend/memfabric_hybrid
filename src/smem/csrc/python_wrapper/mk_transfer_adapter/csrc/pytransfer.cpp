@@ -312,6 +312,68 @@ int TransferAdapterPy::BatchTransferAsyncReadSubmit(const char *destUniqueId,
     return ret;
 }
 
+int TransferAdapterPy::BatchTransferWriteWithQuant(const char *destUniqueId,
+                                                   std::vector<uintptr_t> buffers,
+                                                   std::vector<uintptr_t> peer_buffer_addresses,
+                                                   std::vector<size_t> lengths,
+                                                   std::vector<uintptr_t> scale_addresses,
+                                                   std::vector<uintptr_t> offset_addresses,
+                                                   uint32_t unit_num,
+                                                   uint32_t input_type,
+                                                   uintptr_t stream, uint32_t flags)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    // 检查向量大小是否一致
+    if (buffers.size() != peer_buffer_addresses.size() ||
+        buffers.size() != lengths.size() || buffers.size() > UINT32_MAX) {
+        ADAPTER_LOG_ERROR("Buffers, peer_buffer_addresses and lengths is not equal or too long.");
+        return -1;
+    }
+
+    if (scale_addresses.size() != 0 && scale_addresses.size() != buffers.size()) {
+        ADAPTER_LOG_ERROR("Buffers, scale_addresses and lengths is not equal.");
+        return -1;
+    }
+    if (offset_addresses.size() != 0 && offset_addresses.size() != buffers.size()) {
+        ADAPTER_LOG_ERROR("Buffers, offset_addresses and lengths is not equal.");
+        return -1;
+    }
+
+    uint32_t batchSize = buffers.size();
+    std::vector<void*> srcAddresses(batchSize);
+    std::vector<void*> destAddresses(batchSize);
+    std::vector<size_t> dataSizes(batchSize);
+    std::vector<float*> scaleAddresses(batchSize);
+    std::vector<float*> offsetAddresses(batchSize);
+
+    for (uint32_t i = 0; i < batchSize; ++i) {
+        srcAddresses[i] = reinterpret_cast<void*>(buffers[i]);
+        destAddresses[i] = reinterpret_cast<void*>(peer_buffer_addresses[i]);
+        dataSizes[i] = lengths[i];
+        scaleAddresses[i] = (scale_addresses.size() > 0) ? reinterpret_cast<float*>(scale_addresses[i]) : nullptr;
+        offsetAddresses[i] = (offset_addresses.size() > 0) ? reinterpret_cast<float*>(offset_addresses[i]) : nullptr;
+    }
+
+    smem_trans_quant_copy_param_t param = {
+        destUniqueId,
+        srcAddresses.data(),
+        destAddresses.data(),
+        dataSizes.data(),
+        scaleAddresses.data(),
+        offsetAddresses.data(),
+        batchSize,
+        unit_num,
+        reinterpret_cast<void*>(stream),
+        input_type,
+        flags
+    };
+    int ret = smem_trans_batch_quant_write(handle_, &param);
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("SMEM API smem_trans_batch_quant_write happen error, ret=" << ret);
+    }
+    return ret;
+}
+
 int TransferAdapterPy::RegisterMemory(uintptr_t buffer_addr, size_t capacity)
 {
     ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
@@ -424,6 +486,10 @@ PYBIND11_MODULE(_pymf_transfer, m)
             .def("batch_transfer_async_read_submit", &TransferAdapterPy::BatchTransferAsyncReadSubmit,
                  py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
                  py::arg("peer_buffers"), py::arg("lengths"), py::arg("stream"), py::arg("flags") = 0)
+            .def("batch_transfer_write_with_quant", &TransferAdapterPy::BatchTransferWriteWithQuant,
+                 py::call_guard<py::gil_scoped_release>(), py::arg("dest_session"), py::arg("buffers"),
+                 py::arg("peer_buffers"), py::arg("lengths"), py::arg("scale_buffers"), py::arg("offset_buffers"),
+                 py::arg("unit_num"), py::arg("input_type") = 0, py::arg("stream") = 0, py::arg("flags") = 0)
             .def("register_memory", &TransferAdapterPy::RegisterMemory, py::call_guard<py::gil_scoped_release>(),
                  py::arg("buffer_addr"), py::arg("capacity"))
             .def("unregister_memory", &TransferAdapterPy::UnregisterMemory, py::call_guard<py::gil_scoped_release>(),

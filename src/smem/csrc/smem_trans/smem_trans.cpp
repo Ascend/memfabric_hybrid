@@ -374,3 +374,20 @@ SMEM_API int32_t smem_trans_batch_read_submit(smem_trans_t handle, void *localAd
     return entry->BatchSyncTransfer(localAddrs, remoteUniqueId, const_cast<void**>(remoteAddrs),
                                     dataSizes, batchSize, SMEMB_COPY_G2L, stream, flags);
 }
+
+SMEM_API int32_t smem_trans_batch_quant_write(smem_trans_t handle, smem_trans_quant_copy_param_t *params)
+{
+    SM_VALIDATE_RETURN(g_smemTransInited, "smem trans not initialized yet", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid handle, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params != nullptr, "invalid params, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->remoteUniqueId != nullptr, "invalid remoteUniqueId, which is null", SM_INVALID_PARAM);
+
+    /* get entry by ptr */
+    SmemTransEntryPtr entry;
+    auto result = SmemTransEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (result != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("get entry by handle failed ");
+        return result;
+    }
+    return entry->BatchQuantTransfer(params, SMEMB_COPY_L2G);
+}

@@ -316,6 +316,33 @@ Result SmemTransEntry::SyncTransfer(void *localAddr, const std::string &remoteUn
     return BatchSyncTransfer(&localAddr, remoteUniqueId, &remoteAddr, &dataSize, 1U, opcode, stream, flags);
 }
 
+Result SmemTransEntry::TransformAddr(Local2GlobalMap &maps, std::vector<void *> &addr, void *remoteAddrs[],
+                                     const size_t dataSizes[], uint32_t size)
+{
+    for (auto i = 0U; i < size; i++) {
+        if (remoteAddrs[i] == nullptr) {
+            addr[i] = nullptr;
+            continue;
+        }
+
+        auto pos = maps.lower_bound(remoteAddrs[i]);
+        if (pos == maps.end()) {
+            SM_LOG_ERROR("remote address[" << i << "] " << remoteAddrs[i] << " is invalid.");
+            return SM_INVALID_PARAM;
+        }
+
+        if (dataSizes != nullptr &&
+            (const uint8_t *)remoteAddrs[i] + dataSizes[i] > (const uint8_t *)(pos->first) + pos->second.size) {
+            SM_LOG_ERROR("address[" << i << "], size[" << i << "]=" << dataSizes[i] << " out of range.");
+            return SM_INVALID_PARAM;
+        }
+
+        addr[i] = (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
+    }
+
+    return SM_OK;
+}
+
 Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &remoteUniqueId, void *remoteAddrs[],
                                          const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode,
                                          void *stream, uint32_t flags)
@@ -345,25 +372,8 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
         return SM_INVALID_PARAM;
     }
 
-    for (auto i = 0U; i < batchSize; i++) {
-        auto pos = it->second.lower_bound(remoteAddrs[i]);
-        if (pos == it->second.end()) {
-            SM_LOG_ERROR("remote address[" << i << "] " << remoteAddrs[i] << " is invalid.");
-            return SM_INVALID_PARAM;
-        }
-
-        if ((const uint8_t *)remoteAddrs[i] + dataSizes[i] > (const uint8_t *)(pos->first) + pos->second.size) {
-            SM_LOG_ERROR("address[" << i << "], size[" << i << "]=" << dataSizes[i] << " out of range.");
-            return SM_INVALID_PARAM;
-        }
-
-        mappedAddress[i] =
-            (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
-        if (mappedAddress[i] == nullptr) {
-            SM_LOG_ERROR(" remote addr is null");
-            return SM_INVALID_PARAM;
-        }
-    }
+    ret = TransformAddr(it->second, mappedAddress, remoteAddrs, dataSizes, batchSize);
+    SM_ASSERT_RETURN_NOLOG(ret == SM_OK, ret);
 
     uint32_t flag = flags | ((stream != nullptr) ? ASYNC_COPY_FLAG : 0);
     switch (opcode) {
@@ -381,6 +391,63 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
     }
     if (ret != 0) {
         SM_LOG_ERROR("batch copy data failed:" << ret);
+    }
+    return ret;
+}
+
+Result SmemTransEntry::BatchQuantTransfer(smem_trans_quant_copy_param_t *params, smem_bm_copy_type opcode)
+{
+    SM_VALIDATE_RETURN(params->localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->dataSizes != nullptr, "invalid dataSizes, which is null", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->batchSize != 0, "invalid batchSize, which is 0", SM_INVALID_PARAM);
+    for (auto i = 0U; i < params->batchSize; i++) {
+        SM_VALIDATE_RETURN(params->localAddrs[i] != nullptr, "localAddrs, which is null", SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(params->remoteAddrs[i] != nullptr, "remoteAddrs, which is null", SM_INVALID_PARAM);
+        SM_VALIDATE_RETURN(params->dataSizes[i] != 0, "invalid dataSizes, which is 0", SM_INVALID_PARAM);
+    }
+    WorkerId unique;
+    auto ret = ParseNameToUniqueId(params->remoteUniqueId, unique);
+    if (ret != 0) {
+        return ret;
+    }
+
+    std::vector<void *> mappedAddress(params->batchSize);
+    std::vector<void *> scaleAddress(params->batchSize);
+    std::vector<void *> offsetAddress(params->batchSize);
+
+    mf::ReadGuard locker(remoteSliceRwMutex_);
+    auto it = remoteSlices_.find(unique);
+    if (it == remoteSlices_.end()) {
+        SM_LOG_ERROR("session:(" << params->remoteUniqueId << ")(" << uniqueToString(unique) << ") not found.");
+        return SM_INVALID_PARAM;
+    }
+
+    ret = TransformAddr(it->second, mappedAddress, params->remoteAddrs, params->dataSizes, params->batchSize);
+    SM_ASSERT_RETURN_NOLOG(ret == SM_OK, ret);
+    ret = TransformAddr(it->second, scaleAddress, reinterpret_cast<void **>(params->scale), nullptr,
+                        params->batchSize);
+    SM_ASSERT_RETURN_NOLOG(ret == SM_OK, ret);
+    ret = TransformAddr(it->second, offsetAddress, reinterpret_cast<void **>(params->offset), nullptr,
+                        params->batchSize);
+    SM_ASSERT_RETURN_NOLOG(ret == SM_OK, ret);
+
+    uint32_t flag = ((params->stream != nullptr) ? ASYNC_COPY_FLAG : 0);
+    switch (opcode) {
+        case SMEMB_COPY_L2G: {
+            hybm_quant_copy_params copyParams = {params->localAddrs, mappedAddress.data(), params->dataSizes,
+                                                 scaleAddress.data(), offsetAddress.data(),
+                                                 params->batchSize, params->unitNum,
+                                                 params->stream, params->inputType, flag};
+            ret = hybm_data_quant_copy(entity_, &copyParams);
+        } break;
+        case SMEMB_COPY_G2L:
+        default:
+            SM_LOG_ERROR("unexpect copy type[" << opcode << "] is invalid.");
+            return SM_INVALID_PARAM;
+    }
+    if (ret != 0) {
+        SM_LOG_ERROR("batch quant copy data failed:" << ret);
     }
     return ret;
 }

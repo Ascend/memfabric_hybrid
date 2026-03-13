@@ -21,6 +21,7 @@ const char *DlHybmExtendApi::gHybmExtendLibName = "libmf_hybm_copy_extend.so";
 
 hybmCopyExtendFunc DlHybmExtendApi::pHybmCopyExtend = nullptr;
 hybmBatchCopyExtendFunc DlHybmExtendApi::pHybmBatchCopyExtend = nullptr;
+hybmBatchCopyQuantFunc DlHybmExtendApi::pHybmBatchCopyQuant = nullptr;
 
 Result DlHybmExtendApi::TryLoadLibrary()
 {
@@ -56,16 +57,10 @@ Result DlHybmExtendApi::TryLoadLibrary()
     /* load sym */
     DL_LOAD_SYM_OPTIONAL(pHybmCopyExtend, hybmCopyExtendFunc, libHandle, "hybm_copy_extend");
     DL_LOAD_SYM_OPTIONAL(pHybmBatchCopyExtend, hybmBatchCopyExtendFunc, libHandle, "hybm_batch_copy_extend");
+    DL_LOAD_SYM_OPTIONAL(pHybmBatchCopyQuant, hybmBatchCopyQuantFunc, libHandle, "hybm_batch_copy_quant");
 
     gLoaded = true;
-    if (pHybmCopyExtend != nullptr && pHybmBatchCopyExtend != nullptr) {
-        return BM_OK;
-    } else {
-        BM_LOG_WARN("not dlopen hybm fast api.");
-        guard.unlock();
-        CleanupLibrary();
-        return BM_DL_FUNCTION_FAILED;
-    }
+    return BM_OK;
 }
 
 void DlHybmExtendApi::CleanupLibrary()
@@ -77,6 +72,7 @@ void DlHybmExtendApi::CleanupLibrary()
 
     pHybmCopyExtend = nullptr;
     pHybmBatchCopyExtend = nullptr;
+    pHybmBatchCopyQuant = nullptr;
 
     if (libHandle != nullptr) {
         dlclose(libHandle);

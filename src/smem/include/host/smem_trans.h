@@ -238,6 +238,13 @@ int32_t smem_trans_batch_write_submit(smem_trans_t handle, const void *localAddr
                                       const char *remoteUniqueId, void *remoteAddrs[], size_t dataSizes[],
                                       uint32_t batchSize, void *stream, uint32_t flags);
 
+/**
+ * @brief batch write data from local to remote with quantization, only support A3 & dataOpType == SMEMB_DATA_OP_SDMA
+ *        now, src data type must is float16 or bfloat16, dest data type is int8
+ * @return 0 if successful
+*/
+int32_t smem_trans_batch_quant_write(smem_trans_t handle, smem_trans_quant_copy_param_t *params);
+
 #ifdef __cplusplus
 }
 #endif

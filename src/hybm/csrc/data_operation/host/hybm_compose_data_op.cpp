@@ -142,7 +142,7 @@ Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
                                                       << " no data operator available");
             return BM_INVALID_PARAM;
         }
-        // 暂时不做多路径拷贝失败重试
+        // 暂时不做多路径拷贝失败重试,copyParams内容会被BatchDataCopy修改
         auto result = availableOps.front().second->BatchDataCopy(copyParams, direction, copyOptions);
         if (result != BM_OK) {
             BM_LOG_ERROR("data batch copy failed: " << result << " src:" << copyOptions.srcRankId
@@ -177,6 +177,15 @@ Result HostComposeDataOp::DataCopyAsync(hybm_copy_params &params, hybm_data_copy
     }
     return result;
 }
+
+Result HostComposeDataOp::QuantCopy(hybm_quant_copy_params &params) noexcept
+{
+    if (sdmaDataOperator_ == nullptr) {
+        BM_LOG_ERROR("SDMA data operator not exist.");
+        return BM_ERROR;
+    }
+    return sdmaDataOperator_->QuantCopy(params);
+};
 
 Result HostComposeDataOp::Wait(int32_t waitId) noexcept
 {

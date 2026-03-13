@@ -831,6 +831,26 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     return ret;
 }
 
+int32_t MemEntityDefault::QuantCopy(hybm_quant_copy_params &params) noexcept
+{
+    BM_VALIDATE_RETURN(initialized_, "the object is not initialized, please check whether Initialize is called.",
+                       BM_NOT_INITIALIZED);
+    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
+
+    int32_t ret = BM_ERROR;
+    if (dataOperator_ == nullptr) {
+        BM_LOG_ERROR("quant data copy failed, dataOperator_ is null.");
+        return ret;
+    }
+
+    ret = dataOperator_->QuantCopy(params);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("quant data copy failed, ret: " << ret);
+        return ret;
+    }
+    return ret;
+}
+
 int32_t MemEntityDefault::Wait() noexcept
 {
     if (!initialized_) {
@@ -1062,7 +1082,7 @@ Result MemEntityDefault::InitSegment()
 
 Result MemEntityDefault::InitHbmSegment()
 {
-    if (options_.scene != HYBM_SCENE_TRANS && options_.maxHBMSize == 0) {
+    if (options_.maxHBMSize == 0) {
         BM_LOG_INFO("Hbm rank space is zero.");
         return BM_OK;
     }

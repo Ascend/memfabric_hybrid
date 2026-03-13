@@ -30,6 +30,7 @@ constexpr uint64_t HYBM_PARAM_SPACE_SIZE = 64 * 1024 * 1024; // HYBM_SINGLE_PARA
 constexpr uint64_t HYBM_PARAM_SPACE_META_OFFSET = HYBM_SINGLE_PARAM_SIZE * HYBM_PARAM_SPACE_CAP; // last 256K
 constexpr uint64_t HYBM_PARAM_META_IDX_BASE = 8; // 8 * 8B = 64B, aicore cacheline is 64B
 constexpr uint32_t HYBM_EXTEND_CONCURRENT = 32;
+constexpr uint32_t HYBM_QUANT_COPY_PARAM_SIZE = 40; // 5 param: src, dest, len, scale, offset
 
 HostDataOpSDMA::HostDataOpSDMA() noexcept {};
 
@@ -311,14 +312,15 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
 
 void HostDataOpSDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
 {
-    uint64_t out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(src), HVM_GVA, HVM_DVA);
-    if (out != 0) {
-        src = reinterpret_cast<void *>(out);
+    uint64_t out;
+    if (src != nullptr) {
+        out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(src), HVM_GVA, HVM_DVA);
+        src = (out != 0) ? reinterpret_cast<void *>(out) : src;
     }
 
-    out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(dst), HVM_GVA, HVM_DVA);
-    if (out != 0) {
-        dst = reinterpret_cast<void *>(out);
+    if (dst != nullptr) {
+        out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(dst), HVM_GVA, HVM_DVA);
+        dst = (out != 0) ? reinterpret_cast<void *>(out) : dst;
     }
 }
 
@@ -559,6 +561,55 @@ Result HostDataOpSDMA::BatchCopyExtend(hybm_batch_copy_params &params, void *str
     }
     return BM_OK;
 }
+
+Result HostDataOpSDMA::QuantCopy(hybm_quant_copy_params &params) noexcept
+{
+    void *st = (params.stream != nullptr) ? params.stream : HybmStreamManager::GetThreadAclStream();
+    uint32_t singleBatchMax = HYBM_SINGLE_PARAM_SIZE / HYBM_QUANT_COPY_PARAM_SIZE;
+    uint32_t taskNum = (params.batchSize + singleBatchMax - 1) / singleBatchMax;
+
+    for (uint32_t idx = 0; idx < taskNum; idx++) {
+        uint32_t nowBatchStart = idx * singleBatchMax;
+        uint32_t nowBatchSize = std::min(nowBatchStart + singleBatchMax, params.batchSize) - nowBatchStart;
+        void *maskPtr = nullptr;
+        uint32_t spaceId = TryGetOneParamSpace(&maskPtr);
+        if (spaceId >= HYBM_PARAM_SPACE_CAP) {
+            auto ret = DlAclApi::AclrtSynchronizeStream(st);
+            BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
+            spaceId = TryGetOneParamSpace(&maskPtr);
+        }
+        BM_VALIDATE_RETURN(spaceId < HYBM_PARAM_SPACE_CAP, "alloc param space failed!", BM_ERROR);
+
+        auto tmpParam = reinterpret_cast<uint64_t *>(
+            reinterpret_cast<uint64_t>(paramSpace_) + spaceId * HYBM_SINGLE_PARAM_SIZE);
+        for (uint32_t i = 0, j = 0; i < nowBatchSize; i++) {
+            TransformVa(params.sources[nowBatchStart + i], params.destinations[nowBatchStart + i],
+                        HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE);
+            TransformVa(params.scale[nowBatchStart + i], params.offset[nowBatchStart + i],
+                        HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE);
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.sources[nowBatchStart + i]);
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.destinations[nowBatchStart + i]);
+            tmpParam[j++] = params.dataSizes[nowBatchStart + i];
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.scale[nowBatchStart + i]);
+            tmpParam[j++] = reinterpret_cast<uint64_t>(params.offset[nowBatchStart + i]);
+        }
+
+        void *remoteAddr = reinterpret_cast<void *>(reinterpret_cast<uint64_t>(tmpParam) + paramOffset_);
+        auto ret = DlHybmExtendApi::HybmBatchCopyQuant(remoteAddr, nowBatchSize, params.unitNum, params.inputType,
+            reinterpret_cast<void *>(reinterpret_cast<uint64_t>(maskPtr) + paramOffset_), HYBM_EXTEND_CONCURRENT, st);
+        if (ret != 0) {
+            *reinterpret_cast<uint64_t *>(maskPtr) = HYBM_EXTEND_CONCURRENT;
+            BM_LOG_ERROR("call HybmBatchCopyQuant failed, ret:" << ret);
+            return BM_ERROR;
+        }
+    }
+
+    if (!(params.flags & ASYNC_COPY_FLAG)) {
+        auto ret = DlAclApi::AclrtSynchronizeStream(st);
+        BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
+    }
+    return BM_OK;
+};
 
 Result HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOptions &options) noexcept
 {

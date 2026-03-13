@@ -35,6 +35,7 @@ public:
     Result BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                          const ExtOptions &options) noexcept override;
     Result Wait(int32_t waitId) noexcept override;
+    Result QuantCopy(hybm_quant_copy_params &params) noexcept override;
 
     void TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept override;
     void CleanUp() noexcept override;
