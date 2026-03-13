@@ -222,6 +222,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
 
     HcomMemoryRegion mrInfo{};
+    mrInfo.lva = mr.addr;
     mrInfo.addr = mr.addr;
     mrInfo.size = mr.size;
     mrInfo.mr = memoryRegion;
@@ -274,6 +275,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
 
     HcomMemoryRegion mrInfo{};
+    mrInfo.lva = mr.addr;
     mrInfo.addr = mr.addr;
     mrInfo.size = mr.size;
     mrInfo.mr = memoryRegion;
@@ -327,7 +329,8 @@ Result HcomTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     }
     RegMemoryKeyUnion hostKey{};
     hostKey.hostKey.type = TT_HCOM;
-    hostKey.hostKey.hcomInfo.lAddress = HybmVaManager::GetInstance().TransformVa(mrInfo.addr, HVM_HVA, HVM_GVA);
+    hostKey.hostKey.gva = HybmVaManager::GetInstance().TransformVa(mrInfo.addr, HVM_HVA, HVM_GVA);
+    hostKey.hostKey.hcomInfo.lAddress = mrInfo.addr;
     CopyHcomOneSideKey(mrInfo.lKey, hostKey.hostKey.hcomInfo.lKey);
     hostKey.hostKey.hcomInfo.size = mrInfo.size;
     key = hostKey.commonKey;
@@ -399,7 +402,8 @@ Result HcomTransportManager::UpdateRankMrInfos(const std::unordered_map<uint32_t
             RegMemoryKeyUnion keyUnion{};
             keyUnion.commonKey = memKey;
             HcomMemoryRegion mrInfo{};
-            mrInfo.addr = keyUnion.hostKey.hcomInfo.lAddress;
+            mrInfo.lva = keyUnion.hostKey.hcomInfo.lAddress;
+            mrInfo.addr = keyUnion.hostKey.gva;
             mrInfo.size = keyUnion.hostKey.hcomInfo.size;
             if (mrInfo.size == 0) {
                 continue;
@@ -562,8 +566,6 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         return BM_ERROR;
     }
     Channel_OneSideRequest req;
-    req.rAddress = reinterpret_cast<void *>(rAddr);
-    req.lAddress = reinterpret_cast<void *>(lAddr);
     req.size = static_cast<uint32_t>(size);
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
@@ -577,10 +579,11 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     ret = GetMemoryRegionByAddr(rankId, rAddr, mr);
     if (ret != BM_OK) {
         BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " <<
-            req.size << std::hex << ", rAddr: " << rAddr);
+            req.size << ", rAddr/rGva: " << VaToInfo(rAddr));
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.rKey);
+    rAddr = mr.lva; // remote local va
     BM_LOG_DEBUG("Try to read remote rankId: " << rankId << " channel: " << (void *)channel
                                                << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
                                                << " size: " << size << " tokens: " << req.rKey.tokens[0]);

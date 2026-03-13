@@ -23,6 +23,7 @@ namespace host {
 struct RegMemoryKey {
     uint32_t type{TT_HCCP};
     uint32_t reserved{0};
+    uint64_t gva{0};
     Service_MemoryRegionInfo hcomInfo;
 };
 

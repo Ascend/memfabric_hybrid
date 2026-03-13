@@ -161,7 +161,6 @@ bool ComposeTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
     std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
     auto pos = mrs_.lower_bound(addr);
     if (pos == mrs_.end() || pos->first + pos->second.size < addr + size) {
-        uniqueLock.unlock();
         return false;
     }
     return true;

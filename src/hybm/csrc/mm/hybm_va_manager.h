@@ -209,7 +209,7 @@ private:
 private:
     mutable std::shared_mutex mutex_{};
 
-    std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]; // map<va, allocInfo>
+    std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]{}; // map<va, allocInfo>
     std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{}; // map<va, reserveInfo>  (HVM_HVA not used now)
 
 private:

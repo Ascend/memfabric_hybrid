@@ -30,7 +30,8 @@ struct HcomRuntimeConfig {
 };
 
 struct HcomMemoryRegion {
-    uint64_t addr;
+    uint64_t lva;  // Local rank: lva=addr, Remote rank: lva is remote lva
+    uint64_t addr; // Local rank: addr=lva, Remote rank: addr is gva or remote lva
     uint64_t size;
     TransportMemoryKey lKey;
     Service_MemoryRegion mr;
