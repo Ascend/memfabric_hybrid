@@ -75,8 +75,8 @@ private:
 
         ThrottleState(uint64_t time = 0, uint32_t count = 0) : windowStartTimeSec(time), counter(count) {}
     };
-    static constexpr uint64_t INTERVAL = 7ULL;
-    static constexpr uint64_t BURST = 5ULL;
+    static constexpr uint64_t INTERVAL = 30ULL;
+    static constexpr uint64_t BURST = 3ULL;
 };
 
 class OutLogger {

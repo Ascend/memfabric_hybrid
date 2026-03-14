@@ -558,7 +558,7 @@ Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
     msgCtxLocker.unlock();
 
     if (watchContext == nullptr) {
-        STORE_LOG_WARN("unwatch for id: " << wid << ", not exist.");
+        STORE_LOG_DEBUG("unwatch for id: " << wid << ", not exist.");
         return NOT_EXIST;
     }
 
