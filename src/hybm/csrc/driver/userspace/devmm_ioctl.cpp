@@ -52,6 +52,11 @@ int HybmMapShareMemory(const char *name, void *expectAddr, uint64_t size, uint64
         return -1;
     }
 
+    if (name == nullptr) {
+        BM_LOG_ERROR("name is nullptr");
+        return -1;
+    }
+
     DevmmCommandMessage arg{};
     arg.head.devId = static_cast<uint32_t>(gDeviceId);
     if (strlen(name) > DEVMM_MAX_NAME_SIZE) {

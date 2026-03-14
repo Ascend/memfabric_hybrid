@@ -12,6 +12,7 @@
 #include "smem_tcp_config_store_server.h"
 
 #include <algorithm>
+#include <climits>
 #include <cstring>
 #include <utility>
 #include "acc_tcp_server.h"
@@ -516,6 +517,13 @@ Result AccStoreServer::AddHandler(const ock::acc::AccTcpRequestContext &context,
             return SM_ERROR;
         }
 
+        if ((valueNum > 0 && storedValueNum > LONG_MAX - valueNum) ||
+            (valueNum < 0 && storedValueNum < LONG_MIN - valueNum)) {
+            lockGuard.unlock();
+            STORE_LOG_ERROR("ADD overflow: storedValueNum=" << storedValueNum << " valueNum=" << valueNum);
+            ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "add result overflow.");
+            return SM_ERROR;
+        }
         storedValueNum += valueNum;
         auto storedValueStr = std::to_string(storedValueNum);
         ret = backend_->Put(key, std::vector<uint8_t>(storedValueStr.begin(), storedValueStr.end()),
@@ -628,10 +636,27 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
         return StoreErrorCode::INVALID_KEY;
     }
     STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") start.");
+    if (value.size() < sizeof(uint32_t)) {
+        STORE_LOG_ERROR("WRITE value size too small: " << value.size());
+        ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "value size too small.");
+        return SM_INVALID_PARAM;
+    }
     uint32_t offset = *(reinterpret_cast<uint32_t *>(value.data()));
     size_t realValSize = value.size() - sizeof(uint32_t);
+    if (realValSize > SIZE_MAX / static_cast<size_t>(MAX_U16_INDEX)) {
+        STORE_LOG_ERROR("WRITE realValSize too large: " << realValSize);
+        ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "value size too large.");
+        return SM_INVALID_PARAM;
+    }
     STORE_VALIDATE_RETURN(offset <= MAX_U16_INDEX * realValSize, "offset too large, offset:" << offset,
                           StoreErrorCode::INVALID_KEY);
+
+    size_t totalSize = static_cast<size_t>(offset) + realValSize;
+    if (totalSize < realValSize) {
+        STORE_LOG_ERROR("WRITE offset+realValSize overflow: offset=" << offset << " realValSize=" << realValSize);
+        ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "offset plus value size overflow.");
+        return SM_INVALID_PARAM;
+    }
 
     STORE_LOG_INFO("WRITE REQUEST(" << context.SeqNo() << ") for key(" << key << ") offset(" << offset
                                     << ") value size(" << realValSize << ")");
@@ -639,8 +664,8 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     std::vector<uint8_t> oldValue;
     auto ret = backend_->Get(key, oldValue);
     if (ret != SUCCESS) {
-        STORE_LOG_INFO("write: not find key:" << key << ", new alloc mem: " << offset + realValSize);
-        ret = backend_->Put(key, std::vector<uint8_t>(offset + realValSize, 0), EPHEMERAL_KEY_TTL_SEC);
+        STORE_LOG_INFO("write: not find key:" << key << ", new alloc mem: " << totalSize);
+        ret = backend_->Put(key, std::vector<uint8_t>(totalSize, 0), EPHEMERAL_KEY_TTL_SEC);
         if (ret != SUCCESS) {
             STORE_LOG_ERROR("put failed, key=" << key << ", ret: " << ret);
             ReplyWithMessage(context, StoreErrorCode::ERROR, "failed");
@@ -649,9 +674,9 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     }
     ret = backend_->Get(key, oldValue);
     auto &curValue = oldValue;
-    if (offset + realValSize > curValue.size()) {
-        curValue.resize(offset + realValSize, 0);
-        STORE_LOG_INFO("write: not enough kvStore room, expansion size: " << (offset + realValSize));
+    if (totalSize > curValue.size()) {
+        curValue.resize(totalSize, 0);
+        STORE_LOG_INFO("write: not enough kvStore room, expansion size: " << totalSize);
     }
     std::copy_n(value.data() + sizeof(uint32_t), realValSize, curValue.data() + offset);
     if (ExecuteHandle(MessageType::WRITE, context.Link()->Id(), key, value) != SM_OK) {

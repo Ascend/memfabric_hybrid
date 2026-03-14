@@ -74,6 +74,7 @@ int DeviceQpManager::CreateServerSocket() noexcept
     listenInfo.handle = socketHandle;
     listenInfo.port = deviceAddress_.sin_port;
     bool successListen = false;
+    const uint16_t startPort = listenInfo.port;
     while (listenInfo.port <= std::numeric_limits<uint16_t>::max()) {
         auto ret = DlHccpApi::RaSocketListenStart(&listenInfo, 1);
         if (ret == 0) {
@@ -81,7 +82,15 @@ int DeviceQpManager::CreateServerSocket() noexcept
             successListen = true;
             break;
         }
+        if (listenInfo.port == std::numeric_limits<uint16_t>::max()) {
+            BM_LOG_ERROR("listen port reach max: " << listenInfo.port << ", stop retry");
+            break;
+        }
         listenInfo.port++;
+        if (listenInfo.port == startPort) {
+            BM_LOG_ERROR("listen port retry from " << startPort << " round trip, all failed");
+            break;
+        }
     }
     if (!successListen) {
         BM_LOG_ERROR("start to listen server socket failed.");

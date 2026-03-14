@@ -325,6 +325,8 @@ int JoinableRanksQpManager::WaitSocketConnections(const std::set<uint32_t> &newR
     }
 
     std::unordered_set<uint32_t> connectedRanks;
+    auto startTime = std::chrono::steady_clock::now();
+    constexpr auto MAX_WAIT_DURATION = std::chrono::hours(2);
     uint32_t batchCnt = 16U;
     do {
         uint32_t getSize = socketInfos.size() < batchCnt ? socketInfos.size() : batchCnt;
@@ -334,6 +336,10 @@ int JoinableRanksQpManager::WaitSocketConnections(const std::set<uint32_t> &newR
             return 1;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100L));
+        if (std::chrono::steady_clock::now() - startTime > MAX_WAIT_DURATION) {
+            BM_LOG_ERROR("GetSocketFdByAddrs timeout after 2 hours, remaining sockets: " << socketInfos.size());
+            return 1;
+        }
         if (cnt == 0) {
             continue;
         }

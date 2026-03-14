@@ -109,17 +109,22 @@ Result ComposeTransportManager::CloseDevice()
 
 Result ComposeTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
+    bool deviceRegistered = false;
     if (deviceTransportManager_) {
         Result ret = deviceTransportManager_->RegisterMemoryRegion(mr);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to register memory region " << mr);
             return ret;
         }
+        deviceRegistered = true;
     }
     if (hostTransportManager_) {
         Result ret = hostTransportManager_->RegisterMemoryRegion(mr);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to register memory region " << mr);
+            if (deviceRegistered && deviceTransportManager_) {
+                (void)deviceTransportManager_->UnregisterMemoryRegion(mr.addr);
+            }
             return ret;
         }
     }
@@ -439,7 +444,7 @@ Result ComposeTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const Copy
         return BM_NOT_SUPPORTED;
     }
 
-    if (opType & HOST_PROTOCOL) {
+    if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
         auto ret = hostTransportManager_->ReadRemoteBatchAsync(rankId, descriptor);
         if (ret == BM_OK) {
             return BM_OK;
@@ -462,7 +467,7 @@ Result ComposeTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr
         BM_LOG_ERROR("Failed to ReadRemoteAsync by device transport ret:" << ret);
     }
 
-    if (opType & HOST_PROTOCOL) {
+    if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
         auto ret = hostTransportManager_->WriteRemoteAsync(rankId, lAddr, rAddr, size);
         if (ret == BM_OK) {
             return BM_OK;
@@ -481,7 +486,7 @@ Result ComposeTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const Cop
         return BM_NOT_SUPPORTED;
     }
 
-    if (opType & HOST_PROTOCOL) {
+    if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
         auto ret = hostTransportManager_->WriteRemoteBatchAsync(rankId, descriptor);
         if (ret == BM_OK) {
             return BM_OK;

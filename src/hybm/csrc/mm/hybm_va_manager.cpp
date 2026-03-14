@@ -446,7 +446,7 @@ std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t 
             current = range.second;
         }
     }
-    if (end - current >= size) {
+    if (current <= end && size <= end - current) {
         BM_LOG_DEBUG("FindFreeSpace: found free space at end, addr=" << VaToStr(current));
         return {current, true};
     }

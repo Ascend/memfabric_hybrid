@@ -29,6 +29,10 @@ const std::string PROTOCOL_TCP = "tcp://";
 
 inline void Split(const std::string &src, const std::string &sep, std::vector<std::string> &out)
 {
+    if (sep.empty()) {
+        out.emplace_back(src);
+        return;
+    }
     std::string::size_type pos1 = 0;
     std::string::size_type pos2 = src.find(sep);
 

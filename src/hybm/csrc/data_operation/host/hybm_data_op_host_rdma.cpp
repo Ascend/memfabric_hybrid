@@ -63,7 +63,7 @@ Result HostDataOpRDMA::Initialize() noexcept
         auto ret = transportManager_->RegisterMemoryRegion(input);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to register rdma swap memory, size: " << rdmaSwapSpaceSize_);
-            free(rdmaSwapBaseAddr_);
+            (void)munmap(rdmaSwapBaseAddr_, rdmaSwapSpaceSize_);
             rdmaSwapBaseAddr_ = nullptr;
             rdmaSwapSpaceSize_ = 0;
             return BM_MALLOC_FAILED;

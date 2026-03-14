@@ -481,6 +481,7 @@ Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, ui
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(size <= std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -489,7 +490,7 @@ Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, ui
     Channel_OneSideRequest req;
     req.rAddress = (void *)rAddr;
     req.lAddress = (void *)lAddr;
-    req.size = (uint32_t)size;
+    req.size = static_cast<uint32_t>(size);
 
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
@@ -514,6 +515,7 @@ Result HcomTransportManager::InnerWriteRemote(uint32_t rankId, uint64_t lAddr, u
 {
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(size <= std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -522,7 +524,7 @@ Result HcomTransportManager::InnerWriteRemote(uint32_t rankId, uint64_t lAddr, u
     Channel_OneSideRequest req;
     req.rAddress = (void *)rAddr;
     req.lAddress = (void *)lAddr;
-    req.size = (uint32_t)size;
+    req.size = static_cast<uint32_t>(size);
 
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
@@ -774,16 +776,18 @@ Result HcomTransportManager::CheckTransportOptions(const TransportOptions &optio
 
 Result HcomTransportManager::TransportRpcHcomNewEndPoint(Hcom_Channel newCh, uint64_t usrCtx, const char *payLoad)
 {
-    BM_LOG_DEBUG("New hcom ch, ch: " << newCh << " usrCtx: " << usrCtx << " payLoad: " << payLoad);
+    const char *logPayLoad = (payLoad != nullptr) ? payLoad : "<null>";
+    BM_LOG_DEBUG("New hcom ch, ch: " << newCh << " usrCtx: " << usrCtx << " payLoad: " << logPayLoad);
     return BM_OK;
 }
 
 Result HcomTransportManager::TransportRpcHcomEndPointBroken(Hcom_Channel ch, uint64_t usrCtx, const char *payLoad)
 {
-    BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx << " payLoad: " << payLoad);
+    const char *logPayLoad = (payLoad != nullptr) ? payLoad : "<null>";
+    BM_LOG_DEBUG("Broken on hcom ch, ch: " << ch << " usrCtx: " << usrCtx << " payLoad: " << logPayLoad);
     uint32_t rankId = UINT32_MAX;
-    if (!StrUtil::String2Uint<uint32_t>(payLoad, rankId)) {
-        BM_LOG_ERROR("Failed to get rankId payLoad: " << payLoad);
+    if (payLoad == nullptr || !StrUtil::String2Uint<uint32_t>(payLoad, rankId)) {
+        BM_LOG_ERROR("Failed to get rankId payLoad: " << logPayLoad);
         return BM_ERROR;
     }
 
@@ -1078,6 +1082,7 @@ int HcomTransportManager::CertVerifyCallBack(void *x509, const char *crlPath)
 
 void HcomTransportManager::KeyPassEraseCallBack(char *keyPass, int len)
 {
+    std::lock_guard<std::mutex> lock(keyPassMutex);
     for (int i = 0; i < len; i++) {
         keyPass[i] = 0;
     }

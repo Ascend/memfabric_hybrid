@@ -317,7 +317,12 @@ inline size_t FileUtil::GetFileSize(const std::string &path)
         return 0;
     }
 
-    size_t fileSize = static_cast<size_t>(ftell(fp));
+    long pos = ftell(fp);
+    if (pos < 0) {
+        CloseFile(fp);
+        return 0;
+    }
+    size_t fileSize = static_cast<size_t>(pos);
     if (fseek(fp, 0, SEEK_END) != 0) {
         CloseFile(fp);
         return 0;

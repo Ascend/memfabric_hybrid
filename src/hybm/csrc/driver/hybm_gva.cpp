@@ -62,6 +62,9 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间
     ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, initedLogicDeviceId, flags);
     if (ret != 0 || reinterpret_cast<uint64_t>(globalMemoryBase) != (SVM_END_ADDR - GB)) {
+        if (ret == 0 && globalMemoryBase != nullptr) {
+            (void)drv::HalGvaUnreserveMemory((uint64_t)globalMemoryBase);
+        }
         BM_LOG_ERROR("initialize mete memory failed: " << ret << " size:0x" << std::hex << allocSize <<
                      " flag:0x" << flags << " ret_addr:" << globalMemoryBase);
         return BM_ERROR;

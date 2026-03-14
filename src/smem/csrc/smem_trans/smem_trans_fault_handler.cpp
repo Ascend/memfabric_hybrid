@@ -101,8 +101,16 @@ int32_t SmemStoreFaultHandler::AddRankInfoMap(const uint32_t linkId, const std::
 int32_t SmemStoreFaultHandler::WriteRankInfoMap(const uint32_t linkId, const std::string &key,
                                                 std::vector<uint8_t> &value, const StoreBackendPtr &backend)
 {
+    if (value.size() < sizeof(uint32_t)) {
+        SM_LOG_ERROR("WriteRankInfoMap invalid value size: " << value.size());
+        return SM_INVALID_PARAM;
+    }
     uint32_t offset = *(reinterpret_cast<uint32_t *>(value.data()));
     size_t realValSize = value.size() - sizeof(uint32_t);
+    if (realValSize == 0) {
+        SM_LOG_ERROR("WriteRankInfoMap real value size is 0");
+        return SM_INVALID_PARAM;
+    }
     uint16_t index = offset / realValSize;
 
     if (key.find(SENDER_DEVICE_INFO_KEY) != std::string::npos ||

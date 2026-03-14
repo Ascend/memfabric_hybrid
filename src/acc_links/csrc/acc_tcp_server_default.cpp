@@ -383,6 +383,10 @@ Result AccTcpServerDefault::HandleNewConnection(const AccConnReq &req, const Acc
         return ACC_ERROR;
     }
 
+    if (newLinkHandle_ == nullptr) {
+        LOG_ERROR("NewLinkHandler not set, refuse the link from " << newLink->ShortName());
+        return ACC_INVALID_PARAM;
+    }
     result = newLinkHandle_(req, newLink.Get());
     if (UNLIKELY(result != ACC_OK)) {
         return result;

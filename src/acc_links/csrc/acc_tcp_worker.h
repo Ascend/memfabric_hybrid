@@ -101,7 +101,9 @@ inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
         auto result = link->HandlePollIn();
         if (result == ACC_LINK_MSG_READY) { /* ready for message, do upper call */
             AccTcpRequestContext ctx(link->header_, link->data_, link);
-            (void)newRequestHandle_(ctx);
+            if (newRequestHandle_ != nullptr) {
+                (void)newRequestHandle_(ctx);
+            }
             /* ET mode, each loop only handle one message, need to add event again */
             (void)ModifyLink(link, EPOLLIN | EPOLLOUT | EPOLLET);
             return ACC_OK;
@@ -109,7 +111,9 @@ inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
             (void)ModifyLink(link, EPOLLIN | EPOLLOUT | EPOLLET);
             return ACC_OK;                     /* not fully received, continue to process next event */
         } else if (result == ACC_LINK_ERROR) { /* link error */
-            (void)linkBrokenHandle_(link);
+            if (linkBrokenHandle_ != nullptr) {
+                (void)linkBrokenHandle_(link);
+            }
             return ACC_OK;
         }
 
@@ -132,7 +136,11 @@ inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
 
         return ACC_OK;
     } else if (event.events & EPOLLWRNORM) {
-        (void)linkBrokenHandle_(link);
+        if (linkBrokenHandle_ != nullptr) {
+            (void)linkBrokenHandle_(link);
+        } else {
+            LOG_ERROR("LinkBrokenHandler not set in worker " << options_.Name());
+        }
         return ACC_OK;
     }
 

@@ -167,6 +167,9 @@ public:
     int32_t CopyDataBatch(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts, std::vector<size_t> sizes,
                           uint32_t count, smem_bm_copy_type type, uint32_t flags)
     {
+        if (count == 0 || srcs.size() < count || dsts.size() < count || sizes.size() < count) {
+            return SMEM_INVALID_PARAM;
+        }
         void **ptr = new void *[count + count];
         if (ptr == nullptr) {
             throw std::runtime_error(std::string("alloc mem failed."));
@@ -287,6 +290,10 @@ static constexpr size_t MAX_CIPHER_LEN = 10 * 1024 * 1024;
 static int py_decrypt_handler_wrapper(const char *cipherText, size_t cipherTextLen, char *plainText,
                                       size_t &plainTextLen)
 {
+    if (cipherText == nullptr || plainText == nullptr) {
+        std::cerr << "py_decrypt_handler_wrapper: cipherText or plainText is null." << std::endl;
+        return -1;
+    }
     if (cipherTextLen > MAX_CIPHER_LEN || !g_py_decrypt_func || g_py_decrypt_func.is_none()) {
         std::cerr << "input cipher len is too long or decrypt func invalid." << std::endl;
         return -1;

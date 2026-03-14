@@ -169,7 +169,8 @@ public:
 
         uint32_t moduleId = GetModuleId(tpId);
         uint32_t traceId = GetTraceId(tpId);
-        if (PTRACER_UNLIKELY(moduleId > MAX_MODULE_COUNT || traceId > MAX_TRACE_ID_COUNT)) {
+        if (PTRACER_UNLIKELY(moduleId >= static_cast<uint32_t>(MAX_MODULE_COUNT) ||
+                            traceId >= static_cast<uint32_t>(MAX_TRACE_ID_COUNT))) {
             return nullptr;
         }
 
