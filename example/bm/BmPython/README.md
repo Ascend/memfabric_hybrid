@@ -19,14 +19,24 @@ HDK固件驱动需要使用**25.0.RC1**
 执行方式如下,支持多节点运行
 
 ```bash
-python3 smem_bm_example.py --world_size <WORLD_SIZE> --local_ranks <LOCAL_RANK_SIZE> --rank_start <RANK_START> --url <STORE_URL> --auto_ranking <AUTO_RANKING>
+python3 smem_bm_example.py --protocol <PROTOCOL> \
+    --world_size <WORLD_SIZE> \
+    --local_ranks <LOCAL_RANK_SIZE> \
+    --rank_start <RANK_START> \
+    --url <STORE_URL> \
+    --nic <NIC> \
+    --auto_ranking <AUTO_RANKING> \
+    --is_second_mapping <IS_SECOND_MAPPING>
 ```
 
+    - PROTOCOL: memfabric使用的协议，可选参数：'device_rdma', 'device_sdma', 'host_rdma', 'host_urma', 'host_tcp'，默认 device_rdma
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
     - STORE_URL: `tcp://<ip>:<port>` configStore的server的监听ip和端口
+    - NIC: device port nic
     - AUTO_RANKING: 可选参数,不填则默认不开启auto_rank; true表示开启, false表示不开启(开启autorank,则bm内部会自动生成全局rankId,不需要用户指定)
+    - IS_SECOND_MAPPING: 是否启用二次映射，默认 false
 
 示例如下(假设期望指定监听8570端口)
 

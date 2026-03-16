@@ -261,7 +261,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     // 单rank不需要hcom,目的是在无网卡的情况下也可以测试
     if (ret != 0) {
         BM_LOG_ERROR("Failed to register mem region, size: " << mr.size << " addr:" << std::hex << mr.addr
-                                                            << " service: " << rpcService_ << " ret: " << ret);
+                                                             << " service: " << rpcService_ << " ret: " << ret);
         return BM_ERROR;
     }
 
@@ -271,7 +271,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     }
     if (ret != 0) {
         BM_LOG_ERROR("Failed to get mem region info, size: " << mr.size << " service: " << rpcService_
-                                                            << " ret: " << ret);
+                                                             << " ret: " << ret);
         return BM_ERROR;
     }
 
@@ -285,8 +285,8 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
         mrs_[rankId_].push_back(mrInfo);
     }
-    BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " <<
-                mrInfo.lKey.keys[0] << std::hex << " laddr:" << mr.addr);
+    BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0] << std::hex
+                                                        << " laddr:" << mr.addr);
     return BM_OK;
 }
 #endif
@@ -297,7 +297,7 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
 
     std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
-    auto& localMrs = mrs_[rankId_];
+    auto &localMrs = mrs_[rankId_];
     for (uint32_t i = 0; i < localMrs.size(); ++i) {
         if (localMrs[i].addr == addr) {
             DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, localMrs[i].mr);
@@ -399,7 +399,7 @@ Result HcomTransportManager::UpdateRankMrInfos(const std::unordered_map<uint32_t
         if (rankId == rankId_) {
             continue;
         }
-        for (const auto &memKey: item.second.memKeys) {
+        for (const auto &memKey : item.second.memKeys) {
             RegMemoryKeyUnion keyUnion{};
             keyUnion.commonKey = memKey;
             HcomMemoryRegion mrInfo{};
@@ -573,22 +573,24 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " <<
-            req.size << std::hex << ", lAddr: " << lAddr);
+        BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " << req.size
+                                                     << ", lAddr: " << VaToInfo(lAddr));
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.lKey);
     mr.lKey = {};
     ret = GetMemoryRegionByAddr(rankId, rAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " <<
-            req.size << ", rAddr/rGva: " << VaToInfo(rAddr));
+        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size
+                                                     << ", rAddr: " << VaToInfo(rAddr));
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.rKey);
-    rAddr = mr.lva; // remote local va
+    auto addrOffset = rAddr - mr.addr;
+    rAddr = mr.lva + addrOffset; // rewrite to remote local va
     BM_LOG_DEBUG("Try to read remote rankId: " << rankId << " channel: " << (void *)channel
                                                << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
+                                               << " lAddr:" << VaToStr(lAddr) << " rAddr: " << VaToStr(rAddr)
                                                << " size: " << size << " tokens: " << req.rKey.tokens[0]);
     ret = PrepareThreadLocalStream();
     if (ret != BM_OK) {
@@ -614,8 +616,9 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         if (ret != 0) {
             stream_->FailedOne(false);
             Synchronize(rankId_);
-            BM_LOG_ERROR("Failed to submit read task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
-                std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
+            BM_LOG_ERROR("Failed to submit read task lRank:" << rankId_ << " rRank:" << rankId
+                                                             << " lAddr:" << VaToStr(lAddr + offset) << "rAddr:"
+                                                             << VaToStr(rAddr + offset) << " size:" << sliceSize);
             return ret;
         }
         offset += sliceSize;
@@ -640,19 +643,24 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
     HcomMemoryRegion mr{};
     auto ret = GetMemoryRegionByAddr(rankId_, lAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find lKey, lAddr is not register");
+        BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " << req.size
+                                                     << ", lAddr: " << VaToInfo(lAddr));
         return BM_ERROR;
     }
     std::copy_n(mr.lKey.keys, std::size(req.lKey.keys), req.lKey.keys);
     mr.lKey = {};
     ret = GetMemoryRegionByAddr(rankId, rAddr, mr);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << " is not set");
+        BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size
+                                                     << ", rAddr: " << VaToInfo(rAddr));
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.rKey);
+    auto addrOffset = rAddr - mr.addr;
+    rAddr = mr.lva + addrOffset; // rewrite to remote local va
     BM_LOG_DEBUG("Try to write remote rankId: " << rankId << " channel: " << (void *)channel
                                                 << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
+                                                << " lAddr:" << VaToStr(lAddr) << " rAddr: " << VaToStr(rAddr)
                                                 << " size: " << size << " tokens: " << req.rKey.tokens[0]);
     ret = PrepareThreadLocalStream();
     if (ret != BM_OK) {
@@ -676,8 +684,9 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
         if (ret != BM_OK) {
             stream_->FailedOne(false);
             Synchronize(rankId_);
-            BM_LOG_ERROR("Failed to submit put task lRank:" << rankId_ << " rRank:" << rankId << " lAddr:" <<
-                std::hex << lAddr + offset << "rAddr:" << rAddr + offset << " size:" << sliceSize);
+            BM_LOG_ERROR("Failed to submit put task lRank:" << rankId_ << " rRank:" << rankId
+                                                            << " lAddr:" << VaToStr(lAddr + offset) << "rAddr:"
+                                                            << VaToStr(rAddr + offset) << " size:" << sliceSize);
             return ret;
         }
         offset += sliceSize;
@@ -704,26 +713,32 @@ Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDe
         sglReq.iovCount = 0;
         for (uint32_t i = index * HCOM_IOV_BATCH_SIZE; i < std::min(allBatch, (index + 1) * HCOM_IOV_BATCH_SIZE); ++i) {
             Channel_OneSideRequest req;
-            req.rAddress = descriptor.globalAddrs[i];
             req.lAddress = descriptor.localAddrs[i];
             req.size = static_cast<uint32_t>(descriptor.counts[i]);
             HcomMemoryRegion mr{};
             auto ret = GetMemoryRegionByAddr(rankId_, reinterpret_cast<uint64_t>(req.lAddress), mr);
             if (ret != BM_OK) {
-                BM_LOG_ERROR("Failed to find lKey, lAddr is not register");
+                BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " << req.size
+                                                             << ", lAddr: " << VaToStr(req.lAddress));
                 return BM_ERROR;
             }
             std::copy_n(mr.lKey.keys, std::size(req.lKey.keys), req.lKey.keys);
             mr.lKey = {};
-            ret = GetMemoryRegionByAddr(rankId, reinterpret_cast<uint64_t>(req.rAddress), mr);
+            auto rAddr = descriptor.globalAddrs[i];
+            ret = GetMemoryRegionByAddr(rankId, reinterpret_cast<uint64_t>(rAddr), mr);
             if (ret != BM_OK) {
-                BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << " is not set");
+                BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size
+                                                             << ", rAddr: " << VaToStr(rAddr));
                 return BM_ERROR;
             }
+            auto offset = reinterpret_cast<uint64_t>(rAddr) - mr.addr;
+            req.rAddress = reinterpret_cast<void *>(mr.lva + offset); // rewrite to remote local va
             CopyHcomOneSideKey(mr.lKey, req.rKey);
             BM_LOG_DEBUG("Try to write remote rankId: " << rankId << " channel: " << (void *)channel
-                << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
-                << " size: " << descriptor.counts[i] << " tokens: " << req.rKey.tokens[0]);
+                                                        << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
+                                                        << " lAddr:" << VaToStr(req.lAddress) << " rAddr: "
+                                                        << VaToStr(req.rAddress) << " size: " << descriptor.counts[i]
+                                                        << " tokens: " << req.rKey.tokens[0]);
             ret = PrepareThreadLocalStream();
             if (ret != BM_OK) {
                 BM_LOG_ERROR("prepare stream error rankId: " << rankId);
@@ -926,27 +941,31 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
         for (uint32_t i = index * HCOM_IOV_BATCH_SIZE; i < std::min(allBatch, (index + 1) * HCOM_IOV_BATCH_SIZE); ++i) {
             Channel_OneSideRequest req;
             req.lAddress = descriptor.globalAddrs[i];
-            req.rAddress = descriptor.localAddrs[i];
             req.size = static_cast<uint32_t>(descriptor.counts[i]);
             HcomMemoryRegion mr{};
             auto ret = GetMemoryRegionByAddr(rankId_, reinterpret_cast<uint64_t>(req.lAddress), mr);
             if (ret != BM_OK) {
-                BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " << req.size << std::hex
-                                                             << ", lAddr: " << req.lAddress);
+                BM_LOG_ERROR("Failed to find lKey, rankId: " << rankId_ << ", size: " << req.size
+                                                             << ", lAddr: " << VaToStr(req.lAddress));
                 return BM_ERROR;
             }
             CopyHcomOneSideKey(mr.lKey, req.lKey);
             mr.lKey = {};
-            ret = GetMemoryRegionByAddr(rankId, reinterpret_cast<uint64_t>(req.rAddress), mr);
+            auto rAddr = descriptor.localAddrs[i];
+            ret = GetMemoryRegionByAddr(rankId, reinterpret_cast<uint64_t>(rAddr), mr);
             if (ret != BM_OK) {
-                BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size << std::hex
-                                                             << ", rAddr: " << req.rAddress);
+                BM_LOG_ERROR("Failed to find rKey, rankId: " << rankId << ", size: " << req.size
+                                                             << ", rAddr: " << VaToStr(rAddr));
                 return BM_ERROR;
             }
             CopyHcomOneSideKey(mr.lKey, req.rKey);
+            auto offset = reinterpret_cast<uint64_t>(rAddr) - mr.addr;
+            req.rAddress = reinterpret_cast<void *>(mr.lva + offset); // rewrite to remote local va
             BM_LOG_DEBUG("Try to read remote rankId: " << rankId << " channel: " << (void *)channel
-                << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
-                << " size: " << descriptor.counts[i] << " tokens: " << req.rKey.tokens[0]);
+                                                       << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
+                                                       << " lAddr:" << VaToStr(req.lAddress) << " rAddr: "
+                                                       << VaToStr(req.rAddress) << " size: " << descriptor.counts[i]
+                                                       << " tokens: " << req.rKey.tokens[0]);
             ret = PrepareThreadLocalStream();
             if (ret != BM_OK) {
                 BM_LOG_ERROR("prepare stream error rankId: " << rankId);

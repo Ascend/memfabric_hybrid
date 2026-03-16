@@ -5,7 +5,6 @@ import argparse
 from typing import List
 
 import torch
-import torch_npu
 
 import memfabric_hybrid
 from memfabric_hybrid import bm
@@ -29,18 +28,32 @@ def generate_host_tensor(seed: int):
     return t
 
 
-def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool):
+def get_bm_protocol(protocol):
+    if protocol == "device_rdma":
+        return bm.BmDataOpType.DEVICE_RDMA
+    elif protocol == "device_sdma":
+        return bm.BmDataOpType.SDMA
+    elif protocol == "host_rdma":
+        return bm.BmDataOpType.HOST_RDMA
+    elif protocol == "host_urma":
+        return bm.BmDataOpType.HOST_URMA
+    elif protocol == "host_tcp":
+        return bm.BmDataOpType.HOST_TCP
+    raise RuntimeError(f"Not support {protocol}")
+
+
+def child_init(device_id: int, rank_id: int, world_size: int, url: str, nic: str, auto_ranking: bool):
     ret = memfabric_hybrid.initialize()
     if ret != 0:
-        logging.error(f'rank: {rank_id}, rank_size: {rank_size}, url: {url} initialize failed: {ret}')
+        logging.error(f'rank: {rank_id}, world_size: {world_size}, url: {url} initialize failed: {ret}')
         return ret
 
     config = bm.BmConfig()
     config.auto_ranking = auto_ranking
     if not auto_ranking:
         config.rank_id = rank_id
-    config.set_nic("tcp://127.0.0.1:1234")  # for device port
-    ret = bm.initialize(store_url=url, world_size=rank_size, device_id=device_id, config=config)
+    config.set_nic(f"tcp://{nic}:1234")  # for device port
+    ret = bm.initialize(store_url=url, world_size=world_size, device_id=device_id, config=config)
     if ret != 0:
         logging.error(f'smem BM initialize failed: {ret}')
         return ret
@@ -48,17 +61,19 @@ def child_init(device_id: int, rank_id: int, rank_size: int, url: str, auto_rank
     return 0
 
 
-def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_ranking: bool,
+def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int, world_size: int, url: str, nic,
+                  auto_ranking: bool, is_second_mapping: bool,
                   barriers: List[multiprocessing.Barrier]):
-    torch.npu.set_device(device=device_id)
-    _stream = torch_npu.npu.Stream(device=torch.npu.current_device())
-
-    ret = child_init(device_id=device_id, rank_id=rank_id, rank_size=rank_size, url=url, auto_ranking=auto_ranking)
+    ret = child_init(device_id=device_id, rank_id=rank_id, world_size=world_size, url=url, nic=nic,
+                     auto_ranking=auto_ranking)
     if ret != 0:
-        logging.error(f'child process rank: {rank_id}, rank_size: {rank_size} initialize failed: {ret}')
+        logging.error(f'child process rank: {rank_id}, world_size: {world_size} initialize failed: {ret}')
         return
 
-    bm_handle = bm.create(id=0, local_dram_size=GVA_SIZE, local_hbm_size=0, data_op_type=bm.BmDataOpType.DEVICE_RDMA)
+    bm_protocol = get_bm_protocol(protocol)
+    max_dram_size = 257 << 30 if is_second_mapping else 1 << 30
+    bm_handle = bm.create2(id=0, local_dram_size=1 << 30, max_dram_size=max_dram_size, local_hbm_size=0, max_hbm_size=0,
+                           data_op_type=bm_protocol, is_second_mapping=is_second_mapping)
     bm_handle.join()
 
     logging.info('==================== waiting at barrier 1')
@@ -67,34 +82,92 @@ def child_process(device_id: int, rank_id: int, rank_size: int, url: str, auto_r
 
     address = bm_handle.peer_rank_ptr(peer_rank=rank_id, mem_type=bm.BmMemType.HOST)
     logging.info(f'==================== got local GVA: {address}')
-    remote = bm_handle.peer_rank_ptr(peer_rank=((rank_id + 1) % rank_size), mem_type=bm.BmMemType.HOST)
-    cpu_src_tensor = generate_host_tensor(rank_id)
-    npu_tensor = cpu_src_tensor.npu(device_id)
-    bm_handle.copy_data(src_ptr=cpu_src_tensor.data_ptr(), dst_ptr=remote, size=COPY_SIZE, type=bm.BmCopyType.H2G)
-    bm_handle.copy_data(src_ptr=npu_tensor.data_ptr(), dst_ptr=remote + COPY_SIZE, size=COPY_SIZE,
-                        type=bm.BmCopyType.L2G)
+
+    logging.info(f'step 1: write to rank: {rank_id}')
+    local_host_ptr = bm_handle.peer_rank_ptr(peer_rank=rank_id, mem_type=bm.BmMemType.HOST)
+    count = 100
+    src_tensor = torch.ones([count, 1024], dtype=torch.int32)
+    src_ptrs = []
+    local_host_ptrs = []
+    sizes = []
+    addr_offset = 0
+    for i in range(count):
+        src_ptrs.append(src_tensor[i].data_ptr())
+        local_host_ptrs.append(local_host_ptr + addr_offset)
+        size = src_tensor[i].nelement() * src_tensor[i].element_size()
+        sizes.append(size)
+        addr_offset += size
+
+    result = bm_handle.copy_data_batch(src_addrs=src_ptrs, dst_addrs=local_host_ptrs, sizes=sizes, count=count,
+                                       type=bm.BmCopyType.H2G, flags=0)
+    assert result == 0, f"copy_data_batch failed: {result=}"
+    logging.info("copy_data_batch success")
+
+    logging.info('==================== waiting at barrier 1')
+    barriers[1].wait()
+    logging.info('==================== barrier 1 finished for copy data')
+
+    logging.info(f'step 2: copy data from local rank: {rank_id} to remote rank: {(rank_id + 1) % local_ranks}')
+    remote_host_ptr = bm_handle.peer_rank_ptr(peer_rank=((rank_id + 1) % local_ranks), mem_type=bm.BmMemType.HOST)
+    remote_host_ptrs = []
+    addr_offset = 0
+    for i in range(count):
+        remote_host_ptrs.append(remote_host_ptr + addr_offset)
+        size = src_tensor[i].nelement() * src_tensor[i].element_size()
+        addr_offset += size
+
+    result = bm_handle.copy_data_batch(src_addrs=local_host_ptrs, dst_addrs=remote_host_ptrs, sizes=sizes, count=count,
+                                       type=bm.BmCopyType.G2G, flags=0)
+    assert result == 0, f"copy_data_batch failed: {result=}"
+    logging.info("copy_data_batch success")
 
     logging.info('==================== waiting at barrier 2')
-    barriers[1].wait()
+    barriers[2].wait()
     logging.info('==================== barrier 2 finished for copy data')
 
-    cpu_dst_tensor = generate_host_tensor((rank_id + rank_size - 1) % rank_size)
-    bm_handle.copy_data(src_ptr=address, dst_ptr=cpu_src_tensor.data_ptr(), size=COPY_SIZE, type=bm.BmCopyType.G2H)
-    if not torch.equal(cpu_src_tensor, cpu_dst_tensor):
+    logging.info(f'step 3: copy data from remote rank: {(rank_id + 1) % local_ranks} to local rank: {rank_id}')
+    result = bm_handle.copy_data_batch(src_addrs=remote_host_ptrs, dst_addrs=local_host_ptrs, sizes=sizes, count=count,
+                                       type=bm.BmCopyType.G2G, flags=0)
+    assert result == 0, f"copy_data_batch failed: {result=}"
+    logging.info("copy_data_batch success")
+
+    logging.info('==================== waiting at barrier 3')
+    barriers[3].wait()
+    logging.info('==================== barrier 3 finished for copy data')
+
+    dst1_tensor = torch.empty([count, 1024], dtype=torch.int32)
+    dst1_ptrs = [dst1_tensor[i].data_ptr() for i in range(count)]
+    result = bm_handle.copy_data_batch(src_addrs=local_host_ptrs, dst_addrs=dst1_ptrs, sizes=sizes, count=count,
+                                       type=bm.BmCopyType.G2H, flags=0)
+    assert result == 0, f"copy_data_batch failed: {result=}"
+    logging.info("copy_data_batch success")
+    if not torch.equal(src_tensor, dst1_tensor):
         logging.error(f'check G2H data failed for rank: {rank_id}')
         return
 
-    bm_handle.copy_data(src_ptr=address + COPY_SIZE, dst_ptr=npu_tensor.data_ptr(), size=COPY_SIZE,
-                        type=bm.BmCopyType.G2L)
-    if not torch.equal(cpu_src_tensor, npu_tensor.cpu()):
-        logging.error(f'check G2L data failed for rank: {rank_id}')
+    logging.info('==================== waiting at barrier 4')
+    barriers[4].wait()
+    logging.info('==================== barrier 4 finished for copy data')
+
+    dst2_tensor = torch.empty([count, 1024], dtype=torch.int32)
+    dst2_ptrs = [dst2_tensor[i].data_ptr() for i in range(count)]
+    result = bm_handle.copy_data_batch(src_addrs=remote_host_ptrs, dst_addrs=dst2_ptrs, sizes=sizes, count=count,
+                                       type=bm.BmCopyType.G2H, flags=0)
+    assert result == 0, f"copy_data_batch failed: {result=}"
+    logging.info("copy_data_batch success")
+    if not torch.equal(src_tensor, dst2_tensor):
+        logging.error(f'check G2H data failed for rank: {rank_id}')
         return
+
+    logging.info('==================== waiting at barrier 5')
+    barriers[5].wait()
+    logging.info('==================== barrier 5 finished for copy data')
 
     del bm_handle
 
-    logging.info('==================== waiting at barrier 3')
-    barriers[2].wait()
-    logging.info('==================== barrier 3 finished for all test.')
+    logging.info('==================== waiting at barrier 6')
+    barriers[6].wait()
+    logging.info('==================== barrier 6 finished for all test.')
 
 
 def str_to_bool(v):
@@ -108,9 +181,55 @@ def str_to_bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
+"""
+cd example/bm/BmPython
+1. device_rdma: 
+python3 smem_bm_example.py \
+        --world_size 256 \
+        --local_ranks 2 \
+        --rank_start 0 \
+        --url tcp://127.0.0.1:7432 \
+        --auto_ranking true
+
+2. device_rdma+second_mapping: 
+python3 smem_bm_example.py \
+        --world_size 1024 \
+        --local_ranks 2 \
+        --rank_start 0 \
+        --url tcp://127.0.0.1:7432 \
+        --auto_ranking true \
+        --is_second_mapping true
+
+3. host_rdma: 
+python3 smem_bm_example.py \
+        --protocol host_rdma \
+        --world_size 256 \
+        --local_ranks 2 \
+        --rank_start 0 \
+        --url tcp://127.0.0.1:7432 \
+        --auto_ranking true \
+        --nic 192.168.100.xxx
+
+4. host_rdma+second_mapping: 
+python3 smem_bm_example.py \
+        --protocol host_rdma \
+        --world_size 1024 \
+        --local_ranks 2 \
+        --rank_start 0 \
+        --url tcp://127.0.0.1:7432 \
+        --auto_ranking true \
+        --nic 192.168.100.xxx \
+        --is_second_mapping true
+"""
+
+
 def main_process():
     parser = argparse.ArgumentParser(description='Example for BigMemory in SMEM.')
-    parser.add_argument('--world_size', type=int, help='Number of cards used by the entire cluster.', required=True)
+    parser.add_argument('--protocol', type=str, help='Protocol for memfaric (default: device_rdma).',
+                        choices=['device_rdma', 'device_sdma', 'host_rdma', 'host_urma', 'host_tcp'],
+                        default='device_rdma')
+    parser.add_argument('--world_size', type=int,
+                        help='Number of cards used by the entire cluster.', required=True)
     parser.add_argument('--local_ranks', type=int, help='Number of cards used on the local node.', required=True)
     parser.add_argument('--rank_start', type=int, default=0,
                         help='Start value of the rank ID of the node. The value range of the rank ID of the node is'
@@ -119,22 +238,31 @@ def main_process():
                         help='Listening IP address and port number of the configStore server, for example,'
                              ' tcp://<ip>:<port>.',
                         required=True)
+    parser.add_argument('--nic', type=str,
+                        help='device port nic',
+                        required=False,
+                        default='127.0.0.1')
     parser.add_argument('--auto_ranking', type=str_to_bool,
                         help='If autorank is enabled, the BM automatically generates a global rank ID, which does '
                              'not need to be specified. The default value is false.',
                         default=False)
+    parser.add_argument('--is_second_mapping', type=str_to_bool,
+                        help='Is second mapping enabled. (default: false) ',
+                        default=False)
 
     args = parser.parse_args()
-    logging.info(f'example for BM, world_size:{args.world_size}, local_ranks:{args.local_ranks}, '
-                 f'rank_start:{args.rank_start}, url={args.url}, auto-ranking={args.auto_ranking}')
+    logging.info(
+        f'example for BM, protocol:{args.protocol}, world_size:{args.world_size}, local_ranks:{args.local_ranks}, '
+        f'rank_start:{args.rank_start}, url={args.url}, auto_ranking={args.auto_ranking}, '
+        f'is_second_mapping={args.is_second_mapping}')
 
-    barriers = [multiprocessing.Barrier(args.local_ranks) for i in range(3)]
+    barriers = [multiprocessing.Barrier(args.local_ranks) for i in range(7)]
 
     children = []
     for i in range(0, args.local_ranks):
         p = multiprocessing.Process(target=child_process,
-                                    args=(i, i + args.rank_start, args.world_size, args.url, args.auto_ranking,
-                                          barriers))
+                                    args=(args.protocol, i, i + args.rank_start, args.local_ranks, args.world_size,
+                                          args.url, args.nic, args.auto_ranking, args.is_second_mapping, barriers))
         p.start()
         children.append(p)
 
@@ -147,5 +275,5 @@ def main_process():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(process)d - %(asctime)s - %(levelname)s - %(message)s - %(lineno)d')
-    set_log_level(0)
+    set_log_level(1)  # info
     main_process()
