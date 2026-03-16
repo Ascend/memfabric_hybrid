@@ -36,6 +36,11 @@ if (BUILD_ETCD_BACKEND)
 
     add_custom_target(etcd_client ALL DEPENDS ${ETCD_SO_FILE})
 
+    install(
+        FILES ${ETCD_SO_FILE}
+        DESTINATION ${TARGET_INSTALL_DIR}/etcd/lib64
+    )
+
     set(ETCD_LIBS_DIR ${ETCD_OUTPUT_DIR} PARENT_SCOPE)
     message(STATUS "ETCD_LIBS_DIR: ${ETCD_LIBS_DIR}")
 endif ()
