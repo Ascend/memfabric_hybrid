@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <queue>
 #include <mutex>
+#include <string>
 #include <vector>
 #include <thread>
 #include <atomic>
