@@ -88,9 +88,23 @@ cd "$OUTPUT_PATH/bin/ut" && ./test_memfabric --gtest_break_on_failure --gtest_ou
 if ! $FAST_MODE; then
     mkdir -p "$COVERAGE_PATH"
     cd "$OUTPUT_PATH"
+    EXCLUDE_DIRS=(
+            "*/3rdparty/*"
+            "*/src/smem/csrc/python_wrapper/*"
+            "*/src/hybm/csrc/driver/*"
+            "*/acc_links/csrc/common/*"
+            "*/acc_links/csrc/security/*"
+            "*/acc_links/csrc/under_api/openssl/*"
+            "*/hybm/csrc/common/*"
+            "*/hybm/csrc/ts_engine/*"
+            "*/hybm/csrc/under_api/*"
+            "*/hybm/csrc/transport/device/*"
+            "*/hybm/csrc/transport/host/*"
+            "*/util/csrc/ptracer/tracers/*"
+    )
     lcov -d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|SM_LOG*|SM_ASSERT*|BM_LOG*|BM_ASSERT*|SM_VALIDATE_*|ASSERT*|LOG_*"
     lcov -e "$COVERAGE_PATH"/coverage.info "*/src/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
-    lcov -r "$COVERAGE_PATH"/coverage.info "*/3rdparty/*" "*/src/smem/csrc/python_wrapper/*" "*/src/hybm/csrc/driver/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
+    lcov -r "$COVERAGE_PATH"/coverage.info "${EXCLUDE_DIRS[@]}" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1
     genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1
 
     lines_rate=`lcov -r "$COVERAGE_PATH"/coverage.info -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1 | grep lines | grep -Eo "[0-9\.]+%" | tr -d '%'`
