@@ -241,6 +241,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
     if ((mr.flags & transport::REG_MR_FLAG_DRAM) == 0) {
+        BM_LOG_WARN("Failed to register hcom mr, mem type flag should be dram.");
         return BM_OK;
     }
 
@@ -285,7 +286,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
         mrs_[rankId_].push_back(mrInfo);
     }
     BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " <<
-        mrInfo.lKey.keys[0] << std::hex << " laddr:" << mr.addr);
+                mrInfo.lKey.keys[0] << std::hex << " laddr:" << mr.addr);
     return BM_OK;
 }
 #endif

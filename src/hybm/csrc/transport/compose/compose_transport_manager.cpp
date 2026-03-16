@@ -163,12 +163,19 @@ Result ComposeTransportManager::UnregisterMemoryRegion(uint64_t addr)
 
 bool ComposeTransportManager::QueryHasRegistered(uint64_t addr, uint64_t size)
 {
-    std::unique_lock<std::mutex> uniqueLock{mrsMutex_};
-    auto pos = mrs_.lower_bound(addr);
-    if (pos == mrs_.end() || pos->first + pos->second.size < addr + size) {
-        return false;
+    if (deviceTransportManager_) {
+        auto ret = deviceTransportManager_->QueryHasRegistered(addr, size);
+        if (ret) {
+            return ret;
+        }
     }
-    return true;
+    if (hostTransportManager_) {
+        auto ret = hostTransportManager_->QueryHasRegistered(addr, size);
+        if (ret) {
+            return ret;
+        }
+    }
+    return false;
 }
 
 Result ComposeTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &key)

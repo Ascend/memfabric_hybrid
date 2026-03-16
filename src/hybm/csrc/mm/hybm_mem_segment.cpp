@@ -126,7 +126,7 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
             return ret;
         }
 #endif
-        auto dva = reinterpret_cast<uint64_t>(output);
+        auto dva = (output == nullptr) ? reinterpret_cast<uint64_t>(addr) : reinterpret_cast<uint64_t>(output);
         slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, 0, dva, size);
         ret = HybmVaManager::GetInstance().AddVaInfo({0, dva, va, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
         if (ret != 0) {
