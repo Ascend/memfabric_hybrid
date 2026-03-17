@@ -79,7 +79,7 @@ private:
     Result BatchDataCopyLocalBatch(hybm_batch_copy_params &params, int32_t direction,
                                    const ExtOptions &options) noexcept;
 
-    Result AllocSwapMemory();
+    virtual Result AllocSwapMemory();
     void FreeSwapMemory();
 
     void ClassifyDataAddr(void **globalAddrs, void **localAddrs, const uint64_t *counts, uint32_t batchSize,
