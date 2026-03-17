@@ -334,7 +334,7 @@ do
     # memfabric_hybrid
     rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_hybrid*.so
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
-    rm -rf "${PROJ_DIR}"/src/python/memfabric_hybrid/_pymf_transfer*.so
+    rm -rf "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/_pymf_transfer*.so
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
     rm -rf build memfabric_hybrid.egg-info
