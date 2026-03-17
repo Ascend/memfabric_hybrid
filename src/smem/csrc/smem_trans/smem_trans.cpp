@@ -15,6 +15,7 @@
 #include "hybm.h"
 #include "smem_trans_entry.h"
 #include "smem_trans_entry_manager.h"
+#include "smem_store_factory.h"
 
 using namespace ock::smem;
 
@@ -95,6 +96,7 @@ SMEM_API void smem_trans_uninit(uint32_t flags)
     }
 
     hybm_uninit();
+    ock::smem::StoreFactory::DestroyStoreAll(false);
     g_smemTransInited = false;
     SM_LOG_INFO("smem_trans_uninit finished");
 }

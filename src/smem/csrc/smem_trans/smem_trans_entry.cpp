@@ -212,12 +212,14 @@ void* SmemTransEntry::MallocDram(uint64_t size)
     if (ret != 0) {
         SM_LOG_ERROR("export slice for register address with size: " << size << " failed:" << ret);
         hybm_free_local_memory(entity_, slice, size, 0);
+        RemoveSlice(vaAddr);
         return nullptr;
     }
 
     if (info.descLen != sliceInfoSize_) {
         SM_LOG_ERROR("export slice info size: " << info.descLen << " should be:" << sliceInfoSize_);
         hybm_free_local_memory(entity_, slice, size, 0);
+        RemoveSlice(vaAddr);
         return nullptr;
     }
 
@@ -225,6 +227,8 @@ void* SmemTransEntry::MallocDram(uint64_t size)
     ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
     if (ret != 0) {
         SM_LOG_ERROR("store for slice info failed: " << ret);
+        hybm_free_local_memory(entity_, slice, size, 0);
+        RemoveSlice(vaAddr);
         return nullptr;
     }
 
