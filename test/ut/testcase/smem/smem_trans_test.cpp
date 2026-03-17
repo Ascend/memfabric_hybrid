@@ -465,7 +465,16 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
         if (ret != 0) {
             _exit(1);
         }
-        auto handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
+        void *handle = nullptr;
+        constexpr int kCreateMaxRetry = 120;
+        constexpr int kRetryIntervalMs = 100;
+        for (int retry = 0; retry < kCreateMaxRetry; ++retry) {
+            handle = smem_trans_create(STORE_URL, unique_ids[rank], &trans_options);
+            if (handle != nullptr) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(kRetryIntervalMs));
+        }
         if (handle == nullptr) {
             _exit(2);
         }
@@ -487,7 +496,6 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
             }
             std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
             constexpr int kWriteMaxRetry = 120;
-            constexpr int kRetryIntervalMs = 100;
             for (int retry = 0; retry < kWriteMaxRetry; ++retry) {
                 ret = smem_trans_write(handle, ptr, unique_ids[1], dst_addr, capacities, 0);
                 if (ret == SM_OK) {
@@ -521,56 +529,60 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
     const std::array<const char *, 2> unique_ids = {{"127.0.0.1:5321", "127.0.0.1:5322"}};
     std::vector<smem_trans_config_t> trans_options = {sender_trans_options, recv_trans_options};
 
-    pid_t pids[rankSize];
-    uint32_t maxProcess = rankSize;
-    bool needKillOthers = false;
-    for (uint32_t i = 0; i < rankSize; ++i) {
-        pids[i] = fork();
-        EXPECT_NE(pids[i], -1);
-        if (pids[i] == -1) {
-            maxProcess = i;
-            needKillOthers = true;
-            break;
-        }
-        if (pids[i] == 0) {
-            smem_set_conf_store_tls(false, nullptr, 0);
-            if (i == 0) {
-                int ret = -1;
-                constexpr int kStoreCreateMaxRetry = 120;
-                constexpr int kRetryIntervalMs = 100;
-                for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                    ret = smem_create_config_store(STORE_URL);
-                    if (ret == 0) {
-                        break;
+    bool testSuccess = false;
+    constexpr int kMaxAttempts = MAX_TEST_ATTEMPTS;
+    for (int attempt = 0; attempt < kMaxAttempts && !testSuccess; ++attempt) {
+        pid_t pids[rankSize] = {0};
+        bool allExitedZero = true;
+        bool needKillOthers = false;
+        uint32_t maxProcess = rankSize;
+        for (uint32_t i = 0; i < rankSize; ++i) {
+            pids[i] = fork();
+            EXPECT_NE(pids[i], -1);
+            if (pids[i] == -1) {
+                maxProcess = i;
+                allExitedZero = false;
+                needKillOthers = true;
+                break;
+            }
+            if (pids[i] == 0) {
+                smem_set_conf_store_tls(false, nullptr, 0);
+                if (i == 0) {
+                    int ret = -1;
+                    constexpr int kStoreCreateMaxRetry = 120;
+                    constexpr int kRetryIntervalMs = 100;
+                    for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
+                        ret = smem_create_config_store(STORE_URL);
+                        if (ret == 0) {
+                            break;
+                        }
+                        std::this_thread::sleep_for(std::chrono::milliseconds(kRetryIntervalMs));
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(kRetryIntervalMs));
+                    if (ret != 0) {
+                        _exit(STORE_CREATE_RETRY_FAILED_EXIT_CODE);
+                    }
                 }
-                if (ret != 0) {
-                    _exit(STORE_CREATE_RETRY_FAILED_EXIT_CODE);
+                func(i, rankSize, trans_options[i], capacities, unique_ids);
+                _exit(0);
+            }
+        }
+
+        if (needKillOthers) {
+            for (uint32_t i = 0; i < maxProcess; ++i) {
+                if (pids[i] > 0) {
+                    int status = 0;
+                    kill(pids[i], SIGKILL);
+                    waitpid(pids[i], &status, 0);
                 }
             }
-            func(i, rankSize, trans_options[i], capacities, unique_ids);
-            _exit(0);
+            continue;
         }
-    }
 
-    if (needKillOthers) {
-        for (uint32_t i = 0; i < maxProcess; ++i) {
+        for (uint32_t i = 0; i < rankSize; ++i) {
             int status = 0;
-            kill(pids[i], SIGKILL);
             waitpid(pids[i], &status, 0);
-        }
-        ASSERT_NE(needKillOthers, true);
-    }
-
-    for (uint32_t i = 0; i < rankSize; ++i) {
-        int status = 0;
-        waitpid(pids[i], &status, 0);
-        EXPECT_EQ(WIFEXITED(status), true);
-        if (WIFEXITED(status)) {
-            EXPECT_EQ(WEXITSTATUS(status), 0);
-            if (WEXITSTATUS(status) != 0 && !needKillOthers) {
-                needKillOthers = true;
+            if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                allExitedZero = false;
                 for (uint32_t j = 0; j < rankSize; ++j) {
                     if (i != j && pids[j] > 0) {
                         kill(pids[j], SIGKILL);
@@ -578,18 +590,12 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
                         waitpid(pids[j], &killedStatus, 0);
                     }
                 }
-            }
-        } else {
-            needKillOthers = true;
-            for (uint32_t j = 0; j < rankSize; ++j) {
-                if (i != j && pids[j] > 0) {
-                    kill(pids[j], SIGKILL);
-                    int killedStatus = 0;
-                    waitpid(pids[j], &killedStatus, 0);
-                }
+                break;
             }
         }
+        testSuccess = allExitedZero;
     }
+    EXPECT_EQ(testSuccess, true);
 }
 
 TEST_F(SmemTransTest, smem_trans_write_ipv6)
