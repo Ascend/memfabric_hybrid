@@ -23,6 +23,8 @@
 #include "dl_acl_api.h"
 #include "dl_api.h"
 #include "hybm_mem_segment.h"
+#include "smem_trans/smem_trans_entry.h"
+#include "smem_trans/smem_trans_entry_manager.h"
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
@@ -272,6 +274,495 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param_ipv6)
 
     EXPECT_TRUE(WIFEXITED(status));
     EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST_F(SmemTransTest, smem_trans_register_mem_failed_not_initialized)
+{
+    int *address = new int[REGISTER_MEM_ELEM_COUNT];
+    size_t size = REGISTER_MEM_ELEM_COUNT * sizeof(int);
+    auto handle = reinterpret_cast<smem_trans_t>(0x12345678);
+
+    EXPECT_EQ(smem_trans_register_mem(handle, address, size, 0), SM_INVALID_PARAM);
+
+    delete[] address;
+}
+
+TEST_F(SmemTransTest, smem_trans_deregister_mem_success)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x12345678);
+    int dummy = 42;
+
+    EXPECT_EQ(smem_trans_deregister_mem(handle, &dummy), SM_OK);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_deregister_mem_failed_not_initialized)
+{
+    auto handle = reinterpret_cast<smem_trans_t>(0x12345678);
+    int dummy = 42;
+
+    EXPECT_EQ(smem_trans_deregister_mem(handle, &dummy), SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_deregister_mem_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    int dummy = 42;
+
+    EXPECT_EQ(smem_trans_deregister_mem(nullptr, &dummy), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_deregister_mem_failed_null_address)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x12345678);
+
+    EXPECT_EQ(smem_trans_deregister_mem(handle, nullptr), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_failed_not_initialized)
+{
+    char local_buf[1];
+    const char remote_buf[1] = {0};
+    const char REMOTE_ID[] = "remote:123";
+
+    EXPECT_EQ(smem_trans_read(
+        reinterpret_cast<smem_trans_t>(0x1000),
+        local_buf, REMOTE_ID, remote_buf, 1, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    char local_buf[1];
+    const char remote_buf[1] = {0};
+    const char REMOTE_ID[] = "remote:123";
+
+    EXPECT_EQ(smem_trans_read(nullptr, local_buf, REMOTE_ID, remote_buf, 1, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    char local_buf[1];
+    const char remote_buf[1] = {0};
+    auto handle = reinterpret_cast<smem_trans_t>(0x1000);
+
+    EXPECT_EQ(smem_trans_read(handle, local_buf, nullptr, remote_buf, 1, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_failed_get_entry_failed)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto invalid_handle = reinterpret_cast<smem_trans_t>(0xDEADBEEF);
+    char local_buf[1];
+    const char remote_buf[1] = {0};
+    const char REMOTE_ID[] = "remote:123";
+
+    EXPECT_NE(smem_trans_read(invalid_handle, local_buf, REMOTE_ID, remote_buf, 1, 0), SM_OK);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_failed_not_initialized)
+{
+    void* local_addrs[1] = {nullptr};
+    const void* remote_addrs[1] = {nullptr};
+    size_t data_sizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_batch_read(
+        reinterpret_cast<smem_trans_t>(0x2000),
+        local_addrs, REMOTE_ID, remote_addrs, data_sizes, 1, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    void* local_addrs[1] = {nullptr};
+    const void* remote_addrs[1] = {nullptr};
+    size_t data_sizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_batch_read(nullptr, local_addrs, REMOTE_ID,
+        remote_addrs,  data_sizes, 1, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x2000);
+    void* local_addrs[1] = {nullptr};
+    const void* remote_addrs[1] = {nullptr};
+    size_t data_sizes[1] = {0};
+
+    EXPECT_EQ(smem_trans_batch_read(handle, local_addrs, nullptr,
+        remote_addrs, data_sizes, 1, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_failed_get_entry_failed)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto invalid_handle = reinterpret_cast<smem_trans_t>(0xBADBAD);
+    void* local_addrs[1] = {nullptr};
+    const void* remote_addrs[1] = {nullptr};
+    size_t data_sizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_NE(smem_trans_batch_read(invalid_handle, local_addrs, REMOTE_ID,
+        remote_addrs, data_sizes, 1, 0), SM_OK);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_submit_failed_not_initialized)
+{
+    const char data[] = "test";
+    char remote[10] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x1234);
+
+    EXPECT_EQ(smem_trans_write_submit(
+        reinterpret_cast<smem_trans_t>(0x3000),
+        data, REMOTE_ID, remote, 4, stream, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_submit_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    const char data[] = "test";
+    char remote[10] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x1234);
+
+    EXPECT_EQ(smem_trans_write_submit(nullptr, data, REMOTE_ID, remote, 4, stream, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_submit_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x3000);
+    const char data[] = "test";
+    char remote[10] = {0};
+    void* stream = reinterpret_cast<void*>(0x1234);
+
+    EXPECT_EQ(smem_trans_write_submit(handle, data, nullptr, remote, 4, stream, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_submit_failed_null_stream)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x3000);
+    const char data[] = "test";
+    char remote[10] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_write_submit(handle, data, REMOTE_ID, remote, 4, nullptr, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_write_submit_failed_get_entry_failed)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto invalid_handle = reinterpret_cast<smem_trans_t>(0xDEADCAFE);
+    const char data[] = "test";
+    char remote[10] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x5678);
+
+    EXPECT_NE(smem_trans_write_submit(invalid_handle, data, REMOTE_ID, remote, 4, stream, 0), SM_OK);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_submit_failed_not_initialized)
+{
+    char local[10] = {0};
+    const char remote[] = "data";
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x1111);
+
+    EXPECT_EQ(smem_trans_read_submit(
+        reinterpret_cast<smem_trans_t>(0x4000),
+        local, REMOTE_ID, remote, 4, stream, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_submit_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    char local[10] = {0};
+    const char remote[] = "data";
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x2222);
+
+    EXPECT_EQ(smem_trans_read_submit(nullptr, local, REMOTE_ID, remote, 4, stream, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_submit_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x4000);
+    char local[10] = {0};
+    const char remote[] = "data";
+    void* stream = reinterpret_cast<void*>(0x3333);
+
+    EXPECT_EQ(smem_trans_read_submit(handle, local, nullptr, remote, 4, stream, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_read_submit_failed_null_stream)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x4000);
+    char local[10] = {0};
+    const char remote[] = "data";
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_read_submit(handle, local, REMOTE_ID, remote, 4, nullptr, 0), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write_submit_failed_not_initialized)
+{
+    const void* localAddrs[1] = {nullptr};
+    void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x1111);
+
+    EXPECT_EQ(smem_trans_batch_write_submit(
+        reinterpret_cast<smem_trans_t>(0x6000),
+        localAddrs, REMOTE_ID, remoteAddrs, dataSizes, 1, stream, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write_submit_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    const void* localAddrs[1] = {nullptr};
+    void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x2222);
+
+    EXPECT_EQ(smem_trans_batch_write_submit(nullptr, localAddrs, REMOTE_ID,
+                                            remoteAddrs, dataSizes, 1, stream, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write_submit_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x6000);
+    const void* localAddrs[1] = {nullptr};
+    void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    void* stream = reinterpret_cast<void*>(0x3333);
+
+    EXPECT_EQ(smem_trans_batch_write_submit(handle, localAddrs, nullptr,
+                                            remoteAddrs, dataSizes, 1, stream, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_write_submit_failed_null_stream)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0x6000);
+    const void* localAddrs[1] = {nullptr};
+    void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_batch_write_submit(handle, localAddrs, REMOTE_ID,
+                                            remoteAddrs, dataSizes, 1, nullptr, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_submit_failed_not_initialized)
+{
+    void* localAddrs[1] = {nullptr};
+    const void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x2001);
+
+    EXPECT_EQ(smem_trans_batch_read_submit(
+        reinterpret_cast<smem_trans_t>(0xA000),
+        localAddrs, REMOTE_ID, remoteAddrs, dataSizes, 1, stream, 0),
+        SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_submit_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    void* localAddrs[1] = {nullptr};
+    const void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+    void* stream = reinterpret_cast<void*>(0x2002);
+
+    EXPECT_EQ(smem_trans_batch_read_submit(nullptr, localAddrs, REMOTE_ID,
+                                           remoteAddrs, dataSizes, 1, stream, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_submit_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0xA001);
+    void* localAddrs[1] = {nullptr};
+    const void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    void* stream = reinterpret_cast<void*>(0x2003);
+
+    EXPECT_EQ(smem_trans_batch_read_submit(handle, localAddrs, nullptr,
+                                           remoteAddrs, dataSizes, 1, stream, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_read_submit_failed_null_stream)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0xA002);
+    void* localAddrs[1] = {nullptr};
+    const void* remoteAddrs[1] = {nullptr};
+    size_t dataSizes[1] = {0};
+    const char REMOTE_ID[] = "remote";
+
+    EXPECT_EQ(smem_trans_batch_read_submit(handle, localAddrs, REMOTE_ID,
+                                           remoteAddrs, dataSizes, 1, nullptr, 0),
+              SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_quant_write_failed_not_initialized)
+{
+    smem_trans_quant_copy_param_t params = {};
+    params.remoteUniqueId = "remote";
+    auto handle = reinterpret_cast<smem_trans_t>(0xC000);
+
+    EXPECT_EQ(smem_trans_batch_quant_write(handle, &params), SM_INVALID_PARAM);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_quant_write_failed_null_handle)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    smem_trans_quant_copy_param_t params = {};
+    params.remoteUniqueId = "remote";
+
+    EXPECT_EQ(smem_trans_batch_quant_write(nullptr, &params), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_quant_write_failed_null_params)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    auto handle = reinterpret_cast<smem_trans_t>(0xC001);
+
+    EXPECT_EQ(smem_trans_batch_quant_write(handle, nullptr), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
+}
+
+TEST_F(SmemTransTest, smem_trans_batch_quant_write_failed_null_remote_unique_id)
+{
+    int ret = smem_trans_init(&g_trans_options);
+    ASSERT_EQ(ret, SM_OK);
+
+    smem_trans_quant_copy_param_t params = {};
+    params.remoteUniqueId = nullptr;
+    auto handle = reinterpret_cast<smem_trans_t>(0xC002);
+
+    EXPECT_EQ(smem_trans_batch_quant_write(handle, &params), SM_INVALID_PARAM);
+
+    smem_trans_uninit(0);
 }
 
 TEST_F(SmemTransTest, smem_trans_read_write)
