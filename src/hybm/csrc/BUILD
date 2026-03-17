@@ -38,44 +38,18 @@ COMMON_COPTS = GLOBAL_COPTS + [
     "-ftrapv",
     "-s",
     "-D_FORTIFY_SOURCE=2",
-    "-Isrc/smem/include/host",    # maybe redundant include path
-    "-Iinclude/hybm",    # maybe redundant include path
-    "-Isrc/util/include",    # maybe redundant include path
-    "-Isrc/util/csrc",
-    "-Isrc/hybm/include",
-    "-Isrc/hybm/csrc/common",
-    "-Isrc/hybm/csrc/data_operation",
-    "-Isrc/hybm/csrc/data_operation/host",
-    "-Isrc/hybm/csrc/driver",
-    "-Isrc/hybm/csrc/driver/userspace",
-    "-Isrc/hybm/csrc/driver/version",
-    "-Isrc/hybm/csrc/entity",
-    "-Isrc/hybm/csrc/mm",
-    "-Isrc/hybm/csrc/transport",
-    "-Isrc/hybm/csrc/transport/compose",
-    "-Isrc/hybm/csrc/transport/device",
-    "-Isrc/hybm/csrc/transport/host",
-    "-Isrc/hybm/csrc/transport/utils",    # maybe redundant include path
-    "-Isrc/hybm/csrc/ts_engine",
-    "-Isrc/hybm/csrc/under_api",
-    "-Isrc/util/csrc/ptracer/include",
 ] # DIGEST:1ffebe736dd1defb2b9c7fc3d6774077
+
+cc_library(
+    name = "hybm_src_headers",
+    hdrs = glob(["*.h","common/*.h", "data_operation/*.h","data_operation/host/*.h", "driver/*.h", "driver/userspace/*.h", "driver/version/*.h", "entity/*.h", "mm/*.h", "transport/*.h", "transport/compose/*.h", "transport/device/*.h", "transport/host/*.h", "ts_engine/*.h", "under_api/*.h",]),
+    includes = [".", "common", "data_operation", "data_operation/host", "driver", "driver/userspace", "driver/version", "entity", "mm", "transport", "transport/compose", "transport/device", "transport/host", "ts_engine", "under_api",],
+    visibility = ["//visibility:public"],
+)
 
 cc_library (
     name = "hybmm_objects",
     srcs = [
-        "//src/util/csrc/ptracer:include/ptracer.h",
-        "//src:hybm/include/hybm.h",
-        "//src:hybm/include/hybm_big_mem.h",
-        "//src:hybm/include/hybm_data_op.h",
-        "//src:hybm/include/hybm_def.h",
-        "//src:util/csrc/mf_file_util.h",
-        "//src:util/csrc/mf_num_util.h",
-        "//src:util/csrc/mf_out_logger.h",
-        "//src:util/csrc/mf_rwlock.h",
-        "//src:util/csrc/mf_spinlock.h",
-        "//src:util/csrc/mf_str_util.h",
-        "//src:util/csrc/mf_tls_util.h",
         "common/hybm_common_include.h",
         "common/hybm_define.h",
         "common/hybm_functions.h",
@@ -118,7 +92,6 @@ cc_library (
         "entity/hybm_entity_tag_info.h",
         "hybm_big_mem_entry.cpp",
         "hybm_data_op_entry.cpp",
-        "hybm_driver.cpp",
         "hybm_entry.cpp",
         "mm/hybm_conn_based_segment.cpp",
         "mm/hybm_conn_based_segment.h",
@@ -195,6 +168,10 @@ cc_library (
     linkopts = [] + COMMON_LINKOPTS,
     deps =  [
         "@version_info//:version_info",
+        "//src:util_headers",
+        "//src:hybm_headers",
+        "//src/util/csrc/ptracer:ptracer_src_headers",
+        ":hybm_src_headers",
     ],
     alwayslink = True,
 ) # DIGEST:ccdc6044002cfaa65a32bedea114a0bd
@@ -240,14 +217,25 @@ cc_library (
     alwayslink = True,
 ) # DIGEST:bec0a0125be85d7eda9cbe68d52967ba
 
+config_setting(
+    name = "mf_build_with_hcom",
+    # 当命令行传入 --define=build_with_hcom=1 时，此条件匹配成功
+    values = {"define": "build_with_hcom=1"},
+)
+
+HYBM_DEPS = [
+    "@version_info//:version_info",
+    ":hybmm_shared",
+    ] + select({
+        ":mf_build_with_hcom": ["@hcom//src/hcom:libhcom.so", "@hcom//src:libboundscheck.so"],
+        "//conditions:default": [],
+    })
 cc_binary (
     name = "libmf_hybm_core.so",
     srcs = [],
-    deps =  [
-        "@version_info//:version_info",
-        ":hybmm_shared",
-    ],
+    deps =  HYBM_DEPS,
     linkshared = 1,
+    visibility = ["//visibility:public"],
 ) # DIGEST:971762d3cac67844fd53bd0979f913f8
 
 #cc_combine (

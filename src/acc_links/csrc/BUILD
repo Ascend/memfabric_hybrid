@@ -38,33 +38,18 @@ COMMON_COPTS = GLOBAL_COPTS + [
     "-ftrapv",
     "-s",
     "-D_FORTIFY_SOURCE=2",
-    "-Isrc/smem/include/host",    # maybe redundant include path
-    "-Iinclude/hybm",    # maybe redundant include path
-    "-Isrc/util/include",    # maybe redundant include path
-    "-Isrc/util/csrc",
-    "-Isrc/acc_links/include",
-    "-Isrc/acc_links/csrc",
-    "-Isrc/acc_links/csrc/common",
-    "-Isrc/acc_links/csrc/security",
-    "-Isrc/acc_links/csrc/under_api/openssl",
 ] # DIGEST:199b1d6b829e73ac5dfb044fd1223dfb
+
+cc_library(
+    name = "acc_links_src_headers",
+    hdrs = glob(["common/*.h","security/*.h","under_api/openssl/*.h"]),
+    includes = [".", "common", "security", "under_api/openssl"],
+    visibility = ["//visibility:public"],
+)
 
 cc_library (
     name = "acc_tcp_net_object",
     srcs = [
-        "//src:acc_links/include/acc_def.h",
-        "//src:acc_links/include/acc_log.h",
-        "//src:acc_links/include/acc_ref.h",
-        "//src:acc_links/include/acc_tcp_link.h",
-        "//src:acc_links/include/acc_tcp_request_context.h",
-        "//src:acc_links/include/acc_tcp_server.h",
-        "//src:acc_links/include/acc_tcp_shared_buf.h",
-        "//src:util/csrc/mf_file_util.h",
-        "//src:util/csrc/mf_ipv4_validator.h",
-        "//src:util/csrc/mf_net.h",
-        "//src:util/csrc/mf_out_logger.h",
-        "//src:util/csrc/mf_spinlock.h",
-        "//src:util/csrc/mf_str_util.h",
         "acc_tcp_common.cpp",
         "acc_tcp_common.h",
         "acc_tcp_link_complex_default.cpp",
@@ -98,6 +83,11 @@ cc_library (
     local_defines = [] + COMMON_LOCAL_DEFINES,
     copts = [] + COMMON_COPTS,
     linkopts = [] + COMMON_LINKOPTS,
+    deps = [
+        ":acc_links_src_headers",
+        "//src:util_headers",
+        "//src:acc_links_headers",
+    ],
     alwayslink = True,
 ) # DIGEST:fee4378f6937e1923f1e8ebb2dc88aec
 

@@ -21,6 +21,11 @@ BUILD_HCOM_WITH_RDMA=${9:-ON}
 BUILD_HCOM_WITH_UB=${10:-OFF}
 BUILD_ETCD_BACKEND=${11:-OFF}
 BUILD_TOOL=${12:-cmake}
+# 导出环境变量用于后续构建whl包
+export MF_BUILD_HCOM=${8:-OFF}
+export MF_BUILD_HCOM_WITH_RDMA=${9:-ON}
+export MF_BUILD_HCOM_WITH_UB=${10:-OFF}
+export BUILD_ETCD_BACKEND=${11:-OFF}
 export BUILD_TOOL=${12:-cmake}
 
 
@@ -45,28 +50,6 @@ set -e
 readonly ROOT_PATH=$(dirname $(readlink -f "$0"))
 CURRENT_DIR=$(pwd)
 
-if [ "${BUILD_PYTHON}" == "ON" ]; then
-    readonly BACK_PATH_EVN=$PATH
-
-    # 如果 PYTHON_HOME 不存在，则设置默认值
-    if [ -z "$PYTHON_HOME" ]; then
-        # 定义要检查的目录路径
-        CHECK_DIR="/usr/local/python3.11"
-        # 判断目录是否存在
-        if [ -d "$CHECK_DIR" ]; then
-            export PYTHON_HOME="$CHECK_DIR"
-        else
-            export PYTHON_HOME="/usr/local/"
-        fi
-        echo "Not set PYTHON_HOME, and use $PYTHON_HOME"
-    fi
-
-    export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
-    export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
-    export CMAKE_PREFIX_PATH=$PYTHON_HOME
-    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
-fi
-
 copy_bazel_artifacts()
 {
     echo "========= copy bazel artifacts to dist directory========="
@@ -89,10 +72,78 @@ copy_bazel_artifacts()
         mkdir -p "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/
         cp -v "${PROJ_DIR}"/bazel-bin/src/smem/csrc/python_wrapper/memfabric_hybrid/_pymf_hybrid.so "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/memfabric_hybrid/
     fi
+
+    if [ "${BUILD_HCOM}" == "ON" ]; then
+        echo "========= copy hcom lib to output============"
+        mkdir -p "${PROJ_DIR}"/output/3rdparty/hcom/lib/
+        cp -v "${PROJ_DIR}"/bazel-bin/external/hcom/src/hcom/libhcom.so "${PROJ_DIR}"/output/3rdparty/hcom/lib/
+
+        if [ -f "${PROJ_DIR}/bazel-bin/external/hcom/src/libboundscheck.so" ]; then
+            if [ ! -d "$LIBBOUNDSCHECK_INSTALL_PATH" ]; then
+                mkdir -p "$LIBBOUNDSCHECK_INSTALL_PATH"
+            fi
+            cp -v ${PROJ_DIR}/bazel-bin/external/hcom/src/libboundscheck.so "$LIBBOUNDSCHECK_INSTALL_PATH"
+        fi
+    fi
+
+    if [ "${BUILD_ETCD_BACKEND}" == "ON" ]; then
+        echo "========= copy etcd client lib to output============"
+        mkdir -p ${PROJ_DIR}/output/etcd/lib64/
+        cp -v "${PROJ_DIR}"/bazel-bin/src/util/etcd_client/etcd_store_backend/libetcd_client_v3.so ${PROJ_DIR}/output/etcd/lib64/
+    fi
+}
+
+check_contains_path()
+{
+    local check_path="$1"
+    local path_var="${LD_LIBRARY_PATH:-}"
+
+    # empty LD_LIBRARY_PATH
+    if [ -z "$path_var" ]; then
+        return 0 # not contain
+    fi
+
+    # check every path parted by ':'
+    IFS=':' read -ra paths <<< "$path_var"
+    for path in "${paths[@]}"; do
+        # remove '/'
+        path="${path%/}"
+        check_path="${check_path%/}"
+
+        if [ "$path" = "$check_path" ]; then
+            echo "========= contain $check_path============"
+            return 1  # contain
+        fi
+    done
+    echo "========= not contain $check_path============"
+    return 0  # not contain
 }
 
 cd ${ROOT_PATH}/..
 PROJ_DIR=$(pwd)
+LIBBOUNDSCHECK_INSTALL_PATH="${PROJ_DIR}/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/"
+
+if [ "${BUILD_PYTHON}" == "ON" ]; then
+    readonly BACK_PATH_EVN=$PATH
+
+    # 如果 PYTHON_HOME 不存在，则设置默认值
+    if [ -z "$PYTHON_HOME" ]; then
+        # 定义要检查的目录路径
+        CHECK_DIR="/usr/local/python3.11"
+        # 判断目录是否存在
+        if [ -d "$CHECK_DIR" ]; then
+            export PYTHON_HOME="$CHECK_DIR"
+        else
+            export PYTHON_HOME="/usr/local/"
+        fi
+        echo "Not set PYTHON_HOME, and use $PYTHON_HOME"
+    fi
+
+    export LD_LIBRARY_PATH=$PYTHON_HOME/lib:$LD_LIBRARY_PATH
+    export PATH=$PYTHON_HOME/bin:$BACK_PATH_EVN
+    export CMAKE_PREFIX_PATH=$PYTHON_HOME
+    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
+fi
 
 if [ "${BUILD_TOOL}" == "cmake" ]; then
     rm -rf ./build ./output
@@ -150,6 +201,21 @@ else
         BAZEL_ARGS+=("--copt=-DNO_XPU")
     fi
 
+    if [ "${BUILD_HCOM}" == "ON" ]; then
+        BAZEL_ARGS+=("--define=build_with_hcom=1")
+ 
+        if [ "${BUILD_HCOM_WITH_RDMA}" == "OFF" ]; then
+            BAZEL_ARGS+=("--define=hcom_enable_rdma=0")
+        fi 
+        if [ "${BUILD_HCOM_WITH_UB}" == "ON" ]; then
+            BAZEL_ARGS+=("--define=hcom_enable_ub=1")
+        fi
+    fi
+
+    if [ "${BUILD_ETCD_BACKEND}" == "OFF" ]; then
+        BAZEL_ARGS+=("--build_tag_filters=-enable_etcd_client")
+    fi
+
     BAZEL_ARGS+=("--explain=explain.log")
     BAZEL_ARGS+=("--verbose_explanations")
 
@@ -168,7 +234,6 @@ if [ "${BUILD_HCOM}" == "ON" ]; then
 
     echo "========= copy hcom lib ============"
 
-    LIBBOUNDSCHECK_INSTALL_PATH="${PROJ_DIR}/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/"
     # Check if the source code compilation output directory of libboundscheck exists
     if [ ! -d "$LIBBOUNDSCHECK_INSTALL_PATH" ]; then
         mkdir -p "$LIBBOUNDSCHECK_INSTALL_PATH"
@@ -212,6 +277,11 @@ if [ "${BUILD_HCOM}" == "ON" ]; then
     cp -v "${PROJ_DIR}"/output/3rdparty/hcom/lib/libhcom.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
     cp -v "${LIBBOUNDSCHECK_INSTALL_PATH}"/libboundscheck.so \
           "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
+fi
+
+if [ "${BUILD_ETCD_BACKEND}" == "ON" ]; then
+    echo "========= copy etcd client lib to wheel pkg============"
+    cp -v ${PROJ_DIR}/output/etcd/lib64/libetcd_client_v3.so "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"
 fi
 
 VERSION="$(cat VERSION | tr -d '[:space:]')"
@@ -268,7 +338,11 @@ do
     \cp -v "${PROJ_DIR}"/build/src/smem/csrc/python_wrapper/mk_transfer_adapter/_pymf_transfer*.so "${PROJ_DIR}"/src/smem/python/memfabric_hybrid/memfabric_hybrid/
     cd "${PROJ_DIR}/src/smem/python/memfabric_hybrid"
     rm -rf build memfabric_hybrid.egg-info
-    export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
+    if check_contains_path "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib"; then
+        echo "========= not contain add to LD_LIBRARY_PATH ============"
+        export LD_LIBRARY_PATH="${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/lib":$LD_LIBRARY_PATH # fix `auditwheel repair` failed
+    fi
+
     python3 setup.py bdist_wheel
     cd "${PROJ_DIR}"
 

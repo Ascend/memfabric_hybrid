@@ -40,6 +40,10 @@ build_open_abi = os.getenv("BUILD_OPEN_ABI", "OFF")
 build_mode = os.getenv("BUILD_MODE", "RELEASE")
 enable_ptracer = os.getenv("ENABLE_PTRACER", "ON")
 xpu_type = os.getenv("XPU_TYPE", "NPU")
+build_hcom = os.getenv("MF_BUILD_HCOM", "OFF")
+build_hcom_with_rdma = os.getenv("MF_BUILD_HCOM_WITH_RDMA", "ON")
+build_hcom_with_ub = os.getenv("MF_BUILD_HCOM_WITH_UB", "OFF")
+build_etcd_backend = os.getenv("BUILD_ETCD_BACKEND", "OFF")
 build_tool = os.getenv("BUILD_TOOL", "cmake")
 
 if xpu_type not in ("NPU", "NONE", "GPU"):
@@ -141,6 +145,17 @@ class CMakeBuildExt(build_ext):
                 bazel_cmd.append("--copt=-DNVIDIA_GPU")
             else:
                 bazel_cmd.append("--copt=-DNO_XPU")
+
+            if build_hcom == "ON":
+                bazel_cmd.append("--define=build_with_hcom=1")
+    
+                if build_hcom_with_rdma == "OFF":
+                    bazel_cmd.append("--define=hcom_enable_rdma=0")
+                if build_hcom_with_ub == "ON":
+                    bazel_cmd.append("--define=hcom_enable_ub=1")
+
+            if build_etcd_backend == "OFF":
+                bazel_cmd.append("--build_tag_filters=-enable_etcd_client")
             
             bazel_cmd.append("--explain=explain.log")
             bazel_cmd.append("--verbose_explanations")

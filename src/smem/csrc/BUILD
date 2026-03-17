@@ -44,47 +44,25 @@ COMMON_COPTS = GLOBAL_COPTS + [
     "-ftrapv",
     "-s",
     "-D_FORTIFY_SOURCE=2",
-    "-Isrc/smem/include",
-    "-Isrc/smem/include/host",
-    "-Isrc/smem/csrc/common",
-    "-Isrc/smem/csrc/config_store",
-    "-Isrc/smem/csrc/config_store/backend",
-    "-Isrc/smem/csrc/config_store/ha",
-    "-Isrc/smem/csrc/config_store/tcp_store",
-    "-Isrc/smem/csrc/net",
-    "-Isrc/smem/csrc/smem_shm",
-    "-Isrc/smem/csrc/smem_trans",
-    "-Isrc/acc_links/include",
-    "-Isrc/hybm/include",
-    "-Isrc/util/csrc",
-    "-Isrc/util/csrc/ptracer/include",    # maybe redundant include path
 ] # DIGEST:cb4e3d52a21c46096b487afa0d3bd01f
+
+cc_library(
+    name = "smem_src_headers",
+    hdrs = glob(["common/*.h", "net/*.h","smem_bm/*.h", "smem_shm/*.h", "smem_trans/*.h"]),
+    includes = [".", "common", "net", "smem_bm", "smem_shm", "smem_trans"],
+    visibility = ["//visibility:public"],
+)
 
 cc_library (
     name = "smem_objects",
     srcs = [
-        "//src:hybm/include/hybm.h",
-        "//src:hybm/include/hybm_big_mem.h",
-        "//src:hybm/include/hybm_data_op.h",
-        "//src:hybm/include/hybm_def.h",
-        "//src:smem/include/host/smem.h",
-        "//src:smem/include/host/smem_bm.h",
-        "//src:smem/include/host/smem_shm.h",
-        "//src:smem/include/host/smem_shm_def.h",
-        "//src:smem/include/host/smem_trans.h",
-        "//src:smem/include/host/smem_trans_def.h",
-        "//src:util/csrc/mf_file_util.h",
-        "//src:util/csrc/mf_ipv4_validator.h",
-        "//src:util/csrc/mf_monotonic_time.h",
-        "//src:util/csrc/mf_net.h",
-        "//src:util/csrc/mf_num_util.h",
-        "//src:util/csrc/mf_rwlock.h",
-        "//src:util/csrc/mf_syntactic_sugar.h",
         "common/smem_common_includes.h",
         "common/smem_define.h",
         "common/smem_last_error.cpp",
         "common/smem_timedwait.h",
         "common/smem_version.h",
+        "common/smem_thread_pool.cpp",
+        "common/smem_thread_pool.h",
         "net/smem_net_common.cpp",
         "net/smem_net_common.h",
         "net/smem_net_group_engine.cpp",
@@ -116,8 +94,13 @@ cc_library (
     copts = [] + COMMON_COPTS,
     linkopts = [] + COMMON_LINKOPTS,
     deps =  [
-    "@version_info//:version_info",
+        "@version_info//:version_info",
         "//src/smem/csrc/config_store:config_store_object",
+        ":smem_src_headers",
+        "//src:util_headers",
+        "//src:acc_links_headers",
+        "//src:smem_headers",
+        "//src:hybm_headers",
     ],
     alwayslink = True,
 ) # DIGEST:5ce440125e6a7b4c865afc07204f0d15
@@ -178,6 +161,7 @@ cc_binary (
         ":smem_shared",
     ],
     linkshared = 1,
+    visibility = ["//visibility:public"],
 ) # DIGEST:f9fafc72f54cc6c9a7bfa6a031564a86
 
 #cc_combine (

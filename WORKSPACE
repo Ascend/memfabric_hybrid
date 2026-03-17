@@ -2,10 +2,10 @@
 # Any issue please report to https://open.codehub.huawei.com/innersource/hazel/toolkits/issues
 # Caesar Task Force@Data Storage Product Line
 
-workspace(name = "memfabric_hybrid") # DIGEST:551fe62e9e1859bb02fdbc28f5518cf8
+workspace(name = "memfabric_hybrid")  # DIGEST:551fe62e9e1859bb02fdbc28f5518cf8
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_python",
@@ -16,17 +16,17 @@ http_archive(
 load("@rules_python//python:repositories.bzl", "py_repositories")
 py_repositories()
 
-git_repository(
-    name = "googletest",
-    remote = "https://github.com/google/googletest.git",
-    tag = "v1.12.0",
-)
-
-git_repository(
-    name = "mockcpp",
-    remote = "https://github.com/sinojelly/mockcpp.git",
-    tag = "v2.7",
-)
+#http_archive(
+#    name = "io_bazel_rules_go",
+#    sha256 = "9d72f7b8904128afb98d46bbef82ad7223ec9ff3718d419afb355fddd9f9484a",
+#    urls = [
+#        "https://mirror.bazel.build/github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
+#        "https://github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
+#    ],
+#)
+#load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+#go_rules_dependencies()
+#go_register_toolchains(version = "host")
 
 http_archive(
     name = "pybind11",
@@ -40,9 +40,30 @@ http_archive(
     strip_prefix = "pybind11_bazel-2.11.1",
     urls = ["https://github.com/pybind/pybind11_bazel/releases/download/v2.11.1/pybind11_bazel-2.11.1.tar.gz"],
 )
-
 load("@pybind11_bazel//:python_configure.bzl", "python_configure")
-python_configure(name="local_config_python")
+python_configure(name = "local_config_python")
+
+git_repository(
+    name = "libboundscheck",
+    remote = "https://atomgit.com/openeuler/libboundscheck.git",
+    branch = "master",
+    build_file = "@hcom//src/ubsocket/3rdparty/boundscheck:BUILD.bazel",
+)
+
+git_repository(
+    name = "hcom",
+    remote = "https://atomgit.com/openeuler/ubs-comm.git",
+    branch = "master",
+)
+load("@hcom//tools/bazel:hcom_repositories.bzl", "hcom_build_metadata_repository", "hcom_urma_repository")
+hcom_build_metadata_repository(
+    name = "hcom_build_metadata",
+    cmake_file = "@hcom//src/hcom:CMakeLists.txt",
+)
+hcom_urma_repository(
+    name = "urma",
+    build_file = "@hcom//src/hcom/umq/third_party/urma:BUILD.bazel",
+)
 
 load("//:version_repo.bzl", "version_repo")
 version_repo(

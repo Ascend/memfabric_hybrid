@@ -78,15 +78,7 @@ cc_library(
     'VERSION_FIX={fix}',
     'GIT_LAST_COMMIT={commit}',
     ],
-    copts = [
-        # 对应 add_compile_definitions(PROJECT_VERSION_RAW=...)
-        #'-DPROJECT_VERSION_RAW={version}',
-        
-        # 对应 add_compile_definitions(VERSION_MAJOR=...)
-        #'-DVERSION_MAJOR={major}',
-        #'-DVERSION_MINOR={minor}',
-        #'-DVERSION_FIX={fix}',
-    ],
+    copts = [],
     visibility = ["//visibility:public"],
 )
 """.format(
@@ -97,7 +89,7 @@ cc_library(
         commit=commit_id,
     )
     
-    print(build_content)
+    #print(build_content)
 
     repository_ctx.file("BUILD.bazel", build_content)
 

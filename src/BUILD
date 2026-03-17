@@ -25,6 +25,7 @@ exports_files([
    "smem/include/host/smem_trans.h",
    "hybm/include/hybm_data_op.h",
    "util/csrc/mf_rwlock.h",
+   "util/csrc/mf_env_util.h",
    "smem/include/host/smem_bm_def.h",
    "acc_links/include/acc_tcp_server.h",
    "util/csrc/mf_monotonic_time.h",
@@ -43,3 +44,48 @@ COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:365014742c36ecc666a17c2173e25bcf
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:1e8e71f0eb38863b2735d10f9888eebd
+
+cc_library(
+    name = "util_headers",
+    hdrs = glob(["util/csrc/*.h","util/csrc/ptracer/include/*.h"]),
+    includes = ["util/csrc", "util/csrc/ptracer/include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "acc_links_headers",
+    hdrs = glob(["acc_links/include/*.h"]),
+    includes = ["acc_links/include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "smem_headers",
+    hdrs = glob(["smem/include/device/*.h", "smem/include/host/*.h"]),
+    includes = ["smem/include/device", "smem/include/host"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "hybm_headers",
+    hdrs = glob(["hybm/include/*.h"]),
+    includes = ["hybm/include"],
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "memfabric_libs",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/hybm/csrc:libmf_hybm_core.so",
+        "//src/smem/csrc:libmf_smem.so",
+    ],
+)
+
+filegroup(
+    name = "shared_libraries",
+    srcs = [
+        "//src/hybm/csrc:libmf_hybm_core.so",
+        "//src/smem/csrc:libmf_smem.so",
+    ],
+    visibility = ["//visibility:public"],
+)

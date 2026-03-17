@@ -1,5 +1,24 @@
 # 去掉bazel默认的编译参数
-build --features=-opt --features=-default_compile_flags
+build --features=-default_compile_flags
 build --features=-supports_start_end_lib          # arm环境使用bfd链接器，要关闭此特性
 build --features=-supports_pic                    # 减少编译数据库差异，关掉pic特性
 build --experimental_starlark_cc_import
+fetch --repo_env=GOMODCACHE
+fetch --repo_env=GOCACHE
+fetch --repo_env=GOPROXY
+fetch --repo_env=http_proxy
+fetch --repo_env=https_proxy
+fetch --repo_env=no_proxy
+
+build --action_env=GOMODCACHE
+build --action_env=GOCACHE
+build --action_env=GOPROXY
+build --action_env=GO111MODULE=on
+build --action_env=GOMODCACHE
+build --action_env=GOCACHE
+build --action_env=GOPATH
+#build --action_env=GOPROXY=https://goproxy.io,https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
+build --action_env=GOPROXY
+build --action_env=http_proxy
+build --action_env=https_proxy
+build --action_env=no_proxy

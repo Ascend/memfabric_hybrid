@@ -16,6 +16,13 @@ COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:365014742c36ecc666a17c
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:1e8e71f0eb38863b2735d10f9888eebd
 
+cc_library(
+    name = "ptracer_src_headers",
+    hdrs = glob(["include/*.h", "tracers/*.h"]),
+    includes = [".", "include", "tracers"],
+    visibility = ["//visibility:public"],
+)
+
 cc_library (
     name = "ptracer_object",
     visibility = [
@@ -56,14 +63,11 @@ cc_library (
         "-ftrapv",
         "-s",
         "-D_FORTIFY_SOURCE=2",
-        "-Isrc/smem/include/host",    # maybe redundant include path
-        "-Iinclude/hybm",    # maybe redundant include path
-        "-Isrc/util/include",    # maybe redundant include path
-        "-Isrc/util/csrc",    # maybe redundant include path
-        "-Isrc/util/csrc/ptracer/include",
-        "-Isrc/util/csrc/ptracer",    # maybe redundant include path
-        "-Isrc/util/csrc/ptracer/tracers",
     ] + COMMON_COPTS,
     linkopts = [] + COMMON_LINKOPTS,
+    deps = [
+        ":ptracer_src_headers",
+        "//src:util_headers",
+    ],
     alwayslink = True,
 ) # DIGEST:49c71ead0e4bd3c27125522a40df04a8
