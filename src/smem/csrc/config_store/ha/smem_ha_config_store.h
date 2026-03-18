@@ -54,7 +54,7 @@ constexpr uint32_t HEALTH_CHECK_INTERVAL_SEC = 4;
 class HaConfigStore : public ConfigStoreManager {
 public:
     HaConfigStore(StoreBackendPtr backend, TcpConfigStorePtr clientDelegate, const std::string &endpoints,
-                  uint32_t worldSize);
+                  uint32_t worldSize, std::string clusterId = "");
     ~HaConfigStore() override;
 
     HaConfigStore(const HaConfigStore &) = delete;
@@ -123,6 +123,7 @@ private:
     // Configuration Attributes
     const std::string endpoints_;
     const uint32_t worldSize_;
+    const std::string backendLockName_;
     std::string leaderBindIp_;    // Only meaningful on leader node
     uint16_t leaderBindPort_ = 0; // Only meaningful on leader node
     smem_tls_config tlsConfig_{};

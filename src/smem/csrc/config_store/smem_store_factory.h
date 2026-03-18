@@ -51,7 +51,8 @@ public:
 
     /**
      * @brief create a new store
-     * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or redis://127.0.0.1:12335
+     * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or etcd://127.0.0.1:12335#clusterId
+     *                  or redis://127.0.0.1:12335
      * @param isServer is local store server side
      * @param rankId rank id, default 0
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
@@ -81,8 +82,9 @@ public:
     static void SetTlsInfo(const smem_tls_config &tlsOption) noexcept;
 
 private:
-    static StorePtr CreateHaStore(const StoreBackendPtr &backend, const std::string &storeUrl,
-                                  uint32_t worldSize) noexcept;
+    static StorePtr CreateHaStore(const StoreBackendPtr &backend, const std::string &storeKey,
+                                  const std::string &storeUrl, uint32_t worldSize,
+                                  const std::string &clusterId) noexcept;
     static std::mutex storesMutex_;
     static std::unordered_map<std::string, StorePtr> storesMap_;
     static smem_tls_config tlsOption_;

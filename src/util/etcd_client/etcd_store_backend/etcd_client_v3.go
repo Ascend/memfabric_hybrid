@@ -387,8 +387,29 @@ func Etcd_Remove(client *C.EtcdClient, key *C.char) C.int {
 
 //export Etcd_Lock
 func Etcd_Lock(client *C.EtcdClient) C.int {
+	return etcdLockInternal(client, DefaultLockKey)
+}
+
+//export Etcd_LockNamed
+func Etcd_LockNamed(client *C.EtcdClient, lockName *C.char) C.int {
+	if lockName == nil {
+		w := getWrapper(client)
+		if w != nil {
+			w.setError(fmt.Errorf("lockName is nil"))
+		}
+		return -1
+	}
+
+	return etcdLockInternal(client, C.GoString(lockName))
+}
+
+func etcdLockInternal(client *C.EtcdClient, lockName string) C.int {
 	w := getWrapper(client)
 	if w == nil {
+		return -1
+	}
+	if lockName == "" {
+		w.setError(fmt.Errorf("lockName is empty"))
 		return -1
 	}
 
@@ -410,7 +431,7 @@ func Etcd_Lock(client *C.EtcdClient) C.int {
 		w.session = s
 	}
 
-	mutex := concurrency.NewMutex(w.session, DefaultLockKey)
+	mutex := concurrency.NewMutex(w.session, lockName)
 	w.mutex = mutex
 	w.mu.Unlock()
 	err := mutex.Lock(context.Background())

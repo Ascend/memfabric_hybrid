@@ -36,6 +36,17 @@ constexpr char K_TCP_BACKEND_URL[] = "tcp://127.0.0.1:2379";
 constexpr char K_IPV6_ETCD_BACKEND_URL[] = "etcd://[::1]:2379";
 constexpr char K_HTTP_IPV4_ENDPOINT[] = "http://127.0.0.1:2379";
 constexpr char K_HTTP_IPV6_ENDPOINT[] = "http://[::1]:2379";
+constexpr char K_CLUSTER_ID[] = "cluster-a";
+constexpr char K_CLUSTERED_VALUE[] = "cluster-value";
+constexpr char K_CLUSTERED_META_VALUE[] = "leader";
+constexpr char K_CLUSTERED_ALPHA_KEY[] = "/memfabric_hybrid/config_store/clusters/cluster-a/alpha";
+constexpr char K_CLUSTERED_BETA_KEY[] = "/memfabric_hybrid/config_store/clusters/cluster-a/beta";
+constexpr char K_CLUSTERED_LEADER_KEY[] =
+    "/memfabric_hybrid/config_store/clusters/cluster-a/memfabric_hybrid/config_store/meta/leader";
+constexpr char K_DEFAULT_BACKEND_LOCK_NAME[] = "backend";
+constexpr char K_CLUSTERED_BACKEND_LOCK[] = "/memfabric_hybrid/config_store/clusters/cluster-a/backend";
+constexpr char K_NAMED_LOCK[] = "custom-lock";
+constexpr char K_CLUSTERED_NAMED_LOCK[] = "/memfabric_hybrid/config_store/clusters/cluster-a/custom-lock";
 constexpr char K_USER_NAME[] = "user";
 constexpr char K_PASSWORD[] = "pwd";
 constexpr int32_t K_MOCK_FAILURE = -1;
@@ -46,6 +57,7 @@ constexpr int K_DOUBLE_CLOSE_CALL_COUNT = 2;
 struct FakeEtcdClientState {
     std::unordered_map<std::string, std::string> kv;
     std::string lastError = "fake-etcd-error";
+    std::string lastLockName;
     bool locked = false;
     int getRet = 0;
     int putRet = 0;
@@ -137,6 +149,17 @@ int FakeEtcdLock(EtcdClient *client)
     return 0;
 }
 
+int FakeEtcdLockNamed(EtcdClient *client, const char *lockName)
+{
+    auto *state = reinterpret_cast<FakeEtcdClientState *>(client);
+    state->lastLockName = lockName == nullptr ? "" : lockName;
+    if (state->lockRet != 0) {
+        return state->lockRet;
+    }
+    state->locked = true;
+    return 0;
+}
+
 int FakeEtcdUnlock(EtcdClient *client)
 {
     auto *state = reinterpret_cast<FakeEtcdClientState *>(client);
@@ -158,6 +181,7 @@ void ResetFakeEtcdApi()
     EtcdApi::etcdFreeValue_ = FakeEtcdFreeValue;
     EtcdApi::etcdRemove_ = FakeEtcdRemove;
     EtcdApi::etcdLock_ = FakeEtcdLock;
+    EtcdApi::etcdLockNamed_ = FakeEtcdLockNamed;
     EtcdApi::etcdUnLock_ = FakeEtcdUnlock;
 }
 
@@ -258,8 +282,9 @@ TEST_F(SmemEtcdStoreBackendTest, CrudAndLockApisMapUnderlyingReturnCodes)
     EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Exist("beta"));
     EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Delete("beta"));
     EXPECT_EQ(StoreErrorCode::NOT_EXIST, backend.Exist("beta"));
-    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.AcquireDistributedLock("lock"));
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.AcquireDistributedLock(K_DEFAULT_BACKEND_LOCK_NAME));
     EXPECT_EQ(StoreErrorCode::SUCCESS, backend.ReleaseDistributedLock("lock"));
+    EXPECT_EQ(K_DEFAULT_BACKEND_LOCK_NAME, client->lastLockName);
 
     client->getRet = -1;
     client->lastError = "get failed";
@@ -285,6 +310,69 @@ TEST_F(SmemEtcdStoreBackendTest, CrudAndLockApisMapUnderlyingReturnCodes)
     client->unlockRet = -1;
     client->lastError = "unlock failed";
     EXPECT_EQ(StoreErrorCode::ERROR, backend.ReleaseDistributedLock("lock"));
+}
+
+TEST_F(SmemEtcdStoreBackendTest, ClusterBackendQualifiesKeysAndLocks)
+{
+    MOCKER_CPP(&EtcdApi::LoadLibrary, int32_t(*)()).stubs().will(returnValue(int32_t(0)));
+
+    SmemEtcdStoreBackend backend(K_CLUSTER_ID);
+    ASSERT_EQ(StoreErrorCode::SUCCESS, backend.Initialize(K_ETCD_BACKEND_URL, "", ""));
+    ASSERT_NE(nullptr, g_fakeEtcdEnv.lastClient);
+
+    auto *client = g_fakeEtcdEnv.lastClient;
+    client->kv[K_CLUSTERED_ALPHA_KEY] = K_CLUSTERED_VALUE;
+    client->kv[K_CLUSTERED_LEADER_KEY] = K_CLUSTERED_META_VALUE;
+
+    std::vector<uint8_t> outValue;
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Get("alpha", outValue));
+    EXPECT_EQ(K_CLUSTERED_VALUE, std::string(outValue.begin(), outValue.end()));
+
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Get(KEY_LEADER, outValue));
+    EXPECT_EQ(K_CLUSTERED_META_VALUE, std::string(outValue.begin(), outValue.end()));
+
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Put("beta", std::vector<uint8_t>{'1', '2'}, K_PUT_TTL_SECONDS));
+    EXPECT_EQ("12", client->kv[K_CLUSTERED_BETA_KEY]);
+
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.Put(KEY_LEADER, std::vector<uint8_t>{'o', 'k'}, K_PUT_TTL_SECONDS));
+    EXPECT_EQ("ok", client->kv[K_CLUSTERED_LEADER_KEY]);
+
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.AcquireDistributedLock(K_DEFAULT_BACKEND_LOCK_NAME));
+    EXPECT_EQ(K_CLUSTERED_BACKEND_LOCK, client->lastLockName);
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.ReleaseDistributedLock(K_DEFAULT_BACKEND_LOCK_NAME));
+
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.AcquireDistributedLock(K_NAMED_LOCK));
+    EXPECT_EQ(K_CLUSTERED_NAMED_LOCK, client->lastLockName);
+    EXPECT_EQ(StoreErrorCode::SUCCESS, backend.ReleaseDistributedLock(K_NAMED_LOCK));
+}
+
+TEST_F(SmemEtcdStoreBackendTest, ClusterBackendRequiresNamedLockSupport)
+{
+    MOCKER_CPP(&EtcdApi::LoadLibrary, int32_t(*)()).stubs().will(returnValue(int32_t(0)));
+
+    SmemEtcdStoreBackend backend(K_CLUSTER_ID);
+    ASSERT_EQ(StoreErrorCode::SUCCESS, backend.Initialize(K_ETCD_BACKEND_URL, "", ""));
+
+    EtcdApi::etcdLockNamed_ = nullptr;
+    EXPECT_EQ(StoreErrorCode::ERROR, backend.AcquireDistributedLock(K_DEFAULT_BACKEND_LOCK_NAME));
+}
+
+TEST_F(SmemEtcdStoreBackendTest, FirstBackendUninitializeClosesSharedClientImmediately)
+{
+    MOCKER_CPP(&EtcdApi::LoadLibrary, int32_t(*)()).stubs().will(returnValue(int32_t(0)));
+
+    SmemEtcdStoreBackend backendA(K_CLUSTER_ID);
+    SmemEtcdStoreBackend backendB("cluster-b");
+
+    ASSERT_EQ(StoreErrorCode::SUCCESS, backendA.Initialize(K_ETCD_BACKEND_URL, "", ""));
+    ASSERT_EQ(StoreErrorCode::SUCCESS, backendB.Initialize(K_ETCD_BACKEND_URL, "", ""));
+    EXPECT_EQ(1, g_fakeEtcdEnv.newCallCount);
+
+    backendA.UnInitialize();
+    EXPECT_EQ(1, g_fakeEtcdEnv.closeCallCount);
+
+    backendB.UnInitialize();
+    EXPECT_EQ(1, g_fakeEtcdEnv.closeCallCount);
 }
 
 TEST_F(SmemEtcdStoreBackendTest, UnInitializeAndDestructorCloseInitializedClient)

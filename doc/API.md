@@ -37,7 +37,7 @@ int32_t smem_create_config_store(const char *storeUrl);
 
 | 参数/返回值   | 含义                                                                                   |
 |----------|--------------------------------------------------------------------------------------|
-| storeUrl | 业务面地址，格式tcp:://ip:port，如tcp://[::1]:5124，tcp://127.0.0.1:5124, etcd://127.0.0.1:5124 |
+| storeUrl | 业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）；如 `tcp://[::1]:5124`、`tcp://127.0.0.1:5124`、`etcd://127.0.0.1:5124#clusterA` |
 | 返回值      | 成功返回0，其他为错误码                                                                         |
 
 
@@ -155,7 +155,7 @@ int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId
 
 | 参数/返回值    | 含义                                                |
 |-----------|---------------------------------------------------|
-| storeURL  | config store地址，格式tcp://ip:port  or etcd://ip:port |
+| storeURL  | config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离） |
 | worldSize | 参与初始化BM的rank数量，最大支持1024                           |
 | deviceId  | 当前rank的deviceId                                   |
 | config    | BM初始化配置                                           |
@@ -401,7 +401,7 @@ int32_t smem_shm_init(const char *configStoreIpPort, uint32_t worldSize, uint32_
 
 |参数/返回值|含义|
 |-|-|
-|configStoreIpPort|config store的IP和端口，格式tcp://ip:port或者tcp6://[ip]:port|
+|configStoreIpPort|config store地址，格式支持 `tcp://ip:port`、`tcp6://[ip]:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
 |worldSize|参与SHM初始化rank数量，最大支持1024|
 |rankId|当前rank id|
 |deviceId|当前rank的device id|
@@ -609,7 +609,7 @@ int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueI
 
 |参数/返回值|含义|
 |-|--|
-|storeURL|config store地址，格式tcp://ip:port|
+|storeURL|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
 |uniqueId|该TRANS实例的唯一标识，格式ip:port|
 |config|TRANS初始化配置|
 |返回值|成功返回0，其他为错误码|

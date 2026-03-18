@@ -15,6 +15,8 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+#include <cctype>
+#include <utility>
 
 #include "smem_config_store_logger.h"
 #include "network_endpoint_util.h"
@@ -24,17 +26,56 @@
 namespace ock {
 namespace smem {
 
-// ETCD lease TTL
-constexpr int32_t PUT_LEASE_TTL_SEC = 5;
+namespace {
 
-SmemEtcdStoreBackend::SmemEtcdStoreBackend() noexcept = default;
+constexpr int32_t PUT_LEASE_TTL_SEC = 5;
+constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clusters/";
+
+[[nodiscard]] std::string BuildClusterRoot(const std::string &clusterId)
+{
+    if (clusterId.empty()) {
+        return "";
+    }
+
+    std::string clusterRoot = CONFIG_STORE_CLUSTER_ROOT;
+    clusterRoot.append(clusterId);
+    return clusterRoot;
+}
+
+[[nodiscard]] std::string BuildClusterQualifiedName(const std::string &clusterRoot, const std::string &name)
+{
+    if (clusterRoot.empty()) {
+        return name;
+    }
+
+    if (name.compare(0, clusterRoot.size(), clusterRoot) == 0) {
+        return name;
+    }
+
+    std::string qualifiedName = clusterRoot;
+    qualifiedName.push_back('/');
+    if (!name.empty() && name.front() == '/') {
+        qualifiedName.append(name.substr(1));
+        return qualifiedName;
+    }
+
+    qualifiedName.append(name);
+    return qualifiedName;
+}
+
+} // namespace
+
+SmemEtcdStoreBackend::SmemEtcdStoreBackend(std::string clusterId) noexcept
+    : clusterId_(std::move(clusterId)), clusterRoot_(BuildClusterRoot(clusterId_))
+{}
 
 SmemEtcdStoreBackend::~SmemEtcdStoreBackend() noexcept
 {
     std::unique_lock<std::mutex> uniqueLock(mutex_);
     if (initialized_) {
-        EtcdClientV3::GetInstance().Close();
         initialized_ = false;
+        uniqueLock.unlock();
+        EtcdClientV3::GetInstance().Close();
     }
 }
 
@@ -75,8 +116,9 @@ void SmemEtcdStoreBackend::UnInitialize()
     if (!initialized_) {
         return;
     }
-    EtcdClientV3::GetInstance().Close();
     initialized_ = false;
+    uniqueLock.unlock();
+    EtcdClientV3::GetInstance().Close();
 }
 
 std::string SmemEtcdStoreBackend::BackendName() const noexcept
@@ -91,15 +133,17 @@ StoreErrorCode SmemEtcdStoreBackend::Get(const std::string &key, std::vector<uin
         return StoreErrorCode::ERROR;
     }
 
+    const std::string qualifiedKey = BuildClusterQualifiedName(clusterRoot_, key);
     std::string valueStr;
-    int32_t ret = EtcdClientV3::GetInstance().GetValue(key, valueStr);
+    int32_t ret = EtcdClientV3::GetInstance().GetValue(qualifiedKey, valueStr);
     if (ret != 0) {
-        STORE_LOG_WARN("[ETCD] Get key failed: " << key << ", msg: " << EtcdClientV3::GetInstance().GetLastError());
+        STORE_LOG_WARN("[ETCD] Get key failed: " << qualifiedKey
+                                                 << ", msg: " << EtcdClientV3::GetInstance().GetLastError());
         return StoreErrorCode::NOT_EXIST;
     }
 
     outValue.assign(valueStr.begin(), valueStr.end());
-    STORE_LOG_DEBUG("[ETCD] Get key success: " << key << ", size=" << outValue.size());
+    STORE_LOG_DEBUG("[ETCD] Get key success: " << qualifiedKey << ", size=" << outValue.size());
     return StoreErrorCode::SUCCESS;
 }
 
@@ -111,15 +155,16 @@ StoreErrorCode SmemEtcdStoreBackend::Put(const std::string &key, const std::vect
         return StoreErrorCode::ERROR;
     }
 
+    const std::string qualifiedKey = BuildClusterQualifiedName(clusterRoot_, key);
     std::string valueStr(value.begin(), value.end());
-    int32_t ret = EtcdClientV3::GetInstance().SetValue(key, valueStr, ttlSeconds);
+    int32_t ret = EtcdClientV3::GetInstance().SetValue(qualifiedKey, valueStr, ttlSeconds);
     if (ret != 0) {
-        STORE_LOG_ERROR("[ETCD] Put key failed: " << key << ", size=" << value.size() << ", ttl=" << ttlSeconds
+        STORE_LOG_ERROR("[ETCD] Put key failed: " << qualifiedKey << ", size=" << value.size() << ", ttl=" << ttlSeconds
                                                   << ", error=" << EtcdClientV3::GetInstance().GetLastError());
         return StoreErrorCode::ERROR;
     }
 
-    STORE_LOG_DEBUG("[ETCD] Put key success: " << key << ", size=" << value.size() << ", value=" << valueStr
+    STORE_LOG_DEBUG("[ETCD] Put key success: " << qualifiedKey << ", size=" << value.size() << ", value=" << valueStr
                                                << ", ttl=" << ttlSeconds);
     return StoreErrorCode::SUCCESS;
 }
@@ -131,13 +176,15 @@ StoreErrorCode SmemEtcdStoreBackend::Delete(const std::string &key) noexcept
         return StoreErrorCode::ERROR;
     }
 
-    int32_t ret = EtcdClientV3::GetInstance().DeleteKey(key);
+    const std::string qualifiedKey = BuildClusterQualifiedName(clusterRoot_, key);
+    int32_t ret = EtcdClientV3::GetInstance().DeleteKey(qualifiedKey);
     if (ret != 0) {
-        STORE_LOG_WARN("[ETCD] Delete key failed: " << key << ", error=" << EtcdClientV3::GetInstance().GetLastError());
+        STORE_LOG_WARN("[ETCD] Delete key failed: " << qualifiedKey
+                                                    << ", error=" << EtcdClientV3::GetInstance().GetLastError());
         return StoreErrorCode::ERROR;
     }
 
-    STORE_LOG_DEBUG("[ETCD] Delete key success: " << key);
+    STORE_LOG_DEBUG("[ETCD] Delete key success: " << qualifiedKey);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -148,8 +195,9 @@ StoreErrorCode SmemEtcdStoreBackend::Exist(const std::string &key) const noexcep
         return StoreErrorCode::ERROR;
     }
 
+    const std::string qualifiedKey = BuildClusterQualifiedName(clusterRoot_, key);
     std::string dummyValue;
-    int32_t ret = EtcdClientV3::GetInstance().GetValue(key, dummyValue);
+    int32_t ret = EtcdClientV3::GetInstance().GetValue(qualifiedKey, dummyValue);
     return (ret == 0) ? StoreErrorCode::SUCCESS : StoreErrorCode::NOT_EXIST;
 }
 
@@ -170,16 +218,20 @@ StoreErrorCode SmemEtcdStoreBackend::AcquireDistributedLock(const std::string &n
         return StoreErrorCode::ERROR;
     }
 
-    // Note: The 'name' parameter is logged for debugging but not used in the actual lock operation.
-    // The current etcd lock implementation only supports a global lock (not named locks).
-    // All callers share the same distributed lock regardless of the 'name' parameter.
-    auto ret = EtcdClientV3::GetInstance().RawLock();
-    if (ret != 0) {
-        auto err = EtcdClientV3::GetInstance().GetLastError();
-        STORE_LOG_ERROR("[ETCD] Failed to acquire lock: " << name << ", error=" << err);
+    const std::string qualifiedLockName = BuildClusterQualifiedName(clusterRoot_, name);
+    int32_t ret = EtcdClientV3::GetInstance().RawLockNamed(qualifiedLockName);
+    if (ret != 0 && !EtcdApi::SupportsNamedLock()) {
+        STORE_LOG_ERROR(
+            "[ETCD] Failed to acquire named lock because current libetcd_client_v3.so is too old, lock name: "
+            << qualifiedLockName);
         return StoreErrorCode::ERROR;
     }
-    STORE_LOG_DEBUG("[ETCD] Acquired distributed lock: " << name);
+    if (ret != 0) {
+        auto err = EtcdClientV3::GetInstance().GetLastError();
+        STORE_LOG_ERROR("[ETCD] Failed to acquire lock: " << qualifiedLockName << ", error=" << err);
+        return StoreErrorCode::ERROR;
+    }
+    STORE_LOG_DEBUG("[ETCD] Acquired distributed lock: " << qualifiedLockName);
     return StoreErrorCode::SUCCESS;
 }
 
@@ -189,16 +241,16 @@ StoreErrorCode SmemEtcdStoreBackend::ReleaseDistributedLock(const std::string &n
         STORE_LOG_ERROR("[ETCD] ReleaseDistributedLock failed: backend not initialized");
         return StoreErrorCode::ERROR;
     }
-
-    // Note: The 'name' parameter is logged for debugging but not used in the actual unlock operation.
-    // The current etcd lock implementation only supports a global lock (not named locks).
+    const std::string qualifiedLockName = BuildClusterQualifiedName(clusterRoot_, name);
+    // The underlying etcd client keeps the acquired lock object in its shared wrapper state,
+    // so unlock releases that stored mutex directly and does not need lockName as an input.
     auto ret = EtcdClientV3::GetInstance().RawUnlock();
     if (ret != 0) {
         auto err = EtcdClientV3::GetInstance().GetLastError();
-        STORE_LOG_ERROR("[ETCD] Failed to release lock: " << name << ", error=" << err);
+        STORE_LOG_ERROR("[ETCD] Failed to release lock: " << qualifiedLockName << ", error=" << err);
         return StoreErrorCode::ERROR;
     }
-    STORE_LOG_DEBUG("[ETCD] Released distributed lock: " << name);
+    STORE_LOG_DEBUG("[ETCD] Released distributed lock: " << qualifiedLockName);
     return StoreErrorCode::SUCCESS;
 }
 

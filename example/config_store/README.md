@@ -2,125 +2,154 @@
 
 ## 功能说明
 
-`config_store_etcd_test` 是基于华为 **MemFabric_Hybrid** 框架的 **config_store 测试工具**
-。主要测试config_store的自动选举和故障恢复能力，验证其在多节点环境下的稳定性和可靠性。
+`config_store_etcd_test` 用于本地验证 `config_store` 的自动选举、多进程 rendezvous 以及多集群隔离能力。样例保持现有 `smem_bm_init -> smem_bm_create -> smem_bm_join` 流程，但重点是验证控制面收敛，不验证数据读写。样例支持两类 store URL：
 
-config_store 是集群节点间共享配置/元数据的存储组件。本工具验证其在两种 server 选举模式下的初始化流程与多节点 rendezvous
-能力：
+- `tcp://HOST:PORT`：本地调试 / 手工指定 server
+- `etcd://HOST:PORT` 或 `etcd://HOST:PORT#clusterId`：通过 etcd 做 server 选举；带 `#clusterId` 时隔离到独立集群
 
-| 模式            | 说明                                            |
-|---------------|-----------------------------------------------|
-| **etcd 自动选举** | 通过 etcd 集群自动选出 config_store server，适合生产/多节点场景 |
-| **TCP 手动指定**  | 显式指定某一进程作为 server，适合本地调试与点对点验证                |
+样例支持三种 `opType`：
 
-### 工作流程
+- `0`：`SDMA`
+- `1`：`DEVICE_RDMA`
+- `2`：`HOST_TCP`
 
-1. **设备自动探测**：通过 `npu-smi` 查询当前节点空闲的 NPU 设备，支持 A3 架构物理 die 编号映射（device ID × 2）。
-2. **config_store 初始化**：根据传入的 URL 模式（`etcd://` 或 `tcp://`）完成 server 选举与多节点 rendezvous。
-3. **就绪等待**：所有 rank 握手完成后进入等待状态，保持资源存活，供外部脚本协调测试。
-4. **资源清理**：收到退出指令后销毁 handle 并释放所有资源。
-
----
+其中 `HOST_TCP` 是当前机器推荐的本地 smoke 路径，可在 `XPU_TYPE=NONE` 下运行。
 
 ## 编译
 
 ### 依赖
 
 - C++17 或以上
-- 昇腾 CANN 工具链（提供 `acl.h`、`smem.h`、`smem_bm.h`）
 - CMake 3.16+
-- etcd（仅 etcd 模式需要，确保 etcd 服务可访问）
-- libetcd_client_v3.so（参考相关文档编译，然后export LD_LIBRARY_PATH=youpath:$LD_LIBRARY_PATH）
+- `libhcom.so`
+- `etcd` 与 `libetcd_client_v3.so` 仅在 `etcd://...` 模式需要
 
-### 编译步骤
+### 当前机器推荐编译命令
 
-在当前目录执行如下命令即可
+```bash
+set -e
+cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TEST=ON -DBUILD_ETCD_BACKEND=ON -DXPU_TYPE=NONE -DBUILD_HCOM=ON -DBUILD_WITH_RDMA=OFF -S . -B ./cmake-build-debug-config-store
+cmake --build ./cmake-build-debug-config-store --target config_store_etcd_test -j
+```
 
-  ```bash
-  mkdir build
-  cmake . -B build
-  make -C build
-  ```
+生成的可执行文件路径：
 
-或打包安装时同源码一起编译
+```bash
+./cmake-build-debug-config-store/example/config_store/config_store_etcd_test
+```
 
-  ```bash
-bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
-  ```
+说明：
 
----
+- `HOST_TCP` 不依赖 `ASCEND_HOME_PATH` 或 `npu-smi`
+- 若需要 `etcd://...` 模式，构建命令必须带 `-DBUILD_ETCD_BACKEND=ON`
+- `etcd client` 动态库默认构建到 `./output/etcd/lib64/libetcd_client_v3.so`
 
 ## 使用方法
 
 ### 命令格式
 
-```
-config_store_etcd_test <rankSize> <ipPort> <opType> <isA3>
+```bash
+config_store_etcd_test <ipPort> <opType> <isA3> <hcomPort>
 ```
 
 ### 参数说明
 
-| 参数         | 类型  | 说明                                               |
-|------------|-----|--------------------------------------------------|
-| `rankSize` | 整数  | 参与通信的总 rank 数                                    |
-| `ipPort`   | 字符串 | server 地址，`etcd://HOST:PORT` 或 `tcp://HOST:PORT` |
-| `opType`   | 整数  | 传输模式：`0` = SDMA，`1` = DEVICE_RDMA                |
-| `isA3`     | 整数  | 是否为 A3 架构：`0` = 否，`1` = 是（device ID 自动 ×2）       |
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `ipPort` | 字符串 | store 地址，支持 `tcp://HOST:PORT`、`etcd://HOST:PORT` 或 `etcd://HOST:PORT#clusterId` |
+| `opType` | 整数 | `0=SDMA`，`1=DEVICE_RDMA`，`2=HOST_TCP` |
+| `isA3` | 整数 | `0` 或 `1`；仅 `SDMA/DEVICE_RDMA` 模式生效，`HOST_TCP` 下会被忽略 |
+| `hcomPort` | 整数 | 本地 HCOM 端口，样例统一拼接为 `tcp://127.0.0.1/0:<hcomPort>` |
+
+附加说明：
+
+- `worldSize` 固定为 `16`
+- HCOM URL 格式为 `tcp://127.0.0.1/0:<hcomPort>`
+- `16` 表示该样例固定的最大 rank 容量，不要求必须启动满 `16` 个进程
 
 ### 退出方式
 
-程序就绪后进入等待状态，在标准输入键入以下任意命令退出：
+程序就绪后会阻塞在标准输入，输入以下任意命令退出：
 
-```
+```text
 exit
 e
 q
 ```
 
----
+若标准输入为 EOF，样例在 join 完成后也会正常退出。
 
-## 两种模式说明
+## 模式说明
 
-### 模式一：etcd 自动选举 server
+### `HOST_TCP`
 
-所有节点使用相同的 etcd 地址启动，etcd 负责从参与节点中自动选举出 config_store server。
+- 当前机器推荐路径
+- 不需要 NPU / CANN
+- `smem_bm_create` 使用 `128MB DRAM + 0 HBM`
+- `isA3` 参数不参与行为
+- 推荐用于本地 `config_store` / 多集群 smoke 验证
 
-```
-节点 A ──┐
-节点 B ──┼──► etcd://192.168.1.100:12335 ──► 自动选举 server ──► 全部就绪
-节点 C ──┘
-```
+### `SDMA` / `DEVICE_RDMA`
 
-- 各节点启动顺序无严格要求，etcd 保证选举一致性。
-- etcd 服务必须在所有节点启动前可访问。
+- 继续沿用原有 NPU 探测逻辑
+- `isA3=1` 时会做 `deviceId x 2`
+- 需要可用的 NPU / CANN 运行环境
 
-### 模式二：TCP 手动指定 server
+## 当前机器运行示例
 
-显式指定某一节点的 IP 作为 server，其余节点作为 client 连接该地址。
+### 1. 本地 `tcp://` + `HOST_TCP`
 
-```
-节点 A (server) ◄──┐
-节点 B         ────┼──► tcp://192.168.1.100:12335 ──► 全部就绪
-节点 C         ────┘
-```
-
-- 所有节点填写**同一个** IP（即指定 server 的节点 IP）。
-- server 节点须先于或同时于其他节点启动。
-
----
-
-## 常用命令
-
-### etcd 模式：4 节点，A3 架构，SDMA
+先准备环境变量：
 
 ```bash
-# 每个节点上分别执行（相同命令）
-./config_store_etcd_test 4 etcd://192.168.1.100:12335 0 1
+export HCOM_MAX_SLICE_SIZE=32768
+export HCOM_RECV_DATA_SIZE=32768
+export HYBM_RDMA_SWAP_SPACE_SIZE=32768
 ```
 
-### TCP 模式：4 节点，A3 架构，SDMA，指定 server IP
+在多个终端执行相同命令即可；实际参与进程数按本地验证需要决定，但不要超过 `16`：
 
 ```bash
-# 每个节点上分别执行（IP 填 server 节点地址）
-./config_store_etcd_test 4 tcp://192.168.1.100:12335 0 1
+./cmake-build-debug-config-store/example/config_store/config_store_etcd_test tcp://127.0.0.1:8573 2 0 10003
 ```
+
+### 2. 本地 `etcd://` + `HOST_TCP`
+
+先启动本机 etcd：
+
+```bash
+etcd --name config-store-local --data-dir /tmp/config-store-etcd --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:2380 --initial-advertise-peer-urls http://127.0.0.1:2380 --initial-cluster config-store-local=http://127.0.0.1:2380
+```
+
+默认按上文构建出的 build-tree 可执行文件运行时，已带 `RUNPATH` 指向 `./output/etcd/lib64`。若你换了运行目录、做了单独安装，或运行时仍提示找不到 `libetcd_client_v3.so`，再导出：
+
+```bash
+export LD_LIBRARY_PATH="$(pwd)/output/etcd/lib64:$LD_LIBRARY_PATH"
+```
+
+再在多个终端执行相同命令；实际参与进程数按本地验证需要决定，但不要超过 `16`：
+
+```bash
+export HCOM_MAX_SLICE_SIZE=32768
+export HCOM_RECV_DATA_SIZE=32768
+export HYBM_RDMA_SWAP_SPACE_SIZE=32768
+./cmake-build-debug-config-store/example/config_store/config_store_etcd_test etcd://127.0.0.1:2379 2 0 10003
+```
+
+若需要在同一 etcd 下顺序验证两个彼此隔离的集群，可分别使用不同的 `#clusterId`。每个集群按需启动多个进程即可：
+
+```bash
+./cmake-build-debug-config-store/example/config_store/config_store_etcd_test etcd://127.0.0.1:2379#cluster-a 2 0 10003
+./cmake-build-debug-config-store/example/config_store/config_store_etcd_test etcd://127.0.0.1:2379#cluster-b 2 0 10013
+```
+
+说明：
+
+- `#clusterId` 用于 etcd 多集群隔离
+- `hcomPort` 用于本地 HCOM 通道隔离；若同机并行起多个集群，需为不同集群指定不同端口
+
+## 通过判据
+
+- 返回码为 `0`
+- 日志包含 `All ranks joined, ready`
+- 退出后日志包含 `Process exited normally`

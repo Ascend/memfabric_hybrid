@@ -26,6 +26,7 @@ EtcdGetFunc EtcdApi::etcdGet_ = nullptr;
 EtcdFreeValueFunc EtcdApi::etcdFreeValue_ = nullptr;
 EtcdRemoveFunc EtcdApi::etcdRemove_ = nullptr;
 EtcdLockFunc EtcdApi::etcdLock_ = nullptr;
+EtcdLockNamedFunc EtcdApi::etcdLockNamed_ = nullptr;
 EtcdUnLockFunc EtcdApi::etcdUnLock_ = nullptr;
 
 namespace {
@@ -63,6 +64,7 @@ Result EtcdApi::LoadLibrary()
     success = success && LoadSymbol(libraryHandle_, "Etcd_FreeValue", etcdFreeValue_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Remove", etcdRemove_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Lock", etcdLock_);
+    success = success && LoadSymbol(libraryHandle_, "Etcd_LockNamed", etcdLockNamed_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_UnLock", etcdUnLock_);
     if (!success) {
         dlclose(libraryHandle_);
@@ -75,6 +77,7 @@ Result EtcdApi::LoadLibrary()
         etcdFreeValue_ = nullptr;
         etcdRemove_ = nullptr;
         etcdLock_ = nullptr;
+        etcdLockNamed_ = nullptr;
         etcdUnLock_ = nullptr;
         return SM_ERROR;
     }
@@ -96,6 +99,7 @@ void EtcdApi::CleanupLibrary() noexcept
     etcdFreeValue_ = nullptr;
     etcdRemove_ = nullptr;
     etcdLock_ = nullptr;
+    etcdLockNamed_ = nullptr;
     etcdUnLock_ = nullptr;
     if (libraryHandle_ != nullptr) {
         dlclose(libraryHandle_);

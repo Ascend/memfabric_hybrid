@@ -10,7 +10,8 @@
  * See the Mulan PSL v2 for more details.
 */
 
-#include "smem_store_factory.h"
+#include <algorithm>
+#include <cctype>
 #include "smem_config_store_logger.h"
 #include "smem_tcp_config_store.h"
 #include "smem_prefix_config_store.h"
@@ -18,16 +19,78 @@
 #include "network_endpoint_util.h"
 #include "smem_etcd_store_backend.h"
 #include "smem_ha_config_store.h"
+#include "smem_store_factory.h"
 
 namespace ock {
 namespace smem {
 static __thread int failedReason_ = 0;
+
 std::mutex StoreFactory::storesMutex_;
 std::unordered_map<std::string, StorePtr> StoreFactory::storesMap_;
 smem_tls_config StoreFactory::tlsOption_{};
 
+namespace {
+
+constexpr char ETCD_URL_PREFIX[] = "etcd://";
+constexpr char URL_FRAGMENT_DELIMITER = '#';
+constexpr char CLUSTER_ID_HYPHEN = '-';
+constexpr char CLUSTER_ID_UNDERSCORE = '_';
+constexpr size_t ETCD_URL_PREFIX_LEN = sizeof(ETCD_URL_PREFIX) - 1;
+
+struct ParsedStoreUrl {
+    std::string backendUrl;
+    std::string clusterId;
+};
+
+[[nodiscard]] bool IsValidClusterIdCharacter(char ch) noexcept
+{
+    const unsigned char clusterChar = static_cast<unsigned char>(ch);
+    return std::isalnum(clusterChar) != 0 || ch == CLUSTER_ID_HYPHEN || ch == CLUSTER_ID_UNDERSCORE;
+}
+
+[[nodiscard]] bool ParseStoreUrl(const std::string &storeUrl, ParsedStoreUrl &parsedStoreUrl) noexcept
+{
+    // Keep CreateStoreByUrl stable by carrying optional etcd cluster isolation in the URL fragment.
+    parsedStoreUrl.backendUrl = storeUrl;
+    parsedStoreUrl.clusterId.clear();
+
+    const size_t fragmentPos = storeUrl.find(URL_FRAGMENT_DELIMITER);
+    if (fragmentPos == std::string::npos) {
+        return true;
+    }
+
+    if (storeUrl.find(URL_FRAGMENT_DELIMITER, fragmentPos + 1) != std::string::npos) {
+        STORE_LOG_ERROR("Invalid store url: multiple cluster fragments, storeUrl: " << storeUrl);
+        return false;
+    }
+
+    if (storeUrl.compare(0, ETCD_URL_PREFIX_LEN, ETCD_URL_PREFIX) != 0) {
+        STORE_LOG_ERROR("Invalid store url: cluster fragment is only supported for etcd, storeUrl: " << storeUrl);
+        return false;
+    }
+
+    if (fragmentPos == storeUrl.size() - 1) {
+        STORE_LOG_ERROR("Invalid store url: cluster id is empty, storeUrl: " << storeUrl);
+        return false;
+    }
+
+    parsedStoreUrl.backendUrl = storeUrl.substr(0, fragmentPos);
+    parsedStoreUrl.clusterId = storeUrl.substr(fragmentPos + 1);
+    const bool clusterIdValid =
+        std::all_of(parsedStoreUrl.clusterId.begin(), parsedStoreUrl.clusterId.end(), IsValidClusterIdCharacter);
+    if (!clusterIdValid) {
+        STORE_LOG_ERROR("Invalid store url: cluster id contains unsupported characters, storeUrl: " << storeUrl);
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
 [[nodiscard]] static StoreBackendPtr CreateBackend(BackendType type, const std::string &backendUrl,
-                                                   const std::string &userName, const std::string &password)
+                                                   const std::string &userName, const std::string &password,
+                                                   const std::string &clusterId)
 {
     StoreBackendPtr result = nullptr;
 
@@ -38,7 +101,7 @@ smem_tls_config StoreFactory::tlsOption_{};
             break;
         }
         case BackendType::ETCD: {
-            auto backend = SmMakeRef<SmemEtcdStoreBackend>();
+            auto backend = SmMakeRef<SmemEtcdStoreBackend>(clusterId);
             result = Convert<SmemEtcdStoreBackend, ConfigStoreBackend>(backend);
             break;
         }
@@ -75,7 +138,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "");
+    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
 
     auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, worldSize, rankId);
@@ -105,21 +168,27 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize, int32_t rankId,
                                         int32_t connMaxRetry) noexcept
 {
-    std::string storeKey = storeUrl;
+    ParsedStoreUrl parsedStoreUrl;
+    if (!ParseStoreUrl(storeUrl, parsedStoreUrl)) {
+        failedReason_ = SM_INVALID_PARAM;
+        return nullptr;
+    }
+
+    const std::string &storeKey = storeUrl;
     uint16_t port;
     std::string ip;
     BackendType type;
-    STORE_ASSERT_RETURN(NetworkEndpointUtil::ExtractIpAndPort(storeUrl, ip, port, type), nullptr);
+    STORE_ASSERT_RETURN(NetworkEndpointUtil::ExtractIpAndPort(parsedStoreUrl.backendUrl, ip, port, type), nullptr);
 
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
     auto pos = storesMap_.find(storeKey);
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-    auto backend = CreateBackend(type, storeUrl, "", "");
+    auto backend = CreateBackend(type, parsedStoreUrl.backendUrl, "", "", parsedStoreUrl.clusterId);
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
     if (backend->IsDistributed()) {
-        return CreateHaStore(backend, storeUrl, worldSize);
+        return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.clusterId);
     }
     auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
@@ -156,7 +225,7 @@ StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, u
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "");
+    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
 
     auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, true, worldSize, rankId);
@@ -194,7 +263,7 @@ StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, u
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "");
+    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
 
     auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, false, worldSize, rankId);
@@ -214,13 +283,14 @@ StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, u
     return store.Get();
 }
 
-StorePtr StoreFactory::CreateHaStore(const StoreBackendPtr &backend, const std::string &storeUrl,
-                                     uint32_t worldSize) noexcept
+StorePtr StoreFactory::CreateHaStore(const StoreBackendPtr &backend, const std::string &storeKey,
+                                     const std::string &storeUrl, uint32_t worldSize,
+                                     const std::string &clusterId) noexcept
 {
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
     auto clientDelegate = SmMakeRef<TcpConfigStore>(backend, "", 0, false, worldSize);
     STORE_ASSERT_RETURN(clientDelegate != nullptr, nullptr);
-    const auto store = SmMakeRef<HaConfigStore>(backend, clientDelegate, storeUrl, worldSize);
+    const auto store = SmMakeRef<HaConfigStore>(backend, clientDelegate, storeUrl, worldSize, clusterId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     const auto ret = store->Startup(tlsOption_);
@@ -230,7 +300,7 @@ StorePtr StoreFactory::CreateHaStore(const StoreBackendPtr &backend, const std::
         return nullptr;
     }
 
-    storesMap_.emplace(storeUrl, store.Get());
+    storesMap_.emplace(storeKey, store.Get());
     return store.Get();
 }
 
@@ -245,9 +315,8 @@ void StoreFactory::DestroyStore(const std::string &ip, uint16_t port) noexcept
 // --- DestroyStore (storeUrl) overload ---
 void StoreFactory::DestroyStore(const std::string &storeUrl) noexcept
 {
-    const std::string &storeKey = storeUrl;
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    storesMap_.erase(storeKey);
+    storesMap_.erase(storeUrl);
 }
 
 void StoreFactory::DestroyStoreAll(bool afterFork) noexcept

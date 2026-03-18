@@ -36,6 +36,8 @@ using EtcdRemoveFunc = int (*)(EtcdClient *client, const char *key);
 
 using EtcdLockFunc = int (*)(EtcdClient *client);
 
+using EtcdLockNamedFunc = int (*)(EtcdClient *client, const char *lockName);
+
 using EtcdUnLockFunc = int (*)(EtcdClient *client);
 
 class EtcdApi {
@@ -94,10 +96,21 @@ public:
         return etcdLock_(client);
     }
 
+    [[nodiscard]] static inline int EtcdLockNamed(EtcdClient *client, const char *lockName) noexcept
+    {
+        SM_ASSERT_RETURN(etcdLockNamed_ != nullptr, -1);
+        return etcdLockNamed_(client, lockName);
+    }
+
     [[nodiscard]] static inline int EtcdUnLock(EtcdClient *client) noexcept
     {
         SM_ASSERT_RETURN(etcdUnLock_ != nullptr, -1);
         return etcdUnLock_(client);
+    }
+
+    [[nodiscard]] static inline bool SupportsNamedLock() noexcept
+    {
+        return etcdLockNamed_ != nullptr;
     }
 
 private:
@@ -114,6 +127,7 @@ private:
     static EtcdFreeValueFunc etcdFreeValue_;
     static EtcdRemoveFunc etcdRemove_;
     static EtcdLockFunc etcdLock_;
+    static EtcdLockNamedFunc etcdLockNamed_;
     static EtcdUnLockFunc etcdUnLock_;
 };
 

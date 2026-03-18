@@ -39,16 +39,38 @@ namespace smem {
 
 using namespace ock::mf;
 
+namespace {
+constexpr char BACKEND_LOCK_NAME[] = "backend";
+constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clusters/";
+
+[[nodiscard]] std::string BuildBackendLockName(const std::string &clusterId)
+{
+    if (clusterId.empty()) {
+        return BACKEND_LOCK_NAME;
+    }
+
+    std::string qualifiedLockName = CONFIG_STORE_CLUSTER_ROOT;
+    qualifiedLockName.append(clusterId);
+    qualifiedLockName.push_back('/');
+    qualifiedLockName.append(BACKEND_LOCK_NAME);
+    return qualifiedLockName;
+}
+}
+
 // ============================================================================
 // HaConfigStore - Construction / Destruction
 // ============================================================================
 
 HaConfigStore::HaConfigStore(StoreBackendPtr backend, TcpConfigStorePtr clientDelegate, const std::string &endpoints,
-                             uint32_t worldSize)
-    : endpoints_(endpoints), worldSize_(worldSize), backend_(std::move(backend)),
+                             uint32_t worldSize, std::string clusterId)
+    : endpoints_(endpoints),
+      worldSize_(worldSize),
+      backendLockName_(BuildBackendLockName(clusterId)),
+      backend_(std::move(backend)),
       clientDelegate_(std::move(clientDelegate))
 {
-    SM_LOG_DEBUG("HaConfigStore constructing, endpoints: " << endpoints << ", worldSize: " << worldSize);
+    SM_LOG_DEBUG("HaConfigStore constructing, endpoints: "
+                 << endpoints << ", worldSize: " << worldSize << ", backendLockName: " << backendLockName_);
 }
 
 void HaConfigStore::Uninitialize() noexcept
@@ -253,7 +275,7 @@ void HaConfigStore::RunElectionLoop() noexcept
         // Attempt to acquire distributed lock
         bool becameLeader = false;
         {
-            DistributedLockGuard lockGuard(backend_, "backend");
+            DistributedLockGuard lockGuard(backend_, backendLockName_);
             if (!lockGuard.IsLocked()) {
                 SM_LOG_ERROR("Failed to acquire distributed lock, will retry");
                 backend_->UnInitialize();

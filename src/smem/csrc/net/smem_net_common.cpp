@@ -12,7 +12,9 @@
 
 #include "smem_net_common.h"
 
+#include <algorithm>
 #include <arpa/inet.h>
+#include <cctype>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <vector>
@@ -26,6 +28,57 @@ namespace ock {
 namespace smem {
 
 const std::string PROTOCOL_TCP = "tcp://";
+
+namespace {
+
+constexpr char ETCD_URL_PREFIX[] = "etcd://";
+constexpr char URL_FRAGMENT_DELIMITER = '#';
+constexpr char CLUSTER_ID_HYPHEN = '-';
+constexpr char CLUSTER_ID_UNDERSCORE = '_';
+constexpr size_t ETCD_URL_PREFIX_LEN = sizeof(ETCD_URL_PREFIX) - 1;
+
+inline bool IsValidClusterIdCharacter(char ch)
+{
+    const unsigned char clusterChar = static_cast<unsigned char>(ch);
+    return std::isalnum(clusterChar) != 0 || ch == CLUSTER_ID_HYPHEN || ch == CLUSTER_ID_UNDERSCORE;
+}
+
+Result StripEtcdClusterFragment(const std::string &url, std::string &sanitizedUrl)
+{
+    sanitizedUrl = url;
+
+    const size_t fragmentPos = url.find(URL_FRAGMENT_DELIMITER);
+    if (fragmentPos == std::string::npos) {
+        return SM_OK;
+    }
+
+    if (url.find(URL_FRAGMENT_DELIMITER, fragmentPos + 1) != std::string::npos) {
+        SM_LOG_ERROR("invalid store url: multiple cluster fragments, url: " << url);
+        return SM_INVALID_PARAM;
+    }
+
+    if (url.compare(0, ETCD_URL_PREFIX_LEN, ETCD_URL_PREFIX) != 0) {
+        SM_LOG_ERROR("invalid store url: cluster fragment is only supported for etcd, url: " << url);
+        return SM_INVALID_PARAM;
+    }
+
+    if (fragmentPos == url.size() - 1) {
+        SM_LOG_ERROR("invalid store url: cluster id is empty, url: " << url);
+        return SM_INVALID_PARAM;
+    }
+
+    const std::string clusterId = url.substr(fragmentPos + 1);
+    const bool clusterIdValid = std::all_of(clusterId.begin(), clusterId.end(), IsValidClusterIdCharacter);
+    if (!clusterIdValid) {
+        SM_LOG_ERROR("invalid store url: cluster id contains unsupported characters, url: " << url);
+        return SM_INVALID_PARAM;
+    }
+
+    sanitizedUrl = url.substr(0, fragmentPos);
+    return SM_OK;
+}
+
+} // namespace
 
 inline void Split(const std::string &src, const std::string &sep, std::vector<std::string> &out)
 {
@@ -71,7 +124,11 @@ inline bool IsValidIpV4(const std::string &address)
 
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
 {
-    auto tcpUrl = url;
+    std::string sanitizedUrl;
+    Result stripResult = StripEtcdClusterFragment(url, sanitizedUrl);
+    SM_ASSERT_RETURN(stripResult == SM_OK, stripResult);
+
+    auto tcpUrl = sanitizedUrl;
     NetworkEndpointUtil::ConvertToTcpUrl(tcpUrl);
     auto parser = mf::SocketAddressParserMgr::getInstance().CreateParser(tcpUrl);
     SM_ASSERT_RETURN(parser != nullptr, SM_ERROR);

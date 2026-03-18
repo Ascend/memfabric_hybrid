@@ -204,6 +204,29 @@ public:
         return ret;
     }
 
+    [[nodiscard]] int32_t RawLockNamed(const std::string &lockName) noexcept
+    {
+        EtcdClient *cli = client_.load(std::memory_order_relaxed);
+        if (cli == nullptr) {
+            SM_LOG_ERROR("RawLockNamed failed: client not initialized");
+            return -1;
+        }
+        if (lockName.empty()) {
+            SM_LOG_ERROR("RawLockNamed failed: lockName is empty");
+            return -1;
+        }
+        if (!smem::EtcdApi::SupportsNamedLock()) {
+            SM_LOG_ERROR("RawLockNamed failed: named-lock symbol is not available in current etcd client library");
+            return -1;
+        }
+        int32_t ret = smem::EtcdApi::EtcdLockNamed(cli, lockName.c_str());
+        if (ret != 0) {
+            SM_LOG_ERROR("RawLockNamed failed: EtcdLockNamed returned "
+                         << ret << ", lockName: " << lockName << ", error: " << smem::EtcdApi::EtcdGetLastError(cli));
+        }
+        return ret;
+    }
+
     /**
      * @brief Release distributed lock (for internal use by EtcdLockGuard)
      */

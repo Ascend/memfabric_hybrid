@@ -23,6 +23,7 @@
 #include "smem_types.h"
 #include "hybm_data_op.h"
 #include "hybm_types.h"
+#include "network_endpoint_util.h"
 
 template<class R>
 class AutoHandleCloser {
@@ -82,14 +83,28 @@ protected:
         }
 
         auto childProcess = [&test, this]() -> int {
+            uint16_t configStorePort = 0;
+            uint16_t hcomPort = 0;
+            if (!ock::smem::NetworkEndpointUtil::FindAvailablePort(configStorePort, false)) {
+                SM_LOG_ERROR("Failed to find available port for config store");
+                return -1;
+            }
+            if (!ock::smem::NetworkEndpointUtil::FindAvailablePort(hcomPort, false)) {
+                SM_LOG_ERROR("Failed to find available port for hcom");
+                return -1;
+            }
+
             smem_bm_config_t config{};
             config.initTimeout = 120;
             config.createTimeout = 120;
             config.controlOperationTimeout = 120;
             config.startConfigStoreServer = true;
             config.unifiedAddressSpace = true;
-            strcpy(config.hcomUrl, "tcp://127.0.0.1:9977");
-            auto ret = smem_bm_init("tcp://127.0.0.1:9123", 2, 0, &config);
+            snprintf(config.hcomUrl, sizeof(config.hcomUrl), "tcp://127.0.0.1:%u", hcomPort);
+
+            char configStoreUrl[128];
+            snprintf(configStoreUrl, sizeof(configStoreUrl), "tcp://127.0.0.1:%u", configStorePort);
+            auto ret = smem_bm_init(configStoreUrl, 2, 0, &config);
             if (ret != 0) {
                 SM_LOG_ERROR("smem_bm_init failed: " << ret);
                 return ret;

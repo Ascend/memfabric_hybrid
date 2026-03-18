@@ -255,6 +255,11 @@ Result HostDataOpRDMA::CopyGva2Gva(const void *srcVA, void *destVA, uint64_t len
         return CopyGva2Host(srcVA, destVA, length, options);
     }
 
+    if (srcVA == nullptr || destVA == nullptr) {
+        BM_LOG_ERROR("Invalid parameter: srcVA or destVA is null");
+        return BM_INVALID_PARAM;
+    }
+
     BM_LOG_ERROR("Not support remote gva to remote gva");
     return BM_INVALID_PARAM;
 }

@@ -1,38 +1,25 @@
 if ("${BUILD_TEST}" STREQUAL "ON")
-    set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
-    message(STATUS "ASCEND_CANN_PACKAGE_PATH = ${ASCEND_CANN_PACKAGE_PATH}")
-    if ("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
-        message(WARNING "ascend cann path not found!Please set the environment variable: ASCEND_HOME_PATH")
-        return()
-    endif ()
     add_executable(config_store_etcd_test ${CMAKE_CURRENT_SOURCE_DIR}/config_store_etcd_test.cpp)
-
-    if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
-        set(TARGET_ARCH "x86_64")
-    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
-        set(TARGET_ARCH "aarch64")
-    else ()
-        message(FATAL_ERROR "arch is not support!")
-    endif ()
-
-    target_compile_options(config_store_etcd_test PRIVATE -D_GLIBCXX_USE_CXX11_ABI=0)
-
-    include_directories(
-            ${PROJECT_SOURCE_DIR}/src/smem/include/host
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/include/
+    target_compile_options(config_store_etcd_test PRIVATE
+            -D_GLIBCXX_USE_CXX11_ABI=0
+            -w
+            -Wno-sign-compare
     )
-    target_link_directories(config_store_etcd_test PUBLIC
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64
+    target_include_directories(config_store_etcd_test PRIVATE
+            ${PROJECT_SOURCE_DIR}/src/smem/include/host
     )
 
     target_link_libraries(config_store_etcd_test PRIVATE
             stdc++
             hybmm_shared
             smem_shared
-            ascendcl
     )
-    target_compile_options(config_store_etcd_test PRIVATE -w)
-    target_compile_options(config_store_etcd_test PRIVATE -Wno-sign-compare)
+    if (BUILD_ETCD_BACKEND)
+        add_dependencies(config_store_etcd_test etcd_client)
+        set_target_properties(config_store_etcd_test PROPERTIES
+                BUILD_RPATH "${PROJECT_OUTPUT_PATH}/etcd/lib64"
+        )
+    endif ()
 
     set_target_properties(config_store_etcd_test PROPERTIES OUTPUT_NAME "config_store_etcd_test")
 
@@ -48,10 +35,6 @@ else ()
     if ("${MF_PATH}" STREQUAL "")
         message(FATAL_ERROR "memfabric_hybrid path not found!")
     endif ()
-    set(ASCEND_CANN_PACKAGE_PATH $ENV{ASCEND_HOME_PATH})
-    if ("${ASCEND_CANN_PACKAGE_PATH}" STREQUAL "")
-        message(FATAL_ERROR "ascend cann path not found!")
-    endif ()
     add_executable(config_store_etcd_test ${CMAKE_CURRENT_SOURCE_DIR}/config_store_etcd_test.cpp)
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
@@ -63,24 +46,21 @@ else ()
     endif ()
 
     target_compile_options(config_store_etcd_test PRIVATE
-            -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -g
+            -O2 -D_GLIBCXX_USE_CXX11_ABI=0 -Wall -g -w -Wno-sign-compare
     )
 
-    include_directories(
+    target_include_directories(config_store_etcd_test PRIVATE
             ${MF_PATH}/include/smem/host
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/include/
     )
     message(STATUS "include: ${MF_PATH}/include/smem/host")
     target_link_directories(config_store_etcd_test PUBLIC
             ${MF_PATH}/${TARGET_ARCH}-linux/lib64
-            ${ASCEND_CANN_PACKAGE_PATH}/${TARGET_ARCH}-linux/lib64
     )
 
     target_link_libraries(config_store_etcd_test PRIVATE
             stdc++
             mf_smem
             mf_hybm_core
-            ascendcl
     )
 
     set_target_properties(config_store_etcd_test PROPERTIES OUTPUT_NAME "config_store_etcd_test")

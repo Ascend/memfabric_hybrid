@@ -29,6 +29,11 @@ using namespace ock::smem;
 
 namespace {
 constexpr uint16_t CONCURRENT_GROUP_TEST_PORT = 5678;
+constexpr uint16_t ETCD_CLUSTER_TEST_PORT = 2379;
+constexpr char ETCD_CLUSTER_URL[] = "etcd://127.0.0.1:2379#cluster-a";
+constexpr char ETCD_CLUSTER_IPV6_URL[] = "etcd://[::1]:2379#cluster_a";
+constexpr char ETCD_EMPTY_CLUSTER_URL[] = "etcd://127.0.0.1:2379#";
+constexpr char TCP_CLUSTER_URL[] = "tcp://127.0.0.1:5678#cluster-a";
 
 // Reusable barrier to force all workers enter each phase at the same time.
 class SimpleBarrier {
@@ -55,6 +60,22 @@ private:
     std::mutex mutex_;
     std::condition_variable cond_;
 };
+
+TEST(SmemNetGroupEngineTest, url_extraction_supports_etcd_cluster_fragment)
+{
+    UrlExtraction parser;
+
+    ASSERT_EQ(parser.ExtractIpPortFromUrl(ETCD_CLUSTER_URL), SM_OK);
+    EXPECT_EQ("127.0.0.1", parser.ip);
+    EXPECT_EQ(ETCD_CLUSTER_TEST_PORT, parser.port);
+
+    ASSERT_EQ(parser.ExtractIpPortFromUrl(ETCD_CLUSTER_IPV6_URL), SM_OK);
+    EXPECT_EQ("::1", parser.ip);
+    EXPECT_EQ(ETCD_CLUSTER_TEST_PORT, parser.port);
+
+    EXPECT_EQ(parser.ExtractIpPortFromUrl(ETCD_EMPTY_CLUSTER_URL), SM_INVALID_PARAM);
+    EXPECT_EQ(parser.ExtractIpPortFromUrl(TCP_CLUSTER_URL), SM_INVALID_PARAM);
+}
 
 TEST(SmemNetGroupEngineTest, concurrent_clients_join_leave_twice_should_succeed_on_fixed_port)
 {

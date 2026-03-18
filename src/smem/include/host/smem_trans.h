@@ -49,7 +49,9 @@ void smem_trans_uninit(uint32_t flags);
  * @brief Create a transfer object with config, this transfer need to connect to global config store to exchange
  * inner information for various protocols on different hardware
  *
- * @param storeUrl         [in] the url of config store, the store is created by <i>smem_create_config_store</i>
+ * @param storeUrl         [in] the url of config store, e.g. tcp://ip:port, etcd://ip:port,
+ *                              or etcd://ip:port#clusterId (for etcd multi-cluster isolation).
+ *                              The store is created by <i>smem_create_config_store</i>
  * @param uniqueId         [in] unique id for data transfer, which should be unique, a better practice is using ip:port
  * @param config           [in] the config for config
  * @return transfer object created if successful

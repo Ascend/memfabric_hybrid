@@ -50,7 +50,8 @@ int32_t smem_init(uint32_t flags);
 /**
  * @brief Create configure store server for SMEM used.
  *
- * @param storeUrl         [in] configure store url for control, e.g. tcp:://ip:port or etcd:://ip:port
+ * @param storeUrl         [in] configure store url for control, e.g. tcp://ip:port,
+ *                              etcd://ip:port, or etcd://ip:port#clusterId
  * @return 0 if successful
  */
 int32_t smem_create_config_store(const char *storeUrl);
