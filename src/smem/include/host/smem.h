@@ -73,6 +73,18 @@ int32_t smem_create_config_store(const char *storeUrl);
 int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
 
 /**
+ * @brief Set alarm log function, user can set customized logger function,
+ * in the customized logger function, user can use unified logger utility,
+ * then the log message can be written into the same log file as caller's,
+ * if it is not set, acc_links log message will be printed to stdout.
+ *
+ * @param alarm             [in] alarm logger function
+ * @param resume            [in] resume logger function
+ * @return 0 if successful
+ */
+int32_t smem_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code));
+
+/**
  * @brief Set log level
  *
  * @param level            [in] log level, 0:debug 1:info 2:warn 3:error

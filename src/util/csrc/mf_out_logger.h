@@ -41,6 +41,8 @@
 namespace ock {
 namespace mf {
 using ExternalLog = void (*)(int, const char *);
+using AlarmLog = void (*)(uint16_t, const char *);
+using ResumeLog = void (*)(uint16_t);
 
 enum LogLevel : int {
     DEBUG_LEVEL = 0,
@@ -49,6 +51,11 @@ enum LogLevel : int {
     ERROR_LEVEL,
     FATAL_LEVEL,
     BUTT_LEVEL // no use
+};
+
+enum AlarmCode : uint16_t {
+    INNER_ERROR_CODE = 1,
+    BUTT_CODE // no use
 };
 
 class LockFreeLogThrottler {
@@ -97,6 +104,11 @@ public:
         return logFunc_;
     }
 
+    inline AlarmLog GetAlarmLogFunction() const
+    {
+        return alarmFunc_;
+    }
+
     inline void SetLogLevel(LogLevel level)
     {
         logLevel_ = level;
@@ -109,6 +121,16 @@ public:
         }
     }
 
+    inline void SetAlarmLogFunction(AlarmLog alarm, ResumeLog resume, bool forceUpdate = false)
+    {
+        if (alarmFunc_ == nullptr || forceUpdate) {
+            alarmFunc_ = alarm;
+        }
+        if (resumeFunc_ == nullptr || forceUpdate) {
+            resumeFunc_ = resume;
+        }
+    }
+
     static bool ValidateLevel(int level)
     {
         return level >= DEBUG_LEVEL && level < BUTT_LEVEL;
@@ -118,6 +140,34 @@ public:
     {
         if (LockFreeLogThrottler::ShouldLog()) {
             Log(level, logMsg);
+        }
+    }
+
+    inline void AlarmLimit(uint16_t code, std::string logMsg)
+    {
+        if (LockFreeLogThrottler::ShouldLog()) {
+            Alarm(code, logMsg);
+        }
+    }
+
+    inline void Alarm(uint16_t code, std::string logMsg)
+    {
+        logMsg.erase(std::remove_if(logMsg.begin(), logMsg.end(), [](char c) { return c == '\r' || c == '\n'; }),
+                     logMsg.end());
+        if (alarmFunc_ != nullptr) {
+            alarmFunc_(code, logMsg.c_str());
+            return;
+        }
+
+        // if alarmFunc is nullptr, use error log
+        Log(FATAL_LEVEL, logMsg);
+    }
+
+    inline void Resume(uint16_t code)
+    {
+        if (resumeFunc_ != nullptr) {
+            resumeFunc_(code);
+            return;
         }
     }
 
@@ -163,6 +213,8 @@ public:
     ~OutLogger()
     {
         logFunc_ = nullptr;
+        alarmFunc_ = nullptr;
+        resumeFunc_ = nullptr;
     }
 
 private:
@@ -182,6 +234,8 @@ private:
 private:
     LogLevel logLevel_ = ERROR_LEVEL;
     ExternalLog logFunc_ = nullptr;
+    AlarmLog alarmFunc_ = nullptr;
+    ResumeLog resumeFunc_ = nullptr;
 
     const char *logLevelDesc_[BUTT_LEVEL] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 };
@@ -214,6 +268,25 @@ private:
         std::ostringstream oss;                                                       \
         oss << (TAG) << MF_LOG_FORMAT << ARGS;                                        \
         ock::mf::OutLogger::Instance().LogLimit(static_cast<int>(LEVEL), oss.str());  \
+    } while (0)
+
+#define MF_ALARM_LOG(TAG, CODE, ARGS)                                                 \
+    do {                                                                              \
+        std::ostringstream oss;                                                       \
+        oss << (TAG) << MF_LOG_FORMAT << ARGS;                                        \
+        ock::mf::OutLogger::Instance().Alarm(static_cast<uint16_t>(CODE), oss.str()); \
+    } while (0)
+
+#define MF_ALARM_LOG_LIMIT(TAG, CODE, ARGS)                                           \
+    do {                                                                              \
+        std::ostringstream oss;                                                       \
+        oss << (TAG) << MF_LOG_FORMAT << ARGS;                                        \
+        ock::mf::OutLogger::Instance().AlarmLimit(static_cast<uint16_t>(CODE), oss.str());  \
+    } while (0)
+
+#define MF_RESUME_LOG(CODE)                                                           \
+    do {                                                                              \
+        ock::mf::OutLogger::Instance().Resume(static_cast<uint16_t>(CODE));           \
     } while (0)
 
 #endif // MEMFABRIC_HYBRID_LOGGER_H

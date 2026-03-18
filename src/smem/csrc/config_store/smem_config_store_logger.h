@@ -20,6 +20,10 @@
 #define STORE_LOG_ERROR(ARGS)       MF_OUT_LOG("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
 #define STORE_LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
 
+#define STORE_LOG_ALARM(CODE, ARGS)          MF_ALARM_LOG("[SMEM ", CODE, ARGS)
+#define STORE_LOG_ALARM_LIMIT(CODE, ARGS)    MF_ALARM_LOG_LIMIT("[SMEM ", CODE, ARGS)
+#define STORE_LOG_RESUME(CODE)               MF_RESUME_LOG(CODE)
+
 // if ARGS is false, print error
 #define STORE_ASSERT_RETURN(ARGS, RET)           \
     do {                                         \

@@ -31,6 +31,10 @@
 #define SM_LOG_WARN_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[SMEM ", ock::mf::WARN_LEVEL, ARGS)
 #define SM_LOG_ERROR(ARGS)      MF_OUT_LOG("[SMEM ", ock::mf::ERROR_LEVEL, ARGS)
 
+#define SM_LOG_ALARM(CODE, ARGS)          MF_ALARM_LOG("[SMEM ", CODE, ARGS)
+#define SM_LOG_ALARM_LIMIT(CODE, ARGS)    MF_ALARM_LOG_LIMIT("[SMEM ", CODE, ARGS)
+#define SM_LOG_RESUME(CODE)               MF_RESUME_LOG(CODE)
+
 #define SM_CHECK_CONDITION_RET(condition, RET) \
     do {                                       \
         if (condition) {                       \

@@ -153,6 +153,18 @@ HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
     ock::mf::OutLogger::Instance().SetExternalLogFunction(logger, true);
 }
 
+HYBM_API void hybm_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code))
+{
+    if (alarm == nullptr) {
+        return;
+    }
+
+    if (ock::mf::OutLogger::Instance().GetAlarmLogFunction() != nullptr) {
+        BM_LOG_WARN("Alarm log function has already been set, which will be override with new log function");
+    }
+    ock::mf::OutLogger::Instance().SetAlarmLogFunction(alarm, resume, true);
+}
+
 HYBM_API int32_t hybm_set_log_level(int level)
 {
     BM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),

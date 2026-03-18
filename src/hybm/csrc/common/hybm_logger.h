@@ -20,6 +20,10 @@
 #define BM_LOG_ERROR(ARGS)       MF_OUT_LOG("[HYBM ", ock::mf::ERROR_LEVEL, ARGS)
 #define BM_LOG_ERROR_LIMIT(ARGS) MF_OUT_LOG_LIMIT("[HYBM ", ock::mf::ERROR_LEVEL, ARGS)
 
+#define BM_LOG_ALARM(CODE, ARGS)          MF_ALARM_LOG("[HYBM ", CODE, ARGS)
+#define BM_LOG_ALARM_LIMIT(CODE, ARGS)    MF_ALARM_LOG_LIMIT("[HYBM ", CODE, ARGS)
+#define BM_LOG_RESUME(CODE)               MF_RESUME_LOG(CODE)
+
 #define BM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \
         if (__builtin_expect(!(ARGS), 0) != 0) { \
