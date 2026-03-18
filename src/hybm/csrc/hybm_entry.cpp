@@ -153,7 +153,7 @@ HYBM_API void hybm_set_extern_logger(void (*logger)(int level, const char *msg))
     ock::mf::OutLogger::Instance().SetExternalLogFunction(logger, true);
 }
 
-HYBM_API void hybm_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code))
+HYBM_API void hybm_set_extern_alarm(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code))
 {
     if (alarm == nullptr) {
         return;

@@ -46,7 +46,7 @@ void hybm_set_extern_logger(void (*logger)(int level, const char *msg));
  * @param alarm             [in] alarm logger function
  * @param resume            [in] resume logger function
  */
-void hybm_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code));
+void hybm_set_extern_alarm(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code));
 
 /**
  * @brief Set log print level

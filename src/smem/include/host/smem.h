@@ -83,7 +83,7 @@ int32_t smem_set_extern_logger(void (*func)(int level, const char *msg));
  * @param resume            [in] resume logger function
  * @return 0 if successful
  */
-int32_t smem_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code));
+int32_t smem_set_extern_alarm(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code));
 
 /**
  * @brief Set log level

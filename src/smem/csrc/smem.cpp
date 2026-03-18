@@ -78,12 +78,12 @@ SMEM_API int32_t smem_set_extern_logger(void (*func)(int, const char *))
     return ock::smem::SM_OK;
 }
 
-SMEM_API int32_t smem_set_alarm_logger(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code))
+SMEM_API int32_t smem_set_extern_alarm(void (*alarm)(uint16_t code, const char *msg), void (*resume)(uint16_t code))
 {
     SM_VALIDATE_RETURN(alarm != nullptr, "set extern logger failed, invalid func which is NULL",
                        ock::smem::SM_INVALID_PARAM);
     ock::mf::OutLogger::Instance().SetAlarmLogFunction(alarm, resume, true);
-    hybm_set_alarm_logger(alarm, resume);
+    hybm_set_extern_alarm(alarm, resume);
     return ock::smem::SM_OK;
 }
 
