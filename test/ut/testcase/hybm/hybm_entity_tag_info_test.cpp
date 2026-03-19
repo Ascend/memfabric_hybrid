@@ -46,6 +46,9 @@ TEST_F(HybmEntityTagInfoTest, TagInfoInit)
     std::string tagStr = "test";
     memset(opt.tag, 0, sizeof(opt.tag));
     memcpy(opt.tag, tagStr.c_str(), tagStr.size());
+    std::string tagOpStr = "tag0:DEVICE_SDMA:tag1";
+    memset(opt.tagOpInfo, 0, sizeof(opt.tagOpInfo));
+    memcpy(opt.tagOpInfo, tagOpStr.c_str(), tagOpStr.size());
     opt.rankCount = 4;
     EXPECT_EQ(tagInfo_->TagInfoInit(opt), BM_OK);
 }

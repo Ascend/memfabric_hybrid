@@ -44,15 +44,18 @@ TEST_F(HybmDataOperatorTest, update_gva_space_test)
 
 TEST_F(HybmDataOperatorTest, get_rank_id_by_gva_test)
 {
-    uint64_t gvaStart = 10000000ULL;
-    uint64_t localSize = 5000ULL;
+    uint64_t hostGvaStart = 10000000ULL;
+    uint64_t deviceGvaStart = 20000000ULL;
+    uint64_t spaceSize = 40960ULL;
+    uint64_t rankCount = 4ULL;
     uint64_t offset1 = 1000ULL;
-    uint64_t offset2 = 8000ULL;
+    uint64_t offset2 = 8000000ULL;
     ock::mf::DataOperatorPtr opPtr = std::make_shared<ock::mf::HostDataOpSDMA>();
-    opPtr->ock::mf::DataOperator::UpdateGvaSpace(HYBM_MEM_TYPE_DEVICE, gvaStart, localSize, 1);
-    auto ret = opPtr->ock::mf::DataOperator::GetRankIdByGva(gvaStart + offset1);
+    opPtr->UpdateGvaSpace(HYBM_MEM_TYPE_HOST, hostGvaStart, spaceSize, rankCount);
+    opPtr->UpdateGvaSpace(HYBM_MEM_TYPE_DEVICE, deviceGvaStart, spaceSize, rankCount);
+    auto ret = opPtr->ock::mf::DataOperator::GetRankIdByGva(hostGvaStart + offset1);
     ASSERT_EQ(0, ret);
-    ret = opPtr->ock::mf::DataOperator::GetRankIdByGva(gvaStart + offset2);
+    ret = opPtr->ock::mf::DataOperator::GetRankIdByGva(deviceGvaStart + offset2);
     ASSERT_EQ(UINT32_MAX, ret);
 }
 
