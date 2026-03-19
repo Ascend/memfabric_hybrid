@@ -43,6 +43,9 @@ protected:
 TEST_F(HybmEntityTagInfoTest, TagInfoInit)
 {
     hybm_options opt;
+    std::string tagStr = "test";
+    memset(opt.tag, 0, sizeof(opt.tag));
+    memcpy(opt.tag, tagStr.c_str(), tagStr.size());
     opt.rankCount = 4;
     EXPECT_EQ(tagInfo_->TagInfoInit(opt), BM_OK);
 }

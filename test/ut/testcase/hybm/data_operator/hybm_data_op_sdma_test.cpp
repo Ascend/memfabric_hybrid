@@ -22,6 +22,7 @@
 #include "hybm_data_op.h"
 #include "hybm_gva.h"
 
+#define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
 static void *g_mockParamSpace = nullptr;
 static void *g_mockOutput = nullptr;
@@ -75,6 +76,17 @@ class HybmDataOpSdmaTest : public testing::Test {
 public:
     void SetUp() override
     {
+        dataOp_ = std::make_shared<ock::mf::HostDataOpSDMA>();
+    }
+
+    void TearDown() override
+    {
+        GlobalMockObject::verify();
+        GlobalMockObject::reset();
+    }
+
+    void InitMockEnv()
+    {
         // 模拟 DlAclApi::AclrtMallocHost 方法
         MOCKER(&ock::mf::DlAclApi::AclrtMallocHost).stubs().will(invoke(MockAclrtMallocHost));
 
@@ -124,17 +136,13 @@ public:
         void *mockAclStream = nullptr;
         MOCKER(&ock::mf::HybmStreamManager::GetThreadAclStream).stubs().will(returnValue(mockAclStream));
 
-        // 创建一个空的 shared_ptr 作为 GetThreadHybmStream 的返回值
-        std::shared_ptr<ock::mf::HybmStream> mockStream = nullptr;
+        std::shared_ptr<ock::mf::HybmStream> mockStream = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
         MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
         MOCKER(&ock::mf::HybmStreamManager::DestroyAllThreadHybmStream).stubs().will(returnValue(0));
-
-        dataOp_ = std::make_shared<ock::mf::HostDataOpSDMA>();
-    }
-
-    void TearDown() override
-    {
-        GlobalMockObject::verify();
+        MOCKER_CPP(&ock::mf::HybmStream::SubmitTasks,
+            int32_t (*)(ock::mf::HybmStream *, const ock::mf::StreamTask &)).stubs().will(returnValue(0));
+        MOCKER_CPP(&ock::mf::HybmStream::Synchronize,
+            int32_t (*)(ock::mf::HybmStream *, uint32_t)).stubs().will(returnValue(0));
     }
 
 protected:
@@ -143,6 +151,7 @@ protected:
 
 TEST_F(HybmDataOpSdmaTest, initialize_success)
 {
+    InitMockEnv();
     // 测试 Initialize 成功场景
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -150,6 +159,7 @@ TEST_F(HybmDataOpSdmaTest, initialize_success)
 
 TEST_F(HybmDataOpSdmaTest, initialize_already_inited)
 {
+    InitMockEnv();
     // 测试重复初始化场景
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -159,8 +169,17 @@ TEST_F(HybmDataOpSdmaTest, initialize_already_inited)
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
+TEST_F(HybmDataOpSdmaTest, initialize_failed)
+{
+    MOCKER(&ock::mf::DlHalApi::HalHostRegister).stubs().will(returnValue(-1));
+    InitMockEnv();
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+}
+
 TEST_F(HybmDataOpSdmaTest, uninitialize)
 {
+    InitMockEnv();
     // 测试 UnInitialize 场景
     // 先初始化
     auto ret = dataOp_->Initialize();
@@ -175,6 +194,7 @@ TEST_F(HybmDataOpSdmaTest, uninitialize)
 
 TEST_F(HybmDataOpSdmaTest, data_copy_local_device_to_global_device)
 {
+    InitMockEnv();
     // 测试本地设备到全局设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -183,12 +203,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_local_device_to_global_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_local_device)
 {
+    InitMockEnv();
     // 测试全局设备到本地设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -197,12 +217,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_local_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_device)
 {
+    InitMockEnv();
     // 测试本地主机到全局设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -211,12 +231,32 @@ TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_device_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1)).then(returnValue(0));
+    std::shared_ptr<ock::mf::HybmStream> mockStream = nullptr;
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
     ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_local_host)
 {
+    InitMockEnv();
     // 测试全局设备到本地主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -225,12 +265,34 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_local_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_local_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1));
+    std::shared_ptr<ock::mf::HybmStream> mockStream1 = nullptr;
+    std::shared_ptr<ock::mf::HybmStream> mockStream2 = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs()
+        .will(returnValue(mockStream1)).then(returnValue(mockStream1)).then(returnValue(mockStream2));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
     ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_global_device)
 {
+    InitMockEnv();
     // 测试全局设备到全局设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -239,12 +301,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_global_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_global_host)
 {
+    InitMockEnv();
     // 测试全局设备到全局主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -253,12 +315,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_device_to_global_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_global_device)
 {
+    InitMockEnv();
     // 测试全局主机到全局设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -267,12 +329,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_global_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_global_host)
 {
+    InitMockEnv();
     // 测试全局主机到全局主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -281,12 +343,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_global_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_local_device_to_global_host)
 {
+    InitMockEnv();
     // 测试本地设备到全局主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -295,12 +357,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_local_device_to_global_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_host)
 {
+    InitMockEnv();
     // 测试本地主机到全局主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -309,12 +371,32 @@ TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_local_host_to_global_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1)).then(returnValue(0));
+    std::shared_ptr<ock::mf::HybmStream> mockStream = nullptr;
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_local_host)
 {
+    InitMockEnv();
     // 测试全局主机到本地主机的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -323,12 +405,34 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_local_host)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_local_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1));
+    std::shared_ptr<ock::mf::HybmStream> mockStream1 = nullptr;
+    std::shared_ptr<ock::mf::HybmStream> mockStream2 = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs()
+        .will(returnValue(mockStream1)).then(returnValue(mockStream1)).then(returnValue(mockStream2));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
     ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_local_device)
 {
+    InitMockEnv();
     // 测试全局主机到本地设备的拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -337,12 +441,12 @@ TEST_F(HybmDataOpSdmaTest, data_copy_global_host_to_local_device)
     ock::mf::ExtOptions options{};
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, data_copy_unsupported_direction)
 {
+    InitMockEnv();
     // 测试不支持的拷贝方向
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -357,6 +461,7 @@ TEST_F(HybmDataOpSdmaTest, data_copy_unsupported_direction)
 
 TEST_F(HybmDataOpSdmaTest, data_copy_async)
 {
+    InitMockEnv();
     // 测试异步数据拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -366,23 +471,275 @@ TEST_F(HybmDataOpSdmaTest, data_copy_async)
     options.flags = ASYNC_COPY_FLAG;
 
     ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_device_to_global_device)
+{
+    InitMockEnv();
+    // 测试本地设备到全局设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_device_to_local_device)
+{
+    InitMockEnv();
+    // 测试全局设备到本地设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_host_to_global_device)
+{
+    InitMockEnv();
+    // 测试本地主机到全局设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_host_to_global_device_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1)).then(returnValue(0));
+    std::shared_ptr<ock::mf::HybmStream> mockStream = nullptr;
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
     ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_device_to_local_host)
+{
+    InitMockEnv();
+    // 测试全局设备到本地主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_device_to_local_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1));
+    std::shared_ptr<ock::mf::HybmStream> mockStream1 = nullptr;
+    std::shared_ptr<ock::mf::HybmStream> mockStream2 = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs()
+        .will(returnValue(mockStream1)).then(returnValue(mockStream1)).then(returnValue(mockStream2));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_device_to_global_device)
+{
+    InitMockEnv();
+    // 测试全局设备到全局设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_device_to_global_host)
+{
+    InitMockEnv();
+    // 测试全局设备到全局主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_host_to_global_device)
+{
+    InitMockEnv();
+    // 测试全局主机到全局设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_host_to_global_host)
+{
+    InitMockEnv();
+    // 测试全局主机到全局主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_device_to_global_host)
+{
+    InitMockEnv();
+    // 测试本地设备到全局主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_host_to_global_host)
+{
+    InitMockEnv();
+    // 测试本地主机到全局主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_local_host_to_global_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1)).then(returnValue(0));
+    std::shared_ptr<ock::mf::HybmStream> mockStream = nullptr;
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_host_to_local_host)
+{
+    InitMockEnv();
+    // 测试全局主机到本地主机的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_host_to_local_host_failed)
+{
+    MOCKER(&ock::mf::DlAclApi::AclrtMalloc).stubs().will(returnValue(-1)).then(returnValue(0));
+    MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1));
+    std::shared_ptr<ock::mf::HybmStream> mockStream1 = nullptr;
+    std::shared_ptr<ock::mf::HybmStream> mockStream2 = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
+    MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs()
+        .will(returnValue(mockStream1)).then(returnValue(mockStream1)).then(returnValue(mockStream2));
+    InitMockEnv();
+
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, data_copy_async_global_host_to_local_device)
+{
+    InitMockEnv();
+    // 测试全局主机到本地设备的拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    ret = dataOp_->DataCopyAsync(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, wait)
 {
+    InitMockEnv();
     // 测试等待操作
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 
     ret = dataOp_->Wait(0);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, cleanup)
 {
+    InitMockEnv();
     // 测试 CleanUp 方法
     dataOp_->CleanUp();
     // CleanUp 调用了 HybmStreamManager::DestroyAllThreadHybmStream，这里主要测试调用是否成功
@@ -391,6 +748,7 @@ TEST_F(HybmDataOpSdmaTest, cleanup)
 
 TEST_F(HybmDataOpSdmaTest, transform_va)
 {
+    InitMockEnv();
     // 测试 VA 转换
     // TransformVa 方法不依赖于初始化状态，直接调用即可
     void *src = nullptr;
@@ -400,8 +758,101 @@ TEST_F(HybmDataOpSdmaTest, transform_va)
     ASSERT_TRUE(true);
 }
 
-TEST_F(HybmDataOpSdmaTest, batch_data_copy)
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_local_host_to_global_device)
 {
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_global_device_to_local_host)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_local_device_to_global_host)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_global_host_to_local_device)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_local_device_to_global_device)
+{
+    InitMockEnv();
     // 测试批量数据拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
@@ -419,12 +870,129 @@ TEST_F(HybmDataOpSdmaTest, batch_data_copy)
     params.dataSizes = dataSizes;
 
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    // 由于 GetThreadHybmStream 返回 nullptr，所以会返回 BM_ERROR
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_global_device_to_local_device)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_local_host_to_global_host)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_global_host_to_local_host)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_global_device_to_global_host)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+}
+
+TEST_F(HybmDataOpSdmaTest, batch_data_copy_extend)
+{
+    InitMockEnv();
+    // 测试批量数据拷贝
+    auto ret = dataOp_->Initialize();
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+
+    hybm_batch_copy_params params{};
+    ock::mf::ExtOptions options{};
+    options.flags |= COPY_EXTEND_FLAG;
+    options.flags |= ASYNC_COPY_FLAG;
+
+    // 准备批量拷贝参数
+    void *sources[2] = {nullptr, nullptr};
+    void *destinations[2] = {nullptr, nullptr};
+    uint64_t dataSizes[2] = {1024ULL, 2048ULL};
+    params.batchSize = 2UL;
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = dataSizes;
+
+    ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
+    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
 }
 
 TEST_F(HybmDataOpSdmaTest, quant_copy)
 {
+    InitMockEnv();
     // 测试量化拷贝
     auto ret = dataOp_->Initialize();
     ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
