@@ -39,7 +39,7 @@ constexpr size_t ETCD_URL_PREFIX_LEN = sizeof(ETCD_URL_PREFIX) - 1;
 
 struct ParsedStoreUrl {
     std::string backendUrl;
-    std::string clusterId;
+    std::string instanceId;
 };
 
 [[nodiscard]] bool IsValidClusterIdCharacter(char ch) noexcept
@@ -52,7 +52,7 @@ struct ParsedStoreUrl {
 {
     // Keep CreateStoreByUrl stable by carrying optional etcd cluster isolation in the URL fragment.
     parsedStoreUrl.backendUrl = storeUrl;
-    parsedStoreUrl.clusterId.clear();
+    parsedStoreUrl.instanceId.clear();
 
     const size_t fragmentPos = storeUrl.find(URL_FRAGMENT_DELIMITER);
     if (fragmentPos == std::string::npos) {
@@ -75,9 +75,9 @@ struct ParsedStoreUrl {
     }
 
     parsedStoreUrl.backendUrl = storeUrl.substr(0, fragmentPos);
-    parsedStoreUrl.clusterId = storeUrl.substr(fragmentPos + 1);
+    parsedStoreUrl.instanceId = storeUrl.substr(fragmentPos + 1);
     const bool clusterIdValid =
-        std::all_of(parsedStoreUrl.clusterId.begin(), parsedStoreUrl.clusterId.end(), IsValidClusterIdCharacter);
+        std::all_of(parsedStoreUrl.instanceId.begin(), parsedStoreUrl.instanceId.end(), IsValidClusterIdCharacter);
     if (!clusterIdValid) {
         STORE_LOG_ERROR("Invalid store url: cluster id contains unsupported characters, storeUrl: " << storeUrl);
         return false;
@@ -90,7 +90,7 @@ struct ParsedStoreUrl {
 
 [[nodiscard]] static StoreBackendPtr CreateBackend(BackendType type, const std::string &backendUrl,
                                                    const std::string &userName, const std::string &password,
-                                                   const std::string &clusterId)
+                                                   const std::string &instanceId)
 {
     StoreBackendPtr result = nullptr;
 
@@ -101,7 +101,7 @@ struct ParsedStoreUrl {
             break;
         }
         case BackendType::ETCD: {
-            auto backend = SmMakeRef<SmemEtcdStoreBackend>(clusterId);
+            auto backend = SmMakeRef<SmemEtcdStoreBackend>(instanceId);
             result = Convert<SmemEtcdStoreBackend, ConfigStoreBackend>(backend);
             break;
         }
@@ -185,10 +185,10 @@ StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServ
     if (pos != storesMap_.end()) {
         return pos->second;
     }
-    auto backend = CreateBackend(type, parsedStoreUrl.backendUrl, "", "", parsedStoreUrl.clusterId);
+    auto backend = CreateBackend(type, parsedStoreUrl.backendUrl, "", "", parsedStoreUrl.instanceId);
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
     if (backend->IsDistributed()) {
-        return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.clusterId);
+        return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.instanceId);
     }
     auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
@@ -285,12 +285,12 @@ StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, u
 
 StorePtr StoreFactory::CreateHaStore(const StoreBackendPtr &backend, const std::string &storeKey,
                                      const std::string &storeUrl, uint32_t worldSize,
-                                     const std::string &clusterId) noexcept
+                                     const std::string &instanceId) noexcept
 {
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
     auto clientDelegate = SmMakeRef<TcpConfigStore>(backend, "", 0, false, worldSize);
     STORE_ASSERT_RETURN(clientDelegate != nullptr, nullptr);
-    const auto store = SmMakeRef<HaConfigStore>(backend, clientDelegate, storeUrl, worldSize, clusterId);
+    const auto store = SmMakeRef<HaConfigStore>(backend, clientDelegate, storeUrl, worldSize, instanceId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     const auto ret = store->Startup(tlsOption_);

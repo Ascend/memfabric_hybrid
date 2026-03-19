@@ -67,8 +67,8 @@ Result StripEtcdClusterFragment(const std::string &url, std::string &sanitizedUr
         return SM_INVALID_PARAM;
     }
 
-    const std::string clusterId = url.substr(fragmentPos + 1);
-    const bool clusterIdValid = std::all_of(clusterId.begin(), clusterId.end(), IsValidClusterIdCharacter);
+    const std::string instanceId = url.substr(fragmentPos + 1);
+    const bool clusterIdValid = std::all_of(instanceId.begin(), instanceId.end(), IsValidClusterIdCharacter);
     if (!clusterIdValid) {
         SM_LOG_ERROR("invalid store url: cluster id contains unsupported characters, url: " << url);
         return SM_INVALID_PARAM;

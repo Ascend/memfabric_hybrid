@@ -54,7 +54,7 @@ constexpr uint32_t HEALTH_CHECK_INTERVAL_SEC = 4;
 class HaConfigStore : public ConfigStoreManager {
 public:
     HaConfigStore(StoreBackendPtr backend, TcpConfigStorePtr clientDelegate, const std::string &endpoints,
-                  uint32_t worldSize, std::string clusterId = "");
+                  uint32_t worldSize, std::string instanceId = "");
     ~HaConfigStore() override;
 
     HaConfigStore(const HaConfigStore &) = delete;

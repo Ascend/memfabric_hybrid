@@ -40,7 +40,7 @@ import (
 // -----------------------------------------------------------------------------
 
 const (
-	DefaultLockKey = "/huawei/memfabric_hybrid/etcd_client/global_lock"
+	DefaultLockKey = "/memfabric_hybrid/etcd_client/global_lock"
 
 	// DefaultOpTimeout defines the default timeout for internal etcd operations
 	// if the client-level timeout is too loose.

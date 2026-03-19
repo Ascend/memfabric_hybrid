@@ -113,7 +113,7 @@ def initialize(store_url, world_size, device_id, config) -> int
 
 |参数/返回值|含义|
 |-|-|
-|store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
+|store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
 |world_size|参与SMEM初始化rank数量，最大支持1024|
 |device_id|当前rank的device id|
 |config|初始化SMEM配置|
@@ -260,7 +260,7 @@ def initialize(store_url, world_size, rank_id, device_id, config) -> int
 
 |参数/返回值|含义|
 |-|-|
-|store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
+|store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
 |world_size|参与SMEM初始化rank数量，最大支持1024|
 |rank_id|当前rank id|
 |device_id|当前rank的device id|
@@ -356,7 +356,7 @@ def create_config_store(store_url: str) -> int
 
 |参数/返回值|含义|
 |-|-|
-|store_url|业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
+|store_url|业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
 |返回值|成功返回0，其他为错误码|
 
 ### 2. 常用类型
@@ -380,7 +380,7 @@ class TransferEngine:
 |属性|含义|
 |-|-|
 |initialize方法|TRANS配置初始化，成功返回0，其他为错误码|
-|initialize参数store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#clusterId`（etcd 多集群隔离）|
+|initialize参数store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
 |initialize参数unique_id|该TRANS实例的唯一标识，格式ip:port|
 |initialize参数role|当前进程的角色|
 |initialize参数device_id|当前设备的唯一标识|

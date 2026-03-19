@@ -35,7 +35,7 @@ int32_t smem_shm_config_init(smem_shm_config_t *config);
  * the global config store will be used to exchange information about shm object and team
  *
  * @param configStoreIpPort[in] url of config store, e.g. tcp://ip:port, tcp://[ip]:port, etcd://[ip]:port,
- *                              or etcd://[ip]:port#clusterId (for etcd multi-cluster isolation)
+ *                              or etcd://[ip]:port#instanceId (for etcd multi-cluster isolation)
  * @param worldSize        [in] size of processes
  * @param rankId           [in] local rank id in world size
  * @param deviceId         [in] device npu id

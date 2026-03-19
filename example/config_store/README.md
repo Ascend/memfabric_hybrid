@@ -5,7 +5,7 @@
 `config_store_etcd_test` 用于本地验证 `config_store` 的自动选举、多进程 rendezvous 以及多集群隔离能力。样例保持现有 `smem_bm_init -> smem_bm_create -> smem_bm_join` 流程，但重点是验证控制面收敛，不验证数据读写。样例支持两类 store URL：
 
 - `tcp://HOST:PORT`：本地调试 / 手工指定 server
-- `etcd://HOST:PORT` 或 `etcd://HOST:PORT#clusterId`：通过 etcd 做 server 选举；带 `#clusterId` 时隔离到独立集群
+- `etcd://HOST:PORT` 或 `etcd://HOST:PORT#instanceId`：通过 etcd 做 server 选举；带 `#instanceId` 时隔离到独立集群
 
 样例支持三种 `opType`：
 
@@ -56,7 +56,7 @@ config_store_etcd_test <ipPort> <opType> <isA3> <hcomPort>
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| `ipPort` | 字符串 | store 地址，支持 `tcp://HOST:PORT`、`etcd://HOST:PORT` 或 `etcd://HOST:PORT#clusterId` |
+| `ipPort` | 字符串 | store 地址，支持 `tcp://HOST:PORT`、`etcd://HOST:PORT` 或 `etcd://HOST:PORT#instanceId` |
 | `opType` | 整数 | `0=SDMA`，`1=DEVICE_RDMA`，`2=HOST_TCP` |
 | `isA3` | 整数 | `0` 或 `1`；仅 `SDMA/DEVICE_RDMA` 模式生效，`HOST_TCP` 下会被忽略 |
 | `hcomPort` | 整数 | 本地 HCOM 端口，样例统一拼接为 `tcp://127.0.0.1/0:<hcomPort>` |
@@ -136,7 +136,7 @@ export HYBM_RDMA_SWAP_SPACE_SIZE=32768
 ./cmake-build-debug-config-store/example/config_store/config_store_etcd_test etcd://127.0.0.1:2379 2 0 10003
 ```
 
-若需要在同一 etcd 下顺序验证两个彼此隔离的集群，可分别使用不同的 `#clusterId`。每个集群按需启动多个进程即可：
+若需要在同一 etcd 下顺序验证两个彼此隔离的集群，可分别使用不同的 `#instanceId`。每个集群按需启动多个进程即可：
 
 ```bash
 ./cmake-build-debug-config-store/example/config_store/config_store_etcd_test etcd://127.0.0.1:2379#cluster-a 2 0 10003
@@ -145,7 +145,7 @@ export HYBM_RDMA_SWAP_SPACE_SIZE=32768
 
 说明：
 
-- `#clusterId` 用于 etcd 多集群隔离
+- `#instanceId` 用于 etcd 多集群隔离
 - `hcomPort` 用于本地 HCOM 通道隔离；若同机并行起多个集群，需为不同集群指定不同端口
 
 ## 通过判据

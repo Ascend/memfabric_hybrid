@@ -29,7 +29,7 @@ namespace smem {
 // Local memory implementation of ConfigStoreBackend.
 class SmemEtcdStoreBackend final : public ConfigStoreBackend {
 public:
-    explicit SmemEtcdStoreBackend(std::string clusterId = "") noexcept;
+    explicit SmemEtcdStoreBackend(std::string instanceId = "") noexcept;
     ~SmemEtcdStoreBackend() noexcept override;
 
     SmemEtcdStoreBackend(const SmemEtcdStoreBackend &) = delete;

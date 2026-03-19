@@ -50,7 +50,7 @@ void smem_trans_uninit(uint32_t flags);
  * inner information for various protocols on different hardware
  *
  * @param storeUrl         [in] the url of config store, e.g. tcp://ip:port, etcd://ip:port,
- *                              or etcd://ip:port#clusterId (for etcd multi-cluster isolation).
+ *                              or etcd://ip:port#instanceId (for etcd multi-cluster isolation).
  *                              The store is created by <i>smem_create_config_store</i>
  * @param uniqueId         [in] unique id for data transfer, which should be unique, a better practice is using ip:port
  * @param config           [in] the config for config

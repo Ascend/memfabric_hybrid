@@ -43,14 +43,14 @@ namespace {
 constexpr char BACKEND_LOCK_NAME[] = "backend";
 constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clusters/";
 
-[[nodiscard]] std::string BuildBackendLockName(const std::string &clusterId)
+[[nodiscard]] std::string BuildBackendLockName(const std::string &instanceId)
 {
-    if (clusterId.empty()) {
+    if (instanceId.empty()) {
         return BACKEND_LOCK_NAME;
     }
 
     std::string qualifiedLockName = CONFIG_STORE_CLUSTER_ROOT;
-    qualifiedLockName.append(clusterId);
+    qualifiedLockName.append(instanceId);
     qualifiedLockName.push_back('/');
     qualifiedLockName.append(BACKEND_LOCK_NAME);
     return qualifiedLockName;
@@ -62,10 +62,10 @@ constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clu
 // ============================================================================
 
 HaConfigStore::HaConfigStore(StoreBackendPtr backend, TcpConfigStorePtr clientDelegate, const std::string &endpoints,
-                             uint32_t worldSize, std::string clusterId)
+                             uint32_t worldSize, std::string instanceId)
     : endpoints_(endpoints),
       worldSize_(worldSize),
-      backendLockName_(BuildBackendLockName(clusterId)),
+      backendLockName_(BuildBackendLockName(instanceId)),
       backend_(std::move(backend)),
       clientDelegate_(std::move(clientDelegate))
 {

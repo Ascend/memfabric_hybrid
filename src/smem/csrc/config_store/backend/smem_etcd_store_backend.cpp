@@ -31,14 +31,14 @@ namespace {
 constexpr int32_t PUT_LEASE_TTL_SEC = 5;
 constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clusters/";
 
-[[nodiscard]] std::string BuildClusterRoot(const std::string &clusterId)
+[[nodiscard]] std::string BuildClusterRoot(const std::string &instanceId)
 {
-    if (clusterId.empty()) {
+    if (instanceId.empty()) {
         return "";
     }
 
     std::string clusterRoot = CONFIG_STORE_CLUSTER_ROOT;
-    clusterRoot.append(clusterId);
+    clusterRoot.append(instanceId);
     return clusterRoot;
 }
 
@@ -65,8 +65,8 @@ constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clu
 
 } // namespace
 
-SmemEtcdStoreBackend::SmemEtcdStoreBackend(std::string clusterId) noexcept
-    : clusterId_(std::move(clusterId)), clusterRoot_(BuildClusterRoot(clusterId_))
+SmemEtcdStoreBackend::SmemEtcdStoreBackend(std::string instanceId) noexcept
+    : clusterId_(std::move(instanceId)), clusterRoot_(BuildClusterRoot(clusterId_))
 {}
 
 SmemEtcdStoreBackend::~SmemEtcdStoreBackend() noexcept
