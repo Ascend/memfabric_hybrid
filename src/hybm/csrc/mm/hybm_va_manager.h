@@ -175,8 +175,7 @@ public:
     std::pair<AllocatedGvaInfo, bool> FindAllocByVa(uint64_t va, uint32_t type = HVM_GVA) const;
 
     // Checks if 'va' falls within any AllocatedGvaInfo range.
-    bool IsGva(uint64_t va);
-    hybm_mem_type GetMemType(uint64_t gva); // Supports both LVA and GVA
+    hybm_mem_type GetGvaMemType(uint64_t gva); // Supports both LVA and GVA
     std::pair<uint32_t, bool> GetRank(uint64_t gva);
     // Checks if 'va' is within any AllocatedGvaInfo range (either LVA or GVA).
     bool IsValidAddr(uint64_t va);

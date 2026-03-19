@@ -143,42 +143,20 @@ uint64_t HybmVaManager::TransformVa(uint64_t va, uint32_t inputType, uint32_t ou
     return 0;
 }
 
-bool HybmVaManager::IsGva(uint64_t va)
+hybm_mem_type HybmVaManager::GetGvaMemType(uint64_t va)
 {
-    BM_ASSERT_RETURN(va > 0, false);
     std::shared_lock<std::shared_mutex> lock(mutex_);
     if (allocatedMap_[HVM_GVA].empty()) {
         BM_LOG_WARN("No allocated spaces found.");
-        return false;
+        return HYBM_MEM_TYPE_BUTT;
     }
     auto it = allocatedMap_[HVM_GVA].upper_bound(va);
     if (it != allocatedMap_[HVM_GVA].begin()) {
         --it;
     }
     if (it->second.Contains(va, HVM_GVA)) {
-        BM_LOG_DEBUG("IsGva: va=" << VaToStr(va) << " is a valid GVA");
-        return true;
-    }
-    BM_LOG_DEBUG("IsGva: va=" << VaToStr(va) << " is not a valid GVA");
-    return false;
-}
-
-hybm_mem_type HybmVaManager::GetMemType(uint64_t va)
-{
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    for (uint32_t i = 0; i < HVM_BUTT; i++) {
-        if (allocatedMap_[i].empty()) {
-            BM_LOG_WARN("No allocated spaces found.");
-            continue;
-        }
-        auto it = allocatedMap_[i].upper_bound(va);
-        if (it != allocatedMap_[i].begin()) {
-            --it;
-        }
-        if (it->second.Contains(va, i)) {
-            BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << it->second.base.memType);
-            return it->second.base.memType;
-        }
+        BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " memType=" << it->second.base.memType);
+        return it->second.base.memType;
     }
     BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " not found, returning default type");
     return HYBM_MEM_TYPE_BUTT;
@@ -209,7 +187,7 @@ std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
 
 ock::mf::HybmVaManager::AddressCategory ock::mf::HybmVaManager::ClassifyAddress(uint64_t va)
 {
-    auto gvaType = GetMemType(va);
+    auto gvaType = GetGvaMemType(va);
     if (gvaType != HYBM_MEM_TYPE_BUTT) {
         if (gvaType == HYBM_MEM_TYPE_DEVICE)
             return GLOBAL_DEVICE;
@@ -234,9 +212,23 @@ hybm_data_copy_direction HybmVaManager::InferCopyDirection(uint64_t srcVa, uint6
 
 bool HybmVaManager::IsValidAddr(uint64_t va)
 {
-    bool isValid = (GetMemType(va) != HYBM_MEM_TYPE_BUTT);
-    BM_LOG_DEBUG("IsValidAddr: va=" << VaToStr(va) << " is " << (isValid ? "valid" : "invalid"));
-    return isValid;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (allocatedMap_[i].empty()) {
+            BM_LOG_WARN("No allocated spaces found.");
+            continue;
+        }
+        auto it = allocatedMap_[i].upper_bound(va);
+        if (it != allocatedMap_[i].begin()) {
+            --it;
+        }
+        if (it->second.Contains(va, i)) {
+            BM_LOG_DEBUG("GetMemType: va=" << VaToStr(va) << " vaMgrType:" << i
+                                           << " memType=" << it->second.base.memType);
+            return true;
+        }
+    }
+    return false;
 }
 
 ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize,
