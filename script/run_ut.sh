@@ -104,7 +104,6 @@ if ! $FAST_MODE; then
             "*/hybm/csrc/ts_engine/*"
             "*/hybm/csrc/under_api/*"
             "*/hybm/csrc/transport/device/*"
-            "*/hybm/csrc/transport/host/*"
             "*/util/csrc/ptracer/tracers/*"
     )
     lcov -d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|SM_LOG*|SM_ASSERT*|BM_LOG*|BM_ASSERT*|SM_VALIDATE_*|ASSERT*|LOG_*"
