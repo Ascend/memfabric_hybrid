@@ -14,31 +14,7 @@ COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 
 COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:5f9404b764018f9b34667ebeccf6a0cd
 
-COMMON_COPTS = GLOBAL_COPTS + [
-    "-Wunused-variable",
-    "-Wunused-value",
-    "-Wcast-align",
-    "-fpermissive",
-    "-Wno-error",
-    "-Wcast-qual",
-    "-Winvalid-pch",
-    "-Wwrite-strings",
-    "-Wsign-compare",
-    "-Wfloat-equal",
-    "-Wextra",
-    "-Wno-deprecated-declarations",
-    "-fstack-protector-strong",
-    "-Wstack-usage=16384",
-    "-Werror",
-    "-Wl,-z,noexecstack",
-    "-Wl,-z,relro",
-    "-Wl,-z,now",
-    "-fPIE",
-    "-fPIC",
-    "-ftrapv",
-    "-s",
-    "-D_FORTIFY_SOURCE=2",
-] # DIGEST:1ffebe736dd1defb2b9c7fc3d6774077
+COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:1ffebe736dd1defb2b9c7fc3d6774077
 
 cc_library(
     name = "hybm_src_headers",

@@ -15,30 +15,6 @@ COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:9e5742e6b660ac94bf4acb689dc52a63
 
 COMMON_COPTS = GLOBAL_COPTS + [
-    "-fPIC",
-    "-Wunused-variable",
-    "-Wunused-value",
-    "-Wcast-align",
-    "-fpermissive",
-    "-Wno-error",
-    "-Wcast-qual",
-    "-Winvalid-pch",
-    "-Wwrite-strings",
-    "-Wsign-compare",
-    "-Wfloat-equal",
-    "-Wextra",
-    "-Wno-deprecated-declarations",
-    "-fstack-protector-strong",
-    "-Wstack-usage=16384",
-    "-Werror",
-    "-Wl,-z,noexecstack",
-    "-Wl,-z,relro",
-    "-Wl,-z,now",
-    "-fPIE",
-    "-fPIC",
-    "-ftrapv",
-    "-s",
-    "-D_FORTIFY_SOURCE=2",
     "-Isrc/smem/include/host",
     "-Iinclude/hybm",    # maybe redundant include path
     "-Isrc/util/include",    # maybe redundant include path
@@ -64,7 +40,7 @@ pybind_extension (
         "pymf_hybrid.cpp",
     ],
     local_defines =  [] + COMMON_LOCAL_DEFINES,
-    copts =  ["-fvisibility=hidden"] + COMMON_COPTS,
+    copts =  [] + COMMON_COPTS,
     linkopts = [
         "-Wl,-z,noexecstack,-z,relro,-z,now",
         "-s",

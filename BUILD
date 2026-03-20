@@ -13,3 +13,13 @@ COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:365014742c36ecc666a17c2173e25bcf
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:1e8e71f0eb38863b2735d10f9888eebd
+
+config_setting(
+    name = "memfabric_mode_dbg",
+    values = {"compilation_mode": "dbg"},
+)
+
+config_setting(
+    name = "memfabric_mode_opt",
+    values = {"compilation_mode": "opt"},
+)
