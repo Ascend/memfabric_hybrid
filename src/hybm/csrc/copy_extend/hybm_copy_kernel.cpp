@@ -14,7 +14,7 @@
 
 #define HYBM_AICORE_KERNEL __attribute__((always_inline)) __aicore__ __inline__
 const uint32_t COPY_BUF_SIZE = 64 * 1024; // 最大支持192KB
-const uint32_t SINGLE_COPY_SLICE = 128;
+const uint32_t SINGLE_COPY_SLICE = 64; // cache length
 
 using namespace AscendC;
 
@@ -77,7 +77,9 @@ extern "C" __global__ __aicore__ void hybm_copy_kernel(GM_ADDR dst, GM_ADDR src,
     uint32_t num = AscendC::GetBlockNum();
     uint64_t offset = ((len + SINGLE_COPY_SLICE - 1U) / SINGLE_COPY_SLICE + num - 1U) / num * SINGLE_COPY_SLICE;
     uint64_t size = min(offset * (idx + 1), len);
-    offset = offset * idx;
+
+    // 避免 size < offset 时出现越界
+    offset = min(offset * idx, size);
     size -= offset;
     copy_gm2gm(dst + offset, src + offset, 0, COPY_BUF_SIZE, size);
 }
