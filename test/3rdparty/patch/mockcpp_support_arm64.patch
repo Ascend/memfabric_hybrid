@@ -10,11 +10,11 @@ Subject: [PATCH] mockcpp patch
  src/JmpCodeAARCH64.h      | 69 +++++++++++++++++++++++++++++++++++++++
  src/JmpCodeARM32.h        | 36 ++++++++++++++++++++
  src/JmpCodeArch.h         | 20 +++++++++++-
- src/JmpCodeX64.h          |  3 +-
- src/JmpCodeX86.h          |  3 +-
+ src/JmpCodeX64.h          |  4 ++-
+ src/JmpCodeX86.h          |  4 ++-
  src/JmpOnlyApiHook.cpp    |  1 +
  src/UnixCodeModifier.cpp  |  2 ++
- 10 files changed, 152 insertions(+), 5 deletions(-)
+ 10 files changed, 154 insertions(+), 5 deletions(-)
  create mode 100644 src/JmpCodeAARCH64.h
  create mode 100644 src/JmpCodeARM32.h
 
