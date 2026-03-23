@@ -133,7 +133,7 @@ def uninitialize(flags = 0) -> None
 #### create
 创建BM
 ```python
-def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMB_DATA_OP_SDMA, flags = 0) -> int
+def create(id, local_dram_size, local_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, flags = 0) -> BigMemory
 ```
 
 |参数/返回值|含义|
@@ -143,7 +143,25 @@ def create(id, local_dram_size, local_hbm_size, data_op_type = SMEMB_DATA_OP_SDM
 |local_hbm_size|本地hbm内存大小|
 |data_op_type|数据操作类型，参考smem_bm_data_op_type类型定义|
 |flags|预留参数|
-|返回值|SMEM对象handle|
+|返回值|BigMemory对象|
+
+#### create2
+创建BM（支持设置本地内存上限）
+```python
+def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, is_second_mapping = False, flags = 0) -> BigMemory
+```
+
+|参数/返回值|含义|
+|-|-|
+|id|SMEM对象id，用户指定，与其他SMEM对象不重复，范围为[0, 63]|
+|local_dram_size|本地dram内存大小|
+|max_dram_size|本地dram内存最大大小|
+|local_hbm_size|本地hbm内存大小|
+|max_hbm_size|本地hbm内存最大大小|
+|data_op_type|数据操作类型，参考smem_bm_data_op_type类型定义|
+|is_second_mapping|是否开启二次映射，bool类型|
+|flags|预留参数|
+|返回值|BigMemory对象|
 
 ### 3. 获取当前rank的id
 #### bm_rank_id
@@ -217,6 +235,7 @@ class BigMemory:
     def leave(flags = 0) -> int:
     def local_mem_size(mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
     def peer_rank_ptr(peer_rank, mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
+    def gva_to_va(gva, mem_type = SMEM_MEM_TYPE_LOCAL_HOST) -> int:
     def destroy() -> None:
     def register(addr, size) -> int:
     def unregister(addr) -> int:
@@ -237,6 +256,10 @@ class BigMemory:
 |peer_rank_ptr方法|获取rank id对应的贡献空间在gva上的地址位置|
 |peer_rank_ptr参数peer_rank|指定的rank id|
 |peer_rank_ptr参数mem_type|指定的rank id的贡献空间的内存类型|
+|gva_to_va方法|将GVA地址转换为当前进程可访问的VA地址|
+|gva_to_va参数gva|待转换的GVA地址|
+|gva_to_va参数mem_type|内存类型(BmMemType)|
+|gva_to_va返回值|转换后的VA地址，失败返回0|
 |destroy方法|销毁BM|
 |register方法|注册内存到BM|
 |register参数addr|注册地址的起始地址指针|

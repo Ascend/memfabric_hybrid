@@ -606,28 +606,32 @@ Returns:
     rank id if successful, UINT32_MAX is returned if failed.)");
 
     m.def("create", &BigMemory::Create, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
-          py::arg("local_dram_size"), py::arg("local_hbm_size"), py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
+          py::arg("local_dram_size"), py::arg("local_hbm_size") = 0, py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
           py::arg("flags") = 0, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
     id(int):                     identity of the big memory object
     local_dram_size(int):         the size of local dram memory contributes to big memory object
-    local_hbm_size(int):         the size of local hbm memory contributes to big memory object
-    data_op_type(BmDataOpType):  data operation type, SDMA or RoCE etc
-    flags(int):                  optional flags)");
+    local_hbm_size(int):         the size of local hbm memory contributes to big memory object, default 0
+    data_op_type(BmDataOpType):  data operation type, default SMEMB_DATA_OP_SDMA
+    flags(int):                  optional flags, default 0)");
 
     m.def("create2", &BigMemory::Create2, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
-          py::arg("local_dram_size"), py::arg("max_dram_size"), py::arg("local_hbm_size"), py::arg("max_hbm_size"),
-          py::arg("data_op_type") = SMEMB_DATA_OP_SDMA, py::arg("is_second_mapping") = false, py::arg("flags") = 0, R"(
+          py::arg("local_dram_size"), py::arg("max_dram_size"), py::arg("local_hbm_size") = 0,
+          py::arg("max_hbm_size") = 0, py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
+          py::arg("is_second_mapping") = false, py::arg("flags") = 0, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
     id(int):                     identity of the big memory object
-    local_dram_size(int):         the size of local dram memory contributes to big memory object
-    local_hbm_size(int):         the size of local hbm memory contributes to big memory object
-    data_op_type(BmDataOpType):  data operation type, SDMA or RoCE etc
-    flags(int):                  optional flags)");
+    local_dram_size(int):        the size of local dram memory contributes to big memory object
+    max_dram_size(int):          the max local dram memory size for dynamic expansion
+    local_hbm_size(int):         the size of local hbm memory contributes to big memory object, default 0
+    max_hbm_size(int):           the max local hbm memory size for dynamic expansion, default 0
+    data_op_type(BmDataOpType):  data operation type, default SMEMB_DATA_OP_SDMA
+    is_second_mapping(bool):     whether to create this memory object in second mapping mode, default false
+    flags(int):                  optional flags, default 0)");
 
     // big memory class
     py::class_<BigMemory>(m, "BigMemory")
