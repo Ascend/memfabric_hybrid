@@ -147,7 +147,6 @@ hybm_mem_type HybmVaManager::GetGvaMemType(uint64_t va)
 {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     if (allocatedMap_[HVM_GVA].empty()) {
-        BM_LOG_WARN("No allocated spaces found.");
         return HYBM_MEM_TYPE_BUTT;
     }
     auto it = allocatedMap_[HVM_GVA].upper_bound(va);
