@@ -47,7 +47,7 @@ bash output/memfabric_hybrid-1.0.0_linux_aarch64.run # 修改为实际编译出�
 | deviceId           | 是  | 当前节点的deviceId                                      |
 | useSdma            | 是  | 1使用SDMA，0使用RDMA                                    |
 | testBm             | 是  | 1测试BigMemory场景，0测试PD传输场景                           |
-| tcp://{Ip}:{port}  | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ipv6]:port` |
+| tcp://{Ip}:{port}  | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ipv6]:port`。configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考 [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md) |
 | memType            | 是  | 内存介质类型, 0:hbm 1:dram 2:hbm + dram                  |
 
 ### 运行步骤

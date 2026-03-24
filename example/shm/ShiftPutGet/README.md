@@ -49,7 +49,7 @@
   bash run.sh [RANK_SIZE] [SERVER_IP]
   ```
     - RANK_SIZE: 期望使用多少张卡，每张卡一个进程
-    - SERVER_IP: ```tcp://<ip>:<port>``` rank0的监听ip
+    - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考  [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md)。
 
   示例如下
   ```bash

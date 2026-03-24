@@ -57,7 +57,7 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 ## 运行
 
-编译完成后,会在当前目录生成bm_perf_benchmark可执行文件
+- 编译完成后,会在当前目录生成bm_perf_benchmark可执行文件
 执行方式如下,支持多节点运行
 
   ```bash
@@ -69,13 +69,13 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
     - DEVICE_START: 本节点使用的卡号的起始值,本节点的卡号范围就是[DEVICE_START, DEVICE_START + LOCAL_RANK_SIZE)
-    - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口
+    - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考  [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md)。
     - RDMA_URL: ```tcp://<ip>:<port>``` 使用数据操作类型为host_rdma时需要额外指定的rdma网卡的ip和端口,其余操作类型可省略
     - BLOCK_SIZE: 单个拷贝数据块的大小
     - BATCH_SIZE：每次下发拷贝的block个数
     - COPY_COUNT：循环下发多少次拷贝
 
-示例如下(假设期望指定监听8570端口)
+- 示例如下(假设期望指定监听8570端口)
 
   ```bash
   查看指令说明:

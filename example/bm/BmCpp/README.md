@@ -22,7 +22,7 @@ source /usr/local/memfabric_hybrid/set_env.sh
 
 ## 编译
 
-在当前目录执行如下命令即可
+- 在当前目录执行如下命令即可
 
   ```bash
   mkdir build
@@ -30,7 +30,7 @@ source /usr/local/memfabric_hybrid/set_env.sh
   make -C build
   ```
 
-或打包安装时同源码一起编译
+- 或打包安装时同源码一起编译
 
   ```bash
 bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
@@ -38,7 +38,7 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
 
 ## 运行
 
-编译完成后,会在当前目录生成bm_example可执行文件
+- 编译完成后,会在当前目录生成bm_example可执行文件
 执行方式如下,支持多节点运行
 
   ```bash
@@ -48,10 +48,10 @@ bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_t
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
-    - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口
+    - SERVER_IP: ```tcp://<ip>:<port>``` configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考  [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md)
     - TRANSPORT_TYPE: 数据访问方式(A2环境填1,表示RDMA;A3环境填0,表示SDMA)
 
-示例如下(假设期望指定监听8570端口)
+- 示例如下(假设期望指定监听8570端口)
 
   ```bash
   单节点运行2张卡: 

@@ -16,7 +16,7 @@ HDK固件驱动需要使用**25.0.RC1**
 
 ## 运行
 
-执行方式如下,支持多节点运行
+- 执行方式如下,支持多节点运行
 
 ```bash
 python3 smem_bm_example.py --protocol <PROTOCOL> \
@@ -33,12 +33,12 @@ python3 smem_bm_example.py --protocol <PROTOCOL> \
     - WORLD_SIZE: 整个集群使用的卡数
     - LOCAL_RANK_SIZE: 在本节点使用的卡数
     - RANK_START: 本节点的rankId的起始值,本节点的rankId范围就是[RANK_START, RANK_START + LOCAL_RANK_SIZE)
-    - STORE_URL: `tcp://<ip>:<port>` configStore的server的监听ip和端口
+    - STORE_URL: `tcp://<ip>:<port>` configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考  [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md)。
     - NIC: device port nic
     - AUTO_RANKING: 可选参数,不填则默认不开启auto_rank; true表示开启, false表示不开启(开启autorank,则bm内部会自动生成全局rankId,不需要用户指定)
     - IS_SECOND_MAPPING: 是否启用二次映射，默认 false
 
-示例如下(假设期望指定监听8570端口)
+- 示例如下(假设期望指定监听8570端口)
 
 (1) 单节点运行8张卡:
 
