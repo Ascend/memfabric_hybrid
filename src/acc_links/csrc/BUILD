@@ -16,51 +16,37 @@ COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:5f9404b764018f9b34667e
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:199b1d6b829e73ac5dfb044fd1223dfb
 
-cc_library(
-    name = "acc_links_src_headers",
-    hdrs = glob(["common/*.h","security/*.h","under_api/openssl/*.h"]),
-    includes = [".", "common", "security", "under_api/openssl"],
-    visibility = ["//visibility:public"],
-)
+ACC_LINKS_HEADERS = glob([
+    "*.h",
+    "common/*.h",
+    "security/*.h",
+    "under_api/openssl/*.h"
+])
+
+ACC_LINKS_INCLUDE_DIRS = [
+    ".",
+    "common",
+    "security",
+    "under_api/openssl",
+]
+
+ACC_LINKS_SRCS = glob([
+    "*.cpp",
+    "common/*.cpp",
+    "security/*.cpp",
+    "under_api/openssl/*.cpp",
+])
 
 cc_library (
     name = "acc_tcp_net_object",
-    srcs = [
-        "acc_tcp_common.cpp",
-        "acc_tcp_common.h",
-        "acc_tcp_link_complex_default.cpp",
-        "acc_tcp_link_complex_default.h",
-        "acc_tcp_link_default.h",
-        "acc_tcp_link_delay_cleanup.h",
-        "acc_tcp_listener.cpp",
-        "acc_tcp_listener.h",
-        "acc_tcp_request_context.cpp",
-        "acc_tcp_server.cpp",
-        "acc_tcp_server_default.cpp",
-        "acc_tcp_server_default.h",
-        "acc_tcp_shared_buf.cpp",
-        "acc_tcp_worker.cpp",
-        "acc_tcp_worker.h",
-        "common/acc_common_util.cpp",
-        "common/acc_common_util.h",
-        "common/acc_file_validator.cpp",
-        "common/acc_file_validator.h",
-        "common/acc_includes.h",
-        "common/acc_out_logger.h",
-        "security/acc_tcp_ssl_helper.cpp",
-        "security/acc_tcp_ssl_helper.h",
-        "under_api/openssl/openssl_api_dl.cpp",
-        "under_api/openssl/openssl_api_dl.h",
-        "under_api/openssl/openssl_api_wrapper.h",
-        "under_api/openssl/openssl_util.cpp",
-        "under_api/openssl/openssl_util.h",
-    ],
+    srcs = ACC_LINKS_SRCS,
+    hdrs = ACC_LINKS_HEADERS,
+    includes = ACC_LINKS_INCLUDE_DIRS,
     linkstatic = True,
     local_defines = [] + COMMON_LOCAL_DEFINES,
     copts = [] + COMMON_COPTS,
     linkopts = [] + COMMON_LINKOPTS,
     deps = [
-        ":acc_links_src_headers",
         "//src:util_headers",
         "//src:acc_links_headers",
     ],

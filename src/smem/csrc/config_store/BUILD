@@ -14,12 +14,26 @@ COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:365014742c36ecc666a17c
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:1e8e71f0eb38863b2735d10f9888eebd
 
-cc_library(
-    name = "config_store_headers",
-    hdrs = glob(["*.h","backend/*.h", "ha/*.h","tcp_store/*.h"]),
-    includes = [".", "backend", "ha", "tcp_store"],
-    visibility = ["//visibility:public"],
-)
+CONFIG_STORE_HEADERS = glob([
+    "*.h",
+    "backend/*.h",
+    "ha/*.h",
+    "tcp_store/*.h"
+])
+
+CONFIG_STORE_INCLUDE_DIRS = [
+    ".",
+    "backend",
+    "ha",
+    "tcp_store"
+]
+
+CONFIG_STORE_SRCS = glob([
+    "*.cpp",
+    "backend/*.cpp",
+    "ha/*.cpp",
+    "tcp_store/*.cpp",
+])
 
 cc_library (
     name = "config_store_object",
@@ -28,51 +42,18 @@ cc_library (
         "//src/smem/csrc:__pkg__",
         "//src/smem/csrc:__pkg__",
     ],
-    srcs = [
-        "backend/smem_local_memory_backend.cpp",
-        "backend/smem_local_memory_backend.h",
-        "backend/smem_etcd_store_backend.cpp",
-        "backend/smem_etcd_store_backend.h",
-        "backend/dl_etcd_api.cpp",
-        "backend/dl_etcd_api.h",
-        "smem_config_store_logger.h",
-        "ha/smem_ha_config_store.cpp",
-        "ha/smem_ha_config_store.h",
-        "ha/network_endpoint_util.cpp",
-        "ha/network_endpoint_util.h",
-        "smem_store_factory.cpp",
-        "tcp_store/smem_message_packer.cpp",
-        "tcp_store/smem_prefix_config_store.h",
-        "tcp_store/smem_tcp_config_store.cpp",
-        "tcp_store/smem_tcp_config_store_server.cpp",
-        "tcp_store/smem_tcp_config_store_ssl_helper.h",
-    ],
+    srcs = CONFIG_STORE_SRCS,
+    hdrs = CONFIG_STORE_HEADERS,
+    includes = CONFIG_STORE_INCLUDE_DIRS,
     linkstatic = True,
     local_defines = [] + COMMON_LOCAL_DEFINES,
     copts = [] + COMMON_COPTS,
     linkopts = [] + COMMON_LINKOPTS,
-    hdrs = [
-        "backend/smem_config_store_backend.h",
-        "backend/smem_etcd_store_backend.h",
-        "smem_config_store_errno.h",
-        "smem_config_store.h",
-        "smem_store_factory.h",
-        "tcp_store/smem_message_packer.h",
-        "tcp_store/smem_tcp_config_store.h",
-        "tcp_store/smem_tcp_config_store_server.h",
-        "tcp_store/smem_tcp_config_store_ssl_helper.h",
-        "tcp_store/smem_prefix_config_store.h",
-        "ha/smem_ha_config_store.h",
-        "ha/network_endpoint_util.h",
-        "backend/smem_local_memory_backend.h",
-        "smem_config_store_logger.h",
-    ],
     alwayslink = True,
     deps =  [
         "//src/smem/csrc:smem_src_headers",
         "//src:util_headers",
         "//src:acc_links_headers",
         "//src:smem_headers",
-        ":config_store_headers",
     ],
 ) # DIGEST:e2f1468d62c8dba625a420ef16ac2ab7

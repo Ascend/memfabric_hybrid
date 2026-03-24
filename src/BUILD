@@ -6,38 +6,7 @@ load ("//:global_options.bzl","GLOBAL_COPTS","GLOBAL_LOCAL_DEFINES","GLOBAL_LINK
 
 package(default_visibility = ["//visibility:private"]) # DIGEST:b93564382b04a4411113d729d304485b
 
-exports_files([
-   "acc_links/include/acc_log.h",
-   "util/csrc/mf_out_logger.h",
-   "hybm/include/hybm_big_mem.h",
-   "hybm/include/hybm.h",
-   "util/csrc/mf_tls_util.h",
-   "util/csrc/mf_num_util.h",
-   "smem/include/host/smem_trans_def.h",
-   "smem/include/host/smem_shm_def.h",
-   "acc_links/include/acc_tcp_shared_buf.h",
-   "smem/include/host/smem.h",
-   "acc_links/include/acc_ref.h",
-   "util/csrc/mf_spinlock.h",
-   "smem/include/host/smem_shm.h",
-   "util/csrc/mf_file_util.h",
-   "util/csrc/mf_ipv4_validator.h",
-   "smem/include/host/smem_trans.h",
-   "hybm/include/hybm_data_op.h",
-   "util/csrc/mf_rwlock.h",
-   "util/csrc/mf_env_util.h",
-   "smem/include/host/smem_bm_def.h",
-   "acc_links/include/acc_tcp_server.h",
-   "util/csrc/mf_monotonic_time.h",
-   "acc_links/include/acc_tcp_link.h",
-   "util/csrc/mf_net.h",
-   "util/csrc/mf_str_util.h",
-   "smem/include/host/smem_bm.h",
-   "acc_links/include/acc_tcp_request_context.h",
-   "hybm/include/hybm_def.h",
-   "util/csrc/mf_syntactic_sugar.h",
-   "acc_links/include/acc_def.h",
-]) # DIGEST:a5ed3834e161b278b5189667ba011374
+exports_files([]) # DIGEST:a5ed3834e161b278b5189667ba011374
 
 COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 

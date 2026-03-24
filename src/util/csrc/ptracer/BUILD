@@ -23,20 +23,18 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+PTRACER_SRCS = glob([
+    "*.cpp",
+    "tracers/*.cpp",
+])
+
 cc_library (
     name = "ptracer_object",
     visibility = [
         "//src/hybm/csrc:__pkg__",
         "//src/hybm/csrc:__pkg__",
     ],
-    srcs = [
-        "include/ptracer.h",
-        "ptracer.cpp",
-        "tracers/ptracer_default.cpp",
-        "tracers/ptracer_default.h",
-        "tracers/ptracer_tracepoint.h",
-        "tracers/ptracer_utils.h",
-    ],
+    srcs = PTRACER_SRCS,
     linkstatic = True,
     local_defines = [] + COMMON_LOCAL_DEFINES,
     copts = [] + COMMON_COPTS,

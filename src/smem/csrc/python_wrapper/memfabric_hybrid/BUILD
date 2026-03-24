@@ -31,12 +31,6 @@ COMMON_COPTS = GLOBAL_COPTS + [
 pybind_extension (
     name = "_pymf_hybrid",
     srcs = [
-        "//src/smem/csrc:common/smem_version.h",
-        "//src:smem/include/host/smem.h",
-        "//src:smem/include/host/smem_bm.h",
-        "//src:smem/include/host/smem_bm_def.h",
-        "//src:smem/include/host/smem_shm.h",
-        "//src:smem/include/host/smem_shm_def.h",
         "pymf_hybrid.cpp",
     ],
     local_defines =  [] + COMMON_LOCAL_DEFINES,
@@ -44,12 +38,9 @@ pybind_extension (
     linkopts = [
         "-Wl,-z,noexecstack,-z,relro,-z,now",
         "-s",
-        #"-l:libmf_smem.so",
-        #"-l:libacc_tcp_net.a",
         "-Wl,--start-group",
         "-lrt",
         "-Wl,--end-group",
-        #"-l:libmf_hybm_core.so",
         "-lpthread",
         "-ldl",
     ] + COMMON_LINKOPTS,
@@ -65,17 +56,14 @@ pybind_extension (
 cc_library (
     name = "pymf_hybrid",
     srcs = [
-        "//src/smem/csrc:common/smem_version.h",
-        "//src:smem/include/host/smem.h",
-        "//src:smem/include/host/smem_bm.h",
-        "//src:smem/include/host/smem_bm_def.h",
-        "//src:smem/include/host/smem_shm.h",
-        "//src:smem/include/host/smem_shm_def.h",
         "pymf_hybrid.cpp",
     ],
     deps = [
         "@version_info//:version_info",
         "@pybind11//:pybind11",
+        "//src:util_headers",
+        "//src:smem_headers",
+        "//src/smem/csrc:smem_src_headers",
     ],
     linkstatic = True,
     local_defines = [] + COMMON_LOCAL_DEFINES,

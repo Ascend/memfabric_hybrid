@@ -2,6 +2,7 @@
 # Any issue please report to https://open.codehub.huawei.com/innersource/hazel/toolkits/issues
 # Caesar Task Force@Data Storage Product Line
 GLOBAL_COPTS = [
+    "-std=gnu++17",
     "-Wunused-variable",
     "-Wunused-value",
     "-Wcast-align",

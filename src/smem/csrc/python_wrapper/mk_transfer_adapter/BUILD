@@ -30,32 +30,27 @@ COMMON_COPTS = GLOBAL_COPTS + [
     "-Isrc/smem/csrc/python_wrapper/mk_transfer_adapter/include",
 ] # DIGEST:9b1237fbf22184bee4205730c133057a
 
+cc_library(
+    name = "py_transfer_headers",
+    hdrs = glob(["include/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
+
 pybind_extension (
     name = "_pymf_transfer",
     srcs = [
-        "//src:smem/include/host/smem.h",
-        "//src:smem/include/host/smem_bm_def.h",
-        "//src:smem/include/host/smem_trans.h",
-        "//src:smem/include/host/smem_trans_def.h",
-        "//src:util/csrc/mf_out_logger.h",
-        "//src:util/csrc/mf_spinlock.h",
         "csrc/pytransfer.cpp",
         "csrc/transfer_util.cpp",
-        "include/adapter_logger.h",
-        "include/pytransfer.h",
-        "include/transfer_util.h",
     ],
     local_defines =  [] + COMMON_LOCAL_DEFINES,
     copts =  ["-fabi-version=0"] + COMMON_COPTS,
     linkopts = [
         "-Wl,-z,noexecstack,-z,relro,-z,now",
         "-s",
-        #"-l:libmf_smem.so",
-        #"-l:libacc_tcp_net.a",
         "-Wl,--start-group",
         "-lrt",
         "-Wl,--end-group",
-        #"-l:libmf_hybm_core.so",
         "-lpthread",
         "-ldl",
     ] + COMMON_LINKOPTS,
@@ -64,27 +59,16 @@ pybind_extension (
         "//src/acc_links/csrc:acc_tcp_net_static",
         "//src/smem/csrc:smem_shared",
         "//src/hybm/csrc:hybmm_shared",
-        #"@pybind11//:pybind11",
+        ":py_transfer_headers",
         "@version_info//:version_info",
     ],
-    #output_name = "_pymf_transfer.cpython-311-$(shell uname -m)-linux-gnu",
-    #linkshared = True,
 ) # DIGEST:6c8d0328549d775952489668e7801765
 
 cc_library (
     name = "pytransfer",
     srcs = [
-        "//src:smem/include/host/smem.h",
-        "//src:smem/include/host/smem_bm_def.h",
-        "//src:smem/include/host/smem_trans.h",
-        "//src:smem/include/host/smem_trans_def.h",
-        "//src:util/csrc/mf_out_logger.h",
-        "//src:util/csrc/mf_spinlock.h",
         "csrc/pytransfer.cpp",
         "csrc/transfer_util.cpp",
-        "include/adapter_logger.h",
-        "include/pytransfer.h",
-        "include/transfer_util.h",
     ],
     linkstatic = True,
     local_defines = [] + COMMON_LOCAL_DEFINES,
@@ -93,7 +77,9 @@ cc_library (
     deps = [
         "@pybind11//:pybind11",
         "@version_info//:version_info",
+        "//src:util_headers",
+        "//src:smem_headers",
+        ":py_transfer_headers",
     ],
-
     alwayslink = True,
 ) # DIGEST:c4df12cfc73314ef4486ac79e07cb695
