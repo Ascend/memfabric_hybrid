@@ -10,3 +10,4 @@ package/*
 *.whl
 *.egg-info
 .DS_Store
+.clion.source.upload.marker

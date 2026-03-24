@@ -183,6 +183,7 @@ def str_to_bool(v):
 
 """
 cd example/bm/BmPython
+
 1. device_rdma: 
 python3 smem_bm_example.py \
         --world_size 256 \

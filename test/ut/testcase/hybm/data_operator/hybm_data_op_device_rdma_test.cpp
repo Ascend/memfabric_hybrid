@@ -315,6 +315,12 @@ public:
         // 模拟 DlAclApi::AclrtMemcpy 方法
         MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(0));
 
+        // 模拟 DlAclApi::AclrtMemcpyAsync 方法
+        MOCKER(&ock::mf::DlAclApi::AclrtMemcpyAsync).stubs().will(returnValue(0));
+
+        // 模拟 DlAclApi::AclrtSynchronizeStream 方法
+        MOCKER(&ock::mf::DlAclApi::AclrtSynchronizeStream).stubs().will(returnValue(0));
+
         // 模拟 DlHalApi::HalHostRegister 方法
         MOCKER(&ock::mf::DlHalApi::HalHostRegister).stubs().will(invoke(HalHostRegisterStub));
 

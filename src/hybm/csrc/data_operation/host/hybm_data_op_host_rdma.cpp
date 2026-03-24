@@ -511,31 +511,27 @@ void HostDataOpRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, con
                                       const uint32_t globalRankId) noexcept
 {
     for (size_t i = 0; i < batchSize; ++i) {
-        uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
-        if (gvaRankId == UINT32_MAX) {
-            gvaRankId = globalRankId;
-        }
-        if (gvaRankId == rankId_) {
-            auto iter = localRankMap.find(gvaRankId);
+        if (globalRankId == rankId_) {
+            auto iter = localRankMap.find(globalRankId);
             if (iter == localRankMap.end()) {
                 CopyDescriptor desc{};
                 desc.localAddrs.push_back(localAddrs[i]);
                 desc.globalAddrs.push_back(globalAddrs[i]);
                 desc.counts.push_back(counts[i]);
-                localRankMap.emplace(std::make_pair(gvaRankId, desc));
+                localRankMap.emplace(std::make_pair(globalRankId, desc));
             } else {
                 iter->second.localAddrs.push_back(localAddrs[i]);
                 iter->second.globalAddrs.push_back(globalAddrs[i]);
                 iter->second.counts.push_back(counts[i]);
             }
         } else {
-            auto iter = rmtRankMap.find(gvaRankId);
+            auto iter = rmtRankMap.find(globalRankId);
             if (iter == rmtRankMap.end()) {
                 CopyDescriptor desc{};
                 desc.localAddrs.push_back(localAddrs[i]);
                 desc.globalAddrs.push_back(globalAddrs[i]);
                 desc.counts.push_back(counts[i]);
-                rmtRankMap.emplace(std::make_pair(gvaRankId, desc));
+                rmtRankMap.emplace(std::make_pair(globalRankId, desc));
             } else {
                 iter->second.localAddrs.push_back(localAddrs[i]);
                 iter->second.globalAddrs.push_back(globalAddrs[i]);

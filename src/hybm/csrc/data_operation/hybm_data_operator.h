@@ -82,19 +82,6 @@ public:
                                    << localSpaceSize_[type] << ", rankCnt:" << rankCount_[type]);
     };
 
-    uint32_t GetRankIdByGva(uint64_t gva) noexcept
-    {
-        for (auto type = 0; type < HYBM_MEM_TYPE_BUTT; ++type) {
-            if (gva >= gva_[type] && gva < (gva_[type] + rankCount_[type] * localSpaceSize_[type])) {
-                return (gva - gva_[type]) / localSpaceSize_[type];
-            }
-        }
-        BM_LOG_DEBUG("failed to get rank id by gva: " << std::hex << gva << ", gva of device:0x" << std::hex
-                                                      << gva_[HYBM_MEM_TYPE_DEVICE] << ", gva of host:0x"
-                                                      << gva_[HYBM_MEM_TYPE_HOST]);
-        return UINT32_MAX;
-    }
-
     virtual void CleanUp() noexcept
     {
         BM_LOG_INFO("DataOperator not support");

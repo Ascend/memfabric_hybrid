@@ -641,44 +641,40 @@ void DataOpDeviceRDMA::ClassifyDataAddr(void **globalAddrs, void **localAddrs, c
                                         uint32_t globalRankId) noexcept
 {
     for (size_t i = 0; i < batchSize; ++i) {
-        uint32_t gvaRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(globalAddrs[i]));
-        if (gvaRankId == UINT32_MAX) {
-            gvaRankId = globalRankId;
-        }
-        if (gvaRankId == rankId_) {
-            auto iter = localed.find(gvaRankId);
+        if (globalRankId == rankId_) {
+            auto iter = localed.find(globalRankId);
             if (iter == localed.end()) {
                 CopyDescriptor desc{};
                 desc.localAddrs.push_back(localAddrs[i]);
                 desc.globalAddrs.push_back(globalAddrs[i]);
                 desc.counts.push_back(counts[i]);
-                localed.emplace(std::make_pair(gvaRankId, desc));
+                localed.emplace(std::make_pair(globalRankId, desc));
             } else {
                 iter->second.localAddrs.push_back(localAddrs[i]);
                 iter->second.globalAddrs.push_back(globalAddrs[i]);
                 iter->second.counts.push_back(counts[i]);
             }
         } else if (!transportManager_->QueryHasRegistered((uint64_t)localAddrs[i], counts[i])) {
-            auto iter = notRegistered.find(gvaRankId);
+            auto iter = notRegistered.find(globalRankId);
             if (iter == notRegistered.end()) {
                 CopyDescriptor desc{};
                 desc.localAddrs.push_back(localAddrs[i]);
                 desc.globalAddrs.push_back(globalAddrs[i]);
                 desc.counts.push_back(counts[i]);
-                notRegistered.emplace(std::make_pair(gvaRankId, desc));
+                notRegistered.emplace(std::make_pair(globalRankId, desc));
             } else {
                 iter->second.localAddrs.push_back(localAddrs[i]);
                 iter->second.globalAddrs.push_back(globalAddrs[i]);
                 iter->second.counts.push_back(counts[i]);
             }
         } else {
-            auto iter = registered.find(gvaRankId);
+            auto iter = registered.find(globalRankId);
             if (iter == registered.end()) {
                 CopyDescriptor desc{};
                 desc.localAddrs.push_back(localAddrs[i]);
                 desc.globalAddrs.push_back(globalAddrs[i]);
                 desc.counts.push_back(counts[i]);
-                registered.emplace(std::make_pair(gvaRankId, desc));
+                registered.emplace(std::make_pair(globalRankId, desc));
             } else {
                 iter->second.localAddrs.push_back(localAddrs[i]);
                 iter->second.globalAddrs.push_back(globalAddrs[i]);
@@ -819,29 +815,26 @@ Result DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtO
 {
     auto ret = 0;
     auto batchSize = params.batchSize;
-    ExtOptions tmpOptions = options;
     std::set<uint32_t> asyncWriteRanks{};
     // 先写异步
     for (uint32_t i = 0; i < batchSize; i++) {
-        uint32_t srcRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(params.sources[i]));
-        uint32_t dstRankId = GetRankIdByGva(reinterpret_cast<uint64_t>(params.destinations[i]));
-        tmpOptions.srcRankId = srcRankId;
-        tmpOptions.destRankId = dstRankId;
+        auto srcRankId = options.srcRankId;
+        auto dstRankId = options.destRankId;
 
         if (srcRankId == rankId_ && dstRankId == rankId_) {
             hybm_copy_params pm = {params.sources[i], params.destinations[i], params.dataSizes[i]};
-            ret = DataCopy(pm, direction, tmpOptions);
+            ret = DataCopy(pm, direction, options);
             BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "write default failed:", ret);
         } else if (srcRankId == rankId_) {
-            ret = transportManager_->WriteRemoteAsync(tmpOptions.destRankId, (uint64_t)params.sources[i],
+            ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)params.sources[i],
                                                       (uint64_t)params.destinations[i], params.dataSizes[i]);
             BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
-            asyncWriteRanks.insert(tmpOptions.destRankId);
+            asyncWriteRanks.insert(options.destRankId);
         } else if (dstRankId == rankId_) {
-            ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)params.destinations[i],
+            ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)params.destinations[i],
                                                      (uint64_t)params.sources[i], params.dataSizes[i]);
             BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
-            asyncWriteRanks.insert(tmpOptions.srcRankId);
+            asyncWriteRanks.insert(options.srcRankId);
         } else {
             BM_LOG_ERROR("invalid param, local rank:" << rankId_ << ", srcId: " << srcRankId
                                                       << ", dstId: " << dstRankId);

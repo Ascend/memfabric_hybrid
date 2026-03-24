@@ -818,8 +818,8 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     for (uint32_t i = 0; i < params.batchSize; ++i) {
         std::pair<uint32_t, uint32_t> p2pInfo;
         LocateAddrAndRank(params.sources[i], params.destinations[i], params.dataSizes[i], p2pInfo);
-        BM_LOG_DEBUG("========== " << (uint64_t)params.sources[i] << " " << params.destinations[i] << " "
-                                   << (uint64_t)params.dataSizes[i]);
+        BM_LOG_DEBUG("source:" << VaToStr(params.sources[i]) << " destination:" << VaToStr(params.destinations[i])
+                               << " dataSize:" << params.dataSizes[i]);
         sOptions.groupMap[p2pInfo].push_back(i);
     }
 
