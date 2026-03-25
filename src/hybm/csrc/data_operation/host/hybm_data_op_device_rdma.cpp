@@ -592,6 +592,7 @@ Result DataOpDeviceRDMA::BatchDataCopyLocalAsync(hybm_batch_copy_params &params,
         auto count = params.dataSizes[i];
         ret = DlAclApi::AclrtMemcpyAsync(destAddr, count, srcAddr, count, direction, st);
         if (ret != 0) {
+            (void)DlAclApi::AclrtSynchronizeStream(st);
             BM_LOG_ERROR("copy memory on local failed: " << ret << " stream:" << reinterpret_cast<uintptr_t>(st)
                                                          << " direct:" << direction << std::hex << " src:" << srcAddr
                                                          << " dst:" << destAddr);
@@ -696,6 +697,7 @@ Result DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const Ex
                      notRegistered, options.destRankId);
 
     // 先写异步
+    std::set<uint32_t> asyncSubmittedRanks{};
     for (auto &it : registered) {
         hybm_batch_copy_params regParams = {it.second.localAddrs.data(), it.second.globalAddrs.data(),
                                             it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
@@ -704,7 +706,14 @@ Result DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const Ex
         for (uint32_t i = 0; i < regParams.batchSize; ++i) {
             ret = transportManager_->WriteRemoteAsync(tmpOptions.destRankId, (uint64_t)regParams.sources[i],
                                                       (uint64_t)regParams.destinations[i], regParams.dataSizes[i]);
-            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            if (ret != BM_OK) {
+                for (uint32_t r : asyncSubmittedRanks) {
+                    transportManager_->Synchronize(r);
+                }
+                BM_LOG_ERROR("Failed to write src to dest");
+                return ret;
+            }
+            asyncSubmittedRanks.insert(it.first);
         }
     }
     // 再写本地
@@ -747,6 +756,7 @@ Result DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ext
                      notRegistered, options.srcRankId);
 
     // 先写异步
+    std::set<uint32_t> asyncSubmittedRanks{};
     for (auto &it : registered) {
         hybm_batch_copy_params regParams = {it.second.globalAddrs.data(), it.second.localAddrs.data(),
                                             it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
@@ -754,7 +764,14 @@ Result DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ext
         for (uint32_t i = 0; i < regParams.batchSize; ++i) {
             ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)regParams.destinations[i],
                                                      (uint64_t)regParams.sources[i], regParams.dataSizes[i]);
-            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to read src to dest", ret);
+            if (ret != BM_OK) {
+                for (uint32_t r : asyncSubmittedRanks) {
+                    transportManager_->Synchronize(r);
+                }
+                BM_LOG_ERROR("Failed to read src to dest");
+                return ret;
+            }
+            asyncSubmittedRanks.insert(it.first);
         }
     }
     // 再写本地
@@ -828,12 +845,24 @@ Result DataOpDeviceRDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtO
         } else if (srcRankId == rankId_) {
             ret = transportManager_->WriteRemoteAsync(options.destRankId, (uint64_t)params.sources[i],
                                                       (uint64_t)params.destinations[i], params.dataSizes[i]);
-            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            if (ret != BM_OK) {
+                for (uint32_t r : asyncWriteRanks) {
+                    transportManager_->Synchronize(r);
+                }
+                BM_LOG_ERROR("Failed to write src to dest");
+                return ret;
+            }
             asyncWriteRanks.insert(options.destRankId);
         } else if (dstRankId == rankId_) {
             ret = transportManager_->ReadRemoteAsync(options.srcRankId, (uint64_t)params.destinations[i],
                                                      (uint64_t)params.sources[i], params.dataSizes[i]);
-            BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to write src to dest", ret);
+            if (ret != BM_OK) {
+                for (uint32_t r : asyncWriteRanks) {
+                    transportManager_->Synchronize(r);
+                }
+                BM_LOG_ERROR("Failed to read src to dest");
+                return ret;
+            }
             asyncWriteRanks.insert(options.srcRankId);
         } else {
             BM_LOG_ERROR("invalid param, local rank:" << rankId_ << ", srcId: " << srcRankId
