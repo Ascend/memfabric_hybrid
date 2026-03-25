@@ -155,11 +155,10 @@ private:
         ock::emb::OutLogger::Instance().Log(static_cast<int>(LEVEL), oss.str());       \
     } while (0)
 
-#define EM_LOG_DEBUG(ARGS)      EM_OUT_LOG("[embricks ", ock::emb::DEBUG_LEVEL, ARGS)
-#define EM_LOG_INFO(ARGS)       EM_OUT_LOG("[embricks ", ock::emb::INFO_LEVEL, ARGS)
-#define EM_LOG_WARN(ARGS)       EM_OUT_LOG("[embricks ", ock::emb::WARN_LEVEL, ARGS)
-#define EM_LOG_WARN_LIMIT(ARGS) EM_OUT_LOG_LIMIT("[embricks ", ock::emb::WARN_LEVEL, ARGS)
-#define EM_LOG_ERROR(ARGS)      EM_OUT_LOG("[embricks ", ock::emb::ERROR_LEVEL, ARGS)
+#define EM_LOG_DEBUG(ARGS) EM_OUT_LOG("[embricks ", ock::emb::DEBUG_LEVEL, ARGS)
+#define EM_LOG_INFO(ARGS)  EM_OUT_LOG("[embricks ", ock::emb::INFO_LEVEL, ARGS)
+#define EM_LOG_WARN(ARGS)  EM_OUT_LOG("[embricks ", ock::emb::WARN_LEVEL, ARGS)
+#define EM_LOG_ERROR(ARGS) EM_OUT_LOG("[embricks ", ock::emb::ERROR_LEVEL, ARGS)
 
 #define EM_ASSERT_RETURN(ARGS, RET)              \
     do {                                         \
@@ -169,20 +168,20 @@ private:
         }                                        \
     } while (0)
 
-#define EM_LOG_AND_SET_LAST_ERROR(msg)            \
-    do {                                          \
-        std::stringstream tmpStr;                 \
-        tmpStr << msg;                            \
-        ock::emb::ZBLastError::Set(tmpStr.str()); \
-        EM_LOG_ERROR(tmpStr.str());               \
+#define EM_LOG_AND_SET_LAST_ERROR(msg)          \
+    do {                                        \
+        std::stringstream tmpStr;               \
+        tmpStr << msg;                          \
+        ock::emb::LastError::Set(tmpStr.str()); \
+        EM_LOG_ERROR(tmpStr.str());             \
     } while (0)
 
-#define EM_LOG_INFO_AND_SET_LAST_ERROR(msg)       \
-    do {                                          \
-        std::stringstream tmpStr;                 \
-        tmpStr << msg;                            \
-        ock::emb::ZBLastError::Set(tmpStr.str()); \
-        EM_LOG_INFO(tmpStr.str());                \
+#define EM_LOG_INFO_AND_SET_LAST_ERROR(msg)     \
+    do {                                        \
+        std::stringstream tmpStr;               \
+        tmpStr << msg;                          \
+        ock::emb::LastError::Set(tmpStr.str()); \
+        EM_LOG_INFO(tmpStr.str());              \
     } while (0)
 
 #define EM_VALIDATE_RETURN(ARGS, msg, RET)       \

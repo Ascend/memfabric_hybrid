@@ -9,14 +9,11 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
-#define MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
+#include "emb_last_error.h"
 
-#include "embricks.h"
-
-#include "emb_defines.h"
-#include "emb_functions.h"
-#include "emb_logger.h"
-#include "emb_version.h"
-
-#endif // MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
+namespace ock {
+namespace emb {
+thread_local bool LastError::have_ = false;
+thread_local std::string LastError::msg_;
+} // namespace emb
+} // namespace ock
