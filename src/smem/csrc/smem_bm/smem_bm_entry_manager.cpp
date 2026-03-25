@@ -16,6 +16,8 @@
 #include "smem_net_group_engine.h"
 #include "smem_store_factory.h"
 #include "smem_tcp_config_store.h"
+#include "network_endpoint_util.h"
+
 #include "smem_bm_entry_manager.h"
 
 namespace ock {
@@ -113,8 +115,8 @@ int32_t SmemBmEntryManager::PrepareStore()
 int32_t SmemBmEntryManager::RacingForStoreServer()
 {
     std::string localIp;
-    auto ret = GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp);
-    SM_ASSERT_RETURN(ret == SM_OK, SM_ERROR);
+    auto success = NetworkEndpointUtil::GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp);
+    SM_ASSERT_RETURN(success, SM_ERROR);
     if (localIp != storeUrlExtraction_.ip) {
         return SM_OK;
     }
