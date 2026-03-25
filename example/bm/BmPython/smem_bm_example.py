@@ -121,6 +121,15 @@ def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int,
     assert result == 0, f"copy_data_batch failed: {result=}"
     logging.info("copy_data_batch success")
 
+    # Same G2G batch path via smem_bm_copy_batch_partial_succeed: expect overall ret==0 and per-element results==0.
+    ret, per_item = bm_handle.copy_data_batch_partial_succeed(
+        src_addrs=local_host_ptrs, dst_addrs=remote_host_ptrs, sizes=sizes, count=count,
+        type=bm.BmCopyType.G2G, flags=0)
+    assert ret == 0, f"copy_data_batch_partial_succeed failed: {ret=}"
+    assert len(per_item) == count, f"per_item length mismatch: {len(per_item)} != {count=}"
+    assert all(r == 0 for r in per_item), f"unexpected per-item errors: {per_item[:16]}..."
+    logging.info("copy_data_batch_partial_succeed success")
+
     logging.info('==================== waiting at barrier 2')
     barriers[2].wait()
     logging.info('==================== barrier 2 finished for copy data')

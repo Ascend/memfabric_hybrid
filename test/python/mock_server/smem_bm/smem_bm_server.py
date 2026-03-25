@@ -448,6 +448,32 @@ class MmcTest(TestServer):
         self.cli_return(ret)
 
     @result_handler
+    def copy_data_batch_partial_succeed(self, src_addrs: list[int], dst_addrs: list[int],
+                                        sizes: list[int], count: int, op_type_str: str, flag: int):
+        if op_type_str == 'H2G':
+            op_type = bm.BmCopyType.H2G
+        elif op_type_str == 'L2G':
+            op_type = bm.BmCopyType.L2G
+        elif op_type_str == 'G2H':
+            op_type = bm.BmCopyType.G2H
+        elif op_type_str == 'G2L':
+            op_type = bm.BmCopyType.G2L
+        elif op_type_str == 'G2G':
+            op_type = bm.BmCopyType.G2G
+        else:
+            raise f"Invalid op type({op_type_str})"
+        ret, results = self._bm_handle.copy_data_batch_partial_succeed(
+            src_addrs, dst_addrs, sizes, count, op_type, flag
+        )
+        if ret != 0:
+            failed_index = [idx for idx, code in enumerate(results) if code != 0]
+            self.cli_print(
+                f"bm_copy_batch_partial_succeed failed, ret={ret}, "
+                f"failed_index={failed_index}, per_item_results={results}"
+            )
+        self.cli_return(ret)
+
+    @result_handler
     def get_peer_rank_gva(self, rank_id: int, pool_type: str):
         mem_type = bm.BmMemType.HOST
         if pool_type == 'npu':
@@ -491,6 +517,8 @@ class MmcTest(TestServer):
             CliCommand("init_smem_bm", "initialize smem bm", self.init_smem_bm, 0),
             CliCommand("close_smem_bm", "destruct smem bm", self.close_smem_bm, 0),
             CliCommand("bm_copy_batch", "bm_copy_batch", self.copy_data_batch, 6),
+            CliCommand("bm_copy_batch_partial_succeed", "bm_copy_batch_partial_succeed",
+                       self.copy_data_batch_partial_succeed, 6),
             CliCommand("get_peer_rank_gva", "get gva by rank id and pool type", self.get_peer_rank_gva, 2),
             CliCommand("alloc_local_memory", "get local memory by size and memory type", self.alloc_local_memory, 2),
             CliCommand("free_local_memory", "free local memory by ptr", self.free_local_memory, 1),

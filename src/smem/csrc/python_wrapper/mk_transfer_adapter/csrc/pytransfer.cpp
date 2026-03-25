@@ -409,6 +409,34 @@ int TransferAdapterPy::BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs, 
     return smem_trans_batch_register_mem(handle_, registerAddrs.data(), capacities.data(), count, 0);
 }
 
+uintptr_t TransferAdapterPy::TransMalloc(size_t capacity)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, 0u);
+    if (capacity == 0) {
+        ADAPTER_LOG_ERROR("trans_malloc: capacity must be non-zero");
+        return 0;
+    }
+    void *ptr = smem_trans_malloc(handle_, capacity);
+    if (ptr == nullptr) {
+        ADAPTER_LOG_ERROR("smem_trans_malloc failed");
+    }
+    return reinterpret_cast<uintptr_t>(ptr);
+}
+
+int TransferAdapterPy::TransFree(uintptr_t buffer_addr)
+{
+    ADAPTER_ASSERT_RETURN(handle_ != nullptr, -1);
+    if (buffer_addr == 0) {
+        ADAPTER_LOG_ERROR("trans_free: invalid null address");
+        return -1;
+    }
+    int ret = smem_trans_free(handle_, reinterpret_cast<void *>(buffer_addr));
+    if (ret != 0) {
+        ADAPTER_LOG_ERROR("smem_trans_free failed, ret=" << ret);
+    }
+    return ret;
+}
+
 void TransferAdapterPy::TransferDestroy()
 {
     smem_trans_destroy(handle_, 0);
@@ -496,6 +524,10 @@ PYBIND11_MODULE(_pymf_transfer, m)
                  py::arg("buffer_addr"))
             .def("batch_register_memory", &TransferAdapterPy::BatchRegisterMemory,
                  py::call_guard<py::gil_scoped_release>(), py::arg("buffer_addrs"), py::arg("capacities"))
+            .def("trans_malloc", &TransferAdapterPy::TransMalloc, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("capacity"))
+            .def("trans_free", &TransferAdapterPy::TransFree, py::call_guard<py::gil_scoped_release>(),
+                 py::arg("buffer_addr"))
             .def("destroy", &TransferAdapterPy::TransferDestroy, py::call_guard<py::gil_scoped_release>())
             .def("unInitialize", &TransferAdapterPy::UnInitialize, py::call_guard<py::gil_scoped_release>());
 

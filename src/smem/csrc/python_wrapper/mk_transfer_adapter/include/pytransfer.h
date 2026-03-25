@@ -95,6 +95,10 @@ public:
 
     int BatchRegisterMemory(std::vector<uintptr_t> buffer_addrs, std::vector<size_t> capacities);
 
+    uintptr_t TransMalloc(size_t capacity);
+
+    int TransFree(uintptr_t buffer_addr);
+
     void TransferDestroy();
 
     void UnInitialize();

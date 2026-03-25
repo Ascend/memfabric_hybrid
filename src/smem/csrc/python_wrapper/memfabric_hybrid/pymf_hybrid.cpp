@@ -18,6 +18,7 @@
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 #include <cstdint>
+#include <cstddef>
 #include <mutex>
 #include <new>
 #include "smem.h"
@@ -167,7 +168,7 @@ public:
     int32_t CopyDataBatch(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts, std::vector<size_t> sizes,
                           uint32_t count, smem_bm_copy_type type, uint32_t flags)
     {
-        if (count == 0 || srcs.size() < count || dsts.size() < count || sizes.size() < count) {
+        if (count == 0 || srcs.size() != count || dsts.size() != count || sizes.size() != count) {
             return SMEM_INVALID_PARAM;
         }
         void **ptr = new void *[count + count];
@@ -185,6 +186,46 @@ public:
         auto ret = smem_bm_copy_batch(handle_, &batch_params, type, flags);
         delete[] ptr;
         return ret;
+    }
+
+    py::tuple CopyDataBatchPartialSucceed(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts,
+                                          std::vector<size_t> sizes, uint32_t count, smem_bm_copy_type type,
+                                          uint32_t flags)
+    {
+        if (count == 0 || srcs.size() != count || dsts.size() != count || sizes.size() != count) {
+            py::gil_scoped_acquire acquire;
+            return py::make_tuple(SMEM_INVALID_PARAM, std::vector<int32_t>{});
+        }
+
+        const size_t cnt = static_cast<size_t>(count);
+        if (cnt > SIZE_MAX / (2u * sizeof(void *)) || cnt > SIZE_MAX / sizeof(int32_t)) {
+            py::gil_scoped_acquire acquire;
+            return py::make_tuple(SMEM_INVALID_PARAM, std::vector<int32_t>{});
+        }
+
+        void **ptr = new void *[cnt + cnt];
+        int32_t *batchResults = new int32_t[cnt]();
+        if (ptr == nullptr || batchResults == nullptr) {
+            delete[] ptr;
+            delete[] batchResults;
+            throw std::runtime_error(std::string("alloc mem failed."));
+        }
+
+        void **sources = ptr;
+        void **destinations = ptr + count;
+        for (size_t i = 0; i < cnt; ++i) {
+            sources[i] = reinterpret_cast<void *>(srcs[i]);
+            destinations[i] = reinterpret_cast<void *>(dsts[i]);
+        }
+
+        smem_batch_copy_params batchParams = {sources, destinations, sizes.data(), count};
+        smem_batch_copy_result batchCopyResult = {batchResults, count};
+        auto ret = smem_bm_copy_batch_partial_succeed(handle_, &batchParams, type, flags, &batchCopyResult);
+        std::vector<int32_t> result(batchResults, batchResults + count);
+        delete[] ptr;
+        delete[] batchResults;
+        py::gil_scoped_acquire acquire;
+        return py::make_tuple(ret, result);
     }
 
     static int32_t Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
@@ -697,6 +738,21 @@ Returns:
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
              py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"), py::arg("type"),
              py::arg("flags"), R"(cop data with batch.)")
+        .def("copy_data_batch_partial_succeed", &BigMemory::CopyDataBatchPartialSucceed,
+             py::call_guard<py::gil_scoped_release>(), py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"),
+             py::arg("count"), py::arg("type"), py::arg("flags") = 0, R"(
+Data operation on Big Memory object with partial-success details.
+
+Arguments:
+    src_addrs(list[int]): source addresses of data
+    dst_addrs(list[int]): destination addresses of data
+    sizes(list[int]): size of each copy operation
+    count(int): number of copy operations
+    type(BmCopyType): copy type
+    flags(int): optional flags
+Returns:
+    tuple: (ret_code, per_item_results)
+)")
         .def("wait", &BigMemory::Wait, py::call_guard<py::gil_scoped_release>(), R"(
 Wait all issued async copy(s) finish.)");
 }
