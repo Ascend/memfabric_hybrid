@@ -40,7 +40,7 @@ constexpr char K_INVALID_LEADER_VALUE[] = "invalid-leader";
 constexpr char K_RECOVERED_WORLD_SIZE_VALUE[] = "8";
 constexpr char K_INVALID_WORLD_SIZE_VALUE[] = "bad";
 constexpr char K_CLUSTER_ID[] = "cluster-a";
-constexpr char K_CLUSTER_BACKEND_LOCK_NAME[] = "/memfabric_hybrid/config_store/clusters/cluster-a/backend";
+constexpr char K_BACKEND_LOCK_NAME[] = "backend";
 constexpr uint16_t K_STORE_PORT = 19000;
 constexpr uint32_t K_DEFAULT_WORLD_SIZE = 4;
 constexpr uint32_t K_RECOVERED_WORLD_SIZE = 8;
@@ -213,13 +213,13 @@ TEST_F(SmemHaConfigStoreTest, InitBackendConnectionMapsBackendInitializeResult)
     EXPECT_FALSE(store.InitBackendConnection());
 }
 
-TEST_F(SmemHaConfigStoreTest, ConstructorBuildsClusterScopedBackendLockName)
+TEST_F(SmemHaConfigStoreTest, ConstructorKeepsBackendLockNameUnqualified)
 {
     auto backend = MakeBackend();
     auto client = MakeClientDelegate();
     HaConfigStore store(backend, client, K_STORE_ENDPOINT, K_DEFAULT_WORLD_SIZE, K_CLUSTER_ID);
 
-    EXPECT_EQ(K_CLUSTER_BACKEND_LOCK_NAME, store.backendLockName_);
+    EXPECT_EQ(K_BACKEND_LOCK_NAME, store.backendLockName_);
 }
 
 TEST_F(SmemHaConfigStoreTest, IsLeaderAliveHandlesBackendResponseAndConnectivity)

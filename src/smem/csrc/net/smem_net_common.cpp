@@ -31,11 +31,9 @@ const std::string PROTOCOL_TCP = "tcp://";
 
 namespace {
 
-constexpr char ETCD_URL_PREFIX[] = "etcd://";
 constexpr char URL_FRAGMENT_DELIMITER = '#';
 constexpr char CLUSTER_ID_HYPHEN = '-';
 constexpr char CLUSTER_ID_UNDERSCORE = '_';
-constexpr size_t ETCD_URL_PREFIX_LEN = sizeof(ETCD_URL_PREFIX) - 1;
 
 inline bool IsValidClusterIdCharacter(char ch)
 {
@@ -43,7 +41,7 @@ inline bool IsValidClusterIdCharacter(char ch)
     return std::isalnum(clusterChar) != 0 || ch == CLUSTER_ID_HYPHEN || ch == CLUSTER_ID_UNDERSCORE;
 }
 
-Result StripEtcdClusterFragment(const std::string &url, std::string &sanitizedUrl)
+Result StripClusterFragment(const std::string &url, std::string &sanitizedUrl)
 {
     sanitizedUrl = url;
 
@@ -57,8 +55,8 @@ Result StripEtcdClusterFragment(const std::string &url, std::string &sanitizedUr
         return SM_INVALID_PARAM;
     }
 
-    if (url.compare(0, ETCD_URL_PREFIX_LEN, ETCD_URL_PREFIX) != 0) {
-        SM_LOG_ERROR("invalid store url: cluster fragment is only supported for etcd, url: " << url);
+    if (!NetworkEndpointUtil::SupportsClusterFragment(url)) {
+        SM_LOG_ERROR("invalid store url: cluster fragment is only supported for etcd/reg, url: " << url);
         return SM_INVALID_PARAM;
     }
 
@@ -125,7 +123,7 @@ inline bool IsValidIpV4(const std::string &address)
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
 {
     std::string sanitizedUrl;
-    Result stripResult = StripEtcdClusterFragment(url, sanitizedUrl);
+    Result stripResult = StripClusterFragment(url, sanitizedUrl);
     SM_ASSERT_RETURN(stripResult == SM_OK, stripResult);
 
     auto tcpUrl = sanitizedUrl;

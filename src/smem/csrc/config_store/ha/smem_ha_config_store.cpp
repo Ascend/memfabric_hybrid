@@ -41,20 +41,6 @@ using namespace ock::mf;
 
 namespace {
 constexpr char BACKEND_LOCK_NAME[] = "backend";
-constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clusters/";
-
-[[nodiscard]] std::string BuildBackendLockName(const std::string &instanceId)
-{
-    if (instanceId.empty()) {
-        return BACKEND_LOCK_NAME;
-    }
-
-    std::string qualifiedLockName = CONFIG_STORE_CLUSTER_ROOT;
-    qualifiedLockName.append(instanceId);
-    qualifiedLockName.push_back('/');
-    qualifiedLockName.append(BACKEND_LOCK_NAME);
-    return qualifiedLockName;
-}
 }
 
 // ============================================================================
@@ -63,12 +49,10 @@ constexpr char CONFIG_STORE_CLUSTER_ROOT[] = "/memfabric_hybrid/config_store/clu
 
 HaConfigStore::HaConfigStore(StoreBackendPtr backend, TcpConfigStorePtr clientDelegate, const std::string &endpoints,
                              uint32_t worldSize, std::string instanceId)
-    : endpoints_(endpoints),
-      worldSize_(worldSize),
-      backendLockName_(BuildBackendLockName(instanceId)),
-      backend_(std::move(backend)),
+    : endpoints_(endpoints), worldSize_(worldSize), backendLockName_(BACKEND_LOCK_NAME), backend_(std::move(backend)),
       clientDelegate_(std::move(clientDelegate))
 {
+    (void)instanceId;
     SM_LOG_DEBUG("HaConfigStore constructing, endpoints: "
                  << endpoints << ", worldSize: " << worldSize << ", backendLockName: " << backendLockName_);
 }

@@ -22,7 +22,7 @@ namespace smem {
 /**
  * @brief Backend storage type.
  */
-enum class BackendType { TCP, ETCD, UNKNOWN };
+enum class BackendType { TCP, ETCD, REG, UNKNOWN };
 
 /**
  * @brief Network utility helper for endpoint parsing and connectivity detection.
@@ -59,8 +59,10 @@ public:
      * Supported formats:
      * - tcp://127.0.0.1:12335
      * - etcd://127.0.0.1:12335
+     * - reg://127.0.0.1:12335
      * - tcp://[::1]:8080
      * - etcd://[2001:db8::1]:8080
+     * - reg://[2001:db8::1]:8080
      *
      * @param endpoint   [in]  Endpoint string.
      * @param ip         [out] Extracted IP address.
@@ -95,7 +97,7 @@ public:
      * IPv4 format:  protocol://ip:port
      * IPv6 format:  protocol://[ipv6]:port
      *
-     * @param protocol  [in] Protocol scheme (e.g., "tcp", "etcd").
+     * @param protocol  [in] Protocol scheme (e.g., "tcp", "etcd", "reg").
      * @param ip        [in] IP address (IPv4 or IPv6 literal).
      * @param port      [in] Port number.
      *
@@ -125,6 +127,15 @@ public:
      * @param url   [in,out] URL string to be converted.
      */
     static void ConvertToTcpUrl(std::string &url) noexcept;
+
+    /**
+     * @brief Check whether the given URL scheme supports cluster fragment (e.g. etcd://, reg://).
+     *
+     * @param url   [in] URL string to check.
+     *
+     * @return true if the URL scheme supports cluster fragment; otherwise false.
+     */
+    [[nodiscard]] static bool SupportsClusterFragment(const std::string &url) noexcept;
 
 private:
     NetworkEndpointUtil() = default;

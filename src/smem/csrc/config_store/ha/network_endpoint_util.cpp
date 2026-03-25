@@ -318,8 +318,10 @@ bool NetworkEndpointUtil::ExtractIpAndPort(const std::string &endpoint, std::str
 
     constexpr const char *kTcpPrefix = "tcp://";
     constexpr const char *kEtcdPrefix = "etcd://";
+    constexpr const char *kRegPrefix = "reg://";
     constexpr size_t kTcpPrefixLen = 6;
     constexpr size_t kEtcdPrefixLen = 7;
+    constexpr size_t kRegPrefixLen = 6;
     constexpr size_t kBracketPortOffset = 2; // "]:" length
     constexpr uint32_t kMaxPort = 65535U;
     constexpr uint32_t kIpv4MaskMax = 32U;
@@ -331,6 +333,9 @@ bool NetworkEndpointUtil::ExtractIpAndPort(const std::string &endpoint, std::str
     } else if (endpoint.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0) {
         processed = endpoint.substr(kEtcdPrefixLen);
         type = BackendType::ETCD;
+    } else if (endpoint.compare(0, kRegPrefixLen, kRegPrefix) == 0) {
+        processed = endpoint.substr(kRegPrefixLen);
+        type = BackendType::REG;
     } else {
         SM_LOG_ERROR("protocol not supported, endpoint=" << endpoint);
         return resetAndFail();
@@ -554,6 +559,16 @@ void NetworkEndpointUtil::ConvertToTcpUrl(std::string &url) noexcept
     }
 
     url.replace(0, pos, "tcp");
+}
+
+bool NetworkEndpointUtil::SupportsClusterFragment(const std::string &url) noexcept
+{
+    constexpr const char *kEtcdPrefix = "etcd://";
+    constexpr const char *kRegPrefix = "reg://";
+    constexpr size_t kEtcdPrefixLen = 7;
+    constexpr size_t kRegPrefixLen = 6;
+
+    return url.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0 || url.compare(0, kRegPrefixLen, kRegPrefix) == 0;
 }
 
 } // namespace smem

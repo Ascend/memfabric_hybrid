@@ -63,6 +63,7 @@ constexpr uint16_t K_STORE_PORT_BASE = 19000;
 constexpr uint16_t K_STORE_PORT_SPAN = 1000;
 constexpr uint16_t K_FAILED_STORE_PORT_BASE = 21000;
 constexpr char K_STORE_URL[] = "tcp://127.0.0.1:19090";
+constexpr char K_REG_STORE_URL[] = "reg://127.0.0.1:2379#clusterA";
 constexpr char K_INVALID_STORE_URL[] = "tcp://invalid";
 constexpr char K_ENGINE_NAME[] = "trans-engine";
 const std::string K_DEVICE_DESC_A = "devA";
@@ -435,6 +436,22 @@ TEST_F(SmemTransStoreHelperTest, InitializeReturnsNewObjectFailedWhenClientStore
     SmemStoreHelper helper(K_ENGINE_NAME, storeUrl, SMEM_TRANS_RECEIVER);
 
     EXPECT_EQ(SM_NEW_OBJECT_FAILED, helper.Initialize(K_ENTITY_ID, 0));
+}
+
+TEST_F(SmemTransStoreHelperTest, InitializeSucceedsWithRegUrlWhenSharedFactoryAcceptsIt)
+{
+    auto fakeStore = MakeFakeStore();
+    auto storePtr = ToStorePtr(fakeStore);
+    ASSERT_NE(nullptr, storePtr.Get());
+    MOCKER_CPP(&ock::smem::StoreFactory::CreateStoreByUrl,
+               ock::smem::StorePtr(*)(const std::string &, bool, uint32_t, int32_t, int32_t))
+        .stubs()
+        .will(returnValue(storePtr));
+
+    SmemStoreHelper helper(K_ENGINE_NAME, K_REG_STORE_URL, SMEM_TRANS_SENDER);
+    EXPECT_EQ(SM_OK, helper.Initialize(K_ENTITY_ID, K_MAX_RETRY));
+    EXPECT_NE(nullptr, helper.store_.Get());
+    helper.Destroy();
 }
 
 TEST_F(SmemTransStoreHelperTest, DestroyResetsStoreAndDestroysConfiguredUrl)

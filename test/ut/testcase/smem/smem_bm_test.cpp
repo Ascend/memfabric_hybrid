@@ -28,6 +28,7 @@
 #include "smem_tcp_config_store.h"
 #include "smem_net_group_engine.h"
 #include "smem_local_memory_backend.h"
+#include "smem_store_factory.h"
 
 #define private public
 #include "smem_bm_entry.h"
@@ -194,6 +195,99 @@ static int32_t HybmImportCaptureFlagsFail(hybm_entity_t, hybm_exchange_info *, u
 {
     g_lastHybmImportFlags = flags;
     return -1;
+}
+
+const auto BACKEND_GET = +[](void *, const char *, void *, uint64_t, uint32_t, uint64_t *size) -> int32_t {
+    if (size != nullptr) {
+        *size = 0;
+    }
+    return SMEM_STORE_BACKEND_CODE_NOENT;
+};
+
+StorePtr MakeFakeStorePtr()
+{
+    auto child = SmMakeRef<FakeStoreManager>();
+    StoreManagerPtr manager = Convert<FakeStoreManager, ConfigStoreManager>(child);
+    return Convert<ConfigStoreManager, ConfigStore>(manager);
+}
+
+bool BackendDistributed(uint32_t flags)
+{
+    (void)flags;
+    return true;
+}
+
+int32_t BackendCreate(const char *name, const char *prefix, uint32_t flags, void **handle)
+{
+    (void)name;
+    (void)prefix;
+    (void)flags;
+    if (handle != nullptr) {
+        *handle = reinterpret_cast<void *>(0x1);
+    }
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+void BackendDestroy(void *handle)
+{
+    (void)handle;
+}
+
+int32_t BackendPut(void *handle, const char *key, const void *value, uint64_t size, uint32_t flags)
+{
+    (void)handle;
+    (void)key;
+    (void)value;
+    (void)size;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+int32_t BackendRemove(void *handle, const char *key, uint32_t flags)
+{
+    (void)handle;
+    (void)key;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+int32_t BackendLock(void *handle, const char *name, uint32_t flags)
+{
+    (void)handle;
+    (void)name;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+int32_t BackendTryLock(void *handle, const char *name, uint32_t flags)
+{
+    (void)handle;
+    (void)name;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+int32_t BackendUnlock(void *handle, const char *name, uint32_t flags)
+{
+    (void)handle;
+    (void)name;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
+smem_conf_store_backend_op_t MakeBackendOp()
+{
+    smem_conf_store_backend_op_t backendOp{};
+    backendOp.distributed = BackendDistributed;
+    backendOp.create = BackendCreate;
+    backendOp.destroy = BackendDestroy;
+    backendOp.put = BackendPut;
+    backendOp.get = BACKEND_GET;
+    backendOp.remove = BackendRemove;
+    backendOp.lock = BackendLock;
+    backendOp.try_lock = BackendTryLock;
+    backendOp.unlock = BackendUnlock;
+    return backendOp;
 }
 } // namespace
 
@@ -1136,6 +1230,31 @@ TEST_F(SmemBmTest, smem_create_config_store_success)
     EXPECT_EQ(ret, 0);
     smem_bm_destroy(handle);
     smem_bm_uninit(0);
+}
+
+TEST_F(SmemBmTest, smem_config_store_set_backend_op_failed_with_null)
+{
+    EXPECT_EQ(SM_INVALID_PARAM, smem_config_store_set_backend_op(nullptr));
+}
+
+TEST_F(SmemBmTest, smem_config_store_set_backend_op_overwrite_success)
+{
+    auto backendOp = MakeBackendOp();
+    EXPECT_EQ(SM_OK, smem_config_store_set_backend_op(&backendOp));
+    EXPECT_EQ(SM_OK, smem_config_store_set_backend_op(&backendOp));
+}
+
+TEST_F(SmemBmTest, smem_create_config_store_reg_success)
+{
+    auto fakeStore = MakeFakeStorePtr();
+    ASSERT_NE(nullptr, fakeStore.Get());
+    MOCKER_CPP(&ock::smem::StoreFactory::CreateStoreByUrl,
+               ock::smem::StorePtr(*)(const std::string &, bool, uint32_t, int32_t, int32_t))
+        .stubs()
+        .will(returnValue(fakeStore));
+
+    auto ret = smem_create_config_store("reg://127.0.0.1:2379#clusterA");
+    EXPECT_EQ(SM_OK, ret);
 }
 
 TEST_F(SmemBmTest, smem_bm_copy_failed)

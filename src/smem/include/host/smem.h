@@ -15,6 +15,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "smem_def.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,10 +53,21 @@ int32_t smem_init(uint32_t flags);
  * @brief Create configure store server for SMEM used.
  *
  * @param storeUrl         [in] configure store url for control, e.g. tcp://ip:port,
- *                              etcd://ip:port, or etcd://ip:port#instanceId
+ *                              etcd://ip:port, etcd://ip:port#instanceId,
+ *                              reg://ip:port, or reg://ip:port#instanceId
  * @return 0 if successful
  */
 int32_t smem_create_config_store(const char *storeUrl);
+
+/**
+ * @brief Register config store backend operation set for reg:// URLs.
+ *
+ * @param backendOp        [in] backend operation set pointer, must not be null
+ *                              repeated registration overwrites the previous value
+ *                              this API only registers the operation set and does not create a connection
+ * @return 0 if successful
+ */
+int32_t smem_config_store_set_backend_op(const smem_conf_store_backend_op_t *backendOp);
 
 /**
  * @brief Set external log function, user can set customized logger function,

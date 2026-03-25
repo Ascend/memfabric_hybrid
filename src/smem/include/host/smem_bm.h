@@ -36,7 +36,8 @@ int32_t smem_bm_config_init(smem_bm_config_t *config);
  *
  * @param storeURL         [in] configure store url for control,
  *                              e.g. tcp://ip:port, tcp://[ip]:port, etcd://[ip]:port,
- *                              or etcd://[ip]:port#instanceId (for etcd multi-cluster isolation)
+ *                              etcd://[ip]:port#instanceId, reg://[ip]:port,
+ *                              or reg://[ip]:port#instanceId (for multi-cluster isolation)
  * @param worldSize        [in] number of guys participating
  * @param deviceId         [in] device id
  * @param config           [in] extract config

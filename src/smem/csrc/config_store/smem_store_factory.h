@@ -52,7 +52,7 @@ public:
     /**
      * @brief create a new store
      * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or etcd://127.0.0.1:12335#instanceId
-     *                  or redis://127.0.0.1:12335
+     *                  or reg://127.0.0.1:12335 or reg://127.0.0.1:12335#instanceId
      * @param isServer is local store server side
      * @param rankId rank id, default 0
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
@@ -63,7 +63,7 @@ public:
 
     /**
     * @brief destroy on exist store
-    * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335
+    * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or reg://127.0.0.1:12335
     */
     static void DestroyStore(const std::string &storeUrl) noexcept;
 

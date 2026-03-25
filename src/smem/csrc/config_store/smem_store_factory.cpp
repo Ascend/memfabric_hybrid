@@ -18,6 +18,7 @@
 #include "smem_local_memory_backend.h"
 #include "network_endpoint_util.h"
 #include "smem_etcd_store_backend.h"
+#include "smem_external_backend.h"
 #include "smem_ha_config_store.h"
 #include "smem_store_factory.h"
 
@@ -31,11 +32,9 @@ smem_tls_config StoreFactory::tlsOption_{};
 
 namespace {
 
-constexpr char ETCD_URL_PREFIX[] = "etcd://";
 constexpr char URL_FRAGMENT_DELIMITER = '#';
 constexpr char CLUSTER_ID_HYPHEN = '-';
 constexpr char CLUSTER_ID_UNDERSCORE = '_';
-constexpr size_t ETCD_URL_PREFIX_LEN = sizeof(ETCD_URL_PREFIX) - 1;
 
 struct ParsedStoreUrl {
     std::string backendUrl;
@@ -50,7 +49,7 @@ struct ParsedStoreUrl {
 
 [[nodiscard]] bool ParseStoreUrl(const std::string &storeUrl, ParsedStoreUrl &parsedStoreUrl) noexcept
 {
-    // Keep CreateStoreByUrl stable by carrying optional etcd cluster isolation in the URL fragment.
+    // Keep CreateStoreByUrl stable by carrying optional distributed cluster isolation in the URL fragment.
     parsedStoreUrl.backendUrl = storeUrl;
     parsedStoreUrl.instanceId.clear();
 
@@ -64,8 +63,8 @@ struct ParsedStoreUrl {
         return false;
     }
 
-    if (storeUrl.compare(0, ETCD_URL_PREFIX_LEN, ETCD_URL_PREFIX) != 0) {
-        STORE_LOG_ERROR("Invalid store url: cluster fragment is only supported for etcd, storeUrl: " << storeUrl);
+    if (!NetworkEndpointUtil::SupportsClusterFragment(storeUrl)) {
+        STORE_LOG_ERROR("Invalid store url: cluster fragment is only supported for etcd/reg, storeUrl: " << storeUrl);
         return false;
     }
 
@@ -103,6 +102,11 @@ struct ParsedStoreUrl {
         case BackendType::ETCD: {
             auto backend = SmMakeRef<SmemEtcdStoreBackend>(instanceId);
             result = Convert<SmemEtcdStoreBackend, ConfigStoreBackend>(backend);
+            break;
+        }
+        case BackendType::REG: {
+            auto backend = SmMakeRef<SmemExternalBackend>(instanceId);
+            result = Convert<SmemExternalBackend, ConfigStoreBackend>(backend);
             break;
         }
         default:
@@ -186,7 +190,15 @@ StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServ
         return pos->second;
     }
     auto backend = CreateBackend(type, parsedStoreUrl.backendUrl, "", "", parsedStoreUrl.instanceId);
-    STORE_ASSERT_RETURN(backend != nullptr, nullptr);
+    if (backend == nullptr) {
+        failedReason_ = SM_ERROR;
+        return nullptr;
+    }
+    if (type == BackendType::REG && !backend->IsDistributed()) {
+        STORE_LOG_ERROR("External backend must be distributed, url: " << parsedStoreUrl.backendUrl);
+        failedReason_ = SM_ERROR;
+        return nullptr;
+    }
     if (backend->IsDistributed()) {
         return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.instanceId);
     }

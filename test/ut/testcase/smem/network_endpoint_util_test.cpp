@@ -88,6 +88,14 @@ TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_etcd_ipv4_normal)
     EXPECT_EQ(type_, BackendType::ETCD);
 }
 
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_reg_ipv4_normal)
+{
+    EXPECT_TRUE(NetworkEndpointUtil::ExtractIpAndPort("reg://192.168.1.100:2379", ip_, port_, type_));
+    EXPECT_EQ(ip_, "192.168.1.100");
+    EXPECT_EQ(port_, K_PORT_ETCD);
+    EXPECT_EQ(type_, BackendType::REG);
+}
+
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_ipv6_bracketed)
 {
     EXPECT_TRUE(NetworkEndpointUtil::ExtractIpAndPort("tcp://[::1]:8080", ip_, port_, type_));
@@ -102,6 +110,14 @@ TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_etcd_ipv6_bracketed)
     EXPECT_EQ(ip_, "2001:db8::1");
     EXPECT_EQ(port_, K_PORT_COMMON);
     EXPECT_EQ(type_, BackendType::ETCD);
+}
+
+TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_reg_ipv6_bracketed)
+{
+    EXPECT_TRUE(NetworkEndpointUtil::ExtractIpAndPort("reg://[2001:db8::1]:8080", ip_, port_, type_));
+    EXPECT_EQ(ip_, "2001:db8::1");
+    EXPECT_EQ(port_, K_PORT_COMMON);
+    EXPECT_EQ(type_, BackendType::REG);
 }
 
 TEST_F(NetworkEndpointUtilTest, ExtractIpAndPort_tcp_ipv4_with_nic_suffix)
@@ -270,6 +286,16 @@ TEST_F(NetworkEndpointUtilTest, BuildEndpoint_etcd_ipv4)
     EXPECT_EQ(NetworkEndpointUtil::BuildEndpoint("etcd", "10.0.0.1", K_PORT_ETCD), "etcd://10.0.0.1:2379");
 }
 
+TEST_F(NetworkEndpointUtilTest, BuildEndpoint_reg_ipv4)
+{
+    EXPECT_EQ(NetworkEndpointUtil::BuildEndpoint("reg", "10.0.0.1", K_PORT_ETCD), "reg://10.0.0.1:2379");
+}
+
+TEST_F(NetworkEndpointUtilTest, BuildEndpoint_reg_ipv6)
+{
+    EXPECT_EQ(NetworkEndpointUtil::BuildEndpoint("reg", "2001:db8::1", K_PORT_ETCD), "reg://[2001:db8::1]:2379");
+}
+
 TEST_F(NetworkEndpointUtilTest, BuildEndpoint_invalid_ip)
 {
     EXPECT_TRUE(NetworkEndpointUtil::BuildEndpoint("tcp", "not_an_ip", K_PORT_COMMON).empty());
@@ -302,6 +328,17 @@ TEST_F(NetworkEndpointUtilTest, RoundTrip_ipv6)
     EXPECT_EQ(type_, BackendType::ETCD);
 }
 
+TEST_F(NetworkEndpointUtilTest, RoundTrip_reg_ipv6)
+{
+    const std::string endpoint = NetworkEndpointUtil::BuildEndpoint("reg", "::1", K_PORT_ROUND_TRIP_IPV6);
+    ASSERT_FALSE(endpoint.empty());
+
+    ASSERT_TRUE(NetworkEndpointUtil::ExtractIpAndPort(endpoint, ip_, port_, type_));
+    EXPECT_EQ(ip_, "::1");
+    EXPECT_EQ(port_, K_PORT_ROUND_TRIP_IPV6);
+    EXPECT_EQ(type_, BackendType::REG);
+}
+
 TEST_F(NetworkEndpointUtilTest, ConvertToTcpUrl_no_scheme)
 {
     std::string url = "127.0.0.1:8080";
@@ -319,6 +356,13 @@ TEST_F(NetworkEndpointUtilTest, ConvertToTcpUrl_already_tcp)
 TEST_F(NetworkEndpointUtilTest, ConvertToTcpUrl_etcd_to_tcp)
 {
     std::string url = "etcd://127.0.0.1:8080";
+    NetworkEndpointUtil::ConvertToTcpUrl(url);
+    EXPECT_EQ(url, "tcp://127.0.0.1:8080");
+}
+
+TEST_F(NetworkEndpointUtilTest, ConvertToTcpUrl_reg_to_tcp)
+{
+    std::string url = "reg://127.0.0.1:8080";
     NetworkEndpointUtil::ConvertToTcpUrl(url);
     EXPECT_EQ(url, "tcp://127.0.0.1:8080");
 }

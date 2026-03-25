@@ -18,10 +18,18 @@
 #include "smem_store_factory.h"
 #include "smem_last_error.h"
 #include "smem_trans_fault_handler.h"
+#include "smem_external_backend_registry.h"
 #include "smem.h"
 
 namespace {
 bool g_smemInited = false;
+
+bool IsValidBackendOp(const smem_conf_store_backend_op_t &backendOp)
+{
+    return backendOp.distributed != nullptr && backendOp.create != nullptr && backendOp.destroy != nullptr &&
+           backendOp.put != nullptr && backendOp.get != nullptr && backendOp.remove != nullptr &&
+           backendOp.lock != nullptr && backendOp.try_lock != nullptr && backendOp.unlock != nullptr;
+}
 }
 
 SMEM_API int32_t smem_init(uint32_t flags)
@@ -61,6 +69,21 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl)
                        []() { ock::smem::StoreFactory::DestroyStoreAll(true); });
     }
 
+    return ock::smem::SM_OK;
+}
+
+SMEM_API int32_t smem_config_store_set_backend_op(const smem_conf_store_backend_op_t *backendOp)
+{
+    if (backendOp == nullptr) {
+        SM_LOG_ERROR("backend operation set is null.");
+        return ock::smem::SM_INVALID_PARAM;
+    }
+    if (!IsValidBackendOp(*backendOp)) {
+        SM_LOG_ERROR("backend operation set is invalid.");
+        return ock::smem::SM_INVALID_PARAM;
+    }
+
+    ock::smem::SmemExternalBackendRegistry::SetExternalBackendOp(*backendOp);
     return ock::smem::SM_OK;
 }
 
