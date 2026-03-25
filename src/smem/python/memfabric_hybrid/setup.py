@@ -125,7 +125,7 @@ class CMakeBuildExt(build_ext):
                 ]
             )
         else:
-            bazel_cmd = ["bazel", "build", "//..."]
+            bazel_cmd = ["bazel", "build", "//src/..."]
             if build_mode == "DEBUG":
                 bazel_cmd.append("--compilation_mode=dbg")
             else:

@@ -219,13 +219,14 @@ else
     BAZEL_ARGS+=("--explain=explain.log")
     BAZEL_ARGS+=("--verbose_explanations")
 
-    echo "bazel build arguments: ${BAZEL_ARGS[@]}"
-
     rm -rf ./output
     rm -rf ./build
 
-    bazel clean --expunge
-    bazel build //... "${BAZEL_ARGS[@]}"
+    echo "bazel clean --async"
+    bazel clean --async
+
+    echo "bazel build arguments: ${BAZEL_ARGS[@]}"
+    bazel build //src/... "${BAZEL_ARGS[@]}"
     copy_bazel_artifacts
 fi
 
@@ -325,8 +326,8 @@ do
             cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
             ${MAKE_CMD} -j5 -C build
         else
-            bazel clean --expunge
-            bazel build //... "${BAZEL_ARGS[@]}"
+            bazel clean --async
+            bazel build //src/... "${BAZEL_ARGS[@]}"
             copy_bazel_artifacts
         fi
     fi
