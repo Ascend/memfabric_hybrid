@@ -1268,6 +1268,15 @@ void MemEntityDefault::ReleaseResources()
     if (!initialized_) {
         return;
     }
+    // Imported mappings are tracked separately from local slices and can survive
+    // UnReserveMemorySpace(). Clear them before dropping segment objects so the
+    // same process can initialize again without stale VA records.
+    Unmap();
+    UnReserveMemorySpace();
+    importedRanks_.clear();
+    importedMemories_.clear();
+    hbmGva_ = nullptr;
+    dramGva_ = nullptr;
     hbmSegment_.reset();
     dramSegment_.reset();
     dataOperator_.reset();
@@ -1275,6 +1284,8 @@ void MemEntityDefault::ReleaseResources()
         transportManager_->CloseDevice();
         transportManager_.reset();
     }
+    tagManager_.reset();
+    transportPrepared_ = false;
     initialized_ = false;
 }
 } // namespace mf

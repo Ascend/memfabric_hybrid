@@ -167,10 +167,16 @@ Result HcomTransportManager::CloseDevice()
 {
     DlHcomApi::SetExternalLogger([]([[maybe_unused]] int level, [[maybe_unused]] const char *msg) {});
     BM_ASSERT_RETURN(rpcService_ != 0, BM_OK);
+    auto service = rpcService_;
     for (uint32_t i = 0; i < rankCount_; ++i) {
         if (channels_[i] != 0) {
             DisConnectHcomChannel(i, channels_[i]);
         }
+    }
+
+    auto ret = DlHcomApi::ServiceDestroy(service, HCOM_RPC_SERVICE_NAME);
+    if (ret != 0) {
+        BM_LOG_WARN("Failed to destroy hcom service, ret: " << ret);
     }
 
     mf::MfTlsUtil::CloseTlsLib();
@@ -361,7 +367,7 @@ Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)
 
 Result HcomTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRanks)
 {
-    BM_LOG_WARN("HCOM transport manager remove ranks not implements!");
+    BM_LOG_DEBUG("HCOM transport manager remove ranks not implements!");
     return BM_OK;
 }
 

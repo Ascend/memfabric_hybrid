@@ -87,7 +87,7 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
 Result HybmEntityTagInfo::AddTagOpInfo(const std::string &tagOpInfo)
 {
     if (tagOpInfo.empty()) {
-        BM_LOG_WARN("Add an empty tagOpInfo.");
+        BM_LOG_INFO("Add an empty tagOpInfo.");
         return BM_OK;
     }
     // tag:opType:tag,tag:opType:tag,tag:opType:tag
