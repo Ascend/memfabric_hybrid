@@ -566,9 +566,11 @@ Arguments:
     context(bytes): extra context
 Returns:
     0 if successful)")
-        .def_property_readonly("local_rank", &ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>(), R"(
+        .def_property_readonly("local_rank", py::cpp_function(
+            &ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>()), R"(
 Get local rank of a shm object)")
-        .def_property_readonly("rank_size", &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>(), R"(
+        .def_property_readonly("rank_size", py::cpp_function(
+            &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>()), R"(
 Get rank size of a shm object)")
         .def("destroy", &ShareMemory::Destroy, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
 Destroy the shm handle.)")
@@ -608,8 +610,12 @@ Arguments:
 Returns:
     int: 0 if successful)")
         .def_property_readonly(
-            "gva", [](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
-            py::call_guard<py::gil_scoped_release>(), R"(
+            "gva", py::cpp_function(
+                [](const ShareMemory &shm) {
+                    return (uint64_t)(ptrdiff_t)shm.Address();
+                },
+                py::call_guard<py::gil_scoped_release>()
+            ), R"(
 get global virtual address created, it can be passed to kernel to data operations)");
 }
 
