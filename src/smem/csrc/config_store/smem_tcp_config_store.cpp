@@ -560,7 +560,7 @@ Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
         return NOT_EXIST;
     }
 
-    STORE_LOG_INFO("unwatch for id: " << wid << " success.");
+    STORE_LOG_DEBUG("unwatch for id: " << wid << " success.");
     return SM_OK;
 }
 

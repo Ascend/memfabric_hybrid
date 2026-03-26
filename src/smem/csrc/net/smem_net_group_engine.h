@@ -127,6 +127,7 @@ private:
     void RemoteRankLinkDownCb(uint32_t remoteRankId);
     void ClearBitmapForRank(uint32_t rankId);
     bool TestBitmapForRank(uint32_t rankId) const;
+    uint64_t GetCollectiveTimeoutMs() const noexcept;
     int32_t LinkReconnectHandler();
     void RankExit(int result, const std::string &key, const std::string &value);
 
@@ -147,6 +148,7 @@ private:
     std::function<void(int)> globalExitHandler_;
     uint64_t joinedRanksBitmap_[RANK_BITS_U64_COUNT]{};
     mutable std::mutex rankBitmapMutex_;
+    std::atomic_uint32_t joinCollectiveDepth_{0};
     std::unordered_map<std::string, uint32_t> userGroupGatherSn_;
     std::unordered_map<std::string, uint32_t> userGroupBarrierSn_;
     std::set<int32_t> allocedSet_;
