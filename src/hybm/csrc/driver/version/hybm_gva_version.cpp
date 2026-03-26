@@ -22,7 +22,7 @@
 namespace ock {
 namespace mf {
 const std::string DRIVER_VER_V5_ST = "V100R001C10B001"; // hdk26.0.0
-const std::string DRIVER_VER_V5_ED = "V100R001C10B999";
+const std::string DRIVER_VER_V5_ED = "V100R001C14B999";
 const std::string DRIVER_VER_V4 = "V100R001C23SPC005B219"; // hdk25.5.0
 const std::string DRIVER_VER_V3 = "V100R001C21B035";
 const std::string DRIVER_VER_V2 = "V100R001C19SPC109B220";
