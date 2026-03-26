@@ -34,7 +34,10 @@ enum EmResultErrorCode : Result {
     EM_INVALID_PTR = -8,
     EM_ERROR_ALLOC = -9,
     EM_NOT_ENOUGH_MEM = -10,
+    EM_DL_FUNCTION_NOT_LOADED = -11,
 };
+
+constexpr uint32_t PATH_MAX_LIMIT = 4096;
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
@@ -62,8 +65,7 @@ enum EmResultErrorCode : Result {
         }                                                                                             \
     } while (0)
 
-} // namespace zbccl
-}
-}
+} // namespace emb
+} // namespace ock
 
 #endif // MEMFABRIC_HYBRID_EMB_DEFINES_H

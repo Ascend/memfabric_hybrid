@@ -9,24 +9,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MEMFABRIC_HYBRID_EMBRICKS_H
-#define MEMFABRIC_HYBRID_EMBRICKS_H
+#ifndef MEMFABRIC_HYBRID_EMB_SERVICE_TYPES_H
+#define MEMFABRIC_HYBRID_EMB_SERVICE_TYPES_H
 
-#include "embricks_def.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Get version of this library
- *
- * @return string of version
- */
-const char* emb_version();
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // MEMFABRIC_HYBRID_EMBRICKS_H
+#endif // MEMFABRIC_HYBRID_EMB_SERVICE_TYPES_H

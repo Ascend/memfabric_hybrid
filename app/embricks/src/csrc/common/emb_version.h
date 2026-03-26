@@ -13,10 +13,10 @@
 #define MEMFABRIC_HYBRID_EMB_VERSION_H
 
 /* version information, these variables are read in cmake from VERSION file */
-#ifndef VERSION_MAJOR
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 0
-#define VERSION_FIX   0
+#ifndef EMB_VERSION_MAJOR
+#define EMB_VERSION_MAJOR 0
+#define EMB_VERSION_MINOR 0
+#define EMB_VERSION_FIX   0
 #endif
 
 /* second level marco define 'CONCAT' to get string */
@@ -26,7 +26,7 @@
 #define STR2(x)          STR(x)
 
 /* get cancat version string */
-#define LIB_VERSION STR2(CONCAT2(VERSION_MAJOR, VERSION_MINOR, VERSION_FIX))
+#define LIB_VERSION STR2(CONCAT2(EMB_VERSION_MAJOR, EMB_VERSION_MINOR, EMB_VERSION_FIX))
 
 #ifndef GIT_LAST_COMMIT
 #define GIT_LAST_COMMIT empty

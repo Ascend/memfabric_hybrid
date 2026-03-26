@@ -9,24 +9,19 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MEMFABRIC_HYBRID_EMBRICKS_H
-#define MEMFABRIC_HYBRID_EMBRICKS_H
+#ifndef MEMFABRIC_HYBRID_EMB_TABLE_TYPES_H
+#define MEMFABRIC_HYBRID_EMB_TABLE_TYPES_H
 
-#include "embricks_def.h"
+#include "emb_common_includes.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Get version of this library
- *
- * @return string of version
- */
-const char* emb_version();
-
-#ifdef __cplusplus
+namespace ock {
+namespace emb {
+struct TableProperty {
+    uint64_t id;
+    std::string name;
+    uint64_t vector
+};
 }
-#endif
+}
 
-#endif // MEMFABRIC_HYBRID_EMBRICKS_H
+#endif // MEMFABRIC_HYBRID_EMB_TABLE_TYPES_H
