@@ -71,6 +71,7 @@ class DlAclApi {
 public:
     static Result LoadLibrary(const std::string &libDirPath);
     static void CleanupLibrary();
+    static AscendSocType GetAscendSocType();
 
     static inline Result AclrtSetDevice(int32_t deviceId, bool force = false)
     {

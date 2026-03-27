@@ -55,6 +55,7 @@ constexpr int RANK_NUM_ARG_INDEX = 2;
 constexpr int RANK_START_ARG_INDEX = 3;
 constexpr int IPPORT_ARG_INDEX = 4;
 constexpr int TRANSPORT_ARG_INDEX = 5;
+constexpr int DEVICE_ARG_INDEX = 6;
 
 void GenerateData(void *ptr, int32_t rank, uint32_t len = COPY_SIZE)
 {
@@ -237,6 +238,10 @@ int main(int32_t argc, char *argv[])
     int rankStart = atoi(argv[RANK_START_ARG_INDEX]);
     std::string ipport = argv[IPPORT_ARG_INDEX];
     int op = atoi(argv[TRANSPORT_ARG_INDEX]);
+    int deviceSt = 0;
+    if (argc > DEVICE_ARG_INDEX) {
+        deviceSt = atoi(argv[DEVICE_ARG_INDEX]);
+    }
 
     if (op == 0)
         OP_TYPE = SMEMB_DATA_OP_SDMA;
@@ -259,7 +264,7 @@ int main(int32_t argc, char *argv[])
             exit(-1);
         } else if (pids[i] == 0) {
             // subprocess
-            SubProcessRuning(i, i + rankStart, rankSize, ipport);
+            SubProcessRuning(i + deviceSt, i + rankStart, rankSize, ipport);
             LOG_INFO("subprocess (" << i << ") exited.");
             exit(0);
         }

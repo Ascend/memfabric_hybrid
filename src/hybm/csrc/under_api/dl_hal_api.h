@@ -69,6 +69,8 @@ using halMemImportFunc = int (*)(drv_mem_handle_type, struct MemShareHandle *, u
 using halMemShareHandleSetAttributeFunc = int (*)(uint64_t, enum ShareHandleAttrType, struct ShareHandleAttr);
 using halMemTransShareableHandleFunc = int (*)(drv_mem_handle_type, struct MemShareHandle *, uint32_t *, uint64_t *);
 using halMemGetAllocationGranularityFunc = int (*)(const struct drv_mem_prop *, drv_mem_granularity_options, size_t *);
+using halMemAllocFunc = int (*)(void **, uint64_t, uint64_t);
+using halMemFreeFunc = int (*)(void *);
 
 class DlHalApi {
 public:
@@ -183,6 +185,9 @@ public:
 
     static inline int32_t GetFd(void)
     {
+        if (pHalFd == nullptr) {
+            return -1;
+        }
         return *pHalFd;
     }
 
@@ -457,6 +462,22 @@ public:
         return pHalMemGetAllocationGranularity(prop, option, granularity);
     }
 
+    static inline int HalMemAlloc(void **pp, uint64_t size, uint64_t flag)
+    {
+        if (pHalMemAlloc == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pHalMemAlloc(pp, size, flag);
+    }
+
+    static inline int HalMemFree(void *pp)
+    {
+        if (pHalMemFree == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pHalMemFree(pp);
+    }
+
 private:
     static Result LoadHybmVmmLibrary(uint32_t gvaVersion);
     static Result LoadHybmV1V2Library(uint32_t gvaVersion);
@@ -517,6 +538,8 @@ private:
     static halMemShareHandleSetAttributeFunc pHalMemShareHandleSetAttribute;
     static halMemTransShareableHandleFunc pHalMemTransShareableHandle;
     static halMemGetAllocationGranularityFunc pHalMemGetAllocationGranularity;
+    static halMemAllocFunc pHalMemAlloc;
+    static halMemFreeFunc pHalMemFree;
 };
 
 } // namespace mf

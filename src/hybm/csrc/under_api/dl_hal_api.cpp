@@ -74,6 +74,8 @@ halMemImportFunc DlHalApi::pHalMemImport = nullptr;
 halMemShareHandleSetAttributeFunc DlHalApi::pHalMemShareHandleSetAttribute = nullptr;
 halMemTransShareableHandleFunc DlHalApi::pHalMemTransShareableHandle = nullptr;
 halMemGetAllocationGranularityFunc DlHalApi::pHalMemGetAllocationGranularity = nullptr;
+halMemAllocFunc DlHalApi::pHalMemAlloc = nullptr;
+halMemFreeFunc DlHalApi::pHalMemFree = nullptr;
 
 Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
 {
@@ -91,17 +93,37 @@ Result DlHalApi::LoadHybmVmmLibrary(uint32_t gvaVersion)
     DL_LOAD_SYM(pHalMemSetAccess, halMemSetAccessFunc, halHandle, "halMemSetAccess");
     DL_LOAD_SYM(pHalMemExport, halMemExportFunc, halHandle, "halMemExportToShareableHandleV2");
     DL_LOAD_SYM(pHalMemImport, halMemImportFunc, halHandle, "halMemImportFromShareableHandleV2");
-    DL_LOAD_SYM(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc, halHandle,
-                "halMemShareHandleSetAttribute");
+    DL_LOAD_SYM_OPTIONAL(pHalMemShareHandleSetAttribute, halMemShareHandleSetAttributeFunc, halHandle,
+                         "halMemShareHandleSetAttribute");
     DL_LOAD_SYM(pHalMemTransShareableHandle, halMemTransShareableHandleFunc, halHandle, "halMemTransShareableHandle");
     DL_LOAD_SYM(pHalMemGetAllocationGranularity, halMemGetAllocationGranularityFunc, halHandle,
                 "halMemGetAllocationGranularity");
+    DL_LOAD_SYM(pHalMemAlloc, halMemAllocFunc, halHandle, "halMemAlloc");
+    DL_LOAD_SYM(pHalMemFree, halMemFreeFunc, halHandle, "halMemFree");
 
     return BM_OK;
 }
 
 Result DlHalApi::LoadHybmV1V2Library(uint32_t gvaVersion)
 {
+    if (gvaVersion == HYBM_GVA_V4) {
+        return BM_OK;
+    }
+
+    DL_LOAD_SYM(pHalFd, int *, halHandle, "g_devmm_mem_dev");
+    DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle, "svm_module_alloced_size_inc");
+    DL_LOAD_SYM(pVirtAllocMemFromBase, halVirtAllocMemFromBaseFunc, halHandle, "devmm_virt_alloc_mem_from_base");
+    DL_LOAD_SYM(pIoctlEnableHeap, halIoctlEnableHeapFunc, halHandle, "devmm_ioctl_enable_heap");
+    DL_LOAD_SYM(pGetHeapListByType, halGetHeapListByTypeFunc, halHandle, "devmm_get_heap_list_by_type");
+    DL_LOAD_SYM(pVirtSetHeapIdle, halVirtSetHeapIdleFunc, halHandle, "devmm_virt_set_heap_idle");
+    DL_LOAD_SYM(pVirtGetHeapMgmt, halVirtGetHeapMgmtFunc, halHandle, "devmm_virt_get_heap_mgmt");
+    DL_LOAD_SYM(pIoctlFreePages, halIoctlFreePagesFunc, halHandle, "devmm_ioctl_free_pages");
+    DL_LOAD_SYM(pVaToHeapIdx, halVaToHeapIdxFunc, halHandle, "devmm_va_to_heap_idx");
+    DL_LOAD_SYM(pVirtGetHeapFromQueue, halVirtGetHeapFromQueueFunc, halHandle, "devmm_virt_get_heap_from_queue");
+    DL_LOAD_SYM(pVirtNormalHeapUpdateInfo, halVirtNormalHeapUpdateInfoFunc, halHandle,
+                "devmm_virt_normal_heap_update_info");
+    DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
+
     if (gvaVersion == HYBM_GVA_V1 || gvaVersion == HYBM_GVA_V2) {
         if (gvaVersion == HYBM_GVA_V1) {
             DL_LOAD_SYM(pVirtDestroyHeapV1, halVirtDestroyHeapV1Func, halHandle, "devmm_virt_destroy_heap");
@@ -147,20 +169,6 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
 
     BM_ASSERT_RETURN(gvaVersion != HYBM_GVA_UNKNOWN, BM_NOT_INITIALIZED);
     /* load sym */
-    DL_LOAD_SYM(pHalFd, int *, halHandle, "g_devmm_mem_dev");
-    DL_LOAD_SYM(pSvmModuleAllocedSizeInc, halSvmModuleAllocedSizeIncFunc, halHandle, "svm_module_alloced_size_inc");
-    DL_LOAD_SYM(pVirtAllocMemFromBase, halVirtAllocMemFromBaseFunc, halHandle, "devmm_virt_alloc_mem_from_base");
-    DL_LOAD_SYM(pIoctlEnableHeap, halIoctlEnableHeapFunc, halHandle, "devmm_ioctl_enable_heap");
-    DL_LOAD_SYM(pGetHeapListByType, halGetHeapListByTypeFunc, halHandle, "devmm_get_heap_list_by_type");
-    DL_LOAD_SYM(pVirtSetHeapIdle, halVirtSetHeapIdleFunc, halHandle, "devmm_virt_set_heap_idle");
-    DL_LOAD_SYM(pVirtGetHeapMgmt, halVirtGetHeapMgmtFunc, halHandle, "devmm_virt_get_heap_mgmt");
-    DL_LOAD_SYM(pIoctlFreePages, halIoctlFreePagesFunc, halHandle, "devmm_ioctl_free_pages");
-    DL_LOAD_SYM(pVaToHeapIdx, halVaToHeapIdxFunc, halHandle, "devmm_va_to_heap_idx");
-    DL_LOAD_SYM(pVirtGetHeapFromQueue, halVirtGetHeapFromQueueFunc, halHandle, "devmm_virt_get_heap_from_queue");
-    DL_LOAD_SYM(pVirtNormalHeapUpdateInfo, halVirtNormalHeapUpdateInfoFunc, halHandle,
-                "devmm_virt_normal_heap_update_info");
-    DL_LOAD_SYM(pVaToHeap, halVaToHeapFunc, halHandle, "devmm_va_to_heap");
-
     auto ret = LoadHybmV1V2Library(gvaVersion) | LoadHybmVmmLibrary(gvaVersion);
     if (ret != 0) {
         return ret;
@@ -231,6 +239,8 @@ void DlHalApi::CleanupHalApi()
     pHalMemExport = nullptr;
     pHalMemImport = nullptr;
     pHalMemGetAllocationGranularity = nullptr;
+    pHalMemAlloc = nullptr;
+    pHalMemFree = nullptr;
 }
 
 void DlHalApi::CleanupLibrary()

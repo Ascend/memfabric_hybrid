@@ -43,13 +43,15 @@ Result HybmVmmBasedSegment::ValidateOptions() noexcept
         }
         return true;
     };
-    uint64_t align = (options_.segType == HYBM_MST_HBM) ? GB : HYBM_LARGE_PAGE_SIZE;
+    uint64_t align = (options_.segType == HYBM_MST_DRAM) ? GB : HYBM_LARGE_PAGE_SIZE;
     if (options_.size != 0 && !checkAlignment(options_.size, align)) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << ", size:" << options_.size);
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:"
+                                                << options_.size << " must algin:" << align);
         return BM_INVALID_PARAM;
     }
-    if (!checkAlignment(options_.maxSize, align)) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << ", max size:" << options_.size);
+    if (!checkAlignment(options_.maxSize, GB)) {
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " max size:"
+                                                << options_.maxSize << " must align GB");
         return BM_INVALID_PARAM;
     }
 
@@ -76,11 +78,6 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
 
     void *base = nullptr;
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
-    uint64_t maxLvaSize = HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR;
-    if (totalVirtualSize_ > maxLvaSize) {
-        BM_LOG_ERROR("reserve mem is too large! size: " << totalVirtualSize_);
-        return BM_INVALID_PARAM;
-    }
     auto mem_type = options_.segType == HYBM_MST_HBM ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, totalVirtualSize_,
                                                                 mem_type, options_.isSecondMapping);
@@ -105,6 +102,13 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
 {
     BM_LOG_INFO("UnReserveMemorySpace gva:" << reinterpret_cast<void *>(globalVirtualAddress_)
                                             << ", lva:" << reinterpret_cast<void *>(localVirtualAddress_));
+    for (auto &it : mappedGvaMem_) {
+        DlHalApi::HalMemUnmap(reinterpret_cast<void *>(it.first));
+        DlHalApi::HalMemRelease(it.second);
+        HybmVaManager::GetInstance().RemoveOneVaInfo(it.first);
+    }
+    mappedGvaMem_.clear();
+
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
         auto ret = ReleaseSliceMemory(slice);
@@ -113,6 +117,11 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
             return ret;
         }
     }
+    while (!registerSlices_.empty()) {
+        auto slice = registerSlices_.begin()->second.first.slice;
+        ReleaseSliceMemory(slice);
+    }
+
     if (localVirtualAddress_ != nullptr) {
         auto ret = DlHalApi::HalMemAddressFree(reinterpret_cast<void *>(localVirtualAddress_));
         BM_LOG_INFO("free reserved address lva:" << reinterpret_cast<void *>(localVirtualAddress_)
@@ -125,6 +134,7 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
         }
         localVirtualAddress_ = nullptr;
     }
+
     if (globalVirtualAddress_ != nullptr) {
         HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
         globalVirtualAddress_ = nullptr;
@@ -139,7 +149,15 @@ Result HybmVmmBasedSegment::HalMemCreateAdapterFromHost(size_t size, drv_mem_han
     Result ret = BM_ERROR;
     uint32_t performance =
         NumUtil::ExtractBits(options_.flags, HYBM_PERFORMANCE_MODE_FLAG_INDEX, HYBM_PERFORMANCE_MODE_FLAG_LEN);
-    if (performance != UINT32_MAX && performance != 0) {
+    if (DlAclApi::GetAscendSocType() == AscendSocType::ASCEND_950) {
+        prop = {MEM_HOST_SIDE, 0, 0, MEM_HUGE_PAGE_TYPE, MEM_DDR_TYPE, 0};
+        auto start = std::chrono::high_resolution_clock::now();
+        ret = DlHalApi::HalMemCreate(handle, size, &prop, 0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        BM_LOG_INFO("Try HalMemCreate ret:" << ret << " dev:" << prop.devid << " spend time:" << duration.count()
+                                            << " size:" << size);
+    } else if (performance != UINT32_MAX && performance != 0) {
         uint32_t numaIndex = NumUtil::ExtractBits(options_.flags, HYBM_BIND_NUMA_FLAG_INDEX, HYBM_BIND_NUMA_FLAG_LEN);
         if (numaIndex == UINT32_MAX) {
             BM_LOG_ERROR("Failed to get numa from flag:" << (std::bitset<UINT32_WIDTH>(options_.flags))
@@ -176,7 +194,8 @@ Result HybmVmmBasedSegment::MallocFromHost(size_t size, uint32_t devId, drv_mem_
     drv_mem_prop prop{};
     prop = {MEM_HOST_NUMA_SIDE, devId, 0, MEM_GIANT_PAGE_TYPE, MEM_P2P_DDR_TYPE, 0};
     size_t granularity = 0;
-    if (DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
+    if (DlAclApi::GetAscendSocType() == AscendSocType::ASCEND_950 || // A5当前仅支持huge page
+        DlHalApi::HalMemGetAllocationGranularity(&prop, MEM_ALLOC_GRANULARITY_RECOMMENDED, &granularity) != 0) {
         prop.pg_type = MEM_HUGE_PAGE_TYPE;
         BM_LOG_WARN("Not support giant page size change use huge page, memType:" << prop.mem_type);
     }
@@ -406,15 +425,15 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
         return BM_DL_FUNCTION_FAILED;
     }
 
-    uint64_t shareable = 0U;
-    uint32_t sId;
-    ret = DlHalApi::HalMemTransShareableHandle(MEM_HANDLE_TYPE_FABRIC, &info.shareHandle, &sId, &shareable);
-    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemTransShareableHandle failed:" << ret, BM_ERROR);
-
-    struct ShareHandleAttr attr = {};
-    attr.enableFlag = SHR_HANDLE_NO_WLIST_ENABLE;
-    ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
-    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
+    if (socType_ == AscendSocType::ASCEND_910B || socType_ == AscendSocType::ASCEND_910C) {
+        uint64_t shareable = 0U;
+        uint32_t sId;
+        ret = DlHalApi::HalMemTransShareableHandle(MEM_HANDLE_TYPE_FABRIC, &info.shareHandle, &sId, &shareable);
+        BM_VALIDATE_RETURN(ret == BM_OK, "HalMemTransShareableHandle failed:" << ret, BM_ERROR);
+        struct ShareHandleAttr attr = {.enableFlag = SHR_HANDLE_NO_WLIST_ENABLE, .rsv = {0}};
+        ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
+        BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
+    }
 
     info.logicDevId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC

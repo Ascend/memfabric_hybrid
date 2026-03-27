@@ -12,7 +12,7 @@
 #include "hybm_stream.h"
 #include "hybm_common_include.h"
 #include "dl_hal_api.h"
-#include "dl_hal_api_def.h"
+#include "dl_acl_api.h"
 #include "hybm_gva.h"
 #include "hybm_logger.h"
 #include "ptracer.h"
@@ -75,19 +75,19 @@ int32_t HybmStream::AllocSqcq(uint32_t ssid)
 {
     halSqCqInputInfo input{};
     halSqCqOutputInfo output{};
+    rtStreamInfoExMsg_t infoEx{};
     StreamAllocInfo *sinfo = (StreamAllocInfo *)input.info;
 
     input.type = DRV_NORMAL_TYPE;
     input.tsId = tsId_;
     input.sqeSize = 64U;
-    input.cqeSize = 12U;
+    input.cqeSize = 32U;
     input.sqeDepth = HYBM_SQCQ_DEPTH;
     input.cqeDepth = HYBM_SQCQ_DEPTH;
     input.grpId = 0;
     input.flag = flags_;
     input.cqId = 0;
     input.sqId = 0;
-    input.res[SQCQ_RESV_LENGTH - 1] = ssid; // set ssid
 
     sinfo->streamId = streamId_;
     sinfo->priority = 0U;
@@ -96,6 +96,28 @@ int32_t HybmStream::AllocSqcq(uint32_t ssid)
     sinfo->threadDisableFlag = 1U;
     sinfo->shareSqId = UINT32_MAX;
     sinfo->tsSqType = 0U;
+
+    if (DlAclApi::GetAscendSocType() == AscendSocType::ASCEND_950) {
+        uint64_t stackSize = 72ULL * 64ULL * (RT_KIS_SIMT_WARP_STK_SIZE + RT_KIS_SIMT_DVG_WARP_STK_SIZE)
+                             + RT_STK_ALIGN_LEN;
+        // 0x700000000920400ULL = (RUNTIME_MODULE_ID=7) << 56 | MEM_DEV | MEM_PAGE_HUGE | MEM_SET_ALIGN_SIZE(9ULL)
+        uint64_t drvFlag = 0x700000000920400ULL | deviceId_;
+        auto ret = DlHalApi::HalMemAlloc(&stackPtr_, stackSize, drvFlag);
+        BM_VALIDATE_RETURN(ret == BM_OK, "alloc stream stack failed, ret:" << ret, BM_ERROR);
+
+        uint64_t devAlignAddr = reinterpret_cast<uint64_t>(stackPtr_);
+        devAlignAddr = (devAlignAddr + RT_STK_ALIGN_LEN - 1U) / RT_STK_ALIGN_LEN * RT_STK_ALIGN_LEN;
+        infoEx.head.type = 0;
+        infoEx.body.kisSimtStkBaseAddrLow = static_cast<uint32_t>(devAlignAddr & 0xFFFFFFFFU);
+        infoEx.body.kisSimtStkBaseAddrHigh = static_cast<uint16_t>(devAlignAddr >> UINT32_BIT_NUM);
+        infoEx.body.kisSimtWarpStkSize = RT_KIS_SIMT_WARP_STK_SIZE;
+        infoEx.body.kisSimtDvgWarpStkSize = RT_KIS_SIMT_DVG_WARP_STK_SIZE;
+        infoEx.body.poolId = 0U;
+        infoEx.body.poolIdMax = 0U;
+
+        input.ext_info = reinterpret_cast<void *>(&infoEx);
+        input.ext_info_len = sizeof(rtStreamInfoExMsg_t);
+    }
 
     auto ret = DlHalApi::HalSqCqAllocate(deviceId_, &input, &output);
     if (ret != 0) {
@@ -193,6 +215,11 @@ void HybmStream::Destroy()
         return;
     }
 
+    if (stackPtr_ != nullptr) {
+        DlHalApi::HalMemFree(stackPtr_);
+        stackPtr_ = nullptr;
+    }
+
     tsId_ = std::numeric_limits<uint32_t>::max();
     sqId_ = 0;
     cqId_ = 0;
@@ -200,14 +227,15 @@ void HybmStream::Destroy()
     inited_ = false;
 }
 
-void PrintSqe(const rtStarsSqe_t *sqe)
+std::string PrintSqe(const rtStarsSqe_t *sqe)
 {
     const uint32_t *const cmd = reinterpret_cast<const uint32_t *>(sqe);
     std::ostringstream info;
     for (size_t i = 0UL; i < (sizeof(rtStarsSqe_t) / sizeof(uint32_t)); i++) {
         info << " " << std::setw(HYBM_SQE_PRINT_WIDTH) << std::setfill('0') << std::hex << cmd[i];
     }
-    BM_LOG_INFO("SQE:" << info.str());
+
+    return info.str();
 }
 
 int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
@@ -238,6 +266,8 @@ int32_t HybmStream::SubmitTasks(const StreamTask &tasks) noexcept
         BM_LOG_ERROR("SQ send task failed: " << ret);
         return BM_DL_FUNCTION_FAILED;
     }
+
+    BM_LOG_DEBUG("submit task type:" << tasks.type << " sqe:" << PrintSqe(&(taskList_[taskId].sqe)));
     return BM_OK;
 }
 
@@ -342,7 +372,7 @@ int32_t HybmStream::ReceiveCqe(uint32_t &lastTask)
                              << " cqeErrorCode:" << reportInfo[idx].errorCode << "(" << GetCqeErrorStr(reportInfo[idx])
                              << ") cqeErrorType:" << static_cast<uint32_t>(reportInfo[idx].errorType));
                 retFlag = BM_ERROR;
-                PrintSqe(&taskList_[reportInfo[idx].taskId].sqe);
+                BM_LOG_ERROR("task sqe:" << PrintSqe(&taskList_[reportInfo[idx].taskId].sqe));
             }
         }
 

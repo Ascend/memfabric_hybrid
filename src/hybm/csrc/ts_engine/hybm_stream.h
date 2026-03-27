@@ -62,6 +62,7 @@ private:
     uint32_t streamId_{UINT32_MAX};
     uint32_t sqHead_{0};
     uint32_t sqTail_{0};
+    void *stackPtr_{nullptr};
     std::atomic<int64_t> runningTaskCount_{0};
     std::vector<StreamTask> taskList_;
     bool wqeFlag_ = false;

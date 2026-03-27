@@ -235,4 +235,14 @@ int halMemGetAllocationGranularity(const struct drv_mem_prop *prop, drv_mem_gran
 {
     return 0;
 }
+
+int halMemAlloc(void **pp, uint64_t size, uint64_t flag)
+{
+    return 0;
+}
+
+int halMemFree(void *pp)
+{
+    return 0;
+}
 }

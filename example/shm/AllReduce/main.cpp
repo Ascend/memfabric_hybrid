@@ -19,7 +19,7 @@
 #include "acl/acl.h"
 
 static uint32_t gNpuNum = 16;
-static uint64_t gNpuMallocSpace = 1024UL * 1024UL * 1024;
+uint64_t g_npuMallocSpace = 1024UL * 1024UL * 1024;
 static uint64_t gFlagOffset = 1024UL * 1024UL;              // 前1M作为flag空间
 static size_t gDataByteSize = 16 * 2048 * sizeof(uint16_t); // uint16_t represent half
 enum Index : uint8_t {
@@ -63,7 +63,7 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
     CHECK_ACL(aclrtMallocHost((void **)(&outputHost), gDataByteSize));
 
     // 分配共享内存
-    uint8_t *localShm = gva + (rankId * gNpuMallocSpace) + gFlagOffset;
+    uint8_t *localShm = gva + (rankId * g_npuMallocSpace) + gFlagOffset;
     uint8_t *inputShm = localShm;
     uint8_t *outputShm = inputShm;
 
@@ -80,7 +80,7 @@ static int32_t TestAllReduce(aclrtStream stream, uint8_t *gva, uint32_t rankId, 
 
     // 用 shm 内存 执行算子
     INFO_LOG("rankId: %u, start run allreduce...", rankId);
-    shm_all_reduce_do(blockDim, stream, gva, gNpuMallocSpace, gFlagOffset, rankId, rankSize);
+    shm_all_reduce_do(blockDim, stream, gva, g_npuMallocSpace, gFlagOffset, rankId, rankSize);
     CHECK_ACL_RET(aclrtSynchronizeStream(stream), "after allreduce sync stream");
     INFO_LOG("rankId: %u, end run allreduce...", rankId);
 
@@ -146,14 +146,14 @@ int32_t main(int32_t argc, char *argv[])
 
     uint32_t flags = 0;
     void *gva = nullptr;
-    smem_shm_t handle = smem_shm_create(0, rankSize, rankId, gNpuMallocSpace, SMEMS_DATA_OP_MTE, flags, &gva);
+    smem_shm_t handle = smem_shm_create(0, rankSize, rankId, g_npuMallocSpace, SMEMS_DATA_OP_MTE, flags, &gva);
     if (handle == nullptr || gva == nullptr) {
         ERROR_LOG("[TEST] smem_shm_create failed, rank:%d", rankId);
         return -1;
     }
-    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", static_cast<unsigned long long>(gNpuMallocSpace), rankId);
-    gNpuMallocSpace = smem_shm_get_symmetric_size(handle);
-    INFO_LOG("[TEST] smem_shm_get_symmetric_size size %lu, rank:%d", gNpuMallocSpace, rankId);
+    WARN_LOG("[TEST] smem_shm_create, size %llu, rank:%d", static_cast<unsigned long long>(g_npuMallocSpace), rankId);
+    g_npuMallocSpace = smem_shm_get_symmetric_size(handle);
+    INFO_LOG("[TEST] smem_shm_get_symmetric_size size %lu, rank:%d", g_npuMallocSpace, rankId);
     TestAllReduce(stream, (uint8_t *)gva, rankId, rankSize);
 
     std::cout << "[TEST] begin to exit...... rank: " << rankId << std::endl;

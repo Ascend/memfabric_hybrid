@@ -18,6 +18,7 @@ version1="none"
 pkg_arch="none"
 os1="none"
 default_install_dir="/usr/local/memfabric_hybrid"
+ascend_version="none"
 
 function print_help() {
     echo "--install-path=<path>             Install to specific dir"
@@ -260,6 +261,26 @@ function check_path()
     fi
 }
 
+function get_ascend_version() {
+    cnt=$(lspci | grep Processing | grep Huawei | grep d802 -c)
+    if [ "${cnt}" -gt 0 ]; then
+        ascend_version="A2"
+        return
+    fi
+
+    cnt=$(lspci | grep Processing | grep Huawei | grep d803 -c)
+    if [ "${cnt}" -gt 0 ]; then
+        ascend_version="A3"
+        return
+    fi
+
+    cnt=$(lspci | grep Processing | grep Huawei | grep d806 -c)
+    if [ "${cnt}" -gt 0 ]; then
+        ascend_version="A5"
+        return
+    fi
+}
+
 function install_wheel_package() {
     wheel_dir="$1"
     wheel_name="$2"
@@ -301,8 +322,13 @@ function try_install_extend()
         return
     fi
 
+    cce_param="--cce-aicore-arch=dav-c220"
+    if [ "${ascend_version}" == "A5" ]; then
+        cce_param="--cce-aicore-arch=dav-c310"
+    fi
+
     cd ${script_dir}/../copy_extend
-    bisheng -x asc hybm_copy_kernel.cpp -shared -g -o libmf_hybm_copy_extend.so --npu-arch=dav-2201
+    bisheng -x asc hybm_copy_kernel.cpp -shared -g -o libmf_hybm_copy_extend.so ${cce_param}
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
@@ -377,6 +403,9 @@ function main()
 {
     parse_script_args $*
     get_version_in_file
+    get_ascend_version
+    print "INFO" "found ascend env is ${ascend_version}."
+
     if [ "$uninstall_flag" == "y" ]; then
         uninstall
     elif [ "$install_flag" == "y" ] || [ "$install_path_flag" == "y" ]; then

@@ -26,6 +26,7 @@ Result HybmVaManager::Initialize(AscendSocType socType) noexcept
         BM_LOG_ERROR("soc type is unknown.");
         return BM_INVALID_PARAM;
     }
+    soc_ = socType;
 #endif
     return BM_OK;
 }
@@ -284,9 +285,14 @@ uint64_t HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size, uin
         BM_LOG_ERROR("AllocReserveLva failed: size=0");
         return 0;
     }
-    uint64_t upperLimit = HYBM_GVM_END_ADDR - HYBM_GVM_START_ADDR;
     uint64_t startAddr = HYBM_GVM_START_ADDR;
     uint64_t endAddr = HYBM_GVM_END_ADDR;
+    if (soc_ == ASCEND_950) {
+        startAddr = HYBM_GVM_START_ADDR_A5;
+        endAddr = HYBM_GVM_END_ADDR_A5;
+    }
+
+    uint64_t upperLimit = endAddr - startAddr;
     if (size > upperLimit) {
         BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
         return 0;

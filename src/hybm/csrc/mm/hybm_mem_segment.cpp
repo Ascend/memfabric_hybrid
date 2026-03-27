@@ -14,15 +14,12 @@
 #include <fstream>
 #include <sstream>
 
+#include "hybm_common_include.h"
 #include "dl_acl_api.h"
-#include "hybm_networks_common.h"
 #include "hybm_dev_user_legacy_segment.h"
 #include "hybm_dev_legacy_segment.h"
-#include "hybm_gva.h"
-#include "hybm_types.h"
 #include "hybm_conn_based_segment.h"
 #include "hybm_vmm_based_segment.h"
-#include "hybm_gva_version.h"
 #include "hybm_va_manager.h"
 
 namespace ock {
@@ -76,8 +73,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
     MemSegmentPtr tmpSeg;
     switch (options.segType) {
         case HYBM_MST_HBM:
-            if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
-                (options.dataOpType & HYBM_DOP_TYPE_MTE) == 0) {
+            if (HybmGetGvaVersion() == HYBM_GVA_V4 || socType_ == AscendSocType::ASCEND_950) {
                 tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
                 tmpSeg = std::make_shared<HybmDevLegacySegment>(options, entityId);
@@ -219,21 +215,9 @@ Result MemSegment::InitDeviceInfo(int devId)
         }
     }
 
-    auto name = DlAclApi::AclrtGetSocName();
-    if (name == nullptr) {
-        BM_LOG_ERROR("AclrtGetSocName() failed.");
-        return BM_ERROR;
-    }
-
-    std::string socName{name};
-    if (socName.find("Ascend910B") != std::string::npos) {
-        socType_ = AscendSocType::ASCEND_910B;
-    } else if (socName.find("Ascend910_93") != std::string::npos) {
-        socType_ = AscendSocType::ASCEND_910C;
-    }
-
+    socType_ = DlAclApi::GetAscendSocType();
     BM_LOG_DEBUG("local sdid=0x" << std::hex << sdid_ << ", local server=0x" << std::hex << serverId_
-                                 << ", spid=" << superPodId_ << ", socName=" << socName);
+                                 << ", spid=" << superPodId_);
     deviceInfoReady_ = true;
 
     return BM_OK;

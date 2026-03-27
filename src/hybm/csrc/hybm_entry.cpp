@@ -20,12 +20,12 @@
 #include "hybm_ptracer.h"
 #include "hybm_common_include.h"
 #include "hybm_gva.h"
-#include "hybm_gva_version.h"
 #include "hybm_version.h"
-#include "mf_file_util.h"
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
-#include "under_api/dl_api.h"
+#include "dl_api.h"
+#include "dl_acl_api.h"
+#include "dl_hal_api.h"
 
 using namespace ock::mf;
 
@@ -34,6 +34,7 @@ namespace {
 uint64_t g_baseAddr = 0ULL;
 int64_t initialized = 0;
 int32_t initedDeviceId = -1;
+void *g_allocHandle = nullptr;
 
 std::mutex initMutex;
 } // namespace
@@ -83,12 +84,12 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
                                           << ") of other module!");
             return BM_ERROR;
         }
-
-        /*
-         * hybm_init will be accessed multiple times when bm/shm/trans init
-         * incremental loading is required here.
-         */
         BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
+        if (g_baseAddr == 0) {
+            auto ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr,
+                                         DlAclApi::GetAscendSocType(), &g_allocHandle);
+            BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "init shm meta failed");
+        }
 
         initialized++;
         return 0;
@@ -102,7 +103,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         BM_LOG_WARN("init ptracer module failed, result: " << ret << ", error msg: " << ptracer_get_last_err_msg());
     }
 
-    ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr);
+    ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr, DlAclApi::GetAscendSocType(), &g_allocHandle);
     if (ret != BM_OK) {
         ptracer_uninit();
         DlApi::CleanupLibrary();
@@ -129,11 +130,26 @@ HYBM_API void hybm_uninit()
     }
 
     ptracer_uninit();
-    if (g_baseAddr != 0) {
-        drv::HalGvaFree(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
-        auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
-        BM_LOG_INFO("uninitialize GVA memory return: " << ret);
-        g_baseAddr = 0ULL;
+    auto socType = DlAclApi::GetAscendSocType();
+    if ((socType == AscendSocType::ASCEND_950) || (HybmGetGvaVersion() == HYBM_GVA_V4)) {
+        if (g_baseAddr != 0) {
+            auto ret = DlHalApi::HalMemUnmap(reinterpret_cast<void *>(g_baseAddr));
+            BM_LOG_INFO("unmap meta info res: " << ret);
+            if (g_allocHandle != nullptr) {
+                ret = DlHalApi::HalMemRelease((drv_mem_handle_t *)g_allocHandle);
+                g_allocHandle = nullptr;
+                BM_LOG_INFO("release meta memory handle res: " << ret);
+            }
+            ret = DlHalApi::HalMemAddressFree(reinterpret_cast<void *>(g_baseAddr));
+            BM_LOG_INFO("free meta memory res: " << ret);
+        }
+    } else {
+        if (g_baseAddr != 0) {
+            drv::HalGvaFree(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE);
+            auto ret = drv::HalGvaUnreserveMemory(g_baseAddr);
+            BM_LOG_INFO("uninitialize GVA memory return: " << ret);
+            g_baseAddr = 0ULL;
+        }
     }
 
     HybmStreamManager::DestroyAllThreadHybmStream();

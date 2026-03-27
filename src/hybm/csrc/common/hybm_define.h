@@ -57,6 +57,9 @@ constexpr uint64_t HYBM_GVM_START_ADDR = 0x280000000000UL; // 40T
 constexpr uint64_t HYBM_GVM_END_ADDR = 0xA80000000000UL;   // 168T
 constexpr uint64_t HYBM_GVM_MAX_POOL_SIZE = 128ULL << 40;  // 128T, 910C暂时只做到128TB, 910B无此限制
 
+constexpr uint64_t HYBM_GVM_START_ADDR_A5 = 0x340000000000UL; // 不同HDK版本差异有点大
+constexpr uint64_t HYBM_GVM_END_ADDR_A5 = HYBM_GVM_START_ADDR_A5 + HYBM_GVM_MAX_POOL_SIZE; // 0xB40000000000UL
+
 constexpr uint64_t HYBM_GVM_START_ADDR_4P = 4ULL << 50; // 4P, GVA for > 128T memory pool case
 constexpr uint64_t HYBM_GVM_END_ADDR_8P = 8ULL << 50;   // 8P, GVA for > 128T memory pool case
 
@@ -78,10 +81,19 @@ inline bool IsDramSlice(uint64_t magic)
     return magic == DRAM_SLICE_EXPORT_INFO_MAGIC || magic == VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC;
 }
 
+inline bool IsArmArch()
+{
+#if defined(__arm__) || defined(__aarch64__)
+    return true;
+#endif
+    return false;
+}
+
 enum AscendSocType {
     ASCEND_UNKNOWN = 0,
     ASCEND_910B,
     ASCEND_910C,
+    ASCEND_950,
 };
 
 enum DeviceSystemInfoType {

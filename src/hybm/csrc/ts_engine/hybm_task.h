@@ -23,6 +23,7 @@ constexpr uint8_t RT_STARS_SQE_TYPE_WRITE_VALUE = 8U;
 constexpr uint8_t RT_STARS_SQE_TYPE_SDMA = 11U;
 
 constexpr uint8_t RT_STARS_DEFAULT_KERNEL_CREDIT = 254U;
+constexpr uint8_t RT_STARS_DEFAULT_KERNEL_CREDIT_DAVID = 253U;
 constexpr uint8_t RT_STARS_NEVER_TIMEOUT_KERNEL_CREDIT = 255U;
 constexpr uint32_t UINT32_BIT_NUM = 32U;
 constexpr uint32_t MASK_17_BIT = 0x0001FFFFU;
@@ -40,8 +41,9 @@ enum RtStarsSqeIntDirType {
 
 enum StreamTaskType : uint32_t {
     STREAM_TASK_TYPE_SDMA = 1,
-    STREAM_TASK_TYPE_RDMA = 2,
+    STREAM_TASK_TYPE_WRITE_VAL = 2,
     STREAM_TASK_TYPE_NOTIFY = 3,
+    STREAM_TASK_TYPE_DAVID_SDMA = 4,
 };
 
 #pragma pack(push)
@@ -61,6 +63,26 @@ struct rtStarsSqeHeader_t {
 
     uint16_t rt_stream_id;
     uint16_t task_id;
+};
+
+struct RtDavidStarsSqeHeaderT {
+    /* word0 */
+    uint8_t type : 6;
+    uint8_t lock : 1;
+    uint8_t unlock : 1;
+    uint8_t ie : 1;
+    uint8_t preP : 1;
+    uint8_t postP : 1;
+    uint8_t wrCqe : 1;
+    uint8_t ptrMode : 1;
+    uint8_t rttMode : 1;
+    uint8_t headUpdate : 1;
+    uint8_t reserved : 1;
+    uint16_t blockDim;
+
+    /* word1 */
+    uint16_t rtStreamId;
+    uint16_t taskId;
 };
 
 struct rtStarsMemcpyAsyncSqe_t {
@@ -107,6 +129,118 @@ struct rtStarsMemcpyAsyncSqe_t {
     uint16_t srcOffsetHigh;
     uint16_t dstOffsetHigh;
     uint32_t resLast[1];
+};
+
+// MemAsync
+struct MemcpyStride00 {
+    /* word7 */
+    uint16_t dstStreamId;
+    uint16_t dstSubStreamId;
+
+    /* word8-9 */
+    uint32_t srcAddrLow;
+    uint32_t srcAddrHigh;
+
+    /* word10-11 */
+    uint32_t dstAddrLow;
+    uint32_t dstAddrHigh;
+
+    /* word12 */
+    uint32_t lengthMove;
+
+    /* word13-15 */
+    uint32_t srcOffsetLow;
+    uint32_t dstOffsetLow;
+    uint16_t srcOffsetHigh;
+    uint16_t dstOffsetHigh;
+};
+
+struct MemcpyStride01 {
+    /* word7 */
+    uint16_t dstStreamId;
+    uint16_t dstSubStreamId;
+
+    /* word8-9 */
+    uint32_t srcAddrLow;
+    uint32_t srcAddrHigh;
+
+    /* word10-11 */
+    uint32_t dstAddrLow;
+    uint32_t dstAddrHigh;
+
+    /* word12 */
+    uint32_t lengthMove;
+
+    /* word13-15 */
+    uint32_t srcStrideLength;
+    uint32_t dstStrideLength;
+    uint32_t strideNum;
+};
+
+struct MemcpyStride10 {
+    /* word7 */
+    uint16_t numOuter;
+    uint16_t numInner;
+
+    /* word8-9 */
+    uint32_t srcAddrLow;
+    uint32_t srcAddrHigh;
+
+    /* word10-11 */
+    uint32_t strideOuter;
+    uint32_t strideInner;
+
+    /* word12 */
+    uint32_t lengthInner;
+
+    /* word13-15 */
+    uint32_t reserved[3];
+};
+
+struct RtDavidStarsMemcpySqeT {
+    /* word0-1 */
+    RtDavidStarsSqeHeaderT header;
+
+    /* word2 */
+    uint32_t res1;
+
+    /* word3 */
+    uint16_t res2;
+    uint8_t kernelCredit;
+    uint8_t res3;
+
+    /* word4 */
+    uint32_t opcode : 8;
+    uint32_t sssv : 1;
+    uint32_t dssv : 1;
+    uint32_t sns : 1;
+    uint32_t dns : 1;
+    uint32_t sro : 1;
+    uint32_t dro : 1;
+    uint32_t stride : 2;
+    uint32_t ie2 : 1;
+    uint32_t compEn : 1;
+    uint32_t vaValid : 1;
+    uint32_t res4 : 13;
+
+    /* word5 */
+    uint16_t sqeId;
+    uint8_t mapamPartId;
+    uint8_t mpamns : 1;
+    uint8_t pmg : 2;
+    uint8_t qos : 4;
+    uint8_t d2dOffsetFlag : 1;       // use reserved filed
+
+    /* word6 */
+    uint16_t srcStreamId;
+    uint16_t srcSubStreamId;
+
+    /* word7-15 */
+    union {
+        MemcpyStride00 strideMode0;
+        MemcpyStride01 strideMode1;
+        MemcpyStride10 strideMode2;
+    } u;
 };
 
 struct rtStarsWriteValueSqe_t {
@@ -160,6 +294,7 @@ union rtStarsSqe_t {
     rtStarsMemcpyAsyncSqe_t memcpyAsyncSqe;
     rtStarsWriteValueSqe_t writeValueSqe;
     rtStarsNotifySqe_t notifySqe;
+    RtDavidStarsMemcpySqeT davidMemcpySqe;
 };
 
 struct StreamTask {

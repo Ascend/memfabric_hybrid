@@ -944,7 +944,7 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.entityId = id_;
     info.rankId = options_.rankId;
     info.rankSize = options_.rankCount;
-    info.symmetricSize = options_.deviceVASpace;
+    info.symmetricSize = options_.maxHBMSize;
     info.extraContextSize = 0;
     if (transportManager_ != nullptr) {
         info.qpInfoAddress = (uint64_t)(ptrdiff_t)transportManager_->GetQpInfo();

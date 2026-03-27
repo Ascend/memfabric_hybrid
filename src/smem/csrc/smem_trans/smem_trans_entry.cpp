@@ -19,6 +19,7 @@
 #include <cstring>
 
 #include "mf_syntactic_sugar.h"
+#include "mf_str_util.h"
 #include "hybm.h"
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
@@ -84,7 +85,7 @@ Result SmemTransEntry::ExportExchangeInfo()
 int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
 {
     entityId_ = (16U << 3U) + 1U;
-    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port)) {
+    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port, workerUniqueId_.reserved)) {
         return SM_INVALID_PARAM;
     }
 
@@ -456,10 +457,12 @@ Result SmemTransEntry::BatchQuantTransfer(smem_trans_quant_copy_param_t *params,
     return ret;
 }
 
-bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port)
+bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port,
+                                    uint16_t &reserved)
 {
     UrlExtraction extraction;
-    int ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(name));
+    std::vector<std::string> splitRes = mf::StrUtil::Split(name, '_');
+    int ret = extraction.ExtractIpPortFromUrl(std::string("tcp://").append(splitRes[0]));
     if (ret != 0) {
         SM_LOG_ERROR("parse name failed: " << ret);
         return false;
@@ -479,6 +482,12 @@ bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t
         ip.type = ock::mf::IpV4;
     }
     port = extraction.port;
+    long tmpPid = 0;
+    size_t resSize = 2UL;
+    if (splitRes.size() < resSize || !mf::StrUtil::String2Int<long>(splitRes[1], tmpPid)) {
+        SM_LOG_INFO("split pid info from uniqueid failed.");
+    }
+    reserved = tmpPid;
     return true;
 }
 
@@ -653,10 +662,10 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &un
         uniqueId = it->second;
         return SM_OK;
     }
-    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port);
+    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port, workerUniqueId.reserved);
     if (!success) {
         SM_LOG_ERROR("parse name failed.");
-        return -1;
+        return SM_INVALID_PARAM;
     }
 
     WorkerIdUnion workerId{workerUniqueId};

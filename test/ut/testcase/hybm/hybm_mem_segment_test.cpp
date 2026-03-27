@@ -254,7 +254,7 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_ValidateOptions)
 {
     ock::mf::MemSegmentOptions opt{};
     opt.segType = ock::mf::HYBM_MST_DRAM;
-    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    opt.maxSize = ock::mf::GB;
     opt.rankCnt = 8;
 
     ock::mf::HybmVmmBasedSegment segOk(opt, 0);
@@ -797,6 +797,7 @@ TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_ReserveMemorySpace)
     options.segType = ock::mf::HYBM_MST_DRAM;
     options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
     options.rankCnt = 1;
+    options.isSecondMapping = true;
 
     // 测试构造和参数验证
     ock::mf::HybmConnBasedSegment segment(options, 100);
@@ -1045,7 +1046,7 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_ReserveMemorySpace)
 {
     ock::mf::MemSegmentOptions options{};
     options.segType = ock::mf::HYBM_MST_DRAM;
-    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.maxSize = ock::mf::GB;
     options.rankCnt = 1;
 
     // 测试构造和参数验证
@@ -1072,8 +1073,10 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_ReserveMemorySpace)
 
     // 无效type
     options.segType = ock::mf::HYBM_MST_HBM_USER;
-    ret = segment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
-    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+    int eid = 100;
+    ock::mf::HybmVmmBasedSegment invalidSegTypeSegment(options, eid);
+    ret = invalidSegTypeSegment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
+    EXPECT_EQ(ret, ock::mf::BM_NOT_INITIALIZED);
 
     // 测试内存释放
     auto unreserveRet = segment.UnReserveMemorySpace();

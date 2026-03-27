@@ -32,7 +32,8 @@ static uint32_t g_checkMap[HYBM_DATA_COPY_DIRECTION_BUTT][OP_CHECK_BUTT] = {
 HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_data_copy_direction direction,
                                 void *stream, uint32_t flags)
 {
-    BM_LOG_DEBUG("Src: " << VaToInfo(params->src) << ", dest: " << VaToInfo(params->dest));
+    BM_LOG_DEBUG("Src: " << VaToInfo(params->src) << ", dest: " << VaToInfo(params->dest)
+                         << " flag:" << VaToStr(flags) << " direction:" << direction);
     BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(params->src != nullptr, BM_INVALID_PARAM);
@@ -93,7 +94,8 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
     BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
     BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
-    BM_LOG_DEBUG("Src[0]: " << VaToInfo(params->sources[0]) << ", dest[0]: " << VaToInfo(params->destinations[0]));
+    BM_LOG_DEBUG("Src[0]: " << VaToInfo(params->sources[0]) << ", dest[0]: " << VaToInfo(params->destinations[0])
+                            << " flag:" << VaToStr(flags) << " direction:" << direction);
 
     if (direction == HYBM_DATA_COPY_DIRECTION_AUTO) {
         auto &vaMgr = ock::mf::HybmVaManager::GetInstance();

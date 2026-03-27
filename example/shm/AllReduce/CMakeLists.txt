@@ -20,6 +20,14 @@ if ("${MF_PATH}" STREQUAL "")
     message(FATAL_ERROR "memfabric_hybrid path not found!")
 endif ()
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+    set(TARGET_ARCH "x86_64")
+elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+    set(TARGET_ARCH "aarch64")
+else ()
+    message(FATAL_ERROR "arch is not support!")
+endif ()
+
 ascendc_library(shm_allreduce_kernels SHARED ${CMAKE_CURRENT_LIST_DIR}/shm_all_reduce.cpp)
 ascendc_include_directories(shm_allreduce_kernels
         PUBLIC
@@ -33,7 +41,7 @@ target_compile_options(shm_example PRIVATE
 )
 
 include_directories(${MF_PATH}/include/smem/host)
-target_link_directories(shm_example PUBLIC ${MF_PATH}/aarch64-linux/lib64)
+target_link_directories(shm_example PUBLIC ${MF_PATH}/${TARGET_ARCH}-linux/lib64)
 
 target_link_libraries(shm_example PRIVATE
         shm_allreduce_kernels

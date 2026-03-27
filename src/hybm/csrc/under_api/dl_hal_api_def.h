@@ -29,6 +29,12 @@ extern "C" {
 
 #define HOST_MEM_MAP_DEV 3
 
+#define RT_MAX_THREAD_NUM_PER_WARP (32U)
+#define RT_SIMT_DEFAULT_STACK_SIZE_THREAD (256U)
+#define RT_KIS_SIMT_WARP_STK_SIZE (RT_MAX_THREAD_NUM_PER_WARP * RT_SIMT_DEFAULT_STACK_SIZE_THREAD) // 0x2000B
+#define RT_KIS_SIMT_DVG_WARP_STK_SIZE (1024U)            // 1024B
+#define RT_STK_ALIGN_LEN (128U)
+
 typedef enum tagDrvSqCqType {
     DRV_NORMAL_TYPE = 0,
     DRV_CALLBACK_TYPE,
@@ -87,6 +93,48 @@ typedef struct {
     uint32_t shareSqId;
 } StreamAllocInfo;
 
+union rtStreamFlag {
+    struct {
+        uint32_t sqLock : 1;
+        uint32_t waitLock : 1;      // rt set
+        uint32_t dqsInterChip : 1;  // dqs inter chip schedule stream
+        uint32_t res0    : 29;
+    } bits;
+    uint32_t u32;
+};
+
+struct trs_ext_info_header {
+    uint32_t type;
+    uint32_t host_ssid;
+    uint32_t hccp_pid;
+    uint32_t cp_pid;
+    uint32_t vfid;
+    uint32_t rsv[11];
+    char data[0]; // indicates data following
+};
+
+#pragma pack(push)
+#pragma pack (4)
+struct rtInfoExBody_t {
+    uint64_t validFlag;                    // InfoExValidFlag
+    rtStreamFlag streamFlag;
+    uint32_t kisSimtStkBaseAddrLow;        // set for simt operator
+    uint32_t kisSimtStkBaseAddrHigh : 16;  // set for simt operator
+    uint32_t res1 : 16;
+    uint32_t kisSimtWarpStkSize;           // set for simt operator
+    uint32_t kisSimtDvgWarpStkSize;        // set for simt operator
+    uint32_t poolId;                       // set for vf other resource
+    uint32_t poolIdMax;                    // set for vf aic aiv resource
+    uint32_t stackPhyBaseAddrLow;          // set for aic aiv
+    uint32_t stackPhyBaseAddrHigh;         // set for aic aiv
+} ;
+
+struct rtStreamInfoExMsg_t {
+    struct trs_ext_info_header head;
+    rtInfoExBody_t body;
+};
+#pragma pack(pop)
+
 struct halSqCqInputInfo {
     drvSqCqType_t type; // normal : 0, callback : 1
     uint32_t tsId;
@@ -102,7 +150,9 @@ struct halSqCqInputInfo {
     uint32_t sqId;  // if flag bit 1 is 0, don't care about it
 
     uint32_t info[SQCQ_RTS_INFO_LENGTH]; // inform to ts through the mailbox, consider single operator performance
-    uint32_t res[SQCQ_RESV_LENGTH];
+    uint32_t ext_info_len;
+    void *ext_info;    // the header of ext_info is struct trs_ext_info_header
+    uint32_t res[SQCQ_RESV_LENGTH - 3];
 };
 
 struct halSqCqOutputInfo {

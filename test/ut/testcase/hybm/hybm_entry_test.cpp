@@ -15,7 +15,6 @@
 
 #include "hybm.h"
 #include "hybm_common_include.h"
-#include "hybm_logger.h"
 #include "hybm_gva.h"
 #include "hybm_ptracer.h"
 #include "hybm_stream_manager.h"

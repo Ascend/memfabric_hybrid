@@ -94,7 +94,7 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
     Result result = BM_ERROR;
     for (auto &ops : availableOps) {
         BM_LOG_DEBUG("try data copy from rank " << options.srcRankId << " to rank " << options.destRankId
-                                                << " with data op " << ops.first);
+                                                << " with data op " << ops.first << " direction:" << direction);
         hybm_copy_params param2 = params;
         result = ops.second->DataCopy(param2, direction, options);
         if (result == BM_OK) {
@@ -142,6 +142,9 @@ Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
                                                       << " no data operator available");
             return BM_INVALID_PARAM;
         }
+
+        BM_LOG_DEBUG("try batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
+            << " with data op " << availableOps.front().first << " direction:" << direction);
         // 暂时不做多路径拷贝失败重试,copyParams内容会被BatchDataCopy修改
         auto result = availableOps.front().second->BatchDataCopy(copyParams, direction, copyOptions);
         if (result != BM_OK) {
@@ -166,7 +169,7 @@ Result HostComposeDataOp::DataCopyAsync(hybm_copy_params &params, hybm_data_copy
     Result result = BM_ERROR;
     for (auto &ops : availableOps) {
         BM_LOG_DEBUG("try data copy async from rank " << options.srcRankId << " to rank " << options.destRankId
-                                                      << " with data op " << ops.first);
+                                                      << " with data op " << ops.first << " direction:" << direction);
         result = ops.second->DataCopyAsync(params, direction, options);
         if (result == BM_OK) {
             break;

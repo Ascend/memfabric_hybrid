@@ -45,26 +45,31 @@ Result HostDataOpSDMA::Initialize() noexcept
         return BM_OK;
     }
 
-    auto ret = DlAclApi::AclrtMallocHost(&paramSpace_, HYBM_PARAM_SPACE_SIZE);
-    BM_ASSERT_RETURN(ret == 0 && paramSpace_ != nullptr, BM_MALLOC_FAILED);
+    if (DlAclApi::GetAscendSocType() == AscendSocType::ASCEND_950 || !IsArmArch()) {
+        BM_LOG_WARN("A5 or x86 not support batch extend copy now!");
+    } else {
+        auto ret = DlAclApi::AclrtMallocHost(&paramSpace_, HYBM_PARAM_SPACE_SIZE);
+        BM_ASSERT_RETURN(ret == 0 && paramSpace_ != nullptr, BM_MALLOC_FAILED);
 
-    void *output = nullptr;
-    ret = DlHalApi::HalHostRegister(paramSpace_, HYBM_PARAM_SPACE_SIZE, HOST_MEM_MAP_DEV,
-                                    HybmGetInitedLogicDeviceId(), &output);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("register param space failed, ret:" << ret);
-        DlAclApi::AclrtFreeHost(paramSpace_);
-        paramSpace_ = nullptr;
-        return BM_ERROR;
+        void *output = nullptr;
+        ret = DlHalApi::HalHostRegister(paramSpace_, HYBM_PARAM_SPACE_SIZE, HOST_MEM_MAP_DEV,
+                                        HybmGetInitedLogicDeviceId(), &output);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("register param space failed, ret:" << ret);
+            DlAclApi::AclrtFreeHost(paramSpace_);
+            paramSpace_ = nullptr;
+            return BM_ERROR;
+        }
+
+        auto mask = reinterpret_cast<uint64_t *>(
+            reinterpret_cast<uint64_t>(paramSpace_) + HYBM_PARAM_SPACE_META_OFFSET);
+        for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
+            __atomic_store_n(mask + i * HYBM_PARAM_META_IDX_BASE, HYBM_EXTEND_CONCURRENT, __ATOMIC_RELEASE);
+        }
+
+        paramOffset_ = reinterpret_cast<uint64_t>(output) - reinterpret_cast<uint64_t>(paramSpace_);
+        paramSpaceIdx_ = 0;
     }
-
-    auto mask = reinterpret_cast<uint64_t *>(reinterpret_cast<uint64_t>(paramSpace_) + HYBM_PARAM_SPACE_META_OFFSET);
-    for (uint32_t i = 0; i < HYBM_PARAM_SPACE_CAP; i++) {
-        __atomic_store_n(mask + i * HYBM_PARAM_META_IDX_BASE, HYBM_EXTEND_CONCURRENT, __ATOMIC_RELEASE);
-    }
-
-    paramOffset_ = reinterpret_cast<uint64_t>(output) - reinterpret_cast<uint64_t>(paramSpace_);
-    paramSpaceIdx_ = 0;
     inited_ = true;
     return BM_OK;
 }
@@ -390,8 +395,12 @@ Result HostDataOpSDMA::CopyGH2LH(void *destVA, const void *srcVA, uint64_t lengt
     return ret;
 }
 
-void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
+void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task, void *destVA, const void *srcVA, size_t count) noexcept
 {
+    if (DlAclApi::GetAscendSocType() == AscendSocType::ASCEND_950) {
+        return InitG2GStreamTaskV2(task, destVA, srcVA, count);
+    }
+
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
     BM_ASSERT_RET_VOID(hStream != nullptr);
     task.type = STREAM_TASK_TYPE_SDMA;
@@ -432,6 +441,70 @@ void HostDataOpSDMA::InitG2GStreamTask(StreamTask &task) noexcept
     sqe->dstOffsetLow = 0U;
     sqe->srcOffsetHigh = 0U;
     sqe->dstOffsetHigh = 0U;
+
+    sqe->length = count;
+    sqe->src_addr_low =
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
+    sqe->src_addr_high = static_cast<uint32_t>(
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+    sqe->dst_addr_low =
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
+    sqe->dst_addr_high = static_cast<uint32_t>(
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+}
+
+void HostDataOpSDMA::InitG2GStreamTaskV2(StreamTask &task, void *destVA, const void *srcVA, size_t count) noexcept
+{
+    auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
+    BM_ASSERT_RET_VOID(hStream != nullptr);
+    task.type = STREAM_TASK_TYPE_DAVID_SDMA;
+    RtDavidStarsMemcpySqeT *const sqe = &(task.sqe.davidMemcpySqe);
+    sqe->header.type = RT_STARS_SQE_TYPE_SDMA;
+    sqe->header.wrCqe = hStream->GetWqeFlag();
+    sqe->header.rtStreamId = hStream->GetId();
+    sqe->header.taskId = 0;
+
+    sqe->kernelCredit = RT_STARS_DEFAULT_KERNEL_CREDIT_DAVID;
+    sqe->opcode = 0U;
+
+    sqe->srcStreamId = 0x1FU; // get sid and ssid from sq, leave 0 here
+    sqe->u.strideMode0.dstStreamId =  0x1FU;
+    sqe->srcSubStreamId = 1U;
+    sqe->u.strideMode0.dstSubStreamId = 1U;
+    sqe->vaValid = 0U;
+    sqe->ie2  = 0U;
+    sqe->sssv = 1U;
+    sqe->dssv = 1U;
+    sqe->sns  = 1U;
+    sqe->dns  = 1U;
+    sqe->sro  = 0U;
+    sqe->dro  = 0U;
+    sqe->mapamPartId = 0U;
+    sqe->mpamns = 0U;
+    sqe->stride = 0U;
+    sqe->compEn = 0U;
+    sqe->pmg = 0U;
+    sqe->qos = 6U;
+    sqe->res1 = 0U;
+    sqe->res2 = 0U;
+    sqe->res3 = 0U;
+    sqe->res4 = 0U;
+
+    sqe->d2dOffsetFlag = 0U;
+    sqe->u.strideMode0.srcOffsetLow = 0U;
+    sqe->u.strideMode0.dstOffsetLow = 0U;
+    sqe->u.strideMode0.srcOffsetHigh = 0U;
+    sqe->u.strideMode0.dstOffsetHigh = 0U;
+
+    sqe->u.strideMode0.lengthMove = count;
+    sqe->u.strideMode0.srcAddrLow =
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
+    sqe->u.strideMode0.srcAddrHigh = static_cast<uint32_t>(
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
+    sqe->u.strideMode0.dstAddrLow =
+        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
+    sqe->u.strideMode0.dstAddrHigh = static_cast<uint32_t>(
+        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 }
 
 Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, uint32_t flags, void *stream) noexcept
@@ -446,20 +519,9 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, ui
     }
 
     StreamTask task{};
-    InitG2GStreamTask(task);
-    rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    InitG2GStreamTask(task, destVA, srcVA, count);
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
     BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
-
-    sqe->length = count;
-    sqe->src_addr_low =
-        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
-    sqe->src_addr_high = static_cast<uint32_t>(
-        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
-    sqe->dst_addr_low =
-        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
-    sqe->dst_addr_high = static_cast<uint32_t>(
-        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     auto ret = hStream->SubmitTasks(task);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
@@ -480,20 +542,9 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
         return DlAclApi::RtMemcpyAsync(destVA, count, srcVA, count, RT_MEMCPY_DEVICE_TO_DEVICE, stream);
     }
     StreamTask task{};
-    InitG2GStreamTask(task);
-    rtStarsMemcpyAsyncSqe_t *const sqe = &(task.sqe.memcpyAsyncSqe);
+    InitG2GStreamTask(task, destVA, srcVA, count);
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
     BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
-
-    sqe->length = count;
-    sqe->src_addr_low =
-        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0x00000000FFFFFFFFU);
-    sqe->src_addr_high = static_cast<uint32_t>(
-        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srcVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
-    sqe->dst_addr_low =
-        static_cast<uint32_t>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0x00000000FFFFFFFFU);
-    sqe->dst_addr_high = static_cast<uint32_t>(
-        (static_cast<uint64_t>(reinterpret_cast<uintptr_t>(destVA)) & 0xFFFFFFFF00000000U) >> UINT32_BIT_NUM);
 
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
     auto ret = hStream->SubmitTasks(task);
@@ -523,6 +574,7 @@ uint32_t HostDataOpSDMA::TryGetOneParamSpace(void **ptr) noexcept
 
 Result HostDataOpSDMA::BatchCopyExtend(hybm_batch_copy_params &params, void *stream, uint32_t flags) noexcept
 {
+    BM_VALIDATE_RETURN(paramSpace_ != nullptr, "not support batch extend copy.", BM_ERROR);
     void *st = (stream != nullptr) ? stream : HybmStreamManager::GetThreadAclStream();
     uint32_t taskNum = (params.batchSize + HYBM_SINGLE_PARAM_NUM - 1) / HYBM_SINGLE_PARAM_NUM;
     for (uint32_t idx = 0; idx < taskNum; idx++) {
@@ -564,6 +616,7 @@ Result HostDataOpSDMA::BatchCopyExtend(hybm_batch_copy_params &params, void *str
 
 Result HostDataOpSDMA::QuantCopy(hybm_quant_copy_params &params) noexcept
 {
+    BM_VALIDATE_RETURN(paramSpace_ != nullptr, "not support quant copy.", BM_ERROR);
     void *st = (params.stream != nullptr) ? params.stream : HybmStreamManager::GetThreadAclStream();
     uint32_t singleBatchMax = HYBM_SINGLE_PARAM_SIZE / HYBM_QUANT_COPY_PARAM_SIZE;
     uint32_t taskNum = (params.batchSize + singleBatchMax - 1) / singleBatchMax;

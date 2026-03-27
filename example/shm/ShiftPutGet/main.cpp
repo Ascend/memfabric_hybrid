@@ -162,7 +162,7 @@ int32_t main(int32_t argc, char *argv[])
 
     TestSubGroup(handle, rankId, rankSize);
 
-    uint32_t val;
+    int32_t val;
     ret = smem_shm_atomic_alloc_value(handle, 1024U, &val);
     if (ret == 0) {
         INFO_LOG("[TEST] smem_shm_atomic_alloc_value ok, val:%u ret:%d", val, ret);

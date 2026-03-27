@@ -80,7 +80,7 @@ public:
     Result BatchQuantTransfer(smem_trans_quant_copy_param_t *params, smem_bm_copy_type opcode);
 
 private:
-    bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port);
+    bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port, uint16_t &reserved);
     void CleanupRemoteSlices(const std::vector<StoredSliceInfo> &rmSs);
     void RemoveRanks(std::set<uint32_t> &rankSet);
     Result StartWatchConnectThread();

@@ -111,6 +111,9 @@ public:
         // 模拟 DlAclApi::RtMemcpyAsync 方法
         MOCKER(&ock::mf::DlAclApi::RtMemcpyAsync).stubs().will(returnValue(0));
 
+        // 模拟 DlAclApi::GetAscendSocType 方法
+        MOCKER(&ock::mf::DlAclApi::GetAscendSocType).stubs().will(returnValue(ock::mf::AscendSocType::ASCEND_910B));
+
         // 模拟 DlHalApi::HalHostRegister 方法
         MOCKER(&ock::mf::DlHalApi::HalHostRegister).stubs().will(invoke(MockHalHostRegister));
 
@@ -130,6 +133,7 @@ public:
         MOCKER(HybmGetInitDeviceId).stubs().will(returnValue(0));
         // 模拟 ock::mf 命名空间中的函数
         MOCKER(&ock::mf::HybmGetInitedLogicDeviceId).stubs().will(returnValue(0));
+        MOCKER(&ock::mf::IsArmArch).stubs().will(returnValue(true));
 
         // 模拟 HybmStreamManager 相关方法
         // 创建一个空指针作为 GetThreadAclStream 的返回值

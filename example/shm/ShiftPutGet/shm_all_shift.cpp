@@ -110,7 +110,7 @@ public:
     __aicore__ inline void Process()
     {
         AscendC::LocalTensor<int64_t> bufTensor = bufQueue.AllocTensor<int64_t>();
-        __ubuf__ int64_t *buf = (__ubuf__ int64_t *)bufTensor.address_.bufferAddr;
+        __ubuf__ int64_t *buf = reinterpret_cast<__ubuf__ int64_t *>(bufTensor.address_.bufferAddr);
         smem_shm_set_copy_ubuf(buf, SMEM_SHM_ALIGN_SIZE);
 
         uint32_t rank = smem_shm_get_global_rank();
@@ -138,5 +138,5 @@ extern "C" __global__ __aicore__ void shm_all_shift(GM_ADDR gva, GM_ADDR localIn
 
 void shm_all_shift_do(void *stream, uint8_t *gva, int64_t *localInput)
 {
-    shm_all_shift<<<1, nullptr, stream>>>(gva, localInput);
+    shm_all_shift<<<1, nullptr, stream>>>(gva, (uint8_t *)localInput);
 }

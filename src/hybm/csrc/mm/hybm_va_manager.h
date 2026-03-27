@@ -207,6 +207,7 @@ private:
 
 private:
     mutable std::shared_mutex mutex_{};
+    AscendSocType soc_ = AscendSocType::ASCEND_UNKNOWN;
 
     std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]{}; // map<va, allocInfo>
     std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{}; // map<va, reserveInfo>  (HVM_HVA not used now)
@@ -241,7 +242,7 @@ std::string VaToInfo(T v)
     for (uint32_t i = 0; i < HVM_BUTT; i++) {
         auto info = HybmVaManager::GetInstance().FindAllocByVa(v64, i);
         if (info.second) {
-            return info.first.ToString();
+            return "[va:" + VaToStr(v64) + ",info:" + info.first.ToString() + "]";
         }
     }
     return VaToStr(v64);

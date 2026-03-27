@@ -1,10 +1,12 @@
 /.vscode/
+/.cache/
 /cmake-build-*/
 /.idea/
 /output/
 /build/
 /script/git_last_commit.txt
 package/*
+compile_commands.json
 
 *.so
 *.whl

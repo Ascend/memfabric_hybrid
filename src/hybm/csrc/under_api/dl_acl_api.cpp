@@ -104,6 +104,31 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     return BM_OK;
 }
 
+AscendSocType DlAclApi::GetAscendSocType()
+{
+    static AscendSocType cachedSocType = [&]() -> AscendSocType {
+        auto name = DlAclApi::AclrtGetSocName();
+        if (name == nullptr) {
+            BM_LOG_ERROR("AclrtGetSocName() failed.");
+            return AscendSocType::ASCEND_UNKNOWN;
+        }
+        BM_LOG_DEBUG("success get soc name: " << name);
+        std::string socName{name};
+        if (socName.find("Ascend910B") != std::string::npos) {
+            return AscendSocType::ASCEND_910B;
+        } else if (socName.find("Ascend910_93") != std::string::npos) {
+            return AscendSocType::ASCEND_910C;
+        } else if (socName.find("Ascend910_95") != std::string::npos
+                   || socName.find("Ascend950") != std::string::npos) {
+            return AscendSocType::ASCEND_950;
+        }
+
+        return AscendSocType::ASCEND_UNKNOWN;
+    }();
+
+    return cachedSocType;
+}
+
 void DlAclApi::CleanupLibrary()
 {
     std::lock_guard<std::mutex> guard(gMutex);

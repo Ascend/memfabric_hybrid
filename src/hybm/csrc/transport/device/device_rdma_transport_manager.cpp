@@ -700,7 +700,7 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     }
 
     StreamTask task;
-    task.type = STREAM_TASK_TYPE_RDMA;
+    task.type = STREAM_TASK_TYPE_WRITE_VAL;
     ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe, hStream);
     TP_TRACE_BEGIN(TP_HYBM_DEV_SUBMIT_TASK);
     ret = hStream->SubmitTasks(task);
@@ -949,7 +949,7 @@ int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
     }
 
     StreamTask task;
-    task.type = STREAM_TASK_TYPE_RDMA;
+    task.type = STREAM_TASK_TYPE_WRITE_VAL;
     ConstructSqeNoSinkModeForRdmaDbSendTask(rspInfo, task.sqe, hStream);
     ret = hStream->SubmitTasks(task);
     if (ret != BM_OK) {

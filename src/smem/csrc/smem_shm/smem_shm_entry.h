@@ -46,9 +46,9 @@ public:
 
     void *GetGva() const;
 
-    SmemGroupEnginePtr GetGroup() const;
-
     uint64_t GetHbmMaxSize() const;
+
+    SmemGroupEnginePtr GetGroup() const;
 
     uint32_t Id() const;
 
