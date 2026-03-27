@@ -317,7 +317,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
     }
 
     drv_mem_handle_t *dHandle = handle;
-    if (options_.segType == HYBM_MST_DRAM && options_.shared && !options_.mapHost) {
+    if (options_.segType == HYBM_MST_DRAM && options_.shared && (options_.flags & HYBM_FLAG_DRAM_MAP_HOST_VA) == 0) {
         ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &sHandle, logicDeviceId_, &dHandle);
         BM_VALIDATE_RETURN(ret == BM_OK, "HalMemImport memory failed:" << ret, BM_ERROR);
     }
@@ -328,7 +328,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
         slices_.erase(slice->index_);
         return BM_DL_FUNCTION_FAILED;
     }
-    if (options_.segType == HYBM_MST_DRAM && options_.shared && options_.mapHost) {
+    if (options_.segType == HYBM_MST_DRAM && options_.shared && (options_.flags & HYBM_FLAG_DRAM_MAP_HOST_VA) != 0) {
         struct drv_mem_access_desc desc[1];
         desc[0].location.side = MEM_DEV_SIDE;
         desc[0].location.id = logicDeviceId_;

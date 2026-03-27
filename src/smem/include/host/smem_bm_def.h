@@ -21,12 +21,18 @@ extern "C" {
 
 typedef void *smem_bm_t;
 #define SMEM_BM_TIMEOUT_MAX                 UINT32_MAX /* all timeout must <= UINT32_MAX */
-#define SMEM_BM_PERFORMANCE_MODE_FLAG_INDEX 7
-#define SMEM_BM_PERFORMANCE_MODE_FLAG_LEN   1
+#define SMEM_TLS_PATH_SIZE                  256
+
+// SMEM_BM_BIND_NUMA_FLAG start index When SMEM_BM_PERFORMANCE_MODE_FLAG == 1, this field is used
 #define SMEM_BM_BIND_NUMA_FLAG_INDEX        0
 #define SMEM_BM_BIND_NUMA_FLAG_LEN          7
-#define SMEM_TLS_PATH_SIZE                  256
+#define SMEM_BM_PERFORMANCE_MODE_FLAG_INDEX 7
+#define SMEM_BM_PERFORMANCE_MODE_FLAG_LEN   1
+// Automatic NUMA affinity selection when SMEM_BM_BIND_NUMA_FLAG == SMEM_BM_BIND_NUMA_AUTO_AFFINITY_FLAG
+#define SMEM_BM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << SMEM_BM_BIND_NUMA_FLAG_LEN) - 1)
 #define SMEM_BM_FLAG_CREATE_WITH_SHM        (1U << 8)
+// SMEM_BM_FLAG_DRAM_MAP_HOST_VA map host virtual address space
+#define SMEM_BM_FLAG_DRAM_MAP_HOST_VA       (1U << 9)
 
 /**
 * @brief Smem memory type

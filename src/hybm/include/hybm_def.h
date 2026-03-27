@@ -25,8 +25,17 @@ typedef void *hybm_mem_slice_t;
 #define HYBM_FLAG_EXPORT_ENTITY 1U ///< export/import entity instead of slice
 
 #define HYBM_TLS_PATH_SIZE 256
-#define HYBM_FLAG_INIT_SHMEM_META (1ULL << 63)
-#define HYBM_FLAG_CREATE_WITH_SHM (1U << 8)
+// HYBM_BIND_NUMA_FLAG start index When HYBM_PERFORMANCE_MODE_FLAG_INDEX == 1, this field is used
+#define HYBM_BIND_NUMA_FLAG_INDEX            0
+#define HYBM_BIND_NUMA_FLAG_LEN              7
+#define HYBM_PERFORMANCE_MODE_FLAG_INDEX     7
+#define HYBM_PERFORMANCE_MODE_FLAG_LEN       1
+// Automatic NUMA affinity selection when HYBM_BIND_NUMA_FLAG == HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG
+#define HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << HYBM_BIND_NUMA_FLAG_LEN) - 1)
+#define HYBM_FLAG_CREATE_WITH_SHM            (1U << 8)
+// HYBM_FLAG_DRAM_MAP_HOST_VA map host virtual address space
+#define HYBM_FLAG_DRAM_MAP_HOST_VA           (1U << 9)
+#define HYBM_FLAG_INIT_SHMEM_META            (1ULL << 63)
 
 #define HYBM_PRE_REG_SIZE_THRES (8192U * 1024) // local buffer larger than 8MB maybe preregister to mr
 
@@ -90,12 +99,6 @@ typedef struct {
     char packagePath[HYBM_TLS_PATH_SIZE];
     char decrypterLibPath[HYBM_TLS_PATH_SIZE];
 } hybm_tls_config;
-
-#define HYBM_PERFORMANCE_MODE_FLAG_INDEX 7
-#define HYBM_PERFORMANCE_MODE_FLAG_LEN   1
-#define HYBM_BIND_NUMA_FLAG_INDEX        0
-#define HYBM_BIND_NUMA_FLAG_LEN          7
-#define HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << HYBM_BIND_NUMA_FLAG_LEN) - 1)
 
 typedef struct {
     hybm_type bmType;
