@@ -1,5 +1,4 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-# Embricks is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #          http://license.coscl.org.cn/MulanPSL2
@@ -8,10 +7,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-# set src base dir and output dir of embricks
-set(EMBRICKS_SRC_DIR ${PROJECT_SOURCE_DIR}/app/embricks/src)
-set(EMBRICKS_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/output/app/embricks)
-
-include(cmake/config_version.cmake)
-
-add_subdirectory(src/csrc)
+if (BUILD_APP_EMBRICKS)
+    message(STATUS "build embricks app is required")
+    add_subdirectory(embricks)
+endif ()

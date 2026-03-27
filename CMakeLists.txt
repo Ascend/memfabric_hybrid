@@ -24,6 +24,9 @@ option(BUILD_TEST "Enable/disable build and package test utilities and examples"
 option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
 option(BUILD_ETCD_BACKEND "Enable/disable build etcd backend so" OFF)
 
+# options for app of memfabric
+option(BUILD_APP_EMBRICKS "Build embricks app" OFF)
+
 include(cmake/config_version.cmake)
 include(cmake/config_xpu.cmake)
 include(cmake/config_python.cmake)
@@ -44,6 +47,7 @@ message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 message(STATUS "XPU_TYPE = ${XPU_TYPE}")
 message(STATUS "BUILD_TEST = ${BUILD_TEST}")
 message(STATUS "BUILD_HCOM = ${BUILD_HCOM}")
+message(STATUS "BUILD_APP_EMBRICKS = ${BUILD_APP_EMBRICKS}")
 
 find_program(NINJA_EXE NAMES ninja)
 if (NINJA_EXE)
@@ -165,6 +169,8 @@ include(cmake/config_hcom.cmake)
 include(cmake/config_etcd.cmake)
 
 add_subdirectory(src)
+
+add_subdirectory(app)
 
 if (BUILD_UT STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 17)

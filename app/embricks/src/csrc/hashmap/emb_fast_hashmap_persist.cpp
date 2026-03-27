@@ -9,7 +9,4 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MEMFABRIC_HYBRID_EMB_FUNCTIONS_H
-#define MEMFABRIC_HYBRID_EMB_FUNCTIONS_H
-
-#endif // MEMFABRIC_HYBRID_EMB_FUNCTIONS_H
+#include "emb_fast_hashmap_persist.h"
