@@ -571,6 +571,10 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
+        ForceReConnectHcomChannel(rankId);
+        channel = channels_[rankId];
+    }
+    if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
         return BM_ERROR;
     }
@@ -639,6 +643,10 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
+        ForceReConnectHcomChannel(rankId);
+        channel = channels_[rankId];
+    }
+    if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
         return BM_ERROR;
     }
@@ -706,6 +714,10 @@ Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDe
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
+    if (channel == 0) {
+        ForceReConnectHcomChannel(rankId);
+        channel = channels_[rankId];
+    }
     if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
         return BM_ERROR;
@@ -909,22 +921,10 @@ void HcomTransportManager::ForceReConnectHcomChannel(uint32_t rankId)
 
 Result HcomTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    constexpr uint32_t kMaxRetries = 3u;
-    for (uint32_t attempt = 0; attempt < kMaxRetries; ++attempt) {
-        Result ret = InnerReadRemote(rankId, lAddr, rAddr, size);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Failed to ReadRemote, ret: " << ret << ", attempt: " << attempt << ", rank: " << rankId);
-        if (ret > 0 || channels_[rankId] == 0) {
-            ForceReConnectHcomChannel(rankId);
-        }
-        // 退避延迟：第 0 次不等，第 1 次等 1s，第 2 次等 2s（避免忙等）
-        if (attempt < kMaxRetries - 1) {
-            std::this_thread::sleep_for(std::chrono::seconds(attempt + 1));
-        }
+    if (channels_[rankId_] == 0) {
+        ForceReConnectHcomChannel(rankId);
     }
-    return BM_ERROR;
+    return InnerReadRemote(rankId, lAddr, rAddr, size);
 }
 
 Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor)
@@ -934,6 +934,10 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
     BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
     BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
+    if (channel == 0) {
+        ForceReConnectHcomChannel(rankId);
+        channel = channels_[rankId];
+    }
     if (channel == 0) {
         BM_LOG_ERROR("Failed to write remote, rankId: " << rankId << " is not connect");
         return BM_ERROR;
@@ -1003,22 +1007,11 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
 
 Result HcomTransportManager::WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    constexpr uint32_t kMaxRetries = 3u;
-    for (uint32_t attempt = 0; attempt < kMaxRetries; ++attempt) {
-        Result ret = InnerWriteRemote(rankId, lAddr, rAddr, size);
-        if (ret == BM_OK) {
-            return BM_OK;
-        }
-        BM_LOG_ERROR("Failed to WriteRemote, ret: " << ret << ", attempt: " << attempt << ", rank: " << rankId);
-        if (ret > 0 || channels_[rankId] == 0) {
-            ForceReConnectHcomChannel(rankId);
-        }
-        // 退避延迟：第 0 次不等，第 1 次等 1s，第 2 次等 2s（避免忙等）
-        if (attempt < kMaxRetries - 1) {
-            std::this_thread::sleep_for(std::chrono::seconds(attempt + 1));
-        }
+    if (channels_[rankId_] == 0) {
+        ForceReConnectHcomChannel(rankId);
     }
-    return BM_ERROR;
+
+    return InnerWriteRemote(rankId, lAddr, rAddr, size);
 }
 
 Result HcomTransportManager::GetMemoryRegionByAddr(const uint32_t &rankId, const uint64_t &addr, HcomMemoryRegion &mr)
