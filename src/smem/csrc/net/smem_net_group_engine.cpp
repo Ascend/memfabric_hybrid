@@ -38,8 +38,8 @@ constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 10LL * 1000;              // 10s, unit: ms
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
 constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;     // 5s
-constexpr uint64_t SMEM_GROUP_JOIN_COLLECTIVE_TIMEOUT_MS = 500ULL;
-constexpr int32_t SMEM_GROUP_JOIN_RETRY_MAX = 10;
+constexpr uint64_t SMEM_GROUP_JOIN_COLLECTIVE_TIMEOUT_MS = 6000ULL;
+constexpr int32_t SMEM_GROUP_JOIN_RETRY_MAX = 20;
 
 constexpr uint32_t UINT_BIT = 8U;
 constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
