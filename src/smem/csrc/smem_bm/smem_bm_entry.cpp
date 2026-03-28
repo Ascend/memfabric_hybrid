@@ -129,8 +129,7 @@ void SmemBmEntry::UnInitalize()
 
     uint32_t flags = 0;
     if (dramSlice_ != nullptr) {
-        // todo, need to update hdk
-        // hybm_free_local_memory(entity_, dramSlice_, 1, flags);
+        hybm_free_local_memory(entity_, dramSlice_, 1, flags);
         dramSlice_ = nullptr;
     }
     if (hbmSlice_ != nullptr) {

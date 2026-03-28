@@ -49,6 +49,11 @@ bool MemEntityFactory::RemoveEngine(hybm_entity_t entity)
 
     auto id = pos->second;
     enginesFromAddress_.erase(pos);
+    auto engine = engines_.find(id);
+    if (engine != engines_.end()) {
+        engine->second->UnReserveMemorySpace();
+        engine->second->UnInitialize();
+    }
     engines_.erase(id);
     return true;
 }

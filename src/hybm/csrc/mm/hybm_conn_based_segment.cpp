@@ -443,8 +443,13 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
         BM_LOG_ERROR("input slice(magic:" << std::hex << slice->magic_ << ") not match.");
         return BM_INVALID_PARAM;
     }
+
     HybmVaManager::GetInstance().RemoveOneVaInfo(slice->gva_);
     slices_.erase(pos);
+    if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_), logicDeviceId_, HOST_MEM_MAP_DEV);
+    }
+
     return BM_OK;
 }
 
