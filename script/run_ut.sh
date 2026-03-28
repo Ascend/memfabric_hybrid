@@ -22,6 +22,7 @@ readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
 readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 readonly FINGERPRINT_FILE="$BUILD_PATH/.build_fingerprint"
 readonly BUILD_FINGERPRINT="ASAN-UT-OPEN_ABI"
+readonly MF_BUILD_JOBS="${MF_BUILD_JOBS:-32}"
 
 FAST_MODE=false
 if [[ "$1" == "--fast" ]]; then
@@ -83,7 +84,7 @@ if ! $FAST_MODE || [ ! -f "${BUILD_PATH}/build.ninja" -a ! -f "${BUILD_PATH}/Mak
     cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE=ASAN -DBUILD_UT=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
     $FAST_MODE && echo "${BUILD_FINGERPRINT}" > "${FINGERPRINT_FILE}"
 fi
-${MAKE_CMD} install -j64 -C ${BUILD_PATH}
+${MAKE_CMD} install -j"${MF_BUILD_JOBS}" -C ${BUILD_PATH}
 export LD_LIBRARY_PATH=$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"

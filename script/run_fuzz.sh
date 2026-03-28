@@ -20,6 +20,7 @@ readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
 readonly TEST_3RD_PATCH_PATH="$PROJECT_FULL_PATH/test/3rdparty/patch"
 readonly MOCK_CANN_PATH="$HYBM_LIB_PATH/cann"
 readonly SECODE_FUZZZ_PATH="$PROJECT_FULL_PATH/test/3rdparty/secodefuzz"
+readonly MF_BUILD_JOBS="${MF_BUILD_JOBS:-32}"
 
 export ENABLE_FUZZ="ON"
 
@@ -110,7 +111,7 @@ dos2unix $TEST_3RD_PATCH_PATH/*.patch
 cd ${PROJECT_FULL_PATH}
 mkdir -p ${BUILD_PATH}
 cmake -DCMAKE_BUILD_TYPE=ASAN -DBUILD_PYTHON=OFF -DBUILD_UT=ON -DBUILD_OPEN_ABI=ON -S . -B ${BUILD_PATH}
-make install -j5 -C ${BUILD_PATH}
+make install -j"${MF_BUILD_JOBS}" -C ${BUILD_PATH}
 export LD_LIBRARY_PATH=$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib64:$LD_LIBRARY_PATH
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1:log_path=asan.log"

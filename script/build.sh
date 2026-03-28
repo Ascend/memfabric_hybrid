@@ -31,6 +31,7 @@ export BUILD_TOOL=${12:-cmake}
 
 readonly SCRIPT_FULL_PATH=$(dirname $(readlink -f "$0"))
 readonly PROJECT_FULL_PATH=$(dirname "$SCRIPT_FULL_PATH")
+readonly MF_BUILD_JOBS="${MF_BUILD_JOBS:-32}"
 
 if [ "${BUILD_UT}" == "ON" ]; then
   readonly MOCKCPP_PATH="$PROJECT_FULL_PATH/test/3rdparty/mockcpp"
@@ -171,7 +172,7 @@ if [ "${BUILD_TOOL}" == "cmake" ]; then
         -DBUILD_ETCD_BACKEND="${BUILD_ETCD_BACKEND}" \
         -S . \
         -B build/
-    ${MAKE_CMD} install -j32 -C build/
+    ${MAKE_CMD} install -j"${MF_BUILD_JOBS}" -C build/
 else
     BAZEL_ARGS=()
 
@@ -203,10 +204,10 @@ else
 
     if [ "${BUILD_HCOM}" == "ON" ]; then
         BAZEL_ARGS+=("--define=build_with_hcom=1")
- 
+
         if [ "${BUILD_HCOM_WITH_RDMA}" == "OFF" ]; then
             BAZEL_ARGS+=("--define=hcom_enable_rdma=0")
-        fi 
+        fi
         if [ "${BUILD_HCOM_WITH_UB}" == "ON" ]; then
             BAZEL_ARGS+=("--define=hcom_enable_ub=1")
         fi
@@ -239,7 +240,7 @@ if [ "${BUILD_HCOM}" == "ON" ]; then
     if [ ! -d "$LIBBOUNDSCHECK_INSTALL_PATH" ]; then
         mkdir -p "$LIBBOUNDSCHECK_INSTALL_PATH"
     fi
-    
+
     # Check if libboundscheck.so exists in the compilation output directory; if not, copy it from the system library directories.
     if [ ! -f "$LIBBOUNDSCHECK_INSTALL_PATH/libboundscheck.so" ]; then
         if [ -f "/usr/lib64/libboundscheck.so" ]; then
@@ -324,7 +325,7 @@ do
         mkdir -p build/
         if [ "${BUILD_TOOL}" == "cmake" ]; then
             cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
-            ${MAKE_CMD} -j5 -C build
+            ${MAKE_CMD} -j"${MF_BUILD_JOBS}" -C build
         else
             bazel clean --async
             bazel build //src/... "${BAZEL_ARGS[@]}"
