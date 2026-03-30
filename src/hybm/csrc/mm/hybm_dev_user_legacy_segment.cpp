@@ -24,16 +24,7 @@ HybmDevUserLegacySegment::HybmDevUserLegacySegment(const MemSegmentOptions &opti
 
 HybmDevUserLegacySegment::~HybmDevUserLegacySegment()
 {
-    if (!memNames_.empty()) {
-        for (auto &name : memNames_) {
-            DlAclApi::RtIpcDestroyMemoryName(name.c_str());
-        }
-        BM_LOG_INFO("Finish to destroy memory names.");
-    } else {
-        BM_LOG_INFO("Sender does not need to destroy memory names.");
-    }
-    memNames_.clear();
-    CloseMemory();
+    UnReserveMemorySpace();
 }
 
 Result HybmDevUserLegacySegment::ValidateOptions() noexcept
@@ -54,6 +45,22 @@ Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
     BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     lvaBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
+    return BM_OK;
+}
+
+Result HybmDevUserLegacySegment::UnReserveMemorySpace() noexcept
+{
+    BM_LOG_INFO("un-reserve memory space.");
+    if (!memNames_.empty()) {
+        for (auto &name : memNames_) {
+            DlAclApi::RtIpcDestroyMemoryName(name.c_str());
+        }
+        BM_LOG_INFO("Finish to destroy memory names.");
+    } else {
+        BM_LOG_INFO("Sender does not need to destroy memory names.");
+    }
+    memNames_.clear();
+    CloseMemory();
     return BM_OK;
 }
 
@@ -323,7 +330,7 @@ MemSlicePtr HybmDevUserLegacySegment::GetMemSlice(hybm_mem_slice_t slice, bool q
 
 Result HybmDevUserLegacySegment::Unmap() noexcept
 {
-    BM_LOG_ERROR("HybmDevUserLegacySegment NOT SUPPORT Unmap");
+    BM_LOG_INFO("HybmDevUserLegacySegment NOT SUPPORT Unmap");
     return BM_NOT_SUPPORTED;
 }
 

@@ -71,6 +71,7 @@ public:
     ~HybmDevUserLegacySegment() override;
     Result ValidateOptions() noexcept override;
     Result ReserveMemorySpace(void **address) noexcept override;
+    Result UnReserveMemorySpace() noexcept override;
     Result AllocLocalMemory(uint64_t size, MemSlicePtr &slice) noexcept override;
     Result RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept override;
     Result ReleaseSliceMemory(const MemSlicePtr &slice) noexcept override;

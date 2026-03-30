@@ -1267,7 +1267,7 @@ Result SmemNetGroupEngine::GroupLeave()
         SmemGroupInfo info = GenerateInfo(LEAVE_EVENT, option_.rank, old);
         ClearBitmapForRank(info, option_.rank);
         std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
-        SM_LOG_ERROR("leave generate_info:" << info << " base:" << groupInfo_);
+        SM_LOG_DEBUG("leave generate_info:" << info << " base:" << groupInfo_);
         if (info.version & 1) {
             auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
             if (ret == SM_OK) {

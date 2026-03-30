@@ -17,8 +17,8 @@ namespace mf {
 MemEntityFactory::~MemEntityFactory()
 {
     for (const auto &engine : engines_) {
-        engine.second->UnInitialize();
         engine.second->UnReserveMemorySpace();
+        engine.second->UnInitialize();
     }
     engines_.clear();
     enginesFromAddress_.clear();

@@ -163,7 +163,6 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
 int32_t MemEntityDefault::UnReserveMemorySpace() noexcept
 {
     if (!initialized_) {
-        BM_LOG_WARN("the object is not initialized, please check whether Initialize is called.");
         return BM_OK;
     }
 
