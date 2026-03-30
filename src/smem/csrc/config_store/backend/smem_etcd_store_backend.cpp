@@ -18,6 +18,7 @@
 #include <cctype>
 #include <utility>
 
+#include "smem.h"
 #include "smem_config_store_logger.h"
 #include "network_endpoint_util.h"
 #include "dl_etcd_api.h"
@@ -124,6 +125,20 @@ void SmemEtcdStoreBackend::UnInitialize()
 std::string SmemEtcdStoreBackend::BackendName() const noexcept
 {
     return "Etcd";
+}
+
+StoreErrorCode SmemEtcdStoreBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
+{
+    // todo: etcd support prefix get
+    for (uint32_t i = 0; i < SMEM_WORLD_SIZE_MAX; i++) {
+        std::string k = key + std::to_string(i);
+        std::vector<uint8_t> value;
+        auto ret = Get(k, value);
+        if (ret == 0) {
+            outValue[k] = value;
+        }
+    }
+    return StoreErrorCode::SUCCESS;
 }
 
 StoreErrorCode SmemEtcdStoreBackend::Get(const std::string &key, std::vector<uint8_t> &outValue) const noexcept

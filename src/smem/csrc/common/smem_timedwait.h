@@ -70,6 +70,9 @@ public:
 
     int32_t TimedwaitMillsecs(long msecs, const std::function<void()> &wakeupOp = nullptr)
     {
+        if (!inited_) {
+            return SM_NOT_INITIALIZED;
+        }
         struct timespec ts{0, 0};
         int32_t ret = 0;
 
@@ -92,7 +95,7 @@ public:
         while (!this->signalFlag) { // avoid spurious wakeup
             ret = pthread_cond_timedwait(&this->condTimeChecker_, &this->timeCheckerMutex_, &ts);
             if (ret == ETIMEDOUT) { // avoid infinite loop
-                ret = SM_OK;
+                ret = SM_TIMEOUT;
                 break;
             }
         }
@@ -128,6 +131,9 @@ public:
 
     int32_t PthreadSignal()
     {
+        if (!inited_) {
+            return SM_NOT_INITIALIZED;
+        }
         int32_t signalRet = 0;
         pthread_mutex_lock(&this->timeCheckerMutex_);
         signalFlag = true;

@@ -26,6 +26,9 @@ extern "C" {
 #define SMEM_WORLD_SIZE_MAX                 1024U
 #define SMEM_INVALID_DEV_ID                 (-1)
 
+/* define smem_create_config_store flag */
+#define SMEM_STORE_SKIP_RECOVER             (1UL << (0))
+
 /* define error code */
 #define SMEM_OK                             (0)
 #define SMEM_ERROR                          (-1)
@@ -55,9 +58,10 @@ int32_t smem_init(uint32_t flags);
  * @param storeUrl         [in] configure store url for control, e.g. tcp://ip:port,
  *                              etcd://ip:port, etcd://ip:port#instanceId,
  *                              reg://ip:port, or reg://ip:port#instanceId
+ * @param flags            [in] optional flags, reserved
  * @return 0 if successful
  */
-int32_t smem_create_config_store(const char *storeUrl);
+int32_t smem_create_config_store(const char *storeUrl, uint64_t flags);
 
 /**
  * @brief Register config store backend operation set for reg:// URLs.

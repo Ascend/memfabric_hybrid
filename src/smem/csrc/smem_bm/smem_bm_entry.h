@@ -81,9 +81,8 @@ private:
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
 
     Result JoinHandle(uint32_t rk);
+    Result JoinBarrier(int32_t input);
     Result LeaveHandle(uint32_t rk);
-    Result ExchangeSliceForJoin(const hybm_exchange_info &sliceInfo);
-    Result ExchangeEntityForJoin();
 
 private:
     /* hot used variables */

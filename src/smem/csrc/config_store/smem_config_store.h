@@ -75,6 +75,15 @@ public:
     Result Get(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs = -1) noexcept;
 
     /**
+     * @brief Get all string value with matched prefix key
+     *
+     * @param key          [in] key to be got
+     * @param value        [out] value to be got
+     * @return 0 if successfully done
+     */
+    virtual Result PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept = 0;
+
+    /**
      * @brief Set vector value
      *
      * @param key          [in] key to be set
@@ -136,30 +145,28 @@ public:
      * @param key          [in] key for performed
      * @param expect       [in] expected value for old, empty string equals non-exist
      * @param value        [in] value for set if expected matches
-     * @param exists       [out] old value of the key before this operation
-     * @return If the communication with the store server is successful, 0 is returned. Otherwise, non-zero is returned.
-     *         Returning 0 does not indicate successful CAS. To determine whether the CAS is successful, compare
-     *         <i>exists</i> and <i>expect</i>.
+     * @param exists       [out] latest value in store
+     * @return return SUCCESS if cas success; return RESTORE if cas failed;
+     * return other error_code if connect to server failed
      */
     Result Cas(const std::string &key, const std::string &expect, const std::string &value,
                std::string &exists) noexcept;
 
     /**
-     * @brief Perform an atomic compare and swap for uint8 vector. That is, if the current value for <i>key</i> equals
+     * @brief Perform an atomic compare and swap for string type. That is, if the current value for <i>key</i> equals
      *        <i>expect</i>, then set the value of <i>key</i> to be <i>value</i>.
      * @param key          [in] key for performed
-     * @param expect       [in] expected value for old, empty vector equals non-exist
+     * @param expect       [in] expected value for old, empty string equals non-exist
      * @param value        [in] value for set if expected matches
-     * @param exists       [out] old value of the key before this operation
-     * @return If the communication with the store server is successful, 0 is returned. Otherwise, non-zero is returned.
-     *         Returning 0 does not indicate successful CAS. To determine whether the CAS is successful, compare
-     *         <i>exists</i> and <i>expect</i>.
+     * @param exists       [out] latest value in store
+     * @return return SUCCESS if cas success; return RESTORE if cas failed;
+     * return other error_code if connect to server failed
      */
     virtual Result Cas(const std::string &key, const std::vector<uint8_t> &expect, const std::vector<uint8_t> &value,
                        std::vector<uint8_t> &exists) noexcept = 0;
 
     /**
-     * @brief Watch the specified non-existent key. When the key is created, the specified notify function is invoked.
+     * @brief Watch the specified key. When the key is updated, the specified notify function is invoked.
      * @param key          [in] key to be watched
      * @param notify       [in] notify function when key is created.
      * @param wid          [out] Unique ID of the watch event.
@@ -170,7 +177,7 @@ public:
                  uint32_t &wid) noexcept;
 
     /**
-     * @brief Watch the specified non-existent key. When the key is created, the specified notify function is invoked.
+     * @brief Watch the specified key. When the key is updated, the specified notify function is invoked.
      * @param key          [in] key to be watched
      * @param notify       [in] notify function when key is created.
      * @param wid          [out] Unique ID of the watch event.
@@ -207,6 +214,13 @@ public:
      */
     virtual Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept = 0;
 
+    /**
+     * @brief query Whether this rank is alive
+     * @param rank         [in] query rank
+     * @param alive        [out] alive is 1, otherwise 0
+     * @return 0 if successfully done
+     */
+    virtual Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept = 0;
     /**
      * @brief Get error string by code
      *
@@ -320,12 +334,11 @@ inline Result ConfigStore::Cas(const std::string &key, const std::string &expect
     std::vector<uint8_t> u8value{value.begin(), value.end()};
     std::vector<uint8_t> u8exists;
     auto ret = Cas(key, u8expect, u8value, u8exists);
-    if (ret != SM_OK) {
+    if (ret == RESTORE || ret == SUCCESS) {
+        exists = std::string{u8exists.begin(), u8exists.end()};
         return ret;
     }
-
-    exists = std::string{u8exists.begin(), u8exists.end()};
-    return SM_OK;
+    return ret;
 }
 
 inline Result

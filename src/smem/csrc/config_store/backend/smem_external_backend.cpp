@@ -14,6 +14,7 @@
 
 #include <exception>
 #include <memory>
+#include "smem.h"
 #include "smem_config_store_logger.h"
 #include "smem_external_backend_registry.h"
 
@@ -164,6 +165,21 @@ StoreErrorCode SmemExternalBackend::Get(const std::string &key, std::vector<uint
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return GetLocked(key, outValue);
+}
+
+StoreErrorCode SmemExternalBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
+{
+    // todo: external backend support prefix get
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (uint32_t i = 0; i < SMEM_WORLD_SIZE_MAX; i++) {
+        std::string k = key + std::to_string(i);
+        std::vector<uint8_t> value;
+        auto ret = Get(k, value);
+        if (ret == 0) {
+            outValue[k] = value;
+        }
+    }
+    return StoreErrorCode::SUCCESS;
 }
 
 StoreErrorCode SmemExternalBackend::Put(const std::string &key, const std::vector<uint8_t> &value,

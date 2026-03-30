@@ -128,10 +128,10 @@ private:
 };
 
 std::atomic<uint32_t> TcpConfigStore::reqSeqGen_{0};
-TcpConfigStore::TcpConfigStore(StoreBackendPtr backend, std::string ip, uint16_t port, bool isServer,
+TcpConfigStore::TcpConfigStore(StoreBackendPtr backend, std::string ip, uint16_t port, bool isServer, bool skipRecover,
                                uint32_t worldSize, int32_t rankId) noexcept
-    : serverIp_{std::move(ip)}, serverPort_{port}, isServer_{isServer}, rankId_{rankId}, worldSize_{worldSize},
-      backend_(std::move(backend))
+    : serverIp_{std::move(ip)}, serverPort_{port}, isServer_{isServer}, skipRecover_{skipRecover}, rankId_{rankId},
+      worldSize_{worldSize}, backend_(std::move(backend))
 {}
 
 TcpConfigStore::~TcpConfigStore() noexcept
@@ -193,6 +193,7 @@ Result TcpConfigStore::ClientStart(const smem_tls_config &tlsConfig, int reconne
     }
 
     ock::acc::AccConnReq connReq;
+    connReq.version = 0;
     connReq.rankId =
         rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
                      : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
@@ -211,7 +212,7 @@ Result TcpConfigStore::ServerStart(const smem_tls_config &tlsConfig, int reconne
 {
     Result result = SM_OK;
     std::lock_guard<std::mutex> guard(mutex_);
-    accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_, backend_);
+    accServer_ = SmMakeRef<AccStoreServer>(serverIp_, serverPort_, worldSize_, backend_, skipRecover_);
     if (accServer_ == nullptr) {
         Shutdown();
         return SM_NEW_OBJECT_FAILED;
@@ -246,6 +247,52 @@ void TcpConfigStore::Shutdown(bool afterFork) noexcept
         accServer_->Shutdown(afterFork);
         accServer_ = nullptr;
     }
+}
+
+Result TcpConfigStore::PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept
+{
+    if (key.empty() || key.length() > MAX_KEY_LEN_CLIENT) {
+        STORE_LOG_ERROR("key length is invalid");
+        return StoreErrorCode::INVALID_KEY;
+    }
+
+    SmemMessage request{MessageType::PREFIX};
+    request.keys.push_back(key);
+
+    auto packedRequest = SmemMessagePacker::Pack(request);
+    auto response = SendMessageBlocked(packedRequest);
+    if (response == nullptr) {
+        STORE_LOG_ERROR("send get for key: " << key << ", get null response");
+        return IO_ERROR;
+    }
+
+    auto responseCode = response->Header().result;
+    if (responseCode != 0 && responseCode != RESTORE) {
+        if (responseCode != NOT_EXIST) {
+            STORE_LOG_WARN("send prefix_get for key: " << key << ", resp code: " << responseCode);
+        }
+        return responseCode;
+    }
+
+    auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
+    STORE_ASSERT_RETURN(data != nullptr, SM_MALLOC_FAILED);
+    SmemMessage responseBody;
+    auto ret = SmemMessagePacker::Unpack(data, response->DataLen(), responseBody);
+    if (ret < 0) {
+        STORE_LOG_ERROR("unpack response body failed, result: " << ret);
+        return -1;
+    }
+
+    if (responseBody.values.size() != responseBody.keys.size()) {
+        STORE_LOG_ERROR("response body has not matched");
+        return -1;
+    }
+
+    uint32_t len = responseBody.keys.size();
+    for (uint32_t i = 0; i < len; i++) {
+        value[responseBody.keys[i]] = std::string(responseBody.values[i].begin(), responseBody.values[i].end());
+    }
+    return static_cast<Result>(responseCode);
 }
 
 Result TcpConfigStore::Set(const std::string &key, const std::vector<uint8_t> &value) noexcept
@@ -448,6 +495,36 @@ Result TcpConfigStore::Write(const std::string &key, const std::vector<uint8_t> 
     return responseCode;
 }
 
+Result TcpConfigStore::QueryAlive(uint32_t rank, uint32_t &alive) noexcept
+{
+    SmemMessage request{MessageType::QUERY_ALIVE};
+    request.keys.push_back(std::to_string(rank));
+    auto packedRequest = SmemMessagePacker::Pack(request);
+    auto response = SendMessageBlocked(packedRequest);
+    if (response == nullptr) {
+        STORE_LOG_ERROR("send query alive for rank: " << rank << ", get null response");
+        return StoreErrorCode::IO_ERROR;
+    }
+    auto responseCode = response->Header().result;
+    if (responseCode != 0) {
+        STORE_LOG_ERROR("send query alive for rank: " << rank << ", get response code: " << responseCode);
+        return responseCode;
+    }
+
+    auto data = reinterpret_cast<const uint8_t *>(response->DataPtr());
+    STORE_ASSERT_RETURN(data != nullptr, SM_MALLOC_FAILED);
+    SmemMessage responseBody;
+    auto ret = SmemMessagePacker::Unpack(data, response->DataLen(), responseBody);
+    if (ret < 0) {
+        STORE_LOG_ERROR("unpack response body failed, result: " << ret);
+        return -1;
+    }
+
+    alive = !responseBody.values.empty();
+    STORE_LOG_DEBUG("query rank:" << rank << " alive:" << alive);
+    return 0;
+}
+
 Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &expect,
                            const std::vector<uint8_t> &value, std::vector<uint8_t> &exists) noexcept
 {
@@ -489,7 +566,11 @@ Result TcpConfigStore::Cas(const std::string &key, const std::vector<uint8_t> &e
     }
 
     exists = std::move(responseBody.values[0]);
-    return 0;
+    if (responseBody.values.size() > 1) { // cas failed
+        return StoreErrorCode::RESTORE;
+    } else {
+        return 0;
+    }
 }
 
 Result
@@ -502,7 +583,7 @@ TcpConfigStore::Watch(const std::string &key,
         return StoreErrorCode::INVALID_KEY;
     }
 
-    SmemMessage request{MessageType::GET};
+    SmemMessage request{MessageType::WATCH};
     request.keys.push_back(key);
 
     auto packedRequest = SmemMessagePacker::Pack(request);
@@ -602,6 +683,7 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
 {
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
     ock::acc::AccConnReq connReq;
+    connReq.version = 1; // reconnection
     connReq.rankId =
         rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
                      : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());

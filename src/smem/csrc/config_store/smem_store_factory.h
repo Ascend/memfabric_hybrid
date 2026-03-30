@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "smem.h"
 #include "smem_bm_def.h"
 #include "smem_config_store.h"
 
@@ -33,14 +34,8 @@ public:
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
      * @return Newly created store
      */
-    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize = 0,
+    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize = UINT32_MAX,
                                 int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
-
-    static StorePtr CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize = UINT32_MAX,
-                                      int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
-
-    static StorePtr CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize = 1024,
-                                      int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
     /**
      * @brief destroy on exist store
@@ -56,10 +51,11 @@ public:
      * @param isServer is local store server side
      * @param rankId rank id, default 0
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
+     * @param skipRecover is skip recover wait
      * @return Newly created store
      */
-    static StorePtr CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize = 0,
-                                     int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
+    static StorePtr CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize = UINT32_MAX,
+                                     int32_t rankId = -1, int32_t connMaxRetry = -1, bool skipRecover = true) noexcept;
 
     /**
     * @brief destroy on exist store

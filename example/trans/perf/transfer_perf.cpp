@@ -443,7 +443,7 @@ int32_t trans_test(int rank_id, int rank_size, int device_id, int use_sdma, std:
     int32_t ret;
 
     if (rank_id == 0) {
-        ret = smem_create_config_store(ip_port.c_str());
+        ret = smem_create_config_store(ip_port.c_str(), SMEM_STORE_SKIP_RECOVER);
         CHECK_GOTO_ERR(ret, "smem create config store failed, ret:" << " rank:" << rank_id, err1);
     }
 

@@ -40,7 +40,7 @@ SMEM_API int32_t smem_init(uint32_t flags)
     return SM_OK;
 }
 
-SMEM_API int32_t smem_create_config_store(const char *storeUrl)
+SMEM_API int32_t smem_create_config_store(const char *storeUrl, uint64_t flags)
 {
     static std::atomic<uint32_t> callNum = {0};
 

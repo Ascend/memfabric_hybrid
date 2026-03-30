@@ -40,8 +40,8 @@ public:
 
 class TcpConfigStore : public ConfigStoreManager {
 public:
-    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer, uint32_t worldSize = 0,
-                   int32_t rankId = -1) noexcept;
+    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer, bool skipRecover,
+                   uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
     Result Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
@@ -49,6 +49,7 @@ public:
     Result ServerStart(const smem_tls_config &tlsConfig, int reconnectRetryTimes = -1) noexcept;
     void Shutdown(bool afterFork = false) noexcept;
 
+    Result PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept override;
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
     Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;
     Result Remove(const std::string &key, bool printKeyNotExist) noexcept override;
@@ -62,6 +63,7 @@ public:
                  uint32_t &wid) noexcept override;
     Result Unwatch(uint32_t wid) noexcept override;
     Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept override;
+    Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override;
     std::string GetCompleteKey(const std::string &key) noexcept override
     {
         return key;
@@ -145,6 +147,7 @@ private:
     std::string serverIp_;
     uint16_t serverPort_;
     const bool isServer_;
+    bool skipRecover_;
     int32_t rankId_;
     const uint32_t worldSize_;
     std::atomic<bool> isConnect_{false};

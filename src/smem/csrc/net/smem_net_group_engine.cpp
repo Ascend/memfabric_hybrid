@@ -13,6 +13,7 @@
 #include <cerrno>
 #include <cctype>
 #include <climits>
+#include <shared_mutex>
 #include "mf_num_util.h"
 #include "mf_monotonic_time.h"
 #include "acc_def.h"
@@ -27,8 +28,8 @@ using namespace mf;
 
 const std::string SMEM_GROUP_SET_STR = "ok";
 const std::string SMEM_GROUP_EXIT_KEY = "EXIT";
+const std::string SMEM_EXCHANGE_INFO_KEY = "BMEX_";
 const std::string SMEM_GROUP_LISTEN_EVENT_KEY = "EVENT";
-const std::string SMEM_GROUP_DYNAMIC_SIZE_KEY = "DSIZE";
 const std::string SMEM_GROUP_CAS_ALLOC_NUM_KEY = "AT_NUM";
 constexpr uint32_t SMEM_ALLOC_NUM_SIZE = SMEM_SHM_ATOMIC_NUM_LIMIT;
 constexpr uint32_t SMEM_ALLOC_NUM_BUF_LEN = (SMEM_ALLOC_NUM_SIZE + 7) / 8; // uint8_t
@@ -36,72 +37,32 @@ constexpr uint32_t SMEM_GATHER_PREFIX_SIZE = 4U;
 constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 10LL * 1000;              // 10s, unit: ms
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
-constexpr int32_t SMEM_GROUP_SLEEP_5S = 5000 * SMEM_GROUP_MS_TO_US;     // 5s
+constexpr uint64_t SMEM_EVNET_KEEP_TIME = 3 * SMEM_GROUP_MS_TO_US * SMEM_GROUP_MS_TO_US; // 3s, unit: us
 
 constexpr uint32_t UINT_BIT = 8U;
-constexpr int32_t GROUP_DYNAMIC_SIZE_BIT_LEN = 30;
-constexpr uint32_t GROUP_DYNAMIC_SIZE_BIT_MASK = (1 << 30) - 1;
-
 constexpr uint32_t USER_GROUP_KEY_LEN_MAX = 64;
-
-struct JoinLeaveEventValue {
-    bool join; // true => join, false => leave
-    char evt;
-    uint32_t rankId;
-
-    JoinLeaveEventValue() : JoinLeaveEventValue{true, 0} {}
-    JoinLeaveEventValue(bool j, uint32_t r) : join{j}, evt{j ? 'J' : 'L'}, rankId{r} {}
-
-    std::string ToString() const
-    {
-        std::stringstream ss;
-        ss << (join ? 'J' : 'L') << rankId;
-        return ss.str();
-    }
-
-    int32_t Parse(const std::string &str)
-    {
-        std::stringstream ss(str);
-        ss >> evt >> rankId;
-        join = (evt == 'J');
-        auto check = ToString();
-        if (check != str) {
-            SM_LOG_ERROR("parse from str: (" << str << ") invalid.");
-            return SM_ERROR;
-        }
-        return SM_OK;
-    }
-};
-
-static inline std::pair<int32_t, int32_t> SplitSizeAndVersion(int64_t val)
-{
-    auto unsignedVal = static_cast<uint64_t>(val);
-    return std::make_pair(unsignedVal >> GROUP_DYNAMIC_SIZE_BIT_LEN, unsignedVal & GROUP_DYNAMIC_SIZE_BIT_MASK);
-}
-
-static int64_t MergeSizeAndVersion(int32_t ver, int32_t size)
-{
-    auto unsignedVer = static_cast<uint32_t>(ver);
-    auto unsignedSize = static_cast<uint32_t>(size);
-    return ((1LL * unsignedVer) << GROUP_DYNAMIC_SIZE_BIT_LEN) | unsignedSize;
-}
+constexpr uint32_t SMEM_GROUP_INFO_SIZE = sizeof(SmemGroupInfo);
+const std::string SMEM_GROUP_NOTIFY_EVENT = std::string(SMEM_GROUP_INFO_SIZE, 0);
 
 SmemNetGroupEngine::~SmemNetGroupEngine()
 {
     groupStoped_ = true;
-    if (listenCtx_.watchId != UINT32_MAX) {
-        (void)store_->Unwatch(listenCtx_.watchId);
-        listenCtx_.watchId = UINT32_MAX;
+    if (eventListenThread_.joinable()) {
+        eventListenSignal_.PthreadSignal();
+        eventListenThread_.join();
     }
-    uint32_t linkStatusWatchId = listenLinkStatusWatchId_.load(std::memory_order_acquire);
-    if (linkStatusWatchId != UINT32_MAX) {
-        (void)store_->Unwatch(linkStatusWatchId);
-        listenLinkStatusWatchId_.store(UINT32_MAX, std::memory_order_release);
+    if (linkListenThread_.joinable()) {
+        linkListenSignal_.PthreadSignal();
+        linkListenThread_.join();
     }
-    if (listenThread_.joinable()) {
-        listenSignal_.PthreadSignal();
-        listenThread_.join();
-    }
+    if (eventCtx_.watchId != UINT32_MAX) {
+        (void)store_->Unwatch(eventCtx_.watchId);
+        eventCtx_.watchId = UINT32_MAX;
+    };
+    if (linkCtx_.watchId != UINT32_MAX) {
+        (void)store_->Unwatch(linkCtx_.watchId);
+        linkCtx_.watchId = UINT32_MAX;
+    };
 }
 
 SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr &store, const SmemGroupOption &option)
@@ -115,16 +76,119 @@ SmemGroupEnginePtr SmemNetGroupEngine::Create(const StorePtr &store, const SmemG
     SM_ASSERT_RETURN(group != nullptr, nullptr);
 
     if (option.dynamic) {
-        SM_ASSERT_RETURN(group->StartListenEvent() == SM_OK, nullptr);
+        SM_ASSERT_RETURN(group->StartListen() == SM_OK, nullptr);
     }
     return group.Get();
+}
+
+Result SmemNetGroupEngine::StoreGetCanInterrupt(const std::string &key, std::string &value, uint64_t timeoutMs)
+{
+    int ret = SM_OK;
+    uint64_t waitT = timeoutMs * SMEM_GROUP_MS_TO_US;
+    uint64_t startT = mf::MonotonicTime::TimeUs();
+    uint64_t nowT;
+    uint64_t queryT = startT + SMEM_EVNET_KEEP_TIME;
+    waitT = (startT > UINT64_MAX - waitT) ? UINT64_MAX : (waitT + startT);
+    while ((nowT = mf::MonotonicTime::TimeUs()) < waitT) {
+        ret = store_->Get(key, value, SMEM_GROUP_MS_TO_US); // wait 1s
+        if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) {
+            SM_LOG_WARN("has rank leave or link down, stop get wait! key: " << store_->GetCompleteKey(key));
+            return SM_INNER_BUSY;
+        }
+        if (ret != SM_OK && ret != StoreErrorCode::TIMEOUT) {
+            SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(key)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+        if (ret == SM_OK) {
+            return SM_OK;
+        }
+        // maybe has some rank leaved
+        if (nowT > queryT) {
+            uint32_t num = TryRemoveAllLeavedPrefixKey();
+            if (num > 0) {
+                return SM_INNER_BUSY;
+            }
+            queryT += SMEM_EVNET_KEEP_TIME;
+        }
+    }
+    SM_LOG_WARN("get key timeout! key: " << store_->GetCompleteKey(key));
+    return SM_TIMEOUT;
+}
+
+Result SmemNetGroupEngine::GroupGatherResult(int32_t localRet, int32_t &totalRet)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    uint32_t size = groupInfo_.groupSize;
+    std::string prefix = std::to_string(groupVersion_) + "_";
+    std::string idx = prefix + std::to_string(++allGatherGroupSn_);
+    std::string addKey = idx + "_GA";
+    std::string waitKey = idx + "_GW";
+
+    std::vector<uint8_t> input(sizeof(int32_t));
+    uint64_t val = 0;
+    *reinterpret_cast<int32_t *>(input.data()) = localRet;
+    auto ret = store_->Append(addKey, input, val);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("store add key: " << store_->GetCompleteKey(addKey)
+                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
+        return SM_ERROR;
+    }
+    SM_LOG_DEBUG("store add key: " << store_->GetCompleteKey(addKey) << " len: " << val << " size:" << size);
+
+    /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
+    if (val == sizeof(int32_t) && allGatherGroupSn_ > REMOVE_INTERVAL) {
+        uint32_t delSn = allGatherGroupSn_ - REMOVE_INTERVAL;
+        GroupOldKeyClean(prefix, "_GA", delSn, delSn);
+        GroupOldKeyClean(prefix, "_GW", delSn, delSn);
+    }
+
+    /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
+    if (val == sizeof(int32_t) * size) {
+        ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+    }
+
+    std::string getVal;
+    ret = StoreGetCanInterrupt(waitKey, getVal, option_.timeoutMs);
+    if (ret != SM_OK) {
+        return ret;
+    }
+    if (getVal != SMEM_GROUP_SET_STR) {
+        SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey) << " val is not equal, val: "
+                                                    << getVal << " expect: " << SMEM_GROUP_SET_STR);
+        return SM_ERROR;
+    }
+
+    std::vector<uint8_t> output;
+    ret = store_->Get(addKey, output, 0);
+    if (ret != SM_OK || output.size() != sizeof(int32_t) * size) {
+        SM_LOG_AND_SET_LAST_ERROR("after wait, store get key: "
+                                  << store_->GetCompleteKey(addKey) << " failed, result:" << ConfigStore::ErrStr(ret)
+                                  << " recv_size: " << output.size() << " input_size:" << input.size()
+                                  << " group_size:" << size);
+        return SM_ERROR;
+    }
+
+    auto *total = reinterpret_cast<int32_t *>(output.data());
+    totalRet = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        totalRet |= total[i];
+    }
+    return SM_OK;
 }
 
 Result SmemNetGroupEngine::GroupBarrier()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
-    uint32_t size = option_.rankSize;
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++barrierGroupSn_);
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
+    uint32_t size = groupInfo_.groupSize;
+    std::string prefix = std::to_string(groupVersion_) + "_";
+    std::string idx = prefix + std::to_string(++barrierGroupSn_);
     std::string addKey = idx + "_BA";
     std::string waitKey = idx + "_BW";
     int64_t val = 0;
@@ -143,13 +207,9 @@ Result SmemNetGroupEngine::GroupBarrier()
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == 1 && barrierGroupSn_ > REMOVE_INTERVAL) {
-        uint32_t removeBarrierGroupSn = barrierGroupSn_ - REMOVE_INTERVAL;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
-        /* There is no need to return ERROR, when the removed key is already not exist.
-        The WARNING LOG is contained in the remove func itself, no need to print more log. */
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
+        uint32_t delSn = barrierGroupSn_ - REMOVE_INTERVAL;
+        GroupOldKeyClean(prefix, "_BA", delSn, delSn);
+        GroupOldKeyClean(prefix, "_BW", delSn, delSn);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -169,8 +229,8 @@ Result SmemNetGroupEngine::GroupBarrier()
     ret = store_->Get(waitKey, getVal, option_.timeoutMs);
     if (ret != SM_OK) {
         SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey)
-                                                    << " failed, result:" << ConfigStore::ErrStr(ret));
-        return SM_ERROR;
+                                                    << " failed, ret:" << ConfigStore::ErrStr(ret));
+        return ret;
     }
     traceGetStatus.RecordEnd();
 
@@ -191,10 +251,11 @@ Result SmemNetGroupEngine::GroupBarrier()
 Result SmemNetGroupEngine::GroupBarrier(const char *key, uint32_t rankSize, uint32_t rankId)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
     SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
-                       "rankSize is invalid! input:" << rankSize << " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankSize <= groupInfo_.groupSize,
+        "rankSize is invalid! input:" << rankSize << " option:" << groupInfo_.groupSize, SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(rankId < rankSize, "rankId is invalid! rank:" << rankId << " size:" << rankSize,
                        SM_INVALID_PARAM);
 
@@ -220,13 +281,9 @@ Result SmemNetGroupEngine::GroupBarrier(const char *key, uint32_t rankSize, uint
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == 1 && localSn > REMOVE_INTERVAL) {
-        uint32_t removeBarrierGroupSn = localSn - REMOVE_INTERVAL;
-        std::string removeAddIdx = userKey + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
-        std::string removeWaitIdx = userKey + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
-        /* There is no need to return ERROR, when the removed key is already not exist.
-        The WARNING LOG is contained in the remove func itself, no need to print more log. */
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
+        uint32_t delSn = localSn - REMOVE_INTERVAL;
+        GroupOldKeyClean(userKey + "_", "_BA", delSn, delSn);
+        GroupOldKeyClean(userKey + "_", "_BW", delSn, delSn);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -291,6 +348,7 @@ static void SortGatherRecv(std::vector<uint8_t> &vec, uint32_t preSize, uint32_t
 Result SmemNetGroupEngine::GroupBroadcastExit(int status)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
 
     auto ret = store_->Set(SMEM_GROUP_EXIT_KEY, std::to_string(status));
     SM_VALIDATE_RETURN(ret == SM_OK,
@@ -303,6 +361,7 @@ Result SmemNetGroupEngine::GroupBroadcastExit(int status)
 
 Result SmemNetGroupEngine::RegisterExit(const std::function<void(int)> &exit)
 {
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
     if (globalExitHandler_ != nullptr) {
         SM_LOG_WARN("the exit function is not null");
         return SM_INVALID_PARAM;
@@ -351,10 +410,12 @@ void SmemNetGroupEngine::RankExit(int result, const std::string &key, const std:
 Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
-    uint32_t size = option_.rankSize;
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
+    uint32_t size = groupInfo_.groupSize;
     SM_ASSERT_RETURN(sendSize * size == recvSize, SM_INVALID_PARAM);
 
-    std::string idx = std::to_string(groupVersion_) + "_" + std::to_string(++allGatherGroupSn_);
+    std::string prefix = std::to_string(groupVersion_) + "_";
+    std::string idx = prefix + std::to_string(++allGatherGroupSn_);
     std::string addKey = idx + "_GA";
     std::string waitKey = idx + "_GW";
 
@@ -376,13 +437,9 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
-        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - REMOVE_INTERVAL;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
-        /* There is no need to return ERROR, when the removed key is already not exist.
-        The WARNING LOG is contained in the remove func itself, no need to print more log. */
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
+        uint32_t delSn = allGatherGroupSn_ - REMOVE_INTERVAL;
+        GroupOldKeyClean(prefix, "_GA", delSn, delSn);
+        GroupOldKeyClean(prefix, "_GW", delSn, delSn);
     }
 
     /* the last guy set ok status */
@@ -440,10 +497,11 @@ Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, ui
                                           uint32_t sendSize, char *recvBuf, uint32_t recvSize)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(!option_.dynamic, SM_ERROR);
     SM_VALIDATE_RETURN(key != nullptr, "invalid param, key is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(strlen(key) < USER_GROUP_KEY_LEN_MAX, "key too long:" << strlen(key), SM_INVALID_PARAM);
-    SM_VALIDATE_RETURN(rankSize <= option_.rankSize,
-                       "rankSize is invalid! input:" << rankSize << " option:" << option_.rankSize, SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(rankSize <= groupInfo_.groupSize,
+        "rankSize is invalid! input:" << rankSize << " option:" << groupInfo_.groupSize, SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(rankId < rankSize, "rankId is invalid! rank:" << rankId << " size:" << rankSize,
                        SM_INVALID_PARAM);
 
@@ -473,14 +531,10 @@ Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, ui
     traceAppend.RecordEnd();
 
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
-    if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
-        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - REMOVE_INTERVAL;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
-        /* There is no need to return ERROR, when the removed key is already not exist.
-        The WARNING LOG is contained in the remove func itself, no need to print more log. */
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
+    if (val == input.size() && localSn > REMOVE_INTERVAL) {
+        uint32_t delSn = localSn - REMOVE_INTERVAL;
+        GroupOldKeyClean(userKey + "_", "_GA", delSn, delSn);
+        GroupOldKeyClean(userKey + "_", "_GW", delSn, delSn);
     }
 
     /* the last guy set ok status */
@@ -538,11 +592,11 @@ int32_t SmemNetGroupEngine::AllocNumber()
 {
     std::vector<uint8_t> expect;
     std::vector<uint8_t> value(SMEM_ALLOC_NUM_BUF_LEN, 0);
-    std::vector<uint8_t> old;
+    std::vector<uint8_t> now;
     int32_t num;
     int32_t ret;
     do {
-        swap(expect, old);
+        swap(expect, now);
         if (expect.size() != 0) {
             value = expect;
         }
@@ -558,8 +612,8 @@ int32_t SmemNetGroupEngine::AllocNumber()
             SM_LOG_ERROR("there is no free number available for allocation!");
             return SM_ERROR;
         }
-        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, old);
-    } while (ret != 0 || old != expect);
+        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, now);
+    } while (ret != 0);
     allocedSet_.insert(num);
     return num;
 }
@@ -567,19 +621,19 @@ int32_t SmemNetGroupEngine::AllocNumber()
 Result SmemNetGroupEngine::ReleaseNumber(int32_t val)
 {
     if (allocedSet_.count(val) == 0) {
-        SM_LOG_ERROR("key(" << val << ") is not exist!");
+        SM_LOG_WARN("key(" << val << ") is not exist!");
         return SM_OBJECT_NOT_EXISTS;
     }
     allocedSet_.erase(val);
 
     std::vector<uint8_t> expect;
     std::vector<uint8_t> value(SMEM_ALLOC_NUM_BUF_LEN, 0);
-    std::vector<uint8_t> old;
+    std::vector<uint8_t> now;
     int32_t ret;
 
     value[val / UINT_BIT] ^= 1U << (val % UINT_BIT);
     do {
-        swap(expect, old);
+        swap(expect, now);
         if (expect.size() != 0) {
             value = expect;
         }
@@ -589,17 +643,135 @@ Result SmemNetGroupEngine::ReleaseNumber(int32_t val)
             SM_LOG_WARN("key(" << val << ") has released!");
             return SM_OK;
         }
-        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, old);
-    } while (ret == 0 && old == expect);
+        ret = store_->Cas(SMEM_GROUP_CAS_ALLOC_NUM_KEY, expect, value, now);
+    } while (ret != 0);
     return SM_OK;
 }
 
-bool SmemNetGroupEngine::ReWatch()
+Result SmemNetGroupEngine::TryRemovePrefixKey(uint32_t rank)
 {
-    if (listenCtx_.watchId != UINT32_MAX) {
-        store_->Unwatch(listenCtx_.watchId);
-        listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(option_.dynamic, SM_ERROR);
+    std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(rank);
+    auto ret = store_->Remove(key);
+    if (ret == SM_OK) {
+        SM_LOG_DEBUG("remove key success, src_rank:" << option_.rank << " key:" << store_->GetCompleteKey(key));
+    } else {
+        SM_LOG_INFO("remove key failed, src_rank:" << option_.rank << " key:" << store_->GetCompleteKey(key)
+                    << " ret:" << ret);
     }
+    return ret;
+}
+
+uint32_t SmemNetGroupEngine::TryRemoveAllLeavedPrefixKey()
+{
+    std::vector<uint32_t> ranks;
+    uint32_t count = 0;
+    GetAllRanksFromBitMap(ranks);
+    for (auto &rk : ranks) {
+        if (rk == option_.rank) {
+            continue;
+        }
+        uint32_t alive = 0;
+        auto ret = store_->QueryAlive(rk, alive);
+        if (ret == SM_OK && alive == 0) {
+            SM_LOG_INFO("rank:" << rk << " has link down, try remove prefix key");
+            TryRemovePrefixKey(rk);
+            RemoteRankLinkDownCb(rk);
+            count++;
+        } else {
+            std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(rk);
+            std::string val;
+            ret = store_->Get(key, val, 0); // query whether the key is deleted
+            if (ret == NOT_EXIST) {
+                SM_LOG_INFO("rank:" << rk << " has removed");
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+Result SmemNetGroupEngine::GroupGatherPrefixKey(uint32_t dstRank, std::string &update,
+                                                std::unordered_map<uint32_t, std::string> &retMap)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(option_.dynamic, SM_ERROR);
+    if (dstRank == option_.rank) { // get all
+        std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(dstRank);
+        auto ret = store_->Set(key, update);
+        SM_VALIDATE_RETURN(ret == SM_OK,
+                           "set prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
+
+        std::string completePrefix = store_->GetCompleteKey(SMEM_EXCHANGE_INFO_KEY);
+        std::unordered_map<std::string, std::string> val;
+        ret = store_->PrefixGet(SMEM_EXCHANGE_INFO_KEY, val);
+        SM_VALIDATE_RETURN(ret == SM_OK,
+                           "get prefix_key: " << completePrefix << " failed, ret:" << ret, SM_ERROR);
+        for (auto &it : val) {
+            std::vector<std::string> vec = StrUtil::Split(it.first, '_');
+            if (vec.empty() || it.first.compare(0, completePrefix.length(), completePrefix) != 0) {
+                SM_LOG_ERROR("prefix:" << completePrefix << " receive_key:" << it.first << " not match!");
+                return SM_ERROR;
+            }
+            uint32_t rk;
+            if (!StrUtil::String2Int(vec.back(), rk)) {
+                SM_LOG_ERROR("receive_key:" << it.first << " can't get rank!");
+                return SM_ERROR;
+            }
+
+            if (!TestBitmapForRank(rk)) {
+                SM_LOG_WARN("has expired prefix key need to remove, rank:" << rk);
+                TryRemovePrefixKey(rk);
+            } else {
+                retMap.emplace(rk, it.second);
+            }
+        }
+
+        if (retMap.size() != groupInfo_.groupSize) {
+            SM_LOG_WARN("has some rank not exist prefix key, please retry");
+            return SM_INNER_BUSY;
+        }
+    } else { // get one
+        std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(dstRank);
+        std::string val;
+        auto ret = StoreGetCanInterrupt(key, val, option_.timeoutMs);
+        SM_VALIDATE_RETURN(ret == SM_OK, "get key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, ret);
+        retMap.emplace(dstRank, val);
+    }
+    return SM_OK;
+}
+
+SmemGroupInfo SmemNetGroupEngine::GenerateInfo(uint32_t event, uint32_t target, std::string &old)
+{
+    std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
+    SmemGroupInfo info = groupInfo_;
+    info.version += 1;
+    info.curEvent = event;
+    info.submitRank = option_.rank;
+    info.targetRank = target;
+    old = std::string((char *)&groupInfo_, SMEM_GROUP_INFO_SIZE);
+    return info;
+}
+
+bool SmemNetGroupEngine::TryUpdateInfo(SmemGroupInfo &info)
+{
+    std::unique_lock<std::shared_mutex> lock(groupInfoMutex_);
+    SM_LOG_DEBUG("input:" << info << " before:" << groupInfo_);
+    if (info.version > groupInfo_.version) {
+        GroupSnClean();
+        groupInfo_ = info;
+        groupVersion_ = info.version;
+        barrierGroupSn_ = 0;
+        allGatherGroupSn_ = 0;
+        lastUpdateTime_.store(mf::MonotonicTime::TimeUs());
+        return true;
+    }
+    return false;
+}
+
+uint32_t SmemNetGroupEngine::ReWatchEvent()
+{
     uint32_t wid;
     auto ret = store_->Watch(SMEM_GROUP_LISTEN_EVENT_KEY,
                              std::bind(&SmemNetGroupEngine::GroupWatchCb, this, std::placeholders::_1,
@@ -607,240 +779,252 @@ bool SmemNetGroupEngine::ReWatch()
                              wid);
     if (ret != SM_OK || wid == UINT32_MAX) {
         SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret << ", wid: " << wid);
-        if (listenLinkStatusWatchId_.load() != UINT32_MAX) {
-            store_->Unwatch(listenLinkStatusWatchId_.load());
-            listenLinkStatusWatchId_.store(UINT32_MAX);
-        }
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
-        return true;
+        return UINT32_MAX;
     }
     SM_LOG_DEBUG("Watch group listen successfully, wid: " << wid);
-    listenCtx_.watchId = wid;
-    listenCtx_.ret = SM_OK;
-    if (listenLinkStatusWatchId_.load() != UINT32_MAX) {
-        return false;
-    }
-    ret = store_->Watch(
+    return wid;
+}
+
+uint32_t SmemNetGroupEngine::ReWatchLinkDown()
+{
+    uint32_t wid;
+    auto ret = store_->Watch(
         WatchRankType::WATCH_RANK_LINK_DOWN,
         [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
     if (ret != SM_OK || wid == UINT32_MAX) {
         SM_LOG_WARN_LIMIT("group watch failed, ret: " << ret);
-        store_->Unwatch(listenCtx_.watchId);
-        listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
-        return true;
+        return UINT32_MAX;
     }
-
-    listenLinkStatusWatchId_.store(wid);
     SM_LOG_INFO("Watch link down event successfully, wid: " << wid);
-    return false;
+    return wid;
 }
 
 void SmemNetGroupEngine::GroupListenEvent()
 {
-    std::string getVal;
-    std::string prevEvent;
-
-    listenThreadStarted_ = true;
+    std::list<SmemGroupInfo> currentEvents;
+    bool redoLast = false;
+    listenThreadStarted_.fetch_add(1U);
+    SM_LOG_DEBUG("GroupListenEvent start, rank:" << option_.rank);
     while (!groupStoped_.load()) {
-        if (!joined_) {
-            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
-            continue;
-        }
-
-        if (listenCtx_.watchId == UINT32_MAX || listenLinkStatusWatchId_.load() == UINT32_MAX) {
-            if (ReWatch()) {
+        if (eventCtx_.watchId == UINT32_MAX) {
+            eventCtx_.ret = SM_OK;
+            eventCtx_.watchId = ReWatchEvent();
+            if (eventCtx_.watchId == UINT32_MAX) {
                 continue;
             }
         }
 
-        int contextRet = SM_OK;
-        std::list<GroupEvent> currentEvents;
-        auto ret = listenSignal_.TimedwaitMillsecs(SMEM_GROUP_LISTER_TIMEOUT, [this, &contextRet, &currentEvents]() {
-            currentEvents = std::move(listenCtx_.events);
-            contextRet = listenCtx_.ret;
+        int cRet = SM_OK;
+        auto ret = eventListenSignal_.TimedwaitMillsecs(SMEM_GROUP_LISTER_TIMEOUT, [this, &cRet, &currentEvents]() {
+            currentEvents.splice(currentEvents.end(), eventCtx_.values);
+            cRet = eventCtx_.ret;
         });
-
         if (groupStoped_.load()) {
             break;
         }
-
         if (ret != SM_OK) {
             continue;
         }
 
-        if (contextRet != SM_OK) {
-            if (listenCtx_.watchId != UINT32_MAX) {
-                store_->Unwatch(listenCtx_.watchId);
+        if (cRet != SM_OK) {
+            store_->Unwatch(eventCtx_.watchId);
+            eventCtx_.watchId = UINT32_MAX;
+            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << cRet);
+            for (auto &info : currentEvents) {
+                if (info.curEvent == LEAVE_EVENT || info.curEvent == LINK_DOWN_EVENT) {
+                    currentLeaveCount_.fetch_sub(1U);
+                }
             }
-            listenSignal_.OperateInLock([this]() { listenCtx_.watchId = UINT32_MAX; });
-            auto watchId = listenLinkStatusWatchId_.load();
-            if (watchId != UINT32_MAX) {
-                store_->Unwatch(watchId);
-            }
-            listenLinkStatusWatchId_.store(UINT32_MAX);
-            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << contextRet);
+            currentEvents.clear();
+            redoLast = false;
             continue;
         }
 
-        if (!joined_) { // maybe has leaved
-            continue;
-        }
-
-        for (auto &event : currentEvents) {
-            std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
-            if (event.remoteRankId != option_.rank) {
-                uniqueLock.unlock();
+        while (!currentEvents.empty()) {
+            auto &info = currentEvents.front();
+            bool canRemove = true;
+            int32_t ret2 = SM_OK;
+            if ((TryUpdateInfo(info) || redoLast) && groupInfo_.curEvent != NULL_EVNET) {
+                ret2 = JoinLeaveEventProcess();
+                canRemove = (ret == SM_OK);
             }
-            if (event.eventType == GroupEventType::LUNCH_JOIN_LEAVE_EVENT) {
-                JoinLeaveEventProcess(event.value, prevEvent);
-            } else if (event.eventType == GroupEventType::REMOTE_DOWN_EVENT) {
-                RankLinkDownEventProcess(event.remoteRankId, prevEvent);
+            // remove now event if has leave event or do event success
+            if (canRemove || currentLeaveCount_.load() > 0) {
+                if (info.curEvent == LEAVE_EVENT || info.curEvent == LINK_DOWN_EVENT) {
+                    currentLeaveCount_.fetch_sub(1U);
+                }
+                currentEvents.pop_front();
+                redoLast = false;
             } else {
-                SM_LOG_ERROR("unknown group event type: " << static_cast<uint32_t>(event.eventType));
+                redoLast = (ret == SM_INNER_BUSY); // groupInfo has updated, need redo next time
+                break;
             }
         }
     }
-    listenThreadStarted_ = false;
+    SM_LOG_DEBUG("GroupListenEvent end, rank:" << option_.rank);
+    listenThreadStarted_.fetch_sub(1U);
 }
 
-void SmemNetGroupEngine::JoinLeaveEventProcess(const std::string &value, std::string &prevEventValue)
+void SmemNetGroupEngine::GroupListenLinkState()
 {
-    uint32_t oldWatchId = UINT32_MAX;
-    listenSignal_.OperateInLock([this, &oldWatchId]() {
-        oldWatchId = listenCtx_.watchId;
-        listenCtx_.watchId = UINT32_MAX;
-    });
-    if (oldWatchId != UINT32_MAX) {
-        (void)store_->Unwatch(oldWatchId);
-    }
-
-    JoinLeaveEventValue eVal;
-    if (eVal.Parse(value) != SM_OK) {
-        SM_LOG_WARN("value: (" << value << ") invalid.");
-        return;
-    }
-
-    if (value == prevEventValue) {
-        return;
-    }
-    prevEventValue = value;
-
-    int64_t tmpVal = 0L;
-    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-        return;
-    }
-
-    auto sizePair = SplitSizeAndVersion(tmpVal);
-    SM_LOG_INFO("handle group event, local_rk:" << option_.rank << " rank:" << eVal.rankId << " event:" << eVal.evt);
-    UpdateGroupVersion(sizePair.first + 1);
-
-    if (eVal.join) {
-        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second + 1);
-        if (option_.joinCb != nullptr) {
-            option_.joinCb(eVal.rankId);
-        }
-    } else {
-        option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmpVal).second - 1);
-        if (option_.leaveCb != nullptr) {
-            option_.leaveCb(eVal.rankId);
-        }
-        ClearBitmapForRank(eVal.rankId);
-    }
-}
-
-void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId, std::string &prevEventValue)
-{
-    SM_ASSERT_RET_VOID(store_ != nullptr);
-    std::string currentEventValue;
-    prevEventValue = std::to_string(option_.rank).append("L").append(std::to_string(rankId));
-    auto ret = store_->Get(SMEM_GROUP_LISTEN_EVENT_KEY, currentEventValue, 0L);
-    if (ret != StoreErrorCode::SUCCESS && ret != StoreErrorCode::NOT_EXIST) {
-        SM_LOG_ERROR("cannot read event value from store : " << ret);
-        return;
-    }
-
-    if (!TestBitmapForRank(rankId)) {
-        SM_LOG_INFO("link down rank: " << rankId << " not joined.");
-        return;
-    }
-
-    std::string existValue;
-    if (!currentEventValue.empty()) {
-        JoinLeaveEventValue eventValue;
-        if (eventValue.Parse(currentEventValue) != SM_OK) {
-            SM_LOG_WARN("event value invalid: (" << currentEventValue << ")");
-            return;
-        }
-
-        // A节点正在加入/退出中，B节点发生故障
-        if (rankId != eventValue.rankId) {
-            SM_LOG_INFO("current rank: " << option_.rank << ", link down rank: " << rankId
-                                         << ", current event: " << currentEventValue << " process later.");
-            listenSignal_.OperateInLock(
-                [this, &currentEventValue]() { listenCtx_.events.emplace_back(GroupEvent(currentEventValue)); }, true);
-            return;
-        }
-
-        // 正在做退出或加入的节点发生故障
-        ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, currentEventValue, "unlinked", existValue);
-        if (ret != StoreErrorCode::SUCCESS) {
-            SM_LOG_ERROR("cannot cas event value from store : " << ret);
-            return;
-        }
-        LinkDownUpdateMeta(rankId);
-        if (existValue == currentEventValue) {
-            SM_LOG_INFO("rank: " << option_.rank << " remove key : " << SMEM_GROUP_LISTEN_EVENT_KEY);
-            ret = store_->Remove(SMEM_GROUP_LISTEN_EVENT_KEY);
-            if (ret != StoreErrorCode::SUCCESS) {
-                SM_LOG_ERROR("cannot cas event value from store : " << ret);
+    std::list<uint32_t> currentEvents;
+    SM_LOG_DEBUG("GroupListenLinkState start, rank:" << option_.rank);
+    listenThreadStarted_.fetch_add(2U);
+    while (!groupStoped_.load()) {
+        if (linkCtx_.watchId == UINT32_MAX) {
+            linkCtx_.ret = SM_OK;
+            linkCtx_.watchId = ReWatchLinkDown();
+            if (linkCtx_.watchId == UINT32_MAX) {
+                continue;
             }
         }
-    } else {
-        LinkDownUpdateMeta(rankId);
-    }
 
-    ClearBitmapForRank(rankId);
-}
-
-void SmemNetGroupEngine::LinkDownUpdateMeta(uint32_t rankId)
-{
-    SM_ASSERT_RET_VOID(store_ != nullptr);
-    SM_LOG_INFO("do leave by link down, loca_rank:" << option_.rank << " leave_rank:" << rankId);
-    int64_t tmpVal = 0L;
-    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-        return;
-    }
-
-    auto sizePair = SplitSizeAndVersion(tmpVal);
-    auto version = sizePair.first;
-    auto rankSize = static_cast<uint32_t>(sizePair.second);
-    if (version != groupVersion_) {
-        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << version
-                                           << " groupVersion_:" << groupVersion_ << " local:" << option_.rank
-                                           << " downRank:" << rankId);
-        UpdateGroupVersion(groupVersion_ + 1);
-        option_.rankSize--;
-    } else {
-        version++;
-        rankSize = --option_.rankSize;
-        UpdateGroupVersion(version);
-        auto newVal = MergeSizeAndVersion(version, rankSize);
-        auto oldValStr = std::to_string(tmpVal);
-        auto newValStr = std::to_string(newVal);
-        std::string existStr;
-        ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
-        SM_LOG_DEBUG("[DEBUG]CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") local: " << option_.rank << " downRank:"
-                                           << rankId << " oldVal:" << std::hex << tmpVal << " newVal:" << newVal);
+        int cRet = SM_OK;
+        auto ret = linkListenSignal_.TimedwaitMillsecs(SMEM_GROUP_LISTER_TIMEOUT, [this, &cRet, &currentEvents]() {
+            currentEvents.splice(currentEvents.end(), linkCtx_.values);
+            cRet = linkCtx_.ret;
+        });
+        if (groupStoped_.load()) {
+            break;
+        }
         if (ret != SM_OK) {
-            SM_LOG_ERROR("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
+            continue;
+        }
+
+        if (cRet != SM_OK) {
+            store_->Unwatch(linkCtx_.watchId);
+            linkCtx_.watchId = UINT32_MAX;
+            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << cRet);
+        } else {
+            for (auto &rank: currentEvents) {
+                RankLinkDownEventProcess(rank);
+            }
+            // maybe join event has retried, signal up listen event thread
+            if (currentEvents.size() > 0) {
+                GroupWatchCb(SM_OK, SMEM_GROUP_LISTEN_EVENT_KEY, SMEM_GROUP_NOTIFY_EVENT);
+            }
+        }
+        currentLinkDownCount_.fetch_sub(currentEvents.size());
+        currentEvents.clear();
+    }
+    SM_LOG_DEBUG("GroupListenLinkState end, rank:" << option_.rank);
+    listenThreadStarted_.fetch_sub(2U);
+}
+
+int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
+{
+    int32_t ret = SM_OK;
+    switch (groupInfo_.curEvent) {
+        case JOIN_EVENT: {
+            if ((joined_ || groupInfo_.targetRank == option_.rank) && option_.joinCb != nullptr) {
+                // skip joinCb if has leaved or link_down
+                if (currentLeaveCount_.load() == 0 && currentLinkDownCount_.load() == 0) {
+                    ret = option_.joinCb(groupInfo_.targetRank);
+                } else {
+                    // return BUSY if joinCb return error and has leaved or link_down
+                    // must read the latest value
+                    SM_LOG_DEBUG("has leave or link_down, retry. leave:" << currentLeaveCount_.load()
+                        << " link_down:" << currentLinkDownCount_.load());
+                    ret = SM_INNER_BUSY;
+                }
+            }
+            break;
+        }
+        case RECOVER_EVENT: {
+            // todo: 处理server故障场景
+        }
+        case LINK_DOWN_EVENT:
+        case LEAVE_EVENT: {
+            if (!TestBitmapForRank(groupInfo_.targetRank)) {
+                SM_LOG_INFO("rank not joined, skip leave, rank:" << groupInfo_.targetRank);
+                break;
+            }
+            if (groupInfo_.targetRank != option_.rank && option_.leaveCb != nullptr) {
+                ret = option_.leaveCb(groupInfo_.targetRank);
+            }
+            if (joined_ && groupInfo_.targetRank == option_.rank) { // local leave, wakeup leave func and exit thread
+                SM_LOG_INFO("leave self, rank:" << option_.rank << " event:" << groupInfo_.curEvent);
+                groupStoped_.store(false);
+            }
+            break;
+        }
+        default: {
+            SM_LOG_ERROR("unknow event:" << groupInfo_.curEvent);
+            ret = SM_ERROR;
         }
     }
-    option_.leaveCb(rankId);
+
+    if (groupInfo_.submitRank == option_.rank) {
+        if (groupInfo_.curEvent == JOIN_EVENT || groupInfo_.curEvent == LEAVE_EVENT) {
+            localOpRet_ = ret;
+            localOpSignal_.PthreadSignal();
+        } else {
+            linkOpRet_ = ret;
+            linkOpSignal_.PthreadSignal();
+        }
+    }
+    return ret;
+}
+
+Result SmemNetGroupEngine::DoLinkDownOnce(uint32_t rankId)
+{
+    std::string old;
+    if (!TestBitmapForRank(rankId)) {
+        SM_LOG_DEBUG("link down rank: " << rankId << " not joined, maybe has leaved by other");
+        return SM_OK;
+    }
+
+    SmemGroupInfo info = GenerateInfo(LINK_DOWN_EVENT, rankId, old);
+    ClearBitmapForRank(info, rankId);
+    SM_LOG_DEBUG("remove generate_info:" << info << " base:" << groupInfo_);
+    std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+    if (info.version & 1) {
+        int ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+        if (ret != StoreErrorCode::RESTORE) {
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("cas event failed! ret:" << ret);
+                return SM_ERROR;
+            } else {
+                linkOpRet_ = SM_OK;
+                lastSubmitVersion_.store(info.version);
+                goto wait_done;
+            }
+        }
+        return SM_INNER_BUSY;
+    } else {
+        TryCleanOldEvent();
+        return SM_INNER_BUSY;
+    }
+
+wait_done:
+    SM_LOG_DEBUG("submit link down, target rank: " << rankId << " submit_rank:" << option_.rank);
+    TryRemovePrefixKey(rankId);
+    auto ret = linkOpSignal_.TimedwaitMillsecs(SMEM_GROUP_LISTER_TIMEOUT);
+    if (ret != 0 || linkOpRet_ != SM_OK) {
+        SM_LOG_ERROR("do link down failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
+        ret |= linkOpRet_;
+    }
+    info = GenerateInfo(NULL_EVNET, rankId, old);
+    SM_LOG_DEBUG("generate info:" << info);
+    std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
+    auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
+    if (ret2 != SM_OK) {
+        SM_LOG_ERROR("reset group event failed, ret: " << ret2 << " expect:" << info);
+    } else {
+        lastSubmitVersion_.store(info.version);
+    }
+    return SM_OK;
+}
+
+void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId)
+{
+    SM_ASSERT_RET_VOID(store_ != nullptr);
+    while (DoLinkDownOnce(rankId) == SM_INNER_BUSY) {
+        // not cas success, retry
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+    };
 }
 
 void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const std::string &value)
@@ -849,19 +1033,27 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
     if (result != SM_OK) {
         SM_LOG_AND_SET_LAST_ERROR("result: " << result);
         ctxRet = SM_ERROR;
-        listenCtx_.ret = SM_ERROR;
     }
 
     if (key != SMEM_GROUP_LISTEN_EVENT_KEY) {
         ctxRet = SM_ERROR;
-        listenCtx_.ret = SM_ERROR;
     }
 
-    listenSignal_.OperateInLock(
-        [this, ctxRet, &value]() {
-            listenCtx_.ret = ctxRet;
-            if (ctxRet == SM_OK) {
-                listenCtx_.events.emplace_back(GroupEvent{value});
+    if (value.length() != SMEM_GROUP_INFO_SIZE) {
+        SM_LOG_WARN("receive group info size is error!");
+        ctxRet = SM_ERROR;
+    }
+
+    auto info = reinterpret_cast<SmemGroupInfo *>(const_cast<char *>(value.c_str()));
+    SM_LOG_DEBUG("receive group info:" << *info << " current_leave:" << currentLeaveCount_);
+    eventListenSignal_.OperateInLock(
+        [this, ctxRet, &info]() {
+            eventCtx_.ret |= ctxRet;
+            if (ctxRet == SM_OK && info->version > 0) {
+                if (info->curEvent == LEAVE_EVENT || info->curEvent == LINK_DOWN_EVENT) {
+                    currentLeaveCount_.fetch_add(1U);
+                }
+                eventCtx_.values.push_back(*info);
             }
         },
         true);
@@ -869,26 +1061,27 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
 
 void SmemNetGroupEngine::RemoteRankLinkDownCb(uint32_t remoteRankId)
 {
-    SM_LOG_DEBUG("[DEBUG]RemoteRankLinkDownCb rank id: " << remoteRankId);
-    listenSignal_.OperateInLock(
+    SM_LOG_DEBUG("RemoteRankLinkDownCb rank id: " << remoteRankId << " current_down:" << currentLinkDownCount_);
+    linkListenSignal_.OperateInLock(
         [this, remoteRankId]() {
-            listenCtx_.ret = SM_OK;
-            listenCtx_.events.emplace_back(GroupEvent(remoteRankId));
+            linkCtx_.ret = SM_OK;
+            linkCtx_.values.emplace_back(remoteRankId);
+            currentLinkDownCount_.fetch_add(1U);
         },
         true);
 }
 
-void SmemNetGroupEngine::ClearBitmapForRank(uint32_t rankId)
+void SmemNetGroupEngine::ClearBitmapForRank(SmemGroupInfo &info, uint32_t rankId)
 {
     if (rankId >= MAX_RANK_COUNT) {
         SM_LOG_ERROR("ClearBitmapForRank invalid rank id: " << rankId);
         return;
     }
-
-    std::unique_lock<std::mutex> uniqueLock{rankBitmapMutex_};
+    std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
     auto index = rankId / BITS_COUNT_IN_U64;
     auto shift = rankId % BITS_COUNT_IN_U64;
-    joinedRanksBitmap_[index] &= ~(1UL << shift);
+    info.joinedRanksBitmap[index] &= ~(1UL << shift);
+    info.groupSize -= 1U;
 }
 
 bool SmemNetGroupEngine::TestBitmapForRank(uint32_t rankId) const
@@ -898,238 +1091,272 @@ bool SmemNetGroupEngine::TestBitmapForRank(uint32_t rankId) const
         return false;
     }
 
-    std::unique_lock<std::mutex> uniqueLock{rankBitmapMutex_};
+    std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
     auto index = rankId / BITS_COUNT_IN_U64;
     auto shift = rankId % BITS_COUNT_IN_U64;
 
-    return ((joinedRanksBitmap_[index] & (1UL << shift)) != 0UL);
+    return ((groupInfo_.joinedRanksBitmap[index] & (1UL << shift)) != 0UL);
 }
 
-Result SmemNetGroupEngine::StartListenEvent()
+bool SmemNetGroupEngine::UpdateBitmapFromRank(SmemGroupInfo &info, uint32_t rankId)
+{
+    if (rankId >= MAX_RANK_COUNT) {
+        SM_LOG_ERROR("UpdateBitmapFromRank invalid rank id: " << rankId);
+        return false;
+    }
+
+    auto index = rankId / BITS_COUNT_IN_U64;
+    auto shift = rankId % BITS_COUNT_IN_U64;
+    if ((info.joinedRanksBitmap[index] >> shift) & 1U) {
+        return false;
+    } else {
+        info.joinedRanksBitmap[index] |= (1UL << shift);
+        info.groupSize += 1U;
+        return true;
+    }
+}
+
+Result SmemNetGroupEngine::StartListen()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
-    SM_ASSERT_RETURN(listenSignal_.Initialize() == SM_OK, SM_ERROR);
+    SM_ASSERT_RETURN(eventListenSignal_.Initialize() == SM_OK, SM_ERROR);
+    SM_ASSERT_RETURN(linkListenSignal_.Initialize() == SM_OK, SM_ERROR);
+    SM_ASSERT_RETURN(localOpSignal_.Initialize() == SM_OK, SM_ERROR);
+    SM_ASSERT_RETURN(linkOpSignal_.Initialize() == SM_OK, SM_ERROR);
 
-    uint32_t wid = 0;
-    auto ret = store_->Watch(
-        WatchRankType::WATCH_RANK_LINK_DOWN,
-        [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
-    SM_ASSERT_RETURN(ret == SM_OK, ret);
-    listenLinkStatusWatchId_.store(wid);
-
-    std::thread th(&SmemNetGroupEngine::GroupListenEvent, this);
-    while (!listenThreadStarted_) {
+    std::thread th1(&SmemNetGroupEngine::GroupListenEvent, this);
+    while (!(listenThreadStarted_.load() & 1U)) {
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
     }
-    listenThread_ = std::move(th);
+    std::thread th2(&SmemNetGroupEngine::GroupListenLinkState, this);
+    while (!(listenThreadStarted_.load() & 2U)) {
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+    }
+    eventListenThread_ = std::move(th1);
+    linkListenThread_ = std::move(th2);
     return SM_OK;
+}
+
+void SmemNetGroupEngine::TryCleanOldEvent()
+{
+    uint64_t now = mf::MonotonicTime::TimeUs();
+    SmemGroupInfo oldInfo{};
+    uint64_t last;
+    {
+        std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
+        last = lastUpdateTime_.load();
+        last = (last > UINT64_MAX - SMEM_EVNET_KEEP_TIME) ? UINT64_MAX : (last + SMEM_EVNET_KEEP_TIME);
+        oldInfo = groupInfo_;
+    }
+    if (oldInfo.version & 1) {
+        int ret = SM_OK;
+        // delete old events of the same rank
+        if (oldInfo.submitRank == option_.rank && lastSubmitVersion_ != oldInfo.version) {
+            SM_LOG_INFO("current submit rank:" << oldInfo.submitRank << " has old version, try remove event!");
+        } else if (now > last) {
+            uint32_t alive = 0;
+            ret = store_->QueryAlive(oldInfo.submitRank, alive);
+            if (ret == SM_OK && alive == 0) {
+                SM_LOG_INFO("current submit rank:" << oldInfo.submitRank << " has link down, try remove event!");
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+
+        std::string old;
+        // query submit_rank, but clear target_rank's event
+        SmemGroupInfo info = GenerateInfo(NULL_EVNET, oldInfo.targetRank, old);
+        SM_LOG_DEBUG("generate info:" << info);
+        if (info.version != oldInfo.version + 1) {
+            SM_LOG_INFO("event has updated, skip remove event.");
+            return;
+        }
+        if (oldInfo.curEvent == JOIN_EVENT) {
+            ClearBitmapForRank(info, oldInfo.targetRank);
+        }
+        std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+        ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+        if (ret == SM_OK || ret == RESTORE) {
+            // nothing
+        }
+    }
 }
 
 Result SmemNetGroupEngine::GroupJoin()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
-    std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
     if (joined_) {
         return SM_OK;
     }
+
+    TryRemovePrefixKey(option_.rank); // try to remove prefix key if it has same rank
     std::string old;
-    std::string val = "J" + std::to_string(option_.rank);
     int retry_count = 0;
-    static constexpr int MAX_RETRY = 100000;
+    static constexpr int MAX_RETRY = 30;
+    localOpRet_ = SM_OK; // init ret
     while (retry_count++ < MAX_RETRY) {
-        auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK && (old.empty() || old == val)) {
-            break;
+        if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) { // has leave or link_down, retry
+            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+            continue;
+        }
+
+        SmemGroupInfo info = GenerateInfo(JOIN_EVENT, option_.rank, old);
+        if (!UpdateBitmapFromRank(info, option_.rank)) { // has same rank joined
+            SM_LOG_INFO("found old rank, try remote it, rank:" << option_.rank);
+            DoLinkDownOnce(option_.rank);
+            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+            continue;
+        }
+        std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+        SM_LOG_DEBUG("join generate_info:" << info << " base:" << groupInfo_);
+        if (info.version & 1) {
+            auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+            if (ret == SM_OK) { // will cas ok if key not exist
+                lastSubmitVersion_.store(info.version);
+                break;
+            }
+        } else {
+            TryCleanOldEvent();
         }
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
     }
-    int64_t tmp;
-    auto ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0, tmp);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-        goto join_exit;
-    }
-    GroupSnClean();
-    UpdateGroupVersion(SplitSizeAndVersion(tmp).first + 1);
-    option_.rankSize = static_cast<uint32_t>(SplitSizeAndVersion(tmp).second + 1);
-    if (option_.joinCb != nullptr) {
-        ret = option_.joinCb(option_.rank);
-        if (ret != SM_OK) {
-            SM_LOG_ERROR("call join func failed, ret: " << ret);
-            goto join_exit;
-        }
-    }
-    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 1LL << GROUP_DYNAMIC_SIZE_BIT_LEN | 1, tmp);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
+    if (retry_count > MAX_RETRY) {
+        SM_LOG_DEBUG("join failed, retry. rank:" << option_.rank);
+        return SM_INNER_BUSY;
     }
 
+    int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
 join_exit:
-    auto ret2 = store_->Remove(SMEM_GROUP_LISTEN_EVENT_KEY);
+    SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
+    SM_LOG_DEBUG("generate info:" << info);
+    if (ret != SM_OK || localOpRet_ != SM_OK) {
+        SM_LOG_ERROR("do join failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
+        ret = (ret == SM_OK ? localOpRet_ : ret);
+        ClearBitmapForRank(info, option_.rank);
+    }
+    std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
+    auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
     if (ret2 != SM_OK) {
-        SM_LOG_ERROR("reset group event failed, ret: " << ret2);
+        SM_LOG_ERROR("reset group event failed, ret: " << ret2 << " expect:" << info);
+    } else {
+        lastSubmitVersion_.store(info.version);
     }
 
     if ((ret | ret2) == SM_OK) {
         joined_ = true;
         return SM_OK;
     }
-    return SM_ERROR;
+    return (ret2 == SM_OK && ret == SM_INNER_BUSY) ? SM_INNER_BUSY : SM_ERROR;
 }
 
 Result SmemNetGroupEngine::GroupLeave()
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
-    std::unique_lock<std::mutex> uniqueLock{groupEventHandleMutex_};
     SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
     SM_LOG_INFO("do leave by user, rank:" << option_.rank);
 
-    Result ret;
-    uint32_t watchId = 0;
-    listenSignal_.OperateInLock(
-        [&watchId, this]() {
-            watchId = listenCtx_.watchId;
-            listenCtx_.watchId = UINT32_MAX;
-            groupStoped_ = true;
-        },
-        true);
-    if (watchId != UINT32_MAX) {
-        ret = store_->Unwatch(watchId);
-        if (ret != SM_OK && ret != StoreErrorCode::NOT_EXIST) {
-            SM_LOG_ERROR("unwatch id: " << watchId << " failed: " << ret);
-        }
-    }
     std::string old;
-    std::string val = "L" + std::to_string(option_.rank);
     int retry_count = 0;
     static constexpr int MAX_RETRY = 100000;
+    localOpRet_ = SM_OK; // init ret
     while (retry_count++ < MAX_RETRY) {
-        ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, "", val, old);
-        if (ret == SM_OK && (old.empty() || old == val)) {
-            break;
+        SmemGroupInfo info = GenerateInfo(LEAVE_EVENT, option_.rank, old);
+        ClearBitmapForRank(info, option_.rank);
+        std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+        SM_LOG_ERROR("leave generate_info:" << info << " base:" << groupInfo_);
+        if (info.version & 1) {
+            auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+            if (ret == SM_OK) {
+                lastSubmitVersion_.store(info.version);
+                break;
+            }
+        } else {
+            TryCleanOldEvent();
         }
         usleep(SMEM_GROUP_SLEEP_TIMEOUT);
     }
 
-    if (option_.leaveCb != nullptr) {
-        ret = option_.leaveCb(option_.rank);
-        if (ret != SM_OK) {
-            SM_LOG_ERROR("call join func failed, ret: " << ret);
-            goto leave_exit;
-        }
-    }
-    int64_t tmpVal;
-    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, GROUP_DYNAMIC_SIZE_BIT_MASK, tmpVal);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("update group dynamic size failed, ret: " << ret);
-    }
-    GroupSnClean();
-    UpdateGroupVersion(SplitSizeAndVersion(tmpVal).first + 1);
+    SM_VALIDATE_RETURN(retry_count <= MAX_RETRY, "do leave set key timeout!", SM_ERROR);
 
-leave_exit:
-    auto ret2 = store_->Remove(SMEM_GROUP_LISTEN_EVENT_KEY);
+    TryRemovePrefixKey(option_.rank);
+    // wait listen thread do leave
+    int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
+    if (ret != 0 || localOpRet_ != SM_OK) {
+        SM_LOG_ERROR("wait leave timeout! signal_ret:" << ret << " op_ret:" << localOpRet_);
+        ret |= localOpRet_;
+    }
+
+    SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
+    SM_LOG_DEBUG("generate info:" << info);
+    std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
+    auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
     if (ret2 != SM_OK) {
-        SM_LOG_ERROR("reset group event failed, ret: " << ret2);
+        SM_LOG_ERROR("reset group event failed, ret: " << ret2 << " expect:" << info);
+    } else {
+        lastSubmitVersion_.store(info.version);
     }
 
     joined_ = false;
     return (ret | ret2) == SM_OK ? SM_OK : SM_ERROR;
 }
 
-void SmemNetGroupEngine::UpdateGroupVersion(int32_t ver)
+void SmemNetGroupEngine::GetAllRanksFromBitMap(std::vector<uint32_t> &rankIds)
 {
-    groupVersion_ = ver;
-    allGatherGroupSn_ = 0;
-    barrierGroupSn_ = 0;
-    SM_LOG_DEBUG("[DEBUG]Update version(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") ver:" << " local:" << option_.rank);
-}
-
-void SmemNetGroupEngine::SetBitmapFromRanks(const std::vector<uint32_t> &rankIds)
-{
-    uint64_t tempBitmap[RANK_BITS_U64_COUNT];
-    bzero(tempBitmap, sizeof(tempBitmap));
-    for (auto rankId : rankIds) {
-        if (rankId >= MAX_RANK_COUNT) {
-            SM_LOG_ERROR("AddRanksToBitmap invalid rank id: " << rankId);
-            continue;
+    rankIds.clear();
+    std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
+    for (uint32_t i = 0; i < RANK_BITS_U64_COUNT; i++) {
+        for (uint32_t j = 0; j < BITS_COUNT_IN_U64; j++) {
+            if ((groupInfo_.joinedRanksBitmap[i] >> j) & 1U) {
+                rankIds.push_back(i * BITS_COUNT_IN_U64 + j);
+            }
         }
-
-        auto index = rankId / BITS_COUNT_IN_U64;
-        auto shift = rankId % BITS_COUNT_IN_U64;
-        tempBitmap[index] |= (1UL << shift);
-    }
-
-    std::unique_lock<std::mutex> uniqueLock{rankBitmapMutex_};
-    for (auto i = 0U; i < RANK_BITS_U64_COUNT; i++) {
-        joinedRanksBitmap_[i] = tempBitmap[i];
     }
 }
 
 int32_t SmemNetGroupEngine::LinkReconnectHandler()
 {
-    uint32_t wid = 0;
-    auto ret = store_->Watch(
-        WatchRankType::WATCH_RANK_LINK_DOWN,
-        [this](WatchRankType type, uint32_t downRankId) { RemoteRankLinkDownCb(downRankId); }, wid);
-    if (ret != SM_OK) {
-        SM_LOG_WARN("Failed to watch rank link status, ret: " << ret);
-    } else {
-        SM_LOG_INFO("Watch link down event successful wid: " << wid);
-        listenLinkStatusWatchId_.store(wid);
-    }
-
-    int64_t tmpVal = 0L;
-    ret = store_->Add(SMEM_GROUP_DYNAMIC_SIZE_KEY, 0L, tmpVal);
-    if (ret != SM_OK) {
-        SM_LOG_ERROR("get group dynamic size failed, ret: " << ret);
-        return ret;
-    }
-
-    auto version = groupVersion_;
-    auto rankSize = option_.rankSize;
-    auto newVal = MergeSizeAndVersion(version, rankSize);
-    auto oldValStr = std::to_string(tmpVal);
-    auto newValStr = std::to_string(newVal);
-    std::string existStr;
-    SM_LOG_DEBUG("[DEBUG]Try cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << std::hex << version
-                                           << ", rankSize:" << rankSize << ", oldVar:" << tmpVal);
-    ret = store_->Cas(SMEM_GROUP_DYNAMIC_SIZE_KEY, oldValStr, newValStr, existStr);
-    if (ret != SM_OK) {
-        SM_LOG_WARN("CAS for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") failed: " << ret);
-    } else {
-        StrUtil::String2Int(existStr, newVal);
-        auto pair = SplitSizeAndVersion(newVal);
-        SM_LOG_INFO("Cas for key(" << SMEM_GROUP_DYNAMIC_SIZE_KEY << ") version: " << version
-                                   << ", rankSize:" << rankSize << ", oldVar: " << pair.first << "_" << pair.second);
-    }
+    // todo: 重连应当重新join
     return SM_OK;
+}
+
+void SmemNetGroupEngine::GroupOldKeyClean(const std::string &prefix, const std::string &suffix,
+                                          uint32_t snStart, uint32_t snEnd)
+{
+    for (uint32_t i = snStart; i <= snEnd; i++) {
+        std::string key = prefix + std::to_string(i) + suffix;
+        (void)store_->Remove(key);
+    }
 }
 
 void SmemNetGroupEngine::GroupSnClean()
 {
-    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
-        if (allGatherGroupSn_ < i) {
-            break;
-        }
-        uint32_t rmAllGatherGroupSn = allGatherGroupSn_ - i;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(rmAllGatherGroupSn) + "_GW";
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
-    }
+    std::string prefix = std::to_string(groupVersion_) + "_";
+    uint32_t st = (allGatherGroupSn_ < REMOVE_INTERVAL) ? 1U : (allGatherGroupSn_ - REMOVE_INTERVAL + 1U);
+    GroupOldKeyClean(prefix, "_GA", st, allGatherGroupSn_);
+    GroupOldKeyClean(prefix, "_GW", st, allGatherGroupSn_);
 
-    for (uint32_t i = 0; i < REMOVE_INTERVAL; i++) {
-        if (barrierGroupSn_ < i) {
-            break;
-        }
-        uint32_t removeBarrierGroupSn = barrierGroupSn_ - i;
-        std::string removeAddIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BA";
-        std::string removeWaitIdx = std::to_string(groupVersion_) + "_" + std::to_string(removeBarrierGroupSn) + "_BW";
-        (void)store_->Remove(removeAddIdx);
-        (void)store_->Remove(removeWaitIdx);
+    st = (barrierGroupSn_ < REMOVE_INTERVAL) ? 1U : (barrierGroupSn_ - REMOVE_INTERVAL + 1U);
+    GroupOldKeyClean(prefix, "_BA", st, barrierGroupSn_);
+    GroupOldKeyClean(prefix, "_BW", st, barrierGroupSn_);
+
+    for (auto &it : userGroupBarrierSn_) {
+        prefix = it.first + "_";
+        st = (it.second < REMOVE_INTERVAL) ? 1U : (it.second - REMOVE_INTERVAL + 1U);
+        GroupOldKeyClean(prefix, "_BA", st, it.second);
+        GroupOldKeyClean(prefix, "_BW", st, it.second);
     }
+    userGroupBarrierSn_.clear();
+    for (auto &it : userGroupGatherSn_) {
+        prefix = it.first + "_";
+        st = (it.second < REMOVE_INTERVAL) ? 1U : (it.second - REMOVE_INTERVAL + 1U);
+        GroupOldKeyClean(prefix, "_GA", st, it.second);
+        GroupOldKeyClean(prefix, "_GW", st, it.second);
+    }
+    userGroupGatherSn_.clear();
 }
 } // namespace smem
 } // namespace ock

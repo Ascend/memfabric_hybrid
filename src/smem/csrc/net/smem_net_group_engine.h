@@ -14,8 +14,10 @@
 
 #include <functional>
 #include <thread>
+#include <shared_mutex>
 #include <atomic>
 #include <list>
+#include "smem.h"
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
 
@@ -26,6 +28,9 @@ class SmemNetGroupEngine;
 using SmemGroupEnginePtr = SmRef<SmemNetGroupEngine>;
 using SmemGroupChangeCallback = std::function<Result(uint32_t rank)>;
 const uint32_t REMOVE_INTERVAL = 2;
+constexpr uint32_t MAX_RANK_COUNT = SMEM_WORLD_SIZE_MAX;
+constexpr uint32_t BITS_COUNT_IN_U64 = 64U;
+constexpr uint32_t RANK_BITS_U64_COUNT = MAX_RANK_COUNT / BITS_COUNT_IN_U64;
 
 /**
  * @brief create group option
@@ -46,28 +51,40 @@ struct SmemGroupOption {
     SmemGroupChangeCallback leaveCb;
 };
 
-enum class GroupEventType : int8_t { LUNCH_JOIN_LEAVE_EVENT = 0, REMOTE_DOWN_EVENT = 1 };
-
-struct GroupEvent {
-    GroupEventType eventType;
-    uint32_t remoteRankId;
-    std::string value;
-    explicit GroupEvent(uint32_t id) : eventType{GroupEventType::REMOTE_DOWN_EVENT}, remoteRankId{id} {}
-    explicit GroupEvent(std::string val)
-        : eventType{GroupEventType::LUNCH_JOIN_LEAVE_EVENT}, remoteRankId{std::numeric_limits<uint32_t>::max()},
-          value{std::move(val)}
-    {}
+enum GroupEventType : int32_t {
+    JOIN_EVENT = 0,
+    LEAVE_EVENT = 1,
+    RECOVER_EVENT = 2,
+    LINK_DOWN_EVENT = 3,
+    NULL_EVNET = 4,
 };
 
+template<typename T>
 struct GroupListenContext {
     uint32_t watchId = UINT32_MAX;
     int32_t ret = SM_OK;
-    std::list<GroupEvent> events;
+    std::list<T> values;
 };
 
-constexpr uint32_t MAX_RANK_COUNT = 1024U;
-constexpr uint32_t BITS_COUNT_IN_U64 = 64U;
-constexpr uint32_t RANK_BITS_U64_COUNT = MAX_RANK_COUNT / BITS_COUNT_IN_U64;
+#pragma pack(push, 4)
+struct SmemGroupInfo {
+    // dynamic info
+    uint32_t version;
+    uint32_t groupSize;
+    uint32_t curEvent;
+    uint32_t targetRank;
+    uint32_t submitRank;
+    uint64_t joinedRanksBitmap[RANK_BITS_U64_COUNT];
+
+    friend std::ostream &operator<<(std::ostream &os, const SmemGroupInfo &obj)
+    {
+        os << "SmemGroupInfo{size:" << obj.groupSize << " event:" << obj.curEvent
+           << " target:" << obj.targetRank << " src:" << obj.submitRank << " ver:" << obj.version
+           << " mask:" << obj.joinedRanksBitmap[0] << "}";
+        return os;
+    }
+};
+#pragma pack(pop)
 
 class SmemNetGroupEngine : public SmReferable {
 public:
@@ -76,12 +93,12 @@ public:
 public:
     SmemNetGroupEngine(const StoreManagerPtr &store, const SmemGroupOption &option) : store_(store), option_(option)
     {
+        groupInfo_.groupSize = option_.rankSize;
         joined_ = !option_.dynamic;
         if (option_.dynamic) {
-            option_.rankSize = 1;
+            groupInfo_.groupSize = 0U; // not join, size is zero
         }
         store_->RegisterReconnectHandler(std::bind(&SmemNetGroupEngine::LinkReconnectHandler, this));
-        bzero(joinedRanksBitmap_, sizeof(joinedRanksBitmap_));
     }
     ~SmemNetGroupEngine() override;
 
@@ -89,20 +106,28 @@ public:
 
     Result GroupBarrier(const char *key, uint32_t rankSize, uint32_t rankId);
 
+    Result GroupGatherResult(int32_t localRet, int32_t &totalRet);
+
     Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
 
     Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId, const char *sendBuf, uint32_t sendSize,
                           char *recvBuf, uint32_t recvSize);
 
+    Result GroupGatherPrefixKey(uint32_t dstRank, std::string &update,
+                                std::unordered_map<uint32_t, std::string> &retMap);
+
+    Result TryRemovePrefixKey(uint32_t rank);
+
     Result GroupBroadcastExit(int status);
 
     Result RegisterExit(const std::function<void(int)> &exit);
 
+    // dynamic group func
     int32_t AllocNumber();
 
     Result ReleaseNumber(int32_t val);
 
-    Result StartListenEvent();
+    Result StartListen();
 
     bool IsJoined() const { return joined_.load(); }
 
@@ -114,44 +139,63 @@ public:
 
     uint32_t GetRankSize() const;
 
-    void SetBitmapFromRanks(const std::vector<uint32_t> &rankIds);
-
     void GroupSnClean();
 
 private:
-    bool ReWatch();
+    SmemGroupInfo GenerateInfo(uint32_t event, uint32_t target, std::string &old);
+    bool TryUpdateInfo(SmemGroupInfo &info);
+    uint32_t ReWatchEvent();
+    uint32_t ReWatchLinkDown();
     void GroupListenEvent();
-    void JoinLeaveEventProcess(const std::string &value, std::string &prevEventValue);
-    void RankLinkDownEventProcess(uint32_t rankId, std::string &prevEventValue);
-    void LinkDownUpdateMeta(uint32_t rankId);
-    void UpdateGroupVersion(int32_t ver);
+    void GroupListenLinkState();
+    int32_t JoinLeaveEventProcess();
+    void RankLinkDownEventProcess(uint32_t rankId);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
     void RemoteRankLinkDownCb(uint32_t remoteRankId);
-    void ClearBitmapForRank(uint32_t rankId);
+    bool UpdateBitmapFromRank(SmemGroupInfo &info, uint32_t rankId);
+    void GetAllRanksFromBitMap(std::vector<uint32_t> &rankIds);
     bool TestBitmapForRank(uint32_t rankId) const;
+    void ClearBitmapForRank(SmemGroupInfo &info, uint32_t rankId);
     int32_t LinkReconnectHandler();
+    uint32_t TryRemoveAllLeavedPrefixKey();
     void RankExit(int result, const std::string &key, const std::string &value);
+    void GroupOldKeyClean(const std::string &prefix, const std::string &suffix, uint32_t snStart, uint32_t snEnd);
+    Result StoreGetCanInterrupt(const std::string &key, std::string &value, uint64_t timeoutMs);
+    void TryCleanOldEvent();
+    Result DoLinkDownOnce(uint32_t rankId);
 
     StoreManagerPtr store_ = nullptr;
     SmemGroupOption option_;
     int32_t groupVersion_ = 0;
     uint32_t allGatherGroupSn_ = 0;
     uint32_t barrierGroupSn_ = 0;
-
-    std::thread listenThread_;
-    SmemTimedwait listenSignal_;
-    GroupListenContext listenCtx_;
-    std::atomic_uint32_t listenLinkStatusWatchId_ = UINT32_MAX;
-    mutable std::mutex groupEventHandleMutex_;
-    std::atomic_bool joined_ = false;
-    std::atomic<bool> listenThreadStarted_{false};
-    std::atomic_bool groupStoped_ = false;
     std::function<void(int)> globalExitHandler_;
-    uint64_t joinedRanksBitmap_[RANK_BITS_U64_COUNT]{};
-    mutable std::mutex rankBitmapMutex_;
     std::unordered_map<std::string, uint32_t> userGroupGatherSn_;
     std::unordered_map<std::string, uint32_t> userGroupBarrierSn_;
     std::set<int32_t> allocedSet_;
+
+    std::thread eventListenThread_;
+    SmemTimedwait eventListenSignal_;
+    GroupListenContext<SmemGroupInfo> eventCtx_;
+    std::atomic_uint32_t currentLeaveCount_{0};
+
+    std::thread linkListenThread_;
+    SmemTimedwait linkListenSignal_;
+    GroupListenContext<uint32_t> linkCtx_;
+    std::atomic_uint32_t currentLinkDownCount_{0};
+
+    SmemTimedwait linkOpSignal_;
+    int32_t linkOpRet_;
+    SmemTimedwait localOpSignal_;
+    int32_t localOpRet_;
+
+    std::atomic_uint32_t listenThreadStarted_{0};
+    std::atomic_bool joined_ = false;
+    std::atomic_bool groupStoped_ = false;
+    mutable std::shared_mutex groupInfoMutex_;
+    SmemGroupInfo groupInfo_{};
+    std::atomic_uint32_t lastSubmitVersion_{0};
+    std::atomic_uint64_t lastUpdateTime_{UINT64_MAX};
 };
 
 inline uint32_t SmemNetGroupEngine::GetLocalRank() const
@@ -161,7 +205,7 @@ inline uint32_t SmemNetGroupEngine::GetLocalRank() const
 
 inline uint32_t SmemNetGroupEngine::GetRankSize() const
 {
-    return option_.rankSize;
+    return groupInfo_.groupSize;
 }
 
 } // namespace smem

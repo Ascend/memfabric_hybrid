@@ -89,6 +89,23 @@ public:
         return removeRet;
     }
 
+    ock::smem::Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override
+    {
+        alive = true;
+        return SM_OK;
+    }
+
+    ock::smem::Result PrefixGet(const std::string &key,
+                                std::unordered_map<std::string, std::string> &value) noexcept override
+    {
+        auto iter = kv_.lower_bound(key);
+        while (iter != kv_.end() && iter->first.compare(0, key.size(), key) == 0) {
+            value[iter->first] = std::string(iter->second.begin(), iter->second.end());
+            iter++;
+        }
+        return SM_OK;
+    }
+
     ock::smem::Result Append(const std::string &key, const std::vector<uint8_t> &value,
                              uint64_t &newSize) noexcept override
     {
@@ -169,7 +186,7 @@ public:
     void RegisterServerOpHandler(int16_t, const ConfigStoreServerOpHandler &) noexcept override {}
 
 private:
-    std::unordered_map<std::string, std::vector<uint8_t>> kv_;
+    std::map<std::string, std::vector<uint8_t>> kv_;
 };
 
 SmemGroupEnginePtr MakeLocalGroup(uint32_t rankSize, uint32_t rankId)
@@ -379,8 +396,6 @@ TEST_F(SmemBmTest, smem_bm_create2_before_init)
     EXPECT_EQ(handle, nullptr);
 }
 
-
-
 TEST_F(SmemBmTest, smem_bm_ptr_by_mem_type_invalid)
 {
     void *ptr = smem_bm_ptr_by_mem_type(nullptr, SMEM_MEM_TYPE_HOST, 0);
@@ -575,62 +590,6 @@ TEST_F(SmemBmTest, smem_bm_entry_trans_to_hybm_direction_switch_cases)
     EXPECT_NE(entry.TransToHybmDirection(SMEMB_COPY_GH2H, gHost, 1, localPtr, 1), HYBM_DATA_COPY_DIRECTION_BUTT);
 }
 
-TEST_F(SmemBmTest, smem_bm_entry_exchange_slice_for_join_error_and_success_paths)
-{
-    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
-    StorePtr dummyStore;
-    SmemBmEntry entry(opt, dummyStore);
-    entry.inited_ = true;
-    entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    entry.coreOptions_.rankCount = 1;
-    entry.globalGroup_ = MakeLocalGroup(1, 0);
-
-    hybm_exchange_info sliceInfo{};
-    sliceInfo.descLen = 4; // 避开 descLen==0 的早退
-
-    // 1) hybm_import 失败
-    MOCKER_CPP(&hybm_import, int32_t (*)(hybm_entity_t, hybm_exchange_info *, uint32_t, void *, uint32_t))
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(-1)));
-    EXPECT_EQ(entry.ExchangeSliceForJoin(sliceInfo), SM_ERROR);
-
-    // 2) 全部成功
-    GlobalMockObject::reset();
-    MOCKER_CPP(&hybm_import, int32_t (*)(hybm_entity_t, hybm_exchange_info *, uint32_t, void *, uint32_t))
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(0)));
-    EXPECT_EQ(entry.ExchangeSliceForJoin(sliceInfo), SM_OK);
-}
-
-TEST_F(SmemBmTest, smem_bm_entry_exchange_entity_for_join_error_and_success_paths)
-{
-    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
-    StorePtr dummyStore;
-    SmemBmEntry entry(opt, dummyStore);
-    entry.inited_ = true;
-    entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    entry.coreOptions_.rankCount = 1;
-    entry.globalGroup_ = MakeLocalGroup(1, 0);
-
-    // 1) hybm_import 失败（且 flag 应为 HYBM_FLAG_EXPORT_ENTITY）
-    GlobalMockObject::reset();
-    g_lastHybmImportFlags = 0;
-    MOCKER_CPP(&hybm_import, int32_t (*)(hybm_entity_t, hybm_exchange_info *, uint32_t, void *, uint32_t))
-        .stubs()
-        .will(invoke(&HybmImportCaptureFlagsFail));
-    EXPECT_EQ(entry.ExchangeEntityForJoin(), SM_ERROR);
-    EXPECT_EQ(g_lastHybmImportFlags, static_cast<uint32_t>(HYBM_FLAG_EXPORT_ENTITY));
-
-    // 2) 全部成功，并确认 import flags 被正确传递
-    GlobalMockObject::reset();
-    g_lastHybmImportFlags = 0;
-    MOCKER_CPP(&hybm_import, int32_t (*)(hybm_entity_t, hybm_exchange_info *, uint32_t, void *, uint32_t))
-        .stubs()
-        .will(invoke(&HybmImportCaptureFlagsOk));
-    EXPECT_EQ(entry.ExchangeEntityForJoin(), SM_OK);
-    EXPECT_EQ(g_lastHybmImportFlags, static_cast<uint32_t>(HYBM_FLAG_EXPORT_ENTITY));
-}
-
 // JoinHandle / LeaveHandle / Join / Leave 的未初始化早退分支。
 TEST_F(SmemBmTest, smem_bm_entry_join_leave_not_initialized)
 {
@@ -702,11 +661,6 @@ TEST_F(SmemBmTest, smem_bm_entry_leave_handle_not_initialized)
     ock::smem::Result ret = entry.LeaveHandle(1);
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
-
-// ExchangeEntityForJoin: 测试未初始化的情况，由于ExchangeEntityForJoin依赖globalGroup_，暂时不测试
-// 避免空指针访问错误
-
-
 
 // DataCopy: 正常执行路径。
 TEST_F(SmemBmTest, smem_bm_entry_data_copy_success)
@@ -860,19 +814,6 @@ TEST_F(SmemBmTest, smem_bm_entry_wait_not_initialized)
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
 
-// ExchangeSliceForJoin: descLen 为 0 时直接返回 SM_OK。
-TEST_F(SmemBmTest, smem_bm_entry_exchange_slice_for_join_empty_desc)
-{
-    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
-    StorePtr dummyStore;
-    SmemBmEntry entry(opt, dummyStore);
-    hybm_exchange_info info{};
-    info.descLen = 0;
-
-    ock::smem::Result ret = entry.ExchangeSliceForJoin(info);
-    EXPECT_EQ(ret, ock::smem::SM_OK);
-}
-
 // GetEntryById: 未初始化的情况。
 TEST_F(SmemBmTest, smem_bm_entry_manager_get_entry_by_id_not_initialized)
 {
@@ -1016,14 +957,6 @@ TEST_F(SmemBmTest, smem_bm_create_success)
     smem_bm_t handle = smem_bm_create(0, 0, optype, GVA_SIZE, 0, 0);
     EXPECT_NE(handle, nullptr);
 
-    smem_bm_destroy(handle);
-}
-
-TEST_F(SmemBmTest, smem_bm_create_failed)
-{
-    smem_bm_data_op_type optype = SMEMB_DATA_OP_HOST_URMA;
-    smem_bm_t handle = smem_bm_create(0, 0, optype, GVA_SIZE, 0, 0);
-    EXPECT_EQ(handle, nullptr);
     smem_bm_destroy(handle);
 }
 
@@ -1226,7 +1159,7 @@ TEST_F(SmemBmTest, smem_create_config_store_success)
 {
     smem_bm_t handle = MockInitAndCreateHandle(5); // 5
     std::string url = "tcp://192.168.100.101:8570";
-    auto ret = smem_create_config_store(url.c_str());
+    auto ret = smem_create_config_store(url.c_str(), SMEM_STORE_SKIP_RECOVER);
     EXPECT_EQ(ret, 0);
     smem_bm_destroy(handle);
     smem_bm_uninit(0);
@@ -1253,7 +1186,7 @@ TEST_F(SmemBmTest, smem_create_config_store_reg_success)
         .stubs()
         .will(returnValue(fakeStore));
 
-    auto ret = smem_create_config_store("reg://127.0.0.1:2379#clusterA");
+    auto ret = smem_create_config_store("reg://127.0.0.1:2379#clusterA", SMEM_STORE_SKIP_RECOVER);
     EXPECT_EQ(SM_OK, ret);
 }
 

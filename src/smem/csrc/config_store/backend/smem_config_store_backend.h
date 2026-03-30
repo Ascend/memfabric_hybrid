@@ -34,6 +34,8 @@ constexpr auto KEY_ELECTION_LOCK = "/memfabric_hybrid/config_store/lock/election
 constexpr auto KEY_WORLD_SIZE = "/memfabric_hybrid/config_store/data/world_size";
 constexpr auto KEY_ALIVE_RANK_LIST = "/memfabric_hybrid/config_store/data/alive_rank_list";
 
+using PrefixGetMap = std::unordered_map<std::string, std::vector<uint8_t>>;
+
 /**
  * @brief Abstract interface for configuration store backend implementations
  *
@@ -65,6 +67,15 @@ public:
      * @return SUCCESS if key exists, NOT_EXIST otherwise
      */
     [[nodiscard]] virtual StoreErrorCode Get(const std::string &key, std::vector<uint8_t> &outValue) const noexcept = 0;
+
+    /**
+     * @brief Retrieve key-value map associated with prefix key
+     *
+     * @param key       [in]  Key to look up
+     * @param outValue  [out] Retrieved value if found
+     * @return SUCCESS if key exists, NOT_EXIST otherwise
+     */
+    [[nodiscard]] virtual StoreErrorCode PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept = 0;
 
     /**
      * @brief Retrieve value associated with key (string variant)

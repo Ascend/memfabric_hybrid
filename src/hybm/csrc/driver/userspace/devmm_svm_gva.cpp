@@ -188,6 +188,11 @@ static void GvaHeapRemoveReserved(uint64_t va)
         DlHalApi::HalIoctlFreePages(ptr);
     }
     g_gvaHeapMgr.reserved.erase(va);
+    if (g_gvaHeapMgr.reserved.empty()) {
+        g_gvaHeapMgr.end = g_gvaHeapMgr.start;
+    } else {
+        g_gvaHeapMgr.end = g_gvaHeapMgr.reserved.rbegin()->second;
+    }
     (void)pthread_mutex_unlock(&g_gvaHeapMgr.treeLock);
 }
 
@@ -456,7 +461,7 @@ static uint64_t VirtAllocGvaMem(void *mgmt, uint64_t allocPtr, size_t allocSize,
     }
     if (retPtr != allocPtr) {
         BM_LOG_ERROR("gva alloc mem failed. (size=0x"
-                     << std::hex << allocSize
+                     << std::hex << allocSize << " expect:0x" << allocPtr << " ret:0x" << retPtr
                      << (retPtr >= DEVMM_SVM_MEM_START ? ", maybe ascend driver need to update)" : ")"));
         return 0;
     }
@@ -568,7 +573,8 @@ int32_t HalGvaReserveMemory(uint64_t *address, size_t size, int32_t deviceId, ui
 
     uint64_t retVa = VirtAllocGvaMem(mgmt, va, allocSize, &heap_type, advise);
     if (retVa != va) {
-        BM_LOG_ERROR("HalGvaInitMemory alloc mem failed. (flag=" << flags << " size=0x" << std::hex << size << ")");
+        BM_LOG_ERROR("HalGvaInitMemory alloc mem failed. (flag=" << flags << " va=0x" << std::hex << va << " size=0x"
+                     << size << ")");
         return -1;
     }
 

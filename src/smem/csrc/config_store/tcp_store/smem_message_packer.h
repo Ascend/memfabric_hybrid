@@ -26,11 +26,13 @@ constexpr uint32_t HEARTBEAT_INTERVAL = 100; // ms
 #else
 constexpr uint32_t HEARTBEAT_INTERVAL = 2000; // ms
 #endif
-const uint64_t MAX_KEY_COUNT = 10ULL;
+const uint64_t MAX_KEY_COUNT = 1024ULL;
 const uint64_t MAX_KEY_SIZE = 2048ULL;
-const uint64_t MAX_VALUE_COUNT = 10ULL;
-const uint64_t MAX_VALUE_SIZE = 64 * 1024 * 1024ULL;
-enum MessageType : int16_t { SET, GET, ADD, REMOVE, APPEND, CAS, WRITE, WATCH_RANK_STATE, HEARTBEAT, INVALID_MSG };
+const uint64_t MAX_VALUE_COUNT = 1024ULL;
+const uint64_t MAX_VALUE_SIZE = 64 * 1024ULL;
+enum MessageType : int16_t {
+    SET, GET, PREFIX, WATCH, ADD, REMOVE, APPEND, CAS, WRITE, QUERY_ALIVE, WATCH_RANK_STATE, HEARTBEAT, INVALID_MSG
+};
 
 struct SmemMessage {
     SmemMessage() noexcept : mt{MessageType::INVALID_MSG} {}

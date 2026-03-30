@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <shared_mutex>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <unordered_set>
 #include <vector>
 
@@ -40,6 +40,8 @@ public:
                                             const std::string &password) override;
 
     [[nodiscard]] std::string BackendName() const noexcept override;
+
+    [[nodiscard]] StoreErrorCode PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept override;
 
     [[nodiscard]] StoreErrorCode Get(const std::string &key, std::vector<uint8_t> &outValue) const noexcept override;
 
@@ -66,7 +68,7 @@ public:
     void UnInitialize() override;
 
 private:
-    std::unordered_map<std::string, std::vector<uint8_t>> kvStore_;
+    std::map<std::string, std::vector<uint8_t>> kvStore_;
 };
 using LocalMemoryBackendPtr = SmRef<SmemLocalMemoryBackend>;
 } // namespace smem

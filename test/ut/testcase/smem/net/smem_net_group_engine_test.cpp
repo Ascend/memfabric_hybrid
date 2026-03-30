@@ -36,6 +36,18 @@ public:
         return getResult_;
     }
 
+    ock::smem::Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override
+    {
+        alive = true;
+        return 0;
+    }
+
+    ock::smem::Result PrefixGet(const std::string &key,
+                                std::unordered_map<std::string, std::string> &value) noexcept override
+    {
+        return 0;
+    }
+
     ock::smem::Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override
     {
         addCount++;
@@ -243,15 +255,6 @@ TEST_F(SmemNetGroupEngineMockTest, GetRankSize)
     EXPECT_NE(group, nullptr);
 
     EXPECT_EQ(group->GetRankSize(), option_.rankSize);
-}
-
-TEST_F(SmemNetGroupEngineMockTest, SetBitmapFromRanks)
-{
-    auto group = ock::smem::SmemNetGroupEngine::Create(storePtr_, option_);
-    EXPECT_NE(group, nullptr);
-
-    std::vector<uint32_t> ranks = {0, 1, 2};
-    group->SetBitmapFromRanks(ranks);
 }
 
 TEST_F(SmemNetGroupEngineMockTest, GroupSnClean)

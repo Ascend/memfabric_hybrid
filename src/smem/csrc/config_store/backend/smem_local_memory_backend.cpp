@@ -35,6 +35,16 @@ std::string SmemLocalMemoryBackend::BackendName() const noexcept
     return "LocalMemory";
 }
 
+StoreErrorCode SmemLocalMemoryBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
+{
+    auto iter = kvStore_.lower_bound(key);
+    while (iter != kvStore_.end() && iter->first.compare(0, key.size(), key) == 0) {
+        outValue[iter->first] = iter->second;
+        iter++;
+    }
+    return StoreErrorCode::SUCCESS;
+}
+
 StoreErrorCode SmemLocalMemoryBackend::Get(const std::string &key, std::vector<uint8_t> &outValue) const noexcept
 {
     auto iter = kvStore_.find(key);

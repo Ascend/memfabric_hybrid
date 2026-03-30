@@ -425,12 +425,7 @@ TEST(RdmaTransportManagerTest, PrepareRejectsInvalidOptionsEarly)
     opts.options.emplace(2U, info);  // extra
     EXPECT_EQ(mgr.Prepare(opts), BM_INVALID_PARAM);
 
-    // 2) options not contains self -> BM_INVALID_PARAM
-    HybmTransPrepareOptions opts2;
-    opts2.options.emplace(1U, info);
-    EXPECT_EQ(mgr.Prepare(opts2), BM_INVALID_PARAM);
-
-    // 3) contains rankId >= rankCount_ -> BM_INVALID_PARAM
+    // 2) contains rankId >= rankCount_ -> BM_INVALID_PARAM
     HybmTransPrepareOptions opts3;
     opts3.options.emplace(0U, info);
     opts3.options.emplace(9U, info);

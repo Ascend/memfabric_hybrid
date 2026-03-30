@@ -102,12 +102,7 @@ Result HybmVmmBasedSegment::UnReserveMemorySpace() noexcept
 {
     BM_LOG_INFO("UnReserveMemorySpace gva:" << reinterpret_cast<void *>(globalVirtualAddress_)
                                             << ", lva:" << reinterpret_cast<void *>(localVirtualAddress_));
-    for (auto &it : mappedGvaMem_) {
-        DlHalApi::HalMemUnmap(reinterpret_cast<void *>(it.first));
-        DlHalApi::HalMemRelease(it.second);
-        HybmVaManager::GetInstance().RemoveOneVaInfo(it.first);
-    }
-    mappedGvaMem_.clear();
+    Unmap(); // do unmap, release all imported memory
 
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
@@ -556,11 +551,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
         return BM_OK;
     }
     for (auto &im : imports_) {
-        if (im.rankId == options_.rankId) {
-            continue;
-        }
-
-        if (im.magic == ENTITY_EXPORT_INFO_MAGIC) {
+        if (im.rankId == options_.rankId || im.magic == ENTITY_EXPORT_INFO_MAGIC) {
             continue;
         }
 
@@ -594,12 +585,17 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             DlHalApi::HalMemRelease(handle);
             return BM_ERROR;
         }
-        mappedGvaMem_.emplace(im.gva, handle);
 
         auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
-        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, im.deviceVa, 0, im.size, memType},
-                                                                 options_.rankId, im.rankId);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {im.gva, im.deviceVa, 0, im.size, memType}, options_.rankId, im.rankId);
+        if (ret != BM_OK) {
+            DlHalApi::HalMemUnmap(reinterpret_cast<void *>(im.deviceVa));
+            DlHalApi::HalMemRelease(handle);
+            imports_.clear();
+            return ret;
+        }
+        mappedGvaMem_.emplace(im.gva, handle);
     }
     imports_.clear();
     return BM_OK;

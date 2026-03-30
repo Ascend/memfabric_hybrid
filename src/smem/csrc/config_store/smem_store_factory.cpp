@@ -135,6 +135,8 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 {
     std::string storeUrl = BuildTcpUrl(ip, port);
     STORE_ASSERT_RETURN(!storeUrl.empty(), nullptr);
+    STORE_VALIDATE_RETURN(worldSize <= SMEM_WORLD_SIZE_MAX || worldSize == UINT32_MAX,
+                          "world size " << worldSize << " too large", nullptr);
     std::string storeKey = storeUrl;
 
     std::unique_lock<std::mutex> lockGuard{storesMutex_};
@@ -145,7 +147,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
 
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, worldSize, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, true, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
@@ -170,9 +172,11 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 
 // --- CreateStoreByUrl (storeUrl) overload: TCP / ETCD / etc. ---
 StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize, int32_t rankId,
-                                        int32_t connMaxRetry) noexcept
+                                        int32_t connMaxRetry, bool skipRecover) noexcept
 {
     ParsedStoreUrl parsedStoreUrl;
+    STORE_VALIDATE_RETURN(worldSize <= SMEM_WORLD_SIZE_MAX || worldSize == UINT32_MAX,
+                          "world size " << worldSize << " too large", nullptr);
     if (!ParseStoreUrl(storeUrl, parsedStoreUrl)) {
         failedReason_ = SM_INVALID_PARAM;
         return nullptr;
@@ -202,7 +206,7 @@ StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServ
     if (backend->IsDistributed()) {
         return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.instanceId);
     }
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, worldSize, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, skipRecover, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
@@ -225,82 +229,12 @@ StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServ
     return store.Get();
 }
 
-// --- CreateStoreServer (ip, port): TCP only ---
-StorePtr StoreFactory::CreateStoreServer(const std::string &ip, uint16_t port, uint32_t worldSize, int32_t rankId,
-                                         int32_t connMaxRetry) noexcept
-{
-    std::string storeUrl = BuildTcpUrl(ip, port);
-    std::string storeKey = storeUrl;
-
-    std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    auto pos = storesMap_.find(storeKey);
-    if (pos != storesMap_.end()) {
-        return pos->second;
-    }
-    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
-    STORE_ASSERT_RETURN(backend != nullptr, nullptr);
-
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, true, worldSize, rankId);
-    STORE_ASSERT_RETURN(store != nullptr, nullptr);
-
-    auto ret = store->ServerStart(tlsOption_, connMaxRetry);
-    if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port << " rankId:" << rankId
-                                                                   << " is in use, ret:" << ret);
-        failedReason_ = SM_RESOURCE_IN_USE;
-        return nullptr;
-    }
-    if (ret != 0) {
-        STORE_LOG_ERROR("Failed to start config store server, ip:" << ip << " port:" << port << " rankId:" << rankId
-                                                                   << " ret:" << ret);
-        failedReason_ = ret;
-        return nullptr;
-    }
-
-    storesMap_.emplace(storeKey, store.Get());
-    lockGuard.unlock();
-
-    return store.Get();
-}
-
-// --- CreateStoreClient (ip, port): TCP only ---
-StorePtr StoreFactory::CreateStoreClient(const std::string &ip, uint16_t port, uint32_t worldSize, int32_t rankId,
-                                         int32_t connMaxRetry) noexcept
-{
-    std::string storeUrl = BuildTcpUrl(ip, port);
-    std::string storeKey = storeUrl;
-
-    std::unique_lock<std::mutex> lockGuard{storesMutex_};
-    auto pos = storesMap_.find(storeKey);
-    if (pos != storesMap_.end()) {
-        return pos->second;
-    }
-    auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
-    STORE_ASSERT_RETURN(backend != nullptr, nullptr);
-
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, false, worldSize, rankId);
-    STORE_ASSERT_RETURN(store != nullptr, nullptr);
-
-    auto ret = store->ClientStart(tlsOption_, connMaxRetry);
-    if (ret != 0) {
-        STORE_LOG_ERROR("Failed to start config store client, ip:" << ip << " port:" << port << " rankId:" << rankId
-                                                                   << " ret:" << ret);
-        failedReason_ = ret;
-        return nullptr;
-    }
-
-    storesMap_.emplace(storeKey, store.Get());
-    lockGuard.unlock();
-
-    return store.Get();
-}
-
 StorePtr StoreFactory::CreateHaStore(const StoreBackendPtr &backend, const std::string &storeKey,
                                      const std::string &storeUrl, uint32_t worldSize,
                                      const std::string &instanceId) noexcept
 {
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
-    auto clientDelegate = SmMakeRef<TcpConfigStore>(backend, "", 0, false, worldSize);
+    auto clientDelegate = SmMakeRef<TcpConfigStore>(backend, "", 0, false, true, worldSize);
     STORE_ASSERT_RETURN(clientDelegate != nullptr, nullptr);
     const auto store = SmMakeRef<HaConfigStore>(backend, clientDelegate, storeUrl, worldSize, instanceId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);

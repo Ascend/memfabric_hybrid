@@ -27,6 +27,12 @@ public:
 
     ~PrefixConfigStore() override = default;
 
+    Result PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept override
+    {
+        STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
+        return baseStore_->PrefixGet(std::string(keyPrefix_).append(key), value);
+    }
+
     Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override
     {
         STORE_ASSERT_RETURN(baseStore_ != nullptr, SM_MALLOC_FAILED);
@@ -87,6 +93,11 @@ public:
     Result Write(const std::string &key, const std::vector<uint8_t> &value, const uint32_t offset) noexcept override
     {
         return baseStore_->Write(std::string(keyPrefix_).append(key), value, offset);
+    }
+
+    Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override
+    {
+        return baseStore_->QueryAlive(rank, alive);
     }
 
     std::string GetCompleteKey(const std::string &key) noexcept override

@@ -77,6 +77,16 @@ public:
         value = 0;
         return SM_OK;
     }
+    ock::smem::Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override
+    {
+        alive = true;
+        return SM_OK;
+    }
+    ock::smem::Result PrefixGet(const std::string &key,
+                                std::unordered_map<std::string, std::string> &value) noexcept override
+    {
+        return SM_OK;
+    }
     ock::smem::Result Remove(const std::string &, bool) noexcept override
     {
         return SM_OK;

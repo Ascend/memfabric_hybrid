@@ -14,11 +14,11 @@
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
 #include "smem_store_factory.h"
-
 #include "mf_num_util.h"
 
 namespace ock {
 namespace smem {
+constexpr uint32_t SMEM_BM_JOIN_RETRY_TIME = 10U;
 
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
@@ -146,42 +146,89 @@ void SmemBmEntry::UnInitalize()
     inited_ = false;
 }
 
+Result SmemBmEntry::JoinBarrier(int32_t input)
+{
+    int32_t remoteRet = input;
+    int32_t ret = globalGroup_->GroupGatherResult(input, remoteRet);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("join barrier failed, result: " << ret);
+        return ret;
+    }
+    if (remoteRet != SM_OK) {
+        SM_LOG_ERROR("join barrier, get remote result: " << remoteRet);
+        return SM_ERROR;
+    }
+    return SM_OK;
+}
+
 Result SmemBmEntry::JoinHandle(uint32_t rk)
 {
     SM_LOG_INFO("do join func, local_rk: " << options_.rank << " receive_rk: " << rk
                                            << ", rank size is: " << globalGroup_->GetRankSize());
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
-    std::vector<uint32_t> allRanks(globalGroup_->GetRankSize());
-    auto ret = globalGroup_->GroupAllGather((const char *)&options_.rank, sizeof(uint32_t), (char *)allRanks.data(),
-                                            sizeof(uint32_t) * globalGroup_->GetRankSize());
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm gather ranks failed, result: " << ret);
-        return SM_ERROR;
+    uint32_t unitSize = sizeof(hybm_exchange_info);
+    std::string localInfo;
+    if (rk == options_.rank) {
+        localInfo = std::string((char *) &entityInfo_, sizeof(hybm_exchange_info));
+        if (hbmSliceInfo_.descLen > 0) {
+            localInfo += std::string((char *) &hbmSliceInfo_, sizeof(hybm_exchange_info));
+        }
+        if (dramSliceInfo_.descLen > 0) {
+            localInfo += std::string((char *) &dramSliceInfo_, sizeof(hybm_exchange_info));
+        }
+    }
+    std::unordered_map<uint32_t, std::string> allInfo;
+    std::vector<uint32_t> joined;
+    int32_t ret = globalGroup_->GroupGatherPrefixKey(rk, localInfo, allInfo);
+    SM_VALIDATE_RETURN(ret == SM_OK, "gather prefix info failed, ret:" << ret, ret);
+    hybm_exchange_info info;
+    for (auto &it : allInfo) {
+        if (it.second.length() % unitSize != 0) {
+            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << it.second.length() << " rank:" << it.first);
+            ret = SM_INVALID_PARAM;
+            goto join_exit;
+        }
+        uint32_t num = it.second.length() / unitSize;
+        joined.push_back(it.first);
+        for (uint32_t i = 0; i < num; i++) {
+            (void)std::copy_n(it.second.c_str() + i * unitSize, unitSize, (char *)&info);
+            ret = hybm_import(entity_, &info, 1U, nullptr, (i == 0 ? HYBM_FLAG_EXPORT_ENTITY : 0));
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("hybm import failed, result: " << ret << " remote_rank:" << it.first
+                                                            << " local_rank:" << options_.rank);
+                goto join_exit;
+            }
+        }
     }
 
-    if ((ret = ExchangeEntityForJoin()) != SM_OK) {
-        return ret;
-    }
-
-    if ((ret = ExchangeSliceForJoin(hbmSliceInfo_)) != SM_OK) {
-        return ret;
-    }
-
-    if ((ret = ExchangeSliceForJoin(dramSliceInfo_)) != SM_OK) {
-        return ret;
+    ret = JoinBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier before mmap failed, result: " << ret);
+        goto rollback_exit;
     }
 
     ret = hybm_mmap(entity_, 0);
-    if (ret != 0) {
+    if (ret != SM_OK) {
         SM_LOG_ERROR("hybm mmap failed, result: " << ret);
-        return SM_ERROR;
     }
 
-    globalGroup_->SetBitmapFromRanks(allRanks);
-    SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk
-                                            << ", rank size is: " << globalGroup_->GetRankSize());
+join_exit:
+    ret = JoinBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
+        goto rollback_exit;
+    }
+
+    SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk << " receive_info_num:"
+        << allInfo.size() << ", rank size is: " << globalGroup_->GetRankSize());
     return SM_OK;
+
+rollback_exit:
+    for (auto &rks : joined) {
+        hybm_remove_imported(entity_, rks, 0);
+    }
+    return ret;
 }
 
 Result SmemBmEntry::LeaveHandle(uint32_t rk)
@@ -196,66 +243,22 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
     return SM_OK;
 }
 
-Result SmemBmEntry::ExchangeSliceForJoin(const hybm_exchange_info &sliceInfo)
-{
-    if (sliceInfo.descLen == 0) {
-        return SM_OK;
-    }
-
-    std::vector<hybm_exchange_info> allExInfo(coreOptions_.rankCount);
-    auto totalSize = sizeof(hybm_exchange_info) * globalGroup_->GetRankSize();
-    auto ret = globalGroup_->GroupAllGather((const char *)&sliceInfo, sizeof(hybm_exchange_info),
-                                            (char *)allExInfo.data(), totalSize);
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm gather export failed, result: " << ret);
-        return SM_ERROR;
-    }
-
-    ret = hybm_import(entity_, allExInfo.data(), globalGroup_->GetRankSize(), nullptr, 0);
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm import failed, result: " << ret);
-        return SM_ERROR;
-    }
-
-    ret = globalGroup_->GroupBarrier();
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm barrier failed, result: " << ret);
-        return SM_ERROR;
-    }
-
-    return SM_OK;
-}
-
-Result SmemBmEntry::ExchangeEntityForJoin()
-{
-    std::vector<hybm_exchange_info> allExInfo(coreOptions_.rankCount);
-    auto ret = globalGroup_->GroupAllGather((char *)&entityInfo_, sizeof(hybm_exchange_info), (char *)allExInfo.data(),
-                                            sizeof(hybm_exchange_info) * globalGroup_->GetRankSize());
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm gather export failed, result: " << ret);
-        return SM_ERROR;
-    }
-
-    ret = hybm_import(entity_, allExInfo.data(), globalGroup_->GetRankSize(), nullptr, HYBM_FLAG_EXPORT_ENTITY);
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm import failed, result: " << ret);
-        return SM_ERROR;
-    }
-
-    ret = globalGroup_->GroupBarrier();
-    if (ret != 0) {
-        SM_LOG_ERROR("hybm barrier failed, result: " << ret);
-        return SM_ERROR;
-    }
-    return SM_OK;
-}
-
 Result SmemBmEntry::Join(uint32_t flags)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    auto ret = globalGroup_->GroupJoin();
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
-    return SM_OK;
+    for (uint32_t i = 0; i < SMEM_BM_JOIN_RETRY_TIME; i++) {
+        auto ret = globalGroup_->GroupJoin();
+        if (ret == SM_INNER_BUSY) {
+            sleep(1U); // sleep 1s
+            continue;
+        }
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
+        SM_LOG_DEBUG("join success. rank:" << options_.rank);
+        return SM_OK;
+    }
+
+    SM_LOG_ERROR("join timeout. rank:" << options_.rank);
+    return SM_ERROR;
 }
 
 Result SmemBmEntry::Leave(uint32_t flags)
@@ -485,8 +488,8 @@ Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback leaveFunc = std::bind(&SmemBmEntry::LeaveHandle, this, std::placeholders::_1);
-    SmemGroupOption opt = {rankSize, rankId,   options_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           true,     joinFunc, leaveFunc};
+    SmemGroupOption opt = {rankSize, rankId,
+                           options_.controlOperationTimeout * SECOND_TO_MILLSEC, true, joinFunc, leaveFunc};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

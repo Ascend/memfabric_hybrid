@@ -79,6 +79,11 @@ public:
         return StoreErrorCode::NOT_EXIST;
     }
 
+    StoreErrorCode PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept override
+    {
+        return StoreErrorCode::NOT_EXIST;
+    }
+
     StoreErrorCode Put(const std::string &key, const std::vector<uint8_t> &value, int64_t ttlSeconds) noexcept override
     {
         lastPutKey = key;
@@ -157,7 +162,7 @@ StoreBackendPtr MakeBackend()
 
 TcpConfigStorePtr MakeClientDelegate(int32_t rankId = K_FOLLOWER_RANK_ID, uint32_t worldSize = K_DEFAULT_WORLD_SIZE)
 {
-    return SmMakeRef<TcpConfigStore>(nullptr, K_LOOPBACK_IP, K_STORE_PORT, false, worldSize, rankId);
+    return SmMakeRef<TcpConfigStore>(nullptr, K_LOOPBACK_IP, K_STORE_PORT, false, true, worldSize, rankId);
 }
 
 } // namespace

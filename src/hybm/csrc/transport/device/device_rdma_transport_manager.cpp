@@ -643,11 +643,6 @@ int RdmaTransportManager::CheckPrepareOptions(const ock::mf::transport::HybmTran
         return BM_INVALID_PARAM;
     }
 
-    if (options.options.find(rankId_) == options.options.end()) {
-        BM_LOG_ERROR("options not contains self rankId: " << rankId_);
-        return BM_INVALID_PARAM;
-    }
-
     for (auto it = options.options.begin(); it != options.options.end(); ++it) {
         if (it->first >= rankCount_) {
             BM_LOG_ERROR("input options of nics contains rankId:" << it->first << ", rank count: " << rankCount_);

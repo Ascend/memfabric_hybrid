@@ -38,6 +38,7 @@ public:
 
     [[nodiscard]] std::string BackendName() const noexcept override;
     [[nodiscard]] StoreErrorCode Get(const std::string &key, std::vector<uint8_t> &outValue) const noexcept override;
+    [[nodiscard]] StoreErrorCode PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept override;
     [[nodiscard]] StoreErrorCode Put(const std::string &key, const std::vector<uint8_t> &value,
                                      int64_t ttlSeconds) noexcept override;
     [[nodiscard]] StoreErrorCode Delete(const std::string &key) noexcept override;

@@ -224,6 +224,7 @@ Result HybmDevLegacySegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
     HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_DVA);
 
     slices_.erase(pos);
+    exportMap_.erase(slice->index_);
     return BM_OK;
 }
 
@@ -250,7 +251,7 @@ Result HybmDevLegacySegment::Export(const MemSlicePtr &slice, std::string &exInf
 
     auto exp = exportMap_.find(slice->index_);
     if (exp != exportMap_.end()) { // RtIpcSetMemoryName不支持重复调用
-        exInfo = exp->second;
+        LiteralExInfoTranslater<HbmExportInfo>{}.Serialize(exp->second, exInfo);
         return BM_OK;
     }
 
@@ -285,7 +286,7 @@ Result HybmDevLegacySegment::Export(const MemSlicePtr &slice, std::string &exInf
         return BM_ERROR;
     }
 
-    exportMap_[slice->index_] = exInfo;
+    exportMap_[slice->index_] = info;
     return BM_OK;
 }
 
@@ -301,7 +302,6 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
     std::map<uint32_t, HbmExportInfo> importMap;
     LiteralExInfoTranslater<HbmExportInfo> translator;
     std::vector<HbmExportInfo> desInfos{};
-    uint32_t localIdx = UINT32_MAX;
     for (auto i = 0U; i < allExInfo.size(); i++) {
         HbmExportInfo info{};
         auto ret = translator.Deserialize(allExInfo[i], info);
@@ -314,18 +314,14 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
             continue;
         }
         if (info.rankId == options_.rankId) {
-            localIdx = desInfos.size();
+            continue;
         }
         importMap.emplace(info.rankId, info);
         desInfos.push_back(std::move(info));
     }
     importMap_ = std::move(importMap);
-    BM_ASSERT_RETURN(localIdx < desInfos.size(), BM_INVALID_PARAM);
 
     for (auto i = 0U; i < desInfos.size(); i++) {
-        if (desInfos[i].rankId == options_.rankId) {
-            continue;
-        }
         if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId) &&
             logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) { // 应当用logic id判断是否需要p2p
             auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
@@ -343,13 +339,16 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
             continue;
         }
 
-        if (options_.size > 0) {
-            auto ret =
-                DlAclApi::RtSetIpcMemorySuperPodPid(desInfos[localIdx].shmName, desInfos[i].sdid, &desInfos[i].pid, 1);
+        if (options_.size == 0) {
+            continue;
+        }
+        for (auto &local : exportMap_) {
+            auto ret = DlAclApi::RtSetIpcMemorySuperPodPid(local.second.shmName, desInfos[i].sdid,
+                                                           &desInfos[i].pid, 1);
             if (ret != 0) {
                 BM_LOG_ERROR("enable white list for rank(" << desInfos[i].rankId << ") failed: " << ret
                                                            << ", local rank = " << options_.rankId
-                                                           << ", shmName=" << desInfos[localIdx].shmName);
+                                                           << ", shmName=" << local.second.shmName);
                 return BM_DL_FUNCTION_FAILED;
             }
         }
@@ -482,6 +481,7 @@ void HybmDevLegacySegment::FreeMemory() noexcept
         auto slice = slices_.begin()->second.slice;
         ReleaseSliceMemory(slice);
     }
+    Unmap();
 
     allocatedSize_ = 0;
     sliceCount_ = 0;

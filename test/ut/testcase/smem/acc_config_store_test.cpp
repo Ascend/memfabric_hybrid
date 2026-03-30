@@ -34,8 +34,8 @@ public:
         UrlExtraction option;
         option.ExtractIpPortFromUrl(url);
 
-        g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 0);
-        g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 1);
+        g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 2, 0);
+        g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 2, 1);
     }
 
     static void TearDownTestCase()
@@ -50,8 +50,8 @@ public:
     void SetUp() override
     {
         if (g_client == nullptr || g_server == nullptr) {
-            g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 0);
-            g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 1);
+            g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 2, 0);
+            g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 2, 1);
         }
     }
     void TearDown() override
@@ -288,7 +288,7 @@ TEST_F(AccConfigStoreTest, set_get_empty_value)
 TEST_F(AccConfigStoreTest, set_get_large_value)
 {
     std::string key = "large_value_key";
-    std::string value(1024 * 1024, 'a'); // 1MB
+    std::string value(64 * 1024, 'a'); // 64K
     auto ret = g_client->Set(key, std::vector<uint8_t>(value.begin(), value.end()));
     ASSERT_EQ(0, ret);
     

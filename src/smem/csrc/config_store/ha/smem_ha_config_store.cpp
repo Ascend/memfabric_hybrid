@@ -241,6 +241,7 @@ void HaConfigStore::RunElectionLoop() noexcept
         std::string leaderAddr;
         // Check if there's an alive leader
         if (IsLeaderAlive(leaderAddr)) {
+            isFirstLeader_ = false;
             SM_LOG_INFO("Found alive leader: " << leaderAddr << ", becoming follower");
             if (BecomeFollower(leaderAddr) != SM_OK) {
                 SM_LOG_ERROR("Becoming follower failed, leader: " << leaderAddr);
@@ -333,8 +334,9 @@ void HaConfigStore::StartServer() noexcept
         SM_LOG_DEBUG("No valid worldSize in backend, using default: " << worldSize_);
     }
 
-    // Create and configure server
-    serverDelegate_ = SmMakeRef<AccStoreServer>(leaderBindIp_, leaderBindPort_, recoveredWorldSize, backend_);
+    // Create and configure server, skip recover if is the first leader
+    serverDelegate_ = SmMakeRef<AccStoreServer>(leaderBindIp_, leaderBindPort_, recoveredWorldSize, backend_,
+                                                isFirstLeader_);
     SM_ASSERT_RET_VOID(serverDelegate_ != nullptr);
     SM_LOG_DEBUG("AccStoreServer created, ip: " << leaderBindIp_ << ", port: " << leaderBindPort_
                                                 << ", worldSize: " << recoveredWorldSize);
@@ -547,6 +549,11 @@ void HaConfigStore::StartHealthCheckThread() noexcept
 // ============================================================================
 // ConfigStore Interface Forwarding (moved from header)
 // ============================================================================
+Result HaConfigStore::PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept
+{
+    SM_ASSERT_RETURN(clientDelegate_ != nullptr, SM_ERROR);
+    return clientDelegate_->PrefixGet(key, value);
+}
 
 Result HaConfigStore::Set(const std::string &key, const std::vector<uint8_t> &value) noexcept
 {
@@ -605,6 +612,12 @@ Result HaConfigStore::Write(const std::string &key, const std::vector<uint8_t> &
 {
     SM_ASSERT_RETURN(clientDelegate_ != nullptr, SM_ERROR);
     return clientDelegate_->Write(key, value, offset);
+}
+
+Result HaConfigStore::QueryAlive(uint32_t rank, uint32_t &alive) noexcept
+{
+    SM_ASSERT_RETURN(clientDelegate_ != nullptr, SM_ERROR);
+    return clientDelegate_->QueryAlive(rank, alive);
 }
 
 void HaConfigStore::SetRankId(const int32_t &rankId) noexcept

@@ -14,7 +14,6 @@
 #define SMEM_SMEM_TCP_CONFIG_STORE_SERVER_H
 
 #include <list>
-#include <mutex>
 #include <chrono>
 #include <mutex>
 #include <queue>
@@ -71,9 +70,17 @@ private:
     static std::atomic<uint64_t> idGen_;
 };
 
+enum StoreServerState : uint32_t {
+    SS_INITED,
+    SS_RECOVER,
+    SS_NORMAL,
+    SS_EXITED
+};
+
 class AccStoreServer : public SmReferable {
 public:
-    AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend) noexcept;
+    AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend,
+                   bool skipRecover) noexcept;
     ~AccStoreServer() override = default;
 
     Result Startup(const smem_tls_config &tlsConfig) noexcept;
@@ -91,10 +98,14 @@ private:
     Result LinkConnectedHandler(const ock::acc::AccConnReq &req, const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
     Result LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept;
     Result LinkBrokenHandler(const uint32_t linkId) noexcept;
+    void GetWakeupList(const std::string &key, std::list<ock::acc::AccTcpRequestContext> &waiters,
+                       std::list<ock::acc::AccTcpRequestContext> &watchers) noexcept;
 
     /* business handler */
     Result SetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result GetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result PrefixGetHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result WatchHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result AddHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result RemoveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result AppendHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
@@ -102,9 +113,11 @@ private:
     Result WatchRankStateHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result WriteHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result HeartbeatHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result QueryAliveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
 
     std::list<ock::acc::AccTcpRequestContext> GetOutWaitersInLock(const std::unordered_set<uint64_t> &ids) noexcept;
     void WakeupWaiters(const std::list<ock::acc::AccTcpRequestContext> &waiters,
+                       const std::list<ock::acc::AccTcpRequestContext> &watchers,
                        const std::vector<uint8_t> &value) noexcept;
     void ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code, const std::string &message) noexcept;
     void ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx, int16_t code,
@@ -121,6 +134,8 @@ private:
     StoreErrorCode RecoverAliveRankIds(std::unordered_set<uint32_t> &outRanks) noexcept;
     Result LaunchCleanupThread();
     void CleanupStaleRanks() noexcept;
+    bool CanReceiveNewLink();
+
     static constexpr uint32_t MAX_KEY_LEN_SERVER = 2048U;
     static constexpr uint32_t STORE_WAIT_TIMEOUT_SEC = 5U;
     // prevent access broken global value during global static destructor
@@ -137,16 +152,20 @@ private:
     ock::acc::AccTcpServerPtr accTcpServer_;
     std::unordered_map<int64_t, std::unordered_set<uint64_t>> timedWaiters_;
     std::thread timerThread_;
+    std::atomic<uint32_t> state_{SS_EXITED};
     bool running_{false};
     std::atomic<bool> shouldStop_{false};
     std::thread cleanupThread_;
     std::unordered_set<uint32_t> aliveRankFromBackend_;
     std::unordered_map<uint32_t, StoreWaitContext> rankStateWaiters_;
+    std::unordered_map<std::string, std::unordered_map<uint32_t, StoreWaitContext>> watchWaiters_;
+    std::unordered_map<uint32_t, std::vector<std::string>> linkWatchList_;
     std::queue<uint32_t> rankStateTaskQueue_;
     std::thread rankStateThread_;
 
     const std::string listenIp_;
     const uint16_t listenPort_;
+    const bool skipRecover_;
     uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;

@@ -140,7 +140,16 @@ public:
         value = integerValues[key];
         return SUCCESS;
     }
-
+    ock::smem::Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override
+    {
+        alive = true;
+        return SM_OK;
+    }
+    ock::smem::Result PrefixGet(const std::string &key,
+                                std::unordered_map<std::string, std::string> &value) noexcept override
+    {
+        return SM_OK;
+    }
     SmemResult Remove(const std::string &key, bool) noexcept override
     {
         if (removeHook != nullptr) {

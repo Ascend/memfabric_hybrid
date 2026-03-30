@@ -287,6 +287,7 @@ void HybmConnBasedSegment::FreeMemory() noexcept
         auto slice = slices_.begin()->second.slice;
         ReleaseSliceMemory(slice);
     }
+    Unmap();
 
     if (localVirtualBase_ != nullptr && allocatedSize_ > 0) {
         if (munmap(localVirtualBase_, allocatedSize_) != 0) {

@@ -344,7 +344,6 @@ Result SmemTransEntry::TransformAddr(Local2GlobalMap &maps, std::vector<void *> 
 
         addr[i] = (uint8_t *)pos->second.address + ((const uint8_t *)remoteAddrs[i] - (const uint8_t *)(pos->first));
     }
-
     return SM_OK;
 }
 

@@ -84,7 +84,7 @@ TEST_F(SmemTransTest, smem_trans_create_success)
         tls.tlsEnable = false;
         ock::smem::StoreFactory::SetTlsInfo(tls);
 
-        int32_t ret = smem_create_config_store(STORE_URL);
+        int32_t ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
         if (ret != 0) {
             _exit(1u);
         }
@@ -121,7 +121,7 @@ TEST_F(SmemTransTest, smem_trans_create_success_ipv6)
         tls.tlsEnable = false;
         ock::smem::StoreFactory::SetTlsInfo(tls);
 
-        int32_t ret = smem_create_config_store(STORE_URL_IPV6);
+        int32_t ret = smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
         if (ret != 0) {
             exit(1);
         }
@@ -186,7 +186,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL);
+        smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
         // client connect to server when initializing
@@ -237,7 +237,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_failed_invalid_param_ipv6)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL_IPV6);
+        smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
         // client connect to server when initializing
@@ -315,7 +315,7 @@ TEST_F(SmemTransTest, smem_trans_register_mem_duplicate_address)
         size_t size = REGISTER_MEM_ELEM_COUNT * sizeof(int);
 
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL);
+        smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         if (ret != 0) {
             _exit(1);
@@ -1109,7 +1109,7 @@ TEST_F(SmemTransTest, smem_trans_read_write)
                     constexpr int kStoreCreateMaxRetry = 120;
                     constexpr int kRetryIntervalMs = 100;
                     for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                        ret = smem_create_config_store(STORE_URL);
+                        ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
                         if (ret == 0) {
                             break;
                         }
@@ -1298,7 +1298,7 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
                     constexpr int kStoreCreateMaxRetry = 120;
                     constexpr int kRetryIntervalMs = 100;
                     for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                        ret = smem_create_config_store(STORE_URL);
+                        ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
                         if (ret == 0) {
                             break;
                         }
@@ -1450,7 +1450,7 @@ TEST_F(SmemTransTest, smem_trans_write_ipv6)
                     constexpr int kStoreCreateMaxRetry = 120;
                     constexpr int kRetryIntervalMs = 100;
                     for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                        ret = smem_create_config_store(STORE_URL_IPV6);
+                        ret = smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
                         if (ret == 0) {
                             break;
                         }
@@ -1603,7 +1603,7 @@ TEST_F(SmemTransTest, smem_trans_batch_read_write)
                 constexpr int kStoreCreateMaxRetry = 120;
                 constexpr int kRetryIntervalMs = 100;
                 for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                    ret = smem_create_config_store(STORE_URL);
+                    ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
                     if (ret == 0) {
                         break;
                     }
@@ -1762,7 +1762,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_dram)
                 constexpr int kStoreCreateMaxRetry = 120;
                 constexpr int kRetryIntervalMs = 100;
                 for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                    ret = smem_create_config_store(STORE_URL);
+                    ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
                     if (ret == 0) {
                         break;
                     }
@@ -1893,7 +1893,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_ipv6)
                     constexpr int kStoreCreateMaxRetry = 120;
                     constexpr int kRetryIntervalMs = 100;
                     for (int retry = 0; retry < kStoreCreateMaxRetry; ++retry) {
-                        ret = smem_create_config_store(STORE_URL_IPV6);
+                        ret = smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
                         if (ret == 0) {
                             break;
                         }
@@ -1954,7 +1954,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL);
+        smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
 
@@ -2038,7 +2038,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL_IPV6);
+        smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
 
@@ -2121,7 +2121,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL);
+        smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
 
@@ -2165,7 +2165,7 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
 
         // first create server
         smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL_IPV6);
+        smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
         int ret = smem_trans_init(&g_trans_options);
         EXPECT_EQ(ret, 0);
 

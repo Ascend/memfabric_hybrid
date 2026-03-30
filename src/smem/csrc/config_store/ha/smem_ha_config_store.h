@@ -66,6 +66,7 @@ public:
     [[nodiscard]] Result Startup(const smem_tls_config &tlsConfig) noexcept;
 
     // --- ConfigStore Interface Implementation (Forwarding to clientDelegate_) ---
+    Result PrefixGet(const std::string &key, std::unordered_map<std::string, std::string> &value) noexcept override;
     [[nodiscard]] Result Set(const std::string &key, const std::vector<uint8_t> &value) noexcept override;
     [[nodiscard]] Result Add(const std::string &key, int64_t increment, int64_t &value) noexcept override;
     [[nodiscard]] Result Remove(const std::string &key, bool printKeyNotExist) noexcept override;
@@ -82,6 +83,7 @@ public:
     [[nodiscard]] Result Unwatch(uint32_t wid) noexcept override;
     [[nodiscard]] Result Write(const std::string &key, const std::vector<uint8_t> &value,
                                uint32_t offset) noexcept override;
+    [[nodiscard]] Result QueryAlive(uint32_t rank, uint32_t &alive) noexcept override;
     void SetRankId(const int32_t &rankId) noexcept override;
     std::string GetCompleteKey(const std::string &key) noexcept override;
     std::string GetCommonPrefix() noexcept override;
@@ -126,6 +128,7 @@ private:
     const std::string backendLockName_;
     std::string leaderBindIp_;    // Only meaningful on leader node
     uint16_t leaderBindPort_ = 0; // Only meaningful on leader node
+    bool isFirstLeader_ = true;
     smem_tls_config tlsConfig_{};
 
     mutable std::shared_mutex delegateRwLock_;

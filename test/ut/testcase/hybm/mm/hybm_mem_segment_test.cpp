@@ -342,7 +342,7 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
     ock::mf::HbmExportInfo info{};
     info.gva = 0x1000;
     info.sliceIndex = 1;
-    info.rankId = 0;
+    info.rankId = 1;
     info.size = 0x2000;
     info.pageTblType = ock::mf::MEM_PT_TYPE_SVM;
     info.memSegType = ock::mf::HYBM_MST_DRAM;
@@ -863,13 +863,16 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_UsesCache)
                                                      0x3000, 0x3000, 0);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
-    std::string cached = "hbm-export-cache";
-    seg.exportMap_[slice->index_] = cached;
+    ock::mf::HbmExportInfo info{};
+    seg.exportMap_[slice->index_] = info;
 
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
+
+    std::string base;
+    ock::mf::LiteralExInfoTranslater<ock::mf::HbmExportInfo>{}.Serialize(info, base);
     EXPECT_EQ(ret, ock::mf::BM_OK);
-    EXPECT_EQ(exInfo, cached);
+    EXPECT_EQ(base, exInfo);
 }
 
 // 测试 HybmDevLegacySegment 功能
