@@ -441,7 +441,8 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
                 singleParam.src = params->sources[i];
                 singleParam.dest = params->destinations[i];
                 singleParam.dataSize = params->dataSizes[i];
-                auto direct = (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO
+                auto direct = (t == SMEMB_COPY_AUTO)
+                                  ? HYBM_DATA_COPY_DIRECTION_AUTO
                                   : TransToHybmDirection(t, params->sources[i], params->dataSizes[i],
                                                          params->destinations[i], params->dataSizes[i]);
                 auto ret = hybm_data_copy(entity_, &singleParam, direct, nullptr, flags);
@@ -463,10 +464,11 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
     }
 
     std::unique_lock<std::mutex> locker{finishMutex};
-    finishCond.wait(locker, [&](){ return finishedCount >= params->batchSize; });
+    finishCond.wait(locker, [&]() { return finishedCount >= params->batchSize; });
     locker.unlock();
-    auto hasSuccess = std::any_of(results->results, results->results + results->batchSize, [](int r){ return r == 0;});
-    auto hasFail = std::any_of(results->results, results->results + results->batchSize, [](int r){ return r != 0;});
+    auto hasSuccess =
+        std::any_of(results->results, results->results + results->batchSize, [](int r) { return r == 0; });
+    auto hasFail = std::any_of(results->results, results->results + results->batchSize, [](int r) { return r != 0; });
     SM_LOG_DEBUG("has success = " << hasSuccess << ", has failed = " << hasFail);
     if (!hasFail) {
         return SM_OK;

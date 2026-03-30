@@ -15,6 +15,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstddef>
 
 #include "hybm_logger.h"
@@ -201,18 +202,6 @@ Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, v
         BM_LOG_ERROR("copy failed.");
         return BM_MALLOC_FAILED;
     }
-    for (const auto &import : deserializedInfos) {
-        if (import.rankId == options_.rankId) {
-            continue;
-        }
-        if (import.size == 0) {
-            continue;
-        }
-
-        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
-            {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId, import.rankId);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
-    }
     return BM_OK;
 }
 
@@ -223,6 +212,10 @@ Result HybmConnBasedSegment::Mmap() noexcept
             continue;
         }
         mappedGvaMem_.insert(import.gva);
+
+        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId, import.rankId);
+        BM_ASSERT_RETURN(ret == BM_OK, ret);
     }
     imports_.clear();
     return 0;
@@ -340,8 +333,8 @@ Result HybmConnBasedSegment::PrepareShareMemoryFd() const noexcept
     return BM_OK;
 }
 
-Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset,
-                                      uint64_t size, uint64_t gva) noexcept
+Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset, uint64_t size,
+                                      uint64_t gva) noexcept
 {
     if (size == 0) {
         return BM_OK;
@@ -403,7 +396,7 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
             return BM_INVALID_PARAM;
         }
     }
-    for (auto &rank : ranks) {
+    for (const auto rank : ranks) {
         uint64_t gvaLocal = reinterpret_cast<uint64_t>(globalVirtualAddress_) + options_.maxSize * rank;
         auto it = mappedGvaMem_.lower_bound(gvaLocal);
         auto st = it;
@@ -415,6 +408,13 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
             mappedGvaMem_.erase(st, it);
         }
     }
+
+    // remove imports_ infos for specified ranks
+    imports_.erase(std::remove_if(imports_.begin(), imports_.end(),
+                                  [&ranks](const HostExportInfo &info) {
+                                      return std::find(ranks.begin(), ranks.end(), info.rankId) != ranks.end();
+                                  }),
+                   imports_.end());
     return BM_OK;
 }
 
@@ -444,7 +444,7 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
         return BM_INVALID_PARAM;
     }
 
-    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->gva_);
+    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_HVA);
     slices_.erase(pos);
     if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_), logicDeviceId_, HOST_MEM_MAP_DEV);

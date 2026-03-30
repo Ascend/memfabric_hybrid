@@ -23,7 +23,7 @@ HYBM_API hybm_entity_t hybm_create_entity(uint16_t id, const hybm_options *optio
 
     auto &factory = MemEntityFactory::Instance();
     std::shared_ptr<MemEntityDefault> entity = nullptr;
-    entity =  factory.GetOrCreateEngine(id, flags);
+    entity = factory.GetOrCreateEngine(id, flags);
     if (entity == nullptr) {
         BM_LOG_ERROR("create entity failed.");
         return nullptr;
@@ -71,7 +71,7 @@ HYBM_API void *hybm_get_memory_ptr(hybm_entity_t e, hybm_mem_type mType)
     return entity->GetReservedMemoryPtr(mType);
 }
 
-HYBM_API void* hybm_get_slice_va(hybm_entity_t e, hybm_mem_slice_t slice)
+HYBM_API void *hybm_get_slice_va(hybm_entity_t e, hybm_mem_slice_t slice)
 {
     BM_ASSERT_RETURN(e != nullptr, nullptr);
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);

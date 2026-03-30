@@ -24,7 +24,6 @@ struct HostSdmaExportInfo {
     uint32_t version{EXPORT_INFO_VERSION};
     uint64_t gva{0};
     uint64_t deviceVa{0};
-    uint64_t hostVa{0};
     uint32_t sliceIndex{0};
     uint32_t sdid{0};
     uint32_t serverId{0};
@@ -33,7 +32,7 @@ struct HostSdmaExportInfo {
     uint32_t logicDevId{0};
     uint64_t size{0};
     MemShareHandle shareHandle;
-}; // 200B
+}; // 192B
 
 static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
               "HostSdmaExportInfo must be 200 bytes, "

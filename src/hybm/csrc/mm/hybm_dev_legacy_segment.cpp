@@ -221,7 +221,7 @@ Result HybmDevLegacySegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
         auto res = drv::HalGvaFree(slice->vAddress_, slice->size_);
         BM_LOG_INFO("free slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << res);
     }
-    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->gva_);
+    HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_DVA);
 
     slices_.erase(pos);
     return BM_OK;
@@ -354,15 +354,6 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
             }
         }
     }
-    for (const auto &info : desInfos) {
-        if (info.rankId == options_.rankId) {
-            continue;
-        }
-        // .host_va use info.deviceVa, because .host_va is the part of key for hybm_va_manager allocatedLookupMapByLva_
-        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
-            {info.gva, info.deviceVa, info.deviceVa, info.size, HYBM_MEM_TYPE_DEVICE}, options_.rankId, info.rankId);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
-    }
     return SafeCopy(desInfos.begin(), desInfos.end(), std::back_inserter(imports_));
 }
 
@@ -400,6 +391,11 @@ Result HybmDevLegacySegment::Mmap() noexcept
             return -1;
         }
         mappedGvaMem_.insert(im.gva);
+
+        // .host_va use info.deviceVa, because .host_va is the part of key for hybm_va_manager allocatedLookupMapByLva_
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {im.gva, im.deviceVa, im.deviceVa, im.size, HYBM_MEM_TYPE_DEVICE}, options_.rankId, im.rankId);
+        BM_ASSERT_RETURN(ret == BM_OK, ret);
     }
     imports_.clear();
     return BM_OK;
@@ -441,6 +437,13 @@ Result HybmDevLegacySegment::RemoveImported(const std::vector<uint32_t> &ranks) 
             mappedGvaMem_.erase(st, it);
         }
     }
+
+    // remove imports_ infos for specified ranks
+    imports_.erase(std::remove_if(imports_.begin(), imports_.end(),
+                                  [&ranks](const HbmExportInfo &info) {
+                                      return std::find(ranks.begin(), ranks.end(), info.rankId) != ranks.end();
+                                  }),
+                   imports_.end());
     return 0;
 }
 

@@ -74,7 +74,7 @@ constexpr uint16_t SEGMENT_TYPE_VMM = 0x1U;
 constexpr uint16_t SEGMENT_TYPE_USER_DEV = 0x2U;
 constexpr uint16_t SEGMENT_TYPE_DEFAULT = 0x10U;
 constexpr uint16_t SEGMENT_TYPE_OFFSET = 8U;
-constexpr uint16_t UNIFIED_EXCHANGE_SEG_INFO_SIZE = 200U; /* all exchange info padding to same size */
+constexpr uint16_t UNIFIED_EXCHANGE_SEG_INFO_SIZE = 192U; /* all exchange info padding to same size */
 
 inline bool IsDramSlice(uint64_t magic)
 {
@@ -158,23 +158,23 @@ typedef struct {
         }                                                                                            \
     } while (0)
 
-#define DL_LOAD_SYM_ALT(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME, SYMBOL_NAME_ALT) \
-    do {                                                                                              \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                          \
-        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
-            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME) << " successfully");                       \
-            break;                                                                                    \
-        }                                                                                             \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME_ALT);                      \
-        if ((TARGET_FUNC_VAR) != nullptr) {                                                           \
-            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME_ALT) << " successfully");                   \
-            break;                                                                                    \
-        }                                                                                             \
-        BM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << " or " << (SYMBOL_NAME_ALT)  \
-                                                     << ", error" << dlerror());                      \
-        dlclose(FILE_HANDLE);                                                                         \
-        FILE_HANDLE = nullptr;                                                                        \
-        return BM_DL_FUNCTION_FAILED;                                                                 \
+#define DL_LOAD_SYM_ALT(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME, SYMBOL_NAME_ALT)             \
+    do {                                                                                                          \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                                      \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                                       \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME) << " successfully");                                   \
+            break;                                                                                                \
+        }                                                                                                         \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME_ALT);                                  \
+        if ((TARGET_FUNC_VAR) != nullptr) {                                                                       \
+            BM_LOG_DEBUG("Loaded symbol " << (SYMBOL_NAME_ALT) << " successfully");                               \
+            break;                                                                                                \
+        }                                                                                                         \
+        BM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << " or " << (SYMBOL_NAME_ALT) << ", error" \
+                                                     << dlerror());                                               \
+        dlclose(FILE_HANDLE);                                                                                     \
+        FILE_HANDLE = nullptr;                                                                                    \
+        return BM_DL_FUNCTION_FAILED;                                                                             \
     } while (0)
 
 enum HybmGvaVersion : uint32_t { HYBM_GVA_V1 = 0, HYBM_GVA_V2 = 1, HYBM_GVA_V3 = 2, HYBM_GVA_V4 = 3, HYBM_GVA_UNKNOWN };

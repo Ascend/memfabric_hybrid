@@ -93,10 +93,10 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
     }
 
     uint64_t gva = reinterpret_cast<uint64_t>(lvaBase_) + allocatedSize_;
-    slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM,
-                                       gva, reinterpret_cast<uint64_t>(addr), size);
-    ret = HybmVaManager::GetInstance().AddVaInfo(
-        {gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE}, options_.rankId);
+    slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, gva,
+                                       reinterpret_cast<uint64_t>(addr), size);
+    ret = HybmVaManager::GetInstance().AddVaInfo({gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE},
+                                                 options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
         DlAclApi::RtIpcDestroyMemoryName(name);
@@ -423,8 +423,8 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
     importedSliceInfo_.emplace(sliceInfo.name, sliceInfo);
     uniqueLock.unlock();
     auto memType = HYBM_MEM_TYPE_DEVICE;
-    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({remoteSlice->gva_, remoteSlice->vAddress_, 0,
-        remoteSlice->size_, memType}, options_.rankId, sliceInfo.rankId);
+    ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
+        {remoteSlice->gva_, remoteSlice->vAddress_, 0, remoteSlice->size_, memType}, options_.rankId, sliceInfo.rankId);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     return BM_OK;
 }
