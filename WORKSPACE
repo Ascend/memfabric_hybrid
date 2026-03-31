@@ -16,18 +16,6 @@ http_archive(
 load("@rules_python//python:repositories.bzl", "py_repositories")
 py_repositories()
 
-#http_archive(
-#    name = "io_bazel_rules_go",
-#    sha256 = "9d72f7b8904128afb98d46bbef82ad7223ec9ff3718d419afb355fddd9f9484a",
-#    urls = [
-#        "https://mirror.bazel.build/github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
-#        "https://github.com/bazel-contrib/rules_go/releases/download/v0.55.1/rules_go-v0.55.1.zip",
-#    ],
-#)
-#load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-#go_rules_dependencies()
-#go_register_toolchains(version = "host")
-
 http_archive(
     name = "pybind11",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
@@ -43,18 +31,9 @@ http_archive(
 load("@pybind11_bazel//:python_configure.bzl", "python_configure")
 python_configure(name = "local_config_python")
 
-git_repository(
-    name = "libboundscheck",
-    remote = "https://atomgit.com/openeuler/libboundscheck.git",
-    branch = "master",
-    build_file = "@hcom//src/ubsocket/3rdparty/boundscheck:BUILD.bazel",
-)
+load("//bazel:memfabric_deps.bzl", "memfabric_deps")
+memfabric_deps()
 
-git_repository(
-    name = "hcom",
-    remote = "https://atomgit.com/openeuler/ubs-comm.git",
-    branch = "master",
-)
 load("@hcom//tools/bazel:hcom_repositories.bzl", "hcom_build_metadata_repository", "hcom_urma_repository")
 hcom_build_metadata_repository(
     name = "hcom_build_metadata",
@@ -63,10 +42,4 @@ hcom_build_metadata_repository(
 hcom_urma_repository(
     name = "urma",
     build_file = "@hcom//src/hcom/umq/third_party/urma:BUILD.bazel",
-)
-
-load("//:version_repo.bzl", "version_repo")
-version_repo(
-    name = "version_info",
-    build_from_memcache = "false",
 )

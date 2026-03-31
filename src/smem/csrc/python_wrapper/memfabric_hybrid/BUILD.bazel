@@ -2,7 +2,7 @@
 # Any issue please report to https://open.codehub.huawei.com/innersource/hazel/toolkits/issues
 # Caesar Task Force@Data Storage Product Line
 
-load ("//:global_options.bzl","GLOBAL_COPTS","GLOBAL_LOCAL_DEFINES","GLOBAL_LINKOPTS",) # DIGEST:83555d5ca0aa8a2b2019b13c010d0869
+load ("//bazel:global_options.bzl","GLOBAL_COPTS","GLOBAL_LOCAL_DEFINES","GLOBAL_LINKOPTS",) # DIGEST:83555d5ca0aa8a2b2019b13c010d0869
 
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
