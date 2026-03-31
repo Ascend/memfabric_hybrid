@@ -115,7 +115,10 @@ public:
     explicit BigMemory(smem_bm_t hd) noexcept : handle_{hd} {}
     virtual ~BigMemory() noexcept
     {
-        smem_bm_destroy(handle_);
+        if (handle_ != nullptr) {
+            smem_bm_destroy(handle_);
+            handle_ = nullptr;
+        }
     }
 
     int32_t Join(uint32_t flags)
