@@ -18,7 +18,15 @@ exports_files([
 
 COMMON_LINKOPTS = GLOBAL_LINKOPTS + [] # DIGEST:80f50aa4176814bacd893e2c1ba7a54f
 
-COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + [] # DIGEST:5f9404b764018f9b34667ebeccf6a0cd
+config_setting(
+    name = "mf_debug_build",
+    values = {"compilation_mode": "dbg"},
+)
+
+COMMON_LOCAL_DEFINES = GLOBAL_LOCAL_DEFINES + select({
+    ":mf_debug_build": ["MF_ENABLE_TRACEPOINT"],
+    "//conditions:default": [],
+}) # DIGEST:5f9404b764018f9b34667ebeccf6a0cd
 
 COMMON_COPTS = GLOBAL_COPTS + [] # DIGEST:cb4e3d52a21c46096b487afa0d3bd01f
 

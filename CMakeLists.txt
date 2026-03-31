@@ -80,6 +80,12 @@ if (${CMAKE_BUILD_TYPE} MATCHES "ASAN")
     add_link_options(-fsanitize=${SANITIZERS})
 endif ()
 
+message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}.")
+if (${CMAKE_BUILD_TYPE} MATCHES "DEBUG" OR ${CMAKE_BUILD_TYPE} MATCHES "Debug" OR ${CMAKE_BUILD_TYPE} MATCHES "ASAN")
+    add_compile_definitions(MF_ENABLE_TRACEPOINT)
+    message(STATUS "MF_ENABLE_TRACEPOINT is ON.")
+endif ()
+
 if (BUILD_UT STREQUAL "ON")
     add_definitions(-DUT_ENABLED)
     if (NOT CMAKE_COMPILER MATCHES bisheng)

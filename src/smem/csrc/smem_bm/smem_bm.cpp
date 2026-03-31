@@ -17,6 +17,7 @@
 #include "smem_bm_entry_manager.h"
 #include "smem_hybm_helper.h"
 #include "mf_rwlock.h"
+#include "mf_fault_injection_point_registry.h"
 #include "smem_bm.h"
 
 using namespace ock::smem;
@@ -74,14 +75,21 @@ SMEM_API int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t
         return SM_OK;
     }
 
+    auto faultInjectionPointStatus = ::ock::mf::FaultInjectionPointRegistry::Register();
+    if (faultInjectionPointStatus != ::ock::mf::FaultInjectionPointStatus::OK) {
+        SM_LOG_WARN("register fault injection points failed, status: " << static_cast<int>(faultInjectionPointStatus));
+    }
+
     int32_t ret = SmemBmEntryManager::Instance().Initialize(storeURL, worldSize, deviceId, *config);
     if (ret != 0) {
+        (void)::ock::mf::FaultInjectionPointRegistry::Unregister();
         SM_LOG_AND_SET_LAST_ERROR("init bm entry manager failed, result: " << ret);
         return SM_ERROR;
     }
 
     ret = hybm_init(deviceId, config->flags);
     if (ret != 0) {
+        (void)::ock::mf::FaultInjectionPointRegistry::Unregister();
         SM_LOG_AND_SET_LAST_ERROR("init hybm failed, result: " << ret << ", flags: 0x" << std::hex << config->flags);
         SmemBmEntryManager::Instance().Destroy();
         return SM_ERROR;
@@ -99,6 +107,8 @@ SMEM_API void smem_bm_uninit(uint32_t flags)
         SM_LOG_WARN("smem bm not initialized yet");
         return;
     }
+
+    (void)::ock::mf::FaultInjectionPointRegistry::Unregister();
 
     // Destroy entries first (may call GroupLeave and hybm_* cleanup) before tearing
     // down the underlying hybm layer. Reversing the old order prevents use-after-free

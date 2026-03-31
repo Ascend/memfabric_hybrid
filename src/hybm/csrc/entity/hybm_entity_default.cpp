@@ -21,6 +21,7 @@
 #include "hybm_ex_info_transfer.h"
 #include "hybm_gva.h"
 #include "hybm_logger.h"
+#include "mf_failpoint.h"
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
 #include "hybm_compose_data_op.h"
@@ -195,7 +196,10 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
     }
 
     MemSlicePtr realSlice;
-    auto ret = segment->AllocLocalMemory(size, realSlice);
+    Result ret = BM_OK;
+    FIP_START(ALLOC_LOCAL_MEMORY, &ret)
+    ret = segment->AllocLocalMemory(size, realSlice);
+    FIP_END;
     if (ret != 0) {
         BM_LOG_ERROR("segment allocate slice with size: " << size << " failed: " << ret);
         return ret;

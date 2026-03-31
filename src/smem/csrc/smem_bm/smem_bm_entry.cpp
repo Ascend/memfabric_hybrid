@@ -14,7 +14,9 @@
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
 #include "smem_store_factory.h"
+#include "mf_failpoint.h"
 #include "mf_num_util.h"
+#include "smem_store_factory.h"
 
 namespace ock {
 namespace smem {
@@ -208,7 +210,9 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         goto rollback_exit;
     }
 
+    FIP_START(MMAP, &ret)
     ret = hybm_mmap(entity_, 0);
+    FIP_END;
     if (ret != SM_OK) {
         SM_LOG_ERROR("hybm mmap failed, result: " << ret);
     }
