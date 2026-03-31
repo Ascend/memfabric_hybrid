@@ -244,7 +244,7 @@ class BigMemory:
 
 ```
 
-|属性/方法|含义|  
+|属性/方法|含义|
 |-|-|
 |join方法|加入BM|
 |join参数flags|预置参数|
