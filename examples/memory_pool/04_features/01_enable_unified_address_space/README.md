@@ -6,7 +6,7 @@
 ## 目标
 给出一个“特性开关类”最小样例模板，后续可复用到其他特性。
 
-## 使用能力（仅内存池）
+## 使用能力
 - `BmConfig.unified_address_space`（开关）
 - `bm.initialize` / `create2` / `join`
 - `peer_rank_ptr` 与 `gva_to_va`

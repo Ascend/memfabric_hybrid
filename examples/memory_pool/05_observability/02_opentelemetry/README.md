@@ -14,7 +14,7 @@
   - Span 命名规范（初始化、创建、join、batch copy、register/unregister）
   - 关键属性：rank、device_id、world_size、copy_type、batch_count、data_size
 
-## 使用能力（仅内存池）
+## 使用能力
 围绕内存池接口调用路径做 tracing 设计，不新增业务语义。
 
 ## 必要条件

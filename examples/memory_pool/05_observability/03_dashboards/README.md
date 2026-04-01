@@ -13,7 +13,7 @@
 - dashboards/errors.json：错误码分布、失败率、异常时间窗
 - dashboards/multi_rank.json：按 node/rank/device_id 下钻
 
-## 使用能力（仅内存池）
+## 使用能力
 基于内存池相关指标与追踪数据进行可视化编排，不新增业务语义。
 
 ## 必要条件
