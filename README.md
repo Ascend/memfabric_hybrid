@@ -35,14 +35,14 @@ MemFabric roadmap和版本分支策略详见： [**Roadmap**](https://gitcode.co
   - 异构设备的统一池化: 将多节点的异构设备内存(DRAM|HBM等)池化, 提供高性能的全局内存"直接访问"的能力
   - 简单的北向接口: 提供内存语义访问接口, 即xcopy with global virtual address, 向传统的memcpy概念靠近, 支持D2RH\RH2D\RH2H\D2D等
   - 南向高可扩展: 通过插件的方式支持多种DMA引擎和LD/ST及多种网络/灵衢互联(Device UB、Device RoCE、Host UB、Host RoCE等)
-     
+
 ![architecture](./doc/source/architecture.png)
-      
+
 如上图所示, MemFabric主要分为四大模块: Global Memory Management、Data Operation、Transport Management、API
-  * **Global Memory Management**: 实现GVA的全局编排、页表映射策略制定及通过驱动将映射策略注入页表
+  * **Global Memory Management**: 实现全局统一内存地址(Global Virtual Address, GVA)的统一编排、页表映射策略制定及通过驱动将映射策略注入页表
   * **Data Operation**: xcopy的实现，驱动xDMA、LD/ST实现全局内存直接读写
   * **Transport Management**: 链接管理; xcopy驱动Host RDMA、Device RDMA、UDMA时，需要建立QP、Jetty链接，xcopy使用SDMA、MTE、LD/ST时不需要Transport Management
-  * **API**: 统一且简单的API及其实现, 包括BM API、SHM API、Trans API，三种API适应于不同的场景
+  * **API**: 统一且简单的API及其实现, 包括BM API、SHM API、Trans API，三种API适用于不同的场景
 
 其中, Global Memory Management、Data Operation、Transport Management都实现了逻辑的抽象, 可以轻松扩展实现不同硬件的对接。当前已支持的南向包括:
   * 昇腾A3超节点: DRAM+HBM pooling over Device UB 1.0, DRAM pooling over Host RoCE
@@ -58,25 +58,28 @@ MemFabric以动态库的形式支持应用快速，简便的集成，支撑大�
 - **池化与全局统一编址**
 
 MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在不同层级、不同节点的内存单元进行统一管理与使用，使系统能够像管理单一物理资源一样，对跨CPU、NPU的内存资源进行统一寻址和透明访问，核心目的是实现内存资源的整合与统一调度，最大程度的释放硬件性能。
-全局统一内存地址(Global Virtual Address, GVA)的特点:
+GVA的特点:
   - 它是一个简单的uint64
-  - 所有进程的gva的起始地址一致
-  - 所有进程的gva按线性排布且一致
-       
+  - 所有进程的GVA的起始地址一致
+  - 所有进程的GVA按线性排布且一致
+
 ![unified_global_address](./doc/source/unified_global_address.png)
-       
+
 - **跨机跨介质直接访问**
 
-  基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问; 典型跨节点跨介质的访问路径有：
+  基于MemFabric内存语义统一编址，数据可以在跨节点的多级存储间实现透明、直接访问。
+
+  典型跨节点跨介质的访问路径有：
     - D2RH：本机HBM到跨机DRAM
     - RH2D：跨机DRAM到本机HBM
     - RH2H：跨机DRAM到本机DRAM
+
   Note: D为Device, RH为Remote Host
-           
-  MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):  
-         
+
+MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
+
 ![one_copy](./doc/source/one_copy.png)
-      
+
 当前MemFabric池化的硬件支持情况如下：
 * 昇腾A3超节点：Device UB 1.0，Host rdma
 * 昇腾A2服务器：Device rdma，Host rdma
@@ -84,33 +87,33 @@ MemFabric通过构建逻辑上的全局内存语义统一编址，对分布在�
 
 | 池化类型         | 访问方向  | host rdma | device rdma | Device UB 1.0   |
 |-----------------|----------|-----------|-------------|----------------|
-| DRAM POOL       |   LD2GH  | 支持      | 支持         | 支持           |
-| DRAM POOL       |   GH2LD  | 支持      | 支持         | 支持           |
-| DRAM POOL       |   LH2GH  | 支持      | 支持         | 支持           |
-| DRAM POOL       |   GH2LH  | 支持      | 支持         | 支持           |
-| HBM POOL        |   GD2LH  | 不支持    | 支持         | 支持           |
-| HBM POOL        |   LH2GD  | 不支持    | 支持         | 支持           |
-| HBM POOL        |   GD2LD  | 不支持    | 支持         | 支持           |
-| HBM POOL        |   LD2GD  | 不支持    | 支持         | 支持           |
-| HBM + DRAM POOL |   GH2GD  | 不支持    | 支持         | 支持           |
-| HBM + DRAM POOL |   GD2GH  | 不支持    | 支持         | 支持           |
-| HBM + DRAM POOL |   GH2GH  | 不支持    | 支持         | 支持           |
-| HBM + DRAM POOL |   GD2GD  | 不支持    | 支持         | 支持           |
+| DRAM POOL       |   LD2GH  | ✅        | ✅         | ✅           |
+| DRAM POOL       |   GH2LD  | ✅        | ✅         | ✅           |
+| DRAM POOL       |   LH2GH  | ✅        | ✅         | ✅           |
+| DRAM POOL       |   GH2LH  | ✅        | ✅         | ✅           |
+| HBM POOL        |   GD2LH  | ❌         | ✅         | ✅           |
+| HBM POOL        |   LH2GD  | ❌         | ✅         | ✅           |
+| HBM POOL        |   GD2LD  | ❌         | ✅         | ✅           |
+| HBM POOL        |   LD2GD  | ❌         | ✅         | ✅           |
+| HBM + DRAM POOL |   GH2GD  | ❌         | ✅         | ✅           |
+| HBM + DRAM POOL |   GD2GH  | ❌         | ✅         | ✅           |
+| HBM + DRAM POOL |   GH2GH  | ❌         | ✅         | ✅           |
+| HBM + DRAM POOL |   GD2GD  | ❌         | ✅         | ✅           |
 
-**Note：**  
-L为Local，D为Device，G为Global，H为Host  
-GH ：代表一块DRAM内存，其属于DRAM内存池空间，可能在本地，也可能在远端其他节点  
-GD ：代表一块HBM显存，其属于HBM内存池空间，可能在本地，可能在远端其他节点  
-LH ：代表一块DRAM内存，其不属于任何内存池空间，其位置在当前进程  
-LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在当前进程    
+**Note：**
+> L为Local，D为Device，G为Global，H为Host
+- GH ：代表一块DRAM内存，其属于DRAM内存池空间，可能在本地，也可能在远端其他节点
+- GD ：代表一块HBM显存，其属于HBM内存池空间，可能在本地，可能在远端其他节点
+- LH ：代表一块DRAM内存，其不属于任何内存池空间，其位置在当前进程
+- LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在当前进程
 
 ## 🔥性能表现
 
 ### 时延测试
 - 使用2个昇腾A3节点组成双机内存池，将MemFabric对接到MoonCake TE（MoonCake是业界开源的一款的分布式缓存软件, [memfabric对接mooncake代码](https://gitcode.com/openFuyao/mooncake/blob/v0.3.7-dev/doc/zh/ub_transport.md)）进行读写时延测试，模拟构造DeepSeek-R1模型KV大小的block size，即：61x128K + 61x16K = 8784KB ≈ 8.57MB，共122个离散地址，性能表现如下:
-    
+
 ![a3-Latency-performance](./doc/source/a3_latency.png)
-     
+
 ### 带宽测试(单DIE+单CPU)
 - 在昇腾A3超节点跨机数据访问性能(DRAM and HBM pooling over UB 1.0)如下：
 
@@ -129,9 +132,9 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 
 
 - 在昇腾A2服务器跨机数据访问性能(DRAM and HBM pooling over Device RoCE)如下:
-      
+
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
-      
+
  👆 性能测试参考 [benchmark](./example/bm/BmBenchmark/README.md)
 
 ## 🔍目录结构
@@ -139,7 +142,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 ```
 ├── LICENSE                    # LICENSE
 ├── .clang-format              # 格式化配置
-├── .gitmodules                # git配置
+├── .gitmodules                # 三方库git配置
 ├── .gitignore                 # git忽视文件
 ├── CMakeLists.txt             # 项目的CMakeList
 ├── doc                        # 文档目录
@@ -153,11 +156,12 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
 │  ├── build.sh                # 编译脚本
 │  ├── run_ut.sh               # 编译+运行ut脚本
 ├── test                       # test目录
+│  ├── 3rdparty                # 三方库
 │  ├── certs                   # 证书生成脚本
 │  ├── python                  # python测试用例
 │  └── ut                      # 单元测试用例
 ├── src                        # 源码
-│  ├── acc_links               # 内部通信层 (用于进程间控制命令的通信, 基于Host TCP实现) 
+│  ├── acc_links               # 内部通信层 (用于进程间控制命令的通信, 基于Host TCP实现)
 │  └── hybm                    # 内存管理与内存访问层 (Global Memory Management、Data Operation、Transport Management)
 │  └── smem                    # 语义与接口层 (big memory + transfer + share memory等语义与接口实现)
 │  └── util                    # 公共函数
@@ -190,7 +194,7 @@ LD ：代表一块HBM显存，其不属于任何内存池空间，其位置在�
   - Atlas 900 A3 SuperPoD
 - 平台：aarch64/x86
 - 配套软件：CANN 8.1.RC1及之后版本
-- cmake >= 3.19  
+- cmake >= 3.19
 - GLIBC >= 2.28
 - Ascend HDK配套驱动（npu-driver）、固件（npu-firmware）依赖(使用不同介质所需最低版本不同)：
 
