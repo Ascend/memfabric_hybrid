@@ -35,9 +35,18 @@ enum EmResultErrorCode : Result {
     EM_ERROR_ALLOC = -9,
     EM_NOT_ENOUGH_MEM = -10,
     EM_DL_FUNCTION_NOT_LOADED = -11,
+    EM_NOT_IMPLEMENTED = -12,
+    EM_HASHMAP_NO_KEY_FOUND = -13,
+    EM_HASHMAP_BUCKET_FULL = -14
 };
 
 constexpr uint32_t PATH_MAX_LIMIT = 4096;
+constexpr uint32_t UN0 = 0;
+constexpr uint32_t UN1 = 1;
+constexpr uint32_t UN2 = 2;
+constexpr uint32_t UN3 = 3;
+constexpr uint32_t UN5 = 5;
+constexpr uint32_t UN256 = 256;
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)

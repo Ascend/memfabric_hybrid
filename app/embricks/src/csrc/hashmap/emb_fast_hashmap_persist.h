@@ -16,7 +16,11 @@
 
 namespace ock {
 namespace emb {
-class FastHashmapPersist {};
+class FlashHashmapPersist {
+public:
+    static Result Persist(const std::string &filepath, const FlashHashmapPtr &map);
+    static Result UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map);
+};
 } // namespace emb
 } // namespace ock
 

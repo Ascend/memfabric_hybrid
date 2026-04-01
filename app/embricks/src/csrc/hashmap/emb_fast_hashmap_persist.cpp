@@ -10,3 +10,17 @@
  * See the Mulan PSL v2 for more details.
  */
 #include "emb_fast_hashmap_persist.h"
+
+namespace ock {
+namespace emb {
+Result FlashHashmapPersist::Persist(const std::string &filepath, const FlashHashmapPtr &map)
+{
+    return EM_OK;
+}
+
+Result FlashHashmapPersist::UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map)
+{
+    return EM_OK;
+}
+} // namespace emb
+} // namespace ock

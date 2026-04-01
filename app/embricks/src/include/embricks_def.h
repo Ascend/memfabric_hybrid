@@ -13,8 +13,6 @@
 #define MEMFABRIC_HYBRID_EMBRICKS_DEF_H
 
 #include <stdint.h>
-
-#include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
 
@@ -22,9 +20,9 @@
 extern "C" {
 #endif
 
-#define EMB_TABLE_NAME_MAX  32
-#define EMB_TABLE_TAG_MAX   64
-#define EMB_SERVICE_URL_MAX 4096
+#define EMB_TABLE_NAME_MAX  32   /* max length of table name */
+#define EMB_TABLE_TAG_MAX   128  /* max length of table tags */
+#define EMB_SERVICE_URL_MAX 4096 /* max length of service url */
 
 /* definitions for embedding table */
 typedef enum {
@@ -36,17 +34,17 @@ typedef enum {
 } emb_table_dtype_t;
 
 typedef enum {
-    EMB_STORAGE_TYPE_HOST_MEM = 0, /* store in host dram */
-    EMB_STORAGE_TYPE_HOST_DISK,    /* store in host disk */
+    EMB_TABLE_STORAGE_TYPE_HOST_MEM = 0, /* store in host dram */
+    EMB_TABLE_STORAGE_TYPE_HOST_DISK,    /* store in host disk */
 
-    EMB_STORAGE_TYPE_BUTT
+    EMB_TABLE_STORAGE_TYPE_BUTT
 } emb_table_storage_type_t;
 
 typedef enum {
-    EMB_ACCESS_TYPE_READONLY = 0, /* readonly */
-    EMB_ACCESS_TYPE_READ_WRITE,   /* write and readable */
+    EMB_TABLE_ACCESS_TYPE_READONLY = 0, /* readonly */
+    EMB_TABLE_ACCESS_TYPE_READ_WRITE,   /* write and readable */
 
-    EMB_ACCESS_TYPE_BUTT
+    EMB_TABLE_ACCESS_TYPE_BUTT
 } emb_table_access_type_t;
 
 typedef struct {

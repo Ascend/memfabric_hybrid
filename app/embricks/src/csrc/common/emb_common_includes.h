@@ -17,6 +17,7 @@
 #include "emb_defines.h"
 #include "emb_functions.h"
 #include "emb_logger.h"
+#include "emb_ref.h"
 #include "emb_version.h"
 
 #endif // MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
