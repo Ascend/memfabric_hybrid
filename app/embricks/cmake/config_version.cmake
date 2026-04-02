@@ -16,7 +16,7 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" EMB_VERSION_CONTENT)
 # all of them should be a digital
 string(STRIP "${EMB_VERSION_CONTENT}" EMB_PROJECT_VERSION_RAW)
 if (NOT EMB_PROJECT_VERSION_RAW MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
-    message(FATAL_ERROR "Invalid version format in VERSION file: '${EMB_PROJECT_VERSION_RAW}'")
+    message(FATAL_ERROR "app/embricks: Invalid version format in VERSION file: '${EMB_PROJECT_VERSION_RAW}'")
 endif ()
 
 
@@ -25,7 +25,7 @@ list(GET EMB_PROJECT_VERSION_RAW 0 DUMMY)
 string(REPLACE "." ";" EMB_VERSION_LIST "${EMB_PROJECT_VERSION_RAW}")
 list(LENGTH EMB_VERSION_LIST EMB_VERSION_LIST_LEN)
 if (NOT EMB_VERSION_LIST_LEN EQUAL 3)
-    message(FATAL_ERROR "Expected exactly 3 version components, got: ${EMB_VERSION_LIST_LEN}")
+    message(FATAL_ERROR "app/embricks: Expected exactly 3 version components, got: ${EMB_VERSION_LIST_LEN}")
 endif ()
 
 list(GET EMB_VERSION_LIST 0 EMB_VERSION_MAJOR)
@@ -37,7 +37,7 @@ add_compile_definitions(EMB_VERSION_MAJOR=${EMB_VERSION_MAJOR}
         EMB_VERSION_MINOR=${EMB_VERSION_MINOR}
         EMB_VERSION_FIX=${EMB_VERSION_FIX})
 
-message(STATUS "EMB_VERSION_MAJOR = ${EMB_VERSION_MAJOR}, EMB_VERSION_MINOR = ${EMB_VERSION_MINOR}, EMB_VERSION_FIX = ${EMB_VERSION_FIX}")
+message(STATUS "app/embricks: EMB_VERSION_MAJOR = ${EMB_VERSION_MAJOR}, EMB_VERSION_MINOR = ${EMB_VERSION_MINOR}, EMB_VERSION_FIX = ${EMB_VERSION_FIX}")
 
 
 # set log commit into compile definition for full library version as well
@@ -54,12 +54,12 @@ if (BUILD_GIT_COMMIT)
             set(GIT_LAST_COMMIT "empty")
         endif ()
         add_definitions(-DGIT_LAST_COMMIT=${GIT_LAST_COMMIT})
-        message(STATUS "add definition for last commit: ${GIT_LAST_COMMIT}")
+        message(STATUS "app/embricks: add definition for last commit: ${GIT_LAST_COMMIT}")
     else ()
         add_definitions(-DGIT_LAST_COMMIT=empty)
-        message(STATUS "Failed to find git command, not GIT_LAST_COMMIT will be set")
+        message(STATUS "app/embricks: Failed to find git command, not GIT_LAST_COMMIT will be set")
     endif ()
 else ()
     add_definitions(-DGIT_LAST_COMMIT=empty)
-    message(STATUS "add definition for last commit: empty")
+    message(STATUS "app/embricks: add definition for last commit: empty")
 endif ()

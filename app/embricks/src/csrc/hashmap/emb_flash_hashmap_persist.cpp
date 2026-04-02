@@ -9,7 +9,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#include "emb_fast_hashmap_persist.h"
+#include "emb_flash_hashmap_persist.h"
 
 namespace ock {
 namespace emb {

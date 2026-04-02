@@ -17,21 +17,21 @@
 namespace ock {
 namespace emb {
 
-struct HashSpinLock {
+struct BucketSpinLock {
 public:
     void Lock() noexcept;
     void UnLock() noexcept;
 
 private:
     uint64_t lock_ = 0;
-} __attribute__((packed));
+} __attribute__((aligned(8)));
 
-EM_ALWAYS_INLINE void HashSpinLock::Lock() noexcept
+EM_ALWAYS_INLINE void BucketSpinLock::Lock() noexcept
 {
     while (!__sync_bool_compare_and_swap(&lock_, 0, 1)) {}
 }
 
-EM_ALWAYS_INLINE void HashSpinLock::UnLock() noexcept
+EM_ALWAYS_INLINE void BucketSpinLock::UnLock() noexcept
 {
     __atomic_store_n(&lock_, 0, __ATOMIC_SEQ_CST);
 }
@@ -51,16 +51,31 @@ constexpr uint64_t kInvalidValue = UINT64_MAX;
 
 struct HashBucketReadonly {
 public:
+    /**
+     * @brief Readonly bucket doesn't support put key/value
+     */
     Result Put(uint64_t key, uint64_t value) noexcept;
+
+    /**
+     * @brief Get value by key in the bucket
+     *
+     * @param key          [in] key to be found
+     * @param value        [out] value that found
+     * @return 0 if found, EM_HASHMAP_NO_KEY_FOUND if not found
+     */
     Result Get(uint64_t key, uint64_t &value) noexcept;
+
+    /**
+     * @brief Readonly bucket doesn't support remove
+     */
     Result Remove(uint64_t key, uint64_t &value) noexcept;
 
 private:
     uint64_t key_[UN3]{kInvalidKey, kInvalidKey, kInvalidKey};         /* initialize with invalid key */
     uint64_t value_[UN3]{kInvalidValue, kInvalidValue, kInvalidValue}; /* initialize with invalid value */
     HashBucketReadonly *next_ = nullptr;                               /* pointer to next bucket */
-    HashSpinLock spinLock_{};                                          /* spin lock of next bucket */
-};
+    BucketSpinLock spinLock_{};                                        /* spin lock of next bucket */
+} __attribute__((aligned(8)));
 
 EM_ALWAYS_INLINE Result HashBucketReadonly::Put(uint64_t key, uint64_t value) noexcept
 {
@@ -106,8 +121,8 @@ private:
     uint64_t key_[UN3]{kInvalidKey, kInvalidKey, kInvalidKey};         /* initialize with invalid key */
     uint64_t value_[UN3]{kInvalidValue, kInvalidValue, kInvalidValue}; /* initialize with invalid value */
     HashBucket *next_ = nullptr;                                       /* pointer to next bucket */
-    HashSpinLock spinLock_{};                                          /* spin lock of next bucket */
-};
+    BucketSpinLock spinLock_{};                                        /* spin lock of next bucket */
+} __attribute__((aligned(8)));
 
 EM_ALWAYS_INLINE Result HashBucket::Put(uint64_t key, uint64_t value) noexcept
 {

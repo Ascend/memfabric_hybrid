@@ -15,3 +15,4 @@ set(EMBRICKS_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/output/app/embricks)
 include(cmake/config_version.cmake)
 
 add_subdirectory(src/csrc)
+add_subdirectory(test)

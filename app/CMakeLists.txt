@@ -8,6 +8,6 @@
 # See the Mulan PSL v2 for more details.
 
 if (BUILD_APP_EMBRICKS)
-    message(STATUS "build embricks app is required")
+    message(STATUS "app: build embricks app is required")
     add_subdirectory(embricks)
 endif ()

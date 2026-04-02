@@ -12,7 +12,7 @@
 #ifndef MEMFABRIC_HYBRID_EMB_FAST_HASHMAP_PERSIST_H
 #define MEMFABRIC_HYBRID_EMB_FAST_HASHMAP_PERSIST_H
 
-#include "emb_fast_hashmap.h"
+#include "emb_flash_hashmap.h"
 
 namespace ock {
 namespace emb {

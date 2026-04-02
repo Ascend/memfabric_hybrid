@@ -170,8 +170,6 @@ include(cmake/config_etcd.cmake)
 
 add_subdirectory(src)
 
-add_subdirectory(app)
-
 if (BUILD_UT STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 17)
     message(STATUS "BUILD_UT = ON, add compile gov")
@@ -184,3 +182,6 @@ if ("${BUILD_TEST}" STREQUAL "ON")
     add_subdirectory(example/config_store)
     add_subdirectory(example/trans/perf)
 endif ()
+
+# build apps after build ut
+add_subdirectory(app)

@@ -1,6 +1,7 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/googletest/googletest/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/googletest/googlemock/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mockcpp/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mockcpp/3rdparty)
 
 include_directories(
         ${PROJECT_SMEM_SRC_BASE}/include/host
@@ -9,6 +10,7 @@ include_directories(
 )
 add_subdirectory(3rdparty)
 link_directories(${PROJECT_3RDPARTY_BIN_DIR}/googletest/lib)
+link_directories(${PROJECT_3RDPARTY_BIN_DIR}/mockcpp/lib)
 
 set(ENABLE_FUZZ $ENV{ENABLE_FUZZ})
 if (ENABLE_FUZZ STREQUAL "ON")
