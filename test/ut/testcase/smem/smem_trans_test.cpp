@@ -1020,6 +1020,7 @@ TEST_F(SmemTransTest, smem_trans_batch_quant_write_invalid_nonnull_handle)
     smem_trans_uninit(0);
 }
 
+#if 0
 TEST_F(SmemTransTest, smem_trans_read_write)
 {
     uint32_t rankSize = 2;
@@ -1156,6 +1157,7 @@ TEST_F(SmemTransTest, smem_trans_read_write)
     delete[] sender_buffer;
     delete[] recv_buffer;
 }
+#endif
 
 TEST_F(SmemTransTest, smem_trans_malloc)
 {

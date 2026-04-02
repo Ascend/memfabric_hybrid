@@ -14,6 +14,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <fstream>
 #include <iostream>
@@ -227,6 +228,7 @@ void DefaultTracer::StartDumpThread()
 
 void DefaultTracer::RunInThread()
 {
+    pthread_setname_np(pthread_self(), "ptracer_dump");
     std::unique_lock<std::mutex> lock(dumpLock_);
     while (running_) {
         /* wait for some time if no one signal the condition */

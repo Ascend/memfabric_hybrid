@@ -167,24 +167,24 @@ public:
     uint64_t queryHasRegisteredCount{0};
 
     // 结果
-    ock::mf::Result openDeviceResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result closeDeviceResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result registerMemoryRegionResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result unregisterMemoryRegionResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result queryMemoryKeyResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result prepareResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result removeRanksResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result connectResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result asyncConnectResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result waitForConnectedResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result updateRankOptionsResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result synchronizeResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteBatchAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteBatchAsyncResult{ock::mf::BErrorCode::BM_OK};
+    ock::mf::Result openDeviceResult{BM_OK};
+    ock::mf::Result closeDeviceResult{BM_OK};
+    ock::mf::Result registerMemoryRegionResult{BM_OK};
+    ock::mf::Result unregisterMemoryRegionResult{BM_OK};
+    ock::mf::Result queryMemoryKeyResult{BM_OK};
+    ock::mf::Result prepareResult{BM_OK};
+    ock::mf::Result removeRanksResult{BM_OK};
+    ock::mf::Result connectResult{BM_OK};
+    ock::mf::Result asyncConnectResult{BM_OK};
+    ock::mf::Result waitForConnectedResult{BM_OK};
+    ock::mf::Result updateRankOptionsResult{BM_OK};
+    ock::mf::Result writeRemoteResult{BM_OK};
+    ock::mf::Result readRemoteResult{BM_OK};
+    ock::mf::Result writeRemoteAsyncResult{BM_OK};
+    ock::mf::Result readRemoteAsyncResult{BM_OK};
+    ock::mf::Result synchronizeResult{BM_OK};
+    ock::mf::Result writeRemoteBatchAsyncResult{BM_OK};
+    ock::mf::Result readRemoteBatchAsyncResult{BM_OK};
     bool queryHasRegisteredResult{false};
     std::string nicName{"eth0"};
 
@@ -212,24 +212,24 @@ public:
         readRemoteBatchAsyncCount = 0;
         queryHasRegisteredCount = 0;
 
-        openDeviceResult = ock::mf::BErrorCode::BM_OK;
-        closeDeviceResult = ock::mf::BErrorCode::BM_OK;
-        registerMemoryRegionResult = ock::mf::BErrorCode::BM_OK;
-        unregisterMemoryRegionResult = ock::mf::BErrorCode::BM_OK;
-        queryMemoryKeyResult = ock::mf::BErrorCode::BM_OK;
-        prepareResult = ock::mf::BErrorCode::BM_OK;
-        removeRanksResult = ock::mf::BErrorCode::BM_OK;
-        connectResult = ock::mf::BErrorCode::BM_OK;
-        asyncConnectResult = ock::mf::BErrorCode::BM_OK;
-        waitForConnectedResult = ock::mf::BErrorCode::BM_OK;
-        updateRankOptionsResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteAsyncResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteAsyncResult = ock::mf::BErrorCode::BM_OK;
-        synchronizeResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteBatchAsyncResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteBatchAsyncResult = ock::mf::BErrorCode::BM_OK;
+        openDeviceResult = BM_OK;
+        closeDeviceResult = BM_OK;
+        registerMemoryRegionResult = BM_OK;
+        unregisterMemoryRegionResult = BM_OK;
+        queryMemoryKeyResult = BM_OK;
+        prepareResult = BM_OK;
+        removeRanksResult = BM_OK;
+        connectResult = BM_OK;
+        asyncConnectResult = BM_OK;
+        waitForConnectedResult = BM_OK;
+        updateRankOptionsResult = BM_OK;
+        writeRemoteResult = BM_OK;
+        readRemoteResult = BM_OK;
+        writeRemoteAsyncResult = BM_OK;
+        readRemoteAsyncResult = BM_OK;
+        synchronizeResult = BM_OK;
+        writeRemoteBatchAsyncResult = BM_OK;
+        readRemoteBatchAsyncResult = BM_OK;
         queryHasRegisteredResult = false;
         nicName = "eth0";
     }
@@ -271,7 +271,7 @@ TEST_F(HybmDataOpHostRdmaTest, initialize_success)
 {
     // 测试 Initialize 成功场景
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
 }
 
@@ -279,12 +279,12 @@ TEST_F(HybmDataOpHostRdmaTest, initialize_already_inited)
 {
     // 测试重复初始化场景
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
 
     // 再次调用 Initialize 应该返回 BM_OK
     ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     // 不应再次调用 RegisterMemoryRegion
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
 }
@@ -292,9 +292,9 @@ TEST_F(HybmDataOpHostRdmaTest, initialize_already_inited)
 TEST_F(HybmDataOpHostRdmaTest, initialize_register_memory_failed)
 {
     // 测试 RegisterMemoryRegion 失败场景
-    transportManagerMock_->registerMemoryRegionResult = ock::mf::BErrorCode::BM_MALLOC_FAILED;
+    transportManagerMock_->registerMemoryRegionResult = BM_MALLOC_FAILED;
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_MALLOC_FAILED, ret);
+    ASSERT_EQ(BM_MALLOC_FAILED, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
 }
 
@@ -303,7 +303,7 @@ TEST_F(HybmDataOpHostRdmaTest, uninitialize)
     // 测试 UnInitialize 场景
     // 先初始化
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     // 调用 UnInitialize
     dataOp_->UnInitialize();
@@ -315,7 +315,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_host_to_global_host_same_rank)
 {
     // 测试本地主机到全局主机的拷贝（同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -323,14 +323,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_host_to_global_host_same_rank)
     options.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_local_host_to_global_host_different_rank)
 {
     // 测试本地主机到全局主机的拷贝（不同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL; // 设置非零数据大小
@@ -341,7 +341,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_host_to_global_host_different_ran
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于QueryHasRegistered默认返回false，且rdmaSwapSpaceSize_不为0，所以会使用SafePut
     // SafePut中会调用WriteRemote
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->writeRemoteCount);
 }
 
@@ -349,7 +349,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_device_to_global_host_same_rank)
 {
     // 测试本地设备到全局主机的拷贝（同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -357,14 +357,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_device_to_global_host_same_rank)
     options.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_local_device_to_global_host_different_rank)
 {
     // 测试本地设备到全局主机的拷贝（不同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL; // 设置非零数据大小
@@ -373,7 +373,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_local_device_to_global_host_different_r
     options.destRankId = rankId_ + 1;
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->writeRemoteCount);
 }
 
@@ -381,7 +381,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_host_same_rank)
 {
     // 测试全局主机到本地主机的拷贝（同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -389,14 +389,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_host_same_rank)
     options.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_host_different_rank)
 {
     // 测试全局主机到本地主机的拷贝（不同rank）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL; // 设置非零数据大小
@@ -405,7 +405,7 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_host_different_ran
     options.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->readRemoteCount);
 }
 
@@ -413,21 +413,21 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_unsupported_direction)
 {
     // 测试不支持的拷贝方向
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
 
     // 使用一个无效的方向
     ret = dataOp_->DataCopy(params, static_cast<hybm_data_copy_direction>(HYBM_DATA_COPY_DIRECTION_BUTT), options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_INVALID_PARAM, ret);
+    ASSERT_EQ(BM_INVALID_PARAM, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_async)
 {
     // 测试异步数据拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -435,17 +435,17 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_async)
     options.destRankId = rankId_ + 1UL;
 
     ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(BM_ERROR, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, wait)
 {
     // 测试等待操作
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     ret = dataOp_->Wait(0);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, transform_va)
@@ -463,7 +463,7 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy)
 {
     // 测试批量数据拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -484,14 +484,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_local_device_to_global_host)
 {
     // 测试批量从本地设备到全局主机的拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -507,14 +507,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_local_device_to_global_host)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
     // 由于使用了mock，应该返回BM_OK或BM_MALLOC_FAILED
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_local_device)
 {
     // 测试批量从全局主机到本地设备的拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -530,14 +530,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_local_device)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
     // 由于使用了mock，应该返回BM_OK或BM_MALLOC_FAILED
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_local_host)
 {
     // 测试批量从全局主机到本地主机的拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -553,14 +553,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_local_host)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
     // 由于使用了mock，应该返回BM_OK或BM_MALLOC_FAILED
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_global_host)
 {
     // 测试批量从全局主机到全局主机的拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -576,14 +576,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_global_host_to_global_host)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
     // 由于使用了mock，应该返回BM_OK或BM_MALLOC_FAILED
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_invalid_direction)
 {
     // 测试批量拷贝无效方向
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -599,14 +599,14 @@ TEST_F(HybmDataOpHostRdmaTest, batch_data_copy_invalid_direction)
 
     ret = dataOp_->BatchDataCopy(params, static_cast<hybm_data_copy_direction>(HYBM_DATA_COPY_DIRECTION_BUTT), options);
     // 应该返回BM_INVALID_PARAM
-    ASSERT_EQ(ock::mf::BErrorCode::BM_INVALID_PARAM, ret);
+    ASSERT_EQ(BM_INVALID_PARAM, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_device)
 {
     // 测试全局主机到本地设备的拷贝，间接测试CopyGva2Device
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL;
@@ -614,14 +614,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_local_device)
     options.srcRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_global_host)
 {
     // 测试全局主机到全局主机的拷贝，间接测试CopyGva2Gva
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL;
@@ -631,14 +631,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_global_host)
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
     // 由于SafePut需要swap空间，这里可能返回BM_ERROR或BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_ERROR);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_ERROR);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_global_host_remote)
 {
     // 测试全局主机到全局主机的拷贝（源和目标都不是本地），间接测试CopyGva2Gva
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.dataSize = 1024ULL;
@@ -647,14 +647,14 @@ TEST_F(HybmDataOpHostRdmaTest, data_copy_global_host_to_global_host_remote)
     options.destRankId = rankId_ + 2UL;
 
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_INVALID_PARAM, ret);
+    ASSERT_EQ(BM_INVALID_PARAM, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_operations)
 {
     // 测试批量操作，间接测试BatchPreRegisterLocalMr和BatchUnRegisterLocalMr
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -671,14 +671,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_operations)
     // 测试批量拷贝，间接调用BatchPreRegisterLocalMr
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_copy_ld2gh)
 {
     // 测试批量从本地设备到全局主机的拷贝，间接测试BatchWriteLD2RH
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -694,14 +694,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_copy_ld2gh)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_copy_gh2ld)
 {
     // 测试批量从全局主机到本地设备的拷贝，间接测试BatchReadRH2LD
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -717,14 +717,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_copy_gh2ld)
 
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_get_local_mr_addr_indirect)
 {
     // 通过BatchDataCopy间接测试GetLocalMrAddr函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -742,14 +742,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_get_local_mr_addr_indirect)
     // 测试批量拷贝，间接调用GetLocalMrAddr
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_pre_register_local_mr_indirect)
 {
     // 通过BatchDataCopy间接测试PreRegisterLocalMr函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -767,14 +767,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_pre_register_local_mr_indirect)
     // 测试批量拷贝，间接调用PreRegisterLocalMr
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于使用了mock，应该返回BM_OK或BM_MALLOC_FAILED
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_copy_gva2_device_indirect)
 {
     // 通过DataCopy间接测试CopyGva2Device函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.src = reinterpret_cast<void *>(0x1000);
@@ -785,14 +785,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_copy_gva2_device_indirect)
 
     // 测试全局主机到本地设备的拷贝，间接调用CopyGva2Device
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_copy_gva2_gva_indirect)
 {
     // 通过DataCopy间接测试CopyGva2Gva函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     params.src = reinterpret_cast<void *>(0x1000);
@@ -805,20 +805,20 @@ TEST_F(HybmDataOpHostRdmaTest, test_copy_gva2_gva_indirect)
     options.destRankId = rankId_ + 1;
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能需要swap空间，这里可能返回BM_OK或BM_ERROR
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_ERROR);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_ERROR);
 
     // 测试源和目标rank都不是本地的情况
     options.srcRankId = rankId_ + 1UL;
     options.destRankId = rankId_ + 2UL;
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_INVALID_PARAM, ret);
+    ASSERT_EQ(BM_INVALID_PARAM, ret);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_pre_register_local_mr_indirect)
 {
     // 通过BatchDataCopy间接测试BatchPreRegisterLocalMr函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -836,14 +836,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_pre_register_local_mr_indirect)
     // 测试批量拷贝，间接调用BatchPreRegisterLocalMr
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_un_register_local_mr_indirect)
 {
     // 通过BatchDataCopy间接测试BatchUnRegisterLocalMr函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -861,14 +861,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_un_register_local_mr_indirect)
     // 测试批量拷贝，间接调用BatchUnRegisterLocalMr
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_write_ld2rh_indirect)
 {
     // 通过BatchDataCopy间接测试BatchWriteLD2RH函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -886,14 +886,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_write_ld2rh_indirect)
     // 测试批量从本地设备到全局主机的拷贝，间接调用BatchWriteLD2RH
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_batch_read_rh2ld_indirect)
 {
     // 通过BatchDataCopy间接测试BatchReadRH2LD函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -911,14 +911,14 @@ TEST_F(HybmDataOpHostRdmaTest, test_batch_read_rh2ld_indirect)
     // 测试批量从全局主机到本地设备的拷贝，间接调用BatchReadRH2LD
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }
 
 TEST_F(HybmDataOpHostRdmaTest, test_inner_batch_read_rh2lh_indirect)
 {
     // 通过BatchDataCopy间接测试InnerBatchReadRH2LH函数
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params params{};
     void *sources[2] = {reinterpret_cast<void *>(0x1000), reinterpret_cast<void *>(0x3000)};
@@ -936,5 +936,5 @@ TEST_F(HybmDataOpHostRdmaTest, test_inner_batch_read_rh2lh_indirect)
     // 测试批量从全局主机到本地主机的拷贝，间接调用InnerBatchReadRH2LH
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
     // 由于可能存在初始化问题，所以不严格要求返回BM_OK
-    ASSERT_TRUE(ret == ock::mf::BErrorCode::BM_OK || ret == ock::mf::BErrorCode::BM_MALLOC_FAILED);
+    ASSERT_TRUE(ret == BM_OK || ret == BM_MALLOC_FAILED);
 }

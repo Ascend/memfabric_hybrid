@@ -17,6 +17,7 @@
 #include "hybm_transport_manager.h"
 #include "hcom_service_c_define.h"
 #include "host_hcom_counter_stream.h"
+#include "host_hcom_reconnector.h"
 #include "mf_rwlock.h"
 
 namespace ock {
@@ -35,6 +36,14 @@ struct HcomMemoryRegion {
     uint64_t size;
     TransportMemoryKey lKey;
     Service_MemoryRegion mr;
+};
+
+union HcomPayload {
+    uint64_t payload;
+    struct {
+        uint32_t client;
+        uint32_t server;
+    };
 };
 
 constexpr size_t KEYPASS_MAX_LEN = 10000;
@@ -110,8 +119,6 @@ private:
 
     void HcomChannelDisconnected(uint32_t rankId, Hcom_Channel ch);
 
-    void ForceReConnectHcomChannel(uint32_t rankId);
-
     Result GetMemoryRegionByAddr(const uint32_t &rankId, const uint64_t &addr, HcomMemoryRegion &mr);
 
     Result UpdateRankMrInfos(const std::unordered_map<uint32_t, TransportRankPrepareInfo> &opt);
@@ -148,6 +155,7 @@ private:
     std::vector<std::mutex> channelMutex_;
     std::vector<std::string> nics_;
     std::vector<Hcom_Channel> channels_;
+    HcomReconnector reconnect_;
     static hybm_tls_config tlsConfig_;
     static char keyPass_[KEYPASS_MAX_LEN];
     static std::mutex keyPassMutex;

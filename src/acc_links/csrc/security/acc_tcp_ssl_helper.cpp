@@ -9,7 +9,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
-
+#include <pthread.h>
 #include "acc_tcp_ssl_helper.h"
 #include "acc_common_util.h"
 #include "mf_file_util.h"
@@ -499,6 +499,7 @@ AccResult AccTcpSslHelper::StartCheckCertExpired()
 
 AccResult AccTcpSslHelper::CheckCertExpiredTask()
 {
+    pthread_setname_np(pthread_self(), "acc_cert_expire");
     while (true) {
         {
             std::unique_lock<std::mutex> lockGuard{mMutex};

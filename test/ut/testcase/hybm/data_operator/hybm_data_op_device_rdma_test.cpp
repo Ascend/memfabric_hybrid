@@ -213,24 +213,24 @@ public:
     uint64_t queryHasRegisteredCount{0};
 
     // 结果
-    ock::mf::Result openDeviceResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result closeDeviceResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result registerMemoryRegionResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result unregisterMemoryRegionResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result queryMemoryKeyResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result prepareResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result removeRanksResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result connectResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result asyncConnectResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result waitForConnectedResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result updateRankOptionsResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result synchronizeResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result writeRemoteBatchAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result readRemoteBatchAsyncResult{ock::mf::BErrorCode::BM_OK};
+    ock::mf::Result openDeviceResult{BM_OK};
+    ock::mf::Result closeDeviceResult{BM_OK};
+    ock::mf::Result registerMemoryRegionResult{BM_OK};
+    ock::mf::Result unregisterMemoryRegionResult{BM_OK};
+    ock::mf::Result queryMemoryKeyResult{BM_OK};
+    ock::mf::Result prepareResult{BM_OK};
+    ock::mf::Result removeRanksResult{BM_OK};
+    ock::mf::Result connectResult{BM_OK};
+    ock::mf::Result asyncConnectResult{BM_OK};
+    ock::mf::Result waitForConnectedResult{BM_OK};
+    ock::mf::Result updateRankOptionsResult{BM_OK};
+    ock::mf::Result writeRemoteResult{BM_OK};
+    ock::mf::Result readRemoteResult{BM_OK};
+    ock::mf::Result writeRemoteAsyncResult{BM_OK};
+    ock::mf::Result readRemoteAsyncResult{BM_OK};
+    ock::mf::Result synchronizeResult{BM_OK};
+    ock::mf::Result writeRemoteBatchAsyncResult{BM_OK};
+    ock::mf::Result readRemoteBatchAsyncResult{BM_OK};
     bool queryHasRegisteredResult{false};
     std::string nicName{"eth0"};
 
@@ -258,24 +258,24 @@ public:
         readRemoteBatchAsyncCount = 0;
         queryHasRegisteredCount = 0;
 
-        openDeviceResult = ock::mf::BErrorCode::BM_OK;
-        closeDeviceResult = ock::mf::BErrorCode::BM_OK;
-        registerMemoryRegionResult = ock::mf::BErrorCode::BM_OK;
-        unregisterMemoryRegionResult = ock::mf::BErrorCode::BM_OK;
-        queryMemoryKeyResult = ock::mf::BErrorCode::BM_OK;
-        prepareResult = ock::mf::BErrorCode::BM_OK;
-        removeRanksResult = ock::mf::BErrorCode::BM_OK;
-        connectResult = ock::mf::BErrorCode::BM_OK;
-        asyncConnectResult = ock::mf::BErrorCode::BM_OK;
-        waitForConnectedResult = ock::mf::BErrorCode::BM_OK;
-        updateRankOptionsResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteAsyncResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteAsyncResult = ock::mf::BErrorCode::BM_OK;
-        synchronizeResult = ock::mf::BErrorCode::BM_OK;
-        writeRemoteBatchAsyncResult = ock::mf::BErrorCode::BM_OK;
-        readRemoteBatchAsyncResult = ock::mf::BErrorCode::BM_OK;
+        openDeviceResult = BM_OK;
+        closeDeviceResult = BM_OK;
+        registerMemoryRegionResult = BM_OK;
+        unregisterMemoryRegionResult = BM_OK;
+        queryMemoryKeyResult = BM_OK;
+        prepareResult = BM_OK;
+        removeRanksResult = BM_OK;
+        connectResult = BM_OK;
+        asyncConnectResult = BM_OK;
+        waitForConnectedResult = BM_OK;
+        updateRankOptionsResult = BM_OK;
+        writeRemoteResult = BM_OK;
+        readRemoteResult = BM_OK;
+        writeRemoteAsyncResult = BM_OK;
+        readRemoteAsyncResult = BM_OK;
+        synchronizeResult = BM_OK;
+        writeRemoteBatchAsyncResult = BM_OK;
+        readRemoteBatchAsyncResult = BM_OK;
         queryHasRegisteredResult = false;
         nicName = "eth0";
     }
@@ -345,7 +345,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, initialize_success)
     InitMockEnv();
     // 测试 Initialize 成功场景
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
     dataOp_->UnInitialize();
 }
@@ -355,12 +355,12 @@ TEST_F(HybmDataOpDeviceRdmaTest, initialize_already_inited)
     InitMockEnv();
     // 测试重复初始化场景
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
 
     // 再次调用 Initialize 应该返回 BM_OK
     ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     // 不应再次调用 RegisterMemoryRegion
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
     dataOp_->UnInitialize();
@@ -370,9 +370,9 @@ TEST_F(HybmDataOpDeviceRdmaTest, initialize_register_memory_failed)
 {
     InitMockEnv();
     // 测试 RegisterMemoryRegion 失败场景
-    transportManagerMock_->registerMemoryRegionResult = ock::mf::BErrorCode::BM_MALLOC_FAILED;
+    transportManagerMock_->registerMemoryRegionResult = BM_MALLOC_FAILED;
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_MALLOC_FAILED, ret);
+    ASSERT_EQ(BM_MALLOC_FAILED, ret);
     ASSERT_EQ(1UL, transportManagerMock_->registerMemoryRegionCount);
     dataOp_->UnInitialize();
 }
@@ -392,7 +392,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, data_copy_all_directions)
 {
     InitMockEnv();
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     hybm_copy_params params{};
     ock::mf::ExtOptions options1{};
     options1.srcRankId = rankId_;
@@ -402,54 +402,54 @@ TEST_F(HybmDataOpDeviceRdmaTest, data_copy_all_directions)
     options2.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options2);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -459,20 +459,20 @@ TEST_F(HybmDataOpDeviceRdmaTest, data_copy_failed)
     MOCKER(&ock::mf::DlAclApi::AclrtMemcpy).stubs().will(returnValue(-1));
     InitMockEnv();
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     hybm_copy_params params{};
     ock::mf::ExtOptions options1{};
     options1.srcRankId = rankId_;
     options1.destRankId = rankId_;
 
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ASSERT_EQ(BM_DL_FUNCTION_FAILED, ret);
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ASSERT_EQ(BM_DL_FUNCTION_FAILED, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ASSERT_EQ(BM_DL_FUNCTION_FAILED, ret);
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options1);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ASSERT_EQ(BM_DL_FUNCTION_FAILED, ret);
 
     dataOp_->UnInitialize();
 }
@@ -482,7 +482,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, data_copy_async)
     InitMockEnv();
     // 测试异步数据拷贝
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params params{};
     ock::mf::ExtOptions options{};
@@ -490,7 +490,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, data_copy_async)
     options.destRankId = rankId_ + 1;
 
     ret = dataOp_->DataCopyAsync(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(BM_ERROR, ret);
 
     dataOp_->UnInitialize();
 }
@@ -500,10 +500,10 @@ TEST_F(HybmDataOpDeviceRdmaTest, wait)
     InitMockEnv();
     // 测试等待操作
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     ret = dataOp_->Wait(0);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -525,7 +525,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, safe_put_host_src)
     InitMockEnv();
     // 测试 SafePut 函数（源是主机内存）
     auto ret = dataOp_->Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     // 模拟 QueryHasRegistered 返回 false，强制使用 SafePut 的完整逻辑
     transportManagerMock_->queryHasRegisteredResult = false;
@@ -540,7 +540,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, safe_put_host_src)
 
     // 这里我们不关心具体的内存地址，只测试函数调用是否成功
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -565,7 +565,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, safe_put_device_src)
 
     // 测试从设备到全局的拷贝
     ret = dataOp_->DataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -590,7 +590,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, safe_get_host_dest)
 
     // 测试从全局到本地主机的拷贝
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -615,7 +615,7 @@ TEST_F(HybmDataOpDeviceRdmaTest, safe_get_device_dest)
 
     // 测试从全局到本地设备的拷贝
     ret = dataOp_->DataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     dataOp_->UnInitialize();
 }
@@ -660,65 +660,65 @@ TEST_F(HybmDataOpDeviceRdmaTest, batch_data_copy_all_directions)
     params.sources = srcLH;
     params.destinations = dstGH;
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGH;
     params.destinations = dstLH;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcLH;
     params.destinations = dstGD;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_GLOBAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGH;
     params.destinations = dstLH;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGD;
     params.destinations = dstLH;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGD;
     params.destinations = dstLD;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcLH;
     params.destinations = dstGD;
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGD;
     params.destinations = dstLH;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcLD;
     params.destinations = dstGH;
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGH;
     params.destinations = dstLD;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_HOST_TO_LOCAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcLD;
     params.destinations = dstGD;
     ret = dataOp_->BatchDataCopy(params, HYBM_LOCAL_DEVICE_TO_GLOBAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     params.sources = srcGD;
     params.destinations = dstLD;
     ret = dataOp_->BatchDataCopy(params, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     ret = dataOp_->BatchDataCopy(params, HYBM_DATA_COPY_DIRECTION_AUTO, options);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_ERROR, ret);
+    ASSERT_EQ(BM_ERROR, ret);
 
     dataOp_->UnInitialize();
 }

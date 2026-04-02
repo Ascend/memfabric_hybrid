@@ -202,31 +202,31 @@ public:
     int32_t CopyData(hybm_copy_params& /* params */, hybm_data_copy_direction /* direction */, void* /* stream */,
                      uint32_t /* flags */) noexcept override
     {
-        return ock::mf::BM_OK;
+        return BM_OK;
     }
 
     int32_t BatchCopyData(hybm_batch_copy_params& /* params */, hybm_data_copy_direction /* direction */,
                           void* /* stream */, uint32_t /* flags */) noexcept override
     {
-        return ock::mf::BM_OK;
+        return BM_OK;
     }
 
     int32_t Wait() noexcept override
     {
-        return ock::mf::BM_OK;
+        return BM_OK;
     }
 
     // 状态记录字段，方便 UT 验证
     bool initCalled{false};
-    int32_t initRet{ock::mf::BM_OK};
+    int32_t initRet{BM_OK};
 
     bool uninitCalled{false};
 
     bool reserveCalled{false};
-    int32_t reserveRet{ock::mf::BM_OK};
+    int32_t reserveRet{BM_OK};
 
     bool unreserveCalled{false};
-    int32_t unreserveRet{ock::mf::BM_OK};
+    int32_t unreserveRet{BM_OK};
 
     void* reservedPtr{nullptr};
     hybm_mem_type lastMemType{HYBM_MEM_TYPE_HOST};
@@ -236,55 +236,55 @@ public:
     hybm_mem_type allocMemType{HYBM_MEM_TYPE_HOST};
     uint32_t allocFlags{0};
     hybm_mem_slice_t allocSlice{reinterpret_cast<hybm_mem_slice_t>(0x1234)};
-    int32_t allocRet{ock::mf::BM_OK};
+    int32_t allocRet{BM_OK};
 
     bool regCalled{false};
     const void* regPtr{nullptr};
     uint64_t regSize{0};
     uint32_t regFlags{0};
     hybm_mem_slice_t regSlice{reinterpret_cast<hybm_mem_slice_t>(0x5678)};
-    int32_t regRet{ock::mf::BM_OK};
+    int32_t regRet{BM_OK};
 
     bool freeCalled{false};
     hybm_mem_slice_t freeSlice{nullptr};
     uint32_t freeFlags{0};
-    int32_t freeRet{ock::mf::BM_OK};
+    int32_t freeRet{BM_OK};
 
     bool exportEntityCalled{false};
     bool exportSliceCalled{false};
     hybm_mem_slice_t exportSlice{nullptr};
     uint32_t exportFlags{0};
-    int32_t exportEntityRet{ock::mf::BM_OK};
-    int32_t exportSliceRet{ock::mf::BM_OK};
+    int32_t exportEntityRet{BM_OK};
+    int32_t exportSliceRet{BM_OK};
 
     bool getExportSizeCalled{false};
     size_t exportSizeValue{128};
-    int32_t exportSizeRet{ock::mf::BM_OK};
+    int32_t exportSizeRet{BM_OK};
 
     bool importCalled{false};
     const ock::mf::ExchangeInfoReader* importDesc{nullptr};
     uint32_t importCount{0};
     uint32_t importFlags{0};
     void** importAddresses{nullptr};
-    int32_t importRet{ock::mf::BM_OK};
+    int32_t importRet{BM_OK};
 
     bool importEntityCalled{false};
     const ock::mf::ExchangeInfoReader* importEntityDesc{nullptr};
     uint32_t importEntityCount{0};
     uint32_t importEntityFlags{0};
-    int32_t importEntityRet{ock::mf::BM_OK};
+    int32_t importEntityRet{BM_OK};
 
     bool removeImportedCalled{false};
     std::vector<uint32_t> removedRanks;
-    int32_t removeImportedRet{ock::mf::BM_OK};
+    int32_t removeImportedRet{BM_OK};
 
     bool extraCtxCalled{false};
     const void* extraCtxPtr{nullptr};
     uint32_t extraCtxSize{0};
-    int32_t extraCtxRet{ock::mf::BM_OK};
+    int32_t extraCtxRet{BM_OK};
 
     bool mmapCalled{false};
-    int32_t mmapRet{ock::mf::BM_OK};
+    int32_t mmapRet{BM_OK};
 
     bool unmapCalled{false};
 
@@ -328,7 +328,7 @@ TEST_F(HybmBigMemEntryTest, hybm_create_entity_initialize_failed)
 
     // 准备 stub 对象
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->initRet = ock::mf::BM_ERROR;
+    stub->initRet = BM_ERROR;
 
     // GetOrCreateEngine 返回 stub
     union {
@@ -394,7 +394,7 @@ TEST_F(HybmBigMemEntryTest, hybm_create_and_destroy_entity_success)
 TEST_F(HybmBigMemEntryTest, hybm_reserve_mem_space_invalid_entity)
 {
     auto ret = hybm_reserve_mem_space(nullptr, 0);
-    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_reserve_mem_space_find_engine_null)
@@ -408,13 +408,13 @@ TEST_F(HybmBigMemEntryTest, hybm_reserve_mem_space_find_engine_null)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x1);
     auto ret = hybm_reserve_mem_space(fakeEntity, 0);
-    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_reserve_mem_space_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->reserveRet = ock::mf::BM_OK;
+    stub->reserveRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -426,14 +426,14 @@ TEST_F(HybmBigMemEntryTest, hybm_reserve_mem_space_success)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x2);
     auto ret = hybm_reserve_mem_space(fakeEntity, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->reserveCalled);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_unreserve_mem_space_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->unreserveRet = ock::mf::BM_OK;
+    stub->unreserveRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -445,7 +445,7 @@ TEST_F(HybmBigMemEntryTest, hybm_unreserve_mem_space_success)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x3);
     auto ret = hybm_unreserve_mem_space(fakeEntity, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->unreserveCalled);
 }
 
@@ -478,7 +478,7 @@ TEST_F(HybmBigMemEntryTest, hybm_alloc_local_memory_invalid_entity)
 TEST_F(HybmBigMemEntryTest, hybm_alloc_local_memory_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->allocRet = ock::mf::BM_OK;
+    stub->allocRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -500,7 +500,7 @@ TEST_F(HybmBigMemEntryTest, hybm_alloc_local_memory_success)
 TEST_F(HybmBigMemEntryTest, hybm_free_local_memory_invalid_params)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->freeRet = ock::mf::BM_OK;
+    stub->freeRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -511,13 +511,13 @@ TEST_F(HybmBigMemEntryTest, hybm_free_local_memory_invalid_params)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x5);
     auto ret = hybm_free_local_memory(fakeEntity, reinterpret_cast<hybm_mem_slice_t>(0x1), 1, 0);
-    EXPECT_EQ(ret, ock::mf::BM_INVALID_PARAM);
+    EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_free_local_memory_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->freeRet = ock::mf::BM_OK;
+    stub->freeRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -530,7 +530,7 @@ TEST_F(HybmBigMemEntryTest, hybm_free_local_memory_success)
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x6);
     auto slice = reinterpret_cast<hybm_mem_slice_t>(0x111);
     auto ret = hybm_free_local_memory(fakeEntity, slice, 1, 2);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->freeCalled);
     EXPECT_EQ(stub->freeSlice, slice);
     EXPECT_EQ(stub->freeFlags, 2U);
@@ -539,7 +539,7 @@ TEST_F(HybmBigMemEntryTest, hybm_free_local_memory_success)
 TEST_F(HybmBigMemEntryTest, hybm_register_local_memory_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->regRet = ock::mf::BM_OK;
+    stub->regRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -564,7 +564,7 @@ TEST_F(HybmBigMemEntryTest, hybm_register_local_memory_success)
 TEST_F(HybmBigMemEntryTest, hybm_export_entity_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->exportEntityRet = ock::mf::BM_OK;
+    stub->exportEntityRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -577,14 +577,14 @@ TEST_F(HybmBigMemEntryTest, hybm_export_entity_success)
     hybm_exchange_info info{};
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x8);
     auto ret = hybm_export(fakeEntity, nullptr, HYBM_FLAG_EXPORT_ENTITY, &info);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->exportEntityCalled);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_export_slice_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->exportSliceRet = ock::mf::BM_OK;
+    stub->exportSliceRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -598,7 +598,7 @@ TEST_F(HybmBigMemEntryTest, hybm_export_slice_success)
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x9);
     auto slice = reinterpret_cast<hybm_mem_slice_t>(0x123);
     auto ret = hybm_export(fakeEntity, slice, 0, &info);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->exportSliceCalled);
     EXPECT_EQ(stub->exportSlice, slice);
 }
@@ -607,7 +607,7 @@ TEST_F(HybmBigMemEntryTest, hybm_export_slice_size_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
     stub->exportSizeValue = 256;
-    stub->exportSizeRet = ock::mf::BM_OK;
+    stub->exportSizeRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -620,7 +620,7 @@ TEST_F(HybmBigMemEntryTest, hybm_export_slice_size_success)
     size_t size = 0;
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x10);
     auto ret = hybm_export_slice_size(fakeEntity, &size);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->getExportSizeCalled);
     EXPECT_EQ(size, stub->exportSizeValue);
 }
@@ -628,7 +628,7 @@ TEST_F(HybmBigMemEntryTest, hybm_export_slice_size_success)
 TEST_F(HybmBigMemEntryTest, hybm_import_slices_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->importRet = ock::mf::BM_OK;
+    stub->importRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -642,7 +642,7 @@ TEST_F(HybmBigMemEntryTest, hybm_import_slices_success)
     void* addresses[2]{};
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x11);
     auto ret = hybm_import(fakeEntity, infos, 2, addresses, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->importCalled);
     EXPECT_EQ(stub->importCount, 2U);
 }
@@ -650,7 +650,7 @@ TEST_F(HybmBigMemEntryTest, hybm_import_slices_success)
 TEST_F(HybmBigMemEntryTest, hybm_import_entity_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->importEntityRet = ock::mf::BM_OK;
+    stub->importEntityRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -663,7 +663,7 @@ TEST_F(HybmBigMemEntryTest, hybm_import_entity_success)
     hybm_exchange_info infos[1]{};
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x12);
     auto ret = hybm_import(fakeEntity, infos, 1, nullptr, HYBM_FLAG_EXPORT_ENTITY);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->importEntityCalled);
 }
 
@@ -672,7 +672,7 @@ TEST_F(HybmBigMemEntryTest, hybm_import_entity_success)
 TEST_F(HybmBigMemEntryTest, hybm_mmap_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->mmapRet = ock::mf::BM_OK;
+    stub->mmapRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -684,7 +684,7 @@ TEST_F(HybmBigMemEntryTest, hybm_mmap_success)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x13);
     auto ret = hybm_mmap(fakeEntity, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->mmapCalled);
 }
 
@@ -723,14 +723,14 @@ TEST_F(HybmBigMemEntryTest, hybm_entity_reach_types_success)
     hybm_data_op_type reach{};
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x15);
     auto ret = hybm_entity_reach_types(fakeEntity, 1, reach, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(reach, stub->reachTypes);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_remove_imported_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->removeImportedRet = ock::mf::BM_OK;
+    stub->removeImportedRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -742,7 +742,7 @@ TEST_F(HybmBigMemEntryTest, hybm_remove_imported_success)
 
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x16);
     auto ret = hybm_remove_imported(fakeEntity, 3, 0);
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->removeImportedCalled);
     ASSERT_EQ(stub->removedRanks.size(), 1U);
     EXPECT_EQ(stub->removedRanks[0], 3U);
@@ -751,7 +751,7 @@ TEST_F(HybmBigMemEntryTest, hybm_remove_imported_success)
 TEST_F(HybmBigMemEntryTest, hybm_set_extra_context_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
-    stub->extraCtxRet = ock::mf::BM_OK;
+    stub->extraCtxRet = BM_OK;
 
     union {
         ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
@@ -764,7 +764,7 @@ TEST_F(HybmBigMemEntryTest, hybm_set_extra_context_success)
     int ctx = 123;
     auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x17);
     auto ret = hybm_set_extra_context(fakeEntity, &ctx, sizeof(ctx));
-    EXPECT_EQ(ret, ock::mf::BM_OK);
+    EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->extraCtxCalled);
     EXPECT_EQ(stub->extraCtxPtr, &ctx);
     EXPECT_EQ(stub->extraCtxSize, sizeof(ctx));

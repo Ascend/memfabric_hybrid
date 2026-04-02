@@ -32,7 +32,7 @@ TEST_F(HybmDataOperatorTest, quant_copy_test)
     ock::mf::DataOperatorPtr opPtr = std::make_shared<ock::mf::HostDataOpSDMA>();
     hybm_quant_copy_params param;
     auto ret = opPtr->ock::mf::DataOperator::QuantCopy(param);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_NOT_SUPPORTED, ret);
+    ASSERT_EQ(BM_NOT_SUPPORTED, ret);
 }
 
 TEST_F(HybmDataOperatorTest, update_gva_space_test)

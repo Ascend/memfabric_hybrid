@@ -38,11 +38,11 @@ public:
     uint64_t batchDataCopyCount{0};
     uint64_t dataCopyAsyncCount{0};
     uint64_t waitCount{0};
-    ock::mf::Result initializeResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result dataCopyResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result batchDataCopyResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result dataCopyAsyncResult{ock::mf::BErrorCode::BM_OK};
-    ock::mf::Result waitResult{ock::mf::BErrorCode::BM_OK};
+    ock::mf::Result initializeResult{BM_OK};
+    ock::mf::Result dataCopyResult{BM_OK};
+    ock::mf::Result batchDataCopyResult{BM_OK};
+    ock::mf::Result dataCopyAsyncResult{BM_OK};
+    ock::mf::Result waitResult{BM_OK};
 
     const std::string name;
 };
@@ -93,11 +93,11 @@ void DataOperatorMock::Reset() noexcept
     batchDataCopyCount = 0;
     dataCopyAsyncCount = 0;
     waitCount = 0;
-    initializeResult = ock::mf::BErrorCode::BM_OK;
-    dataCopyResult = ock::mf::BErrorCode::BM_OK;
-    batchDataCopyResult = ock::mf::BErrorCode::BM_OK;
-    dataCopyAsyncResult = ock::mf::BErrorCode::BM_OK;
-    waitResult = ock::mf::BErrorCode::BM_OK;
+    initializeResult = BM_OK;
+    dataCopyResult = BM_OK;
+    batchDataCopyResult = BM_OK;
+    dataCopyAsyncResult = BM_OK;
+    waitResult = BM_OK;
 }
 
 void DataOperatorMock::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept {}
@@ -186,7 +186,7 @@ TEST_F(HybmComposeDataOpTest, initialize_with_bm_type_ai_core)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 }
 
 TEST_F(HybmComposeDataOpTest, initialize_with_sdma_only)
@@ -201,7 +201,7 @@ TEST_F(HybmComposeDataOpTest, initialize_with_sdma_only)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     dataOp.UnInitialize();
@@ -220,7 +220,7 @@ TEST_F(HybmComposeDataOpTest, initialize_with_dev_rdma_only)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, devRdmaDataOpMock->initializeCount);
 
     dataOp.UnInitialize();
@@ -239,7 +239,7 @@ TEST_F(HybmComposeDataOpTest, initialize_with_host_rdma_only)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, hostRdmaDataOpMock->initializeCount);
 
     dataOp.UnInitialize();
@@ -263,7 +263,7 @@ TEST_F(HybmComposeDataOpTest, initialize_with_data_op_all)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, hostRdmaDataOpMock->initializeCount);
@@ -290,9 +290,9 @@ TEST_F(HybmComposeDataOpTest, initialize_with_data_op_all_sdma_failed)
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
-    sdmaDataOpMock->initializeResult = ock::mf::BErrorCode::BM_ERROR;
+    sdmaDataOpMock->initializeResult = BM_ERROR;
     auto ret = dataOp.Initialize();
-    ASSERT_NE(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_NE(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
     ASSERT_EQ(0UL, devRdmaDataOpMock->initializeCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->initializeCount);
@@ -319,9 +319,9 @@ TEST_F(HybmComposeDataOpTest, initialize_with_data_op_all_dev_rdma_failed)
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
-    devRdmaDataOpMock->initializeResult = ock::mf::BErrorCode::BM_ERROR;
+    devRdmaDataOpMock->initializeResult = BM_ERROR;
     auto ret = dataOp.Initialize();
-    ASSERT_NE(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_NE(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->initializeCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->initializeCount);
@@ -348,9 +348,9 @@ TEST_F(HybmComposeDataOpTest, initialize_with_data_op_all_host_rdma_failed)
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
-    hostRdmaDataOpMock->initializeResult = ock::mf::BErrorCode::BM_ERROR;
+    hostRdmaDataOpMock->initializeResult = BM_ERROR;
     auto ret = dataOp.Initialize();
-    ASSERT_NE(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_NE(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, hostRdmaDataOpMock->initializeCount);
@@ -379,13 +379,13 @@ TEST_F(HybmComposeDataOpTest, data_copy_sdma_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyCount);
 
     dataOp.UnInitialize();
@@ -414,12 +414,12 @@ TEST_F(HybmComposeDataOpTest, data_copy_all_sdma_first_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyCount);
     ASSERT_EQ(0UL, devRdmaDataOpMock->dataCopyCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->dataCopyCount);
@@ -447,16 +447,16 @@ TEST_F(HybmComposeDataOpTest, data_copy_all_sdma_failed_dev_rdma_success)
     MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateDevRdmaDataOperator).stubs().will(invoke(CreateDevRdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
-    sdmaDataOpMock->dataCopyResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+    sdmaDataOpMock->dataCopyResult = BM_DL_FUNCTION_FAILED;
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->dataCopyCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->dataCopyCount);
@@ -483,7 +483,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_sdma_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     hybm_batch_copy_params copyParams{};
@@ -499,7 +499,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_sdma_success)
     ock::mf::ExtOptions extOptions{};
     extOptions.groupMap[p2pInfo].push_back(0);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
 
     dataOp.UnInitialize();
@@ -528,7 +528,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_first_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params copyParams{};
     std::vector<void *> sourcesVec = {nullptr};
@@ -541,7 +541,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_first_success)
     ock::mf::ExtOptions extOptions{};
     extOptions.groupMap.emplace(std::make_pair<uint32_t, uint32_t>(0, 1), std::vector<uint32_t>{0});
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
     ASSERT_EQ(0UL, devRdmaDataOpMock->batchDataCopyCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->batchDataCopyCount);
@@ -569,11 +569,11 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_failed_dev_rdma_success)
     MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateDevRdmaDataOperator).stubs().will(invoke(CreateDevRdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
-    sdmaDataOpMock->batchDataCopyResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+    sdmaDataOpMock->batchDataCopyResult = BM_DL_FUNCTION_FAILED;
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
@@ -587,7 +587,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_all_sdma_failed_dev_rdma_success)
     std::pair<uint32_t, uint32_t> p2pInfo{};
     extOptions.groupMap[p2pInfo].push_back(0);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED, ret);
+    ASSERT_EQ(BM_DL_FUNCTION_FAILED, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->batchDataCopyCount);
     ASSERT_EQ(0UL, devRdmaDataOpMock->batchDataCopyCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->batchDataCopyCount);
@@ -615,11 +615,11 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_non_rank0_rdma_success)
     MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateDevRdmaDataOperator).stubs().will(invoke(CreateDevRdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
-    sdmaDataOpMock->batchDataCopyResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+    sdmaDataOpMock->batchDataCopyResult = BM_DL_FUNCTION_FAILED;
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_batch_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
@@ -635,7 +635,7 @@ TEST_F(HybmComposeDataOpTest, batch_data_copy_non_rank0_rdma_success)
     extOptions.groupMap[p2pInfo].push_back(0);
     extOptions.groupMap[p2pInfo2].push_back(1);
     ret = dataOp.BatchDataCopy(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(2UL, devRdmaDataOpMock->batchDataCopyCount);
 
     dataOp.UnInitialize();
@@ -660,13 +660,13 @@ TEST_F(HybmComposeDataOpTest, data_copy_async_sdma_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopyAsync(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyAsyncCount);
 
     dataOp.UnInitialize();
@@ -695,12 +695,12 @@ TEST_F(HybmComposeDataOpTest, data_copy_async_all_sdma_first_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopyAsync(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyAsyncCount);
     ASSERT_EQ(0UL, devRdmaDataOpMock->dataCopyAsyncCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->dataCopyAsyncCount);
@@ -728,16 +728,16 @@ TEST_F(HybmComposeDataOpTest, data_copy_async_all_sdma_failed_dev_rdma_success)
     MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateDevRdmaDataOperator).stubs().will(invoke(CreateDevRdmaDataOperator));
     MOCKER(ock::mf::DataOperatorFactory::CreateHostRdmaDataOperator).stubs().will(invoke(CreateHostRdmaDataOperator));
-    sdmaDataOpMock->dataCopyAsyncResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+    sdmaDataOpMock->dataCopyAsyncResult = BM_DL_FUNCTION_FAILED;
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
 
     hybm_copy_params copyParams{};
     ock::mf::ExtOptions extOptions{};
     ret = dataOp.DataCopyAsync(copyParams, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, extOptions);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->dataCopyAsyncCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->dataCopyAsyncCount);
     ASSERT_EQ(0UL, hostRdmaDataOpMock->dataCopyAsyncCount);
@@ -764,11 +764,11 @@ TEST_F(HybmComposeDataOpTest, dwait_sdma_success)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     ret = dataOp.Wait(0);
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->waitCount);
 
     dataOp.UnInitialize();
@@ -790,15 +790,15 @@ TEST_F(HybmComposeDataOpTest, dwait_sdma_failed)
     u.getRank2RankOpType = &ock::mf::HybmEntityTagInfo::GetRank2RankOpType;
     MOCKER(u.mocker).stubs().will(returnValue(OpOr(HYBM_DOP_TYPE_SDMA)));
     MOCKER(ock::mf::DataOperatorFactory::CreateSdmaDataOperator).stubs().will(invoke(CreateSdmaDataOperator));
-    sdmaDataOpMock->waitResult = ock::mf::BErrorCode::BM_DL_FUNCTION_FAILED;
+    sdmaDataOpMock->waitResult = BM_DL_FUNCTION_FAILED;
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->initializeCount);
 
     ret = dataOp.Wait(0);
-    ASSERT_NE(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_NE(BM_OK, ret);
     ASSERT_EQ(1UL, sdmaDataOpMock->waitCount);
 
     dataOp.UnInitialize();
@@ -824,13 +824,13 @@ TEST_F(HybmComposeDataOpTest, dwait_no_sdma_failed)
 
     ock::mf::HostComposeDataOp dataOp(options, nullptr, tag);
     auto ret = dataOp.Initialize();
-    ASSERT_EQ(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_EQ(BM_OK, ret);
     ASSERT_EQ(0UL, sdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, devRdmaDataOpMock->initializeCount);
     ASSERT_EQ(1UL, hostRdmaDataOpMock->initializeCount);
 
     ret = dataOp.Wait(0);
-    ASSERT_NE(ock::mf::BErrorCode::BM_OK, ret);
+    ASSERT_NE(BM_OK, ret);
 
     dataOp.UnInitialize();
     ASSERT_EQ(1UL, devRdmaDataOpMock->uninitializeCount);

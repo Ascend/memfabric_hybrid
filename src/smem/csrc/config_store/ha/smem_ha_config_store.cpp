@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <poll.h>
+#include <pthread.h>
 #include <cerrno>
 #include <cstring>
 
@@ -426,6 +427,7 @@ void HaConfigStore::TriggerReElectionAsync() noexcept
     std::thread prev = std::move(reElectionThread_);
 
     reElectionThread_ = std::thread([this, prev = std::move(prev)]() mutable {
+        pthread_setname_np(pthread_self(), "ha_elect_th");
         if (prev.joinable()) {
             prev.join();
         }

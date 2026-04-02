@@ -43,6 +43,7 @@ extern "C" {
 #define SMEM_NOT_INIT                       (-2008)
 #define SMEM_RES_IN_USE                     (-2009)
 #define SMEM_PARTIAL_FAILED                 (-2012)
+#define SMEM_NOT_CONNECTED                  (-2014)
 
 /**
  * @brief Initialize the smem running environment

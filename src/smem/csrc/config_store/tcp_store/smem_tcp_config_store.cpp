@@ -9,7 +9,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
-
+#include <pthread.h>
 #include "smem_tcp_config_store.h"
 #include "smem_config_store_logger.h"
 #include "smem_message_packer.h"
@@ -813,6 +813,7 @@ Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
 
 void TcpConfigStore::HeartBeat() noexcept
 {
+    pthread_setname_np(pthread_self(), "config_store_hb");
     while (isRunning_.load()) {
         if (isConnect_.load()) {
             SmemMessage request{MessageType::HEARTBEAT};

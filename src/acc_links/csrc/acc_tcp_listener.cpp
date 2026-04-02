@@ -11,6 +11,7 @@
 */
 #include <net/if.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "acc_common_util.h"
 #include "mf_ipv4_validator.h"
 #include "acc_tcp_listener.h"
@@ -128,6 +129,7 @@ void AccTcpListener::Stop(bool afterFork) noexcept
 
 void AccTcpListener::RunInThread() noexcept
 {
+    pthread_setname_np(pthread_self(), "acc_accept_poll");
     LOG_INFO("Acc listener accept thread for " << NameAndPort() << " start ...");
     threadStarted_.store(true);
 

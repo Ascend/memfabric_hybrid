@@ -39,6 +39,21 @@ typedef void *hybm_mem_slice_t;
 
 #define HYBM_PRE_REG_SIZE_THRES (8192U * 1024) // local buffer larger than 8MB maybe preregister to mr
 
+/* error code define */
+#define BM_OK                               (0)
+#define BM_ERROR                            (-1)
+#define BM_INVALID_PARAM                    (-2)
+#define BM_MALLOC_FAILED                    (-3)
+#define BM_NEW_OBJECT_FAILED                (-4)
+#define BM_FILE_NOT_ACCESS                  (-5)
+#define BM_DL_FUNCTION_FAILED               (-6)
+#define BM_TIMEOUT                          (-7)
+#define BM_UNDER_API_UNLOAD                 (-8)
+#define BM_NOT_INITIALIZED                  (-9)
+#define BM_NOT_SUPPORT_FUNC                 (-10)
+#define BM_NOT_SUPPORTED                    (-100)
+#define BM_NOT_CONNECTED                    (-101)
+
 /**
  * @brief Determine whether the IO initiator is on the host or the device.
  */

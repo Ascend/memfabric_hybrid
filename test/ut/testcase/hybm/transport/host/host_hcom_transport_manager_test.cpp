@@ -315,8 +315,10 @@ TEST(HcomTransportManagerTest, TransportRpcHcomEndPointBrokenValidPayloadDisconn
 {
     auto mgr = HcomTransportManager::GetInstance();
     mgr->rankCount_ = 2;
+    mgr->channelMutex_ = std::vector<std::mutex>(mgr->rankCount_);
     mgr->channels_ = std::vector<Hcom_Channel>(2, 0);
     mgr->channels_[1] = static_cast<Hcom_Channel>(0x123UL);
+    mgr->nics_ = std::vector<std::string>(mgr->rankCount_);
 
     // payload carries rank id.
     EXPECT_EQ(HcomTransportManager::TransportRpcHcomEndPointBroken(static_cast<Hcom_Channel>(0x123UL), 0, "1"), BM_OK);
@@ -334,13 +336,13 @@ TEST(HcomTransportManagerTest, InnerReadWriteRemoteNotConnectedOrMissingKeysRetu
     mgr->channels_ = std::vector<Hcom_Channel>(1, 0);
 
     // Not connected.
-    EXPECT_EQ(mgr->InnerReadRemote(0, 0x1000, 0x2000, 16), BM_ERROR);
-    EXPECT_EQ(mgr->InnerWriteRemote(0, 0x1000, 0x2000, 16), BM_ERROR);
+    EXPECT_NE(BM_OK, mgr->InnerReadRemote(0, 0x1000, 0x2000, 16));
+    EXPECT_NE(BM_OK, mgr->InnerWriteRemote(0, 0x1000, 0x2000, 16));
 
     // Connected but missing local key.
     mgr->channels_[0] = static_cast<Hcom_Channel>(0x10UL);
-    EXPECT_EQ(mgr->InnerReadRemote(0, 0x1000, 0x2000, 16), BM_ERROR);
-    EXPECT_EQ(mgr->InnerWriteRemote(0, 0x1000, 0x2000, 16), BM_ERROR);
+    EXPECT_NE(BM_OK, mgr->InnerReadRemote(0, 0x1000, 0x2000, 16));
+    EXPECT_NE(BM_OK, mgr->InnerWriteRemote(0, 0x1000, 0x2000, 16));
 }
 
 TEST(HcomTransportManagerTest, ChannelAsyncCallbackFinishesOrFailsBasedOnContextResult)
@@ -438,7 +440,7 @@ TEST(HcomTransportManagerTest, UpdateRankConnectInfosConnectsWhenChannelEmptyAnd
 {
     auto mgr = HcomTransportManager::GetInstance();
     mgr->rpcService_ = 1;
-    mgr->rankId_ = 0;
+    mgr->rankId_ = 1;
     mgr->rankCount_ = 2;
     mgr->channelMutex_ = std::vector<std::mutex>(2);
     mgr->channels_ = std::vector<Hcom_Channel>(2, 0);
@@ -447,22 +449,22 @@ TEST(HcomTransportManagerTest, UpdateRankConnectInfosConnectsWhenChannelEmptyAnd
     DlHcomApiFnGuard guard;
     DlHcomApi::gServiceConnect = &FakeServiceConnectOk;
 
-    TransportRankPrepareInfo r1{};
-    r1.nic = "tcp://127.0.0.1:2048";
+    TransportRankPrepareInfo r0{};
+    r0.nic = "tcp://127.0.0.1:2048";
 
     std::unordered_map<uint32_t, TransportRankPrepareInfo> opt;
-    opt.emplace(1U, r1);
+    opt.emplace(0U, r0);
 
     EXPECT_EQ(mgr->UpdateRankConnectInfos(opt), BM_OK);
-    EXPECT_EQ(mgr->channels_[1], static_cast<Hcom_Channel>(0x99UL));
-    EXPECT_EQ(mgr->nics_[1], r1.nic);
+    EXPECT_EQ(mgr->channels_[0], static_cast<Hcom_Channel>(0x99UL));
+    EXPECT_EQ(mgr->nics_[0], r0.nic);
 }
 
 TEST(HcomTransportManagerTest, UpdateRankConnectInfosPropagatesConnectFailure)
 {
     auto mgr = HcomTransportManager::GetInstance();
     mgr->rpcService_ = 1;
-    mgr->rankId_ = 0;
+    mgr->rankId_ = 1;
     mgr->rankCount_ = 2;
     mgr->channelMutex_ = std::vector<std::mutex>(2);
     mgr->channels_ = std::vector<Hcom_Channel>(2, 0);
@@ -471,10 +473,10 @@ TEST(HcomTransportManagerTest, UpdateRankConnectInfosPropagatesConnectFailure)
     DlHcomApiFnGuard guard;
     DlHcomApi::gServiceConnect = &FakeServiceConnectFail;
 
-    TransportRankPrepareInfo r1{};
-    r1.nic = "tcp://127.0.0.1:2048";
+    TransportRankPrepareInfo r0{};
+    r0.nic = "tcp://127.0.0.1:2048";
     std::unordered_map<uint32_t, TransportRankPrepareInfo> opt;
-    opt.emplace(1U, r1);
+    opt.emplace(0U, r0);
 
     EXPECT_EQ(mgr->UpdateRankConnectInfos(opt), BM_DL_FUNCTION_FAILED);
 }
@@ -495,7 +497,7 @@ TEST(HcomTransportManagerTest, UpdateRankOptionsPropagatesMrOrConnectFailure)
 {
     auto mgr = HcomTransportManager::GetInstance();
     mgr->rpcService_ = 1;
-    mgr->rankId_ = 0;
+    mgr->rankId_ = 1;
     mgr->rankCount_ = 2;
     mgr->bmOptype_ = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_HOST_URMA);
     mgr->mrMutex_ = std::vector<std::mutex>(2);
@@ -509,10 +511,10 @@ TEST(HcomTransportManagerTest, UpdateRankOptionsPropagatesMrOrConnectFailure)
     DlHcomApi::gServiceConnect = &FakeServiceConnectFail;
 
     HybmTransPrepareOptions param{};
-    TransportRankPrepareInfo r1{};
-    r1.nic = "tcp://127.0.0.1:2048";
+    TransportRankPrepareInfo r0{};
+    r0.nic = "tcp://127.0.0.1:2048";
     // No memKeys -> UpdateRankMrInfos should succeed.
-    param.options.emplace(1U, r1);
+    param.options.emplace(0U, r0);
 
     // Should fail at connect stage.
     EXPECT_EQ(mgr->UpdateRankOptions(param), BM_DL_FUNCTION_FAILED);
@@ -542,6 +544,7 @@ TEST(HcomTransportManagerTest, ConnectHcomChannelSetsLinkCountAndPayload)
     auto mgr = HcomTransportManager::GetInstance();
     mgr->rpcService_ = 1;
     mgr->rankCount_ = 3;
+    mgr->rankId_ = 2;
     mgr->channelMutex_ = std::vector<std::mutex>(3);
     mgr->channels_ = std::vector<Hcom_Channel>(3, 0);
 
@@ -556,15 +559,18 @@ TEST(HcomTransportManagerTest, ConnectHcomChannelSetsLinkCountAndPayload)
     };
 
     // TCP url should use HCOM_TRANS_EP_SIZE.
-    EXPECT_EQ(mgr->ConnectHcomChannel(2, "tcp://127.0.0.1:2048"), BM_OK);
-    EXPECT_EQ(mgr->channels_[2], static_cast<Hcom_Channel>(0x55UL));
-    EXPECT_EQ(capturedPayload, "2");
+    HcomPayload payload{};
+    payload.client = mgr->rankId_;
+    payload.server = 1;
+    EXPECT_EQ(mgr->ConnectHcomChannel(1, "tcp://127.0.0.1:2048"), BM_OK);
+    EXPECT_EQ(mgr->channels_[1], static_cast<Hcom_Channel>(0x55UL));
+    EXPECT_EQ(capturedPayload, std::to_string(payload.payload));
     EXPECT_GE(capturedLinkCount, 1U);
 
     // UBC url should set linkCount = 1.
-    mgr->channels_[2] = 0;
-    EXPECT_EQ(mgr->ConnectHcomChannel(2, std::string(UBC_PROTOCOL_PREFIX) + "xxxx"), BM_OK);
-    EXPECT_EQ(capturedPayload, "2");
+    mgr->channels_[1] = 0;
+    EXPECT_EQ(mgr->ConnectHcomChannel(1, std::string(UBC_PROTOCOL_PREFIX) + "xxxx"), BM_OK);
+    EXPECT_EQ(capturedPayload, std::to_string(payload.payload));
     EXPECT_EQ(capturedLinkCount, 1U);
 }
 
@@ -586,58 +592,14 @@ TEST(HcomTransportManagerTest, ConnectHcomChannelPropagatesServiceConnectFailure
 TEST(HcomTransportManagerTest, HcomChannelDisconnectedClearsMatchingChannelOnly)
 {
     auto mgr = HcomTransportManager::GetInstance();
+    mgr->rankId_ = 1;
     mgr->rankCount_ = 2;
     mgr->channels_ = std::vector<Hcom_Channel>(2, 0);
-    mgr->channels_[1] = static_cast<Hcom_Channel>(0xAAUL);
-
-    // Non-matching should not clear.
-    mgr->HcomChannelDisconnected(1, static_cast<Hcom_Channel>(0xBBUL));
-    EXPECT_EQ(mgr->channels_[1], static_cast<Hcom_Channel>(0xAAUL));
+    mgr->channels_[0] = static_cast<Hcom_Channel>(0xAAUL);
 
     // Matching should clear.
     mgr->HcomChannelDisconnected(1, static_cast<Hcom_Channel>(0xAAUL));
     EXPECT_EQ(mgr->channels_[1], static_cast<Hcom_Channel>(0));
-}
-
-TEST(HcomTransportManagerTest, DisConnectHcomChannelEarlyReturnsAndClearsWhenMatches)
-{
-    auto mgr = HcomTransportManager::GetInstance();
-
-    // Empty channels_ -> early return, no crash.
-    mgr->channels_.clear();
-    mgr->DisConnectHcomChannel(0, static_cast<Hcom_Channel>(0x1UL));
-
-    // Invalid rankId / ch == 0 -> early return.
-    mgr->rankCount_ = 1;
-    mgr->channels_ = std::vector<Hcom_Channel>(1, static_cast<Hcom_Channel>(0x1UL));
-    mgr->channelMutex_ = std::vector<std::mutex>(1);
-    mgr->DisConnectHcomChannel(5, static_cast<Hcom_Channel>(0x1UL));
-    mgr->DisConnectHcomChannel(0, static_cast<Hcom_Channel>(0));
-
-    // Valid path: rpcService_ != 0 triggers ServiceDisConnect, and matching channel clears.
-    mgr->rpcService_ = 1;
-    mgr->channels_[0] = static_cast<Hcom_Channel>(0xCCUL);
-    DlHcomApiFnGuard guard;
-    static int disconnectCalled = 0;
-    DlHcomApi::gServiceDisConnectFunc = +[](Hcom_Service, Hcom_Channel) -> int {
-        disconnectCalled++;
-        return 0;
-    };
-    mgr->DisConnectHcomChannel(0, static_cast<Hcom_Channel>(0xCCUL));
-    EXPECT_EQ(mgr->channels_[0], static_cast<Hcom_Channel>(0));
-    EXPECT_EQ(disconnectCalled, 1);
-}
-
-TEST(HcomTransportManagerTest, DisConnectHcomChannelClearsEvenWithoutRpcService)
-{
-    auto mgr = HcomTransportManager::GetInstance();
-    mgr->rankCount_ = 1;
-    mgr->rpcService_ = 0;
-    mgr->channels_ = std::vector<Hcom_Channel>(1, static_cast<Hcom_Channel>(0x11UL));
-    mgr->channelMutex_ = std::vector<std::mutex>(1);
-
-    mgr->DisConnectHcomChannel(0, static_cast<Hcom_Channel>(0x11UL));
-    EXPECT_EQ(mgr->channels_[0], static_cast<Hcom_Channel>(0));
 }
 
 TEST(HcomTransportManagerTest, GetNicDefaultEmpty)
@@ -649,18 +611,18 @@ TEST(HcomTransportManagerTest, GetNicDefaultEmpty)
     EXPECT_TRUE(nic.empty());
 }
 
-// NewEndPoint callback: payload null / non-null both return BM_OK.
+// NewEndPoint callback: payload null / non-null return failed.
 TEST(HcomTransportManagerTest, NewEndPointCallbackHandlesNullAndNonNull)
 {
     Hcom_Channel dummyCh = static_cast<Hcom_Channel>(0x1UL);
     uint64_t usrCtx = 0;
 
     Result ret1 = HcomTransportManager::TransportRpcHcomNewEndPoint(dummyCh, usrCtx, nullptr);
-    EXPECT_EQ(ret1, BM_OK);
+    EXPECT_NE(ret1, BM_OK);
 
     const char *payload = "test_payload";
     Result ret2 = HcomTransportManager::TransportRpcHcomNewEndPoint(dummyCh, usrCtx, payload);
-    EXPECT_EQ(ret2, BM_OK);
+    EXPECT_NE(ret2, BM_OK);
 }
 
 // EndPointBroken: invalid payload (null / non-number) returns BM_ERROR.
@@ -1083,15 +1045,6 @@ TEST(HcomTransportManagerTest, SubmitTasksAndFinishThenSynchronizeOkViaManager)
 
     Result ret = mgr->Synchronize(0);
     EXPECT_EQ(ret, BM_OK);
-}
-
-// ForceReConnectHcomChannel: rankId 越界时直接返回（错误分支）。
-TEST(HcomTransportManagerTest, ForceReConnectHcomChannelInvalidRank)
-{
-    auto mgr = HcomTransportManager::GetInstance();
-    mgr->rankCount_ = 1;
-    // 仅验证不会崩溃；越界 rankId 不会访问 channelMutex_。
-    mgr->ForceReConnectHcomChannel(5U);
 }
 
 // GetCertCallBack: certPath 为空指针时返回非 0。

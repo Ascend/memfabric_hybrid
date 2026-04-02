@@ -9,6 +9,7 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
+#include <pthread.h>
 #include <algorithm>
 #include <cerrno>
 #include <cctype>
@@ -806,6 +807,7 @@ void SmemNetGroupEngine::GroupListenEvent()
     std::list<SmemGroupInfo> currentEvents;
     bool redoLast = false;
     listenThreadStarted_.fetch_add(1U);
+    pthread_setname_np(pthread_self(), "grp_listen_evt");
     SM_LOG_DEBUG("GroupListenEvent start, rank:" << option_.rank);
     while (!groupStoped_.load()) {
         if (eventCtx_.watchId == UINT32_MAX) {

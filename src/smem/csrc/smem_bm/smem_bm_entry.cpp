@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 #include "smem_bm_entry.h"
-
+#include "hybm_def.h"
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
 #include "smem_store_factory.h"
@@ -165,9 +165,9 @@ Result SmemBmEntry::JoinBarrier(int32_t input)
 
 Result SmemBmEntry::JoinHandle(uint32_t rk)
 {
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     SM_LOG_INFO("do join func, local_rk: " << options_.rank << " receive_rk: " << rk
                                            << ", rank size is: " << globalGroup_->GetRankSize());
-    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
 
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string localInfo;
@@ -346,7 +346,8 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     }
 
     hybm_copy_params copyParams = {const_cast<void *>(src), dest, size};
-    return hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
+    auto ret = hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
+    return ret == BM_NOT_CONNECTED ? SMEM_NOT_CONNECTED : ret;
 }
 
 Result SmemBmEntry::Wait()
@@ -454,7 +455,7 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
                                                          params->destinations[i], params->dataSizes[i]);
                 auto ret = hybm_data_copy(entity_, &singleParam, direct, nullptr, flags);
                 SM_LOG_DEBUG("copy index: " << i << ", result:" << ret);
-                results->results[i] = ret;
+                results->results[i] = (ret == BM_NOT_CONNECTED) ? SMEM_NOT_CONNECTED : ret;
 
                 std::unique_lock<std::mutex> locker{finishMutex};
                 if (++finishedCount >= params->batchSize) {

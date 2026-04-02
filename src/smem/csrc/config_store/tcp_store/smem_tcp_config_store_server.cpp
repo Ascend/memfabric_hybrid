@@ -11,6 +11,7 @@
 */
 #include "smem_tcp_config_store_server.h"
 
+#include <pthread.h>
 #include <algorithm>
 #include <climits>
 #include <cstring>
@@ -1010,6 +1011,7 @@ void AccStoreServer::ReplyWithMessage(const ock::acc::AccTcpRequestContext &ctx,
 void AccStoreServer::TimerThreadTask() noexcept
 {
     std::unordered_set<uint64_t> timeoutIds;
+    pthread_setname_np(pthread_self(), "acc_store_timer");
     std::unique_lock<std::mutex> lockerGuard{storeMutex_};
     while (state_.load() != SS_EXITED) {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
@@ -1044,6 +1046,7 @@ void AccStoreServer::TimerThreadTask() noexcept
 
 void AccStoreServer::RankStateTask() noexcept
 {
+    pthread_setname_np(pthread_self(), "rank_state_ts");
     while (state_.load() != SS_EXITED) {
         std::unique_lock<std::mutex> lock(storeMutex_);
         storeCond_.wait(lock, [this] { return !rankStateTaskQueue_.empty() || (state_.load() == SS_EXITED); });
@@ -1077,6 +1080,7 @@ void AccStoreServer::RankStateTask() noexcept
 
 void AccStoreServer::CheckerThreadTask() noexcept
 {
+    pthread_setname_np(pthread_self(), "store_chk_sts");
     std::unordered_set<uint32_t> brokenLinks;
     std::unique_lock<std::mutex> lockerGuard{storeMutex_};
     while (state_.load() != SS_EXITED) {

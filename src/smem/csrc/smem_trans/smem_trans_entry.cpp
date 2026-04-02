@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include <memory>
 #include <thread>
@@ -500,6 +501,7 @@ Result SmemTransEntry::StartWatchConnectThread()
         }
     }
     watchConnectThread_ = std::thread([this]() {
+        pthread_setname_np(pthread_self(), "trans_watch_conn");
         while (watchConnectRunning_) {
             if (WatchConnectTaskOneLoop() == SM_OK) {
                 SM_LOG_INFO("watch connect success, exit.");
@@ -541,6 +543,7 @@ Result SmemTransEntry::StartWatchThread()
         WatchTaskFindNewRanks();
     }
     watchThread_ = std::thread([this]() {
+        pthread_setname_np(pthread_self(), "trans_watcher");
         std::unique_lock<std::mutex> locker{watchMutex_};
         const std::chrono::seconds WATCH_INTERVAL(3);
         while (watchRunning_) {
