@@ -939,10 +939,6 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
         }
         case LINK_DOWN_EVENT:
         case LEAVE_EVENT: {
-            if (!TestBitmapForRank(groupInfo_.targetRank)) {
-                SM_LOG_INFO("rank not joined, skip leave, rank:" << groupInfo_.targetRank);
-                break;
-            }
             if (groupInfo_.targetRank != option_.rank && option_.leaveCb != nullptr) {
                 ret = option_.leaveCb(groupInfo_.targetRank);
             }

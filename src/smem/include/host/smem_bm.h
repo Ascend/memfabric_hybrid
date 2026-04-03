@@ -115,6 +115,15 @@ int32_t smem_bm_join(smem_bm_t handle, uint32_t flags);
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 
 /**
+ * @brief set group member change(join/leave) notification function.
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param cb               [in] notification function.
+ * @param context          [in] callback function context parameter.
+ * @return 0 if successful
+ */
+int32_t smem_bm_set_group_event_handler(smem_bm_t handle, smem_bm_group_event_cb cb, void *context);
+
+/**
  * @brief Get the size of memory allocated locally by memory type
  *
  * @param handle           [in] Big Memory object handle created by smem_bm_create

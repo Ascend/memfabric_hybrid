@@ -226,6 +226,7 @@ join_exit:
 
     SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk << " receive_info_num:"
         << allInfo.size() << ", rank size is: " << globalGroup_->GetRankSize());
+    InvokeEventCb(rk, SMEM_GROUP_EVENT_JOIN);
     return SM_OK;
 
 rollback_exit:
@@ -244,7 +245,20 @@ Result SmemBmEntry::LeaveHandle(uint32_t rk)
         SM_LOG_ERROR("hybm leave failed, result: " << ret);
         return SM_ERROR;
     }
+    InvokeEventCb(rk, SMEM_GROUP_EVENT_LEAVE);
     return SM_OK;
+}
+
+void SmemBmEntry::InvokeEventCb(uint32_t rankId, smem_bm_group_event_t event)
+{
+    std::unique_lock<std::mutex> locker{eventCbMutex_};
+    auto cb = eventCb_;
+    auto ctx = eventCbCtx_;
+    locker.unlock();
+
+    if (cb != nullptr) {
+        (*cb)(reinterpret_cast<void *>(this), rankId, event, ctx);
+    }
 }
 
 Result SmemBmEntry::Join(uint32_t flags)
@@ -271,6 +285,16 @@ Result SmemBmEntry::Leave(uint32_t flags)
     auto ret = globalGroup_->GroupLeave();
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "leave failed, ret: " << ret);
 
+    return SM_OK;
+}
+
+Result SmemBmEntry::SetEventListener(smem_bm_group_event_cb cb, void *context)
+{
+    SM_ASSERT_RETURN(cb != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    std::unique_lock<std::mutex> locker{eventCbMutex_};
+    eventCb_ = cb;
+    eventCbCtx_ = context;
     return SM_OK;
 }
 

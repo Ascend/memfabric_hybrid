@@ -17,6 +17,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
+#include <pybind11/functional.h>
 #include <cstdint>
 #include <cstddef>
 #include <mutex>
@@ -129,6 +130,16 @@ public:
     int32_t Leave(uint32_t flags)
     {
         return smem_bm_leave(handle_, flags);
+    }
+
+    int32_t SetGroupEventHandler(const std::function<void(uint32_t, smem_bm_group_event_t)> &cb)
+    {
+        if (cb == nullptr) {
+            return SMEM_INVALID_PARAM;
+        }
+
+        eventCb_ = cb;
+        return smem_bm_set_group_event_handler(handle_, GroupChangeEventCallback, &eventCb_);
     }
 
     uint64_t LocalMemSize(smem_bm_mem_type memType)
@@ -267,7 +278,7 @@ public:
 
     static BigMemory *Create2(uint32_t id, uint64_t localDRAMSize, uint64_t localMaxDRAMSize, uint64_t localHBMSize,
                               uint64_t localMaxHBMSize, smem_bm_data_op_type dataOpType, bool isSecondMapping,
-                              uint32_t flags)
+                              uint32_t flags, int shmFd)
     {
         smem_bm_create_option_t option{};
         option.maxDramSize = localMaxDRAMSize;
@@ -277,6 +288,14 @@ public:
         option.dataOpType = dataOpType;
         option.isSecondMapping = isSecondMapping;
         option.flags = flags;
+        if (shmFd >= 0) {
+            option.flags |= SMEM_BM_FLAG_CREATE_WITH_SHM;
+            option.dramShmFd = shmFd;
+        } else {
+            option.flags &= (~SMEM_BM_FLAG_CREATE_WITH_SHM);
+            option.dramShmFd = -1;
+        }
+
         auto hd = smem_bm_create2(id, &option);
         if (hd == nullptr) {
             throw std::runtime_error(std::string("create bm handle failed."));
@@ -301,7 +320,23 @@ public:
     }
 
 private:
+    static void GroupChangeEventCallback(smem_bm_t handle, uint32_t rankId, smem_bm_group_event_t event, void *ctx)
+    {
+        if (ctx == nullptr) {
+            return;
+        }
+        auto func = reinterpret_cast<std::function<void(uint32_t, smem_bm_group_event_t)> *>(ctx);
+        try {
+            (*func)(rankId, event);
+        } catch (const std::exception &e) {
+            std::cerr << "invoke python callback for event:" << event << ", rank_id:" << rankId << " exception caught:"
+                      << e.what() << std::endl;
+        }
+    }
+
+private:
     smem_bm_t handle_;
+    std::function<void(uint32_t, smem_bm_group_event_t)> eventCb_ = nullptr;
     static uint32_t worldSize_;
 };
 
@@ -631,6 +666,10 @@ void DefineBmClass(py::module_ &m)
         .value("HOST_TCP", SMEMB_DATA_OP_HOST_TCP)
         .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA);
 
+    py::enum_<smem_bm_group_event_t>(m, "BmGroupEvent")
+        .value("JOIN_EVENT", SMEM_GROUP_EVENT_JOIN)
+        .value("LEAVE_EVENT", SMEM_GROUP_EVENT_LEAVE);
+
     // module method
     m.def("initialize", &BigMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),
           py::arg("world_size"), py::arg("device_id"), py::arg("config"), R"(
@@ -662,15 +701,18 @@ Create a big memory object locally after initialized.
 
 Arguments:
     id(int):                     identity of the big memory object
-    local_dram_size(int):         the size of local dram memory contributes to big memory object
+    local_dram_size(int):        the size of local dram memory contributes to big memory object
+    max_dram_size(int):          the max size of all rank DRAM memory contributes to Big Memory object
     local_hbm_size(int):         the size of local hbm memory contributes to big memory object, default 0
+    max_hbm_size(int):           the max size of all rank HBM memory contributes to Big Memory object
     data_op_type(BmDataOpType):  data operation type, default SMEMB_DATA_OP_SDMA
-    flags(int):                  optional flags, default 0)");
+    flags(int):                  optional flags, default 0
+    shm_fd(int):                 gva used share memory dile descriptor, default -1)");
 
     m.def("create2", &BigMemory::Create2, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
           py::arg("local_dram_size"), py::arg("max_dram_size"), py::arg("local_hbm_size") = 0,
           py::arg("max_hbm_size") = 0, py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
-          py::arg("is_second_mapping") = false, py::arg("flags") = 0, R"(
+          py::arg("is_second_mapping") = false, py::arg("flags") = 0, py::arg("shm_fd") = -1, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
@@ -695,6 +737,12 @@ Leave the global Big Memory space actively, after this, we cannot operate on the
 
 Arguments:
     flags(int): optional flags)")
+        .def("set_group_event_handler", &BigMemory::SetGroupEventHandler,
+             py::call_guard<py::gil_scoped_release>(), py::arg("cb"), R"(
+Set group member change(join/leave) notification function.
+
+Arguments:
+    cb(function): notification function. cb(rank_id: int, event: BmGroupEvent).)")
         .def("local_mem_size", &BigMemory::LocalMemSize, py::call_guard<py::gil_scoped_release>(),
              py::arg("mem_type") = SMEM_MEM_TYPE_DEVICE, R"(
 Get size of local memory that contributed to global space.

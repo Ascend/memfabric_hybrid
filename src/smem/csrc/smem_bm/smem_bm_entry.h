@@ -48,6 +48,8 @@ public:
 
     Result Leave(uint32_t flags);
 
+    Result SetEventListener(smem_bm_group_event_cb cb, void *context);
+
     Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
 
     Result DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
@@ -83,6 +85,7 @@ private:
     Result JoinHandle(uint32_t rk);
     Result JoinBarrier(int32_t input);
     Result LeaveHandle(uint32_t rk);
+    void InvokeEventCb(uint32_t rankId, smem_bm_group_event_t event);
 
 private:
     /* hot used variables */
@@ -104,6 +107,10 @@ private:
     hybm_mem_slice_t dramSlice_ = nullptr;
     hybm_mem_slice_t hbmSlice_ = nullptr;
     std::map<uint64_t, std::pair<uint64_t, hybm_mem_slice_t>> registedSlice_;
+
+    std::mutex eventCbMutex_;
+    smem_bm_group_event_cb eventCb_ = nullptr;
+    void *eventCbCtx_ = nullptr;
 };
 using SmemBmEntryPtr = SmRef<SmemBmEntry>;
 

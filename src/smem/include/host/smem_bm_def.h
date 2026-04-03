@@ -20,8 +20,8 @@ extern "C" {
 #endif
 
 typedef void *smem_bm_t;
-#define SMEM_BM_TIMEOUT_MAX                 UINT32_MAX /* all timeout must <= UINT32_MAX */
-#define SMEM_TLS_PATH_SIZE                  256
+#define SMEM_BM_TIMEOUT_MAX UINT32_MAX /* all timeout must <= UINT32_MAX */
+#define SMEM_TLS_PATH_SIZE  256
 
 // SMEM_BM_BIND_NUMA_FLAG start index When SMEM_BM_PERFORMANCE_MODE_FLAG == 1, this field is used
 #define SMEM_BM_BIND_NUMA_FLAG_INDEX        0
@@ -29,10 +29,10 @@ typedef void *smem_bm_t;
 #define SMEM_BM_PERFORMANCE_MODE_FLAG_INDEX 7
 #define SMEM_BM_PERFORMANCE_MODE_FLAG_LEN   1
 // Automatic NUMA affinity selection when SMEM_BM_BIND_NUMA_FLAG == SMEM_BM_BIND_NUMA_AUTO_AFFINITY_FLAG
-#define SMEM_BM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << SMEM_BM_BIND_NUMA_FLAG_LEN) - 1)
-#define SMEM_BM_FLAG_CREATE_WITH_SHM        (1U << 8)
+#define SMEM_BM_BIND_NUMA_AUTO_AFFINITY_FLAG ((1U << SMEM_BM_BIND_NUMA_FLAG_LEN) - 1)
+#define SMEM_BM_FLAG_CREATE_WITH_SHM         (1U << 8)
 // SMEM_BM_FLAG_DRAM_MAP_HOST_VA map host virtual address space
-#define SMEM_BM_FLAG_DRAM_MAP_HOST_VA       (1U << 9)
+#define SMEM_BM_FLAG_DRAM_MAP_HOST_VA (1U << 9)
 
 /**
 * @brief Smem memory type
@@ -103,15 +103,15 @@ typedef struct {
 } smem_bm_config_t;
 
 typedef struct {
-    uint64_t maxDramSize;             /* the max size of all rank DRAM memory contributes to Big Memory object */
-    uint64_t maxHbmSize;              /* the max size of all rank HBM memory contributes to Big Memory object */
-    uint64_t localDRAMSize;           /* the size of local DRAM memory contributes to Big Memory object */
-    uint64_t localHBMSize;            /* the size of local HBM memory contributes to Big Memory object */
-    smem_bm_data_op_type dataOpType;  /* if tag or tagOpInfo is empty, use dataOpType */
-    bool isSecondMapping;               /* whether support 128TB memory pool, default false */
-    uint32_t flags;                   /* optional flags, default 0 */
-    char tag[32];                     /* tag of bm, eg:tag_1 */
-    char tagOpInfo[256];              /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
+    uint64_t maxDramSize;            /* the max size of all rank DRAM memory contributes to Big Memory object */
+    uint64_t maxHbmSize;             /* the max size of all rank HBM memory contributes to Big Memory object */
+    uint64_t localDRAMSize;          /* the size of local DRAM memory contributes to Big Memory object */
+    uint64_t localHBMSize;           /* the size of local HBM memory contributes to Big Memory object */
+    smem_bm_data_op_type dataOpType; /* if tag or tagOpInfo is empty, use dataOpType */
+    bool isSecondMapping;            /* whether support 128TB memory pool, default false */
+    uint32_t flags;                  /* optional flags, default 0 */
+    char tag[32];                    /* tag of bm, eg:tag_1 */
+    char tagOpInfo[256];             /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
     int dramShmFd;
 } smem_bm_create_option_t;
 
@@ -132,6 +132,20 @@ typedef struct {
     int32_t *results;
     uint32_t batchSize;
 } smem_batch_copy_result;
+
+/**
+ * @brief smem join/leave event type
+ */
+typedef enum {
+    SMEM_GROUP_EVENT_JOIN,  /* join event */
+    SMEM_GROUP_EVENT_LEAVE, /* leave event */
+    SMEM_MEMBER_EVENT_BUTT
+} smem_bm_group_event_t;
+
+/**
+ * @brief callback for view event: join/leave
+ */
+typedef void (*smem_bm_group_event_cb)(smem_bm_t handle, uint32_t rankId, smem_bm_group_event_t event, void *context);
 
 #ifdef __cplusplus
 }
