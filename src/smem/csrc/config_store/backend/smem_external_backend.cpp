@@ -170,7 +170,6 @@ StoreErrorCode SmemExternalBackend::Get(const std::string &key, std::vector<uint
 StoreErrorCode SmemExternalBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
 {
     // todo: external backend support prefix get
-    std::lock_guard<std::mutex> lock(mutex_);
     for (uint32_t i = 0; i < SMEM_WORLD_SIZE_MAX; i++) {
         std::string k = key + std::to_string(i);
         std::vector<uint8_t> value;
