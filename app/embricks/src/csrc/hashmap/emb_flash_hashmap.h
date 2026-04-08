@@ -12,79 +12,132 @@
 #ifndef MEMFABRIC_HYBRID_EMB_FAST_HASHTABLE_H
 #define MEMFABRIC_HYBRID_EMB_FAST_HASHTABLE_H
 
-#include "emb_common_includes.h"
+#include "emb_flash_hashmap_types.h"
 
 namespace ock {
 namespace emb {
-
-struct BucketSpinLock {
-public:
-    void Lock() noexcept;
-    void UnLock() noexcept;
-
-private:
-    uint64_t lock_ = 0;
-} __attribute__((aligned(8)));
-
-EM_ALWAYS_INLINE void BucketSpinLock::Lock() noexcept
-{
-    while (!__sync_bool_compare_and_swap(&lock_, 0, 1)) {}
-}
-
-EM_ALWAYS_INLINE void BucketSpinLock::UnLock() noexcept
-{
-    __atomic_store_n(&lock_, 0, __ATOMIC_SEQ_CST);
-}
-
+namespace hashmap {
 /**
-* Major concept:
-* 1 each bucket occupied 64bytes, which is equal to size of cacheline of typical modern CPU
-* 2 each bucket store 3 key/value pairs, types of both key and value are uint64
-* 3 the placement of bucket is following
-*   | key1 | key2 | key3 | value1 | value2 | value3 | spinlock | ptrOfNextBucket
-* 4 for read only bucket, no cas and no spinlock logic
-* 5 for update cas for used for bucket
-* 6 for append next bucket, spin lock is acquired
-*/
-constexpr uint64_t kInvalidKey = UINT64_MAX;
-constexpr uint64_t kInvalidValue = UINT64_MAX;
-
-struct HashBucketReadonly {
-public:
+ * Updatable hashmap bucket
+ */
+struct HashBucket {
     /**
-     * @brief Readonly bucket doesn't support put key/value
+     * @brief Insert key and value into this bucket
+     *
+     * @param key          [in] key to be inserted
+     * @param value        [in] value to be inserted
+     * @return 0 if successfully inserted
      */
-    Result Put(uint64_t key, uint64_t value) noexcept;
+    Result Insert(uint64_t key, uint64_t value) noexcept;
 
     /**
-     * @brief Get value by key in the bucket
+     * @brief Get value by key
      *
      * @param key          [in] key to be found
      * @param value        [out] value that found
-     * @return 0 if found, EM_HASHMAP_NO_KEY_FOUND if not found
+     * @return 0 if found
      */
     Result Get(uint64_t key, uint64_t &value) noexcept;
 
     /**
-     * @brief Readonly bucket doesn't support remove
+     * @brief Get value by key without lock
+     *
+     * @param key          [in] key to be found
+     * @param value        [out] value that found
+     * @return 0 if found
      */
-    Result Remove(uint64_t key, uint64_t &value) noexcept;
+    Result GetWithoutLock(uint64_t key, uint64_t &value) noexcept;
 
-private:
-    uint64_t key_[UN3]{kInvalidKey, kInvalidKey, kInvalidKey};         /* initialize with invalid key */
-    uint64_t value_[UN3]{kInvalidValue, kInvalidValue, kInvalidValue}; /* initialize with invalid value */
-    HashBucketReadonly *next_ = nullptr;                               /* pointer to next bucket */
-    BucketSpinLock spinLock_{};                                        /* spin lock of next bucket */
+    /**
+     * @brief Get the last key and
+     *
+     * @param key          [out] the key of last one
+     * @param value        [out] the value of last one
+     * @return 0 if there is last one
+     */
+    Result GetAndEraseLast(uint64_t &key, uint64_t &value) noexcept;
+
+    /**
+     * @brief Replace the key and value with new one if found
+     *
+     * @param originalKey  [in] the key to be replaced
+     * @param key          [in] new key
+     * @param value        [in] new value
+     * @return 0 if successful
+     */
+    Result Replace(uint64_t originalKey, uint64_t key, uint64_t value) noexcept;
+
+    /**
+     * @brief To string
+     * @return string representation of this object
+     */
+    std::string ToString() const noexcept;
+
+    uint64_t key_[UN3]{kInvalidMapKey, kInvalidMapKey, kInvalidMapKey};         /* initialize with invalid key */
+    uint64_t value_[UN3]{kInvalidMapValue, kInvalidMapValue, kInvalidMapValue}; /* initialize with invalid value */
+    HashBucket *next_ = nullptr;                                                /* pointer to next bucket */
+    BucketSpinLock spinLock_{};                                                 /* spin lock */
 } __attribute__((aligned(8)));
 
-EM_ALWAYS_INLINE Result HashBucketReadonly::Put(uint64_t key, uint64_t value) noexcept
+EM_ALWAYS_INLINE Result HashBucket::Insert(uint64_t key, uint64_t value) noexcept
 {
-    return EM_NOT_IMPLEMENTED;
+    /* lock and insert, don't do loop here */
+    spinLock_.Lock();
+    if (key_[UN0] == kInvalidMapKey) {
+        key_[UN0] = key;
+        value_[UN0] = value;
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    if (key_[UN1] == kInvalidMapKey) {
+        key_[UN1] = key;
+        value_[UN1] = value;
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    if (key_[UN2] == kInvalidMapKey) {
+        key_[UN2] = key;
+        value_[UN2] = value;
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    spinLock_.UnLock();
+    return EM_HASHMAP_BUCKET_FULL;
 }
 
-EM_ALWAYS_INLINE Result HashBucketReadonly::Get(uint64_t key, uint64_t &value) noexcept
+EM_ALWAYS_INLINE Result HashBucket::Get(uint64_t key, uint64_t &value) noexcept
 {
-    /* don't use loop here for performance consideration */
+    /* lock and insert, don't do loop here */
+    spinLock_.Lock();
+    if (key_[UN0] == key) {
+        value = value_[UN0];
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    if (key_[UN1] == key) {
+        value = value_[UN1];
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    if (key_[UN2] == key) {
+        value = value_[UN2];
+        spinLock_.UnLock();
+        return EM_OK;
+    }
+
+    spinLock_.UnLock();
+
+    return EM_HASHMAP_KEY_NOT_FOUND;
+}
+
+EM_ALWAYS_INLINE Result HashBucket::GetWithoutLock(uint64_t key, uint64_t &value) noexcept
+{
+    /* lock and insert, don't do loop here */
     if (key_[UN0] == key) {
         value = value_[UN0];
         return EM_OK;
@@ -100,43 +153,92 @@ EM_ALWAYS_INLINE Result HashBucketReadonly::Get(uint64_t key, uint64_t &value) n
         return EM_OK;
     }
 
-    return EM_HASHMAP_NO_KEY_FOUND;
+    return EM_HASHMAP_KEY_NOT_FOUND;
 }
 
-EM_ALWAYS_INLINE Result HashBucketReadonly::Remove(uint64_t key, uint64_t &value) noexcept
+EM_ALWAYS_INLINE Result HashBucket::GetAndEraseLast(uint64_t &key, uint64_t &value) noexcept
 {
-    return EM_NOT_IMPLEMENTED;
+    /* don't lock here, we do lock outside */
+    auto buck = this;
+    while (buck != nullptr) {
+        /* if the first one key invalid, means the bucket is empty and no linked bucketed */
+        if (buck->key_[UN0] == kInvalidMapKey) {
+            return EM_HASHMAP_KEY_NOT_FOUND;
+        }
+
+        /* if the second key is invalid, first one must be valid */
+        if (buck->key_[UN1] == kInvalidMapKey) {
+            key = buck->key_[UN0];
+            value = buck->value_[UN0];
+            buck->key_[UN0] = kInvalidMapKey;
+            buck->value_[UN0] = kInvalidMapValue;
+            return EM_OK;
+        }
+
+        /* if the third key is invalid, second one must be valid */
+        if (buck->key_[UN2] == kInvalidMapKey) {
+            key = buck->key_[UN1];
+            value = buck->value_[UN1];
+            buck->key_[UN1] = kInvalidMapKey;
+            buck->value_[UN1] = kInvalidMapValue;
+            return EM_OK;
+        }
+
+        /* if next is nullptr, third one must be valid */
+        if (buck->next_ == nullptr) {
+            key = buck->key_[UN2];
+            value = buck->value_[UN2];
+            buck->key_[UN2] = kInvalidMapKey;
+            buck->value_[UN2] = kInvalidMapValue;
+            return EM_OK;
+        }
+
+        /* if next is not nullptr, but no key */
+        if (buck->next_->key_[UN0] == kInvalidMapKey) {
+            key = buck->key_[UN2];
+            value = buck->value_[UN2];
+            buck->key_[UN2] = kInvalidMapKey;
+            buck->value_[UN2] = kInvalidMapValue;
+            return EM_OK;
+        }
+
+        /* if the 2nd and 3rd are valid key, move to next */
+        buck = buck->next_;
+    }
+
+    return EM_HASHMAP_KEY_NOT_FOUND;
 }
 
-/**
- * Updatable hashmap bucket
- */
-struct HashBucket {
-public:
-    Result Put(uint64_t key, uint64_t value) noexcept;
-    Result Get(uint64_t key, uint64_t &value) noexcept;
-    Result Remove(uint64_t key, uint64_t &value) noexcept;
-
-private:
-    uint64_t key_[UN3]{kInvalidKey, kInvalidKey, kInvalidKey};         /* initialize with invalid key */
-    uint64_t value_[UN3]{kInvalidValue, kInvalidValue, kInvalidValue}; /* initialize with invalid value */
-    HashBucket *next_ = nullptr;                                       /* pointer to next bucket */
-    BucketSpinLock spinLock_{};                                        /* spin lock of next bucket */
-} __attribute__((aligned(8)));
-
-EM_ALWAYS_INLINE Result HashBucket::Put(uint64_t key, uint64_t value) noexcept
+EM_ALWAYS_INLINE Result HashBucket::Replace(uint64_t originalKey, uint64_t key, uint64_t value) noexcept
 {
-    return EM_NOT_IMPLEMENTED;
+    /* do this without lock, we have lock outside */
+    if (key_[UN0] == originalKey) {
+        key_[UN0] = key;
+        value_[UN0] = value;
+        return EM_OK;
+    }
+
+    if (key_[UN1] == originalKey) {
+        key_[UN1] = key;
+        value_[UN1] = value;
+        return EM_OK;
+    }
+
+    if (key_[UN2] == originalKey) {
+        key_[UN2] = key;
+        value_[UN2] = value;
+        return EM_OK;
+    }
+
+    return EM_HASHMAP_KEY_NOT_FOUND;
 }
 
-EM_ALWAYS_INLINE Result HashBucket::Get(uint64_t key, uint64_t &value) noexcept
+inline std::string HashBucket::ToString() const noexcept
 {
-    return EM_NOT_IMPLEMENTED;
-}
-
-EM_ALWAYS_INLINE Result HashBucket::Remove(uint64_t key, uint64_t &value) noexcept
-{
-    return EM_NOT_IMPLEMENTED;
+    std::ostringstream oss;
+    oss << "HashBucket [[" << key_[UN0] << "," << value_[UN0] << "], [" << key_[UN1] << "," << value_[UN1] << "], ["
+        << key_[UN2] << "," << value_[UN2] << "], next: " << std::hex << next_ << "]";
+    return oss.str();
 }
 
 /**
@@ -163,146 +265,496 @@ EM_ALWAYS_INLINE void NaiveBucketAllocator::Free(void *p) noexcept
 }
 
 /**
- * Flash hash map, which un-ordered
+ * Flash hashmap which supports update and query
  */
-template<typename Bucket, typename BucketAllocator = NaiveBucketAllocator>
-class FlashHashmap : public EmReferable {
+template<typename OverflowAllocator = NaiveBucketAllocator>
+class FlashHashmap {
 public:
     FlashHashmap() = default;
-    ~FlashHashmap() override;
+    ~FlashHashmap()
+    {
+        UnInitialize();
+    }
 
     /**
-     * @brief Initialize the flash hashmap
+     * @brief Initialize a hash map from scratch
+     *
+     * @param capacity     [in] reserved capacity, the bucket count will be determined by this
      *
      * @return 0 if successful
      */
-    Result Initialize() noexcept;
+    Result Initialize(uint64_t capacity) noexcept;
 
     /**
-     * @brief Un-initialize the map
+     * @brief Initialize from persist file
+     *
+     * @param options      [in] options for recover
+     *
+     * @return 0 if successful
+     */
+    Result Initialize(const FlashHashmapRecoverOptions &options) noexcept;
+
+    /**
+     * @brief UnInitialize the hashmap, all resources will be released
      */
     void UnInitialize() noexcept;
 
     /**
-     * @brief Get current item size of this map
+     * @brief Try to find in the hashmap by key, if found return 0 and its value,
+     * otherwise insert the key/value
      *
-     * @return size of items
+     * @param key          [in] key to be found
+     * @param value        [in/out] value that found or to be inserted
+     * @return 0 if found
+     */
+    Result FindOrInsert(uint64_t key, uint64_t &value) noexcept;
+
+    /**
+     * @brief Try to find in the hash map by key
+     *
+     * @param key          [in] key to be found
+     * @param value        [out] value of the key if found
+     * @return 0 if found
+     */
+    Result Find(uint64_t key, uint64_t &value) noexcept;
+
+    /**
+     * @brief Remove the value by key  in the hashmap
+     *
+     * @param key          [in] key to be removed
+     * @param value        [out] the value if key is found
+     * @return 0 if found
+     */
+    Result Remove(uint64_t key, uint64_t &value) noexcept;
+
+    /**
+     * @brief Get bucket count per sub map
+     *
+     * @return bucket count of each sub map
+     */
+    uint32_t BucketCount() const noexcept;
+
+    /**
+     * @brief Get the size of hash map
+     * @return size
      */
     uint64_t Size() const noexcept;
 
     /**
-     * @brief Update | insert if not found
+     * @brief Check if the hashmap is initialized successfully or not
      *
-     * @param key          [in] key to be updated or inserted
-     * @param value        [in/out] value
-     * @return 0 if successful
+     * @return true if initialized
      */
-    Result FindOrUpsert(uint64_t key, uint64_t &value) noexcept;
+    bool Initialized() const noexcept;
 
     /**
-     * @brief Find the value by key
-     *
-     * @param key          [in] key to be found
-     * @param value        [out] value of the key
-     * @return 0 if found
+     * @brief stream output
      */
-    Result Find(const uint64_t key, uint64_t &value) noexcept;
+    friend std::ostream &operator<<(std::ostream &os, const FlashHashmap<OverflowAllocator> &o)
+    {
+        uint64_t tmpBucketCount = o.bucketCount_;
+        os << "FlashHashmap [" << "size_: " << o.size_.load() << ", bucketCount_: " << o.bucketCount_
+           << ", kSubMapCount: " << kSubMapCount << ", allocator_: " << o.allocator_
+           << ", sizeOfBucket: " << sizeof(HashBucket) << ", totalBucketCount: " << (tmpBucketCount * kSubMapCount)
+           << ", memorySizeOfAllBuckets: " << (tmpBucketCount * kSubMapCount * sizeof(HashBucket)) << "bytes ]";
 
-    /**
-     * @brief Remove the key
-     *
-     * @param key          [in] key to be removed
-     * @return 0 if found and removed
-     */
-    Result Remove(uint64_t key) noexcept;
+        return os;
+    }
 
-protected:
-    static constexpr uint32_t kSubMapCount = 5;
-    static constexpr uint32_t kPrimesCount = 256;
-    const uint64_t kPrimes[kPrimesCount] = {
-        2,          3,          5,          7,          11,         13,         17,         19,         23,
-        29,         31,         37,         41,         43,         47,         53,         59,         61,
-        67,         71,         73,         79,         83,         89,         97,         103,        109,
-        113,        127,        137,        139,        149,        157,        167,        179,        193,
-        199,        211,        227,        241,        257,        277,        293,        313,        337,
-        359,        383,        409,        439,        467,        503,        541,        577,        619,
-        661,        709,        761,        823,        887,        953,        1031,       1109,       1193,
-        1289,       1381,       1493,       1613,       1741,       1879,       2029,       2179,       2357,
-        2549,       2753,       2971,       3209,       3469,       3739,       4027,       4349,       4703,
-        5087,       5503,       5953,       6427,       6949,       7517,       8123,       8783,       9497,
-        10273,      11113,      12011,      12983,      14033,      15173,      16411,      17749,      19183,
-        20753,      22447,      24281,      26267,      28411,      30727,      33223,      35933,      38873,
-        42043,      45481,      49201,      53201,      57557,      62233,      67307,      72817,      78779,
-        85229,      92203,      99733,      107897,     116731,     126271,     136607,     147793,     159871,
-        172933,     187091,     202409,     218971,     236897,     256279,     277261,     299951,     324503,
-        351061,     379787,     410857,     444487,     480881,     520241,     562841,     608903,     658753,
-        712697,     771049,     834181,     902483,     976369,     1056323,    1142821,    1236397,    1337629,
-        1447153,    1565659,    1693859,    1832561,    1982627,    2144977,    2320627,    2510653,    2716249,
-        2938679,    3179303,    3439651,    3721303,    4026031,    4355707,    4712381,    5098259,    5515729,
-        5967347,    6456007,    6984629,    7556579,    8175383,    8844859,    9569143,    10352717,   11200489,
-        12117689,   13109983,   14183539,   15345007,   16601593,   17961079,   19431899,   21023161,   22744717,
-        24607243,   26622317,   28802401,   31160981,   33712729,   36473443,   39460231,   42691603,   46187573,
-        49969847,   54061849,   58488943,   63278561,   68460391,   74066549,   80131819,   86693767,   93793069,
-        101473717,  109783337,  118773397,  128499677,  139022417,  150406843,  162723577,  176048909,  190465427,
-        206062531,  222936881,  241193053,  260944219,  282312799,  305431229,  330442829,  357502601,  386778277,
-        418451333,  452718089,  489790921,  529899637,  573292817,  620239453,  671030513,  725980837,  785430967,
-        849749479,  919334987,  994618837,  1076067617, 1164186217, 1259520799, 1362662261, 1474249943, 1594975441,
-        1725587117, 1866894511, 2019773507, 2185171673, 2364114217, 2557710269, 2767159799, 2993761039, 3238918481,
-        3504151727, 3791104843, 4101556399, 4294967291};
+    void IncreaseRef() noexcept;
+    void DecreaseRef() noexcept;
 
-protected:
-    std::atomic<int64_t> size_{0};
-    BucketAllocator *allocator_ = nullptr; /* allocate overflowed bucket */
-    Bucket *subMaps_[kSubMapCount]{};      /* sub map */
-    uint64_t bucketCount_ = 0;             /* bucket count of each sub map */
-    uint64_t baseSize_ = 4096L;            /* base size */
+private:
+    Result CreateSubMaps() noexcept;
+    void DestroySubMaps() noexcept;
+    void DestroyOverflowedBuckets() noexcept;
+    Result NewBucketAndPut(uint64_t key, uint64_t value, HashBucket *lastBucket) noexcept;
 
-    friend class FlashHashmapPersist;
+private:
+    /* make sure the size of this class is 64bytes which fit into one CPU cacheline */
+    int32_t refCount_ = 0;                   /* ref count*/
+    uint32_t bucketCount_ = 0;               /* bucket count of each sub map */
+    std::atomic<uint64_t> size_{0};          /* size of items */
+    HashBucket *subMaps_[kSubMapCount]{};    /* sub map, 5 sub map */
+    OverflowAllocator *allocator_ = nullptr; /* allocator of overflowed bucket */
+    /* make sure the size of this class is 64bytes which fit into one CPU cacheline */
 };
 
-template<typename Bucket, typename BucketAllocator>
-inline FlashHashmap<Bucket, BucketAllocator>::~FlashHashmap()
+using FlashHashmapPtr = EmRef<FlashHashmap<NaiveBucketAllocator>>;
+
+template<typename OverflowAllocator>
+EM_ALWAYS_INLINE void FlashHashmap<OverflowAllocator>::IncreaseRef() noexcept
 {
-    UnInitialize();
+    __atomic_add_fetch(&refCount_, 1, __ATOMIC_RELAXED);
 }
 
-template<typename Bucket, typename BucketAllocator>
-inline Result FlashHashmap<Bucket, BucketAllocator>::Initialize() noexcept
+template<typename OverflowAllocator>
+EM_ALWAYS_INLINE void FlashHashmap<OverflowAllocator>::DecreaseRef() noexcept
+{
+    if (__atomic_sub_fetch(&refCount_, 1, __ATOMIC_ACQ_REL) == 0) {
+        delete this;
+    }
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::Initialize(uint64_t capacity) noexcept
+{
+    if (allocator_ != nullptr) {
+        return EM_OK;
+    }
+
+    /* get proper bucketCount for easy subMap */
+    auto bucketCountPerSubMap = capacity / kSubMapCount;
+    bucketCountPerSubMap = (bucketCountPerSubMap > UN5) ? bucketCountPerSubMap : UN5;
+
+    /* loop primes array to get a proper prime which is just less than bucketCountPerSubMap */
+    uint64_t i = 0;
+    while (i < kMapPrimesCount - 1 && kMapPrimes[i] < bucketCountPerSubMap) {
+        i++;
+    }
+    bucketCount_ = kMapPrimes[i];
+    EM_LOG_DEBUG("bucket count is set to " << bucketCount_);
+
+    /* create sub map */
+    auto result = CreateSubMaps();
+    EM_ASSERT_RETURN(result == EM_OK, result);
+
+    /* create allocator  */
+    allocator_ = new (std::nothrow) OverflowAllocator();
+    if (allocator_ == nullptr) {
+        DestroySubMaps();
+        bucketCount_ = 0;
+        EM_LOG_ERROR("New overflow bucket allocator failed, probably out of memory");
+        return EM_NEW_OBJ_FAILED;
+    }
+
+    EM_LOG_DEBUG("FlashHashmap is initialized, dump " << (*this));
+    return EM_OK;
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::Initialize(const FlashHashmapRecoverOptions &options) noexcept
 {
     return EM_OK;
 }
 
-template<typename Bucket, typename BucketAllocator>
-inline void FlashHashmap<Bucket, BucketAllocator>::UnInitialize() noexcept
-{}
+template<typename OverflowAllocator>
+inline void FlashHashmap<OverflowAllocator>::UnInitialize() noexcept
+{
+    if (allocator_ == nullptr) {
+        EM_LOG_DEBUG("Not initialized");
+        return;
+    }
 
-template<typename Bucket, typename BucketAllocator>
-inline uint64_t FlashHashmap<Bucket, BucketAllocator>::Size() const noexcept
+    /* free all overflow buckets */
+    DestroyOverflowedBuckets();
+
+    /* destroy sub maps */
+    DestroySubMaps();
+
+    bucketCount_ = 0;
+    size_ = 0;
+
+    delete allocator_;
+    allocator_ = nullptr;
+}
+
+template<typename OverflowAllocator>
+inline uint64_t FlashHashmap<OverflowAllocator>::Size() const noexcept
 {
     return size_.load();
 }
 
-template<typename Bucket, typename BucketAllocator>
-inline Result FlashHashmap<Bucket, BucketAllocator>::FindOrUpsert(uint64_t key, uint64_t &value) noexcept
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::FindOrInsert(uint64_t key, uint64_t &value) noexcept
 {
+    if (UNLIKELY(key == kInvalidMapKey)) {
+        return EM_HASHMAP_INVALID_KEY;
+    }
+
+    /* get bucket */
+    auto buck = &(subMaps_[key % kSubMapCount][key % bucketCount_]);
+
+    /* loop all buckets linked */
+    while (buck != nullptr) {
+        if (buck->Get(key, value) == EM_OK) {
+            return EM_OK;
+        }
+
+        /* assign spin lock to tmp one as we are moving forward bucket ptr */
+        auto &tmpBuckLock = buck->spinLock_;
+        tmpBuckLock.Lock();
+        if (buck->next_ != nullptr) {
+            buck = buck->next_;
+            tmpBuckLock.UnLock();
+        } else {
+            tmpBuckLock.UnLock();
+            break;
+        }
+    }
+
+    /* create new bucket and insert */
+    return NewBucketAndPut(key, value, buck);
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::NewBucketAndPut(uint64_t key, uint64_t value,
+                                                               HashBucket *lastBucket) noexcept
+{
+    /*
+     * here we need to handle the case of multiple threads,
+     * one thread is doing allocation,
+     * other threads are waiting by busy loop, so here we do loop here
+     */
+    auto buck = lastBucket;
+    for (auto i = 0; i < UN4096; i++) {
+        /* if the bucket is not null, i.e. new bucket is created, probably created by another thread */
+        while (buck != nullptr) {
+            if (buck->Insert(key, value) == EM_OK) {
+                ++size_;
+                return EM_OK;
+            }
+
+            /* since there are only 3 key/value can be stored in one bucket, there is a case
+             * that more than 3 threads doing insert at the same time, so we need to create more bucket
+             *
+             * NOTE: assign spin lock to tmp one as we are moving forward bucket ptr
+             */
+            auto &tmpBuckLock = buck->spinLock_;
+            tmpBuckLock.Lock();
+            if (buck->next_ != nullptr) {
+                buck = buck->next_;
+                tmpBuckLock.UnLock();
+            } else {
+                tmpBuckLock.UnLock();
+                break;
+            }
+        }
+
+        /*
+         * if not put successfully in existing bucket, allocate a new one, i.e. the new created bucket is
+         * full again, need to create new one again, when the threads count is larger than 3 and position
+         * on the same bucket, we need to handle this event possibility is low
+         */
+        auto &lock = buck->spinLock_;
+        lock.Lock();
+        /* if another thread allocated new buck already, unlock and continue, do the insert operation */
+        if (buck->next_ != nullptr) {
+            buck = buck->next_;
+            lock.UnLock();
+            continue;
+        }
+
+        /*
+         * firstly entered thread allocate new bucket */
+        auto newBuckRaw = allocator_->Allocate(sizeof(HashBucket));
+        if (UNLIKELY(newBuckRaw == nullptr)) {
+            lock.UnLock();
+            EM_LOG_ERROR("Alloc new overflowed bucket from allocator failed, probably out of memory");
+            return EM_NEW_OBJ_FAILED;
+        }
+
+        /*
+         * placement new, this maybe trigger page fault, that result in holding the spin lock for a while,
+         * to improve this, a better cachable bucket allocator need to be implemented
+         */
+        auto newBuck = new (newBuckRaw) HashBucket();
+
+        /* secondly link to current buck, set buck to new buck, don't do any memset there */
+        buck->next_ = newBuck;
+        buck = newBuck;
+
+        /* unlock */
+        lock.UnLock();
+    }
+
+    EM_LOG_DEBUG("create new overflowed bucket for key: " << key << ", value: " << value);
+    return EM_HASHMAP_NEW_BUCKET_FAILED;
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::Find(uint64_t key, uint64_t &value) noexcept
+{
+    if (UNLIKELY(key == kInvalidMapKey)) {
+        return EM_HASHMAP_INVALID_KEY;
+    }
+
+    /* get bucket */
+    auto buck = &(subMaps_[key % kSubMapCount][key % bucketCount_]);
+
+    /* loop all buckets linked */
+    while (buck != nullptr) {
+        if (buck->Get(key, value) == EM_OK) {
+            return EM_OK;
+        }
+
+        /* assign spin lock to tmp one as we are moving forward bucket ptr */
+        auto &tmpBuckLock = buck->spinLock_;
+        tmpBuckLock.Lock();
+        if (buck->next_ != nullptr) {
+            buck = buck->next_;
+            tmpBuckLock.UnLock();
+        } else {
+            tmpBuckLock.UnLock();
+            break;
+        }
+    }
+
+    EM_LOG_DEBUG("key: " << key << " not found");
+    return EM_HASHMAP_KEY_NOT_FOUND;
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::Remove(uint64_t key, uint64_t &value) noexcept
+{
+    if (UNLIKELY(key == kInvalidMapKey)) {
+        return EM_HASHMAP_INVALID_KEY;
+    }
+
+    /* remove key and value is heavy operation, in this operation:
+     * 1 hold the spin lock of the first bucket
+     * 2 loop all linked buckets
+     * 3 get the last key/value
+     * 4 replace the key if found with last key/value
+     */
+    /* get bucket */
+    auto buck = &(subMaps_[key % kSubMapCount][key % bucketCount_]);
+
+    /* do lock */
+    auto &lock = buck->spinLock_;
+    lock.Lock();
+
+    /* loop all linked buckets */
+    while (buck != nullptr) {
+        /* not found the key, go to next */
+        if (buck->GetWithoutLock(key, value) != EM_OK) {
+            buck = buck->next_;
+            continue;
+        }
+
+        /*
+         * if found, get and erase the fast one on current and contiguous buckets,
+         * and for sure, we can find the last valid key and value,
+         * if not get last key/value, then don't know what happened, so here we just log an error message
+         */
+        uint64_t lastKey = kInvalidMapKey;
+        uint64_t lastValue = kInvalidMapValue;
+        auto result = buck->GetAndEraseLast(lastKey, lastValue);
+        if (result != EM_OK) {
+            lock.UnLock();
+            EM_LOG_ERROR("Un-reachable path");
+            return EM_ERROR;
+        }
+
+        /* if the last key is same with key to be removed, just return as it already erased */
+        if (key == lastKey) {
+            --size_;
+            lock.UnLock();
+            return EM_OK;
+        }
+
+        /* replace the key and value with the last one */
+        result = buck->Replace(key, lastKey, lastValue);
+        if (result != EM_OK) {
+            lock.UnLock();
+            EM_LOG_ERROR("Un-reachable path");
+            return EM_ERROR;
+        }
+
+        --size_;
+        lock.UnLock();
+        return EM_OK;
+    }
+
+    /* unlock */
+    lock.UnLock();
+
+    return EM_HASHMAP_KEY_NOT_FOUND;
+}
+
+template<typename OverflowAllocator>
+inline uint32_t FlashHashmap<OverflowAllocator>::BucketCount() const noexcept
+{
+    return bucketCount_;
+}
+
+template<typename OverflowAllocator>
+inline bool FlashHashmap<OverflowAllocator>::Initialized() const noexcept
+{
+    return allocator_ != nullptr;
+}
+
+template<typename OverflowAllocator>
+inline Result FlashHashmap<OverflowAllocator>::CreateSubMaps() noexcept
+{
+    /* set all sub maps to nullptr */
+    for (auto i = 0; i < kSubMapCount; i++) {
+        subMaps_[i] = nullptr;
+    }
+
+    /* allocate buckets for sub-maps */
+    for (auto i = 0; i < kSubMapCount; i++) {
+        auto tmp = new (std::nothrow) HashBucket[bucketCount_];
+        if (tmp == nullptr) {
+            DestroySubMaps();
+            EM_LOG_ERROR("Create sub map buckets failed, probably out of memory");
+            return EM_NEW_OBJ_FAILED;
+        }
+
+        subMaps_[i] = tmp;
+    }
+
+    EM_LOG_DEBUG("sub maps are created");
     return EM_OK;
 }
 
-template<typename Bucket, typename BucketAllocator>
-inline Result FlashHashmap<Bucket, BucketAllocator>::Find(const uint64_t key, uint64_t &value) noexcept
+template<typename OverflowAllocator>
+inline void FlashHashmap<OverflowAllocator>::DestroySubMaps() noexcept
 {
-    return EM_OK;
+    /* free all sub maps */
+    for (auto i = 0; i < kSubMapCount; i++) {
+        auto &tmp = subMaps_[i];
+        if (tmp != nullptr) {
+            delete[] tmp;
+            subMaps_[i] = nullptr;
+        }
+    }
+
+    EM_LOG_DEBUG("sub maps are destroyed");
 }
 
-template<typename Bucket, typename BucketAllocator>
-inline Result FlashHashmap<Bucket, BucketAllocator>::Remove(uint64_t key) noexcept
+template<typename OverflowAllocator>
+inline void FlashHashmap<OverflowAllocator>::DestroyOverflowedBuckets() noexcept
 {
-    return EM_OK;
+    for (auto i = 0; i < kSubMapCount; i++) {
+        auto &tmpSubMap = subMaps_[i];
+        if (tmpSubMap == nullptr) {
+            continue;
+        }
+
+        /* free overflow entries in one sub map */
+        for (uint32_t buckIndex = 0; buckIndex < bucketCount_; ++buckIndex) {
+            auto curBuck = tmpSubMap[buckIndex].next_;
+            HashBucket *nextOverflowBuck = nullptr;
+
+            /* exit loop when curBuck is null */
+            while (curBuck != nullptr) {
+                /* assign next overflow buck to tmp variable */
+                nextOverflowBuck = curBuck->next_;
+
+                /* free this overflow bucket */
+                allocator_->Free(curBuck);
+
+                /* assign next to current */
+                curBuck = nextOverflowBuck;
+            }
+        }
+    }
+
+    EM_LOG_DEBUG("destroy overflowed buckets");
 }
 
-using ReadonlyFlashHashmapPtr = EmRef<FlashHashmap<HashBucketReadonly>>;
-using FlashHashmapPtr = EmRef<FlashHashmap<HashBucket>>;
-
+} // namespace hashmap
 } // namespace emb
 } // namespace ock
 

@@ -154,23 +154,3 @@ else ()
 
     message("-- mockcpp: has been success installed by ${MAKE_CMD}")
 endif ()
-
-
-#set(MOCKCPP_CMAKE_ARGS
-#        ${THIRD_PARTY_CMAKE_ARGS}
-#        -DCMAKE_INSTALL_LIBDIR=${MOCKCPP_INSTALL_DIR}/lib
-#        -DCMAKE_INSTALL_BINDIR=${MOCKCPP_INSTALL_DIR}/bin
-#        -DCMAKE_INSTALL_PREFIX=${MOCKCPP_INSTALL_DIR}/)
-
-#set(MOCKCPP_PATCH ${PROJECT_SOURCE_DIR}/test/3rdparty/patch/mockcpp_support_arm64.patch)
-
-#externalproject_add(mock_cpp
-#        URL ${THIRD_PARTY_DIR}/mockcpp
-#        CMAKE_ARGS ${MOCKCPP_CMAKE_ARGS}
-#        PATCH_COMMAND patch -p1 --forward -i ${MOCKCPP_PATCH}
-#        BUILD_ALWAYS OFF
-#        LOG_DOWNLOAD On
-#        LOG_CONFIGURE On
-#        LOG_BUILD On
-#        LOG_INSTALL On
-#        BUILD_BYPRODUCTS ${PROJECT_3RDPARTY_BIN_DIR}/mockcpp/lib/libmockcpp.a)

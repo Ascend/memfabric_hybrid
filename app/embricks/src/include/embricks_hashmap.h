@@ -9,20 +9,17 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#include "emb_flash_hashmap_persist.h"
+#ifndef MEMFABRIC_HYBRID_EMBRICKS_HASHMAP_H
+#define MEMFABRIC_HYBRID_EMBRICKS_HASHMAP_H
 
-namespace ock {
-namespace emb {
-namespace hashmap {
-Result FlashHashmapPersist::Persist(const std::string &filepath, const FlashHashmapPtr &map)
-{
-    return EM_OK;
-}
+#include "embricks_def.h"
 
-Result FlashHashmapPersist::UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map)
-{
-    return EM_OK;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
 }
-} // namespace hashmap
-} // namespace emb
-} // namespace ock
+#endif
+
+#endif // MEMFABRIC_HYBRID_EMBRICKS_HASHMAP_H

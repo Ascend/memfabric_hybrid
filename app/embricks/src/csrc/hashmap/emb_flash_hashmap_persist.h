@@ -13,14 +13,17 @@
 #define MEMFABRIC_HYBRID_EMB_FAST_HASHMAP_PERSIST_H
 
 #include "emb_flash_hashmap.h"
+#include "emb_flash_hashmap_readonly.h"
 
 namespace ock {
 namespace emb {
+namespace hashmap {
 class FlashHashmapPersist {
 public:
     static Result Persist(const std::string &filepath, const FlashHashmapPtr &map);
     static Result UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map);
 };
+} // namespace hashmap
 } // namespace emb
 } // namespace ock
 

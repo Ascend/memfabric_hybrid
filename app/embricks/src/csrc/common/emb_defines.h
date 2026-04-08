@@ -36,8 +36,10 @@ enum EmResultErrorCode : Result {
     EM_NOT_ENOUGH_MEM = -10,
     EM_DL_FUNCTION_NOT_LOADED = -11,
     EM_NOT_IMPLEMENTED = -12,
-    EM_HASHMAP_NO_KEY_FOUND = -13,
-    EM_HASHMAP_BUCKET_FULL = -14
+    EM_HASHMAP_KEY_NOT_FOUND = -13,
+    EM_HASHMAP_BUCKET_FULL = -14,
+    EM_HASHMAP_INVALID_KEY = -15,
+    EM_HASHMAP_NEW_BUCKET_FAILED = -16,
 };
 
 constexpr uint32_t PATH_MAX_LIMIT = 4096;
@@ -47,6 +49,7 @@ constexpr uint32_t UN2 = 2;
 constexpr uint32_t UN3 = 3;
 constexpr uint32_t UN5 = 5;
 constexpr uint32_t UN256 = 256;
+constexpr uint32_t UN4096 = 4096;
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
@@ -56,11 +59,7 @@ constexpr uint32_t UN256 = 256;
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0) != 0)
 #endif
 
-#define EM_LIKELY(expr)   LIKELY(expr)
-#define EM_UNLIKELY(expr) UNLIKELY(expr)
-
-#define EM_API __attribute__((visibility("default")))
-
+#define EM_API           __attribute__((visibility("default")))
 #define EM_ALWAYS_INLINE inline __attribute__((always_inline))
 
 #define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)                      \

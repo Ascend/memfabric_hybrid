@@ -24,19 +24,18 @@ public:
 
     inline void IncreaseRef()
     {
-        __sync_fetch_and_add(&mRefCount, 1);
+        __atomic_add_fetch(&refCount_, 1, __ATOMIC_RELAXED);
     }
 
     inline void DecreaseRef()
     {
-        // delete itself if reference count equal to 0
-        if (__sync_sub_and_fetch(&mRefCount, 1) == 0) {
+        if (__atomic_sub_fetch(&refCount_, 1, __ATOMIC_ACQ_REL) == 0) {
             delete this;
         }
     }
 
 protected:
-    int32_t mRefCount = 0;
+    int32_t refCount_ = 0;
 };
 
 template<typename T>
@@ -48,35 +47,35 @@ public:
     // fix: can't be explicit
     EmRef(T *newObj) noexcept
     {
-        // if new obj is not null, increase reference count and assign to mObj
-        // else nothing need to do as mObj is nullptr by default
+        // if new obj is not null, increase reference count and assign to obj_
+        // else nothing need to do as obj_ is nullptr by default
         if (newObj != nullptr) {
             newObj->IncreaseRef();
-            mObj = newObj;
+            obj_ = newObj;
         }
     }
 
     EmRef(const EmRef<T> &other) noexcept
     {
-        // if other's obj is not null, increase reference count and assign to mObj
-        // else nothing need to do as mObj is nullptr by default
-        if (other.mObj != nullptr) {
-            other.mObj->IncreaseRef();
-            mObj = other.mObj;
+        // if other's obj is not null, increase reference count and assign to obj_
+        // else nothing need to do as obj_ is nullptr by default
+        if (other.obj_ != nullptr) {
+            other.obj_->IncreaseRef();
+            obj_ = other.obj_;
         }
     }
 
-    EmRef(EmRef<T> &&other) noexcept : mObj(std::__exchange(other.mObj, nullptr))
+    EmRef(EmRef<T> &&other) noexcept : obj_(std::__exchange(other.obj_, nullptr))
     {
         // move constructor
-        // since this mObj is null, just exchange
+        // since this obj_ is null, just exchange
     }
 
     // de-constructor
     ~EmRef()
     {
-        if (mObj != nullptr) {
-            mObj->DecreaseRef();
+        if (obj_ != nullptr) {
+            obj_->DecreaseRef();
         }
     }
 
@@ -90,7 +89,7 @@ public:
     inline EmRef<T> &operator=(const EmRef<T> &other)
     {
         if (this != &other) {
-            this->Set(other.mObj);
+            this->Set(other.obj_);
         }
         return *this;
     }
@@ -98,8 +97,8 @@ public:
     EmRef<T> &operator=(EmRef<T> &&other) noexcept
     {
         if (this != &other) {
-            auto tmp = mObj;
-            mObj = std::__exchange(other.mObj, nullptr);
+            auto tmp = obj_;
+            obj_ = std::__exchange(other.obj_, nullptr);
             if (tmp != nullptr) {
                 tmp->DecreaseRef();
             }
@@ -110,38 +109,38 @@ public:
     // equal operator
     inline bool operator==(const EmRef<T> &other) const
     {
-        return mObj == other.mObj;
+        return obj_ == other.obj_;
     }
 
     inline bool operator==(T *other) const
     {
-        return mObj == other;
+        return obj_ == other;
     }
 
     inline bool operator!=(const EmRef<T> &other) const
     {
-        return mObj != other.mObj;
+        return obj_ != other.obj_;
     }
 
     inline bool operator!=(T *other) const
     {
-        return mObj != other;
+        return obj_ != other;
     }
 
     // get operator and set
     inline T *operator->() const
     {
-        return mObj;
+        return obj_;
     }
 
     inline T *Get() const
     {
-        return mObj;
+        return obj_;
     }
 
     inline void Set(T *newObj)
     {
-        if (newObj == mObj) {
+        if (newObj == obj_) {
             return;
         }
 
@@ -149,15 +148,15 @@ public:
             newObj->IncreaseRef();
         }
 
-        if (mObj != nullptr) {
-            mObj->DecreaseRef();
+        if (obj_ != nullptr) {
+            obj_->DecreaseRef();
         }
 
-        mObj = newObj;
+        obj_ = newObj;
     }
 
 private:
-    T *mObj = nullptr;
+    T *obj_ = nullptr;
 };
 
 template<class Src, class Des>

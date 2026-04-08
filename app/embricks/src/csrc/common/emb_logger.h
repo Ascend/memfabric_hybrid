@@ -138,11 +138,7 @@ private:
 } // namespace ock
 
 // macro for log
-#ifndef UT_ENABLED
 #define EM_LOG_FILENAME_SHORT (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#else
-#define EM_LOG_FILENAME_SHORT (__FILE__)
-#endif
 
 #define EM_LOG_FORMAT EM_LOG_FILENAME_SHORT << ":" << __LINE__ << " " << __FUNCTION__ << "] "
 #define EM_OUT_LOG(TAG, LEVEL, ARGS)                                                   \
