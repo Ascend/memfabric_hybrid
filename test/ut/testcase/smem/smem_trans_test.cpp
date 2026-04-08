@@ -35,7 +35,7 @@ const char STORE_URL[] = "tcp://127.0.0.1:5432";
 const char UNIQUE_ID[] = "127.0.0.1:5321";
 const char STORE_URL_IPV6[] = "tcp://[::1]:5432";
 const char UNIQUE_IPV6_ID[] = "[::1]:5321";
-const uint32_t TRANS_TEST_WAIT_TIME = 8; // 8s
+const uint32_t TRANS_TEST_WAIT_TIME = 1; // 1s
 constexpr size_t REGISTER_MEM_ELEM_COUNT = 10;
 constexpr int MAX_TEST_ATTEMPTS = 10;
 constexpr int STORE_CREATE_FAILED_EXIT_CODE = 10;
@@ -1020,7 +1020,6 @@ TEST_F(SmemTransTest, smem_trans_batch_quant_write_invalid_nonnull_handle)
     smem_trans_uninit(0);
 }
 
-#if 0
 TEST_F(SmemTransTest, smem_trans_read_write)
 {
     uint32_t rankSize = 2;
@@ -1157,7 +1156,6 @@ TEST_F(SmemTransTest, smem_trans_read_write)
     delete[] sender_buffer;
     delete[] recv_buffer;
 }
-#endif
 
 TEST_F(SmemTransTest, smem_trans_malloc)
 {
@@ -1166,8 +1164,10 @@ TEST_F(SmemTransTest, smem_trans_malloc)
     size_t mallocHugeSize = mallocMiddleSize * 64; // 128GB
     size_t mallocOversize = mallocHugeSize * 129;  // 512GB
 
-    smem_trans_config_t trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0, SMEMB_DATA_OP_SDMA, 1};
+    smem_trans_config_t trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0, SMEMB_DATA_OP_SDMA};
     auto ret = smem_trans_init(&trans_options);
+    EXPECT_EQ(ret, 0);
+    ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
     EXPECT_EQ(ret, 0);
     auto handle = smem_trans_create(STORE_URL, "127.0.0.1:5321", &trans_options);
     EXPECT_NE(handle, nullptr);
@@ -1674,7 +1674,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_dram)
                           const std::array<const char *, 2> unique_ids) {
         if (rank == 1) {
             // 确保传入的rank和内部生成的rank对应
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(TRANS_TEST_WAIT_TIME));
         }
         trans_options.dataOpType = SMEMB_DATA_OP_SDMA;
         int ret = smem_trans_init(&trans_options);
@@ -2013,6 +2013,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param)
         delete[] destPtr2;
         smem_trans_destroy(handle, 0);
         smem_trans_uninit(0);
+        smem_destroy_config_store(STORE_URL);
         exit(flag);
     }
 
@@ -2097,6 +2098,7 @@ TEST_F(SmemTransTest, smem_trans_batch_write_failed_invalid_param_ipv6)
         delete[] destPtr2;
         smem_trans_destroy(handle, 0);
         smem_trans_uninit(0);
+        smem_destroy_config_store(STORE_URL);
         exit(flag);
     }
 
@@ -2155,42 +2157,26 @@ TEST_F(SmemTransTest, smem_trans_register_mems_success_receiver_ipv6)
 {
     smem_trans_config_t trans_options = g_trans_options;
     trans_options.role = SMEM_TRANS_RECEIVER;
-    pid_t pid = fork();
-    EXPECT_NE(pid, -1);
 
-    if (pid == 0) {
-        uint8_t flag = 0;
-        int *address1 = new int[1000];
-        int *address2 = new int[2000];
-        std::vector<void *> addrPtrs = {address1, address2};
-        std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
+    int *address1 = new int[1000];
+    int *address2 = new int[2000];
+    std::vector<void *> addrPtrs = {address1, address2};
+    std::vector<size_t> capacities = {1000 * sizeof(int), 2000 * sizeof(int)};
 
-        // first create server
-        smem_set_conf_store_tls(false, nullptr, 0);
-        smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
-        int ret = smem_trans_init(&g_trans_options);
-        EXPECT_EQ(ret, 0);
+    // first create server
+    smem_set_conf_store_tls(false, nullptr, 0);
+    smem_create_config_store(STORE_URL_IPV6, SMEM_STORE_SKIP_RECOVER);
+    int ret = smem_trans_init(&g_trans_options);
+    EXPECT_EQ(ret, 0);
 
-        // client connect to server when initializing
-        auto handle = smem_trans_create(STORE_URL_IPV6, UNIQUE_IPV6_ID, &trans_options);
+    // client connect to server when initializing
+    auto handle = smem_trans_create(STORE_URL_IPV6, UNIQUE_IPV6_ID, &trans_options);
 
-        ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), capacities.size(), 0);
-        if (ret != SM_OK) {
-            flag = 2;
-            goto cleanup;
-        }
+    ret = smem_trans_batch_register_mem(handle, addrPtrs.data(), capacities.data(), capacities.size(), 0);
+    EXPECT_EQ(ret, SM_OK);
 
-    cleanup:
-        delete[] address1;
-        delete[] address2;
-        smem_trans_destroy(handle, 0);
-        smem_trans_uninit(0);
-        exit(flag);
-    }
-
-    int status;
-    EXPECT_NE(waitpid(pid, &status, 0), -1);
-
-    EXPECT_TRUE(WIFEXITED(status));
-    EXPECT_EQ(WEXITSTATUS(status), 0);
+    delete[] address1;
+    delete[] address2;
+    smem_trans_destroy(handle, 0);
+    smem_trans_uninit(0);
 }

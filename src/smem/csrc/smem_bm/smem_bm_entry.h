@@ -46,6 +46,8 @@ public:
 
     Result Join(uint32_t flags);
 
+    Result Update(uint32_t flags);
+
     Result Leave(uint32_t flags);
 
     Result SetEventListener(smem_bm_group_event_cb cb, void *context);
@@ -83,7 +85,8 @@ private:
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
 
     Result JoinHandle(uint32_t rk);
-    Result JoinBarrier(int32_t input);
+    Result UpdateHandle(uint32_t rk);
+    Result GroupOpBarrier(int32_t input);
     Result LeaveHandle(uint32_t rk);
     void InvokeEventCb(uint32_t rankId, smem_bm_group_event_t event);
 

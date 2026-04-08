@@ -807,7 +807,7 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
             if (addrIter == pos.end()) {
                 pos.emplace(devKey.address, devKey);
             } else {
-                BM_LOG_INFO("OptionsToRankMRs devKey address: " << (void *)(ptrdiff_t)devKey.address
+                BM_LOG_DEBUG("OptionsToRankMRs devKey address: " << (void *)(ptrdiff_t)devKey.address
                                                                 << " already exists, skip emplace.");
                 continue;
             }

@@ -20,8 +20,6 @@
 
 namespace ock {
 namespace smem {
-constexpr uint32_t SMEM_BM_JOIN_RETRY_TIME = 10U;
-
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
     if (inited_) {
@@ -148,7 +146,7 @@ void SmemBmEntry::UnInitalize()
     inited_ = false;
 }
 
-Result SmemBmEntry::JoinBarrier(int32_t input)
+Result SmemBmEntry::GroupOpBarrier(int32_t input)
 {
     int32_t remoteRet = input;
     int32_t ret = globalGroup_->GroupGatherResult(input, remoteRet);
@@ -186,6 +184,9 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     SM_VALIDATE_RETURN(ret == SM_OK, "gather prefix info failed, ret:" << ret, ret);
     hybm_exchange_info info;
     for (auto &it : allInfo) {
+        if (it.first == options_.rank) {
+            continue;
+        }
         if (it.second.length() % unitSize != 0) {
             SM_LOG_ERROR("receive exchange info size is invalid!, size:" << it.second.length() << " rank:" << it.first);
             ret = SM_INVALID_PARAM;
@@ -204,7 +205,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         }
     }
 
-    ret = JoinBarrier(ret);
+    ret = GroupOpBarrier(ret);
     if (ret != SM_OK) {
         SM_LOG_ERROR("hybm barrier before mmap failed, result: " << ret);
         goto rollback_exit;
@@ -218,7 +219,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     }
 
 join_exit:
-    ret = JoinBarrier(ret);
+    ret = GroupOpBarrier(ret);
     if (ret != SM_OK) {
         SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
         goto rollback_exit;
@@ -234,6 +235,59 @@ rollback_exit:
         hybm_remove_imported(entity_, rks, 0);
     }
     return ret;
+}
+
+Result SmemBmEntry::UpdateHandle(uint32_t rk)
+{
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_LOG_INFO("do update func, local_rk: " << options_.rank << " receive_rk: " << rk
+                                             << ", rank size is: " << globalGroup_->GetRankSize());
+
+    uint32_t unitSize = sizeof(hybm_exchange_info);
+    std::string xinfo;
+    if (rk == options_.rank) {
+        // todo: get update slice info
+    }
+
+    int32_t ret = globalGroup_->GroupBarrierPrefixKey(rk, xinfo);
+    SM_VALIDATE_RETURN(ret == SM_OK, "barrier prefix info failed, ret:" << ret, ret);
+    if (rk != options_.rank) {
+        hybm_exchange_info info;
+        if (xinfo.length() % unitSize != 0) {
+            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << xinfo.length() << " rank:" << rk);
+            ret = SM_INVALID_PARAM;
+            goto update_exit;
+        }
+        uint32_t num = xinfo.length() / unitSize;
+        for (uint32_t i = 0; i < num; i++) {
+            (void)std::copy_n(xinfo.c_str() + i * unitSize, unitSize, (char *)&info);
+            ret = hybm_import(entity_, &info, 1U, nullptr, (i == 0 ? HYBM_FLAG_EXPORT_ENTITY : 0));
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("hybm import failed, result: " << ret << " remote_rank:" << rk
+                                                            << " local_rank:" << options_.rank);
+                goto update_exit;
+            }
+        }
+
+        FIP_START(MMAP, &ret)
+        ret = hybm_mmap(entity_, 0);
+        FIP_END;
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+        }
+    }
+
+update_exit:
+    ret = GroupOpBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
+        // todo: how to rollback mmap
+        return ret;
+    }
+
+    SM_LOG_INFO("end update func, local_rk: " << options_.rank << " receive_rk: " << rk
+                                              << ", rank size is: " << globalGroup_->GetRankSize());
+    return SM_OK;
 }
 
 Result SmemBmEntry::LeaveHandle(uint32_t rk)
@@ -264,7 +318,7 @@ void SmemBmEntry::InvokeEventCb(uint32_t rankId, smem_bm_group_event_t event)
 Result SmemBmEntry::Join(uint32_t flags)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    for (uint32_t i = 0; i < SMEM_BM_JOIN_RETRY_TIME; i++) {
+    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
         auto ret = globalGroup_->GroupJoin();
         if (ret == SM_INNER_BUSY) {
             sleep(1U); // sleep 1s
@@ -276,6 +330,24 @@ Result SmemBmEntry::Join(uint32_t flags)
     }
 
     SM_LOG_ERROR("join timeout. rank:" << options_.rank);
+    return SM_ERROR;
+}
+
+Result SmemBmEntry::Update(uint32_t flags)
+{
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+        auto ret = globalGroup_->GroupUpdate();
+        if (ret == SM_INNER_BUSY) {
+            sleep(1U); // sleep 1s
+            continue;
+        }
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "update failed, ret: " << ret);
+        SM_LOG_DEBUG("update success. rank:" << options_.rank);
+        return SM_OK;
+    }
+
+    SM_LOG_ERROR("update timeout. rank:" << options_.rank);
     return SM_ERROR;
 }
 
@@ -516,9 +588,10 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
 Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);
+    SmemGroupChangeCallback updateFunc = std::bind(&SmemBmEntry::UpdateHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback leaveFunc = std::bind(&SmemBmEntry::LeaveHandle, this, std::placeholders::_1);
-    SmemGroupOption opt = {rankSize, rankId,   options_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           true,     joinFunc, leaveFunc};
+    SmemGroupOption opt = {rankSize, rankId, options_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           true, joinFunc, updateFunc, leaveFunc};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

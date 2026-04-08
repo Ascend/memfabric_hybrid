@@ -446,9 +446,10 @@ void HybmDevUserLegacySegment::CloseMemory() noexcept
     for (auto &it : registerSlices_) {
         HybmVaManager::GetInstance().RemoveOneVaInfo(it.second.slice->gva_);
     }
-
     registerAddrs_.clear();
-    HybmVaManager::GetInstance().FreeReserveGva(reinterpret_cast<uint64_t>(globalVirtualAddress_));
+    if (globalVirtualAddress_ != nullptr) {
+        HybmVaManager::GetInstance().FreeReserveGva(reinterpret_cast<uint64_t>(globalVirtualAddress_));
+    }
     globalVirtualAddress_ = lvaBase_ = nullptr;
     totalVirtualSize_ = 0;
     BM_LOG_INFO("close memory finish.");

@@ -48,6 +48,7 @@ struct SmemGroupOption {
 
     bool dynamic;
     SmemGroupChangeCallback joinCb;
+    SmemGroupChangeCallback updateCb;
     SmemGroupChangeCallback leaveCb;
 };
 
@@ -56,7 +57,8 @@ enum GroupEventType : int32_t {
     LEAVE_EVENT = 1,
     RECOVER_EVENT = 2,
     LINK_DOWN_EVENT = 3,
-    NULL_EVNET = 4,
+    UPDATE_EVENT = 4,
+    NULL_EVNET = 5,
 };
 
 template<typename T>
@@ -113,6 +115,8 @@ public:
     Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId, const char *sendBuf, uint32_t sendSize,
                           char *recvBuf, uint32_t recvSize);
 
+    Result GroupBarrierPrefixKey(uint32_t dstRank, std::string &update);
+
     Result GroupGatherPrefixKey(uint32_t dstRank, std::string &update,
                                 std::unordered_map<uint32_t, std::string> &retMap);
 
@@ -132,6 +136,8 @@ public:
     bool IsJoined() const { return joined_.load(); }
 
     Result GroupJoin();
+
+    Result GroupUpdate();
 
     Result GroupLeave();
 

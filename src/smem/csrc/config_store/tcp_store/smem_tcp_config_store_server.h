@@ -87,8 +87,6 @@ public:
     void Shutdown(bool afterFork = false) noexcept;
     void RegisterBrokenLinkCHandler(const ConfigStoreServerBrokenHandler &handler) noexcept;
 
-    void RegisterOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept;
-
     Result RestoreFromBackend() noexcept;
     bool GetStatus() noexcept;
     Result UpdateStatus(bool status) noexcept;
@@ -126,7 +124,6 @@ private:
     void RankStateTask() noexcept;
     void CheckerThreadTask() noexcept;
     Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
-    Result ExecuteHandle(int16_t opCode, uint32_t linkId, std::string &key, std::vector<uint8_t> &value) noexcept;
 
 private:
     StoreErrorCode PersistWorldSize(uint32_t size) noexcept;
@@ -169,7 +166,6 @@ private:
     uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;
-    std::unordered_map<int16_t, ConfigStoreServerOpHandler> externalOpHandlerMap_;
     ConfigStoreServerBrokenHandler externalBrokenHandler_{nullptr};
     std::unordered_map<uint32_t, int64_t> heartBeatMap_;
     std::thread checkerThread_;

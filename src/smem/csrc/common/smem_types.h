@@ -44,7 +44,6 @@ constexpr int32_t N64 = 64;
 constexpr int32_t N256 = 256;
 constexpr int32_t N1024 = 1024;
 constexpr int32_t N8192 = 8192;
-const uint32_t REGISTER_WAIT_TIME = 8;
 
 constexpr uint32_t UN2 = 2;
 constexpr uint32_t UN32 = 32;
@@ -60,6 +59,8 @@ constexpr uint64_t SMEM_LOCAL_HBM_SIZE_MAX = 64ULL << 30; // 64G
 constexpr uint64_t SMEM_LOCAL_DRAM_SIZE_MAX = 2ULL << 40; // 2T
 constexpr uint64_t HYBM_MAX_POOL_SIZE = 128ULL << 40;     // 128T, 910C暂时只做到128TB, 910B无此限制
 constexpr uint64_t HYBM_HBM_SIZE_ALIGNMENT = 1ULL << 30;  // 1GB
+
+constexpr uint32_t SMEM_GROUP_RETRY_TIME = 10U;
 } // namespace smem
 } // namespace ock
 

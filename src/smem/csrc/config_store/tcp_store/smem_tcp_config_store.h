@@ -93,8 +93,6 @@ public:
 
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override;
 
-    void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override;
-
     // return started
     bool SetServerInfo(const std::string &ip, uint16_t port)
     {

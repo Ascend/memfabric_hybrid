@@ -23,7 +23,8 @@
 #include "hybm_def.h"
 #include "mf_rwlock.h"
 #include "smem_trans.h"
-#include "smem_trans_store_helper.h"
+#include "smem_net_group_engine.h"
+#include "smem_net_common.h"
 
 namespace ock {
 namespace smem {
@@ -39,11 +40,44 @@ struct PeerEntryValue {
     void *address = nullptr;
 };
 
+struct WorkerUniqueId {
+    ock::mf::net_addr_t address{};
+    uint16_t port{0};
+    uint16_t reserved{0};
+};
+
+using WorkerId = std::array<uint8_t, sizeof(WorkerUniqueId)>;
+
+struct WorkerIdHash {
+    size_t operator()(const WorkerId &id) const
+    {
+        return std::hash<std::string>()(std::string(id.begin(), id.end()));
+    }
+};
+
+union WorkerIdUnion {
+    WorkerUniqueId session;
+    WorkerId workerId;
+
+    explicit WorkerIdUnion(WorkerUniqueId ws) : session(ws) {}
+    explicit WorkerIdUnion(WorkerId id) : workerId{id} {}
+    explicit WorkerIdUnion() {}
+};
+
 struct LocalMapAddress {
     void *address;
     uint64_t size;
     LocalMapAddress() : address{nullptr}, size{0} {}
     LocalMapAddress(void *p, uint64_t s) : address{p}, size{s} {}
+};
+
+struct SmemTransExchangeInfo {
+    hybm_exchange_info hybmInfo;
+    union U {
+        WorkerUniqueId session;
+        LocalMapAddress address;
+        U() noexcept {}
+    } u;
 };
 
 class SmemTransEntry;
@@ -56,8 +90,9 @@ public:
                                     const smem_trans_config_t &config);
 
 public:
-    explicit SmemTransEntry(const std::string &name, SmemStoreHelper helper)
-        : name_(name), storeHelper_{std::move(helper)}
+    explicit SmemTransEntry(const smem_trans_config_t &config, std::string &name, uint32_t rank,
+                            uint32_t id, StorePtr &store)
+        : config_(config), name_(name), store_(store), entityId_(id), rankId_(rank)
     {}
 
     ~SmemTransEntry() override;
@@ -65,7 +100,7 @@ public:
     const std::string &Name() const;
     const smem_trans_config_t &Config() const;
 
-    Result Initialize(const smem_trans_config_t &config);
+    Result Initialize();
     void UnInitialize();
 
     void*  MallocDram(uint64_t size);
@@ -80,22 +115,27 @@ public:
     Result BatchQuantTransfer(smem_trans_quant_copy_param_t *params, smem_bm_copy_type opcode);
 
 private:
+    Result CreateGlobalTeam(uint32_t rankId);
+    Result JoinHandle(uint32_t rk);
+    Result UpdateHandle(uint32_t rk);
+    Result GroupOpBarrier(int32_t input);
+    Result LeaveHandle(uint32_t rk);
+    Result Join(uint32_t flags);
+    Result Update(uint32_t flags);
+    Result Leave(uint32_t flags);
+
+    void AddRemoteInfo(uint32_t rk, smem_trans_role_t role, WorkerId &id, std::vector<void *> &global,
+                       std::vector<LocalMapAddress> &local);
+    void AddRemoteInfo(uint32_t rk, std::vector<void *> &global, std::vector<LocalMapAddress> &local);
+    smem_trans_role_t QueryRole(uint32_t rk);
+
     bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port, uint16_t &reserved);
-    void CleanupRemoteSlices(const std::vector<StoredSliceInfo> &rmSs);
-    void RemoveRanks(std::set<uint32_t> &rankSet);
-    Result StartWatchConnectThread();
-    Result WatchConnectTaskOneLoop();
-    Result StartWatchThread();
-    void WatchTaskOneLoop();
-    void WatchTaskFindNewRanks();
-    void WatchTaskFindNewSlices();
+    void RemoveRanks(std::vector<uint32_t> &rankSet);
     Result ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId);
     void AlignMemory(const void *&address, uint64_t &size);
     std::vector<std::pair<const void *, size_t>> CombineMemories(std::vector<std::pair<const void *, size_t>> &input);
     Result RegisterOneMemory(const void *address, uint64_t size, uint32_t flags);
     hybm_options GenerateHybmOptions();
-    int32_t ReInitialize();
-    Result ExportExchangeInfo();
     void StoreSlice(hybm_mem_slice_t slice, void *vaAddr);
     hybm_mem_slice_t RemoveSlice(void *addr);
     Result TransformAddr(Local2GlobalMap &maps, std::vector<void *> &addr, void *remoteAddrs[],
@@ -103,32 +143,30 @@ private:
 
 private:
     hybm_entity_t entity_ = nullptr;                       /* local hybm entity */
-    std::map<PeerEntryKey, PeerEntryValue> peerEntries_{}; /* peer transfer entry look up map */
 
     uint32_t rankId_ = 0;
     uint16_t entityId_ = 0;
-    SmemStoreHelper storeHelper_;
 
-    std::mutex entryMutex_;
-    bool inited_ = false;
+    std::mutex memMutex_;
+    std::vector<SmemTransExchangeInfo> registedInfo_;
+
     const std::string name_;
     UrlExtraction storeUrlExtraction_;
     smem_trans_config_t config_{}; /* config of transfer entry */
     WorkerUniqueId workerUniqueId_;
-    uint32_t sliceInfoSize_{0}; /* same in user dev legacy segment and vmm segment */
-    std::thread watchThread_;
-    std::thread watchConnectThread_;
-    std::mutex watchMutex_;
-    std::condition_variable watchCond_;
-    bool watchRunning_{true};
-    bool watchConnectRunning_{true};
 
+    SmemTransExchangeInfo entityInfo_;
     ock::mf::ReadWriteLock remoteSliceRwMutex_;
-    std::unordered_map<WorkerId, Local2GlobalMap, WorkerIdHash>
-        remoteSlices_;
-    std::map<std::string, WorkerId> nameToWorkerId; /* To accelerate name parsed */
-    std::unordered_map<void *, hybm_mem_slice_t> addrToSliceMap_;
+    std::unordered_map<WorkerId, Local2GlobalMap, WorkerIdHash> remoteSlices_;
+    std::unordered_map<uint32_t, WorkerId> rankToWorkerId_;
+    std::map<std::string, WorkerId> nameToWorkerId_; /* To accelerate name parsed */
+    std::unordered_map<void *, hybm_mem_slice_t> addrToSliceMap_; // dram slice info
+    std::unordered_map<uint32_t, uint32_t> rankUpdateIdx_;
+    std::unordered_map<uint32_t, smem_trans_role_t> ranksRole_;
     mutable std::mutex addrMapMutex_;
+
+    StorePtr store_;
+    SmemGroupEnginePtr globalGroup_ = nullptr;
 };
 
 inline const std::string &SmemTransEntry::Name() const

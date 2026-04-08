@@ -163,7 +163,7 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
     rankId_ = options.rankId;
     rankCount_ = options.rankCount;
     mrMutex_ = std::vector<std::mutex>(rankCount_);
-    mrs_ = std::vector<std::vector<HcomMemoryRegion>>(rankCount_);
+    mrs_ = std::vector<std::set<HcomMemoryRegion>>(rankCount_);
     channelMutex_ = std::vector<std::mutex>(rankCount_);
     nics_ = std::vector<std::string>(rankCount_, "");
     channels_ = std::vector<Hcom_Channel>(rankCount_, 0);
@@ -245,7 +245,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
                 mrInfo.lKey.keys);
     {
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
-        mrs_[rankId_].push_back(mrInfo);
+        mrs_[rankId_].insert(mrInfo);
     }
     BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0]);
     return BM_OK;
@@ -298,7 +298,7 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
     CopyHcomOneSideKey(memoryRegionInfo.lKey, mrInfo.lKey);
     {
         std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
-        mrs_[rankId_].push_back(mrInfo);
+        mrs_[rankId_].insert(mrInfo);
     }
     BM_LOG_INFO("Success to register to mr info size: " << mrInfo.size << " lKey: " << mrInfo.lKey.keys[0] << std::hex
                                                         << " laddr:" << mr.addr);
@@ -313,10 +313,10 @@ Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
 
     std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
     auto &localMrs = mrs_[rankId_];
-    for (uint32_t i = 0; i < localMrs.size(); ++i) {
-        if (localMrs[i].addr == addr) {
-            DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, localMrs[i].mr);
-            localMrs.erase(localMrs.begin() + i);
+    for (auto it = localMrs.begin(); it != localMrs.end(); it++) {
+        if (it->addr == addr) {
+            DlHcomApi::ServiceDestroyMemoryRegion(rpcService_, it->mr);
+            localMrs.erase(it);
             BM_LOG_INFO("Addr: " << addr << " unregistered");
             return BM_OK;
         }
@@ -438,8 +438,7 @@ Result HcomTransportManager::UpdateRankMrInfos(const std::unordered_map<uint32_t
             CopyHcomOneSideKey(keyUnion.hostKey.hcomInfo.lKey, mrInfo.lKey);
             {
                 std::unique_lock<std::mutex> lock(mrMutex_[rankId]);
-                mrs_[rankId].clear();
-                mrs_[rankId].push_back(mrInfo);
+                mrs_[rankId].insert(mrInfo);
             }
             BM_LOG_INFO("Success to register to mr info rankId: " << rankId << " size: " << mrInfo.size
                                                                   << " lKey: " << mrInfo.lKey.keys[0]);
@@ -453,7 +452,7 @@ Result HcomTransportManager::UpdateRankConnectInfos(const std::unordered_map<uin
     std::vector<uint32_t> addRankList;
     for (uint32_t i = 0; i < rankCount_; ++i) {
         if (i >= rankId_) {
-            continue;
+            break;
         }
         auto it = opt.find(i);
         if (channels_[i] == 0 && it != opt.end()) {

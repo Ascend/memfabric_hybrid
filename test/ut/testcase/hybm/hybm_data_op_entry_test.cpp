@@ -95,10 +95,6 @@ public:
     {
         return BM_OK;
     }
-    int32_t GetExportSliceInfoSize(size_t& size) noexcept override
-    {
-        return BM_OK;
-    }
     int32_t RemoveImported(const std::vector<uint32_t>& ranks) noexcept override
     {
         return BM_OK;

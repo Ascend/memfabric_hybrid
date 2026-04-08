@@ -117,15 +117,6 @@ hybm_mem_slice_t hybm_register_local_memory(hybm_entity_t e, const void *ptr, ui
 int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t flags, hybm_exchange_info *exInfo);
 
 /**
- * @brief Get fixed size for export slice size
- *
- * @param e                [in] entity created by hybm_create_entity
- * @param size             [out] fixed size when export slice
- * @return 0 if successful, error code if failed
- */
-int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size);
-
-/**
  * @brief Import batch of exchange info of other HyBM entities
  *
  * @param e                [in] entity created by hybm_create_entity

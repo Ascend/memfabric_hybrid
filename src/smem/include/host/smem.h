@@ -65,6 +65,15 @@ int32_t smem_init(uint32_t flags);
 int32_t smem_create_config_store(const char *storeUrl, uint64_t flags);
 
 /**
+ * @brief destroy configure store server by store url.
+ *
+ * @param storeUrl         [in] configure store url for control, e.g. tcp://ip:port,
+ *                              etcd://ip:port, etcd://ip:port#instanceId,
+ *                              reg://ip:port, or reg://ip:port#instanceId
+ */
+void smem_destroy_config_store(const char *storeUrl);
+
+/**
  * @brief Register config store backend operation set for reg:// URLs.
  *
  * @param backendOp        [in] backend operation set pointer, must not be null

@@ -14,6 +14,7 @@
 #define MF_HYBRID_HOST_HCOM_TRANSPORT_MANAGER_H
 
 #include <mutex>
+#include <set>
 #include "hybm_transport_manager.h"
 #include "hcom_service_c_define.h"
 #include "host_hcom_counter_stream.h"
@@ -36,6 +37,11 @@ struct HcomMemoryRegion {
     uint64_t size;
     TransportMemoryKey lKey;
     Service_MemoryRegion mr;
+
+    bool operator<(const HcomMemoryRegion &b) const
+    {
+        return addr < b.addr;
+    }
 };
 
 union HcomPayload {
@@ -151,7 +157,7 @@ private:
     uint32_t rankId_{UINT32_MAX};
     uint32_t rankCount_{0};
     std::vector<std::mutex> mrMutex_;
-    std::vector<std::vector<HcomMemoryRegion>> mrs_;
+    std::vector<std::set<HcomMemoryRegion>> mrs_;
     std::vector<std::mutex> channelMutex_;
     std::vector<std::string> nics_;
     std::vector<Hcom_Channel> channels_;

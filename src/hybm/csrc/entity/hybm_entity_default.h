@@ -71,7 +71,6 @@ public:
                                uint32_t flags) noexcept override;
     int32_t ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept override;
     int32_t RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
-    int32_t GetExportSliceInfoSize(size_t &size) noexcept override;
 
     int32_t SetExtraContext(const void *context, uint32_t size) noexcept override;
 
@@ -126,7 +125,7 @@ private:
     std::mutex importMutex_;
     transport::TransManagerPtr transportManager_;
     std::unordered_map<uint32_t, EntityExportInfo> importedRanks_;
-    std::unordered_map<uint32_t, std::vector<transport::TransportMemoryKey>> importedMemories_;
+    std::unordered_map<uint32_t, std::set<transport::TransportMemoryKey>> importedMemories_;
     HybmEntityTagInfoPtr tagManager_;
 };
 using EngineImplPtr = std::shared_ptr<MemEntityDefault>;

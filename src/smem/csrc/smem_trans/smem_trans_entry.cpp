@@ -27,6 +27,7 @@
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
 #include "smem_trans_entry_manager.h"
+#include "mf_fault_injection_point.h"
 #include "smem_trans_entry.h"
 
 namespace ock {
@@ -47,59 +48,37 @@ SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::str
     }
 
     /* initialize */
-    result = transEntry->Initialize(config);
+    result = transEntry->Initialize();
     if (result != SM_OK) {
         SmemTransEntryManager::Instance().RemoveEntryByName(name);
         SM_LOG_AND_SET_LAST_ERROR("initialize trans entry failed, result " << result);
         return nullptr;
     }
 
+    result = transEntry->Join(0);
+    if (result != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR("trans join failed, ret:" << result);
+        SmemTransEntryManager::Instance().RemoveEntryByName(name);
+        return nullptr;
+    }
     return transEntry;
 }
 
 SmemTransEntry::~SmemTransEntry()
 {
     UnInitialize();
-    if (entity_ != nullptr) {
-        hybm_destroy_entity(entity_, 0);
-        entity_ = nullptr;
-    }
 }
 
-Result SmemTransEntry::ExportExchangeInfo()
+int32_t SmemTransEntry::Initialize()
 {
-    hybm_exchange_info info;
-    auto ret = hybm_export(entity_, nullptr, HYBM_FLAG_EXPORT_ENTITY, &info);
-    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
-
-    size_t outputSize;
-    ret = hybm_export_slice_size(entity_, &outputSize);
-    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
-    sliceInfoSize_ = outputSize;
-    storeHelper_.SetSliceExportSize(outputSize);
-
-    ret = storeHelper_.StoreDeviceInfo(info);
-    SM_VALIDATE_RETURN(ret == SM_OK, "store device info failed: " << ret, ret);
-    return SM_OK;
-}
-
-int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
-{
-    entityId_ = (16U << 3U) + 1U;
     if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port, workerUniqueId_.reserved)) {
         return SM_INVALID_PARAM;
     }
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(rankId_), "create global team failed");
 
-    auto ret = storeHelper_.Initialize(entityId_, static_cast<int32_t>(config.initTimeout), config.startConfigServer);
-    SM_VALIDATE_RETURN(ret == SM_OK, "store helper initialize failed: " << ret, ret);
-
-    ret = storeHelper_.GenerateRankId(config, rankId_);
-    SM_VALIDATE_RETURN(ret == SM_OK, "store helper generate rankId failed: " << ret, ret);
-
-    config_ = config;
     auto options = GenerateHybmOptions();
     options.bmDataOpType = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_DEFAULT);
-    if (config.dataOpType & SMEMB_DATA_OP_SDMA) {
+    if (config_.dataOpType & SMEMB_DATA_OP_SDMA) {
 #if !defined(ASCEND_NPU)
         SM_LOG_ERROR("current memfabric-hybrid binary is not built for ascend npu, can not use device_sdma optype.");
         return SM_ERROR;
@@ -107,7 +86,7 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_SDMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
-    if (config.dataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
+    if (config_.dataOpType & SMEMB_DATA_OP_DEVICE_RDMA) {
 #if !defined(ASCEND_NPU)
         SM_LOG_ERROR("current memfabric-hybrid binary is not built for ascend npu, can not use device_rdma optype.");
         return SM_ERROR;
@@ -119,41 +98,326 @@ int32_t SmemTransEntry::Initialize(const smem_trans_config_t &config)
     entity_ = hybm_create_entity(entityId_, &options, 0);
     SM_VALIDATE_RETURN(entity_ != nullptr, "create new entity failed.", SM_ERROR);
 
-    ret = hybm_reserve_mem_space(entity_, 0);
+    auto ret = hybm_reserve_mem_space(entity_, 0);
     SM_VALIDATE_RETURN(ret == SM_OK, "rserve mem failed.", SM_ERROR);
 
-    ret = ExportExchangeInfo();
-    SM_VALIDATE_RETURN(ret == SM_OK, "export user hbm failed.", SM_ERROR);
+    ret = hybm_export(entity_, nullptr, HYBM_FLAG_EXPORT_ENTITY, &entityInfo_.hybmInfo);
+    SM_VALIDATE_RETURN(ret == SM_OK, "HybmExport device info failed: " << ret, SM_ERROR);
 
-    auto brokenHandler = [this] { return StartWatchConnectThread(); };
-    storeHelper_.RegisterBrokenHandler(brokenHandler);
-    StartWatchThread();
+    entityInfo_.u.session = workerUniqueId_;
+    entityInfo_.u.session.reserved = config_.role;
     return SM_OK;
 }
 
 void SmemTransEntry::UnInitialize()
 {
-    std::unique_lock<std::mutex> locker{watchMutex_};
-    watchRunning_ = false;
-    locker.unlock();
-    watchCond_.notify_one();
-    watchConnectRunning_ = false;
+    {
+        std::lock_guard<std::mutex> lock(addrMapMutex_);
+        for (auto &e : addrToSliceMap_) {
+            hybm_free_local_memory(entity_, e.second, 1U, 0);
+        }
+        addrToSliceMap_.clear();
+    }
+    {
+        mf::WriteGuard locker(remoteSliceRwMutex_);
+        rankUpdateIdx_.clear();
+        remoteSlices_.clear();
+        rankToWorkerId_.clear();
+        ranksRole_.clear();
+        nameToWorkerId_.clear();
+    }
 
-    if (watchThread_.joinable()) {
-        try {
-            watchThread_.join();
-        } catch (const std::system_error &e) {
-            SM_LOG_ERROR("watch thread join failed: " << e.what());
+    globalGroup_ = nullptr;
+    if (entity_ != nullptr) {
+        hybm_destroy_entity(entity_, 0);
+        entity_ = nullptr;
+    }
+}
+
+Result SmemTransEntry::CreateGlobalTeam(uint32_t rankId)
+{
+    SmemGroupChangeCallback joinFunc = std::bind(&SmemTransEntry::JoinHandle, this, std::placeholders::_1);
+    SmemGroupChangeCallback updateFunc = std::bind(&SmemTransEntry::UpdateHandle, this, std::placeholders::_1);
+    SmemGroupChangeCallback leaveFunc = std::bind(&SmemTransEntry::LeaveHandle, this, std::placeholders::_1);
+    SmemGroupOption opt = {0U, rankId, config_.initTimeout * SECOND_TO_MILLSEC,
+                           true, joinFunc, updateFunc, leaveFunc};
+    SmemGroupEnginePtr group = SmemNetGroupEngine::Create(store_, opt);
+    SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
+
+    globalGroup_ = group;
+    return SM_OK;
+}
+
+Result SmemTransEntry::GroupOpBarrier(int32_t input)
+{
+    int32_t remoteRet = input;
+    int32_t ret = globalGroup_->GroupGatherResult(input, remoteRet);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("join barrier failed, result: " << ret);
+        return ret;
+    }
+    if (remoteRet != SM_OK) {
+        SM_LOG_ERROR("join barrier, get remote result: " << remoteRet);
+        return SM_ERROR;
+    }
+    return SM_OK;
+}
+
+void SmemTransEntry::AddRemoteInfo(uint32_t rk, smem_trans_role_t role, WorkerId &id, std::vector<void *> &global,
+                                   std::vector<LocalMapAddress> &local)
+{
+    mf::WriteGuard locker(remoteSliceRwMutex_);
+    rankToWorkerId_[rk] = id;
+    ranksRole_[rk] = role;
+
+    if (role == config_.role) { // same role, skip record
+        return;
+    }
+    for (auto i = 0U; i < global.size(); i++) {
+        remoteSlices_[id].emplace(local[i].address, LocalMapAddress(global[i], local[i].size));
+        SM_LOG_DEBUG("record mem, local_rk:" << rankId_ << " remote_rk:" << rk << " global_addr:0x" << global[i]
+                                             << "remote_addr:0x" << local[i].address);
+    }
+}
+
+smem_trans_role_t SmemTransEntry::QueryRole(uint32_t rk)
+{
+    mf::ReadGuard locker(remoteSliceRwMutex_);
+    auto it = ranksRole_.find(rk);
+    if (it == ranksRole_.end()) {
+        SM_LOG_ERROR("not found this rank:" << rk << " in ranksRole_");
+        return SMEM_TRANS_BUTT;
+    }
+    return it->second;
+}
+
+void SmemTransEntry::AddRemoteInfo(uint32_t rk, std::vector<void *> &global, std::vector<LocalMapAddress> &local)
+{
+    mf::WriteGuard locker(remoteSliceRwMutex_);
+    auto it = rankToWorkerId_.find(rk);
+    if (it == rankToWorkerId_.end()) {
+        SM_LOG_ERROR("not found this rank:" << rk << " in rankToWorkerId_");
+        return;
+    }
+
+    WorkerId id = it->second;
+    for (auto i = 0U; i < global.size(); i++) {
+        remoteSlices_[id].emplace(local[i].address, LocalMapAddress(global[i], local[i].size));
+        SM_LOG_DEBUG("record mem, local_rk:" << rankId_ << " remote_rk:" << rk << " global_addr:0x" << global[i]
+                                             << "remote_addr:0x" << local[i].address);
+    }
+}
+
+Result SmemTransEntry::JoinHandle(uint32_t rk)
+{
+    SM_LOG_INFO("do join func, local_rk: " << rankId_ << " receive_rk: " << rk
+                                           << ", rank size is: " << globalGroup_->GetRankSize());
+
+    uint32_t unitSize = sizeof(SmemTransExchangeInfo);
+    std::string localInfo;
+    if (rk == rankId_) {
+        localInfo = std::string((char *) &entityInfo_, sizeof(SmemTransExchangeInfo));
+    }
+    std::unordered_map<uint32_t, std::string> allInfo;
+    std::vector<uint32_t> joined;
+    int32_t ret = globalGroup_->GroupGatherPrefixKey(rk, localInfo, allInfo);
+    SM_VALIDATE_RETURN(ret == SM_OK, "gather prefix info failed, ret:" << ret, ret);
+
+    for (auto &it : allInfo) {
+        if (it.first == rankId_) {
+            continue;
+        }
+        if (it.second.length() % unitSize != 0) {
+            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << it.second.length() << " rank:" << it.first);
+            ret = SM_INVALID_PARAM;
+            goto join_exit;
+        }
+
+        WorkerId id;
+        smem_trans_role_t role = SMEM_TRANS_BUTT;
+        SmemTransExchangeInfo info;
+        std::vector<LocalMapAddress> local;
+        std::vector<hybm_exchange_info> hybmInfos;
+        std::vector<void *> global;
+        uint32_t num = it.second.length() / unitSize;
+        joined.push_back(it.first);
+        for (uint32_t i = 0; i < num; i++) {
+            (void)std::copy_n(it.second.c_str() + i * unitSize, unitSize, (char *)&info);
+            if (i == 0) { // entity info
+                role = static_cast<smem_trans_role_t>(info.u.session.reserved);
+                info.u.session.reserved = 0U;
+                WorkerIdUnion workerId{info.u.session};
+                id = workerId.workerId;
+                ret = hybm_import(entity_, &info.hybmInfo, 1U, nullptr, HYBM_FLAG_EXPORT_ENTITY);
+                if (ret != SM_OK) {
+                    SM_LOG_ERROR("hybm import entity failed, result: " << ret << " remote_rank:" << it.first
+                                                                       << " local_rank:" << rankId_);
+                    goto join_exit;
+                }
+            } else { // slice info
+                hybmInfos.push_back(info.hybmInfo);
+                local.push_back(info.u.address);
+            }
+        }
+
+        if (!hybmInfos.empty() && role != config_.role) {
+            global = std::vector<void *>(hybmInfos.size(), nullptr);
+            ret = hybm_import(entity_, hybmInfos.data(), hybmInfos.size(), global.data(), 0);
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("hybm import slice failed, result: " << ret << " remote_rank:" << it.first
+                                                                  << " local_rank:" << rankId_);
+                goto join_exit;
+            }
+        }
+        AddRemoteInfo(it.first, role, id, global, local);
+        rankUpdateIdx_[it.first] = num;
+    }
+
+    ret = GroupOpBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier before mmap failed, result: " << ret);
+        goto rollback_exit;
+    }
+
+    FIP_START(MMAP, &ret)
+    ret = hybm_mmap(entity_, 0);
+    FIP_END;
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+    }
+
+join_exit:
+    ret = GroupOpBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
+        goto rollback_exit;
+    }
+
+    SM_LOG_INFO("end join func, local_rk: " << rankId_ << " receive_rk: " << rk << " receive_info_num:"
+                                            << allInfo.size() << ", rank size is: " << globalGroup_->GetRankSize());
+    return SM_OK;
+
+rollback_exit:
+    RemoveRanks(joined);
+    return ret;
+}
+
+Result SmemTransEntry::UpdateHandle(uint32_t rk)
+{
+    SM_LOG_INFO("do update func, local_rk: " << rankId_ << " receive_rk: " << rk
+                                             << ", rank size is: " << globalGroup_->GetRankSize());
+
+    uint32_t unitSize = sizeof(SmemTransExchangeInfo);
+    std::string xinfo;
+    if (rk == rankId_) {
+        for (auto &e : registedInfo_) {
+            xinfo += std::string((char *) &e, sizeof(SmemTransExchangeInfo));
         }
     }
-    if (watchConnectThread_.joinable()) {
-        try {
-            watchConnectThread_.join();
-        } catch (const std::system_error &e) {
-            SM_LOG_ERROR("watch connect thread join failed: " << e.what());
+
+    int32_t ret = globalGroup_->GroupBarrierPrefixKey(rk, xinfo);
+    SM_VALIDATE_RETURN(ret == SM_OK, "barrier prefix info failed, ret:" << ret, ret);
+    auto role = (rk == rankId_) ? config_.role : QueryRole(rk);
+    if (rk != rankId_ && (role != SMEM_TRANS_BUTT && role != config_.role)) {
+        SmemTransExchangeInfo info;
+        std::vector<LocalMapAddress> local;
+        std::vector<hybm_exchange_info> hybmInfos;
+        std::vector<void *> global;
+
+        if (xinfo.length() % unitSize != 0) {
+            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << xinfo.length() << " rank:" << rk);
+            ret = SM_INVALID_PARAM;
+            goto update_exit;
+        }
+        uint32_t num = xinfo.length() / unitSize;
+        for (uint32_t i = rankUpdateIdx_[rk]; i < num; i++) { // skip entity info
+            (void)std::copy_n(xinfo.c_str() + i * unitSize, unitSize, (char *)&info);
+            hybmInfos.push_back(info.hybmInfo);
+            local.push_back(info.u.address);
+        }
+        if (!hybmInfos.empty()) {
+            global = std::vector<void *>(hybmInfos.size(), nullptr);
+            ret = hybm_import(entity_, hybmInfos.data(), hybmInfos.size(), global.data(), 0);
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("hybm import slice failed, result: " << ret << " remote_rank:" << rk
+                                                                  << " local_rank:" << rankId_);
+                goto update_exit;
+            }
+            AddRemoteInfo(rk, global, local);
+            rankUpdateIdx_[rk] = num;
+        }
+
+        FIP_START(MMAP, &ret)
+        ret = hybm_mmap(entity_, 0);
+        FIP_END;
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("hybm mmap failed, result: " << ret);
         }
     }
-    storeHelper_.Destroy();
+
+update_exit:
+    ret = GroupOpBarrier(ret);
+    if (ret != SM_OK) {
+        SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
+        return ret;
+    }
+
+    SM_LOG_INFO("end update func, local_rk: " << rankId_ << " receive_rk: " << rk
+                                              << ", rank size is: " << globalGroup_->GetRankSize());
+    return SM_OK;
+}
+
+Result SmemTransEntry::LeaveHandle(uint32_t rk)
+{
+    SM_LOG_INFO("do leave func, receive_rk: " << rk);
+    auto ret = hybm_remove_imported(entity_, rk, 0);
+    if (ret != 0) {
+        SM_LOG_ERROR("hybm leave failed, result: " << ret);
+        return SM_ERROR;
+    }
+    return SM_OK;
+}
+
+Result SmemTransEntry::Join(uint32_t flags)
+{
+    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+        auto ret = globalGroup_->GroupJoin();
+        if (ret == SM_INNER_BUSY) {
+            sleep(1U); // sleep 1s
+            continue;
+        }
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
+        SM_LOG_DEBUG("join success. rank:" << rankId_);
+        return SM_OK;
+    }
+
+    SM_LOG_ERROR("join timeout. rank:" << rankId_);
+    return SM_ERROR;
+}
+
+Result SmemTransEntry::Update(uint32_t flags)
+{
+    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+        auto ret = globalGroup_->GroupUpdate();
+        if (ret == SM_INNER_BUSY) {
+            sleep(1U); // sleep 1s
+            continue;
+        }
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "update failed, ret: " << ret);
+        SM_LOG_DEBUG("update success. rank:" << rankId_);
+        return SM_OK;
+    }
+
+    SM_LOG_ERROR("update timeout. rank:" << rankId_);
+    return SM_ERROR;
+}
+
+Result SmemTransEntry::Leave(uint32_t flags)
+{
+    auto ret = globalGroup_->GroupLeave();
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "leave failed, ret: " << ret);
+
+    return SM_OK;
 }
 
 void SmemTransEntry::StoreSlice(hybm_mem_slice_t slice, void *vaAddr)
@@ -179,6 +443,7 @@ hybm_mem_slice_t SmemTransEntry::RemoveSlice(void *addr)
         slice = it->second;
         addrToSliceMap_.erase(it);
     }
+
     return slice;
 }
 
@@ -209,8 +474,8 @@ void* SmemTransEntry::MallocDram(uint64_t size)
 
     StoreSlice(slice, vaAddr);
 
-    hybm_exchange_info info;
-    auto ret = hybm_export(entity_, slice, 0, &info);
+    SmemTransExchangeInfo info;
+    auto ret = hybm_export(entity_, slice, 0, &info.hybmInfo);
     if (ret != 0) {
         SM_LOG_ERROR("export slice for register address with size: " << size << " failed:" << ret);
         hybm_free_local_memory(entity_, slice, size, 0);
@@ -218,22 +483,19 @@ void* SmemTransEntry::MallocDram(uint64_t size)
         return nullptr;
     }
 
-    if (info.descLen != sliceInfoSize_) {
-        SM_LOG_ERROR("export slice info size: " << info.descLen << " should be:" << sliceInfoSize_);
-        hybm_free_local_memory(entity_, slice, size, 0);
-        RemoveSlice(vaAddr);
-        return nullptr;
-    }
+    std::unique_lock<std::mutex> uniqueLock{memMutex_};
+    info.u.address = LocalMapAddress(vaAddr, size);
+    registedInfo_.emplace_back(info);
 
-    StoredSliceInfo sliceInfo(workerUniqueId_, vaAddr, size, rankId_);
-    ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
+    ret = Update(0);
+    registedInfo_.clear();
+
     if (ret != 0) {
-        SM_LOG_ERROR("store for slice info failed: " << ret);
+        SM_LOG_ERROR("update failed, rk:" << rankId_ << " addr:" << vaAddr << " ret:" << ret);
         hybm_free_local_memory(entity_, slice, size, 0);
         RemoveSlice(vaAddr);
         return nullptr;
     }
-
     return vaAddr;
 }
 
@@ -255,18 +517,9 @@ Result SmemTransEntry::FreeDram(void *address)
 
 Result SmemTransEntry::RegisterLocalMemory(const void *address, uint64_t size, uint32_t flags)
 {
-    if (entity_ == nullptr) {
-        SM_LOG_ERROR("not create entity.");
-        return SM_ERROR;
-    }
-
-    if (address == nullptr || size == 0) {
-        SM_LOG_ERROR("input address or size is invalid.");
-        return SM_INVALID_PARAM;
-    }
-
-    AlignMemory(address, size);
-    return RegisterOneMemory(address, size, flags);
+    std::vector<std::pair<const void *, size_t>> regMemories;
+    regMemories.emplace_back(address, size);
+    return RegisterLocalMemories(regMemories, flags);
 }
 
 Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const void *, size_t>> &regMemories,
@@ -293,13 +546,18 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
         AlignMemory(it.first, it.second);
     }
     auto mm = CombineMemories(alignedMemories);
+    std::unique_lock<std::mutex> uniqueLock{memMutex_};
     for (auto &m : mm) {
         auto ret = RegisterOneMemory(m.first, m.second, flags);
         if (ret != 0) {
+            registedInfo_.clear();
             return ret;
         }
     }
 
+    auto ret = Update(0);
+    registedInfo_.clear();
+    SM_VALIDATE_RETURN(ret == SM_OK, "update failed, rk:" << rankId_ << " ret:" << ret, ret);
     return SM_OK;
 }
 
@@ -491,123 +749,23 @@ bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t
     return true;
 }
 
-Result SmemTransEntry::StartWatchConnectThread()
+void SmemTransEntry::RemoveRanks(std::vector<uint32_t> &rankSet)
 {
-    if (watchConnectThread_.joinable()) {
-        try {
-            watchConnectThread_.join();
-        } catch (const std::system_error &e) {
-            SM_LOG_ERROR("watch connect thread join failed: " << e.what());
-        }
-    }
-    watchConnectThread_ = std::thread([this]() {
-        pthread_setname_np(pthread_self(), "trans_watch_conn");
-        while (watchConnectRunning_) {
-            if (WatchConnectTaskOneLoop() == SM_OK) {
-                SM_LOG_INFO("watch connect success, exit.");
-                return 0;
-            }
-            sleep(1);
-        }
-        return 0;
-    });
-    SM_LOG_DEBUG("start background connect thread success");
-    return 0;
-}
-
-Result SmemTransEntry::WatchConnectTaskOneLoop()
-{
-    if (!storeHelper_.CheckServerStatus()) {
-        auto status = storeHelper_.ReConnect();
-        if (status == SM_RECONNECT) {
-            storeHelper_.AlterServerStatus(true);
-            status = ReInitialize();
-            if (status != SM_OK) {
-                SM_LOG_ERROR("reconnect success, but rewrite error.");
-                return SM_ERROR;
-            }
-            return SM_OK;
-        } else if (status == SM_ERROR) {
-            const uint32_t logInternal = 5;
-            SM_LOG_LIMIT_WARN(logInternal, "Reconnect failed, wait next connect.");
-            return SM_ERROR;
-        }
-    }
-    return SM_OK;
-}
-
-Result SmemTransEntry::StartWatchThread()
-{
-    SM_LOG_DEBUG("start background thread");
-    if (storeHelper_.CheckServerStatus()) {
-        WatchTaskFindNewRanks();
-    }
-    watchThread_ = std::thread([this]() {
-        pthread_setname_np(pthread_self(), "trans_watcher");
-        std::unique_lock<std::mutex> locker{watchMutex_};
-        const std::chrono::seconds WATCH_INTERVAL(3);
-        while (watchRunning_) {
-            WatchTaskOneLoop();
-            watchCond_.wait_for(locker, WATCH_INTERVAL);
-        }
-    });
-    return 0;
-}
-
-void SmemTransEntry::WatchTaskOneLoop()
-{
-    static int64_t times = 0;
-    if (!storeHelper_.CheckServerStatus()) {
-        times = 0;
-        return;
-    }
-    WatchTaskFindNewRanks();
-    if (times >= 2U) {
-        WatchTaskFindNewSlices();
-    }
-    times++;
-}
-
-void SmemTransEntry::WatchTaskFindNewRanks()
-{
-    auto importNewRanks = [this](const std::vector<hybm_exchange_info> &addInfo) {
-        int32_t ret;
-        if (!addInfo.empty()) {
-            ret = hybm_import(entity_, addInfo.data(), addInfo.size(), nullptr, HYBM_FLAG_EXPORT_ENTITY);
-            if (ret != 0) {
-                SM_LOG_ERROR("import new ranks failed: " << ret);
-            }
-            return ret;
-        }
-        return 0;
-    };
-    storeHelper_.FindNewRemoteRanks(importNewRanks);
-}
-
-void SmemTransEntry::CleanupRemoteSlices(const std::vector<StoredSliceInfo> &rmSs)
-{
-    for (auto i = 0U; i < rmSs.size(); i++) {
-        WorkerIdUnion workerId{rmSs[i].session};
-        SM_LOG_DEBUG("remove remote slice for : " << uniqueToString(workerId.workerId));
-        auto it = remoteSlices_.find(workerId.workerId);
-        if (it == remoteSlices_.end()) {
-            continue;
-        }
-        auto sIt = it->second.find(rmSs[i].address);
-        if (sIt == it->second.end()) {
-            continue;
-        }
-        it->second.erase(sIt);
-        if (it->second.empty()) {
-            SM_LOG_INFO("remove workId: " << uniqueToString(workerId.workerId) << " remote slice map.");
-            remoteSlices_.erase(it);
-        }
-    }
-}
-
-void SmemTransEntry::RemoveRanks(std::set<uint32_t> &rankSet)
-{
+    mf::WriteGuard locker(remoteSliceRwMutex_);
     for (auto rankId : rankSet) {
+        rankUpdateIdx_.erase(rankId);
+
+        auto it = rankToWorkerId_.find(rankId);
+        if (it == rankToWorkerId_.end()) {
+            SM_LOG_INFO("not found this rank:" << rankId);
+            continue;
+        }
+
+        WorkerId id = it->second;
+        rankToWorkerId_.erase(rankId);
+        remoteSlices_.erase(id);
+        ranksRole_.erase(rankId);
+
         auto ret = hybm_remove_imported(entity_, rankId, 0);
         if (ret != 0) {
             SM_LOG_ERROR("remove rank:" << rankId << " failed: " << ret);
@@ -615,51 +773,11 @@ void SmemTransEntry::RemoveRanks(std::set<uint32_t> &rankSet)
     }
 }
 
-void SmemTransEntry::WatchTaskFindNewSlices()
-{
-    auto importNewSlices = [this](const std::vector<hybm_exchange_info> &addInfo,
-                                  const std::vector<StoredSliceInfo> &addSs, const std::vector<StoredSliceInfo> &rmSs) {
-        int32_t ret;
-        if (rmSs.size() != 0) {
-            SM_LOG_DEBUG("remove slices count=" << rmSs.size());
-            ock::mf::WriteGuard locker(remoteSliceRwMutex_);
-            CleanupRemoteSlices(rmSs);
-            std::set<uint32_t> rankSet;
-            for (auto i = 0U; i < rmSs.size(); i++) {
-                uint32_t rankId = static_cast<uint32_t>(rmSs[i].rankId);
-                rankSet.insert(rankId);
-            }
-            RemoveRanks(rankSet);
-        }
-        if (addInfo.size() != 0) {
-            std::vector<void *> addresses(addInfo.size());
-            ret = hybm_import(entity_, addInfo.data(), addInfo.size(), addresses.data(), 0);
-            if (ret != 0) {
-                SM_LOG_ERROR("import new slices failed: " << ret);
-                return ret;
-            }
-            SM_LOG_DEBUG("import slices count=" << addInfo.size());
-
-            ock::mf::WriteGuard locker(remoteSliceRwMutex_);
-            for (auto i = 0U; i < addSs.size(); i++) {
-                WorkerIdUnion workerId{addSs[i].session};
-                SM_LOG_DEBUG("add remote slice for : " << uniqueToString(workerId.workerId));
-                remoteSlices_[workerId.workerId].emplace(addSs[i].address,
-                                                         LocalMapAddress{addresses[i], addSs[i].size});
-            }
-
-            hybm_mmap(entity_, 0);
-        }
-        return 0;
-    };
-    storeHelper_.FindNewRemoteSlices(importNewSlices);
-}
-
 Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId)
 {
     WorkerUniqueId workerUniqueId;
-    auto it = nameToWorkerId.find(name);
-    if (it != nameToWorkerId.end()) {
+    auto it = nameToWorkerId_.find(name);
+    if (it != nameToWorkerId_.end()) {
         /* fast path */
         uniqueId = it->second;
         return SM_OK;
@@ -672,7 +790,7 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &un
 
     WorkerIdUnion workerId{workerUniqueId};
     uniqueId = workerId.workerId;
-    nameToWorkerId.emplace(name, workerId.workerId);
+    nameToWorkerId_.emplace(name, workerId.workerId);
     return SM_OK;
 }
 
@@ -722,27 +840,16 @@ Result SmemTransEntry::RegisterOneMemory(const void *address, uint64_t size, uin
     }
     SM_LOG_DEBUG("register memory(address with size=" << size << ") return slice=" << slice);
 
-    hybm_exchange_info info;
-    auto ret = hybm_export(entity_, slice, 0, &info);
+    SmemTransExchangeInfo info;
+    auto ret = hybm_export(entity_, slice, 0, &info.hybmInfo);
     if (ret != 0) {
         SM_LOG_ERROR("export slice for register address with size: " << size << " failed:" << ret);
         hybm_free_local_memory(entity_, slice, size, 0);
         return SM_ERROR;
     }
 
-    if (info.descLen != sliceInfoSize_) {
-        SM_LOG_ERROR("export slice info size: " << info.descLen << " should be:" << sliceInfoSize_);
-        hybm_free_local_memory(entity_, slice, size, 0);
-        return SM_ERROR;
-    }
-
-    StoredSliceInfo sliceInfo(workerUniqueId_, address, size, rankId_);
-    ret = storeHelper_.StoreSliceInfo(info, sliceInfo);
-    if (ret != 0) {
-        SM_LOG_ERROR("store for slice info failed: " << ret);
-        return SM_ERROR;
-    }
-
+    info.u.address = LocalMapAddress(const_cast<void *>(address), size);
+    registedInfo_.emplace_back(info);
     return SM_OK;
 }
 
@@ -774,18 +881,6 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     std::copy_n(url.c_str(), max_chars, options.transUrl);
 
     return std::move(options);
-}
-
-int32_t SmemTransEntry::ReInitialize()
-{
-    auto ret = storeHelper_.ReRegisterToServer(rankId_);
-    SM_VALIDATE_RETURN(ret == SM_OK, "store helper recover failed: " << ret, ret);
-    ret = storeHelper_.ReStoreDeviceInfo();
-    SM_VALIDATE_RETURN(ret == SM_OK, "store device info recover failed: " << ret, ret);
-    ret = storeHelper_.ReStoreSliceInfo();
-    SM_VALIDATE_RETURN(ret == SM_OK, "store slice info recover failed: " << ret, ret);
-
-    return SM_OK;
 }
 
 } // namespace smem

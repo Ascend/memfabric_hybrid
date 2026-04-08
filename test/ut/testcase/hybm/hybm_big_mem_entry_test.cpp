@@ -147,13 +147,6 @@ public:
         return importEntityRet;
     }
 
-    int32_t GetExportSliceInfoSize(size_t& size) noexcept override
-    {
-        getExportSizeCalled = true;
-        size = exportSizeValue;
-        return exportSizeRet;
-    }
-
     int32_t RemoveImported(const std::vector<uint32_t>& ranks) noexcept override
     {
         removeImportedCalled = true;
@@ -559,8 +552,6 @@ TEST_F(HybmBigMemEntryTest, hybm_register_local_memory_success)
     EXPECT_EQ(stub->regFlags, 3U);
 }
 
-// ============= hybm_export / hybm_export_slice_size / hybm_import =============
-
 TEST_F(HybmBigMemEntryTest, hybm_export_entity_success)
 {
     auto stub = std::make_shared<MemEntityStub>(0);
@@ -601,28 +592,6 @@ TEST_F(HybmBigMemEntryTest, hybm_export_slice_success)
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(stub->exportSliceCalled);
     EXPECT_EQ(stub->exportSlice, slice);
-}
-
-TEST_F(HybmBigMemEntryTest, hybm_export_slice_size_success)
-{
-    auto stub = std::make_shared<MemEntityStub>(0);
-    stub->exportSizeValue = 256;
-    stub->exportSizeRet = BM_OK;
-
-    union {
-        ock::mf::EngineImplPtr (ock::mf::MemEntityFactory::*method)(hybm_entity_t);
-        ock::mf::EngineImplPtr (*func)(ock::mf::MemEntityFactory*, hybm_entity_t);
-    } f{};
-    f.method = &ock::mf::MemEntityFactory::FindEngineByPtr;
-
-    MOCKER(f.func).stubs().will(returnValue(std::static_pointer_cast<ock::mf::MemEntityDefault>(stub)));
-
-    size_t size = 0;
-    auto fakeEntity = reinterpret_cast<hybm_entity_t>(0x10);
-    auto ret = hybm_export_slice_size(fakeEntity, &size);
-    EXPECT_EQ(ret, BM_OK);
-    EXPECT_TRUE(stub->getExportSizeCalled);
-    EXPECT_EQ(size, stub->exportSizeValue);
 }
 
 TEST_F(HybmBigMemEntryTest, hybm_import_slices_success)

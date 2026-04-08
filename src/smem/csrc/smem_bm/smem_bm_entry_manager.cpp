@@ -22,23 +22,6 @@
 
 namespace ock {
 namespace smem {
-#pragma pack(push, 1)
-struct RankTable {
-    uint32_t ipv4;
-    uint8_t deviceId;
-    RankTable() : ipv4{0}, deviceId{0} {}
-    RankTable(uint32_t ip, uint16_t dev) : ipv4{ip}, deviceId{static_cast<uint8_t>(dev)} {}
-
-    static bool Less(const RankTable &r1, const RankTable &r2)
-    {
-        if (r1.ipv4 != r2.ipv4) {
-            return r1.ipv4 < r2.ipv4;
-        }
-
-        return r1.deviceId < r2.deviceId;
-    }
-};
-#pragma pack(pop)
 
 SmemBmEntryManager &SmemBmEntryManager::Instance()
 {
@@ -108,7 +91,7 @@ int32_t SmemBmEntryManager::PrepareStore()
             SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
         }
     }
-    confStore_ = StoreFactory::PrefixStore(confStore_, "SMEM_BM_");
+    confStore_ = StoreFactory::PrefixStore(confStore_, "BM_");
     return SM_OK;
 }
 

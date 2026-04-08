@@ -149,11 +149,6 @@ public:
         baseStore_->RegisterServerBrokenHandler(handler);
     }
 
-    void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override
-    {
-        baseStore_->RegisterServerOpHandler(opCode, handler);
-    }
-
     void SetRankId(const int32_t &rankId) noexcept override;
 
 protected:

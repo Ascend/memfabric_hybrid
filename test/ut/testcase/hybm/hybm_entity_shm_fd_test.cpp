@@ -47,7 +47,6 @@ public:
         options.deviceVASpace = 0;
         options.hostVASpace = DRAM_SIZE;
         options.scene = HYBM_SCENE_DEFAULT;
-        options.globalUniqueAddress = true;
         options.role = HYBM_ROLE_PEER;
         options.flags = HYBM_FLAG_CREATE_WITH_SHM;
         options.tag[0] = '\0';

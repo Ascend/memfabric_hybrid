@@ -354,10 +354,6 @@ void HaConfigStore::StartServer() noexcept
             SM_LOG_DEBUG("Registering cached broken handler");
             serverDelegate_->RegisterBrokenLinkCHandler(cachedServerBrokenHandler_);
         }
-        SM_LOG_DEBUG("Registering " << cachedServerOpHandlers_.size() << " cached op handlers");
-        for (const auto &[opCode, handler] : cachedServerOpHandlers_) {
-            serverDelegate_->RegisterOpHandler(opCode, handler);
-        }
     }
 
     // Validate server address
@@ -692,20 +688,6 @@ void HaConfigStore::RegisterServerBrokenHandler(const ConfigStoreServerBrokenHan
         return;
     }
     serverDelegate_->RegisterBrokenLinkCHandler(handler);
-}
-
-void HaConfigStore::RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept
-{
-    std::unique_lock<std::mutex> lock(stateMutex_);
-    cachedServerOpHandlers_[opCode] = handler;
-    lock.unlock();
-
-    std::shared_lock<std::shared_mutex> rwLock(delegateRwLock_);
-    if (serverDelegate_ == nullptr) {
-        SM_LOG_DEBUG("ServerDelegate is null, opCode: " << opCode << " handler cached");
-        return;
-    }
-    serverDelegate_->RegisterOpHandler(opCode, handler);
 }
 
 Result HaConfigStore::GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t timeoutMs) noexcept

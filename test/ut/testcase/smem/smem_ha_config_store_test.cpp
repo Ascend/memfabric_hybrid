@@ -46,7 +46,6 @@ constexpr uint32_t K_DEFAULT_WORLD_SIZE = 4;
 constexpr uint32_t K_RECOVERED_WORLD_SIZE = 8;
 constexpr int32_t K_FOLLOWER_RANK_ID = -1;
 constexpr int32_t K_UPDATED_RANK_ID = 9;
-constexpr int16_t K_TEST_OP_CODE = 42;
 constexpr int K_RECONNECT_RETRY_TIMES = 3;
 
 class FakeStoreBackend final : public ConfigStoreBackend {
@@ -323,10 +322,7 @@ TEST_F(SmemHaConfigStoreTest, StartServerRecoversWorldSizeAndReplaysCachedHandle
     };
 
     ConfigStoreServerBrokenHandler brokenHandler = [](const uint32_t, StoreBackendPtr &) {};
-    ConfigStoreServerOpHandler opHandler = [](const uint32_t, const std::string &, std::vector<uint8_t> &,
-                                              const StoreBackendPtr &) { return SM_OK; };
     store.RegisterServerBrokenHandler(brokenHandler);
-    store.RegisterServerOpHandler(K_TEST_OP_CODE, opHandler);
 
     MOCKER_CPP(&AccStoreServer::UpdateStatus, int32_t(*)(bool)).stubs().will(returnValue(int32_t(0)));
     MOCKER_CPP(&AccStoreServer::RestoreFromBackend, int32_t(*)()).stubs().will(returnValue(int32_t(0)));
@@ -338,7 +334,6 @@ TEST_F(SmemHaConfigStoreTest, StartServerRecoversWorldSizeAndReplaysCachedHandle
     EXPECT_TRUE(store.isLeader_.load(std::memory_order_acquire));
     EXPECT_EQ(K_RECOVERED_WORLD_SIZE, store.serverDelegate_->worldSize_);
     EXPECT_TRUE(static_cast<bool>(store.serverDelegate_->externalBrokenHandler_));
-    EXPECT_EQ(1U, store.serverDelegate_->externalOpHandlerMap_.count(K_TEST_OP_CODE));
 
     store.StopServer();
     EXPECT_FALSE(store.isLeader_.load(std::memory_order_acquire));

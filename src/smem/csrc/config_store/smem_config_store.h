@@ -283,13 +283,6 @@ public:
      */
     virtual void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept = 0;
 
-    /**
-     * @brief Register server operation handler
-     * @param opCode       [in] operation code
-     * @param handler      [in] handler to be invoked for the specified operation
-     */
-    virtual void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept = 0;
-
     virtual void SetRankId(const int32_t &rankId) noexcept {}
 };
 using StoreManagerPtr = SmRef<ConfigStoreManager>;

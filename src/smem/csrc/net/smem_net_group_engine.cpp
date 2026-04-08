@@ -693,6 +693,52 @@ uint32_t SmemNetGroupEngine::TryRemoveAllLeavedPrefixKey()
     return count;
 }
 
+Result SmemNetGroupEngine::GroupBarrierPrefixKey(uint32_t dstRank, std::string &update)
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(option_.dynamic, SM_ERROR);
+    std::string prefix = std::to_string(groupVersion_) + "_";
+    std::string idx = prefix + std::to_string(++barrierGroupSn_);
+    std::string waitKey = idx + "_BW";
+    std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(dstRank);
+
+    if (dstRank == option_.rank) {
+        // delete old key
+        if (barrierGroupSn_ > REMOVE_INTERVAL) {
+            uint32_t delSn = barrierGroupSn_ - REMOVE_INTERVAL;
+            GroupOldKeyClean(prefix, "_BA", delSn, delSn);
+            GroupOldKeyClean(prefix, "_BW", delSn, delSn);
+        }
+
+        uint64_t retLen = 0;
+        auto ret = store_->Append(key, update, retLen);
+        SM_VALIDATE_RETURN(ret == SM_OK,
+                           "append prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
+        ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+    } else {
+        std::string getVal;
+        auto ret = StoreGetCanInterrupt(waitKey, getVal, option_.timeoutMs);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(waitKey)
+                                                        << " failed, ret:" << ret);
+            return ret;
+        }
+
+        ret = store_->Get(key, update, 0);
+        if (ret != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(key)
+                                                        << " failed, result:" << ConfigStore::ErrStr(ret));
+            return SM_ERROR;
+        }
+    }
+    return SM_OK;
+}
+
 Result SmemNetGroupEngine::GroupGatherPrefixKey(uint32_t dstRank, std::string &update,
                                                 std::unordered_map<uint32_t, std::string> &retMap)
 {
@@ -934,6 +980,21 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
             }
             break;
         }
+        case UPDATE_EVENT: {
+            if (joined_ && option_.updateCb != nullptr) {
+                // skip joinCb if has leaved or link_down
+                if (currentLeaveCount_.load() == 0 && currentLinkDownCount_.load() == 0) {
+                    ret = option_.updateCb(groupInfo_.targetRank);
+                } else {
+                    // return BUSY if joinCb return error and has leaved or link_down
+                    // must read the latest value
+                    SM_LOG_DEBUG("has leave or link_down, retry. leave:" << currentLeaveCount_.load()
+                        << " link_down:" << currentLinkDownCount_.load());
+                    ret = SM_INNER_BUSY;
+                }
+            }
+            break;
+        }
         case RECOVER_EVENT: {
             // todo: 处理server故障场景
         }
@@ -954,8 +1015,8 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
         }
     }
 
-    if (groupInfo_.submitRank == option_.rank) {
-        if (groupInfo_.curEvent == JOIN_EVENT || groupInfo_.curEvent == LEAVE_EVENT) {
+    if (groupInfo_.submitRank == option_.rank && groupInfo_.curEvent != NULL_EVNET) {
+        if (groupInfo_.curEvent != LINK_DOWN_EVENT) {
             localOpRet_ = ret;
             localOpSignal_.PthreadSignal();
         } else {
@@ -1227,7 +1288,6 @@ Result SmemNetGroupEngine::GroupJoin()
     }
 
     int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
-join_exit:
     SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
     SM_LOG_DEBUG("generate info:" << info);
     if (ret != SM_OK || localOpRet_ != SM_OK) {
@@ -1245,6 +1305,62 @@ join_exit:
 
     if ((ret | ret2) == SM_OK) {
         joined_ = true;
+        return SM_OK;
+    }
+    return (ret2 == SM_OK && ret == SM_INNER_BUSY) ? SM_INNER_BUSY : SM_ERROR;
+}
+
+Result SmemNetGroupEngine::GroupUpdate()
+{
+    SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(option_.dynamic, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(joined_, SM_NOT_STARTED);
+
+    std::string old;
+    int retry_count = 0;
+    static constexpr int MAX_RETRY = 30;
+    localOpRet_ = SM_OK; // init ret
+    while (retry_count++ < MAX_RETRY) {
+        if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) { // has leave or link_down, retry
+            usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+            continue;
+        }
+
+        SmemGroupInfo info = GenerateInfo(UPDATE_EVENT, option_.rank, old);
+        std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+        SM_LOG_DEBUG("update generate_info:" << info << " base:" << groupInfo_);
+        if (info.version & 1) {
+            auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+            if (ret == SM_OK) { // will cas ok if key not exist
+                lastSubmitVersion_.store(info.version);
+                break;
+            }
+        } else {
+            TryCleanOldEvent();
+        }
+        usleep(SMEM_GROUP_SLEEP_TIMEOUT);
+    }
+    if (retry_count > MAX_RETRY) {
+        SM_LOG_DEBUG("update failed, retry. rank:" << option_.rank);
+        return SM_INNER_BUSY;
+    }
+
+    int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
+    SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
+    SM_LOG_DEBUG("update generate info:" << info);
+    if (ret != SM_OK || localOpRet_ != SM_OK) {
+        SM_LOG_ERROR("do update failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
+        ret = (ret == SM_OK ? localOpRet_ : ret);
+    }
+    std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
+    auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
+    if (ret2 != SM_OK) {
+        SM_LOG_ERROR("reset group event failed, ret: " << ret2 << " expect:" << info);
+    } else {
+        lastSubmitVersion_.store(info.version);
+    }
+
+    if ((ret | ret2) == SM_OK) {
         return SM_OK;
     }
     return (ret2 == SM_OK && ret == SM_INNER_BUSY) ? SM_INNER_BUSY : SM_ERROR;

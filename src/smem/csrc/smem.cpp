@@ -17,7 +17,6 @@
 #include "acc_log.h"
 #include "smem_store_factory.h"
 #include "smem_last_error.h"
-#include "smem_trans_fault_handler.h"
 #include "smem_external_backend_registry.h"
 #include "smem.h"
 
@@ -60,8 +59,6 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl, uint64_t flags)
         SM_LOG_ERROR("create store server failed with URL.");
         return ock::smem::SM_ERROR;
     }
-    // only server need register fault handler
-    ock::smem::SmemStoreFaultHandler::GetInstance().RegisterHandlerToStore(store);
 
     if (callNum.fetch_add(1U) == 0) {
         pthread_atfork([]() {}, // 父进程 fork 前：释放锁等资源
@@ -70,6 +67,15 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl, uint64_t flags)
     }
 
     return ock::smem::SM_OK;
+}
+
+SMEM_API void smem_destroy_config_store(const char *storeUrl)
+{
+    if (storeUrl == nullptr) {
+        SM_LOG_WARN("input store URL is null.");
+        return;
+    }
+    ock::smem::StoreFactory::DestroyStore(storeUrl);
 }
 
 SMEM_API int32_t smem_config_store_set_backend_op(const smem_conf_store_backend_op_t *backendOp)

@@ -183,7 +183,6 @@ public:
     void SetConnectStatus(bool) noexcept override {}
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &) noexcept override {}
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &) noexcept override {}
-    void RegisterServerOpHandler(int16_t, const ConfigStoreServerOpHandler &) noexcept override {}
 
 private:
     std::map<std::string, std::vector<uint8_t>> kv_;

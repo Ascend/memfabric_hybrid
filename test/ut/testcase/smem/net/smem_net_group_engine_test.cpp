@@ -136,8 +136,6 @@ public:
     void SetConnectStatus(bool status) noexcept override {}
     void RegisterClientBrokenHandler(const ock::smem::ConfigStoreClientBrokenHandler &handler) noexcept override {}
     void RegisterServerBrokenHandler(const ock::smem::ConfigStoreServerBrokenHandler &handler) noexcept override {}
-    void RegisterServerOpHandler(int16_t opCode, const ock::smem::ConfigStoreServerOpHandler &handler) noexcept override
-    {}
 
     uint64_t setCount{0};
     uint64_t getCount{0};

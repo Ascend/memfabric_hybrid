@@ -96,7 +96,6 @@ public:
     void SetConnectStatus(bool status) noexcept override;
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &handler) noexcept override;
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &handler) noexcept override;
-    void RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept override;
 
 protected:
     [[nodiscard]] Result GetReal(const std::string &key, std::vector<uint8_t> &value,
@@ -148,7 +147,6 @@ private:
     std::thread reElectionThread_;
 
     ConfigStoreServerBrokenHandler cachedServerBrokenHandler_{nullptr};
-    std::unordered_map<int16_t, ConfigStoreServerOpHandler> cachedServerOpHandlers_;
 
     std::atomic<bool> healthCheckRunning_{false};
     std::thread healthCheckThread_;

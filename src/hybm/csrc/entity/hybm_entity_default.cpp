@@ -730,40 +730,21 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
         dataOperator_->CleanUp();
     }
 
-    if (transportManager_ != nullptr) {
+    {
         std::unique_lock<std::mutex> uniqueLock{importMutex_};
         for (auto rank : ranks) {
             importedRanks_.erase(rank);
             importedMemories_.erase(rank);
         }
-        uniqueLock.unlock();
+    }
+
+    if (transportManager_ != nullptr) {
         auto ret = transportManager_->RemoveRanks(ranks);
         if (ret != BM_OK) {
             BM_LOG_WARN("transport remove ranks failed: " << ret);
         }
     }
 
-    return BM_OK;
-}
-
-int32_t MemEntityDefault::GetExportSliceInfoSize(size_t &size) noexcept
-{
-    size_t exportSize = 0;
-    auto segment = hbmSegment_ == nullptr ? dramSegment_ : hbmSegment_;
-    if (segment == nullptr) {
-        BM_LOG_ERROR("segment is null.");
-        return BM_ERROR;
-    }
-
-    auto ret = segment->GetExportSliceSize(exportSize);
-    if (ret != 0) {
-        BM_LOG_ERROR("GetExportSliceSize for segment failed: " << ret);
-        return ret;
-    }
-    if (transportManager_ != nullptr) {
-        exportSize += sizeof(SliceExportTransportKey);
-    }
-    size = exportSize;
     return BM_OK;
 }
 
@@ -983,11 +964,7 @@ int32_t MemEntityDefault::ImportForTransportPrecheck(const ExchangeInfoReader de
                 return ret;
             }
             std::unique_lock<std::mutex> uniqueLock{importMutex_};
-            if (options_.globalUniqueAddress) {
-                // smem_bm每一次import都加载全量信息
-                importedMemories_[transportKey.rankId].clear();
-            }
-            importedMemories_[transportKey.rankId].emplace_back(transportKey.key);
+            importedMemories_[transportKey.rankId].insert(transportKey.key);
             BM_LOG_INFO("Success to import slice rankId:" << transportKey.rankId << " addr:" << std::hex
                                                           << transportKey.address);
         } else {

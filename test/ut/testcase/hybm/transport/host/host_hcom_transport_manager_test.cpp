@@ -228,7 +228,7 @@ TEST(HcomTransportManagerTest, IndirectlyCoversCopyHcomOneSideKeyViaRegisterMemo
     mgr->rankId_ = 0;
     mgr->rankCount_ = 1;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     TransportMemoryRegion mr{};
     mr.addr = 0x1000;
@@ -238,7 +238,7 @@ TEST(HcomTransportManagerTest, IndirectlyCoversCopyHcomOneSideKeyViaRegisterMemo
     EXPECT_EQ(mgr->RegisterMemoryRegion(mr), BM_OK);
     ASSERT_EQ(mgr->mrs_[0].size(), 1U);
 
-    const auto &stored = mgr->mrs_[0][0].lKey;
+    const auto &stored = mgr->mrs_[0].begin()->lKey;
     for (size_t i = 0; i < 4; i++) {
         EXPECT_EQ(stored.keys[i], 0x1111111100000000ULL + i);
     }
@@ -251,7 +251,7 @@ TEST(HcomTransportManagerTest, IndirectlyCoversCopyHcomOneSideKeyToOneSideViaQue
     mgr->rankId_ = 0;
     mgr->rankCount_ = 1;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     // Prepare a local MR with a known TransportMemoryKey layout.
     HcomMemoryRegion info{};
@@ -262,7 +262,7 @@ TEST(HcomTransportManagerTest, IndirectlyCoversCopyHcomOneSideKeyToOneSideViaQue
         info.lKey.keys[i] = 0xABC0000000000000ULL + i;
         info.lKey.keys[4 + i] = 0xDEF0000000000000ULL + i;
     }
-    mgr->mrs_[0].push_back(info);
+    mgr->mrs_[0].insert(info);
 
     TransportMemoryKey out{};
     EXPECT_EQ(mgr->QueryMemoryKey(0x1000, out), BM_OK);
@@ -332,7 +332,7 @@ TEST(HcomTransportManagerTest, InnerReadWriteRemoteNotConnectedOrMissingKeysRetu
     mgr->rankId_ = 0;
     mgr->rankCount_ = 1;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
     mgr->channels_ = std::vector<Hcom_Channel>(1, 0);
 
     // Not connected.
@@ -394,7 +394,7 @@ TEST(HcomTransportManagerTest, UpdateRankMrInfosSkipsSelfAndZeroSizeAndStoresMr)
     mgr->rankCount_ = 2;
     mgr->bmOptype_ = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_HOST_URMA);
     mgr->mrMutex_ = std::vector<std::mutex>(2);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(2);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(2);
 
     DlHcomApiFnGuard guard;
     DlHcomApi::gImportUrmaSeg = &FakeImportUrmaSegOk; // NO_XPU 下会被调用，否则也不影响
@@ -431,9 +431,9 @@ TEST(HcomTransportManagerTest, UpdateRankMrInfosSkipsSelfAndZeroSizeAndStoresMr)
 
     EXPECT_EQ(mgr->UpdateRankMrInfos(opt), BM_OK);
     ASSERT_EQ(mgr->mrs_[1].size(), 1U);
-    EXPECT_EQ(mgr->mrs_[1][0].addr, 0x3000U);
-    EXPECT_EQ(mgr->mrs_[1][0].size, 0x100U);
-    EXPECT_EQ(mgr->mrs_[1][0].lva, reinterpret_cast<uint64_t>(k1.hostKey.hcomInfo.lAddress));
+    EXPECT_EQ(mgr->mrs_[1].begin()->addr, 0x3000U);
+    EXPECT_EQ(mgr->mrs_[1].begin()->size, 0x100U);
+    EXPECT_EQ(mgr->mrs_[1].begin()->lva, reinterpret_cast<uint64_t>(k1.hostKey.hcomInfo.lAddress));
 }
 
 TEST(HcomTransportManagerTest, UpdateRankConnectInfosConnectsWhenChannelEmptyAndOptionProvided)
@@ -501,7 +501,7 @@ TEST(HcomTransportManagerTest, UpdateRankOptionsPropagatesMrOrConnectFailure)
     mgr->rankCount_ = 2;
     mgr->bmOptype_ = static_cast<hybm_data_op_type>(HYBM_DOP_TYPE_HOST_URMA);
     mgr->mrMutex_ = std::vector<std::mutex>(2);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(2);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(2);
     mgr->channelMutex_ = std::vector<std::mutex>(2);
     mgr->channels_ = std::vector<Hcom_Channel>(2, 0);
     mgr->nics_ = std::vector<std::string>(2, "");
@@ -785,7 +785,7 @@ TEST(HcomTransportManagerTest, ReadRemoteBatchAsyncChannelGetVFailAfterKeyLookup
     mgr->rankCount_ = 1;
 
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
     mgr->channels_ = std::vector<Hcom_Channel>(1, static_cast<Hcom_Channel>(0x1UL));
 
     // For ReadRemoteBatchAsync:
@@ -807,8 +807,8 @@ TEST(HcomTransportManagerTest, ReadRemoteBatchAsyncChannelGetVFailAfterKeyLookup
         remoteMr.lKey.keys[i] = 0x1000ULL + i;
     }
 
-    mgr->mrs_[0].push_back(localMr);
-    mgr->mrs_[0].push_back(remoteMr);
+    mgr->mrs_[0].insert(localMr);
+    mgr->mrs_[0].insert(remoteMr);
 
     CopyDescriptor desc{};
     desc.counts.push_back(16);
@@ -850,7 +850,7 @@ TEST(HcomTransportManagerTest, ReadWriteRemoteAsyncChannelGetPutFailAfterKeyLook
     mgr->runtimeConfig_.maxSliceSize = 1024;
 
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
     mgr->channels_ = std::vector<Hcom_Channel>(1, static_cast<Hcom_Channel>(0x1UL));
 
     HcomMemoryRegion localMr{};
@@ -870,8 +870,8 @@ TEST(HcomTransportManagerTest, ReadWriteRemoteAsyncChannelGetPutFailAfterKeyLook
     }
 
     // For this UT, both lAddr and rAddr are found within the same rank's MR list.
-    mgr->mrs_[0].push_back(localMr);
-    mgr->mrs_[0].push_back(remoteMr);
+    mgr->mrs_[0].insert(localMr);
+    mgr->mrs_[0].insert(remoteMr);
 
     const uint64_t lAddr = 0x1000;
     const uint64_t rAddr = 0x2000;
@@ -928,7 +928,7 @@ TEST(HcomTransportManagerTest, WriteRemoteBatchAsyncChannelPutVFailAfterKeyLooku
     mgr->rankCount_ = 1;
 
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
     mgr->channels_ = std::vector<Hcom_Channel>(1, static_cast<Hcom_Channel>(0x1UL));
 
     HcomMemoryRegion localMr{};
@@ -947,8 +947,8 @@ TEST(HcomTransportManagerTest, WriteRemoteBatchAsyncChannelPutVFailAfterKeyLooku
         remoteMr.lKey.keys[i] = 0x2000ULL + i;
     }
 
-    mgr->mrs_[0].push_back(localMr);
-    mgr->mrs_[0].push_back(remoteMr);
+    mgr->mrs_[0].insert(localMr);
+    mgr->mrs_[0].insert(remoteMr);
 
     CopyDescriptor desc{};
     desc.counts.push_back(16);
@@ -1074,7 +1074,7 @@ TEST(HcomTransportManagerTest, GetMemoryRegionByAddrNotFound)
     mgr->rankCount_ = 1;
     mgr->rankId_ = 0;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     HcomMemoryRegion mr{};
     Result ret = mgr->GetMemoryRegionByAddr(0, 0x1000, mr);
@@ -1088,12 +1088,12 @@ TEST(HcomTransportManagerTest, GetMemoryRegionByAddrHit)
     mgr->rankCount_ = 1;
     mgr->rankId_ = 0;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     HcomMemoryRegion info{};
     info.addr = 0x1000;
     info.size = 0x100;
-    mgr->mrs_[0].push_back(info);
+    mgr->mrs_[0].insert(info);
 
     HcomMemoryRegion out{};
     Result ret = mgr->GetMemoryRegionByAddr(0, 0x1080, out);
@@ -1109,12 +1109,12 @@ TEST(HcomTransportManagerTest, QueryHasRegisteredBasic)
     mgr->rankCount_ = 1;
     mgr->rankId_ = 0;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     HcomMemoryRegion info{};
     info.addr = 0x2000;
     info.size = 0x200;
-    mgr->mrs_[0].push_back(info);
+    mgr->mrs_[0].insert(info);
 
     EXPECT_TRUE(mgr->QueryHasRegistered(0x2000, 0x100));
     EXPECT_FALSE(mgr->QueryHasRegistered(0x3000, 0x10));
@@ -1137,7 +1137,7 @@ TEST(HcomTransportManagerTest, UnregisterMemoryRegionAddrNotFound)
     mgr->rankCount_ = 1;
     mgr->rankId_ = 0;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     Result ret = mgr->UnregisterMemoryRegion(0x1234);
     EXPECT_EQ(ret, BM_OK);
@@ -1159,7 +1159,7 @@ TEST(HcomTransportManagerTest, QueryMemoryKeyNoRegion)
     mgr->rankCount_ = 1;
     mgr->rankId_ = 0;
     mgr->mrMutex_ = std::vector<std::mutex>(1);
-    mgr->mrs_ = std::vector<std::vector<HcomMemoryRegion>>(1);
+    mgr->mrs_ = std::vector<std::set<HcomMemoryRegion>>(1);
 
     TransportMemoryKey key{};
     Result ret = mgr->QueryMemoryKey(0x4000, key);

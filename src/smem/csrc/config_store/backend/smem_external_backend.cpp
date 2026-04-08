@@ -173,7 +173,7 @@ StoreErrorCode SmemExternalBackend::PrefixGet(const std::string &key, PrefixGetM
     for (uint32_t i = 0; i < SMEM_WORLD_SIZE_MAX; i++) {
         std::string k = key + std::to_string(i);
         std::vector<uint8_t> value;
-        auto ret = Get(k, value);
+        auto ret = GetLocked(k, value);
         if (ret == 0) {
             outValue[k] = value;
         }

@@ -86,7 +86,7 @@ Result SmemShmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     SM_ASSERT_RETURN(store != nullptr, SM_ERROR);
 
     SmemGroupOption opt = {rankSize, rankId,  extraConfig_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           false,    nullptr, nullptr};
+                           false,    nullptr, nullptr, nullptr};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(store, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

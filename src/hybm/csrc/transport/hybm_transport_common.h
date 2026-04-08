@@ -78,6 +78,11 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 
 struct TransportMemoryKey {
     uint64_t keys[KEY_SIZE * 2];
+
+    bool operator<(const TransportMemoryKey& other) const
+    {
+        return memcmp(keys, other.keys, sizeof(uint64_t) * KEY_SIZE * 2U) < 0; // compare
+    }
 };
 
 inline void ReadDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)

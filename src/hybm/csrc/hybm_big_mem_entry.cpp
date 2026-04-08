@@ -144,17 +144,6 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
     return BM_OK;
 }
 
-HYBM_API int32_t hybm_export_slice_size(hybm_entity_t e, size_t *size)
-{
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(size != nullptr, BM_INVALID_PARAM);
-
-    auto ret = entity->GetExportSliceInfoSize(*size);
-    return ret;
-}
-
 HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
                              uint32_t flags)
 {

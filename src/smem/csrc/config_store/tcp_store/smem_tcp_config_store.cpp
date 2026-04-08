@@ -725,15 +725,6 @@ void TcpConfigStore::RegisterServerBrokenHandler(const ConfigStoreServerBrokenHa
     accServer_->RegisterBrokenLinkCHandler(handler);
 }
 
-void TcpConfigStore::RegisterServerOpHandler(int16_t opCode, const ConfigStoreServerOpHandler &handler) noexcept
-{
-    if (accServer_ == nullptr) {
-        STORE_LOG_INFO("accServer_ is null, cannot register server op handler");
-        return;
-    }
-    accServer_->RegisterOpHandler(opCode, handler);
-}
-
 Result TcpConfigStore::LinkBrokenHandler(const ock::acc::AccTcpLinkComplexPtr &link) noexcept
 {
     STORE_LOG_WARN("link broken, linkId: " << link->Id());

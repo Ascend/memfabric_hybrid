@@ -458,18 +458,6 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
     EXPECT_FALSE(entity.initialized_);
 }
 
-// 测试 MemEntityDefault 获取导出切片信息大小
-TEST_F(HybmEntityDefaultTest, GetExportSliceInfoSize)
-{
-    ock::mf::MemEntityDefault entity(800);
-    size_t size = 0;
-
-    // 测试获取导出切片信息大小（未初始化的情况）
-    int32_t getSizeRet = entity.GetExportSliceInfoSize(size);
-    EXPECT_EQ(getSizeRet, BM_ERROR);
-    EXPECT_EQ(size, 0);
-}
-
 // 测试 MemEntityDefault 移除导入的内存
 TEST_F(HybmEntityDefaultTest, RemoveImported)
 {
@@ -1096,7 +1084,6 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
 {
     int32_t deviceId = 2005;
     ock::mf::MemEntityDefault entity(deviceId);
-    entity.options_.globalUniqueAddress = true;
 
     // desc[0]: entity export info
     hybm_exchange_info exEntity{};
@@ -1129,7 +1116,7 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
     EXPECT_EQ(entity.importedRanks_.count(rankId), 1U);
     EXPECT_EQ(entity.importedMemories_.count(rankId), 1U);
     ASSERT_EQ(entity.importedMemories_[rankId].size(), 1U);
-    EXPECT_EQ(entity.importedMemories_[rankId][0].keys[0], 0xABC);
+    EXPECT_EQ(entity.importedMemories_[rankId].begin()->keys[0], 0xABC);
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_InvalidMagic_Fail)
@@ -1170,7 +1157,7 @@ TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
     ock::mf::transport::TransportMemoryKey k2{};
     std::memset(&k2, 0, sizeof(k2));
     k2.keys[0] = 0x22;
-    entity.importedMemories_[1] = std::vector<ock::mf::transport::TransportMemoryKey>{k1, k2};
+    entity.importedMemories_[1] = std::set<ock::mf::transport::TransportMemoryKey>{k1, k2};
 
     // importInfoEntity = true will also import tag and update device info (bmType host => no memcpy)
     auto ret = entity.ImportForTransport(true);

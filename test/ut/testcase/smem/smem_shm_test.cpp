@@ -151,7 +151,6 @@ public:
     void SetConnectStatus(bool) noexcept override {}
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &) noexcept override {}
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &) noexcept override {}
-    void RegisterServerOpHandler(int16_t, const ConfigStoreServerOpHandler &) noexcept override {}
 };
 
 StorePtr MakeFakeShmStore()

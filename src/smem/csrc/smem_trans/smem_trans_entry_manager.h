@@ -14,9 +14,12 @@
 
 #include "smem_common_includes.h"
 #include "smem_trans_entry.h"
+#include "smem_config_store.h"
 
 namespace ock {
 namespace smem {
+constexpr uint32_t TRANS_ENTITY_ID_BASE = 256U;
+
 class SmemTransEntryManager {
 public:
     static SmemTransEntryManager &Instance();
@@ -25,6 +28,8 @@ public:
     SmemTransEntryManager() = default;
     ~SmemTransEntryManager() = default;
 
+    Result Initialize(const std::string &storeUrl, int32_t maxRetry);
+    void UnInitialize();
     Result CreateEntryByName(const std::string &name, const std::string &storeUrl, const smem_trans_config_t &config,
                              SmemTransEntryPtr &entry);
     Result GetEntryByPtr(uintptr_t ptr, SmemTransEntryPtr &entry);
@@ -36,6 +41,11 @@ private:
     std::mutex entryMutex_;
     std::map<uintptr_t, SmemTransEntryPtr> ptr2EntryMap_;    /* lookup entry by ptr */
     std::map<std::string, SmemTransEntryPtr> name2EntryMap_; /* deduplicate entry by name */
+    StorePtr confStore_ = nullptr;
+    std::string storeUrl_;
+    uint32_t rank_{UINT32_MAX};
+    uint16_t deviceId_{0};
+    uint32_t entryIdx_{TRANS_ENTITY_ID_BASE};
 };
 } // namespace smem
 } // namespace ock
