@@ -15,8 +15,22 @@
 - 数据大小 4MB
 
 ## 必要条件
-单机至少 2 张可用NPU，节点间网络互通，所有 rank 均可稳定访问同一个 config store。
+- 每节点至少 1 张 NPU；两机互通且能连 **同一 config store**
+
+## 运行
+
+将 `192.168.1.10` 换成首节点（config store / rank 0）IP，两机相同：
+
+```bash
+# 1) 节点 A — 先执行
+python3 02_multi_node_multi_card_dram.py 0 192.168.1.10
+```
+
+```bash
+# 2) 节点 B — 建议在 rank 0 已 H2G 并进入 sleep 后再起 rank 1（rank 1 join 后仍会 sleep 再读，降低竞态）
+python3 02_multi_node_multi_card_dram.py 1 192.168.1.10
+```
 
 ## 验收标准
-- 跨机 rank 间互相拷贝的数据可达且一致
-- 多卡场景流程无异常错误码
+- rank 1 侧 G2H 与 `arange` 预期一致，进程正常退出
+- rank 0 在 Ctrl+C 后能清理退出

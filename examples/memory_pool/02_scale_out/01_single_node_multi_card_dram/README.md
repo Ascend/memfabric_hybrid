@@ -26,4 +26,11 @@
 - rank 间互相拷贝的数据可达且一致
 - 多卡场景流程无异常错误码
 
+## 运行
+
+```bash
+python3 01_single_node_multi_card_dram.py
+```
+
+
 ## Q&A
