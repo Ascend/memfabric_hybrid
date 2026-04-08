@@ -14,7 +14,7 @@
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
 #include "smem_store_factory.h"
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 #include "mf_num_util.h"
 #include "smem_store_factory.h"
 
@@ -172,12 +172,12 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string localInfo;
     if (rk == options_.rank) {
-        localInfo = std::string((char *) &entityInfo_, sizeof(hybm_exchange_info));
+        localInfo = std::string((char *)&entityInfo_, sizeof(hybm_exchange_info));
         if (hbmSliceInfo_.descLen > 0) {
-            localInfo += std::string((char *) &hbmSliceInfo_, sizeof(hybm_exchange_info));
+            localInfo += std::string((char *)&hbmSliceInfo_, sizeof(hybm_exchange_info));
         }
         if (dramSliceInfo_.descLen > 0) {
-            localInfo += std::string((char *) &dramSliceInfo_, sizeof(hybm_exchange_info));
+            localInfo += std::string((char *)&dramSliceInfo_, sizeof(hybm_exchange_info));
         }
     }
     std::unordered_map<uint32_t, std::string> allInfo;
@@ -517,8 +517,8 @@ Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
 {
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback leaveFunc = std::bind(&SmemBmEntry::LeaveHandle, this, std::placeholders::_1);
-    SmemGroupOption opt = {rankSize, rankId,
-                           options_.controlOperationTimeout * SECOND_TO_MILLSEC, true, joinFunc, leaveFunc};
+    SmemGroupOption opt = {rankSize, rankId,   options_.controlOperationTimeout * SECOND_TO_MILLSEC,
+                           true,     joinFunc, leaveFunc};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

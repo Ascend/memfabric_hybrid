@@ -13,7 +13,7 @@
 #ifndef MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_REGISTRY_H_
 #define MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_REGISTRY_H_
 
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 
 namespace ock {
 namespace mf {
@@ -24,7 +24,7 @@ public:
     static FaultInjectionPointStatus Unregister();
 };
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #endif // MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_REGISTRY_H_

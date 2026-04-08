@@ -12,6 +12,7 @@
 
 #include "mf_fault_injection_point_registry.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <unistd.h>
@@ -21,14 +22,18 @@ namespace mf {
 
 namespace {
 
-constexpr char ALLOC_LOCAL_MEMORY_POINT_NAME[] = "ALLOC_LOCAL_MEMORY";
-constexpr char ALLOC_LOCAL_MEMORY_POINT_DESC[] = "inject alloc local memory failure";
-constexpr char MMAP_POINT_NAME[] = "MMAP";
-constexpr char MMAP_POINT_DESC[] = "inject mmap failure";
 constexpr char FAULT_INJECTION_POINT_CONFIG_FILE_PREFIX[] = "/tmp/mf_failpoints_";
 constexpr char FAULT_INJECTION_POINT_CONFIG_FILE_SUFFIX[] = ".conf";
 
 constexpr int32_t FAULT_INJECTION_POINT_ERROR_RESULT = -1;
+
+using DefaultPointRegisterHandler = FaultInjectionPointStatus (*)(const char *pointName, const char *pointDesc);
+
+struct FaultInjectionPointDefinition {
+    const char *name;
+    const char *desc;
+    DefaultPointRegisterHandler registerHandler;
+};
 
 void InjectErrorResult(FaultInjectionPointParam *userParam, int32_t *result)
 {
@@ -38,15 +43,30 @@ void InjectErrorResult(FaultInjectionPointParam *userParam, int32_t *result)
     }
 }
 
-FaultInjectionPointStatus RegisterPoint(const char *pointName, const char *pointDesc)
+template<auto Callback>
+FaultInjectionPointStatus RegisterPointWithCallback(const char *pointName, const char *pointDesc)
 {
     FaultInjectionPointStatus initStatus = FaultInjectionPointManager::Init();
     if (initStatus != FaultInjectionPointStatus::OK) {
         return initStatus;
     }
 
-    FaultInjectionPointStatus registerStatus =
-        FaultInjectionPointManager::Register(pointName, pointDesc, &InjectErrorResult);
+    FaultInjectionPointStatus registerStatus = FaultInjectionPointManager::Register(pointName, pointDesc, Callback);
+    if (registerStatus != FaultInjectionPointStatus::OK) {
+        (void)FaultInjectionPointManager::Exit();
+        return registerStatus;
+    }
+    return FaultInjectionPointStatus::OK;
+}
+
+[[maybe_unused]] FaultInjectionPointStatus RegisterPointWithoutCallback(const char *pointName, const char *pointDesc)
+{
+    FaultInjectionPointStatus initStatus = FaultInjectionPointManager::Init();
+    if (initStatus != FaultInjectionPointStatus::OK) {
+        return initStatus;
+    }
+
+    FaultInjectionPointStatus registerStatus = FaultInjectionPointManager::Register(pointName, pointDesc);
     if (registerStatus != FaultInjectionPointStatus::OK) {
         (void)FaultInjectionPointManager::Exit();
         return registerStatus;
@@ -71,19 +91,25 @@ bool HasFaultInjectionPointConfigFile()
     return access(configPath.c_str(), F_OK) == 0;
 }
 
+constexpr std::array<FaultInjectionPointDefinition, 2> DEFAULT_FAULT_INJECTION_POINTS = {{
+    {"ALLOC_LOCAL_MEMORY", "inject alloc local memory failure", &RegisterPointWithCallback<&InjectErrorResult>},
+    {"MMAP", "inject mmap failure", &RegisterPointWithCallback<&InjectErrorResult>},
+}};
+
 } // namespace
 
 FaultInjectionPointStatus FaultInjectionPointRegistry::Register()
 {
-    FaultInjectionPointStatus hybmStatus = RegisterPoint(ALLOC_LOCAL_MEMORY_POINT_NAME, ALLOC_LOCAL_MEMORY_POINT_DESC);
-    if (hybmStatus != FaultInjectionPointStatus::OK) {
-        return hybmStatus;
-    }
-
-    FaultInjectionPointStatus smemStatus = RegisterPoint(MMAP_POINT_NAME, MMAP_POINT_DESC);
-    if (smemStatus != FaultInjectionPointStatus::OK) {
-        (void)UnregisterPoint(ALLOC_LOCAL_MEMORY_POINT_NAME);
-        return smemStatus;
+    std::size_t registeredCount = 0;
+    for (; registeredCount < DEFAULT_FAULT_INJECTION_POINTS.size(); ++registeredCount) {
+        const auto &point = DEFAULT_FAULT_INJECTION_POINTS[registeredCount];
+        FaultInjectionPointStatus status = point.registerHandler(point.name, point.desc);
+        if (status != FaultInjectionPointStatus::OK) {
+            for (std::size_t rollbackIndex = registeredCount; rollbackIndex > 0; --rollbackIndex) {
+                (void)UnregisterPoint(DEFAULT_FAULT_INJECTION_POINTS[rollbackIndex - 1].name);
+            }
+            return status;
+        }
     }
 
     if (HasFaultInjectionPointConfigFile()) {
@@ -97,14 +123,11 @@ FaultInjectionPointStatus FaultInjectionPointRegistry::Unregister()
 {
     FaultInjectionPointStatus finalStatus = FaultInjectionPointStatus::OK;
 
-    FaultInjectionPointStatus smemStatus = UnregisterPoint(MMAP_POINT_NAME);
-    if (smemStatus != FaultInjectionPointStatus::OK) {
-        finalStatus = smemStatus;
-    }
-
-    FaultInjectionPointStatus hybmStatus = UnregisterPoint(ALLOC_LOCAL_MEMORY_POINT_NAME);
-    if (hybmStatus != FaultInjectionPointStatus::OK) {
-        finalStatus = hybmStatus;
+    for (std::size_t index = DEFAULT_FAULT_INJECTION_POINTS.size(); index > 0; --index) {
+        FaultInjectionPointStatus status = UnregisterPoint(DEFAULT_FAULT_INJECTION_POINTS[index - 1].name);
+        if (status != FaultInjectionPointStatus::OK) {
+            finalStatus = status;
+        }
     }
 
     return finalStatus;

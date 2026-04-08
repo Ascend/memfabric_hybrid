@@ -7,7 +7,7 @@ load ("//bazel:global_options.bzl","GLOBAL_COPTS","GLOBAL_LOCAL_DEFINES","GLOBAL
 package(default_visibility = ["//visibility:private"]) # DIGEST:b93564382b04a4411113d729d304485b
 
 exports_files([
-    "util/csrc/mf_failpoint.cpp",
+    "util/csrc/mf_fault_injection_point.cpp",
     "util/csrc/mf_fault_injection_point_registry.cpp",
 ]) # DIGEST:a5ed3834e161b278b5189667ba011374
 

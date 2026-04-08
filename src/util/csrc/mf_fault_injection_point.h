@@ -10,8 +10,8 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#ifndef MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAILPOINT_H_
-#define MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAILPOINT_H_
+#ifndef MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_H_
+#define MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -167,8 +167,8 @@ private:
     static FaultInjectionPointExecution BeginImpl(const char *name, const std::type_index &signature, void **args);
 };
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock
 
 #ifdef MF_ENABLE_TRACEPOINT
 #define FIP_START(name, ...)                                                     \
@@ -177,17 +177,17 @@ private:
             ::ock::mf::FaultInjectionPointManager::Begin(#name, ##__VA_ARGS__);  \
         if (!faultInjectionPointExecution__.skipBlock) {
 #define FIP_END \
-    }               \
-    }               \
+    }           \
+    }           \
     while (0)
 #else
 #define FIP_START(name, ...) \
-    do {                         \
+    do {                     \
         if (true) {
 #define FIP_END \
-    }               \
-    }               \
+    }           \
+    }           \
     while (0)
 #endif
 
-#endif  // MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAILPOINT_H_
+#endif // MEMFABRIC_HYBRID_SRC_UTIL_CSRC_MF_FAULT_INJECTION_POINT_H_

@@ -38,7 +38,7 @@ file(GLOB_RECURSE HYBMM_SRC_FILES
 )
 list(FILTER HYBMM_SRC_FILES EXCLUDE REGEX ${PROJECT_HYBM_SRC_BASE}/csrc/copy_extend/*)
 list(FILTER HYBMM_SRC_FILES EXCLUDE REGEX "${PROJECT_HYBM_SRC_BASE}/csrc/driver/npu_direct_rdma/.*")
-list(APPEND HYBMM_SRC_FILES ${PROJECT_UTIL_SRC_BASE}/mf_failpoint.cpp)
+list(APPEND HYBMM_SRC_FILES ${PROJECT_UTIL_SRC_BASE}/mf_fault_injection_point.cpp)
 list(APPEND HYBMM_SRC_FILES ${PROJECT_UTIL_SRC_BASE}/mf_fault_injection_point_registry.cpp)
 
 ## build the static and shared library

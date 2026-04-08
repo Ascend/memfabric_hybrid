@@ -21,7 +21,7 @@
 #include "hybm_ex_info_transfer.h"
 #include "hybm_gva.h"
 #include "hybm_logger.h"
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
 #include "hybm_compose_data_op.h"

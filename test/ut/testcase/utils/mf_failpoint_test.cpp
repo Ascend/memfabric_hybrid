@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 #include "mf_fault_injection_point_registry.h"
 
 using namespace ock::mf;

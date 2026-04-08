@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 
 #include <cctype>
 #include <cerrno>
@@ -333,7 +333,7 @@ void LogTrigger(const std::string &name, FaultInjectionPointType type, const Fau
     }
 }
 
-}  // namespace
+} // namespace
 
 FaultInjectionPointStatus FaultInjectionPointManager::Init()
 {
@@ -644,5 +644,5 @@ FaultInjectionPointExecution FaultInjectionPointManager::BeginImpl(const char *n
 
 #endif
 
-}  // namespace mf
-}  // namespace ock
+} // namespace mf
+} // namespace ock

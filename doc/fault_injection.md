@@ -13,8 +13,8 @@
 
 当前实现主要分布在以下文件：
 
-- `src/util/csrc/mf_failpoint.h`
-- `src/util/csrc/mf_failpoint.cpp`
+- `src/util/csrc/mf_fault_injection_point.h`
+- `src/util/csrc/mf_fault_injection_point.cpp`
 - `src/util/csrc/mf_fault_injection_point_registry.h`
 - `src/util/csrc/mf_fault_injection_point_registry.cpp`
 - `src/hybm/csrc/entity/hybm_entity_default.cpp`
@@ -42,7 +42,7 @@
 
 这是业务代码里真正使用的埋点宏。业务代码只需要把可能注入故障的位置包起来，运行时是否触发故障由 `FaultInjectionPointManager` 决定。
 
-3. `FaultInjectionPointRegistrar`
+3. `FaultInjectionPointRegistry`
 
 这是一个“默认故障点注册器”，用于把仓库内置故障点批量注册到 `FaultInjectionPointManager`。
 
@@ -59,7 +59,7 @@
 | `ALLOC_LOCAL_MEMORY` | `src/hybm/csrc/entity/hybm_entity_default.cpp` | `segment->AllocLocalMemory(...)` | 把返回值改成 `-1`，并跳过原代码块 |
 | `MMAP` | `src/smem/csrc/smem_bm/smem_bm_entry.cpp` | `hybm_mmap(entity_, 0)` | 把返回值改成 `-1`，并跳过原代码块 |
 
-`smem_bm_init()` 中会调用 `FaultInjectionPointRegistrar::Register()`，`smem_bm_uninit()` 中会调用 `FaultInjectionPointRegistrar::Unregister()`，因此当前默认注册入口是在 BM 初始化/反初始化流程里。
+`smem_bm_init()` 中会调用 `FaultInjectionPointRegistry::Register()`，`smem_bm_uninit()` 中会调用 `FaultInjectionPointRegistry::Unregister()`，因此当前默认注册入口是在 BM 初始化/反初始化流程里。
 
 ## 3. 运行机制
 
@@ -132,7 +132,7 @@ FaultInjectionPoint 功能由 `MF_ENABLE_TRACEPOINT` 控制。
 2. 文件配置激活
 
 - 写 `/tmp/mf_failpoints_<pid>.conf`
-- 如果随后调用 `FaultInjectionPointRegistrar::Register()`，注册器会在内置故障点全部注册完成后检查该文件；只要文件已存在，就立刻执行一次 `Reload()`
+- 如果随后调用 `FaultInjectionPointRegistry::Register()`，注册器会在内置故障点全部注册完成后检查该文件；只要文件已存在，就立刻执行一次 `Reload()`
 - 运行中的后续更新通常不需要信号；只要配置文件内容或存在状态变化，下一次进入 `FaultInjectionPointManager` 路径时就会自动 `Reload()`
 
 ### 3.5 命中
@@ -292,7 +292,7 @@ MMAP abort 1
 
 - 目标程序是 debug/asan 构建，编译时开启了 `MF_ENABLE_TRACEPOINT`
 - 目标程序已经把需要的故障点注册进 `FaultInjectionPointManager`
-- 对于仓库内置故障点，要确认目标流程会调用 `FaultInjectionPointRegistrar::Register()`
+- 对于仓库内置故障点，要确认目标流程会调用 `FaultInjectionPointRegistry::Register()`
 
 ### 6.2 找到目标进程 PID
 
@@ -322,7 +322,7 @@ EOF
 
 ### 6.4 首次激活与后续更新
 
-- 如果配置文件在 `FaultInjectionPointRegistrar::Register()` 结束前已经存在，注册器会立刻执行一次 `Reload()`，第一轮即可生效
+- 如果配置文件在 `FaultInjectionPointRegistry::Register()` 结束前已经存在，注册器会立刻执行一次 `Reload()`，第一轮即可生效
 - 如果配置文件是在进程运行过程中新增、删除或修改的，后续下一次进入 `FaultInjectionPointManager` 路径时会自动 `Reload()`
 
 ### 6.5 验证是否生效
@@ -395,7 +395,7 @@ FaultInjectionPointManager::DeactivateAll();
 最小用法如下：
 
 ```cpp
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 
 int32_t ret = 0;
 FIP_START(MY_NEW_POINT, &ret)
@@ -445,7 +445,7 @@ auto status = ock::mf::FaultInjectionPointManager::Register(
     "MY_SLOW_POINT", "inject slow path");
 ```
 
-#### 方式 B：加入 `FaultInjectionPointRegistrar`
+#### 方式 B：加入 `FaultInjectionPointRegistry`
 
 适合要做成仓库内置默认故障点的场景。
 
@@ -453,10 +453,10 @@ auto status = ock::mf::FaultInjectionPointManager::Register(
 
 - 定义故障点名和描述
 - 提供统一 callback
-- 在 `FaultInjectionPointRegistrar::Register()` 中调用 `RegisterPoint(...)`
-- 在 `FaultInjectionPointRegistrar::Unregister()` 中补对应 `UnregisterPoint(...)`
+- 在 `FaultInjectionPointRegistry::Register()` 中调用 `RegisterPoint(...)`
+- 在 `FaultInjectionPointRegistry::Unregister()` 中补对应 `UnregisterPoint(...)`
 
-如果你希望它跟随 BM 初始化自动注册，这一步是必要的，因为当前 `smem_bm_init()` 调用的是 `FaultInjectionPointRegistrar::Register()`。
+如果你希望它跟随 BM 初始化自动注册，这一步是必要的，因为当前 `smem_bm_init()` 调用的是 `FaultInjectionPointRegistry::Register()`。
 
 ### 7.4 第四步：补测试
 
@@ -507,12 +507,12 @@ void InjectMyPoint(ock::mf::FaultInjectionPointParam *userParam, int32_t *ret)
 
 ### 8.4 默认注册点是否启用，取决于注册入口和编译宏
 
-当前 `FaultInjectionPointRegistrar` 由 `MF_ENABLE_TRACEPOINT` 控制默认注册点注册。
+当前 `FaultInjectionPointRegistry` 由 `MF_ENABLE_TRACEPOINT` 控制默认注册点注册。
 
 因此如果你把新故障点做进默认注册器，需要同时确认：
 
-- 对应模块的注册代码已经加到 `FaultInjectionPointRegistrar`
-- 目标初始化流程确实调用了 `FaultInjectionPointRegistrar::Register()`
+- 对应模块的注册代码已经加到 `FaultInjectionPointRegistry`
+- 目标初始化流程确实调用了 `FaultInjectionPointRegistry::Register()`
 - 构建系统已经定义了 `MF_ENABLE_TRACEPOINT`
 
 如果这些条件不满足，业务代码里即使埋了 `FIP_START(...)`，默认故障点也不会自动注册。
@@ -543,7 +543,7 @@ void InjectMyPoint(ock::mf::FaultInjectionPointParam *userParam, int32_t *ret)
 如果某个故障点对排障价值高、复用频繁，建议：
 
 - 在业务代码里保留固定埋点
-- 在 `FaultInjectionPointRegistrar` 里做成默认注册点
+- 在 `FaultInjectionPointRegistry` 里做成默认注册点
 - 在单测里补齐注册、激活和 reload 用例
 
 ## 10. 一个完整示例
@@ -553,7 +553,7 @@ void InjectMyPoint(ock::mf::FaultInjectionPointParam *userParam, int32_t *ret)
 业务代码：
 
 ```cpp
-#include "mf_failpoint.h"
+#include "mf_fault_injection_point.h"
 
 int32_t ret = 0;
 FIP_START(MY_ALLOC_POINT, &ret)
@@ -637,10 +637,10 @@ EOF
 
 1. 是否是 debug/asan 构建，编译时是否定义了 `MF_ENABLE_TRACEPOINT`
 2. 故障点名称是否和 `FIP_START(NAME, ...)` 完全一致
-3. 目标进程是否真的调用过 `FaultInjectionPointManager::Init()` 或 `FaultInjectionPointRegistrar::Register()`
+3. 目标进程是否真的调用过 `FaultInjectionPointManager::Init()` 或 `FaultInjectionPointRegistry::Register()`
 4. 配置文件路径里的 PID 是否写对
 5. 配置文件是否已经写入目标进程可见的 `/tmp`
 6. 配置文件写入、更新或删除后，目标进程是否又进入过一次 `FaultInjectionPointManager` 路径
-7. 如果希望第一轮就生效，配置文件是否已经早于 `FaultInjectionPointRegistrar::Register()` 准备完成
+7. 如果希望第一轮就生效，配置文件是否已经早于 `FaultInjectionPointRegistry::Register()` 准备完成
 8. callback 签名是否与宏实参严格匹配
 9. `user_param` 是否超过 31 字符而被截断

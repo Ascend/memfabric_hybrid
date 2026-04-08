@@ -168,7 +168,7 @@ include_directories(
 
 # include hcom cmake after TARGET_INSTALL_DIR set
 include(cmake/config_hcom.cmake)
-include(cmake/config_etcd.cmake)
+include(cmake/config_etcd_client.cmake)
 
 add_subdirectory(src)
 

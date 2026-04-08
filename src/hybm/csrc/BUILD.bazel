@@ -76,7 +76,7 @@ HYBM_SRCS = glob([
     "ts_engine/*.cpp",
     "under_api/*.cpp",
 ]) + [
-    "//src:util/csrc/mf_failpoint.cpp",
+    "//src:util/csrc/mf_fault_injection_point.cpp",
     "//src:util/csrc/mf_fault_injection_point_registry.cpp",
 ]
 
