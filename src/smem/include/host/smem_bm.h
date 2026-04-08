@@ -115,6 +115,14 @@ int32_t smem_bm_join(smem_bm_t handle, uint32_t flags);
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 
 /**
+ * @brief extend memory for local rank, all alloc memory must range in reserved memory
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param memType          [in] memory type
+ * @param size             [in] memory size
+ * @return o if successful
+ */
+int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
+/**
  * @brief set group member change(join/leave) notification function.
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
  * @param cb               [in] notification function.

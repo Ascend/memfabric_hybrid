@@ -51,7 +51,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
         }
         entity_ = entity;
 
-        bzero(&hbmSliceInfo_, sizeof(hybm_exchange_info));
+        hybm_exchange_info hbmSliceInfo{};
         if (options.maxHBMSize > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_DEVICE, options.deviceVASpace, flags);
             if (slice == nullptr) {
@@ -59,16 +59,17 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
                 ret = SM_ERROR;
                 break;
             }
-            hbmSlice_ = slice;
+            slices_.push_back(slice);
 
-            ret = hybm_export(entity, slice, flags, &hbmSliceInfo_);
+            ret = hybm_export(entity, slice, flags, &hbmSliceInfo);
             if (ret != 0) {
                 SM_LOG_ERROR("hybm export device slice failed, result: " << ret);
                 break;
             }
+            sliceInfos_.push_back(hbmSliceInfo);
         }
 
-        bzero(&dramSliceInfo_, sizeof(hybm_exchange_info));
+        hybm_exchange_info dramSliceInfo{};
         if (options.maxDRAMSize > 0) {
             slice = hybm_alloc_local_memory(entity, HYBM_MEM_TYPE_HOST, options.hostVASpace, flags);
             if (slice == nullptr) {
@@ -76,13 +77,14 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
                 ret = SM_ERROR;
                 break;
             }
-            dramSlice_ = slice;
+            slices_.push_back(slice);
 
-            ret = hybm_export(entity, slice, flags, &dramSliceInfo_);
+            ret = hybm_export(entity, slice, flags, &dramSliceInfo);
             if (ret != 0) {
                 SM_LOG_ERROR("hybm export host slice failed, result: " << ret);
                 break;
             }
+            sliceInfos_.push_back(dramSliceInfo);
         }
 
         bzero(&entityInfo_, sizeof(hybm_exchange_info));
@@ -128,14 +130,11 @@ void SmemBmEntry::UnInitalize()
     globalGroup_ = nullptr;
 
     uint32_t flags = 0;
-    if (dramSlice_ != nullptr) {
-        hybm_free_local_memory(entity_, dramSlice_, 1, flags);
-        dramSlice_ = nullptr;
+    for (auto slice : slices_) {
+        hybm_free_local_memory(entity_, slice, 1, flags);
     }
-    if (hbmSlice_ != nullptr) {
-        hybm_free_local_memory(entity_, hbmSlice_, 1, flags);
-        hbmSlice_ = nullptr;
-    }
+    slices_.clear();
+    sliceInfos_.clear();
     for (auto &pair : registedSlice_) {
         hybm_free_local_memory(entity_, pair.second.second, 1, flags);
     }
@@ -170,12 +169,11 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string localInfo;
     if (rk == options_.rank) {
-        localInfo = std::string((char *)&entityInfo_, sizeof(hybm_exchange_info));
-        if (hbmSliceInfo_.descLen > 0) {
-            localInfo += std::string((char *)&hbmSliceInfo_, sizeof(hybm_exchange_info));
-        }
-        if (dramSliceInfo_.descLen > 0) {
-            localInfo += std::string((char *)&dramSliceInfo_, sizeof(hybm_exchange_info));
+        localInfo = std::string((char *) &entityInfo_, sizeof(hybm_exchange_info));
+        for (auto sliceInfo : sliceInfos_) {
+            if (sliceInfo.descLen > 0) {
+                localInfo += std::string((char *) &sliceInfo, sizeof(hybm_exchange_info));
+            }
         }
     }
     std::unordered_map<uint32_t, std::string> allInfo;
@@ -246,7 +244,7 @@ Result SmemBmEntry::UpdateHandle(uint32_t rk)
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string xinfo;
     if (rk == options_.rank) {
-        // todo: get update slice info
+        xinfo = std::string((char *) &sliceInfos_.back(), sizeof(hybm_exchange_info));
     }
 
     int32_t ret = globalGroup_->GroupBarrierPrefixKey(rk, xinfo);
@@ -358,6 +356,47 @@ Result SmemBmEntry::Leave(uint32_t flags)
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "leave failed, ret: " << ret);
 
     return SM_OK;
+}
+
+Result SmemBmEntry::ExtendLocalMem(smem_bm_mem_type memType, uint64_t size)
+{
+    SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_ASSERT_RETURN(memType == SMEM_MEM_TYPE_DEVICE || memType == SMEM_MEM_TYPE_HOST, SM_INVALID_PARAM);
+    SM_ASSERT_RETURN(size > 0, SM_INVALID_PARAM);
+    std::lock_guard<std::mutex> lock(mutex_);
+    // 1.alloc slice
+    auto hybmMemType = memType == SMEM_MEM_TYPE_DEVICE ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
+    auto slice = hybm_alloc_local_memory(entity_, hybmMemType, size, 0);
+    if (slice == nullptr) {
+        SM_LOG_ERROR("Failed to alloc memory, memType:" << memType << " size:" << size);
+        return SM_ERROR;
+    }
+    // 2.export slice
+    hybm_exchange_info info{};
+    auto ret = hybm_export(entity_, slice, 0, &info);
+    if (ret != 0) {
+        SM_LOG_ERROR("Failed to export slice:" << slice << " memType:" << memType << " size:" << size);
+        hybm_free_local_memory(entity_, slice, 1, 0);
+        return ret;
+    }
+    slices_.push_back(slice);
+    sliceInfos_.push_back(info);
+    // 3.group update
+    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+        auto ret = globalGroup_->GroupUpdate();
+        if (ret == SM_INNER_BUSY) {
+            sleep(1U); // sleep 1s
+            continue;
+        }
+        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "update failed, ret: " << ret);
+        SM_LOG_DEBUG("update success. rank:" << options_.rank);
+        return SM_OK;
+    }
+    SM_LOG_ERROR("group update timeout. rank:" << options_.rank);
+    slices_.pop_back();
+    sliceInfos_.pop_back();
+    hybm_free_local_memory(entity_, slice, 1, 0);
+    return SM_ERROR;
 }
 
 Result SmemBmEntry::SetEventListener(smem_bm_group_event_cb cb, void *context)

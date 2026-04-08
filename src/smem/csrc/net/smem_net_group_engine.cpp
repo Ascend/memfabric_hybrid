@@ -1264,7 +1264,7 @@ Result SmemNetGroupEngine::GroupJoin()
 
         SmemGroupInfo info = GenerateInfo(JOIN_EVENT, option_.rank, old);
         if (!UpdateBitmapFromRank(info, option_.rank)) { // has same rank joined
-            SM_LOG_INFO("found old rank, try remote it, rank:" << option_.rank);
+            SM_LOG_INFO("found old rank, try remove it, rank:" << option_.rank);
             DoLinkDownOnce(option_.rank);
             usleep(SMEM_GROUP_SLEEP_TIMEOUT);
             continue;

@@ -1372,6 +1372,27 @@ TEST_F(SmemBmTest, smem_bm_gva_to_va_valid_address)
     smem_bm_uninit(0);
 }
 
+TEST_F(SmemBmTest, smem_bm_extend_local_mem_param_error)
+{
+    auto ret = smem_bm_extend_local_mem(nullptr, SMEM_MEM_TYPE_HOST, GVA_SIZE);
+    EXPECT_EQ(ret, SM_INVALID_PARAM);
+
+    ret = smem_bm_extend_local_mem((void *)(uintptr_t)(0x1000), SMEM_MEM_TYPE_HOST, GVA_SIZE);
+    EXPECT_EQ(ret, SM_NOT_INITIALIZED);
+
+    smem_bm_t handle = MockInitAndCreateHandle(11);
+    EXPECT_NE(handle, nullptr);
+
+    ret = smem_bm_extend_local_mem((void *)(uintptr_t)(0x1000), SMEM_MEM_TYPE_HOST, GVA_SIZE);
+    EXPECT_EQ(ret, SM_INVALID_PARAM);
+
+    ret = smem_bm_extend_local_mem(handle, SMEM_MEM_TYPE_HOST, 0);
+    EXPECT_EQ(ret, SM_INVALID_PARAM);
+
+    smem_bm_destroy(handle);
+    smem_bm_uninit(0);
+}
+
 /*
 TEST_F(SmemBmTest, two_card_shm_create_success)
 {

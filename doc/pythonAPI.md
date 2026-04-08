@@ -233,6 +233,7 @@ class BmDataOpType(Enum):
 class BigMemory:
     def join(flags = 0) -> int:
     def leave(flags = 0) -> int:
+    def extend_local_mem(mem_type = SMEM_MEM_TYPE_HOST, size) -> int:
     def local_mem_size(mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
     def peer_rank_ptr(peer_rank, mem_type = SMEM_MEM_TYPE_DEVICE) -> int:
     def gva_to_va(gva, mem_type = SMEM_MEM_TYPE_LOCAL_HOST) -> int:
@@ -244,34 +245,37 @@ class BigMemory:
 
 ```
 
-|属性/方法|含义|
-|-|-|
-|join方法|加入BM|
-|join参数flags|预置参数|
-|leave方法|退出BM|
-|leave参数flags|预置参数|
-|local_mem_size方法|获取创建BM本地贡献的空间大小|
-|local_mem_size参数mem_type|本地贡献空间的内存类型|
-|local_mem_size返回值|本地贡献空间大小，单位byte|
-|peer_rank_ptr方法|获取rank id对应的贡献空间在gva上的地址位置|
-|peer_rank_ptr参数peer_rank|指定的rank id|
-|peer_rank_ptr参数mem_type|指定的rank id的贡献空间的内存类型|
-|gva_to_va方法|将GVA地址转换为当前进程可访问的VA地址|
-|gva_to_va参数gva|待转换的GVA地址|
-|gva_to_va参数mem_type|内存类型(BmMemType)|
-|gva_to_va返回值|转换后的VA地址，失败返回0|
-|destroy方法|销毁BM|
-|register方法|注册内存到BM|
-|register参数addr|注册地址的起始地址指针|
-|register参数size|注册地址的大小|
-|unregister方法|从BM中注销内存|
-|unregister参数addr|注销地址的起始地址指针|
-|copy_data方法|拷贝数据对象|
-|copy_data参数src_ptr(int)|source gva of data|
-|copy_data参数dst_ptr(int)|destination gva of data|
-|copy_data参数size(int)|size of data to be copied|
-|copy_data参数type(BmCopyType)|copy type, L2G, G2L, G2H, H2G|
-|copy_data参数flags(int)|optional flags|
+| 属性/方法                        | 含义                                              |
+|------------------------------|-------------------------------------------------|
+| join方法                       | 加入BM                                            |
+| join参数flags                  | 预置参数                                            |
+| leave方法                      | 退出BM                                            |
+| leave参数flags                 | 预置参数                                            |
+| extend_local_mem方法        | 扩展本地内存空间                                        |
+| extend_local_mem参数memType | 内存类型，支持 SMEM_MEM_TYPE_HOST、SMEM_MEM_TYPE_DEVICE |
+| extend_local_mem参数size    | 扩展内存大小                                          |
+| local_mem_size方法             | 获取创建BM本地贡献的空间大小                                 |
+| local_mem_size参数mem_type     | 本地贡献空间的内存类型                                     |
+| local_mem_size返回值            | 本地贡献空间大小，单位byte                                 |
+| peer_rank_ptr方法              | 获取rank id对应的贡献空间在gva上的地址位置                      |
+| peer_rank_ptr参数peer_rank     | 指定的rank id                                      |
+| peer_rank_ptr参数mem_type      | 指定的rank id的贡献空间的内存类型                            |
+| gva_to_va方法                  | 将GVA地址转换为当前进程可访问的VA地址                           |
+| gva_to_va参数gva               | 待转换的GVA地址                                       |
+| gva_to_va参数mem_type          | 内存类型(BmMemType)                                 |
+| gva_to_va返回值                 | 转换后的VA地址，失败返回0                                  |
+| destroy方法                    | 销毁BM                                            |
+| register方法                   | 注册内存到BM                                         |
+| register参数addr               | 注册地址的起始地址指针                                     |
+| register参数size               | 注册地址的大小                                         |
+| unregister方法                 | 从BM中注销内存                                        |
+| unregister参数addr             | 注销地址的起始地址指针                                     |
+| copy_data方法                  | 拷贝数据对象                                          |
+| copy_data参数src_ptr(int)      | source gva of data                              |
+| copy_data参数dst_ptr(int)      | destination gva of data                         |
+| copy_data参数size(int)         | size of data to be copied                       |
+| copy_data参数type(BmCopyType)  | copy type, L2G, G2L, G2H, H2G                   |
+| copy_data参数flags(int)        | optional flags                                  |
 
 ## SHM接口
 ### 1. 初始化/退出接口

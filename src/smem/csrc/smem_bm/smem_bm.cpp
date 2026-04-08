@@ -173,7 +173,7 @@ static void SmemBmFillDramFdInOptions(const smem_bm_create_option_t &smemOpts, h
     }
 }
 
-smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
+SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
 {
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
     SM_VALIDATE_RETURN(SmemBmCreateOptionCheck(option), "option is invalid", nullptr);
@@ -280,6 +280,22 @@ SMEM_API int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags)
     }
 
     return entry->Leave(flags);
+}
+
+SMEM_API int32_t smem_bm_extend_local_mem(smem_bm_t handle,  smem_bm_mem_type memType, uint64_t size)
+{
+    SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);
+    SM_VALIDATE_RETURN(size > 0, "invalid param, size is 0", SM_INVALID_PARAM);
+
+    SmemBmEntryPtr entry = nullptr;
+    auto ret = SmemBmEntryManager::Instance().GetEntryByPtr(reinterpret_cast<uintptr_t>(handle), entry);
+    if (ret != SM_OK || entry == nullptr) {
+        SM_LOG_AND_SET_LAST_ERROR("input handle is invalid, result: " << ret);
+        return SM_INVALID_PARAM;
+    }
+
+    return entry->ExtendLocalMem(memType, size);
 }
 
 SMEM_API uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType)

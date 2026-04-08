@@ -234,6 +234,19 @@ int32_t smem_bm_join(smem_bm_t handle, uint32_t flags, void **localGvaAddress);
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 ```
 
+| 参数/返回值          | 含义                            |
+|-----------------|-------------------------------|
+| handle          | 待扩展内存 handle                  |    
+| memType         | 内存类型，支持 SMEM_MEM_TYPE_DEVICE、SMEM_MEM_TYPE_HOST |
+| size | 当前rank扩展内存的大小                 |
+| 返回值             | 成功返回0，否则返回错误码                 |
+
+#### smem_bm_extend_local_mem
+退出BM
+```c
+int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
+```
+
 |参数/返回值| 含义                                                    |
 |-|-------------------------------------------------------|
 |handle| 待退出BM handle                                          |

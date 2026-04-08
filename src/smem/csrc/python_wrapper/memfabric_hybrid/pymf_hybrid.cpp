@@ -304,6 +304,11 @@ public:
         return new (std::nothrow) BigMemory{hd};
     }
 
+    int32_t ExtendLocalMem(smem_bm_mem_type memType, uint64_t size)
+    {
+        return smem_bm_extend_local_mem(handle_, memType, size);
+    }
+
     int32_t RegisterMem(uint64_t addr, uint64_t size) noexcept
     {
         return smem_bm_register_user_mem(handle_, addr, size);
@@ -737,6 +742,13 @@ Leave the global Big Memory space actively, after this, we cannot operate on the
 
 Arguments:
     flags(int): optional flags)")
+        .def("extend_local_mem", &BigMemory::ExtendLocalMem, py::call_guard<py::gil_scoped_release>(),
+            py::arg("mem_type") = SMEM_MEM_TYPE_HOST, py::arg("size"), R"(
+Alloc an extend memory for rank, all alloc memory must range in reserved memory.
+
+Arguments:
+    mem_type(BmMemType): memory type, DEVICE or HOST, default is HOST
+    size(int): extend memory size)")
         .def("set_group_event_handler", &BigMemory::SetGroupEventHandler,
              py::call_guard<py::gil_scoped_release>(), py::arg("cb"), R"(
 Set group member change(join/leave) notification function.

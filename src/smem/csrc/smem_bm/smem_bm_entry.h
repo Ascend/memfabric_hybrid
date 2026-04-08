@@ -31,8 +31,7 @@ struct SmemBmEntryOptions {
 class SmemBmEntry : public SmReferable {
 public:
     explicit SmemBmEntry(const SmemBmEntryOptions &options, const StorePtr &store)
-        : options_(options), _configStore(store), executorService_{8U}, coreOptions_{}, dramSliceInfo_{},
-          hbmSliceInfo_{}, entityInfo_{}
+        : options_(options), _configStore(store), executorService_{8U}, coreOptions_{}, entityInfo_{}
     {}
 
     ~SmemBmEntry() override
@@ -49,6 +48,8 @@ public:
     Result Update(uint32_t flags);
 
     Result Leave(uint32_t flags);
+
+    Result ExtendLocalMem(smem_bm_mem_type memType, uint64_t size);
 
     Result SetEventListener(smem_bm_group_event_cb cb, void *context);
 
@@ -104,11 +105,9 @@ private:
     hybm_options coreOptions_;
     StorePtr _configStore;
     ExecutorService executorService_;
-    hybm_exchange_info hbmSliceInfo_;
-    hybm_exchange_info dramSliceInfo_;
     hybm_exchange_info entityInfo_;
-    hybm_mem_slice_t dramSlice_ = nullptr;
-    hybm_mem_slice_t hbmSlice_ = nullptr;
+    std::vector<hybm_mem_slice_t> slices_;
+    std::vector<hybm_exchange_info> sliceInfos_;
     std::map<uint64_t, std::pair<uint64_t, hybm_mem_slice_t>> registedSlice_;
 
     std::mutex eventCbMutex_;
