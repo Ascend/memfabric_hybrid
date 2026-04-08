@@ -114,7 +114,7 @@ SMEM_API uint32_t smem_bm_get_rank_id()
 static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
 {
     constexpr uint32_t dataOpTypeMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
-                                        SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+                                        SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA | SMEMB_DATA_OP_HOST_SHM;
     return (dataOpType & dataOpTypeMask) != 0;
 }
 
@@ -129,6 +129,17 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
     SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(dataOpType), nullptr);
+    const bool isHostShm = (dataOpType & SMEMB_DATA_OP_HOST_SHM) != 0;
+    if (isHostShm && (localDRAMSize == 0 || localHBMSize != 0)) {
+        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type only supports DRAM shared memory without HBM");
+        return nullptr;
+    }
+    constexpr uint32_t hostShmConflictMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
+                                             SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+    if (isHostShm && (dataOpType & hostShmConflictMask) != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type does not support mixing with other data op types");
+        return nullptr;
+    }
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);

@@ -175,7 +175,7 @@ public:
     }
 
     static int32_t Initialize(const std::string &storeURL, uint32_t worldSize, uint16_t deviceId,
-                          const smem_bm_config_t &config) noexcept
+                              const smem_bm_config_t& config) noexcept
     {
         worldSize_ = worldSize;
         return smem_bm_init(storeURL.c_str(), worldSize, deviceId, &config);
@@ -540,7 +540,8 @@ void DefineBmClass(py::module_ &m)
         .value("HOST_RDMA", SMEMB_DATA_OP_HOST_RDMA)
         .value("HOST_URMA", SMEMB_DATA_OP_HOST_URMA)
         .value("HOST_TCP", SMEMB_DATA_OP_HOST_TCP)
-        .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA);
+        .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA)
+        .value("HOST_SHM", SMEMB_DATA_OP_HOST_SHM);
 
     // module method
     m.def("initialize", &BigMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),
@@ -630,8 +631,8 @@ Arguments:
 Returns:
     0 if successful)")
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
-             py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"),
-             py::arg("type"), py::arg("flags"), R"(cop data with batch.)")
+             py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"), py::arg("type"),
+             py::arg("flags"), R"(cop data with batch.)")
         .def("wait", &BigMemory::Wait, py::call_guard<py::gil_scoped_release>(), R"(
 Wait all issued async copy(s) finish.)");
 }

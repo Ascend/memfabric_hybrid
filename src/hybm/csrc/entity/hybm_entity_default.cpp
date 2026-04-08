@@ -17,6 +17,7 @@
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "host_hcom_common.h"
+#include "hybm_data_op_host_shm.h"
 #include "hybm_data_op_host_rdma.h"
 #include "hybm_dev_legacy_segment.h"
 #include "hybm_data_op_sdma.h"
@@ -791,11 +792,34 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
         return BM_INVALID_PARAM;
     }
 
+    if ((options->bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
+        if (options->hostVASpace == 0) {
+            BM_LOG_ERROR("HOST_SHM op type requires non-zero host VASpace");
+            return BM_INVALID_PARAM;
+        }
+        if ((options->memType & HYBM_MEM_TYPE_DEVICE) != 0 || options->deviceVASpace != 0) {
+            BM_LOG_ERROR("HOST_SHM op type only supports DRAM shared memory without HBM");
+            return BM_INVALID_PARAM;
+        }
+        constexpr uint32_t hostShmConflictMask = HYBM_DOP_TYPE_SDMA | HYBM_DOP_TYPE_DEVICE_RDMA |
+                                                 HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP |
+                                                 HYBM_DOP_TYPE_HOST_URMA;
+        if ((options->bmDataOpType & hostShmConflictMask) != 0) {
+            BM_LOG_ERROR("HOST_SHM op type does not support mixing with other data op types");
+            return BM_INVALID_PARAM;
+        }
+    }
+
     return BM_OK;
 }
 
 int MemEntityDefault::LoadExtendLibrary() noexcept
 {
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
+        BM_LOG_DEBUG("HOST_SHM data operator selected, skip loading transport extend libraries.");
+        return BM_OK;
+    }
+
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_RDMA);
         if (ret != 0) {
@@ -1037,6 +1061,11 @@ Result MemEntityDefault::InitDramSegment()
 
 Result MemEntityDefault::InitTransManager()
 {
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
+        BM_LOG_DEBUG("HOST_SHM data operator selected, skip transport manager initialization.");
+        return BM_OK;
+    }
+
     if (options_.rankCount <= 1) {
         BM_LOG_INFO("rank total count : " << options_.rankCount << ", no transport.");
         return BM_OK;
@@ -1090,10 +1119,23 @@ Result MemEntityDefault::InitDataOperator()
     }
 
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+        if (transportManager_ == nullptr) {
+            BM_LOG_ERROR("Device RDMA requires initialized transport manager");
+            return BM_NOT_INITIALIZED;
+        }
         devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
         auto ret = devRdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
             BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
+            return ret;
+        }
+    }
+
+    if ((options_.bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
+        hostRdmaDataOperator_ = std::make_shared<HostDataOpHostShm>(options_.rankId);
+        auto ret = hostRdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Host shm data operator init failed, ret:" << ret);
             return ret;
         }
     }
@@ -1135,8 +1177,12 @@ hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) c
     }
 
     if (hostRdmaDataOperator_ != nullptr) {
-        supportDataOp |= HYBM_DOP_TYPE_HOST_RDMA;
-        supportDataOp |= HYBM_DOP_TYPE_HOST_URMA;
+        if ((options_.bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0U) {
+            supportDataOp |= HYBM_DOP_TYPE_HOST_SHM;
+        } else {
+            supportDataOp |= HYBM_DOP_TYPE_HOST_RDMA;
+            supportDataOp |= HYBM_DOP_TYPE_HOST_URMA;
+        }
     }
 
     return static_cast<hybm_data_op_type>(supportDataOp);

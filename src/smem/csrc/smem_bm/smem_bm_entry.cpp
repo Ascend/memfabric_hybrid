@@ -166,7 +166,7 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
 
     globalGroup_->SetBitmapFromRanks(allRanks);
     SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk
-                                           << ", rank size is: " << globalGroup_->GetRankSize());
+                                            << ", rank size is: " << globalGroup_->GetRankSize());
     return SM_OK;
 }
 
@@ -294,6 +294,22 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
             break;
         case SMEMB_COPY_H2G:
             srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_L2GH:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+            // dest is already determined by GetHybmMemTypeFromGva (global host)
+            break;
+        case SMEMB_COPY_GH2L:
+            // src is already determined by GetHybmMemTypeFromGva (global host)
+            destMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+            break;
+        case SMEMB_COPY_GH2H:
+            // src is already determined by GetHybmMemTypeFromGva (global host)
+            destMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_H2GH:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            // dest is already determined by GetHybmMemTypeFromGva (global host)
             break;
         case SMEMB_COPY_G2G:
         default:

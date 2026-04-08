@@ -37,7 +37,7 @@ Result HybmEntityTagInfo::AddRankTag(uint32_t rankId, const std::string &tag)
         return BM_INVALID_PARAM;
     }
     std::unique_lock lock(mutex_);
-    rankTagInfo_[rankId] = std::move(tag);
+    rankTagInfo_[rankId] = tag;
     return BM_OK;
 }
 
@@ -48,7 +48,7 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     static const std::map<std::string, hybm_data_op_type> opTypeMap = {
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
-        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA},
+        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"HOST_SHM", HYBM_DOP_TYPE_HOST_SHM},
     };
     std::smatch match;
     if (!std::regex_match(tagOpInfo, match, tagOpInfoPattern)) {
@@ -63,7 +63,8 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     auto it = opTypeMap.find(opTypeStr);
     if (it == opTypeMap.end()) {
         BM_LOG_ERROR("Failed to check opType:"
-                     << opTypeStr << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)");
+            << opTypeStr
+            << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)");
         return BM_INVALID_PARAM;
     }
     auto opType = GetTag2TagOpType(tag1, tag2);

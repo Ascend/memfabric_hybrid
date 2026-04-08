@@ -382,6 +382,9 @@ class MmcTest(TestServer):
         elif client_config.protocol == 'device_sdma':
             op_type = bm.BmDataOpType.SDMA
             config.flags = 2
+        elif client_config.protocol == 'host_shm':
+            op_type = bm.BmDataOpType.HOST_SHM
+            config.flags = 0
         else:
             op_type = bm.BmDataOpType.DEVICE_RDMA
             config.flags = 2

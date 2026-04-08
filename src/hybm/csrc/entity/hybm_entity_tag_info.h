@@ -26,7 +26,7 @@ public:
     /**
      * AddTagOpInfo
      * @param info eg: tag0:opType:tag1,tag0:opType:tag2
-     * opType should in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)
+     * opType should in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)
      * @return 0 if Success
      */
     Result AddTagOpInfo(const std::string &info);
