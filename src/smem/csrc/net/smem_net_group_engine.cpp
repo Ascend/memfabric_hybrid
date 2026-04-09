@@ -96,6 +96,10 @@ Result SmemNetGroupEngine::StoreGetCanInterrupt(const std::string &key, std::str
             SM_LOG_WARN("has rank leave or link down, stop get wait! key: " << store_->GetCompleteKey(key));
             return SM_INNER_BUSY;
         }
+        if (currentStopCount_.load() > 0) {
+            SM_LOG_WARN("now event has stoped, stop get wait! key: " << store_->GetCompleteKey(key));
+            return SM_INNER_BUSY;
+        }
         if (ret != SM_OK && ret != StoreErrorCode::TIMEOUT) {
             SM_LOG_AND_SET_LAST_ERROR("store get key: " << store_->GetCompleteKey(key)
                                                         << " failed, result:" << ConfigStore::ErrStr(ret));
@@ -894,7 +898,7 @@ void SmemNetGroupEngine::GroupListenEvent()
             auto &info = currentEvents.front();
             bool canRemove = true;
             int32_t ret2 = SM_OK;
-            if ((TryUpdateInfo(info) || redoLast) && groupInfo_.curEvent != NULL_EVNET) {
+            if (TryUpdateInfo(info) || redoLast) {
                 ret2 = JoinLeaveEventProcess();
                 canRemove = (ret == SM_OK);
             }
@@ -902,6 +906,8 @@ void SmemNetGroupEngine::GroupListenEvent()
             if (canRemove || currentLeaveCount_.load() > 0) {
                 if (info.curEvent == LEAVE_EVENT || info.curEvent == LINK_DOWN_EVENT) {
                     currentLeaveCount_.fetch_sub(1U);
+                } else if (info.curEvent == STOP_EVENT) {
+                    currentStopCount_.fetch_sub(1U);
                 }
                 currentEvents.pop_front();
                 redoLast = false;
@@ -967,9 +973,16 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
     switch (groupInfo_.curEvent) {
         case JOIN_EVENT: {
             if ((joined_ || groupInfo_.targetRank == option_.rank) && option_.joinCb != nullptr) {
+                if (currentStopCount_.load() > 0) {
+                    SM_LOG_DEBUG("now join event has stop. version:" << groupInfo_.version);
+                    return SM_OK;
+                }
                 // skip joinCb if has leaved or link_down
                 if (currentLeaveCount_.load() == 0 && currentLinkDownCount_.load() == 0) {
                     ret = option_.joinCb(groupInfo_.targetRank);
+                    if (currentStopCount_.load() > 0) {
+                        ret = SM_OK;
+                    }
                 } else {
                     // return BUSY if joinCb return error and has leaved or link_down
                     // must read the latest value
@@ -982,9 +995,16 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
         }
         case UPDATE_EVENT: {
             if (joined_ && option_.updateCb != nullptr) {
-                // skip joinCb if has leaved or link_down
+                if (currentStopCount_.load() > 0) {
+                    SM_LOG_DEBUG("now update event has stop. version:" << groupInfo_.version);
+                    return SM_OK;
+                }
+                // skip update if has leaved or link_down
                 if (currentLeaveCount_.load() == 0 && currentLinkDownCount_.load() == 0) {
                     ret = option_.updateCb(groupInfo_.targetRank);
+                    if (currentStopCount_.load() > 0) {
+                        ret = SM_OK;
+                    }
                 } else {
                     // return BUSY if joinCb return error and has leaved or link_down
                     // must read the latest value
@@ -1009,13 +1029,16 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
             }
             break;
         }
+        case NULL_EVNET:
+        case STOP_EVENT:
+            return SM_OK;
         default: {
             SM_LOG_ERROR("unknow event:" << groupInfo_.curEvent);
             ret = SM_ERROR;
         }
     }
 
-    if (groupInfo_.submitRank == option_.rank && groupInfo_.curEvent != NULL_EVNET) {
+    if (groupInfo_.submitRank == option_.rank && (currentStopCount_.load() == 0)) {
         if (groupInfo_.curEvent != LINK_DOWN_EVENT) {
             localOpRet_ = ret;
             localOpSignal_.PthreadSignal();
@@ -1111,6 +1134,8 @@ void SmemNetGroupEngine::GroupWatchCb(int result, const std::string &key, const 
             if (ctxRet == SM_OK && info->version > 0) {
                 if (info->curEvent == LEAVE_EVENT || info->curEvent == LINK_DOWN_EVENT) {
                     currentLeaveCount_.fetch_add(1U);
+                } else if (info->curEvent == STOP_EVENT) {
+                    currentStopCount_.fetch_add(1U);
                 }
                 eventCtx_.values.push_back(*info);
             }
@@ -1226,7 +1251,7 @@ void SmemNetGroupEngine::TryCleanOldEvent()
 
         std::string old;
         // query submit_rank, but clear target_rank's event
-        SmemGroupInfo info = GenerateInfo(NULL_EVNET, oldInfo.targetRank, old);
+        SmemGroupInfo info = GenerateInfo(STOP_EVENT, oldInfo.targetRank, old);
         SM_LOG_DEBUG("generate info:" << info);
         if (info.version != oldInfo.version + 1) {
             SM_LOG_INFO("event has updated, skip remove event.");
@@ -1289,12 +1314,13 @@ Result SmemNetGroupEngine::GroupJoin()
 
     int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
     SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
-    SM_LOG_DEBUG("generate info:" << info);
     if (ret != SM_OK || localOpRet_ != SM_OK) {
         SM_LOG_ERROR("do join failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
         ret = (ret == SM_OK ? localOpRet_ : ret);
+        info.curEvent = STOP_EVENT;
         ClearBitmapForRank(info, option_.rank);
     }
+    SM_LOG_DEBUG("generate info:" << info);
     std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
     auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
     if (ret2 != SM_OK) {
@@ -1347,11 +1373,12 @@ Result SmemNetGroupEngine::GroupUpdate()
 
     int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
     SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
-    SM_LOG_DEBUG("update generate info:" << info);
     if (ret != SM_OK || localOpRet_ != SM_OK) {
         SM_LOG_ERROR("do update failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
+        info.curEvent = STOP_EVENT;
         ret = (ret == SM_OK ? localOpRet_ : ret);
     }
+    SM_LOG_DEBUG("update generate info:" << info);
     std::string str((char *)&info, SMEM_GROUP_INFO_SIZE);
     auto ret2 = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, str, old);
     if (ret2 != SM_OK) {

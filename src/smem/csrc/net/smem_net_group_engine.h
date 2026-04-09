@@ -59,6 +59,7 @@ enum GroupEventType : int32_t {
     LINK_DOWN_EVENT = 3,
     UPDATE_EVENT = 4,
     NULL_EVNET = 5,
+    STOP_EVENT = 6,
 };
 
 template<typename T>
@@ -184,6 +185,7 @@ private:
     SmemTimedwait eventListenSignal_;
     GroupListenContext<SmemGroupInfo> eventCtx_;
     std::atomic_uint32_t currentLeaveCount_{0};
+    std::atomic_uint32_t currentStopCount_{0};
 
     std::thread linkListenThread_;
     SmemTimedwait linkListenSignal_;
