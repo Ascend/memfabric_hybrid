@@ -184,4 +184,9 @@ int ra_get_notify_mr_info(void *rdmaHandle, HccpMrInfo *info)
 {
     return 0;
 }
+
+int ra_qp_create_with_attrs(void *rdmaHandle, struct HccpQpExtAttrs *extAttrs, void *&qpHandle)
+{
+    return 0;
+}
 }

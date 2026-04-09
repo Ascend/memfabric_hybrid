@@ -38,6 +38,7 @@ raGetIfAddrsFunc DlHccpApi::gRaGetIfAddrs;
 raSocketWhiteListAddFunc DlHccpApi::gRaSocketWhiteListAdd;
 raSocketWhiteListDelFunc DlHccpApi::gRaSocketWhiteListDel;
 raQpCreateFunc DlHccpApi::gRaQpCreate;
+raQpCreateWithAttrsFunc DlHccpApi::gRaQpCreateWithAttrs;
 raQpAiCreateFunc DlHccpApi::gRaQpAiCreate;
 raQpDestroyFunc DlHccpApi::gRaQpDestroy;
 raGetQpStatusFunc DlHccpApi::gRaGetQpStatus;
@@ -102,6 +103,8 @@ Result DlHccpApi::LoadLibrary()
     DL_LOAD_SYM_ALT(gRaSocketWhiteListDel, raSocketWhiteListDelFunc, raHandle, "ra_socket_white_list_del",
                     "RaSocketWhiteListDel");
     DL_LOAD_SYM_ALT(gRaQpCreate, raQpCreateFunc, raHandle, "ra_qp_create", "RaQpCreate");
+    DL_LOAD_SYM_ALT(gRaQpCreateWithAttrs, raQpCreateWithAttrsFunc, raHandle, "ra_qp_create_with_attrs",
+                    "RaQpCreateWithAttrs");
     DL_LOAD_SYM_ALT(gRaQpAiCreate, raQpAiCreateFunc, raHandle, "ra_ai_qp_create", "RaAiQpCreate");
     DL_LOAD_SYM_ALT(gRaQpDestroy, raQpDestroyFunc, raHandle, "ra_qp_destroy", "RaQpDestroy");
     DL_LOAD_SYM_ALT(gRaGetQpStatus, raGetQpStatusFunc, raHandle, "ra_get_qp_status", "RaGetQpStatus");
@@ -153,6 +156,7 @@ void DlHccpApi::CleanupLibrary()
     gRaSendWrV2 = nullptr;
     gRaGetNotifyBaseAddr = nullptr;
     gRaGetNotifyMrInfo = nullptr;
+    gRaQpCreateWithAttrs = nullptr;
 
     if (raHandle != nullptr) {
         dlclose(raHandle);

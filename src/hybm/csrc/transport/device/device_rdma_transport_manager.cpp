@@ -21,6 +21,7 @@
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "dl_hccp_api.h"
+#include "dl_hccl_api.h"
 #include "hybm_ptracer.h"
 #include "device_rdma_common.h"
 #include "device_rdma_helper.h"
@@ -463,6 +464,65 @@ Result RdmaTransportManager::Synchronize(uint32_t rankId)
     return ret;
 }
 
+void RdmaTransportManager::BuildTable(std::string &str, std::string &ip, uint32_t devId)
+{
+    std::string tmp = R"(",
+      "device": [
+        {
+          "device_id": ")" + std::to_string(devId) + R"(",
+          "device_ip": ")" + ip;
+
+    str = R"({
+  "status": "completed",
+  "version": "1.0",
+  "server_count": "2",
+  "server_list": [
+    {
+      "server_id": "server1)" + tmp + R"(",
+          "rank_id": "0"
+        }
+      ]
+    },
+    {
+      "server_id": "server2",
+      "device": [
+        {
+          "device_id": "0",
+          "device_ip": "127.0.0.1",
+          "rank_id": "1"
+        }
+      ]
+    }
+  ]
+})";
+}
+
+bool RdmaTransportManager::GetRdmaHandleAfterInitHccl(uint32_t device, in_addr &deviceIp, void *&rdmaHandle)
+{
+    BM_LOG_INFO("hccl has inited, try create one hccl group.");
+    int32_t ret;
+    std::string ip = DescribeIPv4(deviceIp);
+
+    std::string table;
+    HcclCommConfig config{};
+    HcclComm comm;
+
+    BuildTable(table, ip, device);
+    DlHcclApi::HcclCommConfigInit(&config);
+    config.hcclBufferSize = 2; // 2MB
+    config.hcclDeterministic = 0;
+    std::strcpy(config.hcclCommName, "mock_comm_1");
+
+    ret = DlHcclApi::HcclCommInitClusterInfoMemConfig(table.c_str(), 0, &config, &comm);
+    BM_VALIDATE_RETURN(ret == BM_OK, "HcclCommInitClusterInfoMemConfig failed! ret:" << ret, false);
+
+    ret = DlHccpApi::RaRdevGetHandle(device, rdmaHandle);
+    BM_VALIDATE_RETURN(ret == BM_OK, "get rdma handle failed! ret:" << ret, false);
+
+    // can't call HcclCommDestroy to destroy this hcomm
+    return true;
+}
+
 bool RdmaTransportManager::PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
                                              void *&rdmaHandle)
 {
@@ -484,21 +544,23 @@ bool RdmaTransportManager::PrepareOpenDevice(uint32_t userId, uint32_t device, u
         return false;
     }
 
-    if (!RaInit(device)) {
-        BM_LOG_ERROR("RaInit failed.");
-        return false;
-    }
-
+    auto flag = RaInit(device);
     if (!RetireDeviceIp(device, deviceIp)) {
         BM_LOG_ERROR("RetireDeviceIp failed.");
         return false;
     }
 
-    if (!RaRdevInit(device, deviceIp, rdmaHandle)) {
-        BM_LOG_ERROR("RaRdevInit failed.");
-        return false;
+    if (flag) {
+        if (!RaRdevInit(device, deviceIp, rdmaHandle)) {
+            BM_LOG_ERROR("RaRdevInit failed.");
+            return false;
+        }
+    } else {
+        if (!GetRdmaHandleAfterInitHccl(device, deviceIp, rdmaHandle)) {
+            BM_LOG_ERROR("PrepareOpenDeviceV2 failed.");
+            return false;
+        }
     }
-
     return true;
 }
 
@@ -540,7 +602,7 @@ bool RdmaTransportManager::RaInit(uint32_t deviceId)
         BM_LOG_WARN("Hccp Init RA failed: " << ret << " devid:" << deviceId);
         std::this_thread::sleep_for(WAIT_TIME);
         raInitialized = true;
-        return true;
+        return false;
     }
 
     BM_LOG_DEBUG("ra init for device id: " << deviceId << " success.");

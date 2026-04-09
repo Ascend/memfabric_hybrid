@@ -421,7 +421,7 @@ int FixedRanksQpManager::CreateOneQp(AiCoreConnChannel &channel) noexcept
     attr.qpMode = NETWORK_OFFLINE;
     attr.version = QP_VERSION;
     attr.cqAttr.sendCqDepth = SEND_CQ_DEPTH;
-    attr.cqAttr.recvDqDepth = RECV_DQ_DEPTH;
+    attr.cqAttr.recvCqDepth = RECV_DQ_DEPTH;
     attr.qp_attr.cap.max_recv_sge = MAX_RECV_SGE;
     attr.qp_attr.cap.max_recv_wr = MAX_RECV_WR;
     attr.qp_attr.cap.max_recv_sge = MAX_RECV_SGE;

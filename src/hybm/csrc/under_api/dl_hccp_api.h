@@ -38,6 +38,7 @@ using raGetIfAddrsFunc = int (*)(const HccpRaGetIfAttr *, HccpInterfaceInfo[], u
 using raSocketWhiteListAddFunc = int (*)(void *, const HccpSocketWhiteListInfo[], uint32_t num);
 using raSocketWhiteListDelFunc = int (*)(void *, const HccpSocketWhiteListInfo[], uint32_t num);
 using raQpCreateFunc = int (*)(void *, int, int, void **);
+using raQpCreateWithAttrsFunc = int (*)(void *, struct HccpQpExtAttrs *, void **);
 using raQpAiCreateFunc = int (*)(void *, const HccpQpExtAttrs *, HccpAiQpInfo *, void **);
 using raQpDestroyFunc = int (*)(void *);
 using raGetQpStatusFunc = int (*)(void *, int *);
@@ -178,6 +179,14 @@ public:
         return gRaQpCreate(rdmaHandle, flag, qpMode, &qpHandle);
     }
 
+    static inline int RaQpCreateWithAttrs(void *rdmaHandle, struct HccpQpExtAttrs *extAttrs, void *&qpHandle)
+    {
+        if (gRaQpCreateWithAttrs == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gRaQpCreateWithAttrs(rdmaHandle, extAttrs, &qpHandle);
+    }
+
     static inline int RaQpAiCreate(void *rdmaHandle, const HccpQpExtAttrs &attrs, HccpAiQpInfo &info, void *&qpHandle)
     {
         if (gRaQpAiCreate == nullptr) {
@@ -289,6 +298,7 @@ private:
     static raSocketWhiteListAddFunc gRaSocketWhiteListAdd;
     static raSocketWhiteListDelFunc gRaSocketWhiteListDel;
     static raQpCreateFunc gRaQpCreate;
+    static raQpCreateWithAttrsFunc gRaQpCreateWithAttrs;
     static raQpAiCreateFunc gRaQpAiCreate;
     static raQpDestroyFunc gRaQpDestroy;
     static raGetQpStatusFunc gRaGetQpStatus;

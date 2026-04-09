@@ -44,6 +44,16 @@ target_compile_options(ra_object PRIVATE -fPIC)
 add_library(ra_shared SHARED $<TARGET_OBJECTS:ra_object>)
 set_target_properties(ra_shared PROPERTIES OUTPUT_NAME "ra")
 
+set(HCCL_STUB_FILE
+        hccl_stub.cpp
+)
+
+add_library(hccl_object OBJECT ${HCCL_STUB_FILE})
+target_compile_options(hccl_object PRIVATE -fPIC)
+
+add_library(hccl_shared SHARED $<TARGET_OBJECTS:hccl_object>)
+set_target_properties(hccl_shared PROPERTIES OUTPUT_NAME "hccl")
+
 install(
         TARGETS acl_shared
         DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/lib64
@@ -64,6 +74,12 @@ install(
 
 install(
         TARGETS ra_shared
+        DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver/lib64
+        PERMISSIONS OWNER_READ GROUP_READ
+)
+
+install(
+        TARGETS hccl_shared
         DESTINATION ${PROJECT_HYBM_OUTPUT}/lib64/cann/driver/lib64
         PERMISSIONS OWNER_READ GROUP_READ
 )
