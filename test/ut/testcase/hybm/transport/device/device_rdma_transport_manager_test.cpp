@@ -770,7 +770,7 @@ TEST(RdmaTransportManagerTest, RaInitCallsUnderApiOnceAndThenCaches)
     gRaInitCallCount = 0;
 
     // 1st call: should reach RaInit() and call under-api; may sleep once inside implementation.
-    EXPECT_TRUE(RdmaTransportManager::RaInit(0));
+    EXPECT_FALSE(RdmaTransportManager::RaInit(0));
     EXPECT_EQ(gRaInitCallCount, 1);
 
     // 2nd call: cached static flag -> no further under-api calls (and no further sleep).

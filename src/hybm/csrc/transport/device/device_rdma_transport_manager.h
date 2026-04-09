@@ -89,6 +89,8 @@ private: // RDMA HOST STARS
     uint64_t GetRoceDbAddrForRdmaDbSendTask();
     int32_t InitStreamNotifyBuf();
     int32_t Synchronize(void *qpHandle, uint32_t rankId);
+    static void BuildTable(std::string &str, std::string &ip, uint32_t devId);
+    static bool GetRdmaHandleAfterInitHccl(uint32_t device, in_addr &deviceIp, void *&rdmaHandle);
 
 private:
     static thread_local HybmStreamNotifyPtr notify_;

@@ -234,7 +234,7 @@ struct HccpMrInfo {
 
 struct HccpCqExtAttr {
     int sendCqDepth;
-    int recvDqDepth;
+    int recvCqDepth;
     int sendCqCompVector;
     int recvCqCompVector;
 };

@@ -13,6 +13,7 @@
 #include "dl_hybrid_api.h"
 #include "dl_hal_api.h"
 #include "dl_hccp_api.h"
+#include "dl_hccl_api.h"
 #include "dl_hcom_api.h"
 #include "dl_hybm_copy_extend.h"
 
@@ -39,6 +40,14 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
         return result;
     }
 
+    result = DlHcclApi::LoadLibrary();
+    if (result != BM_OK) {
+        DlHccpApi::CleanupLibrary();
+        DlHalApi::CleanupLibrary();
+        DlAclApi::CleanupLibrary();
+        return result;
+    }
+
     (void)DlHybmExtendApi::TryLoadLibrary();
 #endif
 
@@ -48,6 +57,7 @@ Result DlApi::LoadLibrary(const std::string &libDirPath, const uint32_t gvaVersi
 
 void DlApi::CleanupLibrary()
 {
+    DlHcclApi::CleanupLibrary();
     DlHccpApi::CleanupLibrary();
     DlAclApi::CleanupLibrary();
     DlHalApi::CleanupLibrary();
