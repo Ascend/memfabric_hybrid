@@ -1119,10 +1119,6 @@ Result MemEntityDefault::InitDataOperator()
     }
 
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        if (transportManager_ == nullptr) {
-            BM_LOG_ERROR("Device RDMA requires initialized transport manager");
-            return BM_NOT_INITIALIZED;
-        }
         devRdmaDataOperator_ = std::make_shared<DataOpDeviceRDMA>(options_.rankId, transportManager_);
         auto ret = devRdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
