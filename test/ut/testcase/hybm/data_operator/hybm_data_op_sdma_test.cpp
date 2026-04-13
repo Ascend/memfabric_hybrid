@@ -21,6 +21,7 @@
 #include "hybm_functions.h"
 #include "hybm_data_op.h"
 #include "hybm_gva.h"
+#include "hybm_mem_segment.h"
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
@@ -69,6 +70,27 @@ int MockAclrtFreeHost(void *ptr)
 int MockHalHostRegister(void *addr, uint64_t size, uint32_t flags, uint32_t devId, void **output)
 {
     *output = g_mockOutput;
+    return 0;
+}
+
+// Mock for DlAclApi::RtGetDeviceInfo used by MemSegment::InitDeviceInfo.
+int32_t MockRtGetDeviceInfo(int32_t devId, int32_t deviceType, int32_t infoType, int64_t *value)
+{
+    (void)devId;
+    (void)deviceType;
+    if (value == nullptr) {
+        return -1;
+    }
+    switch (infoType) {
+        case ock::mf::INFO_TYPE_SDID:
+        case ock::mf::INFO_TYPE_SERVER_ID:
+        case ock::mf::INFO_TYPE_SUPER_POD_ID:
+            *value = 0;
+            break;
+        default:
+            *value = 0;
+            break;
+    }
     return 0;
 }
 
@@ -147,6 +169,14 @@ public:
             int32_t (*)(ock::mf::HybmStream *, const ock::mf::StreamTask &)).stubs().will(returnValue(0));
         MOCKER_CPP(&ock::mf::HybmStream::Synchronize,
             int32_t (*)(ock::mf::HybmStream *, uint32_t)).stubs().will(returnValue(0));
+
+        // Make MemSegment::InitDeviceInfo succeed with deterministic ids, so reachability
+        // checks behave consistently in UT.
+        MOCKER(&ock::mf::DlAclApi::AclrtSetDevice).stubs().will(returnValue(0));
+        MOCKER(&ock::mf::DlAclApi::RtDeviceGetBareTgid).stubs().will(returnValue(0));
+        MOCKER_CPP(&ock::mf::DlAclApi::RtGetDeviceInfo,
+            int32_t (*)(int32_t, int32_t, int32_t, int64_t *)).stubs().will(invoke(MockRtGetDeviceInfo));
+        (void)ock::mf::MemSegment::InitDeviceInfo(0);
     }
 
 protected:

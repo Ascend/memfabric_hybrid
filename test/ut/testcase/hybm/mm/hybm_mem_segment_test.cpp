@@ -679,6 +679,13 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaMana
     seg.imports_.push_back(local);
     seg.imports_.push_back(remote);
 
+    // Make SDMA reachability checks pass in UT environment.
+    ock::mf::MemSegment::deviceInfoReady_ = true;
+    ock::mf::MemSegment::deviceId_ = 0;
+    ock::mf::MemSegment::serverId_ = 0;
+    ock::mf::MemSegment::superPodId_ = 0;
+    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C;
+
     // Mmap 只处理远端 rank
     auto ret = seg.Mmap();
     EXPECT_EQ(ret, BM_OK);

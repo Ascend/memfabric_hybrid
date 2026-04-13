@@ -569,6 +569,11 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             BM_LOG_INFO("remote slice on rank(" << im.rankId << ") has maped gva:" << VaToStr(im.gva));
             continue;
         }
+
+        if (!CanSdmaReaches(im.superPodId, im.serverId, im.logicDevId)) {
+            continue;
+        }
+
         BM_LOG_INFO("Try to mmap rank:" << im.rankId << " superPodId:" << im.superPodId << " serverId:" << im.serverId
                                         << " devId:" << im.logicDevId << " segType:" << options_.segType << " size:"
                                         << im.size << " gva:" << VaToStr(im.gva) << " dva:" << VaToStr(im.deviceVa));
