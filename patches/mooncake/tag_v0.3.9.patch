@@ -1,0 +1,1795 @@
+diff --git a/mooncake-common/common.cmake b/mooncake-common/common.cmake
+index 4855061..8c3c3a9 100644
+--- a/mooncake-common/common.cmake
++++ b/mooncake-common/common.cmake
+@@ -65,6 +65,7 @@ option(USE_BAREX "option for using accl-barex transport" OFF)
+ option(USE_ASCEND "option for using npu with HCCL" OFF)
+ option(USE_ASCEND_DIRECT "option for using ascend npu with adxl engine" OFF)
+ option(USE_UBSHMEM "option for using ascend npu with shmem" OFF)
++option(USE_UB "option for using ub transport with memfabric" OFF)
+ option(USE_ASCEND_HETEROGENEOUS "option for transferring between ascend npu and gpu" OFF)
+ option(USE_MNNVL "option for using Multi-Node NVLink transport" OFF)
+ option(USE_CXL "option for using CXL protocol" OFF)
+@@ -183,7 +184,7 @@ if (USE_BAREX)
+   add_compile_definitions(USE_BAREX)
+ endif()
+ 
+-if (USE_ASCEND OR USE_ASCEND_DIRECT OR USE_UBSHMEM)
++if (USE_ASCEND OR USE_ASCEND_DIRECT OR USE_UBSHMEM OR USE_UB)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOPEN_BUILD_PROJECT ")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOPEN_BUILD_PROJECT ")
+   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CURRENT_CPU)
+@@ -224,6 +225,10 @@ if (USE_UBSHMEM)
+   add_compile_definitions(USE_UBSHMEM)
+ endif()
+ 
++if (USE_UB)
++  add_compile_definitions(USE_UB)
++endif()
++
+ if (USE_ASCEND_HETEROGENEOUS)
+   file(GLOB ASCEND_TOOLKIT_ROOT "/usr/local/Ascend/ascend-toolkit/latest/*-linux")
+   set(ASCEND_LIB_DIR "${ASCEND_TOOLKIT_ROOT}/lib64")
+diff --git a/mooncake-integration/transfer_engine/transfer_engine_py.cpp b/mooncake-integration/transfer_engine/transfer_engine_py.cpp
+index b193302..c5b37b1 100644
+--- a/mooncake-integration/transfer_engine/transfer_engine_py.cpp
++++ b/mooncake-integration/transfer_engine/transfer_engine_py.cpp
+@@ -21,6 +21,10 @@
+ #include <pybind11/stl.h>
+ #include "transport/rpc_communicator/rpc_interface.h"
+ 
++#ifdef USE_UB
++#include "transport/ub_transport/memfabric_smem_dl.h"
++#endif
++
+ #ifdef USE_MNNVL
+ #include "transport/nvlink_transport/nvlink_transport.h"
+ #endif
+@@ -160,7 +164,9 @@ int TransferEnginePy::initializeExt(const char *local_hostname,
+                                     const char *metadata_type) {
+     (void)(protocol);
+     std::string conn_string = buildConnString(metadata_type, metadata_server);
+-
++#ifdef USE_UB
++    MemFabricSmemDl::SetSmemTypeFlag(mooncake::SMEM_TRANS);
++#endif
+     auto device_name_safe = device_name ? std::string(device_name) : "";
+     auto device_filter = buildDeviceFilter(device_name_safe);
+     engine_ = std::make_unique<TransferEngine>(true, device_filter);
+diff --git a/mooncake-store/src/client_service.cpp b/mooncake-store/src/client_service.cpp
+index c1bb9fd..ee6157d 100644
+--- a/mooncake-store/src/client_service.cpp
++++ b/mooncake-store/src/client_service.cpp
+@@ -390,6 +390,18 @@ ErrorCode Client::InitTransferEngine(
+                 LOG(ERROR) << "Failed to install CXL transport";
+                 return ErrorCode::INTERNAL_ERROR;
+             }
++        } else if (protocol == "ub") {
++            try {
++                transport = transfer_engine_->installTransport("ub", nullptr);
++            } catch (std::exception& e) {
++                LOG(ERROR) << "ub_transport_install_failed error_message=\""
++                        << e.what() << "\"";
++                return ErrorCode::INTERNAL_ERROR;
++            }
++            if (!transport) {
++                LOG(ERROR) << "Failed to install UB transport";
++                return ErrorCode::INTERNAL_ERROR;
++            }
+         } else {
+             LOG(ERROR) << "unsupported_protocol protocol=" << protocol;
+             return ErrorCode::INVALID_PARAMS;
+@@ -1514,7 +1526,7 @@ tl::expected<void, ErrorCode> Client::MountSegment(
+             return tl::unexpected(ErrorCode::INVALID_PARAMS);
+         }
+     }
+-
++#ifndef USE_UB
+     int rc = transfer_engine_->registerLocalMemory(
+         (void*)buffer, size, kWildcardLocation, true, true);
+     if (rc != 0) {
+@@ -1522,6 +1534,7 @@ tl::expected<void, ErrorCode> Client::MountSegment(
+                    << " size=" << size << ", error=" << rc;
+         return tl::unexpected(ErrorCode::INVALID_PARAMS);
+     }
++#endif
+ 
+     // Build segment with logical name; attach TE endpoint for transport
+     Segment segment;
+diff --git a/mooncake-store/src/real_client.cpp b/mooncake-store/src/real_client.cpp
+index 0a927fe..a12470b 100644
+--- a/mooncake-store/src/real_client.cpp
++++ b/mooncake-store/src/real_client.cpp
+@@ -24,6 +24,10 @@
+ #include "file_storage.h"
+ #include "default_config.h"
+ 
++#ifdef USE_UB
++#include "transport/ub_transport/memfabric_smem_dl.h"
++#endif
++
+ namespace mooncake {
+ 
+ PyClient::~PyClient() {}
+@@ -181,6 +185,9 @@ tl::expected<void, ErrorCode> RealClient::setup_internal(
+     std::string hostname = local_hostname;
+     size_t colon_pos = hostname.find(":");
+     bool user_specified_port = (colon_pos != std::string::npos);
++#ifdef USE_UB
++    MemFabricSmemDl::SetSmemTypeFlag(mooncake::SMEM_BM);
++#endif
+ 
+     if (user_specified_port) {
+         // User specified port, no retry needed
+@@ -242,6 +249,28 @@ tl::expected<void, ErrorCode> RealClient::setup_internal(
+         }
+     }
+ 
++#ifdef USE_UB
++    // mount
++    std::pair<void *, size_t> segment = MemFabricGetSegment();
++    if (segment.second == 0) {
++        LOG(INFO) << "Skip to mount segment, size is zero";
++        return {};
++    }
++    auto mountRes = client_->MountSegment(segment.first, segment.second,
++                                            protocol);
++    if (!mountRes.has_value()) {
++        LOG(ERROR) << "Failed to mount segment: "
++                   << toString(mountRes.error());
++        return tl::unexpected(mountRes.error());
++    }
++    LOG(INFO) << "Successfully mounted segment: dram{" << segment.second
++              << " bytes, "
++              << segment.first
++              <<" "
++              << segment.second
++              << "}";
++    return {};
++#endif
+     // Local_buffer_size is allowed to be 0, but we only register memory when
+     // local_buffer_size > 0. Invoke ibv_reg_mr() with size=0 is UB, and may
+     // fail in some rdma implementations.
+diff --git a/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h
+new file mode 100644
+index 0000000..6498cb8
+--- /dev/null
++++ b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h
+@@ -0,0 +1,741 @@
++// Copyright 2025 Huawei Technologies Co., Ltd
++// Copyright 2024 KVCache.AI
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++#pragma once
++#include <algorithm>
++#include <cstdlib>
++#include <cstdio>
++#include <cstdint>
++#include <climits>
++#include <unistd.h>
++#include <string>
++#include <mutex>
++#include <dlfcn.h>
++#include <sys/stat.h>
++#include <glog/logging.h>
++
++namespace mooncake {
++typedef enum {
++    SMEM_BM,
++    SMEM_TRANS,
++    SMEM_BUTT
++} smem_type;
++
++typedef enum {
++    SMEM_MEM_TYPE_LOCAL_DEVICE = 0, /* memory on local device */
++    SMEM_MEM_TYPE_LOCAL_HOST,       /* memory on local host */
++    SMEM_MEM_TYPE_DEVICE,           /* memory on global device */
++    SMEM_MEM_TYPE_HOST,             /* memory on global host */
++
++    SMEM_MEM_TYPE_BUTT
++} smem_bm_mem_type;
++
++/**
++ * @brief CPU initiated data operation type, currently only support SDMA
++ */
++typedef enum {
++    SMEMB_DATA_OP_SDMA = 1U << 0,
++    SMEMB_DATA_OP_HOST_RDMA = 1U << 1,
++    SMEMB_DATA_OP_HOST_TCP = 1U << 2,
++    SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3,
++    SMEMB_DATA_OP_BUTT
++} smem_bm_data_op_type;
++
++/**
++ * @brief Data copy direction
++ */
++typedef enum {
++    SMEMB_COPY_L2G = 0, /* copy data from local space to global space */
++    SMEMB_COPY_G2L = 1, /* copy data from global space to local space */
++    SMEMB_COPY_G2H = 2, /* copy data from global space to host memory */
++    SMEMB_COPY_H2G = 3, /* copy data from host memory to global space */
++    SMEMB_COPY_G2G = 4, /* copy data from global space to global space */
++    SMEMB_COPY_AUTO = 9,
++    /* add here */
++    SMEMB_COPY_BUTT
++} smem_bm_copy_type;
++
++typedef struct {
++    void** sources;
++    void** destinations;
++    const uint64_t* dataSizes;
++    uint32_t batchSize;
++} smem_batch_copy_params;
++
++#define TLS_PATH_SIZE 256
++#define ASYNC_COPY_FLAG (1UL << (0))
++typedef struct {
++    bool tlsEnable;
++    char caPath[TLS_PATH_SIZE];
++    char crlPath[TLS_PATH_SIZE];
++    char certPath[TLS_PATH_SIZE];
++    char keyPath[TLS_PATH_SIZE];
++    char keyPassPath[TLS_PATH_SIZE];
++    char packagePath[TLS_PATH_SIZE];
++    char decrypterLibPath[TLS_PATH_SIZE];
++} smem_tls_config;
++
++typedef struct {
++    uint32_t initTimeout;   /* func smem_bm_init timeout, default 120s (min=1,
++                               max=SMEM_BM_TIMEOUT_MAX) */
++    uint32_t createTimeout; /* func smem_bm_create timeout, default 120s (min=1,
++                               max=SMEM_BM_TIMEOUT_MAX) */
++    uint32_t controlOperationTimeout; /* control operation timeout, default 120s
++                                         (min=1, max=SMEM_BM_TIMEOUT_MAX) */
++    bool startConfigStoreServer; /* whether to start config store, default true
++                                  */
++    bool startConfigStoreOnly;   /* only start the config store */
++    bool dynamicWorldSize;       /* member cannot join dynamically */
++    bool unifiedAddressSpace;    /* unified address with SVM */
++    bool autoRanking; /* automatically allocate rank IDs, default is false. */
++    uint32_t rankId;     /* user specified rank ID, valid for autoRanking is False */
++    uint32_t flags; /* other flag, default 0 */
++    char hcomUrl[64];
++    smem_tls_config hcomTlsConfig;
++    smem_tls_config storeTlsConfig;
++} smem_bm_config_t;
++
++typedef enum {
++    SMEM_TRANS_NONE = 0, /* no role */
++    SMEM_TRANS_SENDER,   /* sender */
++    SMEM_TRANS_RECEIVER, /* receiver */
++    SMEM_TRANS_BOTH,     /* both sender and receiver */
++    SMEM_TRANS_BUTT
++} smem_trans_role_t;
++
++typedef struct {
++    smem_trans_role_t role; /* transfer role */
++    uint32_t initTimeout;   /* func timeout, default 120 seconds */
++    uint32_t deviceId;      /* npu device id */
++    uint32_t flags;         /* optional flags */
++    smem_bm_data_op_type dataOpType;  /* data operation type */
++    bool startConfigServer; /* whether to start config store, default false */
++} smem_trans_config_t;
++
++typedef struct {
++    uint64_t maxDramSize;             /* the max size of all rank DRAM memory contributes to Big Memory object */
++    uint64_t maxHbmSize;              /* the max size of all rank HBM memory contributes to Big Memory object */
++    uint64_t localDRAMSize;           /* the size of local DRAM memory contributes to Big Memory object */
++    uint64_t localHBMSize;            /* the size of local HBM memory contributes to Big Memory object */
++    smem_bm_data_op_type dataOpType;  /* if tag or tagOpInfo is empty, use dataOpType */
++    uint32_t flags;                   /* optional flags, default 0 */
++    char tag[32];                     /* tag of bm, eg:tag_1 */
++    char tagOpInfo[256];              /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
++} smem_bm_create_option_t;
++
++using smem_bm_t = void*;
++using smem_trans_t = void*;
++
++// func
++using FUNC_SMEM_BM_CONFIG_INIT = int32_t (*)(smem_bm_config_t* config);
++using FUNC_SMEM_BM_INIT = int32_t (*)(const char* storeURL, uint32_t worldSize, uint16_t deviceId,
++                                      const smem_bm_config_t* config);
++using FUNC_SMEM_BM_UNINIT = void (*)(uint32_t flags);
++using FUNC_SMEM_BM_GET_RANK_ID = uint32_t (*)(void);
++using FUNC_SMEM_BM_CREATE = smem_bm_t (*)(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
++                                          uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags);
++using FUNC_SMEM_BM_CREATE2 = smem_bm_t (*)(uint32_t id, const smem_bm_create_option_t *option);
++using FUNC_SMEM_BM_DESTROY = void (*)(smem_bm_t handle);
++using FUNC_SMEM_BM_JOIN = int32_t (*)(smem_bm_t handle, uint32_t flags);
++using FUNC_SMEM_BM_LEAVE = int32_t (*)(smem_bm_t handle, uint32_t flags);
++using FUNC_SMEM_BM_GET_LOCAL_MEM_SIZE_BY_MEM_TYPE = uint64_t (*)(smem_bm_t handle, smem_bm_mem_type memType);
++using FUNC_SMEM_BM_PTR_BY_MEM_TYPE = void* (*)(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
++using FUNC_SMEM_BM_COPY = int32_t (*)(smem_bm_t handle, const void* src, void* dest, uint64_t size,
++                                      smem_bm_copy_type t, uint32_t flags);
++using FUNC_SMEM_BM_COPY_BATCH = int32_t (*)(smem_bm_t handle, smem_batch_copy_params* params,
++                                            smem_bm_copy_type t, uint32_t flags);
++using FUNC_SMEM_BM_WAIT = int32_t (*)(smem_bm_t handle);
++using FUNC_SMEM_BM_REGISTER_USER_MEM = int32_t (*)(smem_bm_t handle, uint64_t addr, uint64_t size);
++using FUNC_SMEM_SET_EXTERN_LOGGER = int32_t (*)(void (*func)(int level, const char* msg));
++using FUNC_SMEM_SET_LOG_LEVEL = int32_t (*)(int level);
++using FUNC_SMEM_CREATE_CONFIG_STORE = int32_t (*)(const char* storeUrl);
++
++using FUNC_SMEM_TRANS_INIT = int32_t (*)(const smem_trans_config_t *config);
++using FUNC_SMEM_TRANS_UNINIT = void (*)(uint32_t flags);
++using FUNC_SMEM_TRANS_CREATE = smem_trans_t (*)(const char *, const char *, const smem_trans_config_t *);
++using FUNC_SMEM_TRANS_DESTORY = void (*)(smem_trans_t, uint32_t);
++using FUNC_SMEM_TRANS_REGISTER_MEM = int32_t (*)(smem_trans_t, void *, size_t, uint32_t);
++using FUNC_SMEM_TRANS_UNREGISTER_MEM = int32_t (*)(smem_trans_t, void *[]);
++using FUNC_SMEM_TRANS_BATCH_REGISTER_MEM = int32_t (*)(smem_trans_t, void *[], size_t[], uint32_t, uint32_t);
++using FUNC_SMEM_TRANS_WRITE = int32_t (*)(smem_trans_t, const void *, const char *, void *, size_t, int32_t);
++using FUNC_SMEM_TRANS_BATCH_WRITE = int32_t (*)(smem_trans_t, const void *[], const char *,
++                                                void *[], size_t [], uint32_t, int32_t);
++using FUNC_SMEM_TRANS_BATCH_READ = int32_t (*)(smem_trans_t, const void *[], const char *,
++                                               void *[], size_t [], uint32_t, int32_t);
++
++#define DLSYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)   \
++    do {                                                                     \
++        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME); \
++        if ((TARGET_FUNC_VAR) == nullptr) {                                  \
++            LOG(ERROR) << "Failed to call dlsym to load" << (SYMBOL_NAME)    \
++                       << ", error" << dlerror();                            \
++            dlclose(FILE_HANDLE);                                            \
++            return -1;                                                       \
++        }                                                                    \
++    } while (0)
++
++#define SMEM_BM_INIT_GVM_FLAG (1ULL << 1ULL)
++
++constexpr uint64_t GB_MEM_BYTES = 1024ULL * 1024ULL * 1024ULL;
++constexpr uint64_t TB_MEM_BYTES = 1024ULL * 1024ULL * 1024ULL * 1024ULL;
++constexpr uint64_t MAX_DRAM_MEM_BYTES = 32 * 1024ULL * 1024ULL * 1024ULL * 1024ULL;
++constexpr uint32_t DEBUG_LOG_LEVEL = 0;
++constexpr uint32_t INFO_LOG_LEVEL = 1;
++constexpr uint32_t WARN_LOG_LEVEL = 2;
++constexpr uint32_t ERROR_LOG_LEVEL = 3;
++constexpr uint32_t FATAL_LOG_LEVEL = 4;
++constexpr uint32_t STORE_URL_PORT_START = 1024;
++constexpr uint32_t STORE_URL_PORT_END = 65534;
++constexpr uint32_t SMEM_DEFAUT_WAIT_TIME = 120; // 120s
++
++struct MemFabricConfig {
++    uint32_t worldSize{1024};
++    uint64_t dramSize{GB_MEM_BYTES};
++    uint64_t maxDramSize{GB_MEM_BYTES};
++    uint64_t hbmSize{0};
++    uint64_t maxHbmSize{0};
++    int32_t logLevel{1};
++    smem_bm_data_op_type opType{SMEMB_DATA_OP_DEVICE_RDMA};
++    smem_bm_data_op_type transOpType{SMEMB_DATA_OP_DEVICE_RDMA};
++    std::string storeUrl{};
++    std::string tag{};
++    std::string tagOpInfo{};
++    // for smem trans
++    smem_trans_role_t role{SMEM_TRANS_NONE};
++};
++
++class MemFabricSmemDl {
++public:
++    static smem_bm_t GetSmemBmHandle()
++    {
++        return smemBmHandle_;
++    }
++
++    static smem_bm_t GetSmemTransHandle()
++    {
++        return smemTransHandle_;
++    }
++
++    static smem_type GetSmemTypeFlag()
++    {
++        return smemTypeFlag_;
++    }
++
++    static void SetSmemTypeFlag(smem_type smemTypeFlag)
++    {
++        smemTypeFlag_ = smemTypeFlag;
++    }
++
++    static int32_t SmemBmConfigInit(smem_bm_config_t* config)
++    {
++        if (!pSmemBmConfigInit) {
++            LOG(ERROR) << "Call pSmemBmConfigInit is nullptr";
++            return -1;
++        }
++        return pSmemBmConfigInit(config);
++    }
++
++    static int32_t SmemBmInit(const char* storeURL, uint32_t worldSize, uint16_t deviceId,
++                              const smem_bm_config_t* config)
++    {
++        if (!pSmemBmInit) {
++            LOG(ERROR) << "Call pSmemBmInit is nullptr";
++            return -1;
++        }
++        return pSmemBmInit(storeURL, worldSize, deviceId, config);
++    }
++
++    static void SmemBmUninit(uint32_t flags)
++    {
++        if (!pSmemBmUninit) {
++            LOG(ERROR) << "Call pSmemBmUninit is nullptr";
++            return;
++        }
++        pSmemBmUninit(flags);
++    }
++
++    static uint32_t SmemGetRankId()
++    {
++        if (!pSmemGetRankId) {
++            LOG(ERROR) << "Call pSmemGetRankId is nullptr";
++            return ~(0u);
++        }
++        return pSmemGetRankId();
++    }
++
++    static smem_bm_t SmemBmCreate(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType,
++                                  uint64_t localDRAMSize, uint64_t localHBMSize, uint32_t flags)
++    {
++        if (!pSmemBmCreate) {
++            LOG(ERROR) << "Call pSmemBmCreate is nullptr";
++            return nullptr;
++        }
++        smemBmHandle_ = pSmemBmCreate(id, memberSize, dataOpType, localDRAMSize,
++                                      localHBMSize, flags);
++        return smemBmHandle_;
++    }
++
++    static smem_bm_t SmemBmCreate2(uint32_t id, const smem_bm_create_option_t *option)
++    {
++        if (!pSmemBmCreate2) {
++            LOG(ERROR) << "Call pSmemBmCreate is nullptr";
++            return nullptr;
++        }
++        smemBmHandle_ = pSmemBmCreate2(id, option);
++        return smemBmHandle_;
++    }
++
++    static void SmemBmDestory(smem_bm_t handle)
++    {
++        if (!pSmemBmDestory) {
++            LOG(ERROR) << "Call pSmemBmDestory is nullptr";
++            return;
++        }
++        pSmemBmDestory(handle);
++    }
++
++    static int32_t SmemBmJoin(smem_bm_t handle, uint32_t flags)
++    {
++        if (!pSmemBmJoin) {
++            LOG(ERROR) << "Call pSmemBmJoin is nullptr";
++            return -1;
++        }
++        return pSmemBmJoin(handle, flags);
++    }
++
++    static int32_t SmemBmLeave(smem_bm_t handle, uint32_t flags)
++    {
++        if (!pSmemBmLeave) {
++            LOG(ERROR) << "Call pSmemBmLeave is nullptr";
++            return -1;
++        }
++        return pSmemBmLeave(handle, flags);
++    }
++
++    static uint64_t SmemBmGetLocalMemSizeByMemType(smem_bm_t handle, smem_bm_mem_type memType)
++    {
++        if (!pSmemBmGetLocalMemSizeByMemType) {
++            LOG(ERROR) << "Call pSmemBmGetLocalMemSizeByMemType is nullptr";
++            return ~(0ull);
++        }
++        return pSmemBmGetLocalMemSizeByMemType(handle, memType);
++    }
++
++    static void* SmemBmPtrByMemType(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId)
++    {
++        if (!pSmemBmPtrByMemType) {
++            LOG(ERROR) << "Call pSmemBmPtrByMemType is nullptr";
++            return nullptr;
++        }
++        return pSmemBmPtrByMemType(handle, memType, peerRankId);
++    }
++
++    static int32_t SmemBmCopy(smem_bm_t handle, const void* src, void* dest, uint64_t size,
++                              smem_bm_copy_type t, uint32_t flags)
++    {
++        if (!pSmemBmCopy) {
++            LOG(ERROR) << "Call pSmemBmCopy is nullptr";
++            return -1;
++        }
++        return pSmemBmCopy(handle, src, dest, size, t, flags);
++    }
++
++    static int32_t SmemBmCopyBatch(smem_bm_t handle, smem_batch_copy_params* params,
++                                   smem_bm_copy_type t, uint32_t flags)
++    {
++        if (!pSmemBmCopyBatch) {
++            LOG(ERROR) << "Call pSmemBmCopyBatch is nullptr";
++            return -1;
++        }
++        return pSmemBmCopyBatch(handle, params, t, flags);
++    }
++
++    static int32_t SmemBmWait(smem_bm_t handle) {
++        if (!pSmemBmWait) {
++            LOG(ERROR) << "Call pSmemBmWait is nullptr";
++            return -1;
++        }
++        return pSmemBmWait(handle);
++    }
++
++    static int32_t SmemBmRegisterUserMem(smem_bm_t handle, uint64_t addr, uint64_t size)
++    {
++        if (!pSmemBmRegisterUserMem) {
++            LOG(ERROR) << "Call pSmemBmRegisterUserMem is nullptr";
++            return -1;
++        }
++        return pSmemBmRegisterUserMem(handle, addr, size);
++    }
++
++    static int32_t SmemSetExternLogger(void (*func)(int level, const char* msg))
++    {
++        if (!pSmemSetExternLogger) {
++            LOG(ERROR) << "Call pSmemSetExternLogger is nullptr";
++            return -1;
++        }
++        return pSmemSetExternLogger(func);
++    }
++
++    static int32_t SmemSetLogLevel(int level)
++    {
++        if (!pSmemSetLogLevel) {
++            LOG(ERROR) << "Call pSmemSetLogLevel is nullptr";
++            return -1;
++        }
++        return pSmemSetLogLevel(level);
++    }
++
++    static int32_t SmemCreateConfigStore(const char* storeUrl)
++    {
++        if (!pSmemCreateConfigStore) {
++            LOG(ERROR) << "Call pSmemCreateConfigStore is nullptr";
++            return -1;
++        }
++        return pSmemCreateConfigStore(storeUrl);
++    }
++
++    static MemFabricConfig GetMemFabricConfig()
++    {
++        return config_;
++    }
++
++    static int32_t SmemTranInit(const smem_trans_config_t *config)
++    {
++        if (!pSmemTransInit) {
++            LOG(ERROR) << "Call pSmemTransInit is nullptr";
++            return -1;
++        }
++        return pSmemTransInit(config);
++    }
++
++    static void SmemTranUnInit(uint32_t flags)
++    {
++        if (!pSmemTransUnInit) {
++            LOG(ERROR) << "Call pSmemTransUnInit is nullptr";
++            return;
++        }
++        return pSmemTransUnInit(flags);
++    }
++
++    static smem_trans_t SmemTransCreate(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config)
++    {
++        if (!pSmemTransCreate) {
++            LOG(ERROR) << "Call pSmemTransCreate is nullptr";
++            return nullptr;
++        }
++        smemTransHandle_ = pSmemTransCreate(storeUrl, uniqueId, config);
++        return smemTransHandle_;
++    }
++
++    static void SmemTransDestroy(smem_trans_t trans, uint32_t flags)
++    {
++        if (!pSmemTransDestory) {
++            LOG(ERROR) << "Call pSmemTransDestroy is nullptr";
++            return;
++        }
++        return pSmemTransDestory(trans, flags);
++    }
++
++    static int32_t SmemTransRegisterMem(smem_trans_t trans, void *addr, size_t length, uint32_t flags = 0)
++    {
++        if (!pSmemTransRegisterMem) {
++            LOG(ERROR) << "Call pSmemTransRegisterMem is nullptr";
++            return -1;
++        }
++        return pSmemTransRegisterMem(trans, addr, length, flags);
++    }
++
++    static int32_t SmemTransUnregisterMem(smem_trans_t trans, void *addr[])
++    {
++        if (!pSmemTransUnregisterMem) {
++            LOG(ERROR) << "Call pSmemTransUnregisterMem is nullptr";
++            return -1;
++        }
++        return pSmemTransUnregisterMem(trans, addr);
++    }
++
++    static int32_t SmemTransBatchRegisterMem(smem_trans_t trans, void *addr[], size_t length[],
++                                             uint32_t count, uint32_t flags)
++    {
++        if (!pSmemTransBatchRegisterMem) {
++            LOG(ERROR) << "Call pSmemTransBatchRegisterMem is nullptr";
++            return -1;
++        }
++        return pSmemTransBatchRegisterMem(trans, addr, length, count, flags);
++    }
++
++    static int32_t SmemTransWrite(smem_trans_t trans, const void *src, const char *destName,
++                                  void *dest, size_t length, int32_t flags = 0)
++    {
++        if (!pSmemTransWrite) {
++            LOG(ERROR) << "Call pSmemTransWrite is nullptr";
++            return -1;
++        }
++        return pSmemTransWrite(trans, src, destName, dest, length, flags);
++    }
++
++    static int32_t SmemTransBatchWrite(smem_trans_t trans, const void *src[], const char *destName, void *dest[],
++                                       size_t length[], uint32_t count, int32_t flags = 0) {
++        if (!pSmemTransBatchWrite) {
++            LOG(ERROR) << "Call pSmemTransBatchWrite is nullptr";
++            return -1;
++        }
++        return pSmemTransBatchWrite(trans, src, destName, dest, length, count, flags);
++    }
++
++    static int32_t SmemTransBatchRead(smem_trans_t trans, const void *locals[], const char *remoteName, void *remotes[],
++                                      size_t length[], uint32_t count, int32_t flags = 0)
++    {
++        if (!pSmemTransBatchRead) {
++            LOG(ERROR) << "Call pSmemTransBatchWrite is nullptr";
++            return -1;
++        }
++        return pSmemTransBatchRead(trans, locals, remoteName, remotes, length, count, flags);
++    }
++
++    static void InitHbmConfig()
++    {
++        auto hbmSizeStr = std::getenv("MF_HBM_SIZE");
++        if (hbmSizeStr) {
++            uint64_t val = atol(hbmSizeStr);
++            if (val <= TB_MEM_BYTES) {
++                config_.hbmSize = (val + GB_MEM_BYTES - 1) & ~(GB_MEM_BYTES - 1);
++            } else {
++                LOG(FATAL) << "Get config hbmSize failed size must in 1GB ~ 1TB"
++                           << " and must align 1GB " << " now is:" << hbmSizeStr;
++            }
++        }
++
++        auto maxHbmSizeStr = std::getenv("MF_MAX_HBM_SIZE");
++        if (maxHbmSizeStr) {
++            uint64_t val = atol(maxHbmSizeStr);
++            if (val >= GB_MEM_BYTES && val <= TB_MEM_BYTES && val >= config_.dramSize) {
++                config_.maxHbmSize = (val + GB_MEM_BYTES - 1) & ~(GB_MEM_BYTES - 1);
++            } else {
++                LOG(FATAL) << "Get config maxDramSize failed size must in 1GB ~ 1TB"
++                           << " and must >= hbmSize:" << config_.hbmSize << " now is:" << maxHbmSizeStr;
++            }
++        } else {
++            config_.maxHbmSize = config_.hbmSize;
++        }
++    }
++
++    static void InitMustConfig()
++    {
++        InitHbmConfig();
++        auto dramSizeStr = std::getenv("MF_DRAM_SIZE");
++        if (dramSizeStr) {
++            uint64_t val = atol(dramSizeStr);
++            if (val <= TB_MEM_BYTES) {
++                config_.dramSize = (val + GB_MEM_BYTES - 1) & ~(GB_MEM_BYTES - 1);
++            } else {
++                LOG(FATAL) << "Get config dramSize failed size must in 1GB ~ 1TB"
++                           << " and must align 1GB " << " now is:" << dramSizeStr;
++            }
++        }
++
++        auto maxDramSizeStr = std::getenv("MF_MAX_DRAM_SIZE");
++        if (maxDramSizeStr) {
++            uint64_t val = atol(maxDramSizeStr);
++            if (val >= GB_MEM_BYTES && val <= TB_MEM_BYTES && val >= config_.dramSize) {
++                config_.maxDramSize = (val + GB_MEM_BYTES - 1) & ~(GB_MEM_BYTES - 1);
++            } else {
++                LOG(FATAL) << "Get config maxDramSize failed size must in 1GB ~ 1TB"
++                           << " and must >= dramSize:" << config_.dramSize << " now is:" << dramSizeStr;
++            }
++        } else {
++            config_.maxDramSize = config_.dramSize;
++        }
++
++        auto worldSizeStr = std::getenv("MF_WORLD_SIZE");
++        if (worldSizeStr) {
++            uint32_t val = static_cast<uint32_t>(atol(worldSizeStr));
++            config_.worldSize = std::min(val, config_.worldSize);
++        }
++
++        auto opTypeStr = std::getenv("MF_OP_TYPE");
++        if (!opTypeStr) {
++            config_.opType = SMEMB_DATA_OP_DEVICE_RDMA;
++        } else if (std::string_view(opTypeStr) == "device_rdma") {
++            config_.opType = SMEMB_DATA_OP_DEVICE_RDMA;
++        } else if (std::string_view(opTypeStr) == "device_sdma") {
++            config_.opType = SMEMB_DATA_OP_SDMA;
++        } else {
++            config_.opType = SMEMB_DATA_OP_BUTT;
++            LOG(WARNING) << "Ignore value from environment variable MF_OP_TYPE";
++        }
++
++        auto storeUrlStr = std::getenv("MF_STORE_URL");
++        if (storeUrlStr) {
++            config_.storeUrl = std::string_view(storeUrlStr);
++        }
++    }
++
++    static void InitOptionalConfig()
++    {
++        auto logLevelStr = std::getenv("MF_LOG_LEVEL");
++        if (logLevelStr) {
++            auto val = atoi(logLevelStr);
++            if (val >= DEBUG_LOG_LEVEL && val <= FATAL_LOG_LEVEL) {
++                config_.logLevel = val;
++            }
++        }
++
++        auto transOpTypeStr = std::getenv("MF_PD_OP_TYPE");
++        if (!transOpTypeStr) {
++            config_.transOpType = SMEMB_DATA_OP_DEVICE_RDMA;
++        } else if (std::string_view(transOpTypeStr) == "device_rdma") {
++            config_.transOpType = SMEMB_DATA_OP_DEVICE_RDMA;
++        } else if (std::string_view(transOpTypeStr) == "device_sdma") {
++            config_.transOpType = SMEMB_DATA_OP_SDMA;
++        } else {
++            config_.transOpType = SMEMB_DATA_OP_BUTT;
++            LOG(WARNING) << "Ignore value from environment variable MF_OP_TYPE:" << transOpTypeStr;
++        }
++
++        auto roleStr = std::getenv("MF_SMEM_TRANS_ROLE");
++        if (roleStr) {
++            if (strcmp(roleStr, "Prefill") == 0) {
++                config_.role = SMEM_TRANS_SENDER;
++            } else if (strcmp(roleStr, "Decode") == 0) {
++                config_.role = SMEM_TRANS_RECEIVER;
++            } else {
++                config_.role = SMEM_TRANS_BUTT;
++                LOG(WARNING) << "Ignore value from environment variable MF_SMEM_TRANS_ROLE";
++            }
++        }
++
++        auto tagStr = std::getenv("MF_RANK_TAG");
++        if (tagStr) {
++            config_.tag = std::string_view(tagStr);
++        }
++
++        auto tagOpInfoStr = std::getenv("MF_RANK_TAG_OP_INFO");
++        if (tagOpInfoStr) {
++            config_.tagOpInfo = std::string_view(tagOpInfoStr);
++        }
++    }
++
++    static void InitMemFabricConfig()
++    {
++        InitMustConfig();
++        InitOptionalConfig();
++
++        LOG(INFO) << "Success to load MemFabric config: { worldSize:" << config_.worldSize
++                  << " dramSize:" << config_.dramSize << " maxDramSize:" << config_.maxDramSize
++                  << " hbmSize:" << config_.hbmSize << " maxHbmSize:" << config_.maxHbmSize
++                  << " logLevel:" << config_.logLevel
++                  << " opType:" << config_.opType << " transOpType:" << config_.transOpType
++                  << " storeUrl:" << config_.storeUrl << " transRole:" << config_.role
++                  << " tag:" << config_.tag << " tagOpInfo:" << config_.tagOpInfo << "}";
++    }
++
++    static int32_t LoadMemFabricBmAPI()
++    {
++        std::lock_guard<std::mutex> lock(mutex_);
++        if (gLoaded_) {
++            return 0;
++        }
++        InitMemFabricConfig();
++
++        auto smemHandle = dlopen("libmf_smem.so", RTLD_NOW | RTLD_GLOBAL);
++        if (smemHandle == nullptr) {
++            LOG(ERROR) << "Failed to dlopen " << "libmf_smem.so" << " err: " << dlerror();
++            return -1;
++        }
++
++        DLSYM(pSmemBmConfigInit, FUNC_SMEM_BM_CONFIG_INIT, smemHandle, "smem_bm_config_init");
++        DLSYM(pSmemBmInit, FUNC_SMEM_BM_INIT, smemHandle, "smem_bm_init");
++        DLSYM(pSmemBmUninit, FUNC_SMEM_BM_UNINIT, smemHandle, "smem_bm_uninit");
++        DLSYM(pSmemGetRankId, FUNC_SMEM_BM_GET_RANK_ID, smemHandle, "smem_bm_get_rank_id");
++        DLSYM(pSmemBmCreate, FUNC_SMEM_BM_CREATE, smemHandle, "smem_bm_create");
++        DLSYM(pSmemBmCreate2, FUNC_SMEM_BM_CREATE2, smemHandle, "smem_bm_create2");
++        DLSYM(pSmemBmDestory, FUNC_SMEM_BM_DESTROY, smemHandle, "smem_bm_destroy");
++        DLSYM(pSmemBmJoin, FUNC_SMEM_BM_JOIN, smemHandle, "smem_bm_join");
++        DLSYM(pSmemBmLeave, FUNC_SMEM_BM_LEAVE, smemHandle, "smem_bm_leave");
++        DLSYM(pSmemBmGetLocalMemSizeByMemType, FUNC_SMEM_BM_GET_LOCAL_MEM_SIZE_BY_MEM_TYPE, smemHandle,
++              "smem_bm_get_local_mem_size_by_mem_type");
++        DLSYM(pSmemBmPtrByMemType, FUNC_SMEM_BM_PTR_BY_MEM_TYPE, smemHandle, "smem_bm_ptr_by_mem_type");
++        DLSYM(pSmemBmCopy, FUNC_SMEM_BM_COPY, smemHandle, "smem_bm_copy");
++        DLSYM(pSmemBmCopyBatch, FUNC_SMEM_BM_COPY_BATCH, smemHandle, "smem_bm_copy_batch");
++        DLSYM(pSmemBmWait, FUNC_SMEM_BM_WAIT, smemHandle, "smem_bm_wait");
++        DLSYM(pSmemBmRegisterUserMem, FUNC_SMEM_BM_REGISTER_USER_MEM, smemHandle, "smem_bm_register_user_mem");
++        DLSYM(pSmemSetExternLogger, FUNC_SMEM_SET_EXTERN_LOGGER, smemHandle, "smem_set_extern_logger");
++        DLSYM(pSmemSetLogLevel, FUNC_SMEM_SET_LOG_LEVEL, smemHandle, "smem_set_log_level");
++        DLSYM(pSmemCreateConfigStore, FUNC_SMEM_CREATE_CONFIG_STORE, smemHandle, "smem_create_config_store");
++        DLSYM(pSmemTransInit, FUNC_SMEM_TRANS_INIT, smemHandle, "smem_trans_init");
++        DLSYM(pSmemTransUnInit, FUNC_SMEM_TRANS_UNINIT, smemHandle, "smem_trans_uninit");
++        DLSYM(pSmemTransCreate, FUNC_SMEM_TRANS_CREATE, smemHandle, "smem_trans_create");
++        DLSYM(pSmemTransDestory, FUNC_SMEM_TRANS_DESTORY, smemHandle, "smem_trans_destroy");
++        DLSYM(pSmemTransRegisterMem, FUNC_SMEM_TRANS_REGISTER_MEM, smemHandle, "smem_trans_register_mem");
++        DLSYM(pSmemTransUnregisterMem, FUNC_SMEM_TRANS_UNREGISTER_MEM, smemHandle, "smem_trans_deregister_mem");
++        DLSYM(pSmemTransBatchRegisterMem, FUNC_SMEM_TRANS_BATCH_REGISTER_MEM, smemHandle,
++              "smem_trans_batch_register_mem");
++        DLSYM(pSmemTransWrite, FUNC_SMEM_TRANS_WRITE, smemHandle, "smem_trans_write");
++        DLSYM(pSmemTransBatchWrite, FUNC_SMEM_TRANS_BATCH_WRITE, smemHandle, "smem_trans_batch_write");
++        DLSYM(pSmemTransBatchRead, FUNC_SMEM_TRANS_BATCH_READ, smemHandle, "smem_trans_batch_read");
++
++        gLoaded_ = true;
++        LOG(INFO) << "load memfabric api success";
++        return 0;
++    }
++
++private:
++    static FUNC_SMEM_BM_CONFIG_INIT pSmemBmConfigInit;
++    static FUNC_SMEM_BM_INIT pSmemBmInit;
++    static FUNC_SMEM_BM_UNINIT pSmemBmUninit;
++    static FUNC_SMEM_BM_GET_RANK_ID pSmemGetRankId;
++    static FUNC_SMEM_BM_CREATE pSmemBmCreate;
++    static FUNC_SMEM_BM_CREATE2 pSmemBmCreate2;
++    static FUNC_SMEM_BM_DESTROY pSmemBmDestory;
++    static FUNC_SMEM_BM_JOIN pSmemBmJoin;
++    static FUNC_SMEM_BM_LEAVE pSmemBmLeave;
++    static FUNC_SMEM_BM_GET_LOCAL_MEM_SIZE_BY_MEM_TYPE pSmemBmGetLocalMemSizeByMemType;
++    static FUNC_SMEM_BM_PTR_BY_MEM_TYPE pSmemBmPtrByMemType;
++    static FUNC_SMEM_BM_COPY pSmemBmCopy;
++    static FUNC_SMEM_BM_COPY_BATCH pSmemBmCopyBatch;
++    static FUNC_SMEM_BM_WAIT pSmemBmWait;
++    static FUNC_SMEM_BM_REGISTER_USER_MEM pSmemBmRegisterUserMem;
++    static FUNC_SMEM_SET_EXTERN_LOGGER pSmemSetExternLogger;
++    static FUNC_SMEM_SET_LOG_LEVEL pSmemSetLogLevel;
++    static FUNC_SMEM_CREATE_CONFIG_STORE pSmemCreateConfigStore;
++    static FUNC_SMEM_TRANS_INIT pSmemTransInit;
++    static FUNC_SMEM_TRANS_UNINIT pSmemTransUnInit;
++    static FUNC_SMEM_TRANS_CREATE pSmemTransCreate;
++    static FUNC_SMEM_TRANS_DESTORY pSmemTransDestory;
++    static FUNC_SMEM_TRANS_REGISTER_MEM pSmemTransRegisterMem;
++    static FUNC_SMEM_TRANS_UNREGISTER_MEM pSmemTransUnregisterMem;
++    static FUNC_SMEM_TRANS_BATCH_REGISTER_MEM pSmemTransBatchRegisterMem;
++    static FUNC_SMEM_TRANS_WRITE pSmemTransWrite;
++    static FUNC_SMEM_TRANS_BATCH_WRITE pSmemTransBatchWrite;
++    static FUNC_SMEM_TRANS_BATCH_READ pSmemTransBatchRead;
++
++    static bool gLoaded_;
++    static std::mutex mutex_;
++    static smem_bm_t smemBmHandle_;
++    static smem_bm_t smemTransHandle_;
++    static MemFabricConfig config_;
++    static smem_type smemTypeFlag_;
++};
++
++// init config store
++int MemFabricInitConfigStore(const std::string& store_address,
++                             uint32_t storePort);
++// init smem bm
++int MemFabricInitSmemBm(int deviceId);
++// init smem trans
++int MemFabricInitSmemTrans(const std::string& sessionId, int deviceId);
++// get segment info
++std::pair<void*, size_t> MemFabricGetSegment();
++}
+\ No newline at end of file
+diff --git a/mooncake-transfer-engine/include/transport/ub_transport/memfabric_transport.h b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_transport.h
+new file mode 100644
+index 0000000..1286758
+--- /dev/null
++++ b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_transport.h
+@@ -0,0 +1,79 @@
++// Copyright 2025 Huawei Technologies Co., Ltd
++// Copyright 2024 KVCache.AI
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++#ifndef MEMFBARIC_TRANSPORT_H
++#define MEMFBARIC_TRANSPORT_H
++
++#include <infiniband/verbs.h>
++#include <atomic>
++#include <cstddef>
++#include <map>
++#include <memory>
++#include <mutex>
++#include <string>
++#include <unordered_map>
++#include <unordered_set>
++#include <vector>
++#include <condition_variable>
++#include "transfer_metadata.h"
++#include "transport/transport.h"
++#include "transport/ub_transport/memfabric_smem_dl.h"
++
++namespace mooncake {
++class MemFabricTransport : public Transport {
++public:
++    using SegmentDesc = TransferMetadata::SegmentDesc;
++
++public:
++    MemFabricTransport();
++
++    ~MemFabricTransport();
++
++    Status submitTransfer(BatchID batch_id, const std::vector<TransferRequest> &entries) override;
++
++    Status submitTransferTask(const std::vector<TransferTask *> &task_list) override;
++
++    Status getTransferStatus(BatchID batch_id, size_t task_id, TransferStatus &status) override;
++
++    int install(std::string &local_server_name, std::shared_ptr<TransferMetadata> meta,
++                std::shared_ptr<Topology> topo) override;
++
++    const char *getName() const override { return "MemFabric"; }
++
++    int registerLocalMemory(void *addr, size_t length, const std::string &location, bool remote_accessible,
++                            bool update_metadata) override;
++
++    int unregisterLocalMemory(void *addr, bool update_metadata = false) override;
++
++    int registerLocalMemoryBatch(const std::vector<Transport::BufferEntry> &buffer_list,
++                                 const std::string &location) override;
++
++    int unregisterLocalMemoryBatch(const std::vector<void *> &addr_list) override;
++
++private:
++    int batchRegisterSmemBmMem(const std::vector<Transport::BufferEntry> &buffer_list,
++                               const std::string &location);
++    int batchRegisterSmemTransMem(const std::vector<Transport::BufferEntry> &buffer_list,
++                               const std::string &location);
++    Status batchCopySmemBm(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list);
++    Status batchCopySmemTrans(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list);
++    Status batchCopyDefault(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list);
++
++private:
++    smem_type smemType_{SMEM_BUTT};
++    int32_t localDeviceId_{-1};
++};
++}  // namespace mooncake
++#endif
+\ No newline at end of file
+diff --git a/mooncake-transfer-engine/src/CMakeLists.txt b/mooncake-transfer-engine/src/CMakeLists.txt
+index 627c9d5..3962980 100644
+--- a/mooncake-transfer-engine/src/CMakeLists.txt
++++ b/mooncake-transfer-engine/src/CMakeLists.txt
+@@ -81,6 +81,10 @@ if (USE_ASCEND)
+   target_link_libraries(transfer_engine PUBLIC ascendcl hccl ascend_transport MPI::MPI)
+ endif()
+ 
++if (USE_UB)
++  target_link_libraries(transfer_engine PUBLIC ascendcl ub_transport)
++endif()
++
+ if (USE_ASCEND_DIRECT)
+   target_link_libraries(transfer_engine PUBLIC ascend_transport)
+ endif()
+diff --git a/mooncake-transfer-engine/src/multi_transport.cpp b/mooncake-transfer-engine/src/multi_transport.cpp
+index c942519..6dce5e0 100644
+--- a/mooncake-transfer-engine/src/multi_transport.cpp
++++ b/mooncake-transfer-engine/src/multi_transport.cpp
+@@ -52,6 +52,9 @@
+ #ifdef USE_UBSHMEM
+ #include "transport/ascend_transport/ubshmem_transport/ubshmem_transport.h"
+ #endif
++#ifdef USE_UB
++#include "transport/ub_transport/memfabric_transport.h"
++#endif
+ 
+ #include <cassert>
+ 
+@@ -284,6 +287,12 @@ Transport *MultiTransport::installTransport(const std::string &proto,
+     }
+ #endif
+ 
++#ifdef USE_UB
++    else if (std::string(proto) == "ub") {
++        transport = new MemFabricTransport();
++    }
++#endif
++
+     if (!transport) {
+         LOG(ERROR) << "Unsupported transport " << proto
+                    << ", please rebuild Mooncake";
+diff --git a/mooncake-transfer-engine/src/transfer_engine_impl.cpp b/mooncake-transfer-engine/src/transfer_engine_impl.cpp
+index 454bfc5..efb6aa4 100644
+--- a/mooncake-transfer-engine/src/transfer_engine_impl.cpp
++++ b/mooncake-transfer-engine/src/transfer_engine_impl.cpp
+@@ -199,6 +199,12 @@ int TransferEngineImpl::init(const std::string& metadata_conn_string,
+         LOG(ERROR) << "Failed to install Ascend transport";
+         return -1;
+     }
++#elif defined(USE_UB)
++    Transport *ub_transport = multi_transports_->installTransport("ub", local_topology_);
++    if (!ub_transport) {
++        LOG(ERROR) << "Failed to install Ascend transport";
++        return -1;
++    }
+ #else
+ 
+ #if defined(USE_CXL) && !defined(USE_ASCEND) && \
+diff --git a/mooncake-transfer-engine/src/transfer_metadata.cpp b/mooncake-transfer-engine/src/transfer_metadata.cpp
+index 47ed804..fdac9c8 100644
+--- a/mooncake-transfer-engine/src/transfer_metadata.cpp
++++ b/mooncake-transfer-engine/src/transfer_metadata.cpp
+@@ -201,6 +201,16 @@ int TransferMetadata::encodeSegmentDesc(const SegmentDesc &desc,
+             buffersJSON.append(bufferJSON);
+         }
+         segmentJSON["buffers"] = buffersJSON;
++    } else if (segmentJSON["protocol"] == "ub") {
++        Json::Value devicesJSON(Json::arrayValue);
++        for (const auto &buffer: desc.buffers) {
++            Json::Value bufferJSON;
++            bufferJSON["name"] = buffer.name;
++            bufferJSON["addr"] = static_cast<Json::UInt64>(buffer.addr);
++            bufferJSON["length"] = static_cast<Json::UInt64>(buffer.length);
++            devicesJSON.append(bufferJSON);
++        }
++        segmentJSON["buffers"] = devicesJSON;
+     } else if (segmentJSON["protocol"] == "ascend") {
+         Json::Value devicesJSON(Json::arrayValue);
+         for (const auto &device : desc.devices) {
+@@ -380,6 +390,19 @@ TransferMetadata::decodeSegmentDesc(Json::Value &segmentJSON,
+             }
+             desc->buffers.push_back(buffer);
+         }
++    } else if (desc->protocol == "ub") {
++        for (const auto &bufferJSON:segmentJSON["buffers"]) {
++            BufferDesc buffer;
++            buffer.name = bufferJSON["name"].asString();
++            buffer.addr = bufferJSON["addr"].asUInt64();
++            buffer.length = bufferJSON["length"].asUInt64();
++            if (buffer.name.empty() || !buffer.addr || !buffer.length) {
++                LOG(WARNING) << "Corrupted segment descriptor, name "
++                             << segment_name << " protocol " << desc->protocol;
++                return nullptr;
++            }
++            desc->buffers.push_back(buffer);
++        }
+     } else if (desc->protocol == "nvlink" || desc->protocol == "nvlink_intra" ||
+                desc->protocol == "hip" || desc->protocol == "ubshmem") {
+         for (const auto &bufferJSON : segmentJSON["buffers"]) {
+diff --git a/mooncake-transfer-engine/src/transport/CMakeLists.txt b/mooncake-transfer-engine/src/transport/CMakeLists.txt
+index 91e9bb1..095d908 100644
+--- a/mooncake-transfer-engine/src/transport/CMakeLists.txt
++++ b/mooncake-transfer-engine/src/transport/CMakeLists.txt
+@@ -56,3 +56,8 @@ if (USE_UBSHMEM)
+   add_subdirectory(ascend_transport)
+   target_sources(transport PUBLIC $<TARGET_OBJECTS:ascend_transport>)
+ endif()
++
++if (USE_UB)
++  add_subdirectory(ub_transport)
++  target_sources(transport PUBLIC $<TARGET_OBJECTS:ub_transport>)
++endif()
+diff --git a/mooncake-transfer-engine/src/transport/ub_transport/CMakeLists.txt b/mooncake-transfer-engine/src/transport/ub_transport/CMakeLists.txt
+new file mode 100644
+index 0000000..775169d
+--- /dev/null
++++ b/mooncake-transfer-engine/src/transport/ub_transport/CMakeLists.txt
+@@ -0,0 +1,12 @@
++file(GLOB MEM_FABRIC_API_SOURCE "memfabric_smem_dl.cpp")
++set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
++string(REPLACE "-O3" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
++string(REPLACE "-O3" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
++add_library(mem_fabric_api SHARED ${MEM_FABRIC_API_SOURCE})
++set_target_properties(mem_fabric_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
++target_link_libraries(mem_fabric_api PRIVATE glog gflags)
++install(TARGETS mem_fabric_api DESTINATION lib)
++
++file(GLOB UB_SOURCES "memfabric_transport.cpp")
++add_library(ub_transport OBJECT ${UB_SOURCES})
++target_link_libraries(ub_transport PRIVATE mem_fabric_api glog gflags)
+diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
+new file mode 100644
+index 0000000..481d3c5
+--- /dev/null
++++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
+@@ -0,0 +1,331 @@
++// Copyright 2025 Huawei Technologies Co., Ltd
++// Copyright 2024 KVCache.AI
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++#include <algorithm>
++#include <charconv>
++#include "transport/ub_transport/memfabric_smem_dl.h"
++
++namespace mooncake {
++
++bool MemFabricSmemDl::gLoaded_ = false;
++std::mutex MemFabricSmemDl::mutex_;
++smem_bm_t MemFabricSmemDl::smemBmHandle_ = nullptr;
++smem_trans_t MemFabricSmemDl::smemTransHandle_ = nullptr;
++MemFabricConfig MemFabricSmemDl::config_;
++smem_type MemFabricSmemDl::smemTypeFlag_ = SMEM_TRANS; // default trans
++FUNC_SMEM_BM_CONFIG_INIT MemFabricSmemDl::pSmemBmConfigInit = nullptr;
++FUNC_SMEM_BM_INIT MemFabricSmemDl::pSmemBmInit = nullptr;
++FUNC_SMEM_BM_UNINIT MemFabricSmemDl::pSmemBmUninit = nullptr;
++FUNC_SMEM_BM_GET_RANK_ID MemFabricSmemDl::pSmemGetRankId = nullptr;
++FUNC_SMEM_BM_CREATE MemFabricSmemDl::pSmemBmCreate = nullptr;
++FUNC_SMEM_BM_CREATE2 MemFabricSmemDl::pSmemBmCreate2 = nullptr;
++FUNC_SMEM_BM_DESTROY MemFabricSmemDl::pSmemBmDestory = nullptr;
++FUNC_SMEM_BM_JOIN MemFabricSmemDl::pSmemBmJoin = nullptr;
++FUNC_SMEM_BM_LEAVE MemFabricSmemDl::pSmemBmLeave = nullptr;
++FUNC_SMEM_BM_GET_LOCAL_MEM_SIZE_BY_MEM_TYPE
++MemFabricSmemDl::pSmemBmGetLocalMemSizeByMemType = nullptr;
++FUNC_SMEM_BM_PTR_BY_MEM_TYPE MemFabricSmemDl::pSmemBmPtrByMemType = nullptr;
++FUNC_SMEM_BM_COPY MemFabricSmemDl::pSmemBmCopy = nullptr;
++FUNC_SMEM_BM_COPY_BATCH MemFabricSmemDl::pSmemBmCopyBatch = nullptr;
++FUNC_SMEM_BM_WAIT MemFabricSmemDl::pSmemBmWait = nullptr;
++FUNC_SMEM_BM_REGISTER_USER_MEM MemFabricSmemDl::pSmemBmRegisterUserMem = nullptr;
++FUNC_SMEM_SET_EXTERN_LOGGER MemFabricSmemDl::pSmemSetExternLogger = nullptr;
++FUNC_SMEM_SET_LOG_LEVEL MemFabricSmemDl::pSmemSetLogLevel = nullptr;
++FUNC_SMEM_CREATE_CONFIG_STORE MemFabricSmemDl::pSmemCreateConfigStore = nullptr;
++
++FUNC_SMEM_TRANS_INIT MemFabricSmemDl::pSmemTransInit = nullptr;
++FUNC_SMEM_TRANS_UNINIT MemFabricSmemDl::pSmemTransUnInit = nullptr;
++FUNC_SMEM_TRANS_CREATE MemFabricSmemDl::pSmemTransCreate = nullptr;
++FUNC_SMEM_TRANS_DESTORY MemFabricSmemDl::pSmemTransDestory = nullptr;
++FUNC_SMEM_TRANS_REGISTER_MEM MemFabricSmemDl::pSmemTransRegisterMem = nullptr;
++FUNC_SMEM_TRANS_UNREGISTER_MEM MemFabricSmemDl::pSmemTransUnregisterMem = nullptr;
++FUNC_SMEM_TRANS_BATCH_REGISTER_MEM MemFabricSmemDl::pSmemTransBatchRegisterMem = nullptr;
++FUNC_SMEM_TRANS_WRITE MemFabricSmemDl::pSmemTransWrite = nullptr;
++FUNC_SMEM_TRANS_BATCH_WRITE MemFabricSmemDl::pSmemTransBatchWrite = nullptr;
++FUNC_SMEM_TRANS_BATCH_READ MemFabricSmemDl::pSmemTransBatchRead = nullptr;
++
++constexpr const char *kTcpPrefix = "tcp://";
++constexpr const char *kEtcdPrefix = "etcd://";
++constexpr size_t kTcpPrefixLen = 6;
++constexpr size_t kEtcdPrefixLen = 7;
++constexpr uint32_t kMaxPort = 65535U;
++
++static void MfRegisterLogger(int level, const char* msg)
++{
++    switch (level) {
++        case DEBUG_LOG_LEVEL:
++            LOG(INFO) << msg;
++            break;
++        case INFO_LOG_LEVEL:
++            LOG(INFO) << msg;
++            break;
++        case WARN_LOG_LEVEL:
++            LOG(WARNING) << msg;
++            break;
++        case ERROR_LOG_LEVEL:
++            LOG(ERROR) << msg;
++            break;
++        default:
++            LOG(INFO) << msg;
++            break;
++    };
++}
++
++int InitMemFabricLog()
++{
++    if (MemFabricSmemDl::SmemSetLogLevel(MemFabricSmemDl::GetMemFabricConfig().logLevel) != 0) {
++        LOG(ERROR) << "mf bm set logger level failed";
++        return -1;
++    }
++
++    if (MemFabricSmemDl::SmemSetExternLogger(MfRegisterLogger) != 0) {
++        LOG(ERROR) << "mf bm set logger func failed";
++        return -1;
++    }
++    return 0;
++}
++
++bool ExtractIpAndPort(const std::string &endpoint, std::string &ip, uint16_t &port,
++                      std::string &protocol) noexcept
++{
++    if (endpoint.empty()) {
++        LOG(ERROR) << "endpoint is empty.";
++        return false;
++    }
++
++    std::string processed;
++    if (endpoint.compare(0, kTcpPrefixLen, kTcpPrefix) == 0) {
++        processed = endpoint.substr(kTcpPrefixLen);
++        protocol = kTcpPrefix;
++    } else if (endpoint.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0) {
++        processed = endpoint.substr(kEtcdPrefixLen);
++        protocol = kEtcdPrefix;
++    } else {
++        LOG(ERROR) << "protocol not supported, endpoint=" << endpoint;
++        return false;
++    }
++
++    if (processed.empty()) {
++        LOG(ERROR) << "empty host:port part, endpoint=" << endpoint;
++        return false;
++    }
++
++    std::string ipStr;
++    std::string portStr;
++
++    const size_t colonPos = processed.rfind(':');
++    if (colonPos == std::string::npos || colonPos == 0 || colonPos == processed.size() - 1) {
++        LOG(ERROR) << "invalid host:port format, processed=" << processed;
++        return false;
++    }
++
++    ipStr = processed.substr(0, colonPos);
++    portStr = processed.substr(colonPos + 1);
++
++    uint32_t portValue = 0;
++    const char *portBegin = portStr.data();
++    const char *portEnd = portBegin + portStr.size();
++    const auto portRet = std::from_chars(portBegin, portEnd, portValue);
++    if (portRet.ec != std::errc() || portRet.ptr != portEnd) {
++        LOG(ERROR) << "invalid port, portStr=" << portStr << ", endpoint=" << endpoint;
++        return false;
++    }
++
++    if (portValue == 0U || portValue > kMaxPort) {
++        LOG(ERROR) << "port out of range, port=" << portValue << ", endpoint=" << endpoint;
++        return false;
++    }
++
++    port = static_cast<uint16_t>(portValue);
++    ip = ipStr;
++    return true;
++}
++
++int InitMemFabricBm(int deviceId)
++{
++    std::string storeUrl;
++    std::string connUrl;
++    smem_bm_config_t config = {};
++    if (MemFabricSmemDl::SmemBmConfigInit(&config) != 0) {
++        LOG(ERROR) << "Failed to init smem bm config";
++        return -1;
++    }
++    std::string ipStr;
++    uint16_t port;
++    std::string protocol;
++    std::string storeUrlStr = MemFabricSmemDl::GetMemFabricConfig().storeUrl;
++    if (!ExtractIpAndPort(storeUrlStr, ipStr, port, protocol)) {
++        LOG(ERROR) << "Unexpected master server addr: " << storeUrlStr;
++        return -1;
++    }
++    bool etcdMode = storeUrlStr.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0;
++    port = etcdMode ? port : port + 1;
++    storeUrl = protocol + ipStr + ":" + std::to_string(port);
++    connUrl = "tcp://" + ipStr + ":0";
++    config.flags |= SMEM_BM_INIT_GVM_FLAG;
++    config.startConfigStoreServer = !etcdMode;
++
++    LOG(INFO) << "start init bm storeUrl=" << storeUrl << ", connUrl=" << connUrl <<
++        ", worldSize=" << MemFabricSmemDl::GetMemFabricConfig().worldSize <<
++        ", deviceId=" << deviceId;
++    std::copy_n(connUrl.c_str(), std::min(sizeof(config.hcomUrl) - 1, connUrl.size()), config.hcomUrl);
++    if (MemFabricSmemDl::SmemBmInit(storeUrl.c_str(), MemFabricSmemDl::GetMemFabricConfig().worldSize,
++                                    deviceId, &config) != 0) {
++        LOG(ERROR) << "Failed to init smem bm:" << storeUrl;
++        return -1;
++    }
++    return 0;
++}
++
++int MemFabricInitSmemBm(int deviceId)
++{
++    if (MemFabricSmemDl::LoadMemFabricBmAPI() != 0) {
++        LOG(ERROR) << "Error: Failed to load MemFabric api";
++        return -1;
++    }
++    smem_bm_t handle = MemFabricSmemDl::GetSmemBmHandle();
++    if (handle != nullptr) {
++        LOG(INFO) << "mf bm already init";
++        return 0;
++    }
++    // log
++    auto ret = InitMemFabricLog();
++    if (ret != 0) {
++        return ret;
++    }
++    // init
++    ret = InitMemFabricBm(deviceId);
++    if (ret != 0) {
++        return ret;
++    }
++    // create
++    smem_bm_create_option_t option{};
++    option.maxDramSize = MemFabricSmemDl::GetMemFabricConfig().maxDramSize;
++    option.maxHbmSize = MemFabricSmemDl::GetMemFabricConfig().maxHbmSize;
++    option.localDRAMSize = MemFabricSmemDl::GetMemFabricConfig().dramSize;
++    option.localHBMSize = MemFabricSmemDl::GetMemFabricConfig().hbmSize;
++    option.dataOpType = MemFabricSmemDl::GetMemFabricConfig().opType;
++    std::copy_n(MemFabricSmemDl::GetMemFabricConfig().tag.c_str(),
++                std::min(sizeof(option.tag) - 1, MemFabricSmemDl::GetMemFabricConfig().tag.size()), option.tag);
++    std::copy_n(MemFabricSmemDl::GetMemFabricConfig().tagOpInfo.c_str(),
++                std::min(sizeof(option.tagOpInfo) - 1, MemFabricSmemDl::GetMemFabricConfig().tagOpInfo.size()),
++                option.tag);
++    option.flags = 0;
++    handle = MemFabricSmemDl::SmemBmCreate2(0, &option);
++    if (handle == nullptr) {
++        MemFabricSmemDl::SmemBmUninit(0);
++        LOG(ERROR) << "Failed to create smem bm";
++        return -1;
++    }
++    // join
++    if (MemFabricSmemDl::SmemBmJoin(handle, 0) != 0) {
++        MemFabricSmemDl::SmemBmDestory(handle);
++        MemFabricSmemDl::SmemBmUninit(0);
++        LOG(ERROR) << "Failed to join smem bm";
++        return -1;
++    }
++    return 0;
++}
++
++int InitMemFabricSmemTrans(const std::string &sessionId, int deviceId)
++{
++    std::string storeUrl;
++    std::string storeUrlStr = MemFabricSmemDl::GetMemFabricConfig().storeUrl;
++    std::string ipStr;
++    uint16_t port;
++    std::string protocol;
++    if (!ExtractIpAndPort(storeUrlStr, ipStr, port, protocol)) {
++        LOG(ERROR) << "Unexpected master server addr: " << storeUrlStr;
++        return -1;
++    }
++    bool etcdMode = storeUrlStr.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0;
++    storeUrl = protocol + ipStr + ":" + std::to_string(port);
++    smem_trans_config_t config{};
++    config.initTimeout = SMEM_DEFAUT_WAIT_TIME;
++    config.deviceId = deviceId;
++    config.flags |= SMEM_BM_INIT_GVM_FLAG;
++    config.role = MemFabricSmemDl::GetMemFabricConfig().role;
++    config.dataOpType = MemFabricSmemDl::GetMemFabricConfig().transOpType;
++    config.startConfigServer = !etcdMode;
++    if (MemFabricSmemDl::SmemTranInit(&config) != 0) {
++        LOG(ERROR) << "Failed to init smem trans:" << storeUrl;
++        return -1;
++    }
++    // create
++    if (MemFabricSmemDl::SmemTransCreate(storeUrl.c_str(), sessionId.c_str(), &config) == nullptr) {
++        LOG(ERROR) << "Failed to init smem trans:" << storeUrl;
++        return -1;
++    }
++    return 0;
++}
++
++int MemFabricInitSmemTrans(const std::string& sessionId, int deviceId)
++{
++    if (MemFabricSmemDl::LoadMemFabricBmAPI() != 0) {
++        LOG(ERROR) << "Error: Failed to load MemFabric api";
++        return -1;
++    }
++    smem_trans_t handle = MemFabricSmemDl::GetSmemTransHandle();
++    if (handle != nullptr) {
++        LOG(INFO) << "mf smem trans already init";
++        return 0;
++    }
++    // log
++    auto ret = InitMemFabricLog();
++    if (ret != 0) {
++        return ret;
++    }
++    // init and create
++    ret = InitMemFabricSmemTrans(sessionId, deviceId);
++    if (ret != 0) {
++        return ret;
++    }
++    return 0;
++}
++
++int MemFabricInitConfigStore(const std::string& store_address, uint32_t storePort)
++{
++    mooncake::MemFabricSmemDl::LoadMemFabricBmAPI();
++    if (storePort < STORE_URL_PORT_START || storePort > STORE_URL_PORT_END) {
++        LOG(ERROR) << "StorePort out of range:" << storePort;
++        return -1;
++    }
++    std::string storeUrl = "tcp://" + store_address + ":" + std::to_string(storePort);
++    int32_t ret = mooncake::MemFabricSmemDl::SmemSetLogLevel(1);
++    if (ret != 0) {
++        LOG(ERROR) << "mf set logger level failed:" << ret;
++        return -1;
++    }
++    ret = mooncake::MemFabricSmemDl::SmemSetExternLogger(mooncake::MfRegisterLogger);
++    if (ret != 0) {
++        LOG(ERROR) << "mf set logger func failed:" << ret;
++        return -1;
++    }
++    if (mooncake::MemFabricSmemDl::SmemCreateConfigStore(storeUrl.c_str()) != 0) {
++        LOG(ERROR) << "mf create config store failed url:" << storeUrl;
++        return -1;
++    }
++    return 0;
++}
++
++std::pair<void*, size_t> MemFabricGetSegment()
++{
++    auto bmRankId = MemFabricSmemDl::SmemGetRankId();
++    auto handle = MemFabricSmemDl::GetSmemBmHandle();
++    void* ptr = MemFabricSmemDl::SmemBmPtrByMemType(handle, SMEM_MEM_TYPE_HOST, bmRankId);
++    size_t dramSize = MemFabricSmemDl::SmemBmGetLocalMemSizeByMemType(handle, SMEM_MEM_TYPE_HOST);
++    return {ptr, dramSize};
++}
++
++}  // namespace mooncake
+\ No newline at end of file
+diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
+new file mode 100644
+index 0000000..b7bffd3
+--- /dev/null
++++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
+@@ -0,0 +1,334 @@
++// Copyright 2025 Huawei Technologies Co., Ltd
++// Copyright 2024 KVCache.AI
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++#include "transport/ub_transport/memfabric_transport.h"
++
++#include <acl/acl.h>
++
++#include "transport/ub_transport/memfabric_smem_dl.h"
++
++namespace mooncake {
++MemFabricTransport::MemFabricTransport() {}
++
++MemFabricTransport::~MemFabricTransport() {}
++
++Status MemFabricTransport::batchCopySmemTrans(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list)
++{
++    for (const auto &items: slice_list) {
++        auto segmentId = items.first;
++        auto slices = items.second;
++        size_t count = slices.size();
++        if (count == 0) {
++            continue;
++        }
++        std::string targetName;
++        auto targetSegmentDesc = metadata_->getSegmentDescByID(segmentId);
++        if (targetSegmentDesc != nullptr) {
++            targetName = targetSegmentDesc->name;
++        } else {
++            LOG(ERROR) << "MemFabricTransport: failed to get segment by id" << segmentId;
++        }
++        std::vector<const void *> localAddrs(count);
++        std::vector<void *> remoteAddrs(count);
++        std::vector<uint64_t> dataSizes(count);
++        for (size_t i = 0; i < count; ++i) {
++            localAddrs[i] = slices[i]->source_addr;
++            remoteAddrs[i] = (void *)slices[i]->hccl.dest_addr;
++            dataSizes[i] = slices[i]->length;
++        }
++        auto ret = slices[0]->opcode == TransferRequest::READ ?
++            MemFabricSmemDl::SmemTransBatchRead(MemFabricSmemDl::GetSmemTransHandle(),
++                                                localAddrs.data(), targetName.c_str(),
++                                                remoteAddrs.data(), dataSizes.data(), count) :
++            MemFabricSmemDl::SmemTransBatchWrite(MemFabricSmemDl::GetSmemTransHandle(),
++                                                 localAddrs.data(), targetName.c_str(),
++                                                 remoteAddrs.data(), dataSizes.data(), count);
++        if (ret != 0) {
++            LOG(ERROR) << "MemFabricTransport: Failed to smem trans copy batch, ret:" << ret;
++            for (auto &slice : slices) {
++                slice->markFailed();
++            }
++        } else {
++            for (auto &slice : slices) {
++                slice->markSuccess();
++            }
++        }
++    }
++    return Status::OK();
++}
++
++Status MemFabricTransport::batchCopySmemBm(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list)
++{
++    for (const auto &items: slice_list) {
++        auto slices = items.second;
++        size_t count = slices.size();
++        if (count == 0) {
++            continue;
++        }
++        auto opcode = slices[0]->opcode;
++        std::vector<const void *> sources(count);
++        std::vector<void *> destinations(count);
++        std::vector<uint64_t> dataSizes(count);
++        for (size_t i = 0; i < count; ++i) {
++            sources[i] = (opcode == TransferRequest::READ ? (void *)slices[i]->hccl.dest_addr
++                                                          : slices[i]->source_addr);
++            destinations[i] = (opcode  == TransferRequest::WRITE ? (void *)slices[i]->hccl.dest_addr
++                                                                 : slices[i]->source_addr);
++            dataSizes[i] = slices[i]->length;
++        }
++        smem_batch_copy_params params = {const_cast<void **>(sources.data()), destinations.data(),
++                                         dataSizes.data(), static_cast<uint32_t>(count)};
++
++        smem_bm_copy_type t = SMEMB_COPY_AUTO;
++        auto ret = MemFabricSmemDl::SmemBmCopyBatch(MemFabricSmemDl::GetSmemBmHandle(), &params, t, 0);
++        if (ret != 0) {
++            LOG(ERROR) << "MemFabricTransport: Failed to smem bm copy batch, ret:" << ret;
++            for (auto &slice : slices) {
++                slice->markFailed();
++            }
++        } else {
++            for (auto &slice : slices) {
++                slice->markSuccess();
++            }
++        }
++    }
++    return Status::OK();
++}
++
++Status MemFabricTransport::batchCopyDefault(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list)
++{
++    for (const auto &items: slice_list) {
++        auto slices = items.second;
++        for (auto &slice : slices) {
++            slice->markFailed();
++        }
++    }
++    return Status::OK();
++}
++
++Status MemFabricTransport::submitTransfer(Transport::BatchID batch_id, const std::vector<TransferRequest> &entries)
++{
++    auto &batch_desc = *((BatchDesc *)(batch_id));
++    if (batch_desc.task_list.size() + entries.size() > batch_desc.batch_size) {
++        LOG(ERROR) << "MemFabricTransport: Exceed the limitation of current "
++                      "batch's capacity";
++        return Status::InvalidArgument(
++            "MemFabricTransport: Exceed the limitation of capacity, batch id: " + std::to_string(batch_id));
++    }
++
++    auto cur_task_size = batch_desc.task_list.size();
++    batch_desc.task_list.resize(cur_task_size + entries.size());
++    std::unordered_map<SegmentID, std::vector<Slice *>> slice_list;
++
++    for (auto &request : entries) {
++        TransferTask &task = batch_desc.task_list[cur_task_size];
++        ++cur_task_size;
++        task.total_bytes = request.length;
++        Slice *slice = getSliceCache().allocate();
++        slice->source_addr = request.source;
++        slice->length = request.length;
++        slice->opcode = request.opcode;
++        slice->target_id = request.target_id;
++        slice->hccl.dest_addr = request.target_offset;
++        slice->task = &task;
++        slice->status = Slice::PENDING;
++        task.slice_list.push_back(slice);
++        __sync_fetch_and_add(&task.slice_count, 1);
++        slice_list[request.target_id].push_back(slice);
++    }
++    switch (smemType_) {
++        case SMEM_BM:
++            return batchCopySmemBm(slice_list);
++        case SMEM_TRANS:
++            return batchCopySmemTrans(slice_list);
++        default:
++            LOG(ERROR) << "unexpect smem type:" << smemType_;
++            return batchCopyDefault(slice_list);
++    }
++}
++
++Status MemFabricTransport::submitTransferTask(const std::vector<TransferTask *> &task_list)
++{
++    std::unordered_map<SegmentID, std::vector<Slice *>> slice_list;
++    for (auto index : task_list) {
++        auto &task = *index;
++        auto &request = *task.request;
++        task.total_bytes = request.length;
++        Slice *slice = getSliceCache().allocate();
++        slice->source_addr = (char *)request.source;
++        slice->length = request.length;
++        slice->opcode = request.opcode;
++        slice->target_id = request.target_id;
++        slice->hccl.dest_addr = request.target_offset;
++        slice->task = &task;
++        slice->status = Slice::PENDING;
++        slice->ts = 0;
++        task.slice_list.push_back(slice);
++        __sync_fetch_and_add(&task.slice_count, 1);
++        slice_list[request.target_id].push_back(slice);
++    }
++    switch (smemType_) {
++        case SMEM_BM:
++            return batchCopySmemBm(slice_list);
++        case SMEM_TRANS:
++            return batchCopySmemTrans(slice_list);
++        default:
++            LOG(ERROR) << "unexpect smem type:" << smemType_;
++            return batchCopyDefault(slice_list);
++    }
++}
++
++Status MemFabricTransport::getTransferStatus(Transport::BatchID batch_id, size_t task_id,
++                                             Transport::TransferStatus &status)
++{
++    auto &batch_desc = *((BatchDesc *)(batch_id));
++    const size_t task_count = batch_desc.task_list.size();
++    if (task_id >= task_count) {
++        return Status::InvalidArgument(
++            "MemFabricTransport::getTransportStatus invalid argument, batch "
++            "id: " +
++            std::to_string(batch_id));
++    }
++    auto &task = batch_desc.task_list[task_id];
++    status.transferred_bytes = task.transferred_bytes;
++    uint64_t success_slice_count = task.success_slice_count;
++    uint64_t failed_slice_count = task.failed_slice_count;
++    if (success_slice_count + failed_slice_count == task.slice_count) {
++        if (failed_slice_count) {
++            status.s = TransferStatusEnum::FAILED;
++        } else {
++            status.s = TransferStatusEnum::COMPLETED;
++        }
++        task.is_finished = true;
++    } else {
++        status.s = TransferStatusEnum::WAITING;
++    }
++    return Status::OK();
++}
++
++int MemFabricTransport::install(std::string &local_server_name, std::shared_ptr<TransferMetadata> meta,
++                                std::shared_ptr<Topology> topo)
++{
++    metadata_ = meta;
++    local_server_name_ = local_server_name;
++    smemType_ = MemFabricSmemDl::GetSmemTypeFlag();
++
++    int ret = aclrtGetDevice(&localDeviceId_);
++    if (ret != 0) {
++        LOG(ERROR) << "MemFabricTransport: aclrtGetDevice failed, ret: " << ret;
++        return ret;
++    }
++    switch (smemType_) {
++        case SMEM_BM:
++            ret = MemFabricInitSmemBm(localDeviceId_);
++            break;
++        case SMEM_TRANS:
++            ret = MemFabricInitSmemTrans(local_server_name_, localDeviceId_);
++            break;
++        default:
++            LOG(ERROR) << "unexpect smem type:" << smemType_;
++            return -1;
++    }
++    if (ret != 0) {
++        LOG(ERROR) << "MemFabricTransport: failed to init memfabric smem type:" << smemType_ << " ret:" << ret;
++        return -1;
++    }
++    auto desc = std::make_shared<SegmentDesc>();
++    if (!desc) return ERR_MEMORY;
++    desc->name = local_server_name_;
++    desc->protocol = "ub";
++    auto segment = MemFabricGetSegment();
++    if (segment.second > 0) {
++        BufferDesc buffer{};
++        buffer.name = "*";
++        buffer.addr = reinterpret_cast<uint64_t>(segment.first);
++        buffer.length = segment.second;
++        desc->buffers.push_back(std::move(buffer));
++    }
++    metadata_->addLocalSegment(LOCAL_SEGMENT_ID, local_server_name_, std::move(desc));
++    LOG(INFO) << "MemFabricTransport: add segment type:" << smemType_ << " deviceId:"
++              << localDeviceId_ << " segment name:" << local_server_name_ << " protocol:" << desc->protocol
++              << " add:" << std::hex << segment.first << " size:" << segment.second;
++    return 0;
++}
++
++int MemFabricTransport::registerLocalMemory(void *addr, size_t length, const std::string &location,
++                                            bool remote_accessible, bool update_metadata)
++{
++    switch (smemType_) {
++        case SMEM_BM:
++            return MemFabricSmemDl::SmemBmRegisterUserMem(MemFabricSmemDl::GetSmemBmHandle(),
++                                                          reinterpret_cast<uint64_t>(addr), length);
++        case SMEM_TRANS:
++            return MemFabricSmemDl::SmemTransRegisterMem(MemFabricSmemDl::GetSmemTransHandle(), addr, length);
++        default:
++            LOG(ERROR) << "unexpect smem type:" << smemType_;
++            return -1;
++    }
++}
++
++int MemFabricTransport::unregisterLocalMemory(void *addr, bool update_metadata)
++{
++    return 0;
++}
++
++int MemFabricTransport::registerLocalMemoryBatch(const std::vector<Transport::BufferEntry> &buffer_list,
++                                                 const std::string &location)
++{
++    switch (smemType_) {
++        case SMEM_BM:
++            return batchRegisterSmemBmMem(buffer_list, location);
++        case SMEM_TRANS:
++            return batchRegisterSmemTransMem(buffer_list, location);
++        default:
++            LOG(ERROR) << "unexpect smem type:" << smemType_;
++            return -1;
++    }
++}
++
++int MemFabricTransport::unregisterLocalMemoryBatch(const std::vector<void *> &addr_list)
++{
++    return 0;
++}
++
++int MemFabricTransport::batchRegisterSmemBmMem(const std::vector<Transport::BufferEntry> &buffer_list,
++                                               const std::string &location)
++{
++    for (const auto &item: buffer_list) {
++        auto ret = MemFabricSmemDl::SmemBmRegisterUserMem(MemFabricSmemDl::GetSmemBmHandle(),
++                                                          reinterpret_cast<uint64_t>(item.addr),
++                                                          item.length);
++        if (ret != 0) {
++            LOG(ERROR) << "MemFabricTransport: Failed to register user memory ret:" << ret
++                       << std::hex << " addr:" << item.addr << " size:" << item.length;
++            return ret;
++        }
++    }
++    return 0;
++}
++
++int MemFabricTransport::batchRegisterSmemTransMem(const std::vector<Transport::BufferEntry> &buffer_list,
++                                                  const std::string &location)
++{
++    uint32_t count = buffer_list.size();
++    std::vector<void *> addrs;
++    std::vector<size_t> lengths;
++    for (uint32_t i = 0; i < count; ++i) {
++        addrs[i] = buffer_list[i].addr;
++        lengths[i] = buffer_list[i].length;
++    }
++    return MemFabricSmemDl::SmemTransBatchRegisterMem(MemFabricSmemDl::GetSmemTransHandle(),
++                                                      addrs.data(), lengths.data(), count, 0);
++}
++}  // namespace mooncake
