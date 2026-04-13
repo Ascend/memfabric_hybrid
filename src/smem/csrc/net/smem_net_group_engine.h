@@ -91,8 +91,8 @@ public:
 
     Result GroupAllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
 
-    Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId,
-                          const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize);
+    Result GroupAllGather(const char *key, uint32_t rankSize, uint32_t rankId, const char *sendBuf, uint32_t sendSize,
+                          char *recvBuf, uint32_t recvSize);
 
     Result GroupBroadcastExit(int status);
 
@@ -148,6 +148,7 @@ private:
     std::function<void(int)> globalExitHandler_;
     uint64_t joinedRanksBitmap_[RANK_BITS_U64_COUNT]{};
     mutable std::mutex rankBitmapMutex_;
+    std::atomic_uint64_t collectiveEpoch_{0};
     std::atomic_uint32_t joinCollectiveDepth_{0};
     std::unordered_map<std::string, uint32_t> userGroupGatherSn_;
     std::unordered_map<std::string, uint32_t> userGroupBarrierSn_;

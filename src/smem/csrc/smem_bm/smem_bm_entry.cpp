@@ -11,6 +11,9 @@
 */
 #include "smem_bm_entry.h"
 
+#include <fstream>
+#include <set>
+
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
 #include "smem_store_factory.h"
@@ -19,6 +22,32 @@
 
 namespace ock {
 namespace smem {
+
+namespace {
+void CleanupImportedRanks(hybm_entity_t entity, uint32_t localRank, uint32_t joinRank,
+                          const std::vector<uint32_t> &allRanks)
+{
+    if (entity == nullptr) {
+        return;
+    }
+
+    std::set<uint32_t> cleanupRanks;
+    if (joinRank == localRank) {
+        cleanupRanks.insert(allRanks.begin(), allRanks.end());
+        cleanupRanks.erase(localRank);
+    } else {
+        cleanupRanks.insert(joinRank);
+    }
+
+    for (auto rankId : cleanupRanks) {
+        auto ret = hybm_remove_imported(entity, rankId, 0);
+        if (ret != 0) {
+            SM_LOG_WARN("cleanup imported rank failed, local_rk: " << localRank << " join_rk: " << joinRank
+                                                                   << " cleanup_rk: " << rankId << ", result: " << ret);
+        }
+    }
+}
+} // namespace
 
 int32_t SmemBmEntry::Initialize(const hybm_options &options)
 {
@@ -146,21 +175,26 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         return SM_ERROR;
     }
 
+    auto cleanupImportedState = [this, rk, &allRanks]() { CleanupImportedRanks(entity_, options_.rank, rk, allRanks); };
+
     if ((ret = ExchangeSliceForJoin(hbmSliceInfo_)) != SM_OK) {
+        cleanupImportedState();
         return ret;
     }
 
     if ((ret = ExchangeSliceForJoin(dramSliceInfo_)) != SM_OK) {
+        cleanupImportedState();
         return ret;
     }
 
     ret = hybm_mmap(entity_, 0);
     if (ret != 0) {
         SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+        cleanupImportedState();
         return SM_ERROR;
     }
-
     if ((ret = ExchangeEntityForJoin()) != SM_OK) {
+        cleanupImportedState();
         return ret;
     }
 
