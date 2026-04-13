@@ -144,8 +144,8 @@ Result SmemNetGroupEngine::GroupGatherResult(int32_t localRet, int32_t &totalRet
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == sizeof(int32_t) && allGatherGroupSn_ > REMOVE_INTERVAL) {
         uint32_t delSn = allGatherGroupSn_ - REMOVE_INTERVAL;
-        GroupOldKeyClean(prefix, "_GA", delSn, delSn);
-        GroupOldKeyClean(prefix, "_GW", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_GA", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_GW", delSn, delSn);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -213,8 +213,8 @@ Result SmemNetGroupEngine::GroupBarrier()
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == 1 && barrierGroupSn_ > REMOVE_INTERVAL) {
         uint32_t delSn = barrierGroupSn_ - REMOVE_INTERVAL;
-        GroupOldKeyClean(prefix, "_BA", delSn, delSn);
-        GroupOldKeyClean(prefix, "_BW", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_BA", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_BW", delSn, delSn);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -287,8 +287,8 @@ Result SmemNetGroupEngine::GroupBarrier(const char *key, uint32_t rankSize, uint
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == 1 && localSn > REMOVE_INTERVAL) {
         uint32_t delSn = localSn - REMOVE_INTERVAL;
-        GroupOldKeyClean(userKey + "_", "_BA", delSn, delSn);
-        GroupOldKeyClean(userKey + "_", "_BW", delSn, delSn);
+        GroupOldKeyDelayClean(userKey + "_", "_BA", delSn, delSn);
+        GroupOldKeyDelayClean(userKey + "_", "_BW", delSn, delSn);
     }
 
     /* the last guy set the status to ok, and other guys just wait for the last guy set the value */
@@ -443,8 +443,8 @@ Result SmemNetGroupEngine::GroupAllGather(const char *sendBuf, uint32_t sendSize
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == input.size() && allGatherGroupSn_ > REMOVE_INTERVAL) {
         uint32_t delSn = allGatherGroupSn_ - REMOVE_INTERVAL;
-        GroupOldKeyClean(prefix, "_GA", delSn, delSn);
-        GroupOldKeyClean(prefix, "_GW", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_GA", delSn, delSn);
+        GroupOldKeyDelayClean(prefix, "_GW", delSn, delSn);
     }
 
     /* the last guy set ok status */
@@ -538,8 +538,8 @@ Result SmemNetGroupEngine::GroupAllGather(const char *key, uint32_t rankSize, ui
     /* only the first rank needs to clear the last key, and it's unnecessary to clear map for first time */
     if (val == input.size() && localSn > REMOVE_INTERVAL) {
         uint32_t delSn = localSn - REMOVE_INTERVAL;
-        GroupOldKeyClean(userKey + "_", "_GA", delSn, delSn);
-        GroupOldKeyClean(userKey + "_", "_GW", delSn, delSn);
+        GroupOldKeyDelayClean(userKey + "_", "_GA", delSn, delSn);
+        GroupOldKeyDelayClean(userKey + "_", "_GW", delSn, delSn);
     }
 
     /* the last guy set ok status */
@@ -710,8 +710,8 @@ Result SmemNetGroupEngine::GroupBarrierPrefixKey(uint32_t dstRank, std::string &
         // delete old key
         if (barrierGroupSn_ > REMOVE_INTERVAL) {
             uint32_t delSn = barrierGroupSn_ - REMOVE_INTERVAL;
-            GroupOldKeyClean(prefix, "_BA", delSn, delSn);
-            GroupOldKeyClean(prefix, "_BW", delSn, delSn);
+            GroupOldKeyDelayClean(prefix, "_BA", delSn, delSn);
+            GroupOldKeyDelayClean(prefix, "_BW", delSn, delSn);
         }
 
         uint64_t retLen = 0;
@@ -1464,12 +1464,16 @@ int32_t SmemNetGroupEngine::LinkReconnectHandler()
     return SM_OK;
 }
 
-void SmemNetGroupEngine::GroupOldKeyClean(const std::string &prefix, const std::string &suffix,
-                                          uint32_t snStart, uint32_t snEnd)
+void SmemNetGroupEngine::GroupOldKeyDelayClean(const std::string &prefix, const std::string &suffix,
+                                               uint32_t snStart, uint32_t snEnd, const uint32_t delayCount)
 {
     for (uint32_t i = snStart; i <= snEnd; i++) {
         std::string key = prefix + std::to_string(i) + suffix;
-        (void)store_->Remove(key);
+        delayCleanKeyList_.push(key);
+    }
+    while (delayCleanKeyList_.size() > delayCount) {
+        (void)store_->Remove(delayCleanKeyList_.front());
+        delayCleanKeyList_.pop();
     }
 }
 
@@ -1477,25 +1481,25 @@ void SmemNetGroupEngine::GroupSnClean()
 {
     std::string prefix = std::to_string(groupVersion_) + "_";
     uint32_t st = (allGatherGroupSn_ < REMOVE_INTERVAL) ? 1U : (allGatherGroupSn_ - REMOVE_INTERVAL + 1U);
-    GroupOldKeyClean(prefix, "_GA", st, allGatherGroupSn_);
-    GroupOldKeyClean(prefix, "_GW", st, allGatherGroupSn_);
+    GroupOldKeyDelayClean(prefix, "_GA", st, allGatherGroupSn_, UINT32_MAX);
+    GroupOldKeyDelayClean(prefix, "_GW", st, allGatherGroupSn_, UINT32_MAX);
 
     st = (barrierGroupSn_ < REMOVE_INTERVAL) ? 1U : (barrierGroupSn_ - REMOVE_INTERVAL + 1U);
-    GroupOldKeyClean(prefix, "_BA", st, barrierGroupSn_);
-    GroupOldKeyClean(prefix, "_BW", st, barrierGroupSn_);
+    GroupOldKeyDelayClean(prefix, "_BA", st, barrierGroupSn_, UINT32_MAX);
+    GroupOldKeyDelayClean(prefix, "_BW", st, barrierGroupSn_, UINT32_MAX);
 
     for (auto &it : userGroupBarrierSn_) {
         prefix = it.first + "_";
         st = (it.second < REMOVE_INTERVAL) ? 1U : (it.second - REMOVE_INTERVAL + 1U);
-        GroupOldKeyClean(prefix, "_BA", st, it.second);
-        GroupOldKeyClean(prefix, "_BW", st, it.second);
+        GroupOldKeyDelayClean(prefix, "_BA", st, it.second, UINT32_MAX);
+        GroupOldKeyDelayClean(prefix, "_BW", st, it.second, UINT32_MAX);
     }
     userGroupBarrierSn_.clear();
     for (auto &it : userGroupGatherSn_) {
         prefix = it.first + "_";
         st = (it.second < REMOVE_INTERVAL) ? 1U : (it.second - REMOVE_INTERVAL + 1U);
-        GroupOldKeyClean(prefix, "_GA", st, it.second);
-        GroupOldKeyClean(prefix, "_GW", st, it.second);
+        GroupOldKeyDelayClean(prefix, "_GA", st, it.second, UINT32_MAX);
+        GroupOldKeyDelayClean(prefix, "_GW", st, it.second, UINT32_MAX);
     }
     userGroupGatherSn_.clear();
 }

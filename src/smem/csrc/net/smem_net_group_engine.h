@@ -17,6 +17,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include <list>
+#include <queue>
 #include "smem.h"
 #include "smem_common_includes.h"
 #include "smem_config_store.h"
@@ -31,6 +32,7 @@ const uint32_t REMOVE_INTERVAL = 2;
 constexpr uint32_t MAX_RANK_COUNT = SMEM_WORLD_SIZE_MAX;
 constexpr uint32_t BITS_COUNT_IN_U64 = 64U;
 constexpr uint32_t RANK_BITS_U64_COUNT = MAX_RANK_COUNT / BITS_COUNT_IN_U64;
+constexpr uint32_t DEFAULT_STORE_KEY_DELAY_CLEAN_COUNT = 10;
 
 /**
  * @brief create group option
@@ -166,7 +168,8 @@ private:
     int32_t LinkReconnectHandler();
     uint32_t TryRemoveAllLeavedPrefixKey();
     void RankExit(int result, const std::string &key, const std::string &value);
-    void GroupOldKeyClean(const std::string &prefix, const std::string &suffix, uint32_t snStart, uint32_t snEnd);
+    void GroupOldKeyDelayClean(const std::string &prefix, const std::string &suffix,
+        uint32_t snStart, uint32_t snEnd, uint32_t delayCount = DEFAULT_STORE_KEY_DELAY_CLEAN_COUNT);
     Result StoreGetCanInterrupt(const std::string &key, std::string &value, uint64_t timeoutMs);
     void TryCleanOldEvent();
     Result DoLinkDownOnce(uint32_t rankId);
@@ -204,6 +207,8 @@ private:
     SmemGroupInfo groupInfo_{};
     std::atomic_uint32_t lastSubmitVersion_{0};
     std::atomic_uint64_t lastUpdateTime_{UINT64_MAX};
+
+    std::queue<std::string> delayCleanKeyList_;
 };
 
 inline uint32_t SmemNetGroupEngine::GetLocalRank() const
