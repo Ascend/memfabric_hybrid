@@ -49,11 +49,11 @@ typedef enum {
  * @brief CPU initiated data operation type, currently only support SDMA
  */
 typedef enum {
-    SMEMB_DATA_OP_SDMA = 1U << 0,
-    SMEMB_DATA_OP_HOST_RDMA = 1U << 1,
-    SMEMB_DATA_OP_HOST_TCP = 1U << 2,
-    SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3,
-    SMEMB_DATA_OP_HOST_URMA = 1U << 4,
+    SMEMB_DATA_OP_SDMA = 1U << 0,        /* data operation done by device SDMA */
+    SMEMB_DATA_OP_HOST_RDMA = 1U << 1,   /* data operation done by host RDMA */
+    SMEMB_DATA_OP_HOST_TCP = 1U << 2,    /* data operation done by host TCP */
+    SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3, /* data operation done by device RDMA */
+    SMEMB_DATA_OP_HOST_URMA = 1U << 4,   /* data operation done by host URMA */
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 
@@ -70,7 +70,7 @@ typedef enum {
     SMEMB_COPY_GH2H = 6, /* copy data from global host space to host memory */
     SMEMB_COPY_H2GH = 7, /* copy data from host memory to global host space */
     SMEMB_COPY_G2G = 8,  /* copy data from global space to global space */
-    SMEMB_COPY_AUTO = 9,
+    SMEMB_COPY_AUTO = 9, /* data copy direction is automatically selected */
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
@@ -143,7 +143,12 @@ typedef enum {
 } smem_bm_group_event_t;
 
 /**
- * @brief callback for view event: join/leave
+ * @brief callback function for group member change event: join/leave,
+ * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
+ * @param rankId           [in] rank ID
+ * @param event            [in] event type <i>smem_bm_group_event_t</i>
+ * @param context          [in] context passed in set_group_event_handler
+ * @return void
  */
 typedef void (*smem_bm_group_event_cb)(smem_bm_t handle, uint32_t rankId, smem_bm_group_event_t event, void *context);
 

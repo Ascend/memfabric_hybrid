@@ -122,11 +122,12 @@ int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
  * @return o if successful
  */
 int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
+
 /**
- * @brief set group member change(join/leave) notification function.
+ * @brief Set callback function for group member change event (join/leave etc)
  * @param handle           [in] Big Memory object handle created by <i>smem_bm_create</i>
- * @param cb               [in] notification function.
- * @param context          [in] callback function context parameter.
+ * @param cb               [in] callback function when group member change event happens
+ * @param context          [in] context which will be passed into callback function
  * @return 0 if successful
  */
 int32_t smem_bm_set_group_event_handler(smem_bm_t handle, smem_bm_group_event_cb cb, void *context);
@@ -198,17 +199,17 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 
 /**
   * @brief Perform batch data copy operations on Big Memory
-  * @param handle           [in] Big Memory object handle, created and returned by the smem_bm_create function,
-  *                              used to identify the target shared memory instance
-  * @param params           [in] Pointer to the batch copy parameter structure
-  *                              - sources: Pointer to an array of source addresses
-  *                              - destinations: Pointer to an array of destination addresses
-  *                              - dataSizes: Pointer to an array of data lengths
-  *                              - batchSize: Number of copy groups in the batch
-  * @param t                [in] copy type, L2G, G2L, G2H, H2G
-  * @param flags            [in] optional flags
-  * @param result           [out] When the error code is SMEM_PARTIAL_FAILED, the code indicates which operations are
-  *                               successful and which operations have failed.
+  * @param handle          [in] Big Memory object handle, created and returned by the smem_bm_create function,
+  *                             used to identify the target shared memory instance
+  * @param params          [in] Pointer to the batch copy parameter structure
+  *                             - sources: Pointer to an array of source addresses
+  *                             - destinations: Pointer to an array of destination addresses
+  *                             - dataSizes: Pointer to an array of data lengths
+  *                             - batchSize: Number of copy groups in the batch
+  * @param t               [in] copy type, L2G, G2L, G2H, H2G
+  * @param flags           [in] optional flags
+  * @param result          [out] When the error code is SMEM_PARTIAL_FAILED, the code indicates which operations are
+  *                              successful and which operations have failed.
   * @return 0 if successful
   */
 int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,
