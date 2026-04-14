@@ -78,7 +78,7 @@ ${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/device/smem_shm_aicore_
 ```
 
 ##### 使用简介
-详情参考[shm_example](../example/shm/ShiftPutGet/README.md)  
+详情参考[shm_example](../examples/hbm_share_memory/ShiftPutGet/README.md)  
 简单概述如下
 ```
 c接口使用方式:
