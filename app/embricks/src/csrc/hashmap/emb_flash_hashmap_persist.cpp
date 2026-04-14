@@ -14,12 +14,17 @@
 namespace ock {
 namespace emb {
 namespace hashmap {
-Result FlashHashmapPersist::Persist(const std::string &filepath, const FlashHashmapPtr &map)
+Result FlashHashmapPersist::PersistMutable(const std::string &filepath, const FlashHashmapPtr &map)
 {
     return EM_OK;
 }
 
-Result FlashHashmapPersist::UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map)
+Result FlashHashmapPersist::UnPersistMutable(const std::string &filepath, const FlashHashmapPtr &map)
+{
+    return EM_OK;
+}
+
+Result FlashHashmapPersist::UnPersistReadonly(const std::string &filepath, const ReadonlyFlashHashmapPtr &map)
 {
     return EM_OK;
 }

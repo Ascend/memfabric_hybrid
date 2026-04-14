@@ -128,10 +128,10 @@ public:
     }
 
 protected:
-    bool inited_ = false;
     uint64_t size_{0};                            /* item size of the map*/
+    bool inited_ = false;                         /* flag for initialization */
     uint32_t bucketCount_ = 0;                    /* bucket count of each sub map */
-    ReadonlyHashBucket *subMaps_[kSubMapCount]{}; /* sub map */
+    ReadonlyHashBucket *subMaps_[kSubMapCount]{}; /* sub maps */
 
     friend class ReadonlyFlashHashmapPersist;
 };

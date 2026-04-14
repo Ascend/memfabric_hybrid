@@ -18,11 +18,11 @@ namespace ock {
 namespace emb {
 namespace hashmap {
 /**
- * Updatable hashmap bucket
+ * Mutable hashmap bucket
  */
 struct HashBucket {
     /**
-     * @brief Insert key and value into this bucket
+     * @brief Insert key and value into this bucket, with spinlock
      *
      * @param key          [in] key to be inserted
      * @param value        [in] value to be inserted
@@ -31,7 +31,7 @@ struct HashBucket {
     Result Insert(uint64_t key, uint64_t value) noexcept;
 
     /**
-     * @brief Get value by key
+     * @brief Get value by key, with spinlock
      *
      * @param key          [in] key to be found
      * @param value        [out] value that found
@@ -49,7 +49,7 @@ struct HashBucket {
     Result GetWithoutLock(uint64_t key, uint64_t &value) noexcept;
 
     /**
-     * @brief Get the last key and
+     * @brief Get the last key and erase it, without spinlock
      *
      * @param key          [out] the key of last one
      * @param value        [out] the value of last one
@@ -58,7 +58,7 @@ struct HashBucket {
     Result GetAndEraseLast(uint64_t &key, uint64_t &value) noexcept;
 
     /**
-     * @brief Replace the key and value with new one if found
+     * @brief Replace the key and value with new one if found, without spinlock
      *
      * @param originalKey  [in] the key to be replaced
      * @param key          [in] new key
@@ -242,7 +242,7 @@ inline std::string HashBucket::ToString() const noexcept
 }
 
 /**
- * Allocator of overflowed bucket
+ * Allocator for overflowed bucket
  */
 class NaiveBucketAllocator {
 public:
@@ -277,7 +277,7 @@ public:
     }
 
     /**
-     * @brief Initialize a hash map from scratch
+     * @brief Initialize a hash map from scratch, this function is not thread safe
      *
      * @param capacity     [in] reserved capacity, the bucket count will be determined by this
      *
@@ -286,7 +286,7 @@ public:
     Result Initialize(uint64_t capacity) noexcept;
 
     /**
-     * @brief Initialize from persist file
+     * @brief Initialize from persist file, this function is not thread safe
      *
      * @param options      [in] options for recover
      *
@@ -295,13 +295,14 @@ public:
     Result Initialize(const FlashHashmapRecoverOptions &options) noexcept;
 
     /**
-     * @brief UnInitialize the hashmap, all resources will be released
+     * @brief UnInitialize the hashmap, all resources will be released, this function is not thread safe
      */
     void UnInitialize() noexcept;
 
     /**
      * @brief Try to find in the hashmap by key, if found return 0 and its value,
      * otherwise insert the key/value
+     * this function is thread safe
      *
      * @param key          [in] key to be found
      * @param value        [in/out] value that found or to be inserted
@@ -311,6 +312,7 @@ public:
 
     /**
      * @brief Try to find in the hash map by key
+     * this function is thread safe
      *
      * @param key          [in] key to be found
      * @param value        [out] value of the key if found
@@ -320,6 +322,7 @@ public:
 
     /**
      * @brief Remove the value by key  in the hashmap
+     * this function is thread safe
      *
      * @param key          [in] key to be removed
      * @param value        [out] the value if key is found
@@ -329,6 +332,7 @@ public:
 
     /**
      * @brief Get bucket count per sub map
+     * this function is thread safe
      *
      * @return bucket count of each sub map
      */
@@ -336,12 +340,15 @@ public:
 
     /**
      * @brief Get the size of hash map
+     * this function is thread safe
+     *
      * @return size
      */
     uint64_t Size() const noexcept;
 
     /**
      * @brief Check if the hashmap is initialized successfully or not
+     * this function is thread safe
      *
      * @return true if initialized
      */

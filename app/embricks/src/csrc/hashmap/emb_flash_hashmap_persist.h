@@ -20,8 +20,10 @@ namespace emb {
 namespace hashmap {
 class FlashHashmapPersist {
 public:
-    static Result Persist(const std::string &filepath, const FlashHashmapPtr &map);
-    static Result UnPersist(const std::string &filepath, const ReadonlyFlashHashmapPtr &map);
+    static Result PersistMutable(const std::string &filepath, const FlashHashmapPtr &map);
+    static Result UnPersistMutable(const std::string &filePath, const FlashHashmapPtr &map);
+
+    static Result UnPersistReadonly(const std::string &filepath, const ReadonlyFlashHashmapPtr &map);
 };
 } // namespace hashmap
 } // namespace emb

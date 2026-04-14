@@ -40,6 +40,8 @@ enum EmResultErrorCode : Result {
     EM_HASHMAP_BUCKET_FULL = -14,
     EM_HASHMAP_INVALID_KEY = -15,
     EM_HASHMAP_NEW_BUCKET_FAILED = -16,
+    EM_RESERVE_MEMORY_SPACE_FAILED = -17,
+    EM_NO_MORE_SPACE = -18,
 };
 
 constexpr uint32_t PATH_MAX_LIMIT = 4096;
@@ -47,9 +49,20 @@ constexpr uint32_t UN0 = 0;
 constexpr uint32_t UN1 = 1;
 constexpr uint32_t UN2 = 2;
 constexpr uint32_t UN3 = 3;
+constexpr uint32_t UN4 = 4;
 constexpr uint32_t UN5 = 5;
+constexpr uint32_t UN6 = 6;
+constexpr uint32_t UN7 = 7;
+constexpr uint32_t UN8 = 8;
+constexpr uint32_t UN9 = 9;
+constexpr uint32_t UN64 = 64;
+constexpr uint32_t UN128 = 128;
 constexpr uint32_t UN256 = 256;
 constexpr uint32_t UN4096 = 4096;
+
+constexpr uint32_t UN2MB = 2097152;
+constexpr uint64_t UN1GB = 1073741824;
+constexpr uint64_t UN1TB = 1099511627776;
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)

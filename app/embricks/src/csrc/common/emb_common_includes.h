@@ -12,6 +12,8 @@
 #ifndef MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
 #define MEMFABRIC_HYBRID_EMB_COMMON_INCLUDES_H
 
+#include <sys/mman.h>
+
 #include "embricks.h"
 
 #include "emb_defines.h"

@@ -13,12 +13,11 @@
 #define MEMFABRIC_HYBRID_EMB_FUNCTIONS_H
 
 #include <string>
-#include <limits.h>
 #include <unistd.h>
 #include <sys/param.h>
 #include <cstring>
 #include <dirent.h>
-#include <limits.h>
+#include <climits>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdint>
@@ -185,7 +184,6 @@ inline T Func::GetEnv(const char *name, T defaultValue)
 
     std::string envStr(envValue);
     T result;
-    const char *end;
     try {
         if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
             result = static_cast<T>(std::stod(envStr));
@@ -331,11 +329,11 @@ inline bool Func::IsDir(const std::string &path)
 inline std::string Func::GetCurrentDateTime()
 {
     std::time_t now = std::time(nullptr);
-    struct tm local_time;
-    localtime_r(&now, &local_time);
+    struct tm localTime;
+    localtime_r(&now, &localTime);
 
     char buffer[128];
-    std::strftime(buffer, sizeof(buffer), "%Y_%m_%d_%H_%M_%S", &local_time);
+    std::strftime(buffer, sizeof(buffer), "%Y_%m_%d_%H_%M_%S", &localTime);
     return std::string(buffer);
 }
 } // namespace emb

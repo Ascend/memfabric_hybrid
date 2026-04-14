@@ -21,6 +21,9 @@ namespace hashmap {
 /**
  * constant values
  */
+constexpr uint32_t kBucketSize = 64;
+constexpr uint32_t kMemBlockSize = UN2MB;
+constexpr uint32_t kBucketsPerMemBlock = UN2MB / kBucketSize;
 constexpr uint64_t kInvalidMapKey = UINT64_MAX;
 constexpr uint64_t kInvalidMapValue = UINT64_MAX;
 constexpr uint32_t kSubMapCount = 5;
@@ -65,17 +68,17 @@ public:
     void UnLock() noexcept;
 
 private:
-    uint64_t lock_ = 0;
+    uint64_t lock = 0;
 } __attribute__((aligned(8)));
 
 EM_ALWAYS_INLINE void BucketSpinLock::Lock() noexcept
 {
-    while (!__sync_bool_compare_and_swap(&lock_, 0, 1)) {}
+    while (!__sync_bool_compare_and_swap(&lock, 0, 1)) {}
 }
 
 EM_ALWAYS_INLINE void BucketSpinLock::UnLock() noexcept
 {
-    __atomic_store_n(&lock_, 0, __ATOMIC_SEQ_CST);
+    __atomic_store_n(&lock, 0, __ATOMIC_SEQ_CST);
 }
 
 /**
