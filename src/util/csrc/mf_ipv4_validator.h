@@ -21,7 +21,6 @@ constexpr uint32_t DG_4 = 4;
 constexpr uint32_t DG_3 = 3;
 constexpr uint32_t DG_2 = 2;
 constexpr uint32_t DG_1 = 1;
-const std::string PROTOCOL_TCP = "tcp://";
 
 class Ipv4PortValidator {
 public:
@@ -115,9 +114,9 @@ private:
     uint16_t covertedPort_{0};
 };
 
-class SocketAddressParser {
+class UrlParser {
 public:
-    SocketAddressParser() = default;
+    UrlParser() = default;
     bool Initialize(const std::string &url)
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -190,6 +189,15 @@ public:
         return addr_len_;
     }
 
+    [[nodiscard]] std::string GetProtocol()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!initialized_) {
+            return {};
+        }
+        return protocol_;
+    }
+
     [[nodiscard]] bool IsInitialized()
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -222,13 +230,32 @@ public:
     }
 
 private:
+    static std::vector<std::string> GetSupportedProtocols()
+    {
+        static const std::vector<std::string> protocols = {
+            "tcp://",
+            "http://",
+            "https://",
+        };
+        return protocols;
+    }
+
     bool ParseUrl(const std::string &url)
     {
-        if (url.find(PROTOCOL_TCP) != 0) {
-            return false;
+        std::string host_port;
+
+        protocol_ = "";
+        for (const auto &protocol : GetSupportedProtocols()) {
+            if (url.find(protocol) == 0) {
+                host_port = url.substr(protocol.length());
+                protocol_ = protocol;
+                break;
+            }
         }
 
-        std::string host_port = url.substr(PROTOCOL_TCP.length());
+        if (protocol_.empty()) {
+            host_port = url;
+        }
 
         size_t colon_pos = host_port.find_last_of(':');
         if (colon_pos == std::string::npos) {
@@ -291,6 +318,7 @@ private:
 
     std::mutex mutex_{};
     std::string ip_;
+    std::string protocol_;
     uint16_t port_ = 0;
     int address_family_ = 0;
     socklen_t addr_len_ = 0;
@@ -311,18 +339,18 @@ public:
         return instance;
     }
 
-    std::shared_ptr<SocketAddressParser> CreateParser(const std::string &url)
+    std::shared_ptr<UrlParser> CreateParser(const std::string &url)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto find = url2Parsers_.find(url);
         if (find != url2Parsers_.end()) {
             return find->second;
         }
-        auto *o = new (std::nothrow) SocketAddressParser;
+        auto *o = new (std::nothrow) UrlParser;
         if (o == nullptr) {
             return nullptr;
         }
-        const std::shared_ptr<SocketAddressParser> obj(o);
+        const std::shared_ptr<UrlParser> obj(o);
         if (!obj->Initialize(url)) {
             return nullptr;
         }
@@ -331,7 +359,7 @@ public:
         return obj;
     }
 
-    std::shared_ptr<SocketAddressParser> GetParser(const uint32_t serverPort)
+    std::shared_ptr<UrlParser> GetParser(const uint32_t serverPort)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto find = port2Parsers_.find(serverPort);
@@ -343,8 +371,8 @@ public:
 
 private:
     std::mutex mutex_{};
-    std::unordered_map<std::string, std::shared_ptr<SocketAddressParser>> url2Parsers_{};
-    std::unordered_map<uint32_t, std::shared_ptr<SocketAddressParser>> port2Parsers_{};
+    std::unordered_map<std::string, std::shared_ptr<UrlParser>> url2Parsers_{};
+    std::unordered_map<uint32_t, std::shared_ptr<UrlParser>> port2Parsers_{};
     SocketAddressParserMgr() = default;
 };
 
