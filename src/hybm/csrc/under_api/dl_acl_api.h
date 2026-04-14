@@ -280,6 +280,9 @@ public:
 
     static inline const char *AclrtGetSocName()
     {
+#ifdef NO_XPU
+        return nullptr;
+#endif
         if (pAclrtGetSocName == nullptr) {
             BM_LOG_ERROR("pAclrtGetSocName is nullptr, bm under api unload.");
             return nullptr;

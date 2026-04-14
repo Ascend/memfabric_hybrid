@@ -57,6 +57,10 @@ public:
             resultOpType |= HYBM_DOP_TYPE_HOST_TCP;
         }
 
+        if (smemBmDataOpType & SMEMB_DATA_OP_HOST_SHM) {
+            resultOpType |= HYBM_DOP_TYPE_HOST_SHM;
+        }
+
         return static_cast<hybm_data_op_type>(resultOpType);
     }
 };

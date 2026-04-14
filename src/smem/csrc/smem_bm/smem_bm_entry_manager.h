@@ -68,6 +68,11 @@ public:
         return config_.hcomTlsConfig;
     }
 
+    inline const smem_bm_config_t &GetConfig() const
+    {
+        return config_;
+    }
+
 private:
     int32_t PrepareStore();
     int32_t RacingForStoreServer();

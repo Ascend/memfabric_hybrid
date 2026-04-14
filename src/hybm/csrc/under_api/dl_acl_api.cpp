@@ -109,7 +109,7 @@ AscendSocType DlAclApi::GetAscendSocType()
     static AscendSocType cachedSocType = [&]() -> AscendSocType {
         auto name = DlAclApi::AclrtGetSocName();
         if (name == nullptr) {
-            BM_LOG_ERROR("AclrtGetSocName() failed.");
+            BM_LOG_WARN("AclrtGetSocName() failed.");
             return AscendSocType::ASCEND_UNKNOWN;
         }
         BM_LOG_DEBUG("success get soc name: " << name);

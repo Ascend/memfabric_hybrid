@@ -128,7 +128,7 @@ SMEM_API uint32_t smem_bm_get_rank_id()
 static inline int32_t SmemBmDataOpCheck(smem_bm_data_op_type dataOpType)
 {
     constexpr uint32_t dataOpTypeMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
-                                        SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+                                        SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA | SMEMB_DATA_OP_HOST_SHM;
     return (dataOpType & dataOpTypeMask) != 0;
 }
 
@@ -181,6 +181,17 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
     SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(option->dataOpType), nullptr);
+    const bool isHostShm = (option->dataOpType & SMEMB_DATA_OP_HOST_SHM) != 0;
+    if (isHostShm && (option->localDRAMSize == 0 || option->localHBMSize != 0)) {
+        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type only supports DRAM shared memory without HBM");
+        return nullptr;
+    }
+    constexpr uint32_t hostShmConflictMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
+                                             SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
+    if (isHostShm && (option->dataOpType & hostShmConflictMask) != 0) {
+        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type does not support mixing with other data op types");
+        return nullptr;
+    }
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
         SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
@@ -282,7 +293,7 @@ SMEM_API int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags)
     return entry->Leave(flags);
 }
 
-SMEM_API int32_t smem_bm_extend_local_mem(smem_bm_t handle,  smem_bm_mem_type memType, uint64_t size)
+SMEM_API int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size)
 {
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", SM_NOT_INITIALIZED);

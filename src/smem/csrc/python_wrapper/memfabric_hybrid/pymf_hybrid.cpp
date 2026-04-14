@@ -669,7 +669,8 @@ void DefineBmClass(py::module_ &m)
         .value("HOST_RDMA", SMEMB_DATA_OP_HOST_RDMA)
         .value("HOST_URMA", SMEMB_DATA_OP_HOST_URMA)
         .value("HOST_TCP", SMEMB_DATA_OP_HOST_TCP)
-        .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA);
+        .value("DEVICE_RDMA", SMEMB_DATA_OP_DEVICE_RDMA)
+        .value("HOST_SHM", SMEMB_DATA_OP_HOST_SHM);
 
     py::enum_<smem_bm_group_event_t>(m, "BmGroupEvent")
         .value("JOIN_EVENT", SMEM_GROUP_EVENT_JOIN)

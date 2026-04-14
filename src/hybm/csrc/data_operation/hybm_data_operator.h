@@ -13,6 +13,7 @@
 #define MEM_FABRIC_HYBRID_HYBM_DATA_ACTION_H
 
 #include <ostream>
+#include <unordered_map>
 #include "hybm_common_include.h"
 #include "hybm_big_mem.h"
 

@@ -18,6 +18,9 @@
 #include "dl_acl_api.h"
 #include "hybm_dev_user_legacy_segment.h"
 #include "hybm_dev_legacy_segment.h"
+#include "hybm_gva.h"
+#include "hybm_types.h"
+#include "hybm_host_shm_segment.h"
 #include "hybm_conn_based_segment.h"
 #include "hybm_vmm_based_segment.h"
 #include "hybm_va_manager.h"
@@ -80,7 +83,11 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
             }
             break;
         case HYBM_MST_DRAM:
-            if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C && options.shmFd < 0) {
+            // When host shared memory op type is set, use dedicated host shm segment.
+            if ((options.dataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
+                tmpSeg = std::make_shared<HybmHostShmSegment>(options, entityId);
+            } else if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
+                       options.shmFd < 0) {
                 tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
                 tmpSeg = std::make_shared<HybmConnBasedSegment>(options, entityId);
@@ -115,8 +122,7 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
     } else {
         void *output = nullptr;
 #if defined(ASCEND_NPU)
-        ret = DlHalApi::HalHostRegister(const_cast<void *>(addr), size,
-                                        HOST_MEM_MAP_DEV, logicDeviceId_, &output);
+        ret = DlHalApi::HalHostRegister(const_cast<void*>(addr), size, HOST_MEM_MAP_DEV, logicDeviceId_, &output);
         if (ret != 0) {
             BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr << " ret: " << ret);
             return ret;
@@ -151,7 +157,7 @@ Result MemSegment::InitDeviceInfo(int devId)
     if (!atforkRegistered_) {
         static std::once_flag flag;
         std::call_once(flag, []() {
-            if (pthread_atfork(nullptr, nullptr,  []() { MemSegment::ResetDeviceInfoInChild();}) != 0) {
+            if (pthread_atfork(nullptr, nullptr, []() { MemSegment::ResetDeviceInfoInChild(); }) != 0) {
                 BM_LOG_ERROR("Failed to register pthread_atfork handler!");
             }
         });

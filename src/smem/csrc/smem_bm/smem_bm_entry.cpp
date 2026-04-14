@@ -169,10 +169,10 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string localInfo;
     if (rk == options_.rank) {
-        localInfo = std::string((char *) &entityInfo_, sizeof(hybm_exchange_info));
+        localInfo = std::string((char *)&entityInfo_, sizeof(hybm_exchange_info));
         for (auto sliceInfo : sliceInfos_) {
             if (sliceInfo.descLen > 0) {
-                localInfo += std::string((char *) &sliceInfo, sizeof(hybm_exchange_info));
+                localInfo += std::string((char *)&sliceInfo, sizeof(hybm_exchange_info));
             }
         }
     }
@@ -224,7 +224,7 @@ join_exit:
     }
 
     SM_LOG_INFO("end join func, local_rk: " << options_.rank << " receive_rk: " << rk << " receive_info_num:"
-        << allInfo.size() << ", rank size is: " << globalGroup_->GetRankSize());
+                                            << allInfo.size() << ", rank size is: " << globalGroup_->GetRankSize());
     InvokeEventCb(rk, SMEM_GROUP_EVENT_JOIN);
     return SM_OK;
 
@@ -244,7 +244,7 @@ Result SmemBmEntry::UpdateHandle(uint32_t rk)
     uint32_t unitSize = sizeof(hybm_exchange_info);
     std::string xinfo;
     if (rk == options_.rank) {
-        xinfo = std::string((char *) &sliceInfos_.back(), sizeof(hybm_exchange_info));
+        xinfo = std::string((char *)&sliceInfos_.back(), sizeof(hybm_exchange_info));
     }
 
     int32_t ret = globalGroup_->GroupBarrierPrefixKey(rk, xinfo);
@@ -451,11 +451,20 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
         case SMEMB_COPY_H2G:
             srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
             break;
-        case SMEMB_COPY_H2GH:
-            srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+        case SMEMB_COPY_L2GH:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
+            // dest is already determined by GetHybmMemTypeFromGva (global host)
+            break;
+        case SMEMB_COPY_GH2L:
+            // src is already determined by GetHybmMemTypeFromGva (global host)
+            destMemType = SMEM_MEM_TYPE_LOCAL_DEVICE;
             break;
         case SMEMB_COPY_GH2H:
             destMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            break;
+        case SMEMB_COPY_H2GH:
+            srcMemType = SMEM_MEM_TYPE_LOCAL_HOST;
+            // dest is already determined by GetHybmMemTypeFromGva (global host)
             break;
         case SMEMB_COPY_G2G:
         default:
@@ -629,8 +638,8 @@ Result SmemBmEntry::CreateGlobalTeam(uint32_t rankSize, uint32_t rankId)
     SmemGroupChangeCallback joinFunc = std::bind(&SmemBmEntry::JoinHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback updateFunc = std::bind(&SmemBmEntry::UpdateHandle, this, std::placeholders::_1);
     SmemGroupChangeCallback leaveFunc = std::bind(&SmemBmEntry::LeaveHandle, this, std::placeholders::_1);
-    SmemGroupOption opt = {rankSize, rankId, options_.controlOperationTimeout * SECOND_TO_MILLSEC,
-                           true, joinFunc, updateFunc, leaveFunc};
+    SmemGroupOption opt = {rankSize,   rankId,   options_.controlOperationTimeout * SECOND_TO_MILLSEC, true, joinFunc,
+                           updateFunc, leaveFunc};
     SmemGroupEnginePtr group = SmemNetGroupEngine::Create(_configStore, opt);
     SM_ASSERT_RETURN(group != nullptr, SM_ERROR);
 

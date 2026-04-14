@@ -57,7 +57,8 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     static const std::map<std::string, hybm_data_op_type> str2OpTypeMap = {
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
-        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},
+        {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"HOST_SHM", HYBM_DOP_TYPE_HOST_SHM},
+        {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},
     };
 
     std::smatch match;
@@ -73,7 +74,8 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     auto it = str2OpTypeMap.find(opTypeStr);
     if (it == str2OpTypeMap.end()) {
         BM_LOG_ERROR("Failed to check opType:"
-                     << opTypeStr << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA)");
+                     << opTypeStr
+                     << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)");
         return BM_INVALID_PARAM;
     }
     auto opType = GetTag2TagOpType(tag1, tag2);
@@ -167,7 +169,7 @@ uint32_t HybmEntityTagInfo::GetRank2RankOpType(uint32_t rankId1, uint32_t rankId
 uint32_t HybmEntityTagInfo::GetAllOpType()
 {
     uint32_t opSet = 0;
-    for (const auto &item: tagOpInfo_) {
+    for (const auto &item : tagOpInfo_) {
         opSet |= item.second;
     }
     return opSet;
@@ -178,7 +180,8 @@ std::string HybmEntityTagInfo::GetOpTypeStr(hybm_data_op_type opType)
     static const std::map<hybm_data_op_type, std::string> opType2StrMap = {
         {HYBM_DOP_TYPE_SDMA, "DEVICE_SDMA"},    {HYBM_DOP_TYPE_DEVICE_RDMA, "DEVICE_RDMA"},
         {HYBM_DOP_TYPE_HOST_RDMA, "HOST_RDMA"}, {HYBM_DOP_TYPE_HOST_TCP, "HOST_TCP"},
-        {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"}, {HYBM_DOP_TYPE_MTE, "DEVICE_MTE"},
+        {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"}, {HYBM_DOP_TYPE_HOST_SHM, "HOST_SHM"},
+        {HYBM_DOP_TYPE_MTE, "DEVICE_MTE"},
     };
     auto it = opType2StrMap.find(opType);
     if (it != opType2StrMap.end()) {

@@ -62,6 +62,18 @@ Result HostComposeDataOp::Initialize() noexcept
         }
     }
 
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) {
+        hostRdmaDataOperator_ = DataOperatorFactory::CreateHostShmDataOperator(options_.rankId);
+        auto ret = hostRdmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Host shm data operator init failed, ret:" << ret);
+            sdmaDataOperator_ = nullptr;
+            devRdmaDataOperator_ = nullptr;
+            hostRdmaDataOperator_ = nullptr;
+            return ret;
+        }
+    }
+
     return BM_OK;
 }
 
@@ -144,7 +156,8 @@ Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
         }
 
         BM_LOG_DEBUG("try batch data copy from rank " << options.srcRankId << " to rank " << options.destRankId
-            << " with data op " << availableOps.front().first << " direction:" << direction);
+                                                      << " with data op " << availableOps.front().first
+                                                      << " direction:" << direction);
         // 暂时不做多路径拷贝失败重试,copyParams内容会被BatchDataCopy修改
         auto result = availableOps.front().second->BatchDataCopy(copyParams, direction, copyOptions);
         if (result != BM_OK) {
@@ -226,6 +239,10 @@ HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(co
 
     if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_TCP)) != 0U) {
         dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_TCP, hostRdmaDataOperator_);
+    }
+
+    if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_SHM)) != 0U) {
+        dataOperators.emplace_back(HYBM_DOP_TYPE_HOST_SHM, hostRdmaDataOperator_);
     }
 
     return dataOperators;
