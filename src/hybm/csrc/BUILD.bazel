@@ -156,6 +156,12 @@ cc_binary (
     name = "libmf_hybm_core.so",
     srcs = [],
     deps =  HYBM_DEPS,
+    # Keep runtime lookup behavior aligned with CMake's BUILD_RPATH/INSTALL_RPATH=$ORIGIN.
+    # This lets dlopen()ed dependencies resolve sibling shared libraries after install,
+    # such as libraries bundled into the same Python wheel lib directory.
+    linkopts = [
+        "-Wl,-rpath,$ORIGIN",
+    ],
     linkshared = 1,
     visibility = ["//visibility:public"],
 ) # DIGEST:971762d3cac67844fd53bd0979f913f8

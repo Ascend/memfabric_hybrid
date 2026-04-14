@@ -117,8 +117,14 @@ cc_binary (
     name = "libmf_smem.so",
     srcs = [],
     deps =  [
-        "@version_info//:version_info", 
+        "@version_info//:version_info",
         ":smem_shared",
+    ],
+    # Keep runtime lookup behavior aligned with CMake's BUILD_RPATH/INSTALL_RPATH=$ORIGIN.
+    # This lets dlopen()ed dependencies resolve sibling shared libraries after install,
+    # such as libraries bundled into the same Python wheel lib directory.
+    linkopts = [
+        "-Wl,-rpath,$ORIGIN",
     ],
     linkshared = 1,
     visibility = ["//visibility:public"],

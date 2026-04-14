@@ -52,7 +52,15 @@ target_link_libraries(hybmm_static PUBLIC pthread dl)
 target_include_directories(hybmm_static INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
 add_library(hybmm_shared SHARED $<TARGET_OBJECTS:hybmm_objects> $<TARGET_OBJECTS:ptracer_object>)
-set_target_properties(hybmm_shared PROPERTIES OUTPUT_NAME "mf_hybm_core")
+# Ensure dlopen("libxxx.so") can find libraries in the same directory.
+# Without RPATH=$ORIGIN, runtime loader won't search the current .so path,
+# causing "cannot open shared object file" errors after install (e.g. in Python wheel).
+set_target_properties(hybmm_shared PROPERTIES
+    OUTPUT_NAME "mf_hybm_core"
+    BUILD_RPATH "\$ORIGIN"
+    INSTALL_RPATH "\$ORIGIN"
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 target_link_libraries(hybmm_shared PUBLIC pthread dl)
 target_include_directories(hybmm_shared INTERFACE ${HYBM_PUBLIC_INCLUDE_DIR})
 
