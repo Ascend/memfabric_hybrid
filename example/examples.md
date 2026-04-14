@@ -8,7 +8,7 @@
 ├── examples                       
 │   ├── bm              # big memory样例
 │   ├── shm             # share memory样例
-│   ├── trans           # trans 样例
+│   ├── transfer     # trans 样例
 ```
 
 ## 开发样例
@@ -21,4 +21,4 @@
 | [shm_AllReduce](./shm/AllReduce/README.md)     | shm C++样例      | C++      |
 | [shm_RDMADemo](./shm/RDMADemo/README.md)       | shm C++样例      | C++      |
 | [shm_ShiftPutGet](./shm/ShiftPutGet/README.md) | shm C++样例      | C++      |
-| [trans](./trans/perf/README.md)                | trans C++样例    | C++      |
+| [trans](../examples/transfer/perf/README.md)                | trans C++样例    | C++      |
