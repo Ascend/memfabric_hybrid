@@ -269,18 +269,6 @@ bool HybmConnBasedSegment::MemoryInRange(const void *begin, uint64_t size) const
     return true;
 }
 
-bool HybmConnBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
-{
-    if (!MemoryInRange(addr, size)) {
-        rankId = options_.rankId;
-        return false;
-    } else {
-        auto rankSize = options_.maxSize;
-        rankId = (reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(globalVirtualAddress_)) / rankSize;
-        return true;
-    }
-}
-
 void HybmConnBasedSegment::FreeMemory() noexcept
 {
     while (!slices_.empty()) {

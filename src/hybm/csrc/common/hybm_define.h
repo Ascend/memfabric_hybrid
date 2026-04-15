@@ -57,7 +57,7 @@ constexpr uint64_t HYBM_GVM_MAX_POOL_SIZE = 128ULL << 40;  // 128T, 910C暂时�
 constexpr uint64_t HYBM_GVM_START_ADDR = 0x280040000000UL; // 40T+1G,偏移1G规避底层问题
 constexpr uint64_t HYBM_GVM_END_ADDR = HYBM_GVM_START_ADDR + HYBM_GVM_MAX_POOL_SIZE;
 
-constexpr uint64_t HYBM_GVM_START_ADDR_A5 = 0x340000000000UL; // 不同HDK版本差异有点大
+constexpr uint64_t HYBM_GVM_START_ADDR_A5 = 0x340000000000UL;                              // 不同HDK版本差异有点大
 constexpr uint64_t HYBM_GVM_END_ADDR_A5 = HYBM_GVM_START_ADDR_A5 + HYBM_GVM_MAX_POOL_SIZE; // 0xB40000000000UL
 
 constexpr uint64_t HYBM_GVM_START_ADDR_4P = 4ULL << 50; // 4P, GVA for > 128T memory pool case

@@ -502,18 +502,6 @@ void HybmDevLegacySegment::GetDeviceInfo(uint32_t &sdId, uint32_t &serverId, uin
     superPodId = superPodId_;
 }
 
-bool HybmDevLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
-{
-    if (!MemoryInRange(addr, size)) {
-        rankId = options_.rankId;
-        return false;
-    } else {
-        uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
-        rankId = offset / options_.maxSize;
-        return true;
-    }
-}
-
 bool HybmDevLegacySegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     auto pos = importMap_.find(static_cast<uint16_t>(rankId));

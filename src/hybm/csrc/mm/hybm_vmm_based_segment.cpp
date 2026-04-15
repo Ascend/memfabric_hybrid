@@ -45,13 +45,13 @@ Result HybmVmmBasedSegment::ValidateOptions() noexcept
     };
     uint64_t align = (options_.segType == HYBM_MST_DRAM) ? GB : HYBM_LARGE_PAGE_SIZE;
     if (options_.size != 0 && !checkAlignment(options_.size, align)) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:"
-                                                << options_.size << " must algin:" << align);
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " size:" << options_.size
+                                                << " must algin:" << align);
         return BM_INVALID_PARAM;
     }
     if (!checkAlignment(options_.maxSize, GB)) {
-        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " max size:"
-                                                << options_.maxSize << " must align GB");
+        BM_LOG_ERROR("Invalid options segType:" << options_.segType << " max size:" << options_.maxSize
+                                                << " must align GB");
         return BM_INVALID_PARAM;
     }
 
@@ -570,7 +570,17 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             continue;
         }
 
+        auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
+        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, im.deviceVa, 0, im.size, memType},
+                                                                      options_.rankId, im.rankId);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("AddVaInfoFromExternal failed:" << ret << " gva:" << VaToStr(im.gva)
+                                                         << " dva:" << VaToStr(im.deviceVa) << " size:" << im.size);
+            return ret;
+        }
+
         if (!CanSdmaReaches(im.superPodId, im.serverId, im.logicDevId)) {
+            // 不调用RemoveOneVaInfo回滚，因为在跨机场景，sdma虽然不通，但是可能使用的是device_rdma访问，需要跨机访问GVA
             continue;
         }
 
@@ -578,28 +588,22 @@ Result HybmVmmBasedSegment::Mmap() noexcept
                                         << " devId:" << im.logicDevId << " segType:" << options_.segType << " size:"
                                         << im.size << " gva:" << VaToStr(im.gva) << " dva:" << VaToStr(im.deviceVa));
         drv_mem_handle_t *handle = nullptr;
-        auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
-        BM_VALIDATE_RETURN(
-            ret == BM_OK, "HalMemImport memory failed:" << ret << " local sdid:" << sdid_ << " remote ssid:" << im.sdid,
-            BM_ERROR);
+        ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("HalMemImport memory failed:" << ret << " local sdid:" << sdid_ << " remote ssid:" << im.sdid);
+            HybmVaManager::GetInstance().RemoveOneVaInfo(im.gva);
+            return BM_ERROR;
+        }
 
         ret = DlHalApi::HalMemMap(reinterpret_cast<void *>(im.deviceVa), im.size, 0, handle, 0);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalMemMap memory failed:" << ret << " gva:" << VaToStr(im.gva)
                                                     << " dva:" << VaToStr(im.deviceVa) << " size:" << im.size);
             DlHalApi::HalMemRelease(handle);
+            HybmVaManager::GetInstance().RemoveOneVaInfo(im.gva);
             return BM_ERROR;
         }
 
-        auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
-        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
-            {im.gva, im.deviceVa, 0, im.size, memType}, options_.rankId, im.rankId);
-        if (ret != BM_OK) {
-            DlHalApi::HalMemUnmap(reinterpret_cast<void *>(im.deviceVa));
-            DlHalApi::HalMemRelease(handle);
-            imports_.clear();
-            return ret;
-        }
         mappedGvaMem_.emplace(im.gva, handle);
     }
     imports_.clear();
@@ -692,18 +696,6 @@ bool HybmVmmBasedSegment::MemoryInRange(const void *begin, uint64_t size) const 
     }
 
     return true;
-}
-
-bool HybmVmmBasedSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
-{
-    if (!MemoryInRange(addr, size)) {
-        rankId = options_.rankId;
-        return false;
-    } else {
-        uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
-        rankId = offset / options_.maxSize;
-        return true;
-    }
 }
 
 bool HybmVmmBasedSegment::CheckSdmaReaches(uint32_t rankId) const noexcept

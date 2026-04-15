@@ -122,12 +122,6 @@ public:
     virtual bool MemoryInRange(const void *begin, uint64_t size) const noexcept = 0;
 
     /*
-     * check memery area in this segment
-     * @return true if in range
-    */
-    virtual bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept = 0;
-
-    /*
      * get memory type
      */
     virtual hybm_mem_type GetMemoryType() const noexcept = 0;

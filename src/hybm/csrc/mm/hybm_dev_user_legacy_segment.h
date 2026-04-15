@@ -90,7 +90,6 @@ public:
         return HYBM_MEM_TYPE_DEVICE;
     }
     bool CheckSdmaReaches(uint32_t rankId) const noexcept override;
-    bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
 
 private:
     Result ImportDeviceInfo(const std::string &info) noexcept;

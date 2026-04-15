@@ -49,7 +49,6 @@ public:
     Result Unmap() noexcept override;
     MemSlicePtr GetMemSlice(hybm_mem_slice_t slice, bool quiet) const noexcept override;
     bool MemoryInRange(const void *begin, uint64_t size) const noexcept override;
-    bool GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept override;
     Result RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
     Result RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept override;
     Result ReleaseSliceMemory(const MemSlicePtr &slice) noexcept override;

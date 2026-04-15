@@ -219,26 +219,6 @@ TEST_F(HybmHostShmSegmentTest, Import_DeduplicatesDuplicateRanksIntoImports)
     EXPECT_EQ(segment.importedHugetlbfsFlags_.at(2U), true);
 }
 
-TEST_F(HybmHostShmSegmentTest, MemoryInRangeAndGetRankIdByAddr_Behavior)
-{
-    auto options = MakeOptions(HYBM_LARGE_PAGE_SIZE, 3U, 1U);
-    HybmHostShmSegment segment(options, 0);
-    std::vector<uint8_t> window(options.size * options.rankCnt, 0U);
-    SetManualMemoryWindow(segment, window);
-
-    EXPECT_TRUE(segment.MemoryInRange(window.data() + options.size, 64U));
-    EXPECT_FALSE(segment.MemoryInRange(window.data() + window.size(), 1U));
-
-    uint32_t rankId = std::numeric_limits<uint32_t>::max();
-    EXPECT_TRUE(segment.GetRankIdByAddr(window.data() + options.size * 2UL + 8UL, 64U, rankId));
-    EXPECT_EQ(rankId, 2U);
-
-    EXPECT_FALSE(segment.GetRankIdByAddr(window.data() + window.size(), 1U, rankId));
-    EXPECT_EQ(rankId, options.rankId);
-
-    ResetManualMemoryWindow(segment);
-}
-
 TEST_F(HybmHostShmSegmentTest, ReleaseSliceMemory_CoversNullUnknownAndValid)
 {
     auto options = MakeOptions(HYBM_LARGE_PAGE_SIZE * 2UL, 2U, 1U);

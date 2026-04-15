@@ -41,7 +41,7 @@ constexpr uint32_t HOST_SHM_IMPORT_OPEN_RETRY_INTERVAL_US = 10000U;
 
 bool IsHugetlbfsMounted() noexcept
 {
-    struct statfs fsInfo {};
+    struct statfs fsInfo{};
     if (statfs(HOST_SHM_HUGEPAGE_DIR, &fsInfo) != 0) {
         BM_LOG_WARN("Failed to access hugepage dir " << HOST_SHM_HUGEPAGE_DIR << " error:" << errno << ", "
                                                      << SafeStrError(errno) << ", will fallback to /dev/shm");
@@ -283,16 +283,6 @@ bool HybmHostShmSegment::MemoryInRange(const void *begin, uint64_t size) const n
              reinterpret_cast<const uint8_t *>(begin) + size > globalVirtualAddress_ + totalVirtualSize_);
 }
 
-bool HybmHostShmSegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
-{
-    if (!MemoryInRange(addr, size)) {
-        rankId = options_.rankId;
-        return false;
-    }
-    rankId = (reinterpret_cast<uint64_t>(addr) - reinterpret_cast<uint64_t>(globalVirtualAddress_)) / options_.size;
-    return true;
-}
-
 void HybmHostShmSegment::FreeMemory() noexcept
 {
     (void)Unmap();
@@ -492,7 +482,7 @@ Result HybmHostShmSegment::MapImportedShm(uint32_t rankId) noexcept
                      << SafeStrError(errno));
         return BM_ERROR;
     }
-    struct stat fileStat {};
+    struct stat fileStat{};
     if (fstat(fd, &fileStat) != 0 || static_cast<uint64_t>(fileStat.st_size) != options_.size) {
         BM_LOG_ERROR("Imported shm file size mismatch "
                      << shmPath << " rank:" << rankId << " expected:" << options_.size << " got:" << fileStat.st_size);

@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <mockcpp/mockcpp.hpp>
 
-#define private public
+#define private   public
 #define protected public
 #include "hybm_mem_segment.h"
 #include "hybm_dev_legacy_segment.h"
@@ -58,7 +58,7 @@ TEST_F(HybmMemSegmentTest, Create_Rejects_InvalidRank)
 {
     ock::mf::MemSegmentOptions opt{};
     opt.rankCnt = 4;
-    opt.rankId = 4;  // 等于 rankCnt，非法
+    opt.rankId = 4; // 等于 rankCnt，非法
     opt.segType = ock::mf::HYBM_MST_HBM;
     opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
 
@@ -334,7 +334,7 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
     opt.segType = ock::mf::HYBM_MST_DRAM;
     opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
     opt.rankCnt = 2;
-    opt.rankId = 0;  // 本地 rank 0
+    opt.rankId = 0; // 本地 rank 0
 
     ock::mf::HybmDevLegacySegment seg(opt, 0);
 
@@ -354,7 +354,7 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_Import_WhenShareDisabled)
 
     std::vector<std::string> allExInfo{encoded};
 
-    void* addresses[1]{};
+    void *addresses[1]{};
     auto ret = seg.Import(allExInfo, addresses);
     EXPECT_EQ(ret, BM_OK);
     // imports_ 应该包含一条记录
@@ -384,7 +384,7 @@ TEST_F(HybmMemSegmentTest, CanLocalHostReaches_SameServerAndSuperPod)
 {
     ock::mf::MemSegment::superPodId_ = 0x12;
     ock::mf::MemSegment::serverId_ = 0x34;
-    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C;  // 非 910B，忽略 device 分组
+    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C; // 非 910B，忽略 device 分组
     ock::mf::MemSegment::deviceId_ = 0;
 
     EXPECT_TRUE(ock::mf::MemSegment::CanLocalHostReaches(0x12, 0x34, 7));
@@ -412,9 +412,9 @@ TEST_F(HybmMemSegmentTest, CanLocalHostReaches_DifferentServerOrSuperPod)
 TEST_F(HybmMemSegmentTest, CanSdmaReaches_SameServer_DiffSuperPod)
 {
     ock::mf::MemSegment::serverId_ = 0x56;
-    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C;  // 非 910B，不受连接分组限制
+    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C; // 非 910B，不受连接分组限制
     ock::mf::MemSegment::deviceId_ = 0;
-    ock::mf::MemSegment::superPodId_ = ock::mf::invalidSuperPodId;  // 本端 superPodId 未知
+    ock::mf::MemSegment::superPodId_ = ock::mf::invalidSuperPodId; // 本端 superPodId 未知
 
     EXPECT_TRUE(ock::mf::MemSegment::CanSdmaReaches(ock::mf::invalidSuperPodId, 0x56, 1));
 }
@@ -439,8 +439,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_UsesCache)
     ock::mf::HybmConnBasedSegment seg(opt, 0);
 
     // 构造一个 slice，并放入内部 map
-    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
-                                                     0x1000, 0x1000, 0x2000);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x1000, 0x2000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     auto getSlice = seg.GetMemSlice(&slice, true);
@@ -478,8 +478,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_Not_UsesCache)
     EXPECT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfo(info), BM_OK);
 
     // 构造一个 slice，并放入内部 map
-    auto slice = std::make_shared<ock::mf::MemSlice>(255, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
-                                                     0x1000, 0x1000, 0x2000);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(255, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM, 0x1000, 0x1000, 0x2000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     auto getSlice = seg.GetMemSlice(&slice, true);
@@ -509,8 +509,8 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_ExportSlice_InvalidSlice)
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
 
-    auto slice = std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM,
-                                                     0x2000, 0x2000, 0x1000);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_SVM, 0x2000, 0x2000, 0x1000);
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
@@ -532,7 +532,7 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
     opt.segType = ock::mf::HYBM_MST_DRAM;
     opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
     opt.rankCnt = 2;
-    opt.rankId = 0;  // 本地 rank 0
+    opt.rankId = 0; // 本地 rank 0
 
     ock::mf::HybmConnBasedSegment seg(opt, 0);
     ock::mf::HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt,
@@ -554,7 +554,7 @@ TEST_F(HybmMemSegmentTest, ConnBasedSegment_Import_AddsRemoteVaInfo)
 
     std::vector<std::string> allExInfo{encoded};
 
-    void* addresses[1]{};
+    void *addresses[1]{};
     auto ret = seg.Import(allExInfo, addresses);
     EXPECT_EQ(ret, BM_OK);
     // imports_ 应该包含一条记录
@@ -636,8 +636,9 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaMan
     seg.imports_.push_back(local);
     seg.imports_.push_back(remote);
 
-    MOCKER_CPP(&ock::mf::MemSegment::CanSdmaReaches,
-               bool (*)(ock::mf::MemSegment *, uint32_t, uint32_t, uint32_t)).stubs().will(returnValue(true));
+    MOCKER_CPP(&ock::mf::MemSegment::CanSdmaReaches, bool (*)(ock::mf::MemSegment *, uint32_t, uint32_t, uint32_t))
+        .stubs()
+        .will(returnValue(true));
 
     // Mmap 只处理远端 rank
     auto ret = seg.Mmap();
@@ -645,52 +646,6 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MmapAndUnmap_IntegratesWithVaMan
     EXPECT_TRUE(seg.imports_.empty());
     EXPECT_EQ(seg.mappedGvaMem_.size(), 1U);
     EXPECT_EQ(*seg.mappedGvaMem_.begin(), remote.gva);
-
-    ret = seg.Unmap();
-    EXPECT_EQ(ret, BM_OK);
-    EXPECT_TRUE(seg.mappedGvaMem_.empty());
-}
-
-/**
-* HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaManager
-*  - Mmap：将 imports_ 中除本 rank 外的记录加入 mappedMem_，并清空 imports_。
-*  - Unmap：调用 HybmVaManager::RemoveOneVaInfo 清理所有映射，再清空 mappedMem_。
-*/
-TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MmapAndUnmap_IntegratesWithVaManager)
-{
-    ock::mf::MemSegmentOptions opt{};
-    opt.segType = ock::mf::HYBM_MST_DRAM;
-    opt.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
-    opt.rankCnt = 2;
-    opt.rankId = 0;
-
-    ock::mf::HybmVmmBasedSegment seg(opt, 0);
-
-    ock::mf::HostSdmaExportInfo local{};
-    local.gva = 0x1000;
-    local.rankId = 0;
-    local.size = 0x1000;
-
-    ock::mf::HostSdmaExportInfo remote{};
-    remote.gva = 0x2000;
-    remote.rankId = 1;
-    remote.size = 0x1000;
-
-    seg.imports_.push_back(local);
-    seg.imports_.push_back(remote);
-
-    // Make SDMA reachability checks pass in UT environment.
-    ock::mf::MemSegment::deviceInfoReady_ = true;
-    ock::mf::MemSegment::deviceId_ = 0;
-    ock::mf::MemSegment::serverId_ = 0;
-    ock::mf::MemSegment::superPodId_ = 0;
-    ock::mf::MemSegment::socType_ = ock::mf::AscendSocType::ASCEND_910C;
-
-    // Mmap 只处理远端 rank
-    auto ret = seg.Mmap();
-    EXPECT_EQ(ret, BM_OK);
-    EXPECT_TRUE(seg.imports_.empty());
-    EXPECT_EQ(seg.mappedGvaMem_.size(), 1U);
 
     ret = seg.Unmap();
     EXPECT_EQ(ret, BM_OK);
@@ -711,39 +666,12 @@ TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_MemoryInRange)
         bool inRange = segment->MemoryInRange(nullptr, 0);
         EXPECT_EQ(inRange, true);
 
-        uint32_t rankId = 0;
-        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
-        EXPECT_EQ(getRank, false);
-
         // 测试获取内存类型
         hybm_mem_type memType = segment->GetMemoryType();
         EXPECT_EQ(memType, HYBM_MEM_TYPE_HOST);
     }
 }
 
-// 测试 MemSegment 内存范围检查
-TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_MemoryInRange)
-{
-    ock::mf::MemSegmentOptions options{};
-    options.segType = ock::mf::HYBM_MST_DRAM;
-    options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
-    options.rankCnt = 1;
-
-    auto segment = ock::mf::HybmVmmBasedSegment::Create(options, 600);
-    if (segment) {
-        // 测试内存范围检查
-        bool inRange = segment->MemoryInRange(nullptr, 0);
-        EXPECT_EQ(inRange, true);
-
-        uint32_t rankId = 0;
-        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
-        EXPECT_EQ(getRank, false);
-
-        // 测试获取内存类型
-        hybm_mem_type memType = segment->GetMemoryType();
-        EXPECT_EQ(memType, HYBM_MEM_TYPE_HOST);
-    }
-}
 
 TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MemoryInRange)
 {
@@ -757,10 +685,6 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_MemoryInRange)
         // 测试内存范围检查
         bool inRange = segment->MemoryInRange(nullptr, 0);
         EXPECT_EQ(inRange, true);
-
-        uint32_t rankId = 0;
-        bool getRank = segment->GetRankIdByAddr(nullptr, ock::mf::HYBM_LARGE_PAGE_SIZE, rankId);
-        EXPECT_EQ(getRank, false);
 
         // 测试获取内存类型
         hybm_mem_type memType = segment->GetMemoryType();
@@ -812,7 +736,7 @@ TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_ReserveMemorySpace)
     EXPECT_EQ(validateRet, BM_OK);
 
     // 测试内存预留
-    void* address;
+    void *address;
     auto reserveRet = segment.ReserveMemorySpace(&address);
     EXPECT_EQ(reserveRet, BM_OK);
 
@@ -866,8 +790,8 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_UsesCache)
     opt.devId = 0;
 
     ock::mf::HybmDevLegacySegment seg(opt, 0);
-    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM,
-                                                     0x3000, 0x3000, 0);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM, 0x3000, 0x3000, 0);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice));
 
     ock::mf::HbmExportInfo info{};
@@ -910,7 +834,7 @@ TEST_F(HybmMemSegmentTest, HybmDevLegacySegment_ReserveMemorySpace)
     EXPECT_EQ(validateRet, BM_OK);
 
     // 测试内存预留
-    void* address;
+    void *address;
     auto reserveRet = segment.ReserveMemorySpace(&address);
     EXPECT_EQ(reserveRet, BM_OK);
 
@@ -944,8 +868,8 @@ TEST_F(HybmMemSegmentTest, DevLegacySegment_ExportSlice_InvalidSlice)
     opt.devId = 0;
 
     ock::mf::HybmDevLegacySegment seg(opt, 0);
-    auto slice = std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM,
-                                                     0x4000, 0x4000, 0x1000);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(2, HYBM_MEM_TYPE_DEVICE, ock::mf::MEM_PT_TYPE_SVM, 0x4000, 0x4000, 0x1000);
 
     std::string exInfo;
     auto ret = seg.Export(slice, exInfo);
@@ -1016,8 +940,8 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_Export_WhenShareDisabled)
     opt.shared = false;
 
     ock::mf::HybmVmmBasedSegment seg(opt, 0);
-    auto slice = std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_GVM,
-                                                     0x5000, 0x5000, 0x1000);
+    auto slice =
+        std::make_shared<ock::mf::MemSlice>(1, HYBM_MEM_TYPE_HOST, ock::mf::MEM_PT_TYPE_GVM, 0x5000, 0x5000, 0x1000);
     seg.slices_.emplace(slice->index_, ock::mf::MemSliceStatus(slice, nullptr));
 
     std::string exInfo;
@@ -1040,7 +964,7 @@ TEST_F(HybmMemSegmentTest, VmmBasedSegment_Import_WhenShareDisabled)
 
     ock::mf::HybmVmmBasedSegment seg(opt, 0);
     std::vector<std::string> allExInfo = {"dummy-info"};
-    void* addresses[1]{};
+    void *addresses[1]{};
     auto ret = seg.Import(allExInfo, addresses);
     EXPECT_EQ(ret, BM_OK);
     ret = seg.Mmap();
@@ -1065,7 +989,7 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_ReserveMemorySpace)
     EXPECT_EQ(validateRet, BM_OK);
 
     // 测试内存预留
-    void* address;
+    void *address;
     auto reserveRet = segment.ReserveMemorySpace(&address);
     EXPECT_EQ(reserveRet, BM_OK);
 
@@ -1086,7 +1010,7 @@ TEST_F(HybmMemSegmentTest, HybmVmmBasedSegment_ReserveMemorySpace)
     int eid = 100;
     ock::mf::HybmVmmBasedSegment invalidSegTypeSegment(options, eid);
     ret = invalidSegTypeSegment.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, slice);
-    EXPECT_EQ(ret,BM_NOT_INITIALIZED);
+    EXPECT_EQ(ret, BM_NOT_INITIALIZED);
 
     // 测试内存释放
     auto unreserveRet = segment.UnReserveMemorySpace();
@@ -1140,7 +1064,7 @@ TEST_F(HybmMemSegmentTest, HybmDevUserLegacySegment_ReserveMemorySpace)
     EXPECT_EQ(validateRet, BM_OK);
 
     // 测试内存预留
-    void* address;
+    void *address;
     auto reserveRet = segment.ReserveMemorySpace(&address);
     EXPECT_EQ(reserveRet, BM_INVALID_PARAM);
 

@@ -95,7 +95,7 @@ private:
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
     int32_t ImportForTransport(bool importInfoEntity) noexcept;
     int32_t ImportForSegment(const ExchangeInfoReader desc[], uint32_t count, void *addresses[]) noexcept;
-    void LocateAddrAndRank(void *&src, void *&dest, uint64_t length, std::pair<uint32_t, uint32_t> &p2pInfo) noexcept;
+    Result LocateAddrAndRank(void *&src, void *&dest, std::pair<uint32_t, uint32_t> &p2pInfo) noexcept;
 
     Result InitSegment();
     Result InitHbmSegment();

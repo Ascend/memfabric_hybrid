@@ -765,13 +765,11 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
 
     int32_t ret = BM_OK;
     std::pair<uint32_t, uint32_t> p2pInfo;
-    if (options_.scene == HYBM_SCENE_TRANS) {
-        LocateAddrAndRank(params.src, params.dest, params.dataSize, p2pInfo);
-    } else {
-        auto [rank1, found1] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(params.src));
-        p2pInfo.first = found1 ? rank1 : options_.rankId;
-        auto [rank2, found2] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(params.dest));
-        p2pInfo.second = found2 ? rank2 : options_.rankId;
+    ret = LocateAddrAndRank(params.src, params.dest, p2pInfo);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("failed to locate addr and rank, ret:" << ret << ", src:" << VaToStr(params.src) << ", dest:"
+                                                            << VaToStr(params.dest) << ", size:" << params.dataSize);
+        return ret;
     }
     ExtOptions options{};
     options.flags = flags;
@@ -807,7 +805,13 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
     // 将所有地址按srcRank - dstRank分组，并且转换地址
     for (uint32_t i = 0; i < params.batchSize; ++i) {
         std::pair<uint32_t, uint32_t> p2pInfo;
-        LocateAddrAndRank(params.sources[i], params.destinations[i], params.dataSizes[i], p2pInfo);
+        ret = LocateAddrAndRank(params.sources[i], params.destinations[i], p2pInfo);
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("failed to locate addr and rank, ret:"
+                         << ret << ", index:" << i << ", src:" << VaToStr(params.sources[i])
+                         << ", dest:" << VaToStr(params.destinations[i]) << ", size:" << params.dataSizes[i]);
+            return ret;
+        }
         BM_LOG_DEBUG("source:" << VaToStr(params.sources[i]) << " destination:" << VaToStr(params.destinations[i])
                                << " dataSize:" << params.dataSizes[i]);
         sOptions.groupMap[p2pInfo].push_back(i);
@@ -1047,24 +1051,16 @@ int32_t MemEntityDefault::ImportForTransport(bool importInfoEntity) noexcept
     return BM_OK;
 }
 
-void MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, uint64_t length,
-                                         std::pair<uint32_t, uint32_t> &p2pInfo) noexcept
+Result MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, std::pair<uint32_t, uint32_t> &p2pInfo) noexcept
 {
-    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
-        // nothing
-    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(src, length, p2pInfo.first)) {
-        // nothing
-    } else {
-        p2pInfo.first = options_.rankId;
-    }
+    auto [srcRank, srcFound] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(src));
+    p2pInfo.first = srcFound ? srcRank : options_.rankId;
 
-    if (dramSegment_ != nullptr && dramSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
-        // nothing
-    } else if (hbmSegment_ != nullptr && hbmSegment_->GetRankIdByAddr(dest, length, p2pInfo.second)) {
-        // nothing
-    } else {
-        p2pInfo.second = options_.rankId;
-    }
+    auto [destRank, destFound] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(dest));
+    p2pInfo.second = destFound ? destRank : options_.rankId;
+
+    BM_LOG_DEBUG("LocateAddrAndRank: srcRank=" << p2pInfo.first << " destRank=" << p2pInfo.second);
+    return BM_OK;
 }
 
 Result MemEntityDefault::InitSegment()

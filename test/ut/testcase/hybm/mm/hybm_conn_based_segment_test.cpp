@@ -312,30 +312,6 @@ TEST_F(HybmConnBasedSegmentTest, MemoryInRange_ChecksBeginAndEndBounds)
 }
 
 /**
- * GetRankIdByAddr_ComputesRankOnlyInsideRange
- *  - 验证地址在窗口内按 maxSize 计算 rank，窗口外回退到本地 rank。
- */
-TEST_F(HybmConnBasedSegmentTest, GetRankIdByAddr_ComputesRankOnlyInsideRange)
-{
-    auto options = MakeOptions(3U, 1U);
-    HybmConnBasedSegment segment(options, 0);
-    std::vector<uint8_t> buffer(options.rankCnt * options.maxSize);
-
-    segment.globalVirtualAddress_ = buffer.data();
-    segment.totalVirtualSize_ = buffer.size();
-
-    uint32_t rankId = UINT32_MAX;
-    EXPECT_TRUE(segment.GetRankIdByAddr(buffer.data() + options.maxSize * 2UL, 64ULL, rankId));
-    EXPECT_EQ(rankId, 2U);
-
-    EXPECT_FALSE(segment.GetRankIdByAddr(buffer.data() + buffer.size(), 1UL, rankId));
-    EXPECT_EQ(rankId, options.rankId);
-
-    segment.globalVirtualAddress_ = nullptr;
-    segment.totalVirtualSize_ = 0;
-}
-
-/**
  * FreeMemory_ReleasesSlicesAndReservedWindow
  *  - 验证释放时会清空 slices_、VA 登记和预留地址窗口。
  */

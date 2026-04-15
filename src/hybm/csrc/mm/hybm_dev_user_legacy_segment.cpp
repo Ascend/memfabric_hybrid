@@ -468,18 +468,6 @@ bool HybmDevUserLegacySegment::MemoryInRange(const void *begin, uint64_t size) c
     return true;
 }
 
-bool HybmDevUserLegacySegment::GetRankIdByAddr(const void *addr, uint64_t size, uint32_t &rankId) const noexcept
-{
-    if (!MemoryInRange(addr, size)) {
-        rankId = options_.rankId;
-        return false;
-    } else {
-        uint64_t offset = static_cast<const uint8_t *>(addr) - static_cast<const uint8_t *>(globalVirtualAddress_);
-        rankId = offset / options_.maxSize;
-        return true;
-    }
-}
-
 bool HybmDevUserLegacySegment::CheckSdmaReaches(uint32_t rankId) const noexcept
 {
     auto pos = importedDeviceInfo_.find(rankId);

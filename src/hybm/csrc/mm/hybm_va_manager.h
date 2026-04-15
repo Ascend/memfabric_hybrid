@@ -68,9 +68,9 @@ struct ReservedGvaInfo {
     uint32_t localRankId{};                    // Must be set >=0; currently only one localRankId per process
     friend std::ostream &operator<<(std::ostream &os, const ReservedGvaInfo &obj)
     {
-        os << "ReservedGvaInfo{va: " << VaToStr(obj.va[HVM_GVA]) << " " << VaToStr(obj.va[HVM_DVA])
-           << " " << VaToStr(obj.va[HVM_DVA]) << ", size: " << VaToStr(obj.size)
-           << ", memType: " << obj.memType << ", localRankId: " << obj.localRankId << "}";
+        os << "ReservedGvaInfo{va: " << VaToStr(obj.va[HVM_GVA]) << " " << VaToStr(obj.va[HVM_DVA]) << " "
+           << VaToStr(obj.va[HVM_DVA]) << ", size: " << VaToStr(obj.size) << ", memType: " << obj.memType
+           << ", localRankId: " << obj.localRankId << "}";
         return os;
     }
 
@@ -95,9 +95,7 @@ struct AllocatedGvaInfo {
     uint32_t importedRankId{INVALID_RANK_ID}; // can be set >=0
 
     AllocatedGvaInfo() = default;
-    AllocatedGvaInfo(BaseAllocatedGvaInfo b, uint32_t localRankId)
-        : base{b}, localRankId(localRankId)
-    {}
+    AllocatedGvaInfo(BaseAllocatedGvaInfo b, uint32_t localRankId) : base{b}, localRankId(localRankId) {}
 
     AllocatedGvaInfo(BaseAllocatedGvaInfo b, uint32_t localRankId, uint32_t importedRankId)
         : base{b}, localRankId(localRankId), importedRankId(importedRankId)
@@ -137,9 +135,9 @@ struct AllocatedGvaInfo {
 
 inline bool operator==(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
 {
-    return lhs.base.va[HVM_GVA] == rhs.base.va[HVM_GVA] && lhs.base.va[HVM_DVA] == rhs.base.va[HVM_DVA]
-           && lhs.base.va[HVM_HVA] == rhs.base.va[HVM_HVA] && lhs.base.size == rhs.base.size
-           && lhs.RankId() == rhs.RankId();
+    return lhs.base.va[HVM_GVA] == rhs.base.va[HVM_GVA] && lhs.base.va[HVM_DVA] == rhs.base.va[HVM_DVA] &&
+           lhs.base.va[HVM_HVA] == rhs.base.va[HVM_HVA] && lhs.base.size == rhs.base.size &&
+           lhs.RankId() == rhs.RankId();
 }
 
 inline bool operator!=(const AllocatedGvaInfo &lhs, const AllocatedGvaInfo &rhs)
@@ -174,7 +172,6 @@ public:
     uint64_t TransformVa(uint64_t va, uint32_t inputType, uint32_t outputType);
     std::pair<AllocatedGvaInfo, bool> FindAllocByVa(uint64_t va, uint32_t type = HVM_GVA) const;
 
-    // Checks if 'va' falls within any AllocatedGvaInfo range.
     hybm_mem_type GetGvaMemType(uint64_t gva); // Supports both LVA and GVA
     std::pair<uint32_t, bool> GetRank(uint64_t gva);
     // Checks if 'va' is within any AllocatedGvaInfo range (either LVA or GVA).
@@ -210,7 +207,7 @@ private:
     AscendSocType soc_ = AscendSocType::ASCEND_UNKNOWN;
 
     std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]{}; // map<va, allocInfo>
-    std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{}; // map<va, reserveInfo>  (HVM_HVA not used now)
+    std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{};   // map<va, reserveInfo>  (HVM_HVA not used now)
 
 private:
     typedef enum { GLOBAL_DEVICE = 0, GLOBAL_HOST, LOCAL_DEVICE, LOCAL_HOST, ADDRESS_CATEGORY_BUTT } AddressCategory;
