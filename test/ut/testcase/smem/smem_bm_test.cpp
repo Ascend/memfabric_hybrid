@@ -146,7 +146,10 @@ public:
     {
         return SM_ERROR;
     }
-    ock::smem::Result Unwatch(uint32_t) noexcept override { return SM_ERROR; }
+    ock::smem::Result Unwatch(uint32_t) noexcept override
+    {
+        return SM_ERROR;
+    }
 
     ock::smem::Result Write(const std::string &key, const std::vector<uint8_t> &value,
                             const uint32_t offset) noexcept override
@@ -159,10 +162,19 @@ public:
         return SM_OK;
     }
 
-    std::string GetCompleteKey(const std::string &key) noexcept override { return key; }
-    std::string GetCommonPrefix() noexcept override { return ""; }
+    std::string GetCompleteKey(const std::string &key) noexcept override
+    {
+        return key;
+    }
+    std::string GetCommonPrefix() noexcept override
+    {
+        return "";
+    }
 
-    SmRef<ConfigStore> GetCoreStore() noexcept override { return SmRef<ConfigStore>(this); }
+    SmRef<ConfigStore> GetCoreStore() noexcept override
+    {
+        return SmRef<ConfigStore>(this);
+    }
 
     ock::smem::Result GetReal(const std::string &key, std::vector<uint8_t> &value, int64_t) noexcept override
     {
@@ -178,8 +190,14 @@ public:
     }
 
     void RegisterReconnectHandler(ConfigStoreReconnectHandler) noexcept override {}
-    ock::smem::Result ReConnectAfterBroken(int) noexcept override { return SM_OK; }
-    bool GetConnectStatus() noexcept override { return true; }
+    ock::smem::Result ReConnectAfterBroken(int) noexcept override
+    {
+        return SM_OK;
+    }
+    bool GetConnectStatus() noexcept override
+    {
+        return true;
+    }
     void SetConnectStatus(bool) noexcept override {}
     void RegisterClientBrokenHandler(const ConfigStoreClientBrokenHandler &) noexcept override {}
     void RegisterServerBrokenHandler(const ConfigStoreServerBrokenHandler &) noexcept override {}
@@ -333,7 +351,7 @@ void SmemBmTest::TearDown()
     smem_uninit();
 }
 
-bool CheckMem(void* base, void* ptr, uint64_t size)
+bool CheckMem(void *base, void *ptr, uint64_t size)
 {
     int32_t *arr1 = (int32_t *)base;
     int32_t *arr2 = (int32_t *)ptr;
@@ -448,8 +466,7 @@ TEST_F(SmemBmTest, smem_bm_entry_register_mem_basic)
     uint64_t size = 0x200;
 
     // mock hybm_register_local_memory 返回非空 slice
-    MOCKER_CPP(&hybm_register_local_memory,
-               hybm_mem_slice_t (*)(hybm_entity_t, void *, uint64_t, uint32_t))
+    MOCKER_CPP(&hybm_register_local_memory, hybm_mem_slice_t (*)(hybm_entity_t, void *, uint64_t, uint32_t))
         .stubs()
         .will(returnValue(reinterpret_cast<hybm_mem_slice_t>(0x2)));
 
@@ -479,8 +496,7 @@ TEST_F(SmemBmTest, smem_bm_entry_unregister_mem_basic)
     hybm_mem_slice_t slice = reinterpret_cast<hybm_mem_slice_t>(0x3);
     entry.registedSlice_.emplace(addr, std::make_pair(size, slice));
 
-    MOCKER_CPP(&hybm_free_local_memory,
-               int32_t (*)(hybm_entity_t, hybm_mem_slice_t, uint32_t, uint32_t))
+    MOCKER_CPP(&hybm_free_local_memory, int32_t (*)(hybm_entity_t, hybm_mem_slice_t, uint32_t, uint32_t))
         .stubs()
         .will(returnValue(0));
 
@@ -610,10 +626,10 @@ TEST_F(SmemBmTest, smem_bm_entry_leave_handle_success)
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
     entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    
+
     // 模拟 hybm_remove_imported 成功
     MOCKER_CPP(&hybm_remove_imported, int32_t (*)(hybm_entity_t, uint32_t, uint32_t)).stubs().will(returnValue(0));
-    
+
     ock::smem::Result ret = entry.LeaveHandle(1);
     EXPECT_EQ(ret, SM_OK);
 }
@@ -626,10 +642,10 @@ TEST_F(SmemBmTest, smem_bm_entry_leave_handle_fail)
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
     entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    
+
     // 模拟 hybm_remove_imported 失败
     MOCKER_CPP(&hybm_remove_imported, int32_t (*)(hybm_entity_t, uint32_t, uint32_t)).stubs().will(returnValue(-1));
-    
+
     ock::smem::Result ret = entry.LeaveHandle(1);
     EXPECT_EQ(ret, SM_ERROR);
 }
@@ -641,7 +657,7 @@ TEST_F(SmemBmTest, smem_bm_entry_join_handle_not_initialized)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = false;
-    
+
     ock::smem::Result ret = entry.JoinHandle(1);
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
@@ -656,7 +672,7 @@ TEST_F(SmemBmTest, smem_bm_entry_leave_handle_not_initialized)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = false;
-    
+
     ock::smem::Result ret = entry.LeaveHandle(1);
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
@@ -669,10 +685,10 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_success)
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
     entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    
+
     // 模拟 hybm_data_copy 成功
     MOCKER_CPP(&hybm_data_copy,
-               int32_t(*)(hybm_entity_t, const hybm_copy_params*, hybm_data_copy_direction, const void*, uint32_t))
+               int32_t (*)(hybm_entity_t, const hybm_copy_params *, hybm_data_copy_direction, const void *, uint32_t))
         .stubs()
         .will(returnValue(0));
 
@@ -690,7 +706,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_src)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
-    
+
     char dest[16] = {0};
     ock::smem::Result ret = entry.DataCopy(nullptr, dest, sizeof(dest), SMEMB_COPY_G2G, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
@@ -703,7 +719,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_dest)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
-    
+
     char src[16] = "test data";
     ock::smem::Result ret = entry.DataCopy(src, nullptr, sizeof(src), SMEMB_COPY_G2G, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
@@ -716,7 +732,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_size)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
-    
+
     char src[16] = "test data";
     char dest[16] = {0};
     ock::smem::Result ret = entry.DataCopy(src, dest, 0, SMEMB_COPY_G2G, 0);
@@ -730,7 +746,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_type)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
-    
+
     char src[16] = "test data";
     char dest[16] = {0};
     ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_BUTT, 0);
@@ -744,11 +760,24 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_not_initialized)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = false;
-    
+
     char src[16] = "test data";
     char dest[16] = {0};
     ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, 0);
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
+}
+
+TEST_F(SmemBmTest, smem_bm_entry_data_copy_not_joined)
+{
+    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
+    StorePtr dummyStore;
+    SmemBmEntry entry(opt, dummyStore);
+    entry.inited_ = true;
+
+    char src[16] = "test data";
+    char dest[16] = {0};
+    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
 }
 
 // DataCopyBatch: 正常执行路径。
@@ -759,10 +788,10 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_batch_success)
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
     entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    
+
     // 模拟 hybm_data_batch_copy 成功
-    MOCKER_CPP(&hybm_data_batch_copy, int32_t(*)(hybm_entity_t, const hybm_batch_copy_params*, hybm_data_copy_direction,
-                                                 const void*, uint32_t))
+    MOCKER_CPP(&hybm_data_batch_copy, int32_t (*)(hybm_entity_t, const hybm_batch_copy_params *,
+                                                  hybm_data_copy_direction, const void *, uint32_t))
         .stubs()
         .will(returnValue(0));
 
@@ -770,19 +799,70 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_batch_success)
     char src2[16] = "test data 2";
     char dest1[16] = {0};
     char dest2[16] = {0};
-    void* sources[] = {src1, src2};
-    void* destinations[] = {dest1, dest2};
+    void *sources[] = {src1, src2};
+    void *destinations[] = {dest1, dest2};
     uint64_t sizes[] = {sizeof(src1), sizeof(src2)};
-    
+
     smem_batch_copy_params params{};
     params.sources = sources;
     params.destinations = destinations;
     params.dataSizes = sizes;
     params.batchSize = 2;
-    
+
     ock::smem::Result ret = entry.DataCopyBatch(&params, SMEMB_COPY_G2G, 0);
     // 由于没有设置 hostGva_ 和 deviceGva_，转换方向会失败，但测试代码结构正确
     EXPECT_NE(ret, SM_OK);
+}
+
+TEST_F(SmemBmTest, smem_bm_entry_data_copy_batch_not_joined)
+{
+    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
+    StorePtr dummyStore;
+    SmemBmEntry entry(opt, dummyStore);
+    entry.inited_ = true;
+
+    char src[16] = "test data";
+    char dest[16] = {0};
+    void *sources[] = {src};
+    void *destinations[] = {dest};
+    uint64_t sizes[] = {sizeof(src)};
+
+    smem_batch_copy_params params{};
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = sizes;
+    params.batchSize = 1;
+
+    ock::smem::Result ret = entry.DataCopyBatch(&params, SMEMB_COPY_G2G, 0);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
+}
+
+TEST_F(SmemBmTest, smem_bm_entry_data_copy_batch_concurrent_not_joined)
+{
+    SmemBmEntryOptions opt{UT_SMEM_ID, 0, 1, 1000};
+    StorePtr dummyStore;
+    SmemBmEntry entry(opt, dummyStore);
+    entry.inited_ = true;
+
+    char src[16] = "test data";
+    char dest[16] = {0};
+    void *sources[] = {src};
+    void *destinations[] = {dest};
+    uint64_t sizes[] = {sizeof(src)};
+    int32_t resultArray[] = {-1};
+
+    smem_batch_copy_params params{};
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = sizes;
+    params.batchSize = 1;
+
+    smem_batch_copy_result results{};
+    results.results = resultArray;
+    results.batchSize = 1;
+
+    ock::smem::Result ret = entry.DataCopyBatchConcurrent(&params, SMEMB_COPY_G2G, 0, &results);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
 }
 
 // Wait: 正常执行路径。
@@ -793,10 +873,10 @@ TEST_F(SmemBmTest, smem_bm_entry_wait_success)
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = true;
     entry.entity_ = reinterpret_cast<hybm_entity_t>(0x1);
-    
+
     // 模拟 hybm_wait 成功
     MOCKER_CPP(&hybm_wait, int32_t (*)(hybm_entity_t)).stubs().will(returnValue(0));
-    
+
     ock::smem::Result ret = entry.Wait();
     EXPECT_EQ(ret, SM_OK);
 }
@@ -808,7 +888,7 @@ TEST_F(SmemBmTest, smem_bm_entry_wait_not_initialized)
     StorePtr dummyStore;
     SmemBmEntry entry(opt, dummyStore);
     entry.inited_ = false;
-    
+
     ock::smem::Result ret = entry.Wait();
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
@@ -833,11 +913,11 @@ TEST_F(SmemBmTest, smem_bm_entry_manager_get_entry_by_id_not_exists)
     uint32_t worldSize = 2;
     uint16_t deviceId = 0;
     manager.Initialize(storeURL, worldSize, deviceId, config);
-    
+
     SmemBmEntryPtr entry;
     ock::smem::Result ret = manager.GetEntryById(999, entry);
     EXPECT_EQ(ret, SM_OBJECT_NOT_EXISTS);
-    
+
     manager.Destroy();
 }
 
@@ -852,18 +932,18 @@ TEST_F(SmemBmTest, smem_bm_entry_manager_get_entry_by_id_success)
     uint32_t worldSize = 2;
     uint16_t deviceId = 0;
     manager.Initialize(storeURL, worldSize, deviceId, config);
-    
+
     // 创建一个entry
     SmemBmEntryPtr createEntry;
     ock::smem::Result ret = manager.CreateEntryById(1, createEntry);
     EXPECT_EQ(ret, SM_OK);
-    
+
     // 查找这个entry
     SmemBmEntryPtr getEntry;
     ret = manager.GetEntryById(1, getEntry);
     EXPECT_EQ(ret, SM_OK);
     EXPECT_NE(getEntry, nullptr);
-    
+
     manager.Destroy();
 }
 
@@ -878,13 +958,13 @@ TEST_F(SmemBmTest, smem_bm_entry_manager_racing_for_store_server)
     uint32_t worldSize = 2;
     uint16_t deviceId = 0;
     manager.Initialize(storeURL, worldSize, deviceId, config);
-    
+
     // 调用RacingForStoreServer
     int32_t ret = manager.RacingForStoreServer();
     // RacingForStoreServer在本地IP与目标IP不同时会返回SM_OK，否则会尝试启动配置存储服务器
     // 由于环境限制，这里可能会成功或失败，但测试代码结构正确
     EXPECT_TRUE(ret == SM_OK || ret != SM_OK);
-    
+
     manager.Destroy();
 }
 
@@ -899,13 +979,13 @@ TEST_F(SmemBmTest, smem_bm_entry_manager_auto_ranking)
     uint32_t worldSize = 2;
     uint16_t deviceId = 0;
     manager.Initialize(storeURL, worldSize, deviceId, config);
-    
+
     // 调用AutoRanking
     int32_t ret = manager.AutoRanking();
     // AutoRanking在配置存储中存在排名信息时会返回SM_OK，否则会失败
     // 由于环境限制，这里可能会成功或失败，但测试代码结构正确
     EXPECT_TRUE(ret == SM_OK || ret != SM_OK);
-    
+
     manager.Destroy();
 }
 
@@ -957,6 +1037,32 @@ TEST_F(SmemBmTest, smem_bm_create_success)
     EXPECT_NE(handle, nullptr);
 
     smem_bm_destroy(handle);
+}
+
+smem_bm_t MockInitAndCreateHandle(uint32_t id)
+{
+    uint32_t rankId = 0;
+    uint32_t rkSize = 2;
+    uint32_t deviceId = 0;
+    std::string ipPort = "tcp://192.168.100.101:8570";
+
+    smem_set_log_level(1);
+    smem_bm_config_t config;
+    (void)smem_bm_config_init(&config);
+    std::string url = "tcp://192.168.100.101/24:10005"; // tcp://192.168.100.100:8570
+    config.autoRanking = false;
+    config.rankId = rankId;
+    config.startConfigStoreServer = true;
+
+    MOCKER_CPP(&TcpConfigStore::Startup, int32_t (*)(const smem_tls_config &, int)).stubs().will(returnValue(0));
+    auto ret = smem_bm_init(ipPort.c_str(), rkSize, deviceId, &config);
+    EXPECT_EQ(ret, 0);
+
+    smem_bm_data_op_type optype = SMEMB_DATA_OP_HOST_URMA;
+    MOCKER_CPP(&SmemBmEntry::Initialize, int32_t (*)(const hybm_options &)).stubs().will(returnValue(0));
+    smem_bm_t handle = smem_bm_create(id, 0, optype, GVA_SIZE, 0, 0);
+    EXPECT_NE(handle, nullptr);
+    return handle;
 }
 
 TEST_F(SmemBmTest, smem_bm_join_failed)
@@ -1026,12 +1132,13 @@ TEST_F(SmemBmTest, smem_batch_copy_success)
     smem_bm_t handle = smem_bm_create(4, 0, optype, GVA_SIZE, 0, 0); // 4
     EXPECT_NE(handle, nullptr);
 
-    char* mock_host = static_cast<char*>(malloc(BATCH_SIZE * COPY_SIZE));
+    char *mock_host = static_cast<char *>(malloc(BATCH_SIZE * COPY_SIZE));
     uint64_t sizes[BATCH_SIZE] = {COPY_SIZE, COPY_SIZE, COPY_SIZE, COPY_SIZE, COPY_SIZE};
     smem_batch_copy_params param = {};
-    param.sources = (void**)malloc(BATCH_SIZE * sizeof(void*));
-    param.destinations = (void**)malloc(BATCH_SIZE * sizeof(void*));
-    param.dataSizes= sizes;;
+    param.sources = (void **)malloc(BATCH_SIZE * sizeof(void *));
+    param.destinations = (void **)malloc(BATCH_SIZE * sizeof(void *));
+    param.dataSizes = sizes;
+    ;
     param.batchSize = BATCH_SIZE;
 
     for (uint32_t i = 0; i < BATCH_SIZE; ++i) {
@@ -1056,30 +1163,85 @@ TEST_F(SmemBmTest, smem_batch_copy_success)
     smem_bm_destroy(handle);
 }
 
-smem_bm_t MockInitAndCreateHandle(uint32_t id)
+TEST_F(SmemBmTest, smem_bm_copy_batch_not_joined)
 {
     uint32_t rankId = 0;
-    uint32_t rkSize = 2;
-    uint32_t deviceId = 0;
-    std::string ipPort = "tcp://192.168.100.101:8570";
+    smem_bm_t handle = MockInitAndCreateHandle(18);
 
-    smem_set_log_level(1);
-    smem_bm_config_t config;
-    (void)smem_bm_config_init(&config);
-    std::string url = "tcp://192.168.100.101/24:10005"; // tcp://192.168.100.100:8570
-    config.autoRanking = false;
-    config.rankId = rankId;
-    config.startConfigStoreServer = true;
+    char *mock_host = static_cast<char *>(malloc(BATCH_SIZE * COPY_SIZE));
+    EXPECT_NE(mock_host, nullptr);
+    uint64_t sizes[BATCH_SIZE] = {COPY_SIZE, COPY_SIZE, COPY_SIZE, COPY_SIZE, COPY_SIZE};
+    smem_batch_copy_params param = {};
+    param.sources = (void **)malloc(BATCH_SIZE * sizeof(void *));
+    param.destinations = (void **)malloc(BATCH_SIZE * sizeof(void *));
+    param.dataSizes = sizes;
+    param.batchSize = BATCH_SIZE;
 
-    MOCKER_CPP(&TcpConfigStore::Startup, int32_t (*)(const smem_tls_config &, int)).stubs().will(returnValue(0));
-    auto ret = smem_bm_init(ipPort.c_str(), rkSize, deviceId, &config);
-    EXPECT_EQ(ret, 0);
+    for (uint32_t i = 0; i < BATCH_SIZE; ++i) {
+        param.sources[i] = malloc(COPY_SIZE);
+        GenerateData(param.sources[i], rankId, COPY_SIZE);
+        param.destinations[i] = mock_host + i * COPY_SIZE;
+    }
 
-    smem_bm_data_op_type optype = SMEMB_DATA_OP_HOST_URMA;
-    MOCKER_CPP(&SmemBmEntry::Initialize, int32_t (*)(const hybm_options &)).stubs().will(returnValue(0));
-    smem_bm_t handle = smem_bm_create(id, 0, optype, GVA_SIZE, 0, 0);
-    EXPECT_NE(handle, nullptr);
-    return handle;
+    MOCKER_CPP(&SmemBmEntry::DataCopyBatch, int32_t (*)(smem_batch_copy_params *, smem_bm_copy_type, uint32_t))
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(SM_NOT_STARTED)));
+    auto ret = smem_bm_copy_batch(handle, &param, SMEMB_COPY_H2GH, 0);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
+
+    for (uint32_t i = 0; i < BATCH_SIZE; ++i) {
+        free(param.sources[i]);
+    }
+    free(param.sources);
+    free(param.destinations);
+    free(mock_host);
+
+    smem_bm_destroy(handle);
+    smem_bm_uninit(0);
+}
+
+TEST_F(SmemBmTest, smem_bm_copy_batch_partial_succeed_not_joined)
+{
+    smem_bm_t handle = MockInitAndCreateHandle(19);
+
+    constexpr uint32_t partialBatchSize = 2;
+    constexpr uint64_t largeCopySize = 5UL * 1024UL * 1024UL;
+    auto *src0 = malloc(largeCopySize);
+    auto *src1 = malloc(largeCopySize);
+    auto *dst0 = malloc(largeCopySize);
+    auto *dst1 = malloc(largeCopySize);
+    EXPECT_NE(src0, nullptr);
+    EXPECT_NE(src1, nullptr);
+    EXPECT_NE(dst0, nullptr);
+    EXPECT_NE(dst1, nullptr);
+
+    void *sources[partialBatchSize] = {src0, src1};
+    void *destinations[partialBatchSize] = {dst0, dst1};
+    uint64_t sizes[partialBatchSize] = {largeCopySize, largeCopySize};
+    smem_batch_copy_params params{};
+    params.sources = sources;
+    params.destinations = destinations;
+    params.dataSizes = sizes;
+    params.batchSize = partialBatchSize;
+
+    int32_t resultArray[partialBatchSize] = {SM_OK, SM_OK};
+    smem_batch_copy_result result{};
+    result.results = resultArray;
+    result.batchSize = partialBatchSize;
+
+    MOCKER_CPP(&SmemBmEntry::DataCopyBatchConcurrent,
+               int32_t (*)(smem_batch_copy_params *, smem_bm_copy_type, uint32_t, smem_batch_copy_result *))
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(SM_NOT_STARTED)));
+    auto ret = smem_bm_copy_batch_partial_succeed(handle, &params, SMEMB_COPY_H2GH, 0, &result);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
+
+    free(src0);
+    free(src1);
+    free(dst0);
+    free(dst1);
+    smem_bm_destroy(handle);
+    smem_bm_uninit(0);
 }
 
 TEST_F(SmemBmTest, smem_bm_wait_success)
@@ -1095,7 +1257,7 @@ TEST_F(SmemBmTest, smem_bm_register_user_mem_success)
 {
     smem_bm_t handle = MockInitAndCreateHandle(6); // 6
 
-    char* mock_host = static_cast<char*>(malloc(BATCH_SIZE * COPY_SIZE));
+    char *mock_host = static_cast<char *>(malloc(BATCH_SIZE * COPY_SIZE));
     EXPECT_NE(mock_host, nullptr);
     MOCKER_CPP(&SmemBmEntry::RegisterMem, int32_t (*)(uint64_t, uint64_t)).stubs().will(returnValue(0));
     auto ret = smem_bm_register_user_mem(handle, reinterpret_cast<uint64_t>(mock_host), BATCH_SIZE * COPY_SIZE);
@@ -1118,7 +1280,7 @@ TEST_F(SmemBmTest, smem_set_extern_logger_failed)
 
 TEST_F(SmemBmTest, smem_set_extern_logger_success)
 {
-    auto my_logger = [](int code, const char* msg) {
+    auto my_logger = [](int code, const char *msg) {
         std::cout << "Code: " << code << ", Message: " << msg << std::endl;
     };
     auto ret = smem_set_extern_logger(my_logger);
@@ -1181,7 +1343,7 @@ TEST_F(SmemBmTest, smem_create_config_store_reg_success)
     auto fakeStore = MakeFakeStorePtr();
     ASSERT_NE(nullptr, fakeStore.Get());
     MOCKER_CPP(&ock::smem::StoreFactory::CreateStoreByUrl,
-               ock::smem::StorePtr(*)(const std::string &, bool, uint32_t, int32_t, int32_t))
+               ock::smem::StorePtr (*)(const std::string &, bool, uint32_t, int32_t, int32_t))
         .stubs()
         .will(returnValue(fakeStore));
 
@@ -1226,6 +1388,31 @@ TEST_F(SmemBmTest, smem_bm_copy_success)
         .will(returnValue(0));
     auto ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
     EXPECT_EQ(ret, 0);
+
+    smem_bm_destroy(handle);
+    smem_bm_uninit(0);
+    free(local_dev_mock);
+    free(base);
+}
+
+TEST_F(SmemBmTest, smem_bm_copy_not_joined)
+{
+    uint32_t rankId = 0;
+    smem_bm_t handle = MockInitAndCreateHandle(17);
+
+    void *local_dev_mock = malloc(COPY_SIZE);
+    EXPECT_NE(local_dev_mock, nullptr);
+    void *base = malloc(COPY_SIZE);
+    EXPECT_NE(base, nullptr);
+
+    GenerateData(base, rankId, COPY_SIZE);
+    smem_copy_params params1 = {base, local_dev_mock, COPY_SIZE};
+
+    MOCKER_CPP(&SmemBmEntry::DataCopy, int32_t (*)(const void *, void *, uint64_t, smem_bm_copy_type, uint32_t))
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(SM_NOT_STARTED)));
+    auto ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
+    EXPECT_EQ(ret, SM_NOT_STARTED);
 
     smem_bm_destroy(handle);
     smem_bm_uninit(0);

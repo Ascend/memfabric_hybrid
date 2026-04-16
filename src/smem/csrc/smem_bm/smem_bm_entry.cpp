@@ -433,6 +433,13 @@ smem_bm_mem_type SmemBmEntry::GetHybmMemTypeFromGva(const void *addr, uint64_t s
     return SMEM_MEM_TYPE_BUTT;
 }
 
+Result SmemBmEntry::CheckJoined() const
+{
+    SM_VALIDATE_RETURN(globalGroup_ != nullptr && globalGroup_->IsJoined(), "not joined the net group yet",
+                       SM_NOT_STARTED);
+    return SM_OK;
+}
+
 hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_type &smemDirect, const void *src,
                                                            uint64_t srcSize, const void *dest, uint64_t destSize)
 {
@@ -481,6 +488,7 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     SM_VALIDATE_RETURN(size != 0, "invalid param, size is 0", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_RETURN_IT_IF_NOT_OK(CheckJoined());
 
     hybm_data_copy_direction direct =
         (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO : TransToHybmDirection(t, src, size, dest, size);
@@ -557,6 +565,7 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     SM_VALIDATE_RETURN(params->batchSize != 0, "invalid param, size is 0", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_RETURN_IT_IF_NOT_OK(CheckJoined());
 
     hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO)
                                           ? HYBM_DATA_COPY_DIRECTION_AUTO
@@ -582,6 +591,7 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
     SM_VALIDATE_RETURN(results->batchSize == params->batchSize, "result batch size invalid", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
+    SM_RETURN_IT_IF_NOT_OK(CheckJoined());
 
     std::mutex finishMutex;
     std::condition_variable finishCond;

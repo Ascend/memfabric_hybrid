@@ -81,6 +81,7 @@ private:
     bool AddrInDeviceGva(const void *address, uint64_t size);
 
     smem_bm_mem_type GetHybmMemTypeFromGva(const void *addr, uint64_t size);
+    Result CheckJoined() const;
     hybm_data_copy_direction TransToHybmDirection(const smem_bm_copy_type &smemDirect, const void *src,
                                                   uint64_t srcSize, const void *dest, uint64_t destSize);
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
