@@ -3,7 +3,7 @@
  * MemFabric_Hybrid is licensed under Mulan PSL v2.
  * You can use this software according to the terms and conditions of the Mulan PSL v2.
  * You may obtain a copy of Mulan PSL v2 at:
- *          http://license.coscl.org.cn/MulanPSL2
+ *		  http://license.coscl.org.cn/MulanPSL2
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
  * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
@@ -12,12 +12,24 @@
 package main
 
 /*
+#cgo CFLAGS: -I${SRCDIR}/../../../smem/include/host
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
+#include "smem_def.h"
 
 // Opaque pointer definition
 typedef struct EtcdClient EtcdClient;
+
+static inline bool call_fill_callback(smem_store_prefix_get_ctx_t* ctx,
+									  const char* key,
+									  const void* value,
+									  uint64_t size,
+									  void* context) {
+	return ctx->fill(key, value, size, context);
+}
 */
 import "C"
 
@@ -168,14 +180,14 @@ func Etcd_New(endpoints *C.char, username *C.char, password *C.char, timeoutSeco
 	}
 
 	config := clientv3.Config{
-		Endpoints:            eps,
-		DialTimeout:          dur,
-		Username:             goUsername,
-		Password:             goPassword,
+		Endpoints:			eps,
+		DialTimeout:		  dur,
+		Username:			 goUsername,
+		Password:			 goPassword,
 		PermitWithoutStream:  true,
-		DialKeepAliveTime:    10 * time.Second,
+		DialKeepAliveTime:	10 * time.Second,
 		DialKeepAliveTimeout: 3 * time.Second,
-		AutoSyncInterval:     time.Minute,
+		AutoSyncInterval:	 time.Minute,
 	}
 
 	cli, err := clientv3.New(config)
@@ -346,6 +358,76 @@ func Etcd_Get(client *C.EtcdClient, key *C.char, outValue **C.char, outValueLen 
 	} else {
 		*outValue = (*C.char)(C.CBytes(valBytes))
 		*outValueLen = C.size_t(length)
+	}
+
+	w.setError(nil)
+	return 0
+}
+
+//export Etcd_PrefixGet
+func Etcd_PrefixGet(client *C.EtcdClient, cCtx *C.smem_store_prefix_get_ctx_t, _ C.int) C.int {
+	w := getWrapper(client)
+	if w == nil {
+		return -1
+	}
+
+	if cCtx == nil || cCtx.prefix == nil {
+		w.setError(fmt.Errorf("context or prefix is nil"))
+		return -1
+	}
+
+	// 1. 转换参数
+	goPrefix := C.GoString(cCtx.prefix)
+	var startKey string
+	var endKey string
+
+	// prefix的下一个字节
+	endKey = string(clientv3.GetPrefixRangeEnd(goPrefix))
+
+	// 计算起始键
+	if cCtx.marker != nil {
+		markerStr := C.GoString(cCtx.marker)
+		if markerStr >= goPrefix {
+			startKey = markerStr
+		} else {
+			startKey = goPrefix
+		}
+	} else {
+		startKey = goPrefix
+	}
+
+	getOpts := []clientv3.OpOption{
+		clientv3.WithRange(endKey), // 设置结束范围
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
+	defer cancel()
+
+	resp, err := w.client.Get(ctx, startKey, getOpts...)
+	if err != nil {
+		w.setError(err)
+		return -1
+	}
+
+	for _, kv := range resp.Kvs {
+		cValue := C.CBytes(kv.Value)
+		cKey := C.CString(string(kv.Key))
+
+		if cKey == nil || cValue == nil {
+			if cKey != nil { C.free(unsafe.Pointer(cKey)) }
+			if cValue != nil { C.free(cValue) }
+			w.setError(fmt.Errorf("memory allocation failed"))
+			return -1
+		}
+
+		shouldContinue := C.call_fill_callback(cCtx, cKey, cValue, C.uint64_t(len(kv.Value)), cCtx.context)
+
+		C.free(unsafe.Pointer(cKey))
+		C.free(cValue)
+
+		if !shouldContinue {
+			break
+		}
 	}
 
 	w.setError(nil)

@@ -162,6 +162,27 @@ public:
         return 0;
     }
 
+    /**
+     * @brief Get key-values by prefix and marker(range begin)
+     * @return 0 on success, -1 on failure or key not found
+     */
+    [[nodiscard]] int32_t PrefixGet(const smem_store_prefix_get_ctx_t *ctx, int flags) noexcept
+    {
+        EtcdClient *cli = client_.load(std::memory_order_relaxed);
+        if (cli == nullptr) {
+            SM_LOG_ERROR("PrefixGet failed: client not initialized, prefix: " << ctx->prefix);
+            return -1;
+        }
+        int32_t ret = EtcdApi::EtcdPrefixGet(cli, ctx, flags);
+        if (ret != 0) {
+            SM_LOG_WARN("PrefixGet failed: EtcdGet returned " << ret << ", prefix: " << ctx->prefix
+                                                            << ", marker:" << ctx->marker
+                                                            << ", error: " << smem::EtcdApi::EtcdGetLastError(cli));
+            return -1;
+        }
+        return 0;
+    }
+
     [[nodiscard]] int32_t DeleteKey(std::string_view key) noexcept
     {
         EtcdClient *cli = client_.load(std::memory_order_relaxed);

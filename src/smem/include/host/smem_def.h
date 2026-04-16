@@ -31,6 +31,17 @@ extern "C" {
 #define SMEM_STORE_BACKEND_CODE_LOCKED   (SMEM_STORE_BACKEND_CODE_BASE - 6)
 #define SMEM_STORE_BACKEND_CODE_UNLOCKED (SMEM_STORE_BACKEND_CODE_BASE - 7)
 
+typedef struct smem_store_prefix_get_ctx {
+    const char *prefix; // common prefix
+    const char *marker; // query keys greater than the marker and returns these keys in lexicographical order.
+    void *context;
+    /*
+     * This callback is called each time a key that meets the condition is found. If this callback returns true,
+     * the search continues; otherwise, no more keys will be returned.
+     */
+    bool (*fill)(const char *key, const void *value, uint64_t size, void *context);
+} smem_store_prefix_get_ctx_t;
+
 typedef struct {
     /*
      * Return whether the registered backend provides distributed coordination.

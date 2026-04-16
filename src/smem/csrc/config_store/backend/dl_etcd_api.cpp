@@ -23,6 +23,7 @@ EtcdCloseFunc EtcdApi::etcdClose_ = nullptr;
 EtcdGetLastErrorFunc EtcdApi::etcdGetLastError_ = nullptr;
 EtcdPutFunc EtcdApi::etcdPut_ = nullptr;
 EtcdGetFunc EtcdApi::etcdGet_ = nullptr;
+EtcdPrefixGetFunc EtcdApi::etcdPrefixGet_ = nullptr;
 EtcdFreeValueFunc EtcdApi::etcdFreeValue_ = nullptr;
 EtcdRemoveFunc EtcdApi::etcdRemove_ = nullptr;
 EtcdLockFunc EtcdApi::etcdLock_ = nullptr;
@@ -61,6 +62,7 @@ Result EtcdApi::LoadLibrary()
     success = success && LoadSymbol(libraryHandle_, "Etcd_GetLastError", etcdGetLastError_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Put", etcdPut_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Get", etcdGet_);
+    success = success && LoadSymbol(libraryHandle_, "Etcd_PrefixGet", etcdPrefixGet_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_FreeValue", etcdFreeValue_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Remove", etcdRemove_);
     success = success && LoadSymbol(libraryHandle_, "Etcd_Lock", etcdLock_);

@@ -30,6 +30,8 @@ using EtcdPutFunc = int (*)(EtcdClient *client, const char *key, const void *val
 
 using EtcdGetFunc = int (*)(EtcdClient *client, const char *key, char **outValue, size_t *outValueLen);
 
+using EtcdPrefixGetFunc = int (*)(EtcdClient *client, const smem_store_prefix_get_ctx_t *ctx, uint32_t flags);
+
 using EtcdFreeValueFunc = void (*)(const char *value);
 
 using EtcdRemoveFunc = int (*)(EtcdClient *client, const char *key);
@@ -78,6 +80,13 @@ public:
         return etcdGet_(client, key, outValue, outValueLen);
     }
 
+    [[nodiscard]] static inline int EtcdPrefixGet(EtcdClient *client, const smem_store_prefix_get_ctx_t *ctx,
+                                                  uint32_t flags) noexcept
+    {
+        SM_ASSERT_RETURN(etcdPrefixGet_ != nullptr, -1);
+        return etcdPrefixGet_(client, ctx, flags);
+    }
+
     static inline void EtcdFreeValue(const char *value) noexcept
     {
         SM_ASSERT_RET_VOID(etcdFreeValue_ != nullptr);
@@ -124,6 +133,7 @@ private:
     static EtcdGetLastErrorFunc etcdGetLastError_;
     static EtcdPutFunc etcdPut_;
     static EtcdGetFunc etcdGet_;
+    static EtcdPrefixGetFunc etcdPrefixGet_;
     static EtcdFreeValueFunc etcdFreeValue_;
     static EtcdRemoveFunc etcdRemove_;
     static EtcdLockFunc etcdLock_;
