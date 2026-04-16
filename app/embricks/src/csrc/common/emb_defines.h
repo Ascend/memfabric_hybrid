@@ -42,6 +42,7 @@ enum EmResultErrorCode : Result {
     EM_HASHMAP_NEW_BUCKET_FAILED = -16,
     EM_RESERVE_MEMORY_SPACE_FAILED = -17,
     EM_NO_MORE_SPACE = -18,
+    EM_NOT_INITIALIZED = -19,
 };
 
 constexpr uint32_t PATH_MAX_LIMIT = 4096;

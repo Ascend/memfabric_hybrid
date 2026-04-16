@@ -15,6 +15,7 @@
 #include <bitset>
 
 #include "emb_flash_hashmap_types.h"
+#include "emb_flash_dynamic_bitset.h"
 
 namespace ock {
 namespace emb {
@@ -140,6 +141,8 @@ inline bool BucketMemBlock::MakeSlices() noexcept
  * 1 allocate from start to end
  * 2 no free provided
  * 3 no physical memory will be attached in this class
+ * 4 this mem pool is used for overflowed bucket, since the start address is fixed, we persist hashmap and recover
+ * from disk, we don't need to recalculate the address, then we can do fash persist and recover
  */
 class FlashBucketMemPool {
 public:
@@ -183,44 +186,51 @@ public:
     {
         os << "FlashBucketMemPool [startAddress: " << std::hex << reinterpret_cast<void *>(obj.startAddress_)
            << std::dec << ", capacity: " << obj.capacity_ << " bytes, inited: " << obj.inited_
-           << ", next2MB: " << obj.next2MB_ << ", remaining2MB: " << obj.remaining2MB_ << "]";
+           << ", allocated2MB: " << obj.allocatedBitSet_.Count()
+           << ", remaining2MB: " << (obj.allocatedBitSet_.Capacity() - obj.allocatedBitSet_.Count()) << "]";
 
         return os;
     }
-
-private:
-    FlashBucketMemPool() = default;
 
     FlashBucketMemPool(const FlashBucketMemPool &) = delete;
     FlashBucketMemPool(FlashBucketMemPool &&) = delete;
     FlashBucketMemPool &operator=(const FlashBucketMemPool &) = delete;
     FlashBucketMemPool &operator=(FlashBucketMemPool &&) = delete;
 
+private:
+    FlashBucketMemPool() = default;
+
     Result VerifyOption() noexcept;
 
 private:
-    uintptr_t startAddress_ = 0; /* address of reserved memory space */
-    uint64_t capacity_ = 0;      /* size of reserved memory space */
-    std::mutex mutex_;           /* mutex for member variables */
-    bool inited_ = false;        /* initialized or not */
-    uint32_t next2MB_ = 0;       /* index of next 2MB to be allocated */
-    uint32_t remaining2MB_ = 0;  /* how many can be still allocated  */
+    uintptr_t startAddress_ = 0;         /* address of reserved memory space */
+    uint64_t capacity_ = 0;              /* size of reserved memory space */
+    std::mutex mutex_;                   /* mutex for member variables */
+    bool inited_ = false;                /* initialized or not */
+    FlashDynamicBitSet allocatedBitSet_; /* bitset to store how many and which 2MB block are allocated */
 };
 
 inline Result FlashBucketMemPool::Allocate2MB(uintptr_t &address) noexcept
 {
     std::lock_guard<std::mutex> guard(mutex_);
-    if (remaining2MB_ <= 0) {
-        EM_LOG_INFO("No more space in mem pool, remaining2MB_: " << remaining2MB_ << ", inited_: " << inited_);
+    if (!inited_) {
+        EM_LOG_ERROR("Not initialized yet");
+        return EM_NOT_INITIALIZED;
+    }
+
+    if (allocatedBitSet_.Full()) {
+        EM_LOG_INFO("No more space in mem pool, already allocated: " << allocatedBitSet_.Count()
+                                                                     << ", inited_: " << inited_);
+        return EM_NO_MORE_SPACE;
+    }
+
+    uint32_t outPos = 0;
+    if (!allocatedBitSet_.FindAndSet(0, outPos)) {
         return EM_NO_MORE_SPACE;
     }
 
     /* set address that allocated */
-    address = startAddress_ + UN2MB * next2MB_;
-    /* increase next2MB */
-    ++next2MB_;
-    /* decrease remaining 2MB count */
-    --remaining2MB_;
+    address = startAddress_ + UN2MB * outPos;
 
     return EM_OK;
 }
@@ -231,7 +241,9 @@ inline uintptr_t FlashBucketMemPool::StartAddress() const noexcept
 }
 
 /**
- * Flash bucket allocator
+ * Flash bucket allocator, the virtual memory comes from FlashBucketMemPool, with fixed start virtual address,
+ * in this allocator, we allocate 2MB block from FlashBucketMemPool, then split the block into slices with 64bytes,
+ * then allocate slices from the block;
  */
 class FlashBucketAllocator {
 public:

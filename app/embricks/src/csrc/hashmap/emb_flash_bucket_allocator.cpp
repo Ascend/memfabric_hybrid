@@ -40,6 +40,13 @@ Result FlashBucketMemPool::Initialize() noexcept
         return result;
     }
 
+    auto bitsetSize = capacity_ / UN2MB;
+    result = allocatedBitSet_.Initialize(bitsetSize);
+    if (result != EM_OK) {
+        EM_LOG_ERROR("Initialize bitset for allocation failed");
+        return result;
+    }
+
     /*
      * reserve memory space
      * here we only reserve memory space, no physical memory allocated
@@ -53,11 +60,10 @@ Result FlashBucketMemPool::Initialize() noexcept
         return EM_RESERVE_MEMORY_SPACE_FAILED;
     }
 
-    remaining2MB_ = capacity_ / UN2MB;
-
     EM_LOG_DEBUG("Initialized memory address: " << std::hex << reinterpret_cast<void *>(startAddress_) << std::dec
-                                                << ", capacity: " << capacity_ << " bytes, next2MB: " << next2MB_
-                                                << ", remaining2MB: " << remaining2MB_);
+                                                << ", capacity: " << capacity_
+                                                << " bytes, remaining2MB: " << allocatedBitSet_.Capacity()
+                                                << ", allocated: " << allocatedBitSet_.Count());
 
     inited_ = true;
     return EM_OK;
