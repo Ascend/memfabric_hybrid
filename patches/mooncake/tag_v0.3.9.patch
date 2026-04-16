@@ -1117,10 +1117,10 @@ index 0000000..775169d
 +target_link_libraries(ub_transport PRIVATE mem_fabric_api glog gflags)
 diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
 new file mode 100644
-index 0000000..481d3c5
+index 0000000..466e256
 --- /dev/null
 +++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
-@@ -0,0 +1,331 @@
+@@ -0,0 +1,340 @@
 +// Copyright 2025 Huawei Technologies Co., Ltd
 +// Copyright 2024 KVCache.AI
 +//
@@ -1409,6 +1409,16 @@ index 0000000..481d3c5
 +    if (ret != 0) {
 +        return ret;
 +    }
++    // init config store
++    auto roleStr = std::getenv("MF_SMEM_TRANS_ROLE");
++    std::string storeUrlStr = MemFabricSmemDl::GetMemFabricConfig().storeUrl;
++    // Create config store if role is not "Decode"
++    bool shouldCreateConfigStore = !roleStr || strcmp(roleStr, "Decode") != 0;
++    if (shouldCreateConfigStore) {
++        mooncake::MemFabricSmemDl::SmemCreateConfigStore(storeUrlStr.c_str());
++    } else {
++        LOG(INFO) << "Skip creating config store for Decode role";
++    }
 +    // init and create
 +    ret = InitMemFabricSmemTrans(sessionId, deviceId);
 +    if (ret != 0) {
@@ -1416,7 +1426,6 @@ index 0000000..481d3c5
 +    }
 +    return 0;
 +}
-+
 +int MemFabricInitConfigStore(const std::string& store_address, uint32_t storePort)
 +{
 +    mooncake::MemFabricSmemDl::LoadMemFabricBmAPI();
@@ -1452,7 +1461,6 @@ index 0000000..481d3c5
 +}
 +
 +}  // namespace mooncake
-\ No newline at end of file
 diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
 new file mode 100644
 index 0000000..b7bffd3
