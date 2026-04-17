@@ -194,6 +194,7 @@ Result HybmConnBasedSegment::Import(const std::vector<std::string> &allExInfo, v
             BM_LOG_ERROR("deserialize imported info(" << i << ") failed.");
             return BM_INVALID_PARAM;
         }
+        addresses[i] = reinterpret_cast<void *>(deserializedInfos[i].gva);
     }
 
     try {
