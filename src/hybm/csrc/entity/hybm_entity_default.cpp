@@ -470,24 +470,53 @@ int32_t MemEntityDefault::ImportForSegment(const ExchangeInfoReader desc[], uint
         return BM_OK;
     }
 
-    uint64_t magic;
-    if (desc[0].Test(magic) < 0) {
-        BM_LOG_ERROR("left import data no magic size.");
-        return BM_OK;
+    std::vector<std::string> dramInfos;
+    std::vector<std::string> hbmInfos;
+    std::vector<uint32_t> dramIndex;
+    std::vector<uint32_t> hbmIndex;
+
+    for (uint32_t i = 0; i < count; i++) {
+        uint64_t magic;
+        if (desc[i].Test(magic) < 0) {
+            BM_LOG_ERROR("left import data no magic size. idx:" << i);
+            return BM_OK;
+        }
+        if (IsDramSlice(magic)) {
+            dramInfos.emplace_back(desc[i].LeftToString());
+            dramIndex.emplace_back(i);
+        } else {
+            hbmInfos.emplace_back(desc[i].LeftToString());
+            hbmIndex.emplace_back(i);
+        }
     }
 
-    auto currentSegment = IsDramSlice(magic) ? dramSegment_ : hbmSegment_;
-    std::vector<std::string> infos;
-    for (auto i = 0U; i < count; i++) {
-        infos.emplace_back(desc[i].LeftToString());
+    if (!dramInfos.empty()) {
+        std::vector<void *> dramAddrs(dramInfos.size(), nullptr);
+        auto ret = dramSegment_->Import(dramInfos, dramAddrs.data());
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("dram segment import infos failed: " << ret);
+            return ret;
+        }
+        if (addresses != nullptr) {
+            for (uint32_t i = 0; i < dramInfos.size(); i++) {
+                addresses[dramIndex[i]] = dramAddrs[i];
+            }
+        }
     }
 
-    auto ret = currentSegment->Import(infos, addresses);
-    if (ret != BM_OK) {
-        BM_LOG_ERROR("segment import infos failed: " << ret);
-        return ret;
+    if (!hbmInfos.empty()) {
+        std::vector<void *> hbmAddrs(hbmInfos.size(), nullptr);
+        auto ret = hbmSegment_->Import(hbmInfos, hbmAddrs.data());
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("hbm segment import infos failed: " << ret);
+            return ret;
+        }
+        if (addresses != nullptr) {
+            for (uint32_t i = 0; i < hbmInfos.size(); i++) {
+                addresses[hbmIndex[i]] = hbmAddrs[i];
+            }
+        }
     }
-
     return BM_OK;
 }
 

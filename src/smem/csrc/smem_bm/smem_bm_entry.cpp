@@ -181,6 +181,9 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
     int32_t ret = globalGroup_->GroupGatherPrefixKey(rk, localInfo, allInfo);
     SM_VALIDATE_RETURN(ret == SM_OK, "gather prefix info failed, ret:" << ret, ret);
     hybm_exchange_info info;
+    std::vector<hybm_exchange_info> entityInfos;
+    std::vector<hybm_exchange_info> sliceInfos;
+
     for (auto &it : allInfo) {
         if (it.first == options_.rank) {
             continue;
@@ -194,12 +197,27 @@ Result SmemBmEntry::JoinHandle(uint32_t rk)
         joined.push_back(it.first);
         for (uint32_t i = 0; i < num; i++) {
             (void)std::copy_n(it.second.c_str() + i * unitSize, unitSize, (char *)&info);
-            ret = hybm_import(entity_, &info, 1U, nullptr, (i == 0 ? HYBM_FLAG_EXPORT_ENTITY : 0));
-            if (ret != SM_OK) {
-                SM_LOG_ERROR("hybm import failed, result: " << ret << " remote_rank:" << it.first
-                                                            << " local_rank:" << options_.rank);
-                goto join_exit;
+            if (i == 0) {
+                entityInfos.push_back(info);
+            } else {
+                sliceInfos.push_back(info);
             }
+        }
+    }
+
+    if (!entityInfos.empty()) {
+        ret = hybm_import(entity_, entityInfos.data(), entityInfos.size(), nullptr, HYBM_FLAG_EXPORT_ENTITY);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("hybm import entity failed, result: " << ret << " local_rank:" << options_.rank);
+            goto join_exit;
+        }
+    }
+
+    if (!sliceInfos.empty()) {
+        ret = hybm_import(entity_, sliceInfos.data(), sliceInfos.size(), nullptr, 0);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("hybm import slice failed, result: " << ret << " local_rank:" << options_.rank);
+            goto join_exit;
         }
     }
 
