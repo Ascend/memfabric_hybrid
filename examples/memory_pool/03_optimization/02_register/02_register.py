@@ -1,17 +1,20 @@
 # Copyright: (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import time
-import torch
 from typing import Tuple
+
 import memfabric_hybrid as mf
+import torch
 from memfabric_hybrid import bm
 
-LOCAL_DRAM_SIZE = 4 << 30 # 4GB
-BLOCK_SIZE = 4 << 20 # 4MB block
+LOCAL_DRAM_SIZE = 4 << 30  # 4GB
+BLOCK_SIZE = 4 << 20  # 4MB block
 BATCH_SIZES = (16, 128, 512)
 STORE_URL = "tcp://127.0.0.1:8570"
-WORLD_SIZE = 1
+WORLD_SIZE = 1024
 DEVICE_ID = 0
-ALIGNMENT = 4096 # 4K alignment required for memory registration in device_rdma scenario
+ALIGNMENT = (
+    4096  # 4K alignment required for memory registration in device_rdma scenario
+)
 
 
 def malloc_cpu_tensor(shape: Tuple[int, ...], align: int = 4096):
@@ -19,15 +22,16 @@ def malloc_cpu_tensor(shape: Tuple[int, ...], align: int = 4096):
     aligned_size = total_bytes + align
 
     buffer = torch.randint(
-        low=0, high=256,
-        size=(aligned_size, ),
+        low=0,
+        high=256,
+        size=(aligned_size,),
         dtype=torch.uint8,
     )
 
     data_ptr = buffer.data_ptr()
     offset = (align - (data_ptr % align)) % align
-    
-    aligned_tensor = buffer[offset:offset + total_bytes].view(shape)
+
+    aligned_tensor = buffer[offset : offset + total_bytes].view(shape)
     return aligned_tensor
 
 
@@ -40,7 +44,10 @@ def main():
     try:
         # initialize the big memory pool.
         cfg = bm.BmConfig()
-        assert bm.initialize(STORE_URL, WORLD_SIZE, DEVICE_ID, cfg) == 0, "bm.initialize failed"
+        cfg.set_nic("tcp://127.0.0.1:1005")
+        assert bm.initialize(STORE_URL, WORLD_SIZE, DEVICE_ID, cfg) == 0, (
+            "bm.initialize failed"
+        )
         bm_inited = True
 
         # register DRAM in the big memory pool.
@@ -63,7 +70,9 @@ def main():
         # device_rdma scenario requires DRAM buffer to be 4K aligned
         src = malloc_cpu_tensor((1, BLOCK_SIZE), align=ALIGNMENT)
         dst = malloc_cpu_tensor((1, BLOCK_SIZE), align=ALIGNMENT)
-        print(f"Step2: Aligned buffers - src: 0x{src.data_ptr():x}, dst: 0x{dst.data_ptr():x}")
+        print(
+            f"Step2: Aligned buffers - src: 0x{src.data_ptr():x}, dst: 0x{dst.data_ptr():x}"
+        )
 
         # register local addresses to reduce address management overhead
         assert handle.register(src.data_ptr(), BLOCK_SIZE) == 0, "register src failed"
@@ -76,19 +85,22 @@ def main():
             batch_bytes = batch_size * BLOCK_SIZE
             num_loops = LOCAL_DRAM_SIZE // batch_bytes
             total_bytes = num_loops * batch_bytes
-            
+
             h2g_total_time = 0
             g2h_total_time = 0
-            
+
             for _ in range(num_loops):
                 src_addrs = [src.data_ptr() for _ in range(batch_size)]
                 dst_addrs = [host_gva + i * BLOCK_SIZE for i in range(batch_size)]
                 sizes = [BLOCK_SIZE] * batch_size
 
                 start_time = time.time()
-                assert handle.copy_data_batch(
-                    src_addrs, dst_addrs, sizes, batch_size, bm.BmCopyType.H2G, 0
-                ) == 0, "copy_data_batch H2G failed"
+                assert (
+                    handle.copy_data_batch(
+                        src_addrs, dst_addrs, sizes, batch_size, bm.BmCopyType.H2G, 0
+                    )
+                    == 0
+                ), "copy_data_batch H2G failed"
                 h2g_total_time += time.time() - start_time
 
                 src_addrs = [host_gva + i * BLOCK_SIZE for i in range(batch_size)]
@@ -96,40 +108,49 @@ def main():
                 sizes = [BLOCK_SIZE] * batch_size
 
                 start_time = time.time()
-                assert handle.copy_data_batch(
-                    src_addrs, dst_addrs, sizes, batch_size, bm.BmCopyType.G2H, 0
-                ) == 0, "copy_data_batch G2H failed"
+                assert (
+                    handle.copy_data_batch(
+                        src_addrs, dst_addrs, sizes, batch_size, bm.BmCopyType.G2H, 0
+                    )
+                    == 0
+                ), "copy_data_batch G2H failed"
                 g2h_total_time += time.time() - start_time
                 assert torch.equal(dst, src), "bm check ok"
 
-            batch_results.append({
-                'batch_size': batch_size,
-                'total_bytes': total_bytes,
-                'h2g_time': h2g_total_time,
-                'g2h_time': g2h_total_time
-            })
+            batch_results.append(
+                {
+                    "batch_size": batch_size,
+                    "total_bytes": total_bytes,
+                    "h2g_time": h2g_total_time,
+                    "g2h_time": g2h_total_time,
+                }
+            )
 
         # Print H2G results
         for result in batch_results:
-            batch_size = result['batch_size']
-            total_bytes = result['total_bytes']
-            h2g_time_ms = int(result['h2g_time'] * 1000)
-            total_gb = total_bytes // (1024 ** 3)
-            h2g_throughput = int(total_bytes / (result['h2g_time'] * 1024 * 1024 * 1024))
+            batch_size = result["batch_size"]
+            total_bytes = result["total_bytes"]
+            h2g_time_ms = int(result["h2g_time"] * 1000)
+            total_gb = total_bytes // (1024**3)
+            h2g_throughput = int(
+                total_bytes / (result["h2g_time"] * 1024 * 1024 * 1024)
+            )
             print(
-                f"H2G  Batch size: {batch_size}, Total size: {total_gb} GB, "  
+                f"H2G  Batch size: {batch_size}, Total size: {total_gb} GB, "
                 f"      Time: {h2g_time_ms}ms, Throughput: {h2g_throughput} GB/s"
             )
-        
+
         # Print G2H results
         for result in batch_results:
-            batch_size = result['batch_size']
-            total_bytes = result['total_bytes']
-            g2h_time_ms = int(result['g2h_time'] * 1000)
-            total_gb = total_bytes // (1024 ** 3)
-            g2h_throughput = int(total_bytes / (result['g2h_time'] * 1024 * 1024 * 1024))
+            batch_size = result["batch_size"]
+            total_bytes = result["total_bytes"]
+            g2h_time_ms = int(result["g2h_time"] * 1000)
+            total_gb = total_bytes // (1024**3)
+            g2h_throughput = int(
+                total_bytes / (result["g2h_time"] * 1024 * 1024 * 1024)
+            )
             print(
-                f"G2H  Batch size: {batch_size}, Total size: {total_gb} GB, "  
+                f"G2H  Batch size: {batch_size}, Total size: {total_gb} GB, "
                 f"      Time: {g2h_time_ms}ms, Throughput: {g2h_throughput} GB/s"
             )
 
