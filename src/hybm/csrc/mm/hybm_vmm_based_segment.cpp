@@ -570,17 +570,18 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             continue;
         }
 
-        auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
-        auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, im.deviceVa, 0, im.size, memType},
-                                                                      options_.rankId, im.rankId);
-        if (ret != BM_OK) {
-            BM_LOG_ERROR("AddVaInfoFromExternal failed:" << ret << " gva:" << VaToStr(im.gva)
-                                                         << " dva:" << VaToStr(im.deviceVa) << " size:" << im.size);
-            return ret;
-        }
-
         if (!CanSdmaReaches(im.superPodId, im.serverId, im.logicDevId)) {
-            // 不调用RemoveOneVaInfo回滚，因为在跨机场景，sdma虽然不通，但是可能使用的是device_rdma访问，需要跨机访问GVA
+            // A2 device_rdma 跨机访问适配
+            // AddVaInfoFromExternal 只需要记录GVA，因为device_rdma不需要访问HVM_DVA，所以才值0，
+            // 防止copy的时候地址被TransformVa转换，Transport就找不到 Lkey/Rkey
+            auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
+            auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, 0, 0, im.size, memType},
+                                                                          options_.rankId, im.rankId);
+            if (ret != BM_OK) {
+                BM_LOG_ERROR("AddVaInfoFromExternal failed:" << ret << " gva:" << VaToStr(im.gva)
+                                                             << " size:" << im.size);
+                return ret;
+            }
             continue;
         }
 
@@ -588,10 +589,9 @@ Result HybmVmmBasedSegment::Mmap() noexcept
                                         << " devId:" << im.logicDevId << " segType:" << options_.segType << " size:"
                                         << im.size << " gva:" << VaToStr(im.gva) << " dva:" << VaToStr(im.deviceVa));
         drv_mem_handle_t *handle = nullptr;
-        ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
+        auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalMemImport memory failed:" << ret << " local sdid:" << sdid_ << " remote ssid:" << im.sdid);
-            HybmVaManager::GetInstance().RemoveOneVaInfo(im.gva);
             return BM_ERROR;
         }
 
@@ -600,10 +600,18 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             BM_LOG_ERROR("HalMemMap memory failed:" << ret << " gva:" << VaToStr(im.gva)
                                                     << " dva:" << VaToStr(im.deviceVa) << " size:" << im.size);
             DlHalApi::HalMemRelease(handle);
-            HybmVaManager::GetInstance().RemoveOneVaInfo(im.gva);
             return BM_ERROR;
         }
 
+        auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, im.deviceVa, 0, im.size, memType},
+                                                                 options_.rankId, im.rankId);
+        if (ret != BM_OK) {
+            DlHalApi::HalMemUnmap(reinterpret_cast<void *>(im.deviceVa));
+            DlHalApi::HalMemRelease(handle);
+            imports_.clear();
+            return ret;
+        }
         mappedGvaMem_.emplace(im.gva, handle);
     }
     imports_.clear();

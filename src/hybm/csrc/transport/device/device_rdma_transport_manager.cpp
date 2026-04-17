@@ -808,7 +808,7 @@ int RdmaTransportManager::CorrectHostRegWr(uint32_t rankId, uint64_t lAddr, uint
     }
     ret = GetRegAddress(it, rAddr, size, false, wr.dst_addr, wr.rkey);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("rAddr not register: size: " << size << " " << std::hex << lAddr);
+        BM_LOG_ERROR("rAddr not register: size: " << size << " " << std::hex << rAddr);
         return ret;
     }
 

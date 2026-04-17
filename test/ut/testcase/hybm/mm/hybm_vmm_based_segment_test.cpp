@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include <mockcpp/mockcpp.hpp>
 
-#define private   public
+#define private public
 #define protected public
 #include "hybm_vmm_based_segment.h"
 #undef private
@@ -167,4 +167,63 @@ TEST_F(HybmVmmBasedSegmentTest, Mmap_MapFailure_RollsBackVaInfo)
     EXPECT_EQ(ret, BM_ERROR);
     EXPECT_TRUE(seg.mappedGvaMem_.empty());
     EXPECT_EQ(HybmVaManager::GetInstance().GetAllocCount(), 0U);
+}
+
+/**
+* Mmap_A2_HBM_CrossMachine
+*  - A2跨机 Device_rdma访问HBM内存，VaManager中只记录gva和rank_id，hva和dva值0
+*/
+TEST_F(HybmVmmBasedSegmentTest, Mmap_A2_HBM_CrossMachine)
+{
+    MemSegmentOptions opt{};
+    opt.segType = HYBM_MST_HBM;
+    opt.maxSize = HYBM_LARGE_PAGE_SIZE;
+    opt.rankCnt = 2UL;
+    opt.rankId = 0;
+    opt.shared = true;
+
+    HybmVmmBasedSegment seg(opt, 0);
+    HybmVaManager::GetInstance().AllocReserveGva(opt.rankId, opt.maxSize * opt.rankCnt, opt.maxSize * opt.rankCnt,
+                                                 HYBM_MEM_TYPE_DEVICE);
+
+    HostSdmaExportInfo local{};
+    local.gva = 0x1000;
+    local.rankId = 0;
+    local.size = HYBM_LARGE_PAGE_SIZE;
+    local.segmentType = SEGMENT_TYPE_VMM;
+
+    HostSdmaExportInfo remote{};
+    remote.gva = opt.maxSize;
+    remote.deviceVa = opt.maxSize;
+    remote.rankId = 1;
+    remote.size = HYBM_LARGE_PAGE_SIZE;
+    remote.segmentType = SEGMENT_TYPE_VMM;
+    remote.magic = DRAM_SLICE_EXPORT_INFO_MAGIC;
+    remote.superPodId = 1;
+    remote.serverId = 1;
+
+    seg.imports_ = {local, remote};
+
+    MOCKER_CPP(&MemSegment::CanSdmaReaches, bool (*)(MemSegment *, uint32_t, uint32_t, uint32_t))
+        .stubs()
+        .will(returnValue(false));
+    MOCKER_CPP(&DlHalApi::HalMemImport, int (*)(drv_mem_handle_type, MemShareHandle *, uint32_t, drv_mem_handle_t **))
+        .stubs()
+        .will(invoke(HalMemImportOk));
+    MOCKER_CPP(&DlHalApi::HalMemMap, int (*)(void *, size_t, size_t, drv_mem_handle_t *, uint64_t))
+        .stubs()
+        .will(invoke(HalMemMapOk));
+    MOCKER_CPP(&DlHalApi::HalMemRelease, int (*)(drv_mem_handle_t *)).stubs().will(invoke(HalMemReleaseOk));
+    MOCKER_CPP(&DlHalApi::HalMemUnmap, int (*)(void *)).stubs().will(invoke(HalMemUnmapOk));
+
+    auto ret = seg.Mmap();
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_TRUE(seg.imports_.empty());
+    EXPECT_EQ(seg.mappedGvaMem_.size(), 0U);
+    EXPECT_EQ(HybmVaManager::GetInstance().GetAllocCount(), 1U);
+
+    auto outDva = HybmVaManager::GetInstance().TransformVa(remote.gva, HVM_GVA, HVM_DVA); // dva == 0
+    EXPECT_EQ(outDva, 0U);
+    auto outHva = HybmVaManager::GetInstance().TransformVa(remote.gva, HVM_GVA, HVM_HVA); // hva == 0
+    EXPECT_EQ(outHva, 0U);
 }
