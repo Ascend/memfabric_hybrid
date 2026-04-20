@@ -15,6 +15,7 @@
 import glob
 import os
 import platform
+import shutil
 import subprocess
 import sys
 
@@ -54,11 +55,19 @@ class BuildWheel(bdist_wheel):
     def run(self):
         bdist_wheel.run(self)
 
-        if is_manylinux:
-            file = glob.glob(os.path.join(self.dist_dir, "*-linux_*.whl"))[0]
+        auditwheel = shutil.which("auditwheel")
+        if not auditwheel:
+            print(
+                "Warning: auditwheel is not installed. Skipping wheel repair. "
+                "Please install auditwheel if repaired wheels are required.",
+                file=sys.stderr,
+            )
+            return
 
+        file = glob.glob(os.path.join(self.dist_dir, "*-linux_*.whl"))[0]
+        if is_manylinux:
             auditwheel_cmd = [
-                "auditwheel",
+                auditwheel,
                 "-v",
                 "repair",
                 "--plat",
@@ -69,8 +78,17 @@ class BuildWheel(bdist_wheel):
                 self.dist_dir,
                 file,
             ]
-            subprocess.check_call(auditwheel_cmd)
-            os.remove(file)
+        else:
+            auditwheel_cmd = [
+                auditwheel,
+                "-v",
+                "repair",
+                "-w",
+                self.dist_dir,
+                file,
+            ]
+        subprocess.check_call(auditwheel_cmd)
+        os.remove(file)
 
 
 pkgs = find_namespace_packages()
