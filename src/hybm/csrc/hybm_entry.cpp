@@ -107,7 +107,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
     if (ret != BM_OK) {
         ptracer_uninit();
         DlApi::CleanupLibrary();
-        BM_LOG_ERROR("set device id to be " << deviceId << " failed: " << ret);
+        BM_LOG_ERROR("hybm init hbm gva failed: " << ret);
         return BM_ERROR;
     }
 

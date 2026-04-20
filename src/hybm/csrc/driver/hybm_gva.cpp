@@ -67,7 +67,7 @@ int32_t HybmLegacyInitMetaGva(void *globalMemoryBase, size_t allocSize, uint64_t
         if (ret == 0 && globalMemoryBase != nullptr) {
             (void)drv::HalGvaUnreserveMemory((uint64_t)globalMemoryBase);
         }
-        BM_LOG_ERROR("initialize mete memory failed: " << ret << " size:0x" << std::hex << allocSize <<
+        BM_LOG_ERROR("initialize meta memory failed: " << ret << " size:0x" << std::hex << allocSize <<
                      " flag:0x" << flags << " ret_addr:" << globalMemoryBase);
         return BM_ERROR;
     }
