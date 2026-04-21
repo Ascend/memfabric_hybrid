@@ -154,18 +154,18 @@ void BigCopy(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t hand
     void *base = malloc(COPY_SIZE);
     CHECK_RET_VOID(base == nullptr, "alloc host mem failed");
     GenerateData(base, rankId, COPY_SIZE);
-    smem_copy_params params1 = {base, local_dev, COPY_SIZE};
+    smem_copy_params_t params1 = {base, local_dev, COPY_SIZE};
     int ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
     CHECK_RET_VOID(ret, "copy local to global failed, ret:" << ret << " rank:" << rankId << " ptr:" << base << " "
                                                             << local_dev);
     free(base);
 
-    smem_copy_params params2 = {local_dev, remote_dev, COPY_SIZE};
+    smem_copy_params_t params2 = {local_dev, remote_dev, COPY_SIZE};
     ret = smem_bm_copy(handle, &params2, SMEMB_COPY_G2G, 0);
     CHECK_RET_VOID(ret, "copy hbm to remote hbm failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
                                                               << " " << remote_dev);
 
-    smem_copy_params params3 = {local_dev, remote_host, COPY_SIZE};
+    smem_copy_params_t params3 = {local_dev, remote_host, COPY_SIZE};
     ret = smem_bm_copy(handle, &params3, SMEMB_COPY_G2G, 0);
     CHECK_RET_VOID(ret, "copy hbm to remote dram failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
                                                                << " " << remote_host);
@@ -185,7 +185,7 @@ void BigCopyCheck(uint32_t deviceId, uint32_t rankId, uint32_t rkSize, smem_bm_t
     int ret = CheckData(base, local_host, COPY_SIZE);
     CHECK_RET_VOID((ret == false), "check host data failed, rank:" << rankId);
 
-    smem_copy_params params1 = {local_dev, receive, COPY_SIZE};
+    smem_copy_params_t params1 = {local_dev, receive, COPY_SIZE};
     ret = smem_bm_copy(handle, &params1, SMEMB_COPY_G2H, 0);
     CHECK_RET_VOID(ret, "copy hbm to local host failed, ret:" << ret << " rank:" << rankId << " ptr:" << local_dev
                                                               << " " << receive);

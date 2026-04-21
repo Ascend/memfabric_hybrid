@@ -45,6 +45,8 @@ typedef enum {
 
     SMEM_MEM_TYPE_BUTT
 } smem_bm_mem_type;
+typedef smem_bm_mem_type smem_bm_mem_type_t; /* renamed to smem_bm_mem_type_t */
+
 /**
  * @brief CPU initiated data operation type, currently only support SDMA
  */
@@ -54,9 +56,10 @@ typedef enum {
     SMEMB_DATA_OP_HOST_TCP = 1U << 2,    /* data operation done by host TCP */
     SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3, /* data operation done by device RDMA */
     SMEMB_DATA_OP_HOST_URMA = 1U << 4,   /* data operation done by host URMA */
-    SMEMB_DATA_OP_HOST_SHM = 1U << 5, /* same-node host shared memory (no network transport) */
+    SMEMB_DATA_OP_HOST_SHM = 1U << 5,    /* same-node host shared memory (no network transport) */
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
+typedef smem_bm_data_op_type smem_bm_data_op_type_t;
 
 /**
 * @brief Data copy direction
@@ -75,6 +78,7 @@ typedef enum {
     /* add here */
     SMEMB_COPY_BUTT
 } smem_bm_copy_type;
+typedef smem_bm_copy_type smem_bm_copy_type_t; /* renamed to smem_bm_copy_type_t */
 
 typedef struct {
     bool tlsEnable;
@@ -86,6 +90,7 @@ typedef struct {
     char packagePath[SMEM_TLS_PATH_SIZE];
     char decrypterLibPath[SMEM_TLS_PATH_SIZE];
 } smem_tls_config;
+typedef smem_tls_config smem_tls_config_t; /* renamed to smem_tls_config_t */
 
 typedef struct {
     uint32_t initTimeout;             /* func smem_bm_init timeout, default 120s (min=1, max=SMEM_BM_TIMEOUT_MAX) */
@@ -121,6 +126,7 @@ typedef struct {
     void *dest;
     size_t dataSize;
 } smem_copy_params;
+typedef smem_copy_params smem_copy_params_t; /* renamed smem_copy_params_t */
 
 typedef struct {
     void **sources;
@@ -128,11 +134,13 @@ typedef struct {
     const uint64_t *dataSizes;
     uint32_t batchSize;
 } smem_batch_copy_params;
+typedef smem_batch_copy_params smem_batch_copy_params_t; /* renamed smem_batch_copy_params_t */
 
 typedef struct {
     int32_t *results;
     uint32_t batchSize;
 } smem_batch_copy_result;
+typedef smem_batch_copy_result smem_batch_copy_result_t; /* renamed smem_batch_copy_result_t */
 
 /**
  * @brief smem join/leave event type

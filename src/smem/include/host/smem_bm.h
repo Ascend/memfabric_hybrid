@@ -73,7 +73,7 @@ uint32_t smem_bm_get_rank_id(void);
  * @param flags            [in] optional flags
  * @return Big Memory object handle if successful, nullptr if failed
  */
-smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data_op_type_t dataOpType, uint64_t localDRAMSize,
                          uint64_t localHBMSize, uint32_t flags);
 
 /**
@@ -121,7 +121,7 @@ int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
  * @param size             [in] memory size
  * @return o if successful
  */
-int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
+int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type_t memType, uint64_t size);
 
 /**
  * @brief Set callback function for group member change event (join/leave etc)
@@ -139,7 +139,7 @@ int32_t smem_bm_set_group_event_handler(smem_bm_t handle, smem_bm_group_event_cb
  * @param memType          [in] memory type, device or host
  * @return local memory size in bytes
  */
-uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType);
+uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type_t memType);
 
 /**
  * @brief Get GVA by memory type and rank id
@@ -149,7 +149,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
  * @param peerRankId       [in] rank id of peer
  * @return memory ptr of peer gva; start address of GVA when peerRankId = 0
  */
-void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
+void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type_t memType, uint16_t peerRankId);
 
 /**
  * @brief Convert GVA (Global Virtual Address) to VA (Virtual Address) with specified memory type
@@ -161,8 +161,7 @@ void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16
  * @param va               [out] Converted virtual address
  * @return 0 if successful, error code otherwise
  */
-
-int32_t smem_bm_gva_to_va(smem_bm_t handle, void *gva, smem_bm_mem_type vaMemType, void **va);
+int32_t smem_bm_gva_to_va(smem_bm_t handle, void *gva, smem_bm_mem_type_t vaMemType, void **va);
 
 /**
  * @brief Data copy on Big Memory object, several copy types supported:
@@ -180,7 +179,7 @@ int32_t smem_bm_gva_to_va(smem_bm_t handle, void *gva, smem_bm_mem_type vaMemTyp
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params_t *params, smem_bm_copy_type_t t, uint32_t flags);
 
 /**
  * @brief Perform batch data copy operations on Big Memory
@@ -195,7 +194,7 @@ int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_bm_copy_ty
  * @param flags            [in] optional flags
  * @return 0 if successful
  */
-int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params_t *params, smem_bm_copy_type_t t, uint32_t flags);
 
 /**
   * @brief Perform batch data copy operations on Big Memory
@@ -212,7 +211,7 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
   *                              successful and which operations have failed.
   * @return 0 if successful
   */
-int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,
+int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch_copy_params_t *params, smem_bm_copy_type_t t,
                                            uint32_t flags, smem_batch_copy_result *result);
 
 /**
