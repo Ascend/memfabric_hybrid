@@ -177,7 +177,11 @@ Result MemSegment::InitDeviceInfo(int devId)
         return BM_DL_FUNCTION_FAILED;
     }
 
-    logicDeviceId_ = Func::GetLogicDeviceId(deviceId_);
+    ret = DlAclApi::RtGetLogicDevIdByUserDevId(devId, &logicDeviceId_);
+    if (ret != BM_OK) {
+        BM_LOG_ERROR("get logic deviceId failed: " << ret << " userId:" << devId);
+        return BM_DL_FUNCTION_FAILED;
+    }
 
     ret = DlAclApi::RtDeviceGetBareTgid(&pid_);
     if (ret != BM_OK) {

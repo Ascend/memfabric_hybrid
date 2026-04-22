@@ -24,28 +24,6 @@ public:
     static uint64_t MakeObjectMagic(uint64_t srcAddress);
     static uint64_t ValidateObjectMagic(const void *ptr, const uint64_t magic);
 
-    static inline int32_t GetLogicDeviceId(const int &deviceId)
-    {
-        int logicDeviceId = -1;
-        auto visibleDevStr = std::getenv("ASCEND_RT_VISIBLE_DEVICES");
-        if (visibleDevStr == nullptr) {
-            BM_LOG_INFO("Not set rt visible env return deviceId: " << deviceId);
-            return deviceId;
-        } else {
-            auto devList = StrUtil::Split(visibleDevStr, ',');
-            if (devList.size() <= static_cast<uint32_t>(deviceId)) {
-                BM_LOG_ERROR("Failed to get visible devSize: " << devList.size() << " deviceId: " << deviceId);
-                return BM_ERROR;
-            } else {
-                if (!StrUtil::String2Int<int>(devList[deviceId], logicDeviceId)) {
-                    BM_LOG_ERROR("Failed to get visible dev size: " << devList.size() << " deviceId: " << deviceId);
-                    return BM_ERROR;
-                }
-            }
-        }
-        return logicDeviceId;
-    }
-
     static inline int64_t GetCurTid()
     {
         static thread_local int64_t tid = reinterpret_cast<int64_t>(syscall(SYS_gettid));

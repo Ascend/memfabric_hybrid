@@ -87,7 +87,8 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
 #if !defined(ASCEND_NPU)
     return BM_OK;
 #else
-    initedLogicDeviceId = Func::GetLogicDeviceId(deviceId);
+    initedLogicDeviceId = -1;
+    DlAclApi::RtGetLogicDevIdByUserDevId(deviceId, &initedLogicDeviceId);
     if (initedLogicDeviceId < 0) {
         BM_LOG_ERROR("Failed to get logic deviceId: " << deviceId);
         return BM_ERROR;
