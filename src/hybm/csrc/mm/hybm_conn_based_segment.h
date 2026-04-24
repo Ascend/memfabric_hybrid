@@ -61,8 +61,11 @@ public:
 private:
     void FreeMemory() noexcept;
     Result PrepareShareMemoryFd() const noexcept;
-    Result MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset, uint64_t size, uint64_t gva) noexcept;
+    Result MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset, uint64_t size, uint64_t gva,
+                    MemAllocMethod &allocMethod) noexcept;
     static void LvaShmReservePhysicalMemory(void *mappedAddress, uint64_t size) noexcept;
+    void* AllocMemory(void *sliceAddr, uint64_t lvOffset, uint64_t size, MemAllocMethod &allocMethod);
+    static void FreeAllocatedMemory(void *ptr, uint64_t size, MemAllocMethod allocMethod) noexcept;
 
 private:
     uint8_t *globalVirtualAddress_{nullptr};

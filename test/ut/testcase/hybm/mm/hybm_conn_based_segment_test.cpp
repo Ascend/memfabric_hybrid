@@ -373,8 +373,9 @@ TEST_F(HybmConnBasedSegmentTest, MapSlice_SizeZeroReturnsOk)
 {
     HybmConnBasedSegment segment(MakeOptions(), 0);
     void *mapped = reinterpret_cast<void *>(0x1234ULL);
+    auto method = MemAllocMethod::MMAP;
 
-    EXPECT_EQ(segment.MapSlice(mapped, nullptr, 0, 0, 0x1000ULL), BM_OK);
+    EXPECT_EQ(segment.MapSlice(mapped, nullptr, 0, 0, 0x1000ULL, method), BM_OK);
     EXPECT_EQ(mapped, reinterpret_cast<void *>(0x1234ULL));
 }
 
