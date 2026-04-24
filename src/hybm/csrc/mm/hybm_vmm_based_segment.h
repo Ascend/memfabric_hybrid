@@ -73,7 +73,7 @@ private:
     Result MallocFromHost(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
     Result MallocFromDevice(size_t size, uint32_t devId, drv_mem_handle_t **handle) noexcept;
     Result HalMemCreateAdapterFromHost(size_t size, drv_mem_handle_t **handle, drv_mem_prop prop);
-    void FreeMemory() noexcept;
+    uint64_t ReserveLva(const HostSdmaExportInfo &im);
 
     std::vector<HostSdmaExportInfo> imports_;
     uint8_t *globalVirtualAddress_{nullptr}; // gva, if total size < 128t, it equal lva
@@ -85,6 +85,7 @@ private:
     std::map<uint16_t, std::pair<MemSliceStatus, uint64_t>> registerSlices_;
     std::map<uint16_t, std::string> exportMap_;
     std::map<uint64_t, drv_mem_handle_t *> mappedGvaMem_; // mapped gva
+    std::vector<void *> reservedLva_;
 };
 } // namespace mf
 } // namespace ock

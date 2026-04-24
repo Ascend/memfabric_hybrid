@@ -303,6 +303,10 @@ class MfTest(TestServer):
                        "Leave the global Big Memory space actively, after this, "
                        "we cannot operate on the global space any more, bm_leave [handle_id] [flags]",
                        self.bm_leave),
+            CliCommand("bm_extend_local_mem",
+                       "Alloc an extend memory for rank, all alloc memory must range in reserved memory. "
+                       "bm_extend_local_mem [mem_type] [size]",
+                       self.bm_extend_local_mem),
             CliCommand("bm_local_mem_size",
                        "Get size of local memory that contributed to global space, "
                        "bm_local_mem_size [handle_id] [mem_type]",
@@ -656,6 +660,12 @@ class MfTest(TestServer):
         handle = self._bm_handle_dic[handle_id]
         ret = handle.leave(flags)
         self.cli_print(f"bm leave, ret:{ret}")
+
+    @result_handler
+    def bm_extend_local_mem(self, handle_id: int, mem_type: int, size: int):
+        handle = self._bm_handle_dic[handle_id]
+        ret = handle.extend_local_mem(bm.BmMemType(mem_type), size)
+        self.cli_print(f"bm_extend_local_mem, ret:{ret}")
 
     @result_handler
     def bm_local_mem_size(self, handle_id: int, mem_type: int):

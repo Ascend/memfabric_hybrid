@@ -131,13 +131,6 @@ int32_t MemEntityDefault::ReserveMemorySpace() noexcept
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    if (options_.bmDataOpType == HYBM_DOP_TYPE_SDMA && options_.scene != HYBM_SCENE_TRANS) {
-        if (options_.rankCount * (options_.maxHBMSize + options_.maxDRAMSize) > HYBM_GVM_MAX_POOL_SIZE) {
-            BM_LOG_ERROR("Total memory pool size > 128T. size:" << options_.rankCount *
-                                                                       (options_.maxHBMSize + options_.maxDRAMSize));
-            return BM_INVALID_PARAM;
-        }
-    }
 
     if (hbmSegment_ != nullptr) {
         auto ret = hbmSegment_->ReserveMemorySpace(&hbmGva_);
