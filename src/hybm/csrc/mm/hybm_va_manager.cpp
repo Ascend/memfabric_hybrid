@@ -242,7 +242,7 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     std::unique_lock<std::shared_mutex> lock(mutex_);
     uint64_t lva = 0;
     if (localSize > 0) {
-        lva = AllocReserveLva(localRankId, localSize, t);
+        lva = AllocReserveLvaInner(localRankId, localSize, t);
         if (lva == 0) {
             return result;
         }
@@ -274,12 +274,34 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     result.memType = memType;
     result.localRankId = localRankId;
     reservedMap_[HVM_GVA][result.va[HVM_GVA]] = result;
-    reservedMap_[t][result.va[t]] = result;
+    // 二次映射场景lvaSize和gvaSize不一样
+    auto lvaResult = result;
+    lvaResult.size = localSize;
+    reservedMap_[t][lvaResult.va[t]] = lvaResult;
     BM_LOG_INFO("AllocReserveGva success: " << result);
     return result;
 }
 
-uint64_t HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size, uint32_t type)
+ReservedGvaInfo HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size,
+                                               uint32_t type, hybm_mem_type memType)
+{
+    ReservedGvaInfo result;
+    BM_VALIDATE_RETURN(size != 0, "size must > 0.", result);
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    auto lva = AllocReserveLvaInner(localRankId, size, type);
+    if (lva == 0) {
+        return result;
+    }
+    result.va[type] = lva;
+    result.size = size;
+    result.memType = memType;
+    result.localRankId = localRankId;
+    reservedMap_[type][result.va[type]] = result;
+    BM_LOG_INFO("AllocReserveLva success: " << result);
+    return result;
+}
+
+uint64_t HybmVaManager::AllocReserveLvaInner(uint32_t localRankId, uint64_t size, uint32_t type)
 {
     if (size == 0) {
         BM_LOG_ERROR("AllocReserveLva failed: size=0");
@@ -306,7 +328,7 @@ uint64_t HybmVaManager::AllocReserveLva(uint32_t localRankId, uint64_t size, uin
         return 0;
     }
 
-    BM_LOG_INFO("AllocReserveLva success: " << VaToStr(freeAddr));
+    BM_LOG_INFO("AllocReserveLva success: " << VaToStr(freeAddr) << " size: " << size);
     return freeAddr;
 }
 
@@ -328,6 +350,24 @@ void HybmVaManager::FreeReserveGva(uint64_t addr)
     reservedMap_[type].erase(info.va[type]);
     reservedMap_[HVM_GVA].erase(it);
     BM_LOG_DEBUG("FreeReserveGva success: addr=" << VaToStr(addr));
+}
+
+void HybmVaManager::FreeReserveLva(uint64_t addr, uint32_t type)
+{
+    if (addr == 0 || (type != HVM_DVA && type != HVM_HVA)) {
+        BM_LOG_WARN("FreeReserveLva failed: invalid addr:" << addr << ", type:" << type);
+        return;
+    }
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    auto it = reservedMap_[type].find(addr);
+    if (it == reservedMap_[type].end()) {
+        BM_LOG_WARN("FreeReserveDva failed: reserved space not found at addr=" << VaToStr(addr));
+        return;
+    }
+    const ReservedGvaInfo &info = it->second;
+    BM_LOG_INFO("FreeReserveLva: " << info);
+    reservedMap_[type].erase(addr);
+    BM_LOG_DEBUG("FreeReserveLva success: addr=" << VaToStr(addr));
 }
 
 void HybmVaManager::DumpReservedGvaInfo() const
@@ -443,6 +483,7 @@ std::pair<uint64_t, bool> HybmVaManager::FindFreeSpace(uint64_t start, uint64_t 
             current = range.second;
         }
     }
+    BM_LOG_DEBUG("FindFreeSpace: current:" << VaToStr(current) << " end:" << VaToStr(end) << " size:" << VaToStr(size));
     if (current <= end && size <= end - current) {
         BM_LOG_DEBUG("FindFreeSpace: found free space at end, addr=" << VaToStr(current));
         return {current, true};
