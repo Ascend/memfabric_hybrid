@@ -309,6 +309,14 @@ int32_t BackendUnlock(void *handle, const char *name, uint32_t flags)
     return SMEM_STORE_BACKEND_CODE_OK;
 }
 
+int32_t BackendPrefixGet(void *handle, const smem_store_prefix_get_ctx_t *ctx, uint32_t flags)
+{
+    (void)handle;
+    (void)ctx;
+    (void)flags;
+    return SMEM_STORE_BACKEND_CODE_OK;
+}
+
 smem_conf_store_backend_op_t MakeBackendOp()
 {
     smem_conf_store_backend_op_t backendOp{};
@@ -317,6 +325,7 @@ smem_conf_store_backend_op_t MakeBackendOp()
     backendOp.destroy = BackendDestroy;
     backendOp.put = BackendPut;
     backendOp.get = BACKEND_GET;
+    backendOp.prefix_get = BackendPrefixGet;
     backendOp.remove = BackendRemove;
     backendOp.lock = BackendLock;
     backendOp.try_lock = BackendTryLock;

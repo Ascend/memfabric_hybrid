@@ -235,9 +235,20 @@ int32_t FakeUnlock(void *handle, const char *name, uint32_t flags)
     return UnlockFakeHandle(*AsFakeHandle(handle), env.lastResolvedUnlockName);
 }
 
+int32_t FakePrefixGet(void *handle, const smem_store_prefix_get_ctx_t *ctx, uint32_t flags)
+{
+    (void)handle;
+    (void)flags;
+    (void)ctx;
+    return 0;
+}
+
 smem_conf_store_backend_op_t MakeFakeBackendOp()
 {
-    return {FakeDistributed, FakeCreate, FakeDestroy, FakePut, FakeGet, FakeRemove, FakeLock, FakeTryLock, FakeUnlock};
+    return {
+        FakeDistributed, FakeCreate, FakeDestroy, FakePut, FakeGet,
+        FakePrefixGet, FakeRemove, FakeLock, FakeTryLock, FakeUnlock
+    };
 }
 
 }  // namespace test

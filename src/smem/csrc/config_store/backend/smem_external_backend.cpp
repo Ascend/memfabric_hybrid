@@ -10,13 +10,13 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include "smem_external_backend.h"
-
 #include <exception>
 #include <memory>
 #include "smem.h"
 #include "smem_config_store_logger.h"
 #include "smem_external_backend_registry.h"
+#include "smem_etcd_backend_utils.h"
+#include "smem_external_backend.h"
 
 namespace ock {
 namespace smem {
@@ -169,16 +169,32 @@ StoreErrorCode SmemExternalBackend::Get(const std::string &key, std::vector<uint
 
 StoreErrorCode SmemExternalBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
 {
-    // todo: external backend support prefix get
-    for (uint32_t i = 0; i < SMEM_WORLD_SIZE_MAX; i++) {
-        std::string k = key + std::to_string(i);
-        std::vector<uint8_t> value;
-        auto ret = GetLocked(k, value);
-        if (ret == 0) {
-            outValue[k] = value;
+    try {
+        if (!initialized_ || handle_ == nullptr || backendOp_.prefix_get == nullptr) {
+            STORE_LOG_ERROR("PrefixGet failed: backend not initialized");
+            return StoreErrorCode::ERROR;
         }
+
+        const smem_store_prefix_get_ctx_t prefixGetCtx = {
+            .prefix = key.c_str(),
+            .marker = nullptr,
+            .context = &outValue,
+            .fill = &etcd_utils::PrefixGetFill,
+        };
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto ret = backendOp_.prefix_get(handle_, &prefixGetCtx, 0);
+        if (ret != SMEM_STORE_BACKEND_CODE_OK) {
+            STORE_LOG_ERROR("[ETCD] failed to do prefix get, ret:" << ret);
+            return StoreErrorCode::ERROR;
+        }
+        return StoreErrorCode::SUCCESS;
+    } catch (const std::exception &e) {
+        STORE_LOG_ERROR("PrefixGet failed: exception, key=" << key << ", what=" << e.what());
+        return StoreErrorCode::ERROR;
+    } catch (...) {
+        STORE_LOG_ERROR("PrefixGet failed: unknown exception, key=" << key);
+        return StoreErrorCode::ERROR;
     }
-    return StoreErrorCode::SUCCESS;
 }
 
 StoreErrorCode SmemExternalBackend::Put(const std::string &key, const std::vector<uint8_t> &value,

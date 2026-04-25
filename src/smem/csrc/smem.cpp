@@ -26,10 +26,11 @@ bool g_smemInited = false;
 bool IsValidBackendOp(const smem_conf_store_backend_op_t &backendOp)
 {
     return backendOp.distributed != nullptr && backendOp.create != nullptr && backendOp.destroy != nullptr &&
-           backendOp.put != nullptr && backendOp.get != nullptr && backendOp.remove != nullptr &&
-           backendOp.lock != nullptr && backendOp.try_lock != nullptr && backendOp.unlock != nullptr;
+           backendOp.put != nullptr && backendOp.get != nullptr && backendOp.prefix_get != nullptr &&
+           backendOp.remove != nullptr && backendOp.lock != nullptr && backendOp.try_lock != nullptr &&
+           backendOp.unlock != nullptr;
 }
-}
+} // namespace
 
 SMEM_API int32_t smem_init(uint32_t flags)
 {

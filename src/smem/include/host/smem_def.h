@@ -70,6 +70,11 @@ typedef struct {
     int32_t (*get)(void *handle, const char *key, void *value, uint64_t capacity, uint32_t flags, uint64_t *size);
 
     /*
+     * Prefix query, used to search for all keys that meet the conditions.
+     */
+    int32_t (*prefix_get)(void *handle, const smem_store_prefix_get_ctx_t *ctx, uint32_t flags);
+
+    /*
      * Remove a key-value pair.
      */
     int32_t (*remove)(void *handle, const char *key, uint32_t flags);

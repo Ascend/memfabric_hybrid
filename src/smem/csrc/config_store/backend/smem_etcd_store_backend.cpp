@@ -10,9 +10,6 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include "smem_etcd_store_backend.h"
-
-#include <chrono>
 #include <mutex>
 #include <thread>
 #include <cctype>
@@ -23,6 +20,8 @@
 #include "network_endpoint_util.h"
 #include "dl_etcd_api.h"
 #include "smem_etcd_client.h"
+#include "smem_etcd_backend_utils.h"
+#include "smem_etcd_store_backend.h"
 
 namespace ock {
 namespace smem {
@@ -127,30 +126,6 @@ std::string SmemEtcdStoreBackend::BackendName() const noexcept
     return "Etcd";
 }
 
-bool PrefixGetFill(const char *key, const void *value, uint64_t size, void *context)
-{
-    if (key == nullptr) {
-        STORE_LOG_ERROR("[ETCD] failed to do prefix get, key is null");
-        return false;
-    }
-    if (value == nullptr) {
-        STORE_LOG_ERROR("[ETCD] failed to do prefix get, value is null");
-        return false;
-    }
-    if (size == 0) {
-        STORE_LOG_ERROR("[ETCD] failed to do prefix get, size is 0");
-        return false;
-    }
-
-    auto *prefixGetMap = static_cast<PrefixGetMap *>(context);
-    if (prefixGetMap == nullptr) {
-        return false;
-    }
-    std::vector<uint8_t> outValue(static_cast<const uint8_t *>(value), static_cast<const uint8_t *>(value) + size);
-    prefixGetMap->emplace(key, outValue);
-    return true;
-}
-
 StoreErrorCode SmemEtcdStoreBackend::PrefixGet(const std::string &key, PrefixGetMap &outValue) const noexcept
 {
     if (!initialized_) {
@@ -162,7 +137,7 @@ StoreErrorCode SmemEtcdStoreBackend::PrefixGet(const std::string &key, PrefixGet
         .prefix = qualifiedKey.c_str(),
         .marker = nullptr,
         .context = &outValue,
-        .fill = &PrefixGetFill,
+        .fill = &etcd_utils::PrefixGetFill,
     };
     int32_t ret = EtcdClientV3::GetInstance().PrefixGet(&prefixGetCtx, 0);
     if (ret != 0) {
