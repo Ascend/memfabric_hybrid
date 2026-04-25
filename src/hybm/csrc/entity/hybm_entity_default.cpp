@@ -1131,7 +1131,7 @@ Result MemEntityDefault::InitHbmSegment()
     segmentOptions.rankCnt = options_.rankCount;
     segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.flags = options_.flags;
-    segmentOptions.isSecondMapping = options_.isSecondMapping;
+    segmentOptions.enable56BitsGva = options_.enable56BitsGva;
     hbmSegment_ = MemSegment::Create(segmentOptions, id_);
     if (hbmSegment_ == nullptr) {
         BM_LOG_ERROR("Failed to create hbm segment");
@@ -1157,7 +1157,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.dataOpType = options_.bmDataOpType;
     segmentOptions.flags = options_.flags;
     segmentOptions.shmFd = options_.dramShmFd;
-    segmentOptions.isSecondMapping = options_.isSecondMapping;
+    segmentOptions.enable56BitsGva = options_.enable56BitsGva;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         segmentOptions.shared = false;
     }

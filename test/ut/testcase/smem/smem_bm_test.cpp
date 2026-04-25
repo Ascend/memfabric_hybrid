@@ -10,6 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 #include <thread>
+#include <string>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -1037,6 +1038,107 @@ TEST_F(SmemBmTest, smem_bm_create_success)
     EXPECT_NE(handle, nullptr);
 
     smem_bm_destroy(handle);
+}
+
+// 确保 g_smemBmInited 按指定 worldSize 初始化，避免继承前一个用例的 BM 初始化状态。
+static void EnsureSmemBmInited(uint32_t worldSize)
+{
+    smem_set_log_level(1);
+    smem_bm_uninit(0);
+
+    smem_bm_config_t config;
+    (void)smem_bm_config_init(&config);
+    config.autoRanking = false;
+    config.rankId = 0;
+    config.startConfigStoreServer = true;
+
+    MOCKER_CPP(&TcpConfigStore::Startup, int32_t (*)(const smem_tls_config &, int)).stubs().will(returnValue(0));
+    (void)smem_bm_init("tcp://192.168.100.101:8570", worldSize, 0, &config);
+}
+
+// 当 (maxDramSize + maxHbmSize) * worldSize > 32TB 且 enable56BitsGva = false 时，
+// smem_bm_create2 必须直接返回 nullptr，强制让用户感知 56 位 GVA 语义变化（GVA != DVA）。
+TEST_F(SmemBmTest, smem_bm_create2_total_exceed_32t_without_enable56bits_gva_failed)
+{
+    EnsureSmemBmInited(2ULL);
+
+    smem_bm_create_option_t option{};
+    // 17TB * 2 = 34TB，严格大于 32TB 阈值
+    option.maxDramSize = 17ULL << 40ULL;
+    option.maxHbmSize = 0;
+    option.localDRAMSize = 1ULL << 30ULL; // 1GB，远低于 local 上限
+    option.localHBMSize = 0;
+    option.dataOpType = SMEMB_DATA_OP_HOST_URMA;
+    option.enable56BitsGva = false;
+    option.flags = 0;
+    option.dramShmFd = -1;
+
+    (void)smem_get_and_clear_last_err_msg();
+    smem_bm_t handle = smem_bm_create2(50, &option);
+    EXPECT_EQ(handle, nullptr);
+    const std::string lastError = smem_get_last_err_msg();
+    EXPECT_NE(lastError.find("exceeds 32TB"), std::string::npos);
+    EXPECT_NE(lastError.find("enable56BitsGva is false"), std::string::npos);
+}
+
+// 旧接口不暴露 enable56BitsGva，等价于固定 false；超过 32TB 时也应失败。
+TEST_F(SmemBmTest, smem_bm_create_total_exceed_32t_failed)
+{
+    constexpr uint32_t worldSize = 17;
+    EnsureSmemBmInited(worldSize);
+
+    (void)smem_get_and_clear_last_err_msg();
+    smem_bm_t handle = smem_bm_create(53, worldSize, SMEMB_DATA_OP_HOST_URMA, 2ULL << 40, 0, 0);
+    EXPECT_EQ(handle, nullptr);
+    const std::string lastError = smem_get_last_err_msg();
+    EXPECT_NE(lastError.find("exceeds 32TB"), std::string::npos);
+    EXPECT_NE(lastError.find("enable56BitsGva is false"), std::string::npos);
+}
+
+// 同样的 > 32TB 容量下，显式打开 enable56BitsGva 后应当正常创建。
+TEST_F(SmemBmTest, smem_bm_create2_total_exceed_32t_with_enable56bits_gva_success)
+{
+    EnsureSmemBmInited(2ULL);
+    MOCKER_CPP(&SmemBmEntry::Initialize, int32_t (*)(const hybm_options &)).stubs().will(returnValue(0));
+
+    smem_bm_create_option_t option{};
+    option.maxDramSize = 17ULL << 40ULL;
+    option.maxHbmSize = 0;
+    option.localDRAMSize = 1ULL << 30ULL;
+    option.localHBMSize = 0;
+    option.dataOpType = SMEMB_DATA_OP_HOST_URMA;
+    option.enable56BitsGva = true;
+    option.flags = 0;
+    option.dramShmFd = -1;
+
+    smem_bm_t handle = smem_bm_create2(51, &option);
+    EXPECT_NE(handle, nullptr);
+    if (handle != nullptr) {
+        smem_bm_destroy(handle);
+    }
+}
+
+// 边界场景：(16TB) * 2 = 32TB，恰好等于阈值（语义为严格 `>`），不应触发新校验。
+TEST_F(SmemBmTest, smem_bm_create2_total_at_32t_boundary_without_enable56bits_gva_success)
+{
+    EnsureSmemBmInited(2ULL);
+    MOCKER_CPP(&SmemBmEntry::Initialize, int32_t (*)(const hybm_options &)).stubs().will(returnValue(0));
+
+    smem_bm_create_option_t option{};
+    option.maxDramSize = 16ULL << 40ULL;
+    option.maxHbmSize = 0;
+    option.localDRAMSize = 1ULL << 30ULL;
+    option.localHBMSize = 0;
+    option.dataOpType = SMEMB_DATA_OP_HOST_URMA;
+    option.enable56BitsGva = false;
+    option.flags = 0;
+    option.dramShmFd = -1;
+
+    smem_bm_t handle = smem_bm_create2(52, &option);
+    EXPECT_NE(handle, nullptr);
+    if (handle != nullptr) {
+        smem_bm_destroy(handle);
+    }
 }
 
 smem_bm_t MockInitAndCreateHandle(uint32_t id)

@@ -709,7 +709,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseLocalRankForAddrOutOfGvm
     entity.initialized_ = true;
     entity.options_.rankId = 6UL;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
-    entity.options_.isSecondMapping = false;
+    entity.options_.enable56BitsGva = false;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
         .stubs()
@@ -740,7 +740,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseRankFromVaManagerInSocRa
     entity.initialized_ = true;
     entity.options_.rankId = 3UL;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
-    entity.options_.isSecondMapping = false;
+    entity.options_.enable56BitsGva = false;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
         .stubs()
@@ -781,7 +781,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_A5Soc_UseRankFromVaManagerI
     entity.initialized_ = true;
     entity.options_.rankId = 8UL;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
-    entity.options_.isSecondMapping = false;
+    entity.options_.enable56BitsGva = false;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
         .stubs()
@@ -812,14 +812,14 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_A5Soc_UseRankFromVaManagerI
     ock::mf::HybmVaManager::GetInstance().ClearAll();
 }
 
-TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_SecondMappingOutOfA5Range_UseLocalRank)
+TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaOutOfA5Range_UseLocalRank)
 {
     int32_t deviceId = 250231;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.rankId = 8UL;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
-    entity.options_.isSecondMapping = true;
+    entity.options_.enable56BitsGva = true;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
         .stubs()
@@ -843,14 +843,14 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_SecondMappingOutOfA5Range_U
     EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 8U);
 }
 
-TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_SecondMappingAddrWithoutRegisteredGva_UseLocalRank)
+TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutRegisteredGva_UseLocalRank)
 {
     int32_t deviceId = 25024;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.rankId = 8UL;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
-    entity.options_.isSecondMapping = true;
+    entity.options_.enable56BitsGva = true;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
         .stubs()
@@ -864,7 +864,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_SecondMappingAddrWithoutReg
     entity.dataOperator_ = dop;
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR_4P + 0x1000);
+    params.src = reinterpret_cast<void *>(ock::mf::HYBM_56BITS_GVA_START_ADDR + 0x1000);
     params.dest = reinterpret_cast<void *>(0x2222);
     params.dataSize = 4096ULL;
 

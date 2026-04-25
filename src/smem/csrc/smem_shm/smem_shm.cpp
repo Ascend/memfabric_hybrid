@@ -55,7 +55,7 @@ SMEM_API smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t ran
     options.deviceVASpace = localSize;
     options.role = HYBM_ROLE_PEER;
     options.scene = HYBM_SCENE_SHM;
-    options.isSecondMapping = false; // always disabled for shm
+    options.enable56BitsGva = false; // always disabled for shm
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

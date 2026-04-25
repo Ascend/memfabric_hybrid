@@ -232,12 +232,13 @@ bool HybmVaManager::IsValidAddr(uint64_t va)
 }
 
 ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize,
-                                               hybm_mem_type memType, bool secondMapping)
+                                               hybm_mem_type memType, bool enable56BitsGva)
 {
     ReservedGvaInfo result;
     uint32_t t = HVM_DVA; // reserve device va all
     BM_VALIDATE_RETURN(size != 0, "size must > 0.", result);
-    BM_VALIDATE_RETURN(localSize != 0 || secondMapping, "local size must > 0 when no second mapping.", result);
+    BM_VALIDATE_RETURN(localSize != 0 || enable56BitsGva,
+                       "local size must > 0 when 56-bit GVA is not enabled.", result);
 
     std::unique_lock<std::shared_mutex> lock(mutex_);
     uint64_t lva = 0;
@@ -249,16 +250,16 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     }
 
     uint64_t gva = lva;
-    if (secondMapping) {
-        uint64_t startAddr = HYBM_GVM_START_ADDR_4P;
-        uint64_t endAddr = HYBM_GVM_END_ADDR_8P;
+    if (enable56BitsGva) {
+        uint64_t startAddr = HYBM_56BITS_GVA_START_ADDR;
+        uint64_t endAddr = HYBM_56BITS_GVA_END_ADDR;
         uint64_t upperLimit = endAddr - startAddr;
         if (size > upperLimit) {
             BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);
             return result;
         }
 
-        BM_LOG_DEBUG("secondMapping searching in GVA range " << VaToStr(startAddr) << "-" << VaToStr(endAddr));
+        BM_LOG_DEBUG("enable56BitsGva searching in GVA range " << VaToStr(startAddr) << "-" << VaToStr(endAddr));
         // Find free space
         auto [freeAddr, found] = FindFreeSpace(startAddr, endAddr, size, HVM_GVA);
         if (!found) {
@@ -274,7 +275,7 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     result.memType = memType;
     result.localRankId = localRankId;
     reservedMap_[HVM_GVA][result.va[HVM_GVA]] = result;
-    // 二次映射场景lvaSize和gvaSize不一样
+    // 启用 56 位 GVA 时 lvaSize 与 gvaSize 不一致
     auto lvaResult = result;
     lvaResult.size = localSize;
     reservedMap_[t][lvaResult.va[t]] = lvaResult;

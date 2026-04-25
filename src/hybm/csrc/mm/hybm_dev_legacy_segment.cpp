@@ -129,9 +129,9 @@ Result HybmDevLegacySegment::ReserveMemorySpace(void **address) noexcept
         return BM_MALLOC_FAILED;
     }
     lvaBase_ = reinterpret_cast<uint8_t *>(base) + options_.maxSize * options_.rankId;
-    if (options_.isSecondMapping) {
+    if (options_.enable56BitsGva) {
         auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(
-            options_.rankId, totalVirtualSize_, totalVirtualSize_, HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
+            options_.rankId, totalVirtualSize_, totalVirtualSize_, HYBM_MEM_TYPE_DEVICE, options_.enable56BitsGva);
         globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     } else {
         globalVirtualAddress_ = reinterpret_cast<uint8_t *>(base);
@@ -147,7 +147,7 @@ Result HybmDevLegacySegment::UnReserveMemorySpace() noexcept
 {
     BM_LOG_INFO("un-reserve memory space.");
     FreeMemory();
-    if (options_.isSecondMapping) {
+    if (options_.enable56BitsGva) {
         HybmVaManager::GetInstance().FreeReserveGva((uintptr_t)globalVirtualAddress_);
     }
     return BM_OK;

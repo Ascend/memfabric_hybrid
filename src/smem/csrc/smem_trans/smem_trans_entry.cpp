@@ -868,7 +868,7 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.dramShmFd = -1;
-    options.isSecondMapping = true; // trans enabled
+    options.enable56BitsGva = true; // trans enabled
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

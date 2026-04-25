@@ -148,7 +148,7 @@ def create(id, local_dram_size, local_hbm_size = 0, data_op_type = SMEMB_DATA_OP
 #### create2
 创建BM（支持设置本地内存上限）
 ```python
-def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, is_second_mapping = False, flags = 0) -> BigMemory
+def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, enable_56bits_gva = False, flags = 0) -> BigMemory
 ```
 
 |参数/返回值|含义|
@@ -159,7 +159,7 @@ def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size
 |local_hbm_size|本地hbm内存大小|
 |max_hbm_size|本地hbm内存最大大小|
 |data_op_type|数据操作类型，参考smem_bm_data_op_type类型定义|
-|is_second_mapping|是否开启二次映射，bool类型|
+|enable_56bits_gva|是否显式启用 56 位 GVA，bool 类型，默认 False。|
 |flags|预留参数|
 |返回值|BigMemory对象|
 

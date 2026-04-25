@@ -32,7 +32,7 @@ def main():
             local_hbm_size=ONE_GIB,
             max_hbm_size=ONE_GIB,
             data_op_type=bm.BmDataOpType.DEVICE_RDMA,
-            is_second_mapping=False,
+            enable_56bits_gva=False,
         )
 
         # Join the big memory pool.
