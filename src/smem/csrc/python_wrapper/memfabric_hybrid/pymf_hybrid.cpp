@@ -277,7 +277,7 @@ public:
     }
 
     static BigMemory *Create2(uint32_t id, uint64_t localDRAMSize, uint64_t localMaxDRAMSize, uint64_t localHBMSize,
-                              uint64_t localMaxHBMSize, smem_bm_data_op_type dataOpType, bool isSecondMapping,
+                              uint64_t localMaxHBMSize, smem_bm_data_op_type dataOpType, bool enable56BitsGva,
                               uint32_t flags, int shmFd)
     {
         smem_bm_create_option_t option{};
@@ -286,7 +286,7 @@ public:
         option.localDRAMSize = localDRAMSize;
         option.localHBMSize = localHBMSize;
         option.dataOpType = dataOpType;
-        option.isSecondMapping = isSecondMapping;
+        option.enable56BitsGva = enable56BitsGva;
         option.flags = flags;
         if (shmFd >= 0) {
             option.flags |= SMEM_BM_FLAG_CREATE_WITH_SHM;
@@ -718,7 +718,7 @@ Arguments:
     m.def("create2", &BigMemory::Create2, py::call_guard<py::gil_scoped_release>(), py::arg("id"),
           py::arg("local_dram_size"), py::arg("max_dram_size"), py::arg("local_hbm_size") = 0,
           py::arg("max_hbm_size") = 0, py::arg("data_op_type") = SMEMB_DATA_OP_SDMA,
-          py::arg("is_second_mapping") = false, py::arg("flags") = 0, py::arg("shm_fd") = -1, R"(
+          py::arg("enable_56bits_gva") = false, py::arg("flags") = 0, py::arg("shm_fd") = -1, R"(
 Create a big memory object locally after initialized.
 
 Arguments:
@@ -728,7 +728,10 @@ Arguments:
     local_hbm_size(int):         the size of local hbm memory contributes to big memory object, default 0
     max_hbm_size(int):           the max local hbm memory size for dynamic expansion, default 0
     data_op_type(BmDataOpType):  data operation type, default SMEMB_DATA_OP_SDMA
-    is_second_mapping(bool):     whether to create this memory object in second mapping mode, default false
+    enable_56bits_gva(bool):     explicitly enable 56-bit GVA, default false.
+                                 When (max_dram_size + max_hbm_size) * world_size > 32TB,
+                                 this must be true; memfabric_hybrid does not auto-enable it.
+                                 Effective max usable capacity remains 128TB.
     flags(int):                  optional flags, default 0)");
 
     // big memory class

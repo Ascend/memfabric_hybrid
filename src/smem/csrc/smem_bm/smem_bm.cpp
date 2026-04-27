@@ -143,7 +143,7 @@ SMEM_API smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize, smem_bm_data
     option.dataOpType = dataOpType;
     option.flags = (flags & (~SMEM_BM_FLAG_CREATE_WITH_SHM));
     option.dramShmFd = -1;
-    option.isSecondMapping = false;
+    option.enable56BitsGva = false;
     option.flags = flags;
     return smem_bm_create2(id, &option);
 }
@@ -218,7 +218,19 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     options.hostVASpace = option->localDRAMSize;
     options.role = HYBM_ROLE_PEER;
     options.flags = option->flags;
-    options.isSecondMapping = option->isSecondMapping;
+
+    constexpr uint64_t SMEM_56BITS_GVA_REQUIRED_THRESHOLD = 32ULL << 40; // 32TB
+    const uint64_t totalAddrSpace =
+        (option->maxDramSize + option->maxHbmSize) * static_cast<uint64_t>(options.rankCount);
+    if (!option->enable56BitsGva && totalAddrSpace > SMEM_56BITS_GVA_REQUIRED_THRESHOLD) {
+        SM_LOG_AND_SET_LAST_ERROR(
+            "total address space (" << totalAddrSpace << " B) exceeds 32TB but enable56BitsGva is false. "
+            << "Please set enable56BitsGva = true, "
+            << "maxDram=" << option->maxDramSize << ", maxHbm=" << option->maxHbmSize
+            << ", rankCount=" << options.rankCount);
+        return nullptr;
+    }
+    options.enable56BitsGva = option->enable56BitsGva;
     bzero(options.transUrl, sizeof(options.transUrl));
     bzero(options.tag, sizeof(options.tag));
     bzero(options.tagOpInfo, sizeof(options.tagOpInfo));

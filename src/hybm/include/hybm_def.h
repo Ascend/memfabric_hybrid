@@ -128,7 +128,7 @@ typedef struct {
     uint64_t deviceVASpace;
     uint64_t hostVASpace;
     hybm_scene scene;
-    bool isSecondMapping;       // 是否应该支持大于128T的内存池
+    bool enable56BitsGva;
     hybm_role_type role;
     uint32_t flags;
     char transUrl[64];

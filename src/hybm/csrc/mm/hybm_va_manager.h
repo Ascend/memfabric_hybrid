@@ -181,7 +181,7 @@ public:
 
     // =============ReservedGvaInfo Management==============================
     ReservedGvaInfo AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize, hybm_mem_type memType,
-                                    bool secondMapping = false);
+                                    bool enable56BitsGva = false);
     ReservedGvaInfo AllocReserveLva(uint32_t localRankId, uint64_t size, uint32_t type, hybm_mem_type memType);
     void FreeReserveGva(uint64_t addr);
     void FreeReserveLva(uint64_t addr, uint32_t type);

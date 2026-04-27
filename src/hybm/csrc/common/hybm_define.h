@@ -60,8 +60,8 @@ constexpr uint64_t HYBM_GVM_END_ADDR = HYBM_GVM_START_ADDR + HYBM_GVM_MAX_POOL_S
 constexpr uint64_t HYBM_GVM_START_ADDR_A5 = 0x340000000000UL;                              // 不同HDK版本差异有点大
 constexpr uint64_t HYBM_GVM_END_ADDR_A5 = HYBM_GVM_START_ADDR_A5 + HYBM_GVM_MAX_POOL_SIZE; // 0xB40000000000UL
 
-constexpr uint64_t HYBM_GVM_START_ADDR_4P = 4ULL << 50; // 4P, GVA for > 128T memory pool case
-constexpr uint64_t HYBM_GVM_END_ADDR_8P = 8ULL << 50;   // 8P, GVA for > 128T memory pool case
+constexpr uint64_t HYBM_56BITS_GVA_START_ADDR = 64ULL << 50;  // 64P
+constexpr uint64_t HYBM_56BITS_GVA_END_ADDR = 128ULL << 50;   // 128P
 
 constexpr uint64_t ENTITY_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE00UL;
 constexpr uint64_t HBM_SLICE_EXPORT_INFO_MAGIC = 0xAABB1234FFFFEE01UL;

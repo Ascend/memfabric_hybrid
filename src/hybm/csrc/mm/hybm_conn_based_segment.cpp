@@ -50,12 +50,12 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
                              "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
     uint64_t totalSize = options_.rankCnt * options_.maxSize;
-    uint64_t localSize = options_.isSecondMapping ? options_.maxSize : totalSize;
+    uint64_t localSize = options_.enable56BitsGva ? options_.maxSize : totalSize;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalSize, localSize,
-                                                                HYBM_MEM_TYPE_HOST, options_.isSecondMapping);
+                                                                HYBM_MEM_TYPE_HOST, options_.enable56BitsGva);
     BM_ASSERT_LOG_AND_RETURN(gvaInfo.va[HVM_GVA] > 0, "Invalid param, start is 0.", BM_ERROR);
     void *startAddr = reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
-    if (!options_.isSecondMapping) {
+    if (!options_.enable56BitsGva) {
         void *mapped = mmap(startAddr, totalSize, PROT_NONE,
                             MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_PRIVATE, -1, 0);
 
@@ -67,7 +67,7 @@ Result HybmConnBasedSegment::ReserveMemorySpace(void **address) noexcept
     }
     globalVirtualAddress_ = (uint8_t *)startAddr;
     totalVirtualSize_ = totalSize;
-    if (options_.isSecondMapping) {
+    if (options_.enable56BitsGva) {
         localVirtualBase_ = (uint8_t *)gvaInfo.va[HVM_DVA];
     } else {
         localVirtualBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
@@ -107,8 +107,8 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
                                                        << options_.maxSize);
         return BM_INVALID_PARAM;
     }
-    if (options_.isSecondMapping && options_.shmFd >= 0) {
-        BM_LOG_ERROR("do not support memory pool greater 128TB, isSecondMapping: " << options_.isSecondMapping
+    if (options_.enable56BitsGva && options_.shmFd >= 0) {
+        BM_LOG_ERROR("do not support memory pool greater 128TB, enable56BitsGva: " << options_.enable56BitsGva
                                                                                    << ", shmFd:" << options_.shmFd);
         return BM_INVALID_PARAM;
     }
@@ -289,7 +289,7 @@ void HybmConnBasedSegment::FreeMemory() noexcept
         localVirtualBase_ = nullptr;
     }
 
-    if (options_.isSecondMapping) {
+    if (options_.enable56BitsGva) {
         globalVirtualAddress_ = localVirtualBase_ = nullptr;
     } else if (globalVirtualAddress_ != nullptr) {
         if (munmap(globalVirtualAddress_, totalVirtualSize_) != 0) {
@@ -385,7 +385,7 @@ void* HybmConnBasedSegment::AllocMemory(void *sliceAddr, uint64_t lvOffset, uint
         "and use 'echo <page_num> > /proc/sys/vm/nr_hugepages' to set hugepages.");
 
     // 2. try to alloc DRAM with hugepage via halMemAlloc
-    if (options_.isSecondMapping && options_.shmFd < 0) {
+    if (options_.enable56BitsGva && options_.shmFd < 0) {
         BM_LOG_WARN("Trying halMemAlloc for DRAM hugepage allocation. " << "size:" << size);
 
         // Use halMemAlloc to allocate DRAM huge page memory on host

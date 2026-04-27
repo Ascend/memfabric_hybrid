@@ -18,7 +18,7 @@ def main():
         bm_status = True
         # register DRAM in the big memory pool.
         bm_handle = bm.create2(id=0, local_dram_size=LOCAL_DRAM_SIZE, max_dram_size=LOCAL_DRAM_SIZE,
-                               data_op_type=bm.BmDataOpType.DEVICE_RDMA, is_second_mapping=False)
+                               data_op_type=bm.BmDataOpType.DEVICE_RDMA, enable_56bits_gva=False)
         # join the big memory pool.
         assert bm_handle.join() == 0, "bm_handle.join failed"
         for size, name in [(4096, "4KB"), (65536, "64KB"), (1048576, "1MB")]:

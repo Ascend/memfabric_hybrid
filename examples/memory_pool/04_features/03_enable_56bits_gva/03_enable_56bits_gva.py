@@ -17,7 +17,7 @@ RANK_START = 0
 CONFIG_STORE_URL = "tcp://127.0.0.1:8570"
 NIC_URL = '127.0.0.1'
 AUTO_RANKING = False
-SECOND_MAPPING = True
+ENABLE_56BITS_GVA = True
 
 GVA_SIZE = 1024 * 1024 * 1024 * 8
 MAX_GVA_SIZE = 1024 * 1024 * 1024 * 1024
@@ -104,7 +104,7 @@ def copy_data(bm_handle, rank_id: int, world_size: int, offset: int = 0):
 
 
 def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int, world_size: int, url: str, nic,
-                  auto_ranking: bool, is_second_mapping: bool,
+                  auto_ranking: bool, enable_56bits_gva: bool,
                   barriers: List[multiprocessing.Barrier]):
     ret = child_init(device_id=device_id, rank_id=rank_id, world_size=world_size, url=url, nic=nic,
                      auto_ranking=auto_ranking)
@@ -114,7 +114,7 @@ def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int,
 
     bm_protocol = get_bm_protocol(protocol)
     bm_handle = bm.create2(id=0, local_dram_size=GVA_SIZE, max_dram_size=MAX_GVA_SIZE, local_hbm_size=0, max_hbm_size=0,
-                           data_op_type=bm_protocol, is_second_mapping=is_second_mapping)
+                           data_op_type=bm_protocol, enable_56bits_gva=enable_56bits_gva)
     bm_handle.join()
     logging.info('==================== waiting at bm create')
     barriers[0].wait()
@@ -129,7 +129,7 @@ def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int,
     logging.info('==================== waiting at bm del')
     barriers[2].wait()
     logging.info('==================== all bm del finished.')
-    logging.info(f'==================== rank:{rank_id}, second mapping test ok.')
+    logging.info(f'==================== rank:{rank_id}, 56-bit GVA test ok.')
 
 
 def str_to_bool(v):
@@ -145,7 +145,7 @@ def str_to_bool(v):
 
 """
 1. device_sdma: 
-python3 03_second_mapping.py \
+python3 03_enable_56bits_gva.py \
         --world_size 1024 \
         --local_ranks 2 \
         --rank_start 0 \
@@ -178,15 +178,17 @@ def main_process():
                         help='If autorank is enabled, the BM automatically generates a global rank ID, which does '
                              'not need to be specified. The default value is false.',
                         default=AUTO_RANKING)
-    parser.add_argument('--is_second_mapping', type=str_to_bool,
-                        help='Is second mapping enabled. (default: false) ',
-                        default=SECOND_MAPPING)
+    parser.add_argument('--enable_56bits_gva', type=str_to_bool,
+                        help='Explicitly enable 56-bit GVA. Must be true when '
+                             '(max_dram_size + max_hbm_size) * world_size > 32TB; '
+                             'memfabric_hybrid does not auto-enable it.',
+                        default=ENABLE_56BITS_GVA)
 
     args = parser.parse_args()
     logging.info(
         f'example for BM, protocol:{args.protocol}, world_size:{args.world_size}, local_ranks:{args.local_ranks}, '
         f'rank_start:{args.rank_start}, url={args.url}, auto_ranking={args.auto_ranking}, '
-        f'is_second_mapping={args.is_second_mapping}')
+        f'enable_56bits_gva={args.enable_56bits_gva}')
 
     barriers = [multiprocessing.Barrier(args.local_ranks) for i in range(7)]
 
@@ -194,7 +196,7 @@ def main_process():
     for i in range(0, args.local_ranks):
         p = multiprocessing.Process(target=child_process,
                                     args=(args.protocol, i, i + args.rank_start, args.local_ranks, args.world_size,
-                                          args.url, args.nic, args.auto_ranking, args.is_second_mapping, barriers))
+                                          args.url, args.nic, args.auto_ranking, args.enable_56bits_gva, barriers))
         p.start()
         children.append(p)
 

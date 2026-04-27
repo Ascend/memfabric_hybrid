@@ -62,7 +62,7 @@ def child_init(device_id: int, rank_id: int, world_size: int, url: str, nic: str
 
 
 def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int, world_size: int, url: str, nic,
-                  auto_ranking: bool, is_second_mapping: bool,
+                  auto_ranking: bool, enable_56bits_gva: bool,
                   barriers: List[multiprocessing.Barrier]):
     ret = child_init(device_id=device_id, rank_id=rank_id, world_size=world_size, url=url, nic=nic,
                      auto_ranking=auto_ranking)
@@ -71,9 +71,9 @@ def child_process(protocol: str, rank_id: int, device_id: int, local_ranks: int,
         return
 
     bm_protocol = get_bm_protocol(protocol)
-    max_dram_size = 257 << 30 if is_second_mapping else 1 << 30
+    max_dram_size = 257 << 30 if enable_56bits_gva else 1 << 30
     bm_handle = bm.create2(id=0, local_dram_size=1 << 30, max_dram_size=max_dram_size, local_hbm_size=0, max_hbm_size=0,
-                           data_op_type=bm_protocol, is_second_mapping=is_second_mapping)
+                           data_op_type=bm_protocol, enable_56bits_gva=enable_56bits_gva)
     bm_handle.join()
 
     logging.info('==================== waiting at barrier 1')
@@ -201,14 +201,14 @@ python3 smem_bm_example.py \
         --url tcp://127.0.0.1:7432 \
         --auto_ranking true
 
-2. device_rdma+second_mapping: 
+2. device_rdma+enable_56bits_gva: 
 python3 smem_bm_example.py \
         --world_size 1024 \
         --local_ranks 2 \
         --rank_start 0 \
         --url tcp://127.0.0.1:7432 \
         --auto_ranking true \
-        --is_second_mapping true
+        --enable_56bits_gva true
 
 3. host_rdma: 
 python3 smem_bm_example.py \
@@ -220,7 +220,7 @@ python3 smem_bm_example.py \
         --auto_ranking true \
         --nic 192.168.100.xxx
 
-4. host_rdma+second_mapping: 
+4. host_rdma+enable_56bits_gva: 
 python3 smem_bm_example.py \
         --protocol host_rdma \
         --world_size 1024 \
@@ -229,7 +229,7 @@ python3 smem_bm_example.py \
         --url tcp://127.0.0.1:7432 \
         --auto_ranking true \
         --nic 192.168.100.xxx \
-        --is_second_mapping true
+        --enable_56bits_gva true
 """
 
 
@@ -256,15 +256,17 @@ def main_process():
                         help='If autorank is enabled, the BM automatically generates a global rank ID, which does '
                              'not need to be specified. The default value is false.',
                         default=False)
-    parser.add_argument('--is_second_mapping', type=str_to_bool,
-                        help='Is second mapping enabled. (default: false) ',
+    parser.add_argument('--enable_56bits_gva', type=str_to_bool,
+                        help='Explicitly enable 56-bit GVA. Must be true when '
+                             '(max_dram + max_hbm) * world_size > 32TB; memfabric_hybrid does not auto-enable it. '
+                             '(default: false)',
                         default=False)
 
     args = parser.parse_args()
     logging.info(
         f'example for BM, protocol:{args.protocol}, world_size:{args.world_size}, local_ranks:{args.local_ranks}, '
         f'rank_start:{args.rank_start}, url={args.url}, auto_ranking={args.auto_ranking}, '
-        f'is_second_mapping={args.is_second_mapping}')
+        f'enable_56bits_gva={args.enable_56bits_gva}')
 
     barriers = [multiprocessing.Barrier(args.local_ranks) for i in range(7)]
 
@@ -272,7 +274,7 @@ def main_process():
     for i in range(0, args.local_ranks):
         p = multiprocessing.Process(target=child_process,
                                     args=(args.protocol, i, i + args.rank_start, args.local_ranks, args.world_size,
-                                          args.url, args.nic, args.auto_ranking, args.is_second_mapping, barriers))
+                                          args.url, args.nic, args.auto_ranking, args.enable_56bits_gva, barriers))
         p.start()
         children.append(p)
 

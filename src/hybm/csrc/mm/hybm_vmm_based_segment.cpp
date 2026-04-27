@@ -61,7 +61,7 @@ Result HybmVmmBasedSegment::ValidateOptions() noexcept
     }
 
     // check memory pool size upper limit 128TB for 910C
-    if (options_.maxSize * options_.rankCnt > HYBM_GVM_MAX_POOL_SIZE && !options_.isSecondMapping) {
+    if (options_.maxSize * options_.rankCnt > HYBM_GVM_MAX_POOL_SIZE && !options_.enable56BitsGva) {
         BM_LOG_ERROR("Memory pool size > 128T. maxSize:" << options_.maxSize << ", rankCnt:" << options_.rankCnt);
         return BM_INVALID_PARAM;
     }
@@ -78,10 +78,10 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
 
     void *base = nullptr;
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
-    auto totalLvaSize = options_.isSecondMapping ? options_.maxSize : totalVirtualSize_;
+    auto totalLvaSize = options_.enable56BitsGva ? options_.maxSize : totalVirtualSize_;
     auto mem_type = options_.segType == HYBM_MST_HBM ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, totalLvaSize,
-                                                                mem_type, options_.isSecondMapping);
+                                                                mem_type, options_.enable56BitsGva);
     BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
 
@@ -217,7 +217,7 @@ Result HybmVmmBasedSegment::MallocFromDevice(size_t size, uint32_t devId, drv_me
 
 Result HybmVmmBasedSegment::MallocEmptySlice(MemSlicePtr &slice) noexcept
 {
-    auto localVirtualBase = localVirtualAddress_ + (options_.isSecondMapping ? 0 : options_.maxSize * options_.rankId);
+    auto localVirtualBase = localVirtualAddress_ + (options_.enable56BitsGva ? 0 : options_.maxSize * options_.rankId);
     auto globalVirtualBase = globalVirtualAddress_ + options_.maxSize * options_.rankId;
     auto allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
     auto gva = reinterpret_cast<uint64_t>(globalVirtualBase + allocatedSize_);
@@ -266,7 +266,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
     if (size == 0) {
         return MallocEmptySlice(slice);
     }
-    auto localVirtualBase = localVirtualAddress_ + (options_.isSecondMapping ? 0 : options_.maxSize * options_.rankId);
+    auto localVirtualBase = localVirtualAddress_ + (options_.enable56BitsGva ? 0 : options_.maxSize * options_.rankId);
     auto globalVirtualBase = globalVirtualAddress_ + options_.maxSize * options_.rankId;
     auto allocAddr = reinterpret_cast<uint64_t>(localVirtualBase + allocatedSize_);
     auto gva = reinterpret_cast<uint64_t>(globalVirtualBase + allocatedSize_);
@@ -543,7 +543,7 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
 
 uint64_t HybmVmmBasedSegment::ReserveLva(const HostSdmaExportInfo &im)
 {
-    if (!options_.isSecondMapping) {
+    if (!options_.enable56BitsGva) {
         return im.deviceVa;
     }
     void *lva = reinterpret_cast<void *>(im.deviceVa);
@@ -621,7 +621,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
         auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
         if (ret != BM_OK) {
             BM_LOG_ERROR("HalMemImport memory failed:" << ret << " local sdid:" << sdid_ << " remote ssid:" << im.sdid);
-            if (options_.isSecondMapping) {
+            if (options_.enable56BitsGva) {
                 HybmVaManager::GetInstance().FreeReserveLva(lva, HVM_DVA);
             }
             return BM_ERROR;
@@ -632,7 +632,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
             BM_LOG_ERROR("HalMemMap memory failed:" << ret << " gva:" << VaToStr(im.gva) << " lva:" << VaToStr(lva)
                                                     << " dva:" << VaToStr(im.deviceVa) << " size:" << im.size);
             DlHalApi::HalMemRelease(handle);
-            if (options_.isSecondMapping) {
+            if (options_.enable56BitsGva) {
                 HybmVaManager::GetInstance().FreeReserveLva(lva, HVM_DVA);
             }
             return BM_ERROR;

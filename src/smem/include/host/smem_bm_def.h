@@ -114,7 +114,7 @@ typedef struct {
     uint64_t localDRAMSize;          /* the size of local DRAM memory contributes to Big Memory object */
     uint64_t localHBMSize;           /* the size of local HBM memory contributes to Big Memory object */
     smem_bm_data_op_type dataOpType; /* if tag or tagOpInfo is empty, use dataOpType */
-    bool isSecondMapping;            /* whether support 128TB memory pool, default false */
+    bool enable56BitsGva;            /* Enable 56-bit GVA when total addr space exceeds 32TB. */
     uint32_t flags;                  /* optional flags, default 0 */
     char tag[32];                    /* tag of bm, eg:tag_1 */
     char tagOpInfo[256];             /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */

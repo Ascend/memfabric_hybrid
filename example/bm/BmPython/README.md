@@ -26,7 +26,7 @@ python3 smem_bm_example.py --protocol <PROTOCOL> \
     --url <STORE_URL> \
     --nic <NIC> \
     --auto_ranking <AUTO_RANKING> \
-    --is_second_mapping <IS_SECOND_MAPPING>
+    --enable_56bits_gva <ENABLE_56BITS_GVA>
 ```
 
     - PROTOCOL: memfabric使用的协议，可选参数：'device_rdma', 'device_sdma', 'host_rdma', 'host_urma', 'host_tcp'，默认 device_rdma
@@ -36,7 +36,7 @@ python3 smem_bm_example.py --protocol <PROTOCOL> \
     - STORE_URL: `tcp://<ip>:<port>` configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考  [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md)。
     - NIC: device port nic
     - AUTO_RANKING: 可选参数,不填则默认不开启auto_rank; true表示开启, false表示不开启(开启autorank,则bm内部会自动生成全局rankId,不需要用户指定)
-    - IS_SECOND_MAPPING: 是否启用二次映射，默认 false
+    - ENABLE_56BITS_GVA: 是否显式启用 56 位 GVA，默认 false。
 
 - 示例如下(假设期望指定监听8570端口)
 

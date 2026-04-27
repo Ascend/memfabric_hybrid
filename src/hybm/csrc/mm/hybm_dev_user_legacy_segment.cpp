@@ -35,13 +35,13 @@ Result HybmDevUserLegacySegment::ValidateOptions() noexcept
 Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
 {
     BM_ASSERT_RETURN(address != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(options_.isSecondMapping == true, BM_INVALID_PARAM);
+    BM_ASSERT_RETURN(options_.enable56BitsGva == true, BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(options_.rankId < options_.rankCnt,
                              "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, 0,
-                                                                HYBM_MEM_TYPE_DEVICE, options_.isSecondMapping);
+                                                                HYBM_MEM_TYPE_DEVICE, options_.enable56BitsGva);
     BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     lvaBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;

@@ -728,7 +728,7 @@ TEST_F(HybmMemSegmentTest, HybmConnBasedSegment_ReserveMemorySpace)
     options.segType = ock::mf::HYBM_MST_DRAM;
     options.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
     options.rankCnt = 1;
-    options.isSecondMapping = true;
+    options.enable56BitsGva = true;
 
     // 测试构造和参数验证
     ock::mf::HybmConnBasedSegment segment(options, 100);

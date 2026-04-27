@@ -290,7 +290,8 @@ class MfTest(TestServer):
                        self.bm_create),
             CliCommand("bm_create2",
                        "Create a big memory object locally after initialized, bm_create2 "
-                       "[mem_id] [local_dram_size] [max_dram_size]  [local_hbm_size] [max_hbm_size] [data_op_type] [is_second_mapping] [flags]",
+                       "[mem_id] [local_dram_size] [max_dram_size]  [local_hbm_size] [max_hbm_size] [data_op_type] "
+                       "[enable_56bits_gva] [flags]",
                        self.bm_create2),
             CliCommand("bm_destroy",
                        "Destroy big memory by a big memory handle. bm_destroy [handle_id]",
@@ -630,10 +631,10 @@ class MfTest(TestServer):
 
     @result_handler
     def bm_create2(self, mem_id: int, local_dram_size: int, max_dram_size: int, local_hbm_size: int, max_hbm_size: int,
-                   data_op_type: int, is_second_mapping: bool, flags: int):
+                   data_op_type: int, enable_56bits_gva: bool, flags: int):
         handle = bm.create2(id=mem_id, local_dram_size=local_dram_size, max_dram_size=max_dram_size,
                             local_hbm_size=local_hbm_size, max_hbm_size=max_hbm_size,
-                            data_op_type=bm.BmDataOpType(data_op_type), is_second_mapping=is_second_mapping,
+                            data_op_type=bm.BmDataOpType(data_op_type), enable_56bits_gva=enable_56bits_gva,
                             flags=flags)
         self.cli_print(f"id={mem_id}, local_dram_size={local_dram_size}, local_hbm_size={local_hbm_size}, "
                        f"data_op_type={bm.BmDataOpType(data_op_type),} flags={flags}")

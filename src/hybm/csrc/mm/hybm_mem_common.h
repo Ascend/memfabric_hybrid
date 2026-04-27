@@ -62,7 +62,7 @@ struct MemSegmentOptions {
     uint32_t rankCnt = 0;              // total rank count
     uint32_t flags = 0;
     int shmFd = -1;
-    bool isSecondMapping = false;
+    bool enable56BitsGva = false;
 };
 } // namespace mf
 } // namespace ock
