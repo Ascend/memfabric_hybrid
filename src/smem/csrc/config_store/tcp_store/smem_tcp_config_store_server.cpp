@@ -224,7 +224,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     }
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    if (!CanReceiveNewLink() && req.version == 0) { // version > 0 is reconnection
+    if (!CanReceiveNewLink() && req.reconnect == 0) {
         STORE_LOG_ERROR("server is recovering, please retry!");
         return SM_RECONNECT;
     }
@@ -810,17 +810,21 @@ Result AccStoreServer::CasHandler(const ock::acc::AccTcpRequestContext &context,
     auto ret = backend_->Get(key, oldValue);
     if (ret == SUCCESS) {
         if (expected == oldValue) {
-            GetWakeupList(key, wakeupWaiters, wakeupWatchers);
             ret = backend_->Put(key, exchange, EPHEMERAL_KEY_TTL_SEC);
-            exists = exchange;
+            if (ret == SUCCESS) {
+                GetWakeupList(key, wakeupWaiters, wakeupWatchers);
+                exists = exchange;
+            }
         } else {
             responseMessage.values.push_back(oldValue);
             exists = oldValue;
         }
-    } else {
+    } else if (ret == NOT_EXIST) {
         ret = backend_->Put(key, exchange, EPHEMERAL_KEY_TTL_SEC);
-        GetWakeupList(key, wakeupWaiters, wakeupWatchers);
-        exists = exchange;
+        if (ret == SUCCESS) {
+            GetWakeupList(key, wakeupWaiters, wakeupWatchers);
+            exists = exchange;
+        }
     }
     lockGuard.unlock();
     STORE_LOG_DEBUG("CAS REQUEST(" << context.SeqNo() << ") for key(" << key << ") finished, ret: " << ret
