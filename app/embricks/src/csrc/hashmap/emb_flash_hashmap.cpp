@@ -9,17 +9,4 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MEMFABRIC_HYBRID_EMB_FLASH_HASHMAP_H
-#define MEMFABRIC_HYBRID_EMB_FLASH_HASHMAP_H
-
-#include "emb_flash_hashmap_types.h"
-
-namespace ock {
-namespace emb {
-namespace hashmap {
-class FlashHashmap : public EmReferable {};
-using FlashHashmapPtr = EmRef<FlashHashmap>;
-} // namespace hashmap
-} // namespace emb
-} // namespace ock
-#endif // MEMFABRIC_HYBRID_EMB_FLASH_HASHMAP_H
+#include "emb_flash_hashmap.h"

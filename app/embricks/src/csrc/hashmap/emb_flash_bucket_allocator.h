@@ -12,147 +12,30 @@
 #ifndef MEMFABRIC_HYBRID_EMB_FLASH_BUCKET_ALLOCATOR_H
 #define MEMFABRIC_HYBRID_EMB_FLASH_BUCKET_ALLOCATOR_H
 
-#include <bitset>
-
 #include "emb_flash_hashmap_types.h"
 #include "emb_flash_dynamic_bitset.h"
+#include "emb_env_helper.h"
 
 namespace ock {
 namespace emb {
 namespace hashmap {
 /**
- * Mem slice which 64 bytes
+ * The allocator is designed for overflowed bucket for hashmap,
+ * by default, one allocator allocated from 16MB from OS, it is not expandable,
+ * 16MB contains 262144 buckets, if larger overflow buckets exist, what should do are:
+ * 1) increase the capacity of hashmap itself first, this the first choice
+ * 2) increase the capacity of this by set env 'EMB_HASHMAP_OVERFLOW_BUCKET_ALLOCATOR_SIZE_MB'
+ *
+ * After this allocator is initialized, physical memory should be allocated from OS,
+ * so we can get bucket from this allocator in very short time
  */
-struct BucketMemSlice {
-    BucketMemSlice *next = nullptr;
-};
-
-/**
- * Allocate one block from system, size of one block is 2MB, which equal to one 2MB huge page,
- * this block will be sliced to several slices, size of each slice is 64 bytes,
- * the slices are linked one by one, and using the 64 bytes for linked ptr,
- * when we allocate one slice just take one from the head,
- * when we free one slice just insert to the head
- */
-struct BucketMemBlock {
-    uintptr_t addressStart = 0;
-    uintptr_t addressEnd = 0;
-    BucketMemSlice *headSlice = nullptr;
-    BucketMemBlock *nextBlock = nullptr;
-    bool slicesCreated = false;
-
-    /**
-     * @brief Check if a ptr belongs to this block
-     *
-     * @param ptr          [in] the pointer that to be checked
-     *
-     * @return true if belong to this block
-     */
-    bool InRange(uintptr_t ptr) const noexcept;
-
-    /**
-     * @brief Allocate one mem slice from the block
-     *
-     * @param ptr          [out] ptr that allocated
-     * @return true if successful
-     */
-    bool Allocate(uintptr_t &ptr) noexcept;
-
-    /**
-     * @brief Free the mem slice back to block
-     *
-     * @param ptr          [in] ptr of the slice to be freed
-     * @return true if freed
-     */
-    bool Free(uintptr_t ptr) noexcept;
-
-    /**
-     * @brief Split the block into slices
-     *
-     * @return true if successful
-     */
-    bool MakeSlices() noexcept;
-};
-
-inline bool BucketMemBlock::InRange(uintptr_t ptr) const noexcept
-{
-    if (UNLIKELY(ptr == 0)) {
-        return false;
-    }
-
-    return (addressStart <= ptr && ptr < addressEnd);
-}
-
-inline bool BucketMemBlock::Allocate(uintptr_t &ptr) noexcept
-{
-    if (headSlice != nullptr) {
-        ptr = reinterpret_cast<uintptr_t>(headSlice);
-        headSlice = headSlice->next;
-        return true;
-    }
-
-    return false;
-}
-
-inline bool BucketMemBlock::Free(uintptr_t ptr) noexcept
-{
-    if (!InRange(ptr)) {
-        return false;
-    }
-
-    auto originalNext = headSlice;
-    auto newNext = reinterpret_cast<BucketMemSlice *>(ptr);
-    newNext->next = originalNext;
-    headSlice = newNext;
-    return true;
-}
-
-inline bool BucketMemBlock::MakeSlices() noexcept
-{
-    if (slicesCreated) {
-        return true;
-    }
-
-    if (addressStart == 0 || addressEnd == 0) {
-        EM_LOG_ERROR("Invalid address start or end is 0");
-        return false;
-    }
-
-    if ((addressEnd - addressStart) == kMemBlockSize) {
-        EM_LOG_ERROR("Invalid address that (addressEnd - addressStart) = "
-                     << (addressEnd - addressStart) << ", which is not equal to " << kMemBlockSize);
-        return false;
-    }
-
-    bzero(reinterpret_cast<void *>(addressStart), kMemBlockSize);
-
-    for (uint32_t i = 0; i < kBucketsPerMemBlock - 1; i++) {
-        auto tmpSlice = reinterpret_cast<BucketMemSlice *>(addressStart + kBucketSize * i);
-        tmpSlice->next = reinterpret_cast<BucketMemSlice *>(addressStart + kBucketSize * (i + 1));
-    }
-
-    headSlice = reinterpret_cast<BucketMemSlice *>(addressStart);
-
-    slicesCreated = true;
-}
-
-/**
- * Mem pool that response for reserving configured memory space and allocate 2MB
- * 1 allocate from start to end
- * 2 no free provided
- * 3 no physical memory will be attached in this class
- * 4 this mem pool is used for overflowed bucket, since the start address is fixed, we persist hashmap and recover
- * from disk, we don't need to recalculate the address, then we can do fash persist and recover
- */
-class FlashBucketMemPool {
+class FlashBucketAllocator {
 public:
-    static FlashBucketMemPool &Instance() noexcept;
-
-public:
-    ~FlashBucketMemPool();
+    FlashBucketAllocator() = default;
+    ~FlashBucketAllocator();
 
     /**
-     * @brief Do initialization include reserve space and set member variables
+     * @brief Do initialization include reserve space, set member variables, and allocate physical memory
      * @return 0 if successful
      */
     Result Initialize() noexcept;
@@ -163,99 +46,133 @@ public:
     void UnInitialize() noexcept;
 
     /**
-     * @brief Allocate 2MB space from start to end, since no physical page is not allocated,
-     * so this operation should be quite fast
+     * @brief Get start address of memory allocated from os
      *
-     * @param address      [out] allocated space
+     * @return
+     */
+    uintptr_t StartAddress() noexcept;
+
+    /**
+     * @brief Allocate one bucket
      *
+     * @param offset       [out] offset to start address, which allocated
      * @return 0 if successful
      */
-    Result Allocate2MB(uintptr_t &address) noexcept;
+    Result Allocate(uint64_t &offset) noexcept;
 
     /**
-     * @brief Get start address of mem pool
+     * @brief Free one bucket with offset
      *
-     * @return start address
+     * @param offset       [in] offset to start address, which allocated
+     * @return 0 if successful
      */
-    uintptr_t StartAddress() const noexcept;
+    Result Free(uint64_t offset) noexcept;
 
-    /**
-     * @brief operator << for ostream
-     */
-    friend std::ostream &operator<<(std::ostream &os, const FlashBucketMemPool &obj)
-    {
-        os << "FlashBucketMemPool [startAddress: " << std::hex << reinterpret_cast<void *>(obj.startAddress_)
-           << std::dec << ", capacity: " << obj.capacity_ << " bytes, inited: " << obj.inited_
-           << ", allocated2MB: " << obj.allocatedBitSet_.Count()
-           << ", remaining2MB: " << (obj.allocatedBitSet_.Capacity() - obj.allocatedBitSet_.Count()) << "]";
-
-        return os;
-    }
-
-    FlashBucketMemPool(const FlashBucketMemPool &) = delete;
-    FlashBucketMemPool(FlashBucketMemPool &&) = delete;
-    FlashBucketMemPool &operator=(const FlashBucketMemPool &) = delete;
-    FlashBucketMemPool &operator=(FlashBucketMemPool &&) = delete;
+public:
+    FlashBucketAllocator(const FlashBucketAllocator &) = delete;
+    FlashBucketAllocator(FlashBucketAllocator &&) = delete;
+    FlashBucketAllocator &operator=(const FlashBucketAllocator &) = delete;
+    FlashBucketAllocator &operator=(FlashBucketAllocator &&) = delete;
 
 private:
-    FlashBucketMemPool() = default;
-
     Result VerifyOption() noexcept;
 
 private:
-    uintptr_t startAddress_ = 0;         /* address of reserved memory space */
+    uintptr_t startAddress_ = 0;         /* start address of memory allocated from OS */
     uint64_t capacity_ = 0;              /* size of reserved memory space */
     std::mutex mutex_;                   /* mutex for member variables */
     bool inited_ = false;                /* initialized or not */
-    FlashDynamicBitSet allocatedBitSet_; /* bitset to store how many and which 2MB block are allocated */
+    uint32_t bitsetSearchStartPos_ = 0;  /* start position of search in bitset */
+    FlashDynamicBitSet allocatedBitSet_; /* bitset to store how many and which 64bytes block are allocated */
 };
 
-inline Result FlashBucketMemPool::Allocate2MB(uintptr_t &address) noexcept
+inline FlashBucketAllocator::~FlashBucketAllocator()
 {
-    std::lock_guard<std::mutex> guard(mutex_);
-    if (!inited_) {
-        EM_LOG_ERROR("Not initialized yet");
-        return EM_NOT_INITIALIZED;
+    UnInitialize();
+}
+
+inline Result FlashBucketAllocator::VerifyOption() noexcept
+{
+    const auto tmpUnitSize = OVERFLOW_BUCKET_POOL_UNIT_SIZE_MB;
+    const auto tmpCapacityMB = EnvHelper::gHashmapOverflowBucketAllocatorSizeMB;
+
+    if (tmpCapacityMB < tmpUnitSize || tmpCapacityMB > UN1024) {
+        EM_LOG_ERROR("Invalid size for overflowed bucket allocator, which should be <= 1024 and >= " << tmpUnitSize);
+        return EM_INVALID_PARAM;
     }
 
-    if (allocatedBitSet_.Full()) {
-        EM_LOG_INFO("No more space in mem pool, already allocated: " << allocatedBitSet_.Count()
-                                                                     << ", inited_: " << inited_);
-        return EM_NO_MORE_SPACE;
+    if (tmpCapacityMB % tmpUnitSize == 0) {
+        EM_LOG_ERROR("Invalid size for overflowed bucket allocator, which should be multiple times of " << tmpUnitSize);
+        return EM_INVALID_PARAM;
     }
 
-    uint32_t outPos = 0;
-    if (!allocatedBitSet_.FindAndSet(0, outPos)) {
-        return EM_NO_MORE_SPACE;
-    }
-
-    /* set address that allocated */
-    address = startAddress_ + UN2MB * outPos;
+    /*
+     * translate to bytes, two steps: assign to an uint64_t and multiple to avoid overflow
+     */
+    capacity_ = tmpCapacityMB;
+    capacity_ = capacity_ * UN1MB;
 
     return EM_OK;
 }
 
-inline uintptr_t FlashBucketMemPool::StartAddress() const noexcept
+inline Result FlashBucketAllocator::Initialize() noexcept
 {
-    return startAddress_;
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (inited_) {
+        EM_LOG_DEBUG("Already initialized");
+        return EM_OK;
+    }
+
+    /* verify and assign start address and capacity */
+    auto result = VerifyOption();
+    if (result != EM_OK) {
+        return result;
+    }
+
+    auto bitsetSize = capacity_ / OVERFLOW_BUCKET_POOL_UNIT_SIZE_MB;
+    result = allocatedBitSet_.Initialize(bitsetSize);
+    if (result != EM_OK) {
+        EM_LOG_ERROR("Initialize bitset for allocation failed");
+        return result;
+    }
+
+    /*
+     * reserve memory space
+     * here we only reserve memory space, no physical memory allocated
+     */
+    auto address = mmap(NULL, capacity_, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    if (address == nullptr) {
+        EM_LOG_ERROR("Allocate memory space [size: " << capacity_ << "] failed, errno: " << errno);
+        return EM_RESERVE_MEMORY_SPACE_FAILED;
+    }
+
+    /* reset to zero */
+    bzero(address, capacity_);
+
+    startAddress_ = reinterpret_cast<uintptr_t>(address);
+    inited_ = true;
+
+    EM_LOG_DEBUG("Initialized: " << std::hex << reinterpret_cast<void *>(startAddress_) << std::dec
+                                 << ", capacity: " << capacity_ << " bytes, remaining: " << allocatedBitSet_.Capacity()
+                                 << ", allocated: " << allocatedBitSet_.Count());
+
+    return EM_OK;
 }
 
-/**
- * Flash bucket allocator, the virtual memory comes from FlashBucketMemPool, with fixed start virtual address,
- * in this allocator, we allocate 2MB block from FlashBucketMemPool, then split the block into slices with 64bytes,
- * then allocate slices from the block;
- */
-class FlashBucketAllocator {
-public:
-    void *Allocate(uint64_t size) noexcept;
+inline void FlashBucketAllocator::UnInitialize() noexcept
+{
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (!inited_) {
+        return;
+    }
 
-    void Free(void *p) noexcept;
+    auto result = munmap(reinterpret_cast<void *>(startAddress_), capacity_);
+    if (result != 0) {
+        EM_LOG_WARN("Call munmap failed, result: " << result << ", errno: " << errno);
+    }
 
-private:
-    BucketMemBlock *head_ = nullptr;
-    BucketSpinLock spinLock_;
-};
-
+    inited_ = false;
+}
 } // namespace hashmap
 } // namespace emb
 } // namespace ock

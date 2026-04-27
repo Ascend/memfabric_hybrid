@@ -43,27 +43,9 @@ enum EmResultErrorCode : Result {
     EM_RESERVE_MEMORY_SPACE_FAILED = -17,
     EM_NO_MORE_SPACE = -18,
     EM_NOT_INITIALIZED = -19,
+    EM_HASHMAP_NOT_FOUND_BUT_INSERTED = -20,
+    EM_HASHMAP_ALREADY_HAS_NEXT_BUCKET = -21,
 };
-
-constexpr uint32_t PATH_MAX_LIMIT = 4096;
-constexpr uint32_t UN0 = 0;
-constexpr uint32_t UN1 = 1;
-constexpr uint32_t UN2 = 2;
-constexpr uint32_t UN3 = 3;
-constexpr uint32_t UN4 = 4;
-constexpr uint32_t UN5 = 5;
-constexpr uint32_t UN6 = 6;
-constexpr uint32_t UN7 = 7;
-constexpr uint32_t UN8 = 8;
-constexpr uint32_t UN9 = 9;
-constexpr uint32_t UN64 = 64;
-constexpr uint32_t UN128 = 128;
-constexpr uint32_t UN256 = 256;
-constexpr uint32_t UN4096 = 4096;
-
-constexpr uint32_t UN2MB = 2097152;
-constexpr uint64_t UN1GB = 1073741824;
-constexpr uint64_t UN1TB = 1099511627776;
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
@@ -76,15 +58,15 @@ constexpr uint64_t UN1TB = 1099511627776;
 #define EM_API           __attribute__((visibility("default")))
 #define EM_ALWAYS_INLINE inline __attribute__((always_inline))
 
-#define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)                      \
-    do {                                                                                              \
-        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                          \
-        if ((TARGET_FUNC_VAR) == nullptr) {                                                           \
-            EM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << ", error" << dlerror()); \
-            dlclose(FILE_HANDLE);                                                                     \
-            FILE_HANDLE = nullptr;                                                                    \
-            return EM_DL_LOAD_SYM_FAILED;                                                             \
-        }                                                                                             \
+#define DL_LOAD_SYM(TARGET_FUNC_VAR, TARGET_FUNC_TYPE, FILE_HANDLE, SYMBOL_NAME)                       \
+    do {                                                                                               \
+        TARGET_FUNC_VAR = (TARGET_FUNC_TYPE)dlsym(FILE_HANDLE, SYMBOL_NAME);                           \
+        if ((TARGET_FUNC_VAR) == nullptr) {                                                            \
+            EM_LOG_ERROR("Failed to call dlsym to load " << (SYMBOL_NAME) << ", error " << dlerror()); \
+            dlclose(FILE_HANDLE);                                                                      \
+            FILE_HANDLE = nullptr;                                                                     \
+            return EM_DL_LOAD_SYM_FAILED;                                                              \
+        }                                                                                              \
     } while (0)
 
 } // namespace emb

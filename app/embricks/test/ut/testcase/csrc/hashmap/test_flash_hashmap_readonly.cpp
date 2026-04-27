@@ -27,9 +27,7 @@ public:
 
 TEST_F(TestFlashHashmapReadonly, StructSize)
 {
-    EM_LOG_DEBUG("size of BucketSpinLock: " << sizeof(BucketSpinLock)
-                                            << ", size of ReadonlyHashBucket: " << sizeof(ReadonlyHashBucket));
+    EM_LOG_DEBUG("size of ReadonlyHashBucket: " << sizeof(ReadonlyHashBucket));
 
-    EXPECT_TRUE(sizeof(BucketSpinLock) == 8L);
     EXPECT_TRUE(sizeof(ReadonlyHashBucket) == 64L);
 }

@@ -14,14 +14,16 @@
 namespace ock {
 namespace emb {
 bool EnvHelper::gHugeTableEnabled = false;
-uint32_t EnvHelper::gHashmapOverflowBucketPoolStartAddrTB = 6; /* 6TB */
-uint32_t EnvHelper::gHashmapOverflowBucketPoolSizeGB = 1;      /* 1GB */
+uint32_t EnvHelper::gHashmapOverflowBucketPoolStartAddrTB = 6;    /* 6TB */
+uint32_t EnvHelper::gHashmapOverflowBucketPoolSizeGB = 1;         /* 1GB */
+uint32_t EnvHelper::gHashmapOverflowBucketAllocatorSizeMB = UN16; /* 16MB */
 
 void EnvHelper::Initialize() noexcept
 {
     gHugeTableEnabled = (Func::GetEnv<uint32_t>(ENV_NAME_ENABLE_HUGE_TABLE, 0) == 1);
     gHashmapOverflowBucketPoolStartAddrTB = Func::GetEnv<uint32_t>(ENV_NAME_OVERFLOW_BUCKET_MEM_START_ADDRESS, 6);
     gHashmapOverflowBucketPoolSizeGB = Func::GetEnv<uint32_t>(ENV_NAME_OVERFLOW_BUCKET_MEM_SIZE, 1);
+    gHashmapOverflowBucketAllocatorSizeMB = Func::GetEnv<uint32_t>(ENV_NAME_OVERFLOW_ALLOCATOR_CAPACITY, UN16);
 }
 
 void EnvHelper::DumpEnv() noexcept
@@ -29,6 +31,7 @@ void EnvHelper::DumpEnv() noexcept
     EM_LOG_DEBUG(ENV_NAME_ENABLE_HUGE_TABLE << " = " << gHugeTableEnabled);
     EM_LOG_DEBUG(ENV_NAME_OVERFLOW_BUCKET_MEM_START_ADDRESS << " = " << gHashmapOverflowBucketPoolStartAddrTB);
     EM_LOG_DEBUG(ENV_NAME_OVERFLOW_BUCKET_MEM_SIZE << " = " << gHashmapOverflowBucketPoolSizeGB);
+    EM_LOG_DEBUG(ENV_NAME_OVERFLOW_ALLOCATOR_CAPACITY << " = " << gHashmapOverflowBucketAllocatorSizeMB);
 }
 } // namespace emb
 } // namespace ock

@@ -21,6 +21,7 @@ namespace emb {
 #define ENV_NAME_ENABLE_HUGE_TABLE                 "EMB_ENABLE_HUGE_PAGE"
 #define ENV_NAME_OVERFLOW_BUCKET_MEM_START_ADDRESS "EMB_HASHMAP_OVERFLOW_BUCKET_MEM_POOL_ADDRESS_TB"
 #define ENV_NAME_OVERFLOW_BUCKET_MEM_SIZE          "EMB_HASHMAP_OVERFLOW_BUCKET_MEM_POOL_SIZE_GB"
+#define ENV_NAME_OVERFLOW_ALLOCATOR_CAPACITY       "EMB_HASHMAP_OVERFLOW_BUCKET_ALLOCATOR_SIZE_MB"
 
 class EnvHelper {
 public:
@@ -31,6 +32,7 @@ public:
     static bool gHugeTableEnabled;
     static uint32_t gHashmapOverflowBucketPoolStartAddrTB;
     static uint32_t gHashmapOverflowBucketPoolSizeGB;
+    static uint32_t gHashmapOverflowBucketAllocatorSizeMB;
 };
 } // namespace emb
 } // namespace ock

@@ -16,6 +16,7 @@
 
 #include "embricks.h"
 
+#include "emb_constants.h"
 #include "emb_defines.h"
 #include "emb_functions.h"
 #include "emb_logger.h"

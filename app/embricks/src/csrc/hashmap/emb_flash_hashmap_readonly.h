@@ -38,10 +38,10 @@ struct ReadonlyHashBucket {
      */
     Result Get(uint64_t key, uint64_t &value) noexcept;
 
-    uint64_t key_[UN3]{kInvalidMapKey, kInvalidMapKey, kInvalidMapKey};         /* initialize with invalid key */
-    uint64_t value_[UN3]{kInvalidMapValue, kInvalidMapValue, kInvalidMapValue}; /* initialize with invalid value */
-    ReadonlyHashBucket *next_ = nullptr;                                        /* pointer to next bucket */
-    BucketSpinLock spinLock_{};                                                 /* spin lock of next bucket */
+    uint64_t key_[UN3]{INVALID_MAP_KEY, INVALID_MAP_KEY, INVALID_MAP_KEY};         /* initialize with invalid key */
+    uint64_t value_[UN3]{INVALID_MAP_VALUE, INVALID_MAP_VALUE, INVALID_MAP_VALUE}; /* initialize with invalid value */
+    ReadonlyHashBucket *next_ = nullptr;                                           /* pointer to next bucket */
+    uint64_t reserved;                                                             /* reserved */
 } __attribute__((aligned(8)));
 
 EM_ALWAYS_INLINE Result ReadonlyHashBucket::Get(uint64_t key, uint64_t &value) noexcept
@@ -122,16 +122,16 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const ReadonlyFlashHashmap &o)
     {
         os << "ReadonlyFlashHashmap [inited: " << o.inited_ << ", size_: " << o.size_
-           << ", bucketCount_: " << o.bucketCount_ << ", kSubMapCount: " << kSubMapCount << "]";
+           << ", bucketCount_: " << o.bucketCount_ << ", subMapCount: " << SUB_MAP_COUNT << "]";
 
         return os;
     }
 
 protected:
-    uint64_t size_{0};                            /* item size of the map*/
-    bool inited_ = false;                         /* flag for initialization */
-    uint32_t bucketCount_ = 0;                    /* bucket count of each sub map */
-    ReadonlyHashBucket *subMaps_[kSubMapCount]{}; /* sub maps */
+    uint64_t size_{0};                             /* item size of the map*/
+    bool inited_ = false;                          /* flag for initialization */
+    uint32_t bucketCount_ = 0;                     /* bucket count of each sub map */
+    ReadonlyHashBucket *subMaps_[SUB_MAP_COUNT]{}; /* sub maps */
 
     friend class ReadonlyFlashHashmapPersist;
 };
@@ -157,7 +157,7 @@ EM_ALWAYS_INLINE uint64_t ReadonlyFlashHashmap::Size() const noexcept
 
 EM_ALWAYS_INLINE Result ReadonlyFlashHashmap::Find(const uint64_t key, uint64_t &value) noexcept
 {
-    if (UNLIKELY(key == kInvalidMapKey)) {
+    if (UNLIKELY(key == INVALID_MAP_KEY)) {
         return EM_HASHMAP_INVALID_KEY;
     }
 

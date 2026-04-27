@@ -19,16 +19,18 @@ namespace emb {
 namespace hashmap {
 
 /**
- * constant values
+ * constant values for hashmap
  */
-constexpr uint32_t kBucketSize = 64;
-constexpr uint32_t kMemBlockSize = UN2MB;
-constexpr uint32_t kBucketsPerMemBlock = UN2MB / kBucketSize;
-constexpr uint64_t kInvalidMapKey = UINT64_MAX;
-constexpr uint64_t kInvalidMapValue = UINT64_MAX;
-constexpr uint32_t kSubMapCount = 5;
-constexpr uint32_t kMapPrimesCount = 256;
-const uint32_t kMapPrimes[kMapPrimesCount] = {
+constexpr uint32_t OVERFLOW_BUCKET_POOL_UNIT_SIZE_MB = UN16;
+constexpr uint32_t BUCKET_MEM_SIZE = 64;
+constexpr uint32_t MEM_BLOCK_SIZE = UN2MB;
+constexpr uint32_t BUCKETS_PER_MEM_BLOCK = UN2MB / BUCKET_MEM_SIZE;
+constexpr uint64_t MAP_KEY_0 = 0;
+constexpr uint64_t INVALID_MAP_KEY = 0;
+constexpr uint64_t INVALID_MAP_VALUE = 0;
+constexpr uint32_t SUB_MAP_COUNT = 5;
+constexpr uint32_t MAP_PRIMES_COUNT = 256;
+const uint32_t MAP_PRIMES[MAP_PRIMES_COUNT] = {
     2,          3,          5,          7,          11,         13,         17,         19,         23,
     29,         31,         37,         41,         43,         47,         53,         59,         61,
     67,         71,         73,         79,         83,         89,         97,         103,        109,
@@ -58,28 +60,6 @@ const uint32_t kMapPrimes[kMapPrimesCount] = {
     849749479,  919334987,  994618837,  1076067617, 1164186217, 1259520799, 1362662261, 1474249943, 1594975441,
     1725587117, 1866894511, 2019773507, 2185171673, 2364114217, 2557710269, 2767159799, 2993761039, 3238918481,
     3504151727, 3791104843, 4101556399, 4294967291};
-
-/**
- * Spinlock for linked bucket
- */
-struct BucketSpinLock {
-public:
-    void Lock() noexcept;
-    void UnLock() noexcept;
-
-private:
-    uint64_t lock = 0;
-} __attribute__((aligned(8)));
-
-EM_ALWAYS_INLINE void BucketSpinLock::Lock() noexcept
-{
-    while (!__sync_bool_compare_and_swap(&lock, 0, 1)) {}
-}
-
-EM_ALWAYS_INLINE void BucketSpinLock::UnLock() noexcept
-{
-    __atomic_store_n(&lock, 0, __ATOMIC_SEQ_CST);
-}
 
 /**
  * @brief options for recover
