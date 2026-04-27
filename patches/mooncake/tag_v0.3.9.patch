@@ -152,10 +152,10 @@ index 0a927fe..a12470b 100644
      // fail in some rdma implementations.
 diff --git a/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h
 new file mode 100644
-index 0000000..6498cb8
+index 0000000..da097e4
 --- /dev/null
 +++ b/mooncake-transfer-engine/include/transport/ub_transport/memfabric_smem_dl.h
-@@ -0,0 +1,741 @@
+@@ -0,0 +1,762 @@
 +// Copyright 2025 Huawei Technologies Co., Ltd
 +// Copyright 2024 KVCache.AI
 +//
@@ -287,9 +287,11 @@ index 0000000..6498cb8
 +    uint64_t localDRAMSize;           /* the size of local DRAM memory contributes to Big Memory object */
 +    uint64_t localHBMSize;            /* the size of local HBM memory contributes to Big Memory object */
 +    smem_bm_data_op_type dataOpType;  /* if tag or tagOpInfo is empty, use dataOpType */
++    bool enable56BitsGva;             /* whether support 56 bits GVA, default false */
 +    uint32_t flags;                   /* optional flags, default 0 */
 +    char tag[32];                     /* tag of bm, eg:tag_1 */
 +    char tagOpInfo[256];              /* optype of tag to tag, eg: tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 */
++    int dramShmFd;
 +} smem_bm_create_option_t;
 +
 +using smem_bm_t = void*;
@@ -371,6 +373,8 @@ index 0000000..6498cb8
 +    std::string tagOpInfo{};
 +    // for smem trans
 +    smem_trans_role_t role{SMEM_TRANS_NONE};
++    bool enable56BitsGva{false};
++    uint32_t hcomPort{1025};
 +};
 +
 +class MemFabricSmemDl {
@@ -783,6 +787,23 @@ index 0000000..6498cb8
 +        if (tagOpInfoStr) {
 +            config_.tagOpInfo = std::string_view(tagOpInfoStr);
 +        }
++
++        auto enable56BitsGvaStr = std::getenv("MF_ENABLE_56_BITS_GVA");
++        if (enable56BitsGvaStr) {
++             if (strcmp(enable56BitsGvaStr, "TRUE") == 0) {
++                config_.enable56BitsGva = true;
++            }
++        }
++        auto hcomPortStr = std::getenv("MF_HCOM_PORT");
++        if (hcomPortStr) {
++            auto val = atoi(hcomPortStr);
++            if (val > static_cast<int32_t>(STORE_URL_PORT_END) || val < static_cast<int32_t>(STORE_URL_PORT_START)) {
++                LOG(FATAL) << "Get config hcomPort failed port must in 1024 ~ 65534"
++                           << " now is:" << hcomPortStr;
++            } else {
++                config_.hcomPort = static_cast<uint32_t>(val);
++            }
++        }
 +    }
 +
 +    static void InitMemFabricConfig()
@@ -1117,10 +1138,10 @@ index 0000000..775169d
 +target_link_libraries(ub_transport PRIVATE mem_fabric_api glog gflags)
 diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
 new file mode 100644
-index 0000000..466e256
+index 0000000..be56e7e
 --- /dev/null
 +++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_smem_dl.cpp
-@@ -0,0 +1,340 @@
+@@ -0,0 +1,341 @@
 +// Copyright 2025 Huawei Technologies Co., Ltd
 +// Copyright 2024 KVCache.AI
 +//
@@ -1295,7 +1316,7 @@ index 0000000..466e256
 +    bool etcdMode = storeUrlStr.compare(0, kEtcdPrefixLen, kEtcdPrefix) == 0;
 +    port = etcdMode ? port : port + 1;
 +    storeUrl = protocol + ipStr + ":" + std::to_string(port);
-+    connUrl = "tcp://" + ipStr + ":0";
++    connUrl = "tcp://" + ipStr + ":" + std::to_string(MemFabricSmemDl::GetMemFabricConfig().hcomPort);
 +    config.flags |= SMEM_BM_INIT_GVM_FLAG;
 +    config.startConfigStoreServer = !etcdMode;
 +
@@ -1345,6 +1366,7 @@ index 0000000..466e256
 +                std::min(sizeof(option.tagOpInfo) - 1, MemFabricSmemDl::GetMemFabricConfig().tagOpInfo.size()),
 +                option.tag);
 +    option.flags = 0;
++    option.enable56BitsGva = MemFabricSmemDl::GetMemFabricConfig().enable56BitsGva;
 +    handle = MemFabricSmemDl::SmemBmCreate2(0, &option);
 +    if (handle == nullptr) {
 +        MemFabricSmemDl::SmemBmUninit(0);
@@ -1463,10 +1485,10 @@ index 0000000..466e256
 +}  // namespace mooncake
 diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
 new file mode 100644
-index 0000000..b7bffd3
+index 0000000..25dc2ef
 --- /dev/null
 +++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,391 @@
 +// Copyright 2025 Huawei Technologies Co., Ltd
 +// Copyright 2024 KVCache.AI
 +//
@@ -1492,13 +1514,17 @@ index 0000000..b7bffd3
 +
 +MemFabricTransport::~MemFabricTransport() {}
 +
-+Status MemFabricTransport::batchCopySmemTrans(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list)
++const size_t MAX_SLICE_PER_BATCH = 10240;
++
++Status MemFabricTransport::batchCopySmemTrans(
++    const std::unordered_map<SegmentID, std::vector<Slice *>> &slice_list)
 +{
 +    for (const auto &items: slice_list) {
 +        auto segmentId = items.first;
 +        auto slices = items.second;
-+        size_t count = slices.size();
-+        if (count == 0) {
++        size_t totalCount = slices.size();
++        
++        if (totalCount == 0) {
 +            continue;
 +        }
 +        std::string targetName;
@@ -1507,31 +1533,54 @@ index 0000000..b7bffd3
 +            targetName = targetSegmentDesc->name;
 +        } else {
 +            LOG(ERROR) << "MemFabricTransport: failed to get segment by id" << segmentId;
-+        }
-+        std::vector<const void *> localAddrs(count);
-+        std::vector<void *> remoteAddrs(count);
-+        std::vector<uint64_t> dataSizes(count);
-+        for (size_t i = 0; i < count; ++i) {
-+            localAddrs[i] = slices[i]->source_addr;
-+            remoteAddrs[i] = (void *)slices[i]->hccl.dest_addr;
-+            dataSizes[i] = slices[i]->length;
-+        }
-+        auto ret = slices[0]->opcode == TransferRequest::READ ?
-+            MemFabricSmemDl::SmemTransBatchRead(MemFabricSmemDl::GetSmemTransHandle(),
-+                                                localAddrs.data(), targetName.c_str(),
-+                                                remoteAddrs.data(), dataSizes.data(), count) :
-+            MemFabricSmemDl::SmemTransBatchWrite(MemFabricSmemDl::GetSmemTransHandle(),
-+                                                 localAddrs.data(), targetName.c_str(),
-+                                                 remoteAddrs.data(), dataSizes.data(), count);
-+        if (ret != 0) {
-+            LOG(ERROR) << "MemFabricTransport: Failed to smem trans copy batch, ret:" << ret;
 +            for (auto &slice : slices) {
 +                slice->markFailed();
 +            }
-+        } else {
-+            for (auto &slice : slices) {
-+                slice->markSuccess();
++            continue;  // 跳过当前 segment
++        }
++        
++        // 2. 分批处理
++        size_t offset = 0;
++        while (offset < totalCount) {
++            size_t batchSize = std::min(MAX_SLICE_PER_BATCH, totalCount - offset);
++            
++            // 3. 准备当前批次的地址和大小
++            std::vector<const void *> localAddrs(batchSize);
++            std::vector<void *> remoteAddrs(batchSize);
++            std::vector<uint64_t> dataSizes(batchSize);
++            
++            for (size_t i = 0; i < batchSize; ++i) {
++                localAddrs[i] = slices[offset + i]->source_addr;
++                remoteAddrs[i] = (void *)slices[offset + i]->hccl.dest_addr;
++                dataSizes[i] = slices[offset + i]->length;
 +            }
++            
++            // 4. 执行当前批次的传输
++            auto ret = slices[offset]->opcode == TransferRequest::READ ?
++                MemFabricSmemDl::SmemTransBatchRead(MemFabricSmemDl::GetSmemTransHandle(),
++                                                localAddrs.data(), targetName.c_str(),
++                                                remoteAddrs.data(), dataSizes.data(), batchSize) :
++                MemFabricSmemDl::SmemTransBatchWrite(MemFabricSmemDl::GetSmemTransHandle(),
++                                                localAddrs.data(), targetName.c_str(),
++                                                remoteAddrs.data(), dataSizes.data(), batchSize);
++            
++            // 5. 处理当前批次结果
++            if (ret != 0) {
++                LOG(ERROR) << "MemFabricTransport: Failed to smem trans batch copy, "
++                           << "segmentId: " << segmentId 
++                           << ", batch offset: " << offset 
++                           << ", batch size: " << batchSize
++                           << ", ret: " << ret;
++                for (size_t i = 0; i < batchSize; ++i) {
++                    slices[offset + i]->markFailed();
++                }
++            } else {
++                for (size_t i = 0; i < batchSize; ++i) {
++                    slices[offset + i]->markSuccess();
++                }
++            }
++            
++            offset += batchSize;
 +        }
 +    }
 +    return Status::OK();
@@ -1540,36 +1589,66 @@ index 0000000..b7bffd3
 +Status MemFabricTransport::batchCopySmemBm(const std::unordered_map<SegmentID, std::vector<Slice *>>  &slice_list)
 +{
 +    for (const auto &items: slice_list) {
++        auto segmentId = items.first;
 +        auto slices = items.second;
-+        size_t count = slices.size();
-+        if (count == 0) {
++        size_t totalCount = slices.size();
++        
++        if (totalCount == 0) {
 +            continue;
 +        }
-+        auto opcode = slices[0]->opcode;
-+        std::vector<const void *> sources(count);
-+        std::vector<void *> destinations(count);
-+        std::vector<uint64_t> dataSizes(count);
-+        for (size_t i = 0; i < count; ++i) {
-+            sources[i] = (opcode == TransferRequest::READ ? (void *)slices[i]->hccl.dest_addr
-+                                                          : slices[i]->source_addr);
-+            destinations[i] = (opcode  == TransferRequest::WRITE ? (void *)slices[i]->hccl.dest_addr
-+                                                                 : slices[i]->source_addr);
-+            dataSizes[i] = slices[i]->length;
-+        }
-+        smem_batch_copy_params params = {const_cast<void **>(sources.data()), destinations.data(),
-+                                         dataSizes.data(), static_cast<uint32_t>(count)};
-+
-+        smem_bm_copy_type t = SMEMB_COPY_AUTO;
-+        auto ret = MemFabricSmemDl::SmemBmCopyBatch(MemFabricSmemDl::GetSmemBmHandle(), &params, t, 0);
-+        if (ret != 0) {
-+            LOG(ERROR) << "MemFabricTransport: Failed to smem bm copy batch, ret:" << ret;
++        
++        std::string targetName;
++        auto targetSegmentDesc = metadata_->getSegmentDescByID(segmentId);
++        if (targetSegmentDesc != nullptr) {
++            targetName = targetSegmentDesc->name;
++        } else {
++            LOG(ERROR) << "MemFabricTransport: failed to get segment by id" << segmentId;
 +            for (auto &slice : slices) {
 +                slice->markFailed();
 +            }
-+        } else {
-+            for (auto &slice : slices) {
-+                slice->markSuccess();
++            continue;
++        }
++        
++        auto opcode = slices[0]->opcode;
++        
++        size_t offset = 0;
++        while (offset < totalCount) {
++            size_t batchSize = std::min(MAX_SLICE_PER_BATCH, totalCount - offset);
++            
++            std::vector<const void *> sources(batchSize);
++            std::vector<void *> destinations(batchSize);
++            std::vector<uint64_t> dataSizes(batchSize);
++            
++            for (size_t i = 0; i < batchSize; ++i) {
++                sources[i] = (opcode == TransferRequest::READ ? (void *)slices[offset + i]->hccl.dest_addr
++                                                              : slices[offset + i]->source_addr);
++                destinations[i] = (opcode == TransferRequest::WRITE ? (void *)slices[offset + i]->hccl.dest_addr
++                                                                   : slices[offset + i]->source_addr);
++                dataSizes[i] = slices[offset + i]->length;
 +            }
++            
++            smem_batch_copy_params params = {const_cast<void **>(sources.data()), destinations.data(),
++                                             dataSizes.data(), static_cast<uint32_t>(batchSize)};
++
++            smem_bm_copy_type t = SMEMB_COPY_AUTO;
++            auto ret = MemFabricSmemDl::SmemBmCopyBatch(MemFabricSmemDl::GetSmemBmHandle(), &params, t, 0);
++            
++            if (ret != 0) {
++                LOG(ERROR) << "MemFabricTransport: Failed to smem bm batch copy, "
++                           << "segmentId: " << segmentId 
++                           << ", batch offset: " << offset 
++                           << ", batch size: " << batchSize
++                           << ", ret: " << ret;
++                for (size_t i = 0; i < batchSize; ++i) {
++                    slices[offset + i]->markFailed();
++                }
++            } else {
++                for (size_t i = 0; i < batchSize; ++i) {
++                    slices[offset + i]->markSuccess();
++                }
++            }
++            
++            offset += batchSize;
 +        }
 +    }
 +    return Status::OK();

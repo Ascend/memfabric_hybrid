@@ -32,6 +32,8 @@ UB Transport支持通过环境变量设置内部参数
 | MF_RANK_TAG_OP_INFO | 设置用户本地介质（默认为空，tag间传输方式说明，应符合tag:dataOpType:tag的形式，dataOpType可选：DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA）, eg: **export MF_RANK_TAG_OP_INFO=Tag_A2:DEVICE_RDMA:Tag_A3** |
 | MF_PD_OP_TYPE       | 设置PD传输协议（支持device_rdma、device_sdma）, eg: **export MF_PD_OP_TYPE=device_rdma**                                                                                                          |
 | MF_SMEM_TRANS_ROLE  | 设置PD传输角色（支持Prefill、Decode）,eg: **export MF_SMEM_TRANS_ROLE=Prefill**                                                                                                                   |
+| MF_ENABLE_56_BITS_GVA  | 设置是否开启56位 GVA（默认为False）,eg: **export MF_ENABLE_56_BITS_GVA=True**                                                                                                                   |
+| MF_HCOM_PORT  | 设置HCON 端口（默认为1025）,eg: **export MF_HCOM_PORT=1026**                                                                                                                   |
 
 ### 注意事项（必看）
 1.由于 memfabric 初始化时依赖config_store（memfabric内部的元数据交换服务）来进行各节点的元数据同步，所以启动时需要保证MF_STORE_URL的有效性
