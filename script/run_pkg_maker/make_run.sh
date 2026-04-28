@@ -61,7 +61,7 @@ mkdir -p ${PKG_DIR}/include/hcom
 # hcom
 if [ "${BUILD_HCOM}" == "ON" ]; then
 cp "${PROJECT_DIR}"/output/3rdparty/hcom/lib/libhcom.so ${PKG_DIR}/"${ARCH_OS}"/lib64
-cp -v "${PROJECT_DIR}"/output/3rdparty/hcom/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
+cp -v "${PROJECT_DIR}"/build/_deps/hcom-src/dist/hcom_3rdparty/libboundscheck/lib/libboundscheck.so \
        ${PKG_DIR}/"${ARCH_OS}"/lib64
 fi
 # etcd
