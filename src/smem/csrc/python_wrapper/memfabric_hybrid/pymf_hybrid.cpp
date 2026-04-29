@@ -35,7 +35,10 @@ public:
     explicit ShareMemory(smem_shm_t hd, void *gva) noexcept : handle_{hd}, gvaAddress_{gva} {}
     virtual ~ShareMemory() noexcept
     {
-        smem_shm_destroy(handle_, 0);
+        if (handle_ != nullptr) {
+            smem_shm_destroy(handle_, 0);
+            handle_ = nullptr;
+        }
     }
 
     int32_t SetExternContext(const void *context, uint32_t size)
@@ -60,7 +63,9 @@ public:
 
     int32_t Destroy(uint32_t flags)
     {
-        return smem_shm_destroy(handle_, flags);
+        auto ret = smem_shm_destroy(handle_, flags);
+        handle_ = nullptr;
+        return ret;
     }
 
     int32_t AllGather(const char *sendBuf, uint32_t sendSize, char *recvBuf, uint32_t recvSize)

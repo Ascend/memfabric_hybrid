@@ -90,7 +90,9 @@ SMEM_API int32_t smem_shm_destroy(smem_shm_t handle, uint32_t flags)
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(g_smemShmInited, "smem shm not initialized yet", SM_NOT_INITIALIZED);
 
-    return SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
+    auto ret = SmemShmEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(handle));
+    SM_LOG_INFO("smem_shm_destroy finished, ret: " << ret);
+    return ret;
 }
 
 SMEM_API int32_t smem_shm_set_extra_context(smem_shm_t handle, const void *context, uint32_t size)
