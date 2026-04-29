@@ -116,13 +116,14 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
     auto gva = reinterpret_cast<uint64_t>(globalVirtualAddress_ + options_.maxSize * options_.rankId + allocatedSize_);
     void *mapped = nullptr;
-    auto ret = MapSlice(mapped, sliceAddr, allocatedSize_, size, gva);
+    MemAllocMethod allocMethod = MemAllocMethod::MMAP;
+    auto ret = MapSlice(mapped, sliceAddr, allocatedSize_, size, gva, allocMethod);
     if (ret != BM_OK) {
         return ret;
     }
     allocatedSize_ += size;
     slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, gva,
-                                       reinterpret_cast<uint64_t>(mapped), size);
+                                       reinterpret_cast<uint64_t>(mapped), size, allocMethod);
     slices_.emplace(slice->index_, slice);
     BM_LOG_DEBUG("allocate slice(idx:" << slice->index_ << ", size:" << slice->size_ << " va:" << mapped << ").");
     return BM_OK;
@@ -277,13 +278,14 @@ void HybmConnBasedSegment::FreeMemory() noexcept
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
         ReleaseSliceMemory(slice);
+        // Free memory based on allocation method
+        FreeAllocatedMemory(reinterpret_cast<void *>(slice->vAddress_), slice->size_, slice->allocMethod_);
     }
     Unmap();
 
     if (localVirtualBase_ != nullptr && allocatedSize_ > 0) {
-        if (munmap(localVirtualBase_, allocatedSize_) != 0) {
-            BM_LOG_ERROR("Failed to unmap local memory");
-        }
+        // All slice memory has been freed via FreeAllocatedMemory
+        // No need to munmap localVirtualBase_ as each slice's memory is released individually
         localVirtualBase_ = nullptr;
     }
 
@@ -326,58 +328,92 @@ Result HybmConnBasedSegment::PrepareShareMemoryFd() const noexcept
 }
 
 Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t lvOffset, uint64_t size,
-                                      uint64_t gva) noexcept
+                                      uint64_t gva, MemAllocMethod &allocMethod) noexcept
 {
     if (size == 0) {
         return BM_OK;
     }
 
-    auto prot = PROT_READ | PROT_WRITE;
-    auto flags = MAP_FIXED | MAP_HUGETLB;
     void *dva = nullptr;
-    if (options_.shmFd < 0) {
-        mapped = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-    } else {
-        mapped = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
-    }
-
-    if (mapped == MAP_FAILED || mapped != sliceAddr) {
-        BM_LOG_WARN("Failed to alloc size:" << size << " addr:" << sliceAddr << " mapped:" << mapped
-                                            << " with huge page, error:" << errno << ", " << SafeStrError(errno)
-                                            << ". fallback to mmap with regular pagesize");
-        flags &= ~MAP_HUGETLB;
-        if (options_.shmFd < 0) {
-            mapped = mmap(sliceAddr, size, prot, flags | MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        } else {
-            mapped = mmap(sliceAddr, size, prot, flags | MAP_SHARED, options_.shmFd, lvOffset);
-        }
-    }
-
-    if (mapped == MAP_FAILED || mapped != sliceAddr) {
+    mapped = AllocMemory(sliceAddr, lvOffset, size, allocMethod);
+    if (mapped == MAP_FAILED) {
         BM_LOG_ERROR("Failed to alloc size:" << size << " addr:" << sliceAddr << " mapped:" << mapped
                                              << " error:" << errno << ", " << SafeStrError(errno));
         return BM_ERROR;
     }
 
     if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        auto ret = DlHalApi::HalHostRegister(sliceAddr, size, HOST_MEM_MAP_DEV, logicDeviceId_, &dva);
+        auto ret = DlHalApi::HalHostRegister(mapped, size, HOST_MEM_MAP_DEV, logicDeviceId_, &dva);
         if (ret != BM_OK) {
             BM_LOG_ERROR("register host va failed, ret:" << ret);
-            munmap(sliceAddr, size);
+            FreeAllocatedMemory(mapped, size, allocMethod);
             return BM_ERROR;
         }
     }
     int ret = HybmVaManager::GetInstance().AddVaInfo(
-        {gva, (uint64_t)dva, (uint64_t)sliceAddr, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
+        {gva, (uint64_t)dva, (uint64_t)mapped, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
-        DlHalApi::HalHostUnregisterEx(sliceAddr, logicDeviceId_, HOST_MEM_MAP_DEV);
-        munmap(sliceAddr, size);
+        if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+            DlHalApi::HalHostUnregisterEx(mapped, logicDeviceId_, HOST_MEM_MAP_DEV);
+        }
+        FreeAllocatedMemory(mapped, size, allocMethod);
         return ret;
     }
 
     LvaShmReservePhysicalMemory(mapped, size);
     return BM_OK;
+}
+
+void* HybmConnBasedSegment::AllocMemory(void *sliceAddr, uint64_t lvOffset, uint64_t size, MemAllocMethod &allocMethod)
+{
+    void* mapped;
+    auto prot = PROT_READ | PROT_WRITE;
+    int mmapFd = options_.shmFd < 0 ? -1 : options_.shmFd;
+    int mmapFlags = options_.shmFd < 0 ? (MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE) : (MAP_FIXED | MAP_SHARED);
+    uint64_t mmapOffset = options_.shmFd < 0 ? 0 : lvOffset;
+
+    // 1. Try to alloc DRAM with hugepage via mmap
+    mapped = mmap(sliceAddr, size, prot, mmapFlags | MAP_HUGETLB, mmapFd, mmapOffset);
+    if (mapped == sliceAddr) {
+        BM_LOG_INFO("Successfully allocated " << size << " bytes DRAM hugepage via mmap. addr:" << mapped);
+        allocMethod = MemAllocMethod::MMAP;
+        return mapped;
+    }
+    BM_LOG_WARN("Failed to alloc size:" << size << " with hugepage via mmap, error: " << errno << ", "
+        << SafeStrError(errno) << ". Use 'grep -i huge /proc/meminfo' to check hugepages, "
+        "and use 'echo <page_num> > /proc/sys/vm/nr_hugepages' to set hugepages.");
+
+    // 2. try to alloc DRAM with hugepage via halMemAlloc
+    if (options_.isSecondMapping && options_.shmFd < 0) {
+        BM_LOG_WARN("Trying halMemAlloc for DRAM hugepage allocation. " << "size:" << size);
+
+        // Use halMemAlloc to allocate DRAM huge page memory on host
+        // Flag: MEM_HOST (host memory) | MEM_TYPE_DDR (DDR/DRAM) | MEM_PAGE_HUGE (2MB huge page)
+        uint64_t allocFlag = MEM_HOST | MEM_TYPE_DDR | MEM_PAGE_HUGE;
+        void *halAllocPtr = nullptr;
+
+        int ret = DlHalApi::HalMemAlloc(&halAllocPtr, size, allocFlag);
+        if (ret != 0 || halAllocPtr == nullptr) {
+            BM_LOG_WARN("halMemAlloc failed, ret:" << ret << " ptr:" << halAllocPtr << ". Cannot allocate " << size
+                                                   << " bytes DRAM huge page memory");
+        } else {
+            allocMethod = MemAllocMethod::HAL_MEM_ALLOC;
+            BM_LOG_INFO("Successfully allocated DRAM hugepage via halMemAlloc. "
+                        "addr:" << halAllocPtr << " size:" << size);
+            return halAllocPtr;
+        }
+    }
+
+    // 3. try to alloc DRAM with 4k page via mmap
+    mapped = mmap(sliceAddr, size, prot, mmapFlags, mmapFd, mmapOffset);
+    if (mapped == sliceAddr) {
+        BM_LOG_INFO("Successfully allocated " << size << " bytes DRAM 4K page via mmap. addr:" << mapped);
+        allocMethod = MemAllocMethod::MMAP;
+        return mapped;
+    }
+
+    return MAP_FAILED;
 }
 
 Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) noexcept
@@ -443,6 +479,28 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
     }
 
     return BM_OK;
+}
+
+void HybmConnBasedSegment::FreeAllocatedMemory(void *ptr, uint64_t size, MemAllocMethod allocMethod) noexcept
+{
+    if (ptr == nullptr || ptr == MAP_FAILED) {
+        return;
+    }
+
+    if (allocMethod == MemAllocMethod::HAL_MEM_ALLOC) {
+        int ret = DlHalApi::HalMemFree(ptr);
+        if (ret != 0) {
+            BM_LOG_ERROR("Failed to free memory allocated by HalMemAlloc, ptr:" << ptr << " ret:" << ret);
+        } else {
+            BM_LOG_INFO("Successfully freed memory via HalMemFree, ptr:" << ptr << " size:" << size);
+        }
+    } else {
+        if (munmap(ptr, size) != 0) {
+            BM_LOG_ERROR("Failed to munmap memory, ptr:" << ptr << " size:" << size << " error:" << errno);
+        } else {
+            BM_LOG_INFO("Successfully freed memory via munmap, ptr:" << ptr << " size:" << size);
+        }
+    }
 }
 
 Result HybmConnBasedSegment::GetExportSliceSize(size_t &size) noexcept

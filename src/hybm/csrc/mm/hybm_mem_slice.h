@@ -17,10 +17,18 @@
 
 namespace ock {
 namespace mf {
+
+// Memory allocation method enumeration
+enum class MemAllocMethod : uint8_t {
+    MMAP = 0,         // Allocated via mmap
+    HAL_MEM_ALLOC = 1 // Allocated via HalMemAlloc
+};
+
 struct MemSlice {
-    MemSlice(uint16_t index, hybm_mem_type mType, MemPageTblType tbType, uint64_t gva, uint64_t lva, uint64_t size)
+    MemSlice(uint16_t index, hybm_mem_type mType, MemPageTblType tbType, uint64_t gva, uint64_t lva, uint64_t size,
+             MemAllocMethod allocMethod = MemAllocMethod::MMAP)
         : magic_(Func::MakeObjectMagic(uint64_t(this))), index_(index), memType_(mType), memPageTblType_(tbType),
-          gva_(gva), vAddress_(lva), size_(size)
+          gva_(gva), vAddress_(lva), size_(size), allocMethod_(allocMethod)
     {}
 
     hybm_mem_slice_t ConvertToId() const noexcept;
@@ -34,6 +42,7 @@ struct MemSlice {
     const uint64_t gva_;                /* global virtual address of memory */
     const uint64_t vAddress_;           /* local address of memory: hostVa or deviceVa */
     const uint64_t size_;
+    const MemAllocMethod allocMethod_;  /* memory allocation method: mmap or halMemAlloc */
 };
 } // namespace mf
 } // namespace ock

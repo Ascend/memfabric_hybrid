@@ -35,6 +35,37 @@ extern "C" {
 #define RT_KIS_SIMT_DVG_WARP_STK_SIZE (1024U)            // 1024B
 #define RT_STK_ALIGN_LEN (128U)
 
+/* devid */
+#define MEM_DEVID_WIDTH        10
+#define MEM_DEVID_MASK         ((1UL << MEM_DEVID_WIDTH) - 1)
+/* virt mem type */
+#define MEM_VIRT_BIT           10
+#define MEM_VIRT_WIDTH         4
+
+#define MEM_SVM_VAL            0X0
+#define MEM_DEV_VAL            0X1
+#define MEM_HOST_VAL           0X2
+#define MEM_DVPP_VAL           0X3
+#define MEM_HOST_AGENT_VAL     0X4
+#define MEM_RESERVE_VAL        0X5
+#define MEM_HOST_UVA_VAL       0X6
+#define MEM_MAX_VAL            0X8
+#define MEM_SVM                (MEM_SVM_VAL << MEM_VIRT_BIT)
+#define MEM_DEV                (MEM_DEV_VAL << MEM_VIRT_BIT)
+#define MEM_HOST               (MEM_HOST_VAL << MEM_VIRT_BIT)
+#define MEM_HOST_UVA           (MEM_HOST_UVA_VAL << MEM_VIRT_BIT)
+#define MEM_DVPP               (MEM_DVPP_VAL << MEM_VIRT_BIT)
+#define MEM_HOST_AGENT         (MEM_HOST_AGENT_VAL << MEM_VIRT_BIT)
+#define MEM_RESERVE            (MEM_RESERVE_VAL << MEM_VIRT_BIT)
+/* phy mem type */
+#define MEM_PHY_BIT            14
+#define MEM_TYPE_DDR           (0X0UL << MEM_PHY_BIT)
+#define MEM_TYPE_HBM           (0X1UL << MEM_PHY_BIT)
+/* phy page size */
+#define MEM_PAGE_BIT           17
+#define MEM_PAGE_NORMAL        (0X0UL << MEM_PAGE_BIT)
+#define MEM_PAGE_HUGE          (0X1UL << MEM_PAGE_BIT)
+
 typedef enum tagDrvSqCqType {
     DRV_NORMAL_TYPE = 0,
     DRV_CALLBACK_TYPE,
