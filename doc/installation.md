@@ -23,10 +23,17 @@ git clean -xdf
 git reset --hard
 ```
 
-2. 拉取第三方库
+2. 拉取第三方库（可选）
+
+如果不需要编译单元测试，可以跳过此步骤：
 ```
+# 完整拉取所有子模块（包括测试库）
 git submodule update --recursive --init
+
+# 如果只需要主代码，不需要测试库，可跳过此命令
 ```
+
+> **注意**：项目的第三方依赖库（googletest、mockcpp）均位于 test/3rdparty 目录下，仅用于单元测试。如果您不需要运行单元测试，可以跳过 `git submodule update` 命令，直接进行编译。编译时通过 `--build_test OFF` 参数关闭测试编译即可。
 
 3. 编译
 
