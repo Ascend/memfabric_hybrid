@@ -385,7 +385,7 @@ void* HybmConnBasedSegment::AllocMemory(void *sliceAddr, uint64_t lvOffset, uint
         "and use 'echo <page_num> > /proc/sys/vm/nr_hugepages' to set hugepages.");
 
     // 2. try to alloc DRAM with hugepage via halMemAlloc
-    if (options_.isSecondMapping && options_.shmFd < 0) {
+    if (options_.enable56BitsGva && options_.shmFd < 0) {
         BM_LOG_WARN("Trying halMemAlloc for DRAM hugepage allocation. " << "size:" << size);
 
         // Use halMemAlloc to allocate DRAM huge page memory on host
