@@ -21,7 +21,7 @@ G2G: copy data from global memory space to global memory space
 ```${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/host/smem_bm.h```
 
 ##### 使用简介
-详情参考[bm_example](../example/bm/BmCpp/README.md)  
+详情参考 [bm_example](../benchmark/bm/README.md)  
 简单概述如下
 ```
 c接口使用方式:
