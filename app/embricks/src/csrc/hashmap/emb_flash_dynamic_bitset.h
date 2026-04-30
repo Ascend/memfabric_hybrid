@@ -25,6 +25,8 @@ constexpr int32_t DBS_CHUCK_MASK = 63;            // mask for bit ops
 
 /**
  * A bitset which dynamic bit count
+ *
+ * This is not thread safe
  */
 class FlashDynamicBitSet {
 public:
@@ -37,6 +39,14 @@ public:
     FlashDynamicBitSet &operator=(FlashDynamicBitSet &&) = delete;
 
     /**
+     * @brief Calculate memory size required based on capacity
+     *
+     * @param capacity     [in] how many bits can be supported
+     * @return memory size in bytes
+     */
+    static uint64_t GetMemSize(uint32_t capacity) noexcept;
+
+    /**
      * @brief Initialize the bitset with certain capacity
      *
      * @param capacity     [in] capacity
@@ -45,23 +55,42 @@ public:
     Result Initialize(uint32_t capacity) noexcept;
 
     /**
+     * @brief Initialize the bitset with external allocated memory and capacity,
+     * the memory will NOT be allocated, use external allocated memory directly,
+     * but other member variables will be initialized, this function can be used
+     * for recovering from file
+     *
+     * @param memAddress   [in] address of external allocated memory
+     * @param memSize      [in] size of external allocated memory
+     * @param capacity     [in] how many bits stored
+     * @param clearBits    [in] set all bites to 0, if not true, trueCount will be auto set by the state of memory
+     * @return 0 if successful, if failed, the memory should be freed by caller
+     */
+    Result Initialize(uintptr_t memAddress, uint64_t memSize, uint32_t capacity, bool clearBits) noexcept;
+
+    /**
      * @brief Un-initialize the dynamic bit set, with release memory
      */
     void UnInitialize() noexcept;
 
     /*
-     * @brief SetWrite the pos to true
+     * @brief Set the pos bit to true
      *
      * @param pos          [in] position of bit
      */
     void Set(uint32_t pos) noexcept;
 
     /*
-     * @brief SetWrite the post to false
+     * @brief Set the pos bit to false
      *
      * @param pos          [in] position of bit
      */
     bool Clear(uint32_t pos) noexcept;
+
+    /**
+     * @brief Set all bits to false
+     */
+    void ClearAll() noexcept;
 
     /*
      * @brief Check the bit at position is true or not
@@ -97,17 +126,41 @@ public:
      */
     bool FindAndSet(uint32_t startPos, uint32_t &resultPos) noexcept;
 
+    /**
+     * @brief operator <<
+     */
+    friend std::ostream &operator<<(std::ostream &os, const FlashDynamicBitSet &o);
+
 private:
+    /**
+     * @brief Test bit without boundary check
+     */
     bool TestInner(uint32_t pos) const noexcept;
 
 private:
-    uint64_t *bitChucks_ = nullptr;
-    uint32_t chuckCount_ = 0;
-    uint32_t capacity_ = 0;
-    uint32_t trueCount_ = 0;
+    uint64_t *bitChucks_ = nullptr; /* real memory to store bits, one uint64_t stores 64 bits */
+    uint32_t chuckCount_ = 0;       /* how many uint64_t */
+    uint32_t capacity_ = 0;         /* how many bits in total */
+    uint32_t trueCount_ = 0;        /* how many bits already set to true */
+    bool externalMemUsed_ = false;  /* use external allocated memory */
 };
 
-inline Result FlashDynamicBitSet::Initialize(uint32_t capacity) noexcept
+EM_ALWAYS_INLINE uint64_t FlashDynamicBitSet::GetMemSize(uint32_t capacity) noexcept
+{
+    if (capacity == 0) {
+        EM_LOG_ERROR("Invalid capacity " << capacity << ", should be not 0");
+        return 0;
+    }
+
+    /* get chuck count by round up 64, i.e. how many uint64_t items */
+    auto chuckCount = (static_cast<uint64_t>(capacity) + DBS_CHUCK_MASK) >> DBS_CHUCK_SHIFT;
+    EM_LOG_DEBUG("chuckCount: " << chuckCount << ", capacity: " << capacity);
+
+    /* multiple size of uint64_t */
+    return chuckCount * sizeof(uint64_t);
+}
+
+EM_ALWAYS_INLINE Result FlashDynamicBitSet::Initialize(uint32_t capacity) noexcept
 {
     if (capacity == 0) {
         EM_LOG_ERROR("Invalid capacity " << capacity << ", should be not 0");
@@ -135,18 +188,72 @@ inline Result FlashDynamicBitSet::Initialize(uint32_t capacity) noexcept
     }
 
     /* allocate physical memory and set to 0 */
-    bzero(reinterpret_cast<void *>(bitChucks_), 8L * chuckCount_);
+    bzero(reinterpret_cast<void *>(bitChucks_), static_cast<uint64_t>(chuckCount_ * sizeof(uint64_t)));
 
     trueCount_ = 0;
 
     EM_LOG_DEBUG("DynamicBitset initialized, this: " << std::hex << this << ", bitChucks: " << bitChucks_ << std::dec
                                                      << ", capacity: " << capacity_ << ", chuckCount: " << chuckCount_
-                                                     << ", trueCount: " << trueCount_);
+                                                     << ", trueCount: " << trueCount_
+                                                     << ", externalMemUsed: " << externalMemUsed_);
 
     return EM_OK;
 }
 
-inline void FlashDynamicBitSet::UnInitialize() noexcept
+EM_ALWAYS_INLINE Result FlashDynamicBitSet::Initialize(uintptr_t memAddress, uint64_t memSize, uint32_t capacity,
+                                                       bool clearBits) noexcept
+{
+    if (memAddress == 0 || memSize == 0 || capacity == 0) {
+        EM_LOG_ERROR("Invalid param, memAddress: " << memAddress << ", memSize: " << memSize
+                                                   << ", capacity: " << capacity << ", they should be not 0");
+        return EM_INVALID_PARAM;
+    }
+
+    /* use bitChucks_ as the flag for initialization */
+    if (bitChucks_ != nullptr) {
+        EM_LOG_DEBUG("DynamicBitSet already initialized");
+        return EM_OK;
+    }
+
+    /* assign capacity */
+    capacity_ = capacity;
+
+    /* calculate the size of chucks to store bits */
+    chuckCount_ = (capacity_ + DBS_CHUCK_MASK) >> DBS_CHUCK_SHIFT;
+    EM_LOG_DEBUG("chuckCount: " << chuckCount_ << ", capacity: " << capacity_);
+
+    /* verify memSize */
+    auto memSizeRequired = GetMemSize(capacity);
+    if (memSizeRequired != memSize) {
+        EM_LOG_DEBUG("The memSize " << memSize << " is invalid, " << memSizeRequired
+                                    << " bytes memory is required to store " << capacity << " bits");
+        return EM_INVALID_PARAM;
+    }
+
+    /* set external memory to member variable for TestInner */
+    bitChucks_ = reinterpret_cast<uint64_t *>(memAddress);
+
+    if (clearBits) {
+        /* set all bits to 0 */
+        trueCount_ = 0;
+        bzero(reinterpret_cast<void *>(memAddress), memSizeRequired);
+    } else {
+        /* loop all bits to get trueCount_ */
+        for (uint32_t i = 0; i < capacity_; i++) {
+            if (TestInner(i)) {
+                ++trueCount_;
+            }
+        }
+    }
+
+    externalMemUsed_ = true;
+
+    EM_LOG_DEBUG(*this);
+
+    return EM_OK;
+}
+
+EM_ALWAYS_INLINE void FlashDynamicBitSet::UnInitialize() noexcept
 {
     if (bitChucks_ == nullptr) {
         return;
@@ -156,18 +263,23 @@ inline void FlashDynamicBitSet::UnInitialize() noexcept
     trueCount_ = 0;
     chuckCount_ = 0;
 
-    delete[] bitChucks_;
-    bitChucks_ = nullptr;
+    /* free if self allocated memory is used */
+    if (!externalMemUsed_) {
+        delete[] bitChucks_;
+    }
 
-    EM_LOG_DEBUG("DynamicBitset uninitialized");
+    bitChucks_ = nullptr;
+    externalMemUsed_ = false;
+
+    EM_LOG_DEBUG("UnInitialized, " << *this);
 }
 
-inline FlashDynamicBitSet::~FlashDynamicBitSet()
+EM_ALWAYS_INLINE FlashDynamicBitSet::~FlashDynamicBitSet()
 {
     UnInitialize();
 }
 
-inline void FlashDynamicBitSet::Set(uint32_t pos) noexcept
+EM_ALWAYS_INLINE void FlashDynamicBitSet::Set(uint32_t pos) noexcept
 {
     if (UNLIKELY(pos >= capacity_)) {
         EM_LOG_WARN("Invalid pos " << pos << " exceed capacity " << capacity_);
@@ -184,7 +296,7 @@ inline void FlashDynamicBitSet::Set(uint32_t pos) noexcept
     ++trueCount_;
 }
 
-inline bool FlashDynamicBitSet::Clear(uint32_t pos) noexcept
+EM_ALWAYS_INLINE bool FlashDynamicBitSet::Clear(uint32_t pos) noexcept
 {
     if (UNLIKELY(pos >= capacity_)) {
         return false;
@@ -201,13 +313,25 @@ inline bool FlashDynamicBitSet::Clear(uint32_t pos) noexcept
     return true;
 }
 
-inline bool FlashDynamicBitSet::TestInner(uint32_t pos) const noexcept
+EM_ALWAYS_INLINE void FlashDynamicBitSet::ClearAll() noexcept
+{
+    if (bitChucks_ == nullptr) {
+        trueCount_ = 0;
+        return;
+    }
+
+    /* set all memory to 0 */
+    bzero(reinterpret_cast<void *>(bitChucks_), static_cast<uint64_t>(chuckCount_ * sizeof(uint64_t)));
+    trueCount_ = 0;
+}
+
+EM_ALWAYS_INLINE bool FlashDynamicBitSet::TestInner(uint32_t pos) const noexcept
 {
     /* test bit */
     return (bitChucks_[DBS_CHUCK_POS(pos)] & ((1uL) << DBS_BIT_POS(pos))) != 0;
 }
 
-inline bool FlashDynamicBitSet::Test(uint32_t pos) const noexcept
+EM_ALWAYS_INLINE bool FlashDynamicBitSet::Test(uint32_t pos) const noexcept
 {
     if (UNLIKELY(pos >= capacity_)) {
         return false;
@@ -216,22 +340,22 @@ inline bool FlashDynamicBitSet::Test(uint32_t pos) const noexcept
     return TestInner(pos);
 }
 
-inline uint32_t FlashDynamicBitSet::Count() const noexcept
+EM_ALWAYS_INLINE uint32_t FlashDynamicBitSet::Count() const noexcept
 {
     return trueCount_;
 }
 
-inline bool FlashDynamicBitSet::Full() const noexcept
+EM_ALWAYS_INLINE bool FlashDynamicBitSet::Full() const noexcept
 {
     return trueCount_ == capacity_;
 }
 
-inline uint32_t FlashDynamicBitSet::Capacity() const noexcept
+EM_ALWAYS_INLINE uint32_t FlashDynamicBitSet::Capacity() const noexcept
 {
     return capacity_;
 }
 
-inline bool FlashDynamicBitSet::FindAndSet(uint32_t startPos, uint32_t &resultPos) noexcept
+EM_ALWAYS_INLINE bool FlashDynamicBitSet::FindAndSet(uint32_t startPos, uint32_t &resultPos) noexcept
 {
     if (UNLIKELY(startPos >= capacity_ || capacity_ == trueCount_)) {
         EM_LOG_ERROR("Invalid params, may be start pos or true count exceed capacity.");
@@ -266,6 +390,15 @@ inline bool FlashDynamicBitSet::FindAndSet(uint32_t startPos, uint32_t &resultPo
     }
 
     return false;
+}
+
+EM_ALWAYS_INLINE std::ostream &operator<<(std::ostream &os, const FlashDynamicBitSet &o)
+{
+    os << "FlashDynamicBitSet initialized: " << (o.bitChucks_ != nullptr) << ", chucksAddress: " << std::hex
+       << reinterpret_cast<void *>(o.bitChucks_) << std::dec << ", chuckCount: " << o.chuckCount_
+       << ", capacity: " << o.capacity_ << ", bit allocated: " << o.trueCount_
+       << ", externalMem: " << o.externalMemUsed_;
+    return os;
 }
 
 } // namespace hashmap

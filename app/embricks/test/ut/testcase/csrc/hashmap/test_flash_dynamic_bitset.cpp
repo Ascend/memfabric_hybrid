@@ -205,3 +205,36 @@ TEST_F(TestFlashDynamicBitset, FlashDynamicBitSetFindSet1023)
     EXPECT_TRUE(bitset.Full());
     EXPECT_TRUE(bitset.Count() == capacity);
 }
+
+TEST_F(TestFlashDynamicBitset, FlashDynamicBitSetGetMemSize)
+{
+    EXPECT_TRUE(FlashDynamicBitSet::GetMemSize(0) == 0);
+    EXPECT_TRUE(FlashDynamicBitSet::GetMemSize(UN64) == sizeof(uint64_t));
+    EXPECT_TRUE(FlashDynamicBitSet::GetMemSize(UN64 - 1) == sizeof(uint64_t));
+    EXPECT_TRUE(FlashDynamicBitSet::GetMemSize(UN64 + 1) == sizeof(uint64_t) * UN2);
+}
+
+TEST_F(TestFlashDynamicBitset, FlashDynamicBitSetInitialize2AndSet)
+{
+    FlashDynamicBitSet bitset;
+    uint64_t rawMemory[UN4]{};
+    uintptr_t memAddress = reinterpret_cast<uintptr_t>(&(rawMemory[0]));
+
+    EXPECT_TRUE(bitset.Initialize(0, UN64, UN64, true) == EM_INVALID_PARAM);
+    EXPECT_TRUE(bitset.Initialize(memAddress, 0, UN64, true) == EM_INVALID_PARAM);
+    EXPECT_TRUE(bitset.Initialize(memAddress, UN64, 0, true) == EM_INVALID_PARAM);
+    EXPECT_TRUE(bitset.Initialize(memAddress, UN64 * UN4, UN64 * UN3, true) == EM_INVALID_PARAM);
+
+    EXPECT_TRUE(bitset.Initialize(memAddress, UN64 * UN4 / UN8, UN64 * UN4, true) == EM_OK);
+    EXPECT_TRUE(bitset.Count() == 0);
+
+    bitset.Set(1);
+    bitset.Set(254L);
+
+    FlashDynamicBitSet bitset1;
+    EXPECT_TRUE(bitset1.Initialize(memAddress, UN64 * UN4 / UN8, UN64 * UN4, false) == EM_OK);
+    EXPECT_TRUE(bitset1.Count() == UN2);
+
+    bitset1.ClearAll();
+    EXPECT_TRUE(bitset1.Count() == 0);
+}

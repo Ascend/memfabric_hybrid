@@ -269,3 +269,23 @@ TEST_F(TestFlashHashmapBucket, BucketLinkBucketAndGetLast)
 
     EM_LOG_DEBUG("buck0 " << buck << ", buck1 " << (*buck1) << ", buck2 " << (*buck2));
 }
+
+TEST_F(TestFlashHashmapBucket, BucketReplace)
+{
+    FlashHashBucket buck;
+    uint64_t value = INVALID_MAP_VALUE;
+
+    buck.Insert(UN1, UN2);
+    buck.Insert(UN2, UN3);
+    buck.Insert(UN3, UN4);
+
+    EXPECT_TRUE(buck.Replace(INVALID_MAP_KEY, UN4, UN5) == EM_HASHMAP_INVALID_KEY);
+    EXPECT_TRUE(buck.Replace(UN1, INVALID_MAP_KEY, UN4) == EM_HASHMAP_INVALID_KEY);
+    EXPECT_TRUE(buck.Replace(UN4, UN5, UN6) == EM_HASHMAP_KEY_NOT_FOUND);
+
+    EXPECT_TRUE(buck.Replace(UN1, UN4, UN5) == EM_OK);
+    EXPECT_TRUE(buck.Replace(UN2, UN5, UN6) == EM_OK);
+    EXPECT_TRUE(buck.Replace(UN3, UN6, UN7) == EM_OK);
+
+    EM_LOG_DEBUG(buck);
+}
