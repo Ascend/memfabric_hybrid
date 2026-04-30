@@ -576,7 +576,8 @@ automatically allocate rank IDs, default is false)")
         .def(
             "set_nic",
             [](smem_bm_config_t &config, const std::string &nic) {
-                strncpy(config.hcomUrl, nic.c_str(), sizeof(config.hcomUrl));
+                strncpy(config.hcomUrl, nic.c_str(), sizeof(config.hcomUrl) - 1);
+                config.hcomUrl[sizeof(config.hcomUrl) - 1] = '\0';
             },
             py::call_guard<py::gil_scoped_release>(), py::arg("nic"));
 }

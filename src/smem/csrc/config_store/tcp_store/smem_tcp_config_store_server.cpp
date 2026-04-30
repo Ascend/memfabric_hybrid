@@ -33,6 +33,7 @@ constexpr uint64_t SERVER_RECOVER_TIME = 3 * 1000 * 1000; // 3s
 constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
 constexpr int32_t EPHEMERAL_KEY_TTL_SEC = 5;
 constexpr int32_t PERSISTENT_KEY_TTL_SEC = 0;
+constexpr size_t MAX_WRITE_TOTAL_SIZE = MAX_VALUE_SIZE * 16ULL;
 
 AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize, StoreBackendPtr backend,
                                bool skipRecover) noexcept
@@ -742,6 +743,13 @@ Result AccStoreServer::WriteHandler(const ock::acc::AccTcpRequestContext &contex
     if (totalSize < realValSize) {
         STORE_LOG_ERROR("WRITE offset+realValSize overflow: offset=" << offset << " realValSize=" << realValSize);
         ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "offset plus value size overflow.");
+        return SM_INVALID_PARAM;
+    }
+
+    if (totalSize > MAX_WRITE_TOTAL_SIZE) { // Avoid remote large offset causing multi-gigabyte allocation, trigger OOM
+        STORE_LOG_ERROR("WRITE total size exceeds limit, totalSize: " << totalSize << " limit: " <<
+                        MAX_WRITE_TOTAL_SIZE << " offset: " << offset << " realValSize: " << realValSize);
+        ReplyWithMessage(context, StoreErrorCode::INVALID_MESSAGE, "write total size exceeds limit.");
         return SM_INVALID_PARAM;
     }
 

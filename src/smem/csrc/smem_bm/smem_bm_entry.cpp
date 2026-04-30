@@ -581,6 +581,7 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     SM_VALIDATE_RETURN(params->sources != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params->destinations != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params->batchSize != 0, "invalid param, size is 0", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->dataSizes != nullptr, "invalid param, size is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     SM_RETURN_IT_IF_NOT_OK(CheckJoined());
