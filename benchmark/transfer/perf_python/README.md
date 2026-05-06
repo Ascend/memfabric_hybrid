@@ -1,6 +1,6 @@
 # Transfer 性能测试
 
-这是一个类似于C++版本(examples/transfer/perf/transfer_perf.cpp)的Transfer性能测试Python实现。
+这是一个类似于C++版本(benchmark/transfer/perf_cpp/transfer_perf.cpp)的Transfer性能测试Python实现。
 
 ## 概述
 

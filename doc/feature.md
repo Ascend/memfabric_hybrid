@@ -46,7 +46,7 @@ python接口使用方式:
 ```${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/host/smem_trans.h```
 
 ##### 使用简介
-详情参考[trans_example](../examples/transfer/demo/README.md)  
+详情参考[trans_example](../examples/transfer/README.md)  
 简单概述如下
 ```
 c接口使用方式:

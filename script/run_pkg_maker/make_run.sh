@@ -89,8 +89,8 @@ if [ "$BUILD_TEST" = "ON" ]; then
     cp "${PROJECT_DIR}"/test/python/mock_server/smem_bm/*.py ${PKG_DIR}/"${ARCH_OS}"/test/mock_server/smem_bm
     cp ${OUTPUT_DIR}/smem/bin/* ${PKG_DIR}/"${ARCH_OS}"/test || true
     mkdir -p ${PKG_DIR}/"${ARCH_OS}"/test/transfer_perf_python
-    cp "${PROJECT_DIR}"/examples/transfer/perf_python/*.py ${PKG_DIR}/"${ARCH_OS}"/test/transfer_perf_python
-    cp "${PROJECT_DIR}"/examples/transfer/perf_python/*.sh ${PKG_DIR}/"${ARCH_OS}"/test/transfer_perf_python
+    cp "${PROJECT_DIR}"/benchmark/transfer/perf_python/*.py ${PKG_DIR}/"${ARCH_OS}"/test/transfer_perf_python
+    cp "${PROJECT_DIR}"/benchmark/transfer/perf_python/*.sh ${PKG_DIR}/"${ARCH_OS}"/test/transfer_perf_python
 fi
 
 mkdir -p ${PKG_DIR}/script

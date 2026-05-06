@@ -6,36 +6,44 @@
 
 ## 使用方法
 
+### 编译安装
+
+1. 单独编译
+
+已经安装了run包并设置了环境变量，在当前目录下执行：
+
 ```shell
   mkdir build
   cmake . -B build
   make -C build
 ```
 
-或打包安装时同源码一起编译
+2. 随run包一起编译打包
 
 ```bash
 bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test ON
 
 bash output/memfabric_hybrid-1.0.0_linux_aarch64.run # 修改为实际编译出来的run文件
+source /usr/local/memfabric_hybrid/set_env.sh
+cd /usr/local/memfabric_hybrid/latest/aarch64-linux/test
 ```
 
-默认编译的二进制`transfer_perf`在目录`output/smem/bin/`下面。
+run包安装后`transfer_perf`在/usr/local/memfabric_hybrid/latest/aarch64-linux/test目录下。
 
 ### 基本命令格式
 
 ```
-# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{ip}:{port} {memType}
+# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} tcp://{ip}:{port} {memType}
 或者
-# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} {testBm} tcp://{[ipv6]}:{port} {memType}
+# transfer_perf {rankSize} {rankId} {deviceId} {useSdma} tcp://{[ipv6]}:{port} {memType}
 
 # deviceId=2
-./transfer_perf 2 0 2 1 1 tcp://127.0.0.1:12050 0
-(./transfer_perf 2 0 2 1 1 tcp://[::1]:12050) 0
+./transfer_perf 2 0 2 1 tcp://127.0.0.1:12050 0
+(./transfer_perf 2 0 2 1 tcp://[::1]:12050) 0
 
-# deviceId=2
-./transfer_perf 2 1 3 1 1 tcp://127.0.0.1:12050 0
-(./transfer_perf 2 1 3 1 1 tcp://[::1]:12050) 0
+# deviceId=3
+./transfer_perf 2 1 3 1 tcp://127.0.0.1:12050 0
+(./transfer_perf 2 1 3 1 tcp://[::1]:12050) 0
 ```
 
 ### 参数说明
@@ -46,7 +54,6 @@ bash output/memfabric_hybrid-1.0.0_linux_aarch64.run # 修改为实际编译出�
 | rankId             | 是  | 当前节点的rankId                                        |
 | deviceId           | 是  | 当前节点的deviceId                                      |
 | useSdma            | 是  | 1使用SDMA，0使用RDMA                                    |
-| testBm             | 是  | 1测试BigMemory场景，0测试PD传输场景                           |
 | tcp://{Ip}:{port}  | 是  | 配置存储服务地址，格式：`tcp://ip:port` 或者 `tcp://[ipv6]:port`。configStore的server的监听ip和端口。关于 configStore 配置存储系统的说明，请参考 [config_store_cluster_ha](../../../doc/config_store_cluster_ha.md) |
 | memType            | 是  | 内存介质类型, 0:hbm 1:dram 2:hbm + dram                  |
 
