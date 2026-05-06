@@ -555,7 +555,7 @@ Result DataOpDeviceRDMA::BatchDataCopyLocal(hybm_batch_copy_params &params, int3
         case HYBM_LOCAL_DEVICE_TO_GLOBAL_HOST:
             return BatchDataCopyLocalBatch(params, ACL_MEMCPY_DEVICE_TO_HOST, options);
         default:
-            BM_LOG_ERROR("Failed to BatchDataCopyLocal noy support direct:" << direction);
+            BM_LOG_ERROR("Failed to BatchDataCopyLocal not support direct:" << direction);
             return -1;
     }
 }
