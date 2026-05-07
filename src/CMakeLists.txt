@@ -8,7 +8,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-# added very strict compile option here, but other module maybe need these
+# added very strict compile options here, but other modules maybe not need these
 add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
 add_compile_options(-fpermissive -Wno-error)
 add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra -Wno-deprecated-declarations)
