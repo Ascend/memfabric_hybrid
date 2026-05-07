@@ -24,6 +24,9 @@ option(BUILD_TEST "Enable/disable build and package test utilities and examples"
 option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
 option(BUILD_ETCD_BACKEND "Enable/disable build etcd backend so" OFF)
 
+## for applications
+option(BUILD_APP_ZBAL "build zero buffer acceleration library" OFF)
+
 include(cmake/config_version.cmake)
 include(cmake/config_xpu.cmake)
 include(cmake/config_python.cmake)
@@ -44,6 +47,7 @@ message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 message(STATUS "XPU_TYPE = ${XPU_TYPE}")
 message(STATUS "BUILD_TEST = ${BUILD_TEST}")
 message(STATUS "BUILD_HCOM = ${BUILD_HCOM}")
+message(STATUS "BUILD_APP_ZBAL = ${BUILD_APP_ZBAL}")
 
 find_program(NINJA_EXE NAMES ninja)
 if (NINJA_EXE)
@@ -52,10 +56,6 @@ else ()
     set(MAKE_CMD make)
 endif ()
 message(STATUS "MAKE_CMD = ${MAKE_CMD}")
-
-add_compile_options(-Wunused-variable -Wunused-value -Wcast-align)
-add_compile_options(-fpermissive -Wno-error)
-add_compile_options(-Wcast-qual -Winvalid-pch -Wwrite-strings -Wsign-compare -Wfloat-equal -Wextra -Wno-deprecated-declarations)
 
 if (${CMAKE_BUILD_TYPE} MATCHES "RELEASE")
     #add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
@@ -171,6 +171,9 @@ include(cmake/config_hcom.cmake)
 include(cmake/config_etcd_client.cmake)
 
 add_subdirectory(src)
+
+# app
+add_subdirectory(app)
 
 if (BUILD_UT STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 17)
