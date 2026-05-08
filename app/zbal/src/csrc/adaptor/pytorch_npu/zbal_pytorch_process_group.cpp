@@ -682,6 +682,220 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOpti
         c10d::OpType::ALLTOALL_BASE);
 }
 
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &outputTensor,
+                                                                 at::Tensor &inputTensor,
+                                                                 std::vector<int64_t> &outputSplits,
+                                                                 std::vector<int64_t> &inputSplits,
+                                                                 const c10d::AllToAllOptions &opts)
+{
+    (void)outputSplits;
+    (void)inputSplits;
+    (void)opts;
+    ZBAL_CHECK_S(outputTensor.numel() == inputTensor.numel(), "input output tensor must be same size.");
+    ZBAL_CHECK_S(outputTensor.dtype() == inputTensor.dtype(), "input output tensor must be same type.");
+    ZBAL_CHECK_S(outputTensor.scalar_type() == inputTensor.scalar_type(), "input output tensor must be same type.");
+    ZBAL_CHECK_S(outputTensor.size(0) % size_ == 0, "tensor dim 0 doesn't divide equally with group size.");
+
+    CheckSingleTensor(outputTensor);
+    CheckSingleTensor(inputTensor);
+
+    std::vector<at::Tensor> inputTensors = {inputTensor};
+    std::vector<at::Tensor> outputTensors = {outputTensor};
+    CheckNpuTensorsDifferentDevices(inputTensors);
+    CheckNpuTensorsDifferentDevices(outputTensors);
+
+    return collective(
+        inputTensors, outputTensors,
+        [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
+            RECORD_FUNCTION("ZbalAlltoAllBase", std::vector<c10::IValue>({}));
+            auto inputPtr = input.data_ptr();
+            auto outputPtr = output.data_ptr();
+            auto dataType = GetZbalDataType(input.scalar_type());
+            auto inputCounts = static_cast<uint64_t>(input.numel());
+            auto alltoall_call = [inputPtr, outputPtr, inputCounts, dataType, comm, stream]() -> int {
+                return zbal_all_to_all_base(inputPtr, outputPtr, inputCounts,
+                                            dataType, comm, stream.stream(false));
+            };
+            at_npu::native::OpCommand::RunOpApiV2("zbal_all_to_all_base", alltoall_call);
+            return Z_OK;
+        },
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        c10d::OpType::ALLTOALL_BASE);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTensor,
+                                                            at::Tensor &inputTensor,
+                                                            std::vector<int64_t> &outputSplits,
+                                                            std::vector<int64_t> &inputSplits,
+                                                            const c10d::AllToAllOptions &opts)
+{
+    (void)opts;
+    ZBAL_CHECK_S(outputTensor.dtype() == inputTensor.dtype(), "input output tensor must be same type.");
+    ZBAL_CHECK_S(outputTensor.scalar_type() == inputTensor.scalar_type(), "input output tensor must be same type.");
+    ZBAL_CHECK_S(inputTensor.size(0) > 0, "input tensor shape is 0");
+
+    CheckSingleTensor(outputTensor);
+    CheckSingleTensor(inputTensor);
+
+    std::vector<at::Tensor> inputTensors = {inputTensor};
+    std::vector<at::Tensor> outputTensors = {outputTensor};
+    CheckNpuTensorsDifferentDevices(inputTensors);
+    CheckNpuTensorsDifferentDevices(outputTensors);
+
+    if (outputSplits.empty()) {
+        int64_t avgDim0 = static_cast<int64_t>(outputTensor.size(0) / size_);
+        for (int64_t i = 0; i < size_; i++) {
+            outputSplits.push_back(avgDim0);
+        }
+    }
+    if (inputSplits.empty()) {
+        int64_t avgDim0 = static_cast<int64_t>(inputTensor.size(0) / size_);
+        for (int64_t i = 0; i < size_; i++) {
+            inputSplits.push_back(avgDim0);
+        }
+    }
+
+    CheckSplitSize(outputSplits, outputTensor, size_);
+    CheckSplitSize(inputSplits, inputTensor, size_);
+
+    std::vector<int64_t> inputCumSum(size_ * ZBAL_FLAG_SIZE, 0);
+    std::vector<int64_t> outputCounts(size_ * ZBAL_FLAG_SIZE, 0);
+    uint64_t outputSizePerRow = outputTensor.size(0) > 0 ? outputTensor.numel() / outputTensor.size(0) : 0;
+    uint64_t inputSizePerRow = inputTensor.numel() / inputTensor.size(0);
+    ZBAL_CHECK_S(outputSizePerRow == 0 || outputSizePerRow == inputSizePerRow, "unexpect row element in input/output");
+    uint64_t prevCumSum = 0;
+    for (int i = 0; i < size_; i++) {
+        outputCounts[i * ZBAL_FLAG_SIZE] = outputSplits[i] * outputSizePerRow;
+        inputCumSum[i * ZBAL_FLAG_SIZE] = prevCumSum;
+        prevCumSum = inputSplits[i] * inputSizePerRow + prevCumSum;
+    }
+
+    const int inoutPtrSize = 2;
+    std::vector<int64_t> elements(inoutPtrSize * ZBAL_FLAG_SIZE, 0);
+    elements[0 * ZBAL_FLAG_SIZE] = static_cast<uint64_t>(inputTensor.numel());
+    elements[1 * ZBAL_FLAG_SIZE] = static_cast<uint64_t>(outputTensor.numel());
+
+    at::Tensor inCumSumTensor = torch::tensor(inputCumSum, torch::kInt64).to(inputTensor.device());
+    at::Tensor outCountTensor = torch::tensor(outputCounts, torch::kInt64).to(inputTensor.device());
+    at::Tensor elementTensor = torch::tensor(elements, torch::kInt64).to(inputTensor.device());
+
+    return collective(
+        inputTensors, outputTensors,
+        [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
+            RECORD_FUNCTION("ZbalAlltoAllV", std::vector<c10::IValue>({}));
+            auto inputPtr = input.data_ptr();
+            auto outputPtr = output.data_ptr();
+            auto inCumSumPtr = inCumSumTensor.data_ptr();
+            auto outCountPtr = outCountTensor.data_ptr();
+            auto elementPtr = elementTensor.data_ptr();
+            auto dataType = GetZbalDataType(input.scalar_type());
+            auto alltoall_call = [inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType,
+                                  comm, stream]() -> int {
+                return zbal_all_to_all_v(inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType,
+                                         comm, stream.stream(false));
+            };
+            at_npu::native::OpCommand::RunOpApiV2("zbal_all_to_all_v", alltoall_call);
+            return Z_OK;
+        },
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        c10d::OpType::ALLTOALL_BASE);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outputTensor,
+                                                               at::Tensor &inputTensor,
+                                                               std::vector<int64_t> &outputSplits,
+                                                               std::vector<int64_t> &inputSplits,
+                                                               const c10d::AllToAllOptions &opts)
+{
+    if (outputSplits.empty() && inputSplits.empty()) {
+        return alltoall_normal(outputTensor, inputTensor, outputSplits, inputSplits, opts);
+    } else {
+        return alltoall_v(outputTensor, inputTensor, outputSplits, inputSplits, opts);
+    }
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor>& tensors, int dstRank, int tag)
+{
+    (void)tag;
+    ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(tensors) == 0, "check output tensor failed.");
+
+    return pointToPoint(
+        tensors,
+        [&](at::Tensor& tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
+            RECORD_FUNCTION("ZbalSend", std::vector<c10::IValue>({tensor}));
+
+            auto dataPtr = tensor.data_ptr();
+            auto numel = GetNumelForZBAL(tensor);
+            auto zbalType = GetZbalDataType(tensor.scalar_type());
+
+            auto call_send = [dataPtr, numel, zbalType, peer, comm, stream]() -> int {
+                return zbal_send(dataPtr, numel, zbalType, peer, comm, stream.stream(false));
+            };
+
+            at_npu::native::OpCommand::RunOpApiV2("zbal_send", call_send);
+            return Z_OK;
+        },
+        dstRank, c10d::OpType::SEND,
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {}
+    );
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::recv(std::vector<at::Tensor>& tensors, int srcRank, int tag)
+{
+    (void)tag;
+    ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(tensors) == 0, "check output tensor failed.");
+
+    return pointToPoint(
+        tensors,
+        [&](at::Tensor& tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
+            RECORD_FUNCTION("ZbalRecv", std::vector<c10::IValue>({tensor}));
+
+            auto dataPtr = tensor.data_ptr();
+            auto numel = GetNumelForZBAL(tensor);
+            auto zbalType = GetZbalDataType(tensor.scalar_type());
+
+            auto call_recv = [dataPtr, numel, zbalType, peer, comm, stream]() -> int {
+                return zbal_recv(dataPtr, numel, zbalType, peer, comm, stream.stream(false));
+            };
+
+            at_npu::native::OpCommand::RunOpApiV2("zbal_recv", call_recv);
+            return Z_OK;
+        },
+        srcRank, c10d::OpType::RECV,
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {}
+    );
+}
+
+std::string ProcessGroupZBAL::getZBALCommName() noexcept
+{
+    return groupName_;
+}
+
+ProcessGroupZBAL::Options::Options(bool isHighPriorityStream)
+    : c10d::Backend::Options(ZBAL_BACKEND_NAME),
+      opTimeout(WORKER_MAX_TIMEOUT), isHighPriorityStream(isHighPriorityStream)
+{
+}
+
+ProcessGroupZBAL::~ProcessGroupZBAL()
+{
+    if (groupComm_ == nullptr) {
+        ZBAL_LOG_INFO("group comm is empty");
+        return;
+    }
+
+    auto result = zbal_comm_destroy(groupComm_, 0);
+    if (result != Z_OK) {
+        ZBAL_LOG_WARN("~ process group: " << groupName_ << " on rank " << myWorldRank_ << " result " << result);
+        return;
+    }
+    ZBAL_LOG_DEBUG("~ process group success: " << groupName_ << " on rank " << myWorldRank_);
+}
+
 }  // namespace pytorch_npu
 }  // namespace adaptor
 }  // namespace zbal
