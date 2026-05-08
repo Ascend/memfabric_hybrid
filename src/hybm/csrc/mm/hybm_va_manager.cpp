@@ -170,7 +170,7 @@ std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
     }
     std::shared_lock<std::shared_mutex> lock(mutex_);
     if (allocatedMap_[HVM_GVA].empty()) {
-        BM_LOG_WARN("No allocated spaces found.");
+        BM_LOG_DEBUG("No allocated spaces found.");
         return {0, false};
     }
     auto it = allocatedMap_[HVM_GVA].upper_bound(gva);
@@ -395,7 +395,7 @@ void HybmVaManager::DumpAllocatedGvaInfo() const
     std::unique_lock<std::shared_mutex> lock(mutex_);
     BM_LOG_DEBUG("Total allocated spaces: " << allocatedMap_[HVM_GVA].size());
     if (allocatedMap_[HVM_GVA].empty()) {
-        BM_LOG_WARN("No allocated spaces found.");
+        BM_LOG_DEBUG("No allocated spaces found.");
         return;
     }
     int index = 1;
