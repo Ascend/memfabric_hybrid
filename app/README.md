@@ -1,4 +1,4 @@
-## This directory includes the application based on MemFabric
+## This directory includes the applications or libraries based on MemFabric memory pooling tech, these features are officially supported.
 
 | Application Name | Brief                            | Details                |
 |------------------|----------------------------------|------------------------|
