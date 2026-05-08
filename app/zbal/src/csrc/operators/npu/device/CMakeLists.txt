@@ -6,7 +6,7 @@ ascendc_library(zbal_kernel STATIC
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_alltoall.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_alltoallv.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_barrier.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_reduce_scatter.cpp
+        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_reducescatter.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_broadcast.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_scatter.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_send.cpp
