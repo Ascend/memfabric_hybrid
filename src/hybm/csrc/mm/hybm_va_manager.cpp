@@ -125,7 +125,7 @@ uint64_t HybmVaManager::TransformVa(uint64_t va, uint32_t inputType, uint32_t ou
 
     std::shared_lock<std::shared_mutex> lock(mutex_);
     if (allocatedMap_[inputType].empty()) {
-        BM_LOG_WARN("No allocated spaces found.");
+        BM_LOG_WARN("No allocated spaces found for " << inputType << ". input_va=" << VaToStr(va));
         return 0;
     }
     auto it = allocatedMap_[inputType].upper_bound(va);
@@ -185,14 +185,16 @@ std::pair<uint32_t, bool> HybmVaManager::GetRank(uint64_t gva)
     return {0, false};
 }
 
-ock::mf::HybmVaManager::AddressCategory ock::mf::HybmVaManager::ClassifyAddress(uint64_t va)
+AddrType HybmVaManager::ClassifyAddress(const uint64_t va)
 {
     auto gvaType = GetGvaMemType(va);
     if (gvaType != HYBM_MEM_TYPE_BUTT) {
-        if (gvaType == HYBM_MEM_TYPE_DEVICE)
+        if (gvaType == HYBM_MEM_TYPE_DEVICE) {
             return GLOBAL_DEVICE;
-        if (gvaType == HYBM_MEM_TYPE_HOST)
+        }
+        if (gvaType == HYBM_MEM_TYPE_HOST) {
             return GLOBAL_HOST;
+        }
     }
     if (va >= HYBM_DEVICE_VA_START && va < (HYBM_DEVICE_VA_START + HYBM_DEVICE_VA_SIZE)) {
         return LOCAL_DEVICE;

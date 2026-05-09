@@ -86,7 +86,7 @@ struct ConnectRankInfo {
 
 inline std::ostream &operator<<(std::ostream &output, const RegMemResult &mr)
 {
-    output << "RegMemResult(size=" << mr.size << ", addr:" << std::hex << mr.address << ", regAddress:"
+    output << "RegMemResult(size=" << mr.size << ", addr: 0x" << std::hex << mr.address << ", regAddress: 0x"
            << mr.regAddress << ", mrHandle=" << mr.mrHandle << ", lkey=" << mr.lkey << ", rkey=" << mr.rkey << ")";
     return output;
 }

@@ -129,12 +129,12 @@ TEST_F(MFUrlParserTest, InitializeWithoutPort)
     EXPECT_FALSE(parser.IsInitialized());
 }
 
-// 测试无效输入 - 端口超出范围
+// 测试边界值 - 端口为0
 TEST_F(MFUrlParserTest, InitializeWithInvalidPortZero)
 {
     UrlParser parser;
-    EXPECT_FALSE(parser.Initialize("192.168.1.1:0"));
-    EXPECT_FALSE(parser.IsInitialized());
+    EXPECT_TRUE(parser.Initialize("192.168.1.1:0"));
+    EXPECT_TRUE(parser.IsInitialized());
 }
 
 TEST_F(MFUrlParserTest, InitializeWithInvalidPortNegative)

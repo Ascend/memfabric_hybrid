@@ -698,22 +698,17 @@ Result DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const Ex
 
     // 先写异步
     std::set<uint32_t> asyncSubmittedRanks{};
+    TP_TRACE_BEGIN(TP_HYBM_RDMA_BATCH_REG_COPY)
     for (auto &it : registered) {
-        hybm_batch_copy_params regParams = {it.second.localAddrs.data(), it.second.globalAddrs.data(),
-                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
-        tmpOptions.destRankId = it.first;
-
-        for (uint32_t i = 0; i < regParams.batchSize; ++i) {
-            ret = transportManager_->WriteRemoteAsync(tmpOptions.destRankId, (uint64_t)regParams.sources[i],
-                                                      (uint64_t)regParams.destinations[i], regParams.dataSizes[i]);
-            if (ret != BM_OK) {
-                for (uint32_t r : asyncSubmittedRanks) {
-                    transportManager_->Synchronize(r);
-                }
-                BM_LOG_ERROR("Failed to write src to dest");
-                return ret;
-            }
+        ret = transportManager_->WriteRemoteBatchAsync(it.first, it.second);
+        if (ret == BM_OK) {
             asyncSubmittedRanks.insert(it.first);
+        } else {
+            BM_LOG_ERROR("Failed to write src to dest: " << ret);
+            for (uint32_t rank : asyncSubmittedRanks) {
+                transportManager_->Synchronize(rank);
+            }
+            return ret;
         }
     }
     // 再写本地
@@ -741,6 +736,7 @@ Result DataOpDeviceRDMA::BatchCopyWrite(hybm_batch_copy_params &params, const Ex
         TP_TRACE_END(TP_HYBM_RDMA_BATCH_WAIT_W, ret);
         BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "Failed to Synchronize", ret);
     }
+    TP_TRACE_END(TP_HYBM_RDMA_BATCH_REG_COPY, ret)
     return BM_OK;
 }
 
@@ -758,20 +754,15 @@ Result DataOpDeviceRDMA::BatchCopyRead(hybm_batch_copy_params &params, const Ext
     // 先写异步
     std::set<uint32_t> asyncSubmittedRanks{};
     for (auto &it : registered) {
-        hybm_batch_copy_params regParams = {it.second.globalAddrs.data(), it.second.localAddrs.data(),
-                                            it.second.counts.data(), static_cast<uint32_t>(it.second.counts.size())};
-        tmpOptions.srcRankId = it.first;
-        for (uint32_t i = 0; i < regParams.batchSize; ++i) {
-            ret = transportManager_->ReadRemoteAsync(tmpOptions.srcRankId, (uint64_t)regParams.destinations[i],
-                                                     (uint64_t)regParams.sources[i], regParams.dataSizes[i]);
-            if (ret != BM_OK) {
-                for (uint32_t r : asyncSubmittedRanks) {
-                    transportManager_->Synchronize(r);
-                }
-                BM_LOG_ERROR("Failed to read src to dest");
-                return ret;
-            }
+        ret = transportManager_->ReadRemoteBatchAsync(it.first, it.second);
+        if (ret == BM_OK) {
             asyncSubmittedRanks.insert(it.first);
+        } else {
+            BM_LOG_ERROR("Failed to read src to dest: " << ret);
+            for (uint32_t rank : asyncSubmittedRanks) {
+                transportManager_->Synchronize(rank);
+            }
+            return ret;
         }
     }
     // 再写本地

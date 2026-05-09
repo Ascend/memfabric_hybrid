@@ -27,6 +27,110 @@
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
+namespace {
+// Test constants for entity device IDs
+constexpr int32_t TEST_DEVICE_ID_INIT = 100;
+constexpr int32_t TEST_DEVICE_ID_RESERVE = 200;
+constexpr int32_t TEST_DEVICE_ID_GET_PTR = 300;
+constexpr int32_t TEST_DEVICE_ID_ALLOC = 400;
+constexpr int32_t TEST_DEVICE_ID_REGISTER = 500;
+constexpr int32_t TEST_DEVICE_ID_EXPORT = 600;
+constexpr int32_t TEST_DEVICE_ID_IMPORT = 700;
+constexpr int32_t TEST_DEVICE_ID_REMOVE = 900;
+constexpr int32_t TEST_DEVICE_ID_CTX = 1000;
+constexpr int32_t TEST_DEVICE_ID_MMAP = 1100;
+constexpr int32_t TEST_DEVICE_ID_CHECK_ADDR = 1200;
+constexpr int32_t TEST_DEVICE_ID_COPY = 1300;
+constexpr int32_t TEST_DEVICE_ID_BATCH_COPY = 1400;
+constexpr int32_t TEST_DEVICE_ID_WAIT = 1500;
+constexpr int32_t TEST_DEVICE_ID_SDMA = 1600;
+constexpr int32_t TEST_DEVICE_ID_DATA_OP = 1700;
+constexpr int32_t TEST_DEVICE_ID_SLICE_VA = 1800;
+constexpr int32_t TEST_DEVICE_ID_FUNC_MOD = 1900;
+constexpr int32_t TEST_DEVICE_ID_TAG_MGR = 2000;
+constexpr int32_t TEST_DEVICE_ID_TRANS_MGR_NO_TRANS = 2001;
+constexpr int32_t TEST_DEVICE_ID_TRANS_MGR_PREPARE = 2002;
+constexpr int32_t TEST_DEVICE_ID_TRANS_MGR_UPDATE = 2003;
+constexpr int32_t TEST_DEVICE_ID_IMPORT_EXCHANGE = 2004;
+constexpr int32_t TEST_DEVICE_ID_TRANS_PRECHECK = 2005;
+constexpr int32_t TEST_DEVICE_ID_TRANS_PRECHECK_INVALID = 2006;
+constexpr int32_t TEST_DEVICE_ID_TRANS_CONNECT = 2007;
+constexpr int32_t TEST_DEVICE_ID_EXPORT_LONG_NIC = 2100;
+constexpr int32_t TEST_DEVICE_ID_EXPORT_APPEND_FAIL = 2101;
+constexpr int32_t TEST_DEVICE_ID_EXPORT_TRANS_NULL = 2102;
+constexpr int32_t TEST_DEVICE_ID_CTX_NULL = 2300;
+constexpr int32_t TEST_DEVICE_ID_CTX_SIZE_LARGE = 2301;
+constexpr int32_t TEST_DEVICE_ID_CTX_MEMCPY_FAIL = 2302;
+constexpr int32_t TEST_DEVICE_ID_CTX_SUCCESS = 2303;
+constexpr int32_t TEST_DEVICE_ID_REMOVE_HBM_FAIL = 2400;
+constexpr int32_t TEST_DEVICE_ID_REMOVE_DRAM_FAIL = 2401;
+constexpr int32_t TEST_DEVICE_ID_REMOVE_CLEANUP = 2402;
+constexpr int32_t TEST_DEVICE_ID_COPY_TRANS = 2500;
+constexpr int32_t TEST_DEVICE_ID_COPY_FAIL = 2502;
+constexpr int32_t TEST_DEVICE_ID_COPY_NONTRANS = 25021;
+constexpr int32_t TEST_DEVICE_ID_COPY_VA_MGR = 25022;
+constexpr int32_t TEST_DEVICE_ID_COPY_A5 = 25023;
+constexpr int32_t TEST_DEVICE_ID_COPY_SECOND_MAP = 250231;
+constexpr int32_t TEST_DEVICE_ID_COPY_NO_GVA = 25024;
+constexpr int32_t TEST_DEVICE_ID_BATCH_NULL = 2503;
+constexpr int32_t TEST_DEVICE_ID_BATCH_SUCCESS = 2504;
+constexpr int32_t TEST_DEVICE_ID_BATCH_FAIL = 2505;
+constexpr int32_t TEST_DEVICE_ID_QUANT_NULL = 2506;
+constexpr int32_t TEST_DEVICE_ID_QUANT_FAIL = 2507;
+constexpr int32_t TEST_DEVICE_ID_QUANT_SUCCESS = 2508;
+constexpr int32_t TEST_DEVICE_ID_WAIT_OP = 2509;
+
+// Test constants for memory sizes
+constexpr uint64_t TEST_SMALL_SIZE = 1024;
+constexpr uint64_t TEST_PAGE_SIZE = ock::mf::HYBM_LARGE_PAGE_SIZE;
+constexpr uint64_t TEST_DATA_SIZE = 4096;
+constexpr uint64_t TEST_DATA_SIZE_2 = 8192;
+
+// Test constants for ranks
+constexpr uint32_t TEST_RANK_0 = 0;
+constexpr uint32_t TEST_RANK_1 = 1;
+constexpr uint32_t TEST_RANK_2 = 2;
+constexpr uint32_t TEST_RANK_3 = 3;
+constexpr uint32_t TEST_RANK_6 = 6;
+constexpr uint32_t TEST_RANK_8 = 8;
+constexpr uint32_t TEST_RANK_9 = 9;
+constexpr uint32_t TEST_RANK_11 = 11;
+constexpr uint32_t TEST_RANK_12 = 12;
+constexpr uint32_t TEST_RANK_13 = 13;
+constexpr uint32_t TEST_RANK_COUNT_1 = 1;
+constexpr uint32_t TEST_RANK_COUNT_2 = 2;
+constexpr uint32_t TEST_RANK_COUNT_3 = 3;
+
+// Test constants for addresses
+constexpr uint64_t TEST_ADDR_SRC = 0x1111;
+constexpr uint64_t TEST_ADDR_DST = 0x2222;
+constexpr uint64_t TEST_ADDR_OFFSET_1 = 0x1000;
+constexpr uint64_t TEST_ADDR_OFFSET_2 = 0x1800;
+constexpr uint64_t TEST_ADDR_OFFSET_3 = 0x4000;
+constexpr uint64_t TEST_ADDR_OFFSET_4 = 0x9000;
+constexpr uint64_t TEST_ADDR_OFFSET_5 = 0x9800;
+
+// Test constants for batch operations
+constexpr uint32_t TEST_BATCH_SIZE_1 = 1;
+constexpr uint32_t TEST_BATCH_SIZE_2 = 2;
+
+// Test constants for context
+constexpr int TEST_CONTEXT_VALUE = 123;
+constexpr size_t TEST_CONTEXT_SIZE_1 = 1;
+
+// Test constants for transport keys
+constexpr uint64_t TEST_KEY_OFFSET = 0x1234;
+constexpr uint32_t TEST_KEY_VALUE_1 = 0xABC;
+constexpr uint32_t TEST_KEY_VALUE_2 = 0x11;
+constexpr uint32_t TEST_KEY_VALUE_3 = 0x22;
+
+// Test constants for invalid values
+constexpr uint64_t TEST_INVALID_MAGIC = 0xDEADBEEF;
+
+// Test constants for NIC length
+constexpr size_t TEST_LONG_NIC_LENGTH = 64;
+} // namespace
+
 class HybmEntityDefaultTest : public testing::Test {
 public:
     static void SetUpTestCase() {}
@@ -116,6 +220,10 @@ public:
     {
         return nic_;
     }
+    const ock::mf::transport::TransportPrivateData GetPrivateData() const override
+    {
+        return ock::mf::transport::TransportPrivateData{};
+    }
     ock::mf::Result ReadRemote(uint32_t /* rankId */, uint64_t /* lAddr */, uint64_t /* rAddr */,
                                uint64_t /* size */) override
     {
@@ -171,7 +279,7 @@ public:
 
 private:
     // ExportExchangeInfo checks: if (nic.size() >= sizeof(exportInfo.nic)) return BM_ERROR;
-    std::string longNic_{std::string(64, 'x')};
+    std::string longNic_{std::string(TEST_LONG_NIC_LENGTH, 'x')};
 };
 
 class FakeTransportManagerRemoveFail : public FakeTransportManager {
@@ -254,10 +362,10 @@ public:
 // 测试 MemEntityDefault 初始化和反初始化
 TEST_F(HybmEntityDefaultTest, Initialize_UnInitialize)
 {
-    ock::mf::MemEntityDefault entity(100);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_INIT);
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
 
     // 模拟 MemSegment::Create 返回空指针
     union {
@@ -272,13 +380,13 @@ TEST_F(HybmEntityDefaultTest, Initialize_UnInitialize)
 
     hybm_mem_slice_t slice = nullptr;
     // 测试内存分配（已初始化的情况）size 非法
-    auto allocRet = entity.AllocLocalMemory(1024, HYBM_MEM_TYPE_HOST, 0, slice);
+    auto allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
     EXPECT_EQ(slice, nullptr);
 
     // 测试内存分配（已初始化的情况）dramSegment_ 为空
     entity.dramSegment_ = nullptr;
-    allocRet = entity.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, HYBM_MEM_TYPE_HOST, 0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
     EXPECT_EQ(slice, nullptr);
 
@@ -290,7 +398,7 @@ TEST_F(HybmEntityDefaultTest, Initialize_UnInitialize)
 // 测试 MemEntityDefault 内存预留和释放
 TEST_F(HybmEntityDefaultTest, Reserve_UnReserve_MemorySpace)
 {
-    ock::mf::MemEntityDefault entity(200);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_RESERVE);
 
     // 测试内存预留（未初始化的情况）
     int32_t reserveRet = entity.ReserveMemorySpace();
@@ -309,8 +417,8 @@ TEST_F(HybmEntityDefaultTest, Reserve_UnReserve_MemorySpace)
 
     // 测试初始化
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
     options.memType = HYBM_MEM_TYPE_HOST;
     int32_t initRet = entity.Initialize(&options);
     EXPECT_EQ(initRet, BM_OK);
@@ -325,7 +433,7 @@ TEST_F(HybmEntityDefaultTest, Reserve_UnReserve_MemorySpace)
 // 测试 MemEntityDefault 获取预留内存指针
 TEST_F(HybmEntityDefaultTest, GetReservedMemoryPtr)
 {
-    ock::mf::MemEntityDefault entity(300);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_GET_PTR);
 
     // 测试获取主机内存指针
     void *hostPtr = entity.GetReservedMemoryPtr(HYBM_MEM_TYPE_HOST);
@@ -339,32 +447,32 @@ TEST_F(HybmEntityDefaultTest, GetReservedMemoryPtr)
 // 测试 MemEntityDefault 内存分配和释放
 TEST_F(HybmEntityDefaultTest, Alloc_Free_LocalMemory)
 {
-    ock::mf::MemEntityDefault entity(400);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_ALLOC);
     hybm_mem_slice_t slice = nullptr;
 
     // 测试内存分配（未初始化的情况）
-    int32_t allocRet = entity.AllocLocalMemory(1024, HYBM_MEM_TYPE_HOST, 0, slice);
+    int32_t allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
     EXPECT_EQ(allocRet, BM_NOT_INITIALIZED);
     EXPECT_EQ(slice, nullptr);
 
     // 测试内存释放（未初始化的情况）
-    int32_t freeRet = entity.FreeLocalMemory(slice, 0);
+    int32_t freeRet = entity.FreeLocalMemory(slice, TEST_RANK_0);
     EXPECT_EQ(freeRet, BM_INVALID_PARAM);
 
     // 测试初始化
     // 模拟 MemSegment::Create 返回空指针
     ock::mf::MemSegmentOptions optionsSeg{};
     optionsSeg.segType = ock::mf::HYBM_MST_HBM;
-    optionsSeg.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
-    optionsSeg.rankCnt = 1;
+    optionsSeg.maxSize = TEST_PAGE_SIZE;
+    optionsSeg.rankCnt = TEST_RANK_COUNT_1;
 
     ock::mf::MemSegmentPtr segment = std::make_shared<ock::mf::HybmVmmBasedSegment>(optionsSeg, entity.id_);
 
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
     options.memType = HYBM_MEM_TYPE_DEVICE;
-    options.maxDRAMSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
+    options.maxDRAMSize = TEST_PAGE_SIZE;
 
     union {
         ock::mf::MemSegmentPtr (*func)(const ock::mf::MemSegmentOptions &, int);
@@ -379,20 +487,20 @@ TEST_F(HybmEntityDefaultTest, Alloc_Free_LocalMemory)
     int32_t initRet = entity.Initialize(&options);
     EXPECT_EQ(initRet, BM_OK);
 
-    allocRet = entity.AllocLocalMemory(1024, HYBM_MEM_TYPE_HOST, 0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
 
-    allocRet = entity.AllocLocalMemory(ock::mf::HYBM_LARGE_PAGE_SIZE, HYBM_MEM_TYPE_DEVICE, 0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_DEVICE, TEST_RANK_0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
 
-    freeRet = entity.FreeLocalMemory(slice, 0);
+    freeRet = entity.FreeLocalMemory(slice, TEST_RANK_0);
     EXPECT_EQ(freeRet, BM_OK);
 }
 
 // 测试 MemEntityDefault 内存注册
 TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
 {
-    ock::mf::MemEntityDefault entity(500);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_REGISTER);
 
     // 测试内存注册（未初始化的情况）
     int buf = 0;
@@ -407,8 +515,8 @@ TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
     // 测试初始化
     ock::mf::MemSegmentOptions optionsSeg{};
     optionsSeg.segType = ock::mf::HYBM_MST_DRAM;
-    optionsSeg.maxSize = ock::mf::HYBM_LARGE_PAGE_SIZE;
-    optionsSeg.rankCnt = 2;
+    optionsSeg.maxSize = TEST_PAGE_SIZE;
+    optionsSeg.rankCnt = TEST_RANK_COUNT_2;
     ock::mf::MemSegmentPtr segment = std::make_shared<ock::mf::HybmVmmBasedSegment>(optionsSeg, entity.id_);
 
     MOCKER_CPP(&ock::mf::HybmVmmBasedSegment::ReserveMemorySpace, int32_t (*)(ock::mf::HybmVmmBasedSegment *, void **))
@@ -416,8 +524,8 @@ TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
         .will(returnValue(0));
 
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 2;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_2;
     options.memType = HYBM_MEM_TYPE_HOST;
     entity.dramSegment_ = segment;
 
@@ -431,36 +539,36 @@ TEST_F(HybmEntityDefaultTest, RegisterLocalMemory)
 // 测试 MemEntityDefault 导出交换信息
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo)
 {
-    ock::mf::MemEntityDefault entity(600);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_EXPORT);
 
     hybm_exchange_info hbmSliceInfo;
     bzero(&hbmSliceInfo, sizeof(hybm_exchange_info));
     ock::mf::ExchangeInfoWriter writer(&hbmSliceInfo);
 
     // 测试导出实体信息（未初始化的情况）
-    int32_t exportRet = entity.ExportExchangeInfo(writer, 0);
+    int32_t exportRet = entity.ExportExchangeInfo(writer, TEST_RANK_0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 
     // 测试导出切片信息（未初始化的情况）
-    exportRet = entity.ExportExchangeInfo(nullptr, writer, 0);
+    exportRet = entity.ExportExchangeInfo(nullptr, writer, TEST_RANK_0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 }
 
 // 测试 MemEntityDefault 导入交换信息
 TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
 {
-    ock::mf::MemEntityDefault entity(100);
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_INIT);
     hybm_exchange_info info{};
-    void *addresses[1] = {nullptr};
+    void *addresses[TEST_RANK_COUNT_1] = {nullptr};
 
     // 测试导入切片信息（未初始化的情况）
-    int32_t importRet = entity.ImportExchangeInfo(&info, 1, addresses, 0);
+    int32_t importRet = entity.ImportExchangeInfo(&info, TEST_RANK_COUNT_1, addresses, TEST_RANK_0);
     EXPECT_EQ(importRet, BM_NOT_INITIALIZED);
 
     // 测试初始化
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
     int32_t initRet = entity.Initialize(&options);
     EXPECT_EQ(initRet, BM_OK);
 
@@ -468,7 +576,7 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
         .stubs()
         .will(returnValue(0));
 
-    importRet = entity.ImportExchangeInfo(&info, 1, addresses, 0);
+    importRet = entity.ImportExchangeInfo(&info, TEST_RANK_COUNT_1, addresses, TEST_RANK_0);
     EXPECT_EQ(importRet, BM_OK);
 
     entity.UnInitialize();
@@ -478,8 +586,8 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
 // 测试 MemEntityDefault 移除导入的内存
 TEST_F(HybmEntityDefaultTest, RemoveImported)
 {
-    ock::mf::MemEntityDefault entity(900);
-    std::vector<uint32_t> ranks = {1, 2, 3};
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_REMOVE);
+    std::vector<uint32_t> ranks = {TEST_RANK_1, TEST_RANK_2, TEST_RANK_3};
 
     // 测试移除导入的内存（未初始化的情况）
     int32_t removeRet = entity.RemoveImported(ranks);
@@ -489,8 +597,8 @@ TEST_F(HybmEntityDefaultTest, RemoveImported)
 // 测试 MemEntityDefault 设置额外上下文
 TEST_F(HybmEntityDefaultTest, SetExtraContext)
 {
-    ock::mf::MemEntityDefault entity(1000);
-    int ctx = 123;
+    ock::mf::MemEntityDefault entity(TEST_DEVICE_ID_CTX);
+    int ctx = TEST_CONTEXT_VALUE;
 
     // 测试设置额外上下文（未初始化的情况）
     int32_t setCtxRet = entity.SetExtraContext(&ctx, sizeof(ctx));
@@ -499,35 +607,35 @@ TEST_F(HybmEntityDefaultTest, SetExtraContext)
 
 TEST_F(HybmEntityDefaultTest, SetExtraContext_ContextNull_ReturnInvalidParam)
 {
-    int32_t deviceId = 2300;
+    int32_t deviceId = TEST_DEVICE_ID_CTX_NULL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE;
 
-    auto ret = entity.SetExtraContext(nullptr, 1);
+    auto ret = entity.SetExtraContext(nullptr, TEST_CONTEXT_SIZE_1);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmEntityDefaultTest, SetExtraContext_SizeTooLarge_ReturnInvalidParam)
 {
-    int32_t deviceId = 2301;
+    int32_t deviceId = TEST_DEVICE_ID_CTX_SIZE_LARGE;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE;
 
-    int ctx = 123;
+    int ctx = TEST_CONTEXT_VALUE;
     auto ret = entity.SetExtraContext(&ctx, ock::mf::HYBM_DEVICE_USER_CONTEXT_PRE_SIZE + 1);
     EXPECT_EQ(ret, BM_INVALID_PARAM);
 }
 
 TEST_F(HybmEntityDefaultTest, SetExtraContext_MemcpyFail_ReturnError)
 {
-    int32_t deviceId = 2302;
+    int32_t deviceId = TEST_DEVICE_ID_CTX_MEMCPY_FAIL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE;
 
-    int ctx = 123;
+    int ctx = TEST_CONTEXT_VALUE;
     MOCKER_CPP(&ock::mf::DlAclApi::AclrtMemcpy, int32_t (*)(void *, size_t, const void *, size_t, int32_t))
         .stubs()
         .will(returnValue(static_cast<int32_t>(BM_ERROR)));
@@ -538,12 +646,12 @@ TEST_F(HybmEntityDefaultTest, SetExtraContext_MemcpyFail_ReturnError)
 
 TEST_F(HybmEntityDefaultTest, SetExtraContext_Success_ReturnOk)
 {
-    int32_t deviceId = 2303;
+    int32_t deviceId = TEST_DEVICE_ID_CTX_SUCCESS;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE; // UpdateHybmDeviceInfo will return OK directly
 
-    int ctx = 123;
+    int ctx = TEST_CONTEXT_VALUE;
     MOCKER_CPP(&ock::mf::DlAclApi::AclrtMemcpy, int32_t (*)(void *, size_t, const void *, size_t, int32_t))
         .stubs()
         .will(returnValue(static_cast<int32_t>(BM_OK)));
@@ -554,8 +662,8 @@ TEST_F(HybmEntityDefaultTest, SetExtraContext_Success_ReturnOk)
 
 TEST_F(HybmEntityDefaultTest, RemoveImported_HbmSegmentFail_ReturnError)
 {
-    int32_t deviceId = 2400;
-    uint32_t rankCnt = 2;
+    int32_t deviceId = TEST_DEVICE_ID_REMOVE_HBM_FAIL;
+    uint32_t rankCnt = TEST_RANK_COUNT_2;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -565,7 +673,7 @@ TEST_F(HybmEntityDefaultTest, RemoveImported_HbmSegmentFail_ReturnError)
     auto hbmSeg = std::make_shared<ock::mf::HybmVmmBasedSegment>(optionsHbm, entity.id_);
     entity.hbmSegment_ = hbmSeg;
 
-    std::vector<uint32_t> ranks{1, 2};
+    std::vector<uint32_t> ranks{TEST_RANK_1, TEST_RANK_2};
     MOCKER_CPP(&ock::mf::HybmVmmBasedSegment::RemoveImported,
                int32_t (*)(ock::mf::HybmVmmBasedSegment *, const std::vector<uint32_t> &))
         .stubs()
@@ -577,8 +685,8 @@ TEST_F(HybmEntityDefaultTest, RemoveImported_HbmSegmentFail_ReturnError)
 
 TEST_F(HybmEntityDefaultTest, RemoveImported_DramSegmentFail_ReturnError)
 {
-    int32_t deviceId = 2401;
-    uint32_t totalCnt = 2;
+    int32_t deviceId = TEST_DEVICE_ID_REMOVE_DRAM_FAIL;
+    uint32_t totalCnt = TEST_RANK_COUNT_2;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -588,7 +696,7 @@ TEST_F(HybmEntityDefaultTest, RemoveImported_DramSegmentFail_ReturnError)
     auto dramSeg = std::make_shared<ock::mf::HybmVmmBasedSegment>(optionsDram, entity.id_);
     entity.dramSegment_ = dramSeg;
 
-    std::vector<uint32_t> ranks{1, 2};
+    std::vector<uint32_t> ranks{TEST_RANK_1, TEST_RANK_2};
     MOCKER_CPP(&ock::mf::HybmVmmBasedSegment::RemoveImported,
                int32_t (*)(ock::mf::HybmVmmBasedSegment *, const std::vector<uint32_t> &))
         .stubs()
@@ -600,8 +708,8 @@ TEST_F(HybmEntityDefaultTest, RemoveImported_DramSegmentFail_ReturnError)
 
 TEST_F(HybmEntityDefaultTest, RemoveImported_CleanupAndEraseAndRemoveRanks)
 {
-    int32_t deviceId = 2402;
-    uint32_t totalCnt = 3;
+    int32_t deviceId = TEST_DEVICE_ID_REMOVE_CLEANUP;
+    uint32_t totalCnt = TEST_RANK_COUNT_3;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -626,30 +734,30 @@ TEST_F(HybmEntityDefaultTest, RemoveImported_CleanupAndEraseAndRemoveRanks)
 
     // populate maps then erase
     ock::mf::EntityExportInfo r1{};
-    r1.rankId = 1;
-    entity.importedRanks_[1] = r1;
-    entity.importedMemories_[1] = {};
+    r1.rankId = TEST_RANK_1;
+    entity.importedRanks_[TEST_RANK_1] = r1;
+    entity.importedMemories_[TEST_RANK_1] = {};
     ock::mf::EntityExportInfo rankSec{};
-    uint32_t r2RankId = 2;
+    uint32_t r2RankId = TEST_RANK_2;
     rankSec.rankId = r2RankId;
     entity.importedRanks_[r2RankId] = rankSec;
     entity.importedMemories_[r2RankId] = {};
 
-    std::vector<uint32_t> ranks{1, 2};
+    std::vector<uint32_t> ranks{TEST_RANK_1, TEST_RANK_2};
     auto ret = entity.RemoveImported(ranks);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->cleaned);
-    EXPECT_EQ(entity.importedRanks_.count(1), 0U);
+    EXPECT_EQ(entity.importedRanks_.count(TEST_RANK_1), 0U);
     EXPECT_EQ(entity.importedRanks_.count(r2RankId), 0U);
-    EXPECT_EQ(entity.importedMemories_.count(1), 0U);
+    EXPECT_EQ(entity.importedMemories_.count(TEST_RANK_1), 0U);
     EXPECT_EQ(entity.importedMemories_.count(r2RankId), 0U);
     EXPECT_EQ(trans->removeCalled, 1);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_TransScene_UsesLocateAddrAndRank)
 {
-    int32_t deviceId = 2500;
-    uint32_t rankId = 9;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_TRANS;
+    uint32_t rankId = TEST_RANK_9;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.rankId = rankId;
@@ -663,21 +771,21 @@ TEST_F(HybmEntityDefaultTest, CopyData_TransScene_UsesLocateAddrAndRank)
     entity.dataOperator_ = dop;
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(0x1111);
-    params.dest = reinterpret_cast<void *>(0x2222);
-    uint64_t dataSize = 4096;
+    params.src = reinterpret_cast<void *>(TEST_ADDR_SRC);
+    params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
+    uint64_t dataSize = TEST_DATA_SIZE;
     params.dataSize = dataSize;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_DataCopyFail_ReturnErrorCode)
 {
-    int32_t deviceId = 2502;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_FAIL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
+    entity.options_.rankId = TEST_RANK_0;
     entity.options_.scene = HYBM_SCENE_TRANS;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
@@ -693,21 +801,21 @@ TEST_F(HybmEntityDefaultTest, CopyData_DataCopyFail_ReturnErrorCode)
         .will(returnValue(static_cast<int32_t>(BM_ERROR)));
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(0x1111);
-    params.dest = reinterpret_cast<void *>(0x2222);
-    uint64_t dataSize = 4096;
+    params.src = reinterpret_cast<void *>(TEST_ADDR_SRC);
+    params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
+    uint64_t dataSize = TEST_DATA_SIZE;
     params.dataSize = dataSize;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseLocalRankForAddrOutOfGvmRange)
 {
-    int32_t deviceId = 25021UL;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_NONTRANS;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 6UL;
+    entity.options_.rankId = TEST_RANK_6;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     entity.options_.enable56BitsGva = false;
 
@@ -722,23 +830,23 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseLocalRankForAddrOutOfGvm
     entity.dataOperator_ = dop;
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(0x1111);
-    params.dest = reinterpret_cast<void *>(0x2222);
-    params.dataSize = 4096ULL;
+    params.src = reinterpret_cast<void *>(TEST_ADDR_SRC);
+    params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
+    params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
-    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, 6U);
-    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 6U);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_6);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_6);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseRankFromVaManagerInSocRange)
 {
-    int32_t deviceId = 25022;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_VA_MGR;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 3UL;
+    entity.options_.rankId = TEST_RANK_3;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     entity.options_.enable56BitsGva = false;
 
@@ -751,35 +859,39 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseRankFromVaManagerInSocRa
 
     ock::mf::HybmVaManager::GetInstance().ClearAll();
     ASSERT_EQ(ock::mf::HybmVaManager::GetInstance().Initialize(ock::mf::AscendSocType::ASCEND_910C), BM_OK);
-    ASSERT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
-                  {{ock::mf::HYBM_GVM_START_ADDR + 0x1000, 0, 0}, 0x4000, HYBM_MEM_TYPE_HOST}, 0, 11UL),
-              BM_OK);
-    ASSERT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
-                  {{ock::mf::HYBM_GVM_START_ADDR + 0x9000, 0, 0}, 0x4000, HYBM_MEM_TYPE_HOST}, 0, 12UL),
-              BM_OK);
+    ASSERT_EQ(
+        ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {{ock::mf::HYBM_GVM_START_ADDR + TEST_ADDR_OFFSET_1, 0, 0}, TEST_ADDR_OFFSET_3, HYBM_MEM_TYPE_HOST},
+            0, TEST_RANK_11),
+        BM_OK);
+    ASSERT_EQ(
+        ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {{ock::mf::HYBM_GVM_START_ADDR + TEST_ADDR_OFFSET_4, 0, 0}, TEST_ADDR_OFFSET_3, HYBM_MEM_TYPE_HOST},
+            0, TEST_RANK_12),
+        BM_OK);
 
     auto dop = std::make_shared<FakeDataOperator>();
     entity.dataOperator_ = dop;
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR + 0x1800);
-    params.dest = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR + 0x9800);
-    params.dataSize = 4096ULL;
+    params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR + TEST_ADDR_OFFSET_2);
+    params.dest = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR + TEST_ADDR_OFFSET_5);
+    params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
-    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, 11U);
-    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 12U);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_11);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_12);
     ock::mf::HybmVaManager::GetInstance().ClearAll();
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_A5Soc_UseRankFromVaManagerInA5Range)
 {
-    int32_t deviceId = 25023;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_A5;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 8UL;
+    entity.options_.rankId = TEST_RANK_8;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     entity.options_.enable56BitsGva = false;
 
@@ -792,32 +904,34 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_A5Soc_UseRankFromVaManagerI
 
     ock::mf::HybmVaManager::GetInstance().ClearAll();
     ASSERT_EQ(ock::mf::HybmVaManager::GetInstance().Initialize(ock::mf::AscendSocType::ASCEND_950), BM_OK);
-    ASSERT_EQ(ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
-                  {{ock::mf::HYBM_GVM_START_ADDR_A5 + 0x1000, 0, 0}, 0x4000, HYBM_MEM_TYPE_HOST}, 0, 13UL),
-              BM_OK);
+    ASSERT_EQ(
+        ock::mf::HybmVaManager::GetInstance().AddVaInfoFromExternal(
+            {{ock::mf::HYBM_GVM_START_ADDR_A5 + TEST_ADDR_OFFSET_1, 0, 0}, TEST_ADDR_OFFSET_3, HYBM_MEM_TYPE_HOST}, 0,
+            TEST_RANK_13),
+        BM_OK);
 
     auto dop = std::make_shared<FakeDataOperator>();
     entity.dataOperator_ = dop;
 
     hybm_copy_params params{};
-    params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR_A5 + 0x1800);
-    params.dest = reinterpret_cast<void *>(0x2222);
-    params.dataSize = 4096ULL;
+    params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR_A5 + TEST_ADDR_OFFSET_2);
+    params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
+    params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
-    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, 13U);
-    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 8U);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_13);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_8);
     ock::mf::HybmVaManager::GetInstance().ClearAll();
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaOutOfA5Range_UseLocalRank)
 {
-    int32_t deviceId = 250231;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_SECOND_MAP;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 8UL;
+    entity.options_.rankId = TEST_RANK_8;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     entity.options_.enable56BitsGva = true;
 
@@ -833,22 +947,22 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaOutOfA5Range
 
     hybm_copy_params params{};
     params.src = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR);
-    params.dest = reinterpret_cast<void *>(0x2222);
-    params.dataSize = 4096ULL;
+    params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
+    params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
-    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, 8U);
-    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 8U);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_8);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutRegisteredGva_UseLocalRank)
 {
-    int32_t deviceId = 25024;
+    int32_t deviceId = TEST_DEVICE_ID_COPY_NO_GVA;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 8UL;
+    entity.options_.rankId = TEST_RANK_8;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     entity.options_.enable56BitsGva = true;
 
@@ -868,17 +982,17 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutR
     params.dest = reinterpret_cast<void *>(0x2222);
     params.dataSize = 4096ULL;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
-    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, 8U);
-    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, 8U);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_8);
     ock::mf::HybmVaManager::GetInstance().ClearAll();
 }
 
 TEST_F(HybmEntityDefaultTest, BatchCopyData_DataOperatorNull_ReturnError)
 {
-    int32_t deviceId = 2503;
+    int32_t deviceId = TEST_DEVICE_ID_BATCH_NULL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.scene = HYBM_SCENE_TRANS;
@@ -888,17 +1002,17 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_DataOperatorNull_ReturnError)
         .will(returnValue(static_cast<int32_t>(BM_OK)));
 
     hybm_batch_copy_params params{};
-    params.batchSize = 1;
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    params.batchSize = TEST_BATCH_SIZE_1;
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
 TEST_F(HybmEntityDefaultTest, BatchCopyData_GroupAndSuccess)
 {
-    int32_t deviceId = 2504;
+    int32_t deviceId = TEST_DEVICE_ID_BATCH_SUCCESS;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
+    entity.options_.rankId = TEST_RANK_0;
     entity.options_.scene = HYBM_SCENE_TRANS;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
@@ -909,24 +1023,24 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_GroupAndSuccess)
     entity.dataOperator_ = dop;
     void *srcs[2] = {reinterpret_cast<void *>(0x1), reinterpret_cast<void *>(0x2)};
     void *dsts[2] = {reinterpret_cast<void *>(0x3), reinterpret_cast<void *>(0x4)};
-    uint64_t sizes[2] = {4096, 8192};
+    uint64_t sizes[TEST_BATCH_SIZE_2] = {TEST_DATA_SIZE, TEST_DATA_SIZE_2};
     hybm_batch_copy_params params{};
     params.sources = srcs;
     params.destinations = dsts;
     params.dataSizes = sizes;
-    uint32_t batchSize = 2;
+    uint32_t batchSize = TEST_BATCH_SIZE_2;
     params.batchSize = batchSize;
 
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
 }
 
 TEST_F(HybmEntityDefaultTest, BatchCopyData_BatchCopyFail_ReturnErrorCode)
 {
-    int32_t deviceId = 2505;
+    int32_t deviceId = TEST_DEVICE_ID_BATCH_FAIL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
+    entity.options_.rankId = TEST_RANK_0;
     entity.options_.scene = HYBM_SCENE_TRANS;
 
     MOCKER_CPP(&ock::mf::MemEntityDefault::SetThreadAclDevice, int32_t (*)(ock::mf::MemEntityDefault *))
@@ -942,20 +1056,20 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_BatchCopyFail_ReturnErrorCode)
         .will(returnValue(static_cast<int32_t>(BM_ERROR)));
     void *srcs[1] = {reinterpret_cast<void *>(0x1)};
     void *dsts[1] = {reinterpret_cast<void *>(0x2)};
-    uint64_t sizes[1] = {4096};
+    uint64_t sizes[TEST_BATCH_SIZE_1] = {TEST_DATA_SIZE};
     hybm_batch_copy_params params{};
     params.sources = srcs;
     params.destinations = dsts;
     params.dataSizes = sizes;
-    params.batchSize = 1;
+    params.batchSize = TEST_BATCH_SIZE_1;
 
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
 TEST_F(HybmEntityDefaultTest, QuantCopy_DataOperatorNull_ReturnError)
 {
-    int32_t deviceId = 2506;
+    int32_t deviceId = TEST_DEVICE_ID_QUANT_NULL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -970,7 +1084,7 @@ TEST_F(HybmEntityDefaultTest, QuantCopy_DataOperatorNull_ReturnError)
 
 TEST_F(HybmEntityDefaultTest, QuantCopy_QuantFail_ReturnErrorCode)
 {
-    int32_t deviceId = 2507;
+    int32_t deviceId = TEST_DEVICE_ID_QUANT_FAIL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -990,7 +1104,7 @@ TEST_F(HybmEntityDefaultTest, QuantCopy_QuantFail_ReturnErrorCode)
 
 TEST_F(HybmEntityDefaultTest, QuantCopy_Success_ReturnOk)
 {
-    int32_t deviceId = 2508;
+    int32_t deviceId = TEST_DEVICE_ID_QUANT_SUCCESS;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -1010,7 +1124,7 @@ TEST_F(HybmEntityDefaultTest, QuantCopy_Success_ReturnOk)
 
 TEST_F(HybmEntityDefaultTest, Wait_ReturnsDataOperatorWait)
 {
-    int32_t deviceId = 2509;
+    int32_t deviceId = TEST_DEVICE_ID_WAIT_OP;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
 
@@ -1027,7 +1141,7 @@ TEST_F(HybmEntityDefaultTest, Wait_ReturnsDataOperatorWait)
 // 测试 MemEntityDefault 内存映射和解除映射
 TEST_F(HybmEntityDefaultTest, Mmap_Unmap)
 {
-    int32_t deviceId = 1100;
+    int32_t deviceId = TEST_DEVICE_ID_MMAP;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试内存映射（未初始化的情况）
@@ -1041,7 +1155,7 @@ TEST_F(HybmEntityDefaultTest, Mmap_Unmap)
 // 测试 MemEntityDefault 地址检查
 TEST_F(HybmEntityDefaultTest, CheckAddressInEntity)
 {
-    int32_t deviceId = 1200;
+    int32_t deviceId = TEST_DEVICE_ID_CHECK_ADDR;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试地址检查（未初始化的情况）
@@ -1053,31 +1167,31 @@ TEST_F(HybmEntityDefaultTest, CheckAddressInEntity)
 // 测试 MemEntityDefault 数据复制
 TEST_F(HybmEntityDefaultTest, CopyData)
 {
-    int32_t deviceId = 1300;
+    int32_t deviceId = TEST_DEVICE_ID_COPY;
     ock::mf::MemEntityDefault entity(deviceId);
     hybm_copy_params params{};
 
     // 测试数据复制（未初始化的情况）
-    int32_t copyRet = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    int32_t copyRet = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(copyRet, BM_NOT_INITIALIZED);
 }
 
 // 测试 MemEntityDefault 批量数据复制
 TEST_F(HybmEntityDefaultTest, BatchCopyData)
 {
-    int32_t deviceId = 1400;
+    int32_t deviceId = TEST_DEVICE_ID_BATCH_COPY;
     ock::mf::MemEntityDefault entity(deviceId);
     hybm_batch_copy_params params{};
 
     // 测试批量数据复制（未初始化的情况）
-    int32_t batchCopyRet = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
+    int32_t batchCopyRet = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
     EXPECT_EQ(batchCopyRet, BM_NOT_INITIALIZED);
 }
 
 // 测试 MemEntityDefault 等待操作
 TEST_F(HybmEntityDefaultTest, Wait)
 {
-    int32_t deviceId = 1500;
+    int32_t deviceId = TEST_DEVICE_ID_WAIT;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试等待操作（未初始化的情况）
@@ -1088,29 +1202,29 @@ TEST_F(HybmEntityDefaultTest, Wait)
 // 测试 MemEntityDefault SDMA 可达性检查
 TEST_F(HybmEntityDefaultTest, SdmaReaches)
 {
-    int32_t deviceId = 1600;
+    int32_t deviceId = TEST_DEVICE_ID_SDMA;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试 SDMA 可达性检查（未初始化的情况）
-    bool reaches = entity.SdmaReaches(1);
+    bool reaches = entity.SdmaReaches(TEST_RANK_1);
     EXPECT_FALSE(reaches);
 }
 
 // 测试 MemEntityDefault 数据操作类型检查
 TEST_F(HybmEntityDefaultTest, CanReachDataOperators)
 {
-    int32_t deviceId = 1700;
+    int32_t deviceId = TEST_DEVICE_ID_DATA_OP;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试数据操作类型检查（未初始化的情况）
-    hybm_data_op_type opType = entity.CanReachDataOperators(1);
+    hybm_data_op_type opType = entity.CanReachDataOperators(TEST_RANK_1);
     EXPECT_EQ(opType, HYBM_DOP_TYPE_DEFAULT);
 }
 
 // 测试 MemEntityDefault 获取切片虚拟地址
 TEST_F(HybmEntityDefaultTest, GetSliceVa)
 {
-    int32_t deviceId = 1800;
+    int32_t deviceId = TEST_DEVICE_ID_SLICE_VA;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // 测试获取切片虚拟地址（未初始化的情况）
@@ -1127,8 +1241,8 @@ TEST_F(HybmEntityDefaultTest, CheckOptions)
 
     // 测试有效的基本选项
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
     ret = ock::mf::MemEntityDefault::CheckOptions(&options);
     EXPECT_EQ(ret, BM_OK);
 }
@@ -1136,11 +1250,11 @@ TEST_F(HybmEntityDefaultTest, CheckOptions)
 // 测试 MemEntityDefault 功能修改拦截
 TEST_F(HybmEntityDefaultTest, MemEntityDefault_FunctionModification_Intercept)
 {
-    int32_t deviceId = 1900;
+    int32_t deviceId = TEST_DEVICE_ID_FUNC_MOD;
     ock::mf::MemEntityDefault entity(deviceId);
     hybm_options options{};
-    options.rankId = 0;
-    options.rankCount = 1;
+    options.rankId = TEST_RANK_0;
+    options.rankCount = TEST_RANK_COUNT_1;
 
     // 测试参数检查的一致性
     int32_t ret1 = ock::mf::MemEntityDefault::CheckOptions(&options);
@@ -1157,29 +1271,29 @@ TEST_F(HybmEntityDefaultTest, MemEntityDefault_FunctionModification_Intercept)
 
 TEST_F(HybmEntityDefaultTest, ImportForTagManager_Success)
 {
-    int32_t deviceId = 2000;
+    int32_t deviceId = TEST_DEVICE_ID_TAG_MGR;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.tagManager_ = std::make_shared<ock::mf::HybmEntityTagInfo>();
 
     ock::mf::EntityExportInfo r0{};
-    r0.rankId = 0;
+    r0.rankId = TEST_RANK_0;
     std::strncpy(r0.tag, "tag_0", sizeof(r0.tag) - 1);
-    entity.importedRanks_[0] = r0;
+    entity.importedRanks_[TEST_RANK_0] = r0;
 
     ock::mf::EntityExportInfo r1{};
-    r1.rankId = 1;
+    r1.rankId = TEST_RANK_1;
     std::strncpy(r1.tag, "tag_1", sizeof(r1.tag) - 1);
-    entity.importedRanks_[1] = r1;
+    entity.importedRanks_[TEST_RANK_1] = r1;
 
     auto ret = entity.ImportForTagManager();
     EXPECT_EQ(ret, BM_OK);
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(0), "tag_0");
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(1), "tag_1");
+    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_0), "tag_0");
+    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_1), "tag_1");
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportManager_NoTransport_ReturnOk)
 {
-    int32_t deviceId = 2001;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_MGR_NO_TRANS;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.transportManager_ = nullptr;
     auto ret = entity.ImportForTransportManager();
@@ -1188,59 +1302,59 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportManager_NoTransport_ReturnOk)
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportManager_PrepareConnect_FirstTime)
 {
-    int32_t deviceId = 2002;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_MGR_PREPARE;
     ock::mf::MemEntityDefault entity(deviceId);
     auto fake = std::make_shared<FakeTransportManager>();
     entity.transportManager_ = fake;
     entity.transportPrepared_ = false;
 
     ock::mf::EntityExportInfo r0{};
-    r0.rankId = 0;
+    r0.rankId = TEST_RANK_0;
     r0.role = static_cast<uint16_t>(HYBM_ROLE_SENDER);
     std::strncpy(r0.nic, "nic0", sizeof(r0.nic) - 1);
-    entity.importedRanks_[0] = r0;
+    entity.importedRanks_[TEST_RANK_0] = r0;
 
     ock::mf::EntityExportInfo r1{};
-    r1.rankId = 1;
+    r1.rankId = TEST_RANK_1;
     r1.role = static_cast<uint16_t>(HYBM_ROLE_RECEIVER);
     std::strncpy(r1.nic, "nic1", sizeof(r1.nic) - 1);
-    entity.importedRanks_[1] = r1;
+    entity.importedRanks_[TEST_RANK_1] = r1;
 
     auto ret = entity.ImportForTransportManager();
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(entity.transportPrepared_);
     EXPECT_EQ(fake->prepareCalled, 1);
     EXPECT_EQ(fake->connectCalled, 1);
-    EXPECT_EQ(fake->preparedOptions.options.size(), 2U);
-    EXPECT_EQ(fake->preparedOptions.options.at(0).nic, std::string("nic0"));
-    EXPECT_EQ(fake->preparedOptions.options.at(1).nic, std::string("nic1"));
+    EXPECT_EQ(fake->preparedOptions.options.size(), TEST_RANK_COUNT_2);
+    EXPECT_EQ(fake->preparedOptions.options.at(TEST_RANK_0).nic, std::string("nic0"));
+    EXPECT_EQ(fake->preparedOptions.options.at(TEST_RANK_1).nic, std::string("nic1"));
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportManager_Update_WhenPrepared)
 {
-    int32_t deviceId = 2003;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_MGR_UPDATE;
     ock::mf::MemEntityDefault entity(deviceId);
     auto fake = std::make_shared<FakeTransportManager>();
     entity.transportManager_ = fake;
     entity.transportPrepared_ = true;
 
     ock::mf::EntityExportInfo r0{};
-    r0.rankId = 0;
+    r0.rankId = TEST_RANK_0;
     r0.role = static_cast<uint16_t>(HYBM_ROLE_PEER);
     std::strncpy(r0.nic, "nic0", sizeof(r0.nic) - 1);
-    entity.importedRanks_[0] = r0;
+    entity.importedRanks_[TEST_RANK_0] = r0;
 
     auto ret = entity.ImportForTransportManager();
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(fake->updateCalled, 1);
     EXPECT_EQ(fake->connectCalled, 0);
-    EXPECT_EQ(fake->updatedOptions.options.size(), 1U);
-    EXPECT_EQ(fake->updatedOptions.options.at(0).nic, std::string("nic0"));
+    EXPECT_EQ(fake->updatedOptions.options.size(), TEST_RANK_COUNT_1);
+    EXPECT_EQ(fake->updatedOptions.options.at(TEST_RANK_0).nic, std::string("nic0"));
 }
 
 TEST_F(HybmEntityDefaultTest, ImportEntityExchangeInfo_Basic)
 {
-    int32_t deviceId = 2004;
+    int32_t deviceId = TEST_DEVICE_ID_IMPORT_EXCHANGE;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE; // avoid device meta memcpy path
@@ -1252,7 +1366,7 @@ TEST_F(HybmEntityDefaultTest, ImportEntityExchangeInfo_Basic)
     bzero(&ex0, sizeof(ex0));
     ock::mf::ExchangeInfoWriter w0(&ex0);
     ock::mf::EntityExportInfo e0{};
-    e0.rankId = 0;
+    e0.rankId = TEST_RANK_0;
     e0.role = static_cast<uint16_t>(HYBM_ROLE_SENDER);
     std::strncpy(e0.tag, "tag_0", sizeof(e0.tag) - 1);
     std::strncpy(e0.nic, "nic0", sizeof(e0.nic) - 1);
@@ -1262,23 +1376,25 @@ TEST_F(HybmEntityDefaultTest, ImportEntityExchangeInfo_Basic)
     bzero(&ex1, sizeof(ex1));
     ock::mf::ExchangeInfoWriter w1(&ex1);
     ock::mf::EntityExportInfo e1{};
-    e1.rankId = 1;
+    e1.rankId = TEST_RANK_1;
     e1.role = static_cast<uint16_t>(HYBM_ROLE_RECEIVER);
     std::strncpy(e1.tag, "tag_1", sizeof(e1.tag) - 1);
     std::strncpy(e1.nic, "nic1", sizeof(e1.nic) - 1);
     w1.Append(e1);
 
-    ock::mf::ExchangeInfoReader readers[2] = {ock::mf::ExchangeInfoReader(&ex0), ock::mf::ExchangeInfoReader(&ex1)};
-    auto ret = entity.ImportEntityExchangeInfo(readers, 2, 0);
+    ock::mf::ExchangeInfoReader readers[TEST_RANK_COUNT_2] = {
+        ock::mf::ExchangeInfoReader(&ex0), ock::mf::ExchangeInfoReader(&ex1)
+    };
+    auto ret = entity.ImportEntityExchangeInfo(readers, TEST_RANK_COUNT_2, TEST_RANK_0);
     EXPECT_EQ(ret, BM_OK);
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(0), "tag_0");
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(1), "tag_1");
+    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_0), "tag_0");
+    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_1), "tag_1");
     EXPECT_TRUE(entity.transportPrepared_);
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
 {
-    int32_t deviceId = 2005;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_PRECHECK;
     ock::mf::MemEntityDefault entity(deviceId);
 
     // desc[0]: entity export info
@@ -1286,7 +1402,7 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
     bzero(&exEntity, sizeof(exEntity));
     ock::mf::ExchangeInfoWriter wEntity(&exEntity);
     ock::mf::EntityExportInfo e0{};
-    uint32_t rankId = 3;
+    uint32_t rankId = TEST_RANK_3;
     e0.rankId = rankId;
     e0.role = static_cast<uint16_t>(HYBM_ROLE_PEER);
     std::strncpy(e0.tag, "tag_3", sizeof(e0.tag) - 1);
@@ -1297,13 +1413,13 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
     hybm_exchange_info exSlice{};
     bzero(&exSlice, sizeof(exSlice));
     ock::mf::ExchangeInfoWriter wSlice(&exSlice);
-    ock::mf::SliceExportTransportKey k0(ock::mf::DRAM_SLICE_EXPORT_INFO_MAGIC, rankId, 0x1234);
+    ock::mf::SliceExportTransportKey k0(ock::mf::DRAM_SLICE_EXPORT_INFO_MAGIC, rankId, TEST_KEY_OFFSET);
     std::memset(&k0.key, 0, sizeof(k0.key));
-    k0.key.keys[0] = 0xABC;
+    k0.key.keys[0] = TEST_KEY_VALUE_1;
     wSlice.Append(k0);
 
     bool importInfoEntity = false;
-    uint32_t count = 2;
+    uint32_t count = TEST_RANK_COUNT_2;
     ock::mf::ExchangeInfoReader descArr[count] = {ock::mf::ExchangeInfoReader(&exEntity),
                                                   ock::mf::ExchangeInfoReader(&exSlice)};
     auto ret = entity.ImportForTransportPrecheck(descArr, count, importInfoEntity);
@@ -1311,29 +1427,29 @@ TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
     EXPECT_TRUE(importInfoEntity);
     EXPECT_EQ(entity.importedRanks_.count(rankId), 1U);
     EXPECT_EQ(entity.importedMemories_.count(rankId), 1U);
-    ASSERT_EQ(entity.importedMemories_[rankId].size(), 1U);
-    EXPECT_EQ(entity.importedMemories_[rankId].begin()->keys[0], 0xABC);
+    ASSERT_EQ(entity.importedMemories_[rankId].size(), TEST_RANK_COUNT_1);
+    EXPECT_EQ(entity.importedMemories_[rankId].begin()->keys[0], TEST_KEY_VALUE_1);
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_InvalidMagic_Fail)
 {
-    int32_t deviceId = 2006;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_PRECHECK_INVALID;
     ock::mf::MemEntityDefault entity(deviceId);
     hybm_exchange_info exInfo{};
     bzero(&exInfo, sizeof(exInfo));
     ock::mf::ExchangeInfoWriter writer(&exInfo);
-    uint64_t badMagic = 0xDEADBEEF;
+    uint64_t badMagic = TEST_INVALID_MAGIC;
     writer.Append(badMagic);
     ock::mf::ExchangeInfoReader desc(&exInfo);
     bool importInfoEntity = false;
-    uint32_t count = 1;
+    uint32_t count = TEST_RANK_COUNT_1;
     auto ret = entity.ImportForTransportPrecheck(&desc, count, importInfoEntity);
     EXPECT_NE(ret, BM_OK);
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
 {
-    int32_t deviceId = 2007;
+    int32_t deviceId = TEST_DEVICE_ID_TRANS_CONNECT;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
     entity.options_.bmType = HYBM_TYPE_HOST_INITIATE; // avoid device meta memcpy
@@ -1342,36 +1458,36 @@ TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
     entity.transportManager_ = fake;
 
     ock::mf::EntityExportInfo r1{};
-    r1.rankId = 1;
+    r1.rankId = TEST_RANK_1;
     r1.role = static_cast<uint16_t>(HYBM_ROLE_RECEIVER);
     std::strncpy(r1.nic, "nic1", sizeof(r1.nic) - 1);
     std::strncpy(r1.tag, "tag_1", sizeof(r1.tag) - 1);
-    entity.importedRanks_[1] = r1;
+    entity.importedRanks_[TEST_RANK_1] = r1;
     ock::mf::transport::TransportMemoryKey k1{};
     std::memset(&k1, 0, sizeof(k1));
-    k1.keys[0] = 0x11;
+    k1.keys[0] = TEST_KEY_VALUE_2;
     ock::mf::transport::TransportMemoryKey k2{};
     std::memset(&k2, 0, sizeof(k2));
-    k2.keys[0] = 0x22;
-    entity.importedMemories_[1] = std::set<ock::mf::transport::TransportMemoryKey>{k1, k2};
+    k2.keys[0] = TEST_KEY_VALUE_3;
+    entity.importedMemories_[TEST_RANK_1] = std::set<ock::mf::transport::TransportMemoryKey>{k1, k2};
 
     // importInfoEntity = true will also import tag and update device info (bmType host => no memcpy)
     auto ret = entity.ImportForTransport(true);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(fake->connectWithOptionsCalled, 1);
-    ASSERT_EQ(fake->connectWithOptions.options.count(1), 1U);
-    EXPECT_EQ(fake->connectWithOptions.options.at(1).nic, std::string("nic1"));
-    EXPECT_EQ(fake->connectWithOptions.options.at(1).memKeys.size(), 2U);
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(1), "tag_1");
+    ASSERT_EQ(fake->connectWithOptions.options.count(TEST_RANK_1), 1U);
+    EXPECT_EQ(fake->connectWithOptions.options.at(TEST_RANK_1).nic, std::string("nic1"));
+    EXPECT_EQ(fake->connectWithOptions.options.at(TEST_RANK_1).memKeys.size(), TEST_RANK_COUNT_2);
+    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_1), "tag_1");
 }
 
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
 {
-    int32_t deviceId = 2100;
-    uint32_t rankCount = 2;
+    int32_t deviceId = TEST_DEVICE_ID_EXPORT_LONG_NIC;
+    uint32_t rankCount = TEST_RANK_COUNT_2;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
+    entity.options_.rankId = TEST_RANK_0;
     entity.options_.rankCount = rankCount;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     std::strncpy(entity.options_.tag, "tag0", sizeof(entity.options_.tag) - 1);
@@ -1387,28 +1503,28 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
 
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_AppendFail_ReturnError)
 {
-    int32_t deviceId = 2101;
+    int32_t deviceId = TEST_DEVICE_ID_EXPORT_APPEND_FAIL;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
-    entity.options_.rankCount = 1;
+    entity.options_.rankId = TEST_RANK_0;
+    entity.options_.rankCount = TEST_RANK_COUNT_1;
     entity.options_.scene = HYBM_SCENE_DEFAULT;
     std::strncpy(entity.options_.tag, "tag0", sizeof(entity.options_.tag) - 1);
     entity.transportManager_ = nullptr;
 
     // writer with nullptr forces Append() to fail (BM_ASSERT_RETURN -> -1)
     ock::mf::ExchangeInfoWriter badWriter(nullptr);
-    auto ret = entity.ExportExchangeInfo(badWriter, 0);
+    auto ret = entity.ExportExchangeInfo(badWriter, TEST_RANK_0);
     EXPECT_NE(ret, BM_OK);
 }
 
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_TransScene_HbmSegmentNull_ReturnError)
 {
-    int32_t deviceId = 2102;
-    uint32_t rankCount = 2;
+    int32_t deviceId = TEST_DEVICE_ID_EXPORT_TRANS_NULL;
+    uint32_t rankCount = TEST_RANK_COUNT_2;
     ock::mf::MemEntityDefault entity(deviceId);
     entity.initialized_ = true;
-    entity.options_.rankId = 0;
+    entity.options_.rankId = TEST_RANK_0;
     entity.options_.rankCount = rankCount;
     entity.options_.scene = HYBM_SCENE_TRANS;
     std::strncpy(entity.options_.tag, "tag0", sizeof(entity.options_.tag) - 1);

@@ -16,6 +16,7 @@ include_directories(
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/compose
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device/indirect
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/host
         ${PROJECT_HYBM_SRC_BASE}/csrc/transport/utils
         ${PROJECT_HYBM_SRC_BASE}/csrc/ts_engine

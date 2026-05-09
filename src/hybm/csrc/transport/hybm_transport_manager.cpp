@@ -14,6 +14,7 @@
 #include "hybm_logger.h"
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
+#include "device_rdma_indirect_transport_manager.h"
 #include "compose_transport_manager.h"
 
 using namespace ock::mf;
@@ -35,6 +36,23 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, H
         default:
             BM_LOG_ERROR("Invalid trans type: " << type);
             return nullptr;
+    }
+}
+
+std::shared_ptr<TransportManager> TransportManager::Create(const HybmGvaVersion version)
+{
+    const char* tm = std::getenv("TRANSPORT_MANAGER");
+    if (tm != nullptr and std::string(tm) == "INDIRECT") {
+        BM_LOG_INFO("TRANSPORT_MANAGER==INDIRECT, using indirect device rdma transport manager");
+        return std::make_shared<device::RdmaIndirectTransportManager>();
+    }
+
+    if (version >= HYBM_GVA_V4) {
+        BM_LOG_INFO("driver version V4 or higher, using default device rdma transport manager");
+        return std::make_shared<device::RdmaTransportManager>();
+    } else {
+        BM_LOG_INFO("driver version before V4, using indirect device rdma transport manager");
+        return std::make_shared<device::RdmaIndirectTransportManager>();
     }
 }
 

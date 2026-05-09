@@ -115,6 +115,11 @@ public:
         return nic_;
     }
 
+    const TransportPrivateData GetPrivateData() const override
+    {
+        return TransportPrivateData{};
+    }
+
     const void *GetQpInfo() const override
     {
         return nullptr;

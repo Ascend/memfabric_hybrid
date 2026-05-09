@@ -1141,3 +1141,8 @@ void HcomTransportManager::ChannelAsyncCallback(void *arg, Service_Context conte
         counterStream->FailedOne();
     }
 }
+
+const TransportPrivateData HcomTransportManager::GetPrivateData() const
+{
+    return TransportPrivateData{};
+}

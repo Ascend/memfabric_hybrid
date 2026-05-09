@@ -32,6 +32,8 @@ enum HybmVaMgrType : uint32_t {
     HVM_BUTT
 };
 
+enum AddrType { GLOBAL_DEVICE = 0, GLOBAL_HOST, LOCAL_DEVICE, LOCAL_HOST, ADDRESS_CATEGORY_BUTT };
+
 inline std::ostream &operator<<(std::ostream &os, hybm_mem_type obj)
 {
     switch (obj) {
@@ -193,6 +195,8 @@ public:
     size_t GetReservedCount() const;
     void ClearAll();
 
+    AddrType ClassifyAddress(const uint64_t va);
+
 private:
     HybmVaManager() = default;
 
@@ -211,9 +215,6 @@ private:
     std::map<uint64_t, AllocatedGvaInfo> allocatedMap_[HVM_BUTT]{}; // map<va, allocInfo>
     std::map<uint64_t, ReservedGvaInfo> reservedMap_[HVM_BUTT]{};   // map<va, reserveInfo>  (HVM_HVA not used now)
 
-private:
-    typedef enum { GLOBAL_DEVICE = 0, GLOBAL_HOST, LOCAL_DEVICE, LOCAL_HOST, ADDRESS_CATEGORY_BUTT } AddressCategory;
-
     static constexpr hybm_data_copy_direction COPY_DIRECTION_TABLE[ADDRESS_CATEGORY_BUTT][ADDRESS_CATEGORY_BUTT] = {
         {HYBM_GLOBAL_DEVICE_TO_GLOBAL_DEVICE, HYBM_GLOBAL_DEVICE_TO_GLOBAL_HOST, HYBM_GLOBAL_DEVICE_TO_LOCAL_DEVICE,
          HYBM_GLOBAL_DEVICE_TO_LOCAL_HOST},
@@ -224,8 +225,6 @@ private:
         {HYBM_LOCAL_HOST_TO_GLOBAL_DEVICE, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, HYBM_DATA_COPY_DIRECTION_BUTT,
          HYBM_DATA_COPY_DIRECTION_BUTT},
     };
-
-    AddressCategory ClassifyAddress(uint64_t va);
 };
 
 template<typename T>

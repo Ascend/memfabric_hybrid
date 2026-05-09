@@ -16,8 +16,12 @@
 
 #include <cstdint>
 #include <string>
+#include <queue>
+#include <shared_mutex>
+#include <condition_variable>
 
 #include "hybm_types.h"
+#include "async_socket_queue.h"
 
 namespace ock {
 namespace mf {
@@ -26,6 +30,62 @@ namespace device {
 Result ParseDeviceNic(const std::string &nic, uint16_t &port);
 Result ParseDeviceNic(const std::string &nic, sockaddr_in &address);
 std::string GenerateDeviceNic(in_addr ip, uint16_t port);
+
+class BlockingQueue final {
+public:
+    BlockingQueue() noexcept : running_{true} {}
+
+    void Stop() noexcept
+    {
+        running_ = true;
+        cond_.notify_one();
+    }
+
+    void Push(uint64_t e) noexcept
+    {
+        std::unique_lock<std::mutex> locker{mutex_};
+        queue_.push(e);
+        cond_.notify_one();
+    }
+
+    bool Pop(uint64_t &e) noexcept
+    {
+        std::unique_lock<std::mutex> locker{mutex_};
+        while (running_) {
+            cond_.wait(locker, [this]() { return !queue_.empty() || !running_; });
+            if (!running_) {
+                return false;
+            }
+            if (queue_.empty()) {
+                continue;
+            }
+
+            e = queue_.front();
+            queue_.pop();
+            return true;
+        }
+        return false;
+    }
+
+private:
+    std::atomic<bool> running_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    std::queue<uint64_t> queue_;
+};
+
+class ThreadResourceContext : public ThreadContext {
+public:
+    explicit ThreadResourceContext(int deviceId) noexcept : deviceId_{deviceId} {}
+    int ThreadStartup() noexcept override;
+    void ThreadShutdown() noexcept override;
+    void *GetStream() const noexcept;
+
+private:
+    const int deviceId_;
+    mutable std::shared_mutex mutex_;
+    std::unordered_map<std::thread::id, void *> streams_;
+};
 } // namespace device
 } // namespace transport
 } // namespace mf

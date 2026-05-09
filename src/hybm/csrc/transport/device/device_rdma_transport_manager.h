@@ -50,6 +50,7 @@ public:
     Result WaitForConnected(int64_t timeoutNs) override;
     Result UpdateRankOptions(const HybmTransPrepareOptions &options) override;
     const std::string &GetNic() const override;
+    const TransportPrivateData GetPrivateData() const override;
     const void *GetQpInfo() const override;
     Result ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) override;
     Result WriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size) override;
@@ -58,15 +59,32 @@ public:
     Result Synchronize(uint32_t rankId) override;
     Result ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override
     {
-        BM_LOG_ERROR("ReadRemoteBatchAsync not implment.");
-        return BM_INVALID_PARAM;
+        for (size_t i = 0; i < descriptor.localAddrs.size(); ++i) {
+            auto lAddr = reinterpret_cast<uint64_t>(descriptor.localAddrs[i]);
+            auto rAddr = reinterpret_cast<uint64_t>(descriptor.globalAddrs[i]);
+            uint64_t size = descriptor.counts[i];
+            if (auto ret = ReadRemoteAsync(rankId, lAddr, rAddr, size); ret != BM_OK) {
+                BM_LOG_ERROR("ReadRemoteBatchAsync failed at index " << i << ", ret: " << ret);
+                return ret;
+            }
+        }
+        return BM_OK;
     }
 
     Result WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) override
     {
-        BM_LOG_ERROR("WriteRemoteBatchAsync not implment.");
-        return BM_INVALID_PARAM;
+        for (size_t i = 0; i < descriptor.localAddrs.size(); ++i) {
+            auto lAddr = reinterpret_cast<uint64_t>(descriptor.localAddrs[i]);
+            auto rAddr = reinterpret_cast<uint64_t>(descriptor.globalAddrs[i]);
+            uint64_t size = descriptor.counts[i];
+            if (auto ret = WriteRemoteAsync(rankId, lAddr, rAddr, size); ret != BM_OK) {
+                BM_LOG_ERROR("WriteRemoteBatchAsync failed at index " << i << ", ret: " << ret);
+                return ret;
+            }
+        }
+        return BM_OK;
     }
+
 private:
     static bool PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
                                   void *&rdmaHandle);
@@ -94,7 +112,7 @@ private: // RDMA HOST STARS
 
 private:
     static thread_local HybmStreamNotifyPtr notify_;
-    RdmaNotifyInfo notifyInfo_;
+    RdmaNotifyInfo notifyInfo_ = {};
     std::mutex mutex_;
     bool started_{false};
     uint32_t rankId_{0};

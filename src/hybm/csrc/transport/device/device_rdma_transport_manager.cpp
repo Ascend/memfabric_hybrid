@@ -154,6 +154,7 @@ Result RdmaTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
     WriteGuard lockGuard(lock_);
     registerMRS_.emplace(mr.addr, result);
+    BM_LOG_INFO("register MR result=" << result);
     return BM_OK;
 }
 
@@ -203,8 +204,10 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
         return BM_INVALID_PARAM;
     }
 
+    uint64_t gva = HybmVaManager::GetInstance().TransformVa(keyUnion.deviceKey.address, HVM_HVA, HVM_GVA);
+
     keyUnion.deviceKey = pos->second;
-    keyUnion.deviceKey.address = HybmVaManager::GetInstance().TransformVa(keyUnion.deviceKey.address, HVM_HVA, HVM_GVA);
+    keyUnion.deviceKey.address = (gva != 0) ? gva : keyUnion.deviceKey.address;
     keyUnion.deviceKey.notifyAddr = notifyInfo_.srcAddr;
     keyUnion.deviceKey.notifyRkey = notifyInfo_.srcRkey;
 
@@ -783,8 +786,8 @@ int RdmaTransportManager::GetRegAddress(const MemoryRegionMap &map, uint64_t inp
 {
     auto pos = map.lower_bound(inputAddr);
     if (pos == map.end() || pos->first + pos->second.size < inputAddr + size) {
-        BM_LOG_ERROR("[GetRegAddress] Input address not register: size: " << size << ", map: " << map
-                                                                          << ", inputAddr:0x" << std::hex << inputAddr);
+        BM_LOG_ERROR("Input address not register, size: " << size << ", map: " << map << ", inputAddr: 0x" << std::hex
+                                                          << inputAddr);
         return BM_INVALID_PARAM;
     }
     outputAddr = pos->second.regAddress + (inputAddr - pos->first);
@@ -1016,6 +1019,11 @@ int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
 
     ret = notify_->Wait();
     return ret;
+}
+
+const TransportPrivateData RdmaTransportManager::GetPrivateData() const
+{
+    return TransportPrivateData{};
 }
 
 } // namespace device

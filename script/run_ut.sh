@@ -89,7 +89,14 @@ export LD_LIBRARY_PATH=$SMEM_LIB_PATH:$HYBM_LIB_PATH:$MOCK_CANN_PATH/driver/lib6
 export ASCEND_HOME_PATH=$MOCK_CANN_PATH
 export ASAN_OPTIONS="detect_stack_use_after_return=1:allow_user_poisoning=1"
 
-cd "$OUTPUT_PATH/bin/ut" && ./test_memfabric --gtest_break_on_failure --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml" --gtest_filter=${TEST_FILTER}
+set +e
+cd "$OUTPUT_PATH/bin/ut" && ./test_memfabric --gtest_output=xml:"$TEST_REPORT_PATH/test_detail.xml" --gtest_filter=${TEST_FILTER}
+TEST_EXIT_CODE=$?
+set -e
+
+if [ ${TEST_EXIT_CODE} -ne 0 ]; then
+    echo "Some test cases FAILED (exit code: ${TEST_EXIT_CODE})"
+fi
 
 if ! $FAST_MODE; then
     mkdir -p "$COVERAGE_PATH"
@@ -106,20 +113,26 @@ if ! $FAST_MODE; then
             "*/hybm/csrc/under_api/*"
             "*/util/csrc/ptracer/tracers/*"
     )
-    lcov -d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc lcov_branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|SM_LOG*|SM_ASSERT*|BM_LOG*|BM_ASSERT*|SM_VALIDATE_*|ASSERT*|LOG_*" --rc stop_on_error=0
-    lcov -e "$COVERAGE_PATH"/coverage.info "*/src/*" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1 --rc stop_on_error=0 || true
-    lcov -r "$COVERAGE_PATH"/coverage.info "${EXCLUDE_DIRS[@]}" -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1 --rc stop_on_error=0 || true
-    genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc lcov_branch_coverage=1 --rc stop_on_error=0 || true
+    lcov -d "$BUILD_PATH" --c --output-file "$COVERAGE_PATH"/coverage.info -rc branch_coverage=1 --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|SM_LOG*|SM_ASSERT*|BM_LOG*|BM_ASSERT*|SM_VALIDATE_*|ASSERT*|LOG_*" --rc stop_on_error=0
+    lcov -e "$COVERAGE_PATH"/coverage.info "*/src/*" -o "$COVERAGE_PATH"/coverage.info --rc branch_coverage=1 --rc stop_on_error=0 || true
+    lcov -r "$COVERAGE_PATH"/coverage.info "${EXCLUDE_DIRS[@]}" -o "$COVERAGE_PATH"/coverage.info --rc branch_coverage=1 --rc stop_on_error=0 || true
+    genhtml -o "$COVERAGE_PATH"/result "$COVERAGE_PATH"/coverage.info --show-details --legend --rc branch_coverage=1 --rc stop_on_error=0 || true
 
-    lines_rate=`lcov -r "$COVERAGE_PATH"/coverage.info -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1 | grep lines | grep -Eo "[0-9\.]+%" | tr -d '%'`
-    branches_rate=`lcov -r "$COVERAGE_PATH"/coverage.info -o "$COVERAGE_PATH"/coverage.info --rc lcov_branch_coverage=1 | grep branches | grep -Eo "[0-9\.]+%" | tr -d '%'`
+    lines_rate=`lcov -r "$COVERAGE_PATH"/coverage.info -o "$COVERAGE_PATH"/coverage.info --rc branch_coverage=1 | grep lines | grep -Eo "[0-9\.]+%" | tr -d '%'`
+    branches_rate=`lcov -r "$COVERAGE_PATH"/coverage.info -o "$COVERAGE_PATH"/coverage.info --rc branch_coverage=1 | grep branches | grep -Eo "[0-9\.]+%" | tr -d '%'`
     echo "lines    coverage rate: ${lines_rate}%"
     echo "branches coverage rate: ${branches_rate}%"
 
     if [[ $(awk "BEGIN {print (${lines_rate} < 70 || ${branches_rate} < 40) ? 1 : 0}") -eq 1 ]]; then
         echo "failed: lines coverage < 70% or branches coverage < 40%"
-        exit -1
+        COVERAGE_FAILED=1
     else
-        exit 0
+        COVERAGE_FAILED=0
     fi
+fi
+
+if [ ${TEST_EXIT_CODE} -ne 0 ] || [ "${COVERAGE_FAILED:-0}" -ne 0 ]; then
+    exit 1
+else
+    exit 0
 fi

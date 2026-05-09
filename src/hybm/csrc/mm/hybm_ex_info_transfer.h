@@ -158,7 +158,7 @@ public:
     inline int Append(const void *data, size_t length) noexcept
     {
         BM_ASSERT_RETURN(exchangeInfo_ != nullptr, -1);
-        if (exchangeInfo_->descLen > sizeof(exchangeInfo_->desc)) {
+        if (exchangeInfo_->descLen + length > sizeof(exchangeInfo_->desc)) {
             BM_LOG_ERROR("write data size: " << length << " too long");
             return -1;
         }

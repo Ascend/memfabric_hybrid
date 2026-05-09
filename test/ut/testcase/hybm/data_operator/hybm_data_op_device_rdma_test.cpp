@@ -140,6 +140,11 @@ public:
         return nicName;
     }
 
+    const ock::mf::transport::TransportPrivateData GetPrivateData() const override
+    {
+        return ock::mf::transport::TransportPrivateData{};
+    }
+
     ock::mf::Result WriteRemote(uint32_t rankId, uint64_t srcAddr, uint64_t destAddr, uint64_t length) noexcept override
     {
         writeRemoteCount++;

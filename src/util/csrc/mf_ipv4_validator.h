@@ -266,7 +266,7 @@ private:
         // 解析端口
         try {
             int port = std::stoi(port_str);
-            if (port < 1 || port > std::numeric_limits<uint16_t>::max()) {
+            if (port < 0 || port > std::numeric_limits<uint16_t>::max()) {
                 return false;
             }
             port_ = static_cast<uint16_t>(port);

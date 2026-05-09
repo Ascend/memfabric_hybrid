@@ -17,6 +17,7 @@
 #include "hybm_logger.h"
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
+#include "hybm_gva_version.h"
 #include "mf_str_util.h"
 
 using namespace ock::mf;
@@ -45,7 +46,7 @@ Result ComposeTransportManager::OpenDeviceTransport(const TransportOptions &opti
         BM_LOG_ERROR("Failed to open device transport is opened");
         return BM_ERROR;
     }
-    deviceTransportManager_ = std::make_shared<device::RdmaTransportManager>();
+    deviceTransportManager_ = Create(HybmGetGvaVersion());
     return deviceTransportManager_->OpenDevice(options);
 }
 
@@ -258,6 +259,7 @@ void ComposeTransportManager::GetDevicePrepareOptions(const HybmTransPrepareOpti
             ReadDeviceRdmaMemoryKey(key, tmp);
             info.memKeys.emplace_back(key);
         }
+        info.privateData = item.second.privateData;
         deviceOptions.options.emplace(rankId, info);
     }
 }
@@ -447,8 +449,11 @@ Result ComposeTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const Copy
 {
     uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
     if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
-        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by device transport, it is not supported.");
-        return BM_NOT_SUPPORTED;
+        auto ret = deviceTransportManager_->ReadRemoteBatchAsync(rankId, descriptor);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by device transport ret:" << ret << ", remote rankId:" << rankId);
     }
 
     if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
@@ -456,7 +461,7 @@ Result ComposeTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const Copy
         if (ret == BM_OK) {
             return BM_OK;
         }
-        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by host transport ret:" << ret << " remote rankId:" << rankId);
+        BM_LOG_ERROR("Failed to ReadRemoteBatchAsync by host transport ret:" << ret << ", remote rankId:" << rankId);
     }
 
     BM_LOG_ERROR("Failed to ReadRemote.");
@@ -489,8 +494,11 @@ Result ComposeTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const Cop
 {
     uint32_t opType = tagManager_->GetRank2RankOpType(rankId, options_.rankId);
     if ((opType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
-        BM_LOG_ERROR("Failed to WriteRemoteBatchAsync by device transport, it is not supported.");
-        return BM_NOT_SUPPORTED;
+        auto ret = deviceTransportManager_->WriteRemoteBatchAsync(rankId, descriptor);
+        if (ret == BM_OK) {
+            return BM_OK;
+        }
+        BM_LOG_ERROR("Failed to WriteRemoteBatchAsync by device transport ret:" << ret);
     }
 
     if ((opType & HOST_PROTOCOL) && hostTransportManager_ != nullptr) {
@@ -550,4 +558,9 @@ Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions 
         }
     }
     return ret;
+}
+
+const TransportPrivateData ComposeTransportManager::GetPrivateData() const
+{
+    return deviceTransportManager_->GetPrivateData();
 }

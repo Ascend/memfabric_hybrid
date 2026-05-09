@@ -85,6 +85,11 @@ struct TransportMemoryKey {
     }
 };
 
+struct TransportPrivateData {
+    char ip[128];  // 支持 IPv6 URL，包括协议头和端口号 (tcp://[ipv6]:port)
+    TransportMemoryKey key;
+};
+
 inline void ReadDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
 {
     std::copy_n(input.keys, KEY_SIZE, output.keys);
@@ -116,6 +121,7 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 
 struct TransportRankPrepareInfo {
     std::string nic;
+    TransportPrivateData privateData{};
     hybm_role_type role{HYBM_ROLE_PEER};
     std::vector<TransportMemoryKey> memKeys;
     TransportRankPrepareInfo() {}

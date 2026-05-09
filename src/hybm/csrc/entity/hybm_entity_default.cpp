@@ -329,6 +329,9 @@ int32_t MemEntityDefault::ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t 
         }
         size_t copyLen = std::min(nic.size(), sizeof(exportInfo.nic));
         std::copy_n(nic.c_str(), copyLen, exportInfo.nic);
+        const auto privateData = transportManager_->GetPrivateData();
+        exportInfo.transportPrivateData = privateData;
+        BM_LOG_INFO("transport get nic:" << nic << ", ip: " << privateData.ip);
     }
     auto ret = LiteralExInfoTranslater<EntityExportInfo>{}.Serialize(exportInfo, info);
     if (ret != BM_OK) {
@@ -581,8 +584,9 @@ int32_t MemEntityDefault::ImportForTransportManager()
         auto &info = item.second;
         transport::TransportRankPrepareInfo prepareInfo;
         prepareInfo.nic = info.nic;
+        prepareInfo.privateData = info.transportPrivateData;
         prepareInfo.role = static_cast<hybm_role_type>(info.role);
-        prepareOptions.options.emplace(info.rankId, prepareInfo);
+        prepareOptions.options.emplace(info.rankId, std::move(prepareInfo));
     }
 
     if (transportPrepared_) {
@@ -1047,6 +1051,8 @@ int32_t MemEntityDefault::ImportForTransport(bool importInfoEntity) noexcept
 
         transOptions.options[rank.first].role = static_cast<hybm_role_type>(rank.second.role);
         transOptions.options[rank.first].nic = rank.second.nic;
+        transOptions.options[rank.first].privateData = rank.second.transportPrivateData;
+        BM_LOG_INFO("ImportForTransport rankid:" << rank.first);
     }
     for (auto &mr : importedMemories_) {
         auto pos = transOptions.options.find(mr.first);

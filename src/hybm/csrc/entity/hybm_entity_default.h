@@ -21,6 +21,7 @@
 #include "hybm_entity.h"
 
 #include "hybm_transport_manager.h"
+#include "hybm_transport_common.h"
 
 namespace ock {
 namespace mf {
@@ -32,6 +33,7 @@ struct EntityExportInfo {
     uint16_t reserved{0};
     char nic[64]{};
     char tag[32]{};
+    transport::TransportPrivateData transportPrivateData{};
 };
 struct SliceExportTransportKey {
     uint64_t magic;

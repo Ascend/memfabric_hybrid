@@ -25,6 +25,7 @@ namespace transport {
 class TransportManager {
 public:
     static std::shared_ptr<TransportManager> Create(TransportType type, HybmEntityTagInfoPtr tagManager = nullptr);
+    static std::shared_ptr<TransportManager> Create(HybmGvaVersion version);
 
 public:
     TransportManager() = default;
@@ -91,6 +92,8 @@ public:
      * 查询
      */
     virtual const std::string &GetNic() const = 0; // X
+
+    virtual const TransportPrivateData GetPrivateData() const = 0;
 
     virtual const void *GetQpInfo() const;
 
