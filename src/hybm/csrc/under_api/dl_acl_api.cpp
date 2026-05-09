@@ -24,6 +24,13 @@ aclrtSetDeviceFunc DlAclApi::pAclrtSetDevice = nullptr;
 aclrtDeviceEnablePeerAccessFunc DlAclApi::pAclrtDeviceEnablePeerAccess = nullptr;
 aclrtCreateStreamFunc DlAclApi::pAclrtCreateStream = nullptr;
 aclrtCreateStreamWithConfigFunc DlAclApi::pAclrtCreateStreamWithConfig = nullptr;
+
+aclrtStreamGetIdFunc DlAclApi::pAclrtStreamGetId = nullptr;
+aclrtCreateNotifyFunc DlAclApi::pAclrtCreateNotify = nullptr;
+aclrtGetNotifyIdFunc DlAclApi::pAclrtGetNotifyId = nullptr;
+aclrtDestroyNotifyFunc DlAclApi::pAclrtDestroyNotify = nullptr;
+aclrtGetCurrentContextFunc DlAclApi::pAclrtGetCurrentContext = nullptr;
+aclrtSetStreamAttributeFunc DlAclApi::pAclrtSetStreamAttribute = nullptr;
 aclrtDestroyStreamFunc DlAclApi::pAclrtDestroyStream = nullptr;
 aclrtSynchronizeStreamFunc DlAclApi::pAclrtSynchronizeStream = nullptr;
 aclrtMallocFunc DlAclApi::pAclrtMalloc = nullptr;
@@ -75,6 +82,12 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pAclrtDeviceEnablePeerAccess, aclrtDeviceEnablePeerAccessFunc, rtHandle, "aclrtDeviceEnablePeerAccess");
     DL_LOAD_SYM(pAclrtCreateStream, aclrtCreateStreamFunc, rtHandle, "aclrtCreateStream");
     DL_LOAD_SYM(pAclrtCreateStreamWithConfig, aclrtCreateStreamWithConfigFunc, rtHandle, "aclrtCreateStreamWithConfig");
+    DL_LOAD_SYM(pAclrtStreamGetId, aclrtStreamGetIdFunc, rtHandle, "aclrtStreamGetId");
+    DL_LOAD_SYM(pAclrtCreateNotify, aclrtCreateNotifyFunc, rtHandle, "aclrtCreateNotify");
+    DL_LOAD_SYM(pAclrtGetNotifyId, aclrtGetNotifyIdFunc, rtHandle, "aclrtGetNotifyId");
+    DL_LOAD_SYM(pAclrtDestroyNotify, aclrtDestroyNotifyFunc, rtHandle, "aclrtDestroyNotify");
+    DL_LOAD_SYM(pAclrtGetCurrentContext, aclrtGetCurrentContextFunc, rtHandle, "aclrtGetCurrentContext");
+    DL_LOAD_SYM(pAclrtSetStreamAttribute, aclrtSetStreamAttributeFunc, rtHandle, "aclrtSetStreamAttribute");
     DL_LOAD_SYM(pAclrtDestroyStream, aclrtDestroyStreamFunc, rtHandle, "aclrtDestroyStream");
     DL_LOAD_SYM(pAclrtSynchronizeStream, aclrtSynchronizeStreamFunc, rtHandle, "aclrtSynchronizeStream");
     DL_LOAD_SYM(pAclrtMalloc, aclrtMallocFunc, rtHandle, "aclrtMalloc");
@@ -118,8 +131,8 @@ AscendSocType DlAclApi::GetAscendSocType()
             return AscendSocType::ASCEND_910B;
         } else if (socName.find("Ascend910_93") != std::string::npos) {
             return AscendSocType::ASCEND_910C;
-        } else if (socName.find("Ascend910_95") != std::string::npos
-                   || socName.find("Ascend950") != std::string::npos) {
+        } else if (socName.find("Ascend910_95") != std::string::npos ||
+                   socName.find("Ascend950") != std::string::npos) {
             return AscendSocType::ASCEND_950;
         }
 
@@ -159,6 +172,12 @@ void DlAclApi::CleanupLibrary()
     pRtIpcSetMemoryName = nullptr;
     pRtEnableP2P = nullptr;
     pRtDisableP2P = nullptr;
+    pAclrtStreamGetId = nullptr;
+    pAclrtCreateNotify = nullptr;
+    pAclrtGetNotifyId = nullptr;
+    pAclrtDestroyNotify = nullptr;
+    pAclrtGetCurrentContext = nullptr;
+    pAclrtSetStreamAttribute = nullptr;
 
     if (rtHandle != nullptr) {
         dlclose(rtHandle);
