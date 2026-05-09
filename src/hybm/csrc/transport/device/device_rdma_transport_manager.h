@@ -67,6 +67,7 @@ public:
         BM_LOG_ERROR("WriteRemoteBatchAsync not implment.");
         return BM_INVALID_PARAM;
     }
+
 private:
     static bool PrepareOpenDevice(uint32_t userId, uint32_t device, uint32_t rankCount, in_addr &deviceIp,
                                   void *&rdmaHandle);
