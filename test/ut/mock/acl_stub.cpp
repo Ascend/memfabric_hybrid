@@ -149,6 +149,51 @@ int32_t aclrtCreateStreamWithConfig(void **stream, uint32_t prot, uint32_t confi
     return 0;
 }
 
+int32_t aclrtStreamGetId(void *stream, int32_t *streamId)
+{
+    return 0;
+}
+
+int32_t aclrtCreateNotify(void **notify, uint64_t flag)
+{
+    return 0;
+}
+
+int32_t aclrtGetNotifyId(void *notify, uint32_t *notifyId)
+{
+    return 0;
+}
+
+int32_t aclrtDestroyNotify(void *notify)
+{
+    return 0;
+}
+
+int32_t aclrtGetCurrentContext(void **context)
+{
+    return 0;
+}
+
+typedef enum {
+    ACL_STREAM_ATTR_FAILURE_MODE = 1,
+    ACL_STREAM_ATTR_FLOAT_OVERFLOW_CHECK = 2,
+    ACL_STREAM_ATTR_USER_CUSTOM_TAG = 3,
+    ACL_STREAM_ATTR_CACHE_OP_INFO = 4,
+} aclrtStreamAttr;
+
+typedef union {
+    uint64_t failureMode;
+    uint32_t overflowSwitch;
+    uint32_t userCustomTag;
+    uint32_t cacheOpInfoSwitch;
+    uint32_t reserve[4];
+} aclrtStreamAttrValue;
+
+int32_t aclrtSetStreamAttribute(void *stream, aclrtStreamAttr stmAttrType, aclrtStreamAttrValue *value)
+{
+    return 0;
+}
+
 int32_t aclrtMallocHost(void **ptr, size_t count)
 {
     (*ptr) = malloc(count);
@@ -186,5 +231,103 @@ int32_t rtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t *const logic
 {
     *logicDevId = userDevId;
     return 0;
+}
+
+int32_t rtStreamGetSqid(const void *stm, uint32_t *sqId)
+{
+    if (sqId != nullptr) {
+        *sqId = 0;
+    }
+    return RETURN_OK;
+}
+
+int32_t rtStreamGetCqid(const void *stm, uint32_t *cqId, uint32_t *logicCqId)
+{
+    if (cqId != nullptr) {
+        *cqId = 0;
+    }
+    if (logicCqId != nullptr) {
+        *logicCqId = 0;
+    }
+    return RETURN_OK;
+}
+
+struct aclTensor {};
+struct aclOpExecutor {};
+
+typedef enum {
+    ACL_FORMAT_UNDEFINED = -1,
+    ACL_FORMAT_NCHW = 0,
+    ACL_FORMAT_NHWC = 1,
+    ACL_FORMAT_ND = 2,
+    ACL_FORMAT_NC1HWC0 = 3,
+} aclFormat;
+
+typedef enum {
+    ACL_DT_UNDEFINED = -1,
+    ACL_FLOAT = 0,
+    ACL_FLOAT16 = 1,
+    ACL_INT8 = 2,
+    ACL_INT32 = 3,
+    ACL_UINT8 = 4,
+    ACL_INT16 = 6,
+    ACL_UINT16 = 7,
+    ACL_UINT32 = 8,
+    ACL_INT64 = 9,
+    ACL_UINT64 = 10,
+    ACL_DOUBLE = 11,
+    ACL_BOOL = 12,
+    ACL_STRING = 13,
+    ACL_COMPLEX64 = 16,
+    ACL_COMPLEX128 = 17,
+    ACL_BF16 = 27,
+    ACL_INT4 = 29,
+    ACL_UINT1 = 30,
+    ACL_COMPLEX32 = 33,
+} aclDataType;
+
+aclTensor *aclCreateTensor(const int64_t *viewDims, uint64_t viewDimsNum, aclDataType dataType, const int64_t *stride,
+                           int64_t offset, aclFormat format, const int64_t *storageDims, uint64_t storageDimsNum,
+                           void *tensorData)
+{
+    (void)viewDims;
+    (void)viewDimsNum;
+    (void)dataType;
+    (void)stride;
+    (void)offset;
+    (void)format;
+    (void)storageDims;
+    (void)storageDimsNum;
+    (void)tensorData;
+    return reinterpret_cast<aclTensor *>(0xFFFF0000ULL);
+}
+
+int32_t aclDestroyTensor(aclTensor *tensor)
+{
+    (void)tensor;
+    return RETURN_OK;
+}
+
+int32_t aclnnShmemSdmaStarsQueryGetWorkspaceSize(aclTensor *input, aclTensor *output, uint64_t *workspaceSize,
+                                                 aclOpExecutor **executor)
+{
+    (void)input;
+    (void)output;
+    if (workspaceSize != nullptr) {
+        *workspaceSize = 0;
+    }
+    if (executor != nullptr) {
+        *executor = reinterpret_cast<aclOpExecutor *>(0xAAAA0000ULL);
+    }
+    return RETURN_OK;
+}
+
+int32_t aclnnShmemSdmaStarsQuery(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, void *stream)
+{
+    (void)workspace;
+    (void)workspaceSize;
+    (void)executor;
+    (void)stream;
+    return RETURN_OK;
 }
 }
