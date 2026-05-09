@@ -449,6 +449,7 @@ SMEM_API int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch
     SM_VALIDATE_RETURN(handle != nullptr, "invalid param, handle is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params != nullptr, "params is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params->batchSize != 0, "batch size is zero", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN(params->dataSizes != nullptr, "dataSizes is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(result != nullptr, "result is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(result->results != nullptr, "results pointer is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(result->batchSize == params->batchSize,
@@ -465,6 +466,7 @@ SMEM_API int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch
     }
 
     auto totalSize = std::accumulate(params->dataSizes, params->dataSizes + params->batchSize, 0UL);
+    SM_VALIDATE_RETURN(totalSize != 0, "total size is zero", SM_INVALID_PARAM);
     auto averageSize = totalSize / params->batchSize;
     if (params->batchSize > 1U && averageSize > 4U * 1024UL * 1024UL) {
         return entry->DataCopyBatchConcurrent(params, t, flags, result);
