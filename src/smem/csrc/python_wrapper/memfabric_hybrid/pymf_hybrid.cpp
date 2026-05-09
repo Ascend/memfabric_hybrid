@@ -592,6 +592,7 @@ void DefineShmClass(py::module_ &m)
     py::enum_<smem_shm_data_op_type>(m, "ShmDataOpType")
         .value("MTE", SMEMS_DATA_OP_MTE)
         .value("SDMA", SMEMS_DATA_OP_SDMA)
+        .value("AIV_SDMA", SMEMS_DATA_OP_DEVICE_SDMA)
         .value("RDMA", SMEMS_DATA_OP_RDMA);
 
     m.def("initialize", &ShareMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),

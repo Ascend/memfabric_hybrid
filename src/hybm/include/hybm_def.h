@@ -26,33 +26,33 @@ typedef void *hybm_mem_slice_t;
 
 #define HYBM_TLS_PATH_SIZE 256
 // HYBM_BIND_NUMA_FLAG start index When HYBM_PERFORMANCE_MODE_FLAG_INDEX == 1, this field is used
-#define HYBM_BIND_NUMA_FLAG_INDEX            0
-#define HYBM_BIND_NUMA_FLAG_LEN              7
-#define HYBM_PERFORMANCE_MODE_FLAG_INDEX     7
-#define HYBM_PERFORMANCE_MODE_FLAG_LEN       1
+#define HYBM_BIND_NUMA_FLAG_INDEX        0
+#define HYBM_BIND_NUMA_FLAG_LEN          7
+#define HYBM_PERFORMANCE_MODE_FLAG_INDEX 7
+#define HYBM_PERFORMANCE_MODE_FLAG_LEN   1
 // Automatic NUMA affinity selection when HYBM_BIND_NUMA_FLAG == HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG
-#define HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG    ((1U << HYBM_BIND_NUMA_FLAG_LEN) - 1)
-#define HYBM_FLAG_CREATE_WITH_SHM            (1U << 8)
+#define HYBM_BIND_NUMA_AUTO_AFFINITY_FLAG ((1U << HYBM_BIND_NUMA_FLAG_LEN) - 1)
+#define HYBM_FLAG_CREATE_WITH_SHM         (1U << 8)
 // HYBM_FLAG_DRAM_MAP_HOST_VA map host virtual address space
-#define HYBM_FLAG_DRAM_MAP_HOST_VA           (1U << 9)
-#define HYBM_FLAG_INIT_SHMEM_META            (1ULL << 63)
+#define HYBM_FLAG_DRAM_MAP_HOST_VA (1U << 9)
+#define HYBM_FLAG_INIT_SHMEM_META  (1ULL << 63)
 
 #define HYBM_PRE_REG_SIZE_THRES (8192U * 1024) // local buffer larger than 8MB maybe preregister to mr
 
 /* error code define */
-#define BM_OK                               (0)
-#define BM_ERROR                            (-1)
-#define BM_INVALID_PARAM                    (-2)
-#define BM_MALLOC_FAILED                    (-3)
-#define BM_NEW_OBJECT_FAILED                (-4)
-#define BM_FILE_NOT_ACCESS                  (-5)
-#define BM_DL_FUNCTION_FAILED               (-6)
-#define BM_TIMEOUT                          (-7)
-#define BM_UNDER_API_UNLOAD                 (-8)
-#define BM_NOT_INITIALIZED                  (-9)
-#define BM_NOT_SUPPORT_FUNC                 (-10)
-#define BM_NOT_SUPPORTED                    (-100)
-#define BM_NOT_CONNECTED                    (-101)
+#define BM_OK                 (0)
+#define BM_ERROR              (-1)
+#define BM_INVALID_PARAM      (-2)
+#define BM_MALLOC_FAILED      (-3)
+#define BM_NEW_OBJECT_FAILED  (-4)
+#define BM_FILE_NOT_ACCESS    (-5)
+#define BM_DL_FUNCTION_FAILED (-6)
+#define BM_TIMEOUT            (-7)
+#define BM_UNDER_API_UNLOAD   (-8)
+#define BM_NOT_INITIALIZED    (-9)
+#define BM_NOT_SUPPORT_FUNC   (-10)
+#define BM_NOT_SUPPORTED      (-100)
+#define BM_NOT_CONNECTED      (-101)
 
 /**
  * @brief Determine whether the IO initiator is on the host or the device.
@@ -75,7 +75,7 @@ typedef enum {
     HYBM_DOP_TYPE_HOST_TCP = 1U << 4,
     HYBM_DOP_TYPE_HOST_URMA = 1U << 5,
     HYBM_DOP_TYPE_HOST_SHM = 1U << 6, /* same-node host shared memory (no network transport) */
-
+    HYBM_DOP_TYPE_DEVICE_SDMA = 1U << 7,
     HYBM_DOP_TYPE_BUTT
 } hybm_data_op_type;
 
@@ -176,12 +176,12 @@ typedef struct {
     void **sources;
     void **destinations;
     const uint64_t *dataSizes;
-    void **scale;                   /* quant scale */
-    void **offset;                  /* quant offset */
+    void **scale;  /* quant scale */
+    void **offset; /* quant offset */
     uint32_t batchSize;
-    uint32_t unitNum;               /* pretoken tensor size */
+    uint32_t unitNum; /* pretoken tensor size */
     void *stream;
-    uint32_t inputType;             /* inputType = 0, input type is bfloat16; inputType = 1, input type is float16 */
+    uint32_t inputType; /* inputType = 0, input type is bfloat16; inputType = 1, input type is float16 */
     uint32_t flags;
 } hybm_quant_copy_params;
 

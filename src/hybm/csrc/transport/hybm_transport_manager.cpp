@@ -31,6 +31,8 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, H
             return host::HcomTransportManager::GetInstance();
         case TT_HCCP:
             return std::make_shared<device::RdmaTransportManager>();
+        case TT_SDMA:
+            return std::make_shared<device::SdmaTransportManager>();
         case TT_COMPOSE:
             return std::make_shared<ComposeTransportManager>(tagManager);
         default:
