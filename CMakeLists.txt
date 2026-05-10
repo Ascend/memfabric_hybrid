@@ -24,9 +24,6 @@ option(BUILD_TEST "Enable/disable build and package test utilities and examples"
 option(BUILD_HCOM "Enable/disable build and package hcom" OFF)
 option(BUILD_ETCD_BACKEND "Enable/disable build etcd backend so" OFF)
 
-## for applications
-option(BUILD_APP_ZBAL "build zero buffer acceleration library" OFF)
-
 include(cmake/config_version.cmake)
 include(cmake/config_xpu.cmake)
 include(cmake/config_python.cmake)
@@ -171,9 +168,6 @@ include(cmake/config_hcom.cmake)
 include(cmake/config_etcd_client.cmake)
 
 add_subdirectory(src)
-
-# app
-add_subdirectory(app)
 
 if (BUILD_UT STREQUAL "ON")
     set(CMAKE_CXX_STANDARD 17)
