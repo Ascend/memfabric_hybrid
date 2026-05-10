@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-# MemFabric_Hybrid is licensed under Mulan PSL v2.
+# ZBAL is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions of the Mulan PSL v2.
 # You may obtain a copy of Mulan PSL v2 at:
 #          http://license.coscl.org.cn/MulanPSL2
@@ -27,22 +27,21 @@ import torch_npu
 logger = logging.getLogger(__name__)
 
 
-def _find_ascend_home():
+def _find_ascend_home_dir():
     """
-    Find the ASCEND toolkit home directory.
-    It prioritizes the ASCEND_TOOLKIT_HOME environment variable.
-    If not set, it falls back to the common default installation path:
+    Get the home dir of ascend for kernel compiling.
+    The default path is:
     /usr/local/Ascend/ascend-toolkit/latest
     """
-    home = os.environ.get("ASCEND_TOOLKIT_HOME")
-    if home:
-        return home
-    default_home = "/usr/local/Ascend/ascend-toolkit/latest"
-    if os.path.isdir(default_home):
-        return default_home
-    maybe = "/usr/local/Ascend/ascend-toolkit"
-    latest = os.path.join(maybe, "latest")
-    return latest if os.path.isdir(latest) else default_home
+    env = os.environ.get("ASCEND_TOOLKIT_HOME")
+    if env:
+        return env
+    default_dir = "/usr/local/Ascend/ascend-toolkit/latest"
+    if os.path.isdir(default_dir):
+        return default_dir
+    alter = "/usr/local/Ascend/ascend-toolkit"
+    latest = os.path.join(alter, "latest")
+    return latest if os.path.isdir(latest) else default_dir
 
 
 def _find_python_include():
@@ -60,12 +59,12 @@ def _check_env_flag(name: str, default: str = "") -> bool:
 
 
 is_manylinux = _check_env_flag("IS_MANYLINUX", "FALSE")
-ascend_home = Path(_find_ascend_home()).resolve()
+ascend_home = Path(_find_ascend_home_dir()).resolve()
 python_include_dir = Path(_find_python_include()).resolve()
 torch_dir = Path(os.path.dirname(torch.__file__)).resolve()
 torch_npu_dir = Path(os.path.dirname(torch_npu.__file__)).resolve()
 repo_root = Path(__file__).parent.parent.parent.parent.parent  # sgl-kernel-npu/
-zbal_root = repo_root / "contrib/zbal/"
+zbal_root = repo_root / "app/zbal/"
 versoin = _get_version(version_dir=zbal_root)
 
 # allocator compile inputs
@@ -98,7 +97,7 @@ library_dirs = [
     f"{zbal_root}/output/",
 ]
 
-csrc_dir = repo_root / "contrib" / "zbal" / "src" / "csrc"
+csrc_dir = repo_root / "app" / "zbal" / "src" / "csrc"
 sources = ([f"{csrc_dir}/zbal_pybind.cpp"] + \
            glob.glob(str(csrc_dir / "sma" / "*.cpp")) + \
            glob.glob(str(csrc_dir / "adaptor" / "pytorch_npu" / "*.cpp")) + \
@@ -173,7 +172,7 @@ class CustomBuildExtension(BuildExtension):
         # make
         make_cmd = [
             "make",
-            "-j17"
+            "-j16"
         ]
         result = subprocess.run(make_cmd, cwd=build_dir)
         if result.returncode != 0:
