@@ -14,6 +14,8 @@
 
 #include <string>
 
+#include "zbal_defines.h"
+
 namespace zbal {
 class ZBLastError {
 public:

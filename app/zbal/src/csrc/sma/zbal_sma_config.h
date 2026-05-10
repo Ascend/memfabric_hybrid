@@ -18,7 +18,7 @@
 namespace zbal {
 namespace sma {
 
-const char* PytorchNPUAllocConf = "ZBAL_NPU_ALLOC_CONF";
+#define PYTORCH_NPU_ALLOC_CONF "ZBAL_NPU_ALLOC_CONF"
 
 class SMAConfig {
 public:
@@ -61,7 +61,7 @@ public:
     {
         static SMAConfig *s_instance = ([]() {
             auto inst = new SMAConfig();
-            const char *env = getenv(PytorchNPUAllocConf);
+            const char *env = getenv(PYTORCH_NPU_ALLOC_CONF);
             inst->parseEnv(env);
             return inst;
         })();
@@ -77,13 +77,10 @@ private:
     size_t small_heap_size_;
     size_t small_heap_threshold_;
 
-    SMAConfig(): max_split_size_(std::numeric_limits<size_t>::max()),
-        garbage_collection_threshold_(0),
-        segment_size_mb_(kSmallBuffer),
-        use_sma_allocator_(true),
-        use_vmm_for_static_memory_(false),
-        small_heap_size_(kSmallHeapSize),
-        small_heap_threshold_(kSmallThreshold)
+    SMAConfig()
+        : max_split_size_(std::numeric_limits<size_t>::max()), garbage_collection_threshold_(0),
+          segment_size_mb_(kSmallBuffer), use_sma_allocator_(true), use_vmm_for_static_memory_(false),
+          small_heap_size_(kSmallHeapSize), small_heap_threshold_(kSmallThreshold)
     {}
 
     void parseEnv(const char *env);
@@ -99,7 +96,7 @@ private:
     size_t parseSmallHeapSize(const std::vector<std::string> &config, size_t i);
     size_t parseSmallHeapThresHold(const std::vector<std::string> &config, size_t i);
 };
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal
 
-#endif  // ZBAL_SMA_CONFIG_H
+#endif // ZBAL_SMA_CONFIG_H

@@ -36,25 +36,28 @@ enum DeviceBlockType {
     BT_BIG,
 };
 
-constexpr size_t kMinBlockSize = 512;                 // all sizes are rounded to at least 512 bytes(for L1)
-constexpr size_t kSmallSize = 1048576;                // largest "small" allocation is 1 MiB
-constexpr size_t kSmallBuffer = 2097152;              // "small" allocations are packed in 2 MiB blocks
-constexpr size_t kLargeBuffer = 20971520;             // "large" allocations may be packed in 20 MiB blocks
-constexpr size_t kSmallAlloc = kSmallSize;            // allocations under 1 MiB may use kSmallBuffer
-constexpr size_t kMiddleAlloc = 10485760;             // allocations between 1 and 10 MiB may use kLargeBuffer
-                                                      // allocations over 10MiB using rounded size with kRoundLarge
-constexpr size_t kRoundLarge = 2097152;               // round up large allocs to 2 MiB
-constexpr size_t kKB = 1024;                          // 1 KB
-constexpr size_t kMB = 1024 * kKB;                    // 1 MB
-constexpr size_t kGB = 1024 * kMB;                    // 1 GB
-constexpr size_t kSmallHeapSize = 512 * kMB;          // 512MB for small heap size in dualHeap allocator
-constexpr size_t kSmallThreshold = 1 * kMB;           // 1MB to tell which is small in dualHeap/splitHeap allocator
+constexpr int32_t ALIGN_32 = 32;
+constexpr int32_t ALIGN_64 = 64;
 
-constexpr int64_t kMaxTraceLen = -1;         // max trace len per device for trace_record observer, use rolling update
+constexpr size_t kMinBlockSize = 512;        // all sizes are rounded to at least 512 bytes(for L1)
+constexpr size_t kSmallSize = 1048576;       // largest "small" allocation is 1 MiB
+constexpr size_t kSmallBuffer = 2097152;     // "small" allocations are packed in 2 MiB blocks
+constexpr size_t kLargeBuffer = 20971520;    // "large" allocations may be packed in 20 MiB blocks
+constexpr size_t kSmallAlloc = kSmallSize;   // allocations under 1 MiB may use kSmallBuffer
+constexpr size_t kMiddleAlloc = 10485760;    // allocations between 1 and 10 MiB may use kLargeBuffer
+                                             // allocations over 10MiB using rounded size with kRoundLarge
+constexpr size_t kRoundLarge = 2097152;      // round up large allocs to 2 MiB
+constexpr size_t kKB = 1024;                 // 1 KB
+constexpr size_t kMB = 1024 * kKB;           // 1 MB
+constexpr size_t kGB = 1024 * kMB;           // 1 GB
+constexpr size_t kSmallHeapSize = 512 * kMB; // 512MB for small heap size in dualHeap allocator
+constexpr size_t kSmallThreshold = 1 * kMB;  // 1MB to tell which is small in dualHeap/splitHeap allocator
+
+constexpr int64_t kMaxTraceLen = -1; // max trace len per device for trace_record observer, use rolling update
 // note that export segments cause lock action and heavily reduce the performance & take large memory to cache
 // constexpr size_t kMaxSegmentsLen = 8;      // max segments len per device for segments observer, use rolling update
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal
 
-#endif  // ZBAL_SMA_COMMON_H
+#endif // ZBAL_SMA_COMMON_H

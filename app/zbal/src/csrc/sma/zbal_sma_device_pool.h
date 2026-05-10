@@ -15,9 +15,6 @@
 #include "zbal_sma_common.h"
 #include "zbal_sma_config.h"
 
-constexpr int32_t ALIGN_32 = 32;
-constexpr int32_t ALIGN_64 = 64;
-
 using StreamSet = class ska::flat_hash_set<c10_npu::NPUStream>;
 using ZEvent = std::unique_ptr<c10_npu::NPUEvent, std::function<void(c10_npu::NPUEvent *)>>;
 
@@ -31,27 +28,27 @@ struct DeviceBlockPool;
  * @brief DeviceBlock
  */
 struct DeviceBlock {
-    int32_t deviceId_{-1};                      // device Id
-    aclrtStream stream_{nullptr};               // allocation stream
-    StreamSet stream_uses_;                     // streams on which the block was used
-    size_t size_{0};                            // block size in bytes
-    size_t requested_size_{0};                  // memory originally requested
-    DeviceBlockPool *pool_{nullptr};            // owning block pool
-    DeviceBlockType block_type_{BT_SMALL};      // block type in pool
-    void *ptr_{nullptr};                        // memory address
-    DeviceBlock *prev_{nullptr};                // prev block if split from a larger allocation
-    DeviceBlock *next_{nullptr};                // next block if split from a larger allocation
-    int32_t event_count_{0};                    // number of outstanding events
-    bool allocated_{false};                     // in-use flag
-    int64_t gc_count_{0};                       // get_free_blocks_call_count when DeviceBlock is inserted
+    int32_t deviceId_{-1};                 // device Id
+    aclrtStream stream_{nullptr};          // allocation stream
+    StreamSet stream_uses_;                // streams on which the block was used
+    size_t size_{0};                       // block size in bytes
+    size_t requested_size_{0};             // memory originally requested
+    DeviceBlockPool *pool_{nullptr};       // owning block pool
+    DeviceBlockType block_type_{BT_SMALL}; // block type in pool
+    void *ptr_{nullptr};                   // memory address
+    DeviceBlock *prev_{nullptr};           // prev block if split from a larger allocation
+    DeviceBlock *next_{nullptr};           // next block if split from a larger allocation
+    int32_t event_count_{0};               // number of outstanding events
+    bool allocated_{false};                // in-use flag
+    int64_t gc_count_{0};                  // get_free_blocks_call_count when DeviceBlock is inserted
 
-    bool is_safe_{true};                        // whether this block have corresponded dataPtr
+    bool is_safe_{true}; // whether this block have corresponded dataPtr
     std::shared_ptr<c10::GatheredContext> context_when_allocated_;
 
-    DeviceBlock(int32_t device, aclrtStream stream, size_t size,
-                DeviceBlockPool *pool, void *ptr, DeviceBlockType block_type)
-        : deviceId_(device), stream_(stream), size_(size),
-          requested_size_(0), pool_(pool), block_type_(block_type), ptr_(ptr)
+    DeviceBlock(int32_t device, aclrtStream stream, size_t size, DeviceBlockPool *pool, void *ptr,
+                DeviceBlockType block_type)
+        : deviceId_(device), stream_(stream), size_(size), requested_size_(0), pool_(pool), block_type_(block_type),
+          ptr_(ptr)
     {}
     // constructor for search key
     DeviceBlock(int32_t device, aclrtStream stream, size_t size) : deviceId_(device), stream_(stream), size_(size) {}
@@ -90,16 +87,14 @@ public:
     // following params applied for privatePool(or graphPool) cases
     bool is_private_{false};
     // Number of live graphs using this pool
-    int use_count_{ 1 };
+    int use_count_{1};
     // Number of unfreed npuMallocs made for this pool. When use_count and
     // npuMalloc_count drop to zero, we can delete this PrivatePool from
     // graph_pools.
-    int npuMalloc_count_{ 0 };
+    int npuMalloc_count_{0};
 
     DeviceBlockPool(bool is_private = false)
-        : small_blocks_(DeviceBlockCompareBySize),
-          large_blocks_(DeviceBlockCompareBySize),
-          is_private_(is_private)
+        : small_blocks_(DeviceBlockCompareBySize), large_blocks_(DeviceBlockCompareBySize), is_private_(is_private)
     {}
 
     void eraseBlock(DeviceBlockType block_type, DeviceBlock *block);
@@ -110,8 +105,8 @@ public:
  * @brief DeviceAllocParams
  */
 struct DeviceAllocParams {
-    DeviceAllocParams(int32_t device, size_t size, aclrtStream stream, DeviceBlockPool *pool,
-                      size_t alloc_size, DeviceBlockType block_type)
+    DeviceAllocParams(int32_t device, size_t size, aclrtStream stream, DeviceBlockPool *pool, size_t alloc_size,
+                      DeviceBlockType block_type)
         : search_key_(device, stream, size), pool_(pool), alloc_size_(alloc_size), block_type_(block_type)
     {}
 
@@ -152,20 +147,20 @@ public:
     ZEvent get(int device);
 
     // sync events and free block if its events cnt down to 0
-    void synchronizeAndFreeEvents(DeviceSMACachingAllocator* allocator, bool check_error,
+    void synchronizeAndFreeEvents(DeviceSMACachingAllocator *allocator, bool check_error,
                                   const std::shared_ptr<c10::GatheredContext> &context);
 
     // insert events according to blocks stream_uses_
-    void insertEvents(DeviceSMACachingAllocator* allocator, DeviceBlock *block);
+    void insertEvents(DeviceSMACachingAllocator *allocator, DeviceBlock *block);
 
     // query events and free block if its events cnt down to 0, break after query one success block(if have)
-    void processEvents(DeviceSMACachingAllocator* allocator, const std::shared_ptr<c10::GatheredContext> &context);
+    void processEvents(DeviceSMACachingAllocator *allocator, const std::shared_ptr<c10::GatheredContext> &context);
 
     // [US]force to clean all Events
-    void cleanEvents(DeviceSMACachingAllocator* allocator);
+    void cleanEvents(DeviceSMACachingAllocator *allocator);
 
     // [US]force to free block and its event on target stream
-    void cleanStream(DeviceSMACachingAllocator* allocator, DeviceBlock *block, c10_npu::NPUStream stream);
+    void cleanStream(DeviceSMACachingAllocator *allocator, DeviceBlock *block, c10_npu::NPUStream stream);
 
     void emptyCache();
 
@@ -185,7 +180,7 @@ private:
  * @brief MempoolIdHash
  */
 struct MempoolIdHash {
-    std::size_t operator () (const c10_npu::MempoolId_t &mempool_id) const noexcept
+    std::size_t operator()(const c10_npu::MempoolId_t &mempool_id) const noexcept
     {
         return mempool_id.first != 0 ? mempool_id.first : mempool_id.second;
     }
@@ -216,14 +211,14 @@ public:
     // insert/erase are rare.
     ska::flat_hash_map<c10_npu::MempoolId_t, DeviceBlockPool *, MempoolIdHash> graph_pools_freeable_;
 
-// public functions
+    // public functions
     GraphDeferPools() {}
 
     // remove stream uses added during npu-graph capture(considered down with capture end)
     void removeNpuGraphStreamUses(DeviceBlock *block);
 
     // defer insert events(created by record stream during capture) until no capture
-    void insertEventsDeferredUntilNoCapture(DeviceSMACachingAllocator* allocator,
+    void insertEventsDeferredUntilNoCapture(DeviceSMACachingAllocator *allocator,
                                             const std::shared_ptr<c10::GatheredContext> &context);
 
     void appendEventsDeferredUntilNoCapture(DeviceBlock *block);
@@ -239,8 +234,8 @@ private:
     std::unordered_map<DeviceBlock *, StreamSet> block_to_npugraph_stream_uses_;
 };
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal
 
-#endif  // ZBAL_SMA_DEVICE_POOL_H
+#endif // ZBAL_SMA_DEVICE_POOL_H

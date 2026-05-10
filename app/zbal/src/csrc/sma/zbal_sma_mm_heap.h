@@ -25,16 +25,13 @@
 #include "zbal_sma_common.h"
 #include "zbal_sma_config.h"
 
-constexpr int32_t ALIGN_32 = 32;
-constexpr int32_t ALIGN_64 = 64;
-
 namespace zbal {
 namespace sma {
 namespace heap {
 
 class CustomMemoryHeap {
 public:
-    CustomMemoryHeap(void *base, uint64_t size) : base_(static_cast<uint8_t*>(base)), size_(size) {};
+    CustomMemoryHeap(void *base, uint64_t size) : base_(static_cast<uint8_t *>(base)), size_(size) {};
 
     virtual ~CustomMemoryHeap() noexcept = default;
 
@@ -49,10 +46,16 @@ public:
 
     virtual bool allocatedSize(void *address, uint64_t &size) const noexcept = 0;
 
-    inline bool isInitialized() const noexcept { return initialized_; }
+    inline bool isInitialized() const noexcept
+    {
+        return initialized_;
+    }
 
     // to be deprecated
-    inline uint8_t *getBaseAddr() const noexcept { return base_; }
+    inline uint8_t *getBaseAddr() const noexcept
+    {
+        return base_;
+    }
 
 protected:
     bool initialized_{false};
@@ -88,9 +91,9 @@ private:
     // --- RAII Helper for Spinlock ---
     // Defined inline for performance (compiler optimization)
     struct SpinGuard {
-        pthread_spinlock_t& lock_ref;
+        pthread_spinlock_t &lock_ref;
 
-        explicit SpinGuard(pthread_spinlock_t& lock) : lock_ref(lock)
+        explicit SpinGuard(pthread_spinlock_t &lock) : lock_ref(lock)
         {
             pthread_spin_lock(&lock_ref);
         }
@@ -101,8 +104,8 @@ private:
         }
 
         // Disable copy/move to prevent accidental unlocking
-        SpinGuard(const SpinGuard&) = delete;
-        SpinGuard& operator=(const SpinGuard&) = delete;
+        SpinGuard(const SpinGuard &) = delete;
+        SpinGuard &operator=(const SpinGuard &) = delete;
     };
 
     // --- Data Structures ---
@@ -116,7 +119,7 @@ private:
     std::vector<std::set<uintptr_t>> size_buckets_;
 
     // 3. Metadata for allocated blocks
-    std::unordered_map<void*, uint64_t> allocated_records_;
+    std::unordered_map<void *, uint64_t> allocated_records_;
 
     // --- Internal Helper Methods ---
 
@@ -125,13 +128,13 @@ private:
     void addToFreeStructures(uintptr_t addr, uint64_t size);
     void removeFromFreeStructures(uintptr_t addr, uint64_t size);
 
-    void* allocateLowToHigh(int start_idx, uint64_t alignment, uint64_t req_size);
-    void* allocateHighToLow(int start_idx, uint64_t alignment, uint64_t req_size);
+    void *allocateLowToHigh(int start_idx, uint64_t alignment, uint64_t req_size);
+    void *allocateHighToLow(int start_idx, uint64_t alignment, uint64_t req_size);
 
     void coalesceAndInsert(uintptr_t addr, uint64_t size);
 };
 
-}  // namespace heap
+} // namespace heap
 
 // Helper: Bit manipulation for bucket indexing
 inline int get_bucket_index(uint64_t size)
@@ -144,8 +147,7 @@ inline int get_bucket_index(uint64_t size)
 }
 
 // Heap API remains for dma
-ZBAL_API int CustomHeapAlignedAllocate(void **devPtr, size_t size,
-                                       std::shared_ptr<heap::CustomMemoryHeap> symm_pool);
+ZBAL_API int CustomHeapAlignedAllocate(void **devPtr, size_t size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool);
 
 ZBAL_API int CustomHeapRelease(void *devPtr, std::shared_ptr<heap::CustomMemoryHeap> symm_pool);
 
@@ -153,7 +155,7 @@ ZBAL_API int CustomGetTotalSize(size_t &size, std::shared_ptr<heap::CustomMemory
 
 ZBAL_API int CustomInUsedSize(size_t &size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool);
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal
 
-#endif  // ZBAL_SMA_MM_HEAP_H
+#endif // ZBAL_SMA_MM_HEAP_H
