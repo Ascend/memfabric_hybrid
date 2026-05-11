@@ -1,5 +1,5 @@
 ## 🔄Latest News
-* Open source on Apirl 1st, 2026
+* Open source on June 1st, 2026
 
 ## 🎉Introduction
 
@@ -39,8 +39,9 @@ Two major features:
 1. Install memfabric_hybrid package.
 
 ```bash
-pip install memfabric_hybrid==1.0.7
+pip install memfabric_hybrid
 ```
+The version of memfabric_hybrid must be higher than 1.0.7
 
 2. Git clone current repo and build wheel package.
 
@@ -55,8 +56,8 @@ python3 setup.py bdist_wheel
 
 ```bash
 cd sgl-kernel-npu/contrib/zbal/src/python/dist
-pip uninstall zbal -y
-pip install zbal*
+pip uninstall memfabric_zbal -y
+pip install memfabric_zbal*
 ```
 
 4. Run a python testcase to check installation. More running details please check the test shell script.
@@ -78,7 +79,7 @@ bash test_zbal_alltoall.sh
     - Host: aarch64/x86
 
 - Software:
-    - CANN 8.1.RC1 and later
+    - CANN 8.3.RC1 and later
     - cmake >= 3.19
     - GLIBC >= 2.28
 
