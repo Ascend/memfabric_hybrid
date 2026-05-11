@@ -76,7 +76,7 @@ public:
         return Z_OK;
     }
 
-    int32_t Broadcast(void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
+    int32_t Broadcast(const void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
                       aclrtStream stream) noexcept
     {
         return Z_OK;

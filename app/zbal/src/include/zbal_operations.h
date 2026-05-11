@@ -153,7 +153,7 @@ int32_t zbal_all_to_all_v(const void *sendBuff, void *recvBuff, void *sendCumSum
  * @param stream               [in] stream
  * @return
  */
-int32_t zbal_broadcast(void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root, zbal_comm_t comm,
+int32_t zbal_broadcast(const void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root, zbal_comm_t comm,
                        aclrtStream stream);
 
 /**

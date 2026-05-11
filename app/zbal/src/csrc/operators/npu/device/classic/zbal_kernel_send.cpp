@@ -132,13 +132,13 @@ void ZBALSendInner(GM_ADDR sendBuf, size_t sendCount, uint32_t dataTypeNum, GM_A
     }
 }
 
-int32_t ZBALOpSend(void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer,
+int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer,
                    aclrtStream stream, CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = 1;
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
     uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* sendBuf = reinterpret_cast<uint8_t *>(sendBuff);
+    uint8_t* sendBuf = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
 
     ZBALSendInner<<<blockDim, nullptr, stream>>>(sendBuf, sendCount, dataTypeNum, metaAddr, peer);
 

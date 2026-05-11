@@ -461,7 +461,7 @@ extern "C" __global__ __aicore__ void ZeroBuffAllReduce(
     }
 }
 
-int32_t ZBALOpAllReduce(void *inp, void *out, void *buf, size_t numel, size_t buf_cnt, zbal_datatype_t dataType,
+int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, size_t buf_cnt, zbal_datatype_t dataType,
                         aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, numel, dataType);
@@ -474,7 +474,7 @@ int32_t ZBALOpAllReduce(void *inp, void *out, void *buf, size_t numel, size_t bu
 
     uint64_t fftsAddr = groupInfo.fftsConfig;
     uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* input = reinterpret_cast<uint8_t *>(inp);
+    uint8_t* input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
     uint8_t* output = reinterpret_cast<uint8_t *>(out);
     uint8_t *buffer = reinterpret_cast<uint8_t *>(buf);
     uint64_t waitSymbol = ++groupInfo.waitSymbol;

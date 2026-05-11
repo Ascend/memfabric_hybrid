@@ -30,7 +30,7 @@ int32_t ZBALOpAlltoAllBase(const void *sendBuff, void *recvBuff, size_t sendCoun
 int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
                         zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo);
 
-int32_t ZBALOpBroadcast(void *buff, size_t sendCount, zbal_datatype_t dataType, uint16_t root, aclrtStream stream,
+int32_t ZBALOpBroadcast(const void *buff, size_t sendCount, zbal_datatype_t dataType, uint16_t root, aclrtStream stream,
                         CommGroupInfo &groupInfo);
 
 int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType, uint16_t root,
