@@ -308,7 +308,7 @@ int32_t NpuCommunicatorDefault::AlltoAllV(const void *sendBuff, void *recvBuff, 
                            const_cast<CommGroupInfo &>(GetMetaInfo()));
 }
 
-int32_t NpuCommunicatorDefault::Broadcast(void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
+int32_t NpuCommunicatorDefault::Broadcast(const void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
                                           aclrtStream stream) noexcept
 {
     auto result = ZBALOpBroadcast(buf, data_count, dataType, root, stream, const_cast<CommGroupInfo &>(GetMetaInfo()));

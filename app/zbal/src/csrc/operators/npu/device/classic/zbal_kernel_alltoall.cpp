@@ -457,7 +457,7 @@ void ZBALAlltoAllInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataT
     }
 }
 
-int32_t ZBALOpAlltoAllBase(void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
+int32_t ZBALOpAlltoAllBase(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
                            aclrtStream stream, CommGroupInfo &groupInfo)
 {
     static uint32_t blockDim = 0;
@@ -469,7 +469,7 @@ int32_t ZBALOpAlltoAllBase(void *sendBuff, void *recvBuff, size_t sendCount, zba
         }
     }
 
-    uint8_t *realSendBuff = reinterpret_cast<uint8_t *>(sendBuff);
+    uint8_t *realSendBuff = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
     uint8_t *realRecvBuff = reinterpret_cast<uint8_t *>(recvBuff);
     size_t realCount = sendCount / groupInfo.groupSize;
     int realDataType = static_cast<int>(dataType);

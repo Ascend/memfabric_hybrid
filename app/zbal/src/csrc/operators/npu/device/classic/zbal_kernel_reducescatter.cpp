@@ -276,7 +276,7 @@ void ZeroBuffReduceScatter(GM_ADDR input, GM_ADDR output, size_t recvNumel, uint
     }
 }
 
-int32_t ZBALOpReduceScatter(void *inp, void *out, size_t recvNumel, zbal_datatype_t dataType,
+int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_datatype_t dataType,
                             aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
 {
     /* define the block dim */
@@ -285,7 +285,7 @@ int32_t ZBALOpReduceScatter(void *inp, void *out, size_t recvNumel, zbal_datatyp
     uint32_t reduceOpNum = static_cast<uint32_t>(reduceOp);
 
     uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* input = reinterpret_cast<uint8_t *>(inp);
+    uint8_t* input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
     uint8_t* output = reinterpret_cast<uint8_t *>(out);
 
     uint64_t flagMagic = ++groupInfo.waitSymbol;

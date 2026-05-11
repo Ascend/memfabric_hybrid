@@ -52,7 +52,7 @@ public:
     int32_t AlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
                       zbal_datatype_t dataType, aclrtStream stream) noexcept;
 
-    int32_t Broadcast(void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
+    int32_t Broadcast(const void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
                       aclrtStream stream) noexcept;
 
     int32_t Scatter(const void *sendBuff, void *recvBuff, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,

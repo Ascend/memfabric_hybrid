@@ -158,7 +158,7 @@ public:
      *
      * @return 0 if successful
      */
-    virtual int32_t Broadcast(void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
+    virtual int32_t Broadcast(const void *buf, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
                               aclrtStream stream) noexcept = 0;
 
     /**

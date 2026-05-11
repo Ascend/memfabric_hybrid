@@ -492,8 +492,8 @@ extern "C" __global__ __aicore__ void ZBALBroadcastInner(GM_ADDR input, GM_ADDR 
     }
 }
 
-int32_t ZBALOpBroadcast(void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint16_t root, aclrtStream stream,
-                        CommGroupInfo &groupInfo)
+int32_t ZBALOpBroadcast(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint16_t root,
+                        aclrtStream stream, CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, sendCount, dataType);
 
@@ -504,8 +504,8 @@ int32_t ZBALOpBroadcast(void *sendBuff, size_t sendCount, zbal_datatype_t dataTy
     uint16_t rank = groupInfo.myGroupRank;
     uint16_t groupSize = groupInfo.groupSize;
     uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t *input = reinterpret_cast<uint8_t *>(sendBuff);
-    uint8_t *output = reinterpret_cast<uint8_t *>(sendBuff);
+    uint8_t *input = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
+    uint8_t *output = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
     uint64_t waitSymbol = ++groupInfo.waitSymbol;
 
     ZBALBroadcastInner<<<blockDim, nullptr, stream>>>(input, output, sendCount, dataTypeNum, metaAddr, root, waitSymbol,

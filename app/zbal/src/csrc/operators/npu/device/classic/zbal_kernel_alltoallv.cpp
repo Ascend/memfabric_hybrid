@@ -494,7 +494,7 @@ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum, GM_A
     }
 }
 
-int32_t ZBALOpAlltoAllV(void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCount,
+int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCount,
                         void *elements, zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo)
 {
     static uint32_t blockDim = 0;
@@ -506,7 +506,7 @@ int32_t ZBALOpAlltoAllV(void *sendBuff, void *recvBuff, void *sendCumSum, void *
         }
     }
 
-    uint8_t *realSendBuff = reinterpret_cast<uint8_t *>(sendBuff);
+    uint8_t *realSendBuff = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
     uint8_t *realRecvBuff = reinterpret_cast<uint8_t *>(recvBuff);
     uint8_t *realSendCumSum = reinterpret_cast<uint8_t *>(sendCumSum);
     uint8_t *realRecvCount = reinterpret_cast<uint8_t *>(recvSplitCount);

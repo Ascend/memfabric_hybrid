@@ -176,13 +176,13 @@ void ZBALRecvInner(GM_ADDR recvBuf, size_t recvCount, uint32_t dataTypeNum, GM_A
     }
 }
 
-int32_t ZBALOpRecv(void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer,
+int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer,
                    aclrtStream stream, CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, recvCount, dataType);
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
     uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* recvBuf = reinterpret_cast<uint8_t *>(recvBuff);
+    uint8_t* recvBuf = reinterpret_cast<uint8_t *>(const_cast<void *>(recvBuff));
 
     ZBALRecvInner<<<blockDim, nullptr, stream>>>(recvBuf, recvCount, dataTypeNum, metaAddr, peer);
 
