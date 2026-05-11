@@ -204,9 +204,8 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
         return BM_INVALID_PARAM;
     }
 
-    uint64_t gva = HybmVaManager::GetInstance().TransformVa(keyUnion.deviceKey.address, HVM_HVA, HVM_GVA);
-
     keyUnion.deviceKey = pos->second;
+    uint64_t gva = HybmVaManager::GetInstance().TransformVa(keyUnion.deviceKey.address, HVM_HVA, HVM_GVA);
     keyUnion.deviceKey.address = (gva != 0) ? gva : keyUnion.deviceKey.address;
     keyUnion.deviceKey.notifyAddr = notifyInfo_.srcAddr;
     keyUnion.deviceKey.notifyRkey = notifyInfo_.srcRkey;
