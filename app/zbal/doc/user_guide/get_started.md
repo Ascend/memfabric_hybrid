@@ -5,7 +5,7 @@
 The zbal wheel pacakge has been uploaded to pip repo, install zbal as following command.
 
 ```bash
-pip install zbal-ascend
+pip install memfabric_zbal
 ```
 
 If there is a network issue on you workspace, compiling to get wheel package is also a way to it, see details [here](../../README.md#quickstart).
