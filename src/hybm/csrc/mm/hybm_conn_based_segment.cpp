@@ -107,11 +107,6 @@ Result HybmConnBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
                                                        << options_.maxSize);
         return BM_INVALID_PARAM;
     }
-    if (options_.enable56BitsGva && options_.shmFd >= 0) {
-        BM_LOG_ERROR("do not support memory pool greater 128TB, enable56BitsGva: " << options_.enable56BitsGva
-                                                                                   << ", shmFd:" << options_.shmFd);
-        return BM_INVALID_PARAM;
-    }
 
     void *sliceAddr = localVirtualBase_ + allocatedSize_;
     auto gva = reinterpret_cast<uint64_t>(globalVirtualAddress_ + options_.maxSize * options_.rankId + allocatedSize_);

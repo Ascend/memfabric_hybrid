@@ -510,7 +510,7 @@ Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, ui
         return BM_NOT_CONNECTED;
     }
     Channel_OneSideRequest req;
-    req.rAddress = (void *)rAddr;
+
     req.lAddress = (void *)lAddr;
     req.size = static_cast<uint32_t>(size);
 
@@ -530,6 +530,10 @@ Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, ui
     BM_LOG_DEBUG("Try to read remote rankId: " << rankId << " channel: " << (void *)channel
                                                << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
                                                << " size: " << size);
+
+    auto addrOffset = rAddr - mr.addr;
+    rAddr = mr.lva + addrOffset; // rewrite to remote local va
+    req.rAddress = (void *)rAddr;
     return DlHcomApi::ChannelGet(channel, req, nullptr);
 }
 
@@ -544,7 +548,6 @@ Result HcomTransportManager::InnerWriteRemote(uint32_t rankId, uint64_t lAddr, u
         return BM_NOT_CONNECTED;
     }
     Channel_OneSideRequest req;
-    req.rAddress = (void *)rAddr;
     req.lAddress = (void *)lAddr;
     req.size = static_cast<uint32_t>(size);
 
@@ -561,9 +564,14 @@ Result HcomTransportManager::InnerWriteRemote(uint32_t rankId, uint64_t lAddr, u
         return BM_ERROR;
     }
     CopyHcomOneSideKey(mr.lKey, req.rKey);
+
+    auto addrOffset = rAddr - mr.addr;
     BM_LOG_DEBUG("Try to write remote rankId: " << rankId << " channel: " << (void *)channel
                                                 << " lKey:" << req.lKey.keys[0] << " rKey: " << req.rKey.keys[0]
                                                 << " size: " << size);
+    rAddr = mr.lva + addrOffset; // rewrite to remote local va
+
+    req.rAddress = (void *)rAddr;
     return DlHcomApi::ChannelPut(channel, req, nullptr);
 }
 
