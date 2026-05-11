@@ -203,7 +203,7 @@ TEST_F(SmemShmTest, smem_shm_init_failed)
     uint32_t rankId = 0;
     uint32_t rankCount = 1; // 1
     smem_shm_config_t config;
-
+    config.shmInitTimeout = 0;
     ret = smem_shm_init(UT_IP_PORT, rankCount, rankId, rankId, &config);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
 

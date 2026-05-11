@@ -166,6 +166,13 @@ void smem_uninit(void);
 const char *smem_get_last_err_msg(void);
 
 /**
+ * @brief Get the last error code
+ *
+ * @return last error code, or 0 if none was set
+ */
+int32_t smem_get_last_err_code(void);
+
+/**
  * @brief Get the last error message and clear
  *
  * @return last error message

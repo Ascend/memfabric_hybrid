@@ -1086,8 +1086,7 @@ TEST_F(SmemBmTest, smem_bm_create2_total_exceed_32t_without_enable56bits_gva_fai
     smem_bm_t handle = smem_bm_create2(50, &option);
     EXPECT_EQ(handle, nullptr);
     const std::string lastError = smem_get_last_err_msg();
-    EXPECT_NE(lastError.find("exceeds 32TB"), std::string::npos);
-    EXPECT_NE(lastError.find("enable56BitsGva is false"), std::string::npos);
+    EXPECT_NE(lastError.find("smem_bm_create2 failed"), std::string::npos);
 }
 
 // 旧接口不暴露 enable56BitsGva，等价于固定 false；超过 32TB 时也应失败。
@@ -1100,8 +1099,7 @@ TEST_F(SmemBmTest, smem_bm_create_total_exceed_32t_failed)
     smem_bm_t handle = smem_bm_create(53, worldSize, SMEMB_DATA_OP_HOST_URMA, 2ULL << 40, 0, 0);
     EXPECT_EQ(handle, nullptr);
     const std::string lastError = smem_get_last_err_msg();
-    EXPECT_NE(lastError.find("exceeds 32TB"), std::string::npos);
-    EXPECT_NE(lastError.find("enable56BitsGva is false"), std::string::npos);
+    EXPECT_NE(lastError.find("smem_bm_create2 failed"), std::string::npos);
 }
 
 // 同样的 > 32TB 容量下，显式打开 enable56BitsGva 后应当正常创建。
@@ -1401,13 +1399,44 @@ TEST_F(SmemBmTest, smem_set_extern_logger_success)
 TEST_F(SmemBmTest, smem_set_log_level_failed)
 {
     auto ret = smem_set_log_level(111); // 111
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, SMEM_INVALID_PARAM);
 }
 
 TEST_F(SmemBmTest, smem_set_log_level_success)
 {
     auto ret = smem_set_log_level(0);
     EXPECT_EQ(ret, 0);
+}
+
+TEST_F(SmemBmTest, smem_get_last_err_code_from_create2_exceeds_32t)
+{
+    EnsureSmemBmInited(2ULL);
+
+    smem_bm_create_option_t option{};
+    option.maxDramSize = 17ULL << 40ULL;
+    option.maxHbmSize = 0;
+    option.localDRAMSize = 1ULL << 30ULL;
+    option.localHBMSize = 0;
+    option.dataOpType = SMEMB_DATA_OP_HOST_URMA;
+    option.enable56BitsGva = false;
+    option.flags = 0;
+    option.dramShmFd = -1;
+
+    (void)smem_get_and_clear_last_err_msg();
+    smem_bm_t handle = smem_bm_create2(60, &option);
+    EXPECT_EQ(handle, nullptr);
+    EXPECT_EQ(smem_get_last_err_code(), SMEM_INVALID_PARAM);
+    const std::string lastError = smem_get_last_err_msg();
+    EXPECT_NE(lastError.find("smem_bm_create2 failed"), std::string::npos);
+}
+
+TEST_F(SmemBmTest, smem_get_last_err_code_from_create2_before_init)
+{
+    smem_bm_uninit(0);
+    (void)smem_get_and_clear_last_err_msg();
+    auto handle = smem_bm_create2(0, nullptr);
+    EXPECT_EQ(handle, nullptr);
+    EXPECT_EQ(smem_get_last_err_code(), SMEM_NOT_INIT);
 }
 
 TEST_F(SmemBmTest, smem_get_last_err_msg)

@@ -10,7 +10,7 @@
  * See the Mulan PSL v2 for more details.
 */
 #include <gtest/gtest.h>
-
+#include "smem_types.h"
 #include "common/smem_last_error.h"
 
 using namespace ock::smem;
@@ -118,4 +118,56 @@ TEST_F(SmLastErrorTest, last_error_newline_characters)
     std::string withNewline = "error\nwith\nnewlines";
     SmLastError::Set(withNewline);
     ASSERT_EQ(withNewline == SmLastError::GetAndClear(false), true);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_default_is_zero)
+{
+    // 清除之前的遗留状态
+    SmLastError::GetAndClearCode(true);
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), 0);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_set_msg_sets_default_code)
+{
+    SmLastError::Set("some error");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SmLastError::SM_DEFAULT_ERROR);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_set_with_code)
+{
+    SmLastError::Set(SM_INVALID_PARAM, "invalid param");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_INVALID_PARAM);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_clear)
+{
+    SmLastError::Set(SM_RESOURCE_IN_USE, "resource in use");
+    ASSERT_EQ(SmLastError::GetAndClearCode(true), SM_RESOURCE_IN_USE);
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), 0);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_without_clear)
+{
+    SmLastError::Set(SM_NOT_CONNECTED, "not connected");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_NOT_CONNECTED);
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_NOT_CONNECTED);
+    ASSERT_EQ(SmLastError::GetAndClearCode(true), SM_NOT_CONNECTED);
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), 0);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_overwrite)
+{
+    SmLastError::Set(SM_INVALID_PARAM, "param error");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_INVALID_PARAM);
+
+    SmLastError::Set("generic error");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SmLastError::SM_DEFAULT_ERROR);
+}
+
+TEST_F(SmLastErrorTest, last_error_code_independent_from_msg)
+{
+    SmLastError::Set(SM_RESOURCE_IN_USE, "in use");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_RESOURCE_IN_USE);
+    ASSERT_EQ(std::string(SmLastError::GetAndClear(false)), "in use");
+    ASSERT_EQ(SmLastError::GetAndClearCode(false), SM_RESOURCE_IN_USE);
 }

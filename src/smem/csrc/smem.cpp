@@ -119,6 +119,9 @@ SMEM_API int32_t smem_set_extern_alarm(void (*alarm)(uint16_t code, const char *
 
 SMEM_API int32_t smem_set_log_level(int level)
 {
+    SM_VALIDATE_RETURN(ock::mf::OutLogger::ValidateLevel(level),
+                       "set log level failed, invalid param, level should be 0~4",
+                       ock::smem::SM_INVALID_PARAM);
     return hybm_set_log_level(level);
 }
 
@@ -130,6 +133,11 @@ SMEM_API int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, cons
 SMEM_API const char *smem_get_last_err_msg()
 {
     return ock::smem::SmLastError::GetAndClear(false);
+}
+
+SMEM_API int32_t smem_get_last_err_code()
+{
+    return ock::smem::SmLastError::GetAndClearCode(false);
 }
 
 SMEM_API const char *smem_get_and_clear_last_err_msg()

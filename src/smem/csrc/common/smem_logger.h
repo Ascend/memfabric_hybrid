@@ -58,6 +58,14 @@
         SM_LOG_ERROR(tmpStr.str());                \
     } while (0)
 
+#define SM_LOG_AND_SET_LAST_ERROR_CODE(code, msg)    \
+    do {                                             \
+        std::stringstream tmpStr;                    \
+        tmpStr << msg;                               \
+        ock::smem::SmLastError::Set(code, tmpStr.str()); \
+        SM_LOG_ERROR(tmpStr.str());                  \
+    } while (0)
+
 #define SM_VALIDATE_RETURN(ARGS, msg, RET)       \
     do {                                         \
         if (__builtin_expect(!(ARGS), 0) != 0) { \

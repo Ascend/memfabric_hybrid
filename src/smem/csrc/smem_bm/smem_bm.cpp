@@ -173,29 +173,42 @@ static void SmemBmFillDramFdInOptions(const smem_bm_create_option_t &smemOpts, h
     }
 }
 
-SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
+static int32_t smem_bm_create2_inner(uint32_t id, const smem_bm_create_option_t *option, smem_bm_t *out)
 {
-    SM_VALIDATE_RETURN(g_smemBmInited, "smem bm not initialized yet", nullptr);
-    SM_VALIDATE_RETURN(SmemBmCreateOptionCheck(option), "option is invalid", nullptr);
+    *out = nullptr;
+    if (!g_smemBmInited) {
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_NOT_INITIALIZED, "smem bm not initialized yet");
+        return SM_NOT_INITIALIZED;
+    }
+    if (!SmemBmCreateOptionCheck(option)) {
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM, "option is invalid");
+        return SM_INVALID_PARAM;
+    }
 
     SmemBmEntryPtr entry;
     auto &manager = SmemBmEntryManager::Instance();
-    SM_ASSERT_RETURN_NOLOG(SmemBmDataOpCheck(option->dataOpType), nullptr);
+    if (SmemBmDataOpCheck(option->dataOpType) == 0) {
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM, "invalid data op type: " << option->dataOpType);
+        return SM_INVALID_PARAM;
+    }
     const bool isHostShm = (option->dataOpType & SMEMB_DATA_OP_HOST_SHM) != 0;
     if (isHostShm && (option->localDRAMSize == 0 || option->localHBMSize != 0)) {
-        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type only supports DRAM shared memory without HBM");
-        return nullptr;
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM,
+            "HOST_SHM op type only supports DRAM shared memory without HBM");
+        return SM_INVALID_PARAM;
     }
     constexpr uint32_t hostShmConflictMask = SMEMB_DATA_OP_SDMA | SMEMB_DATA_OP_HOST_RDMA | SMEMB_DATA_OP_HOST_URMA |
                                              SMEMB_DATA_OP_HOST_TCP | SMEMB_DATA_OP_DEVICE_RDMA;
     if (isHostShm && (option->dataOpType & hostShmConflictMask) != 0) {
-        SM_LOG_AND_SET_LAST_ERROR("HOST_SHM op type does not support mixing with other data op types");
-        return nullptr;
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM,
+            "HOST_SHM op type does not support mixing with other data op types");
+        return SM_INVALID_PARAM;
     }
     auto ret = manager.CreateEntryById(id, entry);
     if (ret != 0 || entry == nullptr) {
-        SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed: " << ret);
-        return nullptr;
+        SM_LOG_AND_SET_LAST_ERROR_CODE(ret != 0 ? ret : SM_ERROR,
+            "create BM entity(" << id << ") failed: " << ret);
+        return ret != 0 ? ret : SM_ERROR;
     }
 
     hybm_options options{};
@@ -204,9 +217,10 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     options.bmDataOpType = SmemHybmHelper::TransHybmDataOpType(option->dataOpType);
 #if !defined(ASCEND_NPU)
     if ((options.bmDataOpType & HYBM_DOP_TYPE_SDMA) || (options.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA)) {
-        SM_LOG_AND_SET_LAST_ERROR("create BM entity(" << id << ") failed, invalid opType " << options.bmDataOpType
-                                                      << " for non-cann based backend");
-        return nullptr;
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_ERROR,
+            "create BM entity(" << id << ") failed, invalid opType " << options.bmDataOpType
+                                << " for non-cann based backend");
+        return SM_ERROR;
     }
 #endif
     options.rankCount = manager.GetWorldSize();
@@ -223,12 +237,12 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     const uint64_t totalAddrSpace =
         (option->maxDramSize + option->maxHbmSize) * static_cast<uint64_t>(options.rankCount);
     if (!option->enable56BitsGva && totalAddrSpace > SMEM_56BITS_GVA_REQUIRED_THRESHOLD) {
-        SM_LOG_AND_SET_LAST_ERROR(
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM,
             "total address space (" << totalAddrSpace << " B) exceeds 32TB but enable56BitsGva is false. "
             << "Please set enable56BitsGva = true, "
             << "maxDram=" << option->maxDramSize << ", maxHbm=" << option->maxHbmSize
             << ", rankCount=" << options.rankCount);
-        return nullptr;
+        return SM_INVALID_PARAM;
     }
     options.enable56BitsGva = option->enable56BitsGva;
     bzero(options.transUrl, sizeof(options.transUrl));
@@ -245,7 +259,11 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     std::copy_n(hcomTlsConfig.packagePath, SMEM_TLS_PATH_SIZE, options.tlsOption.packagePath);
     std::copy_n(hcomTlsConfig.decrypterLibPath, SMEM_TLS_PATH_SIZE, options.tlsOption.decrypterLibPath);
 
-    SM_VALIDATE_RETURN(manager.GetHcomUrl().size() <= 64u, "url size is " << manager.GetHcomUrl().size(), nullptr);
+    if (manager.GetHcomUrl().size() > 64u) {
+        SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM,
+            "url size is " << manager.GetHcomUrl().size());
+        return SM_INVALID_PARAM;
+    }
     (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
     (void)std::copy_n(option->tag, sizeof(options.tag), options.tag);
     (void)std::copy_n(option->tagOpInfo, sizeof(options.tagOpInfo), options.tagOpInfo);
@@ -254,10 +272,22 @@ SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *o
     SmemBmFillDramFdInOptions(*option, options);
     ret = entry->Initialize(options);
     if (ret != 0) {
-        SM_LOG_AND_SET_LAST_ERROR("entry init failed, result: " << ret);
+        SM_LOG_AND_SET_LAST_ERROR_CODE(ret, "entry init failed, result: " << ret);
+        return ret;
+    }
+    *out = reinterpret_cast<void *>(entry.Get());
+    return SM_OK;
+}
+
+SMEM_API smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option)
+{
+    smem_bm_t handle = nullptr;
+    int32_t ret = smem_bm_create2_inner(id, option, &handle);
+    if (ret != SM_OK) {
+        SM_LOG_AND_SET_LAST_ERROR_CODE(ret, "smem_bm_create2 failed");
         return nullptr;
     }
-    return reinterpret_cast<void *>(entry.Get());
+    return handle;
 }
 
 SMEM_API void smem_bm_destroy(smem_bm_t handle)
