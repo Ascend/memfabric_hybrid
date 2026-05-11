@@ -562,5 +562,11 @@ Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions 
 
 const TransportPrivateData ComposeTransportManager::GetPrivateData() const
 {
-    return deviceTransportManager_->GetPrivateData();
+    if (hostTransportManager_) {
+        return hostTransportManager_->GetPrivateData();
+    }
+    if (deviceTransportManager_) {
+        return deviceTransportManager_->GetPrivateData();
+    }
+    return TransportPrivateData{};
 }
