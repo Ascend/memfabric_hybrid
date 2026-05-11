@@ -474,32 +474,6 @@ ZBAL_KERNEL void copy_gm_to_gm(__gm__ uint8_t *dst, __gm__ uint8_t *src, uint32_
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(sync_id);
 }
 
-ZBAL_KERNEL void aclshmemi_sdma_poll_for_completion(const workspace_layout_t &layout,
-                                                    AscendC::LocalTensor<uint32_t> &tmp_local, uint32_t sync_id)
-{
-    uint32_t queue_num = 1;
-    const uint32_t max_times = 1000000;
-    for (uint8_t queue_id = 0; queue_id < queue_num; queue_id++) {
-        auto local_recv_workspace = layout.recv_workspace + queue_id * ZBAL_SDMA_FLAG_LENGTH;
-        auto remote_recv_workspace = layout.remote_recv_workspace + queue_id * ZBAL_SDMA_FLAG_LENGTH;
-
-        uint32_t send_value = 0;
-        uint32_t times = 0;
-
-        // Poll until flag is received or timeout occurs
-        while (send_value == 0 && times < max_times) {
-            copy_gm_to_gm<uint32_t>(local_recv_workspace, remote_recv_workspace, 1, tmp_local, sync_id);
-            dcci_cacheline(local_recv_workspace);
-            send_value = *((__gm__ uint32_t *)local_recv_workspace);
-            times++;
-        }
-
-        // Clear
-        zbal_set_value<uint32_t>(remote_recv_workspace, 0, tmp_local, sync_id);
-        zbal_set_value<uint32_t>(local_recv_workspace, 0, tmp_local, sync_id);
-    }
-}
-
 ZBAL_KERNEL void zbal_sdma_poll_for_completion(const workspace_layout_t &layout,
                                                AscendC::LocalTensor<uint32_t> &tmp_local, uint32_t sync_id)
 {
