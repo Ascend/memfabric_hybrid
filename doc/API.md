@@ -3,11 +3,11 @@
 [TOC]
 
 # C接口
-安装完成run包并source安装路径下的set_env.sh后，会添加memfabric_hybrid安装路径的环境变量MEMFABRIC_HYBRID_HOME_PATH
+安装完成 `run` 包并 `source` 安装路径下的 `set_env.sh` 后，会添加 `memfabric_hybrid` 安装路径的环境变量 `MEMFABRIC_HYBRID_HOME_PATH`
 
-使用memfabric_hybrid相关接口时，需要include相关头文件(在\${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/host路径下)，并且在**链接时需要添加libmf_smem.so**(在${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/lib64路径下)依赖
+使用 `memfabric_hybrid` 相关接口时，需要 `include` 相关头文件(在 `${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/host`路径下)，并且在**链接时需要添加libmf_smem.so**(在 `${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/lib64` 路径下) 依赖
 
-可以通过MEMFABRIC_HYBRID_HOME_PATH环境变量指定头文件和lib库依赖路径，从而完成代码构建
+可以通过 `MEMFABRIC_HYBRID_HOME_PATH` 环境变量指定头文件和 `lib` 库依赖路径，从而完成代码构建
 
 ## 公共接口列表
 
@@ -167,7 +167,7 @@ BM退出
 ```c
 void smem_bm_uninit(uint32_t flags);
 ```
-    
+
 |参数/返回值|含义|
 |-|-|
 |flags|预留参数|
@@ -179,7 +179,7 @@ void smem_bm_uninit(uint32_t flags);
 smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
     smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
     uint64_t localHBMSize, uint32_t flags);
-```
+ ```
 
 |参数/返回值|含义|
 |-|-|
@@ -195,7 +195,7 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
 创建BM
  ```c
 smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option);
-```
+ ```
 
 | 参数/返回值       | 含义                                                              |
 |--------------|-----------------------------------------------------------------|
@@ -218,20 +218,31 @@ void smem_bm_destroy(smem_bm_t handle);
 加入BM
 
 ```c
-int32_t smem_bm_join(smem_bm_t handle, uint32_t flags, void **localGvaAddress);
+int32_t smem_bm_join(smem_bm_t handle, uint32_t flags);
 ```
 
 |参数/返回值|含义|
 |-|-|
-|handle|待加入BM handle|    
+|handle|待加入BM handle|
 |flags|预留参数|
-|localGvaAddress|当前rank在gva上的地址位置|
 |返回值|成功返回0，否则返回错误码|
 
 #### smem_bm_leave
 退出BM
 ```c
 int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
+```
+|参数/返回值| 含义                                                    |
+|-|-------------------------------------------------------|
+|handle| 待退出BM handle                                          |
+|flags| 预留参数 |
+|返回值| 成功返回0，否则返回错误码                                         |
+
+
+#### smem_bm_extend_local_mem
+在本地 `rank` 上动态扩增內存。待增加内存必须由 `smem_bm_create()` 创建
+```c
+int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
 ```
 
 | 参数/返回值          | 含义                            |
@@ -241,17 +252,7 @@ int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 | size | 当前rank扩展内存的大小                 |
 | 返回值             | 成功返回0，否则返回错误码                 |
 
-#### smem_bm_extend_local_mem
-退出BM
-```c
-int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
-```
 
-|参数/返回值| 含义                                                    |
-|-|-------------------------------------------------------|
-|handle| 待退出BM handle                                          |
-|flags| 预留参数 |
-|返回值| 成功返回0，否则返回错误码                                         |
 
 ### 4.拷贝/批量拷贝数据对象
 #### smem_bm_copy
@@ -309,7 +310,7 @@ int32_t smem_bm_copy_batch_partial_succeed(
 ```c
 uint32_t smem_bm_get_rank_id(void);
 ```
-    
+
 |参数/返回值|含义|
 |-|-|
 |返回值|成功返回当前rank id，失败返回u32最大值|
@@ -390,7 +391,7 @@ int32_t smem_bm_wait(smem_bm_t handle);
 |-|-|
 |handle|BM handle|
 |返回值|成功返回0，失败返回错误码|
-	
+
 ## SHM接口列表
 
 ### 1.SHM初始化/退出
@@ -584,7 +585,7 @@ TRANS配置初始化
 ```c
 int32_t smem_trans_config_init(smem_trans_config_t *config);
 ```
-    
+
 |参数/返回值|含义|
 |-|-|
 |config|初始化参数|

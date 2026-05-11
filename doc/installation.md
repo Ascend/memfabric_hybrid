@@ -1,157 +1,120 @@
 # 软件安装
+本文档介绍 MemFabric Hybrid 的安装方法，支持 **Python API** 和 **C API** 两种使用方式。请根据实际开发需求选择对应的安装路径。
 
-## 编译软件包
+---
 
-### 编译工具建议版本
 
-- OS: Ubuntu 22.04 LTS+
-- cmake: 3.20.x
-- gcc: 11.4+
-- python 3.11.10
-- pybind11 2.10.3
-- make 4.3 or ninja 1.10.1
+## 一、 使用 Python API
 
-### 编译
+推荐通过 `pip` 进行安装，支持在线安装与离线安装两种方式。
 
-memfabric_hybrid编译不依赖CANN和HDK.
+### 1. 在线安装
 
-1. 下载代码
+```bash
+pip install memfabric_hybrid
 ```
+
+**指定版本安装**
+如需安装特定版本，请使用 == 指定版本号：
+
+```bash
+pip install memfabric_hybrid==1.0.0
+```
+
+### 2. 离线安装
+在无网络环境中，需预先下载对应平台架构和 Python 版本的 .whl 包。
+1. **下载 whl 包：**
+    从 [PyPI](https://pypi.org/project/memfabric-hybrid/?spm=a2ty_o01.29997173.0.0.36c455fbq3MLaA#files) 下载对应的 `.whl` 文件。
+    <!-- 文件名示例：memfabric_hybrid-1.1.0-cp311-cp311-manylinux_2_27_aarch64.whl -->
+
+2. **执行安装：**
+    将 .whl 包上传至目标环境，执行以下命令进行离线安装：
+    ```bash
+    pip install --no-index memfabric_hybrid-*.whl
+    ```
+
+---
+
+## 二、 使用 C API
+
+### 1. 编译环境要求
+| 组件 | 建议版本/要求 |
+| -- | -- |
+| **OS** | Ubuntu 22.04 LTS 或更高版本 |
+| **CMake** | 3.20.x 或更高 |
+| **GCC** | 11.4 或更高 |
+| **pybind11** | 2.10.3 (仅编译 Python 绑定时需要) |
+| **Make/Ninja** | Make 4.3+ 或 Ninja 1.10.1+ |
+
+
+### 2. 获取源码
+```bash
 git clone https://gitcode.com/Ascend/memfabric_hybrid
 cd memfabric_hybrid
+```
+
+`git checkout` 到稳定发布分支。建议根据[分支策略](https://gitcode.com/Ascend/memfabric_hybrid/wiki/%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5.md)选择正确分支。
+
+```bash
+git checkout release/1.1  # 这里以release/1.1为例
 git clean -xdf
 git reset --hard
 ```
 
-2. 拉取第三方库（可选）
 
-如果不需要编译单元测试，可以跳过此步骤：
-```
-# 完整拉取所有子模块（包括测试库）
-git submodule update --recursive --init
+### 3. 编译构建
+使用封装脚本进行一键编译。脚本会自动处理依赖并生成安装包。
 
-# 如果只需要主代码，不需要测试库，可跳过此命令
+``` bash
+bash script/build_and_pack_run.sh
 ```
 
-> **注意**：项目的第三方依赖库（googletest、mockcpp）均位于 test/3rdparty 目录下，仅用于单元测试。如果您不需要运行单元测试，可以跳过 `git submodule update` 命令，直接进行编译。编译时通过 `--build_test OFF` 参数关闭测试编译即可。
+`build_and_pack_run.sh` 脚本参数详解:
 
-3. 编译
+| 参数 | 选项 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `--build_mode` | `RELEASE` / `DEBUG` | `RELEASE` | 编译模式 |
+| `--build_python` | `ON` / `OFF` | `ON` | 是否编译 Python Wheel 包 |
+| `--xpu_type` | `NPU` / `GPU` / `NONE` | `NPU` | 目标异构设备类型：<br>- `NPU`: 适配昇腾 CANN 环境<br>- `GPU`: 适配 CUDA 环境<br>- `NONE`: 无卡纯 CPU 环境 |
+| `--build_test` | `ON` / `OFF` | `OFF` | 是否编译测试工具和样例代码。<br>**注意**：设为 `ON` 时需先执行 `git submodule update --recursive --init` 拉取第三方库。 |
+| `--build_hcom` | `ON` / `OFF` | `OFF` | 是否编译 HCOM 通信库。<br>若数据传输类型涉及 `HOST_RDMA`, `HOST_TCP`, `HOST_URMA`，需设为 `ON`。 |
+| `--build_hcom_rdma` | `ON` / `OFF` | `ON` | (仅当 `build_hcom=ON` 有效) 是否启用 RDMA 支持。<br>需先执行 `apt install libibverbs-dev`。 |
+| `--build_hcom_ub` | `ON` / `OFF` | `OFF` | (仅当 `build_hcom=ON` 有效) 是否启用 UB (URMA) 支持。<br>RDMA 和 UB 可同时开启。|
 
-执行如下命令进行编译，编译成功后，会生成run包在output目录下
-```
-bash script/build_and_pack_run.sh --build_mode RELEASE --build_python ON --xpu_type NPU --build_test OFF --build_hcom OFF
 
-```
+> 重要提示：
+> 当 xpu_type 设置为 NPU 时，运行环境必须提前安装 NPU 固件驱动 和 CANN 工具包。
+>
+> [环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html)
+> 
+> [参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html?Mode=PmIns&OS=Ubuntu&Software=cannToolKit)
 
-- build_and_pack_run.sh支持7个参数，分别是<build_mode> <build_python> <xpu_type> <build_test> <build_hcom> <build_hcom_rdma> <build_hcom_ub>
-- build_mode: 编译类型，可填RELEASE或DEBUG，默认RELEASE
-- build_python: 是否编译python的whl包，可填ON或OFF，默认ON
-- xpu_type: 指定异构设备，设置NPU为CANN版本，GPU为CUDA版本，NONE为无卡环境, 默认NPU
-- build_test: 是否编译打包测试工具和样例代码等，可填ON或OFF，默认OFF
-- build_hcom: 是否编译hcom，可填ON或OFF，默认OFF（如果数据传输类型需要使用HOST_RDMA、HOST_TCP、HOST_URMA时，需要设置为ON）
-- build_hcom_rdma: 在开启编hcom的情况下，指定编译的hcom是否启用rdma，若启用，当前编译环境需要安装libibverbs-dev，可通过apt install libibverbs-dev进行安装，可填ON或OFF，默认为ON
-- build_hcom_ub: 在开启编hcom的情况下，指定编译的hcom是否启用ub(urma),默认为OFF。注：rdma和ub可以同时指定为ON，两者不冲突
 
-## 环境准备
+### 4. 安装
+编译成功后，生成的安装包位于 `output/memfabric-hybrid-${version}_${os}_${arch}.run`
 
-编译时xpu_type选择NPU时，编译出来的包在运行时，运行环境上需要安装NPU固件驱动和CANN包。
-
-依赖的NPU固件驱动和CANN包，具体版本详见下面的软件硬件配套说明
-
-请在环境上提前安装NPU固件驱动和CANN包([环境安装参考链接](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0000.html))
-
-安装完成后需要配置CANN环境变量([参考安装Toolkit开发套件包的第三步配置环境变量](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/81RC1alpha002/softwareinst/instg/instg_0008.html?Mode=PmIns&OS=Ubuntu&Software=cannToolKit))
-
-## 安装软件包
-
-memfabric_hybrid将所有特性集成到run包中供用户使用，run包格式为 ```memfabric-hybrid-${version}_${os}_${arch}.run```
-
-其中，version表示memfabric_hybrid的版本；os表示操作系统，如linux；arch表示架构，如x86或aarch64
-
-### run包安装
-
-run包的默认安装根路径为 /usr/local/
-
-安装完成后需要source安装路径下的memfabric_hybrid/set_env.sh
-
-参考安装命令如下（此处以1.0.0版本为例）
+运行以下命令默认安装至 `/usr/local/`：
 ```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run
+bash memfabric_hybrid-*_*_*.run  # optional: --install-path=${your path}
 source /usr/local/memfabric_hybrid/set_env.sh
-```
-> 📌 **注意**： A2环境使用DRAM池化需要根据每台机器池化内存的大小来配置大页内存，否则初始化失败
-> 
-> 检查是否配置大页:
-> 
-> ```grep Huge | /proc/meminfo```
-> 
-> 配置大页内存，以配置1024个大页为例
-> 
-> ```echo 1024 > /proc/sys/vm/nr_hugepages```
 
-如果想要自定义安装路径，可以添加--install-path参数
-```bash
-bash memfabric_hybrid-1.0.0_linux_aarch64.run --install-path=${your path}
+# 查看 C API 版本信息
+cat /usr/local/memfabric_hybrid/latest/version.info
 ```
 
-安装的run包可以通过如下命令查看版本（此处以默认安装路径为例）
+>A2环境使用DRAM池化需要根据每台机器池化内存的大小来配置大页内存，否则初始化失败
+>
+>检查是否配置大页:
+>```grep Huge /proc/meminfo```
+>
+>配置大页内存，以配置1024个大页为例
+>
+>```echo 1024 > /proc/sys/vm/nr_hugepages```
 
-```
-root@localhost:/# cat /usr/local/memfabric_hybrid/latest/version.info
-Version:1.0.0
-Platform:aarch64
-Kernel:linux
-CommitId:034c71e58f1d70fe691644b2b18e0b8418c40b7a
-```
 
-安装的python包可以通过如下命令查看版本
-
-```text
-root@localhost:/# pip show memfabric_hybrid
-Name: memfabric_hybrid
-Version: 1.0.0
-Summary: python api for memfabric hybrid
-Home-page: https://gitcode.com/Ascend/memfabric_hybrid
-Author:
-Author-email:
-License: Mulan PSL v2
-Location: /usr/local/lib/python3.11/site-packages
-Requires:
-Required-by:
-```
-
-### whl包安装
-在安装过程中，会默认尝试安装适配当前环境的memfabric-hybrid的whl包，如果未安装，则在使用python接口前需要用户手动安装
-
-```bash
-# 检查是否安装memfabric_hybrid
-pip show memfabric_hybrid
-```
-
-1. 用已安装的run包目录下的whl包进行安装（此处以默认安装路径为例）
-```bash
-# 手动安装
-pip install /usr/local/memfabric_hybrid/latest/aarch64-linux/wheel/memfabric_hybrid-1.0.0-cp311-cp311-linux_aarch64.whl
-```
-2. whl包已发布到[pypi](https://pypi.org/project/memfabric-hybrid/#files)，可以直接进行在线安装
-```bash
-# 手动安装（这里以1.0.0版本为例）
-pip install memfabric_hybrid==1.0.0
-```
-
-whl包安装完成后，需要设置LD_LIBRARY_PATH环境变量
-```bash
-# 此处以python3.11为例
-export LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/memfabric_hybrid/lib/:$LD_LIBRARY_PATH
-```
-
-## 卸载软件包
-### 卸载run包
-执行run包安装路径（此处以默认安装路径为例）下的卸载脚本进行卸载。
+---
+**卸载 Run 包**
 ```bash
 bash /usr/local/memfabric_hybrid/latest/uninstall.sh
-```
-### 卸载whl包
-```bash
-pip uninstall memfabric_hybrid
+# 若为自定义路径，请替换为对应路径下的 uninstall.sh
 ```
