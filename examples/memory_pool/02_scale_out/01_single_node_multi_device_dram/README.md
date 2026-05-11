@@ -1,4 +1,4 @@
-# 01_single_node_multi_card_dram
+# 01_single_node_multi_device_dram
 
 ## 场景
 单机多卡组建 DRAM 大池，验证 rank 间地址可见与跨 rank 数据访问。
@@ -29,7 +29,7 @@
 ## 运行
 
 ```bash
-python3 01_single_node_multi_card_dram.py
+python3 01_single_node_multi_device_dram.py
 ```
 
 

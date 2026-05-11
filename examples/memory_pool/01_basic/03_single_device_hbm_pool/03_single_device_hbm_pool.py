@@ -65,7 +65,7 @@ def main():
             bm.uninitialize(DEVICE_ID)
         mf.uninitialize()
 
-    print("03_single_card_hbm_pool ok")
+    print("03_single_device_hbm_pool ok")
 
 
 if __name__ == "__main__":

@@ -183,8 +183,8 @@ def main_process():
                         choices=['device_rdma', 'device_sdma', 'host_rdma', 'host_urma', 'host_tcp'],
                         default='device_sdma', required=False)
     parser.add_argument('--world_size', type=int,
-                        help='Number of cards used by the entire cluster.', required=False, default=8)
-    parser.add_argument('--local_ranks', type=int, help='Number of cards used on the local node.',
+                        help='Number of devices used by the entire cluster.', required=False, default=8)
+    parser.add_argument('--local_ranks', type=int, help='Number of devices used on the local node.',
                         required=False, default=8)
     parser.add_argument('--rank_start', type=int, required=False, default=0,
                         help='Start value of the rank ID of the node. The value range of the rank ID of the node is'

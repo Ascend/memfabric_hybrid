@@ -46,7 +46,7 @@ def main():
         if bm_inited:
             bm.uninitialize(0)
         mf.uninitialize()
-    print("01_single_card_dram_pool ok")
+    print("01_single_device_dram_pool ok")
 
 
 if __name__ == "__main__":

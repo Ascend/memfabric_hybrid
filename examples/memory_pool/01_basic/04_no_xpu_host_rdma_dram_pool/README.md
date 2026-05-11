@@ -7,7 +7,7 @@
 验证在无卡部署形态下，DRAM 池能力可正常初始化、创建、访问与释放。
 
 ## 使用能力
-- 同 [01_single_card_dram_pool](../01_single_card_dram_pool/README.md)
+- 同 [01_single_device_dram_pool](../01_single_device_dram_pool/README.md)
 
 ## 协议与配置要点
 - `create2` 的 data_op_type 选择 HOST_RDMA 协议。

@@ -7,7 +7,7 @@ LOCAL_DRAM_SIZE = 2 << 30  # 2GB, adjust this parameter to control the allocated
 
 
 def main():
-    print("Starting single card DRAM configurable pool test")
+    print("Starting single device DRAM configurable pool test")
     assert mf.initialize() == 0, "mf.initialize failed"
     bm_status = False
     try:
@@ -42,7 +42,7 @@ def main():
         if bm_status:
             bm.uninitialize(0)
         mf.uninitialize()
-    print(f"✓ Single card DRAM configurable pool test PASSED, local_dram_size: {LOCAL_DRAM_SIZE}")
+    print(f"✓ Single device DRAM configurable pool test PASSED, local_dram_size: {LOCAL_DRAM_SIZE}")
     return 0
 
 

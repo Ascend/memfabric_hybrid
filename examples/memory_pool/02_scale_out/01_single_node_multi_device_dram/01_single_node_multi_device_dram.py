@@ -113,7 +113,7 @@ def main():
 
     if p0.exitcode != 0 or p1.exitcode != 0:
         raise RuntimeError(f"child rank failed: p0.exitcode={p0.exitcode}, p1.exitcode={p1.exitcode}")
-    print("(4/4) 01_single_node_multi_card_dram: all ranks OK", flush=True)
+    print("(4/4) 01_single_node_multi_device_dram: all ranks OK", flush=True)
 
 
 if __name__ == "__main__":

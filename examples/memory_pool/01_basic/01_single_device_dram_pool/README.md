@@ -1,4 +1,4 @@
-# 01_single_card_dram_pool
+# 01_single_device_dram_pool
 
 ## 场景
 单机单卡最小闭环：通过 create2 创建 DEVICE_RDMA 的一定容量的 DRAM 池，完成一次写入与读回校验。
@@ -32,10 +32,10 @@
 依赖：已安装 **`memfabric_hybrid`**。
 
 ```bash
-cd examples/memory_pool/01_basic/01_single_card_dram_pool
-python3 01_single_card_dram_pool.py
+cd examples/memory_pool/01_basic/01_single_device_dram_pool
+python3 01_single_device_dram_pool.py
 ```
 
-成功时打印 `01_single_card_dram_pool ok`。
+成功时打印 `01_single_device_dram_pool ok`。
 
 ## Q&A

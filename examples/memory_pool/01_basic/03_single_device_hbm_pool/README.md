@@ -1,4 +1,4 @@
-# 03_single_card_hbm_pool
+# 03_single_device_hbm_pool
 
 ## 场景
 在样例 01 的流程不变前提下，将池类型从 DRAM 切换为 HBM。
@@ -7,7 +7,7 @@
 验证内存池的 HBM 池化能力可用，并建立 DRAM/HBM 两条基础基线。
 
 ## 使用能力
-- 同 [01_single_card_dram_pool](../01_single_card_dram_pool/README.md)
+- 同 [01_single_device_dram_pool](../01_single_device_dram_pool/README.md)
 
 ## 规模建议
 - world_size=1

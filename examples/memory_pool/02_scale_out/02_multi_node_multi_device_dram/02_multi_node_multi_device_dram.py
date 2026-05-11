@@ -112,7 +112,7 @@ def _run_rank1(head_node_ip: str) -> None:
         assert torch.equal(got, exp), "data mismatch"
 
         print("[rank 1] G2H verify OK; leaving", flush=True)
-        print("[rank 1] 02_multi_node_multi_card_dram OK", flush=True)
+        print("[rank 1] 02_multi_node_multi_device_dram OK", flush=True)
         assert handle.leave() == 0, "leave"
         assert mf.get_last_err_msg() == "", mf.get_last_err_msg()
         handle.destroy()
@@ -124,7 +124,7 @@ def _run_rank1(head_node_ip: str) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2 or sys.argv[1] not in ("0", "1"):
-        raise RuntimeError("usage: python3 02_multi_node_multi_card_dram.py <0|1> [head_ip]")
+        raise RuntimeError("usage: python3 02_multi_node_multi_device_dram.py <0|1> [head_ip]")
     head_ip = (sys.argv[2] if len(sys.argv) > 2 else input("Head node IP: ")).strip()
     if not head_ip:
         raise RuntimeError("head node IP required")

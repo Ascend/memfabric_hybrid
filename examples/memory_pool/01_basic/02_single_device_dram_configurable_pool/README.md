@@ -1,4 +1,4 @@
-# 02_single_card_dram_configurable_pool
+# 02_single_device_dram_configurable_pool
 
 ## 场景
 在样例 01 基础上增加复杂度：同样是单机单卡 DRAM 池，但容量可调（本地容量与上限分离）。
@@ -7,7 +7,7 @@
 验证不同容量档位下内存池创建与访问行为一致。
 
 ## 使用能力
-- 同 [01_single_card_dram_pool](../01_single_card_dram_pool/README.md)
+- 同 [01_single_device_dram_pool](../01_single_device_dram_pool/README.md)
 
 ## 规模建议
 - world_size=1
