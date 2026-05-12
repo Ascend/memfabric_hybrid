@@ -20,6 +20,7 @@
 #include "zbal_comm_host_device_struct.h"
 #include "zbal_kernel_allgather.h"
 
+using namespace zbal;
 const uint32_t SMALL_AG_THRESHOLD = 1024 * 7168;
 const uint32_t FULL_COPY_GROUP_SIZE = 4;
 

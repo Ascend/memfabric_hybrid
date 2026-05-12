@@ -18,11 +18,12 @@ See the Mulan PSL v2 for more details.
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 namespace MoeNotifyDispatch {
 using namespace AscendC;
 using namespace Moe;
+using namespace zbal;
 
 template<AscendC::HardEvent event>
 ZBAL_KERNEL void SyncFunc()
@@ -178,8 +179,8 @@ private:
     GM_ADDR balanceMatrix_;
     float factorHigh{1.2};
     float factorLow{1.0};
-    int32_t bsPerRank[MAX_RANK_SIZE];       // 记录每个rank上的bs, size=epWorldSize_
-    int32_t processCapacity[MAX_RANK_SIZE]; // 记录每个rank的剩余处理能力, size=epWorldSize_
+    int32_t bsPerRank[ZBAL_MAX_RANK_SIZE];       // 记录每个rank上的bs, size=epWorldSize_
+    int32_t processCapacity[ZBAL_MAX_RANK_SIZE]; // 记录每个rank的剩余处理能力, size=epWorldSize_
 
     GM_ADDR gva_gm;
     __gm__ CommGroupInfo *comm;
@@ -190,7 +191,7 @@ private:
     uint64_t stateOffset_ = 0;
     uint64_t flagOffset_ = 0;
     // List of asymmetric output addresses (tokenPerExpertData_)
-    uint64_t shareTokenPerExpertAddrs[MAX_RANK_SIZE];
+    uint64_t shareTokenPerExpertAddrs[ZBAL_MAX_RANK_SIZE];
     uint32_t shareAddrNum{1};
 
     ZBAL_KERNEL void SplitCoreCal(uint32_t totalNum, uint32_t &perCoreNum, uint32_t &startIdx, uint32_t &endIdx)

@@ -16,11 +16,11 @@
 #include <acl/acl_rt.h>
 #include "kernel_operator.h"
 #include "zbal_def.h"
+#include "zbal_defines.h"
 #include "zbal_kernel_utils.h"
 #include "zbal_kernel_trace.h"
 
-constexpr uint16_t ZBAL_ALLTOALL_MAX_RANKS = 384;
-constexpr uint16_t ZBAL_LT_OFF3 = 3;
+using namespace zbal;
 
 class AlltoAllKernel {
 public:
@@ -78,7 +78,7 @@ public:
     ZBAL_KERNEL void WaitFlag(const int64_t offset)
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, ZBAL_LT_OFF3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
         WaitMetaValue(this->flagAddr, offset, waitSymbol, groupSize, buf);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
@@ -138,8 +138,8 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
 
         if (AscendC::GetBlockIdx() == 0) {
-            uint64_t cumsum[ZBAL_ALLTOALL_MAX_RANKS];
-            uint32_t statBase[ZBAL_ALLTOALL_MAX_RANKS];
+            uint64_t cumsum[ZBAL_MAX_RANK_SIZE];
+            uint32_t statBase[ZBAL_MAX_RANK_SIZE];
             AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
             for (uint16_t i = 0; i < groupSize; i++) {
                 statBase[i] = 1;
@@ -176,7 +176,7 @@ public:
             AscendC::PipeBarrier<PIPE_ALL>();
         }
 
-        AscendC::LocalTensor<uint64_t> buf2(AscendC::TPosition::VECIN, ZBAL_LT_OFF3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf2(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
         WaitMetaValue(this->localStatReadyAddr, 0, waitSymbol, groupSize, buf2);
 
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
@@ -391,7 +391,7 @@ private:
     __gm__ CommGroupInfo *comm;
     __gm__ uint16_t *peerRank;
     uint64_t waitSymbol;
-    uint32_t copyElements[ZBAL_ALLTOALL_MAX_RANKS];
+    uint32_t copyElements[ZBAL_MAX_RANK_SIZE];
 };
 
 extern "C" __global__ __aicore__ void ZBALAlltoAllInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataType,

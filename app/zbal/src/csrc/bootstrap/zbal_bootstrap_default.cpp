@@ -63,13 +63,13 @@ ZResult Bootstrap::VerifyOptions() noexcept
     ZBAL_VALIDATE_RETURN(0 <= options_.btType && options_.btType < BOOT_BY_BUTT,
                          "invalid option, bootstrapType is invalid", Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(options_.ipPort != nullptr, "invalid option, ipPort is nullptr", Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(options_.worldSize <= RANK_COUNT_MAX_LIMIT, "invalid option, worldSize too large",
+    ZBAL_VALIDATE_RETURN(options_.worldSize <= ZBAL_RANK_COUNT_MAX_LIMIT, "invalid option, worldSize too large",
                          Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(options_.rankId < options_.worldSize, "invalid option, rankId should be less than worldSize",
                          Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(options_.deviceId < DEVICE_COUNT_MAX_LIMIT, "invalid option, deviceId is incorrect",
+    ZBAL_VALIDATE_RETURN(options_.deviceId < ZBAL_DEVICE_COUNT_MAX_LIMIT, "invalid option, deviceId is incorrect",
                          Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(options_.deviceMemorySize < MEMORY_SIZE_CAP, "invalid options, memory size is too large",
+    ZBAL_VALIDATE_RETURN(options_.deviceMemorySize < ZBAL_MEMORY_SIZE_CAP, "invalid options, memory size is too large",
                          Z_INVALID_PARAM);
 
     if (options_.commGroupCap >= COMM_GROUP_COUNT_CAP_MAX) {
@@ -77,12 +77,13 @@ ZResult Bootstrap::VerifyOptions() noexcept
         return Z_INVALID_PARAM;
     }
 
-    if (static_cast<uint64_t>(options_.commGroupCap) * options_.commMetaSpaceSize * 1024 >= options_.deviceMemorySize) {
+    if (static_cast<uint64_t>(options_.commGroupCap) * options_.commMetaSpaceSize * ZBAL_CONST_1024 >=
+        options_.deviceMemorySize) {
         ZBAL_LOG_ERROR("total meta space size is GE total device memory size.");
         return Z_INVALID_PARAM;
     }
 
-    if (options_.commMetaSpaceSize * 1024 <= OPERATE_PARAM_SIZE) {
+    if (options_.commMetaSpaceSize * ZBAL_CONST_1024 <= ZBAL_OPERATE_PARAM_SIZE) {
         ZBAL_LOG_ERROR("single meta space size is too small");
         return Z_INVALID_PARAM;
     }

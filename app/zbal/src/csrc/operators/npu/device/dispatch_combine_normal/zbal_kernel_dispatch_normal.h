@@ -16,11 +16,12 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 namespace MoeDispatchNormal {
 using namespace AscendC;
 using namespace Moe;
+using namespace zbal;
 
 constexpr uint8_t BUFFER_NUM = 2;
 constexpr uint64_t DISPATCH_STATUS_OFFSET = 20UL * 1024UL;
@@ -151,17 +152,17 @@ private:
     uint64_t stateOffset_ = 0;
     uint64_t flagOffset_ = 0;
     // List of asymmetric output addresses (XInGM_)
-    uint64_t shareXInAddrs[MAX_RANK_SIZE];
+    uint64_t shareXInAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (expertIdsGM_)
-    uint64_t shareExpertIdsAddrs[MAX_RANK_SIZE];
+    uint64_t shareExpertIdsAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (sendTokenIdxGM_)
-    uint64_t shareSendTokenIdxAddrs[MAX_RANK_SIZE];
+    uint64_t shareSendTokenIdxAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (putOffsetGM_)
-    uint64_t sharePutOffsetAddrs[MAX_RANK_SIZE];
+    uint64_t sharePutOffsetAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (expandXOut_)
-    uint64_t shareExpandXOutAddrs[MAX_RANK_SIZE];
+    uint64_t shareExpandXOutAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (dynamicScalesOut_)
-    uint64_t shareDynamicScaleAddrs[MAX_RANK_SIZE];
+    uint64_t shareDynamicScaleAddrs[ZBAL_MAX_RANK_SIZE];
     uint32_t shareAddrNum{6};
 };
 

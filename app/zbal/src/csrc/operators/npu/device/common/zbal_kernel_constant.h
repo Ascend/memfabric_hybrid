@@ -13,8 +13,10 @@ See the Mulan PSL v2 for more details.
 #ifndef ZBAL_KERNEL_COMM_ARGS_H
 #define ZBAL_KERNEL_COMM_ARGS_H
 
+#include "zbal_defines.h"
+
 namespace Moe {
-constexpr int MAX_RANK_SIZE = 384;
+
 constexpr int PING_PONG_SIZE = 2;
 constexpr int UB_ALIGN = 32;
 constexpr uint32_t STATE_OFFSET = 32U;
@@ -28,8 +30,11 @@ enum MetaType : int { STATE = 0, ADDR = 1, FLAG = 2 };
 constexpr uint64_t KB_SIZE = 1024UL;
 constexpr uint64_t META_FLAG_R_OFFSET = 50 * KB_SIZE;
 
-constexpr uint64_t CYCLE_TO_TIME = 50; // cycle num is converted into a fixed base unit of time, set at 50
+// cycle num is converted into a fixed base unit of time, set at 50
+constexpr uint64_t CYCLE_TO_TIME = zbal::ZBAL_CYCLE_UNIT;
+
 constexpr uint64_t TIMEOUT_DETECTION_THRESHOLD = 5000000000UL;
+
 } // namespace Moe
 
 #endif // ZBAL_KERNEL_UTILS_H

@@ -23,7 +23,6 @@
 #define ZBAL_PROFILING_DEVICE_TRACE_OFF 16
 #define ZBAL_PROFILING_FRAME_SHIFT      56
 #define ZBAL_PROFILING_BE_SHIFT         62
-#define ZBAL_PROFILING_CYCLE_UNIT       50
 
 enum zbal_profiling_name_t : uint16_t {
     ZBAL_PROF_UNKNOWN = 0,

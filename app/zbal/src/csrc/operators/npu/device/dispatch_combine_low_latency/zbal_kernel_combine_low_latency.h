@@ -15,10 +15,11 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 using namespace AscendC;
 using namespace Moe;
+using namespace zbal;
 
 constexpr int ZBAL_META_OFF = 334;
 
@@ -127,7 +128,7 @@ private:
     uint64_t metaSize_{0};
     uint64_t flagOffset_{0};
     uint32_t shareAddrNum{1};
-    uint64_t shareExpandXAddrs[MAX_RANK_SIZE];
+    uint64_t shareExpandXAddrs[ZBAL_MAX_RANK_SIZE];
     GM_ADDR expandXGM_;
 
     LocalTensor<XType> winTpSendCountTensor_;

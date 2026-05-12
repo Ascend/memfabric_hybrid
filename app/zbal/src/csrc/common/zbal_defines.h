@@ -54,11 +54,23 @@ enum ZResultErrorCode : ZResult {
 
 #define USE_GITCODE_SHMEM
 
-constexpr uint32_t PATH_MAX_LIMIT = 4096;
-constexpr uint32_t RANK_COUNT_MAX_LIMIT = 1024;
-constexpr uint32_t DEVICE_COUNT_MAX_LIMIT = 32;
-constexpr uint64_t MEMORY_SIZE_CAP = 274877906944;  /* 256GB */
-constexpr uint64_t OPERATE_PARAM_SIZE = 64 * 1024L; /* 64KB */
+constexpr uint32_t ZBAL_CONST_1 = 1;
+constexpr uint32_t ZBAL_CONST_2 = 2;
+constexpr uint32_t ZBAL_CONST_3 = 3;
+constexpr uint32_t ZBAL_CONST_4 = 4;
+constexpr uint32_t ZBAL_CONST_5 = 5;
+constexpr uint32_t ZBAL_CONST_6 = 6;
+constexpr uint32_t ZBAL_CONST_7 = 7;
+constexpr uint32_t ZBAL_CONST_1024 = 1024;
+
+constexpr uint32_t ZBAL_CYCLE_UNIT = 50;
+constexpr uint32_t ZBAL_MAX_RANK_SIZE = 384;
+
+constexpr uint32_t ZBAL_PATH_MAX_LIMIT = 4096;
+constexpr uint32_t ZBAL_RANK_COUNT_MAX_LIMIT = 1024;
+constexpr uint32_t ZBAL_DEVICE_COUNT_MAX_LIMIT = 32;
+constexpr uint64_t ZBAL_MEMORY_SIZE_CAP = 274877906944;  /* 256GB */
+constexpr uint64_t ZBAL_OPERATE_PARAM_SIZE = 64 * 1024L; /* 64KB */
 
 #ifndef LIKELY
 #define LIKELY(x) (__builtin_expect(!!(x), 1) != 0)
