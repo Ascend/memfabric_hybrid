@@ -21,7 +21,6 @@ from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
 torch_npu.npu.config.allow_internal_format = True
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 
 

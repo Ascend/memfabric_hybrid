@@ -15,10 +15,11 @@
 
 using namespace AscendC;
 
-extern "C" __global__ __aicore__ void combine_low_latency(int64_t fftsAddr, GM_ADDR metaAddr,
-    GM_ADDR expandX, GM_ADDR expertIds, GM_ADDR expandIdx, GM_ADDR epSendCount, GM_ADDR scales,
-    GM_ADDR XOut, uint32_t rank, uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK,
-    uint32_t srcDataType, uint32_t dstDataType)
+extern "C" __global__ __aicore__ void combine_low_latency(int64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR expandX,
+                                                          GM_ADDR expertIds, GM_ADDR expandIdx, GM_ADDR epSendCount,
+                                                          GM_ADDR scales, GM_ADDR XOut, uint32_t rank,
+                                                          uint32_t numExperts, uint32_t bs, uint32_t hidden,
+                                                          uint32_t topK, uint32_t srcDataType, uint32_t dstDataType)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -26,19 +27,18 @@ extern "C" __global__ __aicore__ void combine_low_latency(int64_t fftsAddr, GM_A
 
     if (srcDataType == ZBAL_DATA_TYPE_BFP16) {
         MoeCombineLowLatency::CombineLowLatency<bfloat16_t, bfloat16_t, int32_t, true, false> op;
-        op.Init(metaAddr, expandX, expertIds, expandIdx, epSendCount, scales, XOut,
-                rank, numExperts, bs, hidden, topK, &pipe);
+        op.Init(metaAddr, expandX, expertIds, expandIdx, epSendCount, scales, XOut, rank, numExperts, bs, hidden, topK,
+                &pipe);
         op.Process();
         return;
     } else if (srcDataType == ZBAL_DATA_TYPE_FP16) {
         MoeCombineLowLatency::CombineLowLatency<float16_t, float16_t, int32_t, true, false> op;
-        op.Init(metaAddr, expandX, expertIds, expandIdx, epSendCount, scales, XOut,
-                rank, numExperts, bs, hidden, topK, &pipe);
+        op.Init(metaAddr, expandX, expertIds, expandIdx, epSendCount, scales, XOut, rank, numExperts, bs, hidden, topK,
+                &pipe);
         op.Process();
         return;
     }
 }
-
 
 int32_t ZBALOpCombineLowLatency(const zbal_tensor_info_t *expandX, const zbal_tensor_info_t *expertIds,
                                 const zbal_tensor_info_t *expandIdx, const zbal_tensor_info_t *epSendCount,
@@ -70,8 +70,8 @@ int32_t ZBALOpCombineLowLatency(const zbal_tensor_info_t *expandX, const zbal_te
     GM_ADDR XOutAddr = reinterpret_cast<uint8_t *>(XOut->data);
 
     // launch kernel
-    combine_low_latency<<<blockDim, nullptr, stream>>>(fftsAddr, metaAddr,
-        expandXAddr, expertIdsAddr, expandIdxAddr, epSendCountsAddr, scalesAddr,
-        XOutAddr, rank, numExperts, bs, hidden, topK, srcDataType, dstDataType);
+    combine_low_latency<<<blockDim, nullptr, stream>>>(fftsAddr, metaAddr, expandXAddr, expertIdsAddr, expandIdxAddr,
+                                                       epSendCountsAddr, scalesAddr, XOutAddr, rank, numExperts, bs,
+                                                       hidden, topK, srcDataType, dstDataType);
     return 0;
 }

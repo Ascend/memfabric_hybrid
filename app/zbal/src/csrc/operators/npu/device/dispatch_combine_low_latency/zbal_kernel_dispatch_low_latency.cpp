@@ -16,13 +16,12 @@
 
 using namespace AscendC;
 
-extern "C" __global__ __aicore__
-void dispatch_low_latency(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR x, GM_ADDR expertIds,
-                          GM_ADDR expandXOut, GM_ADDR dynamicScalesOut, GM_ADDR expandIdxOut,
-                          GM_ADDR expertTokenNumsOut,
-                          GM_ADDR epSendCountsOut, GM_ADDR putOffset, GM_ADDR putOffsetStatus, uint32_t rank,
-                          uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, uint32_t quantMode,
-                          int64_t magicVal, uint32_t srcDataType, uint32_t dstDataType)
+extern "C" __global__ __aicore__ void
+dispatch_low_latency(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR x, GM_ADDR expertIds, GM_ADDR expandXOut,
+                     GM_ADDR dynamicScalesOut, GM_ADDR expandIdxOut, GM_ADDR expertTokenNumsOut,
+                     GM_ADDR epSendCountsOut, GM_ADDR putOffset, GM_ADDR putOffsetStatus, uint32_t rank,
+                     uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, uint32_t quantMode,
+                     int64_t magicVal, uint32_t srcDataType, uint32_t dstDataType)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -30,47 +29,42 @@ void dispatch_low_latency(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR x, GM_ADD
     if (dstDataType == ZBAL_DATA_TYPE_BFP16 || dstDataType == ZBAL_DATA_TYPE_FP16) {
         if (srcDataType == ZBAL_DATA_TYPE_BFP16 && quantMode == NO_QUANT) {
             MoeDispatchLowLatency::DispatchLowLatency<bfloat16_t, bfloat16_t, false, false, false, false> op;
-            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut,
-                expertTokenNumsOut, epSendCountsOut,
-                putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
+            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut, expertTokenNumsOut,
+                    epSendCountsOut, putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
             op.Process();
             return;
         } else if (srcDataType == ZBAL_DATA_TYPE_FP16 && quantMode == NO_QUANT) {
             MoeDispatchLowLatency::DispatchLowLatency<float16_t, float16_t, false, false, false, false> op;
-            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut,
-                expertTokenNumsOut, epSendCountsOut,
-                putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
+            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut, expertTokenNumsOut,
+                    epSendCountsOut, putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
             op.Process();
             return;
         }
     } else if (dstDataType == ZBAL_DATA_TYPE_INT8) {
         if (srcDataType == ZBAL_DATA_TYPE_BFP16 && quantMode == QUANT_BF16_2_INT8) {
             MoeDispatchLowLatency::DispatchLowLatency<bfloat16_t, int8_t, false, true, false, false> op;
-            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut,
-                expertTokenNumsOut, epSendCountsOut,
-                putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
+            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut, expertTokenNumsOut,
+                    epSendCountsOut, putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
             op.Process();
             return;
         } else if (srcDataType == ZBAL_DATA_TYPE_FP16 && quantMode == QUANT_BF16_2_INT8) {
             MoeDispatchLowLatency::DispatchLowLatency<float16_t, int8_t, false, true, false, false> op;
-            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut,
-                expertTokenNumsOut, epSendCountsOut,
-                putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
+            op.Init(metaAddr, x, expertIds, expandXOut, dynamicScalesOut, expandIdxOut, expertTokenNumsOut,
+                    epSendCountsOut, putOffset, putOffsetStatus, rank, numExperts, bs, hidden, topK, magicVal, &pipe);
             op.Process();
             return;
         }
     }
 }
 
-int32_t ZBALOpDispatchLowLatency(const zbal_tensor_info_t *x, const zbal_tensor_info_t *expertIds,
-                                 int64_t moeExpertNum, int64_t sharedExpertNum, int64_t sharedExpertRankNum,
-                                 int64_t quantMode, int64_t globalBs, int64_t magicVal, int64_t expertTokenNumsType,
+int32_t ZBALOpDispatchLowLatency(const zbal_tensor_info_t *x, const zbal_tensor_info_t *expertIds, int64_t moeExpertNum,
+                                 int64_t sharedExpertNum, int64_t sharedExpertRankNum, int64_t quantMode,
+                                 int64_t globalBs, int64_t magicVal, int64_t expertTokenNumsType,
                                  const zbal_tensor_info_t *expandXOut, const zbal_tensor_info_t *dynamicScalesOut,
-                                 const zbal_tensor_info_t *expandIdxOut,
-                                 const zbal_tensor_info_t *expertTokenNumsOut,
+                                 const zbal_tensor_info_t *expandIdxOut, const zbal_tensor_info_t *expertTokenNumsOut,
                                  const zbal_tensor_info_t *epRecvCountsOut, const zbal_tensor_info_t *putOffset,
-                                 const zbal_tensor_info_t *putOffsetStatus,
-                                 aclrtStream stream, const CommGroupInfo &groupInfo, int64_t flags)
+                                 const zbal_tensor_info_t *putOffsetStatus, aclrtStream stream,
+                                 const CommGroupInfo &groupInfo, int64_t flags)
 {
     uint32_t blockDim = 0;
     auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &blockDim);
@@ -102,10 +96,10 @@ int32_t ZBALOpDispatchLowLatency(const zbal_tensor_info_t *x, const zbal_tensor_
     GM_ADDR putOffsetStatusAddr = reinterpret_cast<uint8_t *>(putOffsetStatus->data);
 
     // launch kernel
-    dispatch_low_latency<<<blockDim, nullptr, stream>>>(fftsAddr, metaAddr, xAddr, expertIdsAddr,
-        expandXOutAddr, dynamicScalesOutAddr, expandIdxOutAddr, expertTokenNumsOutAddr, epSendCountsOutAddr,
-        putOffsetAddr,
-        putOffsetStatusAddr, rank, numExperts, bs, hidden, topK, quantMode, magicVal, srcDataType, dstDataType);
+    dispatch_low_latency<<<blockDim, nullptr, stream>>>(
+        fftsAddr, metaAddr, xAddr, expertIdsAddr, expandXOutAddr, dynamicScalesOutAddr, expandIdxOutAddr,
+        expertTokenNumsOutAddr, epSendCountsOutAddr, putOffsetAddr, putOffsetStatusAddr, rank, numExperts, bs, hidden,
+        topK, quantMode, magicVal, srcDataType, dstDataType);
 
     return 0;
 }

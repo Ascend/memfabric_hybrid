@@ -117,11 +117,8 @@ public:
         std::string groupId;
     };
 
-    ProcessGroupZBAL(
-        const c10::intrusive_ptr<c10d::Store>& store,
-        int rank,
-        int size,
-        c10::intrusive_ptr<Options> options = Options::create());
+    ProcessGroupZBAL(const c10::intrusive_ptr<c10d::Store> &store, int rank, int size,
+                     c10::intrusive_ptr<Options> options = Options::create());
 
     ~ProcessGroupZBAL() override;
 
@@ -143,8 +140,8 @@ public:
     c10::intrusive_ptr<c10d::Work> broadcast(std::vector<at::Tensor> &tensors,
                                              const c10d::BroadcastOptions &opts = c10d::BroadcastOptions()) override;
 
-    c10::intrusive_ptr<c10d::Work> scatter(std::vector<at::Tensor>& outputTensors,
-                                           std::vector<std::vector<at::Tensor>>& inputTensors,
+    c10::intrusive_ptr<c10d::Work> scatter(std::vector<at::Tensor> &outputTensors,
+                                           std::vector<std::vector<at::Tensor>> &inputTensors,
                                            const c10d::ScatterOptions &opts = c10d::ScatterOptions()) override;
 
     c10::intrusive_ptr<c10d::Work> reduce_scatter(std::vector<at::Tensor> &outputTensors,
@@ -154,15 +151,15 @@ public:
     c10::intrusive_ptr<c10d::Work> _reduce_scatter_base(at::Tensor &output, at::Tensor &input,
                                                         const RSOptions &opts = RSOptions()) override;
 
-    c10::intrusive_ptr<c10d::Work> barrier(const c10d::BarrierOptions& opts = c10d::BarrierOptions()) override;
+    c10::intrusive_ptr<c10d::Work> barrier(const c10d::BarrierOptions &opts = c10d::BarrierOptions()) override;
 
     c10::intrusive_ptr<c10d::Work> alltoall_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                  std::vector<int64_t> &outputSplits, std::vector<int64_t> &inputSplits,
                                                  const c10d::AllToAllOptions &opts = c10d::AllToAllOptions()) override;
 
-    c10::intrusive_ptr<c10d::Work> send(std::vector<at::Tensor>& tensors, int dstRank, int tag) override;
+    c10::intrusive_ptr<c10d::Work> send(std::vector<at::Tensor> &tensors, int dstRank, int tag) override;
 
-    c10::intrusive_ptr<c10d::Work> recv(std::vector<at::Tensor>& tensors, int srcRank, int tag) override;
+    c10::intrusive_ptr<c10d::Work> recv(std::vector<at::Tensor> &tensors, int srcRank, int tag) override;
 
     std::string getZBALCommName() noexcept;
 
@@ -184,23 +181,13 @@ private:
     static std::atomic<uint64_t> groupCounter_;
 
 private:
-    template <typename Fn, typename PreProcess, typename PostProcess>
-    c10::intrusive_ptr<c10d::Work> collective(
-        std::vector<at::Tensor>& input,
-        std::vector<at::Tensor>& output,
-        Fn fn,
-        PreProcess pre,
-        PostProcess post,
-        c10d::OpType opType);
+    template<typename Fn, typename PreProcess, typename PostProcess>
+    c10::intrusive_ptr<c10d::Work> collective(std::vector<at::Tensor> &input, std::vector<at::Tensor> &output, Fn fn,
+                                              PreProcess pre, PostProcess post, c10d::OpType opType);
 
-    template <typename Fn, typename PreProcess, typename PostProcess>
-    c10::intrusive_ptr<c10d::Work> pointToPoint(
-        std::vector<at::Tensor>& tensor,
-        Fn fn,
-        int peer,
-        c10d::OpType opType,
-        PreProcess pre,
-        PostProcess post);
+    template<typename Fn, typename PreProcess, typename PostProcess>
+    c10::intrusive_ptr<c10d::Work> pointToPoint(std::vector<at::Tensor> &tensor, Fn fn, int peer, c10d::OpType opType,
+                                                PreProcess pre, PostProcess post);
 
     c10::intrusive_ptr<c10d::Work> alltoall_normal(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                    std::vector<int64_t> &outputSplits, std::vector<int64_t> &inSplits,
@@ -219,8 +206,8 @@ private:
     int32_t PrepareResources(const std::vector<at::Device> &devs) noexcept;
 };
 
-}  // namespace pytorch_npu
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace pytorch_npu
+} // namespace adaptor
+} // namespace zbal
 
-#endif  // ZBAL_PROCESS_GROUP_H
+#endif // ZBAL_PROCESS_GROUP_H

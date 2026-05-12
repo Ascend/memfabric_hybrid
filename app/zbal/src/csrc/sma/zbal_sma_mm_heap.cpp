@@ -153,15 +153,16 @@ void SplitMemoryHeap::removeFromFreeStructures(uintptr_t addr, uint64_t size)
     }
 }
 
-void* SplitMemoryHeap::allocateLowToHigh(int start_idx, uint64_t alignment, uint64_t req_size)
+void *SplitMemoryHeap::allocateLowToHigh(int start_idx, uint64_t alignment, uint64_t req_size)
 {
     // Iterate through buckets starting from the smallest possible size
     for (int i = start_idx; i < (int)size_buckets_.size(); ++i) {
-        auto& bucket = size_buckets_[i];
-        if (bucket.empty()) continue;
+        auto &bucket = size_buckets_[i];
+        if (bucket.empty())
+            continue;
 
         // Iterate: Low Address -> High Address
-        for (auto it = bucket.begin(); it != bucket.end(); ) {
+        for (auto it = bucket.begin(); it != bucket.end();) {
             uintptr_t addr = *it;
             auto next_it = std::next(it); // Safe iterator advancement
 
@@ -188,7 +189,7 @@ void* SplitMemoryHeap::allocateLowToHigh(int start_idx, uint64_t alignment, uint
                 }
 
                 // 3. Record allocation
-                void* ptr = reinterpret_cast<void*>(aligned_addr);
+                void *ptr = reinterpret_cast<void *>(aligned_addr);
                 allocated_records_[ptr] = req_size;
                 used_bytes_ += req_size;
                 return ptr;
@@ -200,14 +201,15 @@ void* SplitMemoryHeap::allocateLowToHigh(int start_idx, uint64_t alignment, uint
     return nullptr; // Out of memory
 }
 
-void* SplitMemoryHeap::allocateHighToLow(int start_idx, uint64_t alignment, uint64_t req_size)
+void *SplitMemoryHeap::allocateHighToLow(int start_idx, uint64_t alignment, uint64_t req_size)
 {
     for (int i = start_idx; i < (int)size_buckets_.size(); ++i) {
-        auto& bucket = size_buckets_[i];
-        if (bucket.empty()) continue;
+        auto &bucket = size_buckets_[i];
+        if (bucket.empty())
+            continue;
 
         // Reverse Iterate: High Address -> Low Address
-        for (auto it = bucket.rbegin(); it != bucket.rend(); ) {
+        for (auto it = bucket.rbegin(); it != bucket.rend();) {
             uintptr_t addr = *it;
             auto next_it = std::next(it); // Advances towards lower addresses
 
@@ -232,7 +234,7 @@ void* SplitMemoryHeap::allocateHighToLow(int start_idx, uint64_t alignment, uint
 
                 // 2. Upper padding is discarded in this implementation
 
-                void* ptr = reinterpret_cast<void*>(aligned_start);
+                void *ptr = reinterpret_cast<void *>(aligned_start);
                 allocated_records_[ptr] = req_size;
                 used_bytes_ += req_size;
                 return ptr;
@@ -276,15 +278,14 @@ void SplitMemoryHeap::coalesceAndInsert(uintptr_t addr, uint64_t size)
     addToFreeStructures(addr, size);
 }
 
-}  // namespace heap
-}  // namespace sma
-}  // namespace zbal
+} // namespace heap
+} // namespace sma
+} // namespace zbal
 
 namespace zbal {
 namespace sma {
 
-ZBAL_API int CustomHeapAlignedAllocate(void **devPtr, size_t size,
-                                       std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
+ZBAL_API int CustomHeapAlignedAllocate(void **devPtr, size_t size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
 {
     if (!symm_pool) {
         return Z_ERROR;
@@ -305,7 +306,7 @@ ZBAL_API int CustomHeapRelease(void *devPtr, std::shared_ptr<heap::CustomMemoryH
     return symm_pool->release(devPtr);
 }
 
-ZBAL_API int CustomGetTotalSize(size_t &size, std::shared_ptr <heap::CustomMemoryHeap> symm_pool)
+ZBAL_API int CustomGetTotalSize(size_t &size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
 {
     if (!symm_pool) {
         return Z_ERROR;
@@ -314,7 +315,7 @@ ZBAL_API int CustomGetTotalSize(size_t &size, std::shared_ptr <heap::CustomMemor
     return Z_OK;
 }
 
-ZBAL_API int CustomGetInUsedSize(size_t &size, std::shared_ptr <heap::CustomMemoryHeap> symm_pool)
+ZBAL_API int CustomGetInUsedSize(size_t &size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
 {
     if (!symm_pool) {
         return Z_ERROR;
@@ -323,5 +324,5 @@ ZBAL_API int CustomGetInUsedSize(size_t &size, std::shared_ptr <heap::CustomMemo
     return Z_OK;
 }
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal

@@ -46,6 +46,7 @@
 #include "zbal_pytorch_c10_dma.h"
 #include "zbal_pytorch_util.h"
 
+constexpr int ZBAL_DMA_NUM2 = 2;
 
 std::string format_size(uint64_t size)
 {
@@ -122,10 +123,7 @@ const std::string kMinDriverVersion = "25.0.RC1";     // minimum driver version 
 const std::string kCannModule = "CANN";               // cann module name
 
 static char SHAREABLE_HANDLE_VERSION = 1;
-enum ShareableHandleType : char {
-    SHAREABLE_NPU_MALLOC = 'c',
-    SHAREABLE_NPU_EXPANDABLE_SEGMENT = 'e'
-};
+enum ShareableHandleType : char { SHAREABLE_NPU_MALLOC = 'c', SHAREABLE_NPU_EXPANDABLE_SEGMENT = 'e' };
 
 using StatTypes = std::array<bool, static_cast<size_t>(StatType::NUM_TYPES)>;
 
@@ -152,7 +150,8 @@ void reset_peak_stat(Stat &stat)
     stat.peak = stat.current;
 }
 
-template <typename Func> void for_each_selected_stat_type(const StatTypes &stat_types, Func f)
+template<typename Func>
+void for_each_selected_stat_type(const StatTypes &stat_types, Func f)
 {
     for (const auto stat_type : c10::irange(stat_types.size())) {
         if (stat_types[stat_type]) {
@@ -163,8 +162,8 @@ template <typename Func> void for_each_selected_stat_type(const StatTypes &stat_
 
 void update_stat_array(StatArray &stat_array, int64_t amount, const StatTypes &stat_types)
 {
-    for_each_selected_stat_type(stat_types,
-        [&stat_array, amount](size_t stat_type) { update_stat(stat_array[stat_type], amount); });
+    for_each_selected_stat_type(
+        stat_types, [&stat_array, amount](size_t stat_type) { update_stat(stat_array[stat_type], amount); });
 }
 
 bool IsMallocPage1GMem(bool is_small_pool)
@@ -174,23 +173,6 @@ bool IsMallocPage1GMem(bool is_small_pool)
             return false;
         }
 
-        // if (!IsGteCANNVersion(kMinCannVersion, kCannModule)) {
-        //     TORCH_NPU_WARN_ONCE("The application for 1G large-page physical memory failed. "
-        //         "Using the HUGE_MEM memory page allocation method may result in performance degradation. "
-        //         "This warning occurs because the PYTORCH_NPU_ALLOC_CONF = page_size:1g configuration is enabled, "
-        //         "but the current driver version does not support this feature. "
-        //         "Please upgrade the CANN package version.");
-        //     return false;
-        // }
-        //
-        // if (!IsGteDriverVersion(kMinDriverVersion)) {
-        //     TORCH_NPU_WARN_ONCE("The application for 1G large-page physical memory failed. "
-        //         "Using the HUGE_MEM memory page allocation method may result in performance degradation. "
-        //         "This warning occurs because the PYTORCH_NPU_ALLOC_CONF = page_size:1g configuration is enabled, "
-        //         "but the current driver version does not support this feature. "
-        //         "Please upgrade the HDK(driver) package version.");
-        //     return false;
-        // }
         ASCEND_LOGW("The application for 1G large-page physical memory need manually confirm CANN & HDK version")
         return true;
     }();
@@ -213,9 +195,7 @@ struct BlockPool {
     std::vector<aclrtDrvMemHandle> free_physical_handles_;
 
     BlockPool(bool small, PrivatePool *private_pool = nullptr)
-        : blocks(BlockComparatorSize),
-          unmapped(BlockComparatorAddress),
-          is_small(small),
+        : blocks(BlockComparatorSize), unmapped(BlockComparatorAddress), is_small(small),
           owner_PrivatePool(private_pool)
     {}
 };
@@ -231,7 +211,7 @@ struct Block {
     BlockPool *pool;        // owning memory pool
     void *ptr;              // memory address
     bool allocated;         // in-use flag
-    bool mapped{ true };    // is the virtual address range this Block references
+    bool mapped{true};      // is the virtual address range this Block references
                             // backed by physical pages. Always true when
                             // expandable_segment_ is null. When false
                             // This Block will be aligned to the segment size
@@ -239,10 +219,10 @@ struct Block {
     Block *prev;            // prev block if split from a larger allocation
     Block *next;            // next block if split from a larger allocation
     int event_count;        // number of outstanding NPU events
-    int gc_count{ 0 };      // counter for prioritizing older / less useful blocks for
+    int gc_count{0};        // counter for prioritizing older / less useful blocks for
                             // garbage collection
-    ExpandableSegment *expandable_segment_{ nullptr };
-    bool is_safe{ true };
+    ExpandableSegment *expandable_segment_{nullptr};
+    bool is_safe{true};
     std::shared_ptr<c10::GatheredContext> context_when_allocated;
     // only set for the first block in the segment (when prev == null)
     // this records the frame information when aclMalloc was called
@@ -251,34 +231,14 @@ struct Block {
     std::shared_ptr<c10::GatheredContext> context_when_segment_allocated;
 
     Block(int device, aclrtStream stream, size_t size, BlockPool *pool, void *ptr)
-        : device(device),
-          stream(stream),
-          stream_uses(),
-          size(size),
-          requested_size(0),
-          pool(pool),
-          ptr(ptr),
-          allocated(0),
-          prev(nullptr),
-          next(nullptr),
-          event_count(0),
-          gc_count(0)
+        : device(device), stream(stream), stream_uses(), size(size), requested_size(0), pool(pool), ptr(ptr),
+          allocated(0), prev(nullptr), next(nullptr), event_count(0), gc_count(0)
     {}
 
     // constructor for search key
     Block(int device, aclrtStream stream, size_t size)
-        : device(device),
-          stream(stream),
-          stream_uses(),
-          size(size),
-          requested_size(0),
-          pool(nullptr),
-          ptr(nullptr),
-          allocated(0),
-          prev(nullptr),
-          next(nullptr),
-          event_count(0),
-          gc_count(0)
+        : device(device), stream(stream), stream_uses(), size(size), requested_size(0), pool(nullptr), ptr(nullptr),
+          allocated(0), prev(nullptr), next(nullptr), event_count(0), gc_count(0)
     {}
 
     bool is_split() const
@@ -306,7 +266,6 @@ struct SegmentRange {
     size_t size;
     SegmentRange(void *p, size_t s) : ptr(static_cast<char *>(p)), size(s) {}
 };
-
 
 /*
 Note [Expandable Segments]
@@ -385,14 +344,8 @@ bevhavior for allocator tensors that need to be used cross-process.
 */
 
 struct ExpandableSegment {
-    ExpandableSegment(
-        int device,
-        std::optional<aclrtStream> stream,
-        size_t size,
-        size_t handleNum = 0)
-        : device_(device),
-          stream_(stream),
-          max_handles_(handleNum * 2),
+    ExpandableSegment(int device, std::optional<aclrtStream> stream, size_t size, size_t handleNum = 0)
+        : device_(device), stream_(stream), max_handles_(handleNum * ZBAL_DMA_NUM2),
           // 2MB for small pool, 20MB for large pool
           segment_size_(size)
     {
@@ -417,10 +370,9 @@ struct ExpandableSegment {
             }
         }
 
-        NPU_CHECK_ERROR_MOCK(
-                DlCannApi::AclrtReserveMemAddress(&ptr_, segment_size_ * max_handles_, 0, nullptr, 1));
+        NPU_CHECK_ERROR_MOCK(DlCannApi::AclrtReserveMemAddress(&ptr_, segment_size_ * max_handles_, 0, nullptr, 1));
         ASCEND_LOGD("DirectMemoryAllocator malloc by AclrtReserveMemAddress: size=%zu, segment_size=%zu",
-            segment_size_ * max_handles_, segment_size_);
+                    segment_size_ * max_handles_, segment_size_);
     }
     // begin must be aligned to segment_size_.
     // returns the actual range mapped, which may be
@@ -469,8 +421,8 @@ struct ExpandableSegment {
             handles_.at(i) = Handle{handle, std::nullopt};
         }
         for (auto i : c10::irange(begin, end)) {
-            NPU_CHECK_ERROR_MOCK(aclrtMapMem((char *)ptr_ + i * segment_size_, segment_size_, 0,
-                handles_.at(i).value().handle, 0));
+            NPU_CHECK_ERROR_MOCK(
+                aclrtMapMem((char *)ptr_ + i * segment_size_, segment_size_, 0, handles_.at(i).value().handle, 0));
         }
         ASCEND_LOGD("DirectMemoryAllocator map: segment_size=%zu", segment_size_);
         return rangeFromHandles(begin, end);
@@ -484,7 +436,7 @@ struct ExpandableSegment {
         auto begin = segmentRight(range.ptr);
         auto end = segmentLeft(range.ptr + range.size);
         if (begin >= end) {
-            return SegmentRange{ range.ptr, 0 };
+            return SegmentRange{range.ptr, 0};
         }
         unmapHandles(begin, end, pool);
         return rangeFromHandles(begin, end);
@@ -495,55 +447,16 @@ struct ExpandableSegment {
     // Serializes data to std::ostream that can be passed to the
     // other process, and then restored as an exapandable segment
     // via ExpandableSegment::fromShared(istream);
-    SegmentRange share(SegmentRange range, std::ostream& buf)
+    SegmentRange share(SegmentRange range, std::ostream &buf)
     {
-        // auto begin = segmentLeft(range.ptr);
-        // auto end = segmentRight(range.ptr + range.size);
-        // ShareHeader header{segment_size_, end - begin};
-        // buf.write((const char*)&header, sizeof(ShareHeader));
-        // for (auto i : c10::irange(begin, end)) {
-        //     // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-        //     auto& handle = handles_.at(i).value();
-        //     if (!handle.shareableHandle) {
-        //         uint64_t shareableHandle = 0;
-        //         NPU_CHECK_ERROR_MOCK(aclrtMemExportToShareableHandle(
-        //             handle.handle, ACL_MEM_HANDLE_TYPE_NONE, ACL_RT_VMM_EXPORT_FLAG_DISABLE_PID_VALIDATION, &shareableHandle));
-        //         handle.shareableHandle = shareableHandle;
-        //     }
-        //     uint64_t shandle = *handle.shareableHandle;
-        //     buf.write((const char*)&shandle, sizeof(uint64_t));
-        // }
-        // return rangeFromHandles(begin, end);
         (void)range;
         (void)buf;
         ASCEND_LOGE("DirectMemoryAllocator do not support IPC memory");
         return rangeFromHandles(0, 0);
     }
 
-    static std::unique_ptr<ExpandableSegment> fromShared(
-        c10::DeviceIndex device,
-        std::istream& buf)
+    static std::unique_ptr<ExpandableSegment> fromShared(c10::DeviceIndex device, std::istream &buf)
     {
-        // ShareHeader header{};
-        // buf.read((char*)&header, sizeof(ShareHeader));
-        // auto segment = std::make_unique<ExpandableSegment>(
-        //     device,
-        //     std::nullopt,
-        //     header.segment_size,
-        //     header.num_handles);
-        // for (auto i : c10::irange(header.num_handles)) {
-        //     (void)i;
-        //     uint64_t shareableHandle = 0;
-        //     buf.read((char*)&shareableHandle, sizeof(uint64_t));
-        //
-        //     int32_t deviceId = static_cast<int32_t>(device);
-        //     aclrtDrvMemHandle handle;
-        //     NPU_CHECK_ERROR_MOCK(aclrtMemImportFromShareableHandle(
-        //         shareableHandle, deviceId, &handle));
-        //     segment->handles_.emplace_back(Handle{handle, shareableHandle});
-        // }
-        // segment->mapAndSetAccess(0, header.num_handles);
-        // return segment;
         (void)device;
         (void)buf;
         ASCEND_LOGE("DirectMemoryAllocator do not support IPC memory");
@@ -564,14 +477,6 @@ struct ExpandableSegment {
     {
         (void)hcclComm;
         ASCEND_LOGE("DirectMemoryAllocator do not support HCCL-Zero Buffer");
-        // TORCH_INTERNAL_ASSERT(hcclComm, "hcclComm is null.", PTA_ERROR_MOCK(ErrCode::INTERNAL));
-        // hcclComm_ = hcclComm;
-        // HCCL_CHECK_ERROR(at_npu::hccl::HcclCommSetMemoryRangeFace(hcclComm_->getHcclComm(), ptr_,
-        //     segment_size_ * max_handles_, 0, 1));
-        // for (auto i : c10::irange(handles_.size())) {
-        //     HCCL_CHECK_ERROR(at_npu::hccl::HcclCommActivateCommMemoryFace(hcclComm_->getHcclComm(),
-        //         (char *)ptr_ + i * segment_size_, segment_size_, 0, handles_.at(i).value().handle, 0));
-        // }
     }
 
     ~ExpandableSegment()
@@ -585,8 +490,8 @@ private:
     void mapAndSetAccess(size_t begin, size_t end)
     {
         for (auto i : c10::irange(begin, end)) {
-            NPU_CHECK_ERROR_MOCK(aclrtMapMem((char *)ptr_ + i * segment_size_, segment_size_, 0,
-                handles_.at(i).value().handle, 0));
+            NPU_CHECK_ERROR_MOCK(
+                aclrtMapMem((char *)ptr_ + i * segment_size_, segment_size_, 0, handles_.at(i).value().handle, 0));
         }
         ASCEND_LOGD("DirectMemoryAllocator mapAndSetAccess: segment_size=%zu", segment_size_);
     }
@@ -668,9 +573,6 @@ private:
 
     HcclComm getHcclComm()
     {
-        // if (hcclComm_) {
-        //    return hcclComm_->getHcclComm();
-        // }
         ASCEND_LOGE("DirectMemoryAllocator do not support HCCL-Zero Buffer");
         return nullptr;
     }
@@ -696,40 +598,38 @@ private:
 // needed to reconstruct a private pool to a previous state. See note
 // [Checkpointing PrivatePoolState]
 struct BlockState {
-  c10::DeviceIndex device = 0;
-  aclrtStream stream = nullptr;
-  stream_set stream_uses = {};
-  size_t size = 0;
-  void* ptr = nullptr;
-  bool allocated = false;
-  int64_t gc_count_base = 0;
-  // maintain invariant that event_count == 0 ;
-  // history will be left alone in checkpoint
+    c10::DeviceIndex device = 0;
+    aclrtStream stream = nullptr;
+    stream_set stream_uses = {};
+    size_t size = 0;
+    void *ptr = nullptr;
+    bool allocated = false;
+    int64_t gc_count_base = 0;
+    // maintain invariant that event_count == 0 ;
+    // history will be left alone in checkpoint
 
-  explicit BlockState(Block* block);
+    explicit BlockState(Block *block);
 };
 
 struct SegmentState {
-  std::vector<BlockState> blocks;
-  bool is_small = false;
+    std::vector<BlockState> blocks;
+    bool is_small = false;
 
-  explicit SegmentState(Block* head);
+    explicit SegmentState(Block *head);
 };
 
 struct PrivatePoolState : AllocatorState {
-  // omitting use_count, and aclMalloc_count as they remain the same
-  MempoolId_t owner_id = {0, 0};
+    // omitting use_count, and aclMalloc_count as they remain the same
+    MempoolId_t owner_id = {0, 0};
 
-  std::vector<SegmentState> segments;
+    std::vector<SegmentState> segments;
 
-  PrivatePoolState(
-      MempoolId_t pool_id,
-      const std::vector<Block*>& private_pool_head_blocks);
+    PrivatePoolState(MempoolId_t pool_id, const std::vector<Block *> &private_pool_head_blocks);
 };
 
 struct RestoreResult {
-  std::vector<void*> allocations_freed;
-  std::vector<Block*> allocations_created;
+    std::vector<void *> allocations_freed;
+    std::vector<Block *> allocations_created;
 };
 
 static bool BlockComparatorSize(const Block *a, const Block *b)
@@ -775,7 +675,7 @@ struct AllocParams {
     BlockPool *pool;
     size_t alloc_size;
     Block *block;
-    StatTypes stat_types = { false };
+    StatTypes stat_types = {false};
     aclError err;
 };
 
@@ -830,13 +730,13 @@ struct PrivatePool {
     PrivatePool() : large_blocks(false, this), small_blocks(true, this) {}
     PrivatePool(const PrivatePool &) = delete;
     PrivatePool(PrivatePool &&) = delete;
-    PrivatePool &operator = (const PrivatePool &) = delete;
+    PrivatePool &operator=(const PrivatePool &) = delete;
     // Number of live graphs using this pool
-    int use_count{ 1 };
+    int use_count{1};
     // Number of unfreed npuMallocs made for this pool. When use_count and
     // npuMalloc_count drop to zero, we can delete this PrivatePool from
     // graph_pools.
-    int npuMalloc_count{ 0 };
+    int npuMalloc_count{0};
     // Instead of maintaining private BlockPools here, I could stuff all blocks
     // (private or no) into the top-level large_blocks and small_blocks, and
     // distinguish private blocks by adding a "pool id" check above the stream
@@ -846,42 +746,35 @@ struct PrivatePool {
     BlockPool small_blocks;
 };
 
-BlockState::BlockState(Block* block)
-    : device(block->device),
-      stream(block->stream),
-      stream_uses(block->stream_uses),
-      size(block->size),
-      ptr(block->ptr),
-      allocated(block->allocated),
-      gc_count_base(block->gc_count) {
-  TORCH_CHECK(
-      block->event_count == 0,
-      "Events should have synchronized when checkpointing block", PTA_ERROR_MOCK(ErrCode::INTERNAL));
+BlockState::BlockState(Block *block)
+    : device(block->device), stream(block->stream), stream_uses(block->stream_uses), size(block->size), ptr(block->ptr),
+      allocated(block->allocated), gc_count_base(block->gc_count)
+{
+    TORCH_CHECK(block->event_count == 0, "Events should have synchronized when checkpointing block",
+                PTA_ERROR_MOCK(ErrCode::INTERNAL));
 };
 
-SegmentState::SegmentState(Block* head)
+SegmentState::SegmentState(Block *head)
 {
     TORCH_INTERNAL_ASSERT(head != nullptr, PTA_ERROR_MOCK(ErrCode::PTR));
     TORCH_INTERNAL_ASSERT(head->prev == nullptr && head->pool != nullptr);
     is_small = head->pool->is_small;
 
-    for (Block* curr = head; curr != nullptr; curr = curr->next) {
+    for (Block *curr = head; curr != nullptr; curr = curr->next) {
         blocks.emplace_back(curr);
     }
 }
 
-PrivatePoolState::PrivatePoolState(
-    MempoolId_t pool_id,
-    const std::vector<Block*>& private_pool_head_blocks)
+PrivatePoolState::PrivatePoolState(MempoolId_t pool_id, const std::vector<Block *> &private_pool_head_blocks)
     : owner_id(std::move(pool_id))
 {
-    for (Block* head : private_pool_head_blocks) {
+    for (Block *head : private_pool_head_blocks) {
         segments.emplace_back(head);
     }
 }
 
 struct MempoolIdHash {
-    std::size_t operator () (const MempoolId_t &mempool_id) const noexcept
+    std::size_t operator()(const MempoolId_t &mempool_id) const noexcept
     {
         return mempool_id.first != 0 ? mempool_id.first : mempool_id.second;
     }
@@ -943,11 +836,8 @@ private:
     size_t m_segment_size_mb;
 
     CachingAllocatorConfig()
-        : m_max_split_size(std::numeric_limits<size_t>::max()),
-          m_garbage_collection_threshold(0),
-          m_expandable_segments(false),
-          m_base_addr_aligned_size(kAlignRoundLarge),
-          m_segment_size_mb(0)
+        : m_max_split_size(std::numeric_limits<size_t>::max()), m_garbage_collection_threshold(0),
+          m_expandable_segments(false), m_base_addr_aligned_size(kAlignRoundLarge), m_segment_size_mb(0)
     {}
 
     void lexArgs(const char *env, std::vector<std::string> &config);
@@ -984,7 +874,7 @@ void CachingAllocatorConfig::lexArgs(const char *env, std::vector<std::string> &
 void CachingAllocatorConfig::consumeToken(const std::vector<std::string> &config, size_t i, const char c)
 {
     TORCH_CHECK(i < config.size() && config[i].compare(std::string(1, c)) == 0,
-        "Error parsing CachingAllocator settings, expected ", c, PTA_ERROR_MOCK(ErrCode::PARAM));
+                "Error parsing CachingAllocator settings, expected ", c, PTA_ERROR_MOCK(ErrCode::PARAM));
 }
 
 size_t CachingAllocatorConfig::parseMaxSplitSize(const std::vector<std::string> &config, size_t i)
@@ -993,8 +883,8 @@ size_t CachingAllocatorConfig::parseMaxSplitSize(const std::vector<std::string> 
     if (++i < config.size()) {
         size_t val1 = static_cast<size_t>(stoi(config[i]));
         TORCH_CHECK(val1 > kLargeBuffer / (1024 * 1024),
-            "CachingAllocator option max_split_size_mb too small, must be > ", kLargeBuffer / (1024 * 1024),
-            PTA_ERROR_MOCK(ErrCode::VALUE));
+                    "CachingAllocator option max_split_size_mb too small, must be > ", kLargeBuffer / (1024 * 1024),
+                    PTA_ERROR_MOCK(ErrCode::VALUE));
         val1 = std::max(val1, kLargeBuffer / (1024 * 1024));
         val1 = std::min(val1, (std::numeric_limits<size_t>::max() / (1024 * 1024)));
         m_max_split_size = val1 * 1024 * 1024;
@@ -1023,7 +913,7 @@ size_t CachingAllocatorConfig::parseExpandableSegments(const std::vector<std::st
     consumeToken(config, ++i, ':');
     if (++i < config.size()) {
         TORCH_CHECK(i < config.size() && (config[i] == "True" || config[i] == "False"),
-            "Expected a single True/False argument for expandable_segments", PTA_ERROR_MOCK(ErrCode::PARAM));
+                    "Expected a single True/False argument for expandable_segments", PTA_ERROR_MOCK(ErrCode::PARAM));
         m_expandable_segments = (config[i] == "True");
         if (m_expandable_segments) {
             void *ptr = nullptr;
@@ -1032,7 +922,6 @@ size_t CachingAllocatorConfig::parseExpandableSegments(const std::vector<std::st
                 NPU_CHECK_ERROR_MOCK(aclrtReleaseMemAddress(ptr));
             } else {
                 NPU_CHECK_ERROR_MOCK(status, "aclrtReserveMemAddress");
-                // TORCH_NPU_WARN_ONCE("expandable_segments setting failure, now change to `False`.");
                 m_expandable_segments = false;
             }
         }
@@ -1048,13 +937,13 @@ size_t CachingAllocatorConfig::parseAddrAlignSize(const std::vector<std::string>
     if (++i < config.size()) {
         int64_t val = static_cast<int64_t>(stoi(config[i]));
         TORCH_CHECK(config[i].length() == std::to_string(val).length(),
-            "CachingAllocator option base_addr_aligned_kb error, must be [0~16], dtype is int",
-            OPS_ERROR_MOCK(ErrCode::VALUE));
+                    "CachingAllocator option base_addr_aligned_kb error, must be [0~16], dtype is int",
+                    OPS_ERROR_MOCK(ErrCode::VALUE));
         TORCH_CHECK(val >= 0, "CachingAllocator option base_addr_aligned_kb error, must be [0~16], dtype is int",
-            OPS_ERROR_MOCK(ErrCode::VALUE));
+                    OPS_ERROR_MOCK(ErrCode::VALUE));
         TORCH_CHECK(val <= static_cast<int64_t>(kAlignRoundLarge / 1024),
-            "CachingAllocator option base_addr_aligned_kb error, must be [0~16], dtype is int",
-            OPS_ERROR_MOCK(ErrCode::VALUE));
+                    "CachingAllocator option base_addr_aligned_kb error, must be [0~16], dtype is int",
+                    OPS_ERROR_MOCK(ErrCode::VALUE));
         m_base_addr_aligned_size = static_cast<size_t>(val) * 1024;
     } else {
         TORCH_CHECK(false, "Error, expecting base_addr_aligned_kb value", OPS_ERROR_MOCK(ErrCode::VALUE));
@@ -1126,13 +1015,11 @@ void CachingAllocatorConfig::parseArgs(const char *env)
     if (m_expandable_segments) {
         if (set_expandable_segments_flag) {
             TORCH_CHECK(m_max_split_size == std::numeric_limits<size_t>::max() && m_garbage_collection_threshold == 0,
-                "`max_split_size_mb` or `garbage_collection_threshold`, cannot be enabled with "
-                "`expandable_segments`, please set `expandable_segments` to `False`.",
-                OPS_ERROR_MOCK(ErrCode::PARAM));
+                        "`max_split_size_mb` or `garbage_collection_threshold`, cannot be enabled with "
+                        "`expandable_segments`, please set `expandable_segments` to `False`.",
+                        OPS_ERROR_MOCK(ErrCode::PARAM));
         } else if (m_max_split_size != std::numeric_limits<size_t>::max() || m_garbage_collection_threshold != 0) {
             m_expandable_segments = false;
-            // TORCH_NPU_WARN_ONCE("`max_split_size_mb` or `garbage_collection_threshold` is enabled, and the "
-            //     "`expandable_segments` is changed to `False` by default.");
         }
     }
 }
@@ -1161,12 +1048,18 @@ bool isConfig1GPageSizeEnable()
 //    - Unable to send a signal to the main thread.
 class UnlockGuard {
 public:
-    explicit UnlockGuard(std::unique_lock<std::recursive_mutex>& lock) : lock_(lock) { lock_.unlock(); }
+    explicit UnlockGuard(std::unique_lock<std::recursive_mutex> &lock) : lock_(lock)
+    {
+        lock_.unlock();
+    }
 
-    ~UnlockGuard() { lock_.lock(); }
+    ~UnlockGuard()
+    {
+        lock_.lock();
+    }
 
 private:
-    std::unique_lock<std::recursive_mutex>& lock_;
+    std::unique_lock<std::recursive_mutex> &lock_;
 };
 
 struct handle_str {
@@ -1260,7 +1153,7 @@ public:
     }
 
     void recordHistory(bool enabled, CreateContextFn context_recorder, size_t alloc_trace_max_entries,
-        RecordContext when)
+                       RecordContext when)
     {
         std::unique_lock<std::recursive_mutex> lock(mutex);
         TORCH_CHECK(when == RecordContext::NEVER || context_recorder, PTA_ERROR_MOCK(ErrCode::INTERNAL));
@@ -1277,33 +1170,31 @@ public:
         return record_history;
     }
 
-  bool checkPoolLiveAllocations(
-    MempoolId_t mempool_id,
-    const std::unordered_set<void*>& expected_live_allocations)
-  {
-      std::unique_lock<std::recursive_mutex> lock(mutex);
+    bool checkPoolLiveAllocations(MempoolId_t mempool_id, const std::unordered_set<void *> &expected_live_allocations)
+    {
+        std::unique_lock<std::recursive_mutex> lock(mutex);
 
-      PrivatePool* pool = nullptr;
-      auto pool_it = graph_pools.find(mempool_id);
-      TORCH_CHECK(pool_it != graph_pools.end(), "Could not find pool of id", PTA_ERROR_MOCK(ErrCode::INTERNAL));
-      pool = pool_it->second.get();
+        PrivatePool *pool = nullptr;
+        auto pool_it = graph_pools.find(mempool_id);
+        TORCH_CHECK(pool_it != graph_pools.end(), "Could not find pool of id", PTA_ERROR_MOCK(ErrCode::INTERNAL));
+        pool = pool_it->second.get();
 
-      TORCH_INTERNAL_ASSERT(pool != nullptr, PTA_ERROR_MOCK(ErrCode::PTR));
-      size_t allocated_pool_blocks = 0;
+        TORCH_INTERNAL_ASSERT(pool != nullptr, PTA_ERROR_MOCK(ErrCode::PTR));
+        size_t allocated_pool_blocks = 0;
 
-      for (Block* b : active_blocks) {
-          TORCH_INTERNAL_ASSERT(b != nullptr);
-          TORCH_INTERNAL_ASSERT(b->pool != nullptr);
-          if (b->allocated && b->pool->owner_PrivatePool == pool) {
-              if (!expected_live_allocations.count(b->ptr)) {
-                  return false;
-              }
-              allocated_pool_blocks += 1;
+        for (Block *b : active_blocks) {
+            TORCH_INTERNAL_ASSERT(b != nullptr);
+            TORCH_INTERNAL_ASSERT(b->pool != nullptr);
+            if (b->allocated && b->pool->owner_PrivatePool == pool) {
+                if (!expected_live_allocations.count(b->ptr)) {
+                    return false;
+                }
+                allocated_pool_blocks += 1;
             }
-      }
+        }
 
-      return allocated_pool_blocks == expected_live_allocations.size();
-  }
+        return allocated_pool_blocks == expected_live_allocations.size();
+    }
 
     void attachOutOfMemoryObserver(OutOfMemoryObserver observer)
     {
@@ -1312,54 +1203,6 @@ public:
 
     bool checkUceInMemPool()
     {
-        // auto memUceInfo_ = c10_npu::get_mem_uce_info();
-        // auto info = memUceInfo_.info;
-        // const auto all_blocks = get_all_blocks();
-        // bool any_found = false;
-        // aclrtMemUceInfo temp_info[memUceInfo_.retSize];
-        // size_t temp_retsize = 0;
-        //
-        // for (size_t i = 0; i < memUceInfo_.retSize; ++i) {
-        //     void *addr = info[i].addr;
-        //     size_t length = info[i].len;
-        //     bool found = false;
-        //
-        //     // Calculate the start and end address for info[i]
-        //     void *addr_end = static_cast<char *>(addr) + length - 1;
-        //
-        //     // Iterate through all blocks and check if there's an overlap with addr
-        //     for (const Block * const head_block : all_blocks) {
-        //         void *block_start = head_block->ptr;
-        //         void *block_end = static_cast<char *>(head_block->ptr) + head_block->size - 1;
-        //
-        //         // If there is an overlap, mark the block as unsafe
-        //         if (addr <= block_end && addr_end >= block_start) {
-        //             const_cast<Block *>(head_block)->is_safe = false;
-        //             ASCEND_LOGI(
-        //                 "Memory block with UCE fault error found in the DirectMemoryAllocator and was marked as unsafe");
-        //             found = true;
-        //             any_found = true;
-        //             // Set the unsafe flag only once
-        //             if (c10_npu::get_npu_data_unsafe_flag() == false) {
-        //                 c10_npu::set_npu_data_unsafe_flag(true);
-        //             }
-        //         }
-        //     }
-        //
-        //     if (found) {
-        //         // update memuceinfo
-        //         temp_info[temp_retsize++] = info[i];
-        //     }
-        // }
-        //
-        // std::memcpy(memUceInfo_.info, temp_info, temp_retsize * sizeof(aclrtMemUceInfo));
-        // memUceInfo_.retSize = temp_retsize;
-        //
-        // c10_npu::set_mem_uce_info(memUceInfo_);
-        // if (!any_found) {
-        //     return false;
-        // }
-        // return true;
         ASCEND_LOGW("DirectMemoryAllocator currently do not support memUceInfo check");
         return true;
     }
@@ -1413,9 +1256,9 @@ public:
         auto &pool = get_pool(size, stream);
 
         // 开环境变量 大池子放1G内存块
-        const size_t alloc_size = IsMallocPage1GMem(pool.is_small) ?
-            kExtraLargeBuffer * ((size + kExtraLargeBuffer - 1) / kExtraLargeBuffer) :
-            get_allocation_size(size);
+        const size_t alloc_size = IsMallocPage1GMem(pool.is_small)
+                                      ? kExtraLargeBuffer * ((size + kExtraLargeBuffer - 1) / kExtraLargeBuffer)
+                                      : get_allocation_size(size);
         AllocParams params(device, size, stream, &pool, alloc_size, stats);
         params.stat_types = get_stat_types_for_pool(pool);
 
@@ -1432,15 +1275,16 @@ public:
                 garbage_collect_cached_blocks(context, lock);
             }
             // Attempt allocate
-            block_found = alloc_block(params, false, context, lock) ||
+            block_found =
+                alloc_block(params, false, context, lock) ||
                 // Free enough available cached blocks to satisfy alloc and retry
                 // alloc.
                 (release_available_cached_blocks(params, context, lock) && alloc_block(params, false, context, lock));
         }
 
         if (!block_found && C10_LIKELY(captures_underway.empty())) {
-            ASCEND_LOGE(
-                "Get a block from the existing pool failed. Try to free cached blocks and reallocate. This error log can be ignored.");
+            ASCEND_LOGE("Get a block from the existing pool failed. Try to free cached blocks and reallocate. This "
+                        "error log can be ignored.");
             // Free all non-split cached blocks and retry alloc.
             {
                 UnlockGuard guard(lock);
@@ -1448,7 +1292,6 @@ public:
                 c10_npu::npuSynchronizeDevice(true);
             }
             // pluggable allocator do not hold a static workspace allocator
-            // c10_npu::NPUWorkspaceAllocator::emptyCache(device, true);
             block_found = (release_cached_blocks(true, context, true) && alloc_block(params, true, context, lock));
         }
 
@@ -1465,7 +1308,7 @@ public:
                 stats.num_ooms += 1;
 
                 record_trace(TraceEntry::OOM, device_free, params.size(), params.stream(), params.device(),
-                    std::move(context));
+                             std::move(context));
                 auto observers_local = oom_observers_;
 
                 // Make sure we do not have the device lock before calling our
@@ -1496,7 +1339,8 @@ public:
                 // Note that at this point free_cached_blocks has already returned all
                 // possible "cached" memory to the driver. The only remaining "cached"
                 // memory is split from a larger block that is partially in-use.
-                AT_ERROR("NPU out of memory. Tried to allocate ", format_size(alloc_size), " (NPU ", device, "; ",
+                AT_ERROR(
+                    "NPU out of memory. Tried to allocate ", format_size(alloc_size), " (NPU ", device, "; ",
                     format_size(device_total), " total capacity; ",
                     format_size(stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current),
                     " already allocated; ",
@@ -1541,7 +1385,7 @@ public:
     }
 
     Block *alloc_found_block(AllocParams params, size_t orig_size, std::shared_ptr<c10::GatheredContext> context,
-        bool split_remainder, uint8_t allocator_type)
+                             bool split_remainder, uint8_t allocator_type)
     {
         (void)allocator_type;
         auto size = params.size();
@@ -1550,7 +1394,7 @@ public:
         auto stream = params.stream();
 
         TORCH_INTERNAL_ASSERT(params.err == ACL_ERROR_NONE && params.block != nullptr && params.block->ptr != nullptr,
-            PTA_ERROR_MOCK(ErrCode::PTR));
+                              PTA_ERROR_MOCK(ErrCode::PTR));
         Block *block = params.block;
         Block *remaining = nullptr;
 
@@ -1574,7 +1418,7 @@ public:
             if (already_split && !block->expandable_segment_) {
                 // An already-split inactive block is being shrunk by size bytes.
                 update_stat_array(stats.inactive_split_bytes, -static_cast<std::int64_t>(block->size),
-                    params.stat_types);
+                                  params.stat_types);
             } else if (!block->expandable_segment_) {
                 // A new split inactive block is being created from a previously unsplit
                 // block, size remaining->size bytes.
@@ -1600,7 +1444,7 @@ public:
 
         block->context_when_allocated = std::move(context);
         record_trace(TraceEntry::ALLOC, int64_t(block->ptr), orig_size, block->stream, block->device,
-            block->context_when_allocated);
+                     block->context_when_allocated);
 
         active_blocks.insert(block);
 
@@ -1617,32 +1461,31 @@ public:
         }
 
         ASCEND_LOGD("PTA CachingAllocator malloc: malloc = %zu, cached = %lu, allocated = %lu", block->size,
-            stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
+                    stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+                    stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
 
 #ifndef BUILD_LIBTORCH
         if (torch_npu::profiler::MstxMgr::GetInstance()->isMsleaksEnable()) {
             mstxDomainHandle_t msleaksDomain = torch_npu::profiler::MstxMgr::GetInstance()->createLeaksDomain(
                 torch_npu::profiler::DOMAIN_CACHING.c_str());
-            mstxMemVirtualRangeDesc_t heapDesc{ block->device, block->ptr,
-                stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current };
+            mstxMemVirtualRangeDesc_t heapDesc{block->device, block->ptr,
+                                               stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current};
             torch_npu::profiler::MstxMgr::GetInstance()->memHeapRegister(msleaksDomain, &heapDesc);
-            mstxMemVirtualRangeDesc_t regionDesc{ block->device, block->ptr, block->size };
+            mstxMemVirtualRangeDesc_t regionDesc{block->device, block->ptr, block->size};
             torch_npu::profiler::MstxMgr::GetInstance()->memRegionsRegister(msleaksDomain, &regionDesc);
         }
-        torch_npu::profiler::reportMemoryDataToNpuProfiler({ static_cast<int8_t>(c10::DeviceType::PrivateUse1),
-            block->device, static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
-            static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_MALLOC), allocator_type,
-            reinterpret_cast<int64_t>(block->ptr), block->size,
-            stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            block->stream });
+        torch_npu::profiler::reportMemoryDataToNpuProfiler(
+            {static_cast<int8_t>(c10::DeviceType::PrivateUse1), block->device,
+             static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
+             static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_MALLOC), allocator_type,
+             reinterpret_cast<int64_t>(block->ptr), block->size,
+             stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current, block->stream});
 #endif
 
         return block;
     }
-
 
     void free(Block *block, uint8_t allocator_type = 0)
     {
@@ -1664,7 +1507,7 @@ public:
         });
 
         record_trace(TraceEntry::FREE_REQUESTED, int64_t(block->ptr), block->requested_size, block->stream,
-            block->device, context ? context : block->context_when_allocated);
+                     block->device, context ? context : block->context_when_allocated);
 
         if (block->size >= CachingAllocatorConfig::max_split_size()) {
             update_stat(stats.oversize_allocations, -1);
@@ -1685,25 +1528,25 @@ public:
         }
 
         ASCEND_LOGD("PTA CachingAllocator free: free = %zu, cached = %lu, allocated = %lu", orig_block_size,
-            stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
+                    stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+                    stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
 #ifndef BUILD_LIBTORCH
         if (torch_npu::profiler::MstxMgr::GetInstance()->isMsleaksEnable()) {
             mstxDomainHandle_t msleaksDomain = torch_npu::profiler::MstxMgr::GetInstance()->createLeaksDomain(
                 torch_npu::profiler::DOMAIN_CACHING.c_str());
-            mstxMemVirtualRangeDesc_t desc{ block->device, orig_block_ptr,
-                stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current };
+            mstxMemVirtualRangeDesc_t desc{block->device, orig_block_ptr,
+                                           stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current};
             torch_npu::profiler::MstxMgr::GetInstance()->memHeapRegister(msleaksDomain, &desc);
             torch_npu::profiler::MstxMgr::GetInstance()->memRegionsUnregister(msleaksDomain, orig_block_ptr);
         }
-        torch_npu::profiler::reportMemoryDataToNpuProfiler({ static_cast<int8_t>(c10::DeviceType::PrivateUse1),
-            block->device, static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
-            static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_FREE), allocator_type,
-            reinterpret_cast<int64_t>(orig_block_ptr), -orig_block_size,
-            stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            block->stream });
+        torch_npu::profiler::reportMemoryDataToNpuProfiler(
+            {static_cast<int8_t>(c10::DeviceType::PrivateUse1), block->device,
+             static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
+             static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_FREE), allocator_type,
+             reinterpret_cast<int64_t>(orig_block_ptr), -orig_block_size,
+             stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current, block->stream});
 #endif
     }
 
@@ -1725,38 +1568,11 @@ public:
         return basePtr;
     }
 
-    ShareableHandle shareIpcHandle(Block* block)
+    ShareableHandle shareIpcHandle(Block *block)
     {
         (void)block;
         ASCEND_LOGE("DirectMemoryAllocator do not support IPC tensor");
         return ShareableHandle{0, ""};
-        // std::lock_guard<std::recursive_mutex> lock(mutex);
-        // std::ostringstream ss;
-        // ss.put(SHAREABLE_HANDLE_VERSION);
-        // ptrdiff_t offset = 0;
-        // if (!block->expandable_segment_) {
-        //     ss.put(SHAREABLE_NPU_MALLOC);
-        //     size_t base_size;
-        //     void* base_ptr = getBaseAllocation(block, &base_size);
-        //     offset = (char*)block->ptr - (char*)base_ptr;
-        //
-        //     handle_str handle;
-        //     auto it = ipc_handle_map.find(base_ptr);
-        //     if (it == ipc_handle_map.end()) {
-        //         NPU_CHECK_ERROR_MOCK(aclrtIpcMemGetExportKey(
-        //             base_ptr, base_size, handle.data, ACL_IPC_HANDLE_SIZE, ACL_RT_IPC_MEM_EXPORT_FLAG_DISABLE_PID_VALIDATION));
-        //         ipc_handle_map[base_ptr] = handle;
-        //     } else {
-        //         handle = it->second;
-        //     }
-        //     ss.write((char*)&handle, ACL_IPC_HANDLE_SIZE);
-        // } else {
-        //     ss.put(SHAREABLE_NPU_EXPANDABLE_SEGMENT);
-        //     auto full_range = block->expandable_segment_->share(
-        //         SegmentRange(block->ptr, block->size), ss);
-        //     offset = (char*)block->ptr - (char*)full_range.ptr;
-        // }
-        // return ShareableHandle{offset, ss.str()};
     }
 
     void recordStream(Block *block, c10_npu::NPUStream stream)
@@ -1808,7 +1624,6 @@ public:
         c10_npu::npuSynchronizeDevice(check_error);
         std::lock_guard<std::recursive_mutex> lock(mutex);
         // pluggable allocator do not hold a static workspace allocator
-        // c10_npu::NPUWorkspaceAllocator::emptyCache(device, check_error);
         release_cached_blocks(check_error, context, free_physical);
     }
 
@@ -1921,26 +1736,26 @@ public:
         }
     }
 
-    void freeBlocksAllocatedToPool(PrivatePool* private_pool, RestoreResult& rr)
+    void freeBlocksAllocatedToPool(PrivatePool *private_pool, RestoreResult &rr)
     {
         auto pool_blocks = get_private_pool_head_blocks(private_pool);
 
-        std::vector<Block*> head_blocks;
-        for (Block* block : pool_blocks) {
+        std::vector<Block *> head_blocks;
+        for (Block *block : pool_blocks) {
             if (block->prev == nullptr) {
                 head_blocks.push_back(block);
             }
         }
-        for (Block* block : head_blocks) {
-            Block* curr = block;
+        for (Block *block : head_blocks) {
+            Block *curr = block;
 
             while (curr) {
                 // When we free a block, its pointer should never change
                 // only its adjacent blocks, so free, then look at pointer
                 if (curr->allocated) {
-                    TORCH_CHECK(
-                        curr->event_count == 0,
-                        "Events should have synchronized when setting checkpointed block", PTA_ERROR_MOCK(ErrCode::INTERNAL));
+                    TORCH_CHECK(curr->event_count == 0,
+                                "Events should have synchronized when setting checkpointed block",
+                                PTA_ERROR_MOCK(ErrCode::INTERNAL));
                     rr.allocations_freed.push_back(curr->ptr);
                     free(curr);
                     TORCH_CHECK(!curr->allocated, PTA_ERROR_MOCK(ErrCode::PTR));
@@ -1948,8 +1763,8 @@ public:
                 curr = curr->next;
             }
         }
-        for (Block* b : get_private_pool_head_blocks(private_pool)) {
-            Block* curr = b;
+        for (Block *b : get_private_pool_head_blocks(private_pool)) {
+            Block *curr = b;
             while (curr) {
                 TORCH_CHECK(!curr->allocated, PTA_ERROR_MOCK(ErrCode::PTR));
                 curr = curr->next;
@@ -1959,17 +1774,14 @@ public:
 
     // checkpoint the state of an allocation that may have been
     // split into multiple blocks
-    void setSegmentStateToCheckpoint(
-        Block* block,
-        SegmentState& segment,
-        const std::shared_ptr<c10::GatheredContext>& context,
-        RestoreResult& rr)
+    void setSegmentStateToCheckpoint(Block *block, SegmentState &segment,
+                                     const std::shared_ptr<c10::GatheredContext> &context, RestoreResult &rr)
     {
-        Block* curr_block = block;
-        Block* last_block = block;
+        Block *curr_block = block;
+        Block *last_block = block;
 
         TORCH_INTERNAL_ASSERT(block->pool);
-        BlockPool& pool = *block->pool;
+        BlockPool &pool = *block->pool;
         const auto segment_len = segment.blocks.size();
 
         // allocate all blocks in the segment
@@ -1989,14 +1801,9 @@ public:
                 continue;
             }
 
-            auto& block_state = segment.blocks.at(i);
-            AllocParams params(
-                block_state.device,
-                block_state.size,
-                block_state.stream,
-                &pool,
-                block_state.size,
-                stats);
+            auto &block_state = segment.blocks.at(i);
+            AllocParams params(block_state.device, block_state.size, block_state.stream, &pool, block_state.size,
+                               stats);
             pool.blocks.erase(curr_block);
             params.block = curr_block;
             params.stat_types = get_stat_types_for_pool(pool);
@@ -2036,7 +1843,7 @@ public:
                 continue;
             }
 
-            auto& block_state = segment.blocks.at(i);
+            auto &block_state = segment.blocks.at(i);
             TORCH_INTERNAL_ASSERT(curr_block != nullptr, PTA_ERROR_MOCK(ErrCode::PTR));
 
             if (block_state.allocated) {
@@ -2102,7 +1909,7 @@ public:
     *                                      |
     *                                      ╰ ---------------> D
     */
-    RestoreResult setCheckpointPoolState(PrivatePoolState& pps)
+    RestoreResult setCheckpointPoolState(PrivatePoolState &pps)
     {
         // To reset the caching allocator state we will
         // - Free all the blocks currently allocated to the pool (see [live tensors
@@ -2116,34 +1923,32 @@ public:
         // following `done outside the lock because we don't know what locks the
         // recorder needs to have...`
 
-        std::shared_ptr<c10::GatheredContext> context =
-            maybeGatherContext(RecordContext::STATE);
+        std::shared_ptr<c10::GatheredContext> context = maybeGatherContext(RecordContext::STATE);
 
         std::lock_guard<std::recursive_mutex> lock(mutex);
 
         RestoreResult rr;
 
-        TORCH_CHECK(
-            !graph_pools_freeable.count(pps.owner_id),
-            "Not expected to checkpoint freeable graph", PTA_ERROR_MOCK(ErrCode::INTERNAL));
+        TORCH_CHECK(!graph_pools_freeable.count(pps.owner_id), "Not expected to checkpoint freeable graph",
+                    PTA_ERROR_MOCK(ErrCode::INTERNAL));
 
         auto pool = graph_pools.find(pps.owner_id);
         TORCH_CHECK(pool != graph_pools.end(), "Could not find private pool id", PTA_ERROR_MOCK(ErrCode::INTERNAL));
 
-        PrivatePool* private_pool = pool->second.get();
+        PrivatePool *private_pool = pool->second.get();
 
         freeBlocksAllocatedToPool(private_pool, rr);
 
-        std::unordered_map<void*, Block*> ptrs_to_blocks;
+        std::unordered_map<void *, Block *> ptrs_to_blocks;
         // at this point, all of the blocks should be free, so they will all be in
         // the block set
-        for (Block* block : private_pool->small_blocks.blocks) {
+        for (Block *block : private_pool->small_blocks.blocks) {
             ptrs_to_blocks[block->ptr] = block;
         }
-        for (Block* block : private_pool->large_blocks.blocks) {
+        for (Block *block : private_pool->large_blocks.blocks) {
             ptrs_to_blocks[block->ptr] = block;
         }
-        for (auto& segment : pps.segments) {
+        for (auto &segment : pps.segments) {
             auto ptr = segment.blocks.at(0).ptr;
             TORCH_CHECK(ptrs_to_blocks.count(ptr), " could not find ", ptr, PTA_ERROR_MOCK(ErrCode::PARAM));
             auto block = ptrs_to_blocks[ptr];
@@ -2171,7 +1976,7 @@ public:
         std::vector<SegmentInfo> result;
         const auto all_blocks = get_all_blocks();
 
-        for (const Block * const head_block : all_blocks) {
+        for (const Block *const head_block : all_blocks) {
             // For expandable segments, we report one segment for each continguous
             // mapped range of memory
             if (head_block->prev && head_block->prev->mapped) {
@@ -2214,7 +2019,7 @@ public:
         }
 
         std::sort(result.begin(), result.end(),
-            [](const SegmentInfo &a, const SegmentInfo &b) { return a.address < b.address; });
+                  [](const SegmentInfo &a, const SegmentInfo &b) { return a.address < b.address; });
 
         record_trace(TraceEntry::SNAPSHOT, 0, total_active, nullptr, 0, nullptr);
         return result;
@@ -2299,7 +2104,7 @@ public:
             // Allows free_cached_blocks to begin npuFreeing this pool's memory,
             // and makes sure this pool wasn't somehow made freeable already.
             // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
-            bool inserted = graph_pools_freeable.insert({ mempool_id, it->second.get() }).second;
+            bool inserted = graph_pools_freeable.insert({mempool_id, it->second.get()}).second;
             TORCH_INTERNAL_ASSERT(inserted);
         }
     }
@@ -2320,21 +2125,20 @@ private:
         return blocks;
     }
 
-    std::vector<Block*> get_private_pool_head_blocks(PrivatePool* pool) const
+    std::vector<Block *> get_private_pool_head_blocks(PrivatePool *pool) const
     {
-        std::vector<Block*> blocks;
-        for (Block* b : active_blocks) {
-            if ((b->pool == &pool->small_blocks || b->pool == &pool->large_blocks) &&
-                b->prev == nullptr) {
+        std::vector<Block *> blocks;
+        for (Block *b : active_blocks) {
+            if ((b->pool == &pool->small_blocks || b->pool == &pool->large_blocks) && b->prev == nullptr) {
                 blocks.push_back(b);
             }
         }
-        for (Block* b : pool->small_blocks.blocks) {
+        for (Block *b : pool->small_blocks.blocks) {
             if (b->prev == nullptr) {
                 blocks.push_back(b);
             }
         }
-        for (Block* b : pool->large_blocks.blocks) {
+        for (Block *b : pool->large_blocks.blocks) {
             if (b->prev == nullptr) {
                 blocks.push_back(b);
             }
@@ -2372,8 +2176,8 @@ private:
             }
         }
         auto custom_segment_size = CachingAllocatorConfig::segment_size_mb();
-        auto segment_size = pool->is_small ?
-                kSmallBuffer : (custom_segment_size > 0 ? custom_segment_size : kLargeBuffer);
+        auto segment_size =
+            pool->is_small ? kSmallBuffer : (custom_segment_size > 0 ? custom_segment_size : kLargeBuffer);
         // 此处申请虚拟内存，segment_size是页大小，实际虚拟内存巨大
         if (IsMallocPage1GMem(pool->is_small)) {
             segment_size = kExtraLargeBuffer;
@@ -2397,13 +2201,13 @@ private:
         TORCH_INTERNAL_ASSERT(!to_map->mapped && size <= to_map->size, PTA_ERROR_MOCK(ErrCode::VALUE));
         TORCH_INTERNAL_ASSERT(!to_map->context_when_allocated); // unmapped blocks should not keep
                                                                 // history
-        auto mapped_range = to_map->expandable_segment_->map(SegmentRange{ to_map->ptr, size }, map_pool);
+        auto mapped_range = to_map->expandable_segment_->map(SegmentRange{to_map->ptr, size}, map_pool);
         // failed to map the memory
         if (mapped_range.size == 0) {
             return false;
         }
         TORCH_INTERNAL_ASSERT(mapped_range.ptr == to_map->ptr && mapped_range.size >= size,
-            PTA_ERROR_MOCK(ErrCode::INTERNAL));
+                              PTA_ERROR_MOCK(ErrCode::INTERNAL));
 
         BlockPool &pool = *to_map->pool;
         pool.unmapped.erase(to_map);
@@ -2412,7 +2216,7 @@ private:
         if (mapped_range.size < to_map->size) {
             // to_map -> remaining -> to_map->next(?)
             Block *remaining = new Block(to_map->device, to_map->stream, to_map->size - mapped_range.size, &pool,
-                static_cast<char *>(to_map->ptr) + mapped_range.size);
+                                         static_cast<char *>(to_map->ptr) + mapped_range.size);
             remaining->mapped = false;
             remaining->expandable_segment_ = to_map->expandable_segment_;
             remaining->splice(to_map, to_map->next);
@@ -2428,10 +2232,10 @@ private:
         // update statistics
         total_allocated_memory += mapped_range.size;
         StatTypes stat_types = get_stat_types_for_pool(*to_map->pool);
-        for_each_selected_stat_type(stat_types,
-            [&](size_t stat_type) { update_stat(stats.reserved_bytes[stat_type], mapped_range.size); });
+        for_each_selected_stat_type(
+            stat_types, [&](size_t stat_type) { update_stat(stats.reserved_bytes[stat_type], mapped_range.size); });
         record_trace(TraceEntry::SEGMENT_MAP, int64_t(mapped_range.ptr), mapped_range.size, to_map->stream,
-            to_map->device, ctx);
+                     to_map->device, ctx);
         if (!to_map->prev && !to_map->context_when_segment_allocated) {
             to_map->context_when_segment_allocated = ctx;
         }
@@ -2440,7 +2244,7 @@ private:
     }
 
     Block *try_allocate_expandable_block(int device, aclrtStream stream, BlockPool *pool, size_t size,
-        const std::shared_ptr<c10::GatheredContext> &ctx)
+                                         const std::shared_ptr<c10::GatheredContext> &ctx)
     {
         Block *candidate = find_expandable_block(device, stream, pool, size);
         // Candidate is now a list free/unmapped blocks with at least size room:
@@ -2470,7 +2274,6 @@ private:
         return candidate;
     }
 
-
     /* * moves a block into a pool of cached free blocks * */
     void free_block(Block *block, const std::shared_ptr<c10::GatheredContext> &context, uint8_t allocator_type = 0)
     {
@@ -2478,7 +2281,7 @@ private:
         AT_ASSERT(!block->allocated && block->event_count == 0, PTA_ERROR_MOCK(ErrCode::VALUE));
 
         record_trace(TraceEntry::FREE_COMPLETED, int64_t(block->ptr), block->requested_size, block->stream,
-            block->device, context ? context : block->context_when_allocated);
+                     block->device, context ? context : block->context_when_allocated);
 
         block->context_when_allocated = nullptr;
         size_t original_block_size = block->size;
@@ -2490,7 +2293,7 @@ private:
         int64_t net_change_inactive_split_blocks = 0;
         int64_t net_change_inactive_split_size = 0;
 
-        const std::array<Block *, 2> merge_candidates = { block->prev, block->next };
+        const std::array<Block *, 2> merge_candidates = {block->prev, block->next};
         for (Block *merge_candidate : merge_candidates) {
             const int64_t subsumed_size = static_cast<int64_t>(try_merge_blocks(block, merge_candidate, pool));
             if (subsumed_size > 0) {
@@ -2524,14 +2327,14 @@ private:
             update_stat(stats.requested_bytes[stat_type], -static_cast<std::int64_t>(requested_size));
         });
 #ifndef BUILD_LIBTORCH
-        torch_npu::profiler::reportMemoryDataToNpuProfiler({ static_cast<int8_t>(c10::DeviceType::PrivateUse1),
-            block->device, static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
-            static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_BLOCK_FREE), allocator_type,
-            reinterpret_cast<int64_t>(orig_block_ptr), -original_block_size,
-            stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-            block->stream });
+        torch_npu::profiler::reportMemoryDataToNpuProfiler(
+            {static_cast<int8_t>(c10::DeviceType::PrivateUse1), block->device,
+             static_cast<uint8_t>(torch_npu::profiler::MemoryComponentType::CACHING_ALLOCATOR),
+             static_cast<uint8_t>(torch_npu::profiler::MemoryDataType::MEMORY_BLOCK_FREE), allocator_type,
+             reinterpret_cast<int64_t>(orig_block_ptr), -original_block_size,
+             stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+             stats.active_bytes[static_cast<size_t>(StatType::AGGREGATE)].current, block->stream});
 #endif
     }
 
@@ -2595,7 +2398,7 @@ private:
 
     StatTypes get_stat_types_for_pool(const BlockPool &pool)
     {
-        StatTypes stat_types = { false };
+        StatTypes stat_types = {false};
         stat_types[static_cast<size_t>(StatType::AGGREGATE)] = true;
         stat_types[static_cast<size_t>(pool.is_small ? StatType::SMALL_POOL : StatType::LARGE_POOL)] = true;
         return stat_types;
@@ -2650,7 +2453,7 @@ private:
                 auto next = it;
                 next++;
                 while ((*it)->expandable_segment_ && next != pool.blocks.end() && (*next)->stream == p.stream() &&
-                    expandable_size(*next) < expandable_size(*it)) {
+                       expandable_size(*next) < expandable_size(*it)) {
                     it = next++;
                 }
             } else {
@@ -2697,8 +2500,8 @@ private:
         return freed_memory;
     }
 
-    void garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext>& ctx,
-                                       std::unique_lock<std::recursive_mutex>& lock)
+    void garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext> &ctx,
+                                       std::unique_lock<std::recursive_mutex> &lock)
     {
         // Free unused cached blocks to reclaim NPU memory.
         // Unlike release_cached_blocks(), this does not enforce synchronization and
@@ -2755,15 +2558,15 @@ private:
                     release_block(block, ctx);
 
                     ASCEND_LOGD("PTA CachingAllocator gc: free = %zu, cached = %lu, allocated = %lu", block->size,
-                        stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
-                        stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
+                                stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current,
+                                stats.allocated_bytes[static_cast<size_t>(StatType::AGGREGATE)].current);
                 }
             }
         }
     }
 
     bool alloc_block(AllocParams &p, bool isRetry, const std::shared_ptr<c10::GatheredContext> &ctx,
-        std::unique_lock<std::recursive_mutex> &lock)
+                     std::unique_lock<std::recursive_mutex> &lock)
     {
         (void)lock;
         size_t size = p.alloc_size;
@@ -2801,7 +2604,7 @@ private:
                 if (mem_heap_inited) {
                     p.err = zbal::adaptor::HeapAlignedAllocate(&ptr, size, mem_heap_pool_);
                     if (p.err == ACL_ERROR_NONE) {
-                      symm_addrs.insert(ptr);
+                        symm_addrs.insert(ptr);
                     }
                 } else {
                     p.err = aclrtMallocAlign32(&ptr, size, policy);
@@ -2839,8 +2642,8 @@ private:
     }
 
     /* * Free one or more oversize blocks to the system allocator.  But only enough to satisfy the target size * */
-    bool release_available_cached_blocks(const AllocParams& p, const std::shared_ptr<c10::GatheredContext>& ctx,
-                                         std::unique_lock<std::recursive_mutex>& lock)
+    bool release_available_cached_blocks(const AllocParams &p, const std::shared_ptr<c10::GatheredContext> &ctx,
+                                         std::unique_lock<std::recursive_mutex> &lock)
     {
         if (CachingAllocatorConfig::max_split_size() == std::numeric_limits<size_t>::max()) {
             return false;
@@ -2865,7 +2668,7 @@ private:
             // Back up one item.  Now on the largest block for the correct stream
             --it;
             while ((totalReleased < key.size) && ((*it)->size >= CachingAllocatorConfig::max_split_size()) &&
-                ((*it)->stream == p.stream())) {
+                   ((*it)->stream == p.stream())) {
                 auto cur = it;
                 totalReleased += (*it)->size;
                 if (it != pool.blocks.begin()) {
@@ -2886,7 +2689,8 @@ private:
     }
 
     // npuSynchronizeDevice must be executed before this function can be called
-    bool release_cached_blocks(bool check_error, const std::shared_ptr<c10::GatheredContext> &context, bool free_physical)
+    bool release_cached_blocks(bool check_error, const std::shared_ptr<c10::GatheredContext> &context,
+                               bool free_physical)
     {
         // First ensure that all blocks that can't currently be allocated due to
         // outstanding events are returned to the pool.
@@ -2916,7 +2720,7 @@ private:
     void release_expandable_segment(Block *block)
     {
         TORCH_INTERNAL_ASSERT(block->size == block->expandable_segment_->size(), "block disagrees with segment",
-            PTA_ERROR_MOCK(ErrCode::INTERNAL));
+                              PTA_ERROR_MOCK(ErrCode::INTERNAL));
         TORCH_INTERNAL_ASSERT(!block->mapped, PTA_ERROR_MOCK(ErrCode::INTERNAL));
         auto it = std::find(expandable_segments_.begin(), expandable_segments_.end(), block->expandable_segment_);
         TORCH_INTERNAL_ASSERT(it != expandable_segments_.end(), PTA_ERROR_MOCK(ErrCode::INTERNAL));
@@ -2934,17 +2738,12 @@ private:
         ASCEND_LOGD("DirectMemoryAllocator free by aclrtFree: size=%zu", block->size);
 
         record_trace(TraceEntry::SEGMENT_FREE, int64_t(block->ptr), block->size, block->stream, block->device,
-            context ? context : block->context_when_segment_allocated);
-
-        // auto it = ipc_handle_map.find(block->ptr);
-        // if (it != ipc_handle_map.end()) {
-        //     NPU_CHECK_ERROR_MOCK(aclrtIpcMemClose(it->second.data));
-        //     ipc_handle_map.erase(it);
-        // }
+                     context ? context : block->context_when_segment_allocated);
 
         if (symm_addrs.count((void *)block->ptr)) {
             symm_addrs.erase((void *)block->ptr);
-            TORCH_CHECK(zbal::adaptor::HeapRelease((void *)block->ptr, mem_heap_pool_) == ACL_ERROR_NONE, "mm heap free failed.");
+            TORCH_CHECK(zbal::adaptor::HeapRelease((void *)block->ptr, mem_heap_pool_) == ACL_ERROR_NONE,
+                        "mm heap free failed.");
         } else {
             aclrtFree((void *)block->ptr);
         }
@@ -2976,7 +2775,7 @@ private:
     void unmap_block(Block *block, const std::shared_ptr<c10::GatheredContext> &context, bool free_physical)
     {
         auto pool = free_physical ? nullptr : block->pool;
-        auto unmapped = block->expandable_segment_->unmap(SegmentRange{ block->ptr, block->size }, pool);
+        auto unmapped = block->expandable_segment_->unmap(SegmentRange{block->ptr, block->size}, pool);
         if (unmapped.size == 0) {
             return;
         }
@@ -2995,7 +2794,7 @@ private:
         if (after_size > 0) {
             // block -> after_free -> next?
             Block *after_free = new Block(block->device, block->stream, after_size, block->pool,
-                static_cast<char *>(unmapped.ptr) + unmapped.size);
+                                          static_cast<char *>(unmapped.ptr) + unmapped.size);
             after_free->expandable_segment_ = block->expandable_segment_;
             after_free->splice(block, block->next);
             block->pool->blocks.insert(after_free);
@@ -3012,8 +2811,8 @@ private:
         // update statistics
         total_allocated_memory -= unmapped.size;
         StatTypes stat_types = get_stat_types_for_pool(*block->pool);
-        for_each_selected_stat_type(stat_types,
-            [&](size_t stat_type) { update_stat(stats.reserved_bytes[stat_type], -unmapped.size); });
+        for_each_selected_stat_type(
+            stat_types, [&](size_t stat_type) { update_stat(stats.reserved_bytes[stat_type], -unmapped.size); });
 
         if (block->pool->owner_PrivatePool) {
             // The npuFreed block belonged to a NPU graph's PrivatePool.
@@ -3022,7 +2821,7 @@ private:
         }
 
         record_trace(TraceEntry::SEGMENT_UNMAP, int64_t(unmapped.ptr), unmapped.size, block->stream, block->device,
-            context ? context : block->context_when_segment_allocated);
+                     context ? context : block->context_when_segment_allocated);
     }
 
     void release_blocks(BlockPool &pool, const std::shared_ptr<c10::GatheredContext> &context, bool free_physical)
@@ -3127,7 +2926,6 @@ private:
         aclrtContext compiler_ctx = aclrtContext();
         aclError ret_ctx = aclrtGetCurrentContext(&compiler_ctx);
         // FIXME ignore setDeviceContext
-        // NPU_CHECK_ERROR_MOCK(aclrtSetCurrentContext(c10_npu::GetDeviceContext(block->device)));
 
         stream_set streams(std::move(block->stream_uses));
         AT_ASSERT(block->stream_uses.empty(), PTA_ERROR_MOCK(ErrCode::VALUE));
@@ -3215,14 +3013,14 @@ private:
     }
 
     void record_trace(TraceEntry::Action action, int64_t addr, size_t size, aclrtStream stream, int device,
-        std::shared_ptr<c10::GatheredContext> context)
+                      std::shared_ptr<c10::GatheredContext> context)
     {
         if (!record_history) {
             return;
         }
 
         auto te = TraceEntry(action, device, addr, size, stream,
-            record_context_ >= RecordContext::ALLOC ? std::move(context) : nullptr);
+                             record_context_ >= RecordContext::ALLOC ? std::move(context) : nullptr);
 
         if (record_history) {
             if (alloc_trace->size() < alloc_trace_max_entries_) {
@@ -3297,7 +3095,8 @@ public:
     void malloc(void **devPtr, int device, size_t size, aclrtStream stream)
     {
         TORCH_INTERNAL_ASSERT(0 <= device && static_cast<size_t>(device) < device_allocator.size(),
-            "Allocator not initialized for device ", device, ": did you call init?", PTA_ERROR_MOCK(ErrCode::PARAM));
+                              "Allocator not initialized for device ", device, ": did you call init?",
+                              PTA_ERROR_MOCK(ErrCode::PARAM));
         Block *block = device_allocator[device]->malloc(device, size, stream);
 
         add_allocated_block(block);
@@ -3335,9 +3134,10 @@ public:
     void setMemoryFraction(double fraction, int device) override
     {
         TORCH_INTERNAL_ASSERT(0 <= device && static_cast<size_t>(device) < device_allocator.size(),
-            "Allocator not initialized for device ", device, ": did you call init?", PTA_ERROR_MOCK(ErrCode::PARAM));
+                              "Allocator not initialized for device ", device, ": did you call init?",
+                              PTA_ERROR_MOCK(ErrCode::PARAM));
         TORCH_INTERNAL_ASSERT(0 <= fraction && fraction <= 1, "invalid fraction:", fraction,
-            ". Please set within (0, 1).", PTA_ERROR_MOCK(ErrCode::PARAM));
+                              ". Please set within (0, 1).", PTA_ERROR_MOCK(ErrCode::PARAM));
 
         c10_npu::SetDevice(device);
 
@@ -3345,7 +3145,7 @@ public:
     }
 
     void recordHistory(bool enabled, CreateContextFn context_recorder, size_t alloc_trace_max_entries,
-        RecordContext when) override
+                       RecordContext when) override
     {
         for (auto &allocator : device_allocator) {
             allocator->recordHistory(enabled, context_recorder, alloc_trace_max_entries, when);
@@ -3359,13 +3159,11 @@ public:
         return device_allocator[device]->isHistoryEnabled();
     }
 
-  bool checkPoolLiveAllocations(
-      c10::DeviceIndex device,
-      MempoolId_t mempool_id,
-      const std::unordered_set<void*>& expected_live_allocations) override
-  {
-      return device_allocator[device]->checkPoolLiveAllocations(mempool_id, expected_live_allocations);
-  }
+    bool checkPoolLiveAllocations(c10::DeviceIndex device, MempoolId_t mempool_id,
+                                  const std::unordered_set<void *> &expected_live_allocations) override
+    {
+        return device_allocator[device]->checkPoolLiveAllocations(mempool_id, expected_live_allocations);
+    }
 
     void attachOutOfMemoryObserver(OutOfMemoryObserver observer) override
     {
@@ -3433,16 +3231,8 @@ public:
         // FIXME skip using GetUsedDevices
         int count = static_cast<int>(device_allocator.size());
         for (int i = 0; i < count; i++)
-          device_allocator[i]->emptyCache(i, check_error, free_physical);
-        // auto used_devices_list = c10_npu::GetUsedDevices();
-        // for (int8_t device_idx : used_devices_list) {
-        //     if (check_error) {
-        //         NPU_CHECK_ERROR_MOCK(c10_npu::SetDevice(device_idx));
-        //     } else {
-        //         NPU_CHECK_WARN_MOCK(c10_npu::SetDevice(device_idx));
-        //     }
-        //     device_allocator[device_idx]->emptyCache(device_idx, check_error, free_physical);
-        // }
+            device_allocator[i]->emptyCache(i, check_error, free_physical);
+
         if (check_error) {
             NPU_CHECK_ERROR_MOCK(c10_npu::MaybeSetDevice(current_device));
         } else {
@@ -3473,9 +3263,9 @@ public:
         return device_allocator[block->device]->getBaseAllocation(block, outSize);
     }
 
-    ShareableHandle shareIpcHandle(void* ptr) override
+    ShareableHandle shareIpcHandle(void *ptr) override
     {
-        Block* block = get_allocated_block(ptr);
+        Block *block = get_allocated_block(ptr);
         if (!block) {
             AT_ERROR("invalid device pointer: ", ptr);
         }
@@ -3495,9 +3285,6 @@ public:
         // we have implemented reference counting based sharing mechanism to
         // guarantee tensors won't be accidentally freed by one process while
         // they are still being used in another
-        // if (ptr.get_deleter() != &local_raw_delete) {
-        //     return;
-        // }
 
         Block *block = get_allocated_block(ptr);
         // block must not be null reaching here
@@ -3516,10 +3303,6 @@ public:
         // we have implemented reference counting based sharing mechanism to
         // guarantee tensors won't be accidentally freed by one process while
         // they are still being used in another
-        // if (ptr.get_deleter() != &local_raw_delete) {
-        //     // TORCH_NPU_WARN_ONCE("Tensor not is not allocated by DirectMemoryAllocator, skip eraseStream.");
-        //     return;
-        // }
 
         Block *block = get_allocated_block(ptr);
         if (!block) {
@@ -3549,9 +3332,7 @@ public:
         return result;
     }
 
-    std::shared_ptr<AllocatorState> getCheckpointState(
-        c10::DeviceIndex device,
-        MempoolId_t id) override
+    std::shared_ptr<AllocatorState> getCheckpointState(c10::DeviceIndex device, MempoolId_t id) override
     {
         return device_allocator[device]->getCheckpointState(id);
     }
@@ -3568,9 +3349,7 @@ public:
      * @return CheckpointDelta - Freed Pointers and DataPtrs that contain deleter
      * functions for all allocated blocks in the new checkpoint state.
      */
-    CheckpointDelta setCheckpointPoolState(
-        c10::DeviceIndex device,
-        std::shared_ptr<AllocatorState> as) override
+    CheckpointDelta setCheckpointPoolState(c10::DeviceIndex device, std::shared_ptr<AllocatorState> as) override
     {
         std::shared_ptr<PrivatePoolState> pps = std::dynamic_pointer_cast<PrivatePoolState>(as);
 
@@ -3579,25 +3358,22 @@ public:
         auto rr = device_allocator[device]->setCheckpointPoolState(*pps);
 
         CheckpointDelta cpd;
-        for (void* ptr : rr.allocations_freed) {
+        for (void *ptr : rr.allocations_freed) {
             // remove block
             get_allocated_block(ptr, true);
             cpd.ptrs_freed.push_back(ptr);
         }
-        for (Block* block : rr.allocations_created) {
+        for (Block *block : rr.allocations_created) {
             add_allocated_block(block);
-            cpd.dataptrs_allocd.emplace_back(
-                block->ptr,
-                block->ptr,
-                &local_raw_delete,
-                c10::Device(c10::DeviceType::PrivateUse1, device));
+            cpd.dataptrs_allocd.emplace_back(block->ptr, block->ptr, &local_raw_delete,
+                                             c10::Device(c10::DeviceType::PrivateUse1, device));
         }
 
         return cpd;
     }
 
     void beginAllocateToPool(c10::DeviceIndex device, MempoolId_t mempool_id,
-        std::function<bool(aclrtStream)> filter) override
+                             std::function<bool(aclrtStream)> filter) override
     {
         assertValidDevice(device);
         device_allocator[device]->beginAllocateToPool(std::move(mempool_id), std::move(filter));
@@ -3631,17 +3407,17 @@ public:
             if (OptionsManager::CheckForceUncached) {
                 deleteFunc = &uncached_delete;
                 size_t alloc_size = size + 32;
-                NPU_CHECK_ERROR_MOCK(aclrtMallocAlign32(&devPtr, alloc_size,
-                    aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
+                NPU_CHECK_ERROR_MOCK(
+                    aclrtMallocAlign32(&devPtr, alloc_size, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
                 ASCEND_LOGD("Without DirectMemoryAllocator, malloc by "
-                    "AclrtMallocAlign32: size=%zu",
-                    alloc_size);
+                            "AclrtMallocAlign32: size=%zu",
+                            alloc_size);
             } else {
                 // FIXME original code use getCurrentNPUStreamNoWait
                 this->malloc(&devPtr, device, size, c10_npu::getCurrentNPUStream(device).stream());
             }
         }
-        return { devPtr, devPtr, deleteFunc, c10::Device(c10::DeviceType::PrivateUse1, device) };
+        return {devPtr, devPtr, deleteFunc, c10::Device(c10::DeviceType::PrivateUse1, device)};
     }
 
     c10::DataPtr allocate_with_aligned(size_t size, size_t base_addr_aligned_kb) const override
@@ -3660,18 +3436,20 @@ public:
             if (OptionsManager::CheckForceUncached) {
                 deleteFunc = &uncached_delete;
                 size_t alloc_size = size + 32 + aligned;
-                NPU_CHECK_ERROR_MOCK(aclrtMallocAlign32(&realPtr, alloc_size,
-                                                   aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
+                NPU_CHECK_ERROR_MOCK(
+                    aclrtMallocAlign32(&realPtr, alloc_size, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
                 ASCEND_LOGD("Without DirectMemoryAllocator, malloc by "
-                            "AclrtMallocAlign32: size=%zu", alloc_size);
+                            "AclrtMallocAlign32: size=%zu",
+                            alloc_size);
             } else {
                 // FIXME original code use getCurrentNPUStreamNoWait
                 const_cast<DirectMemoryAllocator *>(this)->malloc(&realPtr, device, size + aligned,
-                                                                c10_npu::getCurrentNPUStream(device).stream());
+                                                                  c10_npu::getCurrentNPUStream(device).stream());
             }
         }
-        void *devPtr = reinterpret_cast<void*>(aligned * ((reinterpret_cast<uintptr_t>(realPtr) + aligned - 1) / aligned));
-        return { devPtr, realPtr, deleteFunc, c10::Device(c10::DeviceType::PrivateUse1, device) };
+        void *devPtr =
+            reinterpret_cast<void *>(aligned * ((reinterpret_cast<uintptr_t>(realPtr) + aligned - 1) / aligned));
+        return {devPtr, realPtr, deleteFunc, c10::Device(c10::DeviceType::PrivateUse1, device)};
     }
 
     c10::DeleterFnPtr raw_deleter() const override
@@ -3692,7 +3470,7 @@ public:
     {
         const auto device_num = device_allocator.size();
         TORCH_CHECK(0 <= device && device < static_cast<int64_t>(device_num), "Invalid device argument ", device,
-            ": did you call init?", PTA_ERROR_MOCK(ErrCode::PARAM));
+                    ": did you call init?", PTA_ERROR_MOCK(ErrCode::PARAM));
     }
 
     DeviceStats getDeviceStats(int device) override
@@ -3745,10 +3523,7 @@ public:
 
     std::mutex IpcMutex;
     struct MemHandleCacheEntry {
-        MemHandleCacheEntry(
-            c10::DeviceIndex device,
-            std::string& handle,
-            const DeviceCachingAllocator& allocator)
+        MemHandleCacheEntry(c10::DeviceIndex device, std::string &handle, const DeviceCachingAllocator &allocator)
             : device_(device)
         {
             (void)allocator;
@@ -3756,29 +3531,20 @@ public:
             std::istringstream ss(handle);
             if (handle.size() != ACL_IPC_HANDLE_SIZE) {
                 auto version = ss.get();
-                TORCH_CHECK(
-                    version <= SHAREABLE_HANDLE_VERSION,
-                    "received sharable handle from a future version of torch that this version does not know how to handle",
-                    PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
+                TORCH_CHECK(version <= SHAREABLE_HANDLE_VERSION,
+                            "received sharable handle from a future version of torch that this version does not know "
+                            "how to handle",
+                            PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
                 type = ss.get();
             }
             // otherwise this is coming from an old pytorch where it has to be a raw
             // SHAREABLE_NPU_MALLOC
             if (type == SHAREABLE_NPU_MALLOC) {
-                // handle_str handle_r;
-                // ss.read(handle_r.data, ACL_IPC_HANDLE_SIZE);
-                // NPU_CHECK_ERROR_MOCK(aclrtIpcMemImportByKey(
-                //     &npu_ipc_ptr_, handle_r.data, ACL_RT_IPC_MEM_IMPORT_FLAG_ENABLE_PEER_ACCESS));
-                // handle_s.assign(handle_r.data, ACL_IPC_HANDLE_SIZE);
                 ASCEND_LOGE("DirectMemoryAllocator do not support IPC tensor");
             } else if (type == SHAREABLE_NPU_EXPANDABLE_SEGMENT) {
-                // expandable_segment_ =
-                //     ExpandableSegment::fromShared(device, ss)
-                //         .release();
                 ASCEND_LOGE("DirectMemoryAllocator do not support IPC tensor");
             } else {
-                TORCH_INTERNAL_ASSERT(
-                    false, "Unexpected or illformed shareable handle type");
+                TORCH_INTERNAL_ASSERT(false, "Unexpected or illformed shareable handle type");
             }
         }
         // this struct expects that clear is explicitly called to
@@ -3790,11 +3556,6 @@ public:
         void clear()
         {
             if (npu_ipc_ptr_) {
-                // {
-                //     c10_npu::NPUGuard device_guard(device_);
-                //     c10_npu::npuSynchronizeDevice(true);
-                // }
-                // NPU_CHECK_ERROR_MOCK(aclrtIpcMemClose(handle_s.c_str()));
                 ASCEND_LOGE("DirectMemoryAllocator do not support IPC memory");
                 npu_ipc_ptr_ = nullptr;
             }
@@ -3803,7 +3564,7 @@ public:
                 expandable_segment_ = nullptr;
             }
         }
-        void* ptr()
+        void *ptr()
         {
             if (npu_ipc_ptr_) {
                 return npu_ipc_ptr_;
@@ -3814,8 +3575,8 @@ public:
             return nullptr;
         }
         c10::DeviceIndex device_;
-        ExpandableSegment* expandable_segment_{nullptr};
-        void* npu_ipc_ptr_{nullptr}; // nullptr if expandable_segment_ is not null
+        ExpandableSegment *expandable_segment_{nullptr};
+        void *npu_ipc_ptr_{nullptr}; // nullptr if expandable_segment_ is not null
         std::weak_ptr<void> wp_;
         std::string handle_s;
     };
@@ -3833,26 +3594,23 @@ public:
         }
         int curr_device = 0;
         NPU_CHECK_ERROR_MOCK(c10_npu::GetDevice(&curr_device));
-        auto inserted = ipcMemHandle_to_devptr.insert(
-            iter,
-            {handle,
-            MemHandleCacheEntry(
-                static_cast<c10::DeviceIndex>(curr_device), handle, *device_allocator[curr_device])});
-        auto sp = std::shared_ptr<void>(
-            inserted->second.ptr(), [handle, this](void* ptr) {
-                (void)ptr;
-                std::unique_lock<std::mutex> deleter_lock(IpcMutex);
+        auto inserted =
+            ipcMemHandle_to_devptr.insert(iter, {handle, MemHandleCacheEntry(static_cast<c10::DeviceIndex>(curr_device),
+                                                                             handle, *device_allocator[curr_device])});
+        auto sp = std::shared_ptr<void>(inserted->second.ptr(), [handle, this](void *ptr) {
+            (void)ptr;
+            std::unique_lock<std::mutex> deleter_lock(IpcMutex);
 
-                auto it = ipcMemHandle_to_devptr.find(handle);
-                TORCH_INTERNAL_ASSERT(it != ipcMemHandle_to_devptr.end());
-                auto entry = std::move(it->second);
-                ipcMemHandle_to_devptr.erase(it);
+            auto it = ipcMemHandle_to_devptr.find(handle);
+            TORCH_INTERNAL_ASSERT(it != ipcMemHandle_to_devptr.end());
+            auto entry = std::move(it->second);
+            ipcMemHandle_to_devptr.erase(it);
 
-                // ExpandableSegment synchronizes on destruction in unmapHandles, so
-                // we need to release the lock first to minimize the performance hit.
-                deleter_lock.unlock();
-                entry.clear();
-            });
+            // ExpandableSegment synchronizes on destruction in unmapHandles, so
+            // we need to release the lock first to minimize the performance hit.
+            deleter_lock.unlock();
+            entry.clear();
+        });
         inserted->second.wp_ = sp;
         return sp;
     }
@@ -3881,7 +3639,6 @@ public:
 
 DirectMemoryAllocator caching_allocator;
 
-
 void local_raw_delete(void *ptr)
 {
     caching_allocator.free(ptr);
@@ -3897,8 +3654,8 @@ void *MallocBlock(size_t size, void *stream, int device)
     }
     AT_ASSERT(caching_allocator.device_allocator[device], PTA_ERROR_MOCK(ErrCode::NOT_FOUND));
     AT_ASSERT(stream, PTA_ERROR_MOCK(ErrCode::NOT_FOUND));
-    auto block = caching_allocator.device_allocator[device]->malloc(device, size, stream,
-        static_cast<uint8_t>(torch_npu::profiler::MemoryAllocatorType::ALLOCATOR_EXTERNAL));
+    auto block = caching_allocator.device_allocator[device]->malloc(
+        device, size, stream, static_cast<uint8_t>(torch_npu::profiler::MemoryAllocatorType::ALLOCATOR_EXTERNAL));
     AT_ASSERT(block, PTA_ERROR_MOCK(ErrCode::NOT_FOUND));
     return reinterpret_cast<void *>(block);
 }
@@ -3913,8 +3670,8 @@ void FreeBlock(void *handle)
     auto orig_block_size = block->size;
     (void)orig_block_ptr;
     (void)orig_block_size;
-    caching_allocator.device_allocator[block->device]->free(block,
-        static_cast<uint8_t>(torch_npu::profiler::MemoryAllocatorType::ALLOCATOR_EXTERNAL));
+    caching_allocator.device_allocator[block->device]->free(
+        block, static_cast<uint8_t>(torch_npu::profiler::MemoryAllocatorType::ALLOCATOR_EXTERNAL));
 }
 
 void *GetBlockPtr(const void *handle)
@@ -3931,16 +3688,6 @@ size_t GetBlockSize(const void *handle)
     return block->size;
 }
 
-//struct BackendStaticInitializer {
-//    BackendStaticInitializer()
-//    {
-//        allocator.store(&caching_allocator);
-//    }
-//};
-//
-//std::atomic<NPUAllocator *> allocator;
-//BackendStaticInitializer backend_static_initializer;
-
 std::mutex *getFreeMutex()
 {
     static std::mutex npu_free_mutex;
@@ -3950,61 +3697,70 @@ std::mutex *getFreeMutex()
 } // namespace dma
 } // namespace c10_npu
 
-
-void finalize() {
-}
-
+void finalize() {}
 
 extern "C" {
-EXPORT_API void *dma_malloc(size_t size, int device, aclrtStream stream) {
+EXPORT_API void *dma_malloc(size_t size, int device, aclrtStream stream)
+{
     void *ptr = nullptr;
     if (size == 0) {
-      return ptr;
+        return ptr;
     }
     c10_npu::dma::caching_allocator.malloc(&ptr, device, size, stream);
     return ptr;
 }
 
-EXPORT_API void dma_free(void *ptr, size_t size, int device, aclrtStream stream) {
+EXPORT_API void dma_free(void *ptr, size_t size, int device, aclrtStream stream)
+{
     (void)size;
     (void)device;
     (void)stream;
     c10_npu::dma::caching_allocator.free(ptr);
 }
 
-EXPORT_API void dma_init(int device_count) {
+EXPORT_API void dma_init(int device_count)
+{
     c10_npu::dma::caching_allocator.init(device_count);
 }
 
-EXPORT_API void dma_record_stream(void *ptr, c10_npu::NPUStream stream) {
+EXPORT_API void dma_record_stream(void *ptr, c10_npu::NPUStream stream)
+{
     c10_npu::dma::caching_allocator.recordStream(ptr, stream);
 }
 
-EXPORT_API void dma_erase_stream(void *ptr, c10_npu::NPUStream stream) {
+EXPORT_API void dma_erase_stream(void *ptr, c10_npu::NPUStream stream)
+{
     c10_npu::dma::caching_allocator.eraseStream(ptr, stream);
 }
 
-EXPORT_API void dma_empty_cache(bool check_error) {
+EXPORT_API void dma_empty_cache(bool check_error)
+{
     c10_npu::dma::caching_allocator.emptyCache(check_error);
 }
 
-EXPORT_API void dma_begin_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id, std::function<bool(aclrtStream)> filter) {
+EXPORT_API void dma_begin_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id,
+                                           std::function<bool(aclrtStream)> filter)
+{
     c10_npu::dma::caching_allocator.beginAllocateToPool(device, mempool_id, filter);
 }
 
-EXPORT_API void dma_end_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id) {
+EXPORT_API void dma_end_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id)
+{
     c10_npu::dma::caching_allocator.endAllocateToPool(device, mempool_id);
 }
 
-EXPORT_API void dma_release_pool(int device, c10_npu::MempoolId_t mempool_id) {
+EXPORT_API void dma_release_pool(int device, c10_npu::MempoolId_t mempool_id)
+{
     c10_npu::dma::caching_allocator.releasePool(device, mempool_id);
 }
 
-EXPORT_API c10_npu::NPUCachingAllocator::DeviceStats dma_get_device_stats(int device) {
+EXPORT_API c10_npu::NPUCachingAllocator::DeviceStats dma_get_device_stats(int device)
+{
     return c10_npu::dma::caching_allocator.getDeviceStats(device);
 }
 
-EXPORT_API void* dma_get_base_addr(int device) {
+EXPORT_API void *dma_get_base_addr(int device)
+{
     int device_i = 0;
     if (device < 0)
         c10_npu::GetDevice(&device_i);
@@ -4013,7 +3769,8 @@ EXPORT_API void* dma_get_base_addr(int device) {
     return c10_npu::dma::caching_allocator.device_allocator[device_i]->symm_base_addr;
 }
 
-EXPORT_API void dma_init_heap(void *base_ptr, uint64_t local_mem_size, bool is_simulation) {
+EXPORT_API void dma_init_heap(void *base_ptr, uint64_t local_mem_size, bool is_simulation)
+{
     int device = 0;
     c10_npu::GetDevice(&device);
 
@@ -4027,23 +3784,23 @@ EXPORT_API void dma_init_heap(void *base_ptr, uint64_t local_mem_size, bool is_s
         TORCH_INTERNAL_ASSERT(!is_simulation, "[E]dma currently do not support simulation on this init.");
         c10_npu::dma::caching_allocator.device_allocator[device]->mem_heap_inited = true;
         c10_npu::dma::caching_allocator.device_allocator[device]->mem_heap_pool_ =
-                std::make_shared<zbal::adaptor::heap::MemoryHeap>(symm_base_ptr, local_mem_size);
+            std::make_shared<zbal::adaptor::heap::MemoryHeap>(symm_base_ptr, local_mem_size);
         c10_npu::dma::caching_allocator.device_allocator[device]->symm_base_addr = symm_base_ptr;
         ZBAL_LOG_INFO("set allocator on device:" << device << " success.");
-    }
-    else {
+    } else {
         ZBAL_LOG_WARN("re-entrance into dma init, skip this time init");
     }
 }
 
-EXPORT_API void dma_get_heap_stats(size_t &in_used_size, size_t &total_size, int device) {
+EXPORT_API void dma_get_heap_stats(size_t &in_used_size, size_t &total_size, int device)
+{
     int device_i = 0;
     if (device < 0)
         c10_npu::GetDevice(&device_i);
     else
         device_i = device;
 
-    if (static_cast<size_t>(device_i) < c10_npu::dma::caching_allocator.device_allocator.size() && \
+    if (static_cast<size_t>(device_i) < c10_npu::dma::caching_allocator.device_allocator.size() &&
         c10_npu::dma::caching_allocator.device_allocator[device_i]->mem_heap_inited) {
         in_used_size = c10_npu::dma::caching_allocator.device_allocator[device_i]->mem_heap_pool_->getInUsedSize();
         total_size = c10_npu::dma::caching_allocator.device_allocator[device_i]->mem_heap_pool_->getTotalSize();
@@ -4051,22 +3808,23 @@ EXPORT_API void dma_get_heap_stats(size_t &in_used_size, size_t &total_size, int
         ZBAL_LOG_ERROR("heap on target device is not inited, no stats now");
     }
 }
-
 }
 
-void dma_record_memory_history(std::optional<std::string> enabled, int64_t max_entries) {
+void dma_record_memory_history(std::optional<std::string> enabled, int64_t max_entries)
+{
     if (enabled) {
         if (!(enabled == "state" || enabled == "all")) {
             TORCH_INTERNAL_ASSERT(false, "dma snapshot expected enabled to be 'state' or 'all'");
         }
     }
     max_entries = (enabled && *enabled == "all") ? max_entries : 1;
-    c10_npu::dma::caching_allocator.recordHistory(enabled.has_value(), nullptr, max_entries, c10_npu::dma::RecordContext::NEVER);
+    c10_npu::dma::caching_allocator.recordHistory(enabled.has_value(), nullptr, max_entries,
+                                                  c10_npu::dma::RecordContext::NEVER);
 }
 
 namespace py = pybind11;
-py::dict dma_dump_snapshot() {
-
+py::dict dma_dump_snapshot()
+{
     using c10_npu::dma::BlockInfo;
     using c10_npu::dma::SegmentInfo;
 
@@ -4094,8 +3852,7 @@ py::dict dma_dump_snapshot() {
 
     py::list empty_frames;
 
-
-    const auto segmentInfoToDict = [&](const SegmentInfo& segmentInfo) {
+    const auto segmentInfoToDict = [&](const SegmentInfo &segmentInfo) {
         py::dict segmentDict;
         segmentDict[device_s] = segmentInfo.device;
         segmentDict[address_s] = segmentInfo.address;
@@ -4113,7 +3870,7 @@ py::dict dma_dump_snapshot() {
 
         auto address = segmentInfo.address;
         py::list blocks;
-        for (const auto& blockInfo : segmentInfo.blocks) {
+        for (const auto &blockInfo : segmentInfo.blocks) {
             py::dict blockDict;
             blockDict[address_s] = address;
             blockDict[size_s] = blockInfo.size;
@@ -4132,7 +3889,7 @@ py::dict dma_dump_snapshot() {
     auto snapshot = c10_npu::dma::caching_allocator.snapshot();
     py::list segments;
 
-    for (const auto& segmentInfo : snapshot.segments) {
+    for (const auto &segmentInfo : snapshot.segments) {
         segments.append(segmentInfoToDict(segmentInfo));
     }
 
@@ -4183,9 +3940,9 @@ py::dict dma_dump_snapshot() {
         }
     };
 
-    for (const auto& traceInfo : snapshot.device_traces) {
+    for (const auto &traceInfo : snapshot.device_traces) {
         py::list trace;
-        for (const auto& te : traceInfo) {
+        for (const auto &te : traceInfo) {
             py::dict trace_entry;
             trace_entry[action_s] = action_to_str(te.action_);
             trace_entry[te.action_ == TraceEntry::OOM ? device_free_s : addr_s] = te.addr_;

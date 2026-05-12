@@ -28,15 +28,18 @@ bool RangeSizeFirstComparator::operator()(const MemoryRange &mr1, const MemoryRa
 }
 
 // MemoryHeap
-MemoryHeap::MemoryHeap(void *base, uint64_t size) noexcept : base_{reinterpret_cast<uint8_t *>(base)},
-    size_{size}, used_size_{0}
+MemoryHeap::MemoryHeap(void *base, uint64_t size) noexcept
+    : base_{reinterpret_cast<uint8_t *>(base)}, size_{size}, used_size_{0}
 {
     pthread_spin_init(&spinlock_, 0);
     address_idle_tree_[0] = size;
     size_idle_tree_.insert({0, size});
 }
 
-MemoryHeap::~MemoryHeap() noexcept { pthread_spin_destroy(&spinlock_); }
+MemoryHeap::~MemoryHeap() noexcept
+{
+    pthread_spin_destroy(&spinlock_);
+}
 
 void *MemoryHeap::allocate(uint64_t size) noexcept
 {
@@ -61,8 +64,8 @@ void *MemoryHeap::allocate(uint64_t size) noexcept
     auto addr_pos = address_idle_tree_.find(target_offset);
     if (addr_pos == address_idle_tree_.end()) {
         pthread_spin_unlock(&spinlock_);
-        ZBAL_LOG_ERROR("offset(" << target_offset << ") size(" << target_size <<
-                                        ") in size tree, not in address tree.");
+        ZBAL_LOG_ERROR("offset(" << target_offset << ") size(" << target_size
+                                 << ") in size tree, not in address tree.");
         return nullptr;
     }
 
@@ -113,8 +116,8 @@ void *MemoryHeap::alignedAllocate(uint64_t alignment, uint64_t size) noexcept
     auto addr_pos = address_idle_tree_.find(target_offset);
     if (addr_pos == address_idle_tree_.end()) {
         pthread_spin_unlock(&spinlock_);
-        ZBAL_LOG_ERROR("offset(" << target_offset << ") size(" << target_size <<
-                                        ") in size tree, not in address tree.");
+        ZBAL_LOG_ERROR("offset(" << target_offset << ") size(" << target_size
+                                 << ") in size tree, not in address tree.");
         return nullptr;
     }
     MemoryRange result_range{size_pos->offset_ + head_skip, aligned_size};
@@ -127,8 +130,7 @@ void *MemoryHeap::alignedAllocate(uint64_t alignment, uint64_t size) noexcept
     }
 
     if (head_skip + aligned_size < target_size) {
-        MemoryRange leftMR{target_offset + head_skip + aligned_size,
-                                                target_size - head_skip - aligned_size};
+        MemoryRange leftMR{target_offset + head_skip + aligned_size, target_size - head_skip - aligned_size};
         size_idle_tree_.emplace(leftMR);
         address_idle_tree_.emplace(leftMR.offset_, leftMR.size_);
     }
@@ -210,7 +212,7 @@ int32_t MemoryHeap::release(void *address) noexcept
     if (prev_addr_pos != address_idle_tree_.begin()) {
         --prev_addr_pos;
         if (prev_addr_pos != address_idle_tree_.end() &&
-                prev_addr_pos->first + prev_addr_pos->second == static_cast<uint64_t>(offset)) {
+            prev_addr_pos->first + prev_addr_pos->second == static_cast<uint64_t>(offset)) {
             // 合并前一个range
             final_offset = prev_addr_pos->first;
             final_size += prev_addr_pos->second;
@@ -222,7 +224,7 @@ int32_t MemoryHeap::release(void *address) noexcept
     }
 
     auto next_addr_pos = address_idle_tree_.find(offset + size);
-    if (next_addr_pos != address_idle_tree_.end()) {    // 合并后一个range
+    if (next_addr_pos != address_idle_tree_.end()) { // 合并后一个range
         uint64_t next_addr = next_addr_pos->first;
         uint64_t next_size = next_addr_pos->second;
         final_size += next_size;
@@ -280,18 +282,19 @@ uint64_t MemoryHeap::allocated_size_align_up(uint64_t input_size) noexcept
     return (input_size + align_size - 1UL) & align_size_mask;
 }
 
-bool MemoryHeap::alignment_matches(const MemoryRange &mr, uint64_t align, uint64_t size, uint64_t &head_skip) noexcept
+bool MemoryHeap::alignment_matches(const MemoryRange &mr, uint64_t alignment, uint64_t size,
+                                   uint64_t &head_skip) noexcept
 {
     if (mr.size_ < size) {
         return false;
     }
 
-    if ((mr.offset_ & (align - 1UL)) == 0UL) {
+    if ((mr.offset_ & (alignment - 1UL)) == 0UL) {
         head_skip = 0;
         return true;
     }
 
-    auto aligned_offset = ((mr.offset_ + align - 1UL) & (~(align - 1UL)));
+    auto aligned_offset = ((mr.offset_ + alignment - 1UL) & (~(alignment - 1UL)));
     head_skip = aligned_offset - mr.offset_;
     return mr.size_ >= size + head_skip;
 }
@@ -338,9 +341,9 @@ bool MemoryHeap::expend_size_in_lock(const std::map<uint64_t, uint64_t>::iterato
     return true;
 }
 
-}  // namespace heap
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace heap
+} // namespace adaptor
+} // namespace zbal
 
 namespace zbal {
 namespace adaptor {
@@ -360,17 +363,17 @@ ZBAL_API int HeapRelease(void *devPtr, std::shared_ptr<heap::MemoryHeap> symm_po
     return symm_pool->release(devPtr);
 }
 
-ZBAL_API int GetTotalSize(size_t &size, std::shared_ptr <heap::MemoryHeap> symm_pool)
+ZBAL_API int GetTotalSize(size_t &size, std::shared_ptr<heap::MemoryHeap> symm_pool)
 {
     size = symm_pool->getTotalSize();
     return Z_OK;
 }
 
-ZBAL_API int GetInUsedSize(size_t &size, std::shared_ptr <heap::MemoryHeap> symm_pool)
+ZBAL_API int GetInUsedSize(size_t &size, std::shared_ptr<heap::MemoryHeap> symm_pool)
 {
     size = symm_pool->getInUsedSize();
     return Z_OK;
 }
 
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace adaptor
+} // namespace zbal

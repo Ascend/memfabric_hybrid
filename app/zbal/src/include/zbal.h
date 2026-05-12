@@ -50,17 +50,17 @@ int32_t zbal_set_logger_level(int level);
  *
  * @return error message, empty string if no error
  */
-const char* zbal_get_last_error_msg();
+const char *zbal_get_last_error_msg();
 
 /**
  * @brief Get and clear last error message
  *
  * @return error message, empty string if no error
  */
-const char* zbal_get_and_clear_last_error_msg();
+const char *zbal_get_and_clear_last_error_msg();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // ZBAL_H_
+#endif // ZBAL_H_

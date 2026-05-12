@@ -19,7 +19,6 @@
 // using TraceObserver = std::function<void(zbal::sma::device::TraceAction, int64_t, size_t, aclrtStream, int)>;
 // using SegmentObserver = std::function<void(const std::vector<const zbal::sma::device::DeviceBlock *>&, int)>;
 
-
 namespace zbal {
 namespace sma {
 namespace device {
@@ -32,7 +31,7 @@ enum TraceAction : uint32_t {
     // record_stream This event is generated when a free
     // actually completes.
     SEGMENT_ALLOC, // a call to heapMalloc/aclrtMalloc to get more memory from the OS
-    SEGMENT_FREE, // a call to heapMalloc/aclrtFree to return memory to the OS (e.g. to
+    SEGMENT_FREE,  // a call to heapMalloc/aclrtFree to return memory to the OS (e.g. to
     // defragment or empty_caches)
     SNAPSHOT, // a call to snapshot, used to correlate memory snapshots to
     // trace events
@@ -44,11 +43,9 @@ enum TraceAction : uint32_t {
 
 // Struct containing info on allocator action
 struct TraceInfo {
-    TraceInfo(TraceAction action, int device, int64_t addr, size_t size,
-               aclrtStream stream)
+    TraceInfo(TraceAction action, int device, int64_t addr, size_t size, aclrtStream stream)
         : action_(action), device_(device), addr_(addr), stream_(stream), size_(size)
-    {
-    }
+    {}
     TraceAction action_;
     int device_;
     int64_t addr_; // for OOM, this is the amount of free bytes reported by cuda
@@ -68,7 +65,7 @@ struct BlockInfo {
 // Struct containing info of a memory segment (i.e. one contiguous cudaMalloc).
 struct SegmentInfo {
     int64_t device_ = 0;
-    int64_t  address_ = 0;
+    int64_t address_ = 0;
     aclrtStream stream_ = nullptr;
     int64_t total_size_ = 0;
     int64_t requested_size_ = 0;
@@ -81,8 +78,8 @@ struct SegmentInfo {
 
 // we will support multi shots later(each shot take list of segments)
 struct SnapshotDeviceInfo {
-    std::vector<SegmentInfo> seg_infos_;    // manually saved segments
-    std::vector<TraceInfo> trace_infos_;    // automatic saved history traces
+    std::vector<SegmentInfo> seg_infos_; // manually saved segments
+    std::vector<TraceInfo> trace_infos_; // automatic saved history traces
 };
 
 class DeviceInfoObserver {
@@ -90,7 +87,7 @@ public:
     DeviceInfoObserver() = default;
     ~DeviceInfoObserver() = default;
 
-    static DeviceInfoObserver& getInstance()
+    static DeviceInfoObserver &getInstance()
     {
         static DeviceInfoObserver instance = DeviceInfoObserver();
         return instance;
@@ -100,10 +97,10 @@ public:
     void recordTrace(TraceAction action, int64_t addr, size_t size, aclrtStream stream, int device);
 
     // manually take in python/c++
-    void takeSnapshot(const std::vector<const DeviceBlock *>& all_blocks, int device);
+    void takeSnapshot(const std::vector<const DeviceBlock *> &all_blocks, int device);
 
     // export snapshot
-    const SnapshotDeviceInfo& dumpSnapshot(int device);
+    const SnapshotDeviceInfo &dumpSnapshot(int device);
 
     // export snapshot automatically (from OOM etc.)
     void dumpSnapshotJson(int device, const std::string &output_prefix);
@@ -123,8 +120,8 @@ private:
     bool record_history_{false};
 };
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal
 
-#endif  // ZBAL_SMA_DEVICE_INFO_H
+#endif // ZBAL_SMA_DEVICE_INFO_H

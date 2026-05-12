@@ -17,7 +17,7 @@
 #include "zbal_kernel_trace.h"
 #include "zbal_comm_host_device_struct.h"
 
-template <typename T>
+template<typename T>
 class ZBALRecvKernel {
 public:
     ZBAL_KERNEL ZBALRecvKernel() {}
@@ -125,8 +125,8 @@ private:
     __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
-extern "C" __global__ __aicore__
-void ZBALRecvInner(GM_ADDR recvBuf, size_t recvCount, uint32_t dataTypeNum, GM_ADDR metaAddr, uint32_t peer)
+extern "C" __global__ __aicore__ void ZBALRecvInner(GM_ADDR recvBuf, size_t recvCount, uint32_t dataTypeNum,
+                                                    GM_ADDR metaAddr, uint32_t peer)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
@@ -176,13 +176,13 @@ void ZBALRecvInner(GM_ADDR recvBuf, size_t recvCount, uint32_t dataTypeNum, GM_A
     }
 }
 
-int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer,
-                   aclrtStream stream, CommGroupInfo &groupInfo)
+int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
+                   CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, recvCount, dataType);
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
-    uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* recvBuf = reinterpret_cast<uint8_t *>(const_cast<void *>(recvBuff));
+    uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
+    uint8_t *recvBuf = reinterpret_cast<uint8_t *>(const_cast<void *>(recvBuff));
 
     ZBALRecvInner<<<blockDim, nullptr, stream>>>(recvBuf, recvCount, dataTypeNum, metaAddr, peer);
 

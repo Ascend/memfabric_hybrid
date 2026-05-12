@@ -20,6 +20,7 @@ from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
 logger = logging.getLogger(__name__)
 torch_npu.npu.config.allow_internal_format = True
+logging.basicConfig(level=logging.INFO)
 
 
 def test_init_zbal_pg():

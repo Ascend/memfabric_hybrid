@@ -22,7 +22,7 @@ namespace MoeDispatchLayout {
 using namespace AscendC;
 using namespace Moe;
 
-template <AscendC::HardEvent event>
+template<AscendC::HardEvent event>
 ZBAL_KERNEL void SyncFunc()
 {
     int32_t eventID = static_cast<int32_t>(GetTPipePtr()->FetchEventID(event));
@@ -32,14 +32,14 @@ ZBAL_KERNEL void SyncFunc()
 
 constexpr uint16_t MAX_BLOCK = 50U;
 
-template <typename T>
+template<typename T>
 class DispatchLayout {
 public:
-    ZBAL_KERNEL DispatchLayout(){};
+    ZBAL_KERNEL DispatchLayout() {};
 
-    ZBAL_KERNEL void Init(GM_ADDR topkIdx, uint32_t numTokens, uint32_t numExperts, uint32_t numTopk,
-                                uint32_t numRanks, uint32_t rank, GM_ADDR numTokensPerRank, GM_ADDR numTokensPerExpert,
-                                GM_ADDR isTokenInRank, GM_ADDR sendTokenIdx, GM_ADDR notifySendData, TPipe* pipe)
+    ZBAL_KERNEL void Init(GM_ADDR topkIdx, uint32_t numTokens, uint32_t numExperts, uint32_t numTopk, uint32_t numRanks,
+                          uint32_t rank, GM_ADDR numTokensPerRank, GM_ADDR numTokensPerExpert, GM_ADDR isTokenInRank,
+                          GM_ADDR sendTokenIdx, GM_ADDR notifySendData, TPipe *pipe)
     {
         numTokens_ = numTokens;
         numRanks_ = numRanks;
@@ -58,15 +58,15 @@ public:
         }
         uint32_t temp = numTokens_ / initBlockNum;
         uint32_t restNum = numTokens_ % initBlockNum;
-        tempTokens_ = temp;  // 1
+        tempTokens_ = temp; // 1
         if (blockIdx_ < restNum) {
             tempTokens_++;
         }
-        topkIdx32AlignIntLen_ = Ceil(tempTokens_ * numTopk_ * sizeof(int32_t), UB_ALIGN) * UB_ALIGN; // 32
-        topkIdx64AlignIntLen_ = Ceil(tempTokens_ * numTopk_ * sizeof(int64_t), UB_ALIGN) * UB_ALIGN; // 64
-        numTokensPerRank32AlignIntLen_ = Ceil(numRanks_ * sizeof(T), UB_ALIGN) * UB_ALIGN; // 32
-        numTokensPerExpert32AlignIntLen_ = Ceil(numExperts_ * sizeof(T), UB_ALIGN) * UB_ALIGN; // 128
-        isTokenInRank32AlignIntLen_ = Ceil(tempTokens_ * numRanks_ * sizeof(T), UB_ALIGN) * UB_ALIGN; // 32
+        topkIdx32AlignIntLen_ = Ceil(tempTokens_ * numTopk_ * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;   // 32
+        topkIdx64AlignIntLen_ = Ceil(tempTokens_ * numTopk_ * sizeof(int64_t), UB_ALIGN) * UB_ALIGN;   // 64
+        numTokensPerRank32AlignIntLen_ = Ceil(numRanks_ * sizeof(T), UB_ALIGN) * UB_ALIGN;             // 32
+        numTokensPerExpert32AlignIntLen_ = Ceil(numExperts_ * sizeof(T), UB_ALIGN) * UB_ALIGN;         // 128
+        isTokenInRank32AlignIntLen_ = Ceil(tempTokens_ * numRanks_ * sizeof(T), UB_ALIGN) * UB_ALIGN;  // 32
         sendTokenIdx32AlignIntLen_ = Ceil(tempTokens_ * numExperts_ * sizeof(T), UB_ALIGN) * UB_ALIGN; // 128
 
         int64_t topkIdxOffset; // 0, 64, 128, ...
@@ -79,12 +79,12 @@ public:
             isTokenOffset = (restNum + blockIdx_ * tempTokens_) * numRanks_ * sizeof(T);
         }
 
-        topkIdxGM_.SetGlobalBuffer((__gm__ int64_t*)(topkIdx + topkIdxOffset));
-        numTokensPerRankGM_.SetGlobalBuffer((__gm__ T*)numTokensPerRank);
-        numTokensPerExpertGM_.SetGlobalBuffer((__gm__ T*)numTokensPerExpert);
-        isTokenInRankGM_.SetGlobalBuffer((__gm__ T*)(isTokenInRank + isTokenOffset));
-        sendTokenIdxGM_.SetGlobalBuffer((__gm__ T*)(sendTokenIdx + topkIdxOffset / 2));
-        tempExpertGM_.SetGlobalBuffer((__gm__ T*)notifySendData);
+        topkIdxGM_.SetGlobalBuffer((__gm__ int64_t *)(topkIdx + topkIdxOffset));
+        numTokensPerRankGM_.SetGlobalBuffer((__gm__ T *)numTokensPerRank);
+        numTokensPerExpertGM_.SetGlobalBuffer((__gm__ T *)numTokensPerExpert);
+        isTokenInRankGM_.SetGlobalBuffer((__gm__ T *)(isTokenInRank + isTokenOffset));
+        sendTokenIdxGM_.SetGlobalBuffer((__gm__ T *)(sendTokenIdx + topkIdxOffset / 2));
+        tempExpertGM_.SetGlobalBuffer((__gm__ T *)notifySendData);
 
         // reset output GM
         pipe_->InitBuffer(tmpBuf_, numTokensPerExpert32AlignIntLen_); // experts是ranks的整数倍，按照大的初始化
@@ -127,8 +127,8 @@ public:
         Duplicate<T>(isTokenInRankTensor, 0, isTokenInRank32AlignIntLen_ / sizeof(T));
         SyncFunc<AscendC::HardEvent::V_S>();
 
-        DataCopyExtParams dataCopyParams{1U,
-            static_cast<uint32_t>(tempTokens_ * numTopk_ * sizeof(int64_t)), 0U, 0U, 0U};
+        DataCopyExtParams dataCopyParams{1U, static_cast<uint32_t>(tempTokens_ * numTopk_ * sizeof(int64_t)), 0U, 0U,
+                                         0U};
         DataCopyPadExtParams<int64_t> padParams{false, 0U, 0U, 0U};
         SyncFunc<AscendC::HardEvent::MTE3_MTE2>();
         DataCopyPad(topkIdxTensor, topkIdxGM_, dataCopyParams, padParams);
@@ -176,8 +176,8 @@ public:
 
         SyncFunc<AscendC::HardEvent::MTE3_MTE2>();
         DataCopyPadExtParams<T> tempPadParams{false, 0U, 0U, 0U};
-        DataCopyPad(numTokensPerExpertTensor,
-            tempExpertGM_[blockIdx_ * numExperts_], tempDataCopyParams, tempPadParams);
+        DataCopyPad(numTokensPerExpertTensor, tempExpertGM_[blockIdx_ * numExperts_], tempDataCopyParams,
+                    tempPadParams);
 
         SyncFunc<AscendC::HardEvent::MTE2_S>();
         for (int i = 0; i < tempTokens_; ++i) {
@@ -199,7 +199,7 @@ public:
     }
 
 private:
-    TPipe* pipe_{nullptr};
+    TPipe *pipe_{nullptr};
     uint32_t blockIdx_{0};
     uint32_t blockNum_{0};
 
@@ -232,6 +232,6 @@ private:
     uint32_t isTokenInRank32AlignIntLen_{0};
     uint32_t sendTokenIdx32AlignIntLen_{0};
 };
-}  // namespace MoeDispatchLayout
+} // namespace MoeDispatchLayout
 
-#endif  // ZBAL_KERNEL_DISPATCH_LAYOUT_H
+#endif // ZBAL_KERNEL_DISPATCH_LAYOUT_H

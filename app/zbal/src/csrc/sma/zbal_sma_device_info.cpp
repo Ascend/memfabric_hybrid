@@ -46,7 +46,7 @@ void DeviceInfoObserver::recordTrace(TraceAction action, int64_t addr, size_t si
     }
 }
 
-void DeviceInfoObserver::takeSnapshot(const std::vector<const DeviceBlock *>& all_blocks, int device)
+void DeviceInfoObserver::takeSnapshot(const std::vector<const DeviceBlock *> &all_blocks, int device)
 {
     if (static_cast<size_t>(device) >= snapshots_.size()) {
         snapshots_.resize(device + 1);
@@ -64,7 +64,7 @@ void DeviceInfoObserver::takeSnapshot(const std::vector<const DeviceBlock *>& al
     }
 
     uint64_t total_active = 0;
-    for (const DeviceBlock * const head_block : all_blocks) {
+    for (const DeviceBlock *const head_block : all_blocks) {
         // we report one segment for each continuous range of memory
         if (head_block->prev_) {
             continue;
@@ -105,7 +105,7 @@ void DeviceInfoObserver::takeSnapshot(const std::vector<const DeviceBlock *>& al
     recordTrace(TraceAction::SNAPSHOT, 0, total_active, nullptr, device);
 }
 
-const SnapshotDeviceInfo& DeviceInfoObserver::dumpSnapshot(int device)
+const SnapshotDeviceInfo &DeviceInfoObserver::dumpSnapshot(int device)
 {
     return snapshots_[device];
 }
@@ -130,7 +130,7 @@ void DeviceInfoObserver::dumpSnapshotJson(int device, const std::string &output_
     // 1. process segments
     o << "    \"segments\": [\n";
     for (size_t i = 0; i < snapshot.seg_infos_.size(); ++i) {
-        const auto& seg = snapshot.seg_infos_[i];
+        const auto &seg = snapshot.seg_infos_[i];
         o << "        {\n";
         o << "            \"device\": " << seg.device_ << ",\n";
         o << "            \"address\": " << seg.address_ << ",\n";
@@ -145,9 +145,8 @@ void DeviceInfoObserver::dumpSnapshotJson(int device, const std::string &output_
         o << "            \"blocks\": [\n";
         uint64_t curr_addr = seg.address_;
         for (size_t j = 0; j < seg.blocks_.size(); ++j) {
-            const auto& b = seg.blocks_[j];
-            std::string state = b.allocated_ ? "active_allocated" :
-                                (b.active_ ? "active_pending_free" : "inactive");
+            const auto &b = seg.blocks_[j];
+            std::string state = b.allocated_ ? "active_allocated" : (b.active_ ? "active_pending_free" : "inactive");
             o << "                {\n";
             o << "                    \"address\": " << curr_addr << ",\n";
             o << "                    \"size\": " << b.size_ << ",\n";
@@ -162,23 +161,21 @@ void DeviceInfoObserver::dumpSnapshotJson(int device, const std::string &output_
     o << "    ],\n"; // segments end
 
     // 2. process traces
-    static const std::map<TraceAction, std::string> action_map = {
-        {TraceAction::ALLOC, "alloc"},
-        {TraceAction::FREE_REQUESTED, "free_requested"},
-        {TraceAction::FREE_COMPLETED, "free_completed"},
-        {TraceAction::SEGMENT_ALLOC, "segment_alloc"},
-        {TraceAction::SEGMENT_FREE, "segment_free"},
-        {TraceAction::OOM, "oom"}
-    };
+    static const std::map<TraceAction, std::string> action_map = {{TraceAction::ALLOC, "alloc"},
+                                                                  {TraceAction::FREE_REQUESTED, "free_requested"},
+                                                                  {TraceAction::FREE_COMPLETED, "free_completed"},
+                                                                  {TraceAction::SEGMENT_ALLOC, "segment_alloc"},
+                                                                  {TraceAction::SEGMENT_FREE, "segment_free"},
+                                                                  {TraceAction::OOM, "oom"}};
 
     o << "    \"device_traces\": [[\n";
     for (size_t i = 0; i < snapshot.trace_infos_.size(); ++i) {
-        const auto& te = snapshot.trace_infos_[i];
+        const auto &te = snapshot.trace_infos_[i];
         std::string act = action_map.count(te.action_) ? action_map.at(te.action_) : "unknown";
 
         o << "        {\n";
         o << "            \"action\": \"" << act << "\",\n";
-        const char* key = (te.action_ == TraceAction::OOM ? "device_free" : "addr");
+        const char *key = (te.action_ == TraceAction::OOM ? "device_free" : "addr");
         o << "            \"" << key << "\": " << te.addr_ << ",\n";
         o << "            \"size\": " << te.size_ << ",\n";
         o << "            \"stream\": " << (int64_t)te.stream_ << "\n";
@@ -189,7 +186,6 @@ void DeviceInfoObserver::dumpSnapshotJson(int device, const std::string &output_
     o << "}\n";
     o.close();
 }
-
 
 void DeviceInfoObserver::recordHistory(bool record_history, int64_t max_size)
 {
@@ -202,6 +198,6 @@ void DeviceInfoObserver::recordHistory(bool record_history, int64_t max_size)
     max_trace_len_ = max_size;
 }
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal

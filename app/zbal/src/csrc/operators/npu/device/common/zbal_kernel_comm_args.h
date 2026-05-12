@@ -28,8 +28,8 @@ enum MetaType : int { STATE = 0, ADDR = 1, FLAG = 2 };
 constexpr uint64_t KB_SIZE = 1024UL;
 constexpr uint64_t META_FLAG_R_OFFSET = 50 * KB_SIZE;
 
-constexpr uint64_t CYCLE_TO_TIME = 50;  // cycle num is converted into a fixed base unit of time, set at 50
+constexpr uint64_t CYCLE_TO_TIME = 50; // cycle num is converted into a fixed base unit of time, set at 50
 constexpr uint64_t TIMEOUT_DETECTION_THRESHOLD = 5000000000UL;
-}  // namespace Moe
+} // namespace Moe
 
 #endif // ZBAL_KERNEL_UTILS_H

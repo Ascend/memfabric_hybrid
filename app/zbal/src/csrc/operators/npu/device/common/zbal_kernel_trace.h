@@ -16,16 +16,17 @@ See the Mulan PSL v2 for more details.
 #include <cstdint>
 #include "zbal_kernel_utils.h"
 
-namespace {     // perf trace
+namespace { // perf trace
 
-ZBAL_KERNEL void ZBAL_PROF_RECORD(__gm__ CommGroupInfo *comm, uint64_t record) {
+ZBAL_KERNEL void ZBAL_PROF_RECORD(__gm__ CommGroupInfo *comm, uint64_t record)
+{
     if (AscendC::GetBlockIdx() < ZBAL_MAX_AIV_SIZE_PER_NPU) {
         auto block = reinterpret_cast<__gm__ uint64_t *>(comm->devMemoryForProfiling);
         uint64_t coreOffset = AscendC::GetBlockIdx() * comm->tracePointPerCore;
         PipeBarrier<PIPE_ALL>();
         dcciCacheline(block + coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF);
-        int64_t index = block[coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF] + 1;             // get as record index
-        if (index <= ZBAL_PROFILING_DEVICE_TRACE_OFF) {                                    // first record start at [2]
+        int64_t index = block[coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF] + 1; // get as record index
+        if (index <= ZBAL_PROFILING_DEVICE_TRACE_OFF) {                        // first record start at [2]
             index = ZBAL_PROFILING_DEVICE_TRACE_OFF;
         }
         if (index >= comm->tracePointPerCore) {
@@ -33,14 +34,15 @@ ZBAL_KERNEL void ZBAL_PROF_RECORD(__gm__ CommGroupInfo *comm, uint64_t record) {
         }
         PipeBarrier<PIPE_ALL>();
         block[coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF] = index;
-        dcciCacheline(block + coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF);                 // flush index to gm at [1]
+        dcciCacheline(block + coreOffset + ZBAL_PROFILING_DEVICE_IDX_OFF); // flush index to gm at [1]
 
         block[coreOffset + index] = record;
-        dcciCacheline(block + coreOffset + index);          // flush record to gm at [index]
+        dcciCacheline(block + coreOffset + index); // flush record to gm at [index]
     }
 }
 
-ZBAL_KERNEL void ZBAL_PROF_START(__gm__ CommGroupInfo *comm, uint16_t frameId) {
+ZBAL_KERNEL void ZBAL_PROF_START(__gm__ CommGroupInfo *comm, uint16_t frameId)
+{
     if (comm->devMemoryForProfiling != 0) {
         PipeBarrier<PIPE_ALL>();
         int64_t cycles = AscendC::GetSystemCycle();
@@ -49,7 +51,8 @@ ZBAL_KERNEL void ZBAL_PROF_START(__gm__ CommGroupInfo *comm, uint16_t frameId) {
     }
 }
 
-ZBAL_KERNEL void ZBAL_PROF_STOP(__gm__ CommGroupInfo *comm, uint16_t frameId) {
+ZBAL_KERNEL void ZBAL_PROF_STOP(__gm__ CommGroupInfo *comm, uint16_t frameId)
+{
     if (comm->devMemoryForProfiling != 0) {
         PipeBarrier<PIPE_ALL>();
         int64_t cycles = AscendC::GetSystemCycle();
@@ -59,9 +62,9 @@ ZBAL_KERNEL void ZBAL_PROF_STOP(__gm__ CommGroupInfo *comm, uint16_t frameId) {
     }
 }
 
-}
+} // namespace
 
-namespace {     // debug trace
+namespace { // debug trace
 
 ZBAL_KERNEL void ZBAL_DEBUG_RECORD(__gm__ CommGroupInfo *comm, uint64_t record)
 {
@@ -94,7 +97,7 @@ ZBAL_KERNEL void ZBAL_DEBUG_STOP(__gm__ CommGroupInfo *comm, int lineNo)
 }
 
 ZBAL_KERNEL void ZBAL_PROF_DUMP(__gm__ CommGroupInfo *comm, int lineNo, uint64_t v1, uint64_t v2, uint64_t v3,
-                                       uint64_t v4, uint64_t v5, uint64_t v6)
+                                uint64_t v4, uint64_t v5, uint64_t v6)
 {
     if (comm->devMemoryForProfiling == 0) {
         return;
@@ -114,13 +117,13 @@ ZBAL_KERNEL void ZBAL_PROF_DUMP(__gm__ CommGroupInfo *comm, int lineNo, uint64_t
 }
 
 ZBAL_KERNEL void ZBAL_PROF_DUMP(__gm__ CommGroupInfo *comm, int lineNo, uint64_t v1, uint64_t v2, uint64_t v3,
-                                       uint64_t v4, uint64_t v5)
+                                uint64_t v4, uint64_t v5)
 {
     ZBAL_PROF_DUMP(comm, lineNo, v1, v2, v3, v4, v5, UINT64_MAX);
 }
 
 ZBAL_KERNEL void ZBAL_PROF_DUMP(__gm__ CommGroupInfo *comm, int lineNo, uint64_t v1, uint64_t v2, uint64_t v3,
-                                       uint64_t v4)
+                                uint64_t v4)
 {
     ZBAL_PROF_DUMP(comm, lineNo, v1, v2, v3, v4, UINT64_MAX, UINT64_MAX);
 }
@@ -145,7 +148,6 @@ ZBAL_KERNEL void ZBAL_PROF_DUMP(__gm__ CommGroupInfo *comm, int lineNo)
     ZBAL_PROF_DUMP(comm, lineNo, UINT64_MAX, UINT64_MAX, UINT64_MAX, UINT64_MAX, UINT64_MAX, UINT64_MAX);
 }
 
-}
-
+} // namespace
 
 #endif

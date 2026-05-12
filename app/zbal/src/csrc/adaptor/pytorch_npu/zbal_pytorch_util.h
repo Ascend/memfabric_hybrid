@@ -33,9 +33,8 @@ std::vector<at::Device> GetDeviceList(const std::vector<at::Tensor> &tensors);
 
 std::string GetKeyFromDevices(const std::vector<at::Device> &devices);
 
-void SyncStreams(const std::vector<at::Device> &devices,
-    std::vector<c10_npu::NPUEvent> &zbalEvents,
-    std::vector<c10_npu::NPUStream> &zbalStreams);
+void SyncStreams(const std::vector<at::Device> &devices, std::vector<c10_npu::NPUEvent> &zbalEvents,
+                 std::vector<c10_npu::NPUStream> &zbalStreams);
 
 void CheckTensors(const std::vector<at::Tensor> &tensors);
 
@@ -53,18 +52,18 @@ zbal_reduce_op_t GetZbalReduceOp(const c10d::ReduceOp op);
 
 void CheckSplitSize(const std::vector<int64_t> &splits, const at::Tensor &tensor, int groupSize);
 
-bool CheckSameSize(const std::vector<at::Tensor>& input_tensors);
+bool CheckSameSize(const std::vector<at::Tensor> &input_tensors);
 
 void CheckNpuTensorsSameDevice(const std::vector<at::Tensor> &tensors);
 
-std::vector<at::Tensor> FlattenForScatterGather(std::vector<std::vector<at::Tensor>>& tensorLists,
-                                                std::vector<at::Tensor>& other, size_t worldSize);
+std::vector<at::Tensor> FlattenForScatterGather(std::vector<std::vector<at::Tensor>> &tensorLists,
+                                                std::vector<at::Tensor> &other, size_t worldSize);
 
 at::Tensor ZbalNewLikeFlat(std::vector<std::vector<at::Tensor>> &tensors, size_t deviceIdx);
 
-}
-}
-}
+} // namespace pytorch_npu
+} // namespace adaptor
+} // namespace zbal
 
 struct OptionsManager {
     static bool IsHcclZeroCopyEnable;
@@ -76,28 +75,28 @@ std::string ZBALFormatErrorCode(int32_t errorCode);
 #define PTA_ERROR_MOCK(err_code) ZBALFormatErrorCode((int32_t)(err_code))
 #define OPS_ERROR_MOCK(err_code) ZBALFormatErrorCode((int32_t)(err_code))
 
-#define NPU_CHECK_ERROR_MOCK(err_code, ...)                                  \
-    do {                                                                     \
-        int error_code = err_code;                                           \
-        if ((error_code) != ACL_ERROR_NONE) {                                \
-            std::ostringstream oss;                                          \
+#define NPU_CHECK_ERROR_MOCK(err_code, ...)                                                                        \
+    do {                                                                                                           \
+        int error_code = err_code;                                                                                 \
+        if ((error_code) != ACL_ERROR_NONE) {                                                                      \
+            std::ostringstream oss;                                                                                \
             oss << " NPU function error: [ShmemAllocator Currently do not support detail error log]" << std::endl; \
-            std::string err_msg = oss.str();                                 \
-            ASCEND_LOGE("%s", err_msg.c_str());                              \
-        }                                                                    \
+            std::string err_msg = oss.str();                                                                       \
+            ASCEND_LOGE("%s", err_msg.c_str());                                                                    \
+        }                                                                                                          \
     } while (0)
 
-#define NPU_CHECK_WARN_MOCK(err_code, ...)                                   \
-    do {                                                                     \
-        int error_code = err_code;                                           \
-        if ((error_code) != ACL_ERROR_NONE) {                                \
-            std::ostringstream oss;                                          \
+#define NPU_CHECK_WARN_MOCK(err_code, ...)                                                                             \
+    do {                                                                                                               \
+        int error_code = err_code;                                                                                     \
+        if ((error_code) != ACL_ERROR_NONE) {                                                                          \
+            std::ostringstream oss;                                                                                    \
             oss << " NPU function warning: [ShmemAllocator Currently do not support detail warning log]" << std::endl; \
-            std::string err_msg = oss.str();                                 \
-            ASCEND_LOGW("%s", err_msg.c_str());                              \
-        }                                                                    \
+            std::string err_msg = oss.str();                                                                           \
+            ASCEND_LOGW("%s", err_msg.c_str());                                                                        \
+        }                                                                                                              \
     } while (0)
 
-const int32_t ACL_SYNC_TIMEOUT = 3600 * 1000;  // ms
+const int32_t ACL_SYNC_TIMEOUT = 3600 * 1000; // ms
 
 #endif

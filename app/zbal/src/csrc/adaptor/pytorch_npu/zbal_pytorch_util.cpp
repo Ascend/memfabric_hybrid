@@ -22,15 +22,9 @@ namespace adaptor {
 namespace pytorch_npu {
 
 const std::map<at::ScalarType, zbal_datatype_t> kScalarTypeToZbalDataType = {
-    {at::kByte, ZBAL_DATA_TYPE_UINT8},
-    {at::kChar, ZBAL_DATA_TYPE_INT8},
-    {at::kShort, ZBAL_DATA_TYPE_INT16},
-    {at::kInt, ZBAL_DATA_TYPE_INT32},
-    {at::kLong, ZBAL_DATA_TYPE_INT64},
-    {at::kHalf, ZBAL_DATA_TYPE_FP16},
-    {at::kFloat, ZBAL_DATA_TYPE_FP32},
-    {at::kDouble, ZBAL_DATA_TYPE_FP64},
-    {at::kBool, ZBAL_DATA_TYPE_UINT8},
+    {at::kByte, ZBAL_DATA_TYPE_UINT8},     {at::kChar, ZBAL_DATA_TYPE_INT8},   {at::kShort, ZBAL_DATA_TYPE_INT16},
+    {at::kInt, ZBAL_DATA_TYPE_INT32},      {at::kLong, ZBAL_DATA_TYPE_INT64},  {at::kHalf, ZBAL_DATA_TYPE_FP16},
+    {at::kFloat, ZBAL_DATA_TYPE_FP32},     {at::kDouble, ZBAL_DATA_TYPE_FP64}, {at::kBool, ZBAL_DATA_TYPE_UINT8},
     {at::kBFloat16, ZBAL_DATA_TYPE_BFP16},
 };
 
@@ -40,7 +34,6 @@ const std::map<c10d::ReduceOp, zbal_reduce_op_t> ReduceOpToZbalReduceOp = {
     {c10d::ReduceOp::SUM, ZBAL_REDUCE_SUM},
     {c10d::ReduceOp::PRODUCT, ZBAL_REDUCE_PROD},
 };
-
 
 std::vector<at::Device> GetDeviceList(const std::vector<at::Tensor> &tensors)
 {
@@ -65,8 +58,7 @@ std::string GetKeyFromDevices(const std::vector<at::Device> &devices)
     return deviceList;
 }
 
-void SyncStreams(const std::vector<at::Device> &devices,
-                 std::vector<c10_npu::NPUEvent> &events,
+void SyncStreams(const std::vector<at::Device> &devices, std::vector<c10_npu::NPUEvent> &events,
                  std::vector<c10_npu::NPUStream> &streams)
 {
     for (size_t i = 0; i < devices.size(); ++i) {
@@ -180,8 +172,8 @@ at::Tensor ZbalNewLikeFlat(std::vector<std::vector<at::Tensor>> &tensors, size_t
     return at::empty_strided(sizes, strides, t.options().memory_format(c10::nullopt));
 }
 
-std::vector<at::Tensor> FlattenForScatterGather(std::vector<std::vector<at::Tensor>>& tensorLists,
-                                                std::vector<at::Tensor>& other, size_t worldSize)
+std::vector<at::Tensor> FlattenForScatterGather(std::vector<std::vector<at::Tensor>> &tensorLists,
+                                                std::vector<at::Tensor> &other, size_t worldSize)
 {
     ZBAL_CHECK_S(tensorLists.size() == other.size(), "input tensors has different size");
 
@@ -259,9 +251,9 @@ bool CheckSameSize(const std::vector<at::Tensor> &inputTensors)
     return true;
 }
 
-}
-}
-}
+} // namespace pytorch_npu
+} // namespace adaptor
+} // namespace zbal
 
 bool OptionsManager::IsHcclZeroCopyEnable = false;
 bool OptionsManager::CheckForceUncached = false;

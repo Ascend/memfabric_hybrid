@@ -15,8 +15,7 @@
 namespace zbal {
 namespace sma {
 
-SecondaryMemoryAllocator::SecondaryMemoryAllocator() {
-}
+SecondaryMemoryAllocator::SecondaryMemoryAllocator() {}
 
 void SecondaryMemoryAllocator::add_allocated_block(device::DeviceBlock *block)
 {
@@ -97,21 +96,13 @@ ZResult SecondaryMemoryAllocator::Initialize(zbal_allocator_options_t *options, 
         for (auto i = size; i < device_count; ++i) {
             device_allocator_[i] = std::make_unique<device::DeviceSMACachingAllocator>();
             // support outside callback later
-            auto& observer = device::DeviceInfoObserver::getInstance();
-            auto trace_cb =
-                    [&observer](device::TraceAction action,
-                                int64_t addr,
-                                size_t size,
-                                aclrtStream stream,
-                                int device) {
-                        observer.recordTrace(action, addr, size, stream, device);
-                    };
+            auto &observer = device::DeviceInfoObserver::getInstance();
+            auto trace_cb = [&observer](device::TraceAction action, int64_t addr, size_t size, aclrtStream stream,
+                                        int device) { observer.recordTrace(action, addr, size, stream, device); };
 
-            auto snapshot_cb =
-                    [&observer](const std::vector<const device::DeviceBlock*>& blocks,
-                                int dev) {
-                        observer.takeSnapshot(blocks, dev);
-                    };
+            auto snapshot_cb = [&observer](const std::vector<const device::DeviceBlock *> &blocks, int dev) {
+                observer.takeSnapshot(blocks, dev);
+            };
 
             device_allocator_[i]->attachSnapShotObserver(trace_cb, snapshot_cb);
         }
@@ -275,16 +266,16 @@ ZResult SecondaryMemoryAllocator::SnapShot(zbal::sma::device::SnapshotDeviceInfo
     // export snapshot + history
     auto record_info = zbal::sma::device::DeviceInfoObserver::getInstance().dumpSnapshot(device);
 
-    device_info.seg_infos_.insert(device_info.seg_infos_.end(),
-                                  record_info.seg_infos_.begin(), record_info.seg_infos_.end());
-    device_info.trace_infos_.insert(device_info.trace_infos_.end(),
-                                    record_info.trace_infos_.begin(), record_info.trace_infos_.end());
+    device_info.seg_infos_.insert(device_info.seg_infos_.end(), record_info.seg_infos_.begin(),
+                                  record_info.seg_infos_.end());
+    device_info.trace_infos_.insert(device_info.trace_infos_.end(), record_info.trace_infos_.begin(),
+                                    record_info.trace_infos_.end());
 
     return Z_OK;
 }
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal
 
 extern "C" {
 ZBAL_API void *sma_malloc(size_t size, int device, aclrtStream stream)
@@ -383,14 +374,14 @@ ZBAL_API void sma_get_heap_stats(size_t &in_used_size, size_t &total_size, int d
     else
         device_i = device;
 
-    if (static_cast<size_t>(device_i) < zbal::sma::SecondaryMemoryAllocator::GetInstance()->device_allocator_.size()
-        && zbal::sma::SecondaryMemoryAllocator::GetInstance()->device_allocator_[device_i]->isHeapInited()) {
+    if (static_cast<size_t>(device_i) < zbal::sma::SecondaryMemoryAllocator::GetInstance()->device_allocator_.size() &&
+        zbal::sma::SecondaryMemoryAllocator::GetInstance()->device_allocator_[device_i]->isHeapInited()) {
         zbal::sma::SecondaryMemoryAllocator::GetInstance()->GetHeapState(in_used_size, total_size, device_i);
     } else {
         ZBAL_LOG_ERROR("heap on target device is not inited, no stats now");
     }
 }
-}  // extern C
+} // extern C
 
 void sma_record_memory_history(std::optional<std::string> enabled, int64_t max_entries)
 {
@@ -436,7 +427,7 @@ py::dict sma_dump_snapshot()
     py::str frames_s = "frames";
     py::list empty_frames;
 
-    const auto segmentInfoToDict = [&](const SegmentInfo& segmentInfo) {
+    const auto segmentInfoToDict = [&](const SegmentInfo &segmentInfo) {
         py::dict segmentDict;
         segmentDict[device_s] = segmentInfo.device_;
         segmentDict[address_s] = segmentInfo.address_;
@@ -454,13 +445,13 @@ py::dict sma_dump_snapshot()
 
         auto address = segmentInfo.address_;
         py::list blocks;
-        for (const auto& blockInfo : segmentInfo.blocks_) {
+        for (const auto &blockInfo : segmentInfo.blocks_) {
             py::dict blockDict;
             blockDict[address_s] = address;
             blockDict[size_s] = blockInfo.size_;
             blockDict[requested_size_s] = blockInfo.requested_size_;
-            blockDict[state_s] = (blockInfo.allocated_ ? active_allocated_s :
-                                                       (blockInfo.active_ ? active_pending_free_s : inactive_s));
+            blockDict[state_s] =
+                (blockInfo.allocated_ ? active_allocated_s : (blockInfo.active_ ? active_pending_free_s : inactive_s));
             blockDict[frames_s] = empty_frames;
             blocks.append(blockDict);
             address += blockInfo.size_;
@@ -474,7 +465,7 @@ py::dict sma_dump_snapshot()
     zbal::sma::SecondaryMemoryAllocator::GetInstance()->SnapShot(snapshot, device);
     py::list segments;
 
-    for (const auto& segmentInfo : snapshot.seg_infos_) {
+    for (const auto &segmentInfo : snapshot.seg_infos_) {
         segments.append(segmentInfoToDict(segmentInfo));
     }
 
@@ -520,7 +511,7 @@ py::dict sma_dump_snapshot()
     };
 
     py::list trace;
-    for (const auto& te : snapshot.trace_infos_) {
+    for (const auto &te : snapshot.trace_infos_) {
         py::dict trace_entry;
         trace_entry[action_s] = action_to_str(te.action_);
         trace_entry[te.action_ == TraceEntry::OOM ? device_free_s : addr_s] = te.addr_;

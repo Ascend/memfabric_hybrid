@@ -16,11 +16,12 @@
 
 using namespace AscendC;
 
-extern "C" __global__ __aicore__
-void combine_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens, GM_ADDR srcTokensPerEp, GM_ADDR topKWeight,
-                    GM_ADDR topkIndex, GM_ADDR sendTokensIndex, GM_ADDR balanceMatrix, uint32_t rank,
-                    uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, bool enableBalance,
-                    GM_ADDR destTokens, uint32_t srcDataType, uint32_t dstDataType)
+extern "C" __global__ __aicore__ void combine_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens,
+                                                     GM_ADDR srcTokensPerEp, GM_ADDR topKWeight, GM_ADDR topkIndex,
+                                                     GM_ADDR sendTokensIndex, GM_ADDR balanceMatrix, uint32_t rank,
+                                                     uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK,
+                                                     bool enableBalance, GM_ADDR destTokens, uint32_t srcDataType,
+                                                     uint32_t dstDataType)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -28,13 +29,13 @@ void combine_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens, GM_A
     if (srcDataType == ZBAL_DATA_TYPE_BFP16) {
         MoeCombineNormal::CombineNormal<bfloat16_t, bfloat16_t, int32_t> op;
         op.Init(metaAddr, srcTokens, srcTokensPerEp, topKWeight, topkIndex, sendTokensIndex, balanceMatrix, rank,
-            numExperts, bs, hidden, topK, enableBalance, destTokens, &pipe);
+                numExperts, bs, hidden, topK, enableBalance, destTokens, &pipe);
         op.Process();
         return;
     } else if (srcDataType == ZBAL_DATA_TYPE_FP16) {
         MoeCombineNormal::CombineNormal<float16_t, float16_t, int32_t> op;
         op.Init(metaAddr, srcTokens, srcTokensPerEp, topKWeight, topkIndex, sendTokensIndex, balanceMatrix, rank,
-            numExperts, bs, hidden, topK, enableBalance, destTokens, &pipe);
+                numExperts, bs, hidden, topK, enableBalance, destTokens, &pipe);
         op.Process();
         return;
     }
@@ -72,9 +73,9 @@ int32_t ZBALOpCombineNormal(const zbal_tensor_info_t *srcTokens, const zbal_tens
     zbal_datatype_t dstDataType = static_cast<zbal_datatype_t>(destTokens->dataType);
 
     // launch kernel
-    combine_normal<<<blockDim, nullptr, stream>>>(fftsAddr, metaAddr, srcTokensAddr, srcTokensPerEpAddr,
-        topKWeightAddr, topkIndexAddr, sendTokensIndexAddr, balanceMatrixAddr, rank, numExperts, bs, hidden, topK,
-        enableBalance, destTokensAddr, srcDataType, dstDataType);
+    combine_normal<<<blockDim, nullptr, stream>>>(
+        fftsAddr, metaAddr, srcTokensAddr, srcTokensPerEpAddr, topKWeightAddr, topkIndexAddr, sendTokensIndexAddr,
+        balanceMatrixAddr, rank, numExperts, bs, hidden, topK, enableBalance, destTokensAddr, srcDataType, dstDataType);
 
     return 0;
 }

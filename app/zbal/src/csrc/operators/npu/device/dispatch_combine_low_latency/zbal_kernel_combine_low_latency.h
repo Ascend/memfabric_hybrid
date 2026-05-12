@@ -23,19 +23,19 @@ using namespace Moe;
 constexpr int ZBAL_META_OFF = 334;
 
 namespace MoeCombineLowLatency {
-constexpr uint8_t BUFFER_NUM = 2;                       // 多buf
+constexpr uint8_t BUFFER_NUM = 2; // 多buf
 constexpr uint64_t COMBINE_STATUS_OFFSET = 20UL * 1024UL;
-constexpr uint32_t STATE_OFFSET = 32U;                  // 状态空间偏移地址
+constexpr uint32_t STATE_OFFSET = 32U; // 状态空间偏移地址
 constexpr uint8_t EP_DOMAIN = 0;
 constexpr uint8_t TP_DOMAIN = 1;
 constexpr uint32_t ADDR_UINT64_ALIGN = 8;
-constexpr uint32_t ALIGNED_LEN = 256U;    // blockReduceMax中，最多支持连续256字节数据参与计算
-constexpr float SCALE_PARAM = 127.0;      // 计算量化参数所需的缩放倍数
+constexpr uint32_t ALIGNED_LEN = 256U; // blockReduceMax中，最多支持连续256字节数据参与计算
+constexpr float SCALE_PARAM = 127.0;   // 计算量化参数所需的缩放倍数
 constexpr uint64_t WIN_ADDR_ALIGN = 512UL;
 constexpr uint64_t RANK_META_INFO_OFFSET = 1024UL * 1024UL;
 constexpr uint32_t UB_ALIGN = 32U;
 
-template <AscendC::HardEvent event>
+template<AscendC::HardEvent event>
 __aicore__ inline void SyncFunc()
 {
     int32_t eventID = static_cast<int32_t>(GetTPipePtr()->FetchEventID(event));
@@ -47,7 +47,7 @@ __aicore__ inline void SyncFunc()
     typename ExpandXType, typename XType, typename ExpandIdxType, bool IsNeedReduceScatter, bool IsInt8Quant
 #define TemplateTypeFunc ExpandXType, XType, ExpandIdxType, IsNeedReduceScatter, IsInt8Quant
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 class CombineLowLatency {
 public:
     __aicore__ inline CombineLowLatency(){};
@@ -74,12 +74,12 @@ private:
         auto ptr = zbal_ptr((__gm__ uint64_t *)(gva_gm), epRankId_, rankId, localMemSize_, peerRanks);
 
         switch (metaType) {
-            case STATE:  // 存放通信结束的state, 12KB
+            case STATE: // 存放通信结束的state, 12KB
                 return (GM_ADDR)(ptr) + addrOffset_ + ZBAL_META_OFF * KB_SIZE;
-            case ADDR:  // 存放交换的共享地址
+            case ADDR: // 存放交换的共享地址
                 // 128K + 334K + 20K + 5K
                 return (GM_ADDR)(ptr) + addrOffset_ + ZBAL_META_OFF * KB_SIZE + COMBINE_STATUS_OFFSET;
-            case FLAG:  // 存放第一次清理state空间后的同步flag, 12KB
+            case FLAG: // 存放第一次清理state空间后的同步flag, 12KB
                 return (GM_ADDR)(ptr) + flagOffset_;
             default:
                 return (GM_ADDR)(ptr);
@@ -102,7 +102,7 @@ private:
     GlobalTensor<float> expertScalesGT_;
     GlobalTensor<XType> srcWinGMTensor;
     GlobalTensor<XType> XOutGT_;
-    GlobalTensor<XType> rankWindow_;  // 用于存对端window的变量
+    GlobalTensor<XType> rankWindow_; // 用于存对端window的变量
     GlobalTensor<XType> tpRankWindow_;
     GlobalTensor<XType> rowTmpGlobal_;
     GlobalTensor<ExpandXType> oriXGM_;
@@ -158,12 +158,12 @@ private:
     uint32_t epRankId_{0};
     uint32_t epRankIdOriginal_{0};
     uint32_t tpRankId_{0};
-    uint32_t aivId_{0};  // aiv id
+    uint32_t aivId_{0}; // aiv id
     uint32_t sharedExpertNum_{0};
-    uint32_t sharedExpertRankNum_{0};  // 共享专家卡数
-    uint32_t moeExpertRankNum_{0};     // moe专家卡数，等于epWorldSize_ - sharedExpertRankNum_
-    uint32_t moeExpertPerRankNum_{0};  // 每张卡部署的moe专家数
-    uint32_t moeSendNum_{0};           // moeExpertPerRankNum_ * epWorldSize_
+    uint32_t sharedExpertRankNum_{0}; // 共享专家卡数
+    uint32_t moeExpertRankNum_{0};    // moe专家卡数，等于epWorldSize_ - sharedExpertRankNum_
+    uint32_t moeExpertPerRankNum_{0}; // 每张卡部署的moe专家数
+    uint32_t moeSendNum_{0};          // moeExpertPerRankNum_ * epWorldSize_
     uint32_t zeroExpertNum_{0};
     uint32_t copyExpertNum_{0};
     uint32_t constExpertNum_{0};
@@ -270,8 +270,7 @@ private:
     uint32_t curBlockEndRankId{0};
 };
 
-
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SetSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -297,7 +296,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SetSyncFlag(int meta
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::WaitSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -305,10 +304,10 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::WaitSyncFlag(int met
         return;
     }
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
-    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize);  // ranks/48 * 32B = 1 * 32B
+    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize); // ranks/48 * 32B = 1 * 32B
     uint32_t maskAlign = Ceil(epWorldSize_ * sizeof(float), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign);  // rankSize * 4B
-    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);       // 32B
+    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign); // rankSize * 4B
+    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);      // 32B
 
     LocalTensor<float> gatherMaskOutTensor = gatherMaskOutBuf.Get<float>();
     LocalTensor<float> statusSumOutTensor = statusSumBuf.Get<float>(UB_ALIGN);
@@ -348,7 +347,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::WaitSyncFlag(int met
     SyncAll<true>();
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::PutShareAddr()
 {
     if (aivId_ != 0) {
@@ -372,7 +371,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::PutShareAddr()
     DataCopyPad(metaAddrGt, addrTensor_, copyParams);
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::GetShareAddr()
 {
     if (rankNumPerBlock == 0U) {
@@ -392,9 +391,10 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::GetShareAddr()
     SyncAll<true>();
 }
 
-template <TemplateTypeClass>
-__aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InitInputAndOutput(
-    GM_ADDR expandX, GM_ADDR expertIds, GM_ADDR expandIdx, GM_ADDR epSendCount, GM_ADDR expertScales, GM_ADDR XOut)
+template<TemplateTypeClass>
+__aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InitInputAndOutput(GM_ADDR expandX, GM_ADDR expertIds,
+                                                                               GM_ADDR expandIdx, GM_ADDR epSendCount,
+                                                                               GM_ADDR expertScales, GM_ADDR XOut)
 {
     expandXGM_ = expandX;
     expandXGT_.SetGlobalBuffer((__gm__ ExpandXType *)expandX);
@@ -405,23 +405,23 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InitInputAndOutput(
     XOutGT_.SetGlobalBuffer((__gm__ XType *)XOut);
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InitInt8Quant()
 {
     scaleValFloat_ = static_cast<float>(1.0f / SCALE_PARAM);
-    uint32_t scaleGranu = static_cast<uint32_t>(UB_ALIGN / sizeof(float));  // 计算每个block得到的reducemax结果数量
-    scaleNum_ = (hExpandXAlign32Size_ / sizeof(ExpandXType)) / scaleGranu;  // 得到有效scale的个数
+    uint32_t scaleGranu = static_cast<uint32_t>(UB_ALIGN / sizeof(float)); // 计算每个block得到的reducemax结果数量
+    scaleNum_ = (hExpandXAlign32Size_ / sizeof(ExpandXType)) / scaleGranu; // 得到有效scale的个数
     repeatNum_ = static_cast<uint32_t>(hFloatAlign256Size_ /
-                                       ALIGNED_LEN);  // BlockReduceMax 与 Brcb的重复迭代次数，每次256b参与计算
+                                       ALIGNED_LEN); // BlockReduceMax 与 Brcb的重复迭代次数，每次256b参与计算
     mask_ = static_cast<uint32_t>(ALIGNED_LEN / sizeof(float));
-    tokenScaleCnt_ = hAlign32Size_ / sizeof(ExpandXType) + scaleNum_;  // int8_align + scale有效个数
+    tokenScaleCnt_ = hAlign32Size_ / sizeof(ExpandXType) + scaleNum_; // int8_align + scale有效个数
 }
 
-template <TemplateTypeClass>
-__aicore__ inline void CombineLowLatency<TemplateTypeFunc>::Init(
-    GM_ADDR metaAddr, GM_ADDR expandX, GM_ADDR expertIds, GM_ADDR expandIdx, GM_ADDR epSendCount,
-    GM_ADDR expertScales, GM_ADDR XOut, uint32_t rank,
-    uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, TPipe *pipe)
+template<TemplateTypeClass>
+__aicore__ inline void
+CombineLowLatency<TemplateTypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR expandX, GM_ADDR expertIds, GM_ADDR expandIdx,
+                                          GM_ADDR epSendCount, GM_ADDR expertScales, GM_ADDR XOut, uint32_t rank,
+                                          uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, TPipe *pipe)
 {
     tpipe_ = pipe;
     aivId_ = GetBlockIdx();
@@ -499,18 +499,15 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::Init(
     shareAddrSpaceGm_ = GetMetaAddrByRankId(epRankId_, ADDR);
 }
 
-
-template <TemplateTypeClass>
-__aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SplitToCore(uint32_t curSendCnt,
-                                                                                 uint32_t curUseAivNum,
-                                                                                 uint32_t &startTokenId,
-                                                                                 uint32_t &endTokenId,
-                                                                                 uint32_t &sendTokenNum)
+template<TemplateTypeClass>
+__aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SplitToCore(uint32_t curSendCnt, uint32_t curUseAivNum,
+                                                                        uint32_t &startTokenId, uint32_t &endTokenId,
+                                                                        uint32_t &sendTokenNum)
 {
-    sendTokenNum = curSendCnt / curUseAivNum;                // 每个aiv需要发送的token数(也可以是其他数)
-    uint32_t remainderTokenNum = curSendCnt % curUseAivNum;  // 余数
-    startTokenId = sendTokenNum * aivId_;  // 每个aiv发送时的起始rankid
-    if (aivId_ < remainderTokenNum) {      // 前remainderRankNum个aiv需要多发1个卡的数据
+    sendTokenNum = curSendCnt / curUseAivNum;               // 每个aiv需要发送的token数(也可以是其他数)
+    uint32_t remainderTokenNum = curSendCnt % curUseAivNum; // 余数
+    startTokenId = sendTokenNum * aivId_;                   // 每个aiv发送时的起始rankid
+    if (aivId_ < remainderTokenNum) {                       // 前remainderRankNum个aiv需要多发1个卡的数据
         sendTokenNum += 1;
         startTokenId += aivId_;
     } else {
@@ -519,14 +516,14 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SplitToCore(uint32_t
     endTokenId = startTokenId + sendTokenNum;
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InputToDstOutput()
 {
     if (axisBS_ == 0U) {
         return;
     }
 
-    uint32_t startTokenId, endTokenId, sendTokenNum;  // 每个aiv发送时的起始rankid
+    uint32_t startTokenId, endTokenId, sendTokenNum; // 每个aiv发送时的起始rankid
     SplitToCore(axisBS_, aivNum_, startTokenId, endTokenId, sendTokenNum);
     if (sendTokenNum == 0U) {
         return;
@@ -553,8 +550,8 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InputToDstOutput()
     DataCopyPad(expandIdxLocal_, expandIdxGM_[startTokenId * axisK_], bskParams, copyPadint32Params);
 
     // get per token remote read big offset
-    DataCopyExtParams countParams{1U, static_cast<uint32_t>(epWorldSize_ * moeExpertNum_ * sizeof(int32_t)), 0U,
-                                0U, 0U};
+    DataCopyExtParams countParams{1U, static_cast<uint32_t>(epWorldSize_ * moeExpertNum_ * sizeof(int32_t)), 0U, 0U,
+                                  0U};
     DataCopyPad(globalSendCountLocal_, epSendCountGM_, countParams, copyPadint32Params);
 
     // get shareAddr locally
@@ -599,12 +596,12 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InputToDstOutput()
             int32_t srcRankId = dstExpertId / moeExpertPerRankNum_;
             uint32_t offsetIdx = dstExpertId * epWorldSize_ + epRankId_;
             uint32_t col = offsetIdx % moeExpertNum_;
-            int32_t remoteBase = (col == 0) ? 0 : globalSendCountLocal_(offsetIdx - 1);  // count 转 offset
+            int32_t remoteBase = (col == 0) ? 0 : globalSendCountLocal_(offsetIdx - 1); // count 转 offset
             int32_t remoteOffset = expandIdxLocal_(localTokenId * axisK_ + topkId);
             float scale = expertScalesLocal_.GetValue(topkId);
             auto srcPtr = expandXShareAddrLt_.GetValue(srcRankId);
-            srcWinGMTensor.SetGlobalBuffer((__gm__ ExpandXType *)(srcPtr +
-                hExpandXTypeSize_ * (remoteBase + remoteOffset)));
+            srcWinGMTensor.SetGlobalBuffer(
+                (__gm__ ExpandXType *)(srcPtr + hExpandXTypeSize_ * (remoteBase + remoteOffset)));
 
             LocalTensor<ExpandXType> tmpToken = moeSumQueue_.AllocTensor<ExpandXType>();
             // Read From Remote
@@ -627,12 +624,12 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InputToDstOutput()
     }
 }
 
-template <TemplateTypeClass>
+template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::Process()
 {
-    if ASCEND_IS_AIV {  // 全aiv处理
+    if ASCEND_IS_AIV { // 全aiv处理
         PutShareAddr();
-        SetSyncFlag(FLAG);  // 全卡同步，确保对称地址都放到了meta空间
+        SetSyncFlag(FLAG); // 全卡同步，确保对称地址都放到了meta空间
         WaitSyncFlag(FLAG);
         GetShareAddr();
         InputToDstOutput();
@@ -642,5 +639,5 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::Process()
     }
 }
 
-}  // namespace MoeCombineLowLatency
-#endif  // ZBAL_KERNEL_DISPATCH_LOWLATENCY_H
+} // namespace MoeCombineLowLatency
+#endif // ZBAL_KERNEL_DISPATCH_LOWLATENCY_H

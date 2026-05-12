@@ -260,7 +260,7 @@ public:
         GetCoreCopyRangeInfo(copyStartRank, startOffset, copyEndRank);
         ZBAL_PROF_DUMP(comm, __LINE__, copyStartRank, copyEndRank, startOffset);
 
-        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, 4*UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, 4 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
         uint64_t outputOffset = elements * groupSize / aivNum * AscendC::GetBlockIdx();
 
         for (uint16_t rank = copyStartRank; rank <= copyEndRank; rank++) {
@@ -274,8 +274,7 @@ public:
             uint64_t sourceElement = elements * groupSize;
             uint64_t inputOffset = elements * myGroupRank + ((rank == copyStartRank) ? startOffset : 0);
 
-            CpGM2GM(output, elements * groupSize, outputOffset,
-                    remoteInput, sourceElement, inputOffset, copyCount);
+            CpGM2GM(output, elements * groupSize, outputOffset, remoteInput, sourceElement, inputOffset, copyCount);
 
             outputOffset += copyCount;
             AtomicIncStat(this->localStatSendAddr, rank);
@@ -355,7 +354,6 @@ public:
         ReAssignmentCoreNum();
 
         if (AscendC::GetBlockIdx() < aivNum) {
-
             uint16_t commonStartRank, commonEndRank;
             GetCoreCommonRangeInfo(commonStartRank, commonEndRank);
             ZBAL_PROF_DUMP(comm, __LINE__, commonStartRank, commonEndRank, groupSize, aivNum);
@@ -396,8 +394,8 @@ private:
     uint32_t copyElements[ZBAL_ALLTOALL_MAX_RANKS];
 };
 
-extern "C" __global__ __aicore__
-void ZBALAlltoAllInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataType, GM_ADDR metaAddr, uint64_t symbol)
+extern "C" __global__ __aicore__ void ZBALAlltoAllInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataType,
+                                                        GM_ADDR metaAddr, uint64_t symbol)
 {
     AlltoAllKernel op;
     zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
@@ -450,7 +448,8 @@ void ZBALAlltoAllInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataT
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16:
             op.Init<bfloat16_t>(input, output, metaAddr, elements, symbol);
-            op.Process<bfloat16_t>();;
+            op.Process<bfloat16_t>();
+            ;
             break;
         default:
             break;
@@ -476,7 +475,7 @@ int32_t ZBALOpAlltoAllBase(const void *sendBuff, void *recvBuff, size_t sendCoun
     uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
     uint64_t waitSymbol = ++groupInfo.waitSymbol;
 
-    ZBALAlltoAllInner<<<blockDim, nullptr, stream>>>(realSendBuff, realRecvBuff, realCount,
-                                                     realDataType, metaAddr, waitSymbol);
+    ZBALAlltoAllInner<<<blockDim, nullptr, stream>>>(realSendBuff, realRecvBuff, realCount, realDataType, metaAddr,
+                                                     waitSymbol);
     return 0;
 }

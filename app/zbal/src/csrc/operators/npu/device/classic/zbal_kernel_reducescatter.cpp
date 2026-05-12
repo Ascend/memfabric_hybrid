@@ -18,22 +18,22 @@
 #include "zbal_comm_host_device_struct.h"
 
 struct RsParallelStrategy {
-    bool aivNumLtGroupSize {false};
-    uint32_t startRank {0};
-    uint32_t endRank {0};
-    uint32_t startNotifyRank {0};
-    uint32_t endNotifyRank {0};
-    uint32_t corePerRank {0};
-    uint32_t coreRankIdx {0};
+    bool aivNumLtGroupSize{false};
+    uint32_t startRank{0};
+    uint32_t endRank{0};
+    uint32_t startNotifyRank{0};
+    uint32_t endNotifyRank{0};
+    uint32_t corePerRank{0};
+    uint32_t coreRankIdx{0};
 };
 
-template <typename T>
+template<typename T>
 class ZeroBuffReduceScatterKernel {
 public:
     ZBAL_KERNEL ZeroBuffReduceScatterKernel() {}
 
-    ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaAddr, size_t elements,
-                          uint32_t reduceOp, uint64_t flagMagic)
+    ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaAddr, size_t elements, uint32_t reduceOp,
+                          uint64_t flagMagic)
     {
         this->aivNum = AscendC::GetBlockNum();
         this->aivIndex = AscendC::GetBlockIdx();
@@ -224,9 +224,9 @@ private:
     __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
-extern "C" __global__ __aicore__
-void ZeroBuffReduceScatter(GM_ADDR input, GM_ADDR output, size_t recvNumel, uint32_t dataType, uint32_t reduceOp,
-                           GM_ADDR metaAddr, uint64_t flagMagic)
+extern "C" __global__ __aicore__ void ZeroBuffReduceScatter(GM_ADDR input, GM_ADDR output, size_t recvNumel,
+                                                            uint32_t dataType, uint32_t reduceOp, GM_ADDR metaAddr,
+                                                            uint64_t flagMagic)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
@@ -276,22 +276,22 @@ void ZeroBuffReduceScatter(GM_ADDR input, GM_ADDR output, size_t recvNumel, uint
     }
 }
 
-int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_datatype_t dataType,
-                            aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
+int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_datatype_t dataType, aclrtStream stream,
+                            zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
 {
     /* define the block dim */
     uint32_t blockDim = 32;
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
     uint32_t reduceOpNum = static_cast<uint32_t>(reduceOp);
 
-    uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
-    uint8_t* output = reinterpret_cast<uint8_t *>(out);
+    uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
+    uint8_t *input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
+    uint8_t *output = reinterpret_cast<uint8_t *>(out);
 
     uint64_t flagMagic = ++groupInfo.waitSymbol;
 
-    ZeroBuffReduceScatter<<<blockDim, nullptr, stream>>>(input, output, recvNumel, dataTypeNum, reduceOpNum,
-                                                         metaAddr, flagMagic);
+    ZeroBuffReduceScatter<<<blockDim, nullptr, stream>>>(input, output, recvNumel, dataTypeNum, reduceOpNum, metaAddr,
+                                                         flagMagic);
 
     return 0;
 }
