@@ -8,7 +8,8 @@ The zbal wheel pacakge has been uploaded to pip repo, install zbal as following 
 pip install memfabric_zbal
 ```
 
-If there is a network issue on you workspace, compiling to get wheel package is also a way to it, see details [here](../../README.md#quickstart).
+If there is a network issue on you workspace, compiling to get wheel package is also a way to it, see
+details [here](../../README.md#quickstart).
 
 ### 2. Import and init
 
@@ -17,7 +18,7 @@ Add initializing code as following to your project.
 ```python
 from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
-zbal_set_logger_level(3)    # 0-debug, 1-info, 2-warn, 3-error, 4-fault
+zbal_set_logger_level(3)  # 0-debug, 1-info, 2-warn, 3-error, 4-fault
 
 world_size = 16
 local_rank = xx
@@ -29,7 +30,6 @@ if not zbal_init(world_size, local_rank, global_rank, local_mem):
 
 group = dist.init_process_group("zbal", rank=global_rank, world_size=world_size)
 
-
 # zbal_uninit()
 ```
 
@@ -37,7 +37,9 @@ group = dist.init_process_group("zbal", rank=global_rank, world_size=world_size)
 
 #### 3.1 For Un-support collective communicator operators
 
-Some of the collective communicator opereatos are un-supported from now, or if the operators performs bad compare to hccl operators in your situation, use the following way to repalce zbal operators with hccl operators. Multi operators separated by comma.
+Some of the collective communicator opereatos are un-supported from now, or if the operators performs bad compare to
+hccl operators in your situation, use the following way to repalce zbal operators with hccl operators. Multi operators
+separated by comma.
 
 ```bash
 export ZBAL_HCCL_OP="allgather,allreduce"
@@ -172,3 +174,68 @@ When use zbal in training projects like deepspeed, add the following env to your
 ```bash
 export ZBAL_OP_DEFUALT_STREAM=1
 ```
+
+#### 3.3 For inference
+
+##### 3.3.1 Integration of ZBAL into SGLang for Inference
+
+Currently, we can intergrate zbal support by apply this [patch](https://github.com/sgl-project/sglang/pull/24575).
+
+Using envs to enable ZBAL automatically in moe/comm ops.
+
+```bash
+unset PYTORCH_NPU_ALLOC_CONF
+export SGLANG_ZBAL_LOCAL_MEM_SIZE=61184   # zbal total allocate memory size in MB
+export SGLANG_ENABLE_TP_MEMORY_INBALANCE_CHECK=0
+
+# if you want to use mix alloc (using vmm mode for weights & kv, using zbal gva mode for activates)
+# which can optimize memory fragments
+#export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+#export ZBAL_NPU_ALLOC_CONF=use_vmm_for_static_memory:True
+
+# if you want to support npu graph (required torch-npu after CANN 9.0.0)
+#export ZBAL_ENABLE_GRAPH=1
+```
+
+Then we can use the original sglang startup command without making any changes.
+
+for example:
+
+```bash
+source /usr/local/Ascend/ascend-toolkit/set_env.sh
+source /usr/local/Ascend/nnal/atb/set_env.sh
+
+# zbal
+unset PYTORCH_NPU_ALLOC_CONF
+export SGLANG_ZBAL_LOCAL_MEM_SIZE=61440
+export SGLANG_ENABLE_TP_MEMORY_INBALANCE_CHECK=0
+export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+export ZBAL_NPU_ALLOC_CONF=use_vmm_for_static_memory:True
+
+export HCCL_SOCKET_IFNAME=lo
+export GLOO_SOCKET_IFNAME=lo
+export HCCL_OP_EXPANSION_MODE="AIV"
+export SGLANG_ENABLE_OVERLAP_PLAN_STREAM=1
+export SGLANG_ENABLE_SPEC_V2=1
+
+MODEL_PATH=/your/weights/Qwen3-30B-A3B-W8A8
+EAGLE3_PATH=/your/weights/Qwen3-a3B_eagle3
+
+python -m sglang.launch_server --model-path $MODEL_PATH \
+    --host 127.0.0.1 --port 7239 --trust-remote-code --nnodes 1 --node-rank 0  \
+    --attention-backend ascend --device npu  --quantization modelslim  \
+    --max-running-requests 96 \
+    --disable-radix-cache \
+    --disable-cuda-graph \
+    --speculative-draft-model-quantization unquant \
+    --speculative-algorithm EAGLE3 --speculative-draft-model-path $EAGLE3_PATH \
+    --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4 \
+    --chunked-prefill-size -1 --max-prefill-tokens 8192 \
+    --tp-size 4 --mem-fraction-static 0.80 --dtype bfloat16 \
+    --watchdog-timeout 6000
+```
+
+**We achieved a 30%+ speed up compared with deepep-npu in w8a8 with 4k seqs per device in DSV3-like moe process, along
+with
+1.2G+ memory efficiency**
+
