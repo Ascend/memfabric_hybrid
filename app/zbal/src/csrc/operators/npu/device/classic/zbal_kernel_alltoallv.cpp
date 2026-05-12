@@ -16,12 +16,11 @@
 #include <acl/acl_rt.h>
 #include "kernel_operator.h"
 #include "zbal_def.h"
+#include "zbal_defines.h"
 #include "zbal_kernel_utils.h"
 #include "zbal_kernel_trace.h"
 
-constexpr uint16_t ZBAL_ALLTOALLV_MAX_RANKS = 384;
-constexpr uint16_t ZBAL_LT_OFF3 = 3;
-constexpr uint16_t ZBAL_LT_OFF4 = 4;
+using namespace zbal;
 constexpr uint16_t ZBAL_INOUT_LEN = 2;
 
 class AlltoAllVKernel {
@@ -117,14 +116,14 @@ public:
     ZBAL_KERNEL void WaitFlag(const uint16_t offset)
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, ZBAL_LT_OFF3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
         WaitMetaValue(this->flagAddr, offset, waitSymbol, groupSize, buf);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
     ZBAL_KERNEL void GetInputInfo(uint16_t offset, uint64_t &inputOff, uint64_t &srcElement, __gm__ void **srcAddress)
     {
-        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, ZBAL_LT_OFF3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
 
         GetMetaValue(inputCumSumAddr, offset, groupSize, buf1);
         uint64_t srcCumSumAddr = buf1.GetValue(0);
@@ -272,8 +271,8 @@ public:
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
         if (AscendC::GetBlockIdx() == 0) {
-            uint64_t cumsum[ZBAL_ALLTOALLV_MAX_RANKS];
-            uint32_t statBase[ZBAL_ALLTOALLV_MAX_RANKS];
+            uint64_t cumsum[ZBAL_MAX_RANK_SIZE];
+            uint32_t statBase[ZBAL_MAX_RANK_SIZE];
             AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
             for (uint16_t i = 0; i < groupSize; i++) {
                 statBase[i] = (outputCountsArray[i] > 0 ? 1 : 0);
@@ -310,7 +309,7 @@ public:
             AscendC::PipeBarrier<PIPE_ALL>();
         }
 
-        AscendC::LocalTensor<uint64_t> buf2(AscendC::TPosition::VECIN, ZBAL_LT_OFF3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf2(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
         WaitMetaValue(this->localStatReadyAddr, 0, waitSymbol, groupSize, buf2);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
     }
@@ -428,8 +427,8 @@ private:
     uint64_t inputElement;
     uint64_t outputElement;
     uint64_t waitSymbol;
-    uint32_t outputCountsArray[ZBAL_ALLTOALLV_MAX_RANKS]; /* same with outputCounts */
-    uint32_t copyElements[ZBAL_ALLTOALLV_MAX_RANKS];
+    uint32_t outputCountsArray[ZBAL_MAX_RANK_SIZE]; /* same with outputCounts */
+    uint32_t copyElements[ZBAL_MAX_RANK_SIZE];
 };
 
 extern "C" __global__ __aicore__ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum,

@@ -16,7 +16,7 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 namespace MoeDispatchLayout {
 using namespace AscendC;

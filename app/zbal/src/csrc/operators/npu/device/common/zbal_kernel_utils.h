@@ -222,7 +222,7 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
     uint16_t endRank = comm->groupSize;
     __gm__ uint64_t *flagAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myParamDataGva);
     __gm__ uint64_t *statAddr =
-        reinterpret_cast<__gm__ uint64_t *>(comm->myParamDataGva + zbal::OPERATE_PARAM_SIZE / 2);
+        reinterpret_cast<__gm__ uint64_t *>(comm->myParamDataGva + zbal::ZBAL_OPERATE_PARAM_SIZE / 2);
     if (comm->groupSize <= aivNum) {
         if (aivIndex < comm->groupSize) {
             startRank = aivIndex;

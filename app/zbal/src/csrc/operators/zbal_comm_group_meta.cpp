@@ -95,7 +95,7 @@ ZResult GroupMetaArranger::GetGroupByIndex(uint32_t index, uintptr_t &groupMetaG
 
     groupMetaGVA = myMetaGVA_ + singleMetaSpaceSize_ * index;
     paramGVA = groupMetaGVA + GetCommGroupInfoSpaceSize();
-    addressExchangeGVA = groupMetaGVA + OPERATE_PARAM_SIZE;
+    addressExchangeGVA = groupMetaGVA + ZBAL_OPERATE_PARAM_SIZE;
 
     ZBAL_LOG_DEBUG("Got group: " << index << ", group meta GVA: " << std::hex << groupMetaGVA
                                  << ", paramGVA: " << paramGVA << ", addressExchangeGVA: " << addressExchangeGVA);

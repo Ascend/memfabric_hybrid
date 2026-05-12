@@ -150,7 +150,7 @@ ALWAYS_INLINE bool Func::LibraryRealPath(const std::string &libDirPath, const st
 
 ALWAYS_INLINE bool Func::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -175,9 +175,9 @@ ALWAYS_INLINE bool Func::Realpath(std::string &path)
 ALWAYS_INLINE constexpr size_t Func::GetSafePathMax()
 {
 #ifdef PATH_MAX
-    return (PATH_MAX < PATH_MAX_LIMIT) ? PATH_MAX : PATH_MAX_LIMIT;
+    return (PATH_MAX < ZBAL_PATH_MAX_LIMIT) ? PATH_MAX : ZBAL_PATH_MAX_LIMIT;
 #else
-    return PATH_MAX_LIMIT;
+    return ZBAL_PATH_MAX_LIMIT;
 #endif
 }
 
@@ -274,7 +274,7 @@ ALWAYS_INLINE bool Func::MakeDirRecursive(const std::string &path, uint32_t mode
 
 ALWAYS_INLINE bool Func::Remove(const std::string &path, bool canonicalPath)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -288,7 +288,7 @@ ALWAYS_INLINE bool Func::Remove(const std::string &path, bool canonicalPath)
 
 ALWAYS_INLINE bool Func::RemoveDirRecursive(const std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 

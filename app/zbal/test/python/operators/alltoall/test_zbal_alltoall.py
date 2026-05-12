@@ -19,6 +19,7 @@ import torch_npu
 import numpy as np
 from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
+enable_perf_test = os.environ.get("ZBAL_ENABLE_ALLTOALL_PERF_TEST", "0") == "1"
 torch_npu.npu.config.allow_internal_format = True
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -56,7 +57,10 @@ def test_alltoall(dist_type, case_list):
 
     if dist_type == "zbal":
         zbal_set_logger_level(2)
-        local_mem = 8 * 1024 * 1024 * 1024
+        if enable_perf_test:
+            local_mem = 8 * 1024 * 1024 * 1024
+        else:
+            local_mem = 128 * 1024 * 1024
         if not zbal_init(world_size, device_id, global_rank, local_mem):
             logger.error(f"zbal_init failed on rank {global_rank}.")
             return

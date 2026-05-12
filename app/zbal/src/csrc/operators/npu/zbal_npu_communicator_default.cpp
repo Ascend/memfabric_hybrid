@@ -23,9 +23,9 @@ namespace operators {
 
 using namespace underapi;
 
-#define TRACE_GET_FRAME_ID(record)  ((record & 0x3F00000000000000ULL) >> ZBAL_PROFILING_FRAME_SHIFT)
-#define TRACE_GET_TIMESTAMP(record) ((record & ~(0xFFULL << ZBAL_PROFILING_FRAME_SHIFT)) / ZBAL_PROFILING_CYCLE_UNIT)
-#define TRACE_GET_BE(record)        ((record & 0x4000000000000000ULL) == 0)
+#define TRACE_GET_FRAME_ID(record)  (((record) & 0x3F00000000000000ULL) >> ZBAL_PROFILING_FRAME_SHIFT)
+#define TRACE_GET_TIMESTAMP(record) (((record) & ~(0xFFULL << ZBAL_PROFILING_FRAME_SHIFT)) / ZBAL_CYCLE_UNIT)
+#define TRACE_GET_BE(record)        (((record) & 0x4000000000000000ULL) == 0)
 
 uint64_t NpuCommunicatorDefault::opRunTimes_ = 0;
 

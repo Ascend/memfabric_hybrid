@@ -4,10 +4,11 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 using namespace AscendC;
 using namespace Moe;
+using namespace zbal;
 
 namespace MoeDispatchLowLatency {
 constexpr uint8_t BUFFER_NUM = 2; // 多buf
@@ -178,9 +179,9 @@ private:
     uint64_t localMemSize_{0};
     uint64_t addrOffset_{0};
     // List of shared asymmetric output addresses (expandXOut_)
-    uint64_t shareExpandXOutAddrs[MAX_RANK_SIZE];
+    uint64_t shareExpandXOutAddrs[ZBAL_MAX_RANK_SIZE];
     // List of shared asymmetric output addresses (dynamicScalesOut_)
-    uint64_t shareDynamicScaleAddrs[MAX_RANK_SIZE];
+    uint64_t shareDynamicScaleAddrs[ZBAL_MAX_RANK_SIZE];
     uint32_t shareAddrNum{2};
 
     // tiling侧已确保数据上限，相乘不会越界，因此统一采用uint32_t进行处理

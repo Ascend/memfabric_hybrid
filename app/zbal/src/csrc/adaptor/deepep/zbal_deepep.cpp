@@ -30,11 +30,11 @@ namespace adaptor {
 namespace deep_ep {
 constexpr int PADDING_SIZE = 1;
 constexpr size_t COMM_NAME_LEN = 128;
-constexpr int A3_MAX_HCCS_PEERS = 384;
 constexpr int A2_MAX_HCCS_PEERS = 8;
 int g_magicVal = 0;
 
 using namespace underapi;
+using namespace zbal;
 
 const zbal_tensor_info_t transfer_tensor_info(const torch::Tensor &ori_tensor, const int rank = 0,
                                               std::string name = "")
@@ -115,9 +115,9 @@ Buffer::Buffer(int rank, int num_ranks, int64_t num_nvl_bytes, int64_t num_rdma_
         nvl_rank = rank % A2_MAX_HCCS_PEERS;
         num_max_hccs_peers = A2_MAX_HCCS_PEERS;
     } else {
-        ZBAL_ASSERT_S(num_ranks < A3_MAX_HCCS_PEERS || num_ranks % A3_MAX_HCCS_PEERS == 0,
+        ZBAL_ASSERT_S(num_ranks < static_cast<int>(ZBAL_MAX_RANK_SIZE) || num_ranks % ZBAL_MAX_RANK_SIZE == 0,
                       "num_ranks check failed:", Z_INVALID_VALUE);
-        num_max_hccs_peers = A3_MAX_HCCS_PEERS;
+        num_max_hccs_peers = ZBAL_MAX_RANK_SIZE;
     }
 }
 

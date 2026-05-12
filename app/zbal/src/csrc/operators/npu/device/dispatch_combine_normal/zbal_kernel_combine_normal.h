@@ -16,11 +16,12 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
-#include "zbal_kernel_comm_args.h"
+#include "zbal_kernel_constant.h"
 
 namespace MoeCombineNormal {
 using namespace AscendC;
 using namespace Moe;
+using namespace zbal;
 
 constexpr uint8_t BUFFER_NUM = 2;
 constexpr uint64_t COMBINE_STATUS_OFFSET = 20UL * 1024UL;
@@ -164,17 +165,17 @@ private:
     uint64_t stateOffset_ = 0;
     uint64_t flagOffset_ = 0;
     // List of asymmetric output addresses (recvXGM_)
-    uint64_t shareRecvXAddrs[MAX_RANK_SIZE];
+    uint64_t shareRecvXAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (topkIdxGM_)
-    uint64_t shareTopkIdxAddrs[MAX_RANK_SIZE];
+    uint64_t shareTopkIdxAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (topkWeightsGM_)
-    uint64_t shareTopkWeightsAddrs[MAX_RANK_SIZE];
+    uint64_t shareTopkWeightsAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (sendTokenIdxGM_)
-    uint64_t shareSendTokenIdxAddrs[MAX_RANK_SIZE];
+    uint64_t shareSendTokenIdxAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (epRecvCountGM_)
-    uint64_t shareRecvCountAddrs[MAX_RANK_SIZE];
+    uint64_t shareRecvCountAddrs[ZBAL_MAX_RANK_SIZE];
     // List of asymmetric output addresses (XOutGM_)
-    uint64_t shareXOutAddrs[MAX_RANK_SIZE];
+    uint64_t shareXOutAddrs[ZBAL_MAX_RANK_SIZE];
     uint32_t shareAddrNum{6};
 
     LocalTensor<float> tokenFloatLocal;

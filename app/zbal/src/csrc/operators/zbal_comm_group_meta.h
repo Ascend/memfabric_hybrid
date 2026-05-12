@@ -127,12 +127,12 @@ inline uint64_t GroupMetaArranger::GetCommGroupInfoSpaceSize() const noexcept
 
 inline uint64_t GroupMetaArranger::GetParamSpaceSize() const noexcept
 {
-    return OPERATE_PARAM_SIZE - sizeof(CommGroupInfo);
+    return ZBAL_OPERATE_PARAM_SIZE - sizeof(CommGroupInfo);
 }
 
 inline uint64_t GroupMetaArranger::GetExchangeSpaceSize() const noexcept
 {
-    return singleMetaSpaceSize_ - OPERATE_PARAM_SIZE;
+    return singleMetaSpaceSize_ - ZBAL_OPERATE_PARAM_SIZE;
 }
 
 inline bool GroupMetaArranger::Initialized() const noexcept

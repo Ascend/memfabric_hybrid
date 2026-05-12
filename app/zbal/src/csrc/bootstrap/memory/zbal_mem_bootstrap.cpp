@@ -36,9 +36,9 @@ ZResult MemBootstrap::VerifyOptions()
     ZBAL_VALIDATE_RETURN(options_.rankCount > 0, "invalid options, rankCount should > 0", Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(options_.rankId < options_.rankCount, "invalid options, rankId should < rankCount",
                          Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(options_.deviceId < DEVICE_COUNT_MAX_LIMIT, "invalid options, deviceId should be less than 32",
-                         Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(options_.totalMemSize < MEMORY_SIZE_CAP, "invalid options, memory size is too large",
+    ZBAL_VALIDATE_RETURN(options_.deviceId < ZBAL_DEVICE_COUNT_MAX_LIMIT,
+                         "invalid options, deviceId should be less than 32", Z_INVALID_PARAM);
+    ZBAL_VALIDATE_RETURN(options_.totalMemSize < ZBAL_MEMORY_SIZE_CAP, "invalid options, memory size is too large",
                          Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(!options_.ipPort.empty(), "invalid options, ipPort is empty", Z_INVALID_PARAM);
 

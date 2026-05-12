@@ -23,6 +23,7 @@ endif ()
 include(cmake/config_version.cmake)
 include(cmake/config_ascendc.cmake)
 include(cmake/config_pybind_torch.cmake)
+include(cmake/config_git_last_commit.cmake)
 
 set(ZBAL_BASE_DIR ${PROJECT_SOURCE_DIR})
 set(ZBAL_SRC_DIR ${ZBAL_BASE_DIR}/src)
