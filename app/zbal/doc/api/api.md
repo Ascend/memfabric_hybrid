@@ -11,6 +11,11 @@ Two levels api are provided by ZBAL, raw api (c interface) and adaptor api.
 
 ### Adaptor API
 
-* Pytorch allocator plugin
-* Pytorch process group
-* DeepEP
+* [General API](./python/general_api.md)
+* [Pytorch allocator plugin](./python/adaptor/adaptor_api_allocator.md)
+* [Pytorch process group](./python/adaptor/adaptor_api_cc.md)
+* [DeepEP](./python/adaptor/adaptor_api_deepep.md)
+
+### Diagram
+
+* [Dispatch & Combine Normal Diagram](./diagram/dispatch_combine_normal_diagram.pdf)

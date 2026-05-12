@@ -205,7 +205,7 @@ void pybind11_allocator(pybind11::module_ &m)
             return std::make_tuple(in_used_size, total_size);
         },
         pybind11::arg("device") = -1,
-        "get heap stats，return (used_size, total_size), return zero if heap is not inited");
+        "get heap stats, return (used_size, total_size), return zero if heap is not inited");
 
     m.def(
         "dump_snapshot",
@@ -219,7 +219,7 @@ void pybind11_allocator(pybind11::module_ &m)
         "dump snapshot, return pkl dict");
 
     m.def(
-        "simulate_init", [](int64_t addr, int64_t size) { return zbal_simulate_init(addr, size); },
+        "simulate_init", [](int64_t addr, int64_t size) { zbal_simulate_init(addr, size); },
         "simulate_init on sma/dma heap, no actual memory allocate");
 
     m.def(
