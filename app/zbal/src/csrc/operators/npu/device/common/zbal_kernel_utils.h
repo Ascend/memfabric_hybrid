@@ -261,6 +261,23 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
     AscendC::SyncAll<true>();
 }
 
+ZBAL_KERNEL void ClearExchangeMeta(__gm__ uint64_t *exchangeMeta, uint32_t size)
+{
+    AscendC::LocalTensor<uint64_t> localBuf(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE, size);
+    for (uint32_t offset = 0; offset < size; offset++) {
+        localBuf.SetValue(offset, 0);
+    }
+
+    GlobalTensor<uint64_t> globalBuf;
+    globalBuf.SetGlobalBuffer(exchangeMeta, size);
+
+    AscendC::DataCopyPadExtParams<uint64_t> copyExtParams;
+    AscendC::DataCopyExtParams copyParams(1, size * sizeof(uint64_t), 0, 0, 0);
+
+    AscendC::DataCopyPad(globalBuf, localBuf, copyParams);
+    SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+}
+
 template<typename T>
 ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> outputGT, AscendC::GlobalTensor<T> inputGT, uint64_t count)
 {

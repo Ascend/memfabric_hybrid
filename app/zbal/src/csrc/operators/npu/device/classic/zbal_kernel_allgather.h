@@ -103,6 +103,7 @@ private:
     uint16_t myGroupRank;
     uint64_t memSize;
     uint16_t elemExchSize; // size for exchange one element
+    uint32_t exchangeMetaSize;
     int64_t aivNum;
     uint64_t elements;
     uintptr_t exchangeAddr;
@@ -345,8 +346,8 @@ ZBAL_KERNEL void AllGatherBigKernel::Init(GM_ADDR input, GM_ADDR output, GM_ADDR
 {
 #ifdef __DAV_C220_VEC__
     this->aivNum = AscendC::GetBlockNum();
-    this->coreNumPerRing = this->aivNum / AG_RING_NUM;
-    this->statSizePerRank = this->coreNumPerRing * AG_SLICE_PER_CORE; // left right stat has same size
+    this->coreNumPerRing = aivNum / AG_RING_NUM;
+    this->statSizePerRank = coreNumPerRing * AG_SLICE_PER_CORE; // left right stat has same size
     this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
     this->groupSize = comm->groupSize;
     this->myGroupRank = comm->myGroupRank;
@@ -354,10 +355,13 @@ ZBAL_KERNEL void AllGatherBigKernel::Init(GM_ADDR input, GM_ADDR output, GM_ADDR
     this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
     this->elemExchSize = groupSize * ZBAL_FLAG_SIZE;
     this->exchangeAddr = comm->myAddressExchangeGva;
+    // |----------|----------|--------------------|--------------------|
+    // outputAddr  flagAddr  readLeftStatAddr     readRightStatAddr
     this->outputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
-    this->flagAddr = this->outputAddr + this->elemExchSize;
-    this->readLeftStatAddr = this->flagAddr + this->elemExchSize;
-    this->readRightStatAddr = this->readLeftStatAddr + this->statSizePerRank * this->groupSize * ZBAL_FLAG_SIZE;
+    this->flagAddr = outputAddr + elemExchSize;
+    this->readLeftStatAddr = flagAddr + elemExchSize;
+    this->readRightStatAddr = readLeftStatAddr + statSizePerRank * elemExchSize;
+    this->exchangeMetaSize = 2 * (elemExchSize + statSizePerRank * elemExchSize);
     this->input = input;
     this->output = output;
     this->elements = elements;
@@ -469,6 +473,9 @@ ZBAL_KERNEL void AllGatherBigKernel::Process() // ring allgather
     const int64_t inputPtrIndex = aivIndex < coreNumPerRing ? prevRank : nextRank;
     const int64_t statUpdateRank = aivIndex < coreNumPerRing ? nextRank : prevRank;
     __gm__ uint64_t *statAddr = aivIndex < coreNumPerRing ? this->readLeftStatAddr : this->readRightStatAddr;
+
+    ClearExchangeMeta(outputAddr, exchangeMetaSize);
+    BarrierAll(comm);
 
     CopyLocal2Output((__gm__ T *)input, (__gm__ T *)output); // copy self input to output buffer
 
