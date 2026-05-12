@@ -24,7 +24,7 @@ def zbal_init(world_size: int,
               start_config_server: bool = False,
               data_op_type: int = 0,
               comm_meta_space_size: int = 1024,
-              comm_group_cap: int = 32,
+              comm_group_cap: int = 64,
               flags: int = 0,
               ip_port: str = ""):
     '''
@@ -53,7 +53,6 @@ def zbal_init(world_size: int,
         if mem_fabric_lib_path is not None:
             os.environ["MEMFABRIC_HYBRID_LIBRARY_PATH"] = mem_fabric_lib_path
             print(f"Set MEMFABRIC_HYBRID_LIBRARY_PATH to {mem_fabric_lib_path} on rank {rank_id}")
-
 
     # init mem allocator, switch before set_device
     if torch.npu.memory.get_allocator_backend() == 'native':

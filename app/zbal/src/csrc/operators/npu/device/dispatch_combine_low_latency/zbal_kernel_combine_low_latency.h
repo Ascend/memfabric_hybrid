@@ -598,7 +598,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::InputToDstOutput()
             uint32_t col = offsetIdx % moeExpertNum_;
             int32_t remoteBase = (col == 0) ? 0 : globalSendCountLocal_(offsetIdx - 1); // count 转 offset
             int32_t remoteOffset = expandIdxLocal_(localTokenId * axisK_ + topkId);
-            float scale = expertScalesLocal_.GetValue(topkId);
+            float scale = expertScalesLocal_.GetValue(localTokenId * axisK_ + topkId);
             auto srcPtr = expandXShareAddrLt_.GetValue(srcRankId);
             srcWinGMTensor.SetGlobalBuffer(
                 (__gm__ ExpandXType *)(srcPtr + hExpandXTypeSize_ * (remoteBase + remoteOffset)));
