@@ -488,6 +488,7 @@ int32_t MemEntityDefault::ImportForSegment(const ExchangeInfoReader desc[], uint
 
     if (!dramInfos.empty()) {
         std::vector<void *> dramAddrs(dramInfos.size(), nullptr);
+        BM_ASSERT_LOG_AND_RETURN(dramSegment_ != nullptr, "dramSegment is nullptr", BM_ERROR);
         auto ret = dramSegment_->Import(dramInfos, dramAddrs.data());
         if (ret != BM_OK) {
             BM_LOG_ERROR("dram segment import infos failed: " << ret);
@@ -502,6 +503,7 @@ int32_t MemEntityDefault::ImportForSegment(const ExchangeInfoReader desc[], uint
 
     if (!hbmInfos.empty()) {
         std::vector<void *> hbmAddrs(hbmInfos.size(), nullptr);
+        BM_ASSERT_LOG_AND_RETURN(hbmSegment_ != nullptr, "hbmSegment is nullptr", BM_ERROR);
         auto ret = hbmSegment_->Import(hbmInfos, hbmAddrs.data());
         if (ret != BM_OK) {
             BM_LOG_ERROR("hbm segment import infos failed: " << ret);
