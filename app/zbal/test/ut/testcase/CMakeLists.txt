@@ -45,7 +45,7 @@ file(GLOB_RECURSE ZBAL_TEST_CASE_SRCS
 
 add_executable(test_zbal ${ZBAL_TEST_CASE_SRCS}
         $<TARGET_OBJECTS:common_objects>
-        $<TARGET_OBJECTS:comm_objects>
+        $<TARGET_OBJECTS:operators_objects>
         $<TARGET_OBJECTS:under_api_objects>
         $<TARGET_OBJECTS:boostrap_objects>
         )
