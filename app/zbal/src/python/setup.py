@@ -233,6 +233,12 @@ class BuildWheel(bdist_wheel):
 setup(
     name="zbal-ascend",
     version=versoin,
+    description="ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. "
+                "It contains a bunch of well tuned operators for LLM inference and training, "
+                "which has two key advantages: zero intermediate buffer and blazing fast.",
+    url="https://gitcode.com/Ascend/memfabric_hybrid/app/zbal",
+    author="Huawei",
+    license="Mulan PSL v2",
     ext_modules=[
         CppExtension(
             name="zbal.zbal",  # TORCH_EXTENSION_NAME
