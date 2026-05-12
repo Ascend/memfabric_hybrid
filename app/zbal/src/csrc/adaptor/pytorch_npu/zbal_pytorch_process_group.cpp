@@ -57,7 +57,7 @@ bool ProcessGroupZBAL::WorkZBAL::isSuccess() const
 void ProcessGroupZBAL::WorkZBAL::synchronizeInternal(std::chrono::milliseconds timeout)
 {
     (void)timeout;
-    for (const auto i: c10::irange(devices_.size())) {
+    for (const auto i : c10::irange(devices_.size())) {
         auto currentStream = c10_npu::getCurrentNPUStream(devices_[i].index());
         (*zbalEndEvents_)[i].block(currentStream);
         ZBAL_LOG_INFO("Event: block zbal work is successfully executed, event=" << (*zbalEndEvents_)[i].event());
@@ -123,7 +123,7 @@ bool ProcessGroupZBAL::WorkZBAL::finishedNPUExecutionInternal() const
         return false;
     }
     try {
-        for (const auto i: c10::irange(devices_.size())) {
+        for (const auto i : c10::irange(devices_.size())) {
             if (!(*zbalEndEvents_)[i].query()) {
                 return false;
             }
@@ -143,8 +143,9 @@ c10::intrusive_ptr<c10::ivalue::Future> ProcessGroupZBAL::WorkZBAL::getFuture()
     return future_;
 }
 
-ProcessGroupZBAL::ProcessGroupZBAL(const c10::intrusive_ptr<c10d::Store>& store,
-    int rank, int size, c10::intrusive_ptr<Options> options) : c10d::Backend(rank, size), store_(store)
+ProcessGroupZBAL::ProcessGroupZBAL(const c10::intrusive_ptr<c10d::Store> &store, int rank, int size,
+                                   c10::intrusive_ptr<Options> options)
+    : c10d::Backend(rank, size), store_(store)
 {
     if (rank < 0 || size < 1 || rank >= size) {
         ZBAL_LOG_ERROR("invalid input rank=" << rank << ", size=" << size);
@@ -169,8 +170,9 @@ ProcessGroupZBAL::ProcessGroupZBAL(const c10::intrusive_ptr<c10d::Store>& store,
         throw std::runtime_error("create zbal process group failed.");
     }
     ZBAL_LOG_DEBUG("create process group success, groupId=" << options_->groupId << ", rank=" << rank_
-        << ", size=" << size << ", name=" << groupName_ << ", isHigh=" << options_->isHighPriorityStream
-        << ", timeout=" << static_cast<int>(opTimeout_.count()));
+                                                            << ", size=" << size << ", name=" << groupName_
+                                                            << ", isHigh=" << options_->isHighPriorityStream
+                                                            << ", timeout=" << static_cast<int>(opTimeout_.count()));
 }
 
 uint64_t ProcessGroupZBAL::GetNextGroupCounter() noexcept
@@ -262,8 +264,8 @@ int32_t ProcessGroupZBAL::initCommunicator() noexcept
 
     auto ret = zbal_comm_create(&opt, &groupComm_);
     if (ret != Z_OK || groupComm_ == nullptr) {
-        ZBAL_LOG_ERROR("create comm failed, ret=" << ret << ", rank="
-                        << opt.groupRankId << ", size=" << size_ << ", key=" << groupName_);
+        ZBAL_LOG_ERROR("create comm failed, ret=" << ret << ", rank=" << opt.groupRankId << ", size=" << size_
+                                                  << ", key=" << groupName_);
         return Z_CREATE_COMM_FAILED;
     }
     ZBAL_LOG_DEBUG("init comm success, rank=" << myWorldRank_ << ", size=" << size_ << ", key=" << groupName_);
@@ -290,7 +292,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::collective(std::vector<at::Tens
     c10_npu::OptionalNPUGuard npuGuard;
     pre(zbalStreams, work);
 
-    for (const auto i: c10::irange(inputs.size())) {
+    for (const auto i : c10::irange(inputs.size())) {
         npuGuard.set_index(devices[i].index());
         c10_npu::NPUStream &zbalStream = zbalStreams[i];
 
@@ -298,7 +300,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::collective(std::vector<at::Tens
     }
 
     {
-        for (const auto i: c10::irange(inputs.size())) {
+        for (const auto i : c10::irange(inputs.size())) {
             npuGuard.set_index(devices[i].index());
             // to avoid to much task pushed to the stream, leading to stream overflow
             // insert sync point fluxLimit(key, i)
@@ -318,8 +320,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::collective(std::vector<at::Tens
     for (size_t i = 0; i < inputs.size(); ++i) {
         c10_npu::NPUStream &zbalStream = zbalStreams[i];
         (*(work->zbalEndEvents_))[i].record(zbalStream);
-        ZBAL_LOG_DEBUG("Event: record zbal work is successfully executed, event=" <<
-            (*(work->zbalEndEvents_))[i].event());
+        ZBAL_LOG_DEBUG(
+            "Event: record zbal work is successfully executed, event=" << (*(work->zbalEndEvents_))[i].event());
         work->zbalComms_[i] = zbalComms[i];
     }
     work->blockingWait_ = blockingWait_;
@@ -327,8 +329,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::collective(std::vector<at::Tens
     return work;
 }
 
-template <typename Fn, typename PreProcess, typename PostProcess>
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Tensor>& tensors, Fn fn, int peer,
+template<typename Fn, typename PreProcess, typename PostProcess>
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Tensor> &tensors, Fn fn, int peer,
                                                               c10d::OpType opType, PreProcess pre, PostProcess post)
 {
     const auto devices = GetDeviceList(tensors);
@@ -346,14 +348,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Te
     c10_npu::OptionalNPUGuard npuGuard;
     pre(zbalStreams, work);
 
-    for (const auto i: c10::irange(tensors.size())) {
+    for (const auto i : c10::irange(tensors.size())) {
         npuGuard.set_index(devices[i].index());
         c10_npu::NPUStream &zbalStream = zbalStreams[i];
         c10_npu::NPUCachingAllocator::recordStream(tensors[i].storage().data_ptr(), zbalStream);
     }
 
     {
-        for (const auto i: c10::irange(tensors.size())) {
+        for (const auto i : c10::irange(tensors.size())) {
             npuGuard.set_index(devices[i].index());
             int32_t ret = fn(tensors[i], zbalStreams[i], zbalComms[i], peer);
             ZBAL_CHECK_S(ret == 0, "zbal process group fn exec failed");
@@ -370,8 +372,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Te
     for (size_t i = 0; i < tensors.size(); ++i) {
         c10_npu::NPUStream &zbalStream = zbalStreams[i];
         (*(work->zbalEndEvents_))[i].record(zbalStream);
-        ZBAL_LOG_DEBUG("Event: record zbal work is successfully executed, event=" <<
-            (*(work->zbalEndEvents_))[i].event());
+        ZBAL_LOG_DEBUG(
+            "Event: record zbal work is successfully executed, event=" << (*(work->zbalEndEvents_))[i].event());
         work->zbalComms_[i] = zbalComms[i];
     }
     work->blockingWait_ = blockingWait_;
@@ -403,14 +405,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allreduce(std::vector<at::Tenso
             auto slice = numel / size_;
             auto elements = (rank_ != size_ - 1) ? slice : numel - (size_ - 1) * slice;
             int64_t bufferElems = static_cast<int64_t>(numel < static_cast<size_t>(size_) ? numel : elements);
-            at::Tensor bufferTensor = at::empty({bufferElems},
-                at::TensorOptions().device(input.device()).dtype(scalarType));
+            at::Tensor bufferTensor =
+                at::empty({bufferElems}, at::TensorOptions().device(input.device()).dtype(scalarType));
             void *bufferDataPtr = bufferTensor.data_ptr();
 
-            std::function<int()> call_all_reduce = [inputDataPtr, outputDataPtr, bufferDataPtr, numel,
-                bufferElems, zbalType, zbalReduceOp, comm, stream]() -> int {
-                auto result = zbal_all_reduce(inputDataPtr, outputDataPtr, bufferDataPtr, numel, bufferElems,
-                                              zbalType, zbalReduceOp, comm, stream.stream(false));
+            std::function<int()> call_all_reduce = [inputDataPtr, outputDataPtr, bufferDataPtr, numel, bufferElems,
+                                                    zbalType, zbalReduceOp, comm, stream]() -> int {
+                auto result = zbal_all_reduce(inputDataPtr, outputDataPtr, bufferDataPtr, numel, bufferElems, zbalType,
+                                              zbalReduceOp, comm, stream.stream(false));
                 return result;
             };
             at_npu::native::OpCommand::RunOpApiV2("zbal_all_reduce", call_all_reduce);
@@ -421,9 +423,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allreduce(std::vector<at::Tenso
         c10d::OpType::ALLREDUCE);
 }
 
-
 c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_allgather_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
-    const c10d::AllgatherOptions &opts)
+                                                                 const c10d::AllgatherOptions &opts)
 {
     (void)opts;
     if (inputTensor.dtype() != outputTensor.dtype()) {
@@ -431,8 +432,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_allgather_base(at::Tensor &out
     }
 
     if (inputTensor.numel() * size_ != outputTensor.numel()) {
-        ZBAL_CHECK_S(false, "output tensor size(", outputTensor.numel(), ") must be equal to world_size(", size_, \
-            ") times input tensor size(", inputTensor.numel(), ")");
+        ZBAL_CHECK_S(false, "output tensor size(", outputTensor.numel(), ") must be equal to world_size(", size_,
+                     ") times input tensor size(", inputTensor.numel(), ")");
     }
 
     std::vector<at::Tensor> inputTensors = {inputTensor};
@@ -451,11 +452,12 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_allgather_base(at::Tensor &out
             auto numel = GetNumelForZBAL(input);
             auto zbalType = GetZbalDataType(input.scalar_type());
 
-            std::function<int()> call_ag = [inputDataPtr, outputDataPtr, numel, zbalType, comm, stream]() -> int {
+            std::function<int()> call_all_gather = [inputDataPtr, outputDataPtr, numel, zbalType, comm,
+                                                    stream]() -> int {
                 auto result = zbal_all_gather(inputDataPtr, outputDataPtr, numel, zbalType, comm, stream.stream(false));
                 return result;
             };
-            at_npu::native::OpCommand::RunOpApiV2("zbal_all_gather_base", call_ag);
+            at_npu::native::OpCommand::RunOpApiV2("zbal_all_gather_base", call_all_gather);
             return Z_OK;
         },
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
@@ -487,7 +489,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allgather(std::vector<std::vect
     auto outputFlattened = FlattenForScatterGather(outputTensors, inputTensors, size_);
     ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(outputFlattened) == 0, "check input tensor failed.");
 
-    return collective(inputTensors, outputFlattened,
+    return collective(
+        inputTensors, outputFlattened,
         [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
             RECORD_FUNCTION("ZBALAllGather", std::vector<c10::IValue>({input}));
             c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
@@ -497,7 +500,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allgather(std::vector<std::vect
             auto numel = GetNumelForZBAL(input);
             auto zbalType = GetZbalDataType(input.scalar_type());
 
-            std::function<int()> call_all_gather = [inputDataPtr, outputDataPtr, numel, zbalType, comm, stream]() -> int {
+            std::function<int()> call_all_gather = [inputDataPtr, outputDataPtr, numel, zbalType, comm,
+                                                    stream]() -> int {
                 return zbal_all_gather(inputDataPtr, outputDataPtr, numel, zbalType, comm, stream.stream(false));
             };
             at_npu::native::OpCommand::RunOpApiV2("zbal_all_gather", call_all_gather);
@@ -521,15 +525,15 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allgather(std::vector<std::vect
 }
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_reduce_scatter_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
-    const c10d::ReduceScatterOptions &opts)
+                                                                      const c10d::ReduceScatterOptions &opts)
 {
     if (inputTensor.dtype() != outputTensor.dtype()) {
         ZBAL_CHECK_S(false, "output tensor must have the same dtype as input tensor");
     }
 
     if (inputTensor.numel() != outputTensor.numel() * size_) {
-        ZBAL_CHECK_S(false, "input tensor size(", inputTensor.numel(), ") must be equal to world_size(", \
-            size_, ") times output tensor size(", outputTensor.numel(), ")");
+        ZBAL_CHECK_S(false, "input tensor size(", inputTensor.numel(), ") must be equal to world_size(", size_,
+                     ") times output tensor size(", outputTensor.numel(), ")");
     }
 
     std::vector<at::Tensor> inputTensors = {inputTensor};
@@ -549,13 +553,13 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_reduce_scatter_base(at::Tensor
             auto zbalType = GetZbalDataType(input.scalar_type());
             auto zbalReduceOp = GetZbalReduceOp(opts.reduceOp);
 
-            std::function<int()> call_rs = [inputDataPtr, outputDataPtr, numel, zbalType,
-                zbalReduceOp, comm, stream]() -> int {
-                auto result = zbal_reduce_scatter(inputDataPtr, outputDataPtr, numel, zbalType,
-                                                  zbalReduceOp, comm, stream.stream(false));
+            std::function<int()> call_reduce_scatter = [inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp,
+                                                        comm, stream]() -> int {
+                auto result = zbal_reduce_scatter(inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp, comm,
+                                                  stream.stream(false));
                 return result;
             };
-            at_npu::native::OpCommand::RunOpApiV2("zbal_reduce_scatter", call_rs);
+            at_npu::native::OpCommand::RunOpApiV2("zbal_reduce_scatter", call_reduce_scatter);
             return Z_OK;
         },
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
@@ -568,8 +572,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::broadcast(std::vector<at::Tenso
 {
     ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(tensors) == 0, "check input tensor failed.");
     return collective(
-        tensors,
-        tensors,
+        tensors, tensors,
         [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
             RECORD_FUNCTION("ZbalBroadcast", std::vector<c10::IValue>({input}));
             c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
@@ -591,8 +594,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::broadcast(std::vector<at::Tenso
         c10d::OpType::BROADCAST);
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::scatter(std::vector<at::Tensor>& outputTensors,
-                                                         std::vector<std::vector<at::Tensor>>& inputTensors,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::scatter(std::vector<at::Tensor> &outputTensors,
+                                                         std::vector<std::vector<at::Tensor>> &inputTensors,
                                                          const c10d::ScatterOptions &opts)
 {
     const bool is_root = (myWorldRank_ == opts.rootRank);
@@ -603,15 +606,15 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::scatter(std::vector<at::Tensor>
             ZBAL_LOG_ERROR("requires a single-element input list containing a list with tensors.");
         }
 
-        for (auto& tensor_list : inputTensors[0]) {
+        for (auto &tensor_list : inputTensors[0]) {
             rank_data_addrs.push_back(reinterpret_cast<uint64_t>(tensor_list.data_ptr()));
         }
         // Allocate device memory to hold the tensor address list
         int64_t addrListSize = static_cast<int64_t>(rank_data_addrs.size() * sizeof(uint64_t));
-        at::Tensor bufferTensor = at::empty({addrListSize},
-            at::TensorOptions().device(inputTensors[0][0].device()).dtype(torch::kInt8));
+        at::Tensor bufferTensor =
+            at::empty({addrListSize}, at::TensorOptions().device(inputTensors[0][0].device()).dtype(torch::kInt8));
         auto result = DlCannApi::AclrtMemcpy(reinterpret_cast<void *>(bufferTensor.data_ptr()), addrListSize,
-            rank_data_addrs.data(), addrListSize, ACL_MEMCPY_HOST_TO_DEVICE);
+                                             rank_data_addrs.data(), addrListSize, ACL_MEMCPY_HOST_TO_DEVICE);
         if (result != Z_OK) {
             ZBAL_LOG_ERROR("tensor addrs h2d copy failed, result: " << result);
         }
@@ -620,10 +623,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::scatter(std::vector<at::Tensor>
     std::vector<at::Tensor> dummy_inputs = outputTensors;
 
     return collective(
-        dummy_inputs,
-        outputTensors,
-        [&](at::Tensor&, at::Tensor& output,
-            c10_npu::NPUStream& stream, zbal_comm_t comm) {
+        dummy_inputs, outputTensors,
+        [&](at::Tensor &, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
             RECORD_FUNCTION("ZbalScatter", std::vector<c10::IValue>({output}));
             c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
 
@@ -631,15 +632,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::scatter(std::vector<at::Tensor>
             auto zbalType = GetZbalDataType(output.scalar_type());
             uint64_t recv_numel = GetNumelForZBAL(output);
             std::function<int()> call_scatter = [=]() -> int {
-                return zbal_scatter(
-                    bufferDataPtr,
-                    output.data_ptr(),
-                    recv_numel,
-                    zbalType,
-                    root_rank,
-                    comm,
-                    stream.stream(false)
-                );
+                return zbal_scatter(bufferDataPtr, output.data_ptr(), recv_numel, zbalType, root_rank, comm,
+                                    stream.stream(false));
             };
             at_npu::native::OpCommand::RunOpApiV2("zbal_scatter", call_scatter);
             return Z_OK;
@@ -659,7 +653,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::reduce_scatter(std::vector<at::
     return nullptr;
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOptions& opts)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOptions &opts)
 {
     (void)opts;
     at::Tensor tensor1 = at::ones({1}, at::TensorOptions().device(c10::DeviceType::PrivateUse1).dtype(at::kFloat));
@@ -671,9 +665,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOpti
         [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
             (void)input;
             (void)output;
-            auto barrier_call = [comm, stream]() -> int {
-                return zbal_barrier(comm, stream.stream(false));
-            };
+            auto barrier_call = [comm, stream]() -> int { return zbal_barrier(comm, stream.stream(false)); };
             at_npu::native::OpCommand::RunOpApiV2("zbal_barrier", barrier_call);
             return Z_OK;
         },
@@ -682,8 +674,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOpti
         c10d::OpType::ALLTOALL_BASE);
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &outputTensor,
-                                                                 at::Tensor &inputTensor,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                                  std::vector<int64_t> &outputSplits,
                                                                  std::vector<int64_t> &inputSplits,
                                                                  const c10d::AllToAllOptions &opts)
@@ -713,8 +704,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &out
             auto dataType = GetZbalDataType(input.scalar_type());
             auto inputCounts = static_cast<uint64_t>(input.numel());
             auto alltoall_call = [inputPtr, outputPtr, inputCounts, dataType, comm, stream]() -> int {
-                return zbal_all_to_all_base(inputPtr, outputPtr, inputCounts,
-                                            dataType, comm, stream.stream(false));
+                return zbal_all_to_all_base(inputPtr, outputPtr, inputCounts, dataType, comm, stream.stream(false));
             };
             at_npu::native::OpCommand::RunOpApiV2("zbal_all_to_all_base", alltoall_call);
             return Z_OK;
@@ -724,8 +714,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &out
         c10d::OpType::ALLTOALL_BASE);
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTensor,
-                                                            at::Tensor &inputTensor,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                             std::vector<int64_t> &outputSplits,
                                                             std::vector<int64_t> &inputSplits,
                                                             const c10d::AllToAllOptions &opts)
@@ -790,10 +779,10 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTe
             auto outCountPtr = outCountTensor.data_ptr();
             auto elementPtr = elementTensor.data_ptr();
             auto dataType = GetZbalDataType(input.scalar_type());
-            auto alltoall_call = [inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType,
-                                  comm, stream]() -> int {
-                return zbal_all_to_all_v(inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType,
-                                         comm, stream.stream(false));
+            auto alltoall_call = [inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType, comm,
+                                  stream]() -> int {
+                return zbal_all_to_all_v(inputPtr, outputPtr, inCumSumPtr, outCountPtr, elementPtr, dataType, comm,
+                                         stream.stream(false));
             };
             at_npu::native::OpCommand::RunOpApiV2("zbal_all_to_all_v", alltoall_call);
             return Z_OK;
@@ -803,8 +792,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTe
         c10d::OpType::ALLTOALL_BASE);
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outputTensor,
-                                                               at::Tensor &inputTensor,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                                std::vector<int64_t> &outputSplits,
                                                                std::vector<int64_t> &inputSplits,
                                                                const c10d::AllToAllOptions &opts)
@@ -816,14 +804,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outpu
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor>& tensors, int dstRank, int tag)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor> &tensors, int dstRank, int tag)
 {
     (void)tag;
     ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(tensors) == 0, "check output tensor failed.");
 
     return pointToPoint(
         tensors,
-        [&](at::Tensor& tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
+        [&](at::Tensor &tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
             RECORD_FUNCTION("ZbalSend", std::vector<c10::IValue>({tensor}));
 
             auto dataPtr = tensor.data_ptr();
@@ -839,18 +827,17 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor>& t
         },
         dstRank, c10d::OpType::SEND,
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
-        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {}
-    );
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {});
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::recv(std::vector<at::Tensor>& tensors, int srcRank, int tag)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::recv(std::vector<at::Tensor> &tensors, int srcRank, int tag)
 {
     (void)tag;
     ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(tensors) == 0, "check output tensor failed.");
 
     return pointToPoint(
         tensors,
-        [&](at::Tensor& tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
+        [&](at::Tensor &tensor, c10_npu::NPUStream &stream, zbal_comm_t comm, int peer) {
             RECORD_FUNCTION("ZbalRecv", std::vector<c10::IValue>({tensor}));
 
             auto dataPtr = tensor.data_ptr();
@@ -866,8 +853,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::recv(std::vector<at::Tensor>& t
         },
         srcRank, c10d::OpType::RECV,
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
-        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {}
-    );
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {});
 }
 
 std::string ProcessGroupZBAL::getZBALCommName() noexcept
@@ -876,10 +862,9 @@ std::string ProcessGroupZBAL::getZBALCommName() noexcept
 }
 
 ProcessGroupZBAL::Options::Options(bool isHighPriorityStream)
-    : c10d::Backend::Options(ZBAL_BACKEND_NAME),
-      opTimeout(WORKER_MAX_TIMEOUT), isHighPriorityStream(isHighPriorityStream)
-{
-}
+    : c10d::Backend::Options(ZBAL_BACKEND_NAME), opTimeout(WORKER_MAX_TIMEOUT),
+      isHighPriorityStream(isHighPriorityStream)
+{}
 
 ProcessGroupZBAL::~ProcessGroupZBAL()
 {
@@ -896,6 +881,6 @@ ProcessGroupZBAL::~ProcessGroupZBAL()
     ZBAL_LOG_DEBUG("~ process group success: " << groupName_ << " on rank " << myWorldRank_);
 }
 
-}  // namespace pytorch_npu
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace pytorch_npu
+} // namespace adaptor
+} // namespace zbal

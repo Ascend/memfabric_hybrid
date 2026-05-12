@@ -24,22 +24,22 @@ constexpr uint32_t INPUT_ONLY = 1;
 constexpr uint32_t BUFFER_ONLY = 2;
 
 struct ArParallelStrategy {
-    bool aivNumLtGroupSize {false};
-    uint32_t startRank {0};
-    uint32_t endRank {0};
-    uint32_t startNotifyRank {0};
-    uint32_t endNotifyRank {0};
-    uint32_t corePerRank {0};
-    uint32_t coreRankIdx {0};
+    bool aivNumLtGroupSize{false};
+    uint32_t startRank{0};
+    uint32_t endRank{0};
+    uint32_t startNotifyRank{0};
+    uint32_t endNotifyRank{0};
+    uint32_t corePerRank{0};
+    uint32_t coreRankIdx{0};
 };
 
-template <typename T>
+template<typename T>
 class ZeroBuffAllReduceKernel {
 public:
     ZBAL_KERNEL ZeroBuffAllReduceKernel() {}
 
-    ZBAL_KERNEL void Init(GM_ADDR x, GM_ADDR y, GM_ADDR metaAddr, GM_ADDR buf,
-                          uint32_t totalElems, uint32_t bufferElems, uint32_t atomicOp, uint64_t waitSymbol)
+    ZBAL_KERNEL void Init(GM_ADDR x, GM_ADDR y, GM_ADDR metaAddr, GM_ADDR buf, uint32_t totalElems,
+                          uint32_t bufferElems, uint32_t atomicOp, uint64_t waitSymbol)
     {
         this->atomicOp = atomicOp;
         this->bufferElems = bufferElems;
@@ -359,8 +359,7 @@ private:
         ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_WAIT_FLAG);
     }
 
-    ZBAL_KERNEL void DataCopyGM2GM(AscendC::GlobalTensor<T> inputTensor,
-                                   AscendC::GlobalTensor<T> outputTensor,
+    ZBAL_KERNEL void DataCopyGM2GM(AscendC::GlobalTensor<T> inputTensor, AscendC::GlobalTensor<T> outputTensor,
                                    uint32_t len)
     {
         AscendC::DataCopyPadExtParams<T> padParams;
@@ -411,10 +410,9 @@ private:
     __gm__ CommGroupInfo *groupInfo;
 };
 
-extern "C" __global__ __aicore__ void ZeroBuffAllReduce(
-    GM_ADDR input, GM_ADDR output, GM_ADDR buffer, GM_ADDR gva,
-    uint64_t fftsAddr, uint32_t dataType, uint32_t totalElems, uint32_t bufferElems,
-    uint32_t reduceOp, uint64_t waitSymbol)
+extern "C" __global__ __aicore__ void ZeroBuffAllReduce(GM_ADDR input, GM_ADDR output, GM_ADDR buffer, GM_ADDR gva,
+                                                        uint64_t fftsAddr, uint32_t dataType, uint32_t totalElems,
+                                                        uint32_t bufferElems, uint32_t reduceOp, uint64_t waitSymbol)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -473,13 +471,13 @@ int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, siz
     uint32_t reduceOpNum = static_cast<uint32_t>(reduceOp);
 
     uint64_t fftsAddr = groupInfo.fftsConfig;
-    uint8_t* metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
-    uint8_t* input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
-    uint8_t* output = reinterpret_cast<uint8_t *>(out);
+    uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
+    uint8_t *input = reinterpret_cast<uint8_t *>(const_cast<void *>(inp));
+    uint8_t *output = reinterpret_cast<uint8_t *>(out);
     uint8_t *buffer = reinterpret_cast<uint8_t *>(buf);
     uint64_t waitSymbol = ++groupInfo.waitSymbol;
-    ZeroBuffAllReduce<<<blockDim, nullptr, stream>>>(input, output, buffer, metaAddr, fftsAddr, dataTypeNum,
-                                                     numel, buf_cnt, reduceOpNum, waitSymbol);
+    ZeroBuffAllReduce<<<blockDim, nullptr, stream>>>(input, output, buffer, metaAddr, fftsAddr, dataTypeNum, numel,
+                                                     buf_cnt, reduceOpNum, waitSymbol);
 
     return 0;
 }

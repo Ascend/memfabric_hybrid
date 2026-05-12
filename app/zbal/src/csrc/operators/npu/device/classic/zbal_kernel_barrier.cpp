@@ -68,8 +68,7 @@ private:
     uint64_t waitSymbol;
 };
 
-extern "C" __global__ __aicore__
-void ZBALBarrierInner(GM_ADDR metaAddr, uint64_t waitSymbol)
+extern "C" __global__ __aicore__ void ZBALBarrierInner(GM_ADDR metaAddr, uint64_t waitSymbol)
 {
     BarrierKernel op;
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);

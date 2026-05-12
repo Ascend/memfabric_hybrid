@@ -28,6 +28,7 @@ else:
 torch_npu.npu.config.allow_internal_format = True
 RANK_PER_NODE = 16
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def get_cur_cases(expect_world_size):

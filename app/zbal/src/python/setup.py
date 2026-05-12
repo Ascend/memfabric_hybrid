@@ -25,6 +25,7 @@ import torch
 import torch_npu
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def _find_ascend_home_dir():
@@ -148,7 +149,7 @@ class CustomBuildExtension(BuildExtension):
         shutil.rmtree(output_dir, ignore_errors=True)
         os.makedirs(build_dir, exist_ok=True)
         os.makedirs(output_dir, exist_ok=True)
-        print(f"make build dir:{build_dir}, output dir:{output_dir}")
+        logger.info(f"make build dir:{build_dir}, output dir:{output_dir}")
 
         # cmake
         build_type = "Release" if is_manylinux else "Debug"
@@ -164,10 +165,10 @@ class CustomBuildExtension(BuildExtension):
         ]
         result = subprocess.run(cmake_cmd, cwd=build_dir)
         if result.returncode != 0:
-            print(f"python cmake exec failed ret code {result.returncode}, msg {result.stderr}")
+            logger.error(f"python cmake exec failed ret code {result.returncode}, msg {result.stderr}")
             raise RuntimeError("cmake exec failed")
         else:
-            print("python cmake exec success")
+            logger.info("python cmake exec success")
 
         # make
         make_cmd = [
@@ -176,10 +177,10 @@ class CustomBuildExtension(BuildExtension):
         ]
         result = subprocess.run(make_cmd, cwd=build_dir)
         if result.returncode != 0:
-            print(f"python make exec failed ret code {result.returncode}, msg {result.stderr}")
+            logger.error(f"python make exec failed ret code {result.returncode}, msg {result.stderr}")
             raise RuntimeError("make exec failed")
         else:
-            print("python make exec success")
+            logger.info("python make exec success")
 
         # copy
         static_output = glob.glob(f"{build_dir}/**/*.a", recursive=True)
@@ -187,7 +188,7 @@ class CustomBuildExtension(BuildExtension):
             static_name = os.path.basename(x)
             dst = f"{output_dir}/{static_name}"
             shutil.copy2(x, dst)
-            print(f"copy {x} to {dst}")
+            logger.info(f"copy {x} to {dst}")
 
     def run(self):
         self.build_base_zbal()

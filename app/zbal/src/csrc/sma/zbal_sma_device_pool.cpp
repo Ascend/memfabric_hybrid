@@ -90,7 +90,7 @@ void EventController::emptyCache()
     }
 }
 
-void EventController::synchronizeAndFreeEvents(DeviceSMACachingAllocator* allocator, bool check_error,
+void EventController::synchronizeAndFreeEvents(DeviceSMACachingAllocator *allocator, bool check_error,
                                                const std::shared_ptr<c10::GatheredContext> &context)
 {
     (void)check_error;
@@ -115,7 +115,7 @@ void EventController::synchronizeAndFreeEvents(DeviceSMACachingAllocator* alloca
     npu_events_.clear();
 }
 
-void EventController::insertEvents(DeviceSMACachingAllocator* allocator, DeviceBlock *block)
+void EventController::insertEvents(DeviceSMACachingAllocator *allocator, DeviceBlock *block)
 {
     (void)allocator;
     StreamSet streams(std::move(block->stream_uses_));
@@ -132,7 +132,7 @@ void EventController::insertEvents(DeviceSMACachingAllocator* allocator, DeviceB
     }
 }
 
-void EventController::processEvents(DeviceSMACachingAllocator* allocator,
+void EventController::processEvents(DeviceSMACachingAllocator *allocator,
                                     const std::shared_ptr<c10::GatheredContext> &context)
 {
     // Process outstanding npuEvents. Events that are completed are removed
@@ -141,7 +141,7 @@ void EventController::processEvents(DeviceSMACachingAllocator* allocator,
     // Since events on different devices or streams may occur out of order,
     // the processing of some events may be delayed.
     // first: ZEvent; second: Block*
-    for (auto it = npu_events_.begin(); it != npu_events_.end(); ) {
+    for (auto it = npu_events_.begin(); it != npu_events_.end();) {
         while (!it->second.empty()) {
             auto &e = it->second.front();
             ZEvent event = std::move(e.first);
@@ -167,7 +167,7 @@ void EventController::processEvents(DeviceSMACachingAllocator* allocator,
     }
 }
 
-void EventController::cleanEvents(DeviceSMACachingAllocator* allocator)
+void EventController::cleanEvents(DeviceSMACachingAllocator *allocator)
 {
     for (auto &st : npu_events_) {
         for (auto &e : st.second) {
@@ -182,11 +182,10 @@ void EventController::cleanEvents(DeviceSMACachingAllocator* allocator)
     npu_events_.clear();
 }
 
-void EventController::cleanStream(DeviceSMACachingAllocator* allocator,
-                                  DeviceBlock *block, c10_npu::NPUStream stream)
+void EventController::cleanStream(DeviceSMACachingAllocator *allocator, DeviceBlock *block, c10_npu::NPUStream stream)
 {
     // free block, lazy destroy block related events
-    for (auto it = npu_events_[stream].begin(); it != npu_events_[stream].end(); ) {
+    for (auto it = npu_events_[stream].begin(); it != npu_events_[stream].end();) {
         if (block != it->second) {
             it++;
             continue;
@@ -216,7 +215,7 @@ void GraphDeferPools::removeNpuGraphStreamUses(DeviceBlock *block)
     }
 }
 
-void GraphDeferPools::insertEventsDeferredUntilNoCapture(DeviceSMACachingAllocator* allocator,
+void GraphDeferPools::insertEventsDeferredUntilNoCapture(DeviceSMACachingAllocator *allocator,
                                                          const std::shared_ptr<c10::GatheredContext> &context)
 {
     if (ZBAL_UNLIKELY(!needs_events_deferred_until_no_capture_.empty())) {
@@ -235,7 +234,6 @@ void GraphDeferPools::insertEventsDeferredUntilNoCapture(DeviceSMACachingAllocat
     }
 }
 
-
 void GraphDeferPools::appendEventsDeferredUntilNoCapture(DeviceBlock *block)
 {
     needs_events_deferred_until_no_capture_.push_back(block);
@@ -246,6 +244,6 @@ void GraphDeferPools::insertBlockToNpuGraphStreamUses(DeviceBlock *block, c10_np
     block_to_npugraph_stream_uses_[block].insert(stream);
 }
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal

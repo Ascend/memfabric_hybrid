@@ -36,20 +36,18 @@ std::string format_size(uint64_t size);
 namespace c10_npu {
 namespace dma {
 
-C10_NPU_API std::mutex* getFreeMutex();
+C10_NPU_API std::mutex *getFreeMutex();
 
 // Caching allocator will execute every registered callback if it unable to find
 // block inside of already allocated area.
 class FreeMemoryCallback {
 public:
-    virtual ~FreeMemoryCallback(){};
+    virtual ~FreeMemoryCallback() {};
     virtual bool Execute() = 0;
 };
 
 C10_DECLARE_REGISTRY(FreeNPUMemoryCallbacksRegistry, FreeMemoryCallback);
-#define REGISTER_FREE_MEMORY_CALLBACK(name, ...) \
-  C10_REGISTER_CLASS(FreeNPUMemoryCallbacksRegistry, name, __VA_ARGS__);
-
+#define REGISTER_FREE_MEMORY_CALLBACK(name, ...) C10_REGISTER_CLASS(FreeNPUMemoryCallbacksRegistry, name, __VA_ARGS__);
 
 // (Ascend): Turn this into an honest to goodness class. I briefly attempted to do
 // this, but it was a bit irritating to figure out how to also correctly
@@ -138,7 +136,7 @@ struct BlockInfo {
 // Struct containing info of a memory segment (i.e. one contiguous cudaMalloc).
 struct SegmentInfo {
     int64_t device = 0;
-    int64_t  address = 0;
+    int64_t address = 0;
     aclrtStream stream = nullptr;
     int64_t total_size = 0;
     int64_t requested_size = 0;
@@ -163,26 +161,23 @@ struct TraceEntry {
                         // it is still in use on another stream via
                         // record_stream This event is generated when a free
                         // actually completes.
-        SEGMENT_ALLOC, // a call to AclrtMalloc to get more memory from the OS
-        SEGMENT_FREE, // a call to aclrtFree to return memory to the OS (e.g. to
-                      // defragment or empty_caches)
-        SEGMENT_MAP,  // a call to AclrtMapMem (used with expandable_segments)
-        SEGMENT_UNMAP, // unmap part of a segment (used with expandable
-                       // segments)
-        SNAPSHOT, // a call to snapshot, used to correlate memory snapshots to
-                  // trace events
-        OOM, // the allocator threw an OutOfMemoryError (addr_ is the amount of
-            // free bytes reported by cuda)
+        SEGMENT_ALLOC,  // a call to AclrtMalloc to get more memory from the OS
+        SEGMENT_FREE,   // a call to aclrtFree to return memory to the OS (e.g. to
+                        // defragment or empty_caches)
+        SEGMENT_MAP,    // a call to AclrtMapMem (used with expandable_segments)
+        SEGMENT_UNMAP,  // unmap part of a segment (used with expandable
+                        // segments)
+        SNAPSHOT,       // a call to snapshot, used to correlate memory snapshots to
+                        // trace events
+        OOM,            // the allocator threw an OutOfMemoryError (addr_ is the amount of
+        // free bytes reported by cuda)
         WORKSPACE_SNAPSHOT,
         EMPTY_CACHE
     };
-    TraceEntry(Action action, int device, int64_t addr, size_t size,
-               aclrtStream stream,
+    TraceEntry(Action action, int device, int64_t addr, size_t size, aclrtStream stream,
                std::shared_ptr<c10::GatheredContext> context = nullptr)
-        : action_(action), device_(device), addr_(addr),
-          context_(std::move(context)), stream_(stream), size_(size)
-    {
-    }
+        : action_(action), device_(device), addr_(addr), context_(std::move(context)), stream_(stream), size_(size)
+    {}
     Action action_;
     int device_;
     int64_t addr_; // for OOM, this is the amount of free bytes reported by cuda
@@ -200,7 +195,7 @@ struct SnapshotInfo {
 // and the pointers allocated. Note: a pointer
 // may appear in both freed and allocated
 struct CheckpointDelta {
-    std::vector<void*> ptrs_freed;
+    std::vector<void *> ptrs_freed;
     std::vector<at::DataPtr> dataptrs_allocd;
 };
 
@@ -212,8 +207,7 @@ enum struct RecordContext {
 };
 
 using OutOfMemoryObserver =
-    std::function<void(int64_t device, int64_t allocated, int64_t device_total,
-                       int64_t device_free)>;
+    std::function<void(int64_t device, int64_t allocated, int64_t device_total, int64_t device_free)>;
 
 struct ShareableHandle {
     ptrdiff_t offset;
@@ -223,17 +217,17 @@ struct ShareableHandle {
 class NPUAllocator : public c10::Allocator {
 public:
     virtual c10::DataPtr allocate_with_aligned(size_t size, size_t aligned) const = 0;
-    virtual void* raw_alloc(size_t nbytes) = 0;
-    virtual void* raw_alloc_with_stream(size_t nbytes, aclrtStream stream) = 0;
-    virtual void raw_delete(void* ptr) = 0;
+    virtual void *raw_alloc(size_t nbytes) = 0;
+    virtual void *raw_alloc_with_stream(size_t nbytes, aclrtStream stream) = 0;
+    virtual void raw_delete(void *ptr) = 0;
     virtual void init(int device_count) = 0;
     virtual bool initialized() = 0;
     virtual void setMemoryFraction(double fraction, int device) = 0;
     virtual void emptyCacheImpl(bool check_error, bool free_physical) = 0;
     virtual void emptyCache(bool check_error) = 0;
     virtual void emptyVirtAddrCache(bool check_error) = 0;
-    virtual void cacheInfo(int dev_id, size_t* cachedAndFree, size_t* largestBlock) = 0;
-    virtual void* getBaseAllocation(void* ptr, size_t* size) = 0;
+    virtual void cacheInfo(int dev_id, size_t *cachedAndFree, size_t *largestBlock) = 0;
+    virtual void *getBaseAllocation(void *ptr, size_t *size) = 0;
     virtual void recordStream(void *ptr, c10_npu::NPUStream stream) = 0;
     virtual void eraseStream(void *ptr, c10_npu::NPUStream stream) = 0;
     virtual DeviceStats getDeviceStats(int device) = 0;
@@ -242,56 +236,47 @@ public:
     virtual SnapshotInfo snapshot() = 0;
 
     // CUDAGraph interactions
-    virtual void beginAllocateToPool(
-        c10::DeviceIndex device,
-        MempoolId_t mempool_id,
-        std::function<bool(aclrtStream)> filter) = 0;
-    virtual void endAllocateToPool(
-        c10::DeviceIndex device,
-        MempoolId_t mempool_id) = 0;
+    virtual void beginAllocateToPool(c10::DeviceIndex device, MempoolId_t mempool_id,
+                                     std::function<bool(aclrtStream)> filter) = 0;
+    virtual void endAllocateToPool(c10::DeviceIndex device, MempoolId_t mempool_id) = 0;
     virtual void releasePool(c10::DeviceIndex device, MempoolId_t mempool_id) = 0;
     virtual void FreeDeviceCachedMemory(int device) = 0;
     virtual std::string name() = 0;
-    virtual bool checkPoolLiveAllocations(
-        c10::DeviceIndex device,
-        MempoolId_t mempool_id,
-        const std::unordered_set<void*>& expected_live_allocations)
+    virtual bool checkPoolLiveAllocations(c10::DeviceIndex device, MempoolId_t mempool_id,
+                                          const std::unordered_set<void *> &expected_live_allocations)
     {
         (void)device;
         (void)mempool_id;
         (void)expected_live_allocations;
         TORCH_CHECK(false, name(),
-            " does not yet support checkPoolLiveAllocations. "
-            "If you need it, please file an issue describing your use case.", PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
+                    " does not yet support checkPoolLiveAllocations. "
+                    "If you need it, please file an issue describing your use case.",
+                    PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
     }
-    virtual ShareableHandle shareIpcHandle(void* ptr) = 0;
+    virtual ShareableHandle shareIpcHandle(void *ptr) = 0;
     virtual std::shared_ptr<void> getIpcDevPtr(std::string handle) = 0;
     virtual bool isHistoryEnabled()
     {
-        TORCH_CHECK(
-            false, name(),
-            " does not yet support recordHistory. "
-            "If you need it, please file an issue describing your use case.", PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
+        TORCH_CHECK(false, name(),
+                    " does not yet support recordHistory. "
+                    "If you need it, please file an issue describing your use case.",
+                    PTA_ERROR_MOCK(ErrCode::NOT_SUPPORT));
     }
-    virtual void recordHistory(bool enabled, CreateContextFn context_recorder,
-                               size_t alloc_trace_max_entries,
+    virtual void recordHistory(bool enabled, CreateContextFn context_recorder, size_t alloc_trace_max_entries,
                                RecordContext when) = 0;
     virtual void attachOutOfMemoryObserver(OutOfMemoryObserver observer) = 0;
     virtual bool checkUceInMemPool(int device) = 0;
-    virtual bool checkBlockIsSafe(const c10::DataPtr& ptr) = 0;
+    virtual bool checkBlockIsSafe(const c10::DataPtr &ptr) = 0;
     virtual void markAllBlockUnsafe(int device) = 0;
     virtual void updateBlockToSafe(const c10::DataPtr &ptr) = 0;
     virtual void cleanEvent() = 0;
-    virtual void buildServerMemMapForHccl(int device, std::shared_ptr<c10d_npu::HCCLComm> hcclComm) {
+    virtual void buildServerMemMapForHccl(int device, std::shared_ptr<c10d_npu::HCCLComm> hcclComm)
+    {
         (void)device;
         (void)hcclComm;
     }
-    virtual std::shared_ptr<AllocatorState> getCheckpointState(
-        c10::DeviceIndex device,
-        MempoolId_t id) = 0;
-    virtual CheckpointDelta setCheckpointPoolState(
-        c10::DeviceIndex device,
-        std::shared_ptr<AllocatorState> pps) = 0;
+    virtual std::shared_ptr<AllocatorState> getCheckpointState(c10::DeviceIndex device, MempoolId_t id) = 0;
+    virtual CheckpointDelta setCheckpointPoolState(c10::DeviceIndex device, std::shared_ptr<AllocatorState> pps) = 0;
 };
 
 bool checkConfigExpandableSegments();
@@ -300,7 +285,6 @@ bool isConfig1GPageSizeEnable();
 
 } // namespace dma
 } // namespace c10_npu
-
 
 void finalize();
 
@@ -319,7 +303,8 @@ EXPORT_API void dma_record_stream(void *ptr, c10_npu::NPUStream stream);
 
 EXPORT_API void dma_erase_stream(void *ptr, c10_npu::NPUStream stream);
 
-EXPORT_API void dma_begin_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id, std::function<bool(aclrtStream)> filter);
+EXPORT_API void dma_begin_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id,
+                                           std::function<bool(aclrtStream)> filter);
 
 EXPORT_API void dma_end_allocate_to_pool(int device, c10_npu::MempoolId_t mempool_id);
 

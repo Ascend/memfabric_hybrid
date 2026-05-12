@@ -95,8 +95,8 @@ size_t SMAConfig::parseMaxSplitSize(const std::vector<std::string> &config, size
     consumeToken(config, ++i, ':');
     if (++i < config.size()) {
         size_t val1 = static_cast<size_t>(stoi(config[i]));
-        ZBAL_CHECK_S(val1 > kLargeBuffer / (kMB),
-                     "SMAConfig option max_split_size_mb too small, must be > ", kLargeBuffer / (kMB));
+        ZBAL_CHECK_S(val1 > kLargeBuffer / (kMB), "SMAConfig option max_split_size_mb too small, must be > ",
+                     kLargeBuffer / (kMB));
         val1 = std::max(val1, kLargeBuffer / (kMB));
         val1 = std::min(val1, (std::numeric_limits<size_t>::max() / (kMB)));
         max_split_size_ = val1 * kMB;
@@ -182,5 +182,5 @@ size_t SMAConfig::parseSmallHeapThresHold(const std::vector<std::string> &config
     return i;
 }
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal

@@ -34,9 +34,8 @@ std::string format_size(uint64_t size)
     return os.str();
 }
 
-}  // namespace sma
-}  // namespace zbal
-
+} // namespace sma
+} // namespace zbal
 
 namespace zbal {
 namespace sma {
@@ -108,21 +107,20 @@ std::vector<const DeviceBlock *> DeviceSMACachingAllocator::get_all_blocks() con
     return blocks;
 }
 
-void DeviceSMACachingAllocator::free_block(DeviceBlock *block,
-                                           const std::shared_ptr<c10::GatheredContext> &context,
+void DeviceSMACachingAllocator::free_block(DeviceBlock *block, const std::shared_ptr<c10::GatheredContext> &context,
                                            uint8_t allocator_type)
 {
     ZBAL_ASSERT_S(!block->allocated_ && block->event_count_ == 0, Z_INVALID_VALUE);
     (void)context;
     (void)allocator_type;
-    trace_observer_(TraceAction::FREE_COMPLETED, int64_t(block->ptr_),
-                    block->requested_size_, block->stream_, block->deviceId_);
+    trace_observer_(TraceAction::FREE_COMPLETED, int64_t(block->ptr_), block->requested_size_, block->stream_,
+                    block->deviceId_);
 
     block->context_when_allocated_ = nullptr;
 
     auto &pool = *block->pool_;
 
-    const std::array<DeviceBlock *, 2> merge_candidates = { block->prev_, block->next_ };
+    const std::array<DeviceBlock *, 2> merge_candidates = {block->prev_, block->next_};
     for (DeviceBlock *merge_candidate : merge_candidates) {
         const int64_t subsumed_size = static_cast<int64_t>(try_merge_blocks(block, merge_candidate, pool));
         (void)subsumed_size;
@@ -133,8 +131,8 @@ void DeviceSMACachingAllocator::free_block(DeviceBlock *block,
         pool.insertBlock(block->block_type_, block);
     } else {
         active_blocks_.erase(block);
-        if (block->stream_uses_.empty() && !block->isSplit() && \
-            (block->size_ > SMAConfig::segment_size_mb()) && !block->pool_->is_private_) {
+        if (block->stream_uses_.empty() && !block->isSplit() && (block->size_ > SMAConfig::segment_size_mb()) &&
+            !block->pool_->is_private_) {
             // directly remove block instead leave to cache pool in processing large block
             remove_block(block, nullptr);
         } else {
@@ -232,8 +230,7 @@ bool DeviceSMACachingAllocator::get_free_block(DeviceAllocParams &p)
     }
 
     // Do not return an over-sized block for a large request
-    if ((p.size() < SMAConfig::max_split_size()) &&
-        ((*it)->size_ >= SMAConfig::max_split_size())) {
+    if ((p.size() < SMAConfig::max_split_size()) && ((*it)->size_ >= SMAConfig::max_split_size())) {
         return false;
     }
     // Allow over-sized block size to be rounded up but within a limit
@@ -247,15 +244,14 @@ bool DeviceSMACachingAllocator::get_free_block(DeviceAllocParams &p)
     return true;
 }
 
-void DeviceSMACachingAllocator::garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext>& ctx,
-                                                              std::unique_lock<std::recursive_mutex>& lock)
+void DeviceSMACachingAllocator::garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext> &ctx,
+                                                              std::unique_lock<std::recursive_mutex> &lock)
 {
     // Free unused cached blocks to reclaim NPU memory.
     // Unlike release_cached_blocks(), this does not enforce synchronization and
     // therefore should be of less overheads.
 
-    size_t gc_threshold =
-            static_cast<size_t>(SMAConfig::garbage_collection_threshold() * allowed_memory_maximum_);
+    size_t gc_threshold = static_cast<size_t>(SMAConfig::garbage_collection_threshold() * allowed_memory_maximum_);
     // No need to trigger GC yet
     if (total_allocated_memory_ <= gc_threshold) {
         return;
@@ -300,11 +296,11 @@ void DeviceSMACachingAllocator::garbage_collect_cached_blocks(const std::shared_
                 block_freed = true;
                 gc_reclaimed += block->size_;
                 total_age -= block->gc_count_; // Decrement the age
-                freeable_block_count--;       // One less block that can be freed
+                freeable_block_count--;        // One less block that can be freed
                 release_block(block, ctx);
 
                 ZBAL_LOG_DEBUG("SMACachingAllocator gc: free = " << block->size_ <<
-                                                                  " allocated = " << total_allocated_memory_);
+                               " allocated = " << total_allocated_memory_);
             }
         }
     }
@@ -355,9 +351,9 @@ bool DeviceSMACachingAllocator::alloc_block(DeviceAllocParams &p, bool isRetry,
     return true;
 }
 
-bool DeviceSMACachingAllocator::release_available_cached_blocks(const DeviceAllocParams& p,
-                                                                const std::shared_ptr<c10::GatheredContext>& ctx,
-                                                                std::unique_lock<std::recursive_mutex>& lock)
+bool DeviceSMACachingAllocator::release_available_cached_blocks(const DeviceAllocParams &p,
+                                                                const std::shared_ptr<c10::GatheredContext> &ctx,
+                                                                std::unique_lock<std::recursive_mutex> &lock)
 {
     // meaning no split over max_split_size, just skip
     if (SMAConfig::max_split_size() == std::numeric_limits<size_t>::max()) {
@@ -367,7 +363,7 @@ bool DeviceSMACachingAllocator::release_available_cached_blocks(const DeviceAllo
     DeviceBlock key = p.search_key_;
     key.size_ = (key.size_ < SMAConfig::max_split_size()) ? SMAConfig::max_split_size() : key.size_;
     // maybe this max_split_size is only appropriate for small pool?
-    auto& block_slot = (p.block_type_ == BT_SMALL) ? pool.small_blocks_ : pool.large_blocks_;
+    auto &block_slot = (p.block_type_ == BT_SMALL) ? pool.small_blocks_ : pool.large_blocks_;
     auto it = block_slot.lower_bound(&key);
 
     {
@@ -457,8 +453,7 @@ void DeviceSMACachingAllocator::remove_block(DeviceBlock *block, const std::shar
 }
 
 void DeviceSMACachingAllocator::release_pool(DeviceBlockPool &pool,
-                                             const std::shared_ptr<c10::GatheredContext> &context,
-                                             bool free_private)
+                                             const std::shared_ptr<c10::GatheredContext> &context, bool free_private)
 {
     // Frees all non-split blocks
     // skip private pool if not free_private
@@ -485,7 +480,7 @@ void DeviceSMACachingAllocator::release_pool(DeviceBlockPool &pool,
     }
 }
 
-EventController* DeviceSMACachingAllocator::get_event_internal()
+EventController *DeviceSMACachingAllocator::get_event_internal()
 {
     // Leak the event pool to avoid shutdown issues.
     static auto *event_pool_ = new EventController();
@@ -631,9 +626,8 @@ void DeviceSMACachingAllocator::update_stat(Stat &stat, int64_t amount)
 
 void DeviceSMACachingAllocator::update_stat_array(StatArray &stat_array, int64_t amount, const StatTypes &stat_types)
 {
-    for_each_selected_stat_type(stat_types,
-                                [&stat_array, amount, this](size_t stat_type)
-                                { update_stat(stat_array[stat_type], amount); });
+    for_each_selected_stat_type(
+        stat_types, [&stat_array, amount, this](size_t stat_type) { update_stat(stat_array[stat_type], amount); });
 }
 
 // public funcs
@@ -671,13 +665,12 @@ void *DeviceSMACachingAllocator::getBaseAllocation(DeviceBlock *block, size_t *o
     return basePtr;
 }
 
-DeviceBlock *DeviceSMACachingAllocator::malloc(int device, size_t orig_size,
-                                               aclrtStream stream, uint8_t allocator_type)
+DeviceBlock *DeviceSMACachingAllocator::malloc(int device, size_t orig_size, aclrtStream stream, uint8_t allocator_type)
 {
     // done outside the lock because we don't know what locks the recorder needs to have...
     auto context = nullptr;
 
-    std::unique_lock <std::recursive_mutex> lock(mutex_);
+    std::unique_lock<std::recursive_mutex> lock(mutex_);
 
     if (device == -1) {
         ZBAL_CHECK_S(c10_npu::GetDevice(&device) == ACL_SUCCESS, "c10_npu func check failed!");
@@ -712,16 +705,15 @@ DeviceBlock *DeviceSMACachingAllocator::malloc(int device, size_t orig_size,
             garbage_collect_cached_blocks(context, lock);
         }
         // Attempt allocate
-        block_found = alloc_block(params, false, context, lock) ||
-                      // Free enough available cached blocks to satisfy alloc and retry alloc.
-                      (release_available_cached_blocks(params, context, lock) &&
-                       alloc_block(params, false, context, lock));
+        block_found =
+            alloc_block(params, false, context, lock) ||
+            // Free enough available cached blocks to satisfy alloc and retry alloc.
+            (release_available_cached_blocks(params, context, lock) && alloc_block(params, false, context, lock));
     }
 
     if (!block_found && ZBAL_UNLIKELY(graph_defers_.captures_underway_.empty())) {
-        ZBAL_LOG_WARN(
-            "Get a block from the existing pool failed. "
-            "Try to free cached blocks and reallocate. This warning log can be ignored.");
+        ZBAL_LOG_WARN("Get a block from the existing pool failed. "
+                      "Try to free cached blocks and reallocate. This warning log can be ignored.");
         // Free all non-split cached blocks and retry alloc.
         {
             UnlockGuard guard(lock);
@@ -738,9 +730,9 @@ DeviceBlock *DeviceSMACachingAllocator::malloc(int device, size_t orig_size,
             device::DeviceInfoObserver::getInstance().dumpSnapshotJson(params.device(), "oom_log.");
             size_t device_total;
             zbal::sma::CustomGetTotalSize(device_total, mem_heap_pool_);
-            AT_ERROR("NPU out of memory. Tried to allocate ", format_size(alloc_size), " (NPU:", device,
-                     "); with ", format_size(total_allocated_memory_), " total allocated and ",
-                     format_size(device_total), " total reserved.");
+            AT_ERROR("NPU out of memory. Tried to allocate ", format_size(alloc_size), " (NPU:", device, "); with ",
+                     format_size(total_allocated_memory_), " total allocated and ", format_size(device_total),
+                     " total reserved.");
         }
         ZBAL_CHECK_S(params.result_ == Z_OK, "check alloc result failed");
     }
@@ -759,8 +751,8 @@ void DeviceSMACachingAllocator::free(DeviceBlock *block, uint8_t allocator_type)
     // following logic might modify underlying Block, causing the size changed. We store ahead for reporting
     auto orig_block_size = block->size_;
 
-    trace_observer_(TraceAction::FREE_REQUESTED, int64_t(block->ptr_),
-                    block->requested_size_, block->stream_, block->deviceId_);
+    trace_observer_(TraceAction::FREE_REQUESTED, int64_t(block->ptr_), block->requested_size_, block->stream_,
+                    block->deviceId_);
 
     if (!block->stream_uses_.empty() && c10_npu::NpuSysCtrl::GetInstance().GetInitFlag()) {
         if (ZBAL_UNLIKELY(!graph_defers_.captures_underway_.empty())) {
@@ -776,8 +768,8 @@ void DeviceSMACachingAllocator::free(DeviceBlock *block, uint8_t allocator_type)
         free_block(block, context, allocator_type);
     }
 
-    ZBAL_LOG_INFO("SMA CachingAllocator free: free = " <<
-                  orig_block_size << ", allocated = " << total_allocated_memory_);
+    ZBAL_LOG_INFO("SMA CachingAllocator free: free = " << orig_block_size <<
+                  ", allocated = " << total_allocated_memory_);
 }
 
 void DeviceSMACachingAllocator::recordStream(DeviceBlock *block, c10_npu::NPUStream stream)
@@ -882,7 +874,7 @@ void DeviceSMACachingAllocator::releasePool(c10_npu::MempoolId_t mempool_id)
         // Allows free_cached_blocks to begin npuFreeing this pool's memory,
         // and makes sure this pool wasn't somehow made freeable already.
         // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
-        bool inserted = graph_defers_.graph_pools_freeable_.insert({ mempool_id, it->second.get() }).second;
+        bool inserted = graph_defers_.graph_pools_freeable_.insert({mempool_id, it->second.get()}).second;
         ZBAL_ASSERT(inserted);
     }
 }
@@ -949,6 +941,6 @@ void DeviceSMACachingAllocator::snapshot(int device)
     device::DeviceInfoObserver::getInstance().takeSnapshot(all_blocks, device);
 }
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal

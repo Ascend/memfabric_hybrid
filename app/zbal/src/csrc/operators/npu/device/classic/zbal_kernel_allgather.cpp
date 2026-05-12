@@ -27,8 +27,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
         zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
-        switch (ZBAL_DATA_TYPE)
-        {
+        switch (ZBAL_DATA_TYPE) {
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
                 op.Init<int8_t>(input, output, metaAddr, elements, waitSymbol);
                 op.Process<int8_t>();
@@ -85,8 +84,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
         zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
-        switch (ZBAL_DATA_TYPE)
-        {
+        switch (ZBAL_DATA_TYPE) {
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
                 op.Init<int8_t>(input, output, metaAddr, elements, waitSymbol);
                 op.Process<int8_t>();

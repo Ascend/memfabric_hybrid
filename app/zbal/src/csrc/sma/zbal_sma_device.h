@@ -21,14 +21,13 @@
 using ZEvent = std::unique_ptr<c10_npu::NPUEvent, std::function<void(c10_npu::NPUEvent *)>>;
 using CustomHeapPool = zbal::sma::heap::SplitMemoryHeap;
 using TraceObserver = std::function<void(zbal::sma::device::TraceAction, int64_t, size_t, aclrtStream, int)>;
-using SegmentObserver = std::function<void(const std::vector<const zbal::sma::device::DeviceBlock*>&, int)>;
+using SegmentObserver = std::function<void(const std::vector<const zbal::sma::device::DeviceBlock *> &, int)>;
 
 using Stat = c10_npu::NPUCachingAllocator::Stat;
 using StatType = c10_npu::NPUCachingAllocator::StatType;
 using StatTypes = std::array<bool, static_cast<size_t>(StatType::NUM_TYPES)>;
 using StatArray = c10_npu::NPUCachingAllocator::StatArray;
 using DeviceStats = c10_npu::NPUCachingAllocator::DeviceStats;
-
 
 namespace zbal {
 namespace sma {
@@ -46,17 +45,22 @@ namespace sma {
 //    - Unable to send a signal to the main thread.
 class UnlockGuard {
 public:
-    explicit UnlockGuard(std::unique_lock<std::recursive_mutex>& lock) : lock_(lock) { lock_.unlock(); }
+    explicit UnlockGuard(std::unique_lock<std::recursive_mutex> &lock) : lock_(lock)
+    {
+        lock_.unlock();
+    }
 
-    ~UnlockGuard() { lock_.lock(); }
+    ~UnlockGuard()
+    {
+        lock_.lock();
+    }
 
 private:
-    std::unique_lock<std::recursive_mutex>& lock_;
+    std::unique_lock<std::recursive_mutex> &lock_;
 };
 
-}  // namespace sma
-}  // namespace zbal
-
+} // namespace sma
+} // namespace zbal
 
 namespace zbal {
 namespace sma {
@@ -66,8 +70,7 @@ class EventController;
 
 class DeviceSMACachingAllocator {
 public:
-    DeviceSMACachingAllocator() : default_pool_(false), graph_defers_()
-    {}
+    DeviceSMACachingAllocator() : default_pool_(false), graph_defers_() {}
 
     DeviceBlock *malloc(int device, size_t orig_size, aclrtStream stream, uint8_t allocator_type = 0);
 
@@ -125,9 +128,18 @@ public:
         else
             return false;
     };
-    inline void *getHeapBase() { return mem_heap_pool_->getBaseAddr();};
-    inline uint64_t getHeapTotalSize() { return mem_heap_pool_->getTotalSize();};
-    inline uint64_t getHeapInUsedSize() { return mem_heap_pool_->getInUsedSize();};
+    inline void *getHeapBase()
+    {
+        return mem_heap_pool_->getBaseAddr();
+    };
+    inline uint64_t getHeapTotalSize()
+    {
+        return mem_heap_pool_->getTotalSize();
+    };
+    inline uint64_t getHeapInUsedSize()
+    {
+        return mem_heap_pool_->getInUsedSize();
+    };
 
     // attach observer functions
     void attachSnapShotObserver(TraceObserver trace_ob_func, SegmentObserver segment_ob_func);
@@ -177,15 +189,14 @@ private:
     // All following private methods do not acquire the allocator mutex
     // move a founded block from pool into active_list, may get new block which split from found one
     DeviceBlock *alloc_found_block(DeviceAllocParams params, size_t orig_size,
-                                   std::shared_ptr<c10::GatheredContext> context,
-                                   bool split_remainder, uint8_t allocator_type);
+                                   std::shared_ptr<c10::GatheredContext> context, bool split_remainder,
+                                   uint8_t allocator_type);
 
     // get all blocks(in default_pool, graph_pools, and active blocks)
     std::vector<const DeviceBlock *> get_all_blocks() const;
 
     // free a block from active blocks into the pool of cached free blocks
-    void free_block(DeviceBlock *block,
-                    const std::shared_ptr<c10::GatheredContext> &context,
+    void free_block(DeviceBlock *block, const std::shared_ptr<c10::GatheredContext> &context,
                     uint8_t allocator_type = 0);
 
     // combine previously split blocks. returns the size of the subsumed block, or 0 on failure.
@@ -201,8 +212,8 @@ private:
     bool get_free_block(DeviceAllocParams &p);
 
     // free unused block until gc_threshold according to gc_count_
-    void garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext>& ctx,
-                                       std::unique_lock<std::recursive_mutex>& lock);
+    void garbage_collect_cached_blocks(const std::shared_ptr<c10::GatheredContext> &ctx,
+                                       std::unique_lock<std::recursive_mutex> &lock);
 
     // alloc a new block(or map a new one if using expand), need to mark private or not
     bool alloc_block(DeviceAllocParams &p, bool isRetry, const std::shared_ptr<c10::GatheredContext> &ctx,
@@ -210,8 +221,8 @@ private:
 
     // Free one or more blocks to the system allocator. But only enough to satisfy the target size
     // Start from over max_split_size to small size
-    bool release_available_cached_blocks(const DeviceAllocParams& p, const std::shared_ptr<c10::GatheredContext>& ctx,
-                                         std::unique_lock<std::recursive_mutex>& lock);
+    bool release_available_cached_blocks(const DeviceAllocParams &p, const std::shared_ptr<c10::GatheredContext> &ctx,
+                                         std::unique_lock<std::recursive_mutex> &lock);
 
     // npuSynchronizeDevice must be executed before this function can be called
     bool release_cached_blocks(bool check_error, const std::shared_ptr<c10::GatheredContext> &context);
@@ -226,7 +237,7 @@ private:
     void release_pool(DeviceBlockPool &pool, const std::shared_ptr<c10::GatheredContext> &context, bool free_private);
 
     // get static EventController(to avoid auto release issue)
-    EventController* get_event_internal();
+    EventController *get_event_internal();
 
     // synchronize on all outstanding events and then free associated-blocks.
     void synchronize_and_free_events(bool check_error, const std::shared_ptr<c10::GatheredContext> &context);
@@ -257,9 +268,8 @@ private:
     void update_stat_array(StatArray &stat_array, int64_t amount, const StatTypes &stat_types);
 };
 
-}  // namespace device
-}  // namespace sma
-}  // namespace zbal
+} // namespace device
+} // namespace sma
+} // namespace zbal
 
-
-#endif  // ZBAL_SMA_DEVICE_ALLOC_H
+#endif // ZBAL_SMA_DEVICE_ALLOC_H

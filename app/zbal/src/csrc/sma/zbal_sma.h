@@ -19,9 +19,7 @@
 #include "zbal_sma_device.h"
 #include "zbal_sma_device_pool.h"
 
-
 using DeviceStats = c10_npu::NPUCachingAllocator::DeviceStats;
-
 
 namespace zbal {
 namespace sma {
@@ -31,7 +29,7 @@ public:
     std::vector<std::unique_ptr<device::DeviceSMACachingAllocator>> device_allocator_;
 
     SecondaryMemoryAllocator();
-    ~SecondaryMemoryAllocator() override = default;;
+    ~SecondaryMemoryAllocator() override = default;
 
     static ZRef<SecondaryMemoryAllocator> GetInstance()
     {
@@ -193,8 +191,8 @@ private:
     void assertValidDevice(int device);
 };
 
-}  // namespace sma
-}  // namespace zbal
+} // namespace sma
+} // namespace zbal
 
 extern "C" {
 ZBAL_API void *sma_malloc(size_t size, int device, aclrtStream stream);
@@ -229,5 +227,4 @@ void sma_record_memory_history(std::optional<std::string> enabled, int64_t max_e
 
 pybind11::dict sma_dump_snapshot();
 
-#endif  // ZBAL_SMA_H
-
+#endif // ZBAL_SMA_H

@@ -70,7 +70,7 @@ struct MemBootstrapOutput {
     }
 };
 
-}  // namespace bootstrap
-}  // namespace zbal
+} // namespace bootstrap
+} // namespace zbal
 
-#endif  // ZBAL_BOOTSTRAP_DEFINE_H
+#endif // ZBAL_BOOTSTRAP_DEFINE_H

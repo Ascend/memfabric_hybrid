@@ -35,8 +35,7 @@ struct MemoryRange {
 };
 
 struct RangeSizeFirstComparator {
-    bool operator()(const MemoryRange &mr1,
-                    const MemoryRange &mr2) const noexcept;
+    bool operator()(const MemoryRange &mr1, const MemoryRange &mr2) const noexcept;
 };
 
 class MemoryHeap {
@@ -63,14 +62,12 @@ public:
 private:
     static uint64_t allocated_size_align_up(uint64_t input_size) noexcept;
 
-    static bool alignment_matches(const MemoryRange &mr, uint64_t alignment,
-                                  uint64_t size, uint64_t &head_skip) noexcept;
+    static bool alignment_matches(const MemoryRange &mr, uint64_t alignment, uint64_t size,
+                                  uint64_t &head_skip) noexcept;
 
-    void reduce_size_in_lock(const std::map<uint64_t, uint64_t>::iterator &pos,
-                             uint64_t new_size) noexcept;
+    void reduce_size_in_lock(const std::map<uint64_t, uint64_t>::iterator &pos, uint64_t new_size) noexcept;
 
-    bool expend_size_in_lock(const std::map<uint64_t, uint64_t>::iterator &pos,
-                             uint64_t new_size) noexcept;
+    bool expend_size_in_lock(const std::map<uint64_t, uint64_t>::iterator &pos, uint64_t new_size) noexcept;
 
 private:
     bool initialized_{false};
@@ -83,11 +80,10 @@ private:
     std::set<MemoryRange, RangeSizeFirstComparator> size_idle_tree_;
 };
 
-}  // namespace heap
+} // namespace heap
 
 // Heap API remains for dma
-ZBAL_API int HeapAlignedAllocate(void **devPtr, size_t size,
-                                 std::shared_ptr<heap::MemoryHeap> symm_pool);
+ZBAL_API int HeapAlignedAllocate(void **devPtr, size_t size, std::shared_ptr<heap::MemoryHeap> symm_pool);
 
 ZBAL_API int HeapRelease(void *devPtr, std::shared_ptr<heap::MemoryHeap> symm_pool);
 
@@ -95,7 +91,7 @@ ZBAL_API int GetTotalSize(size_t &size, std::shared_ptr<heap::MemoryHeap> symm_p
 
 ZBAL_API int GetInUsedSize(size_t &size, std::shared_ptr<heap::MemoryHeap> symm_pool);
 
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace adaptor
+} // namespace zbal
 
-#endif  // ZBAL_PYTORCH_MM_HEAP_H
+#endif // ZBAL_PYTORCH_MM_HEAP_H

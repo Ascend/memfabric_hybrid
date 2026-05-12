@@ -17,8 +17,7 @@
 
 namespace zbal {
 namespace bootstrap {
-class MemBootstrap : public ZReferable
-{
+class MemBootstrap : public ZReferable {
 public:
     static MemBootstrapPtr Create(const MemBootstrapOptions &options);
 
@@ -122,7 +121,7 @@ inline const MemBootstrapOutput &MemBootstrap::GetOutput() const
 {
     return output_;
 }
-}  // namespace bootstrap
-}  // namespace zbal
+} // namespace bootstrap
+} // namespace zbal
 
-#endif  // ZBAL_MEM_BOOTSTRAP_H
+#endif // ZBAL_MEM_BOOTSTRAP_H

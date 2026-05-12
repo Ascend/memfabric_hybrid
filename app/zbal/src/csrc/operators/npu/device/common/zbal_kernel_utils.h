@@ -20,7 +20,7 @@ See the Mulan PSL v2 for more details.
 #include "kernel_operator.h"
 #include "zbal_comm_host_device_struct.h"
 
-#define ZBAL_KERNEL __attribute__((always_inline)) __aicore__ __inline__
+#define ZBAL_KERNEL             __attribute__((always_inline)) __aicore__ __inline__
 #define ZBAL_CORE_BARRIER_SHIFT 2
 
 constexpr int64_t UB_PAD_COUNT = 4;
@@ -48,7 +48,7 @@ inline uint32_t GetTypeSize(zbal_datatype_t type)
     return size != zbalDataTypeToSize.end() ? size->second : 0;
 }
 
-template <AscendC::HardEvent event>
+template<AscendC::HardEvent event>
 ZBAL_KERNEL void SyncFunc(int32_t eventID)
 {
     AscendC::SetFlag<event>(eventID);
@@ -68,7 +68,7 @@ ZBAL_KERNEL void dcciCacheline(__gm__ T *addr)
     __asm__ __volatile__("");
 }
 
-template <typename T>
+template<typename T>
 ZBAL_KERNEL void SetAtomicOp(uint32_t atomicOp)
 {
     switch (atomicOp) {
@@ -87,14 +87,14 @@ ZBAL_KERNEL void SetAtomicOp(uint32_t atomicOp)
     }
 }
 
-template <typename T>
+template<typename T>
 ZBAL_KERNEL T CeilDiv(const T dividend, const T divisor)
 {
     return (divisor == 0) ? 0 : ((dividend + divisor - 1) / divisor);
 }
 
-ZBAL_KERNEL __gm__ void *zbal_ptr(__gm__ void *ptr, int curPe, int dstPe,
-                                    uint64_t localSize, __gm__ uint16_t *peerRanks)
+ZBAL_KERNEL __gm__ void *zbal_ptr(__gm__ void *ptr, int curPe, int dstPe, uint64_t localSize,
+                                  __gm__ uint16_t *peerRanks)
 {
     int worldDstPe = static_cast<int>(*((__gm__ uint16_t *)(peerRanks + dstPe)));
     int worldCurPe = static_cast<int>(*((__gm__ uint16_t *)(peerRanks + curPe)));
@@ -118,7 +118,7 @@ ZBAL_KERNEL void zbal_store(__gm__ T *addr, T value)
 }
 
 ZBAL_KERNEL void SetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint64_t value, uint16_t groupSize,
-                               AscendC::LocalTensor<uint64_t> localTensor)
+                              AscendC::LocalTensor<uint64_t> localTensor)
 {
     GlobalTensor<uint64_t> globalTensor;
     globalTensor.SetGlobalBuffer((__gm__ uint64_t *)ptr, groupSize * ZBAL_FLAG_SIZE);
@@ -152,7 +152,7 @@ ZBAL_KERNEL void WaitMultiMetaValue(__gm__ uint64_t *ptr, uint32_t expectCnt, ui
 }
 
 ZBAL_KERNEL void GetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint16_t groupSize,
-                               AscendC::LocalTensor<uint64_t> localTensor)
+                              AscendC::LocalTensor<uint64_t> localTensor)
 {
     GlobalTensor<uint64_t> globalTensor;
     globalTensor.SetGlobalBuffer((__gm__ uint64_t *)ptr, groupSize * ZBAL_FLAG_SIZE);
@@ -163,7 +163,7 @@ ZBAL_KERNEL void GetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint16_t gr
 ZBAL_KERNEL uint64_t GetDataAddr(__gm__ void *metaAddr, uint32_t rank)
 {
     uint32_t dataAddrOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t* dataGmAddr = (__gm__ uint64_t*)metaAddr + dataAddrOffset;
+    __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
     dcciCacheline((__gm__ uint8_t *)dataGmAddr);
     return *dataGmAddr;
 }
@@ -171,7 +171,7 @@ ZBAL_KERNEL uint64_t GetDataAddr(__gm__ void *metaAddr, uint32_t rank)
 ZBAL_KERNEL void SetDataAddr(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
 {
     uint32_t dataAddrOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t* dataGmAddr = (__gm__ uint64_t*)metaAddr + dataAddrOffset;
+    __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
     *dataGmAddr = val;
     dcciCacheline((__gm__ uint8_t *)dataGmAddr);
 }
@@ -179,7 +179,7 @@ ZBAL_KERNEL void SetDataAddr(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
 ZBAL_KERNEL uint64_t GetFlag(__gm__ void *metaAddr, uint32_t rank)
 {
     uint32_t flagOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t* flagAddr = (__gm__ uint64_t*)metaAddr + flagOffset;
+    __gm__ uint64_t *flagAddr = (__gm__ uint64_t *)metaAddr + flagOffset;
     dcciCacheline((__gm__ uint8_t *)flagAddr);
     return *flagAddr;
 }
@@ -187,7 +187,7 @@ ZBAL_KERNEL uint64_t GetFlag(__gm__ void *metaAddr, uint32_t rank)
 ZBAL_KERNEL void SetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
 {
     uint32_t flagOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t* flagAddr = (__gm__ uint64_t*)metaAddr + flagOffset;
+    __gm__ uint64_t *flagAddr = (__gm__ uint64_t *)metaAddr + flagOffset;
     *flagAddr = val;
     dcciCacheline((__gm__ uint8_t *)flagAddr);
 }
@@ -197,8 +197,8 @@ ZBAL_KERNEL void SetFlagOrStat(__gm__ CommGroupInfo *comm, __gm__ uint64_t *targ
 {
     AscendC::PipeBarrier<PIPE_ALL>();
     AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, targetRank * UB_ALIGN_SIZE, UB_PAD_COUNT);
-    auto ptr = zbal_ptr(targetAddr, comm->myGroupRank, targetRank,
-                        comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+    auto ptr =
+        zbal_ptr(targetAddr, comm->myGroupRank, targetRank, comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
     SetMetaValue((__gm__ uint64_t *)ptr, comm->myGroupRank, barrierMagic, comm->groupSize, buf);
 }
 
@@ -298,14 +298,8 @@ ZBAL_KERNEL void CpGM2GM(__gm__ T *out, uint64_t outElem, uint64_t outOff, __gm_
 }
 
 const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
-    {2, 2, 0, 256},
-    {2, 4, 256, 1024 * 1024},
-    {4, 4, 0, 256},
-    {4, 8, 256, 1024 * 1024},
-    {8, 8, 0, 256},
-    {8, 16, 256, 1024 * 1024},
-    {16, 16, 0, 256},
-    {16, 32, 256, 1024 * 1024},
+    {2, 2, 0, 256}, {2, 4, 256, 1024 * 1024},  {4, 4, 0, 256},   {4, 8, 256, 1024 * 1024},
+    {8, 8, 0, 256}, {8, 16, 256, 1024 * 1024}, {16, 16, 0, 256}, {16, 32, 256, 1024 * 1024},
 };
 
 inline uint32_t GetAivBlockDimBySize(CommGroupInfo &groupInfo, uint64_t totalSize, uint32_t defaultBlockDim)
@@ -322,7 +316,6 @@ inline uint32_t GetAivBlockDimBySize(CommGroupInfo &groupInfo, uint64_t totalSiz
     }
     return defaultBlockDim;
 }
-
 
 inline uint32_t ZBALOpGetAivBlockDim(CommGroupInfo &groupInfo, size_t sendCount, zbal_datatype_t dataType)
 {

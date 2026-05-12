@@ -20,8 +20,8 @@
 extern "C" {
 #endif
 
-#define ZBAL_MAX_RANKS 1024
-#define ZBAL_COMM_NAME_MAX 128
+#define ZBAL_MAX_RANKS      1024
+#define ZBAL_COMM_NAME_MAX  128
 #define ZBAL_MAX_IPPORT_LEN 64
 
 typedef void *zbal_comm_t;
@@ -67,17 +67,17 @@ typedef enum {
 } zbal_bootstrap_type_t;
 
 typedef struct {
-    uint32_t flags;                    /* optional, flags */
-    zbal_bootstrap_type_t btType;      /* bootstrap type */
-    char ipPort[ZBAL_MAX_IPPORT_LEN];  /* tcp://127.0.0.1:9897 */
-    uint16_t worldSize;                /* how many rank in total */
-    uint16_t rankId;                   /* my rank id in the world */
-    uint16_t deviceId;                 /* device id */
-    uint16_t startConfigServer;        /* optional, if start config store server, 1 means start, 0 means not start */
-    uint64_t deviceMemorySize;         /* memory size can be allocated */
-    uint32_t dataOperationType;        /* optional, data operation type */
-    uint16_t commMetaSpaceSize;        /* optional, in KB, default 1MB, min: 512KB, max: 4MB */
-    uint16_t commGroupCap;             /* optional, max count of comm Group, default 128, min: 1, max: 256 */
+    uint32_t flags;                   /* optional, flags */
+    zbal_bootstrap_type_t btType;     /* bootstrap type */
+    char ipPort[ZBAL_MAX_IPPORT_LEN]; /* tcp://127.0.0.1:9897 */
+    uint16_t worldSize;               /* how many rank in total */
+    uint16_t rankId;                  /* my rank id in the world */
+    uint16_t deviceId;                /* device id */
+    uint16_t startConfigServer;       /* optional, if start config store server, 1 means start, 0 means not start */
+    uint64_t deviceMemorySize;        /* memory size can be allocated */
+    uint32_t dataOperationType;       /* optional, data operation type */
+    uint16_t commMetaSpaceSize;       /* optional, in KB, default 1MB, min: 512KB, max: 4MB */
+    uint16_t commGroupCap;            /* optional, max count of comm Group, default 128, min: 1, max: 256 */
 } zbal_bootstrap_options_t;
 
 typedef struct {
@@ -98,13 +98,13 @@ typedef struct {
 } zbal_allocator_options_t;
 
 typedef struct {
-    char *name;                  /* name of the comm object */
-    zbal_backend_t backendType;  /* backend type */
-    uint32_t flags;              /* optional flags */
-    uint16_t isWorldGroup;       /* if this is the world group, 1 means true, 0 means false */
-    uint16_t groupSize;          /* how many rank in total */
-    uint16_t groupRankId;        /* my rank id in the group */
-    uint16_t symmetricMetaGva;   /* use symmetric memory for meta */
+    char *name;                 /* name of the comm object */
+    zbal_backend_t backendType; /* backend type */
+    uint32_t flags;             /* optional flags */
+    uint16_t isWorldGroup;      /* if this is the world group, 1 means true, 0 means false */
+    uint16_t groupSize;         /* how many rank in total */
+    uint16_t groupRankId;       /* my rank id in the group */
+    uint16_t symmetricMetaGva;  /* use symmetric memory for meta */
 } zbal_comm_options_t;
 
 typedef struct {
@@ -133,10 +133,10 @@ typedef struct {
  * Make sure the size of this struct is 64 bytes, which fit to one cacheline to cpu
  */
 typedef struct {
-    void *data;                /* base pointer of tensor data, default value is null */
-    zbal_datatype_t dataType;  /* data type of tensor */
-    uint16_t dim;              /* dimension of the shape, default value is 0 */
-    uint16_t shape[25];        /* shape, default value is 0 */
+    void *data;               /* base pointer of tensor data, default value is null */
+    zbal_datatype_t dataType; /* data type of tensor */
+    uint16_t dim;             /* dimension of the shape, default value is 0 */
+    uint16_t shape[25];       /* shape, default value is 0 */
 } zbal_tensor_info_t;
 
 typedef enum {
@@ -151,4 +151,4 @@ typedef enum {
 }
 #endif
 
-#endif  // ZBAL_DEF_H_
+#endif // ZBAL_DEF_H_

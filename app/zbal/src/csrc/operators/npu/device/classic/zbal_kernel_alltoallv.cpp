@@ -145,7 +145,7 @@ public:
         if (groupSize <= aivNum) {
             if (AscendC::GetBlockIdx() < groupSize) {
                 commStartRank = AscendC::GetBlockIdx();
-                commEndRank = commStartRank + 1;                    // end not include
+                commEndRank = commStartRank + 1; // end not include
             } else {
                 commEndRank = groupSize + 1;
                 commStartRank = commEndRank + 1;
@@ -153,7 +153,7 @@ public:
         } else {
             uint16_t rankPerCore = groupSize / aivNum;
             commStartRank = AscendC::GetBlockIdx() * rankPerCore;
-            commEndRank = commStartRank + rankPerCore;              // end not include
+            commEndRank = commStartRank + rankPerCore; // end not include
             if (AscendC::GetBlockIdx() == aivNum - 1) {
                 commEndRank = groupSize;
             }
@@ -336,8 +336,8 @@ public:
                 GetInputInfo(rank, inputOffset, sourceElement, &remoteInput);
 
                 inputOffset = inputOffset + ((rank == copyStartRank) ? startOffset : 0);
-                CpGM2GM(output, outputElement, outputOffset,
-                        (__gm__ T *)remoteInput, sourceElement, inputOffset, copyCount);
+                CpGM2GM(output, outputElement, outputOffset, (__gm__ T *)remoteInput, sourceElement, inputOffset,
+                        copyCount);
 
                 outputOffset += copyCount;
                 AtomicIncStat(this->localStatSendAddr, rank);
@@ -410,11 +410,11 @@ private:
     uint64_t memSize;
     uintptr_t exchangeAddr;
     uintptr_t paramAddr;
-    __gm__ uint64_t *inputAddr;                 /* exchange input addr area */
-    __gm__ uint64_t *inputCumSumAddr;           /* exchange input splits cumsum area */
-    __gm__ uint64_t *inputElementAddr;          /* exchange input elements area */
-    __gm__ uint64_t *flagAddr;                  /* exchange flag area */
-    __gm__ uint64_t *statAddr;                  /* exchange stat area */
+    __gm__ uint64_t *inputAddr;        /* exchange input addr area */
+    __gm__ uint64_t *inputCumSumAddr;  /* exchange input splits cumsum area */
+    __gm__ uint64_t *inputElementAddr; /* exchange input elements area */
+    __gm__ uint64_t *flagAddr;         /* exchange flag area */
+    __gm__ uint64_t *statAddr;         /* exchange stat area */
     __gm__ uint64_t *localStatSendAddr;
     __gm__ uint64_t *localStatBaseAddr;
     __gm__ uint64_t *localStatReadyAddr;
@@ -428,13 +428,13 @@ private:
     uint64_t inputElement;
     uint64_t outputElement;
     uint64_t waitSymbol;
-    uint32_t outputCountsArray[ZBAL_ALLTOALLV_MAX_RANKS];      /* same with outputCounts */
+    uint32_t outputCountsArray[ZBAL_ALLTOALLV_MAX_RANKS]; /* same with outputCounts */
     uint32_t copyElements[ZBAL_ALLTOALLV_MAX_RANKS];
 };
 
-extern "C" __global__ __aicore__
-void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum, GM_ADDR outputCounts,
-                        GM_ADDR elements, int dataType, GM_ADDR metaAddr, uint64_t waitSymbol)
+extern "C" __global__ __aicore__ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum,
+                                                         GM_ADDR outputCounts, GM_ADDR elements, int dataType,
+                                                         GM_ADDR metaAddr, uint64_t waitSymbol)
 {
     AlltoAllVKernel op;
     zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
@@ -494,8 +494,8 @@ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum, GM_A
     }
 }
 
-int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCount,
-                        void *elements, zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo)
+int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCount, void *elements,
+                        zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo)
 {
     static uint32_t blockDim = 0;
     if (blockDim == 0) {

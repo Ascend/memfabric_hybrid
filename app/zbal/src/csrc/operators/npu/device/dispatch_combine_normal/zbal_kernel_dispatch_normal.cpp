@@ -16,11 +16,12 @@
 
 using namespace AscendC;
 
-extern "C" __global__ __aicore__
-void dispatch_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens, GM_ADDR topkIndex, GM_ADDR sendTokensIndex,
-                     GM_ADDR putOffset, GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs,
-                     uint32_t hidden, uint32_t topK, uint32_t quantMode, bool enableBalance,
-                     GM_ADDR destTokens, GM_ADDR destScale, uint32_t srcDataType, uint32_t dstDataType)
+extern "C" __global__ __aicore__ void dispatch_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens,
+                                                      GM_ADDR topkIndex, GM_ADDR sendTokensIndex, GM_ADDR putOffset,
+                                                      GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts,
+                                                      uint32_t bs, uint32_t hidden, uint32_t topK, uint32_t quantMode,
+                                                      bool enableBalance, GM_ADDR destTokens, GM_ADDR destScale,
+                                                      uint32_t srcDataType, uint32_t dstDataType)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -28,28 +29,28 @@ void dispatch_normal(uint64_t fftsAddr, GM_ADDR metaAddr, GM_ADDR srcTokens, GM_
     if (dstDataType == ZBAL_DATA_TYPE_BFP16 || dstDataType == ZBAL_DATA_TYPE_FP16) {
         if (srcDataType == ZBAL_DATA_TYPE_BFP16 && quantMode == NO_QUANT) {
             MoeDispatchNormal::DispatchNormal<bfloat16_t, bfloat16_t, false> op;
-            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank,
-                numExperts, bs, hidden, topK, enableBalance, destTokens, destScale, &pipe);
+            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank, numExperts, bs,
+                    hidden, topK, enableBalance, destTokens, destScale, &pipe);
             op.Process();
             return;
         } else if (srcDataType == ZBAL_DATA_TYPE_FP16 && quantMode == NO_QUANT) {
             MoeDispatchNormal::DispatchNormal<float16_t, float16_t, false> op;
-            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank,
-                numExperts, bs, hidden, topK, enableBalance, destTokens, destScale, &pipe);
+            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank, numExperts, bs,
+                    hidden, topK, enableBalance, destTokens, destScale, &pipe);
             op.Process();
             return;
         }
     } else if (dstDataType == ZBAL_DATA_TYPE_INT8) { // QUANT_BF16_2_INT8
         if (srcDataType == ZBAL_DATA_TYPE_BFP16 && quantMode == QUANT_BF16_2_INT8) {
             MoeDispatchNormal::DispatchNormal<bfloat16_t, int8_t, true> op;
-            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank,
-                numExperts, bs, hidden, topK, enableBalance, destTokens, destScale, &pipe);
+            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank, numExperts, bs,
+                    hidden, topK, enableBalance, destTokens, destScale, &pipe);
             op.Process();
             return;
         } else if (srcDataType == ZBAL_DATA_TYPE_FP16 && quantMode == QUANT_BF16_2_INT8) {
             MoeDispatchNormal::DispatchNormal<float16_t, int8_t, true> op;
-            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank,
-                numExperts, bs, hidden, topK, enableBalance, destTokens, destScale, &pipe);
+            op.Init(metaAddr, srcTokens, topkIndex, sendTokensIndex, putOffset, balanceMatrix, rank, numExperts, bs,
+                    hidden, topK, enableBalance, destTokens, destScale, &pipe);
             op.Process();
             return;
         }
@@ -89,8 +90,9 @@ int32_t ZBALOpDispatchNormal(const zbal_tensor_info_t *srcTokens, const zbal_ten
 
     // launch kernel
     dispatch_normal<<<blockDim, nullptr, stream>>>(fftsAddr, metaAddr, srcTokensAddr, topkIndexAddr,
-        sendTokensIndexAddr, putOffsetAddr, balanceMatrixAddr, rank, numExperts, bs, hidden, topK, quantMode,
-        enableBalance, destTokensAddr, destScaleAddr, srcDataType, dstDataType);
+                                                   sendTokensIndexAddr, putOffsetAddr, balanceMatrixAddr, rank,
+                                                   numExperts, bs, hidden, topK, quantMode, enableBalance,
+                                                   destTokensAddr, destScaleAddr, srcDataType, dstDataType);
 
     return 0;
 }

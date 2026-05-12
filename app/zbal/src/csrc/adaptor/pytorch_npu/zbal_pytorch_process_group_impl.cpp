@@ -20,8 +20,8 @@ namespace pytorch_npu {
 
 std::set<std::string> ProcessGroupZBALImpl::hcclOp_ = Func::GetEnvSplitByComma(ENV_NAME_HCCL_OP);
 
-ProcessGroupZBALImpl::ProcessGroupZBALImpl(const c10::intrusive_ptr<c10d::Store>& store,
-                                           int rank, int size, c10::intrusive_ptr<ProcessGroupZBAL::Options> options)
+ProcessGroupZBALImpl::ProcessGroupZBALImpl(const c10::intrusive_ptr<c10d::Store> &store, int rank, int size,
+                                           c10::intrusive_ptr<ProcessGroupZBAL::Options> options)
     : c10d::Backend(rank, size)
 {
     zbalGroup_ = c10::make_intrusive<ProcessGroupZBAL>(store, rank, size, options);
@@ -46,8 +46,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::allreduce(std::vector<at::T
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::_allgather_base(at::Tensor &outputTensor,
-                                                                     at::Tensor &inputTensor,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::_allgather_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                                      const c10d::AllgatherOptions &opts)
 {
     if (ZBAL_UNLIKELY(hcclOp_.find("allgather") != hcclOp_.end())) {
@@ -89,8 +88,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::broadcast(std::vector<at::T
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::scatter(std::vector<at::Tensor>& outputTensors,
-                                                             std::vector<std::vector<at::Tensor>>& inputTensors,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::scatter(std::vector<at::Tensor> &outputTensors,
+                                                             std::vector<std::vector<at::Tensor>> &inputTensors,
                                                              const c10d::ScatterOptions &opts)
 {
     if (ZBAL_UNLIKELY(hcclOp_.find(__func__) != hcclOp_.end())) {
@@ -111,7 +110,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::reduce_scatter(std::vector<
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::barrier(const c10d::BarrierOptions& opts)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::barrier(const c10d::BarrierOptions &opts)
 {
     if (ZBAL_UNLIKELY(hcclOp_.find(__func__) != hcclOp_.end())) {
         return hcclGroup_->barrier(opts);
@@ -120,8 +119,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::barrier(const c10d::Barrier
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::alltoall_base(at::Tensor &outputTensor,
-                                                                   at::Tensor &inputTensor,
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::alltoall_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
                                                                    std::vector<int64_t> &outputSplits,
                                                                    std::vector<int64_t> &inputSplits,
                                                                    const c10d::AllToAllOptions &opts)
@@ -133,7 +131,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::alltoall_base(at::Tensor &o
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::send(std::vector<at::Tensor>& tensors, int dstRank, int tag)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::send(std::vector<at::Tensor> &tensors, int dstRank, int tag)
 {
     if (ZBAL_UNLIKELY(hcclOp_.find(__func__) != hcclOp_.end())) {
         return hcclGroup_->send(tensors, dstRank, tag);
@@ -142,7 +140,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::send(std::vector<at::Tensor
     }
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::recv(std::vector<at::Tensor>& tensors, int srcRank, int tag)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBALImpl::recv(std::vector<at::Tensor> &tensors, int srcRank, int tag)
 {
     if (ZBAL_UNLIKELY(hcclOp_.find(__func__) != hcclOp_.end())) {
         return hcclGroup_->recv(tensors, srcRank, tag);
@@ -161,6 +159,6 @@ int32_t ProcessGroupZBALImpl::initCommunicator() noexcept
     return zbalGroup_->initCommunicator();
 }
 
-}  // namespace pytorch_npu
-}  // namespace adaptor
-}  // namespace zbal
+} // namespace pytorch_npu
+} // namespace adaptor
+} // namespace zbal

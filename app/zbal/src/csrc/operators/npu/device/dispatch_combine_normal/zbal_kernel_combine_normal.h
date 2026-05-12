@@ -27,7 +27,7 @@ constexpr uint64_t COMBINE_STATUS_OFFSET = 20UL * 1024UL;
 constexpr uint32_t MUL_256_ALIGN = 256U;
 constexpr uint64_t WIN_512_ALIGN = 512UL;
 
-template <AscendC::HardEvent event>
+template<AscendC::HardEvent event>
 ZBAL_KERNEL void SyncFunc()
 {
     int32_t eventID = static_cast<int32_t>(GetTPipePtr()->FetchEventID(event));
@@ -36,16 +36,15 @@ ZBAL_KERNEL void SyncFunc()
 }
 
 #define TypeClass typename RecvXType, typename XType, typename SrcInfoType
-#define TypeFunc RecvXType, XType, SrcInfoType
+#define TypeFunc  RecvXType, XType, SrcInfoType
 
-template <TypeClass>
+template<TypeClass>
 class CombineNormal {
 public:
-    ZBAL_KERNEL CombineNormal(){};
-    ZBAL_KERNEL void Init(GM_ADDR metaAddr, GM_ADDR recvX, GM_ADDR epRecvCount, GM_ADDR topkWeights,
-                           GM_ADDR topkIdx, GM_ADDR sendTokenIdx, GM_ADDR balanceMatrix, uint32_t rank,
-                           uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, bool enableBalance,
-                           GM_ADDR XOut, TPipe *pipe);
+    ZBAL_KERNEL CombineNormal() {};
+    ZBAL_KERNEL void Init(GM_ADDR metaAddr, GM_ADDR recvX, GM_ADDR epRecvCount, GM_ADDR topkWeights, GM_ADDR topkIdx,
+                          GM_ADDR sendTokenIdx, GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs,
+                          uint32_t hidden, uint32_t topK, bool enableBalance, GM_ADDR XOut, TPipe *pipe);
     ZBAL_KERNEL void Process();
 
 private:
@@ -64,11 +63,11 @@ private:
         auto ptr = zbal_ptr((__gm__ uint64_t *)(gva_gm), epRankId, rankId, localMemSize_, peerRanks);
 
         switch (metaType) {
-            case STATE:  // 存放通信结束的state, 12KB
+            case STATE: // 存放通信结束的state, 12KB
                 return (GM_ADDR)(ptr) + stateOffset_;
-            case ADDR:  // 存放交换的共享地址
+            case ADDR: // 存放交换的共享地址
                 return (GM_ADDR)(ptr) + addrOffset_;
-            case FLAG:  // 存放第一次清理state空间后的同步flag, 12KB
+            case FLAG: // 存放第一次清理state空间后的同步flag, 12KB
                 return (GM_ADDR)(ptr) + flagOffset_;
             default:
                 return (GM_ADDR)(ptr);
@@ -189,10 +188,12 @@ private:
     LocalTensor<int32_t> balanceMatrixLocal;
 };
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR recvX, GM_ADDR epRecvCount,
-    GM_ADDR topkWeights, GM_ADDR topkIdx, GM_ADDR sendTokenIdx, GM_ADDR balanceMatrix, uint32_t rank,
-    uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK, bool enableBalance, GM_ADDR XOut, TPipe *pipe)
+                                               GM_ADDR topkWeights, GM_ADDR topkIdx, GM_ADDR sendTokenIdx,
+                                               GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs,
+                                               uint32_t hidden, uint32_t topK, bool enableBalance, GM_ADDR XOut,
+                                               TPipe *pipe)
 {
     tpipe_ = pipe;
     blockIdx = GetBlockIdx();
@@ -215,10 +216,10 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR recvX, 
     flagOffset_ = metaSize_ - META_FLAG_R_OFFSET;
     epRankSize = comm->groupSize;
     assert(comm->sizeForExchangeAddress >= META_FLAG_R_OFFSET * 2,
-        "The group meta size for exchange is %lluKB, the min value should be %lluKB. \
+           "The group meta size for exchange is %lluKB, the min value should be %lluKB. \
         epRankId:%d, epWorldSize:%d, moeExpertNum:%d, shareAddrNum:%d\n",
-        comm->sizeForExchangeAddress / KB_SIZE, META_FLAG_R_OFFSET * 2 / KB_SIZE, epRankId, epRankSize,
-        moeExpertNum, shareAddrNum);
+           comm->sizeForExchangeAddress / KB_SIZE, META_FLAG_R_OFFSET * 2 / KB_SIZE, epRankId, epRankSize, moeExpertNum,
+           shareAddrNum);
     moeExpertNumPerRank = moeExpertNum / epRankSize;
 
     recvXGM_ = recvX;
@@ -229,7 +230,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR recvX, 
     epRecvCountGM_ = epRecvCount;
 
     recvXGT_.SetGlobalBuffer((__gm__ RecvXType *)recvX);
-    epRecvCountGT_.SetGlobalBuffer((__gm__ int32_t *)epRecvCount);  // 放置allReccvCount信息，num_ranks * num_experts
+    epRecvCountGT_.SetGlobalBuffer((__gm__ int32_t *)epRecvCount); // 放置allReccvCount信息，num_ranks * num_experts
     topkWeightsGT_.SetGlobalBuffer((__gm__ float *)topkWeights);
     topkIdxGT_.SetGlobalBuffer((__gm__ int32_t *)topkIdx);
     sendTokenIdxGT_.SetGlobalBuffer((__gm__ int32_t *)sendTokenIdx);
@@ -253,14 +254,14 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR recvX, 
     SplitCoreCal(epRankSize, rankNumPerBlock, curBlockStartRankId, curBlockEndRankId);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::ResetMetaState()
 {
     if (rankNumPerBlock == 0U) {
         return;
     }
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
-    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize);  // ranks/48 * 32B = 1 * 32B
+    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize); // ranks/48 * 32B = 1 * 32B
 
     GlobalTensor<float> statusFp32TensorGT;
     auto ptr = GetMetaAddrByRankId(epRankId, STATE);
@@ -277,7 +278,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::ResetMetaState()
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::PutShareAddr()
 {
     // 一个核将地址写入本rank的meta
@@ -307,7 +308,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::PutShareAddr()
     DataCopyPad(metaDataGt, addrTensor_, copyParams);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::GetShareAddr()
 {
     LocalTensor<uint64_t> addrTensor_ = addrBuf.Get<uint64_t>();
@@ -332,7 +333,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::GetShareAddr()
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::SetSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -359,7 +360,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::SetSyncFlag(int metaType)
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::WaitSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -367,10 +368,10 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::WaitSyncFlag(int metaType)
         return;
     }
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
-    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize);  // ranks/48 * 32B = 1 * 32B
+    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize); // ranks/48 * 32B = 1 * 32B
     uint32_t maskAlign = Ceil(epRankSize * sizeof(float), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign);  // rankSize * 4B
-    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);       // 32B
+    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign); // rankSize * 4B
+    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);      // 32B
 
     LocalTensor<float> gatherMaskOutTensor = gatherMaskOutBuf.Get<float>();
     LocalTensor<float> statusSumOutTensor = statusSumBuf.Get<float>(UB_ALIGN);
@@ -406,9 +407,8 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::WaitSyncFlag(int metaType)
     SyncAll<true>();
 }
 
-template <TypeClass>
-ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenAndWeightedSum(uint32_t tokenIndex,
-                                                                                           uint32_t tarRankId)
+template<TypeClass>
+ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenAndWeightedSum(uint32_t tokenIndex, uint32_t tarRankId)
 {
     const DataCopyExtParams xOutCopyParams{1U, static_cast<uint32_t>(hRecvXTypeLen_), 0U, 0U, 0U};
     const DataCopyPadExtParams<RecvXType> copyPadExtParams{false, 0U, 0U, 0U};
@@ -447,7 +447,7 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenAndWeightedSum(uint32_t token
     DataCopyPad(xOutGlobal_[tokenIndex * h], xOutLocal, xOutCopyParams);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenFromRemote()
 {
     if (batchSize == 0U) {
@@ -459,14 +459,14 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenFromRemote()
         return;
     }
     tpipe_->Reset();
-    tpipe_->InitBuffer(xOutBuf_, h32AlignRecvXLen_);                          // 14KB
-    tpipe_->InitBuffer(tokenFloatBuf_, h32AlignFloatLen_);                    // 28KB
-    tpipe_->InitBuffer(weightedMulBuf_, h256AlignFloatLen_);                  // 28KB
-    tpipe_->InitBuffer(sumFloatBuf_, h32AlignFloatLen_);                      // 28KB
-    tpipe_->InitBuffer(weightedSumQueue_, BUFFER_NUM, h32AlignRecvXLen_);  // 2 * 14KB = 28KB
-    tpipe_->InitBuffer(topkWeightsBuf_, k32AlignFloatLen_);                   // 32b
-    tpipe_->InitBuffer(sendTokenIdxBuf_, k32AlignLen_);                       // 32b
-    tpipe_->InitBuffer(topkIdxBuf_, k32AlignLen_);                            // 32b
+    tpipe_->InitBuffer(xOutBuf_, h32AlignRecvXLen_);                      // 14KB
+    tpipe_->InitBuffer(tokenFloatBuf_, h32AlignFloatLen_);                // 28KB
+    tpipe_->InitBuffer(weightedMulBuf_, h256AlignFloatLen_);              // 28KB
+    tpipe_->InitBuffer(sumFloatBuf_, h32AlignFloatLen_);                  // 28KB
+    tpipe_->InitBuffer(weightedSumQueue_, BUFFER_NUM, h32AlignRecvXLen_); // 2 * 14KB = 28KB
+    tpipe_->InitBuffer(topkWeightsBuf_, k32AlignFloatLen_);               // 32b
+    tpipe_->InitBuffer(sendTokenIdxBuf_, k32AlignLen_);                   // 32b
+    tpipe_->InitBuffer(topkIdxBuf_, k32AlignLen_);                        // 32b
     // moeExpertNum最大为512，tensor大小为 64*512*4=128kb
     uint32_t recvCountAlignLen_ = Ceil(epRankSize * moeExpertNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
     tpipe_->InitBuffer(allRecvCountBuf_, recvCountAlignLen_);
@@ -506,9 +506,9 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadTokenFromRemote()
     }
 }
 
-template <TypeClass>
-ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadAndWriteForTargetRank(uint32_t startId, uint32_t endId,
-                                                                     uint32_t tokenCnt, uint32_t tarRankId)
+template<TypeClass>
+ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadAndWriteForTargetRank(uint32_t startId, uint32_t endId, uint32_t tokenCnt,
+                                                                    uint32_t tarRankId)
 {
     if (tokenCnt == 0U) {
         return;
@@ -550,20 +550,20 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::ReadAndWriteForTargetRank(uint32_t sta
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::HandleAllRankToken()
 {
     tpipe_->Reset();
     uint32_t matrixAlignLen = Ceil(epRankSize * 2 * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
     tpipe_->InitBuffer(balanceMatrixBuf_, matrixAlignLen);
-    tpipe_->InitBuffer(xOutBuf_, h32AlignRecvXLen_);                          // 14KB
-    tpipe_->InitBuffer(tokenFloatBuf_, h32AlignFloatLen_);                    // 28KB
-    tpipe_->InitBuffer(weightedMulBuf_, h256AlignFloatLen_);                  // 28KB
-    tpipe_->InitBuffer(sumFloatBuf_, h32AlignFloatLen_);                      // 28KB
-    tpipe_->InitBuffer(weightedSumQueue_, BUFFER_NUM, h32AlignRecvXLen_);  // 2 * 14KB = 28KB
-    tpipe_->InitBuffer(topkWeightsBuf_, k32AlignFloatLen_);                   // 32b
-    tpipe_->InitBuffer(sendTokenIdxBuf_, k32AlignLen_);                       // 32b
-    tpipe_->InitBuffer(topkIdxBuf_, k32AlignLen_);                            // 32b
+    tpipe_->InitBuffer(xOutBuf_, h32AlignRecvXLen_);                      // 14KB
+    tpipe_->InitBuffer(tokenFloatBuf_, h32AlignFloatLen_);                // 28KB
+    tpipe_->InitBuffer(weightedMulBuf_, h256AlignFloatLen_);              // 28KB
+    tpipe_->InitBuffer(sumFloatBuf_, h32AlignFloatLen_);                  // 28KB
+    tpipe_->InitBuffer(weightedSumQueue_, BUFFER_NUM, h32AlignRecvXLen_); // 2 * 14KB = 28KB
+    tpipe_->InitBuffer(topkWeightsBuf_, k32AlignFloatLen_);               // 32b
+    tpipe_->InitBuffer(sendTokenIdxBuf_, k32AlignLen_);                   // 32b
+    tpipe_->InitBuffer(topkIdxBuf_, k32AlignLen_);                        // 32b
     // moeExpertNum最大为512，tensor大小为 64*512*4=128kb
     uint32_t recvCountAlignLen_ = Ceil(epRankSize * moeExpertNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
     tpipe_->InitBuffer(allRecvCountBuf_, recvCountAlignLen_);
@@ -596,13 +596,13 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::HandleAllRankToken()
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void CombineNormal<TypeFunc>::Process()
 {
-    if ASCEND_IS_AIV {  // 全aiv处理
+    if ASCEND_IS_AIV { // 全aiv处理
         ResetMetaState();
         PutShareAddr();
-        SetSyncFlag(FLAG);  // 全卡同步，确保对称地址都放到了meta空间
+        SetSyncFlag(FLAG); // 全卡同步，确保对称地址都放到了meta空间
         WaitSyncFlag(FLAG);
 
         GetShareAddr();
@@ -611,10 +611,10 @@ ZBAL_KERNEL void CombineNormal<TypeFunc>::Process()
         } else {
             HandleAllRankToken();
         }
-        SetSyncFlag(STATE);  // 全卡同步，确保数据已经获取完
+        SetSyncFlag(STATE); // 全卡同步，确保数据已经获取完
         WaitSyncFlag(STATE);
     }
 }
 
-}  // namespace MoeCombineNormal
+} // namespace MoeCombineNormal
 #endif

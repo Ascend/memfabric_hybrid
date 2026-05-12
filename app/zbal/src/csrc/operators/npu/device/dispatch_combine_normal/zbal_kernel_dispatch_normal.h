@@ -25,7 +25,7 @@ using namespace Moe;
 constexpr uint8_t BUFFER_NUM = 2;
 constexpr uint64_t DISPATCH_STATUS_OFFSET = 20UL * 1024UL;
 
-template <AscendC::HardEvent event>
+template<AscendC::HardEvent event>
 ZBAL_KERNEL void SyncFunc()
 {
     int32_t eventID = static_cast<int32_t>(GetTPipePtr()->FetchEventID(event));
@@ -34,16 +34,15 @@ ZBAL_KERNEL void SyncFunc()
 }
 
 #define TypeClass typename XType, typename ExpandXOutType, bool DynamicQuant
-#define TypeFunc XType, ExpandXOutType, DynamicQuant
+#define TypeFunc  XType, ExpandXOutType, DynamicQuant
 
-template <TypeClass>
+template<TypeClass>
 class DispatchNormal {
 public:
-    ZBAL_KERNEL DispatchNormal(){};
-    ZBAL_KERNEL void Init(GM_ADDR metaAddr, GM_ADDR x, GM_ADDR expertIds, GM_ADDR sendTokensIndex,
-                    GM_ADDR putOffset, GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs,
-                    uint32_t hidden, uint32_t topK, bool enableBalance,
-                    GM_ADDR expandXOut, GM_ADDR dynamicScalesOut, TPipe *pipe);
+    ZBAL_KERNEL DispatchNormal() {};
+    ZBAL_KERNEL void Init(GM_ADDR metaAddr, GM_ADDR x, GM_ADDR expertIds, GM_ADDR sendTokensIndex, GM_ADDR putOffset,
+                          GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs, uint32_t hidden,
+                          uint32_t topK, bool enableBalance, GM_ADDR expandXOut, GM_ADDR dynamicScalesOut, TPipe *pipe);
     ZBAL_KERNEL void Process();
 
 private:
@@ -65,11 +64,11 @@ private:
         auto ptr = zbal_ptr((__gm__ uint64_t *)(gva_gm), epRankId, rankId, localMemSize_, peerRanks);
 
         switch (metaType) {
-            case STATE:  // 存放通信结束的state, 12KB
+            case STATE: // 存放通信结束的state, 12KB
                 return (GM_ADDR)(ptr) + stateOffset_;
-            case ADDR:  // 存放交换的共享地址
+            case ADDR: // 存放交换的共享地址
                 return (GM_ADDR)(ptr) + addrOffset_;
-            case FLAG:  // 存放第一次清理state空间后的同步flag, 12KB
+            case FLAG: // 存放第一次清理state空间后的同步flag, 12KB
                 return (GM_ADDR)(ptr) + flagOffset_;
             default:
                 return (GM_ADDR)(ptr);
@@ -93,7 +92,7 @@ private:
     LocalTensor<ExpandXOutType> xOutTensor;
     LocalTensor<ExpandXOutType> xTmpTensor;
     LocalTensor<int32_t> expertIdsTensor;
-    LocalTensor<int32_t> putOffsetTensor;  // 全局recv_count前缀和
+    LocalTensor<int32_t> putOffsetTensor; // 全局recv_count前缀和
     LocalTensor<int32_t> sendTokenIdxTensor;
     LocalTensor<int32_t> statusTensor;
     LocalTensor<int32_t> balanceMatrixLocal;
@@ -166,11 +165,12 @@ private:
     uint32_t shareAddrNum{6};
 };
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR x, GM_ADDR expertIds, GM_ADDR sendTokensIndex,
-                    GM_ADDR putOffset, GM_ADDR balanceMatrix, uint32_t rank, uint32_t numExperts, uint32_t bs,
-                    uint32_t hidden, uint32_t topK,  bool enableBalance,
-                    GM_ADDR expandXOut, GM_ADDR dynamicScalesOut, TPipe *pipe)
+                                                GM_ADDR putOffset, GM_ADDR balanceMatrix, uint32_t rank,
+                                                uint32_t numExperts, uint32_t bs, uint32_t hidden, uint32_t topK,
+                                                bool enableBalance, GM_ADDR expandXOut, GM_ADDR dynamicScalesOut,
+                                                TPipe *pipe)
 {
     tpipe_ = pipe;
     blockIdx = GetBlockIdx();
@@ -193,10 +193,10 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR x, GM_
     flagOffset_ = metaSize_ - META_FLAG_R_OFFSET;
     epRankSize = comm->groupSize;
     assert(comm->sizeForExchangeAddress >= META_FLAG_R_OFFSET * 2,
-        "The group meta size for exchange is %lluKB, the min value should be %lluKB. \
+           "The group meta size for exchange is %lluKB, the min value should be %lluKB. \
         epRankId:%d, epWorldSize:%d, moeExpertNum:%d, shareAddrNum:%d\n",
-        comm->sizeForExchangeAddress / KB_SIZE, META_FLAG_R_OFFSET * 2 / KB_SIZE, epRankId, epRankSize,
-        moeExpertNum, shareAddrNum);
+           comm->sizeForExchangeAddress / KB_SIZE, META_FLAG_R_OFFSET * 2 / KB_SIZE, epRankId, epRankSize, moeExpertNum,
+           shareAddrNum);
     moeExpertNumPerRank = moeExpertNum / epRankSize;
 
     xGT.SetGlobalBuffer((__gm__ XType *)x);
@@ -217,14 +217,14 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR x, GM_
     hUBAlignSize = Ceil(h * sizeof(ExpandXOutType), UB_ALIGN) * UB_ALIGN;
     uint32_t hScaleSizeAlign = hUBAlignSize + UB_ALIGN;
 
-    hOutUBAlignSize = Ceil(hScaleSizeAlign, UB_ALIGN) * UB_ALIGN;  // h_align_32b + scale(32b)
+    hOutUBAlignSize = Ceil(hScaleSizeAlign, UB_ALIGN) * UB_ALIGN; // h_align_32b + scale(32b)
     if constexpr (DynamicQuant) {
         QuantInit();
     } else {
-        tpipe_->InitBuffer(xQueue, BUFFER_NUM, hOutUBAlignSize);  // 2 * 14K = 28K
+        tpipe_->InitBuffer(xQueue, BUFFER_NUM, hOutUBAlignSize); // 2 * 14K = 28K
     }
 
-    putOffsetAlignSize = Ceil(epRankSize * moeExpertNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;  // 4 * ranks * moeNum
+    putOffsetAlignSize = Ceil(epRankSize * moeExpertNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN; // 4 * ranks * moeNum
     tpipe_->InitBuffer(putOffsetBuf, putOffsetAlignSize);
     putOffsetTensor = putOffsetBuf.Get<int32_t>();
 
@@ -235,20 +235,20 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR x, GM_
     SplitCoreCal(epRankSize, rankNumPerBlock, curBlockStartRankId, curBlockEndRankId);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::QuantInit()
 {
     uint32_t hAlignSize = Ceil(h * sizeof(XType), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(xInQueue, BUFFER_NUM, hAlignSize);        // 14K * 2
-    tpipe_->InitBuffer(xOutQueue, BUFFER_NUM, hOutUBAlignSize);  // 7K * 2
+    tpipe_->InitBuffer(xInQueue, BUFFER_NUM, hAlignSize);       // 14K * 2
+    tpipe_->InitBuffer(xOutQueue, BUFFER_NUM, hOutUBAlignSize); // 7K * 2
 
-    tpipe_->InitBuffer(tokenCastFloatBuf, h * sizeof(float));  // 28K
-    tpipe_->InitBuffer(tokenAbsFloatBuf, h * sizeof(float));   // 28K
+    tpipe_->InitBuffer(tokenCastFloatBuf, h * sizeof(float)); // 28K
+    tpipe_->InitBuffer(tokenAbsFloatBuf, h * sizeof(float));  // 28K
 }
 
-template <TypeClass>
-ZBAL_KERNEL void DispatchNormal<TypeFunc>::SplitCoreCal(uint32_t totalNum, uint32_t &perCoreNum,
-                                                                         uint32_t &startIdx, uint32_t &endIdx)
+template<TypeClass>
+ZBAL_KERNEL void DispatchNormal<TypeFunc>::SplitCoreCal(uint32_t totalNum, uint32_t &perCoreNum, uint32_t &startIdx,
+                                                        uint32_t &endIdx)
 {
     perCoreNum = totalNum / blockNum;
     uint32_t remainderRankNum = totalNum % blockNum;
@@ -263,14 +263,14 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::SplitCoreCal(uint32_t totalNum, uint3
     endIdx = startIdx + perCoreNum;
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::ResetMetaState()
 {
     if (rankNumPerBlock == 0U) {
         return;
     }
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
-    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize);  // ranks/48 * 32B = 1 * 32B
+    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize); // ranks/48 * 32B = 1 * 32B
 
     GlobalTensor<float> statusFp32TensorGT;
     auto ptr = GetMetaAddrByRankId(epRankId, STATE);
@@ -287,7 +287,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::ResetMetaState()
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::PutShareAddr()
 {
     // 一个核将地址写入本rank的meta
@@ -317,7 +317,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::PutShareAddr()
     DataCopyPad(metaDataGt, addrTensor_, copyParams);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::GetShareAddr()
 {
     LocalTensor<uint64_t> addrTensor_ = addrBuf.Get<uint64_t>();
@@ -342,7 +342,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::GetShareAddr()
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::SetSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -369,7 +369,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::SetSyncFlag(int metaType)
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::WaitSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
@@ -378,10 +378,10 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::WaitSyncFlag(int metaType)
     }
 
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
-    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize);  // ranks/48 * 32B = 1 * 32B
+    tpipe_->InitBuffer(waitStatusBuf, waitStatusBufSize); // ranks/48 * 32B = 1 * 32B
     uint32_t maskAlign = Ceil(epRankSize * sizeof(float), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign);  // rankSize * 4B
-    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);       // 32B
+    tpipe_->InitBuffer(gatherMaskOutBuf, maskAlign); // rankSize * 4B
+    tpipe_->InitBuffer(statusSumBuf, UB_ALIGN);      // 32B
 
     LocalTensor<float> gatherMaskOutTensor = gatherMaskOutBuf.Get<float>();
     LocalTensor<float> statusSumOutTensor = statusSumBuf.Get<float>(UB_ALIGN);
@@ -418,14 +418,13 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::WaitSyncFlag(int metaType)
     SyncAll<true>();
 }
 
-template <TypeClass>
-ZBAL_KERNEL void DispatchNormal<TypeFunc>::ReduceMaxInplace(const LocalTensor<float> &srcLocal,
-                                                                             uint32_t count)
+template<TypeClass>
+ZBAL_KERNEL void DispatchNormal<TypeFunc>::ReduceMaxInplace(const LocalTensor<float> &srcLocal, uint32_t count)
 {
-    uint64_t repsFp32 = count >> 6;        // 6 is count / elemPerRefFp32
-    uint64_t offsetsFp32 = repsFp32 << 6;  // 6 is repsFp32 * elemPerRefFp32
-    uint64_t remsFp32 = count & 0x3f;      // 0x3f 63, count % elemPerRefFp32
-    const uint64_t elemPerRefFp32 = 64UL;  // 256 bit / sizeof(float)
+    uint64_t repsFp32 = count >> 6;       // 6 is count / elemPerRefFp32
+    uint64_t offsetsFp32 = repsFp32 << 6; // 6 is repsFp32 * elemPerRefFp32
+    uint64_t remsFp32 = count & 0x3f;     // 0x3f 63, count % elemPerRefFp32
+    const uint64_t elemPerRefFp32 = 64UL; // 256 bit / sizeof(float)
     if (likely(repsFp32 > 1)) {
         // 8 is rep stride
         Max(srcLocal, srcLocal[elemPerRefFp32], srcLocal, elemPerRefFp32, repsFp32 - 1, {1, 1, 1, 0, 8, 0});
@@ -440,7 +439,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::ReduceMaxInplace(const LocalTensor<fl
     WholeReduceMax(srcLocal, srcLocal, mask, 1, 8, 1, 8);
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::QuantProcess()
 {
     float dynamicScale = 0.0;
@@ -476,10 +475,10 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::QuantProcess()
     Cast(xOutTensor, halfLocalTemp, RoundMode::CAST_TRUNC, h);
 
     floatLocalTemp = xOutTensor.template ReinterpretCast<float>();
-    floatLocalTemp.SetValue(hUBAlignSize / sizeof(float), float(1.0) / dynamicScale);  // int8->float32
+    floatLocalTemp.SetValue(hUBAlignSize / sizeof(float), float(1.0) / dynamicScale); // int8->float32
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::InputToDstOutput()
 {
     uint32_t startTokenId, endTokenId, sendTokenNum, remainTokenNum;
@@ -495,18 +494,18 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::InputToDstOutput()
     endTokenId = startTokenId + sendTokenNum;
 
     if (startTokenId >= expertIdsCnt) {
-        return;  // 按照bs*k的token数进行分核
+        return; // 按照bs*k的token数进行分核
     }
 
-    DataCopyExtParams putOffsetParams = {1U, static_cast<uint32_t>(epRankSize * moeExpertNum * sizeof(int32_t)), 0U,
-                                         0U, 0U};
+    DataCopyExtParams putOffsetParams = {1U, static_cast<uint32_t>(epRankSize * moeExpertNum * sizeof(int32_t)), 0U, 0U,
+                                         0U};
     DataCopyPadExtParams<int32_t> putOffsetCopyPadParams{false, 0U, 0U, 0U};
     DataCopyPad(putOffsetTensor, putOffsetGT, putOffsetParams, putOffsetCopyPadParams);
     SyncFunc<AscendC::HardEvent::MTE2_S>();
 
     uint32_t sendTokenAlignLen = Ceil(sendTokenNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(expertIdsBuf, sendTokenAlignLen);     // 4 * bs * k / 48
-    tpipe_->InitBuffer(sendTokenIdxBuf, sendTokenAlignLen);  // 4 * bs * k / 48
+    tpipe_->InitBuffer(expertIdsBuf, sendTokenAlignLen);    // 4 * bs * k / 48
+    tpipe_->InitBuffer(sendTokenIdxBuf, sendTokenAlignLen); // 4 * bs * k / 48
     expertIdsTensor = expertIdsBuf.Get<int32_t>();
     sendTokenIdxTensor = sendTokenIdxBuf.Get<int32_t>();
     DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(sendTokenNum * sizeof(int32_t)), 0U, 0U, 0U};
@@ -547,7 +546,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::InputToDstOutput()
             QuantProcess();
             xOutQueue.EnQue(xOutTensor);
             xOutTensor = xOutQueue.DeQue<ExpandXOutType>();
-            DataCopyPad(dstGT, xOutTensor, xOutCopyParams);  // 拷贝token
+            DataCopyPad(dstGT, xOutTensor, xOutCopyParams); // 拷贝token
 
             LocalTensor<float> xOutFp32Tensor = xOutTensor.template ReinterpretCast<float>();
             DataCopyPad(dstScaleOutGT[dstExpertOffset + curExpertIdx], xOutFp32Tensor[hUBAlignSize / sizeof(float)],
@@ -565,14 +564,14 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::InputToDstOutput()
     }
 }
 
-template <TypeClass>
-ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startId, uint32_t endId,
-                                                                 uint32_t tokenCnt, uint32_t tarRankId)
+template<TypeClass>
+ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startId, uint32_t endId, uint32_t tokenCnt,
+                                                                 uint32_t tarRankId)
 {
     if (tokenCnt == 0U) {
         return;
     }
-    uint32_t kTokenCnt = tokenCnt * topK;  // 需要分发的token数，按topk展开
+    uint32_t kTokenCnt = tokenCnt * topK; // 需要分发的token数，按topk展开
     uint32_t startTokenId, endTokenId, sendTokenNum, remainTokenNum;
     sendTokenNum = kTokenCnt / blockNum;
     remainTokenNum = kTokenCnt % blockNum;
@@ -594,15 +593,15 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startI
     putOffsetGT.SetGlobalBuffer((__gm__ int32_t *)(sharePutOffsetAddrs[tarRankId]));
     sendTokenIdxGT.SetGlobalBuffer((__gm__ int32_t *)(shareSendTokenIdxAddrs[tarRankId]));
 
-    DataCopyExtParams putOffsetParams = {1U, static_cast<uint32_t>(epRankSize * moeExpertNum * sizeof(int32_t)), 0U,
-                                         0U, 0U};
+    DataCopyExtParams putOffsetParams = {1U, static_cast<uint32_t>(epRankSize * moeExpertNum * sizeof(int32_t)), 0U, 0U,
+                                         0U};
     DataCopyPadExtParams<int32_t> putOffsetCopyPadParams{false, 0U, 0U, 0U};
     DataCopyPad(putOffsetTensor, putOffsetGT, putOffsetParams, putOffsetCopyPadParams);
     SyncFunc<AscendC::HardEvent::MTE2_S>();
 
     uint32_t sendTokenAlignLen = Ceil(sendTokenNum * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
-    tpipe_->InitBuffer(expertIdsBuf, sendTokenAlignLen);     // 4 * bs * k / 48
-    tpipe_->InitBuffer(sendTokenIdxBuf, sendTokenAlignLen);  // 4 * bs * k / 48
+    tpipe_->InitBuffer(expertIdsBuf, sendTokenAlignLen);    // 4 * bs * k / 48
+    tpipe_->InitBuffer(sendTokenIdxBuf, sendTokenAlignLen); // 4 * bs * k / 48
     expertIdsTensor = expertIdsBuf.Get<int32_t>();
     sendTokenIdxTensor = sendTokenIdxBuf.Get<int32_t>();
     DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(sendTokenNum * sizeof(int32_t)), 0U, 0U, 0U};
@@ -615,8 +614,8 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startI
     DataCopyExtParams xCopyParams = {1U, static_cast<uint32_t>(h * sizeof(XType)), 0U, 0U, 0U};
     DataCopyPadExtParams<XType> tokenCopyPadExtParams{false, 0U, 0U, 0U};
     DataCopyExtParams xOutCopyParams = {1U, static_cast<uint32_t>(h * sizeof(ExpandXOutType)), 0U, 0U,
-                                        0U};                              // 只拷贝hidden_size
-    DataCopyExtParams scaleCopyParams = {1U, sizeof(float), 0U, 0U, 0U};  // 拷贝dynamicScales
+                                        0U};                             // 只拷贝hidden_size
+    DataCopyExtParams scaleCopyParams = {1U, sizeof(float), 0U, 0U, 0U}; // 拷贝dynamicScales
 
     for (int32_t tokenIndex = startTokenId; tokenIndex < endTokenId; ++tokenIndex) {
         uint32_t dstExpertId = expertIdsTensor(tokenIndex - startTokenId);
@@ -644,7 +643,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startI
             QuantProcess();
             xOutQueue.EnQue(xOutTensor);
             xOutTensor = xOutQueue.DeQue<ExpandXOutType>();
-            DataCopyPad(dstGT, xOutTensor, xOutCopyParams);  // 拷贝token
+            DataCopyPad(dstGT, xOutTensor, xOutCopyParams); // 拷贝token
 
             LocalTensor<float> xOutFp32Tensor = xOutTensor.template ReinterpretCast<float>();
             DataCopyPad(dstScaleOutGT[dstExpertOffset + curExpertIdx], xOutFp32Tensor[hUBAlignSize / sizeof(float)],
@@ -662,7 +661,7 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::DispatchForTargetRank(uint32_t startI
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::HandleAllRankToken()
 {
     uint32_t matrixAlignLen = Ceil(epRankSize * 2 * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
@@ -688,13 +687,13 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::HandleAllRankToken()
     }
 }
 
-template <TypeClass>
+template<TypeClass>
 ZBAL_KERNEL void DispatchNormal<TypeFunc>::Process()
 {
     if ASCEND_IS_AIV {
         ResetMetaState();
         PutShareAddr();
-        SetSyncFlag(FLAG);  // 全卡同步，确保对称地址都放到了meta空间
+        SetSyncFlag(FLAG); // 全卡同步，确保对称地址都放到了meta空间
         WaitSyncFlag(FLAG);
 
         GetShareAddr();
@@ -703,10 +702,10 @@ ZBAL_KERNEL void DispatchNormal<TypeFunc>::Process()
         } else {
             HandleAllRankToken();
         }
-        SetSyncFlag(STATE);  // 全卡同步，确保数据已经获取完
+        SetSyncFlag(STATE); // 全卡同步，确保数据已经获取完
         WaitSyncFlag(STATE);
     }
 }
 
-}  // namespace MoeDispatchNormal
+} // namespace MoeDispatchNormal
 #endif
