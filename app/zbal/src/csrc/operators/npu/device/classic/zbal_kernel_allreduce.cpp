@@ -63,6 +63,7 @@ public:
         this->exchangeBufferStart = exchangeInputStart + addrOffset;
         this->exchangeInputFlagStart = exchangeBufferStart + addrOffset;
         this->exchangeBufferFlagStart = exchangeInputFlagStart + addrOffset;
+        this->exchangeMetaSize = 4 * addrOffset;
 
         InitParallelStrategy();
 
@@ -109,6 +110,9 @@ public:
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
+        ClearExchangeMeta(exchangeInputStart, exchangeMetaSize);
+        BarrierAll(groupInfo);
+
         if (totalElems > groupSize) {
             ProcessElemsGtGroupSize();
         } else {
@@ -394,6 +398,7 @@ private:
     uint32_t bufferElems;
     uint32_t totalElems;
     uint32_t addrOffset;
+    uint32_t exchangeMetaSize;
     uint64_t waitSymbol;
     uint64_t localMemSize;
     ArParallelStrategy meta;
