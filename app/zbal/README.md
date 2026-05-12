@@ -1,10 +1,11 @@
 ## 🔄Latest News
+
 * Open source on June 1st, 2026
 
 ## 🎉Introduction
 
-ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. It is designed for LLM inference on Ascend NPU.
-There are two key advantages: <b>zero intermediate buffer</b> and <b>blazing fast</b>.
+ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. It contains a bunch of well tuned operators
+for LLM inference and training, which has two key advantages: <b>zero intermediate buffer</b> and <b>blazing fast</b>.
 
 ![architecture](./doc/images/architecture.png)
 
