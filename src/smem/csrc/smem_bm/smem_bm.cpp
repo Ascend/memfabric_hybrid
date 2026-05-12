@@ -497,11 +497,7 @@ SMEM_API int32_t smem_bm_copy_batch_partial_succeed(smem_bm_t handle, smem_batch
 
     auto totalSize = std::accumulate(params->dataSizes, params->dataSizes + params->batchSize, 0UL);
     SM_VALIDATE_RETURN(totalSize != 0, "total size is zero", SM_INVALID_PARAM);
-    auto averageSize = totalSize / params->batchSize;
-    if (params->batchSize > 1U && averageSize > 4U * 1024UL * 1024UL) {
-        return entry->DataCopyBatchConcurrent(params, t, flags, result);
-    }
-    return entry->DataCopyBatch(params, t, flags);
+    return entry->DataCopyBatchConcurrent(params, t, flags, result);
 }
 
 SMEM_API int32_t smem_bm_wait(smem_bm_t handle)
