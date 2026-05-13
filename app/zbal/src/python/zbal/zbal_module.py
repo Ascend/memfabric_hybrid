@@ -139,9 +139,9 @@ def switch_to_allocator():
                                               ctypes.c_void_p).value
         release_pool_fn = ctypes.cast(getattr(zbal_allocator, "zbal_pluggable_release_pool"), ctypes.c_void_p).value
 
-        new_alloc.allocator().set_begin_allocate_to_pool_fn(begin_allocate_to_pool_fn)
+        new_alloc.allocator().set_begin_allocate_to_pool(begin_allocate_to_pool_fn)
         new_alloc.allocator().set_end_allocate_to_pool_fn(end_allocate_to_pool_fn)
-        new_alloc.allocator().set_release_pool_fn(release_pool_fn)
+        new_alloc.allocator().set_release_pool(release_pool_fn)
 
 
 def zbal_get_symm_base_addr():
