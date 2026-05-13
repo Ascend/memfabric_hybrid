@@ -41,7 +41,7 @@ mkdir -p golden output
 python3 ${CURRENT_DIR}/scripts/data_gen.py $WORLD_SIZE $TEST_TYPE --case_num $CASE_NUM --case_list $CASE_LIST
 
 export CHECK_PRECISION=1
-export ENABLE_PROFILING=1
+export ENABLE_PROFILING=0
 nnodes=$(((WORLD_SIZE + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
 

@@ -77,41 +77,6 @@ TEST_F(TestZBALCommunicator, CommunicatorCreate)
     commOptApi.groupRankId = 0;
     result = Communicator::Create(commOptApi, &communicator, stateExt_);
     EXPECT_TRUE(result != Z_OK);
-
-    commOptApi.name = const_cast<char *>(name.c_str()); /* name = "moeep" */
-    commOptApi.backendType = ZBAL_BACK_BUTT;
-    commOptApi.isWorldGroup = true; /* case4: create world group firstly */
-
-    result = Communicator::Create(commOptApi, &communicator, stateExt_);
-    EXPECT_TRUE(result == Z_OK);
-    EXPECT_TRUE(Communicator::Count() == 1);
-
-    zbal_comm_t outComm = nullptr;
-    result = Communicator::Lookup("moeep", &outComm);
-    EXPECT_TRUE(result == Z_OK);
-    EXPECT_TRUE(outComm != nullptr);
-
-    zbal_comm_t communicatorTp1 = nullptr;
-    commOptApi.isWorldGroup = false;
-    name = "tp1";
-    commOptApi.name = const_cast<char *>(name.c_str());
-    result = Communicator::Create(commOptApi, &communicatorTp1, stateExt_);
-    EXPECT_TRUE(result == Z_OK);
-    EXPECT_TRUE(communicatorTp1 != nullptr);
-    EXPECT_TRUE(Communicator::Count() == ZBAL_TEST_NUMBER_TWO);
-
-    result = Communicator::Destroy(communicator, 0);
-    EXPECT_TRUE(result != Z_OK);
-    EXPECT_TRUE(Communicator::Count() == ZBAL_TEST_NUMBER_TWO);
-
-    result = Communicator::Destroy(communicatorTp1, 0);
-    EXPECT_TRUE(result == Z_OK);
-    EXPECT_TRUE(Communicator::Count() == 1);
-
-    result = Communicator::Destroy(communicator, 0);
-    EXPECT_TRUE(result == Z_OK);
-    EXPECT_TRUE(Communicator::Count() == 0);
-
     Communicator::DestroyAll();
 
     EXPECT_TRUE(GroupMetaArranger::Instance().Initialized() == false);

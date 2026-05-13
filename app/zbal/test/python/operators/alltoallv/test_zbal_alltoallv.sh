@@ -26,7 +26,10 @@ function get_node_idx()
     echo "Local-IP-Not-Match"
 }
 
-rank_size=${1:-16}
+CASE_LIST=${1:-917504}
+WORLD_SIZE=${2:-4}
+rank_size=${WORLD_SIZE}
+
 python3 ${CURRENT_DIR}/scripts/data_gen.py $TEST_TYPE $rank_size
 
 nnodes=$(((rank_size + RANK_PER_NODE - 1) / RANK_PER_NODE))
