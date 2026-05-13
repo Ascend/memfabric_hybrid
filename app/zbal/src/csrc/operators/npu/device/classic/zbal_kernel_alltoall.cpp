@@ -347,8 +347,6 @@ public:
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
-        ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_KERNEL_ALL);
-
         Prepare();
 
         ReAssignmentCoreNum();
@@ -368,6 +366,8 @@ public:
 
             WaitRangeStat(commonStartRank, commonEndRank);
         }
+
+        BarrierAll(comm);
 #endif
     }
 

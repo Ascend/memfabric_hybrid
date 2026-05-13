@@ -398,6 +398,8 @@ public:
             WaitRangeStat(commonStartRank, commonEndRank);
         }
 
+        BarrierAll(comm);
+
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_KERNEL_ALL);
 #endif
     }

@@ -107,7 +107,6 @@ output_splits.append([
     [2, 2, 1, 3]
 ])
 
-
 ######################### output splits first is 0  #########################
 h = 7168
 input_shapes.append([[10, h], [10, h], [10, h], [10, h]])
