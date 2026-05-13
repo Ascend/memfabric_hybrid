@@ -17,6 +17,8 @@ link_directories(${ASCEND_HOME_PATH}/runtime/lib64/)
 
 if (BUILD_ZBAL_MODULE_UT)
     message(STATUS "ZBAL_TEST_3RDPARTY_OUTPUT_DIR = ${ZBAL_TEST_3RDPARTY_OUTPUT_DIR}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
     add_subdirectory(3rdparty)
     add_subdirectory(ut)
 endif ()
