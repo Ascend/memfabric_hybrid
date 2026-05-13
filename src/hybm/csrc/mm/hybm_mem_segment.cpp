@@ -129,12 +129,7 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
         }
 #endif
         auto dva = reinterpret_cast<uint64_t>(output);
-#if defined(ASCEND_NPU)
-        auto lva = dva;
-#else
-        auto lva = va;
-#endif
-        slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, 0, lva, size);
+        slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_HOST, MEM_PT_TYPE_SVM, 0, va, size);
         ret = HybmVaManager::GetInstance().AddVaInfo({0, dva, va, size, HYBM_MEM_TYPE_HOST}, options_.rankId);
         if (ret != 0) {
             BM_LOG_ERROR("add va info failed, va:" << VaToStr(va) << " ret:" << ret);

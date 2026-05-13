@@ -277,9 +277,13 @@ void HybmConnBasedSegment::FreeMemory() noexcept
 {
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
+        // 仅 mmap 路径(gva_!=0)由 segment 自己拥有底层内存；user-registered (gva_==0)
+        // 的 vAddress_ 是用户传入的 HVA，绝不能在这里 munmap 用户内存。
+        const bool ownsBackingMemory = (slice->gva_ != 0U);
         ReleaseSliceMemory(slice);
-        // Free memory based on allocation method
-        FreeAllocatedMemory(reinterpret_cast<void *>(slice->vAddress_), slice->size_, slice->allocMethod_);
+        if (ownsBackingMemory) {
+            FreeAllocatedMemory(reinterpret_cast<void *>(slice->vAddress_), slice->size_, slice->allocMethod_);
+        }
     }
     Unmap();
 
@@ -450,7 +454,14 @@ Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, Mem
 {
     auto ret = RegisterMemCommon(addr, size, slice);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
-    slices_.emplace(slice->index_, slice);
+    auto [it, inserted] = slices_.try_emplace(slice->index_, slice);
+    if (!inserted) {
+        BM_LOG_WARN("RegisterMemory: slices_ index collision (likely sliceCount_ wrap-around), "
+                    "overwriting old entry. index=" << slice->index_
+                    << " new_addr=0x" << std::hex << slice->vAddress_
+                    << " old_addr=0x" << it->second.slice->vAddress_ << std::dec);
+        it->second = MemSliceStatus(slice);
+    }
     return BM_OK;
 }
 
@@ -474,9 +485,21 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
 
     HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_HVA);
     slices_.erase(pos);
-    if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_), logicDeviceId_, HOST_MEM_MAP_DEV);
+
+#if defined(ASCEND_NPU)
+    const bool userRegisteredHost = (slice->gva_ == 0U && slice->memType_ == HYBM_MEM_TYPE_HOST);
+    const bool needUnregister = userRegisteredHost ||
+                                (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA);
+    if (needUnregister) {
+        auto unregRet = DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_),
+                                                      logicDeviceId_, HOST_MEM_MAP_DEV);
+        if (unregRet != 0) {
+            BM_LOG_ERROR("HalHostUnregisterEx failed, idx:" << slice->index_
+                         << " userRegistered:" << userRegisteredHost << " ret:" << unregRet
+                         << "; teardown continues");
+        }
     }
+#endif
 
     return BM_OK;
 }

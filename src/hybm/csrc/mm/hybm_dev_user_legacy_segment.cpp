@@ -120,6 +120,11 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
 
 Result HybmDevUserLegacySegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcept
 {
+    if (slice == nullptr) {
+        BM_LOG_ERROR("input slice is nullptr.");
+        return BM_INVALID_PARAM;
+    }
+
     auto pos = registerSlices_.find(slice->index_);
     if (pos == registerSlices_.end()) {
         BM_LOG_ERROR("release slice : " << slice->index_ << " not exist.");
