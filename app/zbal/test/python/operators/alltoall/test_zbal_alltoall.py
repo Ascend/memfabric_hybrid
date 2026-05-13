@@ -22,7 +22,10 @@ from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 enable_perf_test = os.environ.get("ZBAL_ENABLE_ALLTOALL_PERF_TEST", "0") == "1"
 torch_npu.npu.config.allow_internal_format = True
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(filename)s:%(lineno)d - %(funcName)s()] - %(message)s'
+)
 
 
 def test_alltoall(dist_type, case_list):
@@ -114,7 +117,8 @@ def test_alltoall(dist_type, case_list):
             if dist_type == "zbal":
                 golden_output = torch.load(f"{output_dir}/output_hccl.bin")
 
-            for i in range(0, 15):
+            repeat_times = 15
+            for i in range(0, repeat_times):
                 if enable_profiling and prof_cnt > 5:
                     prof.step()
 
@@ -127,19 +131,19 @@ def test_alltoall(dist_type, case_list):
                 prof_cnt += 1
 
                 if check_precision:
-                    if dist_type == 'hccl' and i == 0:
+                    if dist_type == 'hccl':
                         tensor_output_file = f"{output_dir}/output_hccl.bin"
                         torch.save(tensor_output, tensor_output_file)
-                        break
                     elif dist_type == "zbal":
                         if not torch.allclose(tensor_output, golden_output, rtol=1e-4, atol=1e-8):
-                            logger.error(f"alltoall {world_size=} {global_rank=} {data_len=} precision failed.")
+                            logger.exception(f"alltoall {world_size=} {global_rank=} {data_len=} precision failed.")
                             raise Exception("precision error")
 
         if dist_type == "zbal":
-            logger.info(f"alltoall {global_rank=} {world_size=} {data_len} {dist_type} cases precision success")
+            logger.info(f"alltoall {global_rank=} {world_size=} case len={len(case_list)} {dist_type} "
+                        f"cases {repeat_times} times precision success")
         else:
-            logger.info(f"alltoall {global_rank=} {world_size=} {data_len} {dist_type} cases gen golden success")
+            logger.info(f"alltoall {global_rank=} {world_size=} {len(case_list)} {dist_type} cases gen golden success")
 
         if enable_profiling and prof_cnt >= 1:
             torch.npu.synchronize()
@@ -148,7 +152,7 @@ def test_alltoall(dist_type, case_list):
         dist.destroy_process_group(group)
 
     if dist_type == "zbal" and not zbal_uninit():
-        logger.error("zbal uninit failed.")
+        logger.exception("zbal uninit failed.")
 
 
 if __name__ == "__main__":

@@ -28,7 +28,10 @@ else:
 torch_npu.npu.config.allow_internal_format = True
 RANK_PER_NODE = 16
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(filename)s:%(lineno)d - %(funcName)s()] - %(message)s'
+)
 
 
 def get_cur_cases(expect_world_size):
@@ -137,9 +140,10 @@ def test_alltoallv(dist_type):
             tensor_output_dir = f"{current_dir}/output/alltoallv_{case_id}_{world_size}_{global_rank}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin")
+                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
 
-            for j in range(15):
+            repeat_times = 15
+            for j in range(repeat_times):
                 try:
                     if enable_profiling and prof_cnt >= 1:
                         prof.step()
@@ -168,21 +172,21 @@ def test_alltoallv(dist_type):
                     dist.all_to_all_single(tensor_output, tensor_input, cur_output_split, cur_input_split)
                     prof_cnt += 1
 
-                    if dist_type == 'hccl' and j == 0:
+                    if dist_type == 'hccl':
                         tensor_output_file = f"{tensor_output_dir}/output_{dist_type}.bin"
-                        torch.save(tensor_output, tensor_output_file)
-                        break
+                        torch.save(tensor_output.cpu(), tensor_output_file)
                     elif dist_type == 'zbal':
                         if not torch.allclose(tensor_output, golden_tensor, rtol=1e-4, atol=1e-8):
-                            logger.error(f"alltoallv {world_size=} {global_rank=} {data_len=} precision failed.")
+                            logger.exception(f"alltoallv {world_size=} {global_rank=} {data_len=} precision failed.")
                             raise Exception("precision error")
                 except Exception as e:
-                    logger.error(f"{global_rank=} run alltoallv case {i} round {j} failed.", e)
+                    logger.exception(f"{global_rank=} run alltoallv case {i} round {j} failed. {e}")
 
         if dist_type == 'hccl':
             logger.info(f"alltoallv {global_rank=} {world_size=} {len(case_index)} {dist_type} cases generate success")
         else:
-            logger.info(f"alltoallv {global_rank=} {world_size=} {len(case_index)} {dist_type} cases compare success")
+            logger.info(f"alltoallv {global_rank=} {world_size=} case len={len(case_index)} {dist_type} "
+                        f"cases {repeat_times} times compare success")
 
         if enable_profiling and prof_cnt >= 1:
             torch.npu.synchronize()

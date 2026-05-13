@@ -6,6 +6,7 @@ echo $CURRENT_DIR
 TEST_TYPE=bfloat16_t
 export TEST_TYPE=$TEST_TYPE
 export CURRENT_DIR=$CURRENT_DIR
+rm -rf golden output
 mkdir -p golden output
 
 RANK_PER_NODE=16
@@ -31,6 +32,8 @@ WORLD_SIZE=${2:-4}
 rank_size=${WORLD_SIZE}
 
 python3 ${CURRENT_DIR}/scripts/data_gen.py $TEST_TYPE $rank_size
+
+export ENABLE_PROFILING=1
 
 nnodes=$(((rank_size + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
