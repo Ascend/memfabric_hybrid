@@ -13,6 +13,10 @@
 #include <fstream>
 #include <cstring>
 
+#include "zbal_defines.h"
+
+#undef ALWAYS_INLINE
+#define ALWAYS_INLINE
 #include "zbal_functions.h"
 
 using namespace zbal;
@@ -260,7 +264,7 @@ TEST_F(TestZBALFunctions, RealpathEmptyPath)
 
 TEST_F(TestZBALFunctions, RealpathTooLong)
 {
-    std::string path(PATH_MAX_LIMIT + 1, 'x');
+    std::string path(ZBAL_PATH_MAX_LIMIT + 1, 'x');
     EXPECT_FALSE(Func::Realpath(path));
 }
 
