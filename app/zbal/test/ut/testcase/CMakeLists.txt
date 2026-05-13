@@ -39,8 +39,10 @@ include_directories(
 )
 
 file(GLOB_RECURSE ZBAL_TEST_CASE_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/csrc/*
-        ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/csrc/ccl/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/csrc/common/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ut_main.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mock/acl_stub.cpp
 )
 
 add_executable(test_zbal ${ZBAL_TEST_CASE_SRCS}

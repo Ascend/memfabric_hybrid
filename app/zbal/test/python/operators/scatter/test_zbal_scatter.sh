@@ -9,11 +9,11 @@ CURRENT_DIR=$(
 
 echo $CURRENT_DIR
 
-WORLD_SIZE=${3:-16}
+WORLD_SIZE=${2:-16}
 TEST_TYPE=bfloat16_t
 CASE_NUM=0  # if CASE_NUM is 0 will use CASE_LIST instead
 CASE_LIST=${1:-917504}
-H_SIZE=${2:-1}
+H_SIZE=1
 
 RANK_PER_NODE=16
 IPs=()
@@ -44,7 +44,7 @@ mkdir -p golden output
 python3 ${CURRENT_DIR}/scripts/data_gen.py $WORLD_SIZE $TEST_TYPE --case_num $CASE_NUM --case_list $CASE_LIST --hidden_size $H_SIZE
 
 export CHECK_PRECISION=1
-export ENABLE_PROFILING=1
+export ENABLE_PROFILING=0
 nnodes=$(((WORLD_SIZE + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
 

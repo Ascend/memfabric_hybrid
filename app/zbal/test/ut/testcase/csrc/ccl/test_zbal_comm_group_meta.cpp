@@ -80,9 +80,8 @@ TEST_F(TestZBALCommGroupMeta, GetGroupIndex)
     uintptr_t address = 0;
     uintptr_t addressParam = 0;
     uintptr_t addressExchange = 0;
-    uintptr_t addressProfiling = 0;
     /* get one */
-    result = arranger.CurrentGroup(index, address, addressParam, addressExchange, addressProfiling);
+    result = arranger.CurrentGroup(index, address, addressParam, addressExchange);
     EXPECT_TRUE(result == Z_OK);
     EXPECT_TRUE(index == 0);
     EXPECT_TRUE(address == baseAddress);
@@ -92,7 +91,7 @@ TEST_F(TestZBALCommGroupMeta, GetGroupIndex)
     arranger.Move2NextGroup();
 
     /* get two */
-    result = arranger.CurrentGroup(index, address, addressParam, addressExchange, addressProfiling);
+    result = arranger.CurrentGroup(index, address, addressParam, addressExchange);
     EXPECT_TRUE(result == Z_OK);
     EXPECT_TRUE(index == 1);
     auto metaSpaceSizeInBytes = stateExt.commMetaSpaceSize * 1024;
@@ -102,7 +101,7 @@ TEST_F(TestZBALCommGroupMeta, GetGroupIndex)
 
     arranger.Move2NextGroup();
 
-    result = arranger.CurrentGroup(index, address, addressParam, addressExchange, addressProfiling);
+    result = arranger.CurrentGroup(index, address, addressParam, addressExchange);
     EXPECT_TRUE(result != Z_OK);
 }
 

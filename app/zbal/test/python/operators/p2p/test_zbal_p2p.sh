@@ -8,7 +8,6 @@ CURRENT_DIR=$(
 )
 
 echo $CURRENT_DIR
-export HCCL_IF_IP=''
 WORLD_SIZE=${2:-16}
 TEST_TYPE=bfloat16_t
 CASE_NUM=0  # if CASE_NUM is 0 will use CASE_LIST instead
@@ -25,6 +24,7 @@ function get_node_idx()
         for i in "${!IPs[@]}"; do
             if [[ "${IPs[i]}" == "$ip" ]]; then
                 echo $i
+                export HCCL_IF_IP="${IPs[i]}"
                 return
             fi
         done
@@ -34,11 +34,6 @@ function get_node_idx()
 
 nnodes=$(((WORLD_SIZE + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
-
-if [[ $ip_size -ne $nnodes ]]; then
-    echo "run ${WORLD_SIZE} ranks process but IPs size is not match"
-    exit 1
-fi
 
 export WORLD_SIZE=$WORLD_SIZE
 export TEST_TYPE=$TEST_TYPE
@@ -56,6 +51,10 @@ if [[ $nnodes -eq 1 ]]; then
     torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_p2p.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
     torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_p2p.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
 else
-    torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_p2p.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
-    torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_p2p.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+    if [[ $ip_size -eq $nnodes ]]; then
+        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_p2p.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
+        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_p2p.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+    else
+        echo "run ${WORLD_SIZE} ranks process but IPs size is not match"
+    fi
 fi

@@ -92,7 +92,7 @@ rank_sizes=(2 4 8 16)
 if [ "$OP" == '0' ]; then
     rm -rf output "profiling.*"
     for rank_size in "${rank_sizes[@]}"; do
-        bash test_zbal_alltoallv.sh ${rank_size}
+        bash test_zbal_alltoallv.sh 1 ${rank_size}
     done
 else
     for rank_size in "${rank_sizes[@]}"; do
