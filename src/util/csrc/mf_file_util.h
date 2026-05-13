@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <cstdint>
 
-#define PATH_MAX_LIMIT 4096L
+#define ZBAL_PATH_MAX_LIMIT 4096L
 namespace ock {
 namespace mf {
 class FileUtil {
@@ -194,7 +194,7 @@ inline bool FileUtil::MakeDirRecursive(const std::string &path, uint32_t mode)
 
 inline bool FileUtil::Remove(const std::string &path, bool canonicalPath)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -208,7 +208,7 @@ inline bool FileUtil::Remove(const std::string &path, bool canonicalPath)
 
 inline bool FileUtil::RemoveDirRecursive(const std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -245,7 +245,7 @@ inline bool FileUtil::RemoveDirRecursive(const std::string &path)
 
 inline bool FileUtil::Realpath(std::string &path)
 {
-    if (path.empty() || path.size() > PATH_MAX_LIMIT) {
+    if (path.empty() || path.size() > ZBAL_PATH_MAX_LIMIT) {
         return false;
     }
 
@@ -387,9 +387,9 @@ inline bool FileUtil::CheckFileSize(const std::string &path, uint32_t maxSize)
 inline constexpr size_t FileUtil::GetSafePathMax()
 {
 #ifdef PATH_MAX
-    return (PATH_MAX < PATH_MAX_LIMIT) ? PATH_MAX : PATH_MAX_LIMIT;
+    return (PATH_MAX < ZBAL_PATH_MAX_LIMIT) ? PATH_MAX : ZBAL_PATH_MAX_LIMIT;
 #else
-    return PATH_MAX_LIMIT;
+    return ZBAL_PATH_MAX_LIMIT;
 #endif
 }
 
