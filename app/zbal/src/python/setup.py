@@ -60,6 +60,8 @@ def _check_env_flag(name: str, default: str = "") -> bool:
 
 
 is_manylinux = _check_env_flag("IS_MANYLINUX", "FALSE")
+is_debug_mode = _check_env_flag("DEBUG_MODE", "FALSE")
+build_ut = _check_env_flag("ENABLE_ZBAL_UT", "OFF")
 ascend_home = Path(_find_ascend_home_dir()).resolve()
 python_include_dir = Path(_find_python_include()).resolve()
 torch_dir = Path(os.path.dirname(torch.__file__)).resolve()
@@ -152,12 +154,13 @@ class CustomBuildExtension(BuildExtension):
         logger.info(f"make build dir:{build_dir}, output dir:{output_dir}")
 
         # cmake
-        build_type = "Release" if is_manylinux else "Debug"
+        build_type = "Debug" if is_debug_mode and not is_manylinux else "Release"
+
         cmake_cmd = [
             "cmake",
             "..",
             "-DSOC_VERSION=Ascend910_9382",
-            "-DBUILD_ZBAL_MODULE_UT=OFF",
+            f"-DBUILD_ZBAL_MODULE_UT={build_ut}",
             f"-DCMAKE_BUILD_TYPE={build_type}",
             "-DDISABLE_ADAPTOR_COMPILE=ON",
             "-DDISABLE_ALLOCATOR_COMPILE=ON",

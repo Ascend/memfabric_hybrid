@@ -55,7 +55,7 @@ add_executable(test_zbal ${ZBAL_TEST_CASE_SRCS}
 target_compile_options(test_zbal PRIVATE -fPIC -Wno-float-equal)
 target_link_options(test_zbal PRIVATE -pie)
 target_link_libraries(test_zbal PUBLIC gtest ascendcl runtime zbal_kernel)
-#target_link_libraries(test_zbal PUBLIC gtest zbal_kernel acl_shared)
+target_link_libraries(test_zbal PUBLIC gtest zbal_kernel acl_shared)
 
 install(TARGETS test_zbal
         RUNTIME DESTINATION ${ZBAL_BASE_DIR}/output/ut

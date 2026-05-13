@@ -13,9 +13,31 @@
 #include <cstddef>
 #include <cstdlib>
 
+#include "dl_cann_api_def.h"
+
 constexpr int32_t RETURN_OK = 0;
 constexpr int32_t RETURN_ERROR = -1;
 constexpr uint64_t START_ADDR = 0x100000000000ULL;
+
+typedef enum {
+    ACL_DEV_ATTR_AICPU_CORE_NUM  = 1,
+    ACL_DEV_ATTR_AICORE_CORE_NUM = 101,
+    ACL_DEV_ATTR_CUBE_CORE_NUM = 102,
+    ACL_DEV_ATTR_VECTOR_CORE_NUM = 201,
+    ACL_DEV_ATTR_WARP_SIZE = 202,
+    ACL_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE,
+    ACL_DEV_ATTR_UBUF_PER_VECTOR_CORE,
+    ACL_DEV_ATTR_TOTAL_GLOBAL_MEM_SIZE = 301,
+    ACL_DEV_ATTR_L2_CACHE_SIZE,
+    ACL_DEV_ATTR_SMP_ID = 401U,
+    ACL_DEV_ATTR_PHY_CHIP_ID = 402U,
+    ACL_DEV_ATTR_SUPER_POD_DEVICE_ID = 403U,
+    ACL_DEV_ATTR_SUPER_POD_SERVER_ID = 404U,
+    ACL_DEV_ATTR_SUPER_POD_ID = 405U,
+    ACL_DEV_ATTR_CUST_OP_PRIVILEGE = 406U,
+    ACL_DEV_ATTR_MAINBOARD_ID = 407U,
+    ACL_DEV_ATTR_IS_VIRTUAL = 501U,
+} aclrtDevAttr;
 
 extern "C" {
 int32_t aclrtSetDevice(int32_t deviceId)
@@ -189,6 +211,41 @@ int32_t rtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t *const logic
 }
 
 int32_t rtGetC2cCtrlAddr(uint64_t *ffts_address, uint32_t *ffts_len)
+{
+    return 0;
+}
+
+int32_t aclrtGetResInCurrentThread(zbal::aclrtDevResType type, uint32_t *blockDim)
+{
+    return 0;
+}
+
+int32_t aclrtDestroyEvent(void *aclrtEvent)
+{
+    return 0;
+}
+
+int32_t aclrtCtxGetCurrentDefaultStream(void *aclrtStream)
+{
+    return 0;
+}
+
+int32_t aclrtCreateEventExWithFlag(void *aclrtEvent, uint32_t flag)
+{
+    return 0;
+}
+
+int32_t aclrtRecordEvent(void *aclrtEvent, void *aclrtStream)
+{
+    return 0;
+}
+
+int32_t aclrtStreamWaitEvent(void *aclrtStream, void *aclrtEvent)
+{
+    return 0;
+}
+
+int32_t aclrtGetDeviceInfo(uint32_t deviceId, aclrtDevAttr attr, int64_t *value)
 {
     return 0;
 }
