@@ -383,7 +383,7 @@ Result HybmVmmBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcep
                 DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(realAddr), logicDeviceId_, HOST_MEM_MAP_DEV);
             BM_LOG_INFO("unregister slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << ret);
         }
-        HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_DVA);
+        HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_HVA);
         registerSlices_.erase(registerPos);
         return BM_OK;
     }
