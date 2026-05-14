@@ -73,7 +73,7 @@ function build_zbal()
     rm -rf "$CURRENT_DIR"/python/dist
     python3 setup.py clean --all
     python3 setup.py bdist_wheel
-    mv -v "$CURRENT_DIR"/python/dist/zbal*.whl "${OUTPUT_DIR}/"
+    mv -v "$CURRENT_DIR"/python/dist/memfabric_zbal*.whl "${OUTPUT_DIR}/"
     rm -rf "$CURRENT_DIR"/python/dist
     cd -
 }

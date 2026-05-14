@@ -234,7 +234,7 @@ class BuildWheel(bdist_wheel):
 
 
 setup(
-    name="zbal-ascend",
+    name="memfabric_zbal",
     version=versoin,
     description="ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. "
                 "It contains a bunch of well tuned operators for LLM inference and training, "
