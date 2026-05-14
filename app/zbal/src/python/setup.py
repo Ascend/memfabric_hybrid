@@ -68,7 +68,7 @@ torch_dir = Path(os.path.dirname(torch.__file__)).resolve()
 torch_npu_dir = Path(os.path.dirname(torch_npu.__file__)).resolve()
 repo_root = Path(__file__).parent.parent.parent.parent.parent  # sgl-kernel-npu/
 zbal_root = repo_root / "app/zbal/"
-versoin = _get_version(version_dir=zbal_root)
+package_version = _get_version(version_dir=zbal_root)
 
 # allocator compile inputs
 include_dirs = [
@@ -206,9 +206,7 @@ class BuildWheel(bdist_wheel):
             # torch
             "libtorch.so", "libtorch_npu.so", "libc10.so",
             "libtorch_python.so", "libtorch_cpu.so",
-
             "libopapi.so"
-
         ]
 
         if is_manylinux:
@@ -235,7 +233,7 @@ class BuildWheel(bdist_wheel):
 
 setup(
     name="memfabric_zbal",
-    version=versoin,
+    version=package_version,
     description="ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. "
                 "It contains a bunch of well tuned operators for LLM inference and training, "
                 "which has two key advantages: zero intermediate buffer and blazing fast.",

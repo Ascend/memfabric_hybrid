@@ -20,7 +20,6 @@ include_directories(
         ${TORCH_NPU_DIR}/include
         ${PYBIND11_DIR}/include
         ${CPYTHON_DIR}
-        ${ZBAL_BASE_DIR}
         ${ZBAL_BASE_DIR}/third_party/ska
         ${ZBAL_BASE_DIR}/third_party/mstx
         ${ZBAL_SRC_DIR}/include
@@ -36,13 +35,23 @@ include_directories(
         ${ZBAL_SRC_DIR}/csrc/bootstrap/memory
         ${ZBAL_SRC_DIR}/csrc/bootstrap/memory/memfabric
         ${ZBAL_TEST_3RDPARTY_OUTPUT_DIR}/googletest/include
+        # mock torch_npu/c10 stubs for SMA tests (must be before real paths)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mock
 )
 
 file(GLOB_RECURSE ZBAL_TEST_CASE_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/csrc/ccl/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/csrc/common/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/csrc/sma/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ut_main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../mock/acl_stub.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mock/zbal_npu_operators_stub.cpp
+        # sma source files (not in object libs when DISABLE_ALLOCATOR_COMPILE=ON)
+        ${ZBAL_SRC_DIR}/csrc/sma/zbal_sma_mm_heap.cpp
+        ${ZBAL_SRC_DIR}/csrc/sma/zbal_sma_config.cpp
+        ${ZBAL_SRC_DIR}/csrc/sma/zbal_sma_device_pool.cpp
+        # stub for DeviceSMACachingAllocator methods needed by device_pool
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mock/zbal_sma_device_stub.cpp
 )
 
 add_executable(test_zbal ${ZBAL_TEST_CASE_SRCS}
@@ -52,9 +61,10 @@ add_executable(test_zbal ${ZBAL_TEST_CASE_SRCS}
         $<TARGET_OBJECTS:boostrap_objects>
         )
 
-target_compile_options(test_zbal PRIVATE -fPIC -Wno-float-equal)
+target_compile_options(test_zbal PRIVATE -fPIC -Wno-float-equal
+    "SHELL:-include ${ZBAL_BASE_DIR}/third_party/ska/flat_hash_map.h"
+    "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/../mock/sma_preinclude.h")
 target_link_options(test_zbal PRIVATE -pie)
-target_link_libraries(test_zbal PUBLIC gtest ascendcl runtime zbal_kernel)
 target_link_libraries(test_zbal PUBLIC gtest zbal_kernel acl_shared)
 
 install(TARGETS test_zbal

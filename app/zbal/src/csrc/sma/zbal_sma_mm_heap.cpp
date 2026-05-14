@@ -315,7 +315,7 @@ ZBAL_API int CustomGetTotalSize(size_t &size, std::shared_ptr<heap::CustomMemory
     return Z_OK;
 }
 
-ZBAL_API int CustomGetInUsedSize(size_t &size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
+ZBAL_API int CustomInUsedSize(size_t &size, std::shared_ptr<heap::CustomMemoryHeap> symm_pool)
 {
     if (!symm_pool) {
         return Z_ERROR;

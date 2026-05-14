@@ -249,4 +249,17 @@ int32_t aclrtGetDeviceInfo(uint32_t deviceId, aclrtDevAttr attr, int64_t *value)
 {
     return 0;
 }
+
+int32_t aclrtGetCurrentContext(int32_t *ctx)
+{
+    if (ctx != nullptr) {
+        *ctx = 0;
+    }
+    return 0;
+}
+
+int32_t aclrtSetCurrentContext(int32_t ctx)
+{
+    return 0;
+}
 }
