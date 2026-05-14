@@ -205,6 +205,16 @@ Result ComposeTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey
     return BM_OK;
 }
 
+void ComposeTransportManager::UpdateMemoryKey(TransportMemoryKey &key, void *addr)
+{
+    if (deviceTransportManager_) {
+        TransportMemoryKey tmp{};
+        ReadDeviceRdmaMemoryKey(key, tmp);
+        deviceTransportManager_->UpdateMemoryKey(tmp, addr);
+        WriteDeviceRdmaMemoryKey(tmp, key);
+    }
+}
+
 void ComposeTransportManager::GetHostPrepareOptions(const HybmTransPrepareOptions &param,
                                                     HybmTransPrepareOptions &hostOptions)
 {
@@ -551,7 +561,7 @@ Result ComposeTransportManager::UpdateRankOptions(const HybmTransPrepareOptions 
     if (deviceTransportManager_) {
         HybmTransPrepareOptions deviceOptions{};
         GetDevicePrepareOptions(options, deviceOptions);
-        BM_LOG_INFO("Try to update host transport rank options: " << deviceOptions);
+        BM_LOG_INFO("Try to update device transport rank options: " << deviceOptions);
         ret = deviceTransportManager_->UpdateRankOptions(deviceOptions);
         if (ret != BM_OK) {
             BM_LOG_ERROR("Failed to prepare host ret: " << ret);

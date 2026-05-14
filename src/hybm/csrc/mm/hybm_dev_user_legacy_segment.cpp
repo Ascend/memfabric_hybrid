@@ -41,7 +41,7 @@ Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
 
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, 0,
-                                                                HYBM_MEM_TYPE_DEVICE, options_.enable56BitsGva);
+                                                                HYBM_MEM_TYPE_DEVICE, options_.enable56BitsGva, true);
     BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     lvaBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
@@ -77,6 +77,13 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
         return BM_INVALID_PARAM;
     }
 
+    for (auto &it : registerSlices_) {
+        if (it.second.slice->vAddress_ == reinterpret_cast<uint64_t>(addr)) {
+            BM_LOG_ERROR("this addr has registered.");
+            return BM_ERROR;
+        }
+    }
+
     char name[DEVICE_SHM_NAME_SIZE + 1U]{};
     auto ret = DlAclApi::RtIpcSetMemoryName(addr, size, name, sizeof(name));
     if (ret != 0) {
@@ -103,7 +110,7 @@ Result HybmDevUserLegacySegment::RegisterMemory(const void *addr, uint64_t size,
     slice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, gva,
                                        reinterpret_cast<uint64_t>(addr), size);
     ret = HybmVaManager::GetInstance().AddVaInfo({gva, slice->vAddress_, slice->vAddress_, size, HYBM_MEM_TYPE_DEVICE},
-                                                 options_.rankId);
+                                                 options_.rankId, true);
     if (ret != 0) {
         BM_LOG_ERROR("AddVaInfo failed, size: " << size << " ret: " << ret);
         DlAclApi::RtIpcDestroyMemoryName(name);
@@ -163,15 +170,16 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     }
 
     uint32_t sdId;
-    HbmExportSliceInfo info;
-    info.gva = pos->second.slice->gva_;
+    UserHbmExportSliceInfo info;
+    // 多trans实例场景下,同一实例不同进程的gva_start不相同,所以仅传递offset
+    info.gvaOffset = pos->second.slice->gva_ - reinterpret_cast<uint64_t>(globalVirtualAddress_);
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
     info.rankId = options_.rankId;
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
-    auto ret = LiteralExInfoTranslater<HbmExportSliceInfo>{}.Serialize(info, exInfo);
+    auto ret = LiteralExInfoTranslater<UserHbmExportSliceInfo>{}.Serialize(info, exInfo);
     if (ret != BM_OK) {
         BM_LOG_ERROR("export info failed: " << ret);
         return BM_ERROR;
@@ -184,7 +192,7 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
 
 Result HybmDevUserLegacySegment::GetExportSliceSize(size_t &size) noexcept
 {
-    size = sizeof(HbmExportSliceInfo);
+    size = sizeof(UserHbmExportSliceInfo);
     return BM_OK;
 }
 
@@ -379,8 +387,8 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
 
 Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSlicePtr &remoteSlice) noexcept
 {
-    HbmExportSliceInfo sliceInfo;
-    LiteralExInfoTranslater<HbmExportSliceInfo> translator;
+    UserHbmExportSliceInfo sliceInfo;
+    LiteralExInfoTranslater<UserHbmExportSliceInfo> translator;
     auto ret = translator.Deserialize(info, sliceInfo);
     if (ret != 0) {
         BM_LOG_ERROR("deserialize slice info failed: " << ret);
@@ -423,7 +431,8 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
         address = nullptr;
     }
 
-    remoteSlice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM, sliceInfo.gva,
+    remoteSlice = std::make_shared<MemSlice>(sliceCount_++, HYBM_MEM_TYPE_DEVICE, MEM_PT_TYPE_SVM,
+                                             sliceInfo.gvaOffset + reinterpret_cast<uint64_t>(globalVirtualAddress_),
                                              reinterpret_cast<uint64_t>(address), sliceInfo.size);
     rankToRemoteSlices_[sliceInfo.rankId].push_back(remoteSlice);
     remoteSlices_.emplace(remoteSlice->index_, RegisterSlice{remoteSlice, sliceInfo.name});

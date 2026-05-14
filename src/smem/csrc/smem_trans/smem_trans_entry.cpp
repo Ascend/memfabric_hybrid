@@ -34,7 +34,7 @@ namespace ock {
 namespace smem {
 // reserve 128GB dram va for malloc per rank, refine to configurable later
 constexpr uint64_t TRANS_RESERVE_DRAM_VA_SIZE = 1024ULL * 1024 * 1024 * 128;
-constexpr uint64_t TRANS_RESERVE_HBM_VA_SIZE = 1024ULL * 1024 * 1024 * 1024; // 1T
+constexpr uint64_t TRANS_RESERVE_HBM_VA_SIZE = 1024ULL * 1024 * 1024 * 128; // 128G
 
 SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::string &storeUrl,
                                          const smem_trans_config_t &config)
@@ -50,7 +50,7 @@ SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::str
     /* initialize */
     result = transEntry->Initialize();
     if (result != SM_OK) {
-        SmemTransEntryManager::Instance().RemoveEntryByName(name);
+        SmemTransEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(transEntry.Get()));
         SM_LOG_AND_SET_LAST_ERROR("initialize trans entry failed, result " << result);
         return nullptr;
     }
@@ -58,7 +58,7 @@ SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::str
     result = transEntry->Join(0);
     if (result != SM_OK) {
         SM_LOG_AND_SET_LAST_ERROR("trans join failed, ret:" << result);
-        SmemTransEntryManager::Instance().RemoveEntryByName(name);
+        SmemTransEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(transEntry.Get()));
         return nullptr;
     }
     return transEntry;
@@ -71,7 +71,8 @@ SmemTransEntry::~SmemTransEntry()
 
 int32_t SmemTransEntry::Initialize()
 {
-    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port, workerUniqueId_.reserved)) {
+    SM_VALIDATE_RETURN(rankId_ < SMEM_TRANS_RANK_COUNT_MAX, "rankId:" << rankId_ << " is too large.", SM_INVALID_PARAM);
+    if (!ParseTransName(name_, workerUniqueId_.address, workerUniqueId_.port, workerUniqueId_.pid)) {
         return SM_INVALID_PARAM;
     }
     SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(CreateGlobalTeam(rankId_), "create global team failed");
@@ -163,6 +164,19 @@ Result SmemTransEntry::GroupOpBarrier(int32_t input)
     return SM_OK;
 }
 
+static std::string uniqueToString(const WorkerId &unique)
+{
+    std::ostringstream oss;
+    constexpr int WIDTH = 2;
+    for (size_t i = 0; i < unique.size(); ++i) {
+        oss << std::hex << std::setw(WIDTH) << std::setfill('0') << static_cast<int>(unique[i]);
+        if (i < unique.size() - 1) {
+            oss << ":";
+        }
+    }
+    return oss.str();
+}
+
 void SmemTransEntry::AddRemoteInfo(uint32_t rk, smem_trans_role_t role, WorkerId &id, std::vector<void *> &global,
                                    std::vector<LocalMapAddress> &local)
 {
@@ -176,7 +190,7 @@ void SmemTransEntry::AddRemoteInfo(uint32_t rk, smem_trans_role_t role, WorkerId
     for (auto i = 0U; i < global.size(); i++) {
         remoteSlices_[id].emplace(local[i].address, LocalMapAddress(global[i], local[i].size));
         SM_LOG_DEBUG("record mem, local_rk:" << rankId_ << " remote_rk:" << rk << " global_addr:0x" << global[i]
-                                             << "remote_addr:0x" << local[i].address);
+                                             << " remote_addr:0x" << local[i].address);
     }
 }
 
@@ -204,8 +218,68 @@ void SmemTransEntry::AddRemoteInfo(uint32_t rk, std::vector<void *> &global, std
     for (auto i = 0U; i < global.size(); i++) {
         remoteSlices_[id].emplace(local[i].address, LocalMapAddress(global[i], local[i].size));
         SM_LOG_DEBUG("record mem, local_rk:" << rankId_ << " remote_rk:" << rk << " global_addr:0x" << global[i]
-                                             << "remote_addr:0x" << local[i].address);
+                                             << " remote_addr:0x" << local[i].address);
     }
+}
+
+Result SmemTransEntry::JoinImport(std::unordered_map<uint32_t, std::string> &allInfo, bool isEntity)
+{
+    uint32_t unitSize = sizeof(SmemTransExchangeInfo);
+    for (auto &it : allInfo) {
+        if (it.first == rankId_) {
+            continue;
+        }
+        if (it.second.length() % unitSize != 0) {
+            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << it.second.length() << " rank:" << it.first);
+            return SM_INVALID_PARAM;
+        }
+
+        WorkerId id;
+        smem_trans_role_t role = SMEM_TRANS_BUTT;
+        SmemTransExchangeInfo info;
+        std::vector<LocalMapAddress> local;
+        std::vector<hybm_exchange_info> hybmInfos;
+        std::vector<void *> global;
+        uint32_t num = it.second.length() / unitSize;
+        for (uint32_t i = 0; i < num; i++) {
+            (void)std::copy_n(it.second.c_str() + i * unitSize, unitSize, (char *)&info);
+            if (i == 0) { // entity info
+                role = static_cast<smem_trans_role_t>(info.u.session.reserved);
+                info.u.session.reserved = 0U;
+                WorkerIdUnion workerId{info.u.session};
+                id = workerId.workerId;
+                if (isEntity) {
+                    int ret = hybm_import(entity_, &info.hybmInfo, 1U, nullptr, HYBM_FLAG_EXPORT_ENTITY);
+                    if (ret != SM_OK) {
+                        SM_LOG_ERROR("hybm import entity failed, result: " << ret << " remote_rank:" << it.first
+                                                                           << " local_rank:" << rankId_);
+                        return ret;
+                    }
+                }
+            } else { // slice info
+                if (isEntity) {
+                    continue;
+                }
+                hybmInfos.push_back(info.hybmInfo);
+                local.push_back(info.u.address);
+            }
+        }
+
+        if (!hybmInfos.empty() && role != config_.role) {
+            global = std::vector<void *>(hybmInfos.size(), nullptr);
+            int ret = hybm_import(entity_, hybmInfos.data(), hybmInfos.size(), global.data(), 0);
+            if (ret != SM_OK) {
+                SM_LOG_ERROR("hybm import slice failed, result: " << ret << " remote_rank:" << it.first
+                                                                  << " local_rank:" << rankId_);
+                return ret;
+            }
+        }
+        AddRemoteInfo(it.first, role, id, global, local);
+        SM_LOG_DEBUG("add remote session:" << uniqueToString(id) << " entity_id:" << entityId_);
+        rankUpdateIdx_[it.first] = num;
+    }
+
+    return SM_OK;
 }
 
 Result SmemTransEntry::JoinHandle(uint32_t rk)
@@ -213,7 +287,6 @@ Result SmemTransEntry::JoinHandle(uint32_t rk)
     SM_LOG_INFO("do join func, local_rk: " << rankId_ << " receive_rk: " << rk
                                            << ", rank size is: " << globalGroup_->GetRankSize());
 
-    uint32_t unitSize = sizeof(SmemTransExchangeInfo);
     std::string localInfo;
     if (rk == rankId_) {
         localInfo = std::string((char *) &entityInfo_, sizeof(SmemTransExchangeInfo));
@@ -227,66 +300,26 @@ Result SmemTransEntry::JoinHandle(uint32_t rk)
         if (it.first == rankId_) {
             continue;
         }
-        if (it.second.length() % unitSize != 0) {
-            SM_LOG_ERROR("receive exchange info size is invalid!, size:" << it.second.length() << " rank:" << it.first);
-            ret = SM_INVALID_PARAM;
-            goto join_exit;
-        }
-
-        WorkerId id;
-        smem_trans_role_t role = SMEM_TRANS_BUTT;
-        SmemTransExchangeInfo info;
-        std::vector<LocalMapAddress> local;
-        std::vector<hybm_exchange_info> hybmInfos;
-        std::vector<void *> global;
-        uint32_t num = it.second.length() / unitSize;
         joined.push_back(it.first);
-        for (uint32_t i = 0; i < num; i++) {
-            (void)std::copy_n(it.second.c_str() + i * unitSize, unitSize, (char *)&info);
-            if (i == 0) { // entity info
-                role = static_cast<smem_trans_role_t>(info.u.session.reserved);
-                info.u.session.reserved = 0U;
-                WorkerIdUnion workerId{info.u.session};
-                id = workerId.workerId;
-                ret = hybm_import(entity_, &info.hybmInfo, 1U, nullptr, HYBM_FLAG_EXPORT_ENTITY);
-                if (ret != SM_OK) {
-                    SM_LOG_ERROR("hybm import entity failed, result: " << ret << " remote_rank:" << it.first
-                                                                       << " local_rank:" << rankId_);
-                    goto join_exit;
-                }
-            } else { // slice info
-                hybmInfos.push_back(info.hybmInfo);
-                local.push_back(info.u.address);
-            }
-        }
-
-        if (!hybmInfos.empty() && role != config_.role) {
-            global = std::vector<void *>(hybmInfos.size(), nullptr);
-            ret = hybm_import(entity_, hybmInfos.data(), hybmInfos.size(), global.data(), 0);
-            if (ret != SM_OK) {
-                SM_LOG_ERROR("hybm import slice failed, result: " << ret << " remote_rank:" << it.first
-                                                                  << " local_rank:" << rankId_);
-                goto join_exit;
-            }
-        }
-        AddRemoteInfo(it.first, role, id, global, local);
-        rankUpdateIdx_[it.first] = num;
     }
 
+    ret = JoinImport(allInfo, true);
     ret = GroupOpBarrier(ret);
     if (ret != SM_OK) {
         SM_LOG_ERROR("hybm barrier before mmap failed, result: " << ret);
         goto rollback_exit;
     }
 
-    FIP_START(MMAP, &ret)
-    ret = hybm_mmap(entity_, 0);
-    FIP_END;
+    ret = JoinImport(allInfo, false);
     if (ret != SM_OK) {
-        SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+        SM_LOG_ERROR("hybm import slice failed, result: " << ret);
+    } else {
+        ret = hybm_mmap(entity_, 0);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("hybm mmap failed, result: " << ret);
+        }
     }
 
-join_exit:
     ret = GroupOpBarrier(ret);
     if (ret != SM_OK) {
         SM_LOG_ERROR("hybm barrier after mmap failed, result: " << ret);
@@ -449,11 +482,8 @@ hybm_mem_slice_t SmemTransEntry::RemoveSlice(void *addr)
 
 void* SmemTransEntry::MallocDram(uint64_t size)
 {
-    if (size == 0) {
-        SM_LOG_ERROR("malloc failed, invalid size 0.");
-        return nullptr;
-    }
-
+    SM_VALIDATE_RETURN((config_.flags & SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG), "not set support dram", nullptr);
+    SM_VALIDATE_RETURN((size != 0), "malloc failed, invalid size 0.", nullptr);
     if (size > TRANS_RESERVE_DRAM_VA_SIZE) {
         SM_LOG_ERROR("malloc failed, invalid size:" << size << ", should be less than or equal "
                                                     << TRANS_RESERVE_DRAM_VA_SIZE);
@@ -501,10 +531,8 @@ void* SmemTransEntry::MallocDram(uint64_t size)
 
 Result SmemTransEntry::FreeDram(void *address)
 {
-    if (address == nullptr) {
-        SM_LOG_ERROR("invalid address pointer.");
-        return SM_INVALID_PARAM;
-    }
+    SM_VALIDATE_RETURN((config_.flags & SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG), "not set support dram", SM_INVALID_PARAM);
+    SM_VALIDATE_RETURN((address != nullptr), "invalid address pointer.", SM_INVALID_PARAM);
 
     auto slice = RemoveSlice(address);
     if (slice == nullptr) {
@@ -559,19 +587,6 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
     registedInfo_.clear();
     SM_VALIDATE_RETURN(ret == SM_OK, "update failed, rk:" << rankId_ << " ret:" << ret, ret);
     return SM_OK;
-}
-
-static std::string uniqueToString(const WorkerId &unique)
-{
-    std::ostringstream oss;
-    constexpr int WIDTH = 2;
-    for (size_t i = 0; i < unique.size(); ++i) {
-        oss << std::hex << std::setw(WIDTH) << std::setfill('0') << static_cast<int>(unique[i]);
-        if (i < unique.size() - 1) {
-            oss << ":";
-        }
-    }
-    return oss.str();
 }
 
 Result SmemTransEntry::SyncTransfer(void *localAddr, const std::string &remoteUniqueId, void *remoteAddr,
@@ -716,7 +731,7 @@ Result SmemTransEntry::BatchQuantTransfer(smem_trans_quant_copy_param_t *params,
 }
 
 bool SmemTransEntry::ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port,
-                                    uint16_t &reserved)
+                                    uint32_t &reserved)
 {
     UrlExtraction extraction;
     std::vector<std::string> splitRes = mf::StrUtil::Split(name, '_');
@@ -782,7 +797,7 @@ Result SmemTransEntry::ParseNameToUniqueId(const std::string &name, WorkerId &un
         uniqueId = it->second;
         return SM_OK;
     }
-    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port, workerUniqueId.reserved);
+    auto success = ParseTransName(name, workerUniqueId.address, workerUniqueId.port, workerUniqueId.pid);
     if (!success) {
         SM_LOG_ERROR("parse name failed.");
         return SM_INVALID_PARAM;
@@ -857,14 +872,18 @@ hybm_options SmemTransEntry::GenerateHybmOptions()
 {
     hybm_options options{};
     options.bmType = HYBM_TYPE_HOST_INITIATE;
-    options.memType = static_cast<hybm_mem_type>(HYBM_MEM_TYPE_DEVICE | HYBM_MEM_TYPE_HOST);
-    options.rankCount = 512U;
+    options.memType = static_cast<hybm_mem_type>(HYBM_MEM_TYPE_DEVICE);
+    options.rankCount = SMEM_TRANS_RANK_COUNT_MAX;
     options.rankId = rankId_;
     options.devId = config_.deviceId;
     options.deviceVASpace = 0;
-    options.hostVASpace = TRANS_RESERVE_DRAM_VA_SIZE;
     options.maxHBMSize = TRANS_RESERVE_HBM_VA_SIZE;
-    options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
+    if (config_.flags & SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG) {
+        SM_LOG_INFO("smem_trans set to support dram malloc. rankId:" << rankId_);
+        options.memType = static_cast<hybm_mem_type>(HYBM_MEM_TYPE_DEVICE | HYBM_MEM_TYPE_HOST);
+        options.hostVASpace = TRANS_RESERVE_DRAM_VA_SIZE;
+        options.maxDRAMSize = TRANS_RESERVE_DRAM_VA_SIZE;
+    }
     options.scene = HYBM_SCENE_TRANS;
     options.role = config_.role == SMEM_TRANS_SENDER ? HYBM_ROLE_SENDER : HYBM_ROLE_RECEIVER;
     options.dramShmFd = -1;

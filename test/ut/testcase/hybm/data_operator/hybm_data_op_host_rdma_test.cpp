@@ -52,6 +52,11 @@ public:
         return queryMemoryKeyResult;
     }
 
+    void UpdateMemoryKey(ock::mf::transport::TransportMemoryKey &key, void *addr) noexcept override
+    {
+        return;
+    }
+
     ock::mf::Result Prepare(const ock::mf::transport::HybmTransPrepareOptions &options) noexcept override
     {
         prepareCount++;

@@ -38,9 +38,10 @@ public:
                                         hybm_mem_slice_t &slice) noexcept = 0;
     virtual int32_t FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept = 0;
 
-    virtual int32_t ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept = 0;
-    virtual int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept = 0;
-    virtual int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
+    virtual int32_t ExportEntityExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept = 0;
+    virtual int32_t ExportSliceExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc,
+                                            uint32_t flags) noexcept = 0;
+    virtual int32_t ImportSliceExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
                                        uint32_t flags) noexcept = 0;
     virtual int32_t ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count,
                                              uint32_t flags) noexcept = 0;

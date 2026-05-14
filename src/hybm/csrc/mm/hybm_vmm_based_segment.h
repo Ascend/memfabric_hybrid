@@ -36,7 +36,7 @@ struct HostSdmaExportInfo {
 
 static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
               "HostSdmaExportInfo must be 200 bytes, "
-              "compatible with HbmExportDeviceInfo and HbmExportSliceInfo");
+              "compatible with HbmExportDeviceInfo and UserHbmExportSliceInfo");
 static_assert(offsetof(HostSdmaExportInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmVmmBasedSegment : public MemSegment {

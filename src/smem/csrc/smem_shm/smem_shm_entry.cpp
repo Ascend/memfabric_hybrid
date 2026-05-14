@@ -245,7 +245,7 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
 {
     hybm_exchange_info exInfo;
     bzero(&exInfo, sizeof(exInfo));
-    auto ret = hybm_export(entity_, nullptr, 0, &exInfo);
+    auto ret = hybm_export(entity_, nullptr, HYBM_FLAG_EXPORT_ENTITY, &exInfo);
     if (ret != 0) {
         SM_LOG_ERROR("hybm export entity failed, result: " << ret);
         return ret;
@@ -264,7 +264,7 @@ int32_t SmemShmEntry::InitStepExchangeEntity()
         return ret;
     }
 
-    ret = hybm_import(entity_, allExInfo, options_.rankCount, nullptr, 0);
+    ret = hybm_import(entity_, allExInfo, options_.rankCount, nullptr, HYBM_FLAG_EXPORT_ENTITY);
     if (ret != 0) {
         SM_LOG_ERROR("hybm import entity failed, result: " << ret);
         delete[] allExInfo;

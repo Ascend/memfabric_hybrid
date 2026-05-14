@@ -31,7 +31,7 @@ Result HybmVaManager::Initialize(AscendSocType socType) noexcept
     return BM_OK;
 }
 
-Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
+Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info, bool onlyGva)
 {
     if (info.base.size == 0) {
         BM_LOG_INFO("gva:" << info.base.va[HVM_GVA] << " size:0, skip add va info");
@@ -43,6 +43,9 @@ Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
     }
     std::unique_lock<std::shared_mutex> lock(mutex_);
     for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (onlyGva && (i != HVM_GVA)) {
+            continue;
+        }
         if (info.base.va[i] != 0) {
             auto old = CheckOverlap(info.base.va[i], info.base.size, i);
             if (old.first && old.second != info) {
@@ -57,6 +60,9 @@ Result HybmVaManager::AddVaInfo(const AllocatedGvaInfo &info)
     }
 
     for (uint32_t i = 0; i < HVM_BUTT; i++) {
+        if (onlyGva && (i != HVM_GVA)) {
+            continue;
+        }
         if (info.base.va[i] != 0) {
             allocatedMap_[i][info.base.va[i]] = info;
         }
@@ -79,10 +85,10 @@ Result HybmVaManager::AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo
     return BM_OK;
 }
 
-Result HybmVaManager::AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId)
+Result HybmVaManager::AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId, bool onlyGva)
 {
     AllocatedGvaInfo info(baseInfo, localRankId);
-    const auto ret = AddVaInfo(info);
+    const auto ret = AddVaInfo(info, onlyGva);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
     BM_LOG_INFO("AddVaInfo success: " << info);
     return BM_OK;
@@ -234,7 +240,7 @@ bool HybmVaManager::IsValidAddr(uint64_t va)
 }
 
 ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize,
-                                               hybm_mem_type memType, bool enable56BitsGva)
+                                               hybm_mem_type memType, bool enable56BitsGva, bool isTrans)
 {
     ReservedGvaInfo result;
     uint32_t t = HVM_DVA; // reserve device va all
@@ -255,6 +261,10 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     if (enable56BitsGva) {
         uint64_t startAddr = HYBM_56BITS_GVA_START_ADDR;
         uint64_t endAddr = HYBM_56BITS_GVA_END_ADDR;
+        if (isTrans) {
+            startAddr = HYBM_TRANS_GVA_START_ADDR;
+            endAddr = HYBM_TRANS_GVA_END_ADDR;
+        }
         uint64_t upperLimit = endAddr - startAddr;
         if (size > upperLimit) {
             BM_LOG_ERROR("Failed to reserve size:" << size << ", upper limit size:" << upperLimit);

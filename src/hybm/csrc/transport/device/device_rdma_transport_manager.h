@@ -43,6 +43,7 @@ public:
     Result UnregisterMemoryRegion(uint64_t addr) override;
     bool QueryHasRegistered(uint64_t addr, uint64_t size) override;
     Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) override;
+    void UpdateMemoryKey(TransportMemoryKey &key, void *addr) override;
     Result Prepare(const HybmTransPrepareOptions &options) override;
     Result RemoveRanks(const std::vector<uint32_t> &removedRanks) override;
     Result Connect() override;

@@ -187,6 +187,11 @@ public:
         std::memset(&key, 0, sizeof(key));
         return BM_OK;
     }
+    void UpdateMemoryKey(ock::mf::transport::TransportMemoryKey &key, void *addr) noexcept override
+    {
+        return;
+    }
+
     ock::mf::Result Prepare(const ock::mf::transport::HybmTransPrepareOptions &options) override
     {
         prepareCalled++;
@@ -380,13 +385,13 @@ TEST_F(HybmEntityDefaultTest, Initialize_UnInitialize)
 
     hybm_mem_slice_t slice = nullptr;
     // 测试内存分配（已初始化的情况）size 非法
-    auto allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
+    auto allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, 0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
     EXPECT_EQ(slice, nullptr);
 
     // 测试内存分配（已初始化的情况）dramSegment_ 为空
     entity.dramSegment_ = nullptr;
-    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_HOST, 0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
     EXPECT_EQ(slice, nullptr);
 
@@ -451,12 +456,12 @@ TEST_F(HybmEntityDefaultTest, Alloc_Free_LocalMemory)
     hybm_mem_slice_t slice = nullptr;
 
     // 测试内存分配（未初始化的情况）
-    int32_t allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
+    int32_t allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, 0, slice);
     EXPECT_EQ(allocRet, BM_NOT_INITIALIZED);
     EXPECT_EQ(slice, nullptr);
 
     // 测试内存释放（未初始化的情况）
-    int32_t freeRet = entity.FreeLocalMemory(slice, TEST_RANK_0);
+    int32_t freeRet = entity.FreeLocalMemory(slice, 0);
     EXPECT_EQ(freeRet, BM_INVALID_PARAM);
 
     // 测试初始化
@@ -487,10 +492,10 @@ TEST_F(HybmEntityDefaultTest, Alloc_Free_LocalMemory)
     int32_t initRet = entity.Initialize(&options);
     EXPECT_EQ(initRet, BM_OK);
 
-    allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, TEST_RANK_0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_SMALL_SIZE, HYBM_MEM_TYPE_HOST, 0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
 
-    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_DEVICE, TEST_RANK_0, slice);
+    allocRet = entity.AllocLocalMemory(TEST_PAGE_SIZE, HYBM_MEM_TYPE_DEVICE, 0, slice);
     EXPECT_EQ(allocRet, BM_INVALID_PARAM);
 
     freeRet = entity.FreeLocalMemory(slice, TEST_RANK_0);
@@ -546,11 +551,11 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo)
     ock::mf::ExchangeInfoWriter writer(&hbmSliceInfo);
 
     // 测试导出实体信息（未初始化的情况）
-    int32_t exportRet = entity.ExportExchangeInfo(writer, TEST_RANK_0);
+    int32_t exportRet = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 
     // 测试导出切片信息（未初始化的情况）
-    exportRet = entity.ExportExchangeInfo(nullptr, writer, TEST_RANK_0);
+    exportRet = entity.ExportSliceExchangeInfo(nullptr, writer, 0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 }
 
@@ -562,7 +567,9 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
     void *addresses[TEST_RANK_COUNT_1] = {nullptr};
 
     // 测试导入切片信息（未初始化的情况）
-    int32_t importRet = entity.ImportExchangeInfo(&info, TEST_RANK_COUNT_1, addresses, TEST_RANK_0);
+    ock::mf::ExchangeInfoReader readers;
+    readers.Reset(&info);
+    int32_t importRet = entity.ImportSliceExchangeInfo(&readers, TEST_RANK_COUNT_1, addresses, 0);
     EXPECT_EQ(importRet, BM_NOT_INITIALIZED);
 
     // 测试初始化
@@ -576,7 +583,7 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
         .stubs()
         .will(returnValue(0));
 
-    importRet = entity.ImportExchangeInfo(&info, TEST_RANK_COUNT_1, addresses, TEST_RANK_0);
+    importRet = entity.ImportSliceExchangeInfo(&readers, TEST_RANK_COUNT_1, addresses, 0);
     EXPECT_EQ(importRet, BM_OK);
 
     entity.UnInitialize();
@@ -776,7 +783,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_TransScene_UsesLocateAddrAndRank)
     uint64_t dataSize = TEST_DATA_SIZE;
     params.dataSize = dataSize;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 }
 
@@ -806,7 +813,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_DataCopyFail_ReturnErrorCode)
     uint64_t dataSize = TEST_DATA_SIZE;
     params.dataSize = dataSize;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
@@ -834,7 +841,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseLocalRankForAddrOutOfGvm
     params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
     params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
     EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_6);
@@ -878,7 +885,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseRankFromVaManagerInSocRa
     params.dest = reinterpret_cast<void *>(ock::mf::HYBM_GVM_START_ADDR + TEST_ADDR_OFFSET_5);
     params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
     EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_11);
@@ -918,7 +925,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_A5Soc_UseRankFromVaManagerI
     params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
     params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
     EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_13);
@@ -950,7 +957,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaOutOfA5Range
     params.dest = reinterpret_cast<void *>(TEST_ADDR_DST);
     params.dataSize = TEST_DATA_SIZE;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
     EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
@@ -982,7 +989,7 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutR
     params.dest = reinterpret_cast<void *>(0x2222);
     params.dataSize = 4096ULL;
 
-    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_TRUE(dop->dataCopyCalled);
     EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
@@ -1003,7 +1010,7 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_DataOperatorNull_ReturnError)
 
     hybm_batch_copy_params params{};
     params.batchSize = TEST_BATCH_SIZE_1;
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
@@ -1031,7 +1038,7 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_GroupAndSuccess)
     uint32_t batchSize = TEST_BATCH_SIZE_2;
     params.batchSize = batchSize;
 
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_OK);
 }
 
@@ -1063,7 +1070,7 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData_BatchCopyFail_ReturnErrorCode)
     params.dataSizes = sizes;
     params.batchSize = TEST_BATCH_SIZE_1;
 
-    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    auto ret = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(ret, BM_ERROR);
 }
 
@@ -1172,7 +1179,7 @@ TEST_F(HybmEntityDefaultTest, CopyData)
     hybm_copy_params params{};
 
     // 测试数据复制（未初始化的情况）
-    int32_t copyRet = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    int32_t copyRet = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(copyRet, BM_NOT_INITIALIZED);
 }
 
@@ -1184,7 +1191,7 @@ TEST_F(HybmEntityDefaultTest, BatchCopyData)
     hybm_batch_copy_params params{};
 
     // 测试批量数据复制（未初始化的情况）
-    int32_t batchCopyRet = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, TEST_RANK_0);
+    int32_t batchCopyRet = entity.BatchCopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
     EXPECT_EQ(batchCopyRet, BM_NOT_INITIALIZED);
 }
 
@@ -1385,66 +1392,11 @@ TEST_F(HybmEntityDefaultTest, ImportEntityExchangeInfo_Basic)
     ock::mf::ExchangeInfoReader readers[TEST_RANK_COUNT_2] = {
         ock::mf::ExchangeInfoReader(&ex0), ock::mf::ExchangeInfoReader(&ex1)
     };
-    auto ret = entity.ImportEntityExchangeInfo(readers, TEST_RANK_COUNT_2, TEST_RANK_0);
+    auto ret = entity.ImportEntityExchangeInfo(readers, TEST_RANK_COUNT_2, 0);
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_0), "tag_0");
     EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_1), "tag_1");
     EXPECT_TRUE(entity.transportPrepared_);
-}
-
-TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
-{
-    int32_t deviceId = TEST_DEVICE_ID_TRANS_PRECHECK;
-    ock::mf::MemEntityDefault entity(deviceId);
-
-    // desc[0]: entity export info
-    hybm_exchange_info exEntity{};
-    bzero(&exEntity, sizeof(exEntity));
-    ock::mf::ExchangeInfoWriter wEntity(&exEntity);
-    ock::mf::EntityExportInfo e0{};
-    uint32_t rankId = TEST_RANK_3;
-    e0.rankId = rankId;
-    e0.role = static_cast<uint16_t>(HYBM_ROLE_PEER);
-    std::strncpy(e0.tag, "tag_3", sizeof(e0.tag) - 1);
-    std::strncpy(e0.nic, "nic3", sizeof(e0.nic) - 1);
-    wEntity.Append(e0);
-
-    // desc[1]: slice transport key
-    hybm_exchange_info exSlice{};
-    bzero(&exSlice, sizeof(exSlice));
-    ock::mf::ExchangeInfoWriter wSlice(&exSlice);
-    ock::mf::SliceExportTransportKey k0(ock::mf::DRAM_SLICE_EXPORT_INFO_MAGIC, rankId, TEST_KEY_OFFSET);
-    std::memset(&k0.key, 0, sizeof(k0.key));
-    k0.key.keys[0] = TEST_KEY_VALUE_1;
-    wSlice.Append(k0);
-
-    bool importInfoEntity = false;
-    uint32_t count = TEST_RANK_COUNT_2;
-    ock::mf::ExchangeInfoReader descArr[count] = {ock::mf::ExchangeInfoReader(&exEntity),
-                                                  ock::mf::ExchangeInfoReader(&exSlice)};
-    auto ret = entity.ImportForTransportPrecheck(descArr, count, importInfoEntity);
-    EXPECT_EQ(ret, BM_OK);
-    EXPECT_TRUE(importInfoEntity);
-    EXPECT_EQ(entity.importedRanks_.count(rankId), 1U);
-    EXPECT_EQ(entity.importedMemories_.count(rankId), 1U);
-    ASSERT_EQ(entity.importedMemories_[rankId].size(), TEST_RANK_COUNT_1);
-    EXPECT_EQ(entity.importedMemories_[rankId].begin()->keys[0], TEST_KEY_VALUE_1);
-}
-
-TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_InvalidMagic_Fail)
-{
-    int32_t deviceId = TEST_DEVICE_ID_TRANS_PRECHECK_INVALID;
-    ock::mf::MemEntityDefault entity(deviceId);
-    hybm_exchange_info exInfo{};
-    bzero(&exInfo, sizeof(exInfo));
-    ock::mf::ExchangeInfoWriter writer(&exInfo);
-    uint64_t badMagic = TEST_INVALID_MAGIC;
-    writer.Append(badMagic);
-    ock::mf::ExchangeInfoReader desc(&exInfo);
-    bool importInfoEntity = false;
-    uint32_t count = TEST_RANK_COUNT_1;
-    auto ret = entity.ImportForTransportPrecheck(&desc, count, importInfoEntity);
-    EXPECT_NE(ret, BM_OK);
 }
 
 TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
@@ -1472,13 +1424,12 @@ TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
     entity.importedMemories_[TEST_RANK_1] = std::set<ock::mf::transport::TransportMemoryKey>{k1, k2};
 
     // importInfoEntity = true will also import tag and update device info (bmType host => no memcpy)
-    auto ret = entity.ImportForTransport(true);
+    auto ret = entity.ImportForTransport();
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(fake->connectWithOptionsCalled, 1);
     ASSERT_EQ(fake->connectWithOptions.options.count(TEST_RANK_1), 1U);
     EXPECT_EQ(fake->connectWithOptions.options.at(TEST_RANK_1).nic, std::string("nic1"));
     EXPECT_EQ(fake->connectWithOptions.options.at(TEST_RANK_1).memKeys.size(), TEST_RANK_COUNT_2);
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(TEST_RANK_1), "tag_1");
 }
 
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
@@ -1497,7 +1448,7 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
     bzero(&ex, sizeof(ex));
     ock::mf::ExchangeInfoWriter writer(&ex);
 
-    auto ret = entity.ExportExchangeInfo(writer, 0);
+    auto ret = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_NE(ret, BM_OK);
 }
 
@@ -1514,7 +1465,7 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_AppendFail_ReturnError)
 
     // writer with nullptr forces Append() to fail (BM_ASSERT_RETURN -> -1)
     ock::mf::ExchangeInfoWriter badWriter(nullptr);
-    auto ret = entity.ExportExchangeInfo(badWriter, TEST_RANK_0);
+    auto ret = entity.ExportEntityExchangeInfo(badWriter, TEST_RANK_0);
     EXPECT_NE(ret, BM_OK);
 }
 
@@ -1535,6 +1486,6 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_TransScene_HbmSegmentNull_Retur
     bzero(&ex, sizeof(ex));
     ock::mf::ExchangeInfoWriter writer(&ex);
 
-    auto ret = entity.ExportExchangeInfo(writer, 0);
+    auto ret = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_NE(ret, BM_OK);
 }

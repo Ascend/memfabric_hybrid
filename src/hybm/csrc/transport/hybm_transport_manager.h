@@ -54,6 +54,8 @@ public:
 
     virtual Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) = 0;
 
+    virtual void UpdateMemoryKey(TransportMemoryKey &key, void *addr) = 0;
+
     /*
      * 3、建链前的准备工作
      * @return 0 if successful

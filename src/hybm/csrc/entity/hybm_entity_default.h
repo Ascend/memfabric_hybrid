@@ -36,14 +36,13 @@ struct EntityExportInfo {
     transport::TransportPrivateData transportPrivateData{};
 };
 struct SliceExportTransportKey {
-    uint64_t magic;
     uint32_t rankId;
     uint16_t reserved[2]{};
     uint64_t address;
     transport::TransportMemoryKey key;
     SliceExportTransportKey() : SliceExportTransportKey{0, 0, 0} {}
     SliceExportTransportKey(uint64_t mag, uint32_t rank, uint64_t addr)
-        : magic{mag}, rankId{rank}, address{addr}, key{0}
+        : rankId{rank}, address{addr}, key{0}
     {}
 };
 
@@ -65,12 +64,10 @@ public:
                                 hybm_mem_slice_t &slice) noexcept override;
     int32_t FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags) noexcept override;
 
-    int32_t ExportExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
-    int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
-    int32_t ImportExchangeInfo(const hybm_exchange_info allExInfo[], uint32_t count, void *addresses[],
-                               uint32_t flags) noexcept;
-    int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
-                               uint32_t flags) noexcept override;
+    int32_t ExportEntityExchangeInfo(ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
+    int32_t ExportSliceExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter &desc, uint32_t flags) noexcept override;
+    int32_t ImportSliceExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void *addresses[],
+                                    uint32_t flags) noexcept override;
     int32_t ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, uint32_t flags) noexcept override;
     int32_t RemoveImported(const std::vector<uint32_t> &ranks) noexcept override;
 
@@ -95,7 +92,7 @@ private:
     int32_t LoadExtendLibrary() noexcept;
     int32_t UpdateHybmDeviceInfo(uint32_t extCtxSize) noexcept;
     void SetHybmDeviceInfo(HybmDeviceMeta &info);
-    int32_t ImportForTransport(bool importInfoEntity) noexcept;
+    int32_t ImportForTransport() noexcept;
     int32_t ImportForSegment(const ExchangeInfoReader desc[], uint32_t count, void *addresses[]) noexcept;
     Result LocateAddrAndRank(void *&src, void *&dest, std::pair<uint32_t, uint32_t> &p2pInfo) noexcept;
 
@@ -108,10 +105,9 @@ private:
 
     void ReleaseResources();
     int32_t SetThreadAclDevice();
-    int32_t ExportWithoutSlice(ExchangeInfoWriter &desc, uint32_t flags);
     int32_t ImportForTagManager();
     int32_t ImportForTransportManager();
-    int32_t ImportForTransportPrecheck(const ExchangeInfoReader *desc, uint32_t &count, bool &importInfoEntity);
+    int32_t ImportForTransportPrecheck(const ExchangeInfoReader *desc, uint32_t &count, void *addresses[]);
 
 private:
     static thread_local bool isSetDevice_;

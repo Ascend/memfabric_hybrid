@@ -44,7 +44,10 @@ struct HbmExportInfo {
     MemSegInfoExchangeType exchangeType{};
     uint8_t deviceId{0};
     char shmName[DEVICE_SHM_NAME_SIZE + 1U]{};
+
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 160]{};
 };
+static_assert(sizeof(HbmExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HbmExportInfo must be 192 bytes");
 
 class HybmDevLegacySegment : public MemSegment {
 public:

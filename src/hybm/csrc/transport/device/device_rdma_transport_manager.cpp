@@ -216,6 +216,17 @@ Result RdmaTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     return BM_OK;
 }
 
+void RdmaTransportManager::UpdateMemoryKey(TransportMemoryKey &key, void *addr)
+{
+    RegMemKeyUnion keyUnion{};
+    keyUnion.commonKey = key;
+    if (addr != nullptr) {
+        BM_LOG_DEBUG("update address from 0x" << std::hex << keyUnion.deviceKey.address << " to " << addr);
+        keyUnion.deviceKey.address = reinterpret_cast<uint64_t>(addr);
+        key = keyUnion.commonKey;
+    }
+}
+
 Result RdmaTransportManager::Prepare(const HybmTransPrepareOptions &options)
 {
     int ret;
@@ -862,7 +873,7 @@ void RdmaTransportManager::OptionsToRankMRs(const HybmTransPrepareOptions &optio
             keyUnion.commonKey = key;
             auto &devKey = keyUnion.deviceKey;
             uint64_t dva = HybmVaManager::GetInstance().TransformVa(devKey.address, HVM_GVA, HVM_DVA);
-            BM_LOG_INFO("Success to query memory key rank:" << node << " gva:" << std::hex
+            BM_LOG_INFO("query memory key rank:" << node << " gva:" << std::hex
                         << keyUnion.deviceKey.address << " dva:" << dva << " size:" << keyUnion.deviceKey.size);
             if (dva != 0) {
                 devKey.address = dva;

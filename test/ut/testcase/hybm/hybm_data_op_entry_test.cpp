@@ -77,17 +77,17 @@ public:
         return BM_OK;
     }
 
-    int32_t ExportExchangeInfo(ExchangeInfoWriter& desc, uint32_t flags) noexcept override
+    int32_t ExportEntityExchangeInfo(ExchangeInfoWriter& desc, uint32_t flags) noexcept override
     {
         return BM_OK;
     }
 
-    int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter& desc, uint32_t flags) noexcept override
+    int32_t ExportSliceExchangeInfo(hybm_mem_slice_t slice, ExchangeInfoWriter& desc, uint32_t flags) noexcept override
     {
         return BM_OK;
     }
-    int32_t ImportExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void* addresses[],
-                               uint32_t flags) noexcept override
+    int32_t ImportSliceExchangeInfo(const ExchangeInfoReader desc[], uint32_t count, void* addresses[],
+                                    uint32_t flags) noexcept override
     {
         return BM_OK;
     }
