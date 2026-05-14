@@ -21,8 +21,19 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 include(cmake/config_version.cmake)
-include(cmake/config_ascendc.cmake)
-include(cmake/config_pybind_torch.cmake)
+
+if (BUILD_ZBAL_MODULE_UT)
+    # UT mode: only need ASCEND_HOME_PATH for CANN headers, skip kernel/torch/pybind cmake
+    set(ASCEND_HOME_PATH "$ENV{ASCEND_HOME_PATH}" CACHE PATH "ASCEND CANN package installation directory")
+    set(TORCH_DIR "" CACHE PATH "Torch directory (not required for UT)")
+    set(TORCH_NPU_DIR "" CACHE PATH "Torch NPU directory (not required for UT)")
+    set(PYBIND11_DIR "" CACHE PATH "Pybind11 directory (not required for UT)")
+    set(CPYTHON_DIR "" CACHE PATH "CPython directory (not required for UT)")
+else ()
+    include(cmake/config_ascendc.cmake)
+    include(cmake/config_pybind_torch.cmake)
+endif ()
+
 include(cmake/config_git_last_commit.cmake)
 
 set(ZBAL_BASE_DIR ${PROJECT_SOURCE_DIR})
@@ -46,10 +57,12 @@ else ()
     add_compile_options(-g -rdynamic)
 endif ()
 
+if (BUILD_ZBAL_MODULE_UT)
+    message(STATUS "test： unit test build is required")
+endif ()
+
 add_subdirectory(src/csrc)
 
 if (BUILD_ZBAL_MODULE_UT)
-    message(STATUS "test： unit test build is required")
-    add_compile_definitions(UNIT_TEST=1)
     add_subdirectory(test)
 endif ()

@@ -126,6 +126,10 @@ ZResult Communicator::GetGlobalComm(zbal_comm_t *comm)
 
 ZResult Communicator::GetCommProperty(const zbal_comm_t comm, zbal_comm_property_t *property)
 {
+    if (comm == nullptr) {
+        return Z_INVALID_PARAM;
+    }
+
     CommunicatorPtr outComm = nullptr;
     {
         if (reinterpret_cast<uintptr_t>(comm) == reinterpret_cast<uintptr_t>(gWorldCommunicator.Get())) {

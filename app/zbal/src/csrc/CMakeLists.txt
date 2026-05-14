@@ -22,7 +22,6 @@ include_directories(
         ${TORCH_NPU_DIR}/include
         ${PYBIND11_DIR}/include
         ${CPYTHON_DIR}/
-        ${ZBAL_BASE_DIR}
         ${ZBAL_BASE_DIR}/third_party/ska
         ${ZBAL_BASE_DIR}/third_party/mstx
         ${ZBAL_SRC_DIR}/include
@@ -45,7 +44,14 @@ option(DISABLE_ADAPTOR_COMPILE "Disable the adapter module" OFF)
 option(DISABLE_ALLOCATOR_COMPILE "Disable the allocator module" OFF)
 option(DISABLE_SHARE_COMPILE "Disable the share lib install" OFF)
 
-add_subdirectory(operators/npu/device/)
+if (BUILD_ZBAL_MODULE_UT)
+    # UT mode: device kernels require ascendc compiler, not available
+    add_library(zbal_kernel INTERFACE)
+    include_directories(${ZBAL_BASE_DIR}/test/ut/mock)
+    message(STATUS "app/zbal: [ut] skipping device kernel compilation, using stub zbal_kernel")
+else ()
+    add_subdirectory(operators/npu/device/)
+endif ()
 
 # we seperated those files for ut with different modules
 
@@ -77,6 +83,7 @@ target_compile_options(boostrap_objects PRIVATE -fPIC)
 file(GLOB OPERATORS_SRC
         ${ZBAL_SRC_DIR}/csrc/operators/*.cpp
         ${ZBAL_SRC_DIR}/csrc/operators/npu/*.cpp)
+message(STATUS "app/zbal: [ut] operators_objects: including npu backend")
 add_library(operators_objects OBJECT ${OPERATORS_SRC})
 target_link_libraries(operators_objects PRIVATE zbal_kernel) # link not work on object, only for compile pass
 target_compile_options(operators_objects PRIVATE -fPIC)

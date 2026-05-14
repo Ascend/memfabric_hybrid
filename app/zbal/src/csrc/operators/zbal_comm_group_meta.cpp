@@ -55,6 +55,11 @@ void GroupMetaArranger::UnInitialize() noexcept
 
 ZResult GroupMetaArranger::Verify() noexcept
 {
+    if (commGroupCap_ == 0) {
+        ZBAL_LOG_ERROR("Group count cap cannot be zero");
+        return Z_ERROR;
+    }
+
     uint64_t tmpSize = singleMetaSpaceSize_ * commGroupCap_;
     if (totalMetaSpaceSize_ >= tmpSize) {
         return Z_OK;
