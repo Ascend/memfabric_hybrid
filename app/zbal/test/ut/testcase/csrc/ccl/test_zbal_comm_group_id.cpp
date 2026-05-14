@@ -67,3 +67,42 @@ TEST_F(TestZBALCommGroupId, MoveIdAndGatheredInfo)
     /* gid2's id should be reset to UINT16_MAX */
     EXPECT_EQ(gid2.Id(), UINT16_MAX);
 }
+
+TEST_F(TestZBALCommGroupId, MoveIdAndGatheredInfoSelf)
+{
+    AutoReleaseGroupId gid1(128, 4, 0, 0, "g1");
+    /* self-move should be a no-op */
+    gid1.MoveIdAndGatheredInfo(gid1);
+    EXPECT_EQ(gid1.Id(), UINT16_MAX);
+}
+
+TEST_F(TestZBALCommGroupId, ReleaseMultipleTimes)
+{
+    AutoReleaseGroupId groupId(128, 4, 0, 0, "test");
+    /* multiple releases without acquire should not crash */
+    groupId.Release();
+    groupId.Release();
+    groupId.Release();
+    EXPECT_EQ(groupId.Id(), static_cast<uint16_t>(-1));
+}
+
+TEST_F(TestZBALCommGroupId, AcquireWithZeroGroupSize)
+{
+    AutoReleaseGroupId groupId(0, 4, 0, 0, "test");
+    auto result = groupId.Acquire();
+    EXPECT_NE(result, Z_OK);
+}
+
+TEST_F(TestZBALCommGroupId, AcquireWithZeroRankCount)
+{
+    AutoReleaseGroupId groupId(128, 0, 0, 0, "test");
+    auto result = groupId.Acquire();
+    EXPECT_NE(result, Z_OK);
+}
+
+TEST_F(TestZBALCommGroupId, DefaultGroupInfo)
+{
+    AutoReleaseGroupId groupId;
+    EXPECT_EQ(groupId.Id(), UINT16_MAX);
+    EXPECT_TRUE(groupId.GatheredGroupInfo().empty());
+}
