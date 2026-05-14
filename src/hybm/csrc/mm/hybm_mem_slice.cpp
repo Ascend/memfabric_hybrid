@@ -17,8 +17,8 @@ namespace ock {
 namespace mf {
 union SliceIdUnion {
     struct SliceDetail {
-        uint64_t magic_ : 40;         /* to verify hybm_mem_slice_t ptr */
-        uint64_t index_ : 16;         /* id of mem slice  */
+        uint64_t magic_ : 24;         /* to verify hybm_mem_slice_t ptr */
+        uint64_t index_ : 32;         /* id of mem slice  */
         uint64_t memType_ : 4;        /* device or host memory */
         uint64_t memPageTblType_ : 2; /* use CANN SVM page table or HyBM page table */
         uint64_t reserved : 2;

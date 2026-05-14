@@ -100,8 +100,8 @@ private:
 private:
     std::mutex mutex_;
     std::bitset<MAX_PEER_DEVICES> enablePeerDevices_;
-    std::map<uint16_t, RegisterSlice> registerSlices_;
-    std::map<uint16_t, RegisterSlice> remoteSlices_;
+    std::map<uint32_t, RegisterSlice> registerSlices_;
+    std::map<uint32_t, RegisterSlice> remoteSlices_;
     std::map<uint32_t, std::vector<MemSlicePtr>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
     std::map<std::string, UserHbmExportSliceInfo> importedSliceInfo_;

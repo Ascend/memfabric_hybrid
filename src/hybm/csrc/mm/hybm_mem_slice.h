@@ -25,7 +25,7 @@ enum class MemAllocMethod : uint8_t {
 };
 
 struct MemSlice {
-    MemSlice(uint16_t index, hybm_mem_type mType, MemPageTblType tbType, uint64_t gva, uint64_t lva, uint64_t size,
+    MemSlice(uint32_t index, hybm_mem_type mType, MemPageTblType tbType, uint64_t gva, uint64_t lva, uint64_t size,
              MemAllocMethod allocMethod = MemAllocMethod::MMAP)
         : magic_(Func::MakeObjectMagic(uint64_t(this))), index_(index), memType_(mType), memPageTblType_(tbType),
           gva_(gva), vAddress_(lva), size_(size), allocMethod_(allocMethod)
@@ -35,8 +35,8 @@ struct MemSlice {
     bool ValidateId(hybm_mem_slice_t slice) const;
     static uint64_t GetIndexFrom(hybm_mem_slice_t slice) noexcept;
 
-    const uint64_t magic_ : 40;         /* to verify hybm_mem_slice_t ptr */
-    const uint64_t index_ : 16;         /* id of mem slice  */
+    const uint64_t magic_ : 24;         /* to verify hybm_mem_slice_t ptr */
+    const uint64_t index_ : 32;         /* id of mem slice  */
     const uint64_t memType_ : 4;        /* device or host memory */
     const uint64_t memPageTblType_ : 2; /* use CANN SVM page table or HyBM page table */
     const uint64_t gva_;                /* global virtual address of memory */

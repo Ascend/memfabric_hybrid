@@ -255,8 +255,8 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
 
     if (transportManager_ != nullptr) {
         transport::TransportMemoryRegion mr;
-        // 对于sdma场景使用的是调用HalHostRegister后返回的已注册的地址,但单sdma场景不需要走注册mr
-        // 对于其余场景使用的仍然是待注册的地址本身,其中device_rdma场景会将待注册地址调用HalHostRegister注册，需要注意如果sdma和rdma共存的场景
+        // Transport managers use HVA as the registration key. Device RDMA obtains DVA from VaManager when needed;
+        // pure SDMA does not register an MR here.
         mr.addr = addr;
         mr.size = size;
         mr.flags = (isHbm ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM);

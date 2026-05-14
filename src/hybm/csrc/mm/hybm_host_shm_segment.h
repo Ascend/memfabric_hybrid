@@ -82,9 +82,9 @@ private:
     uint64_t totalVirtualSize_{0UL};
     uint8_t *localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
-    uint16_t sliceCount_{0};
-    std::map<uint16_t, MemSliceStatus> slices_;
-    std::map<uint16_t, std::string> exportMap_;
+    uint32_t sliceCount_{0};
+    std::map<uint32_t, MemSliceStatus> slices_;
+    std::map<uint32_t, std::string> exportMap_;
     std::vector<ShmExportInfo> imports_;
     std::unordered_set<uint32_t> mappedRemoteRanks_;
     std::unordered_map<uint32_t, int> importedShmFds_;

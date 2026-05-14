@@ -151,7 +151,7 @@ protected:
     static uint32_t bootIdHead_;
     static std::string sysBoolId_;
     static AscendSocType socType_;
-    uint16_t sliceCount_{0};
+    uint32_t sliceCount_{0};
 
 private:
     static void ResetDeviceInfoInChild() noexcept;

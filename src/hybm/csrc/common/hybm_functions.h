@@ -31,18 +31,18 @@ public:
     }
 
 private:
-    const static uint64_t gMagicBits = 0xFFFFFFFFFF; /* get lower 40bits */
+    const static uint64_t gMagicBits = 0xFFFFFF;  // 24 bit
 };
 
 inline uint64_t Func::MakeObjectMagic(uint64_t srcAddress)
 {
-    return (srcAddress & gMagicBits) + UN40;
+    return (srcAddress & gMagicBits);
 }
 
 inline uint64_t Func::ValidateObjectMagic(const void *ptr, const uint64_t magic)
 {
     auto tmp = reinterpret_cast<uint64_t>(ptr);
-    return magic == ((tmp & gMagicBits) + UN40);
+    return magic == (tmp & gMagicBits);
 }
 
 inline std::string SafeStrError(int errNum)

@@ -91,8 +91,8 @@ protected:
     uint64_t totalVirtualSize_{0UL};
     uint8_t *lvaBase_{nullptr}; // device lva base
     uint64_t allocatedSize_{0UL};
-    std::map<uint16_t, MemSliceStatus> slices_;
-    std::map<uint16_t, HbmExportInfo> exportMap_;
+    std::map<uint32_t, MemSliceStatus> slices_;
+    std::map<uint32_t, HbmExportInfo> exportMap_;
     std::set<uint64_t> mappedGvaMem_; // gva sets
     std::vector<HbmExportInfo> imports_;
     std::map<uint32_t, HbmExportInfo> importMap_;

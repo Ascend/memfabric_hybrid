@@ -193,14 +193,7 @@ Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, Mem
 {
     auto ret = RegisterMemCommon(addr, size, slice);
     BM_ASSERT_RETURN(ret == BM_OK, ret);
-    auto [it, inserted] = slices_.try_emplace(slice->index_, slice);
-    if (!inserted) {
-        BM_LOG_WARN("RegisterMemory: slices_ index collision (likely sliceCount_ wrap-around), "
-                    "overwriting old entry. index=" << slice->index_
-                    << " new_addr=0x" << std::hex << slice->vAddress_
-                    << " old_addr=0x" << it->second.slice->vAddress_ << std::dec);
-        it->second = MemSliceStatus(slice);
-    }
+    slices_.emplace(slice->index_, slice);
     return BM_OK;
 }
 
