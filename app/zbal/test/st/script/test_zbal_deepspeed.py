@@ -21,9 +21,8 @@ import time
 TRAIN_SCRIPT = "/home/CI_HOME_for_25.2.0/zbal/LLaMA-Factory/test_llama_factory_qwen3_8b.sh"
 WORK_DIR = "/home/CI_HOME_for_25.2.0/zbal/LLaMA-Factory"
 STOP_EPOCH = 6.0
-LOSS_TOLERANCE = 0.005    # Allowable loss error
-GRADable loss error
-GRAD_TOLERANCE = 0.1      # Allowable grad_norm error
+LOSS_TOLERANCE = 0.005  # Allowable loss error
+GRAD_TOLERANCE = 0.1  # Allowable grad_norm error
 
 TRAIN_START_TIMEOUT = 120
 # ==================================================
