@@ -74,6 +74,8 @@ public:
 
     Result QueryMemoryKey(uint64_t addr, TransportMemoryKey &key) override;
 
+    void UpdateMemoryKey(TransportMemoryKey &key, void *addr) override;
+
     Result Prepare(const HybmTransPrepareOptions &parma) override;
 
     Result RemoveRanks(const std::vector<uint32_t> &removedRanks) override;

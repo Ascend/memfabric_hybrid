@@ -38,19 +38,19 @@ struct HbmExportDeviceInfo {
     uint16_t logicDeviceId{0};
     uint16_t reserved{0};
 
-    // Padding to make total size UNIFIED_EXCHANGE_SEG_INFO_SIZE(184) bytes
+    // Padding to make total size UNIFIED_EXCHANGE_SEG_INFO_SIZE(192) bytes
     char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 36]{};
 };
 static_assert(sizeof(HbmExportDeviceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
-              "HbmExportDeviceInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(200) bytes,"
+              "HbmExportDeviceInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(192) bytes,"
               " compatible with HostSdmaExportInfo");
 static_assert(offsetof(HbmExportDeviceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
-struct HbmExportSliceInfo {
+struct UserHbmExportSliceInfo {
     uint64_t magic{HBM_SLICE_EXPORT_INFO_MAGIC};
     uint32_t segmentType{SEGMENT_TYPE_USER_DEV};
     uint32_t serverId{0};
-    uint64_t gva{0};     // gva
+    uint64_t gvaOffset{0}; // gva offset
     uint64_t address{0}; // lva (host_va or device_va)
     uint64_t size{0};
     uint32_t superPodId{0};
@@ -61,9 +61,9 @@ struct HbmExportSliceInfo {
     // Padding to make total size 200 bytes
     char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 117]{};
 };
-static_assert(sizeof(HbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "HbmExportSliceInfo must be 200 bytes,"
-                                                                            " compatible with HostSdmaExportInfo");
-static_assert(offsetof(HbmExportSliceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
+static_assert(sizeof(UserHbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
+              "UserHbmExportSliceInfo must be 200 bytes, compatible with HostSdmaExportInfo");
+static_assert(offsetof(UserHbmExportSliceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmDevUserLegacySegment : public HybmDevLegacySegment {
 public:
@@ -104,7 +104,7 @@ private:
     std::map<uint16_t, RegisterSlice> remoteSlices_;
     std::map<uint32_t, std::vector<MemSlicePtr>> rankToRemoteSlices_;
     std::map<uint32_t, HbmExportDeviceInfo> importedDeviceInfo_;
-    std::map<std::string, HbmExportSliceInfo> importedSliceInfo_;
+    std::map<std::string, UserHbmExportSliceInfo> importedSliceInfo_;
     std::set<void *> registerAddrs_{};
     std::vector<std::string> memNames_{};
 };

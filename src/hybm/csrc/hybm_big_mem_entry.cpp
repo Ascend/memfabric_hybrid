@@ -128,13 +128,13 @@ HYBM_API int32_t hybm_export(hybm_entity_t e, hybm_mem_slice_t slice, uint32_t f
 
     ExchangeInfoWriter writer(exInfo);
     if ((flags & HYBM_FLAG_EXPORT_ENTITY) != 0) {
-        auto ret = entity->ExportExchangeInfo(writer, 0);
+        auto ret = entity->ExportEntityExchangeInfo(writer, 0);
         if (ret != 0) {
             BM_LOG_ERROR("export entity data failed: " << ret);
             return ret;
         }
     } else {
-        auto ret = entity->ExportExchangeInfo(slice, writer, flags);
+        auto ret = entity->ExportSliceExchangeInfo(slice, writer, flags);
         if (ret != 0) {
             BM_LOG_ERROR("export slices: " << slice << " failed: " << ret);
             return ret;
@@ -160,7 +160,7 @@ HYBM_API int32_t hybm_import(hybm_entity_t e, const hybm_exchange_info allExInfo
     if ((flags & HYBM_FLAG_EXPORT_ENTITY) != 0) {
         return entity->ImportEntityExchangeInfo(readers.data(), count, flags);
     }
-    return entity->ImportExchangeInfo(readers.data(), count, addresses, flags);
+    return entity->ImportSliceExchangeInfo(readers.data(), count, addresses, flags);
 }
 
 HYBM_API int32_t hybm_mmap(hybm_entity_t e, uint32_t flags)

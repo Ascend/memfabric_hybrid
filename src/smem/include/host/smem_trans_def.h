@@ -19,6 +19,9 @@
 extern "C" {
 #endif
 
+#define SMEM_TRANS_RANK_COUNT_MAX               (512U)
+#define SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG     (1U)
+
 typedef void *smem_trans_t;
 
 /*
@@ -40,7 +43,7 @@ typedef struct {
     uint32_t initTimeout;            /* func timeout, default 120 seconds */
     uint32_t deviceId;               /* npu device id */
     uint32_t flags;                  /* optional flags */
-    smem_bm_data_op_type dataOpType; /* data operation type */
+    smem_bm_data_op_type dataOpType; /* data operation type, only support DEVICE_RDMA & SDMA */
 } smem_trans_config_t;
 
 typedef struct {

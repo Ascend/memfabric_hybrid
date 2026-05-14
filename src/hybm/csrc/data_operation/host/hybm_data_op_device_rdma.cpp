@@ -100,7 +100,8 @@ void DataOpDeviceRDMA::UnInitialize() noexcept
 
 void DataOpDeviceRDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
 {
-    // DRAM需要输入host va, HBM需要输入device va, transport才能识别
+    // 对于本地内存, DRAM需要输入host va, HBM需要输入device va, transport才能识别
+    // 对于远端内存, transport仅记录的gva, TransformVa输出应当为0
     uint64_t out;
     uint32_t oType = (HybmDirectionSrcMemType[direction] == HYBM_MEM_TYPE_HOST) ? HVM_HVA : HVM_DVA;
     out = HybmVaManager::GetInstance().TransformVa(reinterpret_cast<uint64_t>(src), HVM_GVA, oType);

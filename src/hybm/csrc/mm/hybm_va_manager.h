@@ -164,8 +164,8 @@ public:
     Result Initialize(AscendSocType socType) noexcept;
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
     Result AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId, uint32_t importedRankId);
-    Result AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId);
-    Result AddVaInfo(const AllocatedGvaInfo &info);
+    Result AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t localRankId, bool onlyGva = false);
+    Result AddVaInfo(const AllocatedGvaInfo &info, bool onlyGva = false);
     void RemoveOneVaInfo(uint64_t va, uint32_t type = HVM_GVA);
 
     // Returns 0 if not found.
@@ -181,7 +181,7 @@ public:
 
     // =============ReservedGvaInfo Management==============================
     ReservedGvaInfo AllocReserveGva(uint32_t localRankId, uint64_t size, uint64_t localSize, hybm_mem_type memType,
-                                    bool enable56BitsGva = false);
+                                    bool enable56BitsGva = false, bool isTrans = false);
     ReservedGvaInfo AllocReserveLva(uint32_t localRankId, uint64_t size, uint32_t type, hybm_mem_type memType);
     void FreeReserveGva(uint64_t addr);
     void FreeReserveLva(uint64_t addr, uint32_t type);

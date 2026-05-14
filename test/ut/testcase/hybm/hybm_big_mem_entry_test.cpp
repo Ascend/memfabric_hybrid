@@ -110,15 +110,15 @@ public:
         return freeRet;
     }
 
-    int32_t ExportExchangeInfo(ock::mf::ExchangeInfoWriter& /* desc */, uint32_t flags) noexcept override
+    int32_t ExportEntityExchangeInfo(ock::mf::ExchangeInfoWriter& /* desc */, uint32_t flags) noexcept override
     {
         exportEntityCalled = true;
         exportFlags = flags;
         return exportEntityRet;
     }
 
-    int32_t ExportExchangeInfo(hybm_mem_slice_t slice, ock::mf::ExchangeInfoWriter& /* desc */,
-                               uint32_t flags) noexcept override
+    int32_t ExportSliceExchangeInfo(hybm_mem_slice_t slice, ock::mf::ExchangeInfoWriter& /* desc */,
+                                    uint32_t flags) noexcept override
     {
         exportSliceCalled = true;
         exportSlice = slice;
@@ -126,8 +126,8 @@ public:
         return exportSliceRet;
     }
 
-    int32_t ImportExchangeInfo(const ock::mf::ExchangeInfoReader desc[], uint32_t count, void* addresses[],
-                               uint32_t flags) noexcept override
+    int32_t ImportSliceExchangeInfo(const ock::mf::ExchangeInfoReader desc[], uint32_t count, void* addresses[],
+                                    uint32_t flags) noexcept override
     {
         importCalled = true;
         importCount = count;

@@ -208,10 +208,10 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_Import_ValidSliceMagic)
     ock::mf::HybmDevUserLegacySegment segment(options, 200);
     EXPECT_EQ(segment.ValidateOptions(), BM_OK);
 
-    ock::mf::HbmExportSliceInfo exportInfo{};
+    ock::mf::UserHbmExportSliceInfo exportInfo{};
     exportInfo.magic = ock::mf::HBM_SLICE_EXPORT_INFO_MAGIC;
     exportInfo.segmentType = ock::mf::SEGMENT_TYPE_USER_DEV;
-    exportInfo.gva = 0x10000000ULL;
+    exportInfo.gvaOffset = 0x10000000ULL;
     exportInfo.address = 0x20000000ULL;
     exportInfo.size = 4096;
     strncpy(exportInfo.name, "test", sizeof(exportInfo.name) - 1);
@@ -330,10 +330,10 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_RemoveSliceInfo_SingleSliceN
     segment.remoteSlices_[static_cast<uint16_t>(sliceIndex)] =
         ock::mf::RegisterSlice(remoteSlice, sliceName);
 
-    ock::mf::HbmExportSliceInfo exportInfo{};
+    ock::mf::UserHbmExportSliceInfo exportInfo{};
     exportInfo.magic = ock::mf::HBM_SLICE_EXPORT_INFO_MAGIC;
     exportInfo.segmentType = ock::mf::SEGMENT_TYPE_USER_DEV;
-    exportInfo.gva = gva;
+    exportInfo.gvaOffset = gva;
     exportInfo.address = vAddress;
     exportInfo.size = 4096;
     exportInfo.rankId = rankId;
@@ -486,10 +486,10 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_ImportSliceInfo_InvalidLogic
     ock::mf::HybmDevUserLegacySegment segment(options, 200);
     EXPECT_EQ(segment.ValidateOptions(), BM_OK);
 
-    ock::mf::HbmExportSliceInfo sliceInfo{};
+    ock::mf::UserHbmExportSliceInfo sliceInfo{};
     sliceInfo.logicDeviceId = 16; // >= MAX_DEVICE_COUNT (16) → invalid
     sliceInfo.rankId = 5;
-    sliceInfo.gva = 0x10000000ULL;
+    sliceInfo.gvaOffset = 0x10000000ULL;
     sliceInfo.size = 4096;
     strncpy(sliceInfo.name, "test_slice", sizeof(sliceInfo.name) - 1);
 
@@ -511,10 +511,10 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_ImportSliceInfo_SuccessNoHar
     EXPECT_EQ(segment.ValidateOptions(), BM_OK);
 
     // Prepare valid slice info
-    ock::mf::HbmExportSliceInfo sliceInfo{};
+    ock::mf::UserHbmExportSliceInfo sliceInfo{};
     sliceInfo.logicDeviceId = 5; // < 16, valid
     sliceInfo.rankId = 10;
-    sliceInfo.gva = 0x10000000ULL;
+    sliceInfo.gvaOffset = 0x10000000ULL;
     sliceInfo.size = 4096;
     strncpy(sliceInfo.name, "slice_10_5", sizeof(sliceInfo.name) - 1);
 
@@ -525,7 +525,7 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_ImportSliceInfo_SuccessNoHar
     ASSERT_NE(remoteSlice, nullptr);
 
     // Verify outputs
-    EXPECT_EQ(remoteSlice->gva_, sliceInfo.gva);
+    EXPECT_EQ(remoteSlice->gva_, sliceInfo.gvaOffset);
     EXPECT_EQ(remoteSlice->size_, sliceInfo.size);
     EXPECT_EQ(remoteSlice->memType_, HYBM_MEM_TYPE_DEVICE);
     EXPECT_EQ(remoteSlice->index_, 0U); // first slice, sliceCount_=0 → index=0
@@ -541,6 +541,6 @@ TEST_F(HybmDevSegmentTest, HybmDevUserLegacySegment_ImportSliceInfo_SuccessNoHar
 
     EXPECT_EQ(segment.importedSliceInfo_.count("slice_10_5"), 1U);
     const auto& stored = segment.importedSliceInfo_.at("slice_10_5");
-    EXPECT_EQ(stored.gva, sliceInfo.gva);
+    EXPECT_EQ(stored.gvaOffset, sliceInfo.gvaOffset);
     EXPECT_EQ(stored.rankId, 10U);
 }

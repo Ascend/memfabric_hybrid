@@ -74,6 +74,11 @@ public:
         return queryKeyResult;
     }
 
+    void UpdateMemoryKey(TransportMemoryKey &key, void *addr) override
+    {
+        return;
+    }
+
     Result Prepare(const HybmTransPrepareOptions &) override
     {
         ++prepareCalls;

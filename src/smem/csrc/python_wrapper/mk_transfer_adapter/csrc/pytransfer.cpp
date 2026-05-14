@@ -41,7 +41,6 @@ TransferAdapterPy::~TransferAdapterPy()
 int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, const char *role, uint32_t deviceId,
                                   TransDataOpType dataOpType)
 {
-    const std::chrono::seconds WAIT_TIME(10);
     if (strcmp(role, "Prefill") != 0 && strcmp(role, "Decode") != 0) {
         ADAPTER_LOG_ERROR("The value of role is invalid. Expected 'Prefill' or 'Decode.");
         return -1;
@@ -77,7 +76,6 @@ int TransferAdapterPy::Initialize(const char *storeUrl, const char *uniqueId, co
         ADAPTER_LOG_ERROR("smem trans create failed.");
         return -1;
     }
-    std::this_thread::sleep_for(WAIT_TIME); // 等待初始化完成
     return 0;
 }
 

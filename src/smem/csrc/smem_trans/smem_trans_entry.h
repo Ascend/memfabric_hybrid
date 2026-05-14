@@ -42,8 +42,9 @@ struct PeerEntryValue {
 
 struct WorkerUniqueId {
     ock::mf::net_addr_t address{};
+    uint32_t pid{0};
     uint16_t port{0};
-    uint16_t reserved{0};
+    uint16_t reserved{0}; // used in join
 };
 
 using WorkerId = std::array<uint8_t, sizeof(WorkerUniqueId)>;
@@ -116,6 +117,7 @@ public:
 
 private:
     Result CreateGlobalTeam(uint32_t rankId);
+    Result JoinImport(std::unordered_map<uint32_t, std::string> &allInfo, bool isEntity);
     Result JoinHandle(uint32_t rk);
     Result UpdateHandle(uint32_t rk);
     Result GroupOpBarrier(int32_t input);
@@ -129,7 +131,7 @@ private:
     void AddRemoteInfo(uint32_t rk, std::vector<void *> &global, std::vector<LocalMapAddress> &local);
     smem_trans_role_t QueryRole(uint32_t rk);
 
-    bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port, uint16_t &reserved);
+    bool ParseTransName(const std::string &name, ock::mf::net_addr_t &ip, uint16_t &port, uint32_t &reserved);
     void RemoveRanks(std::vector<uint32_t> &rankSet);
     Result ParseNameToUniqueId(const std::string &name, WorkerId &uniqueId);
     void AlignMemory(const void *&address, uint64_t &size);

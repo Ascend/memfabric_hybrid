@@ -83,6 +83,11 @@ public:
         std::memset(&key, 0, sizeof(key));
         return BM_OK;
     }
+    void UpdateMemoryKey(ock::mf::transport::TransportMemoryKey &key, void *addr) noexcept override
+    {
+        return;
+    }
+
     ock::mf::Result Prepare(const ock::mf::transport::HybmTransPrepareOptions &options) override
     {
         prepareCalled++;
@@ -438,11 +443,11 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo)
     ock::mf::ExchangeInfoWriter writer(&hbmSliceInfo);
 
     // 测试导出实体信息（未初始化的情况）
-    int32_t exportRet = entity.ExportExchangeInfo(writer, 0);
+    int32_t exportRet = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 
     // 测试导出切片信息（未初始化的情况）
-    exportRet = entity.ExportExchangeInfo(nullptr, writer, 0);
+    exportRet = entity.ExportSliceExchangeInfo(nullptr, writer, 0);
     EXPECT_EQ(exportRet, BM_NOT_INITIALIZED);
 }
 
@@ -454,7 +459,9 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
     void *addresses[1] = {nullptr};
 
     // 测试导入切片信息（未初始化的情况）
-    int32_t importRet = entity.ImportExchangeInfo(&info, 1, addresses, 0);
+    ock::mf::ExchangeInfoReader readers;
+    readers.Reset(&info);
+    int32_t importRet = entity.ImportSliceExchangeInfo(&readers, 1, addresses, 0);
     EXPECT_EQ(importRet, BM_NOT_INITIALIZED);
 
     // 测试初始化
@@ -468,7 +475,7 @@ TEST_F(HybmEntityDefaultTest, ImportExchangeInfo)
         .stubs()
         .will(returnValue(0));
 
-    importRet = entity.ImportExchangeInfo(&info, 1, addresses, 0);
+    importRet = entity.ImportSliceExchangeInfo(&readers, 1, addresses, 0);
     EXPECT_EQ(importRet, BM_OK);
 
     entity.UnInitialize();
@@ -1276,61 +1283,6 @@ TEST_F(HybmEntityDefaultTest, ImportEntityExchangeInfo_Basic)
     EXPECT_TRUE(entity.transportPrepared_);
 }
 
-TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_ParseEntityAndSlice)
-{
-    int32_t deviceId = 2005;
-    ock::mf::MemEntityDefault entity(deviceId);
-
-    // desc[0]: entity export info
-    hybm_exchange_info exEntity{};
-    bzero(&exEntity, sizeof(exEntity));
-    ock::mf::ExchangeInfoWriter wEntity(&exEntity);
-    ock::mf::EntityExportInfo e0{};
-    uint32_t rankId = 3;
-    e0.rankId = rankId;
-    e0.role = static_cast<uint16_t>(HYBM_ROLE_PEER);
-    std::strncpy(e0.tag, "tag_3", sizeof(e0.tag) - 1);
-    std::strncpy(e0.nic, "nic3", sizeof(e0.nic) - 1);
-    wEntity.Append(e0);
-
-    // desc[1]: slice transport key
-    hybm_exchange_info exSlice{};
-    bzero(&exSlice, sizeof(exSlice));
-    ock::mf::ExchangeInfoWriter wSlice(&exSlice);
-    ock::mf::SliceExportTransportKey k0(ock::mf::DRAM_SLICE_EXPORT_INFO_MAGIC, rankId, 0x1234);
-    std::memset(&k0.key, 0, sizeof(k0.key));
-    k0.key.keys[0] = 0xABC;
-    wSlice.Append(k0);
-
-    bool importInfoEntity = false;
-    uint32_t count = 2;
-    ock::mf::ExchangeInfoReader descArr[count] = {ock::mf::ExchangeInfoReader(&exEntity),
-                                                  ock::mf::ExchangeInfoReader(&exSlice)};
-    auto ret = entity.ImportForTransportPrecheck(descArr, count, importInfoEntity);
-    EXPECT_EQ(ret, BM_OK);
-    EXPECT_TRUE(importInfoEntity);
-    EXPECT_EQ(entity.importedRanks_.count(rankId), 1U);
-    EXPECT_EQ(entity.importedMemories_.count(rankId), 1U);
-    ASSERT_EQ(entity.importedMemories_[rankId].size(), 1U);
-    EXPECT_EQ(entity.importedMemories_[rankId].begin()->keys[0], 0xABC);
-}
-
-TEST_F(HybmEntityDefaultTest, ImportForTransportPrecheck_InvalidMagic_Fail)
-{
-    int32_t deviceId = 2006;
-    ock::mf::MemEntityDefault entity(deviceId);
-    hybm_exchange_info exInfo{};
-    bzero(&exInfo, sizeof(exInfo));
-    ock::mf::ExchangeInfoWriter writer(&exInfo);
-    uint64_t badMagic = 0xDEADBEEF;
-    writer.Append(badMagic);
-    ock::mf::ExchangeInfoReader desc(&exInfo);
-    bool importInfoEntity = false;
-    uint32_t count = 1;
-    auto ret = entity.ImportForTransportPrecheck(&desc, count, importInfoEntity);
-    EXPECT_NE(ret, BM_OK);
-}
-
 TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
 {
     int32_t deviceId = 2007;
@@ -1356,13 +1308,12 @@ TEST_F(HybmEntityDefaultTest, ImportForTransport_ConnectWithOptions)
     entity.importedMemories_[1] = std::set<ock::mf::transport::TransportMemoryKey>{k1, k2};
 
     // importInfoEntity = true will also import tag and update device info (bmType host => no memcpy)
-    auto ret = entity.ImportForTransport(true);
+    auto ret = entity.ImportForTransport();
     EXPECT_EQ(ret, BM_OK);
     EXPECT_EQ(fake->connectWithOptionsCalled, 1);
     ASSERT_EQ(fake->connectWithOptions.options.count(1), 1U);
     EXPECT_EQ(fake->connectWithOptions.options.at(1).nic, std::string("nic1"));
     EXPECT_EQ(fake->connectWithOptions.options.at(1).memKeys.size(), 2U);
-    EXPECT_EQ(entity.tagManager_->GetTagByRank(1), "tag_1");
 }
 
 TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
@@ -1381,7 +1332,7 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_WithLongNic_ReturnError)
     bzero(&ex, sizeof(ex));
     ock::mf::ExchangeInfoWriter writer(&ex);
 
-    auto ret = entity.ExportExchangeInfo(writer, 0);
+    auto ret = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_NE(ret, BM_OK);
 }
 
@@ -1398,7 +1349,7 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_AppendFail_ReturnError)
 
     // writer with nullptr forces Append() to fail (BM_ASSERT_RETURN -> -1)
     ock::mf::ExchangeInfoWriter badWriter(nullptr);
-    auto ret = entity.ExportExchangeInfo(badWriter, 0);
+    auto ret = entity.ExportEntityExchangeInfo(badWriter, 0);
     EXPECT_NE(ret, BM_OK);
 }
 
@@ -1419,6 +1370,6 @@ TEST_F(HybmEntityDefaultTest, ExportExchangeInfo_TransScene_HbmSegmentNull_Retur
     bzero(&ex, sizeof(ex));
     ock::mf::ExchangeInfoWriter writer(&ex);
 
-    auto ret = entity.ExportExchangeInfo(writer, 0);
+    auto ret = entity.ExportEntityExchangeInfo(writer, 0);
     EXPECT_NE(ret, BM_OK);
 }

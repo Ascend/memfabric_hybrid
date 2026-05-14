@@ -1164,7 +1164,8 @@ TEST_F(SmemTransTest, smem_trans_malloc)
     size_t mallocHugeSize = mallocMiddleSize * 64; // 128GB
     size_t mallocOversize = mallocHugeSize * 129;  // 512GB
 
-    smem_trans_config_t trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0, SMEMB_DATA_OP_SDMA};
+    smem_trans_config_t trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0,
+                                         SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG, SMEMB_DATA_OP_SDMA};
     auto ret = smem_trans_init(&trans_options);
     EXPECT_EQ(ret, 0);
     ret = smem_create_config_store(STORE_URL, SMEM_STORE_SKIP_RECOVER);
@@ -1197,8 +1198,10 @@ TEST_F(SmemTransTest, smem_trans_write_dram)
 {
     uint32_t rankSize = 2;
     size_t capacities = 0x200000; // 最少2M对齐
-    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
-    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0,
+                                                SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1,
+                                              SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG};
 
     int pipe_fd[2]; // C2 -> C1
     EXPECT_NE(pipe(pipe_fd), -1);
@@ -1664,8 +1667,10 @@ TEST_F(SmemTransTest, smem_trans_batch_write_dram)
 {
     uint32_t rankSize = 2;
     size_t capacities = 0x200000; // 最少2M对齐
-    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0, 0};
-    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1, 0};
+    smem_trans_config_t sender_trans_options = {SMEM_TRANS_SENDER, SMEM_DEFAUT_WAIT_TIME, 0,
+                                                SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG};
+    smem_trans_config_t recv_trans_options = {SMEM_TRANS_RECEIVER, SMEM_DEFAUT_WAIT_TIME, 1,
+                                              SMEM_TRANS_CONFIG_SUPPORT_DRAM_FLAG};
 
     int pipe_fd[2]; // C2 -> C1
     EXPECT_NE(pipe(pipe_fd), -1);

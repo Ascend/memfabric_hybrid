@@ -354,6 +354,11 @@ Result HcomTransportManager::QueryMemoryKey(uint64_t addr, TransportMemoryKey &k
     return BM_OK;
 }
 
+void HcomTransportManager::UpdateMemoryKey(TransportMemoryKey &key, void *addr)
+{
+    return;
+}
+
 Result HcomTransportManager::Prepare(const HybmTransPrepareOptions &param)
 {
     auto options = param.options;

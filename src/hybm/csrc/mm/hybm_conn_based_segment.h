@@ -28,7 +28,11 @@ struct HostExportInfo {
     MemPageTblType pageTblType{};
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 56]{};
 };
+
+static_assert(sizeof(HostExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
+              "HostExportInfo must be UNIFIED_EXCHANGE_SEG_INFO_SIZE(192) bytes");
 
 class HybmConnBasedSegment : public MemSegment {
 public:

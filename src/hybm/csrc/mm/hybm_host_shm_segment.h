@@ -35,7 +35,10 @@ struct ShmExportInfo {
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
     bool useHugetlbfs{false};
+    char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 56]{};
 };
+
+static_assert(sizeof(ShmExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE, "ShmExportInfo must be 192 bytes");
 
 class HybmHostShmSegment : public MemSegment {
 public:
