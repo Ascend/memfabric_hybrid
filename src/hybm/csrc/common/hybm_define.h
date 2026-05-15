@@ -119,8 +119,7 @@ struct HybmDeviceMeta {
     uint32_t extraContextSize;
     uint64_t symmetricSize;
     uint64_t qpInfoAddress;
-    uint64_t sdmaWorkSpace;
-    uint64_t reserved[11]; // total 128B, equal HYBM_DEVICE_PRE_META_SIZE
+    uint64_t reserved[12]; // total 128B, equal HYBM_DEVICE_PRE_META_SIZE
 };
 
 typedef struct {

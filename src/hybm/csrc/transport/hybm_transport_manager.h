@@ -94,12 +94,6 @@ public:
 
     virtual const void *GetQpInfo() const;
 
-    /*
-     * 获取SDMA workspace地址
-     * @return 0 if successful
-     */
-    virtual uint64_t GetSdmaWorkSpaceAddr() const;
-
     /**
       * rdma单边传输
       */
@@ -118,7 +112,6 @@ public:
     virtual Result WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) = 0;
 
     virtual Result ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor) = 0;
-
 protected:
     bool connected_{false};
 };

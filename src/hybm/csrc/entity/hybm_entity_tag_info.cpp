@@ -58,7 +58,7 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
         {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"HOST_SHM", HYBM_DOP_TYPE_HOST_SHM},
-        {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},      {"AIV_SDMA", HYBM_DOP_TYPE_DEVICE_SDMA},
+        {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},
     };
 
     std::smatch match;
@@ -75,7 +75,7 @@ Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
     if (it == str2OpTypeMap.end()) {
         BM_LOG_ERROR("Failed to check opType:"
                      << opTypeStr
-                     << " should be in (DEVICE_SDMA, DEVICE_RDMA, AIV_SDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)");
+                     << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)");
         return BM_INVALID_PARAM;
     }
     auto opType = GetTag2TagOpType(tag1, tag2);
@@ -181,7 +181,7 @@ std::string HybmEntityTagInfo::GetOpTypeStr(hybm_data_op_type opType)
         {HYBM_DOP_TYPE_SDMA, "DEVICE_SDMA"},    {HYBM_DOP_TYPE_DEVICE_RDMA, "DEVICE_RDMA"},
         {HYBM_DOP_TYPE_HOST_RDMA, "HOST_RDMA"}, {HYBM_DOP_TYPE_HOST_TCP, "HOST_TCP"},
         {HYBM_DOP_TYPE_HOST_URMA, "HOST_URMA"}, {HYBM_DOP_TYPE_HOST_SHM, "HOST_SHM"},
-        {HYBM_DOP_TYPE_MTE, "DEVICE_MTE"},      {HYBM_DOP_TYPE_DEVICE_SDMA, "AIV_SDMA"},
+        {HYBM_DOP_TYPE_MTE, "DEVICE_MTE"},
     };
     auto it = opType2StrMap.find(opType);
     if (it != opType2StrMap.end()) {

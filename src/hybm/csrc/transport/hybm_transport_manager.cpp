@@ -14,7 +14,6 @@
 #include "hybm_logger.h"
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
-#include "device_sdma_transport_manager.h"
 #include "compose_transport_manager.h"
 
 using namespace ock::mf;
@@ -31,20 +30,12 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, H
             return host::HcomTransportManager::GetInstance();
         case TT_HCCP:
             return std::make_shared<device::RdmaTransportManager>();
-        case TT_SDMA:
-            return std::make_shared<device::SdmaTransportManager>();
         case TT_COMPOSE:
             return std::make_shared<ComposeTransportManager>(tagManager);
         default:
             BM_LOG_ERROR("Invalid trans type: " << type);
             return nullptr;
     }
-}
-
-uint64_t TransportManager::GetSdmaWorkSpaceAddr() const
-{
-    BM_LOG_DEBUG("Not Implement GetSdmaWorkSpaceAddr()");
-    return 0UL;
 }
 
 const void *TransportManager::GetQpInfo() const
