@@ -10,9 +10,13 @@
  * See the Mulan PSL v2 for more details.
 */
 #include "smem_bm_entry.h"
+
+#include <chrono>
+
 #include "hybm_def.h"
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "mf_env_util.h"
 #include "smem_store_factory.h"
 #include "mf_fault_injection_point.h"
 #include "mf_num_util.h"
@@ -334,19 +338,26 @@ void SmemBmEntry::InvokeEventCb(uint32_t rankId, smem_bm_group_event_t event)
 Result SmemBmEntry::Join(uint32_t flags)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+    const uint32_t groupJoinTimeoutSec =
+        mf::MfEnvUtil::GetOptionalUintOrDefault("MF_GROUP_JOIN_MAX_TIMEOUT", MF_GROUP_JOIN_DEFAULT_TIMEOUT);
+    SM_LOG_DEBUG("group join timeout sec: " << groupJoinTimeoutSec);
+    auto start_time = std::chrono::steady_clock::now();
+    while (true) {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+        if (duration >= groupJoinTimeoutSec) {
+            SM_LOG_ERROR("join timeout. rank: " << options_.rank << ", elapsed: " << duration << "s");
+            return SM_ERROR;
+        }
         auto ret = globalGroup_->GroupJoin();
         if (ret == SM_INNER_BUSY) {
-            sleep(1U); // sleep 1s
+            sleep(1U);
             continue;
         }
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
-        SM_LOG_DEBUG("join success. rank:" << options_.rank);
+        SM_LOG_DEBUG("join success. rank: " << options_.rank);
         return SM_OK;
     }
-
-    SM_LOG_ERROR("join timeout. rank:" << options_.rank);
-    return SM_ERROR;
 }
 
 Result SmemBmEntry::Update(uint32_t flags)
