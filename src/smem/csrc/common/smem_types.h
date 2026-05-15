@@ -60,7 +60,7 @@ constexpr uint64_t SMEM_LOCAL_DRAM_SIZE_MAX = 2ULL << 40; // 2T
 constexpr uint64_t HYBM_MAX_POOL_SIZE = 128ULL << 40;     // 128T, 910C暂时只做到128TB, 910B无此限制
 constexpr uint64_t HYBM_HBM_SIZE_ALIGNMENT = 1ULL << 30;  // 1GB
 
-constexpr uint32_t SMEM_GROUP_RETRY_TIME = 10U;
+constexpr uint32_t SMEM_GROUP_RETRY_TIME = 5U;
 constexpr uint32_t MF_GROUP_JOIN_DEFAULT_TIMEOUT = 60U;   // 集群加入默认超时时间60s
 } // namespace smem
 } // namespace ock
