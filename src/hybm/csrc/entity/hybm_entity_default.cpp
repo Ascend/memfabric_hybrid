@@ -935,15 +935,6 @@ int MemEntityDefault::LoadExtendLibrary() noexcept
             return ret;
         }
     }
-
-    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_SDMA) {
-        auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_SDMA);
-        if (ret != 0) {
-            BM_LOG_ERROR("LoadExtendLibrary for DEVICE SDMA failed: " << ret);
-            return ret;
-        }
-    }
-
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP)) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA);
         if (ret != 0) {
@@ -984,10 +975,8 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.extraContextSize = 0;
     if (transportManager_ != nullptr) {
         info.qpInfoAddress = (uint64_t)(ptrdiff_t)transportManager_->GetQpInfo();
-        info.sdmaWorkSpace = transportManager_->GetSdmaWorkSpaceAddr();
     } else {
         info.qpInfoAddress = 0UL;
-        info.sdmaWorkSpace = 0UL;
     }
 }
 
@@ -1169,7 +1158,7 @@ Result MemEntityDefault::InitTransManager()
     }
 
     auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP;
-    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_DEVICE_SDMA | hostTransFlags;
+    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags;
     if ((options_.bmDataOpType & composeTransFlags) == 0) {
         BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
         return BM_OK;
