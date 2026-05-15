@@ -15,6 +15,8 @@
 #include "dl_hccp_api.h"
 #include "dl_hccl_api.h"
 #include "dl_hcom_api.h"
+#include "dl_rt_api.h"
+#include "dl_op_api.h"
 #include "dl_hybm_copy_extend.h"
 
 namespace ock {
@@ -69,6 +71,18 @@ Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)
 {
     if (libraryType == DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_RDMA) {
         return DlHccpApi::LoadLibrary();
+    }
+
+    if (libraryType == DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_SDMA) {
+        auto result = DlRtApi::LoadLibrary();
+        if (result != BM_OK) {
+            return result;
+        }
+        result = DlOpApi::LoadLibrary();
+        if (result != BM_OK) {
+            DlRtApi::CleanupLibrary();
+            return result;
+        }
     }
 
     if (libraryType == DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA) {
