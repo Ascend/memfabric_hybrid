@@ -76,8 +76,8 @@ private:
     uint64_t totalVirtualSize_{0UL};
     uint8_t *localVirtualBase_{nullptr};
     uint64_t allocatedSize_{0UL};
-    std::map<uint16_t, MemSliceStatus> slices_;
-    std::map<uint16_t, std::string> exportMap_;
+    std::map<uint32_t, MemSliceStatus> slices_;
+    std::map<uint32_t, std::string> exportMap_;
     std::vector<HostExportInfo> imports_;
     std::set<uint64_t> mappedGvaMem_; // gva sets
 };

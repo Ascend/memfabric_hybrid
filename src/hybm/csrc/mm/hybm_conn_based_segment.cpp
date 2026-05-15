@@ -272,9 +272,12 @@ void HybmConnBasedSegment::FreeMemory() noexcept
 {
     while (!slices_.empty()) {
         auto slice = slices_.begin()->second.slice;
+        // Only pool slices own backing memory; user-registered slices point to caller-owned HVA.
+        const bool ownsBackingMemory = (slice->gva_ != 0U);
         ReleaseSliceMemory(slice);
-        // Free memory based on allocation method
-        FreeAllocatedMemory(reinterpret_cast<void *>(slice->vAddress_), slice->size_, slice->allocMethod_);
+        if (ownsBackingMemory) {
+            FreeAllocatedMemory(reinterpret_cast<void *>(slice->vAddress_), slice->size_, slice->allocMethod_);
+        }
     }
     Unmap();
 
@@ -469,9 +472,18 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
 
     HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_HVA);
     slices_.erase(pos);
-    if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
-        DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_), logicDeviceId_, HOST_MEM_MAP_DEV);
+
+#if defined(ASCEND_NPU)
+    const bool needUnregister = (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0U;
+    if (needUnregister) {
+        auto unregRet = DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_),
+                                                      logicDeviceId_, HOST_MEM_MAP_DEV);
+        if (unregRet != 0) {
+            BM_LOG_ERROR("HalHostUnregisterEx failed, idx:" << slice->index_
+                         << " ret:" << unregRet << "; teardown continues");
+        }
     }
+#endif
 
     return BM_OK;
 }

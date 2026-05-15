@@ -378,11 +378,12 @@ Result HybmVmmBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexcep
         }
         uint64_t realAddr = registerPos->second.second;
         bool isHbm = (realAddr >= HYBM_HBM_START_ADDR && realAddr < HYBM_HBM_END_ADDR);
-        if (!isHbm) {
+        if (!isHbm && ((options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0U)) {
             auto ret =
                 DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(realAddr), logicDeviceId_, HOST_MEM_MAP_DEV);
             BM_LOG_INFO("unregister slice(idx:" << slice->index_ << "), size: " << slice->size_ << " return:" << ret);
         }
+        HybmVaManager::GetInstance().RemoveOneVaInfo(slice->vAddress_, HVM_HVA);
         registerSlices_.erase(registerPos);
         return BM_OK;
     }

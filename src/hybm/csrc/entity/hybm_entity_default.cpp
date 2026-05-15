@@ -255,14 +255,18 @@ int32_t MemEntityDefault::RegisterLocalMemory(const void *ptr, uint64_t size, ui
 
     if (transportManager_ != nullptr) {
         transport::TransportMemoryRegion mr;
-        // 对于sdma场景使用的是调用HalHostRegister后返回的已注册的地址,但单sdma场景不需要走注册mr
-        // 对于其余场景使用的仍然是待注册的地址本身,其中device_rdma场景会将待注册地址调用HalHostRegister注册，需要注意如果sdma和rdma共存的场景
+        // Transport managers use HVA as the registration key. Device RDMA obtains DVA from VaManager when needed;
+        // pure SDMA does not register an MR here.
         mr.addr = addr;
         mr.size = size;
         mr.flags = (isHbm ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM);
         ret = transportManager_->RegisterMemoryRegion(mr);
         if (ret != 0) {
             BM_LOG_ERROR("register MR: " << mr << " to transport failed: " << ret);
+            auto relRet = segment->ReleaseSliceMemory(realSlice);
+            if (relRet != BM_OK) {
+                BM_LOG_ERROR("rollback ReleaseSliceMemory after MR register failed, ret:" << relRet);
+            }
             return ret;
         }
     }
@@ -280,17 +284,36 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
     HybmVaManager::GetInstance().DumpReservedGvaInfo();
     HybmVaManager::GetInstance().DumpAllocatedGvaInfo();
     MemSlicePtr memSlice;
+    bool fromHbm = false;
     if (hbmSegment_ != nullptr && (memSlice = hbmSegment_->GetMemSlice(slice, true)) != nullptr) {
-        hbmSegment_->ReleaseSliceMemory(memSlice);
+        fromHbm = true;
     } else if (dramSegment_ != nullptr && (memSlice = dramSegment_->GetMemSlice(slice)) != nullptr) {
-        dramSegment_->ReleaseSliceMemory(memSlice);
+        fromHbm = false;
+    } else {
+        memSlice = nullptr;
     }
 
-    if (transportManager_ != nullptr && memSlice != nullptr) {
+    if (memSlice == nullptr) {
+        BM_LOG_ERROR("FreeLocalMemory: cannot resolve slice id=" << slice
+                     << ", neither hbmSegment_ nor dramSegment_ owns it; VaManager entry may leak");
+        return BM_OK;
+    }
+
+    if (transportManager_ != nullptr) {
         auto ret = transportManager_->UnregisterMemoryRegion(memSlice->vAddress_);
         if (ret != BM_OK) {
             BM_LOG_ERROR("UnregisterMemoryRegion failed, please check input slice.");
         }
+    }
+
+    Result relRet = BM_OK;
+    if (fromHbm) {
+        relRet = hbmSegment_->ReleaseSliceMemory(memSlice);
+    } else {
+        relRet = dramSegment_->ReleaseSliceMemory(memSlice);
+    }
+    if (relRet != BM_OK) {
+        BM_LOG_ERROR("ReleaseSliceMemory failed, ret:" << relRet);
     }
     return BM_OK;
 }

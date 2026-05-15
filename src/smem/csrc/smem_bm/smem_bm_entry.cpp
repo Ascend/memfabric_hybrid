@@ -545,18 +545,21 @@ Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
     auto iter = registedSlice_.find(addr);
     if (iter != registedSlice_.end()) {
         if (iter->second.first != size) {
-            SM_LOG_INFO("addr(" << addr << ") is already registered but size is not equal to input");
+            SM_LOG_ERROR("RegisterMem size_mismatch: addr=0x" << std::hex << addr << std::dec
+                << " new_size=" << size << " existing_size=" << iter->second.first);
             return SM_ERROR;
         }
+        SM_LOG_WARN("RegisterMem skip_dup: addr=0x" << std::hex << addr << std::dec << " size=" << size);
         return SM_OK;
     }
     auto slice = hybm_register_local_memory(entity_, reinterpret_cast<void *>(addr), size, 0);
     if (slice != nullptr) {
         registedSlice_.emplace(addr, std::make_pair(size, slice));
+        SM_LOG_INFO("RegisterMem ok: addr=0x" << std::hex << addr << std::dec << " size=" << size);
         return SM_OK;
-    } else {
-        return SM_ERROR;
     }
+    SM_LOG_ERROR("RegisterMem fail: addr=0x" << std::hex << addr << std::dec << " size=" << size);
+    return SM_ERROR;
 }
 
 Result SmemBmEntry::UnRegisterMem(uint64_t addr)
@@ -564,15 +567,19 @@ Result SmemBmEntry::UnRegisterMem(uint64_t addr)
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     std::lock_guard<std::mutex> lock(mutex_);
     auto iter = registedSlice_.find(addr);
-    if (iter != registedSlice_.end()) {
-        auto ret = hybm_free_local_memory(entity_, iter->second.second, 1, 0);
-        if (ret != 0) {
-            return SM_ERROR;
-        } else {
-            registedSlice_.erase(iter);
-            return SM_OK;
-        }
+    if (iter == registedSlice_.end()) {
+        SM_LOG_WARN("UnRegisterMem skip_notfound: addr=0x" << std::hex << addr);
+        return SM_OK;
     }
+    auto sz = iter->second.first;
+    auto ret = hybm_free_local_memory(entity_, iter->second.second, 1, 0);
+    if (ret != 0) {
+        SM_LOG_ERROR("UnRegisterMem free_fail: addr=0x" << std::hex << addr << std::dec
+                                                         << " size=" << sz << " ret=" << ret);
+        return SM_ERROR;
+    }
+    registedSlice_.erase(iter);
+    SM_LOG_INFO("UnRegisterMem ok: addr=0x" << std::hex << addr << std::dec << " size=" << sz);
     return SM_OK;
 }
 

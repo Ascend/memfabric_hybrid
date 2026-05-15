@@ -81,9 +81,9 @@ private:
     uint64_t totalVirtualSize_{0UL};         // total gva size
     uint64_t allocatedSize_{0UL};
 
-    std::map<uint16_t, MemSliceStatus> slices_;
-    std::map<uint16_t, std::pair<MemSliceStatus, uint64_t>> registerSlices_;
-    std::map<uint16_t, std::string> exportMap_;
+    std::map<uint32_t, MemSliceStatus> slices_;
+    std::map<uint32_t, std::pair<MemSliceStatus, uint64_t>> registerSlices_;
+    std::map<uint32_t, std::string> exportMap_;
     std::map<uint64_t, drv_mem_handle_t *> mappedGvaMem_; // mapped gva
     std::vector<void *> reservedLva_;
 };
