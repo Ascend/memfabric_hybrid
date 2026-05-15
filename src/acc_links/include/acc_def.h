@@ -45,6 +45,8 @@ constexpr uint32_t UNO_1 = 1;
 struct AccConnReq {
     int16_t magic = 0;
     int16_t version = 0;
+    int8_t reconnect = 0;
+    int8_t reserved[3] = {0};
     uint64_t rankId = 0;
 };
 

@@ -225,7 +225,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     }
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    if (!CanReceiveNewLink() && req.version == 0) { // version > 0 is reconnection
+    if (!CanReceiveNewLink() && req.reconnect == 0) {
         STORE_LOG_ERROR("server is recovering, please retry!");
         return SM_RECONNECT;
     }

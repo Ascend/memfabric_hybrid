@@ -193,7 +193,7 @@ Result TcpConfigStore::ClientStart(const smem_tls_config &tlsConfig, int reconne
     }
 
     ock::acc::AccConnReq connReq;
-    connReq.version = 0;
+    connReq.reconnect = 0;
     connReq.rankId =
         rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
                      : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
@@ -683,7 +683,7 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
 {
     auto retryMaxTimes = reconnectRetryTimes < 0 ? CONNECT_RETRY_MAX_TIMES : reconnectRetryTimes;
     ock::acc::AccConnReq connReq;
-    connReq.version = 1; // reconnection
+    connReq.reconnect = 1; // reconnection
     connReq.rankId =
         rankId_ >= 0 ? ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | static_cast<uint64_t>(rankId_))
                      : ((static_cast<uint64_t>(worldSize_) << WORLD_SIZE_SHIFT) | std::numeric_limits<uint32_t>::max());
