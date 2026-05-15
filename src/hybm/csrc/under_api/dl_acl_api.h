@@ -36,11 +36,32 @@ struct aclrtMemcpyBatchAttr {
     uint8_t rsv[16];
 };
 
+typedef enum {
+    ACL_STREAM_ATTR_FAILURE_MODE = 1,
+    ACL_STREAM_ATTR_FLOAT_OVERFLOW_CHECK = 2,
+    ACL_STREAM_ATTR_USER_CUSTOM_TAG = 3,
+    ACL_STREAM_ATTR_CACHE_OP_INFO = 4,
+} aclrtStreamAttr;
+
+typedef union {
+    uint64_t failureMode;
+    uint32_t overflowSwitch;
+    uint32_t userCustomTag;
+    uint32_t cacheOpInfoSwitch;
+    uint32_t reserve[4];
+} aclrtStreamAttrValue;
+
 using aclrtSetDeviceFunc = int32_t (*)(int32_t);
 using aclrtGetDeviceFunc = int32_t (*)(int32_t *);
 using aclrtDeviceEnablePeerAccessFunc = int32_t (*)(int32_t, uint32_t);
 using aclrtCreateStreamFunc = int (*)(void **);
 using aclrtCreateStreamWithConfigFunc = int (*)(void **, int32_t, uint32_t);
+using aclrtStreamGetIdFunc = int (*)(void *, int32_t *);
+using aclrtCreateNotifyFunc = int (*)(void **, uint64_t);
+using aclrtGetNotifyIdFunc = int (*)(void *, uint32_t *);
+using aclrtDestroyNotifyFunc = int (*)(void *);
+using aclrtGetCurrentContextFunc = int (*)(void **);
+using aclrtSetStreamAttributeFunc = int (*)(void *, aclrtStreamAttr, aclrtStreamAttrValue *);
 using aclrtDestroyStreamFunc = int (*)(void *);
 using aclrtSynchronizeStreamFunc = int (*)(void *);
 using aclrtMallocFunc = int32_t (*)(void **, size_t, uint32_t);
@@ -119,6 +140,54 @@ public:
             return BM_UNDER_API_UNLOAD;
         }
         return pAclrtCreateStreamWithConfig(stream, prot, config);
+    }
+
+    static inline Result AclrtStreamGetId(void *stream, int32_t *streamId)
+    {
+        if (pAclrtStreamGetId == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtStreamGetId(stream, streamId);
+    }
+
+    static inline Result AclrtCreateNotify(void **notify, uint64_t flag)
+    {
+        if (pAclrtCreateNotify == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtCreateNotify(notify, flag);
+    }
+
+    static inline Result AclrtGetNotifyId(void *notify, uint32_t *notifyId)
+    {
+        if (pAclrtGetNotifyId == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtGetNotifyId(notify, notifyId);
+    }
+
+    static inline Result AclrtDestroyNotify(void *notify)
+    {
+        if (pAclrtDestroyNotify == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtDestroyNotify(notify);
+    }
+
+    static inline Result AclrtGetCurrentContext(void **context)
+    {
+        if (pAclrtGetCurrentContext == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtGetCurrentContext(context);
+    }
+
+    static inline Result AclrtSetStreamAttribute(void *stream, aclrtStreamAttr stmAttrType, aclrtStreamAttrValue *value)
+    {
+        if (pAclrtSetStreamAttribute == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtSetStreamAttribute(stream, stmAttrType, value);
     }
 
     static inline Result AclrtDestroyStream(void *stream)
@@ -334,6 +403,12 @@ private:
     static aclrtDeviceEnablePeerAccessFunc pAclrtDeviceEnablePeerAccess;
     static aclrtCreateStreamFunc pAclrtCreateStream;
     static aclrtCreateStreamWithConfigFunc pAclrtCreateStreamWithConfig;
+    static aclrtStreamGetIdFunc pAclrtStreamGetId;
+    static aclrtCreateNotifyFunc pAclrtCreateNotify;
+    static aclrtGetNotifyIdFunc pAclrtGetNotifyId;
+    static aclrtDestroyNotifyFunc pAclrtDestroyNotify;
+    static aclrtGetCurrentContextFunc pAclrtGetCurrentContext;
+    static aclrtSetStreamAttributeFunc pAclrtSetStreamAttribute;
     static aclrtDestroyStreamFunc pAclrtDestroyStream;
     static aclrtSynchronizeStreamFunc pAclrtSynchronizeStream;
     static aclrtMallocFunc pAclrtMalloc;
