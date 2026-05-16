@@ -498,6 +498,7 @@ Result AccTcpServerDefault::ConnectToPeerServer(const std::string &peerIp, uint1
         if (::connect(tmpFD, addrPtr, addrLen) == 0) {
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
             setsockopt(tmpFD, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            enable_tcp_keepalive(tmpFD);
             auto ret = Handshake(tmpFD, req, ipAndPort, newLink);
             if (ret != ACC_OK) {
                 LOG_ERROR("Failed to Handshake to " << ipAndPort << " after tried " << timesRetried << " times"

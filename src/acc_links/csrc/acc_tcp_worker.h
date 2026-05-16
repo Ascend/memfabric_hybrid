@@ -111,6 +111,7 @@ inline Result AccTcpWorker::ProcessEvent(struct epoll_event &event) noexcept
             (void)ModifyLink(link, EPOLLIN | EPOLLOUT | EPOLLET);
             return ACC_OK;                     /* not fully received, continue to process next event */
         } else if (result == ACC_LINK_ERROR) { /* link error */
+            LOG_DEBUG("RCV broken on link " << link->id_ << ", call linkBrokenHandle_");
             if (linkBrokenHandle_ != nullptr) {
                 (void)linkBrokenHandle_(link);
             }

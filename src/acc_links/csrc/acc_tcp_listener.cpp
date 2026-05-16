@@ -165,6 +165,8 @@ void AccTcpListener::RunInThread() noexcept
             struct timeval timeout = {ACC_LINK_RECV_TIMEOUT, 0};
             setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
+            enable_tcp_keepalive(fd);
+
             ProcessNewConnection(fd, addressIn);
         } catch (std::exception &ex) {
             LOG_WARN("Got exception in AccTcpListener::RunInThread, exception " << ex.what()
