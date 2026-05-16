@@ -127,6 +127,10 @@ Result HostComposeDataOp::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 Result HostComposeDataOp::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
+    if (AllSupportSdma(options)) {
+        return sdmaDataOperator_->BatchDataCopy(params, direction, options);
+    }
+
     // 为每组调用batch_copy
     for (auto &[p2pInfo, indices] : options.groupMap) {
         uint32_t groupSize = indices.size();
@@ -215,6 +219,21 @@ Result HostComposeDataOp::Wait(int32_t waitId) noexcept
     }
 
     return sdmaDataOperator_->Wait(waitId);
+}
+
+bool HostComposeDataOp::AllSupportSdma(const ExtOptions &options) noexcept
+{
+    if (sdmaDataOperator_ == nullptr) {
+        return false;
+    }
+
+    for (auto &[p2pInfo, indices] : options.groupMap) {
+        auto opTypes = entityTagInfo_->GetRank2RankOpType(p2pInfo.first, p2pInfo.second);
+        if (!(opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_SDMA))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(const ExtOptions &options) noexcept

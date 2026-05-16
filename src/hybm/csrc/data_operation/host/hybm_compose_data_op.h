@@ -48,6 +48,7 @@ public:
 private:
     using DataOperators = std::vector<std::pair<hybm_data_op_type, DataOperatorPtr>>;
     DataOperators GetPrioritedDataOperators(const ExtOptions &options) noexcept;
+    bool AllSupportSdma(const ExtOptions &options) noexcept;
 
 private:
     const hybm_options options_;
