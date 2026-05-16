@@ -34,7 +34,7 @@ public:
     static Result CheckTlsOptions(const AccTlsOption &tlsOption);
 };
 
-inline void enable_tcp_keepalive(int sockfd)
+inline void EnableTcpKeepalive(int sockfd)
 {
     int enable = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
