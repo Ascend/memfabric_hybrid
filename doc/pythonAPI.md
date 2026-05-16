@@ -31,7 +31,19 @@ def initialize(flags = 0) -> int
 def uninitialize()
 ```
 
-### 2. 日志设置
+### 2. 创建config store对象
+#### create_config_store
+创建config store对象
+```python
+def create_config_store(store_url: str) -> int
+```
+
+|参数/返回值|含义|
+|-|-|
+|store_url|业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
+|返回值|成功返回0，其他为错误码|
+
+### 3. 日志设置
 #### set_log_level
 设置日志打印级别
 ```python
@@ -56,7 +68,7 @@ def set_extern_logger(log_fn:Callable[[int, str], None]) -> int
 |message|日志内容|
 |返回值|成功返回0，其他为错误码|
 
-### 3. 安全证书设置
+### 4. 安全证书设置
 #### set_conf_store_tls_key
 注册Python解密处理程序
 ```python
@@ -82,7 +94,7 @@ def set_conf_store_tls(enable, tls_info) -> int
 |tls_info(str)|TLS配置字符串|
 |返回值|成功时返回零,出错时返回非零值|
 
-### 4. 错误信息获取/清理
+### 5. 错误信息获取/清理
 #### get_last_err_msg
 获取最后一条错误信息
 ```python
@@ -374,19 +386,7 @@ class ShmDataOpType(Enum):
 ```
 
 ## TRANSFER接口
-### 1. 创建config store对象
-#### create_config_store
-创建config store对象
-```python
-def create_config_store(store_url: str) -> int
-```
-
-|参数/返回值|含义|
-|-|-|
-|store_url|业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
-|返回值|成功返回0，其他为错误码|
-
-### 2. 常用类型
+### 1. 常用类型
 #### TransferEngine类
 ```python
 class TransferEngine:
