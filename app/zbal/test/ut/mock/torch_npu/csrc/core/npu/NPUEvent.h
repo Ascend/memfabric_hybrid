@@ -12,12 +12,14 @@ public:
     explicit NPUEvent(uint32_t flag = 0) : flag_(flag) {}
 
     void record(const class NPUStream & /**/) {}
-    bool query() { return true; }
+    bool query() { return query_result_; }
+    void set_query_result(bool val) { query_result_ = val; }
 
     operator void *() const { return reinterpret_cast<void *>(flag_); }
 
 private:
     uint32_t flag_ = 0;
+    bool query_result_ = true;
 };
 
 } // namespace c10_npu

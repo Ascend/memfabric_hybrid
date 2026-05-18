@@ -12,8 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "zbal_def.h"
-
-constexpr uint16_t ZBAL_TEST_NUMBER_SIXTYFOUR = 64;
+#include "test_zbal_def.h"
 
 
 class TestZBALDef : public testing::Test {

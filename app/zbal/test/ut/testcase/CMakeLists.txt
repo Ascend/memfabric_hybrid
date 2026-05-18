@@ -34,6 +34,7 @@ include_directories(
         ${ZBAL_SRC_DIR}/csrc/bootstrap
         ${ZBAL_SRC_DIR}/csrc/bootstrap/memory
         ${ZBAL_SRC_DIR}/csrc/bootstrap/memory/memfabric
+        ${ZBAL_BASE_DIR}/test/ut/testcase/csrc/include/
         ${ZBAL_TEST_3RDPARTY_OUTPUT_DIR}/googletest/include
         # mock torch_npu/c10 stubs for SMA tests (must be before real paths)
         ${CMAKE_CURRENT_SOURCE_DIR}/../mock

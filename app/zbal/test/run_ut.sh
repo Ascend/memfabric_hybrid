@@ -77,11 +77,15 @@ EXCLUDE_DIRS=(
         "*/doc/*"
         "*/python/*"
         "*/test/*"
+        "*/under_api/*"
+        "*/device/*"
+        "*/npu/*"
+        "*/common/*"
 )
 echo "[INFO] generate coverage rate... BUILD_DIR: ${BUILD_DIR}  COVERAGE_PATH:${COVERAGE_PATH}"
 lcov -c -d "$BUILD_DIR" \
     --output-file "$COVERAGE_PATH"/coverage.info \
-    -rc lcov_branch_coverage=1 \
+    --rc lcov_branch_coverage=1 \
     --rc lcov_excl_br_line="LCOV_EXCL_BR_LINE|ZBAL_LOG*|ZBAL_ASSERT*|ZBAL_CHECK*|LOG_*|ZBAL_VALIDATE*" \
     --rc stop_on_error=0 \
 
