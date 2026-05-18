@@ -761,9 +761,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTe
     }
 
     const int inoutPtrSize = 2;
-    std::vector<int64_t> elements(inoutPtrSize * ZBAL_FLAG_SIZE, 0);
-    elements[0 * ZBAL_FLAG_SIZE] = static_cast<uint64_t>(inputTensor.numel());
-    elements[1 * ZBAL_FLAG_SIZE] = static_cast<uint64_t>(outputTensor.numel());
+    std::vector<int64_t> elements(inoutPtrSize, 0);
+    elements[0] = static_cast<uint64_t>(inputTensor.numel());
+    elements[1] = static_cast<uint64_t>(outputTensor.numel());
 
     at::Tensor inCumSumTensor = torch::tensor(inputCumSum, torch::kInt64).to(inputTensor.device());
     at::Tensor outCountTensor = torch::tensor(outputCounts, torch::kInt64).to(inputTensor.device());

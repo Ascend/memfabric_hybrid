@@ -116,10 +116,13 @@ public:
             }
         } else {
             uint16_t rankPerCore = groupSize / aivNum;
-            commStartRank = blockIdx * rankPerCore;
-            commEndRank = commStartRank + rankPerCore;
-            if (blockIdx == aivNum - 1) {
-                commEndRank = groupSize;
+            uint16_t remainder = groupSize % aivNum;
+            if (blockIdx < remainder) {
+                commStartRank = blockIdx * (rankPerCore + 1);
+                commEndRank = commStartRank + rankPerCore + 1;
+            } else {
+                commStartRank = blockIdx * rankPerCore + remainder;
+                commEndRank = commStartRank + rankPerCore;
             }
         }
     }

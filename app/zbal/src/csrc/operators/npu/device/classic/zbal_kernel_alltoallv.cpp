@@ -29,9 +29,10 @@ public:
 
     template<typename T>
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaGM, GM_ADDR inputCumSum, GM_ADDR outputCounts,
-                          GM_ADDR elements, uint64_t waitSymbol)
+                          GM_ADDR elements, uint64_t waitSymbol, TPipe *pipe)
     {
 #ifdef __DAV_C220_VEC__
+        this->pipe_ = pipe;
         this->aivNum = AscendC::GetBlockNum();
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
         this->groupSize = comm->groupSize;
@@ -56,20 +57,29 @@ public:
         this->outputCounts = outputCounts;
         this->elements = elements;
         this->waitSymbol = waitSymbol;
+
+        uint32_t elementsSize = Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
+        pipe_->InitBuffer(elementsBuf_, elementsSize);
 #endif
     }
 
     ZBAL_KERNEL void Prepare()
     {
+        AscendC::LocalTensor<uint64_t> elementsLT = elementsBuf_.Get<uint64_t>();
+
+        AscendC::GlobalTensor<uint64_t> elementsGT;
+        elementsGT.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(elements), ZBAL_INOUT_LEN);
+
+        AscendC::DataCopyExtParams copyParams{1U,
+                                              static_cast<uint32_t>(ZBAL_INOUT_LEN * sizeof(uint64_t)),
+                                              0U, 0U, 0U};
+        AscendC::DataCopyPadExtParams<uint64_t> padExtParams{false, 0U, 0U, 0U};
+        AscendC::DataCopyPad(elementsLT, elementsGT, copyParams, padExtParams);
+
+        this->inputElement = elementsLT.GetValue(0);
+        this->outputElement = elementsLT.GetValue(1);
+
         AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
-        auto elementsPtr = reinterpret_cast<__gm__ uint64_t *>(elements);
-
-        GetMetaValue(elementsPtr, 0, ZBAL_INOUT_LEN, buf1);
-        this->inputElement = buf1.GetValue(0);
-
-        GetMetaValue(elementsPtr, 1, ZBAL_INOUT_LEN, buf1);
-        this->outputElement = buf1.GetValue(0);
-
         for (uint16_t i = 0; i < groupSize; i++) {
             GetMetaValue(reinterpret_cast<__gm__ uint64_t *>(outputCounts), i, groupSize, buf1);
             outputCountsArray[i] = buf1.GetValue(0);
@@ -151,10 +161,14 @@ public:
             }
         } else {
             uint16_t rankPerCore = groupSize / aivNum;
-            commStartRank = AscendC::GetBlockIdx() * rankPerCore;
-            commEndRank = commStartRank + rankPerCore; // end not include
-            if (AscendC::GetBlockIdx() == aivNum - 1) {
-                commEndRank = groupSize;
+            uint16_t remainder = groupSize % aivNum;
+            uint16_t coreIdx = AscendC::GetBlockIdx();
+            if (coreIdx < remainder) {
+                commStartRank = coreIdx * (rankPerCore + 1);
+                commEndRank = commStartRank + rankPerCore + 1;
+            } else {
+                commStartRank = coreIdx * rankPerCore + remainder;
+                commEndRank = commStartRank + rankPerCore;
             }
         }
     }
@@ -406,6 +420,8 @@ public:
 
 private:
     int64_t aivNum;
+    TPipe *pipe_{nullptr};
+    TBuf<> elementsBuf_;
     uint16_t groupSize;
     uint16_t myGroupRank;
     uint64_t memSize;
@@ -438,56 +454,57 @@ extern "C" __global__ __aicore__ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR 
                                                          GM_ADDR metaAddr, uint64_t waitSymbol)
 {
     AlltoAllVKernel op;
+    AscendC::TPipe pipe;
     zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
     switch (ZBAL_DATA_TYPE) {
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
-            op.Init<int8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<int8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<int8_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT16:
-            op.Init<int16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<int16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<int16_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT32:
-            op.Init<int32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<int32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<int32_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP16:
-            op.Init<float16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<float16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<float16_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP32:
-            op.Init<float>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<float>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<float>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT64:
-            op.Init<int64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<int64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<int64_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64:
-            op.Init<uint64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<uint64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<uint64_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8:
-            op.Init<uint8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<uint8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<uint8_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16:
-            op.Init<uint16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<uint16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<uint16_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32:
-            op.Init<uint32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<uint32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<uint32_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP64:
-            op.Init<float64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<float64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<float64_t>();
             break;
         case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16:
-            op.Init<bfloat16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol);
+            op.Init<bfloat16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
             op.Process<bfloat16_t>();
             break;
         default:
