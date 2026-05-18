@@ -10,8 +10,13 @@
  * See the Mulan PSL v2 for more details.
  */
 #include <gtest/gtest.h>
+#include <sstream>
 
+#define private public
 #include "zbal_comm_group_id.h"
+#undef private
+
+#include "test_zbal_def.h"
 
 using namespace zbal;
 using namespace zbal::operators;
@@ -105,4 +110,80 @@ TEST_F(TestZBALCommGroupId, DefaultGroupInfo)
     AutoReleaseGroupId groupId;
     EXPECT_EQ(groupId.Id(), UINT16_MAX);
     EXPECT_TRUE(groupId.GatheredGroupInfo().empty());
+}
+
+TEST_F(TestZBALCommGroupId, DestructorWithValidId)
+{
+    {
+        AutoReleaseGroupId groupId(128, 4, 0, 0, "test_group");
+        groupId.uniqueGroupId_ = ZBAL_TEST_NUMBER_FOURTYTWO;
+    }
+}
+
+TEST_F(TestZBALCommGroupId, MoveIdAndGatheredInfoWithExistingId)
+{
+    AutoReleaseGroupId gid1(128, 4, 0, 0, "g1");
+    AutoReleaseGroupId gid2(128, 4, 1, 1, "g2");
+
+    gid1.uniqueGroupId_ = ZBAL_TEST_NUMBER_FOURTYTWO;
+    gid2.uniqueGroupId_ = ZBAL_TEST_NUMBER_SIXTYFOUR;
+
+    gid1.MoveIdAndGatheredInfo(gid2);
+
+    EXPECT_EQ(gid1.Id(), ZBAL_TEST_NUMBER_SIXTYFOUR);
+    EXPECT_EQ(gid2.Id(), UINT16_MAX);
+}
+
+TEST_F(TestZBALCommGroupId, MoveIdAndGatheredInfoWithGatheredInfo)
+{
+    AutoReleaseGroupId gid1(128, 4, 0, 0, "g1");
+    AutoReleaseGroupId gid2(128, 4, 1, 1, "g2");
+
+    CommGroupExchangeInfo info;
+    info.groupId = ZBAL_TEST_NUMBER_TEN;
+    info.myWorldRankId = ZBAL_TEST_NUMBER_ONE_HUNDRED;
+    info.myGroupRankId = 1;
+    gid2.gatheredGroupInfo_.push_back(info);
+
+    gid1.MoveIdAndGatheredInfo(gid2);
+
+    ASSERT_EQ(gid1.GatheredGroupInfo().size(), 1);
+    EXPECT_EQ(gid1.GatheredGroupInfo()[0].groupId, ZBAL_TEST_NUMBER_TEN);
+    EXPECT_EQ(gid1.GatheredGroupInfo()[0].myWorldRankId, ZBAL_TEST_NUMBER_ONE_HUNDRED);
+    EXPECT_TRUE(gid2.GatheredGroupInfo().empty());
+}
+
+TEST_F(TestZBALCommGroupId, AcquireWithNonZeroRankId)
+{
+    AutoReleaseGroupId groupId(ZBAL_TEST_SIZE_128, ZBAL_TEST_NUMBER_FOUR, 1, 0, "test_group");
+    auto result = groupId.Acquire();
+    EXPECT_NE(result, Z_OK);
+}
+
+TEST_F(TestZBALCommGroupId, OperatorStreamOutputDefault)
+{
+    AutoReleaseGroupId groupId(ZBAL_TEST_SIZE_128, ZBAL_TEST_NUMBER_FOUR, 0, 0, "test_group");
+    std::stringstream ss;
+    ss << groupId;
+    std::string output = ss.str();
+    EXPECT_FALSE(output.empty());
+    EXPECT_NE(output.find("AutoReleaseGroupId"), std::string::npos);
+    EXPECT_NE(output.find("size: 0"), std::string::npos);
+}
+
+TEST_F(TestZBALCommGroupId, OperatorStreamOutputWithGatheredInfo)
+{
+    AutoReleaseGroupId groupId(128, 4, 0, 0, "test_group");
+    CommGroupExchangeInfo info;
+    info.groupId = ZBAL_TEST_NUMBER_FIVE;
+    info.myWorldRankId = ZBAL_TEST_NUMBER_TEN;
+    info.myGroupRankId = ZBAL_TEST_NUMBER_TWO;
+    groupId.gatheredGroupInfo_.push_back(info);
+
+    std::stringstream ss;
+    ss << groupId;
+    std::string output = ss.str();
+    EXPECT_FALSE(output.empty());
+    EXPECT_NE(output.find("size: 1"), std::string::npos);
+    EXPECT_NE(output.find("groupId: 5"), std::string::npos);
 }
