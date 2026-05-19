@@ -181,7 +181,7 @@ uint64_t ProcessGroupZBAL::GetNextGroupCounter() noexcept
     return groupCounter_.load();
 }
 
-int32_t ProcessGroupZBAL::PrepareResources(const std::vector<at::Device> &devices) noexcept
+int32_t ProcessGroupZBAL::PrepareResources(std::string &groupName, const std::vector<at::Device> &devices) noexcept
 {
     if (devices.size() != 1) {
         ZBAL_LOG_ERROR("input devices is invalid, only 1 device is supported.");
@@ -202,8 +202,8 @@ int32_t ProcessGroupZBAL::PrepareResources(const std::vector<at::Device> &device
     }
 
     std::lock_guard<std::mutex> lock(mutext_);
-    zbalStreams_.emplace(groupName_, std::move(streamVal));
-    zbalEvents_.emplace(std::piecewise_construct, std::make_tuple(groupName_), std::make_tuple(devices.size()));
+    zbalStreams_.emplace(groupName, std::move(streamVal));
+    zbalEvents_.emplace(std::piecewise_construct, std::make_tuple(groupName), std::make_tuple(devices.size()));
     return Z_OK;
 }
 
@@ -233,9 +233,17 @@ std::string ProcessGroupZBAL::ConstructCommName() noexcept
     return oss.str();
 }
 
+std::string ProcessGroupZBAL::ConstructP2pCommName(int peer) noexcept
+{
+    int peerWorldRank = options_->globalRanksInGroup.at(peer);
+    int lowRank = myWorldRank_ < peerWorldRank ? myWorldRank_ : peerWorldRank;
+    int highRank = myWorldRank_ < peerWorldRank ? peerWorldRank : myWorldRank_;
+    std::string groupName = std::to_string(lowRank) + ":" + std::to_string(highRank);
+    return groupName;
+}
+
 int32_t ProcessGroupZBAL::PrepareCommunicator(int rank, int size) noexcept
 {
-    groupName_ = ConstructCommName();
     myWorldRank_ = options_->globalRanksInGroup.empty() ? rank : options_->globalRanksInGroup.at(rank);
 
     if (options_->globalRanksInGroup.empty() && ZBALInitState::Instance().Bootstrapped()) {
@@ -255,6 +263,8 @@ int32_t ProcessGroupZBAL::initCommunicator() noexcept
         return Z_OK;
     }
 
+    groupName_ = ConstructCommName();
+
     zbal_comm_options_t opt;
     opt.backendType = ZBAL_ASCEND_NPU;
     opt.isWorldGroup = options_->globalRanksInGroup.empty() ? 1 : 0;
@@ -264,11 +274,39 @@ int32_t ProcessGroupZBAL::initCommunicator() noexcept
 
     auto ret = zbal_comm_create(&opt, &groupComm_);
     if (ret != Z_OK || groupComm_ == nullptr) {
-        ZBAL_LOG_ERROR("create comm failed, ret=" << ret << ", rank=" << opt.groupRankId << ", size=" << size_
+        ZBAL_LOG_ERROR("create comm failed, ret=" << ret << ", rank=" << myWorldRank_ << ", size=" << size_
                                                   << ", key=" << groupName_);
         return Z_CREATE_COMM_FAILED;
     }
     ZBAL_LOG_DEBUG("init comm success, rank=" << myWorldRank_ << ", size=" << size_ << ", key=" << groupName_);
+    return Z_OK;
+}
+
+int32_t ProcessGroupZBAL::initP2pCommunicator(int peer, std::string &groupName) noexcept
+{
+    std::lock_guard<std::mutex> lock(mutext_);
+    if (groupP2pComms_.find(groupName) != groupP2pComms_.end()) {
+        return Z_OK;
+    }
+
+    int peerWorldRank = options_->globalRanksInGroup.at(peer);
+    zbal_comm_options_t opt;
+    opt.backendType = ZBAL_ASCEND_NPU;
+    opt.isWorldGroup = 0;
+    opt.groupSize = 2;
+    opt.name = const_cast<char *>(groupName.c_str());
+    opt.groupRankId = myWorldRank_ < peerWorldRank ? 0 : 1;
+
+    zbal_comm_t groupComm {};
+    auto ret = zbal_comm_create(&opt, &groupComm);
+    if (ret != Z_OK || groupComm == nullptr) {
+        ZBAL_LOG_ERROR("create comm failed, ret=" << ret << ", rank=" << myWorldRank_ << ", size=" << opt.groupSize
+                                                  << ", key=" << groupName);
+        return Z_CREATE_COMM_FAILED;
+    }
+
+    groupP2pComms_.emplace(groupName, groupComm);
+    ZBAL_LOG_DEBUG("init comm success, rank=" << myWorldRank_ << ", size=" << opt.groupSize << ", key=" << groupName);
     return Z_OK;
 }
 
@@ -281,7 +319,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::collective(std::vector<at::Tens
     ZBAL_CHECK_S(initCommunicator() == Z_OK, "init zbal comm failed.");
 
     std::vector<zbal_comm_t> zbalComms = {groupComm_};
-    ZBAL_CHECK_S(PrepareResources(devices) == Z_OK, "prepare zbal resource failed.");
+    ZBAL_CHECK_S(PrepareResources(groupName_, devices) == Z_OK, "prepare zbal resource failed.");
 
     auto &zbalStreams = zbalStreams_[groupName_];
     SyncStreams(devices, zbalEvents_[groupName_], zbalStreams);
@@ -334,13 +372,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Te
                                                               c10d::OpType opType, PreProcess pre, PostProcess post)
 {
     const auto devices = GetDeviceList(tensors);
-    ZBAL_CHECK_S(initCommunicator() == Z_OK, "init zbal comm failed.");
+    auto groupName = ConstructP2pCommName(peer);
+    ZBAL_CHECK_S(initP2pCommunicator(peer, groupName) == Z_OK, "init zbal comm failed.");
 
-    std::vector<zbal_comm_t> zbalComms = {groupComm_};
-    ZBAL_CHECK_S(PrepareResources(devices) == Z_OK, "prepare zbal resource failed.");
+    std::vector<zbal_comm_t> zbalComms = {groupP2pComms_[groupName]};
+    ZBAL_CHECK_S(PrepareResources(groupName, devices) == Z_OK, "prepare zbal resource failed.");
 
-    auto &zbalStreams = zbalStreams_[groupName_];
-    SyncStreams(devices, zbalEvents_[groupName_], zbalStreams);
+    auto &zbalStreams = zbalStreams_[groupName];
+    SyncStreams(devices, zbalEvents_[groupName], zbalStreams);
 
     auto work = c10::make_intrusive<ProcessGroupZBAL::WorkZBAL>(devices, rank_, opType);
     work->outputs_ = std::make_shared<std::vector<at::Tensor>>(tensors);
@@ -355,9 +394,11 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Te
     }
 
     {
+        int peerWorldRank = options_->globalRanksInGroup.at(peer);
+        int peerP2pIdx = myWorldRank_ < peerWorldRank ? 1 : 0;
         for (const auto i : c10::irange(tensors.size())) {
             npuGuard.set_index(devices[i].index());
-            int32_t ret = fn(tensors[i], zbalStreams[i], zbalComms[i], peer);
+            int32_t ret = fn(tensors[i], zbalStreams[i], zbalComms[i], peerP2pIdx);
             ZBAL_CHECK_S(ret == 0, "zbal process group fn exec failed");
         }
     }
@@ -868,17 +909,25 @@ ProcessGroupZBAL::Options::Options(bool isHighPriorityStream)
 
 ProcessGroupZBAL::~ProcessGroupZBAL()
 {
-    if (groupComm_ == nullptr) {
-        ZBAL_LOG_INFO("group comm is empty");
-        return;
+    if (groupComm_ != nullptr) {
+        auto result = zbal_comm_destroy(groupComm_, 0);
+        if (result != Z_OK) {
+            ZBAL_LOG_WARN("~ process group: " << groupName_ << " on rank " << myWorldRank_ << " result " << result);
+            return;
+        }
+        groupComm_ = nullptr;
+        ZBAL_LOG_DEBUG("~ process group success: " << groupName_ << " on rank " << myWorldRank_);
     }
 
-    auto result = zbal_comm_destroy(groupComm_, 0);
-    if (result != Z_OK) {
-        ZBAL_LOG_WARN("~ process group: " << groupName_ << " on rank " << myWorldRank_ << " result " << result);
-        return;
+    for (auto &[groupName, groupComm] : groupP2pComms_) {
+        auto result = zbal_comm_destroy(groupComm, 0);
+        if (result != Z_OK) {
+            ZBAL_LOG_WARN("~ process group: " << groupName << " on rank " << myWorldRank_ << " result " << result);
+            return;
+        }
+        ZBAL_LOG_DEBUG("~ process group success: " << groupName << " on rank " << myWorldRank_);
     }
-    ZBAL_LOG_DEBUG("~ process group success: " << groupName_ << " on rank " << myWorldRank_);
+    groupP2pComms_.clear();
 }
 
 } // namespace pytorch_npu

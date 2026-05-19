@@ -56,6 +56,9 @@ enum zbal_profiling_name_t : uint16_t {
 
     ZBAL_PROF_SCATTER_KERNEL_ALL,
 
+    ZBAL_PROF_SEND_KERNEL_ALL,
+    ZBAL_PROF_RECV_KERNEL_ALL,
+
     ZBAL_PROF_EXCHANGE_ADDR,
     ZBAL_PROF_WAIT_FLAG,
     ZBAL_PROF_WRITE_STAT,
@@ -96,6 +99,9 @@ const std::vector<std::pair<std::string, bool>> g_profName = {
     {"BR_GATHER_PART", false},
 
     {"SC_KERNEL_ALL", false},
+
+    {"SEND_KERNEL_ALL",           false},
+    {"RECV_KERNEL_ALL",           false},
 
     {"EXCHANGE_ADDR", true},
     {"WAIT_FLAG", true},

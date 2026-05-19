@@ -165,6 +165,8 @@ public:
 
     int32_t initCommunicator() noexcept;
 
+    int32_t initP2pCommunicator(int peer, std::string &groupName) noexcept;
+
 protected:
     bool blockingWait_ = false;
     std::chrono::milliseconds opTimeout_;
@@ -175,6 +177,7 @@ protected:
     c10::intrusive_ptr<Options> options_;
 
 private:
+    std::unordered_map<std::string, zbal_comm_t> groupP2pComms_;
     zbal_comm_t groupComm_{nullptr};
     std::string groupName_;
     int myWorldRank_;
@@ -203,7 +206,9 @@ private:
 
     std::string ConstructCommName() noexcept;
 
-    int32_t PrepareResources(const std::vector<at::Device> &devs) noexcept;
+    std::string ConstructP2pCommName(int peer) noexcept;
+
+    int32_t PrepareResources(std::string &groupName, const std::vector<at::Device> &devs) noexcept;
 };
 
 } // namespace pytorch_npu

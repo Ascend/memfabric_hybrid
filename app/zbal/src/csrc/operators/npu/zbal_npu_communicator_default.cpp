@@ -215,7 +215,7 @@ void NpuCommunicatorDefault::DumpProfilingTrace() noexcept
         return;
     }
 
-    const uint32_t rank = meta.myGroupRank;
+    const uint32_t rank = meta.peerGroupRank2WorldRank[meta.myGroupRank];
     std::ostringstream oss;
     oss << "trace_view_" << rank << "_" << meta.groupIndex << "_" << Func::GetCurrentDateTime() << ".json";
     const std::string pid = "RANK_" + std::to_string(rank);
@@ -263,7 +263,7 @@ void NpuCommunicatorDefault::DumpProfilingTrace() noexcept
         }
     }
     writer.Close();
-    ZBAL_LOG_WARN("dump trace " << meta.groupIndex << " on rank " << meta.myGroupRank << " finished.");
+    ZBAL_LOG_WARN("dump trace " << meta.groupIndex << " on rank " << rank << " finished.");
 }
 
 void NpuCommunicatorDefault::SignalDumpTrace() noexcept

@@ -49,6 +49,7 @@ public:
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
+        ZBAL_PROF_START(comm, ZBAL_PROF_RECV_KERNEL_ALL);
         uint64_t waitSymbol = 1024;
         uint32_t numPerCore = elements / aivNum;
         uint32_t offset = aivIndex * numPerCore;
@@ -79,6 +80,7 @@ public:
         }
 
         AscendC::SyncAll<true>();
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_RECV_KERNEL_ALL);
 #endif
     }
 
@@ -153,14 +155,50 @@ extern "C" __global__ __aicore__ void ZBALRecvInner(GM_ADDR recvBuf, size_t recv
             op.Process();
             break;
         }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
+            ZBALRecvKernel<float16_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
             ZBALRecvKernel<float> op;
             op.Init(recvBuf, metaAddr, recvCount, peer);
             op.Process();
             break;
         }
-        case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
-            ZBALRecvKernel<float16_t> op;
+        case zbal_datatype_t::ZBAL_DATA_TYPE_INT64: {
+            ZBALRecvKernel<int64_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64: {
+            ZBALRecvKernel<uint64_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8: {
+            ZBALRecvKernel<uint8_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16: {
+            ZBALRecvKernel<uint16_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32: {
+            ZBALRecvKernel<uint32_t> op;
+            op.Init(recvBuf, metaAddr, recvCount, peer);
+            op.Process();
+            break;
+        }
+        case zbal_datatype_t::ZBAL_DATA_TYPE_FP64: {
+            ZBALRecvKernel<float64_t> op;
             op.Init(recvBuf, metaAddr, recvCount, peer);
             op.Process();
             break;
