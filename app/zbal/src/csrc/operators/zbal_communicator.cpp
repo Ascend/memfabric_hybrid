@@ -77,8 +77,8 @@ ZResult Communicator::Create(const zbal_comm_options_t &options, zbal_comm_t *co
 
     *comm = commInner.Get();
 
-    ZBAL_LOG_DEBUG("Created communicator successfully, name: " << commInner->Name() << ", ptr: " << commInner.Get()
-                                                               << " on rank:" << options.groupRankId);
+    ZBAL_LOG_DEBUG("Created communicator successfully, name: " << commInner->Name() << ", id: " << commInner->GroupId()
+                                                               << " on rank:" << commOptions.myWorldRank);
 
     return Z_OK;
 }
@@ -295,6 +295,7 @@ ZResult Communicator::DestroyInner(CommunicatorPtr &comm)
                                                              << iter->second->GetMetaInfo().myGroupRank);
     }
 
+    comm->DecreaseRef();
     return Z_OK;
 }
 
