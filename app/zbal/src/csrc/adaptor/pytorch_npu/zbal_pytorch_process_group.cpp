@@ -244,6 +244,7 @@ std::string ProcessGroupZBAL::ConstructP2pCommName(int peer) noexcept
 
 int32_t ProcessGroupZBAL::PrepareCommunicator(int rank, int size) noexcept
 {
+    groupName_ = ConstructCommName();
     myWorldRank_ = options_->globalRanksInGroup.empty() ? rank : options_->globalRanksInGroup.at(rank);
 
     if (options_->globalRanksInGroup.empty() && ZBALInitState::Instance().Bootstrapped()) {
@@ -262,8 +263,6 @@ int32_t ProcessGroupZBAL::initCommunicator() noexcept
     if (groupComm_ != nullptr) {
         return Z_OK;
     }
-
-    groupName_ = ConstructCommName();
 
     zbal_comm_options_t opt;
     opt.backendType = ZBAL_ASCEND_NPU;
