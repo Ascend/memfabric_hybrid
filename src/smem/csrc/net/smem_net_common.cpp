@@ -110,14 +110,7 @@ inline bool IsValidIpV4(const std::string &address)
     if (address.size() > maxIpLen) {
         return false;
     }
-    if (std::regex_match(address, zeroPattern)) {
-        return false;
-    }
-
-    if (!std::regex_match(address, ipV4Pattern)) {
-        return false;
-    }
-    return true;
+    return (std::regex_match(address, zeroPattern) || std::regex_match(address, ipV4Pattern));
 }
 
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)
