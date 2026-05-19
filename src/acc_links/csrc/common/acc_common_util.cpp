@@ -22,11 +22,12 @@ namespace acc {
 bool AccCommonUtil::IsValidIPv4(const std::string &ip)
 {
     static const std::regex ipv4Regex("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
+    static const std::regex zeroPattern("^0+\\.0+\\.0+\\.0+$");
     constexpr size_t maxIpv4Len = 15;
     if (ip.size() > maxIpv4Len) {
         return false;
     }
-    return std::regex_match(ip, ipv4Regex);
+    return (std::regex_match(ip, ipv4Regex) || std::regex_match(ip, zeroPattern));
 }
 
 Result AccCommonUtil::SslShutdownHelper(SSL *ssl)
