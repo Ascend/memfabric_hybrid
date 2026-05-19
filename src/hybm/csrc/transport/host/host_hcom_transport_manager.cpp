@@ -129,6 +129,7 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         return BM_DL_FUNCTION_FAILED;
     }
     BM_LOG_INFO("Create hcom service successful, nic: " << options.nic << " type: " << enumProtocolType);
+    DlHcomApi::ServiceSetHeartBeatOptions(rpcService_, 10, 3, 5); /* idle 10s, probe 3*5s, total ~25s */
     tlsConfig_ = options.tlsOption;
     DlHcomApi::ServiceSetTlsOptions(rpcService_, options.tlsOption.tlsEnable, C_SERVICE_TLS_1_3, C_SERVICE_AES_GCM_256,
                                     GetCertCallBack, GetPrivateKeyCallBack, GetCACallBack);
