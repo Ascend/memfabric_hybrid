@@ -23,16 +23,15 @@
 using namespace zbal;
 constexpr uint16_t ZBAL_INOUT_LEN = 2;
 
+template<typename T>
 class AlltoAllVKernel {
 public:
     ZBAL_KERNEL AlltoAllVKernel() {}
 
-    template<typename T>
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaGM, GM_ADDR inputCumSum, GM_ADDR outputCounts,
-                          GM_ADDR elements, uint64_t waitSymbol, TPipe *pipe)
+                          GM_ADDR elements, uint64_t waitSymbol)
     {
 #ifdef __DAV_C220_VEC__
-        this->pipe_ = pipe;
         this->aivNum = AscendC::GetBlockNum();
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
         this->groupSize = comm->groupSize;
@@ -59,7 +58,7 @@ public:
         this->waitSymbol = waitSymbol;
 
         uint32_t elementsSize = Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-        pipe_->InitBuffer(elementsBuf_, elementsSize);
+        pipe_.InitBuffer(elementsBuf_, elementsSize);
 #endif
     }
 
@@ -70,9 +69,7 @@ public:
         AscendC::GlobalTensor<uint64_t> elementsGT;
         elementsGT.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(elements), ZBAL_INOUT_LEN);
 
-        AscendC::DataCopyExtParams copyParams{1U,
-                                              static_cast<uint32_t>(ZBAL_INOUT_LEN * sizeof(uint64_t)),
-                                              0U, 0U, 0U};
+        AscendC::DataCopyExtParams copyParams{1U, static_cast<uint32_t>(ZBAL_INOUT_LEN * sizeof(uint64_t)), 0U, 0U, 0U};
         AscendC::DataCopyPadExtParams<uint64_t> padExtParams{false, 0U, 0U, 0U};
         AscendC::DataCopyPad(elementsLT, elementsGT, copyParams, padExtParams);
 
@@ -88,6 +85,8 @@ public:
             AscendC::PipeBarrier<PIPE_ALL>();
             SetMetaValue(this->localStatBaseAddr, i, 0, groupSize, buf1);
             AscendC::PipeBarrier<PIPE_ALL>();
+
+            copyElements[i] = 0;
         }
     }
 
@@ -184,7 +183,6 @@ public:
 
     ZBAL_KERNEL void GetCoreCopyRangeInfo(uint16_t &copyStartRank, uint64_t &startOffset, uint16_t &copyEndRank)
     {
-        ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_CORE_RANGE);
         int64_t coreIndex = AscendC::GetBlockIdx();
         uint64_t curElement = outputElement / aivNum;
         uint64_t curCoreLeft = coreIndex * curElement;
@@ -196,11 +194,15 @@ public:
         copyEndRank = groupSize;
         uint64_t left = 0;
         uint64_t curCoreRight = curCoreLeft + curElement;
+        // condition: outputElement < aivNum, let the last core do all copy
+        if (curCoreLeft == curCoreRight && curCoreRight == 0) {
+            return;
+        }
+
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_CORE_RANGE);
         bool findStart = false;
         bool findEnd = false;
         for (uint16_t i = 0; i < groupSize && i < copyEndRank; i++) {
-            copyElements[i] = 0;
-
             uint64_t counts = outputCountsArray[i];
             uint64_t right = left + counts;
             if (!findStart && right > curCoreLeft) {
@@ -218,6 +220,7 @@ public:
                     copyElements[i] = static_cast<uint32_t>(copyCnt);
                 }
                 findEnd = true;
+                break;
             }
             if (findStart && i > copyStartRank && i < copyEndRank) {
                 copyElements[i] = static_cast<uint32_t>(counts);
@@ -293,24 +296,24 @@ public:
                 cumsum[i] = (i > 0 ? cumsum[i - 1] : 0) + outputCountsArray[i];
             }
 
-            uint16_t core = 1;
             uint64_t avgElement = outputElement / aivNum;
             uint64_t coreRight = avgElement;
 
-            // count split by core has more local stat, O(groupSize + aivNum)
-            for (uint16_t k = 0; k < groupSize; k++) {
-                while (cumsum[k] > coreRight) {
-                    statBase[k] += 1;
-                    core += 1;
-                    if (core == aivNum) {
-                        k += groupSize;
-                        break;
+            // if avgElement eq 0, last core do all copy
+            if (avgElement > 0) {
+                // count split by core has more local stat, O(groupSize + aivNum)
+                for (uint16_t k = 0; k < groupSize; k++) {
+                    while (cumsum[k] > coreRight) {
+                        statBase[k] += 1;
+                        coreRight += avgElement;
+                        if (coreRight >= outputElement) {
+                            k += groupSize;
+                            break;
+                        }
                     }
-                    coreRight += avgElement;
-                }
-                if (cumsum[k] == coreRight) {
-                    core += 1;
-                    coreRight += avgElement;
+                    if (cumsum[k] == coreRight) {
+                        coreRight += avgElement;
+                    }
                 }
             }
 
@@ -328,13 +331,11 @@ public:
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
     }
 
-    template<typename T>
     ZBAL_KERNEL void AlltoAllvCopy(__gm__ T *output)
     {
         uint16_t copyStartRank, copyEndRank;
         uint64_t startOffset;
         GetCoreCopyRangeInfo(copyStartRank, startOffset, copyEndRank);
-        ZBAL_PROF_DUMP(comm, __LINE__, copyStartRank, copyEndRank, startOffset);
 
         uint64_t outputOffset = outputElement / aivNum * AscendC::GetBlockIdx();
         for (uint16_t rank = copyStartRank; rank <= copyEndRank; rank++) {
@@ -386,7 +387,6 @@ public:
         }
     }
 
-    template<typename T>
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
@@ -397,9 +397,9 @@ public:
         ReAssignmentCoreNum();
 
         if (AscendC::GetBlockIdx() < aivNum) {
-            uint16_t commonStartRank, commonEndRank;
+            uint16_t commonStartRank;
+            uint16_t commonEndRank;
             GetCoreCommonRangeInfo(commonStartRank, commonEndRank);
-            ZBAL_PROF_DUMP(comm, __LINE__, commonStartRank, commonEndRank, groupSize, aivNum);
 
             P2MPExchange(commonStartRank, commonEndRank);
 
@@ -420,7 +420,7 @@ public:
 
 private:
     int64_t aivNum;
-    TPipe *pipe_{nullptr};
+    TPipe pipe_;
     TBuf<> elementsBuf_;
     uint16_t groupSize;
     uint16_t myGroupRank;
@@ -449,64 +449,37 @@ private:
     uint32_t copyElements[ZBAL_MAX_RANK_SIZE];
 };
 
+#define ZBAL_ALLTOALLV_TYPE_MAP(F)     \
+    F(int8_t, ZBAL_DATA_TYPE_INT8)     \
+    F(int16_t, ZBAL_DATA_TYPE_INT16)   \
+    F(int32_t, ZBAL_DATA_TYPE_INT32)   \
+    F(float16_t, ZBAL_DATA_TYPE_FP16)  \
+    F(float, ZBAL_DATA_TYPE_FP32)      \
+    F(int64_t, ZBAL_DATA_TYPE_INT64)   \
+    F(uint64_t, ZBAL_DATA_TYPE_UINT64) \
+    F(uint8_t, ZBAL_DATA_TYPE_UINT8)   \
+    F(uint16_t, ZBAL_DATA_TYPE_UINT16) \
+    F(uint32_t, ZBAL_DATA_TYPE_UINT32) \
+    F(float64_t, ZBAL_DATA_TYPE_FP64)  \
+    F(bfloat16_t, ZBAL_DATA_TYPE_BFP16)
+
+#define ZBAL_ALLTOALLV_CASE(TYPE, ENUM)                                                    \
+    case zbal_datatype_t::ENUM: {                                                          \
+        AlltoAllVKernel<TYPE> op;                                                          \
+        op.Init(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol); \
+        op.Process();                                                                      \
+        break;                                                                             \
+    }
+
 extern "C" __global__ __aicore__ void ZBALAlltoAllVInner(GM_ADDR input, GM_ADDR output, GM_ADDR inputCumSum,
                                                          GM_ADDR outputCounts, GM_ADDR elements, int dataType,
                                                          GM_ADDR metaAddr, uint64_t waitSymbol)
 {
-    AlltoAllVKernel op;
-    AscendC::TPipe pipe;
     zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
     switch (ZBAL_DATA_TYPE) {
-        case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
-            op.Init<int8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<int8_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_INT16:
-            op.Init<int16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<int16_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_INT32:
-            op.Init<int32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<int32_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_FP16:
-            op.Init<float16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<float16_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_FP32:
-            op.Init<float>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<float>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_INT64:
-            op.Init<int64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<int64_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64:
-            op.Init<uint64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<uint64_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8:
-            op.Init<uint8_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<uint8_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16:
-            op.Init<uint16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<uint16_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32:
-            op.Init<uint32_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<uint32_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_FP64:
-            op.Init<float64_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<float64_t>();
-            break;
-        case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16:
-            op.Init<bfloat16_t>(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol, &pipe);
-            op.Process<bfloat16_t>();
-            break;
+        ZBAL_ALLTOALLV_TYPE_MAP(ZBAL_ALLTOALLV_CASE)
         default:
             break;
     }

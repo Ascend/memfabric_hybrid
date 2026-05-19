@@ -294,13 +294,6 @@ int32_t NpuCommunicatorDefault::AllGather(const void *send_buff, void *recv_buff
                            const_cast<CommGroupInfo &>(GetMetaInfo()));
 }
 
-int32_t NpuCommunicatorDefault::AlltoAllBase(const void *sendBuff, void *recvBuff, uint64_t data_count,
-                                             zbal_datatype_t dataType, aclrtStream stream) noexcept
-{
-    return ZBALOpAlltoAllBase(sendBuff, recvBuff, data_count, dataType, stream,
-                              const_cast<CommGroupInfo &>(GetMetaInfo()));
-}
-
 int32_t NpuCommunicatorDefault::AlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts,
                                           void *elements, zbal_datatype_t dataType, aclrtStream stream) noexcept
 {

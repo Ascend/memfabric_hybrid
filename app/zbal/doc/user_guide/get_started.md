@@ -239,3 +239,6 @@ python -m sglang.launch_server --model-path $MODEL_PATH \
 with
 1.2G+ memory efficiency**
 
+#### 3.4 Environment Variables
+
+All ZBAL using environment vriables [here](./env.md).

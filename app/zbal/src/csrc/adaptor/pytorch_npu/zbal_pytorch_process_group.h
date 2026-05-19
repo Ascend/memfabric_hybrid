@@ -192,14 +192,6 @@ private:
     c10::intrusive_ptr<c10d::Work> pointToPoint(std::vector<at::Tensor> &tensor, Fn fn, int peer, c10d::OpType opType,
                                                 PreProcess pre, PostProcess post);
 
-    c10::intrusive_ptr<c10d::Work> alltoall_normal(at::Tensor &outputTensor, at::Tensor &inputTensor,
-                                                   std::vector<int64_t> &outputSplits, std::vector<int64_t> &inSplits,
-                                                   const c10d::AllToAllOptions &opts = c10d::AllToAllOptions());
-
-    c10::intrusive_ptr<c10d::Work> alltoall_v(at::Tensor &outputTensor, at::Tensor &inputTensor,
-                                              std::vector<int64_t> &outputSplits, std::vector<int64_t> &inputSplits,
-                                              const c10d::AllToAllOptions &opts = c10d::AllToAllOptions());
-
     uint64_t GetNextGroupCounter() noexcept;
 
     int32_t PrepareCommunicator(int rank, int size) noexcept;

@@ -56,8 +56,8 @@ source ${ASCEND_HOME_PATH}/set_env.sh
 
 CURRENT_DIR=$(pwd)
 PROJECT_ROOT=$(dirname "$CURRENT_DIR")
-VERSION="1.0.0"
-OUTPUT_DIR=$CURRENT_DIR/output
+OUTPUT_DIR=${PROJECT_ROOT}/output
+rm -rf ${OUTPUT_DIR}
 mkdir -p $OUTPUT_DIR
 echo "outpath: ${OUTPUT_DIR}"
 
@@ -66,15 +66,11 @@ COMPILE_OPTIONS=""
 function build_zbal()
 {
     echo "[zbal] Building zbal via setup.py"
-    cd python || exit
-    rm -rf "$CURRENT_DIR"/../build
-    rm -rf "$CURRENT_DIR"/../output
-    rm -rf "$CURRENT_DIR"/python/build
-    rm -rf "$CURRENT_DIR"/python/dist
-    python3 setup.py clean --all
+    cd ${PROJECT_ROOT}/src/python || exit
+    rm -rf build output dist memfabric_zbal.*
     python3 setup.py bdist_wheel
-    mv -v "$CURRENT_DIR"/python/dist/memfabric_zbal*.whl "${OUTPUT_DIR}/"
-    rm -rf "$CURRENT_DIR"/python/dist
+    mv -v dist/memfabric_zbal*.whl "${OUTPUT_DIR}/"
+    rm -rf dist
     cd -
 }
 

@@ -112,20 +112,6 @@ int32_t zbal_all_gather(const void *sendBuff, void *recvBuff, size_t send_count,
                         zbal_comm_t comm, aclrtStream stream);
 
 /**
- * @brief All2all operation
- *
- * @param sendBuff             [in] pointer of send buffer
- * @param recvBuff             [in] pointer of receive buffer
- * @param data_count           [in] size of elems input buffer
- * @param dataType             [in] data type
- * @param comm                 [in] communicator handle
- * @param stream               [in] stream
- * @return
- */
-int32_t zbal_all_to_all_base(const void *sendBuff, void *recvBuff, uint64_t data_count, zbal_datatype_t dataType,
-                             zbal_comm_t comm, aclrtStream stream);
-
-/**
  * @brief All2allv operation
  *
  * @param sendBuff             [in] pointer of send buffer

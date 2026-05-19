@@ -182,19 +182,6 @@ ZBAL_API int32_t zbal_barrier(zbal_comm_t comm, aclrtStream stream)
     return innerComm->Barrier(stream);
 }
 
-ZBAL_API int32_t zbal_all_to_all_base(const void *sendBuff, void *recvBuff, uint64_t data_count,
-                                      zbal_datatype_t dataType, zbal_comm_t comm, aclrtStream stream)
-{
-    ZBAL_VALIDATE_RETURN(sendBuff != nullptr && recvBuff != nullptr, "AlltoAll failed as send/recv buff is nullptr",
-                         Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(dataType >= 0 && dataType < ZBAL_DATA_TYPE_BUTT, "alltoall data type invalid.",
-                         Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(comm != nullptr, "alltoall failed as comm is null", Z_INVALID_PARAM);
-
-    auto innerComm = reinterpret_cast<Communicator *>(comm);
-    return innerComm->AlltoAllBase(sendBuff, recvBuff, data_count, dataType, stream);
-}
-
 ZBAL_API int32_t zbal_all_to_all_v(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts,
                                    void *elements, zbal_datatype_t dataType, zbal_comm_t comm, aclrtStream stream)
 {

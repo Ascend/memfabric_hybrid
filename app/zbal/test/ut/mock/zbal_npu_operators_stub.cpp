@@ -30,12 +30,6 @@ int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, siz
     return 0;
 }
 
-int32_t ZBALOpAlltoAllBase(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
-                           aclrtStream stream, CommGroupInfo &groupInfo)
-{
-    return 0;
-}
-
 int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
                         zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo)
 {

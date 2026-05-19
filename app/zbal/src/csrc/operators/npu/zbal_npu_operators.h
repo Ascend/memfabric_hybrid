@@ -24,9 +24,6 @@ int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_d
 int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, size_t bufCnt, zbal_datatype_t dataType,
                         aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo);
 
-int32_t ZBALOpAlltoAllBase(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
-                           aclrtStream stream, CommGroupInfo &groupInfo);
-
 int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
                         zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo);
 

@@ -46,9 +46,6 @@ public:
     int32_t AllGather(const void *send_buff, void *recv_buff, size_t send_count, zbal_datatype_t data_type,
                       aclrtStream stream) noexcept override;
 
-    int32_t AlltoAllBase(const void *sendBuff, void *recvBuff, uint64_t data_count, zbal_datatype_t dataType,
-                         aclrtStream stream) noexcept;
-
     int32_t AlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
                       zbal_datatype_t dataType, aclrtStream stream) noexcept;
 

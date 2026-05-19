@@ -168,7 +168,7 @@ def test_alltoallv(dist_type):
                     cur_input_split = cur_input_splits[i][global_rank]
                     tensor_output = torch.zeros(cur_output_shape, dtype=tensor_input.dtype, device=tensor_input.device)
 
-                    dist.barrier()
+                    # dist.barrier() # open it when test performance
                     dist.all_to_all_single(tensor_output, tensor_input, cur_output_split, cur_input_split)
                     prof_cnt += 1
 
@@ -180,7 +180,8 @@ def test_alltoallv(dist_type):
                             logger.exception(f"alltoallv {world_size=} {global_rank=} {data_len=} precision failed.")
                             raise Exception("precision error")
                 except Exception as e:
-                    logger.exception(f"{global_rank=} run alltoallv case {i} round {j} failed. {e}")
+                    logger.exception(f"{global_rank=} run alltoallv case {i} round {j} failed. "
+                                     f"{cur_output_split=} {cur_input_split=} {e}")
 
         if dist_type == 'hccl':
             logger.info(f"alltoallv {global_rank=} {world_size=} {len(case_index)} {dist_type} cases generate success")

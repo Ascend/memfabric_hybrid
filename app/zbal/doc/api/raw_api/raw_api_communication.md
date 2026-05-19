@@ -474,38 +474,7 @@ int32_t zbal_reduce_scatter(const void *sendBuff,
 | stream            | in     | stream                      |
 | return            |        | 0 if successful             |
 
-## 7 AllToAll
-
-### 7.1 Base all2all
-
-#### Functionality description
-
-Base all2all operation
-
-#### Function definition
-
-```c
-int32_t zbal_all_to_all_base(const void *sendBuff,
-                             void *recvBuff,
-                             uint64_t data_count,
-                             zbal_datatype_t dataType,
-                             zbal_comm_t comm,
-                             aclrtStream stream)
-```
-
-#### Description of parameters and return value
-
-| Parameters/return | In/Out | Description                 |
-|-------------------|--------|-----------------------------|
-| sendBuff          | in     | pointer of source data      |
-| recvBuff          | out    | pointer of destination data |
-| data_count        | in     | count of the data           |
-| dataType          | in     | type of the data            |
-| comm              | in     | handle of the communicator  |
-| stream            | in     | stream                      |
-| return            |        | 0 if successful             |
-
-## 8 Braodcast
+## 7 Braodcast
 
 #### Functionality description
 

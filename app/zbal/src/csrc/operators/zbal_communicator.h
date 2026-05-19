@@ -147,9 +147,6 @@ public:
      *
      * @return 0 if successful
      */
-    virtual int32_t AlltoAllBase(const void *sendBuff, void *recvBuff, uint64_t data_count, zbal_datatype_t dataType,
-                                 aclrtStream stream) noexcept = 0;
-
     virtual int32_t AlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts,
                               void *elements, zbal_datatype_t dataType, aclrtStream s) noexcept = 0;
 

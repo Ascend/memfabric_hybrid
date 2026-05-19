@@ -715,50 +715,10 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::barrier(const c10d::BarrierOpti
         c10d::OpType::ALLTOALL_BASE);
 }
 
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_normal(at::Tensor &outputTensor, at::Tensor &inputTensor,
-                                                                 std::vector<int64_t> &outputSplits,
-                                                                 std::vector<int64_t> &inputSplits,
-                                                                 const c10d::AllToAllOptions &opts)
-{
-    (void)outputSplits;
-    (void)inputSplits;
-    (void)opts;
-    ZBAL_CHECK_S(outputTensor.numel() == inputTensor.numel(), "input output tensor must be same size.");
-    ZBAL_CHECK_S(outputTensor.dtype() == inputTensor.dtype(), "input output tensor must be same type.");
-    ZBAL_CHECK_S(outputTensor.scalar_type() == inputTensor.scalar_type(), "input output tensor must be same type.");
-    ZBAL_CHECK_S(outputTensor.size(0) % size_ == 0, "tensor dim 0 doesn't divide equally with group size.");
-
-    CheckSingleTensor(outputTensor);
-    CheckSingleTensor(inputTensor);
-
-    std::vector<at::Tensor> inputTensors = {inputTensor};
-    std::vector<at::Tensor> outputTensors = {outputTensor};
-    CheckNpuTensorsDifferentDevices(inputTensors);
-    CheckNpuTensorsDifferentDevices(outputTensors);
-
-    return collective(
-        inputTensors, outputTensors,
-        [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
-            RECORD_FUNCTION("ZbalAlltoAllBase", std::vector<c10::IValue>({}));
-            auto inputPtr = input.data_ptr();
-            auto outputPtr = output.data_ptr();
-            auto dataType = GetZbalDataType(input.scalar_type());
-            auto inputCounts = static_cast<uint64_t>(input.numel());
-            auto alltoall_call = [inputPtr, outputPtr, inputCounts, dataType, comm, stream]() -> int {
-                return zbal_all_to_all_base(inputPtr, outputPtr, inputCounts, dataType, comm, stream.stream(false));
-            };
-            at_npu::native::OpCommand::RunOpApiV2("zbal_all_to_all_base", alltoall_call);
-            return Z_OK;
-        },
-        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
-        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
-        c10d::OpType::ALLTOALL_BASE);
-}
-
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTensor, at::Tensor &inputTensor,
-                                                            std::vector<int64_t> &outputSplits,
-                                                            std::vector<int64_t> &inputSplits,
-                                                            const c10d::AllToAllOptions &opts)
+c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
+                                                               std::vector<int64_t> &outputSplits,
+                                                               std::vector<int64_t> &inputSplits,
+                                                               const c10d::AllToAllOptions &opts)
 {
     (void)opts;
     ZBAL_CHECK_S(outputTensor.dtype() == inputTensor.dtype(), "input output tensor must be same type.");
@@ -831,18 +791,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_v(at::Tensor &outputTe
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
         c10d::OpType::ALLTOALL_BASE);
-}
-
-c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outputTensor, at::Tensor &inputTensor,
-                                                               std::vector<int64_t> &outputSplits,
-                                                               std::vector<int64_t> &inputSplits,
-                                                               const c10d::AllToAllOptions &opts)
-{
-    if (outputSplits.empty() && inputSplits.empty()) {
-        return alltoall_normal(outputTensor, inputTensor, outputSplits, inputSplits, opts);
-    } else {
-        return alltoall_v(outputTensor, inputTensor, outputSplits, inputSplits, opts);
-    }
 }
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor> &tensors, int dstRank, int tag)
