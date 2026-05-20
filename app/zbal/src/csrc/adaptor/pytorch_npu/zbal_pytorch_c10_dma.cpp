@@ -15,7 +15,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <regex>
 #include <set>
 #include <vector>
 #include <string>

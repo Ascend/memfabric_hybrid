@@ -15,7 +15,6 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include <regex>
 #include <sstream>
 #include <arpa/inet.h>
 #include "dl_hcom_api.h"
@@ -143,7 +142,7 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
         DlHcomApi::ServiceSetDeviceIpMask(rpcService_, ipMask.c_str());
     }
 
-    ret = reconnect_.Start([this](uint32_t rankId, const std::string &nic){ return ConnectHcomChannel(rankId, nic);});
+    ret = reconnect_.Start([this](uint32_t rankId, const std::string &nic) { return ConnectHcomChannel(rankId, nic); });
     if (ret != BM_OK) {
         BM_LOG_ERROR("start reconnect service failed: " << ret);
         return ret;

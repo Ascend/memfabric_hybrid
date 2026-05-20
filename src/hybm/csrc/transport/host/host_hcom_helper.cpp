@@ -10,10 +10,9 @@
  * See the Mulan PSL v2 for more details.
 */
 #include "host_hcom_helper.h"
-#include <regex>
-#include <sstream>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include "mf_ipv4_validator.h"
 #include "mf_str_util.h"
 #include "hybm_logger.h"
 
@@ -24,9 +23,6 @@ constexpr int MIN_VALID_PORT = 1024;
 constexpr int MAX_VALID_PORT = 65535;
 constexpr int MIN_VALID_MASK = 0;
 constexpr int MAX_VALID_MASK = 32;
-constexpr int PROT_MATCH_NUM = 1;
-constexpr int IP_MATCH_NUM = 2;
-constexpr int PORT_MATCH_NUM = 3;
 
 static Result AnalysisUBNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
 {
@@ -40,8 +36,7 @@ static Result AnalysisUBNic(const std::string &nic, std::string &protocol, std::
     ipStr.clear();
     port = 0;
     std::string eid = input.substr(strlen(UBC_PROTOCOL_PREFIX));
-    std::regex pattern(R"(([0-9a-fA-F]{4}:){7}[0-9a-fA-F]{4})");
-    if (std::regex_match(eid, pattern)) {
+    if (ock::mf::NetValidator::IsValidUbcEid(eid)) {
         ipStr = eid;
         protocol = UBC_PROTOCOL_PREFIX;
         port = UBC_START_PORT;
@@ -54,30 +49,31 @@ static Result AnalysisUBNic(const std::string &nic, std::string &protocol, std::
 
 Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol, std::string &ipStr, uint32_t &port)
 {
-    static const std::regex ipPortPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})$)");
-    static const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
     if (StrUtil::StartWith(nic, UBC_PROTOCOL_PREFIX)) {
         return AnalysisUBNic(nic, protocol, ipStr, port);
     }
-    if (std::regex_match(nic, ipPortMaskPattern)) {
-        return AnalysisNicWithMask(nic, protocol, ipStr, port);
-    }
-
-    std::smatch match;
-    if (!std::regex_match(nic, match, ipPortPattern)) {
-        BM_LOG_ERROR("Failed to match nic, nic: " << nic);
+    // Parse tcp://<ip>:<port> or tcp://<ip>/<mask>:<port>
+    std::string mask;
+    std::string portStr;
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ipStr, mask, portStr)) {
+        BM_LOG_ERROR("Failed to parse nic, nic: " << nic);
         return BM_INVALID_PARAM;
     }
-    protocol = match[PROT_MATCH_NUM].str();
-    ipStr = match[IP_MATCH_NUM].str();
-    std::string portStr = match[PORT_MATCH_NUM].str();
+    if (protocol != "tcp://") {
+        BM_LOG_ERROR("Failed to parse nic, nic: " << nic);
+        return BM_INVALID_PARAM;
+    }
+    if (!mask.empty()) {
+        return AnalysisNicWithMask(nic, protocol, ipStr, port);
+    }
+    // Validate port
     auto ret = StrUtil::String2Uint<uint32_t>(portStr, port);
     if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to check port, portStr: " << portStr << " nic: " << nic);
         return BM_INVALID_PARAM;
     }
-    in_addr ip{};
-    if (inet_aton(ipStr.c_str(), &ip) == 0) {
+    // Validate IP with strict checking
+    if (!ock::mf::NetValidator::IsValidIpV4Strict(ipStr)) {
         BM_LOG_ERROR("Failed to check ip, nic: " << nic << " ipStr: " << ipStr);
         return BM_INVALID_PARAM;
     }
@@ -87,35 +83,33 @@ Result HostHcomHelper::AnalysisNic(const std::string &nic, std::string &protocol
 Result HostHcomHelper::AnalysisNicWithMask(const std::string &nic, std::string &protocol, std::string &ipStr,
                                            uint32_t &port)
 {
-    static const std::regex ipPortMaskPattern(R"(^(tcp://)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/(\d{1,2}):(\d{1,5})$)");
-    std::smatch match;
-    if (!std::regex_match(nic, match, ipPortMaskPattern)) {
-        BM_LOG_ERROR("Failed to match nic, nic: " << nic);
+    std::string mask;
+    std::string portStr;
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ipStr, mask, portStr) || mask.empty()) {
+        BM_LOG_ERROR("Failed to parse nic with mask, nic: " << nic);
+        return BM_INVALID_PARAM;
+    }
+    if (protocol != "tcp://") {
+        BM_LOG_ERROR("Failed to parse nic with mask, nic: " << nic);
         return BM_INVALID_PARAM;
     }
 
-    protocol = match[1].str();
-    std::string ip = match[2].str();
-    std::string maskStr = match[3].str();
-    std::string portStr = match[4].str();
-
-    std::istringstream iss(ipStr);
-    std::string token;
-
-    int mask = MIN_VALID_MASK;
-    auto ret = StrUtil::String2Int<int>(maskStr, mask);
-    if (!ret || mask < MIN_VALID_MASK || mask > MAX_VALID_MASK) {
+    int maskVal = MIN_VALID_MASK;
+    auto ret = StrUtil::String2Int<int>(mask, maskVal);
+    if (!ret || maskVal < MIN_VALID_MASK || maskVal > MAX_VALID_MASK) {
         BM_LOG_ERROR("Failed to analysis nic mask is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
-
     ret = StrUtil::String2Uint<uint32_t>(portStr, port);
     if (!ret || port < MIN_VALID_PORT || port > MAX_VALID_PORT) {
         BM_LOG_ERROR("Failed to analysis nic port is invalid: " << nic);
         return BM_INVALID_PARAM;
     }
-
-    return SelectLocalIpByIpMask(ip, mask, ipStr); // 成功
+    if (!ock::mf::NetValidator::IsValidIpV4Strict(ipStr)) {
+        BM_LOG_ERROR("Failed to analysis nic ip is invalid: " << nic);
+        return BM_INVALID_PARAM;
+    }
+    return SelectLocalIpByIpMask(ipStr, maskVal, ipStr);
 }
 
 Result HostHcomHelper::SelectLocalIpByIpMask(const std::string &ipStr, const int32_t &mask, std::string &localIp)
