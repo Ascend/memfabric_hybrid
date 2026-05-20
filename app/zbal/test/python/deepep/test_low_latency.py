@@ -34,20 +34,21 @@ def redirect_io(rank, log_dir="./logs"):
 
     sys.stdout = os.fdopen(1, "w", buffering=1)
     sys.stderr = os.fdopen(2, "w", buffering=1)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     logging.info(f"[rank {rank}] logging to {log_path}")
 
 
 def test(
-    num_tokens: int,
-    hidden: int,
-    num_experts: int,
-    num_topk: int,
-    rank: int,
-    num_ranks: int,
-    group: dist.ProcessGroup,
-    buffer: Buffer,
-    drop_percent: float,
-    seed: int = 0,
+        num_tokens: int,
+        hidden: int,
+        num_experts: int,
+        num_topk: int,
+        rank: int,
+        num_ranks: int,
+        group: dist.ProcessGroup,
+        buffer: Buffer,
+        drop_percent: float,
+        seed: int = 0,
 ):
     torch.manual_seed(seed + rank)
     random.seed(seed + rank)
@@ -58,15 +59,15 @@ def test(
     # NOTES: the integers greater than 256 exceeds the BF16 precision limit
     rank_offset = 0
     assert (
-        num_ranks - rank_offset < 257
+            num_ranks - rank_offset < 257
     ), "Too many ranks (exceeding test precision limit)"
 
     x = torch.ones((num_tokens, hidden), dtype=torch.bfloat16, device="npu") * (
-        rank - rank_offset
+            rank - rank_offset
     )
     scores = (
-        torch.randn((num_tokens, num_experts), dtype=torch.float32, device="npu").abs()
-        + 1
+            torch.randn((num_tokens, num_experts), dtype=torch.float32, device="npu").abs()
+            + 1
     )
     topk_idx = torch.topk(scores, num_topk, dim=-1, largest=True, sorted=True)[1]
 
@@ -136,11 +137,11 @@ def test(
             out=out,
         )
 
-        logging.info(
-            f"Rank {rank}: combined_x shape={combined_x.shape}, "
-            f"device={combined_x[0].device}"
-        )
-        logging.info(f"Rank {rank}: combined_x ={combined_x[:100, 0]}")
+    logging.info(
+        f"Rank {rank}: combined_x shape={combined_x.shape}, "
+        f"device={combined_x[0].device}"
+    )
+    logging.info(f"Rank {rank}: combined_x ={combined_x[:100, 0]}")
 
     if do_check:
         diff = calc_diff(
@@ -214,8 +215,8 @@ def test(
         dispatch_t, combine_t = bench_kineto(
             partial(test_func, zero_copy=False, return_recv_hook=return_recv_hook),
             kernel_names=(
-                "dispatch_low_latency_9",
-                "combine_low_latency_10",
+                "dispatch_low_latency_",
+                "combine_low_latency_",
             ),
             barrier_comm_profiling=True,
             suppress_kineto_output=True,
@@ -252,8 +253,8 @@ def test(
 
 
 def test_loop(local_rank: int, num_local_ranks: int, args: argparse.Namespace):
+    redirect_io(local_rank, "./logs")
     rank, num_ranks, group = init_dist(local_rank, num_local_ranks)
-    redirect_io(rank, "./logs")
     shared_expert_rank_num = int(os.getenv("MOE_SHARED_EXPERT_RANK_NUM", 0))
     num_tokens, hidden = args.num_tokens, args.hidden
     num_topk, num_experts = args.num_topk, args.num_experts
@@ -284,7 +285,7 @@ def test_loop(local_rank: int, num_local_ranks: int, args: argparse.Namespace):
     )
 
     dist.barrier()
-    dist.destroy_process_group()
+    # dist.destroy_process_group()  # zbal will trigger error in finalize
 
 
 if __name__ == "__main__":

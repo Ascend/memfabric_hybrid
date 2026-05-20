@@ -222,9 +222,13 @@ def bench_kineto(
 
     # Return average kernel durations
     kernel_durations = []
-    for kernel_name in kernel_names:
-        events = [event for event in profile_data if kernel_name == event["name"]]
-        assert len(events) > 0, f"Kernel '{kernel_name}' not found in trace"
+    for kernel_prefix in kernel_names:
+        events = [event for event in profile_data if event["name"].startswith(kernel_prefix)]
+        assert len(events) > 0, f"No kernel with prefix '{kernel_prefix}' found in trace"
+        matched_names = set(event["name"] for event in events)
+        assert len(matched_names) == 1, (
+            f"Prefix '{kernel_prefix}' matches multiple kernels: {matched_names}"
+        )
         events = sorted(events, key=lambda event: event["ts"])
         durations = [event["dur"] / 1e6 for event in events]
         logging.info(f"[PROF] Kernel duration {durations}")
