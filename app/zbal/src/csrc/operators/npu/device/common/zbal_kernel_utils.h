@@ -24,6 +24,7 @@ See the Mulan PSL v2 for more details.
 #define ZBAL_CORE_BARRIER_SHIFT 2
 
 constexpr int64_t UB_PAD_COUNT = 4;
+constexpr int64_t UB_PAD4_COUNT = 8;
 constexpr int64_t UB_ALIGN_SIZE = 32;
 constexpr int64_t UB_BUFF_INTERVAL = 64;
 constexpr int64_t UB_DMA_MAX_SIZE = 176 * 1024;

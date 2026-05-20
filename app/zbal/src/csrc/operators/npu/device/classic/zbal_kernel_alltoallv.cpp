@@ -59,6 +59,21 @@ public:
 
         uint32_t elementsSize = Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
         pipe_.InitBuffer(elementsBuf_, elementsSize);
+
+        uint32_t prepareBufSize = Ceil(sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
+        pipe_.InitBuffer(prepareBuf_, prepareBufSize);
+        pipe_.InitBuffer(exchangeBuf_, prepareBufSize);
+        pipe_.InitBuffer(waitFlagBuf_, prepareBufSize);
+        pipe_.InitBuffer(getInputBuf_, prepareBufSize);
+        pipe_.InitBuffer(writeStatBuf_, prepareBufSize);
+        pipe_.InitBuffer(waitStatBuf_, prepareBufSize);
+        pipe_.InitBuffer(initStatBuf_, prepareBufSize);
+        pipe_.InitBuffer(waitReadyBuf_, prepareBufSize);
+
+        uint32_t int32BufSize = Ceil(sizeof(int32_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
+        pipe_.InitBuffer(atomicIncQue_, 1, int32BufSize);
+        pipe_.InitBuffer(waitLocalStatBuf_, int32BufSize);
+        pipe_.InitBuffer(getLocalStatBuf_, int32BufSize);
 #endif
     }
 
@@ -76,7 +91,7 @@ public:
         this->inputElement = elementsLT.GetValue(0);
         this->outputElement = elementsLT.GetValue(1);
 
-        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf1 = prepareBuf_.Get<uint64_t>();
         for (uint16_t i = 0; i < groupSize; i++) {
             GetMetaValue(reinterpret_cast<__gm__ uint64_t *>(outputCounts), i, groupSize, buf1);
             outputCountsArray[i] = buf1.GetValue(0);
@@ -99,7 +114,7 @@ public:
 
     ZBAL_KERNEL void Exchange(uint16_t offset)
     {
-        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf1 = exchangeBuf_.Get<uint64_t>();
 
         // exchange input addr
         AscendC::PipeBarrier<PIPE_ALL>();
@@ -125,14 +140,14 @@ public:
     ZBAL_KERNEL void WaitFlag(const uint16_t offset)
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf = waitFlagBuf_.Get<uint64_t>();
         WaitMetaValue(this->flagAddr, offset, waitSymbol, groupSize, buf);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
     ZBAL_KERNEL void GetInputInfo(uint16_t offset, uint64_t &inputOff, uint64_t &srcElement, __gm__ void **srcAddress)
     {
-        AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf1 = getInputBuf_.Get<uint64_t>();
 
         GetMetaValue(inputCumSumAddr, offset, groupSize, buf1);
         uint64_t srcCumSumAddr = buf1.GetValue(0);
@@ -240,13 +255,17 @@ public:
         AscendC::GlobalTensor<int32_t> outputGT;
         outputGT.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(target), ZBAL_FLAG_SIZE * sizeof(uint64_t));
 
-        AscendC::LocalTensor<int32_t> buf(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
+        AscendC::LocalTensor<int32_t> buf = atomicIncQue_.AllocTensor<int32_t>();
         buf.SetValue(0, 1);
 
         AscendC::DataCopyExtParams dataCopyParams(1, sizeof(int32_t), 0, 0, 0);
         AscendC::DataCopyPad(outputGT, buf, dataCopyParams);
 
         AscendC::SetAtomicNone();
+
+        atomicIncQue_.EnQue(buf);
+        buf = atomicIncQue_.DeQue<int32_t>();
+        atomicIncQue_.FreeTensor(buf);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_ATOMIC_INC);
     }
 
@@ -254,7 +273,7 @@ public:
     {
         __gm__ uint64_t *target = stat + offset * ZBAL_FLAG_SIZE;
 
-        AscendC::LocalTensor<int32_t> buf(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
+        AscendC::LocalTensor<int32_t> buf = getLocalStatBuf_.Get<int32_t>();
 
         GlobalTensor<int32_t> globalGT;
         globalGT.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(target), ZBAL_FLAG_SIZE * sizeof(uint64_t));
@@ -268,13 +287,13 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_WAIT_LOCAL_STAT);
         __gm__ uint64_t *target = stat + offset * ZBAL_FLAG_SIZE;
 
-        AscendC::LocalTensor<int32_t> buf(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
+        AscendC::LocalTensor<int32_t> buf = waitLocalStatBuf_.Get<int32_t>();
 
         GlobalTensor<int32_t> globalGT;
         globalGT.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(target), ZBAL_FLAG_SIZE * sizeof(uint64_t));
         SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        int32_t base = GetLocalStat(localStatBaseAddr, offset);
         while (true) {
-            int32_t base = GetLocalStat(localStatBaseAddr, offset);
             AscendC::DataCopy(buf, globalGT, UB_PAD_COUNT);
             SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
             if (buf.GetValue(0) == base) {
@@ -290,12 +309,13 @@ public:
         if (AscendC::GetBlockIdx() == 0) {
             uint64_t cumsum[ZBAL_MAX_RANK_SIZE];
             uint32_t statBase[ZBAL_MAX_RANK_SIZE];
-            AscendC::LocalTensor<uint64_t> buf1(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL, UB_PAD_COUNT);
+            AscendC::LocalTensor<uint64_t> buf1 = initStatBuf_.Get<uint64_t>();
             for (uint16_t i = 0; i < groupSize; i++) {
                 statBase[i] = (outputCountsArray[i] > 0 ? 1 : 0);
                 cumsum[i] = (i > 0 ? cumsum[i - 1] : 0) + outputCountsArray[i];
             }
 
+            uint16_t core = 1;
             uint64_t avgElement = outputElement / aivNum;
             uint64_t coreRight = avgElement;
 
@@ -303,15 +323,15 @@ public:
             if (avgElement > 0) {
                 // count split by core has more local stat, O(groupSize + aivNum)
                 for (uint16_t k = 0; k < groupSize; k++) {
-                    while (cumsum[k] > coreRight) {
-                        statBase[k] += 1;
-                        coreRight += avgElement;
-                        if (coreRight >= outputElement) {
-                            k += groupSize;
+                    while (cumsum[k] >= coreRight) {
+                        if (cumsum[k] > coreRight) {
+                            statBase[k] += 1;
+                        }
+                        core += 1;
+                        if (core >= aivNum) {
+                            k += groupSize;     // exit outer loop
                             break;
                         }
-                    }
-                    if (cumsum[k] == coreRight) {
                         coreRight += avgElement;
                     }
                 }
@@ -326,7 +346,7 @@ public:
             AscendC::PipeBarrier<PIPE_ALL>();
         }
 
-        AscendC::LocalTensor<uint64_t> buf2(AscendC::TPosition::VECIN, ZBAL_CONST_3 * UB_BUFF_INTERVAL, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf2 = waitReadyBuf_.Get<uint64_t>();
         WaitMetaValue(this->localStatReadyAddr, 0, waitSymbol, groupSize, buf2);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
     }
@@ -363,7 +383,7 @@ public:
 
     ZBAL_KERNEL void WriteRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
     {
-        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, 0, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf = writeStatBuf_.Get<uint64_t>();
         for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
             WaitLocalStat(this->localStatSendAddr, k);
 
@@ -375,7 +395,7 @@ public:
 
     ZBAL_KERNEL void WaitRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
     {
-        AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, 0, UB_PAD_COUNT);
+        AscendC::LocalTensor<uint64_t> buf = waitStatBuf_.Get<uint64_t>();
         if (commonStartRank >= groupSize) {
             commonStartRank = 0;
             commonEndRank = 1;
@@ -422,6 +442,17 @@ private:
     int64_t aivNum;
     TPipe pipe_;
     TBuf<> elementsBuf_;
+    TBuf<> prepareBuf_;
+    TBuf<> exchangeBuf_;
+    TBuf<> waitFlagBuf_;
+    TBuf<> getInputBuf_;
+    TBuf<> writeStatBuf_;
+    TBuf<> waitStatBuf_;
+    TBuf<> initStatBuf_;
+    TBuf<> waitReadyBuf_;
+    TQue<QuePosition::VECIN, 1> atomicIncQue_;
+    TBuf<> getLocalStatBuf_;
+    TBuf<> waitLocalStatBuf_;
     uint16_t groupSize;
     uint16_t myGroupRank;
     uint64_t memSize;
