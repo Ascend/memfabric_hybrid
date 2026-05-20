@@ -10,12 +10,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <cstdint>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_kernel_trace.h"
-#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_base.h"
 
 template<typename T>
 class ZBALSendKernel {
@@ -39,8 +34,6 @@ public:
         this->exchangeAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
         this->exchangeFlag = exchangeAddr + addrOffset;
         this->exchangeAck = exchangeFlag + addrOffset;
-
-        pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
     }
 
     ZBAL_KERNEL void Process()
@@ -67,8 +60,6 @@ public:
     }
 
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     uint32_t rank;
     uint32_t peer;
     uint32_t groupSize;

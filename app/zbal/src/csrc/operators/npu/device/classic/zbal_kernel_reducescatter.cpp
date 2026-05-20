@@ -10,12 +10,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <cstdint>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_kernel_trace.h"
-#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_base.h"
 
 struct RsParallelStrategy {
     bool aivNumLtGroupSize{false};
@@ -28,7 +23,7 @@ struct RsParallelStrategy {
 };
 
 template<typename T>
-class ZeroBuffReduceScatterKernel {
+class ZeroBuffReduceScatterKernel : public BaseKernel {
 public:
     ZBAL_KERNEL ZeroBuffReduceScatterKernel() {}
 
@@ -54,7 +49,7 @@ public:
 
         InitParallelStrategy();
 
-        pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
+        BaseKernel::Init();
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -111,7 +106,7 @@ public:
         inputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input) + xOffsetLocal, numPerCoreLocal);
         outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffsetLocal, numPerCoreLocal);
         AscendC::SetAtomicNone();
-        CpGM2GM(numPerCoreLocal);
+        CpGM2GM(inputGm, outputGm, numPerCoreLocal);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         AscendC::SyncAll<true>();
 
@@ -143,7 +138,7 @@ public:
             if (srcRank != rank) {
                 ZBAL_PROF_START(comm, ZBAL_PROF_REDUCESCATTER_COPY);
                 SetAtomicOp<T>(reduceOp);
-                CpGM2GM(numPerCore);
+                CpGM2GM(inputGm, outputGm, numPerCore);
                 AscendC::SetAtomicNone();
                 ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_COPY);
             }
@@ -180,30 +175,7 @@ private:
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
-    ZBAL_KERNEL void CpGM2GM(uint32_t copyElement)
-    {
-        AscendC::DataCopyPadExtParams<T> padParams;
-        uint32_t preCopyNum = UB_DMA_MAX_SIZE / sizeof(T);
-        uint32_t times = 0;
-        uint32_t copySize = copyElement * sizeof(T);
-
-        do {
-            uint32_t curCopySize = (copySize > UB_DMA_MAX_SIZE) ? UB_DMA_MAX_SIZE : copySize;
-            AscendC::LocalTensor<T> xLocal = bindQueue.AllocTensor<T>();
-            AscendC::DataCopyExtParams dataCopyParams(1, curCopySize, 0, 0, 0);
-            AscendC::DataCopyPad(xLocal, inputGm[times * preCopyNum], dataCopyParams, padParams);
-            bindQueue.EnQue(xLocal);
-            xLocal = bindQueue.DeQue<T>();
-            AscendC::DataCopyPad(outputGm[times * preCopyNum], xLocal, dataCopyParams);
-            bindQueue.FreeTensor(xLocal);
-            copySize = (copySize > UB_DMA_MAX_SIZE) ? copySize - UB_DMA_MAX_SIZE : 0;
-            times++;
-        } while (copySize > 0);
-    }
-
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> inputGm;
     AscendC::GlobalTensor<T> outputGm;
     uint32_t aivNum;

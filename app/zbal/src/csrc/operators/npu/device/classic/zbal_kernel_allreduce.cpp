@@ -10,12 +10,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <cstdint>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_kernel_trace.h"
-#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_base.h"
 #include "zbal_kernel_allgather.h"
 
 constexpr uint32_t SMALL_DATA_SIZE = 0 * 7168;
@@ -34,7 +29,7 @@ struct ArParallelStrategy {
 };
 
 template<typename T>
-class ZeroBuffAllReduceKernel {
+class ZeroBuffAllReduceKernel : public BaseKernel {
 public:
     ZBAL_KERNEL ZeroBuffAllReduceKernel() {}
 
@@ -67,7 +62,7 @@ public:
 
         InitParallelStrategy();
 
-        pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
+        BaseKernel::Init();
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -132,7 +127,7 @@ private:
                 xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input), totalElems);
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
                 AscendC::SetAtomicNone();
-                DataCopyGM2GM(xGm, buffGm, totalElems);
+                CpGM2GM(xGm, buffGm, totalElems);
             }
             AscendC::SyncAll<true>();
 
@@ -143,7 +138,7 @@ private:
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
                 if (srcRank != rank) {
                     SetAtomicOp<T>(atomicOp);
-                    DataCopyGM2GM(xGm, buffGm, totalElems);
+                    CpGM2GM(xGm, buffGm, totalElems);
                     AscendC::SetAtomicNone();
                 }
             }
@@ -157,12 +152,12 @@ private:
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
             if (aivIndex == rank) {
                 AscendC::SetAtomicNone();
-                DataCopyGM2GM(xGm, buffGm, totalElems);
+                CpGM2GM(xGm, buffGm, totalElems);
                 AscendC::SyncAll<true>();
             } else {
                 AscendC::SyncAll<true>();
                 SetAtomicOp<T>(atomicOp);
-                DataCopyGM2GM(xGm, buffGm, totalElems);
+                CpGM2GM(xGm, buffGm, totalElems);
                 AscendC::SetAtomicNone();
             }
             ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
@@ -173,7 +168,7 @@ private:
         ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
         buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
         yGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), totalElems);
-        DataCopyGM2GM(buffGm, yGm, totalElems);
+        CpGM2GM(buffGm, yGm, totalElems);
         ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
 
         BarrierAll(groupInfo);
@@ -232,7 +227,7 @@ private:
         xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input) + xOffsetLocal, numPerCoreLocal);
         buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer) + yOffsetLocal, numPerCoreLocal);
         AscendC::SetAtomicNone();
-        DataCopyGM2GM(xGm, buffGm, numPerCoreLocal);
+        CpGM2GM(xGm, buffGm, numPerCoreLocal);
         ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         AscendC::SyncAll<true>();
 
@@ -263,7 +258,7 @@ private:
             if (srcRank != rank) {
                 ZBAL_PROF_START(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
                 SetAtomicOp<T>(atomicOp);
-                DataCopyGM2GM(xGm, buffGm, numPerCore);
+                CpGM2GM(xGm, buffGm, numPerCore);
                 AscendC::SetAtomicNone();
                 ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
             }
@@ -289,7 +284,7 @@ private:
                 WaitFlagAndPtr(srcRank, BUFFER_ONLY);
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(exchangeBufPtr), elements);
                 yGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffset, elements);
-                DataCopyGM2GM(buffGm, yGm, elements);
+                CpGM2GM(buffGm, yGm, elements);
             }
         } else {
             uint32_t elements = meta.startRank != lastRank ? slice : lastSlice;
@@ -303,7 +298,7 @@ private:
             WaitFlagAndPtr(meta.startRank, BUFFER_ONLY);
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(exchangeBufPtr) + xOffset, numPerCore);
             yGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffset, numPerCore);
-            DataCopyGM2GM(buffGm, yGm, numPerCore);
+            CpGM2GM(buffGm, yGm, numPerCore);
         }
 
         BarrierAll(groupInfo);
@@ -363,30 +358,7 @@ private:
         ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_WAIT_FLAG);
     }
 
-    ZBAL_KERNEL void DataCopyGM2GM(AscendC::GlobalTensor<T> inputTensor, AscendC::GlobalTensor<T> outputTensor,
-                                   uint32_t len)
-    {
-        AscendC::DataCopyPadExtParams<T> padParams;
-        uint32_t leftCopySize = len * sizeof(T);
-        uint32_t times = 0;
-        uint32_t preCopyNum = UB_DMA_MAX_SIZE / sizeof(T);
-        do {
-            uint32_t curCopySize = (leftCopySize > UB_DMA_MAX_SIZE) ? UB_DMA_MAX_SIZE : leftCopySize;
-            AscendC::LocalTensor<T> xLocal = bindQueue.AllocTensor<T>();
-            AscendC::DataCopyExtParams dataCopyParams(1, curCopySize, 0, 0, 0);
-            AscendC::DataCopyPad(xLocal, inputTensor[times * preCopyNum], dataCopyParams, padParams);
-            bindQueue.EnQue(xLocal);
-            xLocal = bindQueue.DeQue<T>();
-            AscendC::DataCopyPad(outputTensor[times * preCopyNum], xLocal, dataCopyParams);
-            bindQueue.FreeTensor(xLocal);
-            leftCopySize = (leftCopySize > UB_DMA_MAX_SIZE) ? leftCopySize - UB_DMA_MAX_SIZE : 0;
-            times++;
-        } while (leftCopySize > 0);
-    }
-
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> xGm;
     AscendC::GlobalTensor<T> yGm;
     AscendC::GlobalTensor<T> buffGm;

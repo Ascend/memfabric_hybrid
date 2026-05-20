@@ -10,22 +10,14 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <random>
-#include <limits>
-#include <iostream>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_kernel_trace.h"
-#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_base.h"
 #include "zbal_kernel_allgather.h"
 
-using namespace zbal;
 const uint32_t SMALL_AG_THRESHOLD = 1024 * 7168;
 const uint32_t FULL_COPY_GROUP_SIZE = 4;
 
 template<typename T>
-class BroadcastFullCopyKernel {
+class BroadcastFullCopyKernel : public BaseKernel {
 public:
     ZBAL_KERNEL BroadcastFullCopyKernel() {}
 
@@ -49,7 +41,8 @@ public:
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
-        pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
+
+        BaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -97,7 +90,7 @@ public:
 
             ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_SCATTER);
             if (rank != root) {
-                CpGM2GM(outputGm[startInRank], inputGm[startInRank], numPerCore);
+                CpGM2GM(inputGm[startInRank], outputGm[startInRank], numPerCore);
             }
             ZBAL_PROF_STOP(comm, ZBAL_PROF_BROADCAST_SCATTER);
         }
@@ -121,28 +114,26 @@ private:
             if (endRank > groupSize) {
                 endRank = groupSize;
             }
-            AscendC::LocalTensor<uint64_t> inputInBuff(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
-            AscendC::LocalTensor<uint64_t> flagInBuff(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                      UB_PAD_COUNT);
-            for (int dstRank = startRank; dstRank < endRank; dstRank++) {
-                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-                SetMetaValue((__gm__ uint64_t *)ptr, rank, reinterpret_cast<uint64_t>(input), groupSize, inputInBuff);
 
+            for (int dstRank = startRank; dstRank < endRank; dstRank++) {
+                uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
+                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+
+                SetDataAddr(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
-                SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, rank, flagMagic, groupSize, flagInBuff);
+                SetFlag(flagPtr, flagMagic, rank);
+                AscendC::PipeBarrier<PIPE_ALL>();
             }
         } else if (aivIndex < groupSize) {
-            AscendC::LocalTensor<uint64_t> inputInBuff(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
-            AscendC::LocalTensor<uint64_t> flagInBuff(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                      UB_PAD_COUNT);
-
-            // write addr
+            uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
             auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-            SetMetaValue((__gm__ uint64_t *)ptr, rank, reinterpret_cast<uint64_t>(input), groupSize, inputInBuff);
+            auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
 
-            // write exchangeFlag
+            SetDataAddr(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
-            SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, rank, flagMagic, groupSize, flagInBuff);
+            SetFlag(flagPtr, flagMagic, rank);
+            AscendC::PipeBarrier<PIPE_ALL>();
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
     }
@@ -150,15 +141,14 @@ private:
     ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> flagOutBuff(AscendC::TPosition::VECIN, 3 * UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                   UB_PAD_COUNT);
-        WaitMetaValue(flagAddr, coreTargetRank, flagMagic, groupSize, flagOutBuff);
+        uint64_t readyFlag;
+        do {
+            readyFlag = GetFlag(flagAddr, coreTargetRank);
+        } while (readyFlag != flagMagic);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> inputGm;
     AscendC::GlobalTensor<T> outputGm;
     uint32_t aivNum;
@@ -180,7 +170,7 @@ private:
 };
 
 template<typename T>
-class BroadcastRingKernel {
+class BroadcastRingKernel : public BaseKernel {
 public:
     ZBAL_KERNEL BroadcastRingKernel() {}
 
@@ -204,6 +194,8 @@ public:
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+
+        BaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -233,7 +225,7 @@ public:
 
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_SCATTER);
         if (rank != root) {
-            CpGM2GM(outputGm[globalOffset], inputGm[globalOffset], numPerCore);
+            CpGM2GM(inputGm[globalOffset], outputGm[globalOffset], numPerCore);
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_BROADCAST_SCATTER);
 
@@ -270,28 +262,26 @@ private:
             if (endRank > groupSize) {
                 endRank = groupSize;
             }
-            AscendC::LocalTensor<uint64_t> inputInBuff(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
-            AscendC::LocalTensor<uint64_t> flagInBuff(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                      UB_PAD_COUNT);
-            for (int dstRank = startRank; dstRank < endRank; dstRank++) {
-                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-                SetMetaValue((__gm__ uint64_t *)ptr, rank, reinterpret_cast<uint64_t>(input), groupSize, inputInBuff);
 
+            for (int dstRank = startRank; dstRank < endRank; dstRank++) {
+                uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
+                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+
+                SetDataAddr(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
-                SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, rank, flagMagic, groupSize, flagInBuff);
+                SetFlag(flagPtr, flagMagic, rank);
+                AscendC::PipeBarrier<PIPE_ALL>();
             }
         } else if (aivIndex < groupSize) {
-            AscendC::LocalTensor<uint64_t> inputInBuff(AscendC::TPosition::VECIN, UB_ALIGN_SIZE, UB_PAD_COUNT);
-            AscendC::LocalTensor<uint64_t> flagInBuff(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                      UB_PAD_COUNT);
-
-            // write addr
+            uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
             auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-            SetMetaValue((__gm__ uint64_t *)ptr, rank, reinterpret_cast<uint64_t>(input), groupSize, inputInBuff);
+            auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
 
-            // write exchangeFlag
+            SetDataAddr(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
-            SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, rank, flagMagic, groupSize, flagInBuff);
+            SetFlag(flagPtr, flagMagic, rank);
+            AscendC::PipeBarrier<PIPE_ALL>();
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
     }
@@ -299,15 +289,14 @@ private:
     ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> flagOutBuff(AscendC::TPosition::VECIN, 3 * UB_BUFF_INTERVAL + UB_ALIGN_SIZE,
-                                                   UB_PAD_COUNT);
-        WaitMetaValue(flagAddr, coreTargetRank, flagMagic, groupSize, flagOutBuff);
+        uint64_t readyFlag;
+        do {
+            readyFlag = GetFlag(flagAddr, coreTargetRank);
+        } while (readyFlag != flagMagic);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> inputGm;
     AscendC::GlobalTensor<T> outputGm;
     uint32_t aivNum;

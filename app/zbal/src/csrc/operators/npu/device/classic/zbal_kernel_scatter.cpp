@@ -10,17 +10,10 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <random>
-#include <limits>
-#include <iostream>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_kernel_trace.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_base.h"
 
 template<typename T>
-class ScatterKernel {
+class ScatterKernel : public BaseKernel {
 public:
     ZBAL_KERNEL ScatterKernel() {}
 
@@ -43,7 +36,8 @@ public:
         this->exchangeAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
         this->exchangeFlag = this->exchangeAddr + this->addrOffset;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
-        pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
+
+        BaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -51,7 +45,7 @@ public:
 #ifdef __DAV_C220_VEC__
         InitDataAddrAndFlag();
         WaitFlag(root);
-        uint64_t rootDataAddr = GetDataAddr(exchangeAddr, root);
+        uint64_t rootDataAddr = GetRootDataAddr(exchangeAddr, root);
 
         uint32_t elementsPerRank = elements;
         uint32_t rankOffset = rank * elementsPerRank;
@@ -70,7 +64,7 @@ public:
         outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), numPerCore);
 
         ZBAL_PROF_START(comm, ZBAL_PROF_SCATTER_KERNEL_ALL);
-        CpGM2GM(outputGm[startInRank], inputGm[startInRank], numPerCore);
+        CpGM2GM(inputGm[startInRank], outputGm[startInRank], numPerCore);
         BarrierAll(comm);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_SCATTER_KERNEL_ALL);
 #endif
@@ -111,21 +105,13 @@ private:
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
     }
 
-    ZBAL_KERNEL uint64_t GetDataAddr(__gm__ void *metaAddr, uint32_t coreTargetRank)
+    ZBAL_KERNEL uint64_t GetRootDataAddr(__gm__ void *metaAddr, uint32_t coreTargetRank)
     {
         uint32_t dataAddrOffset = coreTargetRank * ZBAL_FLAG_SIZE;
         __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
         dcciCacheline((__gm__ uint8_t *)dataGmAddr);
         __gm__ uint64_t *realInputAddr = (__gm__ uint64_t *)(*dataGmAddr);
         return realInputAddr[rank];
-    }
-
-    ZBAL_KERNEL void SetDataAddr(__gm__ void *metaAddr, uint64_t val, uint32_t coreTargetRank)
-    {
-        uint32_t dataAddrOffset = coreTargetRank * ZBAL_FLAG_SIZE;
-        __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
-        *dataGmAddr = val;
-        dcciCacheline((__gm__ uint8_t *)dataGmAddr);
     }
 
     ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
@@ -139,8 +125,6 @@ private:
     }
 
 private:
-    AscendC::TPipe pipe;
-    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> inputGm;
     AscendC::GlobalTensor<T> outputGm;
     uint32_t aivNum;

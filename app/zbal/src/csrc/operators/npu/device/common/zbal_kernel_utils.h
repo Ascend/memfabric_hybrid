@@ -13,7 +13,6 @@ See the Mulan PSL v2 for more details.
 #ifndef ZBAL_KERNEL_UTILS_H
 #define ZBAL_KERNEL_UTILS_H
 
-#include <unordered_map>
 #include <acl/acl_rt.h>
 #include "zbal_def.h"
 #include "zbal_defines.h"
@@ -35,18 +34,28 @@ constexpr uint32_t ZBAL_TYPE_SIZE_FOUR = 4;
 constexpr uint32_t ZBAL_TYPE_SIZE_EIGHT = 8;
 using namespace AscendC;
 
-const std::unordered_map<zbal_datatype_t, uint32_t> zbalDataTypeToSize = {
-    {ZBAL_DATA_TYPE_INT8, ZBAL_TYPE_SIZE_ONE},     {ZBAL_DATA_TYPE_UINT8, ZBAL_TYPE_SIZE_ONE},
-    {ZBAL_DATA_TYPE_INT16, ZBAL_TYPE_SIZE_TWO},    {ZBAL_DATA_TYPE_FP16, ZBAL_TYPE_SIZE_TWO},
-    {ZBAL_DATA_TYPE_UINT16, ZBAL_TYPE_SIZE_TWO},   {ZBAL_DATA_TYPE_BFP16, ZBAL_TYPE_SIZE_TWO},
-    {ZBAL_DATA_TYPE_INT32, ZBAL_TYPE_SIZE_FOUR},   {ZBAL_DATA_TYPE_FP32, ZBAL_TYPE_SIZE_FOUR},
-    {ZBAL_DATA_TYPE_UINT32, ZBAL_TYPE_SIZE_FOUR},  {ZBAL_DATA_TYPE_INT64, ZBAL_TYPE_SIZE_EIGHT},
-    {ZBAL_DATA_TYPE_UINT64, ZBAL_TYPE_SIZE_EIGHT}, {ZBAL_DATA_TYPE_FP64, ZBAL_TYPE_SIZE_EIGHT}};
-
 inline uint32_t GetTypeSize(zbal_datatype_t type)
 {
-    auto size = zbalDataTypeToSize.find(type);
-    return size != zbalDataTypeToSize.end() ? size->second : 0;
+    switch (type) {
+        case ZBAL_DATA_TYPE_INT8:
+        case ZBAL_DATA_TYPE_UINT8:
+            return ZBAL_TYPE_SIZE_ONE;
+        case ZBAL_DATA_TYPE_INT16:
+        case ZBAL_DATA_TYPE_FP16:
+        case ZBAL_DATA_TYPE_UINT16:
+        case ZBAL_DATA_TYPE_BFP16:
+            return ZBAL_TYPE_SIZE_TWO;
+        case ZBAL_DATA_TYPE_INT32:
+        case ZBAL_DATA_TYPE_FP32:
+        case ZBAL_DATA_TYPE_UINT32:
+            return ZBAL_TYPE_SIZE_FOUR;
+        case ZBAL_DATA_TYPE_INT64:
+        case ZBAL_DATA_TYPE_UINT64:
+        case ZBAL_DATA_TYPE_FP64:
+            return ZBAL_TYPE_SIZE_EIGHT;
+        default:
+            return 0;
+    }
 }
 
 template<AscendC::HardEvent event>
@@ -143,15 +152,6 @@ ZBAL_KERNEL void WaitMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint64_t v
     }
 }
 
-ZBAL_KERNEL void WaitMultiMetaValue(__gm__ uint64_t *ptr, uint32_t expectCnt, uint64_t expectVal,
-                                    AscendC::LocalTensor<uint64_t> localTensor)
-{
-    for (uint32_t i = 0; i < expectCnt; i++) {
-        WaitMetaValue(ptr, i, expectVal, expectCnt, localTensor);
-        localTensor.SetValue(0, 0);
-    }
-}
-
 ZBAL_KERNEL void GetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint16_t groupSize,
                               AscendC::LocalTensor<uint64_t> localTensor)
 {
@@ -193,26 +193,6 @@ ZBAL_KERNEL void SetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
     dcciCacheline((__gm__ uint8_t *)flagAddr);
 }
 
-ZBAL_KERNEL void SetFlagOrStat(__gm__ CommGroupInfo *comm, __gm__ uint64_t *targetAddr, uint16_t targetRank,
-                               const uint64_t barrierMagic)
-{
-    AscendC::PipeBarrier<PIPE_ALL>();
-    AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, targetRank * UB_ALIGN_SIZE, UB_PAD_COUNT);
-    auto ptr =
-        zbal_ptr(targetAddr, comm->myGroupRank, targetRank, comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
-    SetMetaValue((__gm__ uint64_t *)ptr, comm->myGroupRank, barrierMagic, comm->groupSize, buf);
-}
-
-ZBAL_KERNEL void WaitFlagOrStat(__gm__ CommGroupInfo *comm, __gm__ uint64_t *targetAddr, uint16_t targetRank,
-                                const uint64_t barrierMagic)
-{
-    AscendC::PipeBarrier<PIPE_ALL>();
-    AscendC::LocalTensor<uint64_t> buf(AscendC::TPosition::VECIN, targetRank * UB_BUFF_INTERVAL, UB_PAD_COUNT);
-    WaitMetaValue(targetAddr, targetRank, barrierMagic, comm->groupSize, buf);
-    AscendC::PipeBarrier<PIPE_ALL>();
-    SetMetaValue(targetAddr, targetRank, 0, comm->groupSize, buf);
-}
-
 ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
 {
     AscendC::SyncAll<true>();
@@ -244,18 +224,38 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
 
     // flag
     for (uint16_t rank = startRank; rank < endRank; rank++) {
-        SetFlagOrStat(comm, flagAddr, rank, barrierMagic);
+        AscendC::PipeBarrier<PIPE_ALL>();
+        auto ptr = zbal_ptr(flagAddr, comm->myGroupRank, rank,
+                            comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+        SetFlag(ptr, barrierMagic, comm->myGroupRank);
     }
     for (uint16_t rank = startRank; rank < endRank; rank++) {
-        WaitFlagOrStat(comm, flagAddr, rank, barrierMagic);
+        AscendC::PipeBarrier<PIPE_ALL>();
+        uint64_t readyFlag;
+        do {
+            readyFlag = GetFlag(flagAddr, rank);
+        } while (readyFlag != barrierMagic);
+
+        AscendC::PipeBarrier<PIPE_ALL>();
+        SetFlag(flagAddr, 0, rank);
     }
 
     // stat
     for (uint16_t rank = startRank; rank < endRank; rank++) {
-        SetFlagOrStat(comm, statAddr, rank, barrierMagic);
+        AscendC::PipeBarrier<PIPE_ALL>();
+        auto ptr = zbal_ptr(statAddr, comm->myGroupRank, rank,
+                            comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+        SetFlag(ptr, barrierMagic, comm->myGroupRank);
     }
     for (uint16_t rank = startRank; rank < endRank; rank++) {
-        WaitFlagOrStat(comm, statAddr, rank, barrierMagic);
+        AscendC::PipeBarrier<PIPE_ALL>();
+        uint64_t readyFlag;
+        do {
+            readyFlag = GetFlag(statAddr, rank);
+        } while (readyFlag != barrierMagic);
+
+        AscendC::PipeBarrier<PIPE_ALL>();
+        SetFlag(statAddr, 0, rank);
     }
 
     AscendC::PipeBarrier<PIPE_ALL>();
@@ -313,17 +313,31 @@ ZBAL_KERNEL void CpGM2GM(__gm__ T *out, uint64_t outElem, uint64_t outOff, __gm_
     inputGT.SetGlobalBuffer(in, inElem);
 
     CpGM2GM(outputGT[outOff], inputGT[inOff], count);
-}
-
-const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
-    {2, 2, 0, 256}, {2, 4, 256, 1024 * 1024},  {4, 4, 0, 256},   {4, 8, 256, 1024 * 1024},
-    {8, 8, 0, 256}, {8, 16, 256, 1024 * 1024}, {16, 16, 0, 256}, {16, 32, 256, 1024 * 1024},
+}const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
+    {2, 2, 0, 256},
+    {2, 4, 256, 1024 * 1024},
+    {4, 4, 0, 256},
+    {4, 8, 256, 1024 * 1024},
+    {8, 8, 0, 256},
+    {8, 16, 256, 1024 * 1024},
+    {16, 16, 0, 256},
+    {16, 32, 256, 1024 * 1024},
 };
 
-inline uint32_t GetAivBlockDimBySize(CommGroupInfo &groupInfo, uint64_t totalSize, uint32_t defaultBlockDim)
+inline uint32_t ZBALOpGetAivBlockDim(CommGroupInfo &groupInfo, size_t sendCount, zbal_datatype_t dataType)
 {
-    // avoid no task block for small shape
-    if (totalSize <= ZBAL_SMALL_DATA_SIZE && defaultBlockDim > groupInfo.groupSize) {
+    static uint32_t blockDim = 0;
+    if (blockDim == 0) {
+        auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &blockDim);
+        if (ret != 0) {
+            printf("ZBALOpAllGather get block dim failed, blockDim:%d\n", ret);
+            return ret;
+        }
+    }
+
+    uint64_t totalSize = GetTypeSize(dataType) * sendCount;
+    if (totalSize <= ZBAL_SMALL_DATA_SIZE && blockDim > groupInfo.groupSize) {
+        // avoid no task block for small shape
         return groupInfo.groupSize;
     }
 
@@ -332,21 +346,8 @@ inline uint32_t GetAivBlockDimBySize(CommGroupInfo &groupInfo, uint64_t totalSiz
             return mapping.blockDim;
         }
     }
-    return defaultBlockDim;
-}
 
-inline uint32_t ZBALOpGetAivBlockDim(CommGroupInfo &groupInfo, size_t sendCount, zbal_datatype_t dataType)
-{
-    static uint32_t blockDim = 0;
-    auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &blockDim);
-    if (ret != 0) {
-        printf("ZBALOpAllGather get block dim failed, ret:%d\n", ret);
-        return ret;
-    }
-
-    uint64_t totalSize = GetTypeSize(dataType) * sendCount;
-
-    return GetAivBlockDimBySize(groupInfo, totalSize, blockDim);
+    return blockDim;
 }
 
 #endif // ZBAL_KERNEL_UTILS_H
