@@ -235,7 +235,7 @@ std::string ProcessGroupZBAL::ConstructCommName() noexcept
 
 std::string ProcessGroupZBAL::ConstructP2pCommName(int peer) noexcept
 {
-    int peerWorldRank = options_->globalRanksInGroup.at(peer);
+    int peerWorldRank = options_->globalRanksInGroup.empty() ? peer : options_->globalRanksInGroup.at(peer);
     int lowRank = myWorldRank_ < peerWorldRank ? myWorldRank_ : peerWorldRank;
     int highRank = myWorldRank_ < peerWorldRank ? peerWorldRank : myWorldRank_;
     std::string groupName = std::to_string(lowRank) + ":" + std::to_string(highRank);
@@ -288,7 +288,7 @@ int32_t ProcessGroupZBAL::initP2pCommunicator(int peer, std::string &groupName) 
         return Z_OK;
     }
 
-    int peerWorldRank = options_->globalRanksInGroup.at(peer);
+    int peerWorldRank = options_->globalRanksInGroup.empty() ? peer : options_->globalRanksInGroup.at(peer);
     zbal_comm_options_t opt;
     opt.backendType = ZBAL_ASCEND_NPU;
     opt.isWorldGroup = 0;
@@ -393,7 +393,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::pointToPoint(std::vector<at::Te
     }
 
     {
-        int peerWorldRank = options_->globalRanksInGroup.at(peer);
+        int peerWorldRank = options_->globalRanksInGroup.empty() ? peer : options_->globalRanksInGroup.at(peer);
         int peerP2pIdx = myWorldRank_ < peerWorldRank ? 1 : 0;
         for (const auto i : c10::irange(tensors.size())) {
             npuGuard.set_index(devices[i].index());
