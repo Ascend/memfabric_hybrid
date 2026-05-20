@@ -1485,7 +1485,7 @@ index 0000000..be56e7e
 +}  // namespace mooncake
 diff --git a/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
 new file mode 100644
-index 0000000..25dc2ef
+index 0000000..f65a7cd
 --- /dev/null
 +++ b/mooncake-transfer-engine/src/transport/ub_transport/memfabric_transport.cpp
 @@ -0,0 +1,391 @@
@@ -1514,7 +1514,7 @@ index 0000000..25dc2ef
 +
 +MemFabricTransport::~MemFabricTransport() {}
 +
-+const size_t MAX_SLICE_PER_BATCH = 10240;
++const size_t MAX_SLICE_PER_BATCH = 64;
 +
 +Status MemFabricTransport::batchCopySmemTrans(
 +    const std::unordered_map<SegmentID, std::vector<Slice *>> &slice_list)
