@@ -662,10 +662,6 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::SendCountNotify()
         CpGM2GM(localMetaAddrGt2, remoteMetaAddrGt2, 1);
 
         PipeBarrier<PIPE_ALL>();
-        // Flag 也 get 一下
-        auto flagPtr = GetMetaInfoAddrByRankId(localNotifyStatusGm_, targetRankId);
-        LocalNotifyStatusTensor_.SetGlobalBuffer((__gm__ float *)(flagPtr) + aivId_ * FLAG_CNT_ALIGN);
-        CpGM2GM(recvCntStatusGt[targetRankId * FLOAT_32B_ALIGN], LocalNotifyStatusTensor_, 8);
     }
     SyncFunc<AscendC::HardEvent::MTE3_S>();
 }
@@ -677,30 +673,6 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::WaitNotify()
     SplitToCore(epWorldSize_, moeUsedAivNum_, startRankId, endRankId, rankNumPerBlock);
     if (rankNumPerBlock == 0U) {
         return;
-    }
-    // WaitNotify Flag
-    NotifyBufInit();
-
-    LocalTensor<float> gatherNotifyTensor = gatherNotiStatusBuf_.Get<float>();
-    LocalTensor<float> statusNotifyTensor = notiStatusBuf_.GetWithOffset<float>(UB_ALIGN / sizeof(float), UB_ALIGN);
-    notifyStatusFp32Tensor_ = notifyWaitStatusBuf_.Get<float>();
-    uint32_t mask = 1; // gatherMask + sum 相关参数
-    DataCopyParams intriParams{1, static_cast<uint16_t>(rankNumPerBlock * UB_32B_ALIGN), 0, 0};
-
-    float sumOfFlag = static_cast<float>(-1);
-    float compareTarget = static_cast<float>(exp_flag) * rankNumPerBlock;
-
-    // use approximated targetSumFlag
-    float minTarget = compareTarget - (float)0.5;
-    float maxTarget = compareTarget + (float)0.5;
-
-    SyncFunc<AscendC::HardEvent::S_V>();
-    while ((sumOfFlag < minTarget) || (sumOfFlag > maxTarget)) {
-        DataCopy(notifyStatusFp32Tensor_, recvCntStatusGt[startRankId * FLOAT_32B_ALIGN], intriParams);
-        SyncFunc<AscendC::HardEvent::MTE2_V>();
-        ReduceSum(statusNotifyTensor, notifyStatusFp32Tensor_, gatherNotifyTensor, mask, rankNumPerBlock, 1);
-        SyncFunc<AscendC::HardEvent::V_S>();
-        sumOfFlag = statusNotifyTensor.GetValue(0);
     }
 
     // Reload recvDataTensor
@@ -729,15 +701,12 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::WaitNotify()
             SyncFunc<AscendC::HardEvent::MTE3_S>();
             uint32_t tokenSums = 0;
             for (uint32_t localMoeIndex = 0; localMoeIndex < moeExpertNumPerRank_; ++localMoeIndex) {
-                uint32_t preIndex = epWorldSize_ * (localMoeIndex - 1) + epWorldSize_ - 1;
-                uint32_t curIndex = epWorldSize_ * localMoeIndex + epWorldSize_ - 1;
-                uint32_t preMoeIndexCnt = preIndex == -1 ? 0 : recvTokenLt.GetValue(preIndex);
+                uint32_t curIndex = epWorldSize_ * (localMoeIndex + 1) - 1;
+                uint32_t preMoeIndexCnt = (localMoeIndex == 0) ? 0 : recvTokenLt.GetValue(curIndex - epWorldSize_);
                 uint32_t curMoeIndexCnt = recvTokenLt.GetValue(curIndex);
                 tokenSums =
                     ((expertTokenNumsType_ == 0) ? tokenSums : 0) + (curMoeIndexCnt - preMoeIndexCnt) + gatherCount_;
                 expertTokenNumsGlobal.SetValue(localMoeIndex, tokenSums);
-                DataCacheCleanAndInvalid<int64_t, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(
-                    expertTokenNumsGlobal[localMoeIndex]);
             }
         }
     }
@@ -803,6 +772,7 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::InputToDstOutput()
     bool isSendShared = (aivId_ >= moeUsedAivNum_) && (sharedExpertRankNum_ != 0);
     if (isSendShared) {
         SendToSharedExpert();
+        return;
     }
     DataCopyExtParams expertIdsCntParams = {1U, static_cast<uint32_t>(expertIdsCnt_ * sizeof(uint32_t)), 0U, 0U, 0U};
     DataCopyPadExtParams<int32_t> expertIdsCntCopyPadParams{false, 0U, 0U, 0U};
@@ -812,9 +782,6 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::InputToDstOutput()
     DataCopyPad(expertIdsTensor_, expertIdsGMTensor_, expertIdsCntParams, expertIdsCntCopyPadParams);
     SyncFunc<AscendC::HardEvent::MTE2_S>();
 
-    if (isSendShared) { // 用于send共享专家数据的核，也需要搬运expertIds，后续会重新分核写状态位置，该核可能用于写moe专家flag
-        return;
-    }
     SendToMoeExpert();
 }
 
@@ -868,9 +835,6 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::SendToMoeExpert()
         uint32_t offsetIdx = dstExpertId * epWorldSize_ + epRankId_;
         uint32_t col = offsetIdx % moeExpertNum_;
 
-        // This DCache Refresh may not be necessary
-        DataCacheCleanAndInvalid<int32_t, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(
-            sendCountsGlobal[offsetIdx - 1]);
         int32_t dstExpertOffset = (col == 0) ? 0 : sendCountsGlobal(offsetIdx - 1); // Count 转 Offset
 
         // 再取小偏移
@@ -1051,21 +1015,18 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::NotifyBufInit()
 template<TemplateTypeClass>
 __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::CleanUp()
 {
-    if (aivId_ != 0) {
-        SyncAll<true>();
-        return;
-    }
     clearAlign_ = Ceil(moeExpertNum_ * sizeof(int32_t), UB_ALIGN) * UB_ALIGN;
     tpipe_->InitBuffer(CleartBuf, clearAlign_);
 
     // LocalNotifyDataTensor_ 的累加清零 ---> TO~DO：分核清零
-    LocalNotifyDataTensor_.SetGlobalBuffer((__gm__ int32_t *)(localNotifyDataSpaceGm_));
-    LocalTensor<int32_t> cleanTempLt_ = CleartBuf.GetWithOffset<int32_t>(moeExpertNum_, 0);
-    Duplicate<int32_t>(cleanTempLt_, 0, moeExpertNum_);
-    PipeBarrier<PIPE_ALL>();
-    DataCopy(LocalNotifyDataTensor_, cleanTempLt_, moeExpertNum_);
-    PipeBarrier<PIPE_ALL>();
-    SyncAll<true>();
+    if (aivId_ == 0) {
+        LocalNotifyDataTensor_.SetGlobalBuffer((__gm__ int32_t *)(localNotifyDataSpaceGm_));
+        LocalTensor<int32_t> cleanTempLt_ = CleartBuf.GetWithOffset<int32_t>(moeExpertNum_, 0);
+        Duplicate<int32_t>(cleanTempLt_, 0, moeExpertNum_);
+        PipeBarrier<PIPE_ALL>();
+        DataCopy(LocalNotifyDataTensor_, cleanTempLt_, moeExpertNum_);
+        PipeBarrier<PIPE_ALL>();
+    }
 }
 
 template<TemplateTypeClass>
