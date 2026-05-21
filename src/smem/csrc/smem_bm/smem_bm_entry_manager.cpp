@@ -77,8 +77,8 @@ int32_t SmemBmEntryManager::PrepareStore()
     StoreFactory::SetTlsInfo(config_.storeTlsConfig);
     if (!config_.autoRanking) {
         SM_ASSERT_RETURN(config_.rankId < worldSize_, SM_INVALID_PARAM);
-        confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, (config_.rankId == 0 && config_.startConfigStoreServer),
-                                                    worldSize_, static_cast<int>(config_.rankId));
+        uint16_t model = (config_.rankId == 0 && config_.startConfigStoreServer) ? CSM_BOTH : CSM_CLIENT;
+        confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, model, worldSize_, static_cast<int>(config_.rankId));
         SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
     } else {
         if (config_.startConfigStoreServer) {
@@ -87,7 +87,7 @@ int32_t SmemBmEntryManager::PrepareStore()
         }
 
         if (confStore_ == nullptr) {
-            confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, false, worldSize_);
+            confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, CSM_CLIENT, worldSize_);
             SM_ASSERT_RETURN(confStore_ != nullptr, StoreFactory::GetFailedReason());
         }
     }
@@ -104,7 +104,7 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
         return SM_OK;
     }
 
-    confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, true, worldSize_);
+    confStore_ = StoreFactory::CreateStoreByUrl(storeURL_, CSM_BOTH, worldSize_);
     if (confStore_ != nullptr || StoreFactory::GetFailedReason() == SM_RESOURCE_IN_USE) {
         return SM_OK;
     }

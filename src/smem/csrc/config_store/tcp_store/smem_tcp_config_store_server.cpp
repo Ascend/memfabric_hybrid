@@ -29,7 +29,7 @@ namespace smem {
 
 std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
 constexpr uint16_t MAX_U16_INDEX = 65535;
-constexpr uint64_t SERVER_RECOVER_TIME = 3 * 1000 * 1000; // 3s
+constexpr uint64_t SERVER_RECOVER_TIME = 5 * 1000 * 1000; // 5s
 constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
 constexpr int32_t EPHEMERAL_KEY_TTL_SEC = 5;
 constexpr int32_t PERSISTENT_KEY_TTL_SEC = 0;
@@ -199,10 +199,12 @@ bool AccStoreServer::CanReceiveNewLink()
     static uint64_t startT = mf::MonotonicTime::TimeUs();
     if (state_.load() == SS_INITED) {
         state_.store(skipRecover_ ? SS_NORMAL : SS_RECOVER);
+        STORE_LOG_INFO("change server state from INITED to " << (skipRecover_? "NORMAL" : "RECOVER"));
     } else if (state_.load() == SS_RECOVER) {
         uint64_t nowT = mf::MonotonicTime::TimeUs();
         if (nowT > startT + SERVER_RECOVER_TIME) {
             state_.store(SS_NORMAL);
+            STORE_LOG_INFO("change server state to NORMAL");
         }
     }
     return (state_.load() == SS_NORMAL);
@@ -214,7 +216,7 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     uint32_t worldSize = static_cast<uint32_t>(req.rankId >> 32);
     uint32_t rankId = static_cast<uint32_t>(req.rankId & 0xFFFFFFFF);
     STORE_LOG_INFO("New link connected, linkId: " << link->Id() << ", worldSize: " << worldSize
-                                                  << ", rankId: " << rankId);
+                                                  << ", rankId: " << rankId << " reconnect:" << (int)req.reconnect);
     if (worldSize_ == std::numeric_limits<uint32_t>::max()) {
         STORE_ASSERT_RETURN(PersistWorldSize(worldSize) == SUCCESS, SM_ERROR);
         worldSize_ = worldSize;
@@ -225,6 +227,10 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     }
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
+    if (req.reconnect == 1 && skipRecover_) {
+        STORE_LOG_WARN("receive first reconnect req, set recover flag!");
+        skipRecover_ = false;
+    }
     if (!CanReceiveNewLink() && req.reconnect == 0) {
         STORE_LOG_ERROR("server is recovering, please retry!");
         return SM_RECONNECT;
@@ -240,7 +246,11 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     } trans{};
     trans.rankId = rankId;
 
-    // todo: 处理相同rank加入的场景
+    if (aliveRankSet_.find(rankId) != aliveRankSet_.end()) {
+        STORE_LOG_ERROR("rankId:" << rankId << " has connected!");
+        return SM_ERROR;
+    }
+
     auto ret = backend_->Put(autoRankingStr, std::vector<uint8_t>(trans.data, trans.data + sizeof(trans.data)),
                              EPHEMERAL_KEY_TTL_SEC);
     STORE_ASSERT_RETURN(ret == SUCCESS, ret);

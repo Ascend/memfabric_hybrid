@@ -35,7 +35,7 @@ Result SmemTransEntryManager::CreateEntryByName(const std::string &name, const s
     auto ret = extraction.ExtractIpPortFromUrl(storeUrl);
     SM_VALIDATE_RETURN(ret == SM_OK, "parse store url failed: " << ret, ret);
     
-    StorePtr confStore = StoreFactory::CreateStoreByUrl(storeUrl, false, UINT32_MAX, -1,
+    StorePtr confStore = StoreFactory::CreateStoreByUrl(storeUrl, ConfigStoreModel::CSM_CLIENT, UINT32_MAX, -1,
                                                         static_cast<int32_t>(config.initTimeout));
     SM_ASSERT_RETURN(confStore != nullptr, StoreFactory::GetFailedReason());
     confStore = StoreFactory::PrefixStore(confStore, "TRANS_");

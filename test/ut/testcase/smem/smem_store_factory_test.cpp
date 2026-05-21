@@ -19,6 +19,7 @@
 #include "smem_external_backend_registry.h"
 #include "smem_store_factory.h"
 
+using namespace ock::smem;
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
 namespace {
@@ -181,9 +182,9 @@ TEST_F(SmemStoreFactoryTest, create_store_success)
         int32_t (*)(ock::smem::TcpConfigStore *, const smem_tls_config &, int)).stubs().will(returnValue(0));
     std::string ip = "127.0.0.1";
     uint16_t port = 16888;
-    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, 1, 1, 0);
+    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_NE(true, (tcpStore == nullptr));
-    auto tcpStore2 = ock::smem::StoreFactory::CreateStore(ip, port, 1, 1, 0);
+    auto tcpStore2 = ock::smem::StoreFactory::CreateStore(ip, port, ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_NE(true, (tcpStore2 == nullptr));
     ock::smem::StoreFactory::DestroyStore(ip, port);
 }
@@ -199,9 +200,9 @@ TEST_F(SmemStoreFactoryTest, create_store_failed)
         .stubs().will(returnValue(targetErr)).then(returnValue(-1));
     std::string ip = "127.0.0.1";
     uint16_t port = 16888;
-    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, 1, 1, 0);
+    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_EQ(true, (tcpStore == nullptr));
-    auto tcpStore2 = ock::smem::StoreFactory::CreateStore(ip, port, 1, 1, 0);
+    auto tcpStore2 = ock::smem::StoreFactory::CreateStore(ip, port, ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_EQ(true, (tcpStore2 == nullptr));
 }
 
@@ -215,9 +216,9 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_tcp_failed)
         int32_t (*)(ock::smem::TcpConfigStore *, const smem_tls_config &, int))
         .stubs().will(returnValue(targetErr)).then(returnValue(-1));
     std::string url = "tcp://127.0.0.1:16888";
-    auto tcpStore = ock::smem::StoreFactory::CreateStoreByUrl(url, true, 1, 0);
+    auto tcpStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_EQ(true, (tcpStore == nullptr));
-    auto tcpStore2 = ock::smem::StoreFactory::CreateStoreByUrl(url, true, 1, 0);
+    auto tcpStore2 = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_BOTH, 1, 0);
     ASSERT_EQ(true, (tcpStore2 == nullptr));
 }
 
@@ -230,7 +231,7 @@ TEST_F(SmemStoreFactoryTest, destroy_all_store)
         int32_t (*)(ock::smem::TcpConfigStore *, const smem_tls_config &, int)).stubs().will(returnValue(0));
     std::string ip = "127.0.0.1";
     uint16_t port = 17888;
-    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, 1, 1, 0);
+    auto tcpStore = ock::smem::StoreFactory::CreateStore(ip, port, ConfigStoreModel::CSM_BOTH, 1, 0);
     EXPECT_NE(true, (tcpStore == nullptr));
     ock::smem::StoreFactory::DestroyStoreAll();
 }
@@ -247,7 +248,7 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_success)
         .will(returnValue(0));
 
     std::string url = "reg://127.0.0.1:2379";
-    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, false, 1, 0);
+    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_CLIENT, 1, 0);
     ASSERT_NE(nullptr, regStore.Get());
     EXPECT_EQ(K_EXTERNAL_BACKEND_NAME, g_fakeExternalBackendState.lastName);
     EXPECT_EQ(K_DEFAULT_CLUSTER_ROOT, g_fakeExternalBackendState.lastPrefix);
@@ -266,7 +267,7 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_cluster_success)
         .will(returnValue(0));
 
     std::string url = "reg://127.0.0.1:2379#clusterA";
-    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, false, 1, 0);
+    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_CLIENT, 1, 0);
     ASSERT_NE(nullptr, regStore.Get());
     EXPECT_EQ(K_EXTERNAL_BACKEND_NAME, g_fakeExternalBackendState.lastName);
     EXPECT_EQ(K_CLUSTER_A_ROOT, g_fakeExternalBackendState.lastPrefix);
@@ -275,7 +276,7 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_cluster_success)
 TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_failed_when_backend_not_registered)
 {
     std::string url = "reg://127.0.0.1:2379";
-    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, false, 1, 0);
+    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_CLIENT, 1, 0);
     EXPECT_EQ(nullptr, regStore.Get());
     EXPECT_EQ(ock::smem::SM_ERROR, ock::smem::StoreFactory::GetFailedReason());
 }
@@ -287,7 +288,7 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_failed_when_backend_not_dis
     g_fakeExternalBackendState.distributed = false;
 
     std::string url = "reg://127.0.0.1:2379";
-    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, false, 1, 0);
+    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_CLIENT, 1, 0);
     EXPECT_EQ(nullptr, regStore.Get());
     EXPECT_EQ(ock::smem::SM_ERROR, ock::smem::StoreFactory::GetFailedReason());
     EXPECT_EQ(1, g_fakeExternalBackendState.destroyCount);
@@ -300,7 +301,7 @@ TEST_F(SmemStoreFactoryTest, create_store_by_url_reg_failed_when_backend_create_
     g_fakeExternalBackendState.createRet = SMEM_STORE_BACKEND_CODE_INTERNAL;
 
     std::string url = "reg://127.0.0.1:2379";
-    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, false, 1, 0);
+    auto regStore = ock::smem::StoreFactory::CreateStoreByUrl(url, ock::smem::ConfigStoreModel::CSM_CLIENT, 1, 0);
     EXPECT_EQ(nullptr, regStore.Get());
     EXPECT_EQ(ock::smem::SM_ERROR, ock::smem::StoreFactory::GetFailedReason());
 }

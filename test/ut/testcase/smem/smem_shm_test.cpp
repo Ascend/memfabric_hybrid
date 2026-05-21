@@ -227,7 +227,7 @@ TEST_F(SmemShmTest, shm_entry_manager_initialize_accepts_reg_url)
     auto fakeStore = MakeFakeShmStore();
     ASSERT_NE(nullptr, fakeStore.Get());
     MOCKER_CPP(&ock::smem::StoreFactory::CreateStoreByUrl,
-               ock::smem::StorePtr(*)(const std::string &, bool, uint32_t, int32_t, int32_t))
+               ock::smem::StorePtr(*)(const std::string &, uint16_t, uint32_t, int32_t, int32_t))
         .stubs()
         .will(returnValue(fakeStore));
 

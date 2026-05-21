@@ -34,8 +34,8 @@ public:
         UrlExtraction option;
         option.ExtractIpPortFromUrl(url);
 
-        g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 2, 0);
-        g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 2, 1);
+        g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, ConfigStoreModel::CSM_BOTH, 2, 0);
+        g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, ConfigStoreModel::CSM_CLIENT, 2, 1);
     }
 
     static void TearDownTestCase()
@@ -50,8 +50,9 @@ public:
     void SetUp() override
     {
         if (g_client == nullptr || g_server == nullptr) {
-            g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, true, 2, 0);
-            g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort, false, 2, 1);
+            g_server = ock::smem::StoreFactory::CreateStore("0.0.0.0", g_testPort, ConfigStoreModel::CSM_BOTH, 2, 0);
+            g_client = ock::smem::StoreFactory::CreateStore("127.0.0.1", g_testPort,
+                                                            ConfigStoreModel::CSM_CLIENT, 2, 1);
         }
     }
     void TearDown() override

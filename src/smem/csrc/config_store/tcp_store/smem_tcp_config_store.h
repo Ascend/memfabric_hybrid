@@ -40,7 +40,7 @@ public:
 
 class TcpConfigStore : public ConfigStoreManager {
 public:
-    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, bool isServer, bool skipRecover,
+    TcpConfigStore(StoreBackendPtr storeBackend, std::string ip, uint16_t port, uint16_t model, bool skipRecover,
                    uint32_t worldSize = 0, int32_t rankId = -1) noexcept;
     ~TcpConfigStore() noexcept override;
 
@@ -144,7 +144,7 @@ private:
     std::mutex mutex_;
     std::string serverIp_;
     uint16_t serverPort_;
-    const bool isServer_;
+    const uint16_t startupModel_;
     bool skipRecover_;
     int32_t rankId_;
     const uint32_t worldSize_;
