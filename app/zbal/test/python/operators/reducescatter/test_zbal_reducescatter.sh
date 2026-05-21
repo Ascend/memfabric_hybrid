@@ -45,7 +45,7 @@ rm -rf golden output
 mkdir -p golden output
 python3 ${CURRENT_DIR}/scripts/data_gen.py $WORLD_SIZE $TEST_TYPE --case_num $CASE_NUM --case_list $CASE_LIST
 
-export CHECK_PRECISION=0
+export CHECK_PRECISION=1
 export ENABLE_PROFILING=0
 
 if [[ $nnodes -eq 1 ]]; then

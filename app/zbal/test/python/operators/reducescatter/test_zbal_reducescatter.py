@@ -105,8 +105,10 @@ def test_reducescatter(dist_type, case_list):
                 prof.start()
             golden_dir = f"reducescatter_{data_len}_{world_size}"
             data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm_{global_rank}.bin", dtype=data_type)
+            per_tensor_len = data_len // world_size
             in_tensor = torch.from_numpy(data).to(tensor_data_type).npu()
-            out_tensor = torch.zeros(data_len // world_size, dtype=tensor_data_type).npu()
+            out_tensor = torch.zeros(per_tensor_len, dtype=tensor_data_type).npu()
+            in_tensors = list(torch.chunk(in_tensor, world_size))
 
             tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
@@ -117,7 +119,10 @@ def test_reducescatter(dist_type, case_list):
                 if enable_profiling and prof_cnt > 5:
                     prof.step()
                 dist.barrier()
-                dist.reduce_scatter_tensor(out_tensor, in_tensor.clone())
+                if k % 2 == 0:
+                    dist.reduce_scatter(out_tensor, in_tensors)
+                else:
+                    dist.reduce_scatter_tensor(out_tensor, in_tensor.clone())
                 prof_cnt = prof_cnt + 1
                 if check_precision:
                     if dist_type == 'hccl' and i == 0:

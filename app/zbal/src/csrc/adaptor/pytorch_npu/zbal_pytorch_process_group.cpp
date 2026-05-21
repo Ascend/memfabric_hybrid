@@ -599,7 +599,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_reduce_scatter_base(at::Tensor
                                                   stream.stream(false));
                 return result;
             };
-            at_npu::native::OpCommand::RunOpApiV2("zbal_reduce_scatter", call_reduce_scatter);
+            at_npu::native::OpCommand::RunOpApiV2("zbal_reduce_scatter_base", call_reduce_scatter);
             return Z_OK;
         },
         [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
@@ -687,9 +687,51 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::reduce_scatter(std::vector<at::
                                                                 std::vector<std::vector<at::Tensor>> &inputTensors,
                                                                 const c10d::ReduceScatterOptions &opts)
 {
-    (void)outputTensors;
-    (void)inputTensors;
-    (void)opts;
+    ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(outputTensors) == 0, "check output tensor failed.");
+    CheckNpuTensorsSameDevice(inputTensors.back());
+
+    bool sameSize = CheckSameSize(inputTensors.back());
+    if (!sameSize) {
+        ZBAL_CHECK_S(false, "Un-support tensors with different size");
+    }
+
+    auto inputFlattened = FlattenForScatterGather(inputTensors, outputTensors, size_);
+    ZBAL_CHECK_S(CheckNpuTensorsDifferentDevices(inputFlattened) == 0, "check input tensor failed.");
+
+    return collective(
+        inputFlattened, outputTensors,
+        [&](at::Tensor &input, at::Tensor &output, c10_npu::NPUStream &stream, zbal_comm_t comm) {
+            RECORD_FUNCTION("ZbalReduceScatter", std::vector<c10::IValue>({}));
+            c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
+
+            void *inputDataPtr = input.data_ptr();
+            void *outputDataPtr = output.data_ptr();
+            auto numel = GetNumelForZBAL(output);
+            auto zbalType = GetZbalDataType(input.scalar_type());
+            auto zbalReduceOp = GetZbalReduceOp(opts.reduceOp);
+
+            std::function<int()> call_reduce_scatter = [inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp,
+                                                        comm, stream]() -> int {
+                auto result = zbal_reduce_scatter(inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp, comm,
+                                                  stream.stream(false));
+                return result;
+            };
+            at_npu::native::OpCommand::RunOpApiV2("zbal_reduce_scatter", call_reduce_scatter);
+            return Z_OK;
+        },
+        [&](std::vector<c10_npu::NPUStream> &streams, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &work) {
+            (void)work;
+            for (const auto i : c10::irange(inputTensors.size())) {
+                c10_npu::NPUStreamGuard guard(streams[i]);
+                for (const auto j : c10::irange(inputTensors[0].size())) {
+                    c10_npu::NPUCachingAllocator::recordStream(inputTensors[i][j].storage().data_ptr(), streams[i]);
+                    inputFlattened[i][j].copy_(inputTensors[i][j], true);
+                }
+            }
+        },
+        [&](std::vector<c10_npu::NPUStream> &, c10::intrusive_ptr<ProcessGroupZBAL::WorkZBAL> &) {},
+        c10d::OpType::REDUCE_SCATTER);
+
     return nullptr;
 }
 

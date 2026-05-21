@@ -313,7 +313,9 @@ ZBAL_KERNEL void CpGM2GM(__gm__ T *out, uint64_t outElem, uint64_t outOff, __gm_
     inputGT.SetGlobalBuffer(in, inElem);
 
     CpGM2GM(outputGT[outOff], inputGT[inOff], count);
-}const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
+}
+
+const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
     {2, 2, 0, 256},
     {2, 4, 256, 1024 * 1024},
     {4, 4, 0, 256},
