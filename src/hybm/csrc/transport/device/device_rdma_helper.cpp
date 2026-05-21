@@ -55,7 +55,7 @@ Result ParseDeviceNic(const std::string &nic, uint16_t &port)
     std::string ip;
     std::string mask;
     std::string portStr;
-    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr) || !mask.empty()) {
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr)) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches.");
         return BM_INVALID_PARAM;
     }
@@ -78,7 +78,7 @@ Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
     std::string ip;
     std::string mask;
     std::string portStr;
-    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr) || !mask.empty()) {
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr)) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches.");
         return BM_INVALID_PARAM;
     }
