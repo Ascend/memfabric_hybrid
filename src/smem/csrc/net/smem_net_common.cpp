@@ -19,7 +19,6 @@
 #include <net/if.h>
 #include <vector>
 #include <map>
-#include <regex>
 #include "mf_ipv4_validator.h"
 #include "network_endpoint_util.h"
 #include "mf_str_util.h"
@@ -103,14 +102,7 @@ inline void Split(const std::string &src, const std::string &sep, std::vector<st
 
 inline bool IsValidIpV4(const std::string &address)
 {
-    static const std::regex ipV4Pattern("^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)($|(?!\\.$)\\.)){4}$");
-    static const std::regex zeroPattern("^0+\\.0+\\.0+\\.0+$");
-    // 校验输入长度，防止正则表达式栈溢出
-    constexpr size_t maxIpLen = 15;
-    if (address.size() > maxIpLen) {
-        return false;
-    }
-    return (std::regex_match(address, zeroPattern) || std::regex_match(address, ipV4Pattern));
+    return ock::mf::NetValidator::IsValidIpV4OrZero(address);
 }
 
 Result UrlExtraction::ExtractIpPortFromUrl(const std::string &url)

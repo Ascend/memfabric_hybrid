@@ -11,7 +11,7 @@
 */
 #include "hybm_entity_tag_info.h"
 
-#include <regex>
+#include "mf_ipv4_validator.h"
 
 namespace ock {
 namespace mf {
@@ -38,10 +38,8 @@ Result HybmEntityTagInfo::AddRankTag(uint32_t rankId, const std::string &tag)
         BM_LOG_WARN("Add an empty tag for rankId:" << rankId);
         return BM_OK;
     }
-    static const std::regex tagPattern(R"(^[a-zA-Z0-9_]{1,30}$)");
-    std::smatch match;
-    if (!std::regex_match(tag, match, tagPattern)) {
-        BM_LOG_ERROR("Failed to check tag:" << tag << " is invalid must match (^[a-zA-Z0-9_]{1,30}$)");
+    if (!ock::mf::NetValidator::IsValidTag(tag)) {
+        BM_LOG_ERROR("Failed to check tag:" << tag << " is invalid, must be 1-30 chars of [a-zA-Z0-9_]");
         return BM_INVALID_PARAM;
     }
     std::unique_lock lock(mutex_);
@@ -53,29 +51,22 @@ Result HybmEntityTagInfo::AddRankTag(uint32_t rankId, const std::string &tag)
 Result HybmEntityTagInfo::AddOneTagOpInfo(const std::string &tagOpInfo)
 {
     // tag:opType:tag
-    static const std::regex tagOpInfoPattern(R"(^([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12}):([a-zA-Z0-9_]{1,30})$)");
+    std::string tag1;
+    std::string opTypeStr;
+    std::string tag2;
+    if (!ock::mf::NetValidator::ParseTagOpInfo(tagOpInfo, tag1, opTypeStr, tag2)) {
+        BM_LOG_ERROR("Failed to check tagOpInfo:" << tagOpInfo << " is invalid must match tag:OP_TYPE:tag format");
+        return BM_INVALID_PARAM;
+    }
     static const std::map<std::string, hybm_data_op_type> str2OpTypeMap = {
         {"DEVICE_SDMA", HYBM_DOP_TYPE_SDMA},    {"DEVICE_RDMA", HYBM_DOP_TYPE_DEVICE_RDMA},
         {"HOST_RDMA", HYBM_DOP_TYPE_HOST_RDMA}, {"HOST_TCP", HYBM_DOP_TYPE_HOST_TCP},
         {"HOST_URMA", HYBM_DOP_TYPE_HOST_URMA}, {"HOST_SHM", HYBM_DOP_TYPE_HOST_SHM},
         {"DEVICE_MTE", HYBM_DOP_TYPE_MTE},
     };
-
-    std::smatch match;
-    if (!std::regex_match(tagOpInfo, match, tagOpInfoPattern)) {
-        BM_LOG_ERROR("Failed to check tagOpInfo:"
-                     << tagOpInfo
-                     << " is invalid must match (^([a-zA-Z0-9_]{1,30):([a-zA-Z0-9_]{1,30}):([A-Z_]{8,12})$)");
-        return BM_INVALID_PARAM;
-    }
-    auto tag1 = match[1].str();
-    auto opTypeStr = match[2].str();
-    auto tag2 = match[3].str();
     auto it = str2OpTypeMap.find(opTypeStr);
     if (it == str2OpTypeMap.end()) {
-        BM_LOG_ERROR("Failed to check opType:"
-                     << opTypeStr
-                     << " should be in (DEVICE_SDMA, DEVICE_RDMA, HOST_RDMA, HOST_TCP, HOST_URMA, HOST_SHM)");
+        BM_LOG_ERROR("Failed to check opType:" << opTypeStr);
         return BM_INVALID_PARAM;
     }
     auto opType = GetTag2TagOpType(tag1, tag2);

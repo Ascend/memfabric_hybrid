@@ -14,7 +14,6 @@
 #include <fstream>
 #include <mutex>
 #include <string>
-#include <regex>
 #include "devmm_svm_gva.h"
 #include "hybm.h"
 #include "hybm_ptracer.h"
@@ -86,8 +85,7 @@ HYBM_API int32_t hybm_init(uint16_t deviceId, uint64_t flags)
         }
         BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(hybm_load_library(), "load library failed");
         if (g_baseAddr == 0) {
-            auto ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr,
-                                         DlAclApi::GetAscendSocType(), &g_allocHandle);
+            auto ret = hybm_init_hbm_gva(deviceId, flags, g_baseAddr, DlAclApi::GetAscendSocType(), &g_allocHandle);
             BM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "init shm meta failed");
         }
 

@@ -12,9 +12,11 @@
 #include <arpa/inet.h>
 #include <cstdlib>
 #include <sstream>
-#include <regex>
 #include <limits>
 #include "dl_acl_api.h"
+#include "mf_str_util.h"
+#include "mf_ipv4_validator.h"
+#include "mf_num_util.h"
 #include "hybm_logger.h"
 #include "device_rdma_helper.h"
 
@@ -26,49 +28,78 @@ namespace device {
 constexpr uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
 constexpr uint32_t ACL_STREAM_FAST_SYNC = 2U;
 
+static bool IsValidNicUrlFormat(const std::string &ip, const std::string &protocol)
+{
+    constexpr std::size_t protocolMinLen = 4;  // "x://"
+    constexpr std::size_t protocolMaxLen = 19; // 16 prefix + "://"
+    constexpr std::size_t protocolSepLen = 3;  // "://"
+    // Check protocol prefix: 1-16 chars of [a-zA-Z0-9_]
+    if (protocol.size() < protocolMinLen || protocol.size() > protocolMaxLen) {
+        return false;
+    }
+    // protocol includes "://", check only the prefix part
+    std::size_t prefixLen = protocol.size() - protocolSepLen; // subtract "://"
+    for (std::size_t i = 0; i < prefixLen; ++i) {
+        char c = protocol[i];
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+            return false;
+        }
+    }
+    // Check IP part: only digits and dots allowed
+    for (char c : ip) {
+        if (!std::isdigit(static_cast<unsigned char>(c)) && c != '.') {
+            return false;
+        }
+    }
+    return true;
+}
+
 Result ParseDeviceNic(const std::string &nic, uint16_t &port)
 {
-    static const std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://[0-9./]{0,24}:(\d{1,5})$)");
-
-    std::smatch match;
-    if (!std::regex_search(nic, match, pattern)) {
+    std::string protocol;
+    std::string ip;
+    std::string mask;
+    std::string portStr;
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr)) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches.");
         return BM_INVALID_PARAM;
     }
-
-    auto caught = match[1].str();
-    auto parsePort = std::strtol(caught.c_str(), nullptr, 10);
+    if (!IsValidNicUrlFormat(ip, protocol)) {
+        BM_LOG_ERROR("input nic(" << nic << ") not matches.");
+        return BM_INVALID_PARAM;
+    }
+    auto parsePort = std::strtol(portStr.c_str(), nullptr, 10);
     if (parsePort <= 0 || parsePort > std::numeric_limits<uint16_t>::max()) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches, port(" << parsePort << ") too large.");
         return BM_INVALID_PARAM;
     }
-
     port = static_cast<uint16_t>(parsePort);
     return BM_OK;
 }
 
 Result ParseDeviceNic(const std::string &nic, sockaddr_in &address)
 {
-    static const std::regex pattern(R"(^[a-zA-Z0-9_]{1,16}://([0-9.]{1,24}):(\d{1,5})$)");
-
-    std::smatch match;
-    if (!std::regex_search(nic, match, pattern)) {
+    std::string protocol;
+    std::string ip;
+    std::string mask;
+    std::string portStr;
+    if (!ock::mf::NetValidator::ParseNicUrl(nic, protocol, ip, mask, portStr)) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches.");
         return BM_INVALID_PARAM;
     }
-
-    if (inet_aton(match[1].str().c_str(), &address.sin_addr) == 0) {
+    if (!IsValidNicUrlFormat(ip, protocol)) {
+        BM_LOG_ERROR("input nic(" << nic << ") not matches.");
+        return BM_INVALID_PARAM;
+    }
+    if (inet_aton(ip.c_str(), &address.sin_addr) == 0) {
         BM_LOG_ERROR("parse ip for nic: " << nic << " failed.");
         return BM_INVALID_PARAM;
     }
-
-    auto caught = match[2].str();
-    auto parsePort = std::strtol(caught.c_str(), nullptr, 10);
+    auto parsePort = std::strtol(portStr.c_str(), nullptr, 10);
     if (parsePort <= 0 || parsePort > std::numeric_limits<uint16_t>::max()) {
         BM_LOG_ERROR("input nic(" << nic << ") not matches, port(" << parsePort << ") too large.");
         return BM_INVALID_PARAM;
     }
-
     address.sin_port = static_cast<uint16_t>(parsePort);
     address.sin_family = AF_INET;
     return BM_OK;

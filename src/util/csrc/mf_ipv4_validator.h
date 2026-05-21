@@ -21,6 +21,7 @@ constexpr uint32_t DG_4 = 4;
 constexpr uint32_t DG_3 = 3;
 constexpr uint32_t DG_2 = 2;
 constexpr uint32_t DG_1 = 1;
+constexpr int DECIMAL_BASE = 10;
 
 class Ipv4PortValidator {
 public:
@@ -374,6 +375,196 @@ private:
     std::unordered_map<std::string, std::shared_ptr<UrlParser>> url2Parsers_{};
     std::unordered_map<uint32_t, std::shared_ptr<UrlParser>> port2Parsers_{};
     SocketAddressParserMgr() = default;
+};
+
+// --------------------------------------------------------------------------
+// NetValidator: static utility class for deterministic validation.
+// Replaces std::regex-based validation with pure string/numeric checks.
+// --------------------------------------------------------------------------
+class NetValidator {
+public:
+    NetValidator() = delete;
+    ~NetValidator() = delete;
+    NetValidator(const NetValidator &) = delete;
+    NetValidator &operator=(const NetValidator &) = delete;
+
+    // --- domain-specific constants ---
+    static constexpr uint32_t MAX_IPV4_STR_LEN = 15; // max dotted-decimal length
+    static constexpr uint32_t EID_SEGMENTS = 8;
+    static constexpr uint32_t EID_SEG_HEX_LEN = 4;
+    static constexpr uint32_t MAX_TAG_LEN = 30;
+    static constexpr uint32_t MIN_OP_TYPE_LEN = 8;
+    static constexpr uint32_t MAX_OP_TYPE_LEN = 12;
+    static constexpr uint32_t MAX_PORT_STR_LEN = 5; // "65535"
+    static constexpr uint32_t PROTOCOL_SEP_LEN = 3; // "://"
+
+    // Strict IPv4 validation: 4 decimal segments, each 0-255, no extra chars.
+    static bool IsValidIpV4Strict(const std::string &ip)
+    {
+        if (ip.empty() || ip.size() > MAX_IPV4_STR_LEN) {
+            return false;
+        }
+        if (ip.front() == '.' || ip.back() == '.') {
+            return false;
+        }
+        auto segments = StrUtil::Split(ip, '.');
+        if (segments.size() != DG_4) {
+            return false;
+        }
+        for (const auto &seg : segments) {
+            if (seg.empty() || seg.size() > DG_3) {
+                return false;
+            }
+            for (char c : seg) {
+                if (!std::isdigit(static_cast<unsigned char>(c))) {
+                    return false;
+                }
+            }
+            if (seg.size() > DG_1 && seg[0] == '0') {
+                return false;
+            }
+            long val = std::strtol(seg.c_str(), nullptr, DECIMAL_BASE);
+            if (val < 0 || static_cast<uint32_t>(val) >= DG_256) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Validate all-zero IPv4 variants
+    static bool IsZeroIpV4(const std::string &ip)
+    {
+        if (ip.empty() || ip.front() == '.' || ip.back() == '.') {
+            return false;
+        }
+        auto segments = StrUtil::Split(ip, '.');
+        if (segments.size() != DG_4) {
+            return false;
+        }
+        for (const auto &seg : segments) {
+            for (char c : seg) {
+                if (c != '0') {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // Combined IPv4 validation: accepts valid IPv4 or all-zero variants
+    static bool IsValidIpV4OrZero(const std::string &ip)
+    {
+        return IsValidIpV4Strict(ip) || IsZeroIpV4(ip);
+    }
+
+    // UBC EID validation: 8 groups of 4 hex digits separated by ':'
+    static bool IsValidUbcEid(const std::string &eid)
+    {
+        auto segments = StrUtil::Split(eid, ':');
+        if (segments.size() != EID_SEGMENTS) {
+            return false;
+        }
+        for (const auto &seg : segments) {
+            if (seg.size() != EID_SEG_HEX_LEN) {
+                return false;
+            }
+            for (char c : seg) {
+                if (!std::isxdigit(static_cast<unsigned char>(c))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // Tag validation: length 1-30, only alphanumeric and underscore
+    static bool IsValidTag(const std::string &tag)
+    {
+        if (tag.empty() || tag.size() > MAX_TAG_LEN) {
+            return false;
+        }
+        for (char c : tag) {
+            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Parse and validate tagOpInfo: tag:OP_TYPE:tag
+    // Returns false if format doesn't match or tags/opType are invalid.
+    static bool ParseTagOpInfo(const std::string &tagOpInfo, std::string &tag1, std::string &opTypeStr,
+                               std::string &tag2)
+    {
+        auto parts = StrUtil::Split(tagOpInfo, ':');
+        if (parts.size() != DG_3) {
+            return false;
+        }
+        if (!IsValidTag(parts[0]) || !IsValidTag(parts[DG_2])) {
+            return false;
+        }
+        const auto &opStr = parts[1];
+        if (opStr.size() < MIN_OP_TYPE_LEN || opStr.size() > MAX_OP_TYPE_LEN) {
+            return false;
+        }
+        for (char c : opStr) {
+            if (!std::isupper(static_cast<unsigned char>(c)) && c != '_') {
+                return false;
+            }
+        }
+        tag1 = parts[0];
+        opTypeStr = parts[1];
+        tag2 = parts[DG_2];
+        return true;
+    }
+
+    // Validate a port string is a valid number in [minPort, maxPort]
+    static bool IsValidPort(const std::string &portStr, uint32_t minPort, uint32_t maxPort)
+    {
+        if (portStr.empty() || portStr.size() > MAX_PORT_STR_LEN) {
+            return false;
+        }
+        for (char c : portStr) {
+            if (!std::isdigit(static_cast<unsigned char>(c))) {
+                return false;
+            }
+        }
+        uint32_t port = 0;
+        if (!StrUtil::String2Uint<uint32_t>(portStr, port)) {
+            return false;
+        }
+        return port >= minPort && port <= maxPort;
+    }
+
+    // Parse a NIC URL: tcp://<ip>:<port> or tcp://<ip>/<mask>:<port>
+    static bool ParseNicUrl(const std::string &nic, std::string &protocol, std::string &ip, std::string &mask,
+                            std::string &port)
+    {
+        protocol.clear();
+        ip.clear();
+        mask.clear();
+        port.clear();
+        auto protoPos = nic.find("://");
+        if (protoPos == std::string::npos || protoPos == 0) {
+            return false;
+        }
+        protocol = nic.substr(0, protoPos + PROTOCOL_SEP_LEN);
+        std::string rest = nic.substr(protoPos + PROTOCOL_SEP_LEN);
+        auto portPos = rest.rfind(':');
+        if (portPos == std::string::npos || portPos == 0) {
+            return false;
+        }
+        port = rest.substr(portPos + 1);
+        std::string hostPart = rest.substr(0, portPos);
+        auto maskPos = hostPart.rfind('/');
+        if (maskPos != std::string::npos) {
+            ip = hostPart.substr(0, maskPos);
+            mask = hostPart.substr(maskPos + 1);
+        } else {
+            ip = hostPart;
+        }
+        return !ip.empty() && !port.empty();
+    }
 };
 
 } // namespace mf

@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <iostream>
-#include <regex>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 

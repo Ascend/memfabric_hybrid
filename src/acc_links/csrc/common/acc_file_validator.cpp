@@ -10,7 +10,6 @@
  * See the Mulan PSL v2 for more details.
 */
 #include <climits>
-#include <regex>
 #include <cstdint>
 #include <iostream>
 #include <sys/stat.h>
