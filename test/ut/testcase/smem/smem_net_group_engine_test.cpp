@@ -105,12 +105,13 @@ TEST(SmemNetGroupEngineTest, concurrent_clients_join_leave_twice_should_succeed_
     ASSERT_EQ(serverBackend->Initialize("0.0.0.0", "", ""), SUCCESS);
 
     auto server = SmMakeRef<TcpConfigStore>(Convert<SmemLocalMemoryBackend, ConfigStoreBackend>(serverBackend),
-                                            "0.0.0.0", CONCURRENT_GROUP_TEST_PORT, true, true, kThreadCount, -1);
+                                            "0.0.0.0", CONCURRENT_GROUP_TEST_PORT, ConfigStoreModel::CSM_SERVER,
+                                            true, kThreadCount, -1);
     ASSERT_NE(server, nullptr);
     Result startRet = SM_ERROR;
     constexpr int kServerStartRetry = 10;
     for (int attempt = 0; attempt < kServerStartRetry; ++attempt) {
-        startRet = server->ServerStart(tlsConfig);
+        startRet = server->Startup(tlsConfig);
         if (startRet == SM_OK) {
             break;
         }
@@ -146,9 +147,9 @@ TEST(SmemNetGroupEngineTest, concurrent_clients_join_leave_twice_should_succeed_
             }
 
             auto client = SmMakeRef<TcpConfigStore>(Convert<SmemLocalMemoryBackend, ConfigStoreBackend>(clientBackend),
-                                                    "127.0.0.1", CONCURRENT_GROUP_TEST_PORT, false, true,
-                                                    kThreadCount, rank);
-            if (client == nullptr || client->ClientStart(tlsConfig) != SM_OK) {
+                                                    "127.0.0.1", CONCURRENT_GROUP_TEST_PORT,
+                                                    ConfigStoreModel::CSM_CLIENT, true, kThreadCount, rank);
+            if (client == nullptr || client->Startup(tlsConfig) != SM_OK) {
                 markFail("start client");
                 return;
             }

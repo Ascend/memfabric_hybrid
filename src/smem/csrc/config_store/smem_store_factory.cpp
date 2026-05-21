@@ -130,7 +130,7 @@ static std::string BuildTcpUrl(const std::string &ip, uint16_t port)
 }
 
 // --- CreateStoreByUrl (ip, port) overload: TCP only ---
-StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize,
+StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, uint16_t model, uint32_t worldSize,
                                    int32_t rankId, int32_t connMaxRetry) noexcept
 {
     std::string storeUrl = BuildTcpUrl(ip, port);
@@ -147,18 +147,18 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
     auto backend = CreateBackend(BackendType::TCP, storeUrl, "", "", "");
     STORE_ASSERT_RETURN(backend != nullptr, nullptr);
 
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, true, worldSize, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, model, true, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer << ", rank=" << rankId
+        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", model=" << model << ", rank=" << rankId
                                                 << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
+        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", model=" << model
                                                  << ", rank=" << rankId << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;
@@ -171,7 +171,7 @@ StorePtr StoreFactory::CreateStore(const std::string &ip, uint16_t port, bool is
 }
 
 // --- CreateStoreByUrl (storeUrl) overload: TCP / ETCD / etc. ---
-StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize, int32_t rankId,
+StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, uint16_t model, uint32_t worldSize, int32_t rankId,
                                         int32_t connMaxRetry, bool skipRecover) noexcept
 {
     ParsedStoreUrl parsedStoreUrl;
@@ -206,18 +206,18 @@ StorePtr StoreFactory::CreateStoreByUrl(const std::string &storeUrl, bool isServ
     if (backend->IsDistributed()) {
         return CreateHaStore(backend, storeKey, parsedStoreUrl.backendUrl, worldSize, parsedStoreUrl.instanceId);
     }
-    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, isServer, skipRecover, worldSize, rankId);
+    auto store = SmMakeRef<TcpConfigStore>(backend, ip, port, model, skipRecover, worldSize, rankId);
     STORE_ASSERT_RETURN(store != nullptr, nullptr);
 
     auto ret = store->Startup(tlsOption_, connMaxRetry);
     if (ret == SM_RESOURCE_IN_USE) {
-        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer << ", rank=" << rankId
+        STORE_LOG_INFO("Startup for store(url=" << ip << ":" << port << ", model=" << model << ", rank=" << rankId
                                                 << ") address in use");
         failedReason_ = SM_RESOURCE_IN_USE;
         return nullptr;
     }
     if (ret != 0) {
-        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", isServer=" << isServer
+        STORE_LOG_ERROR("Startup for store(url=" << ip << ":" << port << ", model=" << model
                                                  << ", rank=" << rankId << ") failed:" << ret);
         failedReason_ = ret;
         return nullptr;

@@ -29,12 +29,12 @@ public:
      * @brief create a new store
      * @param ip server ip address
      * @param port server tcp port
-     * @param isServer is local store server side
+     * @param model startup model
      * @param rankId rank id, default 0
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
      * @return Newly created store
      */
-    static StorePtr CreateStore(const std::string &ip, uint16_t port, bool isServer, uint32_t worldSize = UINT32_MAX,
+    static StorePtr CreateStore(const std::string &ip, uint16_t port, uint16_t model, uint32_t worldSize = UINT32_MAX,
                                 int32_t rankId = -1, int32_t connMaxRetry = -1) noexcept;
 
     /**
@@ -48,13 +48,13 @@ public:
      * @brief create a new store
      * @param storeUrl tcp://127.0.0.1:12335 or etcd://127.0.0.1:12335 or etcd://127.0.0.1:12335#instanceId
      *                  or reg://127.0.0.1:12335 or reg://127.0.0.1:12335#instanceId
-     * @param isServer is local store server side
+     * @param model start up model
      * @param rankId rank id, default 0
      * @param connMaxRetry Maximum number of retry times for the client to connect to the server.
      * @param skipRecover is skip recover wait
      * @return Newly created store
      */
-    static StorePtr CreateStoreByUrl(const std::string &storeUrl, bool isServer, uint32_t worldSize = UINT32_MAX,
+    static StorePtr CreateStoreByUrl(const std::string &storeUrl, uint16_t model, uint32_t worldSize = UINT32_MAX,
                                      int32_t rankId = -1, int32_t connMaxRetry = -1, bool skipRecover = true) noexcept;
 
     /**

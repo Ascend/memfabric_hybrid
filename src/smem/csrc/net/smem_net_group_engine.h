@@ -207,6 +207,7 @@ private:
     SmemGroupInfo groupInfo_{};
     std::atomic_uint32_t lastSubmitVersion_{0};
     std::atomic_uint64_t lastUpdateTime_{UINT64_MAX};
+    std::string prefixKey_;
 
     std::queue<std::string> delayCleanKeyList_;
 };

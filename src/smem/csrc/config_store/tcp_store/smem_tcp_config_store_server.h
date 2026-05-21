@@ -162,7 +162,7 @@ private:
 
     const std::string listenIp_;
     const uint16_t listenPort_;
-    const bool skipRecover_;
+    bool skipRecover_;
     uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;

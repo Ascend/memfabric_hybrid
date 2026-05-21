@@ -38,10 +38,11 @@ Result SmemShmEntryManager::Initialize(const char *configStoreIpPort, uint32_t w
     SM_ASSERT_RETURN(option.ExtractIpPortFromUrl(url) == SM_OK, SM_INVALID_PARAM);
     storeUrl_ = url;
     if (rankId == 0 && config->startConfigStoreServer) {
-        store_ = StoreFactory::CreateStoreByUrl(storeUrl_, true, worldSize);
+        store_ = StoreFactory::CreateStoreByUrl(storeUrl_, CSM_BOTH, worldSize);
     } else {
         store_ =
-            StoreFactory::CreateStoreByUrl(storeUrl_, false, worldSize, static_cast<int32_t>(config->shmInitTimeout));
+            StoreFactory::CreateStoreByUrl(storeUrl_, CSM_CLIENT, worldSize,
+                                           static_cast<int32_t>(config->shmInitTimeout));
     }
     SM_ASSERT_RETURN(store_ != nullptr, SM_ERROR);
 

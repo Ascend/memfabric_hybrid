@@ -39,6 +39,7 @@ constexpr int32_t SMEM_GROUP_MS_TO_US = 1000;
 constexpr int64_t SMEM_GROUP_LISTER_TIMEOUT = 10LL * 1000;              // 10s, unit: ms
 constexpr int32_t SMEM_GROUP_SLEEP_TIMEOUT = 100 * SMEM_GROUP_MS_TO_US; // 100ms, unit: us
 constexpr uint64_t SMEM_EVNET_KEEP_TIME = 3 * SMEM_GROUP_MS_TO_US * SMEM_GROUP_MS_TO_US; // 3s, unit: us
+constexpr uint64_t CLIENT_RECOVER_SLEEP_TIME = 6 * 1000 * 1000; // 6s, >= SERVER_RECOVER_TIME
 
 constexpr uint32_t UINT_BIT = 8U;
 constexpr uint32_t USER_GROUP_KEY_LEN_MAX = 64;
@@ -661,6 +662,9 @@ Result SmemNetGroupEngine::TryRemovePrefixKey(uint32_t rank)
     auto ret = store_->Remove(key);
     if (ret == SM_OK) {
         SM_LOG_DEBUG("remove key success, src_rank:" << option_.rank << " key:" << store_->GetCompleteKey(key));
+        if (rank == option_.rank) {
+            prefixKey_.clear();
+        }
     } else {
         SM_LOG_INFO("remove key failed, src_rank:" << option_.rank << " key:" << store_->GetCompleteKey(key)
                     << " ret:" << ret);
@@ -718,6 +722,7 @@ Result SmemNetGroupEngine::GroupBarrierPrefixKey(uint32_t dstRank, std::string &
         auto ret = store_->Append(key, update, retLen);
         SM_VALIDATE_RETURN(ret == SM_OK,
                            "append prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
+        prefixKey_.append(update);
         ret = store_->Set(waitKey, SMEM_GROUP_SET_STR);
         if (ret != SM_OK) {
             SM_LOG_AND_SET_LAST_ERROR("store set key: " << store_->GetCompleteKey(waitKey)
@@ -754,6 +759,7 @@ Result SmemNetGroupEngine::GroupGatherPrefixKey(uint32_t dstRank, std::string &u
         SM_VALIDATE_RETURN(ret == SM_OK,
                            "set prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
 
+        prefixKey_ = update;
         std::string completePrefix = store_->GetCompleteKey(SMEM_EXCHANGE_INFO_KEY);
         std::unordered_map<std::string, std::string> val;
         ret = store_->PrefixGet(SMEM_EXCHANGE_INFO_KEY, val);
@@ -1282,6 +1288,11 @@ Result SmemNetGroupEngine::GroupJoin()
     static constexpr int MAX_RETRY = 30;
     localOpRet_ = SM_OK; // init ret
     while (retry_count++ < MAX_RETRY) {
+        if (!store_->GetConnectStatus()) {
+            SM_LOG_ERROR("store server link down, join failed!");
+            return SM_ERROR;
+        }
+
         if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) { // has leave or link_down, retry
             usleep(SMEM_GROUP_SLEEP_TIMEOUT);
             continue;
@@ -1460,7 +1471,42 @@ void SmemNetGroupEngine::GetAllRanksFromBitMap(std::vector<uint32_t> &rankIds)
 
 int32_t SmemNetGroupEngine::LinkReconnectHandler()
 {
-    // todo: 重连应当重新join
+    if (!option_.dynamic) {
+        return SM_OK;
+    }
+    if (!joined_) {
+        SM_LOG_WARN("not joined, skip reconnect handle, retry after sleep " << CLIENT_RECOVER_SLEEP_TIME << " us");
+        usleep(CLIENT_RECOVER_SLEEP_TIME);
+        return SM_OK;
+    }
+
+    std::shared_lock<std::shared_mutex> lock{groupInfoMutex_};
+    SmemGroupInfo info = groupInfo_;
+    lastUpdateTime_.store(0U);
+    lastSubmitVersion_.store(0);
+    lock.unlock();
+
+    std::string old;
+    std::string val((char *)&info, SMEM_GROUP_INFO_SIZE);
+    auto ret = store_->Cas(SMEM_GROUP_LISTEN_EVENT_KEY, old, val, old);
+    if (ret == SM_OK) { // will cas ok if key not exist
+        SM_LOG_INFO("set group info success, rank:" << option_.rank);
+    } else {
+        info = *reinterpret_cast<SmemGroupInfo *>(const_cast<char *>(old.c_str())); // update last info
+    }
+
+    if (info.version & 1) {
+        TryCleanOldEvent();
+    }
+
+    if (!prefixKey_.empty() && TestBitmapForRank(option_.rank)) {
+        std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(option_.rank);
+        ret = store_->Set(key, prefixKey_);
+        SM_VALIDATE_RETURN(ret == SM_OK,
+                           "set prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
+    }
+
+    SM_LOG_INFO("reconnect success, rank:" << option_.rank);
     return SM_OK;
 }
 

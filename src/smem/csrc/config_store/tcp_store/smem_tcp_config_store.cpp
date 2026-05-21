@@ -128,9 +128,9 @@ private:
 };
 
 std::atomic<uint32_t> TcpConfigStore::reqSeqGen_{0};
-TcpConfigStore::TcpConfigStore(StoreBackendPtr backend, std::string ip, uint16_t port, bool isServer, bool skipRecover,
+TcpConfigStore::TcpConfigStore(StoreBackendPtr backend, std::string ip, uint16_t port, uint16_t model, bool skipRecover,
                                uint32_t worldSize, int32_t rankId) noexcept
-    : serverIp_{std::move(ip)}, serverPort_{port}, isServer_{isServer}, skipRecover_{skipRecover}, rankId_{rankId},
+    : serverIp_{std::move(ip)}, serverPort_{port}, startupModel_{model}, skipRecover_{skipRecover}, rankId_{rankId},
       worldSize_{worldSize}, backend_(std::move(backend))
 {}
 
@@ -142,18 +142,22 @@ TcpConfigStore::~TcpConfigStore() noexcept
 Result TcpConfigStore::Startup(const smem_tls_config &tlsConfig, int reconnectRetryTimes) noexcept
 {
     Result result = SM_OK;
-    if (isServer_) {
+    if (startupModel_ != ConfigStoreModel::CSM_CLIENT) {
         result = ServerStart(tlsConfig, reconnectRetryTimes);
         if (result != 0) {
             STORE_LOG_ERROR("Failed to start config store server ret:" << result);
             return result;
         }
+        STORE_LOG_INFO("start store server success, ip:" << serverIp_ << ":" << serverPort_);
     }
 
-    result = ClientStart(tlsConfig, reconnectRetryTimes);
-    if (result != 0) {
-        STORE_LOG_ERROR("Failed to start config store client ret:" << result);
-        return result;
+    if (startupModel_ != ConfigStoreModel::CSM_SERVER) {
+        result = ClientStart(tlsConfig, reconnectRetryTimes);
+        if (result != 0) {
+            STORE_LOG_ERROR("Failed to start config store client ret:" << result);
+            return result;
+        }
+        STORE_LOG_INFO("connect store success, ip:" << serverIp_ << ":" << serverPort_);
     }
     isConnect_.store(true);
     return result;
@@ -693,10 +697,10 @@ Result TcpConfigStore::ReConnectAfterBroken(int reconnectRetryTimes) noexcept
         return result;
     }
     STORE_LOG_INFO("Reconnect to server successful, rankId: " << rankId_);
-    SetConnectStatus(true);
     if (reconnectHandler) {
         (void)reconnectHandler();
     }
+    SetConnectStatus(true);
     return SM_OK;
 }
 

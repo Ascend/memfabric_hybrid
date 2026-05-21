@@ -54,7 +54,7 @@ SMEM_API int32_t smem_create_config_store(const char *storeUrl, uint64_t flags)
         SM_LOG_ERROR("input store URL invalid.");
         return ock::smem::SM_INVALID_PARAM;
     }
-    auto store = ock::smem::StoreFactory::CreateStoreByUrl(storeUrl, true);
+    auto store = ock::smem::StoreFactory::CreateStoreByUrl(storeUrl, ock::smem::ConfigStoreModel::CSM_BOTH);
     if (store == nullptr) {
         SM_LOG_ERROR("create store server failed with URL.");
         return ock::smem::SM_ERROR;

@@ -32,6 +32,12 @@ enum WatchRankType : uint32_t {
     WATCH_RANK_LINK_DOWN = 0,
 };
 
+enum ConfigStoreModel : uint16_t {
+    CSM_CLIENT = 0, // only start client in one configStore
+    CSM_SERVER = 1, // only start server in one configStore
+    CSM_BOTH = 2 // start client & server in one configStore
+};
+
 const std::string AutoRankingStr = "AutoRanking#";
 
 using ConfigStoreReconnectHandler = std::function<int32_t(void)>;
