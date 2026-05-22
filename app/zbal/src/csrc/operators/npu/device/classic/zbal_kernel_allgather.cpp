@@ -18,6 +18,26 @@
 
 constexpr uint32_t SMALL_DATA_SIZE = 1024 * 7168;
 
+#define ZBAL_ALLGATHER_TYPE_MAP(F)     \
+    F(int8_t, ZBAL_DATA_TYPE_INT8)     \
+    F(int16_t, ZBAL_DATA_TYPE_INT16)   \
+    F(int32_t, ZBAL_DATA_TYPE_INT32)   \
+    F(float16_t, ZBAL_DATA_TYPE_FP16)  \
+    F(float, ZBAL_DATA_TYPE_FP32)      \
+    F(int64_t, ZBAL_DATA_TYPE_INT64)   \
+    F(uint64_t, ZBAL_DATA_TYPE_UINT64) \
+    F(uint8_t, ZBAL_DATA_TYPE_UINT8)   \
+    F(uint16_t, ZBAL_DATA_TYPE_UINT16) \
+    F(uint32_t, ZBAL_DATA_TYPE_UINT32) \
+    F(float64_t, ZBAL_DATA_TYPE_FP64)  \
+    F(bfloat16_t, ZBAL_DATA_TYPE_BFP16)
+
+#define ZBAL_AG_CASE(TYPE, ENUM_VAL)                                  \
+    case zbal_datatype_t::ENUM_VAL:                                   \
+        op.Init<TYPE>(input, output, metaAddr, elements, waitSymbol); \
+        op.Process<TYPE>();                                           \
+        break;
+
 extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR output, size_t elements, int dataType,
                                                          GM_ADDR metaAddr, uint64_t waitSymbol)
 {
@@ -28,54 +48,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
         switch (ZBAL_DATA_TYPE) {
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
-                op.Init<int8_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int8_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT16:
-                op.Init<int16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT32:
-                op.Init<int32_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int32_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP16:
-                op.Init<float16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP32:
-                op.Init<float>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT64:
-                op.Init<int64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64:
-                op.Init<uint64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8:
-                op.Init<uint8_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint8_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16:
-                op.Init<uint16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32:
-                op.Init<uint32_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint32_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP64:
-                op.Init<float64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16:
-                op.Init<bfloat16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<bfloat16_t>();
-                break;
+            ZBAL_ALLGATHER_TYPE_MAP(ZBAL_AG_CASE)
             default:
                 break;
         }
@@ -85,54 +58,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
         switch (ZBAL_DATA_TYPE) {
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT8:
-                op.Init<int8_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int8_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT16:
-                op.Init<int16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT32:
-                op.Init<int32_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int32_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP16:
-                op.Init<float16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP32:
-                op.Init<float>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_INT64:
-                op.Init<int64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<int64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64:
-                op.Init<uint64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8:
-                op.Init<uint8_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint8_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16:
-                op.Init<uint16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint16_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32:
-                op.Init<uint32_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<uint32_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_FP64:
-                op.Init<float64_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<float64_t>();
-                break;
-            case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16:
-                op.Init<bfloat16_t>(input, output, metaAddr, elements, waitSymbol);
-                op.Process<bfloat16_t>();
-                break;
+            ZBAL_ALLGATHER_TYPE_MAP(ZBAL_AG_CASE)
             default:
                 break;
         }

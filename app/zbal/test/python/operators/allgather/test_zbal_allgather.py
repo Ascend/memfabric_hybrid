@@ -9,6 +9,8 @@ import numpy as np
 from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
 torch_npu.npu.config.allow_internal_format = True
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[logging.StreamHandler()])
 
 g_type_map = {
     "int": np.int32,
