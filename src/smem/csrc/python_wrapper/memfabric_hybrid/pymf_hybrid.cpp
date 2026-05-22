@@ -339,8 +339,8 @@ private:
         try {
             (*func)(rankId, event);
         } catch (const std::exception &e) {
-            std::cerr << "invoke python callback for event:" << event << ", rank_id:" << rankId << " exception caught:"
-                      << e.what() << std::endl;
+            std::cerr << "invoke python callback for event:" << event << ", rank_id:" << rankId
+                      << " exception caught:" << e.what() << std::endl;
         }
     }
 
@@ -592,6 +592,7 @@ void DefineShmClass(py::module_ &m)
     py::enum_<smem_shm_data_op_type>(m, "ShmDataOpType")
         .value("MTE", SMEMS_DATA_OP_MTE)
         .value("SDMA", SMEMS_DATA_OP_SDMA)
+        .value("AIV_SDMA", SMEMS_DATA_OP_AIV_SDMA)
         .value("RDMA", SMEMS_DATA_OP_RDMA);
 
     m.def("initialize", &ShareMemory::Initialize, py::call_guard<py::gil_scoped_release>(), py::arg("store_url"),
@@ -615,11 +616,11 @@ Arguments:
     context(bytes): extra context
 Returns:
     0 if successful)")
-        .def_property_readonly("local_rank", py::cpp_function(
-            &ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>()), R"(
+        .def_property_readonly("local_rank",
+                               py::cpp_function(&ShareMemory::LocalRank, py::call_guard<py::gil_scoped_release>()), R"(
 Get local rank of a shm object)")
-        .def_property_readonly("rank_size", py::cpp_function(
-            &ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>()), R"(
+        .def_property_readonly("rank_size",
+                               py::cpp_function(&ShareMemory::RankSize, py::call_guard<py::gil_scoped_release>()), R"(
 Get rank size of a shm object)")
         .def("destroy", &ShareMemory::Destroy, py::call_guard<py::gil_scoped_release>(), py::arg("flags") = 0, R"(
 Destroy the shm handle.)")
@@ -659,12 +660,10 @@ Arguments:
 Returns:
     int: 0 if successful)")
         .def_property_readonly(
-            "gva", py::cpp_function(
-                [](const ShareMemory &shm) {
-                    return (uint64_t)(ptrdiff_t)shm.Address();
-                },
-                py::call_guard<py::gil_scoped_release>()
-            ), R"(
+            "gva",
+            py::cpp_function([](const ShareMemory &shm) { return (uint64_t)(ptrdiff_t)shm.Address(); },
+                             py::call_guard<py::gil_scoped_release>()),
+            R"(
 get global virtual address created, it can be passed to kernel to data operations)");
 }
 
@@ -753,14 +752,14 @@ Leave the global Big Memory space actively, after this, we cannot operate on the
 Arguments:
     flags(int): optional flags)")
         .def("extend_local_mem", &BigMemory::ExtendLocalMem, py::call_guard<py::gil_scoped_release>(),
-            py::arg("mem_type") = SMEM_MEM_TYPE_HOST, py::arg("size"), R"(
+             py::arg("mem_type") = SMEM_MEM_TYPE_HOST, py::arg("size"), R"(
 Alloc an extend memory for rank, all alloc memory must range in reserved memory.
 
 Arguments:
     mem_type(BmMemType): memory type, DEVICE or HOST, default is HOST
     size(int): extend memory size)")
-        .def("set_group_event_handler", &BigMemory::SetGroupEventHandler,
-             py::call_guard<py::gil_scoped_release>(), py::arg("cb"), R"(
+        .def("set_group_event_handler", &BigMemory::SetGroupEventHandler, py::call_guard<py::gil_scoped_release>(),
+             py::arg("cb"), R"(
 Set group member change(join/leave) notification function.
 
 Arguments:

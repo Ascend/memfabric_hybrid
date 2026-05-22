@@ -15,6 +15,7 @@
 #include "host_hcom_transport_manager.h"
 #include "device_rdma_transport_manager.h"
 #include "device_rdma_indirect_transport_manager.h"
+#include "aiv_sdma_transport_manager.h"
 #include "compose_transport_manager.h"
 
 using namespace ock::mf;
@@ -31,6 +32,8 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, H
             return host::HcomTransportManager::GetInstance();
         case TT_HCCP:
             return std::make_shared<device::RdmaTransportManager>();
+        case TT_SDMA:
+            return std::make_shared<device::SdmaTransportManager>();
         case TT_COMPOSE:
             return std::make_shared<ComposeTransportManager>(tagManager);
         default:
@@ -41,7 +44,7 @@ std::shared_ptr<TransportManager> TransportManager::Create(TransportType type, H
 
 std::shared_ptr<TransportManager> TransportManager::Create(const HybmGvaVersion version)
 {
-    const char* tm = std::getenv("TRANSPORT_MANAGER");
+    const char *tm = std::getenv("TRANSPORT_MANAGER");
     if (tm != nullptr and std::string(tm) == "INDIRECT") {
         BM_LOG_INFO("TRANSPORT_MANAGER==INDIRECT, using indirect device rdma transport manager");
         return std::make_shared<device::RdmaIndirectTransportManager>();
@@ -54,6 +57,12 @@ std::shared_ptr<TransportManager> TransportManager::Create(const HybmGvaVersion 
         BM_LOG_INFO("driver version before V4, using indirect device rdma transport manager");
         return std::make_shared<device::RdmaIndirectTransportManager>();
     }
+}
+
+uint64_t TransportManager::GetSdmaWorkSpaceAddr() const
+{
+    BM_LOG_DEBUG("Not Implement GetSdmaWorkSpaceAddr()");
+    return 0UL;
 }
 
 const void *TransportManager::GetQpInfo() const

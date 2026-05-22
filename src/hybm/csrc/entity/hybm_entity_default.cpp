@@ -65,6 +65,10 @@ Result MemEntityDefault::InitTagManager()
         compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_SDMA) << ":" << localTag
                        << ",";
     }
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA) {
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_AIV_SDMA) << ":" << localTag
+                       << ",";
+    }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_MTE) {
         compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_MTE) << ":" << localTag
                        << ",";
@@ -210,7 +214,7 @@ int32_t MemEntityDefault::AllocLocalMemory(uint64_t size, hybm_mem_type mType, u
     info.size = realSlice->size_;
     info.flags =
         segment->GetMemoryType() == HYBM_MEM_TYPE_DEVICE ? transport::REG_MR_FLAG_HBM : transport::REG_MR_FLAG_DRAM;
-    if (transportManager_ != nullptr && size > 0) {
+    if (transportManager_ != nullptr && size > 0 && !(options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA)) {
         ret = transportManager_->RegisterMemoryRegion(info);
         if (ret != 0) {
             BM_LOG_ERROR("register memory region allocate failed: " << ret << ", info: " << info);
@@ -294,8 +298,8 @@ int32_t MemEntityDefault::FreeLocalMemory(hybm_mem_slice_t slice, uint32_t flags
     }
 
     if (memSlice == nullptr) {
-        BM_LOG_ERROR("FreeLocalMemory: cannot resolve slice id=" << slice
-                     << ", neither hbmSegment_ nor dramSegment_ owns it; VaManager entry may leak");
+        BM_LOG_ERROR("FreeLocalMemory: cannot resolve slice id="
+                     << slice << ", neither hbmSegment_ nor dramSegment_ owns it; VaManager entry may leak");
         return BM_OK;
     }
 
@@ -433,7 +437,7 @@ int32_t MemEntityDefault::ExportSliceExchangeInfo(hybm_mem_slice_t slice, Exchan
     }
 
     SliceExportTransportKey transportKey{exportMagic, options_.rankId, realSlice->gva_};
-    if (transportManager_ != nullptr) {
+    if (transportManager_ != nullptr && !(options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA)) {
         if (realSlice->size_ > 0) {
             ret = transportManager_->QueryMemoryKey(realSlice->vAddress_, transportKey.key);
             if (ret != 0) {
@@ -543,7 +547,7 @@ int32_t MemEntityDefault::ImportSliceExchangeInfo(const ExchangeInfoReader desc[
     }
 
     // transport要在segment之后import
-    if (transportManager_ != nullptr) {
+    if (transportManager_ != nullptr && !(options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA)) {
         ret = ImportForTransportPrecheck(desc, count, addresses);
         if (ret != BM_OK) {
             return ret;
@@ -574,7 +578,7 @@ int32_t MemEntityDefault::ImportForTagManager()
 
 int32_t MemEntityDefault::ImportForTransportManager()
 {
-    if (transportManager_ == nullptr) {
+    if (transportManager_ == nullptr || (options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA)) {
         BM_LOG_INFO("no transport, no need import.");
         return BM_OK;
     }
@@ -935,6 +939,15 @@ int MemEntityDefault::LoadExtendLibrary() noexcept
             return ret;
         }
     }
+
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA) {
+        auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_SDMA);
+        if (ret != 0) {
+            BM_LOG_ERROR("LoadExtendLibrary for DEVICE SDMA failed: " << ret);
+            return ret;
+        }
+    }
+
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP)) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA);
         if (ret != 0) {
@@ -975,8 +988,10 @@ void MemEntityDefault::SetHybmDeviceInfo(HybmDeviceMeta &info)
     info.extraContextSize = 0;
     if (transportManager_ != nullptr) {
         info.qpInfoAddress = (uint64_t)(ptrdiff_t)transportManager_->GetQpInfo();
+        info.sdmaWorkSpace = transportManager_->GetSdmaWorkSpaceAddr();
     } else {
         info.qpInfoAddress = 0UL;
+        info.sdmaWorkSpace = 0UL;
     }
 }
 
@@ -1158,13 +1173,16 @@ Result MemEntityDefault::InitTransManager()
     }
 
     auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP;
-    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | hostTransFlags;
+    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_AIV_SDMA | hostTransFlags;
     if ((options_.bmDataOpType & composeTransFlags) == 0) {
         BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
         return BM_OK;
     }
-
-    transportManager_ = transport::TransportManager::Create(transport::TT_COMPOSE, tagManager_);
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA) {
+        transportManager_ = transport::TransportManager::Create(transport::TT_SDMA, tagManager_);
+    } else {
+        transportManager_ = transport::TransportManager::Create(transport::TT_COMPOSE, tagManager_);
+    }
     BM_ASSERT_LOG_AND_RETURN(transportManager_ != nullptr, "Failed to create transportManager.", BM_ERROR);
 
     transport::TransportOptions options{};

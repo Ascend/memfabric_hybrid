@@ -19,8 +19,8 @@ extern "C" {
 #endif
 
 typedef void *smem_shm_t;
-#define SMEM_SHM_TIMEOUT_MAX UINT32_MAX /* all timeout must <= UINT32_MAX */
-#define SMEM_SHM_ATOMIC_NUM_LIMIT   1024U
+#define SMEM_SHM_TIMEOUT_MAX      UINT32_MAX /* all timeout must <= UINT32_MAX */
+#define SMEM_SHM_ATOMIC_NUM_LIMIT 1024U
 
 /**
  * @brief NPU initiated data operation type, currently only support MTE
@@ -29,6 +29,7 @@ typedef enum {
     SMEMS_DATA_OP_MTE = 1U << 0,
     SMEMS_DATA_OP_SDMA = 1U << 1,
     SMEMS_DATA_OP_RDMA = 1U << 2,
+    SMEMS_DATA_OP_AIV_SDMA = 1U << 3,
 } smem_shm_data_op_type;
 
 /**
