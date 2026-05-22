@@ -9,23 +9,18 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef ZBAL_COMMUNICATOR_DEFAULT_H
-#define ZBAL_COMMUNICATOR_DEFAULT_H
-
-#include "zbal_npu_communicator_base.h"
+#include "zbal_npu_communicator_sdma.h"
+#include "zbal_npu_operators.h"
 
 namespace zbal {
 namespace operators {
 
-class NpuCommunicatorDefault : public NpuCommunicatorBase {
-public:
-    using NpuCommunicatorBase::NpuCommunicatorBase;
-
-    int32_t Scatter(const void *sendBuff, void *recvBuff, uint64_t data_count, zbal_datatype_t dataType, uint16_t root,
-                    aclrtStream stream) noexcept override;
-};
+int32_t NpuCommunicatorSDMA::Scatter(const void *sendBuff, void *recvBuff, uint64_t data_count,
+                                     zbal_datatype_t dataType, uint16_t root, aclrtStream stream) noexcept
+{
+    return ZBALOpScatterSDMA(sendBuff, recvBuff, data_count, dataType, root, stream,
+                             const_cast<CommGroupInfo &>(GetMetaInfo()));
+}
 
 } // namespace operators
 } // namespace zbal
-
-#endif // ZBAL_COMMUNICATOR_DEFAULT_H

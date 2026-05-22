@@ -9,15 +9,15 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef ZBAL_COMMUNICATOR_DEFAULT_H
-#define ZBAL_COMMUNICATOR_DEFAULT_H
+#ifndef ZBAL_NPU_COMMUNICATOR_SDMA_H
+#define ZBAL_NPU_COMMUNICATOR_SDMA_H
 
 #include "zbal_npu_communicator_base.h"
 
 namespace zbal {
 namespace operators {
 
-class NpuCommunicatorDefault : public NpuCommunicatorBase {
+class NpuCommunicatorSDMA : public NpuCommunicatorBase {
 public:
     using NpuCommunicatorBase::NpuCommunicatorBase;
 
@@ -28,4 +28,4 @@ public:
 } // namespace operators
 } // namespace zbal
 
-#endif // ZBAL_COMMUNICATOR_DEFAULT_H
+#endif // ZBAL_NPU_COMMUNICATOR_SDMA_H

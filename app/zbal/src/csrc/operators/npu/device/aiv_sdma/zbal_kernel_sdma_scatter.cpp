@@ -10,10 +10,18 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include "zbal_kernel_base.h"
+#include <random>
+#include <limits>
+#include <iostream>
+#include "kernel_operator.h"
+#include "zbal_def.h"
+#include "zbal_kernel_trace.h"
+#include "zbal_kernel_utils.h"
+#include "zbal_comm_host_device_struct.h"
+#include "zbal_kernel_sdma_data_op.h"
 
 template<typename T>
-class ScatterKernel : public BaseKernel {
+class ScatterKernel {
 public:
     ZBAL_KERNEL ScatterKernel() {}
 
@@ -36,8 +44,7 @@ public:
         this->exchangeAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
         this->exchangeFlag = this->exchangeAddr + this->addrOffset;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
-
-        BaseKernel::Init();
+        pipe.InitBuffer(bindQueue, 1, UB_ALIGN_SIZE_64);
     }
 
     ZBAL_KERNEL void Process()
@@ -45,7 +52,7 @@ public:
 #ifdef __DAV_C220_VEC__
         InitDataAddrAndFlag();
         WaitFlag(root);
-        uint64_t rootDataAddr = GetRootDataAddr(exchangeAddr, root);
+        uint64_t rootDataAddr = GetDataAddr(exchangeAddr, root);
 
         uint32_t elementsPerRank = elements;
         uint32_t rankOffset = rank * elementsPerRank;
@@ -64,7 +71,7 @@ public:
         outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), numPerCore);
 
         ZBAL_PROF_START(comm, ZBAL_PROF_SCATTER_KERNEL_ALL);
-        CpGM2GM(inputGm[startInRank], outputGm[startInRank], numPerCore);
+        process_sdma_scatter(outputGm[startInRank], inputGm[startInRank], numPerCore);
         BarrierAll(comm);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_SCATTER_KERNEL_ALL);
 #endif
@@ -74,44 +81,50 @@ private:
     ZBAL_KERNEL void InitDataAddrAndFlag()
     {
         ZBAL_PROF_START(comm, ZBAL_PROF_EXCHANGE_ADDR);
-        int64_t startRank;
-        int64_t endRank;
         if (aivNum < groupSize) {
-            uint32_t base = groupSize / aivNum;
-            uint32_t rem = groupSize % aivNum;
-            if (aivIndex < rem) {
-                startRank = aivIndex * (base + 1);
-                endRank = startRank + base + 1;
-            } else {
-                startRank = rem * (base + 1) + (aivIndex - rem) * base;
-                endRank = startRank + base;
+            uint32_t ranksPerCore = (groupSize + aivNum - 1) / aivNum;
+            const int64_t startRank = aivIndex * ranksPerCore;
+            int64_t endRank = startRank + ranksPerCore;
+            if (endRank > groupSize) {
+                endRank = groupSize;
             }
-        } else {
-            startRank = aivIndex;
-            endRank = aivIndex + 1;
-        }
-
-        if (startRank < groupSize && root == rank) {
-            for (int64_t r = startRank; r < endRank; r++) {
+            for (auto dsrRank = startRank; dsrRank < endRank; dsrRank++) {
                 uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-                auto ptr = zbal_ptr(exchangeAddr, rank, r, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto ptr = zbal_ptr(exchangeAddr, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
                 SetDataAddr(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
-                auto flagPtr = zbal_ptr(exchangeFlag, rank, r, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto flagPtr = zbal_ptr(exchangeFlag, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
                 SetFlag(flagPtr, flagMagic, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
+        } else if (aivIndex < groupSize) {
+            auto ptr = zbal_ptr(exchangeAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+            if (rank == root) {
+                uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
+                SetDataAddr(ptr, dataAddr, rank);
+            }
+            AscendC::PipeBarrier<PIPE_ALL>();
+            auto flagPtr = zbal_ptr(exchangeFlag, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+            SetFlag(flagPtr, flagMagic, rank);
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
     }
 
-    ZBAL_KERNEL uint64_t GetRootDataAddr(__gm__ void *metaAddr, uint32_t coreTargetRank)
+    ZBAL_KERNEL uint64_t GetDataAddr(__gm__ void *metaAddr, uint32_t coreTargetRank)
     {
         uint32_t dataAddrOffset = coreTargetRank * ZBAL_FLAG_SIZE;
         __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
         dcciCacheline((__gm__ uint8_t *)dataGmAddr);
         __gm__ uint64_t *realInputAddr = (__gm__ uint64_t *)(*dataGmAddr);
         return realInputAddr[rank];
+    }
+
+    ZBAL_KERNEL void SetDataAddr(__gm__ void *metaAddr, uint64_t val, uint32_t coreTargetRank)
+    {
+        uint32_t dataAddrOffset = coreTargetRank * ZBAL_FLAG_SIZE;
+        __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
+        *dataGmAddr = val;
+        dcciCacheline((__gm__ uint8_t *)dataGmAddr);
     }
 
     ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
@@ -124,7 +137,18 @@ private:
         ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
+    ZBAL_KERNEL void process_sdma_scatter(AscendC::GlobalTensor<T> outputGT, AscendC::GlobalTensor<T> inputGT,
+                                          uint64_t count)
+    {
+        // Define temporary UB buffer as LocalTensor for SDMA operations
+        AscendC::LocalTensor<T> tmp_local = bindQueue.AllocTensor<T>();
+        zbal_sdma_get_nbi(outputGT, inputGT, tmp_local, count, EVENT_ID0);
+        zbal_sdma_quiet(tmp_local, EVENT_ID0);
+    }
+
 private:
+    AscendC::TPipe pipe;
+    AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     AscendC::GlobalTensor<T> inputGm;
     AscendC::GlobalTensor<T> outputGm;
     uint32_t aivNum;
@@ -144,9 +168,9 @@ private:
     __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
-extern "C" __global__ __aicore__ void ZBALScatterInner(GM_ADDR input, GM_ADDR output, size_t elements,
-                                                       uint32_t dataType, GM_ADDR metaAddr, uint16_t root,
-                                                       uint64_t waitSymbol)
+extern "C" __global__ __aicore__ void ZBALScatterSDMAInner(GM_ADDR input, GM_ADDR output, size_t elements,
+                                                           uint32_t dataType, GM_ADDR metaAddr, uint16_t root,
+                                                           uint64_t waitSymbol)
 {
     zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
@@ -229,10 +253,14 @@ extern "C" __global__ __aicore__ void ZBALScatterInner(GM_ADDR input, GM_ADDR ou
     }
 }
 
-int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType, uint16_t root,
-                      aclrtStream stream, CommGroupInfo &groupInfo)
+int32_t ZBALOpScatterSDMA(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
+                          uint16_t root, aclrtStream stream, CommGroupInfo &groupInfo)
 {
+    uint32_t minNum = 16;
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, sendCount, dataType);
+    if (blockDim > minNum) {
+        blockDim = minNum;
+    }
 
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
 
@@ -244,6 +272,7 @@ int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zb
     uint8_t *output = reinterpret_cast<uint8_t *>(recvBuff);
     uint64_t waitSymbol = ++groupInfo.waitSymbol;
 
-    ZBALScatterInner<<<blockDim, nullptr, stream>>>(input, output, sendCount, dataTypeNum, metaAddr, root, waitSymbol);
+    ZBALScatterSDMAInner<<<blockDim, nullptr, stream>>>(input, output, sendCount, dataTypeNum, metaAddr, root,
+                                                        waitSymbol);
     return 0;
 }

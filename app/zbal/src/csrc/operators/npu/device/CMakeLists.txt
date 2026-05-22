@@ -1,21 +1,32 @@
 set(RUN_MODE "npu" CACHE STRING "run mode: npu")
 
+set(ZBAL_DEVICE_DIR ${ZBAL_SRC_DIR}/csrc/operators/npu/device)
+
+file(GLOB ZBAL_KERNEL_CLASSIC_SRCS
+    ${ZBAL_DEVICE_DIR}/classic/*.cpp
+)
+source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/classic" FILES ${ZBAL_KERNEL_CLASSIC_SRCS})
+
+file(GLOB ZBAL_KERNEL_AIV_SDMA_SRCS
+    ${ZBAL_DEVICE_DIR}/aiv_sdma/*.cpp
+)
+source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/aiv_sdma" FILES ${ZBAL_KERNEL_AIV_SDMA_SRCS})
+
+file(GLOB ZBAL_KERNEL_DISPATCH_NORMAL_SRCS
+    ${ZBAL_DEVICE_DIR}/dispatch_combine_normal/*.cpp
+)
+source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/dispatch_combine_normal" FILES ${ZBAL_KERNEL_DISPATCH_NORMAL_SRCS})
+
+file(GLOB ZBAL_KERNEL_DISPATCH_LOW_LATENCY_SRCS
+    ${ZBAL_DEVICE_DIR}/dispatch_combine_low_latency/*.cpp
+)
+source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/dispatch_combine_low_latency" FILES ${ZBAL_KERNEL_DISPATCH_LOW_LATENCY_SRCS})
+
 ascendc_library(zbal_kernel STATIC
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_allgather.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_allreduce.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_alltoallv.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_barrier.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_reducescatter.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_broadcast.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_scatter.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_send.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/classic/zbal_kernel_recv.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_normal/zbal_kernel_dispatch_layout.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_normal/zbal_kernel_notify_dispatch.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_normal/zbal_kernel_dispatch_normal.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_normal/zbal_kernel_combine_normal.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_low_latency/zbal_kernel_dispatch_low_latency.cpp
-        ${ZBAL_SRC_DIR}/csrc/operators/npu/device/dispatch_combine_low_latency/zbal_kernel_combine_low_latency.cpp
+    ${ZBAL_KERNEL_CLASSIC_SRCS}
+    ${ZBAL_KERNEL_AIV_SDMA_SRCS}
+    ${ZBAL_KERNEL_DISPATCH_NORMAL_SRCS}
+    ${ZBAL_KERNEL_DISPATCH_LOW_LATENCY_SRCS}
 )
 
 ascendc_include_directories(zbal_kernel PRIVATE

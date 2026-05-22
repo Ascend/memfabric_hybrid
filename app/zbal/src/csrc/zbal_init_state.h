@@ -29,6 +29,7 @@ struct ZBALInitStateExt {
     uint64_t smaSizeOfDevice = 0;        /* size of device memory for SMA */
     uint64_t localDeviceMemSize = 0;     /* local device mem size */
     uint64_t symmetricMemSpace = 0;      /* space size, as localDeviceMemSize could be less than symmetricMemSpace */
+    uint32_t dataOperationType = 0;      /* data operation type, see zbal_data_op_type_t */
 };
 
 class ZBALInitState {

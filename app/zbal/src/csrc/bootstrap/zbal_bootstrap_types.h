@@ -40,7 +40,7 @@ struct MemBootstrapOptions {
     uint32_t rankId = 0;                          /* my rank id */
     uint64_t totalMemSize = 0;                    /* total memory size */
     uint32_t flags = 0;                           /* optional flags */
-    uint32_t dataOperationType = 0;               /* data operation type MTE etc */
+    uint32_t dataOperationType = 0;               /* data operation type, see zbal_data_op_type_t */
     std::string ipPort;                           /* SHM exchange ip port */
 
     friend std::ostream &operator<<(std::ostream &os, const MemBootstrapOptions &options)

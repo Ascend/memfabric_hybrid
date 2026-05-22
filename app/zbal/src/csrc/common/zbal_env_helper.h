@@ -24,6 +24,7 @@
 #define ENV_NAME_OP_DEFUALT_STREAM  "ZBAL_OP_DEFUALT_STREAM"
 
 namespace zbal {
+
 class EnvHelper {
 public:
     static void Initialize() noexcept;

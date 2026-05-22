@@ -12,6 +12,7 @@
 #include "zbal_communicator.h"
 #include "zbal_comm_group_meta.h"
 #include "zbal_npu_communicator_default.h"
+#include "zbal_npu_communicator_sdma.h"
 #include "zbal_communicator_dummy.h"
 #include "zbal_comm_group_id.h"
 
@@ -198,9 +199,15 @@ CommunicatorPtr Communicator::CreateInner(zbal_backend_t backendType, const Comm
     CommunicatorPtr comm = nullptr;
 
     switch (backendType) {
-        case ZBAL_ASCEND_NPU:
-            comm = ZMakeRef<NpuCommunicatorDefault>(options, isWorldGroup, gWorldCommunicator).Get();
+        case ZBAL_ASCEND_NPU: {
+            auto dataOpType = static_cast<zbal_data_op_type_t>(ZBALInitState::Instance().ext_.dataOperationType);
+            if (dataOpType == ZBAL_DATA_OP_DEVICE_SDMA) {
+                comm = ZMakeRef<NpuCommunicatorSDMA>(options, isWorldGroup, gWorldCommunicator).Get();
+            } else {
+                comm = ZMakeRef<NpuCommunicatorDefault>(options, isWorldGroup, gWorldCommunicator).Get();
+            }
             break;
+        }
         case ZBAL_BACK_BUTT:
             comm = ZMakeRef<CommunicatorDummy>(options, isWorldGroup, gWorldCommunicator).Get();
             break;

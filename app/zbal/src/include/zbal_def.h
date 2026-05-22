@@ -66,6 +66,11 @@ typedef enum {
     BOOT_BY_BUTT
 } zbal_bootstrap_type_t;
 
+typedef enum {
+    ZBAL_DATA_OP_MTE = 0,         /* default, MTE data operations */
+    ZBAL_DATA_OP_DEVICE_SDMA = 1, /* AIV SDMA data operations */
+} zbal_data_op_type_t;
+
 typedef struct {
     uint32_t flags;                   /* optional, flags */
     zbal_bootstrap_type_t btType;     /* bootstrap type */

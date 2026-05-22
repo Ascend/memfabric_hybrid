@@ -33,6 +33,9 @@ int32_t ZBALOpBroadcast(const void *buff, size_t sendCount, zbal_datatype_t data
 int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType, uint16_t root,
                       aclrtStream stream, CommGroupInfo &groupInfo);
 
+int32_t ZBALOpScatterSDMA(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
+                          uint16_t root, aclrtStream stream, CommGroupInfo &groupInfo);
+
 int32_t ZBALOpBarrier(aclrtStream stream, CommGroupInfo &groupInfo);
 
 int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,

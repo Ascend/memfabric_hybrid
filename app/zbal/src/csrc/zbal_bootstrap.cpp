@@ -66,6 +66,7 @@ ZBAL_API int32_t zbal_bootstrap(zbal_bootstrap_options_t *options, zbal_bootstra
     state.ext_.smaSizeOfDevice = output->smaSizeOfDevice;
     state.ext_.localDeviceMemSize = output->allocatedDeviceMemorySize;
     state.ext_.symmetricMemSpace = output->createdDeviceMemorySpaceSize;
+    state.ext_.dataOperationType = options->dataOperationType;
 
     /* set allocator state */
     zbal_allocator_options_t alloc_state;

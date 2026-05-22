@@ -115,9 +115,25 @@ ZResult MemFabricBoostrap::CreateSHMSpace() noexcept
     }
     DlMfApi::SmemSetExternLogger(logger);
 
+    auto dataOpType = static_cast<zbal_data_op_type_t>(options_.dataOperationType);
+    smem_shm_data_op_type shmDataOpType;
+    switch (dataOpType) {
+        case ZBAL_DATA_OP_MTE:
+            shmDataOpType = SMEMS_DATA_OP_MTE;
+            break;
+        case ZBAL_DATA_OP_DEVICE_SDMA:
+            shmDataOpType = SMEMS_DATA_OP_AIV_SDMA;
+            break;
+        default:
+            ZBAL_LOG_AND_SET_LAST_ERROR("Unsupported data operation type: " << dataOpType);
+            DlMfApi::SmemUnInit();
+            DlMfApi::CleanupLibrary();
+            return Z_INVALID_PARAM;
+    }
+
     void *deviceGva = nullptr;
     auto tmpShmHandle = DlMfApi::SmemShmCreate(shmId_, options_.rankCount, options_.rankId, options_.totalMemSize,
-                                               SMEMS_DATA_OP_MTE, options_.flags, &deviceGva);
+                                               shmDataOpType, options_.flags, &deviceGva);
     if (tmpShmHandle == nullptr) {
         ZBAL_LOG_AND_SET_LAST_ERROR("Call external api 'smem_shm_create' failed, result: " << result);
         DlMfApi::SmemUnInit();

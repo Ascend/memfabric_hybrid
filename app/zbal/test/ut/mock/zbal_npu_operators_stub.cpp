@@ -48,6 +48,12 @@ int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zb
     return 0;
 }
 
+int32_t ZBALOpScatterSDMA(const void *sendBuff, void *recvBuff, size_t sendCount, zbal_datatype_t dataType,
+                          uint16_t root, aclrtStream stream, CommGroupInfo &groupInfo)
+{
+    return 0;
+}
+
 int32_t ZBALOpBarrier(aclrtStream stream, CommGroupInfo &groupInfo)
 {
     return 0;
