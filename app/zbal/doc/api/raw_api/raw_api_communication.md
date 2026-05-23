@@ -79,7 +79,7 @@ zbal_comm_t zbal_comm_get_by_name(const char *name)
 | Parameters/return | In/Out | Description                     |
 |-------------------|--------|---------------------------------|
 | name              | in     | unique name of the communicator |
-| return            |        | pointer of the communicator, null if not found |
+| return            |        | pointer of world communicator   |
 
 ### 1.5 Destroy a communicator
 
@@ -118,7 +118,7 @@ void zbal_comm_destroy_all(uint32_t flags)
 | Parameters/return | In/Out | Description     |
 |-------------------|--------|-----------------|
 | flags             | in     | optional flags  |
-| return            |        | void, no return value |
+| return            |        | 0 if successful |
 
 ## 2 Dispatch/Combine Normal
 
@@ -144,24 +144,24 @@ int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex,
                                     aclrtStream stream,
                                     int64_t flags)
 ```
+
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
-| topkIndex            |in| the topk id tensor, shape=[num_tokens, topk]|
-| tokens               |in| the number of tokens|
-| expertNum            |in| the number of experts|
-| topkNum              |in| the topk value|
-| tokensPerRank        |in/out| the number of tokens to be sent to each rank statistics by local tokens, shape=[num_ranks]|
-| tokensPerExpert      |in/out| the number of tokens to be sent to each expert statistics by local tokens, shape=[num_experts]|
-| isTokenInRank        |in/out| whether the token to be sent to a rank flag(0/1), shape=[num_tokens, num_ranks]|
-| sendTokensIndex      |in/out| local token send to target expert index, shape=[num_tokens, topk]|
-| notifySendData       |in/out| temp buffer for the operation to caculate, shape=[50 * num_experts]|
-| comm                 |in| zbal communication handle|
-| stream               |in| compute stream|
-| flags                |in| optional flags, reserved or extend|
-| return            |        | 0 if successful |
-
+| Parameters/return | In/Out | Description                                                                                    |
+|-------------------|--------|------------------------------------------------------------------------------------------------|
+| topkIndex         | in     | the topk id tensor, shape=[num_tokens, topk]                                                   |
+| tokens            | in     | the number of tokens                                                                           |
+| expertNum         | in     | the number of experts                                                                          |
+| topkNum           | in     | the topk value                                                                                 |
+| tokensPerRank     | in/out | the number of tokens to be sent to each rank statistics by local tokens, shape=[num_ranks]     |
+| tokensPerExpert   | in/out | the number of tokens to be sent to each expert statistics by local tokens, shape=[num_experts] |
+| isTokenInRank     | in/out | whether the token to be sent to a rank flag(0/1), shape=[num_tokens, num_ranks]                |
+| sendTokensIndex   | in/out | local token send to target expert index, shape=[num_tokens, topk]                              |
+| notifySendData    | in/out | temp buffer for the operation to caculate, shape=[50 * num_experts]                            |
+| comm              | in     | zbal communication handle                                                                      |
+| stream            | in     | compute stream                                                                                 |
+| flags             | in     | optional flags, reserved or extend                                                             |
+| return            |        | 0 if successful                                                                                |
 
 ### 2.2 Dispatch Notify
 
@@ -187,20 +187,20 @@ int32_t zbal_dispatch_normal_notify(const zbal_tensor_info_t *sendTokensPerExper
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
-|sendTokensPerExpert  |in| the same with zbal_dispatch_normal_layout 'tokensPerExpert' param|
-|sendCount            |in| the number of experts |
-|topKNum              |in| the topk value|
-|recvBuff             |in| allgather ranks 'tokensPerExpert', shape=[num_ranks, num_experts]|
-|totalRecvTokens      |in/out| local rank total recv token number, shape=[1]|
-|recvTokensPerExpert  |in/out| the number of tokens received by each local expert, shape=[num_local_experts]|
-|pushTargetOffset     |in/out| all other rank's first token write to the expert offset, tensor shape=[num_ranks, num_experts] |
-|balanceMatrix        |in/out| the token range processed by each rank after balanced, tensor shape=[num_ranks, ranks * 2]|
-|comm                 |in| zbal communication handle|
-|stream               |in| stream|
-|flags                |in| optional flags, reserved or extend|
-| return            |        | 0 if successful |
+| Parameters/return   | In/Out | Description                                                                                    |
+|---------------------|--------|------------------------------------------------------------------------------------------------|
+| sendTokensPerExpert | in     | the same with zbal_dispatch_normal_layout 'tokensPerExpert' param                              |
+| sendCount           | in     | the number of experts                                                                          |
+| topKNum             | in     | the topk value                                                                                 |
+| recvBuff            | in     | allgather ranks 'tokensPerExpert', shape=[num_ranks, num_experts]                              |
+| totalRecvTokens     | in/out | local rank total recv token number, shape=[1]                                                  |
+| recvTokensPerExpert | in/out | the number of tokens received by each local expert, shape=[num_local_experts]                  |
+| pushTargetOffset    | in/out | all other rank's first token write to the expert offset, tensor shape=[num_ranks, num_experts] |
+| balanceMatrix       | in/out | the token range processed by each rank after balanced, tensor shape=[num_ranks, ranks * 2]     |
+| comm                | in     | zbal communication handle                                                                      |
+| stream              | in     | stream                                                                                         |
+| flags               | in     | optional flags, reserved or extend                                                             |
+| return              |        | 0 if successful                                                                                |
 
 ### 2.3 Dispatch Normal
 
@@ -227,21 +227,21 @@ int32_t zbal_dispatch_normal(const zbal_tensor_info_t *srcTokens,
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
-|srcTokens            |in| the input tensor, shape=[num_tokens, hidden]|
-|topkIndex            |in| the topk id tensor, shape=[num_tokens, topk]|
-|sendTokensIndex      |in| the same with zbal_dispatch_normal_layout out param 'sendTokensIndex'|
-|pushTargetOffset     |in| the same with zbal_dispatch_normal_notify out param 'pushTargetOffset'|
-|balanceMatrix        |in| the same with zbal_dispatch_normal_notify out param 'balanceMatrix'|
-|expertNum            |in| the number of experts|
-|quantMode            |in| quant mode, see struct 'zbal_quant_mode_t'|
-|destTokens           |in/out| receive all other rank tokens tensor, shape=[num_recv_tokens, hidden]|
-|destScale            |in/out| if enable quant casting, shape=[num_recv_tokens], which means the quant casting scales per token|
-|comm                 |in| zbal communication handle|
-|stream               |in| stream|
-|flags                |in| optional flags, reserved or extend|
-| return            |        | 0 if successful |
+| Parameters/return | In/Out | Description                                                                                     |
+|-------------------|--------|-------------------------------------------------------------------------------------------------|
+| srcTokens         | in     | the input tensor, shape=[num_tokens, hidden]                                                    |
+| topkIndex         | in     | the topk id tensor, shape=[num_tokens, topk]                                                    |
+| sendTokensIndex   | in     | the same with zbal_dispatch_normal_layout out param 'sendTokensIndex'                           |
+| pushTargetOffset  | in     | the same with zbal_dispatch_normal_notify out param 'pushTargetOffset'                          |
+| balanceMatrix     | in     | the same with zbal_dispatch_normal_notify out param 'balanceMatrix'                             |
+| expertNum         | in     | the number of experts                                                                           |
+| quantMode         | in     | quant mode, see struct 'zbal_quant_mode_t'                                                      |
+| destTokens        | in/out | receive all other rank tokens tensor, shape=[num_recv_tokens, hidden]                           |
+| destScale         | in/out | if enable quant casting, shape=[num_recv_tokens], which means the quant casting scales per token |
+| comm              | in     | zbal communication handle                                                                       |
+| stream            | in     | stream                                                                                          |
+| flags             | in     | optional flags, reserved or extend                                                              |
+| return            |        | 0 if successful                                                                                 |
 
 ### 2.4 Combine Normal
 
@@ -267,22 +267,20 @@ int32_t zbal_combine_normal(const zbal_tensor_info_t *srcTokens,
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
-|srcTokens            |in| result from zbal_dispatch_normal's destTokens out param after expert mm computation|
-|srcTokensPerEp       |in| the same with zbal_dispatch_normal_notify out param 'pushTargetOffset'|
-|topKWeight           |in| the topk weights tensor, shape=[num_tokens, topk]|
-|topkIndex            |in| the topk id tensor, shape=[num_tokens, topk]|
-|sendTokensIndex      |in| the same with zbal_dispatch_normal_layout out param 'sendTokensIndex'|
-|balanceMatrix        |in| the same with zbal_dispatch_normal_notify out param 'balanceMatrix'|
-|expertNum            |in| the number of experts|
-|destTokens           |in/out| the result combined tensor, the shape is same with zbal_dispatch_normal in param 'srcTokens'|
-|comm                 |in| zbal communication handle|
-|stream               |in| stream|
-|flags                |in| optional flags, reserved or extend|
-| return            |        | 0 if successful |
-
-
+| Parameters/return | In/Out | Description                                                                                  |
+|-------------------|--------|----------------------------------------------------------------------------------------------|
+| srcTokens         | in     | result from zbal_dispatch_normal's destTokens out param after expert mm computation          |
+| srcTokensPerEp    | in     | the same with zbal_dispatch_normal_notify out param 'pushTargetOffset'                       |
+| topKWeight        | in     | the topk weights tensor, shape=[num_tokens, topk]                                            |
+| topkIndex         | in     | the topk id tensor, shape=[num_tokens, topk]                                                 |
+| sendTokensIndex   | in     | the same with zbal_dispatch_normal_layout out param 'sendTokensIndex'                        |
+| balanceMatrix     | in     | the same with zbal_dispatch_normal_notify out param 'balanceMatrix'                          |
+| expertNum         | in     | the number of experts                                                                        |
+| destTokens        | in/out | the result combined tensor, the shape is same with zbal_dispatch_normal in param 'srcTokens' |
+| comm              | in     | zbal communication handle                                                                    |
+| stream            | in     | stream                                                                                       |
+| flags             | in     | optional flags, reserved or extend                                                           |
+| return            |        | 0 if successful                                                                              |
 
 ## 3 Dispatch/Combine Low Latency
 
@@ -318,29 +316,28 @@ int32_t zbal_dispatch_low_latency(const zbal_tensor_info_t *x,
 
 #### Description of parameters and return value
 
-| Parameters/return     | In/Out | Description     |
-|-------------------    |--------|-----------------|
-| x                     | in |   tensor info of source tokens to be dispatched    |
-|  expertIds            | in |   the token's expert ids    |
-| moeExpertNum          | in |   the expert number          |
-|  sharedExpertNum      | in |   the share expert number       |
-| sharedExpertRankNum   | in |   the share expert rank number  |
-| quantMode             | in |   quant mode                    |
-| globalBs              | in |   global batch size           |
-| magicVal              | in |   magic value           |
-| expertTokenNumsType   | in |   expert token number type   |
-| expandXOut            | out|   the output tensor          |
-| dynamicScalesOut      | out|   the output quant scales        |
-| expandIdxOut          | out|   the output index           |
-| expertTokenNumsOut    | out|   the expert output token number |
-| epRecvCountsOut       | out|   ep rank receive token count   |
-| putOffset             | out|   the token put offset to rank expert |
-| putOffsetStatus       | out|   put offset flag            |
-|  comm                 | in |   the communicator handle           |
-| stream                | in |   stream to run             |
-|  flags                | in |   reserved flags          |
-| return                |        | 0 if successful |
-
+| Parameters/return   | In/Out | Description                                  |
+|---------------------|--------|----------------------------------------------|
+| x                   | in     | tensor info of source tokens to be dispatched |
+| expertIds           | in     | the token's expert ids                       |
+| moeExpertNum        | in     | the expert number                            |
+| sharedExpertNum     | in     | the share expert number                      |
+| sharedExpertRankNum | in     | the share expert rank number                 |
+| quantMode           | in     | quant mode                                   |
+| globalBs            | in     | global batch size                            |
+| magicVal            | in     | magic value                                  |
+| expertTokenNumsType | in     | expert token number type                     |
+| expandXOut          | out    | the output tensor                             |
+| dynamicScalesOut    | out    | the output quant scales                      |
+| expandIdxOut        | out    | the output index                             |
+| expertTokenNumsOut  | out    | the expert output token number               |
+| epRecvCountsOut     | out    | ep rank receive token count                  |
+| putOffset           | out    | the token put offset to rank expert          |
+| putOffsetStatus     | out    | put offset flag                              |
+| comm                | in     | the communicator handle                      |
+| stream              | in     | stream to run                                |
+| flags               | in     | reserved flags                               |
+| return              |        | 0 if successful                              |
 
 ### 3.2 combine low latency
 
@@ -365,19 +362,19 @@ int32_t zbal_combine_low_latency(const zbal_tensor_info_t *expandX,
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
-| expandX           |  in    |  the combine input tensor   |
-| expertIds         |  in    |  the expert ids list        |
-| expertIdx         |  in    |  the expert index list      |
-| epSendCounts      |  in    |  ep rank send count         |
-| expertScales      |  in    |  the expert of token scales  |
-| xOut              |  out   |  the combine output tensor   |
-| moeExpertNum      |  in    |  expert number               |
-| comm              |  in    |  the communicator handle     |
-| stream            |  in    |  the stream to run        |
-| flags             |  in    |  flags, reserved        |
-| return            |        | 0 if successful |
+| Parameters/return | In/Out | Description                |
+|-------------------|--------|----------------------------|
+| expandX           | in     | the combine input tensor   |
+| expertIds         | in     | the expert ids list        |
+| expertIdx         | in     | the expert index list      |
+| epSendCounts      | in     | ep rank send count         |
+| expertScales      | in     | the expert of token scales |
+| xOut              | out    | the combine output tensor  |
+| moeExpertNum      | in     | expert number              |
+| comm              | in     | the communicator handle    |
+| stream            | in     | the stream to run          |
+| flags             | in     | flags, reserved            |
+| return            |        | 0 if successful            |
 
 ## 4 AllGather
 
@@ -493,15 +490,15 @@ int32_t zbal_broadcast(const void *buf,
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description                     |
-|-------------------|--------|---------------------------------|
-| buf               | in     | pointer of source data          |
-| data_count        | in     | count of the data               |
-| dataType          | in     | type of the data                |
-| root              | in     | the root rank in the operator   |
-| comm              | in     | handle of the communicator      |
-| stream            | in     | stream                          |
-| return            |        | 0 if successful                 |
+| Parameters/return | In/Out | Description                   |
+|-------------------|--------|-------------------------------|
+| buf               | in     | pointer of source data        |
+| data_count        | in     | count of the data             |
+| dataType          | in     | type of the data              |
+| root              | in     | the root rank in the operator |
+| comm              | in     | handle of the communicator    |
+| stream            | in     | stream                        |
+| return            |        | 0 if successful               |
 
 ## 8 Scatter
 
@@ -523,16 +520,16 @@ int32_t zbal_scatter(const void *sendBuf,
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description                     |
-|-------------------|--------|---------------------------------|
-| sendBuff          | in     | pointer of source data      |
-| recvBuff          | out    | pointer of destination data |
-| data_count        | in     | count of the data               |
-| dataType          | in     | type of the data                |
-| root              | in     | the root rank in the operator   |
-| comm              | in     | handle of the communicator      |
-| stream            | in     | stream                          |
-| return            |        | 0 if successful                 |
+| Parameters/return | In/Out | Description                   |
+|-------------------|--------|-------------------------------|
+| sendBuff          | in     | pointer of source data        |
+| recvBuff          | out    | pointer of destination data   |
+| data_count        | in     | count of the data             |
+| dataType          | in     | type of the data              |
+| root              | in     | the root rank in the operator |
+| comm              | in     | handle of the communicator    |
+| stream            | in     | stream                        |
+| return            |        | 0 if successful               |
 
 ## 9 AlltoAllv
 
@@ -550,13 +547,13 @@ int32_t zbal_all_to_all_v(const void *sendBuff,
                           void *elements,
                           zbal_datatype_t dataType,
                           zbal_comm_t comm,
-                          aclrtStream stream);
+                          aclrtStream stream)
 ```
 
 | Parameters/return | In/Out | Description                     |
 |-------------------|--------|---------------------------------|
-| sendBuff          | in     | pointer of source data      |
-| recvBuff          | out    | pointer of destination data |
+| sendBuff          | in     | pointer of source data          |
+| recvBuff          | out    | pointer of destination data     |
 | sendCumSum        | in     | count of the data               |
 | recvSplitCounts   | in     | output splits in elemtents      |
 | elements          | in     | input and output total elements |
@@ -564,4 +561,3 @@ int32_t zbal_all_to_all_v(const void *sendBuff,
 | comm              | in     | handle of the communicator      |
 | stream            | in     | stream                          |
 | return            |        | 0 if successful                 |
-```
