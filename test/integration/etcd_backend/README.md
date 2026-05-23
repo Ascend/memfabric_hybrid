@@ -50,7 +50,7 @@ make -j
 ### 命令格式
 
 ```
-./test_prefixget [Etcd地址] [线程数量]
+./etcd_backend_test [Etcd地址] [线程数量]
 ```
 
 ### 参数说明
@@ -65,13 +65,13 @@ make -j
 1. **使用默认配置运行 (4线程)**：
 
 ```
-./test_prefixget
+./etcd_backend_test
 ```
 
 2. **指定 Etcd 地址和线程数**：
 
 ```
-./test_prefixget etcd://192.168.1.100:2379 8
+./etcd_backend_test etcd://192.168.1.100:2379 8
 ```
 
 ### 预期输出

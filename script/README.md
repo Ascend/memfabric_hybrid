@@ -4,12 +4,12 @@ ${INSTALL_PATH}/
           |--memfabric_hybrid
               |-- latest
               |-- set_env.sh
+              |-- include    (头文件)
               |-- ${version}
                    |-- ${arch}-${os}
-                        |-- include    (头文件)
-                        |-- bin        (用于TLS相关二进制文件)
                         |-- lib64      (so库)
                         |-- whl        (python的whl包)
+                        |-- test       (测试文件)
                    |-- uninstall.sh
                    |-- version.info
 
@@ -19,7 +19,9 @@ default ${INSTALL_PATH} is /usr/local/
 
 ### 2 rule of package name
 ```
-memfabric-hybrid-${version}_${os}_${arch}.run
+memfabric_hybrid-${version}_${os}_${arch}${xpu_suffix}.run
+
+其中 xpu_suffix 为空（NPU）/_cpu（XPU_TYPE=NONE）/_gpu（XPU_TYPE=GPU）
 ```
 
 ### 3 upgrade

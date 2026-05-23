@@ -41,7 +41,7 @@ pip install memfabric_hybrid==1.0.0
 | 组件 | 建议版本/要求 |
 | -- | -- |
 | **OS** | Ubuntu 22.04 LTS 或更高版本 |
-| **CMake** | 3.20.x 或更高 |
+| **CMake** | 3.12.x 或更高（3.20.x 及以上推荐） |
 | **GCC** | 11.4 或更高 |
 | **pybind11** | 2.10.3 (仅编译 Python 绑定时需要) |
 | **Make/Ninja** | Make 4.3+ 或 Ninja 1.10.1+ |
@@ -91,7 +91,9 @@ bash script/build_and_pack_run.sh
 
 
 ### 4. 安装
-编译成功后，生成的安装包位于 `output/memfabric-hybrid-${version}_${os}_${arch}.run`
+编译成功后，生成的安装包位于 `output/memfabric_hybrid-${version}_${os}_${arch}${xpu_suffix}.run`
+
+> 其中 xpu_suffix 为空（NPU）/_cpu（XPU_TYPE=NONE）/_gpu（XPU_TYPE=GPU）
 
 运行以下命令默认安装至 `/usr/local/`：
 ```bash

@@ -12,17 +12,18 @@
 
 找到以下两处 cmake 调用，添加该选项：
 
-**位置 1**（约第 159 行）：
+**位置 1**（约第 160 行，在 `-DCMAKE_BUILD_TYPE` 之后添加）：
 ```bash
 cmake \
     -G "$GENERATOR"  \
     -DCMAKE_BUILD_TYPE="${BUILD_MODE}" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \    # 添加这一行
     -DBUILD_UT="${BUILD_UT}" \
+    -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" \
     ...
 ```
 
-**位置 2**（约第 325 行）：
+**位置 2**（约第 327 行）：
 ```bash
 cmake -G "$GENERATOR" -DCMAKE_BUILD_TYPE="${BUILD_MODE}" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_OPEN_ABI="${BUILD_OPEN_ABI}" -S . -B build/
 ```

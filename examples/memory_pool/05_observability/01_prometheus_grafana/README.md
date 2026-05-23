@@ -1,5 +1,7 @@
 # 01_prometheus_grafana
 
+> **⚠️ 设计草案**：本文档描述的目标交付物（prometheus.yaml、grafana_dashboard.json）尚未提交到仓库，当前仅作为设计方案参考。
+
 ## 场景
 为内存池样例提供最小可落地可观测方案，统一指标采集与看板展示。
 

@@ -12,7 +12,7 @@
 - `copy_data_batch`（主路径）
 
 ## 规模建议
-- world_size=1
+- world_size=1024（多rank预留标识，单进程运行时仅rank 0参与）
 - local_dram_size=4GB
 - 待注册的内存大小：4GB
 - 总拷贝数据量：4GB

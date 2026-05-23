@@ -58,8 +58,8 @@
 | `segment_size_mb` | 内存段大小（MB） | 整数（MB），默认 `2` |
 | `use_sma_allocator` | 是否使用SMA分配器 | `True` / `False`，默认 `True` |
 | `use_vmm_for_static_memory` | 静态内存（权重/KV cache）是否使用VMM模式 | `True` / `False`，默认 `False` |
-| `small_heap_size` | 小堆内存大小 | 整数（字节），默认 `2097152`（2MB） |
-| `small_heap_threshold` | 小堆分配阈值 | 整数（字节），默认 `524288`（512KB） |
+| `small_heap_size` | 小堆内存大小 | 整数（字节），默认 `524288000`（512MB，对应 `kSmallHeapSize`） |
+| `small_heap_threshold` | 小堆分配阈值 | 整数（字节），默认 `1048576`（1MB，对应 `kSmallThreshold`） |
 
 ## Build
 

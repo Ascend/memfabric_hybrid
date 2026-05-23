@@ -30,7 +30,7 @@ All testcase running on A3 super pod.
 
 ### 2 Combine normal
 
-*Note: Dispatch Normal kernel testcase results are test with single operation call.*
+*Note: Combine Normal kernel testcase results were tested with single operation call.*
 
 |tokens| hidden | topk | experts | ranks | Time(us) Over HCCL| Time(us) Over ZBAL|
 |---|---|---|---|---|---|---|

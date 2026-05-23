@@ -1,5 +1,7 @@
 # 02_opentelemetry
 
+> **⚠️ 设计草案**：本文档描述的目标交付物（otel_collector.yaml、instrumentation_guideline.md）尚未提交到仓库，当前仅作为设计方案参考。
+
 ## 场景
 为内存池关键操作补充链路追踪与统一语义埋点，支持跨组件问题定位。
 

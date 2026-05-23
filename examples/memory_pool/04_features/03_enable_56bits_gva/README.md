@@ -14,17 +14,16 @@ A3 device_sdma 单机单卡最小闭环：开启 56 位 GVA 功能后验证读�
 
 ## 使用能力
 - `initialize(store_url, world_size, device_id, config)`
-- `create2(id, local_dram_size, max_dram_size, local_hbm_size=0, max_hbm_size=0, ...)`
-- `extend_local_mem(...)`
+- `create2(id, local_dram_size, max_dram_size, ...)` 中开启 `enable_56bits_gva=True`
 - `BigMemory.join()`
-- `BigMemory.peer_rank_ptr(peer_rank, mem_type)`（本 rank）
-- `BigMemory.copy_data(...)`（H2G / G2H）
+- `BigMemory.peer_rank_ptr(peer_rank, mem_type)`（跨 rank）
+- `BigMemory.copy_data_batch(...)`（H2G / G2G / G2H）
 - `BigMemory.leave()` / `BigMemory.destroy()`
 
 ## 规模建议
-- world_size=8
-- local_dram_size=1GB, max_dram_size=8GB
-- 数据块：1KB
+- world_size=1024（多rank预留标识，实际参与 local_ranks=8）
+- local_dram_size=8GB, max_dram_size=1TB
+- 每个子 tensor：4KB，共 100 个，单次约 400KB
 
 ## 必要条件
 单机至少 1 张可用NPU，且进程可访问 config store( tcp://ip:port ）

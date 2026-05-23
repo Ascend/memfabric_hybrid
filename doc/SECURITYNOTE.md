@@ -19,7 +19,7 @@
 
 说明：
 支持通过接口 `smem_set_conf_store_tls` 配置TLS秘钥证书等，进行tls安全连接，安全选项默认关闭，建议用户开启TLS加密配置，以保证通信通信安全。
-系统启动后，建议删除本地秘钥证书等信息敏感文件。调用该接口时，传入的文件路径不能包含英文分号、逗号、冒号。
+系统启动后，建议删除本地秘钥证书等信息敏感文件。调用该接口时，传入的文件路径值本身不能包含英文分号、逗号、冒号（这些字符作为 tls_info 字符串中的字段分隔符被保留使用）。
 支持通过环境变量 `ACCLINK_CHECK_PERIOD_HOURS`和`ACCLINK_CERT_CHECK_AHEAD_DAYS` 配置证书检查周期与证书过期预警时间
 
 配置TLS调用接口示例：
@@ -106,8 +106,8 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 | 接口功能描述                | 接口声明                                      |
 |-----------------------------|--------------------------------------------|
 | 创建TCP服务端           | `static AccTcpServerPtr Create();`         |
-| 启动服务端          | `int32_t Start(const AccTcpServerOptions &opt);` |
-| TLS认证方式启动服务端           | `int32_t Start(const AccTcpServerOptions &opt, const AccTlsOption &tlsOption);` |
+| 以默认TLS选项启动服务端          | `int32_t Start(const AccTcpServerOptions &opt);` |
+| 以自定义TLS选项启动服务端           | `int32_t Start(const AccTcpServerOptions &opt, const AccTlsOption &tlsOption);` |
 | 停止服务端                  | `void Stop();`                             |
 | 连接其余服务端            | `int32_t ConnectToPeerServer(const std::string &peerIp, uint16_t port, const AccConnReq &req, uint32_t maxRetryTimes, AccTcpLinkComplexPtr &newLink);` |
 | 注册处理新请求事件函数              | `void RegisterNewRequestHandler(int16_t msgType, const AccNewReqHandler &h);` |

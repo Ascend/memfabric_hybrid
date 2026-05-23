@@ -33,13 +33,14 @@
     |member - dataOperationType|optional, data operation type |
     |member - commMetaSpaceSize|optional, single meta size in KB, default 1MB, min: 512KB, max: 4MB |
     |member - commGroupCap|optional, max count of comm Group, default 128, min: 1, max: 256  |
+|member - ipPort|optional, config store server ip:port |
 
 
 1. the `ZBALCommProperty` class.
 
     |||
     |---|---|
-    |class - `ZBALCommProperty`|zbal boostrap options |
+    |class - `ZBALCommProperty`|zbal comm properties |
     |member - backendType | backend type, see ZBALBackendType|
     |member - isWorldGroup| if this is the world group, 1 means true, 0 means false |
     |member - groupSize| the number of ranks in total |
@@ -70,7 +71,7 @@
 
     |||
     |---|---|
-    |class - `ZBALCommProperty`|zbal boostrap options |
+    |class - `ProcessGroupZBAL`|zbal process group |
     |func - constructor | receive store/rank_id/rank_size/ZOptions as input arguments|
     |func - get_zbal_comm_name() | return the zbal comm instance name|
     |func - get_hccl_comm_name() | a compatible function for hccl, the same with get_zbal_comm_name() |

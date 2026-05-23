@@ -72,7 +72,7 @@ def set_extern_logger(log_fn:Callable[[int, str], None]) -> int
 #### set_conf_store_tls_key
 注册Python解密处理程序
 ```python
-def set_conf_store_tls_key(tls_pk, tls_pk_pw, py_decrypt_func:Callable[str, str], str) -> int
+def set_conf_store_tls_key(tls_pk, tls_pk_pw, py_decrypt_func:Callable[[str], str]) -> int
 ```
 
 |参数/返回值|含义|
@@ -80,7 +80,7 @@ def set_conf_store_tls_key(tls_pk, tls_pk_pw, py_decrypt_func:Callable[str, str]
 |tls_pk|私钥|
 |tls_pk_pw|私钥口令|
 |py_decrypt_func|口令解密函数|
-|返回值|错误信息|
+|返回值|成功返回0，其他为错误码|
 
 #### set_conf_store_tls
 设置配置存储的TLS信息
@@ -160,7 +160,7 @@ def create(id, local_dram_size, local_hbm_size = 0, data_op_type = SMEMB_DATA_OP
 #### create2
 创建BM（支持设置本地内存上限）
 ```python
-def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, enable_56bits_gva = False, flags = 0) -> BigMemory
+def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size = 0, data_op_type = SMEMB_DATA_OP_SDMA, enable_56bits_gva = False, flags = 0, shm_fd = -1) -> BigMemory
 ```
 
 |参数/返回值|含义|
@@ -173,6 +173,7 @@ def create2(id, local_dram_size, max_dram_size, local_hbm_size = 0, max_hbm_size
 |data_op_type|数据操作类型，参考smem_bm_data_op_type类型定义|
 |enable_56bits_gva|是否显式启用 56 位 GVA，bool 类型，默认 False。|
 |flags|预留参数|
+|shm_fd|共享内存文件描述符，默认-1（不使用）|
 |返回值|BigMemory对象|
 
 ### 3. 获取当前rank的id
@@ -199,6 +200,7 @@ class BmCopyType(Enum):
     GH2H
     H2GH
     G2G
+    AUTO
 ```
 
 |属性|含义|
@@ -212,6 +214,18 @@ class BmCopyType(Enum):
 |GH2H|将数据从全局主机空间复制到主机内存|
 |H2GH|将数据从主机内存复制到全局主机空间|
 |G2G|将数据从全局空间复制到全局空间|
+
+#### BmMemType枚举类
+```python
+class BmMemType(Enum):
+    LOCAL_DEVICE
+    LOCAL_HOST
+```
+
+| 属性 | 含义 |
+|-----|------|
+|LOCAL_DEVICE|本地设备侧内存|
+|LOCAL_HOST|本地主机侧内存|
 
 #### BmConfig类
 ```python
@@ -233,11 +247,27 @@ class BmConfig:
 |rank_id属性|用户指定的RankId，对autoRanking有效为False|
 |flags属性|预留参数|
 
+#### BmGroupEvent枚举类
+```python
+class BmGroupEvent(Enum):
+    JOIN_EVENT
+    LEAVE_EVENT
+```
+
+| 属性 | 含义 |
+|-----|------|
+|JOIN_EVENT|有节点加入BM组|
+|LEAVE_EVENT|有节点退出BM组|
+
 #### BmDataOpType枚举类
 ```python
 class BmDataOpType(Enum):
     SDMA
-    ROCE
+    HOST_RDMA
+    HOST_URMA
+    HOST_TCP
+    DEVICE_RDMA
+    HOST_SHM
 ```
 
 #### BigMemory类
@@ -252,8 +282,12 @@ class BigMemory:
     def destroy() -> None:
     def register(addr, size) -> int:
     def unregister(addr) -> int:
-    def copy_data(src_ptr, dst_ptr, size, type, flags) -> int:
+    def copy_data(src_ptr, dst_ptr, size, type, flags = 0) -> int:
     def copy_data_batch(src_addrs, dst_addrs, sizes, count, type, flags) -> int:
+    def set_group_event_handler(cb) -> int:
+    def get_rank_id_by_gva(gva) -> int:
+    def copy_data_batch_partial_succeed(src_addrs, dst_addrs, sizes, count, type, flags, result) -> int:
+    def wait() -> int:
 
 ```
 
@@ -288,6 +322,13 @@ class BigMemory:
 | copy_data参数size(int)         | size of data to be copied                       |
 | copy_data参数type(BmCopyType)  | copy type, L2G, G2L, G2H, H2G                   |
 | copy_data参数flags(int)        | optional flags                                  |
+| set_group_event_handler方法     | 注册组事件回调函数                                   |
+| set_group_event_handler参数cb   | 回调函数，签名 cb(rank_id: int, event: BmGroupEvent) |
+| get_rank_id_by_gva方法          | 根据GVA获取rank ID                                |
+| get_rank_id_by_gva参数gva       | 全局虚拟地址                                       |
+| copy_data_batch_partial_succeed方法 | 批量拷贝数据，允许部分失败                          |
+| copy_data_batch_partial_succeed参数result | 出参，记录哪些操作成功/失败                  |
+| wait方法                        | 等待异步操作完成                                    |
 
 ## SHM接口
 ### 1. 初始化/退出接口
@@ -320,7 +361,7 @@ def uninitialize(flags = 0) -> None
 #### create
 创建SHM
 ```python
-def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> int
+def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_MTE, flags = 0) -> ShareMemory
 ```
 
 |参数/返回值|含义|
@@ -331,7 +372,7 @@ def create(id, rank_size, rank_id, local_mem_size, data_op_type = SMEMS_DATA_OP_
 |local_mem_size|每个rank贡献到创建SMEM对象的空间大小，单位字节，范围为[2MB, 4GB]，且需为2MB的倍数|
 |data_op_type|数据操作类型，参考smem_shm_data_op_type类型定义|
 |flags|预留参数|
-|返回值|SMEM对象handle|
+|返回值|ShareMemory对象（失败抛RuntimeError异常）|
 
 ### 3. 常用类型
 #### ShmConfig类
@@ -382,6 +423,7 @@ class ShareMemory:
 class ShmDataOpType(Enum):
     MTE
     SDMA
+    AIV_SDMA
     RDMA
 ```
 
@@ -391,15 +433,22 @@ class ShmDataOpType(Enum):
 ```python
 class TransferEngine:
     def __init__(self):
-    def initialize(store_url: str, unique_id: str, role: str, device_id: int) -> int:
+    def initialize(store_url: str, session_id: str, role: str, device_id: int, data_op_type = TransDataOpType.SDMA) -> int:
     def get_rpc_port() -> str:
-    def transfer_sync_write(destflag: str, buffer, peer_buffer_address, length) -> int:
-    def batch_transfer_sync_write(destflag: str, buffers, peer_buffer_addresses, lengths) -> int:
-    def transfer_async_write_submit(destflag: str, buffer, peer_buffer_address, length, stream) -> int:
-    def transfer_async_read_submit(destflag: str, buffer, peer_buffer_address, length, stream) -> int:
+    def transfer_sync_write(dest_session: str, buffer, peer_buffer, length, flags = 0) -> int:
+    def batch_transfer_sync_write(dest_session: str, buffers, peer_buffers, lengths, flags = 0) -> int:
+    def transfer_async_write_submit(dest_session: str, buffer, peer_buffer, length, stream, flags = 0) -> int:
+    def transfer_async_read_submit(dest_session: str, buffer, peer_buffer, length, stream, flags = 0) -> int:
     def register_memory(buffer_addr, capacity) -> int:
     def unregister_memory(buffer_addr) -> int:
     def batch_register_memory(buffer_addrs, capacities) -> int:
+    def transfer_sync_read(dest_session: str, buffer, peer_buffer, length, flags = 0) -> int:
+    def batch_transfer_sync_read(dest_session: str, buffers, peer_buffers, lengths, flags = 0) -> int:
+    def batch_transfer_async_write_submit(dest_session: str, buffers, peer_buffers, lengths, stream, flags = 0) -> int:
+    def batch_transfer_async_read_submit(dest_session: str, buffers, peer_buffers, lengths, stream, flags = 0) -> int:
+    def batch_transfer_write_with_quant(dest_session: str, buffers, peer_buffers, lengths, scale_buffers, offset_buffers, unit_num, input_type = 0, stream = 0, flags = 0) -> int:
+    def trans_malloc(capacity) -> int:
+    def trans_free(buffer_addr) -> int:
     def destroy() -> None:
     def unInitialize() -> None:
 ```
@@ -408,22 +457,25 @@ class TransferEngine:
 |-|-|
 |initialize方法|TRANS配置初始化，成功返回0，其他为错误码|
 |initialize参数store_url|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
-|initialize参数unique_id|该TRANS实例的唯一标识，格式ip:port|
+|initialize参数session_id|该TRANS实例的唯一标识，格式ip:port|
 |initialize参数role|当前进程的角色|
 |initialize参数device_id|当前设备的唯一标识|
+|initialize参数data_op_type|数据传输操作类型，默认 TransDataOpType.SDMA|
 |get_rpc_port方法|获取可用的rpc端口+pid|
 |transfer_sync_write方法|同步写接口,成功返回0，其他为错误码|
-|transfer_sync_write参数destflag|目的TRANS实例对应的标识|
+|transfer_sync_write参数dest_session|目的TRANS实例对应的标识|
 |transfer_sync_write参数buffer|源地址的起始地址指针|
-|transfer_sync_write参数peer_buffer_address|目的地址的起始地址指针|
+|transfer_sync_write参数peer_buffer|目的地址的起始地址指针|
 |transfer_sync_write参数length|传输数据大小|
+|transfer_sync_write参数flags|标记位，默认0|
 |transfer_async_write_submit方法|异步写任务提交接口,相比于transfer_async_write增加了入参stream,成功返回0,其他为错误码|
 |transfer_async_write_submit参数stream|需要提交到的acl.rt.stream|
 |batch_transfer_sync_write方法|批量同步写接口，成功返回0，其他为错误码|
-|batch_transfer_sync_write参数destflag|目的TRANS实例对应的标识|
+|batch_transfer_sync_write参数dest_session|目的TRANS实例对应的标识|
 |batch_transfer_sync_write参数buffer|源地址的起始地址指针列表|
-|batch_transfer_sync_write参数peer_buffer_address|目的地址的起始地址指针列表|
-|batch_transfer_sync_write参数length|传输数据大小列表|
+|batch_transfer_sync_write参数peer_buffers|目的地址的起始地址指针列表|
+|batch_transfer_sync_write参数lengths|传输数据大小列表|
+|batch_transfer_sync_write参数flags|标记位，默认0|
 |register_memory方法|注册内存，成功返回0，其他为错误码|
 |register_memory参数buffer_addr|注册地址的起始地址指针|
 |register_memory参数capacity|注册地址大小|
@@ -434,10 +486,58 @@ class TransferEngine:
 |batch_register_memory参数capacities|批量注册地址大小列表|
 |destroy方法|销毁TRANS实例|
 |unInitialize方法|TRANS退出|
+|transfer_sync_read方法|同步读接口，成功返回0，其他为错误码|
+|transfer_sync_read参数dest_session|目的TRANS实例对应的标识|
+|transfer_sync_read参数buffer|本地用于接收读取数据的起始地址指针|
+|transfer_sync_read参数peer_buffer|远端待读取数据的起始地址指针|
+|transfer_sync_read参数length|传输数据大小|
+|transfer_sync_read参数flags|标记位，默认0|
+|batch_transfer_sync_read方法|批量同步读接口|
+|batch_transfer_sync_read参数dest_session|目的TRANS实例对应的标识|
+|batch_transfer_sync_read参数buffers|本地接收数据指针列表|
+|batch_transfer_sync_read参数peer_buffers|远端数据指针列表|
+|batch_transfer_sync_read参数lengths|传输数据大小列表|
+|batch_transfer_sync_read参数flags|标记位，默认0|
+|batch_transfer_async_write_submit方法|批量异步写提交接口|
+|batch_transfer_async_write_submit参数dest_session|目的TRANS实例对应的标识|
+|batch_transfer_async_write_submit参数buffers|源地址指针列表|
+|batch_transfer_async_write_submit参数peer_buffers|目的地址指针列表|
+|batch_transfer_async_write_submit参数lengths|传输数据大小列表|
+|batch_transfer_async_write_submit参数stream|需要提交到的acl.rt.stream|
+|batch_transfer_async_write_submit参数flags|标记位，默认0|
+|batch_transfer_async_read_submit方法|批量异步读提交接口|
+|batch_transfer_async_read_submit参数dest_session|目的TRANS实例对应的标识|
+|batch_transfer_async_read_submit参数buffers|本地接收数据指针列表|
+|batch_transfer_async_read_submit参数peer_buffers|远端数据指针列表|
+|batch_transfer_async_read_submit参数lengths|传输数据大小列表|
+|batch_transfer_async_read_submit参数stream|需要提交到的acl.rt.stream|
+|batch_transfer_async_read_submit参数flags|标记位，默认0|
+|batch_transfer_write_with_quant方法|批量随路量化写接口|
+|batch_transfer_write_with_quant参数dest_session|目的TRANS实例对应的标识|
+|batch_transfer_write_with_quant参数buffers|源地址指针列表|
+|batch_transfer_write_with_quant参数peer_buffers|目的地址指针列表|
+|batch_transfer_write_with_quant参数lengths|传输数据大小列表|
+|batch_transfer_write_with_quant参数scale_buffers|量化scale指针列表|
+|batch_transfer_write_with_quant参数offset_buffers|量化offset指针列表|
+|batch_transfer_write_with_quant参数unit_num|量化单元数量|
+|batch_transfer_write_with_quant参数input_type|输入数据类型，默认0|
+|batch_transfer_write_with_quant参数stream|需要提交到的acl.rt.stream，默认0|
+|batch_transfer_write_with_quant参数flags|标记位，默认0|
+|trans_malloc方法|在TRANS引擎中分配内存|
+|trans_malloc参数capacity|分配内存大小|
+|trans_free方法|释放TRANS引擎分配的内存|
+|trans_free参数buffer_addr|待释放的内存地址|
+
+#### TransDataOpType枚举类
+```python
+class TransDataOpType(Enum):
+    SDMA
+    DEVICE_RDMA
+```
 
 #### TransferOpcode枚举类
 ```python
 class TransferOpcode(Enum):
-    READ
-    WRITE
+    Read
+    Write
 ```

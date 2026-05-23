@@ -42,7 +42,7 @@ python接口使用方式:
     * 提供对用户注册的内存进行数据拷贝的接口，并提供读写语义
     * 接口支持的语言: c, python
 
-安装MemFabric后，BM接口头文件位于
+安装MemFabric后，TRANS接口头文件位于
 ```${MEMFABRIC_HYBRID_HOME_PATH}/${arch}-${os}/include/smem/host/smem_trans.h```
 
 ##### 使用简介

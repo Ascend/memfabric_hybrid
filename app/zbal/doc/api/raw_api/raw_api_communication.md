@@ -79,7 +79,7 @@ zbal_comm_t zbal_comm_get_by_name(const char *name)
 | Parameters/return | In/Out | Description                     |
 |-------------------|--------|---------------------------------|
 | name              | in     | unique name of the communicator |
-| return            |        | pointer of world communicator   |
+| return            |        | pointer of the communicator, null if not found |
 
 ### 1.5 Destroy a communicator
 
@@ -118,7 +118,7 @@ void zbal_comm_destroy_all(uint32_t flags)
 | Parameters/return | In/Out | Description     |
 |-------------------|--------|-----------------|
 | flags             | in     | optional flags  |
-| return            |        | 0 if successful |
+| return            |        | void, no return value |
 
 ## 2 Dispatch/Combine Normal
 
@@ -235,7 +235,7 @@ int32_t zbal_dispatch_normal(const zbal_tensor_info_t *srcTokens,
 |pushTargetOffset     |in| the same with zbal_dispatch_normal_notify out param 'pushTargetOffset'|
 |balanceMatrix        |in| the same with zbal_dispatch_normal_notify out param 'balanceMatrix'|
 |expertNum            |in| the number of experts|
-|quantMode            |in| quant mode, see struct 'zbal_quant_model_t'|
+|quantMode            |in| quant mode, see struct 'zbal_quant_mode_t'|
 |destTokens           |in/out| receive all other rank tokens tensor, shape=[num_recv_tokens, hidden]|
 |destScale            |in/out| if enable quant casting, shape=[num_recv_tokens], which means the quant casting scales per token|
 |comm                 |in| zbal communication handle|
@@ -329,13 +329,13 @@ int32_t zbal_dispatch_low_latency(const zbal_tensor_info_t *x,
 | globalBs              | in |   global batch size           |
 | magicVal              | in |   magic value           |
 | expertTokenNumsType   | in |   expert token number type   |
-| expandXOut            | in |   the output tensor          |
-| dynamicScalesOut      | in |   the output quant scales        |
-| expandIdxOut          | in |   the output index           |
-| expertTokenNumsOut    | in |   the expert output token number |
-| epRecvCountsOut       | in |   ep rank receive token count   |
-| putOffset             | in |   the token put offset to rank expert |
-| putOffsetStatus       | in |   put offset flag            |
+| expandXOut            | out|   the output tensor          |
+| dynamicScalesOut      | out|   the output quant scales        |
+| expandIdxOut          | out|   the output index           |
+| expertTokenNumsOut    | out|   the expert output token number |
+| epRecvCountsOut       | out|   ep rank receive token count   |
+| putOffset             | out|   the token put offset to rank expert |
+| putOffsetStatus       | out|   put offset flag            |
 |  comm                 | in |   the communicator handle           |
 | stream                | in |   stream to run             |
 |  flags                | in |   reserved flags          |
@@ -372,7 +372,7 @@ int32_t zbal_combine_low_latency(const zbal_tensor_info_t *expandX,
 | expertIdx         |  in    |  the expert index list      |
 | epSendCounts      |  in    |  ep rank send count         |
 | expertScales      |  in    |  the expert of token scales  |
-| xOut              |  in    |  the combine output tensor   |
+| xOut              |  out   |  the combine output tensor   |
 | moeExpertNum      |  in    |  expert number               |
 | comm              |  in    |  the communicator handle     |
 | stream            |  in    |  the stream to run        |
@@ -467,18 +467,18 @@ int32_t zbal_reduce_scatter(const void *sendBuff,
 |-------------------|--------|-----------------------------|
 | send_buff         | in     | pointer of source data      |
 | recv_buff         | out    | pointer of destination data |
-| count             | in     | count of the data           |
+| recv_count        | in     | count of the data           |
 | data_type         | in     | type of the data            |
 | op                | in     | type of reduce operation    |
 | comm              | in     | handle of the communicator  |
 | stream            | in     | stream                      |
 | return            |        | 0 if successful             |
 
-## 7 Braodcast
+## 7 Broadcast
 
 #### Functionality description
 
-Braodcast operation
+Broadcast operation
 
 #### Function definition
 
@@ -550,7 +550,8 @@ int32_t zbal_all_to_all_v(const void *sendBuff,
                           void *elements,
                           zbal_datatype_t dataType,
                           zbal_comm_t comm,
-                          aclrtStream stream)
+                          aclrtStream stream);
+```
 
 | Parameters/return | In/Out | Description                     |
 |-------------------|--------|---------------------------------|

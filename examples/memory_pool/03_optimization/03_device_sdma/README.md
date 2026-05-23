@@ -9,13 +9,12 @@
 ## 使用能力
 - 基础生命周期接口
 - `create2` 中 data_op_type 选择 `bm.BmDataOpType.SDMA`
-- `BigMemory.register(addr, size)` / `BigMemory.unregister(addr)`
 - `copy_data_batch`（主路径）
+- **注意**：SDMA 协议无需地址注册（register/unregister），源码中显式跳过注册步骤
 
 ## 规模建议
 - world_size=1
 - local_dram_size=4GB
-- 待注册的内存大小：4GB
 - 总拷贝数据量：4GB
 - 每个数据块大小：4MB
 - 批量任务个数：16 / 128 / 512

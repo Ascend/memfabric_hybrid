@@ -135,7 +135,7 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 
 ![A2-Bandwidth-performance](./doc/source/a2_bandwidth.png)
 
- 👆 性能测试参考 [benchmark](./example/bm/BmBenchmark/README.md)
+ 👆 性能测试参考 [benchmark](./benchmark/bm/README.md)
 
 ## 🔍目录结构
 
@@ -146,11 +146,10 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 ├── .gitignore                 # git忽视文件
 ├── CMakeLists.txt             # 项目的CMakeList
 ├── doc                        # 文档目录
-├── example                    # 样例
-│  ├── bm                      # big memory样例
-│  └── shm                     # share memory样例
-│  └── trans                   # batch data write/read样例
-│  └── decrypt                 # 自定义解密库示例(控制路径)
+├── examples                   # 样例
+│  ├── memory_pool             # 内存池化样例（含基础/扩展/优化/特性/可观测性）
+│  ├── transfer                # 传输样例（含batch data write/read）
+│  └── hbm_share_memory        # HBM共享内存样例(AllReduce/ShiftPutGet/RDMADemo)
 ├── script                     # 构建脚本
 │  ├── build_and_pack_run.sh   # 编译+打包脚本
 │  ├── build.sh                # 编译脚本
@@ -174,7 +173,7 @@ MemFabric跨机访问数据流和控制流如下图所示(昇腾A3超节点):
 
 - [编译安装](./doc/installation.md)：介绍组件编译和安装教程。
 
-- [样例执行](./example/examples.md)：介绍如何端到端执行样例代码，包括C++和Python样例。
+- [样例执行](./examples/memory_pool/README.md)：介绍如何端到端执行样例代码，包括C++和Python样例。
 
 ## 📑学习教程
 

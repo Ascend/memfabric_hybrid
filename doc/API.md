@@ -1,6 +1,36 @@
 > 注：如下接口对外封装了相同含义的Python接口，详细信息可参考`src/smem/csrc/python_wrapper/memfabric_hybrid/pymf_hybrid.cpp`。
 
-[TOC]
+- [C接口](#c接口)
+  - [公共接口列表](#公共接口列表)
+    - [1. 服务初始化/退出](#1-服务初始化退出)
+    - [2. 创建config store对象](#2-创建config-store对象)
+    - [3. 日志设置](#3-日志设置)
+    - [4. 安全证书设置](#4-安全证书设置)
+    - [5. 错误信息获取/清理](#5-错误信息获取清理)
+  - [BM接口列表](#bm接口列表)
+    - [1. BM初始化/退出](#1-bm初始化退出)
+    - [2. 创建/销毁BM](#2-创建销毁bm)
+    - [3.加入/退出BM](#3加入退出bm)
+    - [4.拷贝/批量拷贝数据对象](#4拷贝批量拷贝数据对象)
+    - [5.查询接口](#5查询接口)
+    - [6. 用户内存register/unregister](#6-用户内存registerunregister)
+    - [7.等待异步操作完成](#7等待异步操作完成)
+  - [SHM接口列表](#shm接口列表)
+    - [1.SHM初始化/退出](#1shm初始化退出)
+    - [2. 创建/销毁SHM](#2-创建销毁shm)
+    - [3. 查询接口](#3-查询接口)
+    - [4. 设置用户context](#4-设置用户context)
+    - [5. 在SHM对象执行barrier/allgather](#5-在shm对象执行barrierallgather)
+    - [6. rank连通检查](#6-rank连通检查)
+    - [7. 注册退出回调函数](#7-注册退出回调函数)
+    - [8. PE主动退出接口](#8-pe主动退出接口)
+  - [TRANS接口列表](#trans接口列表)
+    - [1. TRANS初始化/退出](#1-trans初始化退出)
+    - [2. 创建/销毁TRANS实例](#2-创建销毁trans实例)
+    - [3. 注册/批量注册/注销内存](#3-注册批量注册注销内存)
+    - [4. 同步读/写](#4-同步读写)
+    - [5. 异步读/写提交](#5-异步读写提交)
+  - [环境变量](#环境变量)
 
 # C接口
 安装完成 `run` 包并 `source` 安装路径下的 `set_env.sh` 后，会添加 `memfabric_hybrid` 安装路径的环境变量 `MEMFABRIC_HYBRID_HOME_PATH`
@@ -32,12 +62,13 @@ void smem_uninit();
 ### 2. 创建config store对象
 #### smem_create_config_store
 ```c
-int32_t smem_create_config_store(const char *storeUrl);
+int32_t smem_create_config_store(const char *storeUrl, uint64_t flags);
 ```
 
 | 参数/返回值   | 含义                                                                                   |
 |----------|--------------------------------------------------------------------------------------|
 | storeUrl | 业务面地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）；如 `tcp://[::1]:5124`、`tcp://127.0.0.1:5124`、`etcd://127.0.0.1:5124#clusterA` |
+| flags    | 创建标记位，可选标记 SMEM_STORE_SKIP_RECOVER                                                 |
 | 返回值      | 成功返回0，其他为错误码                                                                         |
 
 
@@ -75,7 +106,7 @@ int32_t smem_set_conf_store_tls(bool enable, const char *tls_info, const uint32_
 
 |参数/返回值|含义|
 |-|-|
-|enable|whether to enable tls|
+|enable|whether to enable tls（当前为预留接口，功能尚未实现）|
 |tls_info|the format describle in memfabric SECURITYNOTE.md, if disabled tls_info won't be use|
 |tls_info_len|length of tls_info, if disabled tls_info_len won't be use|
 |返回值|成功返回0，其他为错误码|	
@@ -98,7 +129,7 @@ int32_t smem_set_config_store_tls_key(
 |tls_pk_pw| 口令内容   |
 |tls_pk_pw_len| 口令内容长度 |
 |h| 密钥解密函数 |
-|返回值| 错误信息   |
+|返回值| 成功返回0，其他为错误码 |
 ```c
 typedef int (*smem_decrypt_handler)(const char *cipherText, size_t cipherTextLen, char *plainText, size_t &plainTextLen);
 ```
@@ -130,6 +161,41 @@ const char *smem_get_and_clear_last_err_msg();
 |参数/返回值|含义|
 |-|-|
 |返回值|错误信息|
+
+### 6. 错误码定义
+
+| 错误码宏 | 值 | 说明 |
+|---------|----|------|
+| `SMEM_OK` | 0 | 成功 |
+| `SMEM_ERROR` | -1 | 通用错误 |
+| `SMEM_INVALID_PARAM` | -2000 | 无效参数 |
+| `SMEM_MALLOC_FAILED` | -2001 | 内存分配失败 |
+| `SMEM_NO_RESOURCES` | -2002 | 资源不足 |
+| `SMEM_NOT_STARTED` | -2003 | 服务未启动 |
+| `SMEM_TIMEOUT` | -2004 | 操作超时 |
+| `SMEM_REPEAT_INVOKE` | -2005 | 重复调用 |
+| `SMEM_DUPLICATED` | -2006 | 重复创建 |
+| `SMEM_NOT_EXIST` | -2007 | 对象不存在 |
+| `SMEM_NOT_INIT` | -2008 | 未初始化 |
+| `SMEM_RES_IN_USE` | -2009 | 资源被占用 |
+| `SMEM_PARTIAL_FAILED` | -2012 | 部分失败（批量操作） |
+| `SMEM_NOT_CONNECTED` | -2014 | 连接断开 |
+
+Store Backend 错误码（从 `smem_def.h`）：
+
+| 错误码宏 | 值 | 说明 |
+|---------|----|------|
+| `SMEM_STORE_BACKEND_CODE_OK` | 0 | 后端操作成功 |
+| `SMEM_STORE_BACKEND_CODE_INTERNAL` | -3000 | 后端内部错误 |
+| `SMEM_STORE_BACKEND_CODE_INVAL` | -3001 | 后端参数无效 |
+| `SMEM_STORE_BACKEND_CODE_BUFEX` | -3002 | 后端缓冲区不足 |
+| `SMEM_STORE_BACKEND_CODE_PERM` | -3003 | 后端权限不足 |
+| `SMEM_STORE_BACKEND_CODE_NORES` | -3004 | 后端资源不足 |
+| `SMEM_STORE_BACKEND_CODE_NOENT` | -3005 | 后端条目不存在 |
+| `SMEM_STORE_BACKEND_CODE_LOCKED` | -3006 | 后端锁冲突 |
+| `SMEM_STORE_BACKEND_CODE_UNLOCKED` | -3007 | 后端未锁定 |
+
+> 注：以上错误码定义位于 `smem.h`（通用错误码）和 `smem_def.h`（Store Backend 错误码）头文件中。
 
 ## BM接口列表
 
@@ -177,7 +243,7 @@ void smem_bm_uninit(uint32_t flags);
 创建BM
  ```c
 smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
-    smem_bm_data_op_type dataOpType, uint64_t localDRAMSize,
+    smem_bm_data_op_type_t dataOpType, uint64_t localDRAMSize,
     uint64_t localHBMSize, uint32_t flags);
  ```
 
@@ -186,7 +252,7 @@ smem_bm_t smem_bm_create(uint32_t id, uint32_t memberSize,
 |id|BM id，用户自定义，BM之间取不同值|
 |memberSize|创建BM的rank数量（保留参数，后续迭代使用）|
 |dataOpType|数据操作类型，取值内容参考smem_bm_data_op_type定义|
-|localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，范围为(0, 2TB]（保留参数，后续迭代使用）|
+|localDRAMSize|创建BM当前rank贡献的DRAM空间大小，单位字节，范围为(0, 2TB]|
 |localHBMSize|创建BM当前rank贡献的HBM空间大小，单位字节，范围为(0, 64GB]|
 |flags|创建标记位，预留|
 |返回值|成功返回BM handle，失败返回空指针|
@@ -242,7 +308,7 @@ int32_t smem_bm_leave(smem_bm_t handle, uint32_t flags);
 #### smem_bm_extend_local_mem
 在本地 `rank` 上动态扩增內存。待增加内存必须由 `smem_bm_create()` 创建
 ```c
-int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uint64_t size);
+int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type_t memType, uint64_t size);
 ```
 
 | 参数/返回值          | 含义                            |
@@ -258,8 +324,8 @@ int32_t smem_bm_extend_local_mem(smem_bm_t handle, smem_bm_mem_type memType, uin
 #### smem_bm_copy
 拷贝数据对象
 ```c
-int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params,  
-    smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params_t *params,  
+    smem_bm_copy_type_t t, uint32_t flags);
 ```
 
 |参数/返回值| 含义                                                                     |
@@ -273,7 +339,7 @@ int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params,
 #### smem_bm_copy_batch
 批量拷贝数据对象
 ```c
-int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
+int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params_t *params, smem_bm_copy_type_t t, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -289,9 +355,9 @@ int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, sme
 ```c
 int32_t smem_bm_copy_batch_partial_succeed(
         smem_bm_t handle,
-        smem_batch_copy_params *params,
-        smem_bm_copy_type t,
-        uint32_t flags, smem_batch_copy_result *result
+        smem_batch_copy_params_t *params,
+        smem_bm_copy_type_t t,
+        uint32_t flags, smem_batch_copy_result_t *result
 );
 ```
 
@@ -318,7 +384,7 @@ uint32_t smem_bm_get_rank_id(void);
 #### smem_bm_get_local_mem_size_by_mem_type
 获取创建BM本地贡献的空间大小
 ```c
-uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType);
+uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_type_t memType);
 ```
 
 |参数/返回值|含义|
@@ -330,7 +396,7 @@ uint64_t smem_bm_get_local_mem_size_by_mem_type(smem_bm_t handle, smem_bm_mem_ty
 #### smem_bm_ptr_by_mem_type
 获取rank id对应在gva上的地址位置
 ```c
-void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type memType, uint16_t peerRankId);
+void *smem_bm_ptr_by_mem_type(smem_bm_t handle, smem_bm_mem_type_t memType, uint16_t peerRankId);
 ```
 
 |参数/返回值|含义|
@@ -436,7 +502,7 @@ void smem_shm_uninit(uint32_t flags);
 #### smem_shm_create
 创建SHM
 ```c
-smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t symmetricSize,
+smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint64_t localSize,
     smem_shm_data_op_type dataOpType, uint32_t flags, void **gva);
 ```
 
@@ -445,7 +511,7 @@ smem_shm_t smem_shm_create(uint32_t id, uint32_t rankSize, uint32_t rankId, uint
 |id|SHM对象id，用户指定，与其他SHM对象不重复，范围为[0, 63]|
 |rankSize|参与创建SHM的rank数量，最大支持1024|
 |rankId|当前rank id|
-|symmetricSize|每个rank贡献到创建SHM对象的空间大小，单位字节，范围为[0, 64GB]|
+|localSize|每个rank贡献到创建SHM对象的对称空间大小，单位字节，范围为[0, 64GB]（对应头文件参数名 localSize）|
 |dataOpType|数据操作类型，参考smem_shm_data_op_type类型定义|
 |flags|预留参数|
 |gva|出参，gva空间地址|
@@ -594,7 +660,7 @@ int32_t smem_trans_config_init(smem_trans_config_t *config);
 #### smem_trans_init
 TRANS初始化
 ```c
-int32_t smem_trans_init(const smem_trans_config_t *config)
+int32_t smem_trans_init(const smem_trans_config_t *config);
 ```
 
 |参数/返回值|含义|
@@ -606,7 +672,7 @@ int32_t smem_trans_init(const smem_trans_config_t *config)
 TRANS退出
 
 ```c
-void smem_trans_uninit(uint32_t flags)
+void smem_trans_uninit(uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -618,7 +684,7 @@ void smem_trans_uninit(uint32_t flags)
 创建TRANS实例
 
 ```c
-int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config)
+smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueId, const smem_trans_config_t *config);
 ```
 
 |参数/返回值|含义|
@@ -626,13 +692,13 @@ int32_t smem_trans_t smem_trans_create(const char *storeUrl, const char *uniqueI
 |storeURL|config store地址，格式支持 `tcp://ip:port`、`etcd://ip:port`、`etcd://ip:port#instanceId`（etcd 多集群隔离）|
 |uniqueId|该TRANS实例的唯一标识，格式ip:port|
 |config|TRANS初始化配置|
-|返回值|成功返回0，其他为错误码|
+|返回值|成功返回 TRANS 实例句柄，失败返回 NULL|
 
 #### smem_trans_destroy
 销毁TRANS实例
 
 ```c
-void smem_trans_destroy(smem_trans_t handle, uint32_t flags)
+void smem_trans_destroy(smem_trans_t handle, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -645,7 +711,7 @@ void smem_trans_destroy(smem_trans_t handle, uint32_t flags)
 注册内存
 
 ```c
-int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capacity, uint32_t flags)
+int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capacity, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -661,7 +727,7 @@ int32_t smem_trans_register_mem(smem_trans_t handle, void *address, size_t capac
 
 ```c
 int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], size_t capacities[], uint32_t count,
-                                      uint32_t flags)
+                                       uint32_t flags);
 ```
 
 |参数/返回值| 含义|
@@ -677,7 +743,7 @@ int32_t smem_trans_batch_register_mem(smem_trans_t handle, void *addresses[], si
 注销内存
 
 ```c
-int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address)
+int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address);
 ```
 
 |参数/返回值|含义|
@@ -692,7 +758,7 @@ int32_t smem_trans_deregister_mem(smem_trans_t handle, void *address)
 
 ```c
 int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                    const void *remoteAddr, size_t dataSize, uint32_t flags)
+                    const void *remoteAddr, size_t dataSize, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -710,7 +776,7 @@ int32_t smem_trans_read(smem_trans_t handle, void *localAddr, const char *remote
 
 ```c
 int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const char *remoteUniqueId,
-                          const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags)
+                          const void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -729,7 +795,7 @@ int32_t smem_trans_batch_read(smem_trans_t handle, void *localAddrs[], const cha
 
 ```c
 int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                              void *remoteAddr, size_t dataSize, uint32_t flags)
+                              void *remoteAddr, size_t dataSize, uint32_t flags);
 ```
 
 |参数/返回值|含义|
@@ -747,15 +813,15 @@ int32_t smem_trans_write(smem_trans_t handle, const void *localAddr, const char 
 
 ```c
 int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], const char *remoteUniqueId,
-                                    void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags)
+                                    void *remoteAddrs[], size_t dataSizes[], uint32_t batchSize, uint32_t flags);
 ```
 
 |参数/返回值|含义|
 |-|--------|
 |handle|TRANS对象handle|
-|srcAddresses[]|批量本地待写数据起始地址指针列表|
-|destUniqueId|远端TRANS实例对应的标识|
-|destAddresses[]|批量远端存储数据起始地址指针列表|
+|localAddrs[]|批量本地待写数据起始地址指针列表|
+|remoteUniqueId|远端TRANS实例对应的标识|
+|remoteAddrs[]|批量远端存储数据起始地址指针列表|
 |dataSizes[]|批量传输数据大小列表，单位字节|
 |batchSize|批量写操作的任务数|
 | flags          | 标记位                |
@@ -767,7 +833,7 @@ int32_t smem_trans_batch_write(smem_trans_t handle, const void *localAddrs[], co
 
 ```c
 int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char *remoteUniqueId,
-                               const void *remoteAddr, size_t dataSize, void *stream, uint32_t flags)
+                               const void *remoteAddr, size_t dataSize, void *stream, uint32_t flags);
 ```
 
 | 参数/返回值         | 含义                 |
@@ -786,7 +852,7 @@ int32_t smem_trans_read_submit(smem_trans_t handle, void *localAddr, const char 
 
 ```c
 int32_t smem_trans_write_submit(smem_trans_t handle, const void *localAddr, const char *remoteUniqueId,
-                                void *remoteAddr, size_t dataSize, void *stream, uint32_t flags)
+                                void *remoteAddr, size_t dataSize, void *stream, uint32_t flags);
 ```
 
 | 参数/返回值       | 含义                   |

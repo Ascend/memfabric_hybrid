@@ -10,7 +10,7 @@ TP_TRACE_END(TP_HYBM_RDMA_LH_TO_GD, ret);
 内置线程每隔固定周期将打点数据输出到ptracer独立日志中，为分析性能瓶颈、测试性能数据提供了一种简便的方法。
 
 ## 使用方法
-ptracer是否开启受编译宏ENABLE_PTRACER控制，使用build_and_package_run.sh构建脚本时默认开启。
+ptracer是否开启受编译宏ENABLE_PTRACER控制，使用build_and_pack_run.sh构建脚本时默认开启。
 
 启用ptracer时，会在/var/log/memfabric_hybrid下生成ptracer_\<pid\>.dat形式的文件用于保存打点数据。
 

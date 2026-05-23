@@ -33,7 +33,7 @@ TCP 服务器通过内部的 AccTcpServer 组件启动，它监听客户端连�
 | `AccStoreServer`    | TCP Server 实现，KV 存储管理                           | `HEARTBEAT_INTERVAL`, `HEARTBEAT_TIMEOUT` |
 | `HybridConfigStore` | ETCD 模式混合存储，基于 TcpConfigStore 代理实现，负责 Leader 选举 | `ETCD_LEASE_TTL_SEC = 5`                  |
 | `EtcdClientV3`      | ETCD v3 客户端，分布式协调，封装go api，c接口->c++接口           | Lease 自动续约                                |
-| `NetworkChecker`    | 网络连通性检查 (非阻塞)，Server连通性检查，查找本地可用bind端口          | `CONNECTION_TIMEOUT_SEC = 3`              |
+| `NetworkEndpointUtil`| 网络连通性检查 (非阻塞)，Server连通性检查，查找本地可用bind端口          | `kConnectTimeoutMs = 1000`              |
 
 ### 关键时序参数
 
@@ -42,9 +42,9 @@ TCP 服务器通过内部的 AccTcpServer 组件启动，它监听客户端连�
 | ETCD Lease TTL | 5 秒                 | Leader 注册信息的有效期                                  |
 | Leader 健康检查间隔  | 4 秒                 | 检测 ETCD 连接和 Lease 状态                             |
 | 随机退避           | 100-1000ms          | 避免选举惊群                                           |
-| 网络检查超时         | 3 秒                 | 判断 Leader 是否可达                                   |
-| 心跳超时           | 3 秒                 | 心跳检测超时时间                                         |
-| 恢复等待           | 5秒wait连接 + 5秒wait清理 | 新 Leader 等待旧 Rank 重连，再等待unimport (异步执行，不阻塞老节点连接) |
+| 网络检查超时         | 1 秒                 | 判断 Leader 是否可达（源码中 kConnectTimeoutMs = 1000）|
+| 心跳超时           | 6 秒                 | 心跳检测超时时间（HEARTBEAT_TIMEOUT=3 × HEARTBEAT_INTERVAL=2000ms）|
+| 恢复等待           | 5秒                    | 新 Leader 等待旧 Rank 重连（源码中 SERVER_RECOVER_TIME = 5s，单阶段等待）|
 | 客户端重连次数        | 60 次 (间隔1秒)         | Client 最大重连尝试次数，每次间隔1秒                           |
 
 ### ETCD 存储的关键 Key
@@ -213,8 +213,8 @@ rect rgb(255, 250, 205)
 Note over N1,ETCD: 阶段2: 节点1 竞选 Leader
 N1->>ETCD: Get(ETCD_KEY_LEADER)
 ETCD-->>N1: 空值 (无 Leader)
-N1->>ETCD: EtcdLockGuard::Lock()
-ETCD-->>N1: 获取分布式锁成功
+N1->>ETCD: DistributedLockGuard(backend, name)
+ETCD-->>N1: 获取分布式锁成功（Lock在构造时自动完成）
 N1->>ETCD: Get(LEADER) [双重检查]
 ETCD-->>N1: 仍为空
 N1->>N1: TryBecomeLeader()
@@ -222,7 +222,7 @@ N1->>N1: StartServer()
 N1->>N1: StartLeaderHealthCheck()
 N1->>ETCD: Put(LEADER, "N1:9112", TTL=5s)
 N1->>N1: ConnectClient(self)
-N1->>ETCD: RawUnlock()
+N1->>N1: 析构 DistributedLockGuard（自动解锁）
 end
 Note over N1: ✅ 节点1 成为 Leader (健康检查线程已启动)
 
@@ -230,7 +230,7 @@ rect rgb(240, 255, 240)
 Note over N2,ETCD: 阶段3: 节点2 成为 Follower
 N2->>ETCD: Get(LEADER)
 ETCD-->>N2: "N1:9112"
-N2->>N2: NetworkChecker 检测leader可达性
+N2->>N2: NetworkEndpointUtil 检测leader可达性
 N2->>N2: BecomeFollower()
 N2->>N1: ConnectClient()
 end
@@ -271,23 +271,23 @@ end
 end
 
 rect rgb(255, 250, 205)
-Note over N2,ETCD: 节点2 异步执行 UnifiedLoop 竞选新 Leader
-N2->>N2: UnifiedLoop() [异步线程]
+Note over N2,ETCD: 节点2 异步执行 RunElectionLoop 竞选新 Leader
+N2->>N2: RunElectionLoop() [异步线程]
 N2->>ETCD: Get(LEADER) → 旧值
-N2->>N2: NetworkChecker → 不可达
+N2->>N2: NetworkEndpointUtil → 不可达
 N2->>ETCD: Lock()
 N2->>N2: TryBecomeLeader()
 N2->>N2: StartServer()
 N2->>N2: StartLeaderHealthCheck()
 N2->>N2: RestoreFromEtcd()
 N2->>ETCD: Put(LEADER, "N2:9112")
-Note over N2: 异步等待: Wait 5s (等待旧Rank连接) + Wait 5s (等待unimport清理)
+Note over N2: 恢复等待: Wait 5s (等待旧Rank连接)
 Note over N2: 期间老节点可正常连接，但新节点暂不接受
 end
 Note over N2: ✅ 节点2 成为新 Leader
 
 rect rgb(240, 255, 240)
-N3->>N3: UnifiedLoop() [异步线程]
+N3->>N3: RunElectionLoop() [异步线程]
 N3->>ETCD: Get(LEADER) → "N2:9112"
 N3->>N3: BecomeFollower()
 N3->>N2: ConnectClient()
@@ -351,19 +351,19 @@ ETCD->>ETCD: 删除 ETCD_KEY_LEADER
 end
 
 rect rgb(240, 255, 240)
-Note over N2,ETCD: T=4s+: N2 异步执行 UnifiedLoop 竞选新 Leader
-N2->>N2: UnifiedLoop() [异步线程]
+Note over N2,ETCD: T=4s+: N2 异步执行 RunElectionLoop 竞选新 Leader
+N2->>N2: RunElectionLoop() [异步线程]
 N2->>ETCD: Get(LEADER) → 空
 N2->>ETCD: Lock() ✓
 N2->>N2: TryBecomeLeader()
 N2->>ETCD: Put(LEADER, "N2:9112")
-Note over N2: 异步等待: Wait 5s (等待连接) + Wait 5s (等待unimport)
+Note over N2: 恢复等待: Wait 5s (等待旧Rank连接)
 Note over N2: 期间老节点可正常连接
 Note over N2: ✅ N2 成为新 Leader
 end
 
 rect rgb(240, 255, 240)
-N3->>N3: UnifiedLoop() [异步线程]
+N3->>N3: RunElectionLoop() [异步线程]
 N3->>ETCD: Get(LEADER) → "N2:9112"
 N3->>N2: BecomeFollower()
 Note over N3: ✅ N3 连接新 Leader
@@ -372,7 +372,7 @@ end
 rect rgb(255, 250, 205)
 Note over N1: N1 尝试重新加入
 N1->>N1: TriggerReElectionAsync()
-N1->>N1: UnifiedLoop() [异步线程]
+N1->>N1: RunElectionLoop() [异步线程]
 N1->>ETCD: InitEtcdConnection()
 alt ETCD 恢复
 ETCD-->>N1: 连接成功
@@ -401,7 +401,7 @@ end
 |-----------|-------------------|
 | 健康检查间隔    | 4 秒               |
 | Lease TTL | 5 秒               |
-| 心跳超时      | 3 秒               |
+| 心跳超时      | 6 秒               |
 | Leader 降级 | ~4s (健康检查周期触发后立即) |
 
 **确保旧 Leader 先降级再有新 Leader 产生。**
@@ -436,13 +436,13 @@ N1--xN3: 断开连接
 end
 
 rect rgb(255, 245, 238)
-par 所有节点异步触发 UnifiedLoop
+par 所有节点异步触发 RunElectionLoop
 N1->>N1: TriggerReElectionAsync()
-N1->>N1: UnifiedLoop() [异步线程]
+N1->>N1: RunElectionLoop() [异步线程]
 N2->>N2: TriggerReElectionAsync()
-N2->>N2: UnifiedLoop() [异步线程]
+N2->>N2: RunElectionLoop() [异步线程]
 N3->>N3: TriggerReElectionAsync()
-N3->>N3: UnifiedLoop() [异步线程]
+N3->>N3: RunElectionLoop() [异步线程]
 end
 end
 
@@ -471,7 +471,7 @@ N2->>ETCD: InitEtcdConnection() ✓
 N2->>ETCD: Get(LEADER) → 空
 N2->>ETCD: Lock() ✓
 N2->>N2: TryBecomeLeader()
-Note over N2: 异步等待: Wait 5s (等待连接) + Wait 5s (等待unimport)
+Note over N2: 恢复等待: Wait 5s (等待旧Rank连接)
 Note over N2: 期间老节点可正常连接
 Note over N2: ✅ N2 成为 Leader
 
@@ -522,8 +522,8 @@ N2->>N2: BrokenHandler → TriggerReElectionAsync()
 end
 
 rect rgb(255, 230, 230)
-Note over N2: 异步执行 UnifiedLoop 尝试重新选举
-N2->>N2: UnifiedLoop() [异步线程]
+Note over N2: 异步执行 RunElectionLoop 尝试重新选举
+N2->>N2: RunElectionLoop() [异步线程]
 N2->>ETCD: InitEtcdConnection()
 ETCD--xN2: 连接失败
 N2->>N2: sleep(1s)

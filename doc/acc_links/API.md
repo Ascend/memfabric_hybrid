@@ -40,7 +40,7 @@
     |-|-|
     |返回值|无|
 
-1. 以开启TLS认证的方式启动服务端
+1. 以默认TLS选项启动服务端（内部调用 Start(opt, AccTlsOption())）
     ```cpp
     int32_t Start(const AccTcpServerOptions &opt);
     ```
@@ -50,7 +50,7 @@
     |opt|服务端启动配置项|
     |返回值|成功返回0，失败返回错误码|
 
-1. 启动服务端
+1. 以自定义TLS选项启动服务端
     ```cpp
     int32_t Start(const AccTcpServerOptions &opt, const AccTlsOption &tlsOption);
     ```
@@ -148,6 +148,16 @@
     |h|处理新链接的函数|
     |返回值|无|
 
+1. 注册密码解密的回调函数
+    ```cpp
+    void RegisterDecryptHandler(const AccDecryptHandler &h);
+    ```
+
+    |参数/返回值|含义|
+    |-|-|
+    |h|密码解密回调函数|
+    |返回值|无|
+
 1. 加载安全认证功能所需的动态库
     ```cpp
     int32_t LoadDynamicLib(const std::string &dynLibPath);
@@ -158,7 +168,7 @@
     |dynLibPath|动态库目录路径|
     |返回值|成功返回0，失败返回错误码|
 
-### 4. Link接口
+### 3. Link接口
 **对应文件：** acc_tcp_link.h
 
 #### 类：AccTcpLink
