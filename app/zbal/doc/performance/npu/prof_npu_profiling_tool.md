@@ -59,7 +59,7 @@ We have set some common used tracepoint in enum `zbal_profiling_name_t`, `AG_COP
 #### 1.2 Supported operations
 
 | Communication operations           | Supported | Comments |
-|------------------------------------|-----------|----------|
+| ---------------------------------- | --------- | -------- |
 | Dispatch Normal with Quant         |           |          |
 | Dispatch Normal without Quant      |           |          |
 | Combine Normal without Quant       |           |          |

@@ -18,12 +18,12 @@ def zbal_version()
 ##### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                   |
-|-------------------|--------|-------------------------------|
+| ----------------- | ------ | ----------------------------- |
 | return            |        | string of version, e.g. 0.1.0 |
 
-##### Alternatives|
+##### Alternatives
 
-Get version from global variable as following|
+Get version from global variable as following
 
 ```python
 __version__
@@ -54,7 +54,7 @@ def zbal_init(world_size: int,
 ##### Description of parameters and return value
 
 | Parameters/return    | In/Out | Description                                          |
-|----------------------|--------|------------------------------------------------------|
+| -------------------- | ------ | ---------------------------------------------------- |
 | world_size           | in     | size of ranks to init zbal                           |
 | device_id            | in     | current device id                                    |
 | rank_id              | in     | current rank id                                      |
@@ -83,7 +83,7 @@ def zbal_uninit(flags: int = 0)
 ##### Description of parameters and return value
 
 | Parameters/return | In/Out | Description    |
-|-------------------|--------|----------------|
+| ----------------- | ------ | -------------- |
 | flags             | in     | optional flags |
 
 ### 2. Base Data Types
@@ -97,7 +97,7 @@ Bootstrap type, i.e. there could be multiple kind of bootstrap, which to build t
 ##### Enum details
 
 | Enum Type         | Description                                   |
-|-------------------|-----------------------------------------------|
+| ----------------- | --------------------------------------------- |
 | BOOT_BY_MEMFABRIC | build symm memory pool using memfabric_hybrid |
 
 #### 2.2.2 ZBALCommProperty
@@ -109,7 +109,7 @@ The property of communicator, we get it after communicator created
 ##### Class details
 
 | Member                       | Description                                             |
-|------------------------------|---------------------------------------------------------|
+| ---------------------------- | ------------------------------------------------------- |
 | backendType                  | backend type, see ZBALBackendType                       |
 | isWorldGroup                 | if this is the world group, 1 means true, 0 means false |
 | groupSize                    | the number of ranks in total                            |

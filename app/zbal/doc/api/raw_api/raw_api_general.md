@@ -20,7 +20,7 @@ const char *zbal_version()
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                   |
-|-------------------|--------|-------------------------------|
+| ----------------- | ------ | ----------------------------- |
 | return            |        | string of version, e.g. 0.1.0 |
 
 ## 2 Logger
@@ -42,7 +42,7 @@ int32_t zbal_set_logger(void (*func)(int, const char *))
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description           |
-|-------------------|--------|-----------------------|
+| ----------------- | ------ | --------------------- |
 | func              | in     | external log function |
 | return            |        | 0 if successful       |
 
@@ -62,7 +62,7 @@ int32_t zbal_set_logger_level(int level)
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                              |
-|-------------------|--------|------------------------------------------|
+| ----------------- | ------ | ---------------------------------------- |
 | level             | in     | log level, 0:debug 1:info 2:warn 3:error |
 | return            |        | 0 if successful                          |
 
@@ -82,9 +82,9 @@ const char* zbal_get_last_error_msg()
 
 #### Description of parameters and return value
 
-| Parameters/return | In/Out | Description                  |
-|-------------------|--------|------------------------------|
-| return            |        | string of last error message |                         |
+| Parameters/return | In/Out | Description                  |     |
+| ----------------- | ------ | ---------------------------- | --- |
+| return            |        | string of last error message |     |
 
 ### 3.2 Get and clear last error message
 
@@ -102,5 +102,5 @@ const char* zbal_get_and_clear_last_error_msg()
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                  |
-|-------------------|--------|------------------------------|
+| ----------------- | ------ | ---------------------------- |
 | return            |        | string of last error message |

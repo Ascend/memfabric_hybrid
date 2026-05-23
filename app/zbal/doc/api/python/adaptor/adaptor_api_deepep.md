@@ -10,13 +10,13 @@ Config is a data class to hold deepep configurations.
 
 1. Member variable
 
-    |变量名称|数据类型|含义|
-    |---|---|---|
-    |num_sms|int|the SMs used in high-throughput kernels.(not used)|
-    |num_max_nvl_chunked_send_tokens|int|not used|
-    |num_max_nvl_chunked_recv_tokens|int|not used|
-    |num_max_rdma_chunked_send_tokens|int|not used|
-    |num_max_rdma_chunked_recv_tokens|int|not used|
+    | 变量名称                          | 数据类型 | 含义                                                |
+    | -------------------------------- | -------- | -------------------------------------------------- |
+    | num_sms                          | int      | the SMs used in high-throughput kernels.(not used) |
+    | num_max_nvl_chunked_send_tokens  | int      | not used                                           |
+    | num_max_nvl_chunked_recv_tokens  | int      | not used                                           |
+    | num_max_rdma_chunked_send_tokens | int      | not used                                           |
+    | num_max_rdma_chunked_recv_tokens | int      | not used                                           |
 
 1. Member function
 
