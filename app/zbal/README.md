@@ -1,25 +1,28 @@
 ## 🔄Latest News
 
-* Open source on June 1st, 2026
+* Open source on May 15, 2026
 
 ## 🎉Introduction
 
-ZBAL pronounced [zi:bəl], stands for Zero Buffer Acceleration Library. It contains a bunch of well tuned operators
-for LLM inference and training, which has two key advantages: <b>zero intermediate buffer</b> and <b>blazing fast</b>.
+ZBAL (pronounced [zi:bəl]) stands for Zero Buffer Acceleration Library. It provides a collection of
+highly optimized operators for LLM inference and training, with two key advantages: **zero intermediate
+buffer** and **blazing fast** performance.
 
 ![architecture](./doc/images/architecture.png)
 
 ## 🧩Core Features
 
-Two major features:
+ZBAL provides two major capabilities:
 
-* Secondary memory allocator: which takes charge of memory allocation of GVA of low device
-* Bunch of key communication operations: Dispatch/Combine Normal and Low Latency, some classic communication operations
+1. **Secondary Memory Allocator** — manages GVA memory allocation on the device.
 
-*Hardware support matrix with Ascend:*
+1. **Communication Operators** — a comprehensive set of collective and point-to-point operations, including
+Dispatch/Combine (Normal and Low Latency variants) and classic collectives.
+
+**Hardware support matrix (Ascend):**
 
 | Communication operations           | A3 Single Node | A3 SuperPod |
-|------------------------------------|----------------|-------------|
+| ---------------------------------- | -------------- | ----------- |
 | Dispatch Normal with Quant         | Y              | Y           |
 | Dispatch Normal without Quant      | Y              | Y           |
 | Combine Normal without Quant       | Y              | Y           |
@@ -37,55 +40,67 @@ Two major features:
 
 ## 🚀Quickstart
 
-1. Install memfabric_hybrid package.
+**Step 1: Install the dependency**
+
+Install `memfabric_hybrid` v1.1.0 or higher:
 
 ```bash
 pip install memfabric_hybrid
 ```
-The version of memfabric_hybrid must be higher than 1.0.7
 
-2. Git clone current repo and build wheel package.
+**Step 2: Install ZBAL**
+
+Option A — install the pre-built wheel:
 
 ```bash
-git clone https://gitcode.com/victor7wang/sgl-kernel-npu.git
-cd sgl-kernel-npu/contrib/zbal/src/python/
-rm -rf build dist zbal.*   # optional
-python3 setup.py bdist_wheel
+pip install memfabric_zbal==v1.1.0
 ```
 
-3. Install wheel package.
+Option B — build from source:
 
 ```bash
-cd sgl-kernel-npu/contrib/zbal/src/python/dist
+git clone https://gitcode.com/Ascend/memfabric_hybrid.git
+cd memfabric_hybrid/app/zbal/src/python/
+rm -rf build dist zbal.*   # optional, clean previous builds
+python3 setup.py bdist_wheel
+
+cd dist
 pip uninstall memfabric_zbal -y
 pip install memfabric_zbal*
 ```
 
-4. Run a python testcase to check installation. More running details please check the test shell script.
+**Step 3: Verify the installation**
+
+Run a test case to confirm everything is working:
 
 ```bash
-cd sgl-kernel-npu/contrib/zbal/test/python/operators/alltoall/
-bash test_zbal_alltoall.sh
+cd memfabric_hybrid/app/zbal/test/python/operators/alltoallv/
+bash test_zbal_alltoallv.sh
 ```
 
-## 📑How to use
+## 📑Documentation
 
 * [Get Started](./doc/user_guide/get_started.md)
 * [API Reference](./doc/api/api.md)
 
-## 📦Pre-request hardware and software
+## 📦Requirements
 
-- Hardware
-    - Device:
-    - Host: aarch64/x86
+**Hardware**
 
-- Software:
-    - CANN 8.3.RC1 and later
-    - cmake >= 3.19
-    - GLIBC >= 2.28
+| Component | Specification   |
+| --------- | --------------- |
+| Device    | Ascend 910C     |
+| Host      | aarch64 / x86   |
 
-## 📝 Other information
+**Software**
+
+| Component | Version         |
+| --------- | --------------- |
+| CANN      | 9.0.0 or later  |
+| cmake     | >= 3.19         |
+| GLIBC     | >= 2.28         |
+
+## 📝 Additional Information
 
 - [Security Note](./doc/SECURITYNOTE.md)
-
 - [License](./LICENSE)

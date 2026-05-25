@@ -20,7 +20,7 @@ int32_t zbal_bootstrap_options_init(zbal_bootstrap_options_t *options)
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                        |
-|-------------------|--------|------------------------------------|
+| ----------------- | ------ | ---------------------------------- |
 | options           | in     | options ptr need to be initialized |
 | return            |        | 0 if successful                    |
 
@@ -42,7 +42,7 @@ int32_t zbal_bootstrap(zbal_bootstrap_options_t *options, zbal_bootstrap_output_
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description                        |
-|-------------------|--------|------------------------------------|
+| ----------------- | ------ | ---------------------------------- |
 | options           | in     | options ptr need to be initialized |
 | output            | out    | output after bootstrap             |
 | return            |        | 0 if successful                    |
@@ -63,6 +63,6 @@ int32_t zbal_unbootstrap(uint32_t flags)
 #### Description of parameters and return value
 
 | Parameters/return | In/Out | Description     |
-|-------------------|--------|-----------------|
+| ----------------- | ------ | --------------- |
 | flags             | in     | reserved flags  |
 | return            |        | 0 if successful |
