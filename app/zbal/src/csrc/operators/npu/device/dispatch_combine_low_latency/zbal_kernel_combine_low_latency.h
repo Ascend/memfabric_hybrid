@@ -275,6 +275,7 @@ template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SetSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
+        SyncAll<true>();
         return;
     }
     uint32_t statusCntAlign = Ceil(rankNumPerBlock, 8) * 8;
@@ -285,6 +286,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::SetSyncFlag(int meta
     PipeBarrier<PIPE_V>();
     Duplicate<int32_t>(statusTensor, 0x3F800000, mask, statusCntAlign / 8, 1, 8);
     PipeBarrier<PIPE_ALL>();
+    SyncAll<true>();
 
     AscendC::GlobalTensor<int32_t> gmRemoteStatusGt;
     for (uint32_t i = curBlockStartRankId; i < curBlockEndRankId; i++) {
@@ -299,6 +301,7 @@ template<TemplateTypeClass>
 __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::WaitSyncFlag(int metaType)
 {
     if (rankNumPerBlock == 0U) {
+        SyncAll<true>();
         return;
     }
     uint32_t waitStatusBufSize = (((rankNumPerBlock * UB_ALIGN) > 256) ? (rankNumPerBlock * UB_ALIGN) : 256);
@@ -342,6 +345,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::WaitSyncFlag(int met
     DataCopy(statusFp32TensorGT[curBlockStartRankId * STATE_OFFSET / sizeof(float)],
              cleanStateTensor.ReinterpretCast<float>(), intriOutParams);
     SyncFunc<AscendC::HardEvent::MTE3_S>();
+    SyncAll<true>();
 }
 
 template<TemplateTypeClass>
@@ -628,7 +632,6 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::Process()
         PutShareAddr();
         SetSyncFlag(FLAG); // 全卡同步，确保对称地址都放到了meta空间
         WaitSyncFlag(FLAG);
-        SyncAll<true>();
         GetShareAddr();
         InputToDstOutput();
     }
