@@ -251,6 +251,15 @@ bool CheckSameSize(const std::vector<at::Tensor> &inputTensors)
     return true;
 }
 
+bool ZbalReduceSupportDataType(at::ScalarType type)
+{
+    static std::set<at::ScalarType> supportDataTypes = {
+        at::kChar, at::kShort, at::kInt, at::kHalf, at::kFloat, at::kBFloat16
+    };
+
+    return supportDataTypes.find(type) != supportDataTypes.end();
+}
+
 } // namespace pytorch_npu
 } // namespace adaptor
 } // namespace zbal

@@ -61,6 +61,8 @@ std::vector<at::Tensor> FlattenForScatterGather(std::vector<std::vector<at::Tens
 
 at::Tensor ZbalNewLikeFlat(std::vector<std::vector<at::Tensor>> &tensors, size_t deviceIdx);
 
+bool ZbalReduceSupportDataType(at::ScalarType type);
+
 } // namespace pytorch_npu
 } // namespace adaptor
 } // namespace zbal

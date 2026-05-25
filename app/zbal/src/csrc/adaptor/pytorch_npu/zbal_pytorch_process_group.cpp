@@ -442,6 +442,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allreduce(std::vector<at::Tenso
             auto zbalType = GetZbalDataType(scalarType);
             auto zbalReduceOp = GetZbalReduceOp(opts.reduceOp);
 
+            ZBAL_CHECK_S(ZbalReduceSupportDataType(scalarType), "Unsupported data type for ZBAL allreduce");
+
             auto slice = numel / size_;
             auto elements = (rank_ != size_ - 1) ? slice : numel - (size_ - 1) * slice;
             int64_t bufferElems = static_cast<int64_t>(numel < static_cast<size_t>(size_) ? numel : elements);
@@ -587,11 +589,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::_reduce_scatter_base(at::Tensor
             RECORD_FUNCTION("ZbalReduceScatterBase", std::vector<c10::IValue>({}));
             c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
 
+            auto scalarType = input.scalar_type();
             void *inputDataPtr = input.data_ptr();
             void *outputDataPtr = output.data_ptr();
             auto numel = GetNumelForZBAL(output);
-            auto zbalType = GetZbalDataType(input.scalar_type());
+            auto zbalType = GetZbalDataType(scalarType);
             auto zbalReduceOp = GetZbalReduceOp(opts.reduceOp);
+
+            ZBAL_CHECK_S(ZbalReduceSupportDataType(scalarType), "Unsupported data type for ZBAL reduce scatter");
 
             std::function<int()> call_reduce_scatter = [inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp,
                                                         comm, stream]() -> int {
@@ -704,11 +709,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::reduce_scatter(std::vector<at::
             RECORD_FUNCTION("ZbalReduceScatter", std::vector<c10::IValue>({}));
             c10_npu::NPUCachingAllocator::recordStream(output.storage().data_ptr(), stream);
 
+            auto scalarType = input.scalar_type();
             void *inputDataPtr = input.data_ptr();
             void *outputDataPtr = output.data_ptr();
             auto numel = GetNumelForZBAL(output);
-            auto zbalType = GetZbalDataType(input.scalar_type());
+            auto zbalType = GetZbalDataType(scalarType);
             auto zbalReduceOp = GetZbalReduceOp(opts.reduceOp);
+
+            ZBAL_CHECK_S(ZbalReduceSupportDataType(scalarType), "Unsupported data type for ZBAL reduce scatter");
 
             std::function<int()> call_reduce_scatter = [inputDataPtr, outputDataPtr, numel, zbalType, zbalReduceOp,
                                                         comm, stream]() -> int {
