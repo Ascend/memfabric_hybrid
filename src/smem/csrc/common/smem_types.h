@@ -61,7 +61,7 @@ constexpr uint64_t HYBM_MAX_POOL_SIZE = 128ULL << 40;     // 128T, 910C暂时只
 constexpr uint64_t HYBM_HBM_SIZE_ALIGNMENT = 1ULL << 30;  // 1GB
 
 constexpr uint32_t SMEM_GROUP_RETRY_TIME = 5U;
-constexpr uint32_t MF_GROUP_JOIN_DEFAULT_TIMEOUT = 60U;   // 集群加入默认超时时间60s
+constexpr uint32_t MF_GROUP_JOIN_DEFAULT_TIMEOUT = 600U;   // 集群加入默认超时时间600s
 } // namespace smem
 } // namespace ock
 
