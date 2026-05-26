@@ -282,8 +282,8 @@ class BigMemory:
     def destroy() -> None:
     def register(addr, size) -> int:
     def unregister(addr) -> int:
-    def copy_data(src_ptr, dst_ptr, size, type, flags = 0) -> int:
-    def copy_data_batch(src_addrs, dst_addrs, sizes, count, type, flags) -> int:
+    def copy_data(src_ptr, dst_ptr, size, type, flags = 0, stream = 0) -> int:
+    def copy_data_batch(src_addrs, dst_addrs, sizes, count, type, flags, stream = 0) -> int:
     def set_group_event_handler(cb) -> int:
     def get_rank_id_by_gva(gva) -> int:
     def copy_data_batch_partial_succeed(src_addrs, dst_addrs, sizes, count, type, flags, result) -> int:

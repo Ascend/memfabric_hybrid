@@ -510,7 +510,8 @@ hybm_data_copy_direction SmemBmEntry::TransToHybmDirection(const smem_bm_copy_ty
     return directMap[srcMemType][destMemType];
 }
 
-Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags)
+Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, void *stream,
+                             uint32_t flags)
 {
     SM_VALIDATE_RETURN(src != nullptr, "invalid param, src is NULL", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dest != nullptr, "invalid param, dest is NULL", SM_INVALID_PARAM);
@@ -518,6 +519,12 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     SM_VALIDATE_RETURN(t < SMEMB_COPY_BUTT, "invalid param, type invalid: " << t, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     SM_RETURN_IT_IF_NOT_OK(CheckJoined());
+
+    if (!(flags & SMEM_BM_FLAG_USE_EXTERNAL_STREAM)) {
+        stream = nullptr;
+    } else {
+        flags &= ~(SMEM_BM_FLAG_USE_EXTERNAL_STREAM);
+    }
 
     hybm_data_copy_direction direct =
         (t == SMEMB_COPY_AUTO) ? HYBM_DATA_COPY_DIRECTION_AUTO : TransToHybmDirection(t, src, size, dest, size);
@@ -527,7 +534,7 @@ Result SmemBmEntry::DataCopy(const void *src, void *dest, uint64_t size, smem_bm
     }
 
     hybm_copy_params copyParams = {const_cast<void *>(src), dest, size};
-    auto ret = hybm_data_copy(entity_, &copyParams, direct, nullptr, flags);
+    auto ret = hybm_data_copy(entity_, &copyParams, direct, stream, flags);
     return ret == BM_NOT_CONNECTED ? SMEM_NOT_CONNECTED : ret;
 }
 
@@ -604,6 +611,12 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
     SM_RETURN_IT_IF_NOT_OK(CheckJoined());
 
+    if (!(flags & SMEM_BM_FLAG_USE_EXTERNAL_STREAM)) {
+        params->stream = nullptr;
+    } else {
+        flags &= ~(SMEM_BM_FLAG_USE_EXTERNAL_STREAM);
+    }
+
     hybm_data_copy_direction direct = (t == SMEMB_COPY_AUTO)
                                           ? HYBM_DATA_COPY_DIRECTION_AUTO
                                           : TransToHybmDirection(t, params->sources[0], params->dataSizes[0],
@@ -614,7 +627,7 @@ Result SmemBmEntry::DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_t
         return SM_INVALID_PARAM;
     }
     hybm_batch_copy_params copyParams = {params->sources, params->destinations, params->dataSizes, params->batchSize};
-    return hybm_data_batch_copy(entity_, &copyParams, direct, nullptr, flags);
+    return hybm_data_batch_copy(entity_, &copyParams, direct, params->stream, flags);
 }
 
 Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags,
@@ -644,7 +657,7 @@ Result SmemBmEntry::DataCopyBatchConcurrent(smem_batch_copy_params *params, smem
                                   ? HYBM_DATA_COPY_DIRECTION_AUTO
                                   : TransToHybmDirection(t, params->sources[i], params->dataSizes[i],
                                                          params->destinations[i], params->dataSizes[i]);
-                auto ret = hybm_data_copy(entity_, &singleParam, direct, nullptr, flags);
+                auto ret = hybm_data_copy(entity_, &singleParam, direct, params->stream, flags);
                 SM_LOG_DEBUG("copy index: " << i << ", result:" << ret);
                 results->results[i] = (ret == BM_NOT_CONNECTED) ? SMEM_NOT_CONNECTED : ret;
 

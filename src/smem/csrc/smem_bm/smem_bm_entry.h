@@ -53,7 +53,7 @@ public:
 
     Result SetEventListener(smem_bm_group_event_cb cb, void *context);
 
-    Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, uint32_t flags);
+    Result DataCopy(const void *src, void *dest, uint64_t size, smem_bm_copy_type t, void *stream, uint32_t flags);
 
     Result DataCopyBatch(smem_batch_copy_params *params, smem_bm_copy_type t, uint32_t flags);
 

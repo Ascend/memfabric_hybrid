@@ -178,14 +178,19 @@ public:
         handle_ = nullptr;
     }
 
-    int32_t CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags)
+    int32_t CopyData(uint64_t src, uint64_t dest, uint64_t size, smem_bm_copy_type type, uint32_t flags,
+                     uint64_t stream)
     {
-        smem_copy_params params = {(const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size};
+        if (stream != 0) {
+            flags |= SMEM_BM_FLAG_USE_EXTERNAL_STREAM;
+        }
+        smem_copy_params params = {(const void *)(ptrdiff_t)src, (void *)(ptrdiff_t)dest, size,
+                                   reinterpret_cast<void *>(stream)};
         return smem_bm_copy(handle_, &params, type, flags);
     }
 
     int32_t CopyDataBatch(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts, std::vector<size_t> sizes,
-                          uint32_t count, smem_bm_copy_type type, uint32_t flags)
+                          uint32_t count, smem_bm_copy_type type, uint32_t flags, uint64_t stream)
     {
         if (count == 0 || srcs.size() != count || dsts.size() != count || sizes.size() != count) {
             return SMEM_INVALID_PARAM;
@@ -195,13 +200,18 @@ public:
             throw std::runtime_error(std::string("alloc mem failed."));
         }
 
+        if (stream != 0) {
+            flags |= SMEM_BM_FLAG_USE_EXTERNAL_STREAM;
+        }
+
         void **sources = ptr;
         void **destinations = ptr + count;
         for (uint64_t i = 0; i < count; ++i) {
             sources[i] = reinterpret_cast<void *>(srcs[i]);
             destinations[i] = reinterpret_cast<void *>(dsts[i]);
         }
-        smem_batch_copy_params batch_params = {sources, destinations, sizes.data(), count};
+        smem_batch_copy_params batch_params = {sources, destinations, sizes.data(), count,
+                                               reinterpret_cast<void *>(stream)};
         auto ret = smem_bm_copy_batch(handle_, &batch_params, type, flags);
         delete[] ptr;
         return ret;
@@ -209,11 +219,15 @@ public:
 
     py::tuple CopyDataBatchPartialSucceed(std::vector<uintptr_t> srcs, std::vector<uintptr_t> dsts,
                                           std::vector<size_t> sizes, uint32_t count, smem_bm_copy_type type,
-                                          uint32_t flags)
+                                          uint32_t flags, uint64_t stream)
     {
         if (count == 0 || srcs.size() != count || dsts.size() != count || sizes.size() != count) {
             py::gil_scoped_acquire acquire;
             return py::make_tuple(SMEM_INVALID_PARAM, std::vector<int32_t>{});
+        }
+
+        if (stream != 0) {
+            flags |= SMEM_BM_FLAG_USE_EXTERNAL_STREAM;
         }
 
         const size_t cnt = static_cast<size_t>(count);
@@ -237,7 +251,8 @@ public:
             destinations[i] = reinterpret_cast<void *>(dsts[i]);
         }
 
-        smem_batch_copy_params batchParams = {sources, destinations, sizes.data(), count};
+        smem_batch_copy_params batchParams = {sources, destinations, sizes.data(), count,
+                                              reinterpret_cast<void *>(stream)};
         smem_batch_copy_result batchCopyResult = {batchResults, count};
         auto ret = smem_bm_copy_batch_partial_succeed(handle_, &batchParams, type, flags, &batchCopyResult);
         std::vector<int32_t> result(batchResults, batchResults + count);
@@ -802,7 +817,7 @@ register user mem.)")
         .def("unregister", &BigMemory::UnRegisterMem, py::call_guard<py::gil_scoped_release>(), py::arg("addr"), R"(
 unregister user mem.)")
         .def("copy_data", &BigMemory::CopyData, py::call_guard<py::gil_scoped_release>(), py::arg("src_ptr"),
-             py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, R"(
+             py::arg("dst_ptr"), py::arg("size"), py::arg("type"), py::arg("flags") = 0, py::arg("stream") = 0, R"(
 Data operation on Big Memory object.
 
 Arguments:
@@ -811,14 +826,15 @@ Arguments:
     size(int): size of data to be copied
     type(BmCopyType): copy type, L2G, G2L, G2H, H2G, G2G
     flags(int): optional flags
+    stream(int): acl rt stream, default 0
 Returns:
     0 if successful)")
         .def("copy_data_batch", &BigMemory::CopyDataBatch, py::call_guard<py::gil_scoped_release>(),
              py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"), py::arg("count"), py::arg("type"),
-             py::arg("flags"), R"(cop data with batch.)")
+             py::arg("flags") = 0, py::arg("stream") = 0, R"(cop data with batch.)")
         .def("copy_data_batch_partial_succeed", &BigMemory::CopyDataBatchPartialSucceed,
              py::call_guard<py::gil_scoped_release>(), py::arg("src_addrs"), py::arg("dst_addrs"), py::arg("sizes"),
-             py::arg("count"), py::arg("type"), py::arg("flags") = 0, R"(
+             py::arg("count"), py::arg("type"), py::arg("flags") = 0, py::arg("stream") = 0, R"(
 Data operation on Big Memory object with partial-success details.
 
 Arguments:
@@ -828,6 +844,7 @@ Arguments:
     count(int): number of copy operations
     type(BmCopyType): copy type
     flags(int): optional flags
+    stream(int): acl rt stream, default 0
 Returns:
     tuple: (ret_code, per_item_results)
 )")

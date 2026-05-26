@@ -125,6 +125,7 @@ typedef struct {
     const void *src;
     void *dest;
     size_t dataSize;
+    void *stream;
 } smem_copy_params;
 typedef smem_copy_params smem_copy_params_t; /* renamed smem_copy_params_t */
 
@@ -133,6 +134,7 @@ typedef struct {
     void **destinations;
     const uint64_t *dataSizes;
     uint32_t batchSize;
+    void *stream;
 } smem_batch_copy_params;
 typedef smem_batch_copy_params smem_batch_copy_params_t; /* renamed smem_batch_copy_params_t */
 
