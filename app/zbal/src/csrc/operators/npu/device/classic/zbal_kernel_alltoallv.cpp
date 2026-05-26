@@ -10,21 +10,13 @@
  * See the Mulan PSL v2 for more details.
  */
 
-#include <random>
-#include <limits>
-#include <iostream>
-#include <acl/acl_rt.h>
-#include "kernel_operator.h"
-#include "zbal_def.h"
-#include "zbal_defines.h"
-#include "zbal_kernel_utils.h"
-#include "zbal_kernel_trace.h"
+#include "zbal_kernel_base.h"
 
 using namespace zbal;
 constexpr uint16_t ZBAL_INOUT_LEN = 2;
 
 template<typename T>
-class AlltoAllVKernel {
+class AlltoAllVKernel : public BaseKernel {
 public:
     ZBAL_KERNEL AlltoAllVKernel() {}
 
@@ -39,7 +31,6 @@ public:
         this->memSize = comm->localDeviceMemSize;
         this->peerRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
         this->exchangeAddr = comm->myAddressExchangeGva;
-        this->paramAddr = comm->myParamDataGva;
 
         uint64_t inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
@@ -57,50 +48,40 @@ public:
         this->elements = elements;
         this->waitSymbol = waitSymbol;
 
-        uint32_t elementsSize = Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-        pipe_.InitBuffer(elementsBuf_, elementsSize);
-
-        uint32_t prepareBufSize = Ceil(sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-        pipe_.InitBuffer(prepareBuf_, prepareBufSize);
-        pipe_.InitBuffer(exchangeBuf_, prepareBufSize);
-        pipe_.InitBuffer(waitFlagBuf_, prepareBufSize);
-        pipe_.InitBuffer(getInputBuf_, prepareBufSize);
-        pipe_.InitBuffer(writeStatBuf_, prepareBufSize);
-        pipe_.InitBuffer(waitStatBuf_, prepareBufSize);
-        pipe_.InitBuffer(initStatBuf_, prepareBufSize);
-        pipe_.InitBuffer(waitReadyBuf_, prepareBufSize);
+        pipe.InitBuffer(elementsBuf_, Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE);
+        pipe.InitBuffer(outputCountsBuf_, Ceil(groupSize * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE);
 
         uint32_t int32BufSize = Ceil(sizeof(int32_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-        pipe_.InitBuffer(atomicIncQue_, 1, int32BufSize);
-        pipe_.InitBuffer(waitLocalStatBuf_, int32BufSize);
-        pipe_.InitBuffer(getLocalStatBuf_, int32BufSize);
+        pipe.InitBuffer(atomicIncQue_, 1, int32BufSize);
+        pipe.InitBuffer(waitLocalStatBuf_, int32BufSize);
+        pipe.InitBuffer(getLocalStatBuf_, int32BufSize);
+
+        BaseKernel::Init();
 #endif
     }
 
     ZBAL_KERNEL void Prepare()
     {
         AscendC::LocalTensor<uint64_t> elementsLT = elementsBuf_.Get<uint64_t>();
-
         AscendC::GlobalTensor<uint64_t> elementsGT;
         elementsGT.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(elements), ZBAL_INOUT_LEN);
-
         AscendC::DataCopyExtParams copyParams{1U, static_cast<uint32_t>(ZBAL_INOUT_LEN * sizeof(uint64_t)), 0U, 0U, 0U};
         AscendC::DataCopyPadExtParams<uint64_t> padExtParams{false, 0U, 0U, 0U};
         AscendC::DataCopyPad(elementsLT, elementsGT, copyParams, padExtParams);
-
         this->inputElement = elementsLT.GetValue(0);
         this->outputElement = elementsLT.GetValue(1);
 
-        AscendC::LocalTensor<uint64_t> buf1 = prepareBuf_.Get<uint64_t>();
+        AscendC::LocalTensor<uint64_t> outputCountsLT = outputCountsBuf_.Get<uint64_t>();
+        AscendC::GlobalTensor<uint64_t> outputCountsGT;
+        outputCountsGT.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(outputCounts), groupSize);
+        AscendC::DataCopyExtParams copyParams2{1U, static_cast<uint32_t>(groupSize * sizeof(uint64_t)), 0U, 0U, 0U};
+        AscendC::DataCopyPadExtParams<uint64_t> padExtParams2{false, 0U, 0U, 0U};
+        AscendC::DataCopyPad(outputCountsLT, outputCountsGT, copyParams2, padExtParams2);
+
         for (uint16_t i = 0; i < groupSize; i++) {
-            GetMetaValue(reinterpret_cast<__gm__ uint64_t *>(outputCounts), i, groupSize, buf1);
-            outputCountsArray[i] = buf1.GetValue(0);
-
-            SetMetaValue(this->localStatSendAddr, i, 0, groupSize, buf1);
-            AscendC::PipeBarrier<PIPE_ALL>();
-            SetMetaValue(this->localStatBaseAddr, i, 0, groupSize, buf1);
-            AscendC::PipeBarrier<PIPE_ALL>();
-
+            SetFlag(this->localStatSendAddr, 0, i);
+            SetFlag(this->localStatBaseAddr, 0, i);
+            outputCountsArray[i] = outputCountsLT.GetValue(i);
             copyElements[i] = 0;
         }
     }
@@ -114,53 +95,29 @@ public:
 
     ZBAL_KERNEL void Exchange(uint16_t offset)
     {
-        AscendC::LocalTensor<uint64_t> buf1 = exchangeBuf_.Get<uint64_t>();
-
         // exchange input addr
-        AscendC::PipeBarrier<PIPE_ALL>();
         auto ptr = zbal_ptr(this->inputAddr, myGroupRank, offset, memSize, peerRank);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, reinterpret_cast<uint64_t>(input), groupSize, buf1);
+        SetFlag(ptr, reinterpret_cast<uint64_t>(input), myGroupRank);
 
         // exchange inputCount
-        AscendC::PipeBarrier<PIPE_ALL>();
         ptr = zbal_ptr(this->inputCumSumAddr, myGroupRank, offset, memSize, peerRank);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, reinterpret_cast<uint64_t>(inputCumSum), groupSize, buf1);
+        SetFlag(ptr, reinterpret_cast<uint64_t>(inputCumSum), myGroupRank);
 
         // exchange input elements
-        AscendC::PipeBarrier<PIPE_ALL>();
         ptr = zbal_ptr(this->inputElementAddr, myGroupRank, offset, memSize, peerRank);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, inputElement, groupSize, buf1);
+        SetFlag(ptr, inputElement, myGroupRank);
 
         // write exchangeFlag
-        AscendC::PipeBarrier<PIPE_ALL>();
         ptr = zbal_ptr(this->flagAddr, myGroupRank, offset, memSize, peerRank);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, waitSymbol, groupSize, buf1);
-    }
-
-    ZBAL_KERNEL void WaitFlag(const uint16_t offset)
-    {
-        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        AscendC::LocalTensor<uint64_t> buf = waitFlagBuf_.Get<uint64_t>();
-        WaitMetaValue(this->flagAddr, offset, waitSymbol, groupSize, buf);
-        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
+        SetFlag(ptr, waitSymbol, myGroupRank);
     }
 
     ZBAL_KERNEL void GetInputInfo(uint16_t offset, uint64_t &inputOff, uint64_t &srcElement, __gm__ void **srcAddress)
     {
-        AscendC::LocalTensor<uint64_t> buf1 = getInputBuf_.Get<uint64_t>();
-
-        GetMetaValue(inputCumSumAddr, offset, groupSize, buf1);
-        uint64_t srcCumSumAddr = buf1.GetValue(0);
-
-        auto ptr = reinterpret_cast<__gm__ uint64_t *>(srcCumSumAddr);
-        GetMetaValue(ptr, myGroupRank, groupSize, buf1);
-        inputOff = buf1.GetValue(0);
-
-        GetMetaValue(inputElementAddr, offset, groupSize, buf1);
-        srcElement = buf1.GetValue(0);
-
-        GetMetaValue(this->inputAddr, offset, groupSize, buf1);
-        *srcAddress = reinterpret_cast<__gm__ void *>(buf1.GetValue(0));
+        uint64_t srcCumSumAddr = GetFlag(inputCumSumAddr, offset);
+        inputOff = GetFlag(reinterpret_cast<__gm__ uint64_t *>(srcCumSumAddr), myGroupRank);
+        srcElement = GetFlag(inputElementAddr, offset);
+        *srcAddress = reinterpret_cast<__gm__ void *>(GetFlag(this->inputAddr, offset));
     }
 
     ZBAL_KERNEL void GetCoreCommonRangeInfo(uint16_t &commStartRank, uint16_t &commEndRank)
@@ -309,7 +266,6 @@ public:
         if (AscendC::GetBlockIdx() == 0) {
             uint64_t cumsum[ZBAL_MAX_RANK_SIZE];
             uint32_t statBase[ZBAL_MAX_RANK_SIZE];
-            AscendC::LocalTensor<uint64_t> buf1 = initStatBuf_.Get<uint64_t>();
             for (uint16_t i = 0; i < groupSize; i++) {
                 statBase[i] = (outputCountsArray[i] > 0 ? 1 : 0);
                 cumsum[i] = (i > 0 ? cumsum[i - 1] : 0) + outputCountsArray[i];
@@ -338,22 +294,20 @@ public:
             }
 
             for (uint16_t m = 0; m < groupSize; m++) {
-                SetMetaValue(this->localStatBaseAddr, m, statBase[m], groupSize, buf1);
-                AscendC::PipeBarrier<PIPE_ALL>();
+                SetFlag(this->localStatBaseAddr, statBase[m], m);
             }
 
-            SetMetaValue(this->localStatReadyAddr, 0, waitSymbol, groupSize, buf1);
-            AscendC::PipeBarrier<PIPE_ALL>();
+            SetFlag(this->localStatReadyAddr, waitSymbol, 0);
         }
 
-        AscendC::LocalTensor<uint64_t> buf2 = waitReadyBuf_.Get<uint64_t>();
-        WaitMetaValue(this->localStatReadyAddr, 0, waitSymbol, groupSize, buf2);
+        WaitFlag(this->localStatReadyAddr, waitSymbol, 0);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
     }
 
-    ZBAL_KERNEL void AlltoAllvCopy(__gm__ T *output)
+    ZBAL_KERNEL void AlltoAllvCopy()
     {
-        uint16_t copyStartRank, copyEndRank;
+        uint16_t copyStartRank;
+        uint16_t copyEndRank;
         uint64_t startOffset;
         GetCoreCopyRangeInfo(copyStartRank, startOffset, copyEndRank);
 
@@ -362,16 +316,21 @@ public:
             ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_COPY);
             uint64_t copyCount = copyElements[rank];
             if (copyCount > 0) {
-                WaitFlag(rank);
+                ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+                WaitFlag(this->flagAddr, waitSymbol, rank);
+                ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
                 uint64_t inputOffset;
                 uint64_t sourceElement;
                 __gm__ void *remoteInput;
                 GetInputInfo(rank, inputOffset, sourceElement, &remoteInput);
-
                 inputOffset = inputOffset + ((rank == copyStartRank) ? startOffset : 0);
-                CpGM2GM(output, outputElement, outputOffset, (__gm__ T *)remoteInput, sourceElement, inputOffset,
-                        copyCount);
+
+                AscendC::GlobalTensor<T> outputGT;
+                outputGT.SetGlobalBuffer((__gm__ T *)output, outputElement);
+                AscendC::GlobalTensor<T> inputGT;
+                inputGT.SetGlobalBuffer((__gm__ T *)remoteInput, sourceElement);
+                CpGM2GM(inputGT[inputOffset], outputGT[outputOffset], copyCount);
 
                 outputOffset += copyCount;
                 AtomicIncStat(this->localStatSendAddr, rank);
@@ -383,26 +342,19 @@ public:
 
     ZBAL_KERNEL void WriteRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
     {
-        AscendC::LocalTensor<uint64_t> buf = writeStatBuf_.Get<uint64_t>();
         for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
             WaitLocalStat(this->localStatSendAddr, k);
 
-            AscendC::PipeBarrier<PIPE_ALL>();
             auto ptr = zbal_ptr(this->statAddr, myGroupRank, static_cast<int>(k), memSize, peerRank);
-            SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, waitSymbol, groupSize, buf);
+            SetFlag(ptr, waitSymbol, myGroupRank);
         }
     }
 
     ZBAL_KERNEL void WaitRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
     {
-        AscendC::LocalTensor<uint64_t> buf = waitStatBuf_.Get<uint64_t>();
-        if (commonStartRank >= groupSize) {
-            commonStartRank = 0;
-            commonEndRank = 1;
-        }
         for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
             ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
-            WaitMetaValue(this->statAddr, k, waitSymbol, groupSize, buf);
+            WaitFlag(this->statAddr, waitSymbol, k);
             ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
         }
     }
@@ -425,7 +377,7 @@ public:
 
             InitLocalStat();
 
-            AlltoAllvCopy((__gm__ T *)output);
+            AlltoAllvCopy();
 
             WriteRangeStat(commonStartRank, commonEndRank);
 
@@ -440,16 +392,8 @@ public:
 
 private:
     int64_t aivNum;
-    TPipe pipe_;
     TBuf<> elementsBuf_;
-    TBuf<> prepareBuf_;
-    TBuf<> exchangeBuf_;
-    TBuf<> waitFlagBuf_;
-    TBuf<> getInputBuf_;
-    TBuf<> writeStatBuf_;
-    TBuf<> waitStatBuf_;
-    TBuf<> initStatBuf_;
-    TBuf<> waitReadyBuf_;
+    TBuf<> outputCountsBuf_;
     TQue<QuePosition::VECIN, 1> atomicIncQue_;
     TBuf<> getLocalStatBuf_;
     TBuf<> waitLocalStatBuf_;
@@ -457,7 +401,6 @@ private:
     uint16_t myGroupRank;
     uint64_t memSize;
     uintptr_t exchangeAddr;
-    uintptr_t paramAddr;
     __gm__ uint64_t *inputAddr;        /* exchange input addr area */
     __gm__ uint64_t *inputCumSumAddr;  /* exchange input splits cumsum area */
     __gm__ uint64_t *inputElementAddr; /* exchange input elements area */

@@ -193,6 +193,16 @@ ZBAL_KERNEL void SetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
     dcciCacheline((__gm__ uint8_t *)flagAddr);
 }
 
+ZBAL_KERNEL void WaitFlag(__gm__ void *metaAddr, uint64_t flagVal, uint32_t rank)
+{
+    while (true) {
+        uint64_t flag = GetFlag(metaAddr, rank);
+        if (flag == flagVal) {
+            break;
+        }
+    }
+}
+
 ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
 {
     AscendC::SyncAll<true>();
@@ -300,19 +310,6 @@ ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> outputGT, AscendC::GlobalTenso
         curOffset += curCount;
     }
     return;
-}
-
-template<typename T>
-ZBAL_KERNEL void CpGM2GM(__gm__ T *out, uint64_t outElem, uint64_t outOff, __gm__ T *in, uint64_t inElem,
-                         uint64_t inOff, uint64_t count)
-{
-    AscendC::GlobalTensor<T> outputGT;
-    outputGT.SetGlobalBuffer(out, outElem);
-
-    AscendC::GlobalTensor<T> inputGT;
-    inputGT.SetGlobalBuffer(in, inElem);
-
-    CpGM2GM(outputGT[outOff], inputGT[inOff], count);
 }
 
 const std::vector<RankCoreMapping> allgatherRankCoreMapping = {

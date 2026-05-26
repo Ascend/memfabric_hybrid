@@ -799,13 +799,13 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::alltoall_base(at::Tensor &outpu
     CheckSplitSize(inputSplits, inputTensor, size_);
 
     std::vector<int64_t> inputCumSum(size_ * ZBAL_FLAG_SIZE, 0);
-    std::vector<int64_t> outputCounts(size_ * ZBAL_FLAG_SIZE, 0);
+    std::vector<int64_t> outputCounts(size_, 0);
     uint64_t outputSizePerRow = outputTensor.size(0) > 0 ? outputTensor.numel() / outputTensor.size(0) : 0;
     uint64_t inputSizePerRow = inputTensor.numel() / inputTensor.size(0);
     ZBAL_CHECK_S(outputSizePerRow == 0 || outputSizePerRow == inputSizePerRow, "unexpect row element in input/output");
     uint64_t prevCumSum = 0;
     for (int i = 0; i < size_; i++) {
-        outputCounts[i * ZBAL_FLAG_SIZE] = outputSplits[i] * outputSizePerRow;
+        outputCounts[i] = outputSplits[i] * outputSizePerRow;
         inputCumSum[i * ZBAL_FLAG_SIZE] = prevCumSum;
         prevCumSum = inputSplits[i] * inputSizePerRow + prevCumSum;
     }

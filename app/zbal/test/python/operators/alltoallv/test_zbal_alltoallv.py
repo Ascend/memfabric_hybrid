@@ -51,6 +51,43 @@ def get_cur_cases(expect_world_size):
     return cur_input_shapes, cur_output_shapes, cur_input_split, cur_output_split, case_index
 
 
+def get_golden_by_assembly(case_id, world_size, global_rank, case_input_splits, case_output_splits,
+                           cur_output_shape, data_type, tensor_data_type, current_dir):
+    """small-scale: assemble golden_tensor directly from all ranks' input tensors and splits"""
+    recv_counts = case_output_splits[global_rank]  # how many elements from each sender
+    output_parts = []
+    for sender_rank in range(world_size):
+        recv_count = recv_counts[sender_rank]
+        if recv_count == 0:
+            continue
+        # read sender's input data
+        sender_dir = f"alltoallv_{case_id}_{world_size}_{sender_rank}/"
+        sender_file = f"{current_dir}/golden/{sender_dir}/input_gm_{sender_rank}.bin"
+        sender_data = np.fromfile(sender_file, dtype=data_type)
+        sender_tensor = torch.from_numpy(sender_data).to(tensor_data_type)
+        # compute element offset into sender's flat input
+        # splits are in rows (2D) or elements (1D); element_size = numel / total_splits
+        sender_splits = case_input_splits[sender_rank]
+        total_splits = sum(sender_splits)
+        element_size = sender_tensor.numel() // total_splits if total_splits > 0 else 0
+        offset = sum(sender_splits[:global_rank]) * element_size
+        count = recv_count * element_size
+        output_parts.append(sender_tensor[offset:offset + count])
+    if not output_parts:
+        if len(cur_output_shape) == 2:
+            return torch.zeros(0, cur_output_shape[1], dtype=tensor_data_type).npu()
+        return torch.tensor([], dtype=tensor_data_type).npu()
+    result = torch.cat(output_parts, dim=0).npu()
+    if len(cur_output_shape) == 2:
+        return result.view(cur_output_shape)
+    return result
+
+
+def get_golden_from_file(tensor_output_dir):
+    """large-scale: load pre-computed HCCL golden tensor from disk"""
+    return torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
+
+
 def test_alltoallv(dist_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -135,12 +172,22 @@ def test_alltoallv(dist_type):
         if enable_profiling:
             torch.npu.synchronize()
             prof.start()
+        has_exception = False
         for i in range(len(case_index)):
+            if has_exception:
+                break
             case_id = case_index[i]
             tensor_output_dir = f"{current_dir}/output/alltoallv_{case_id}_{world_size}_{global_rank}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
+                if enable_perf_test:    # perf test use hccl output as golden
+                    golden_tensor = get_golden_from_file(tensor_output_dir)
+                else:
+                    golden_tensor = get_golden_by_assembly(
+                        case_id, world_size, global_rank,
+                        cur_input_splits[i], cur_output_splits[i],
+                        cur_output_shapes[i][global_rank],
+                        data_type, tensor_data_type, current_dir)
 
             repeat_times = 15
             for j in range(repeat_times):
@@ -180,10 +227,14 @@ def test_alltoallv(dist_type):
                             logger.exception(f"alltoallv {world_size=} {global_rank=} {data_len=} precision failed.")
                             raise Exception("precision error")
                 except Exception as e:
+                    has_exception = True
                     logger.exception(f"{global_rank=} run alltoallv case {i} round {j} failed. "
                                      f"{cur_output_split=} {cur_input_split=} {e}")
+                    break
 
-        if dist_type == 'hccl':
+        if has_exception:
+            logger.error("caught exception")
+        elif dist_type == 'hccl':
             logger.info(f"alltoallv {global_rank=} {world_size=} {len(case_index)} {dist_type} cases generate success")
         else:
             logger.info(f"alltoallv {global_rank=} {world_size=} case len={len(case_index)} {dist_type} "
