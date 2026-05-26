@@ -363,7 +363,9 @@ Result SmemBmEntry::Join(uint32_t flags)
 Result SmemBmEntry::Update(uint32_t flags)
 {
     SM_ASSERT_RETURN(inited_, SM_NOT_INITIALIZED);
-    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+    const uint32_t retryTime = mf::MfEnvUtil::GetOptionalUintOrDefault(
+        "MF_SMEM_GROUP_RETRY_TIME", SMEM_GROUP_RETRY_TIME);
+    for (uint32_t i = 0; i < retryTime; i++) {
         auto ret = globalGroup_->GroupUpdate();
         if (ret == SM_INNER_BUSY) {
             sleep(1U); // sleep 1s
@@ -411,7 +413,9 @@ Result SmemBmEntry::ExtendLocalMem(smem_bm_mem_type memType, uint64_t size)
     slices_.push_back(slice);
     sliceInfos_.push_back(info);
     // 3.group update
-    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+    const uint32_t retryTime = mf::MfEnvUtil::GetOptionalUintOrDefault(
+        "MF_SMEM_GROUP_RETRY_TIME", SMEM_GROUP_RETRY_TIME);
+    for (uint32_t i = 0; i < retryTime; i++) {
         auto ret = globalGroup_->GroupUpdate();
         if (ret == SM_INNER_BUSY) {
             sleep(1U); // sleep 1s

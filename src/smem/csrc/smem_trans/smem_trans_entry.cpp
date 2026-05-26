@@ -18,12 +18,14 @@
 #include <thread>
 #include <algorithm>
 #include <cstring>
+#include <chrono>
 
 #include "mf_syntactic_sugar.h"
 #include "mf_str_util.h"
 #include "hybm.h"
 #include "hybm_big_mem.h"
 #include "hybm_data_op.h"
+#include "mf_env_util.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
 #include "smem_trans_entry_manager.h"
@@ -413,24 +415,33 @@ Result SmemTransEntry::LeaveHandle(uint32_t rk)
 
 Result SmemTransEntry::Join(uint32_t flags)
 {
-    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+    const uint32_t groupJoinTimeoutSec =
+        mf::MfEnvUtil::GetOptionalUintOrDefault("MF_GROUP_JOIN_MAX_TIMEOUT", MF_GROUP_JOIN_DEFAULT_TIMEOUT);
+    SM_LOG_DEBUG("group join timeout sec: " << groupJoinTimeoutSec);
+    auto start_time = std::chrono::steady_clock::now();
+    while (true) {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+        if (duration >= groupJoinTimeoutSec) {
+            SM_LOG_ERROR("join timeout. rank: " << rankId_ << ", elapsed: " << duration << "s");
+            return SM_ERROR;
+        }
         auto ret = globalGroup_->GroupJoin();
         if (ret == SM_INNER_BUSY) {
-            sleep(1U); // sleep 1s
+            sleep(1U);
             continue;
         }
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
-        SM_LOG_DEBUG("join success. rank:" << rankId_);
+        SM_LOG_DEBUG("join success. rank: " << rankId_);
         return SM_OK;
     }
-
-    SM_LOG_ERROR("join timeout. rank:" << rankId_);
-    return SM_ERROR;
 }
 
 Result SmemTransEntry::Update(uint32_t flags)
 {
-    for (uint32_t i = 0; i < SMEM_GROUP_RETRY_TIME; i++) {
+    const uint32_t retryTime = mf::MfEnvUtil::GetOptionalUintOrDefault(
+        "MF_SMEM_GROUP_RETRY_TIME", SMEM_GROUP_RETRY_TIME);
+    for (uint32_t i = 0; i < retryTime; i++) {
         auto ret = globalGroup_->GroupUpdate();
         if (ret == SM_INNER_BUSY) {
             sleep(1U); // sleep 1s
