@@ -423,7 +423,7 @@ SMEM_API int32_t smem_bm_copy(smem_bm_t handle, smem_copy_params *params, smem_b
         return SM_INVALID_PARAM;
     }
 
-    return entry->DataCopy(params->src, params->dest, params->dataSize, t, flags);
+    return entry->DataCopy(params->src, params->dest, params->dataSize, t, params->stream, flags);
 }
 
 SMEM_API int32_t smem_bm_copy_batch(smem_bm_t handle, smem_batch_copy_params *params, smem_bm_copy_type t,

@@ -64,6 +64,7 @@ private:
 
     Result BatchCopyExtend(hybm_batch_copy_params &params, void *stream, uint32_t flags) noexcept;
     uint32_t TryGetOneParamSpace(void **ptr) noexcept;
+    Result InnerWait(const ExtOptions &options, int32_t waitId) noexcept;
 
 private:
     bool inited_ = false;

@@ -93,7 +93,7 @@ Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
 {
     BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
 
-    if (options.flags & ASYNC_COPY_FLAG) {
+    if (options.flags & ASYNC_COPY_FLAG || options.stream != nullptr) {
         return DataCopyAsync(params, direction, options);
     }
     Result ret;
@@ -312,7 +312,11 @@ Result HostDataOpSDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_di
             BM_LOG_ERROR("data copy invalid direction: " << direction);
             ret = BM_INVALID_PARAM;
     }
-    return ret;
+    if (ret != 0) {
+        BM_LOG_ERROR("Failed to copy data async ret: " << ret << " direction: " << direction);
+        return ret;
+    }
+    return  InnerWait(options, ret);
 }
 
 void HostDataOpSDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_direction direction) noexcept
@@ -535,7 +539,7 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
                                     void *stream) noexcept
 {
     BM_LOG_DEBUG("src:" << srcVA << " destVA:" << destVA << " length:" << count << " st:" << stream);
-    if ((flags & ASYNC_COPY_FLAG) && stream != nullptr) { // submit task into acl stream
+    if (stream != nullptr) { // submit task into acl stream
         if (flags & COPY_EXTEND_FLAG) {
             return DlHybmExtendApi::HybmCopyExtend(srcVA, destVA, count, HYBM_EXTEND_CONCURRENT, stream);
         }
@@ -551,6 +555,31 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);
     BM_ASSERT_RETURN(ret == 0, BM_ERROR);
     return BM_OK;
+}
+
+Result HostDataOpSDMA::InnerWait(const ExtOptions &options, int32_t waitId) noexcept
+{
+    auto asyncRet = BM_OK;
+    if (options.flags & ASYNC_COPY_FLAG) {
+        return asyncRet;
+    }
+
+    if (options.stream != nullptr) {
+        TP_TRACE_BEGIN(TP_HYBM_ACL_SYNC_STREAM);
+        asyncRet = DlAclApi::AclrtSynchronizeStream(options.stream);
+        TP_TRACE_END(TP_HYBM_ACL_SYNC_STREAM, asyncRet);
+        BM_LOG_DEBUG("AclrtSynchronizeStream stream:" << options.stream << " ret:" << asyncRet);
+    } else {
+        TP_TRACE_BEGIN(TP_HYBM_SDMA_WAIT);
+        asyncRet = Wait(waitId);
+        TP_TRACE_END(TP_HYBM_SDMA_WAIT, asyncRet);
+        BM_LOG_DEBUG("Wait id:" << waitId << " ret:" << asyncRet);
+    }
+    if (asyncRet != 0) {
+        BM_LOG_ERROR("BatchCopyG2G wait copy stream:" << options.stream << " waitId:" << waitId
+            << " failed:" << asyncRet);
+    }
+    return asyncRet;
 }
 
 uint32_t HostDataOpSDMA::TryGetOneParamSpace(void **ptr) noexcept
@@ -703,17 +732,7 @@ Result HostDataOpSDMA::BatchCopyG2G(hybm_batch_copy_params &params, const ExtOpt
         len = count;
     }
     asyncFunc();
-
-    if (!(options.flags & ASYNC_COPY_FLAG)) {
-        TP_TRACE_BEGIN(TP_HYBM_SDMA_WAIT);
-        asyncRet = Wait(0);
-        TP_TRACE_END(TP_HYBM_SDMA_WAIT, ret);
-        if (asyncRet != 0) {
-            BM_LOG_ERROR("BatchCopyG2G wait copy failed:" << asyncRet);
-            ret = asyncRet;
-        }
-    }
-    return ret;
+    return InnerWait(options, 0);
 }
 
 Result HostDataOpSDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,

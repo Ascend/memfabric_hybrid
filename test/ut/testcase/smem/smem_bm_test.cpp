@@ -695,7 +695,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_success)
 
     char src[16] = "test data";
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, nullptr, 0);
     // 由于没有设置 hostGva_ 和 deviceGva_，转换方向会失败，但测试代码结构正确
     EXPECT_NE(ret, SM_OK);
 }
@@ -709,7 +709,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_src)
     entry.inited_ = true;
 
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(nullptr, dest, sizeof(dest), SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(nullptr, dest, sizeof(dest), SMEMB_COPY_G2G, nullptr, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
 }
 
@@ -722,7 +722,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_dest)
     entry.inited_ = true;
 
     char src[16] = "test data";
-    ock::smem::Result ret = entry.DataCopy(src, nullptr, sizeof(src), SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(src, nullptr, sizeof(src), SMEMB_COPY_G2G, nullptr, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
 }
 
@@ -736,7 +736,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_size)
 
     char src[16] = "test data";
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(src, dest, 0, SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(src, dest, 0, SMEMB_COPY_G2G, nullptr, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
 }
 
@@ -750,7 +750,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_invalid_type)
 
     char src[16] = "test data";
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_BUTT, 0);
+    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_BUTT, nullptr, 0);
     EXPECT_EQ(ret, SM_INVALID_PARAM);
 }
 
@@ -764,7 +764,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_not_initialized)
 
     char src[16] = "test data";
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, nullptr, 0);
     EXPECT_EQ(ret, SM_NOT_INITIALIZED);
 }
 
@@ -777,7 +777,7 @@ TEST_F(SmemBmTest, smem_bm_entry_data_copy_not_joined)
 
     char src[16] = "test data";
     char dest[16] = {0};
-    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, 0);
+    ock::smem::Result ret = entry.DataCopy(src, dest, sizeof(src), SMEMB_COPY_G2G, nullptr, 0);
     EXPECT_EQ(ret, SM_NOT_STARTED);
 }
 
@@ -1485,7 +1485,7 @@ TEST_F(SmemBmTest, smem_bm_copy_success)
     GenerateData(base, rankId, COPY_SIZE);
     smem_copy_params params1 = {base, local_dev_mock, COPY_SIZE};
 
-    MOCKER_CPP(&SmemBmEntry::DataCopy, int32_t (*)(const void *, void *, uint64_t, smem_bm_copy_type, uint32_t))
+    MOCKER_CPP(&SmemBmEntry::DataCopy, int32_t (*)(const void *, void *, uint64_t, smem_bm_copy_type, void *, uint32_t))
         .stubs()
         .will(returnValue(0));
     auto ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
@@ -1510,7 +1510,7 @@ TEST_F(SmemBmTest, smem_bm_copy_not_joined)
     GenerateData(base, rankId, COPY_SIZE);
     smem_copy_params params1 = {base, local_dev_mock, COPY_SIZE};
 
-    MOCKER_CPP(&SmemBmEntry::DataCopy, int32_t (*)(const void *, void *, uint64_t, smem_bm_copy_type, uint32_t))
+    MOCKER_CPP(&SmemBmEntry::DataCopy, int32_t (*)(const void *, void *, uint64_t, smem_bm_copy_type, void *, uint32_t))
         .stubs()
         .will(returnValue(static_cast<int32_t>(SM_NOT_STARTED)));
     auto ret = smem_bm_copy(handle, &params1, SMEMB_COPY_H2G, 0);
