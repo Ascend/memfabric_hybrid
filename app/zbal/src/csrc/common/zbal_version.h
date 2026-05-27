@@ -20,17 +20,22 @@
 #endif
 
 /* second level marco define 'CONCAT' to get string */
-#define CONCAT(x, y, z)  x.##y.##z
-#define STR(x)           #x
-#define CONCAT2(x, y, z) CONCAT(x, y, z)
-#define STR2(x)          STR(x)
-
-/* get cancat version string */
-#define ZBAL_LIB_VERSION STR2(CONCAT2(ZBAL_VERSION_MAJOR, ZBAL_VERSION_MINOR, ZBAL_VERSION_FIX))
+#define STR(x)             #x
+#define STR2(x)            STR(x)
 
 #ifndef GIT_LAST_COMMIT
 #define GIT_LAST_COMMIT empty
 #endif
+
+#ifndef TORCH_NPU_VERSION
+#define TORCH_NPU_VERSION empty
+#endif
+
+#define ZBAL_TORCH_NPU_VERSION STR2(TORCH_NPU_VERSION)
+
+/* get cancat version string */
+#define ZBAL_LIB_VERSION STR2(ZBAL_VERSION_MAJOR) "." STR2(ZBAL_VERSION_MINOR) "." \
+                              ZBAL_TORCH_NPU_VERSION ".post" STR2(ZBAL_VERSION_FIX)
 
 /*
  * global lib version string with build time

@@ -44,6 +44,9 @@ def zbal_init(world_size: int,
     :return: 0 if success else error code
     '''
 
+    if device_id == 0:
+        print(f"ZBAL version = {__version__}")
+
     # get env of MemFabric home
     mem_fabric_lib_path = os.environ.get("MEMFABRIC_HYBRID_LIBRARY_PATH")
     if mem_fabric_lib_path is None:
@@ -52,7 +55,9 @@ def zbal_init(world_size: int,
         mem_fabric_lib_path = mf.get_lib_path()
         if mem_fabric_lib_path is not None:
             os.environ["MEMFABRIC_HYBRID_LIBRARY_PATH"] = mem_fabric_lib_path
-            print(f"Set MEMFABRIC_HYBRID_LIBRARY_PATH to {mem_fabric_lib_path} on rank {rank_id}")
+            print(f"Set env MEMFABRIC_HYBRID_LIBRARY_PATH = {mem_fabric_lib_path} on rank {rank_id}")
+        else:
+            print(f"Can't find MEMFABRIC_HYBRID_LIBRARY_PATH env")
 
     # init mem allocator, switch before set_device
     if torch.npu.memory.get_allocator_backend() == 'native':

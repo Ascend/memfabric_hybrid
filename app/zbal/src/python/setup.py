@@ -15,7 +15,9 @@ import sysconfig
 import subprocess
 import platform
 import shutil
+import sys
 
+from importlib.metadata import version
 import setuptools
 from setuptools import setup
 from torch.utils.cpp_extension import CppExtension, BuildExtension
@@ -51,8 +53,10 @@ def _find_python_include():
 
 def _get_version(version_dir):
     with open(f"{version_dir}/VERSION", "r", encoding="utf-8") as f:
-        version = f.read().strip()
-        return version
+        version_val = f.read().strip()
+        torch_npu_int_ver = int(torch_npu_version.replace(".", ""))
+        main_ver, sub_ver, patch_ver = version_val.split(".")
+        return f"{main_ver}.{sub_ver}.{torch_npu_int_ver}.post{patch_ver}"
 
 
 def _check_env_flag(name: str, default: str = "") -> bool:
@@ -66,13 +70,15 @@ ascend_home = Path(_find_ascend_home_dir()).resolve()
 python_include_dir = Path(_find_python_include()).resolve()
 torch_dir = Path(os.path.dirname(torch.__file__)).resolve()
 torch_npu_dir = Path(os.path.dirname(torch_npu.__file__)).resolve()
+torch_npu_version = version('torch_npu')
 repo_root = Path(__file__).parent.parent.parent.parent.parent  # sgl-kernel-npu/
 zbal_root = repo_root / "app/zbal/"
 package_version = _get_version(version_dir=zbal_root)
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+
 
 # allocator compile inputs
 include_dirs = [
-
     f"{zbal_root}/",
     f"{zbal_root}/third_party/ska",
     f"{zbal_root}/third_party/mstx",
@@ -92,6 +98,7 @@ include_dirs = [
     f"{zbal_root}/src/csrc/adaptor/deepep/",
 ]
 
+
 library_dirs = [
     f"{torch_dir}/lib",
     f"{torch_npu_dir}/lib",
@@ -100,19 +107,23 @@ library_dirs = [
     f"{zbal_root}/output/",
 ]
 
+
 csrc_dir = repo_root / "app" / "zbal" / "src" / "csrc"
 sources = ([f"{csrc_dir}/zbal_pybind.cpp"] + \
            glob.glob(str(csrc_dir / "sma" / "*.cpp")) + \
            glob.glob(str(csrc_dir / "adaptor" / "pytorch_npu" / "*.cpp")) + \
            glob.glob(str(csrc_dir / "adaptor" / "deepep" / "*.cpp")))
 
+
 libraries = ["torch", "torch_npu", "c10", "torch_python", "opapi", "zbal_core", "zbal_kernel"]
+
 
 logger.warning(f"Using ASCEND_TOOLKIT_HOME at: {ascend_home}")
 logger.warning(f"{include_dirs=}")
 logger.warning(f"{sources=}")
 logger.warning(f"{library_dirs=}")
 logger.warning(f"{libraries=}")
+
 
 extra_compile_args = ["-std=c++17", "-hno-unused-parameter", "-lno-unused-function", "-Wno-unused-function",
                       "-Wunused-value", "-Wcast-align",
@@ -140,10 +151,27 @@ extra_compile_args = ["-std=c++17", "-hno-unused-parameter", "-lno-unused-functi
 common_macros = []
 
 
+def set_torch_version():
+    # init set torch_npu_version
+    sed_cmd = [
+        "sed",
+        "-i",
+        f"s/^_TORCH_NPU_VERSION_.*$/_TORCH_NPU_VERSION_ = '{torch_npu_version}'/",
+        "zbal/__init__.py"
+    ]
+    result = subprocess.run(sed_cmd, cwd=cur_dir)
+    if result.returncode != 0:
+        logger.error(f"sed torch_npu version failed ret code {result.returncode}, msg {result.stderr}")
+    else:
+        logger.info(f"set torch_npu version to {torch_npu_version}")
+
+
+set_torch_version()
+
+
 class CustomBuildExtension(BuildExtension):
     def build_base_zbal(self):
         # make dir
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
         root_dir = Path(cur_dir).parent.parent
         build_dir = os.path.join(f"{root_dir}", "build")
         output_dir = os.path.join(f"{root_dir}", "output")
@@ -151,11 +179,11 @@ class CustomBuildExtension(BuildExtension):
         shutil.rmtree(output_dir, ignore_errors=True)
         os.makedirs(build_dir, exist_ok=True)
         os.makedirs(output_dir, exist_ok=True)
-        logger.info(f"make build dir:{build_dir}, output dir:{output_dir}")
+        logger.info(f"make build dir:{build_dir}")
+        logger.info(f"make output dir:{output_dir}")
 
         # cmake
         build_type = "Debug" if is_debug_mode and not is_manylinux else "Release"
-
         cmake_cmd = [
             "cmake",
             "..",
@@ -192,6 +220,7 @@ class CustomBuildExtension(BuildExtension):
             dst = f"{output_dir}/{static_name}"
             shutil.copy2(x, dst)
             logger.info(f"copy {x} to {dst}")
+
 
     def run(self):
         self.build_base_zbal()
