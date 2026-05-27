@@ -36,10 +36,6 @@ public:
 private:
     ZBAL_KERNEL void ExchangeInputAddrFlag();
 
-    ZBAL_KERNEL void WaitFlag(const int64_t targetDataRank);
-
-    ZBAL_KERNEL void WaitStat(const int64_t targetDataRank);
-
     ZBAL_KERNEL void WriteStat(int64_t targetDataRank = -1);
 
 private:
@@ -82,10 +78,6 @@ private:
 
     template<typename T>
     ZBAL_KERNEL void CopyLocal2Output(__gm__ T *input, __gm__ T *output);
-
-    ZBAL_KERNEL void WaitFlag(const int64_t targetDataRank);
-
-    ZBAL_KERNEL void WaitStat(__gm__ uint64_t *statAddr, int64_t targetDataRank);
 
     ZBAL_KERNEL void WriteStat(__gm__ uint64_t *statAddr, const int64_t targetStatRank, const int64_t targetStatOffset);
 
@@ -158,8 +150,7 @@ ZBAL_KERNEL void AllGatherSmallKernel::ExchangeInputAddrFlag()
 {
     ZBAL_PROF_START(comm, ZBAL_PROF_EXCHANGE_ADDR);
     int64_t aivIndex = AscendC::GetBlockIdx();
-    AscendC::LocalTensor<uint64_t> inputInBuff = writeDataBuf_.Get<uint64_t>();
-    AscendC::LocalTensor<uint64_t> flagInBuff = writeFlagBuf_.Get<uint64_t>();
+
     if (aivNum < groupSize) {
         uint32_t ranksPerCore = (groupSize + aivNum - 1) / aivNum;
         const int64_t startRank = aivIndex * ranksPerCore;
@@ -169,35 +160,24 @@ ZBAL_KERNEL void AllGatherSmallKernel::ExchangeInputAddrFlag()
         }
 
         for (int dstRank = startRank; dstRank < endRank; dstRank++) {
-            auto ptr = zbal_ptr(inputAddr, myGroupRank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-            SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, reinterpret_cast<uint64_t>(input), groupSize,
-                         inputInBuff);
+            auto dataPtr = zbal_ptr(inputAddr, myGroupRank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto flagPtr = zbal_ptr(flagAddr, myGroupRank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+            uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
 
-            AscendC::PipeBarrier<PIPE_ALL>();
-            SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, myGroupRank, waitSymbol, groupSize, flagInBuff);
+            SetFlag(dataPtr, dataAddr, myGroupRank);
+            SetFlag(flagPtr, waitSymbol, myGroupRank);
         }
     } else if (aivIndex < groupSize) {
-        // write addr
-        auto ptr = zbal_ptr(inputAddr, myGroupRank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, reinterpret_cast<uint64_t>(input), groupSize, inputInBuff);
+        auto dataPtr = zbal_ptr(inputAddr, myGroupRank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+        auto flagPtr = zbal_ptr(flagAddr, myGroupRank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+        uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
 
+        // write addr
+        SetFlag(dataPtr, dataAddr, myGroupRank);
         // write exchangeFlag
-        AscendC::PipeBarrier<PIPE_ALL>();
-        SetMetaValue((__gm__ uint64_t *)ptr + inputAddrSize, myGroupRank, waitSymbol, groupSize, flagInBuff);
+        SetFlag(flagPtr, waitSymbol, myGroupRank);
     }
     ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
-}
-
-/**
-    * @brief: rank's core wait corresponding flag with @targetDataRank index on local flag buffer.
-    * The flag writen from remote rank, flag ready means target data is ready.
-    */
-ZBAL_KERNEL void AllGatherSmallKernel::WaitFlag(const int64_t targetDataRank)
-{
-    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-    AscendC::LocalTensor<uint64_t> flagOutBuff = waitFlagBuf_.Get<uint64_t>();
-    WaitMetaValue(flagAddr, targetDataRank, waitSymbol, groupSize, flagOutBuff);
-    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 }
 
 /**
@@ -210,23 +190,10 @@ ZBAL_KERNEL void AllGatherSmallKernel::WriteStat(int64_t targetDataRank)
     const int64_t corePerRank = AscendC::GetBlockNum() / groupSize;
     const int64_t offset = (targetDataRank == -1) ? aivIndex / corePerRank : targetDataRank;
     if (aivIndex % corePerRank == 0) {
-        AscendC::LocalTensor<uint64_t> statWriteBuff = writeStatBuf_.Get<uint64_t>();
-        auto destStatPtr = zbal_ptr(this->statAddr, myGroupRank, offset, localDeviceMemSize, peerGroupRank2WorldRank);
-        SetMetaValue((__gm__ uint64_t *)destStatPtr, myGroupRank, waitSymbol, groupSize, statWriteBuff);
+        auto destStatPtr = zbal_ptr(statAddr, myGroupRank, offset, localDeviceMemSize, peerGroupRank2WorldRank);
+        SetFlag(destStatPtr, waitSymbol, myGroupRank);
     }
     ZBAL_PROF_STOP(comm, ZBAL_PROF_WRITE_STAT);
-}
-
-/**
-    * @brief: rank's core wait a stat with @targetDataRank index on local stat buffer.
-    * One core wait one stat, as the last core finish wait, which mean no rank need local data, current kernel can ends.
-    */
-ZBAL_KERNEL void AllGatherSmallKernel::WaitStat(const int64_t targetDataRank)
-{
-    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
-    AscendC::LocalTensor<uint64_t> statCheckBuff = waitStatBuf_.Get<uint64_t>();
-    WaitMetaValue(statAddr, targetDataRank, waitSymbol, groupSize, statCheckBuff);
-    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
 }
 
 template<typename T>
@@ -246,18 +213,17 @@ ZBAL_KERNEL void AllGatherSmallKernel::InnerProcessLargeGroupSize()
         uint32_t outputOffset = offset * elements;
         uint32_t inputOffset = 0;
 
-        WaitFlag(offset);
+        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+        WaitFlag(flagAddr, waitSymbol, offset);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
         ZBAL_PROF_START(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
-        AscendC::LocalTensor<uint64_t> inputOutBuff = getDataBuf_.Get<uint64_t>();
-        AscendC::PipeBarrier<PIPE_ALL>();
-        GetMetaValue(inputAddr, offset, groupSize, inputOutBuff);
-        SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
+        uint64_t inputOutAddr = GetDataAddr(inputAddr, offset);
 
         AscendC::GlobalTensor<T> outputGT;
-        outputGT.SetGlobalBuffer((__gm__ T *)output, elements * groupSize);
+        outputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), elements * groupSize);
         AscendC::GlobalTensor<T> inputGT;
-        inputGT.SetGlobalBuffer((__gm__ T *)inputOutBuff.GetValue(0), elements);
+        inputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputOutAddr), elements);
         AscendC::PipeBarrier<PIPE_ALL>();
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
 
@@ -267,7 +233,9 @@ ZBAL_KERNEL void AllGatherSmallKernel::InnerProcessLargeGroupSize()
 
         WriteStat(offset);
 
-        WaitStat(offset);
+        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
+        WaitFlag(statAddr, waitSymbol, offset);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
     }
 }
 
@@ -301,18 +269,17 @@ ZBAL_KERNEL void AllGatherSmallKernel::InnerProcess()
         numPerCore = elements - (corePerRank - 1) * numPerCore;
     }
 
-    WaitFlag(offset);
+    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+    WaitFlag(flagAddr, waitSymbol, offset);
+    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
     ZBAL_PROF_START(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
-    AscendC::LocalTensor<uint64_t> inputOutBuff = getDataBuf_.Get<uint64_t>();
-    AscendC::PipeBarrier<PIPE_ALL>();
-    GetMetaValue(inputAddr, offset, groupSize, inputOutBuff);
-    SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
+    uint64_t inputDataAddr = GetDataAddr(inputAddr, offset);
 
     AscendC::GlobalTensor<T> outputGT;
-    outputGT.SetGlobalBuffer((__gm__ T *)output, elements * groupSize);
+    outputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), elements * groupSize);
     AscendC::GlobalTensor<T> inputGT;
-    inputGT.SetGlobalBuffer((__gm__ T *)inputOutBuff.GetValue(0), elements);
+    inputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputDataAddr), elements);
     AscendC::PipeBarrier<PIPE_ALL>();
     ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
 
@@ -322,7 +289,9 @@ ZBAL_KERNEL void AllGatherSmallKernel::InnerProcess()
 
     WriteStat();
 
-    WaitStat(offset);
+    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
+    WaitFlag(statAddr, waitSymbol, offset);
+    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
     AscendC::SyncAll<true>();
 }
 
@@ -389,23 +358,21 @@ ZBAL_KERNEL void AllGatherBigKernel::ExchangeOutputAddr(int64_t coreIndex, __gm_
     // The stat area of the first cycle is set to ready in advance.
     ZBAL_PROF_START(comm, ZBAL_PROF_WRITE_STAT);
     for (int j = 0; j < ZBAL_AG_SLICE_PER_CORE; j++) {
-        AscendC::LocalTensor<uint64_t> writeStatBuff = writeStatBuf0_.Get<uint64_t>();
         auto targetStatAddr = zbal_ptr(statAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
         int64_t writeStatOffset = myGroupRank * this->statSizePerRank + coreIndex * ZBAL_AG_SLICE_PER_CORE + j;
-        SetMetaValue((__gm__ uint64_t *)targetStatAddr, writeStatOffset, waitSymbol, groupSize, writeStatBuff);
-        AscendC::PipeBarrier<PIPE_ALL>();
+
+        SetFlag(targetStatAddr, waitSymbol, writeStatOffset);
     }
     ZBAL_PROF_STOP(comm, ZBAL_PROF_WRITE_STAT);
 
     ZBAL_PROF_START(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
-    AscendC::LocalTensor<uint64_t> outputInBuff = writeDataBuf_.Get<uint64_t>();
-    AscendC::LocalTensor<uint64_t> flagInBuff = writeFlagBuf_.Get<uint64_t>();
-
     if (coreIndex == 0) {
-        auto ptr = zbal_ptr(this->outputAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
-        SetMetaValue((__gm__ uint64_t *)ptr, myGroupRank, reinterpret_cast<uint64_t>(output), groupSize, outputInBuff);
-        AscendC::PipeBarrier<PIPE_ALL>();
-        SetMetaValue((__gm__ uint64_t *)ptr + this->elemExchSize, myGroupRank, waitSymbol, groupSize, flagInBuff);
+        auto dataPtr = zbal_ptr(outputAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
+        auto flagPtr = zbal_ptr(flagAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
+        uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(output));
+
+        SetFlag(dataPtr, dataAddr, myGroupRank);
+        SetFlag(flagPtr, waitSymbol, myGroupRank);
     }
 
     ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
@@ -442,29 +409,12 @@ ZBAL_KERNEL int64_t AllGatherBigKernel::GetTargetRank(int64_t prev, int64_t next
     }
 }
 
-ZBAL_KERNEL void AllGatherBigKernel::WaitFlag(const int64_t targetDataRank)
-{
-    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-    AscendC::LocalTensor<uint64_t> flagBuff = waitFlagBuf_.Get<uint64_t>();
-    WaitMetaValue(this->flagAddr, targetDataRank, waitSymbol, groupSize, flagBuff);
-    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
-}
-
-ZBAL_KERNEL void AllGatherBigKernel::WaitStat(__gm__ uint64_t *statAddr, int64_t targetDataRank)
-{
-    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
-    AscendC::LocalTensor<uint64_t> statOutBuff = waitStatBuf_.Get<uint64_t>();
-    WaitMetaValue(statAddr, targetDataRank, waitSymbol, groupSize, statOutBuff);
-    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
-}
-
 ZBAL_KERNEL void AllGatherBigKernel::WriteStat(__gm__ uint64_t *statAddr, const int64_t targetStatRank,
                                                const int64_t targetStatOffset)
 {
     ZBAL_PROF_START(comm, ZBAL_PROF_WRITE_STAT);
-    AscendC::LocalTensor<uint64_t> statWriteBuff = writeStatBuf1_.Get<uint64_t>();
     auto nextStat = zbal_ptr(statAddr, myGroupRank, targetStatRank, memSize, worldRanks);
-    SetMetaValue((__gm__ uint64_t *)nextStat, targetStatOffset, waitSymbol, groupSize, statWriteBuff);
+    SetFlag(nextStat, waitSymbol, targetStatOffset);
     ZBAL_PROF_STOP(comm, ZBAL_PROF_WRITE_STAT);
 }
 
@@ -492,14 +442,11 @@ ZBAL_KERNEL void AllGatherBigKernel::Process() // ring allgather
     // notify the corresponding rank that the data is ready according to the forward or backward ring.
     ExchangeOutputAddr(coreIndex, statAddr, statUpdateRank);
 
-    WaitFlag(inputPtrIndex);
+    ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+    WaitFlag(flagAddr, waitSymbol, inputPtrIndex);
+    ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
-    AscendC::LocalTensor<uint64_t> inputOutBuff = getDataBuf_.Get<uint64_t>();
-
-    AscendC::PipeBarrier<PIPE_ALL>();
-    GetMetaValue(this->outputAddr, inputPtrIndex, groupSize, inputOutBuff);
-    SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
-    const uint64_t curInput = inputOutBuff.GetValue(0);
+    uint64_t curInputAddr = GetDataAddr(outputAddr, inputPtrIndex);
 
     for (int i = 0; i < groupSize - 1; i++) {
         const int64_t readRank = GetTargetRank(prevRank, nextRank, aivIndex, i);
@@ -519,14 +466,17 @@ ZBAL_KERNEL void AllGatherBigKernel::Process() // ring allgather
 
             int64_t sliceStatOffset = readRank * this->statSizePerRank + coreIndex * ZBAL_AG_SLICE_PER_CORE + j;
 
-            WaitStat(statAddr, sliceStatOffset);
+            ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
+            WaitFlag(statAddr, waitSymbol, sliceStatOffset);
+            ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
 
             ZBAL_PROF_START(comm, ZBAL_PROF_ALLGATHER_COPY);
             AscendC::GlobalTensor<T> outputGT;
-            outputGT.SetGlobalBuffer((__gm__ T *)output, elements * groupSize);
+            outputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), elements * groupSize);
             AscendC::GlobalTensor<T> inputGT;
-            inputGT.SetGlobalBuffer((__gm__ T *)curInput, elements * groupSize);
+            inputGT.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(curInputAddr), elements * groupSize);
             CpGM2GM(inputGT[sliceDataOffset], outputGT[sliceDataOffset], elemPerSlice);
+            AscendC::PipeBarrier<PIPE_ALL>();
             ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLGATHER_COPY);
 
             WriteStat(statAddr, statUpdateRank, sliceStatOffset); // write stat to next rank when data ready
