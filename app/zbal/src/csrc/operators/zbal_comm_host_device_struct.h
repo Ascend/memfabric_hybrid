@@ -138,6 +138,7 @@ struct CommGroupInfo {
     uintptr_t devMemoryForProfiling;                       /* memory for perf at host side */
     uint64_t tracePointPerCore;                            /* tracing points per core */
     uint16_t groupIndex;                                   /* index of this group, start from 0 */
+    uint32_t dataOpType;                                   /* data operation type, see zbal_data_op_type_t */
 };
 
 #endif // ZBAL_COMM_STRUCT_H

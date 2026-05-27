@@ -28,6 +28,7 @@ constexpr int64_t UB_ALIGN_SIZE = 32;
 constexpr int64_t UB_BUFF_INTERVAL = 64;
 constexpr int64_t UB_DMA_MAX_SIZE = 176 * 1024;
 constexpr int64_t ZBAL_SMALL_DATA_SIZE = 256;
+constexpr uint32_t ZBAL_SDMA_AFFECTION_BLOCK = 16;
 constexpr uint32_t ZBAL_TYPE_SIZE_ONE = 1;
 constexpr uint32_t ZBAL_TYPE_SIZE_TWO = 2;
 constexpr uint32_t ZBAL_TYPE_SIZE_FOUR = 4;
@@ -76,25 +77,6 @@ ZBAL_KERNEL void dcciCacheline(__gm__ T *addr)
     __asm__ __volatile__("");
     DataCacheCleanAndInvalid<T, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(global);
     __asm__ __volatile__("");
-}
-
-template<typename T>
-ZBAL_KERNEL void SetAtomicOp(uint32_t atomicOp)
-{
-    switch (atomicOp) {
-        case 0:
-            AscendC::SetAtomicAdd<T>();
-            break;
-        case 2:
-            AscendC::SetAtomicMax<T>();
-            break;
-        case 3:
-            AscendC::SetAtomicMin<T>();
-            break;
-        default:
-            AscendC::SetAtomicNone();
-            break;
-    }
 }
 
 template<typename T>
@@ -325,25 +307,31 @@ const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
 
 inline uint32_t ZBALOpGetAivBlockDim(CommGroupInfo &groupInfo, size_t sendCount, zbal_datatype_t dataType)
 {
-    static uint32_t blockDim = 0;
-    if (blockDim == 0) {
-        auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &blockDim);
+    static uint32_t physicalBlocks = 0;
+    if (physicalBlocks == 0) {
+        auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &physicalBlocks);
         if (ret != 0) {
             printf("ZBALOpAllGather get block dim failed, blockDim:%d\n", ret);
             return ret;
         }
     }
 
+    uint32_t blockDim = physicalBlocks;
     uint64_t totalSize = GetTypeSize(dataType) * sendCount;
     if (totalSize <= ZBAL_SMALL_DATA_SIZE && blockDim > groupInfo.groupSize) {
         // avoid no task block for small shape
-        return groupInfo.groupSize;
+        blockDim = groupInfo.groupSize;
+    } else {
+        for (const auto &mapping : allgatherRankCoreMapping) {
+            if (mapping.groupSize == groupInfo.groupSize && totalSize > mapping.start && totalSize <= mapping.end) {
+                blockDim = mapping.blockDim;
+                break;
+            }
+        }
     }
 
-    for (const auto &mapping : allgatherRankCoreMapping) {
-        if (mapping.groupSize == groupInfo.groupSize && totalSize > mapping.start && totalSize <= mapping.end) {
-            return mapping.blockDim;
-        }
+    if (groupInfo.dataOpType == ZBAL_DATA_OP_DEVICE_SDMA && blockDim > ZBAL_SDMA_AFFECTION_BLOCK) {
+        blockDim = ZBAL_SDMA_AFFECTION_BLOCK;
     }
 
     return blockDim;

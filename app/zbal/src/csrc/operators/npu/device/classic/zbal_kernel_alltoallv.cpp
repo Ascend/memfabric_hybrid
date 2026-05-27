@@ -56,7 +56,7 @@ public:
         pipe.InitBuffer(waitLocalStatBuf_, int32BufSize);
         pipe.InitBuffer(getLocalStatBuf_, int32BufSize);
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
 #endif
     }
 

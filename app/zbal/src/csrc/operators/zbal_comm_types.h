@@ -30,6 +30,7 @@ struct CommGroupOptions {
     uint16_t groupSize = 0;              /* the ranks in the group */
     uint16_t myWorldRank = 0;            /* rank id in the world */
     uint16_t myGroupRank = 0;            /* rank id in the group */
+    uint32_t dataOpType = 0;             /* data operation type, see zbal_data_op_type_t */
     void *gva = nullptr;                 /* gva of the world */
     uint64_t metaSize = 0;               /* size of meta */
     uintptr_t myMetaGva = 0;             /* gva of mine */
@@ -47,7 +48,8 @@ struct CommGroupOptions {
     {
         os << "CommGroupOptions [name: " << options.name << ", worldSize: " << options.worldSize
            << ", groupSize: " << options.groupSize << ", myWorldRank: " << options.myWorldRank
-           << ", myGroupRank: " << options.myGroupRank << ", gva: " << options.gva << ", metaSize: " << options.metaSize
+           << ", myGroupRank: " << options.myGroupRank << ", dataOpType: " << options.dataOpType
+           << ", gva: " << options.gva << ", metaSize: " << options.metaSize
            << ", myMetaGva: " << std::hex << options.myMetaGva << ", myParamDataGva: " << options.myParamDataGva
            << ", myAddressExchangeGva: " << options.myAddressExchangeGva << std::dec
            << ", sizeForCommGroupInfo: " << options.sizeForCommGroupInfo << ", sizeForParam: " << options.sizeForParam

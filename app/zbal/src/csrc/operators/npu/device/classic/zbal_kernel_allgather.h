@@ -142,7 +142,7 @@ ZBAL_KERNEL void AllGatherSmallKernel::Init(GM_ADDR input, GM_ADDR output, GM_AD
     pipe.InitBuffer(waitFlagBuf_, elementsSize);
     pipe.InitBuffer(writeFlagBuf_, elementsSize);
 
-    BaseKernel::Init();
+    BaseKernel::Init(comm->dataOpType);
 #endif
 }
 
@@ -348,7 +348,7 @@ ZBAL_KERNEL void AllGatherBigKernel::Init(GM_ADDR input, GM_ADDR output, GM_ADDR
     pipe.InitBuffer(waitFlagBuf_, elementsSize);
     pipe.InitBuffer(writeFlagBuf_, elementsSize);
 
-    BaseKernel::Init();
+    BaseKernel::Init(comm->dataOpType);
 #endif
 }
 

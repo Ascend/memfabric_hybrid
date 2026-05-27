@@ -49,7 +49,7 @@ public:
 
         InitParallelStrategy();
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -105,7 +105,6 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         inputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input) + xOffsetLocal, numPerCoreLocal);
         outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffsetLocal, numPerCoreLocal);
-        AscendC::SetAtomicNone();
         CpGM2GM(inputGm, outputGm, numPerCoreLocal);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         AscendC::SyncAll<true>();
@@ -137,9 +136,7 @@ public:
             outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffset, numPerCore);
             if (srcRank != rank) {
                 ZBAL_PROF_START(comm, ZBAL_PROF_REDUCESCATTER_COPY);
-                SetAtomicOp<T>(reduceOp);
-                CpGM2GM(inputGm, outputGm, numPerCore);
-                AscendC::SetAtomicNone();
+                CpGM2GM(inputGm, outputGm, numPerCore, true, reduceOp);
                 ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_COPY);
             }
         }

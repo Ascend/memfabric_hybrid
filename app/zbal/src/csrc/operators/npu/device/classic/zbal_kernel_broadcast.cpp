@@ -42,7 +42,7 @@ public:
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()
@@ -195,7 +195,7 @@ public:
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()

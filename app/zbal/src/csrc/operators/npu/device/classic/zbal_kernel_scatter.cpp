@@ -37,7 +37,7 @@ public:
         this->exchangeFlag = this->exchangeAddr + this->addrOffset;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()

@@ -38,7 +38,7 @@ public:
         this->exchangeFlag = exchangeAddr + addrOffset;
         this->exchangeAck = exchangeFlag + addrOffset;
 
-        BaseKernel::Init();
+        BaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()

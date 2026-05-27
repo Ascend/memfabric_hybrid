@@ -62,7 +62,7 @@ public:
 
         InitParallelStrategy();
 
-        BaseKernel::Init();
+        BaseKernel::Init(groupInfo->dataOpType);
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -126,7 +126,6 @@ private:
             if (aivIndex == 0) {
                 xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input), totalElems);
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
-                AscendC::SetAtomicNone();
                 CpGM2GM(xGm, buffGm, totalElems);
             }
             AscendC::SyncAll<true>();
@@ -137,9 +136,7 @@ private:
                 xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputPtr), totalElems);
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
                 if (srcRank != rank) {
-                    SetAtomicOp<T>(atomicOp);
-                    CpGM2GM(xGm, buffGm, totalElems);
-                    AscendC::SetAtomicNone();
+                    CpGM2GM(xGm, buffGm, totalElems, true, atomicOp);
                 }
             }
             ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
@@ -151,14 +148,11 @@ private:
             xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputPtr), totalElems);
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
             if (aivIndex == rank) {
-                AscendC::SetAtomicNone();
                 CpGM2GM(xGm, buffGm, totalElems);
                 AscendC::SyncAll<true>();
             } else {
                 AscendC::SyncAll<true>();
-                SetAtomicOp<T>(atomicOp);
-                CpGM2GM(xGm, buffGm, totalElems);
-                AscendC::SetAtomicNone();
+                CpGM2GM(xGm, buffGm, totalElems, true, atomicOp);
             }
             ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
         }
@@ -226,7 +220,6 @@ private:
         ZBAL_PROF_START(groupInfo, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input) + xOffsetLocal, numPerCoreLocal);
         buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer) + yOffsetLocal, numPerCoreLocal);
-        AscendC::SetAtomicNone();
         CpGM2GM(xGm, buffGm, numPerCoreLocal);
         ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         AscendC::SyncAll<true>();
@@ -257,9 +250,7 @@ private:
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer) + yOffset, numPerCore);
             if (srcRank != rank) {
                 ZBAL_PROF_START(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
-                SetAtomicOp<T>(atomicOp);
-                CpGM2GM(xGm, buffGm, numPerCore);
-                AscendC::SetAtomicNone();
+                CpGM2GM(xGm, buffGm, numPerCore, true, atomicOp);
                 ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
             }
         }

@@ -7,11 +7,6 @@ file(GLOB ZBAL_KERNEL_CLASSIC_SRCS
 )
 source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/classic" FILES ${ZBAL_KERNEL_CLASSIC_SRCS})
 
-file(GLOB ZBAL_KERNEL_AIV_SDMA_SRCS
-    ${ZBAL_DEVICE_DIR}/aiv_sdma/*.cpp
-)
-source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/aiv_sdma" FILES ${ZBAL_KERNEL_AIV_SDMA_SRCS})
-
 file(GLOB ZBAL_KERNEL_DISPATCH_NORMAL_SRCS
     ${ZBAL_DEVICE_DIR}/dispatch_combine_normal/*.cpp
 )
@@ -24,7 +19,6 @@ source_group(TREE ${ZBAL_DEVICE_DIR} PREFIX "device/dispatch_combine_low_latency
 
 ascendc_library(zbal_kernel STATIC
     ${ZBAL_KERNEL_CLASSIC_SRCS}
-    ${ZBAL_KERNEL_AIV_SDMA_SRCS}
     ${ZBAL_KERNEL_DISPATCH_NORMAL_SRCS}
     ${ZBAL_KERNEL_DISPATCH_LOW_LATENCY_SRCS}
 )

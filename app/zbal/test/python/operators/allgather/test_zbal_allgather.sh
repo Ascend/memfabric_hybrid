@@ -8,10 +8,11 @@ CURRENT_DIR=$(
 )
 echo $CURRENT_DIR
 
-WORLD_SIZE=${2:-16}
 TEST_TYPE=bfloat16_t
 CASE_NUM=0  # if CASE_NUM is 0 will use CASE_LIST instead
 CASE_LIST=${1:-917504}
+WORLD_SIZE=${2:-16}
+DATA_OP_TYPE=${3:-0}
 
 RANK_PER_NODE=16
 IPs=()
@@ -46,12 +47,12 @@ nnodes=$(((WORLD_SIZE + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
 
 if [[ $nnodes -eq 1 ]]; then
-    echo; echo -e "run hccl..."; torchrun --nnodes ${nnodes} --nproc-per-node $WORLD_SIZE --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
-    echo; echo -e "run zbal..."; torchrun --nnodes ${nnodes} --nproc-per-node $WORLD_SIZE --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+    echo; echo -e "run hccl..."; torchrun --nnodes ${nnodes} --nproc-per-node $WORLD_SIZE --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+    echo; echo -e "run zbal..."; torchrun --nnodes ${nnodes} --nproc-per-node $WORLD_SIZE --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py zbal --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
 else
     if [[ $ip_size -eq $nnodes ]]; then
-        echo; echo -e "run hccl..."; torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
-        echo; echo -e "run zbal..."; torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+        echo; echo -e "run hccl..."; torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+        echo; echo -e "run zbal..."; torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8775 ${CURRENT_DIR}/test_zbal_allgather.py zbal --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
     else
         echo "run ${WORLD_SIZE} ranks process but IPs size is not match"
     fi

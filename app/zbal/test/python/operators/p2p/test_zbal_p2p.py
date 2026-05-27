@@ -42,7 +42,7 @@ g_torch_type_map = {
 }
 
 
-def test_p2p(dist_type, case_list, send_rank, recv_rank):
+def test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"] or 2)
@@ -56,7 +56,7 @@ def test_p2p(dist_type, case_list, send_rank, recv_rank):
     if dist_type == "zbal":
         zbal_set_logger_level(3)
         local_mem = world_size * 256 * 1024 * 1024
-        if not zbal_init(world_size, device_id, global_rank, local_mem):
+        if not zbal_init(world_size, device_id, global_rank, local_mem, data_op_type=data_op_type):
             logger.error(f"zbal_init failed on rank {global_rank}.")
             return
         else:
@@ -164,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument('--case_list', type=str, nargs='*', default=[])
     parser.add_argument('--send_rank', type=int, default=0)
     parser.add_argument('--recv_rank', type=int, default=world_size - 1)
+    parser.add_argument('--data_op_type', type=int, default=0)
     args = parser.parse_args()
 
     dist_type = args.dist_type
@@ -172,11 +173,12 @@ if __name__ == "__main__":
     case_list = [int(case) for case in case_list]
     send_rank = args.send_rank
     recv_rank = args.recv_rank
+    data_op_type = args.data_op_type
 
     if case_num == 0:
         logger.info(f"case_list:{case_list}")
     else:
         case_list = [8 * (2 ** i) for i in range(case_num)]
 
-    test_p2p(dist_type, case_list, send_rank, recv_rank)
+    test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type)
 

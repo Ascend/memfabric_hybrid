@@ -29,25 +29,25 @@ typedef void *zbal_comm_t;
 typedef void *aclrtStream;
 
 typedef enum {
-    ZBAL_DATA_TYPE_INT8 = 0,   /**< int8 */
-    ZBAL_DATA_TYPE_INT16 = 1,  /**< int16 */
-    ZBAL_DATA_TYPE_INT32 = 2,  /**< int32 */
-    ZBAL_DATA_TYPE_FP16 = 3,   /**< fp16 */
-    ZBAL_DATA_TYPE_FP32 = 4,   /**< fp32 */
-    ZBAL_DATA_TYPE_INT64 = 5,  /**< int64 */
-    ZBAL_DATA_TYPE_UINT64 = 6, /**< uint64 */
-    ZBAL_DATA_TYPE_UINT8 = 7,  /**< uint8 */
-    ZBAL_DATA_TYPE_UINT16 = 8, /**< uint16 */
-    ZBAL_DATA_TYPE_UINT32 = 9, /**< uint32 */
-    ZBAL_DATA_TYPE_FP64 = 10,  /**< fp64 */
-    ZBAL_DATA_TYPE_BFP16 = 11, /**< bfp16 */
+    ZBAL_DATA_TYPE_INT8 = 0,    /**< int8 */
+    ZBAL_DATA_TYPE_INT16 = 1,   /**< int16 */
+    ZBAL_DATA_TYPE_INT32 = 2,   /**< int32 */
+    ZBAL_DATA_TYPE_INT64 = 3,   /**< int64 */
+    ZBAL_DATA_TYPE_UINT64 = 4,  /**< uint64 */
+    ZBAL_DATA_TYPE_FP64 = 5,    /**< fp64 */
+    ZBAL_DATA_TYPE_FP16 = 6,    /**< fp16 */
+    ZBAL_DATA_TYPE_FP32 = 7,    /**< fp32 */
+    ZBAL_DATA_TYPE_BFP16 = 8,   /**< bfp16 */
+    ZBAL_DATA_TYPE_UINT8 = 9,   /**< uint8 */
+    ZBAL_DATA_TYPE_UINT16 = 10, /**< uint16 */
+    ZBAL_DATA_TYPE_UINT32 = 11, /**< uint32 */
 
     ZBAL_DATA_TYPE_BUTT /* reserved */
-} zbal_datatype_t;      /* reference to HcclDataType */
+} zbal_datatype_t;
 
 typedef enum {
-    ZBAL_REDUCE_SUM = 0,  /**< sum */
-    ZBAL_REDUCE_PROD = 1, /**< prod */
+    ZBAL_REDUCE_PROD = 0, /**< prod */
+    ZBAL_REDUCE_SUM = 1,  /**< sum */
     ZBAL_REDUCE_MAX = 2,  /**< max */
     ZBAL_REDUCE_MIN = 3,  /**< min */
 
@@ -66,7 +66,7 @@ typedef enum {
     BOOT_BY_BUTT
 } zbal_bootstrap_type_t;
 
-typedef enum {
+typedef enum : uint32_t {
     ZBAL_DATA_OP_MTE = 0,         /* default, MTE data operations */
     ZBAL_DATA_OP_DEVICE_SDMA = 1, /* AIV SDMA data operations */
 } zbal_data_op_type_t;

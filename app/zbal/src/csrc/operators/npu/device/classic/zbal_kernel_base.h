@@ -19,6 +19,7 @@
 #include "zbal_defines.h"
 #include "zbal_kernel_utils.h"
 #include "zbal_kernel_trace.h"
+#include "zbal_kernel_sdma_data_op.h"
 
 using namespace zbal;
 
@@ -26,8 +27,9 @@ class BaseKernel {
 public:
     ZBAL_KERNEL BaseKernel() {};
 
-    ZBAL_KERNEL void Init()
+    ZBAL_KERNEL void Init(uint32_t type = ZBAL_DATA_OP_MTE)
     {
+        dataOpType = type;
         pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
     }
 
@@ -35,8 +37,24 @@ protected:
     template<typename T>
     ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> inputTensor,
                              AscendC::GlobalTensor<T> outputTensor,
-                             uint32_t elemNum)
+                             uint32_t elemNum, bool atomic = false, uint32_t atomicOp = 0)
     {
+        if (dataOpType == ZBAL_DATA_OP_DEVICE_SDMA) {
+            CpGM2GMSDMA(inputTensor, outputTensor, elemNum, atomic, atomicOp);
+        } else {
+            CpGM2GMMTE(inputTensor, outputTensor, elemNum, atomic, atomicOp);
+        }
+    }
+
+    template<typename T>
+    ZBAL_KERNEL void CpGM2GMMTE(AscendC::GlobalTensor<T> inputTensor,
+                                AscendC::GlobalTensor<T> outputTensor,
+                                uint32_t elemNum, bool atomic, uint32_t atomicOp)
+    {
+        if (atomic) {
+            SetAtomicOpMTE<T>(atomicOp);
+        }
+
         AscendC::DataCopyPadExtParams<T> padParams;
         uint32_t leftCopySize = elemNum * sizeof(T);
         uint32_t times = 0;
@@ -53,12 +71,80 @@ protected:
             leftCopySize = (leftCopySize > UB_DMA_MAX_SIZE) ? leftCopySize - UB_DMA_MAX_SIZE : 0;
             times++;
         } while (leftCopySize > 0);
+
+        if (atomic) {
+            AscendC::SetAtomicNone();
+        }
+
         AscendC::PipeBarrier<PIPE_ALL>();
+    }
+
+    template<typename T>
+    ZBAL_KERNEL void CpGM2GMSDMA(AscendC::GlobalTensor<T> inputTensor,
+                                 AscendC::GlobalTensor<T> outputTensor,
+                                 uint64_t elemNum, bool atomic, uint32_t atomicOp)
+    {
+        uint8_t opCode = 0;
+        if (atomic) {
+            opCode = SetAtomicOpSDMA<T>(atomicOp);
+        }
+
+        AscendC::LocalTensor<T> localTensor = bindQueue.AllocTensor<T>();
+        zbal_sdma_get_nbi(outputTensor, inputTensor, localTensor, elemNum, EVENT_ID0, opCode);
+        zbal_sdma_quiet(localTensor, EVENT_ID0);
+        bindQueue.FreeTensor(localTensor);
+    }
+
+private:
+    template<typename T>
+    ZBAL_KERNEL void SetAtomicOpMTE(uint32_t atomicOp)
+    {
+        switch (atomicOp) {
+            case ZBAL_REDUCE_SUM:
+                AscendC::SetAtomicAdd<T>();
+                break;
+            case ZBAL_REDUCE_MAX:
+                AscendC::SetAtomicMax<T>();
+                break;
+            case ZBAL_REDUCE_MIN:
+                AscendC::SetAtomicMin<T>();
+                break;
+            default:
+                AscendC::SetAtomicNone();
+                break;
+        }
+    }
+
+    template<typename T>
+    ZBAL_KERNEL uint8_t SetAtomicOpSDMA(uint32_t atomicOp)
+    {
+        uint8_t dataTypeOffset = 4;
+        uint8_t reduceOpMask = 0x0f;
+
+        uint8_t dataType = 0;
+        uint8_t reduceOp = static_cast<uint8_t>(atomicOp & reduceOpMask);
+        if constexpr (std::is_same_v<T, int8_t>) {
+            dataType = ZBAL_DATA_TYPE_INT8;
+        } else if constexpr (std::is_same_v<T, int16_t>) {
+            dataType = ZBAL_DATA_TYPE_INT16;
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            dataType = ZBAL_DATA_TYPE_INT32;
+        } else if constexpr (std::is_same_v<T, float16_t>) {
+            dataType = ZBAL_DATA_TYPE_FP16;
+        } else if constexpr (std::is_same_v<T, float32_t>) {
+            dataType = ZBAL_DATA_TYPE_FP32;
+        } else if constexpr (std::is_same_v<T, bfloat16_t>) {
+            dataType = ZBAL_DATA_TYPE_BFP16;
+        }
+        dataType = dataType << dataTypeOffset;
+
+        return dataType | reduceOp;
     }
 
 protected:
     AscendC::TPipe pipe;
     AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
+    uint32_t dataOpType;
 };
 
 #endif

@@ -88,7 +88,7 @@ def get_golden_from_file(tensor_output_dir):
     return torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
 
 
-def test_alltoallv(dist_type):
+def test_alltoallv(dist_type, data_op_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"] or 2)
@@ -126,7 +126,7 @@ def test_alltoallv(dist_type):
             local_mem = 4 * 1024 * 1024 * 1024
         else:
             local_mem = 128 * 1024 * 1024
-        if not zbal_init(world_size, device_id, global_rank, local_mem):
+        if not zbal_init(world_size, device_id, global_rank, local_mem, data_op_type=data_op_type):
             logger.error(f"zbal_init failed on rank {global_rank}.")
             return
         else:
@@ -253,6 +253,8 @@ def test_alltoallv(dist_type):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('dist_type', type=str, choices=["hccl", "zbal"])
+    parser.add_argument('--data_op_type', type=int, default=0)
     args = parser.parse_args()
     dist_type = args.dist_type
-    test_alltoallv(dist_type)
+    data_op_type = args.data_op_type
+    test_alltoallv(dist_type, data_op_type)

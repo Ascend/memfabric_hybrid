@@ -9,10 +9,11 @@ CURRENT_DIR=$(
 
 echo $CURRENT_DIR
 
-WORLD_SIZE=${2:-16}
 TEST_TYPE=float
 CASE_NUM=0  # if CASE_NUM is 0 will use CASE_LIST instead
 CASE_LIST=${1:-7340032}
+WORLD_SIZE=${2:-16}
+DATA_OP_TYPE=${3:-0}
 
 RANK_PER_NODE=16
 IPs=()
@@ -49,12 +50,12 @@ export CHECK_PRECISION=1
 export ENABLE_PROFILING=0
 
 if [[ $nnodes -eq 1 ]]; then
-    torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
-    torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+    torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+    torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py zbal --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
 else
     if [[ $ip_size -eq $nnodes ]]; then
-        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST
-        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py zbal --case_num $CASE_NUM --case_list $CASE_LIST
+        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+        torchrun --nnodes ${nnodes} --nproc-per-node $RANK_PER_NODE --node_rank ${node_rank} --master_addr "${IPs[0]}" --master_port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py zbal --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
     else
         echo "run ${WORLD_SIZE} ranks process but IPs size is not match"
     fi

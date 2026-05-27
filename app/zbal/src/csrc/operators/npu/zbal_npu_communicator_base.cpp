@@ -100,6 +100,7 @@ void NpuCommunicatorBase::ConstructCommGroupInfo(const CommGroupOptions &options
     groupInfo_.sizeForExchangeAddress = options.sizeForExchangeAddress;
     groupInfo_.fftsConfig = options.fftsConfig;
     groupInfo_.localDeviceMemSize = options.localDeviceMemSize;
+    groupInfo_.dataOpType = options.dataOpType;
 
     uint64_t curGroupSymbolIndex = options.groupIndex + 1;
     ZBAL_ASSERT(curGroupSymbolIndex <= COMM_GROUP_COUNT_CAP_MAX);

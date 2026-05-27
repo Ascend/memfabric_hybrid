@@ -29,7 +29,7 @@ g_torch_type_map = {
 }
 
 
-def test_allgather(case_list, dist_type):
+def test_allgather(case_list, dist_type, data_op_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"] or 2)
@@ -43,7 +43,7 @@ def test_allgather(case_list, dist_type):
     if dist_type == 'zbal':
         zbal_set_logger_level(3)
         local_mem = (world_size + 8) * 1024 * 1024 * 1024
-        if not zbal_init(world_size, device_id, global_rank, local_mem):
+        if not zbal_init(world_size, device_id, global_rank, local_mem, data_op_type=data_op_type):
             logging.error(f"zbal_init failed on rank {global_rank}.")
             return
         else:
@@ -162,16 +162,18 @@ if __name__ == "__main__":
     parser.add_argument('dist_type', type=str, choices=["hccl", "zbal"])
     parser.add_argument('--case_num', type=int, default=0)
     parser.add_argument('--case_list', type=str, nargs='*', default=[])
+    parser.add_argument('--data_op_type', type=int, default=0)
     args = parser.parse_args()
 
     dist_type = args.dist_type
     case_num = args.case_num
     case_list = args.case_list
     case_list = [int(case) for case in case_list]
+    data_op_type = args.data_op_type
 
     if case_num == 0:
         logging.info(f"case_list:{case_list}")
     else:
         case_list = [6 * (2 ** i) for i in range(case_num)]
 
-    test_allgather(case_list, dist_type)
+    test_allgather(case_list, dist_type, data_op_type)

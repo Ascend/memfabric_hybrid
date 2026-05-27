@@ -207,7 +207,7 @@ ZBAL_KERNEL void zbal_set_value(__gm__ uint8_t *addr, T x, AscendC::LocalTensor<
 }
 
 ZBAL_KERNEL void zbal_fill_sdma_sqe(__gm__ stars_channel_info_t *channel_info, __gm__ uint8_t *src, __gm__ uint8_t *dst,
-                                    uint32_t length, uint32_t sq_tail, uint32_t task_id)
+                                    uint32_t length, uint32_t sq_tail, uint32_t task_id, uint8_t opCode)
 {
     __gm__ stars_sdma_sqe_t *sqe = (__gm__ stars_sdma_sqe_t *)((channel_info->sq_base));
     sqe += (sq_tail % channel_info->sq_depth);
@@ -220,7 +220,7 @@ ZBAL_KERNEL void zbal_fill_sdma_sqe(__gm__ stars_channel_info_t *channel_info, _
     sqe->kernel_credit = ZBAL_STARS_DEFAULT_KERNEL_CREDIT;
     sqe->ptr_mode = 0;
 
-    sqe->opcode = 0;
+    sqe->opcode = opCode;
     sqe->ie2 = 0;
     sqe->sssv = 1U;
     sqe->dssv = 1U;
@@ -307,7 +307,7 @@ ZBAL_KERNEL void zbal_sdma_notify_record(AscendC::LocalTensor<T> &buf, uint32_t 
 
 ZBAL_KERNEL void zbal_sdma_submit_data_sqes(__gm__ stars_channel_info_t *batch_write_channel_info,
                                             __gm__ uint8_t *send_buffer, __gm__ uint8_t *recv_buffer,
-                                            const sdma_config_t &config, uint32_t *sq_tail)
+                                            const sdma_config_t &config, uint32_t *sq_tail, uint8_t opCode)
 {
     for (uint32_t idx = 0U; idx < config.iter_num; ++idx) {
         uint32_t queue_idx = idx % config.queue_num;
@@ -323,7 +323,7 @@ ZBAL_KERNEL void zbal_sdma_submit_data_sqes(__gm__ stars_channel_info_t *batch_w
         __gm__ uint8_t *dst_addr = recv_buffer + idx * config.block_bytes;
 
         zbal_fill_sdma_sqe(channel_info, src_addr, dst_addr, transfer_bytes, sq_tail[queue_idx],
-                           sq_tail[queue_idx] - channel_info->sq_head);
+                           sq_tail[queue_idx] - channel_info->sq_head, opCode);
 
         sq_tail[queue_idx] = (sq_tail[queue_idx] + 1) % (channel_info->sq_depth);
         AscendC::PipeBarrier<PIPE_ALL>();
@@ -331,7 +331,7 @@ ZBAL_KERNEL void zbal_sdma_submit_data_sqes(__gm__ stars_channel_info_t *batch_w
 }
 
 ZBAL_KERNEL void zbal_sdma_post_send(__gm__ uint8_t *recv_buffer, __gm__ uint8_t *send_buffer, uint64_t message_len,
-                                     AscendC::LocalTensor<uint32_t> &tmp_local, uint32_t sync_id)
+                                     AscendC::LocalTensor<uint32_t> &tmp_local, uint32_t sync_id, uint8_t opCode)
 {
     __gm__ uint8_t *channel_base = zbal_sdma_get_channel_base();
 
@@ -375,7 +375,7 @@ ZBAL_KERNEL void zbal_sdma_post_send(__gm__ uint8_t *recv_buffer, __gm__ uint8_t
     }
 
     // 5. Submit data transfer SQE
-    zbal_sdma_submit_data_sqes(batch_write_channel_info, send_buffer, recv_buffer, config, sq_tail);
+    zbal_sdma_submit_data_sqes(batch_write_channel_info, send_buffer, recv_buffer, config, sq_tail, opCode);
 
     // 6. Ring doorbell
     auto item_size = config.iter_num * sizeof(stars_sdma_sqe_t);
@@ -399,7 +399,7 @@ ZBAL_KERNEL void zbal_sdma_post_send(__gm__ uint8_t *recv_buffer, __gm__ uint8_t
 
 template<typename T>
 ZBAL_KERNEL void zbal_sdma_get_nbi(__gm__ T *dst, __gm__ T *src, __ubuf__ T *buf, uint32_t ub_size, uint32_t elem_size,
-                                   uint32_t sync_id)
+                                   uint32_t sync_id, uint8_t opCode)
 {
     // Create LocalTensor from buf pointer and ub_size
     AscendC::LocalTensor<uint32_t> ub_tensor;
@@ -407,12 +407,13 @@ ZBAL_KERNEL void zbal_sdma_get_nbi(__gm__ T *dst, __gm__ T *src, __ubuf__ T *buf
     ub_tensor.address_.bufferAddr = reinterpret_cast<uint64_t>(buf);
     ub_tensor.address_.dataLen = ub_size;
 
-    zbal_sdma_post_send((__gm__ uint8_t *)dst, (__gm__ uint8_t *)src, elem_size * sizeof(T), ub_tensor, sync_id);
+    zbal_sdma_post_send((__gm__ uint8_t *)dst, (__gm__ uint8_t *)src, elem_size * sizeof(T), ub_tensor, sync_id,
+                        opCode);
 }
 
 template<typename T>
 ZBAL_KERNEL void zbal_sdma_get_nbi(AscendC::GlobalTensor<T> &dst, AscendC::GlobalTensor<T> &src,
-                                   AscendC::LocalTensor<T> &buf, uint32_t elem_size, uint32_t sync_id)
+                                   AscendC::LocalTensor<T> &buf, uint32_t elem_size, uint32_t sync_id, uint8_t opCode)
 {
     AscendC::LocalTensor<uint32_t> ub_tensor;
     ub_tensor.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::VECOUT);
@@ -420,7 +421,7 @@ ZBAL_KERNEL void zbal_sdma_get_nbi(AscendC::GlobalTensor<T> &dst, AscendC::Globa
     ub_tensor.address_.dataLen = UB_ALIGN_SIZE_64;
 
     zbal_sdma_post_send((__gm__ uint8_t *)(dst.GetPhyAddr()), (__gm__ uint8_t *)(src.GetPhyAddr()),
-                        elem_size * sizeof(T), ub_tensor, sync_id);
+                        elem_size * sizeof(T), ub_tensor, sync_id, opCode);
 }
 
 ZBAL_KERNEL void zbal_sdma_submit_flag_sqes(__gm__ stars_channel_info_t *batch_write_channel_info,
@@ -438,7 +439,7 @@ ZBAL_KERNEL void zbal_sdma_submit_flag_sqes(__gm__ stars_channel_info_t *batch_w
         zbal_fill_sdma_sqe(channel_info, layout.send_workspace, // send flag buffer of current core
                            layout.remote_recv_workspace +
                                queue_id * ZBAL_SDMA_FLAG_LENGTH, // write flag location for this channel
-                           flag_size, sq_tail, sq_tail - channel_info->sq_head);
+                           flag_size, sq_tail, sq_tail - channel_info->sq_head, 0);
 
         sq_tail = (sq_tail + 1) % (channel_info->sq_depth);
 

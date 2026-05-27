@@ -12,7 +12,6 @@
 #include "zbal_communicator.h"
 #include "zbal_comm_group_meta.h"
 #include "zbal_npu_communicator_default.h"
-#include "zbal_npu_communicator_sdma.h"
 #include "zbal_communicator_dummy.h"
 #include "zbal_comm_group_id.h"
 
@@ -34,6 +33,7 @@ ZResult Communicator::Create(const zbal_comm_options_t &options, zbal_comm_t *co
     commOptions.groupSize = options.groupSize;
     commOptions.myWorldRank = extraState.worldRankId;
     commOptions.myGroupRank = options.groupRankId;
+    commOptions.dataOpType = ZBALInitState::Instance().ext_.dataOperationType;
     commOptions.gva = extraState.gvaDevice;
     commOptions.deviceId = extraState.deviceId;
 
@@ -200,12 +200,7 @@ CommunicatorPtr Communicator::CreateInner(zbal_backend_t backendType, const Comm
 
     switch (backendType) {
         case ZBAL_ASCEND_NPU: {
-            auto dataOpType = static_cast<zbal_data_op_type_t>(ZBALInitState::Instance().ext_.dataOperationType);
-            if (dataOpType == ZBAL_DATA_OP_DEVICE_SDMA) {
-                comm = ZMakeRef<NpuCommunicatorSDMA>(options, isWorldGroup, gWorldCommunicator).Get();
-            } else {
-                comm = ZMakeRef<NpuCommunicatorDefault>(options, isWorldGroup, gWorldCommunicator).Get();
-            }
+            comm = ZMakeRef<NpuCommunicatorDefault>(options, isWorldGroup, gWorldCommunicator).Get();
             break;
         }
         case ZBAL_BACK_BUTT:
