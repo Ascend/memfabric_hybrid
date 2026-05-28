@@ -17,7 +17,7 @@ See the Mulan PSL v2 for more details.
 
 #define ZBAL_STARS_NOTIFY_ADDR_OFFSET (14 * 1024) // notify_addr offset (14KB)
 #define ZBAL_SDMA_FLAG_LENGTH         64
-#define ZBAL_MAX_AIV_PER_NPU          40
+#define ZBAL_MAX_AIV_PER_NPU          48
 constexpr uint32_t UB_ALIGN_SIZE_64 = 64;
 constexpr uint64_t ZBAL_DATA_CACHE_LINE_SIZE = 64;
 

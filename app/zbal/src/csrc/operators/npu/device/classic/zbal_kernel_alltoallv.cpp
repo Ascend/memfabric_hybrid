@@ -330,7 +330,7 @@ public:
                 outputGT.SetGlobalBuffer((__gm__ T *)output, outputElement);
                 AscendC::GlobalTensor<T> inputGT;
                 inputGT.SetGlobalBuffer((__gm__ T *)remoteInput, sourceElement);
-                CpGM2GM(inputGT[inputOffset], outputGT[outputOffset], copyCount);
+                CpGM2GM(inputGT[inputOffset], outputGT[outputOffset], copyCount, false, 0);
 
                 outputOffset += copyCount;
                 AtomicIncStat(this->localStatSendAddr, rank);
@@ -394,7 +394,7 @@ private:
     int64_t aivNum;
     TBuf<> elementsBuf_;
     TBuf<> outputCountsBuf_;
-    TQue<QuePosition::VECIN, 1> atomicIncQue_;
+    TQue<QuePosition::VECOUT, 1> atomicIncQue_;
     TBuf<> getLocalStatBuf_;
     TBuf<> waitLocalStatBuf_;
     uint16_t groupSize;
@@ -463,7 +463,9 @@ int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, 
                         zbal_datatype_t dataType, aclrtStream stream, CommGroupInfo &groupInfo)
 {
     static uint32_t blockDim = 0;
-    if (blockDim == 0) {
+    if (groupInfo.dataOpType == ZBAL_DATA_OP_DEVICE_SDMA) {
+        blockDim = ZBAL_SDMA_AFFECTION_BLOCK;
+    } else if (blockDim == 0) {
         auto ret = aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &blockDim);
         if (ret != 0) {
             printf("ZBALOpAlltoAllV get block dim failed, blockDim:%d\n", ret);

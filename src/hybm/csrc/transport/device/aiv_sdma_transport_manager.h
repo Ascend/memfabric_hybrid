@@ -33,7 +33,7 @@ namespace mf {
 namespace transport {
 namespace device {
 
-constexpr int MAX_AIV_PER_NPU = 40;
+constexpr int MAX_AIV_PER_NPU = 48;
 constexpr int STARS_NOTIFY_ADDR_OFFSET(14 * 1024);
 
 struct HostStreamInfo {
