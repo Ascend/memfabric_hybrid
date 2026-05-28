@@ -54,7 +54,7 @@ def _find_python_include():
 def _get_version(version_dir):
     with open(f"{version_dir}/VERSION", "r", encoding="utf-8") as f:
         version_val = f.read().strip()
-        torch_npu_int_ver = int(torch_npu_version.replace(".", ""))
+        torch_npu_int_ver = torch_npu_version.replace('post', '').replace('.', '')
         main_ver, sub_ver, patch_ver = version_val.split(".")
         return f"{main_ver}.{sub_ver}.{torch_npu_int_ver}.post{patch_ver}"
 
@@ -152,7 +152,7 @@ common_macros = []
 
 
 def set_torch_version():
-    # init set torch_npu_version
+    # set torch_npu_version
     sed_cmd = [
         "sed",
         "-i",
@@ -164,6 +164,21 @@ def set_torch_version():
         logger.error(f"sed torch_npu version failed ret code {result.returncode}, msg {result.stderr}")
     else:
         logger.info(f"set torch_npu version to {torch_npu_version}")
+
+
+def recover_torch_version():
+    # recover __init__.py
+    recover_cmd = [
+        "git",
+        "checkout",
+        "--",
+        "zbal/__init__.py"
+    ]
+    result = subprocess.run(recover_cmd, cwd=cur_dir)
+    if result.returncode != 0:
+        logger.warning(f"recover src code failed ret code {result.returncode}, msg {result.stderr}")
+    else:
+        logger.info(f"recover src code success from {torch_npu_version} to original")
 
 
 set_torch_version()
@@ -290,3 +305,5 @@ setup(
     cmdclass={'build_ext': CustomBuildExtension,
               'bdist_wheel': BuildWheel},
 )
+
+recover_torch_version()

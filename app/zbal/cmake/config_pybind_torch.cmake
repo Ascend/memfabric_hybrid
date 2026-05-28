@@ -12,7 +12,7 @@ execute_process(
 from importlib.metadata import version;
 torch_dir = os.path.realpath(os.path.dirname(torch.__file__));
 torch_npu_dir = os.path.realpath(os.path.dirname(torch_npu.__file__));
-torch_npu_version = version('torch_npu').replace('.', '');
+torch_npu_version = version('torch_npu').replace('post', '').replace('.', '');
 pybind11_dir = os.path.realpath(os.path.dirname(pybind11.__file__));
 abi_enabled=torch.compiled_with_cxx11_abi();
 python_path=os.path.realpath(sysconfig.get_path('include'));
