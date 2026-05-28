@@ -120,3 +120,24 @@ cat /usr/local/memfabric_hybrid/latest/version.info
 bash /usr/local/memfabric_hybrid/latest/uninstall.sh
 # 若为自定义路径，请替换为对应路径下的 uninstall.sh
 ```
+
+---
+## 三、 包权限说明
+
+Run 包安装后，动态库（`.so` 文件）权限默认为 `440`（属主和属组可读，其他用户无权限）。若以非安装用户运行程序，需将部署用户加入安装时指定的属组中：
+
+```bash
+# 查看 so 文件的属组
+ls -l /usr/local/memfabric_hybrid/latest/lib/*.so
+
+# 将部署用户加入该属组
+sudo usermod -a -G <group_name> <deploy_user>
+
+# 退出当前会话后重新登录使组生效
+```
+
+也可在安装时通过 `--install-group` 参数指定自定义属组：
+
+```bash
+bash memfabric_hybrid-*_*_*.run --install-group=<group_name>
+```
