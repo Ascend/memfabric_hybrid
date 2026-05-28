@@ -36,7 +36,7 @@ struct HostSdmaExportInfo {
 }; // 192B
 
 static_assert(sizeof(HostSdmaExportInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
-              "HostSdmaExportInfo must be 200 bytes, "
+              "HostSdmaExportInfo must be 192 bytes, "
               "compatible with HbmExportDeviceInfo and UserHbmExportSliceInfo");
 static_assert(offsetof(HostSdmaExportInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 

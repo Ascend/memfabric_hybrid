@@ -76,6 +76,7 @@ typedef enum {
     HYBM_DOP_TYPE_HOST_URMA = 1U << 5,
     HYBM_DOP_TYPE_HOST_SHM = 1U << 6, /* same-node host shared memory (no network transport) */
     HYBM_DOP_TYPE_AIV_SDMA = 1U << 7,
+    HYBM_DOP_TYPE_DEVICE_URMA = 1U << 8,
     HYBM_DOP_TYPE_BUTT
 } hybm_data_op_type;
 

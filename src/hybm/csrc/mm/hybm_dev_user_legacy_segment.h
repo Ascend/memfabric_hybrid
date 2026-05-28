@@ -64,7 +64,7 @@ struct UserHbmExportSliceInfo {
     char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 121]{};
 };
 static_assert(sizeof(UserHbmExportSliceInfo) == UNIFIED_EXCHANGE_SEG_INFO_SIZE,
-              "UserHbmExportSliceInfo must be 200 bytes, compatible with HostSdmaExportInfo");
+              "UserHbmExportSliceInfo must be 192 bytes, compatible with HostSdmaExportInfo");
 static_assert(offsetof(UserHbmExportSliceInfo, segmentType) == SEGMENT_TYPE_OFFSET, "segmentType offset mismatch!");
 
 class HybmDevUserLegacySegment : public HybmDevLegacySegment {
