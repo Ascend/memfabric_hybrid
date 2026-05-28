@@ -43,7 +43,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
 {
     // TD: enable multi kernel dispatch dealing with different shape : if (elements <= SMALL_DATA_SIZE)
     if (false) {
-        AllGatherSmallKernel op;
+        ZBALAllGatherSmallKernel op;
         zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
@@ -53,7 +53,7 @@ extern "C" __global__ __aicore__ void ZBALAllGatherInner(GM_ADDR input, GM_ADDR 
                 break;
         }
     } else {
-        AllGatherBigKernel op;
+        ZBALAllGatherBigKernel op;
         zbal_datatype_t ZBAL_DATA_TYPE = static_cast<zbal_datatype_t>(dataType);
         KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 

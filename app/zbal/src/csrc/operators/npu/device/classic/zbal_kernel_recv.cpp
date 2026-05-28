@@ -13,7 +13,7 @@
 #include "zbal_kernel_base.h"
 
 template<typename T>
-class ZBALRecvKernel : public BaseKernel {
+class ZBALRecvKernel : public ZBALBaseKernel {
 public:
     ZBAL_KERNEL ZBALRecvKernel() {}
 
@@ -38,7 +38,7 @@ public:
         this->exchangeFlag = exchangeAddr + addrOffset;
         this->exchangeAck = exchangeFlag + addrOffset;
 
-        BaseKernel::Init(comm->dataOpType);
+        ZBALBaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()
@@ -52,12 +52,11 @@ public:
             numPerCore = elements - (aivNum - 1) * numPerCore;
         }
 
-        uint64_t readyFlag;
-        do {
-            readyFlag = GetFlag(exchangeFlag, peer);
-        } while (readyFlag != waitSymbol);
+        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+        ZBALWaitFlag(exchangeFlag, waitSymbol, peer);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
-        uint64_t sendBuf = GetDataAddr(exchangeAddr, peer);
+        uint64_t sendBuf = ZBALGetFlag(exchangeAddr, peer);
         sendGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(sendBuf) + offset, numPerCore);
         recvGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(recvBuf) + offset, numPerCore);
 
@@ -65,11 +64,11 @@ public:
         AscendC::SyncAll<true>();
 
         if (aivIndex == 0) {
-            SetFlag(exchangeFlag, 0, peer);
+            ZBALSetFlag(exchangeFlag, 0, peer);
             AscendC::PipeBarrier<PIPE_ALL>();
 
             auto ackPtr = zbal_ptr(exchangeAck, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
-            SetFlag(ackPtr, waitSymbol, rank);
+            ZBALSetFlag(ackPtr, waitSymbol, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
         }
 

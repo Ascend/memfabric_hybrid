@@ -17,9 +17,9 @@ const uint32_t SMALL_AG_THRESHOLD = 1024 * 7168;
 const uint32_t FULL_COPY_GROUP_SIZE = 4;
 
 template<typename T>
-class BroadcastFullCopyKernel : public BaseKernel {
+class ZBALBroadcastFullCopyKernel : public ZBALBaseKernel {
 public:
-    ZBAL_KERNEL BroadcastFullCopyKernel() {}
+    ZBAL_KERNEL ZBALBroadcastFullCopyKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaGM, uint64_t elements, uint16_t root,
                           uint64_t waitSymbol)
@@ -42,7 +42,7 @@ public:
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        BaseKernel::Init(comm->dataOpType);
+        ZBALBaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()
@@ -51,10 +51,8 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_KERNEL_ALL);
 
         InitDataAddrAndFlag();
-        if (rank != root) {
-            WaitFlag(root);
-        }
-        uint64_t rootDataAddr = GetDataAddr(inputAddr, root);
+        ZBALWaitFlag(flagAddr, flagMagic, root);
+        uint64_t rootDataAddr = ZBALGetFlag(inputAddr, root);
 
         int64_t startRank;
         int64_t endRank;
@@ -120,9 +118,9 @@ private:
                 auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
                 auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
 
-                SetDataAddr(ptr, dataAddr, rank);
+                ZBALSetFlag(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
-                SetFlag(flagPtr, flagMagic, rank);
+                ZBALSetFlag(flagPtr, flagMagic, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
         } else if (aivIndex < groupSize) {
@@ -130,22 +128,12 @@ private:
             auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
             auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
 
-            SetDataAddr(ptr, dataAddr, rank);
+            ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
-            SetFlag(flagPtr, flagMagic, rank);
+            ZBALSetFlag(flagPtr, flagMagic, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
-    }
-
-    ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
-    {
-        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        uint64_t readyFlag;
-        do {
-            readyFlag = GetFlag(flagAddr, coreTargetRank);
-        } while (readyFlag != flagMagic);
-        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
@@ -170,9 +158,9 @@ private:
 };
 
 template<typename T>
-class BroadcastRingKernel : public BaseKernel {
+class ZBALBroadcastRingKernel : public ZBALBaseKernel {
 public:
-    ZBAL_KERNEL BroadcastRingKernel() {}
+    ZBAL_KERNEL ZBALBroadcastRingKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaGM, uint64_t elements, uint16_t root,
                           uint64_t waitSymbol)
@@ -195,7 +183,7 @@ public:
         this->flagAddr = this->inputAddr + inputAddrSize;
         this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        BaseKernel::Init(comm->dataOpType);
+        ZBALBaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void Process()
@@ -203,8 +191,8 @@ public:
 #ifdef __DAV_C220_VEC__
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_KERNEL_ALL);
         InitDataAddrAndFlag();
-        WaitFlag(root);
-        uint64_t rootDataAddr = GetDataAddr(inputAddr, root);
+        ZBALWaitFlag(flagAddr, flagMagic, root);
+        uint64_t rootDataAddr = ZBALGetFlag(inputAddr, root);
 
         elementsPerRank = elements / groupSize;
         rankOffset = rank * elementsPerRank;
@@ -232,12 +220,12 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_ALLGATHER);
         BarrierAll(comm);
         if (elements * sizeof(T) <= SMALL_AG_THRESHOLD) {
-            AllGatherSmallKernel op;
+            ZBALAllGatherSmallKernel op;
             op.Init<T>((GM_ADDR)(input) + rankOffset * sizeof(T), (GM_ADDR)output, (GM_ADDR)comm, elementsPerRank,
                        flagMagic + 16);
             op.Process<T>();
         } else {
-            AllGatherBigKernel op;
+            ZBALAllGatherBigKernel op;
             op.Init<T>((GM_ADDR)(input) + rankOffset * sizeof(T), (GM_ADDR)output, (GM_ADDR)comm, elementsPerRank,
                        flagMagic + 16);
             op.Process<T>();
@@ -268,9 +256,9 @@ private:
                 auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
                 auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
 
-                SetDataAddr(ptr, dataAddr, rank);
+                ZBALSetFlag(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
-                SetFlag(flagPtr, flagMagic, rank);
+                ZBALSetFlag(flagPtr, flagMagic, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
         } else if (aivIndex < groupSize) {
@@ -278,22 +266,12 @@ private:
             auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
             auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
 
-            SetDataAddr(ptr, dataAddr, rank);
+            ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
-            SetFlag(flagPtr, flagMagic, rank);
+            ZBALSetFlag(flagPtr, flagMagic, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
-    }
-
-    ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
-    {
-        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        uint64_t readyFlag;
-        do {
-            readyFlag = GetFlag(flagAddr, coreTargetRank);
-        } while (readyFlag != flagMagic);
-        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
@@ -328,73 +306,73 @@ extern "C" __global__ __aicore__ void ZBALBroadcastInner(GM_ADDR input, GM_ADDR 
     if (groupSize <= FULL_COPY_GROUP_SIZE || elements % groupSize != 0) {
         switch (ZBAL_DATA_TYPE) {
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT8: {
-                BroadcastFullCopyKernel<int8_t> op;
+                ZBALBroadcastFullCopyKernel<int8_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT16: {
-                BroadcastFullCopyKernel<int16_t> op;
+                ZBALBroadcastFullCopyKernel<int16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT32: {
-                BroadcastFullCopyKernel<int32_t> op;
+                ZBALBroadcastFullCopyKernel<int32_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
-                BroadcastFullCopyKernel<float16_t> op;
+                ZBALBroadcastFullCopyKernel<float16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
-                BroadcastFullCopyKernel<float> op;
+                ZBALBroadcastFullCopyKernel<float> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT64: {
-                BroadcastFullCopyKernel<int64_t> op;
+                ZBALBroadcastFullCopyKernel<int64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64: {
-                BroadcastFullCopyKernel<uint64_t> op;
+                ZBALBroadcastFullCopyKernel<uint64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8: {
-                BroadcastFullCopyKernel<uint8_t> op;
+                ZBALBroadcastFullCopyKernel<uint8_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16: {
-                BroadcastFullCopyKernel<uint16_t> op;
+                ZBALBroadcastFullCopyKernel<uint16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32: {
-                BroadcastFullCopyKernel<uint32_t> op;
+                ZBALBroadcastFullCopyKernel<uint32_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP64: {
-                BroadcastFullCopyKernel<float64_t> op;
+                ZBALBroadcastFullCopyKernel<float64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16: {
-                BroadcastFullCopyKernel<bfloat16_t> op;
+                ZBALBroadcastFullCopyKernel<bfloat16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
@@ -405,73 +383,73 @@ extern "C" __global__ __aicore__ void ZBALBroadcastInner(GM_ADDR input, GM_ADDR 
     } else {
         switch (ZBAL_DATA_TYPE) {
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT8: {
-                BroadcastRingKernel<int8_t> op;
+                ZBALBroadcastRingKernel<int8_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT16: {
-                BroadcastRingKernel<int16_t> op;
+                ZBALBroadcastRingKernel<int16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT32: {
-                BroadcastRingKernel<int32_t> op;
+                ZBALBroadcastRingKernel<int32_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
-                BroadcastRingKernel<float16_t> op;
+                ZBALBroadcastRingKernel<float16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
-                BroadcastRingKernel<float> op;
+                ZBALBroadcastRingKernel<float> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_INT64: {
-                BroadcastRingKernel<int64_t> op;
+                ZBALBroadcastRingKernel<int64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64: {
-                BroadcastRingKernel<uint64_t> op;
+                ZBALBroadcastRingKernel<uint64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8: {
-                BroadcastRingKernel<uint8_t> op;
+                ZBALBroadcastRingKernel<uint8_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16: {
-                BroadcastRingKernel<uint16_t> op;
+                ZBALBroadcastRingKernel<uint16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32: {
-                BroadcastRingKernel<uint32_t> op;
+                ZBALBroadcastRingKernel<uint32_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_FP64: {
-                BroadcastRingKernel<float64_t> op;
+                ZBALBroadcastRingKernel<float64_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;
             }
             case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16: {
-                BroadcastRingKernel<bfloat16_t> op;
+                ZBALBroadcastRingKernel<bfloat16_t> op;
                 op.Init(input, output, metaAddr, elements, root, waitSymbol);
                 op.Process();
                 break;

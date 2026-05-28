@@ -16,9 +16,9 @@ using namespace zbal;
 constexpr uint16_t ZBAL_INOUT_LEN = 2;
 
 template<typename T>
-class AlltoAllVKernel : public BaseKernel {
+class ZBALAlltoAllVKernel : public ZBALBaseKernel {
 public:
-    ZBAL_KERNEL AlltoAllVKernel() {}
+    ZBAL_KERNEL ZBALAlltoAllVKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaGM, GM_ADDR inputCumSum, GM_ADDR outputCounts,
                           GM_ADDR elements, uint64_t waitSymbol)
@@ -56,7 +56,7 @@ public:
         pipe.InitBuffer(waitLocalStatBuf_, int32BufSize);
         pipe.InitBuffer(getLocalStatBuf_, int32BufSize);
 
-        BaseKernel::Init(comm->dataOpType);
+        ZBALBaseKernel::Init(comm->dataOpType);
 #endif
     }
 
@@ -79,8 +79,8 @@ public:
         AscendC::DataCopyPad(outputCountsLT, outputCountsGT, copyParams2, padExtParams2);
 
         for (uint16_t i = 0; i < groupSize; i++) {
-            SetFlag(this->localStatSendAddr, 0, i);
-            SetFlag(this->localStatBaseAddr, 0, i);
+            ZBALSetFlag(this->localStatSendAddr, 0, i);
+            ZBALSetFlag(this->localStatBaseAddr, 0, i);
             outputCountsArray[i] = outputCountsLT.GetValue(i);
             copyElements[i] = 0;
         }
@@ -97,27 +97,27 @@ public:
     {
         // exchange input addr
         auto ptr = zbal_ptr(this->inputAddr, myGroupRank, offset, memSize, peerRank);
-        SetFlag(ptr, reinterpret_cast<uint64_t>(input), myGroupRank);
+        ZBALSetFlag(ptr, reinterpret_cast<uint64_t>(input), myGroupRank);
 
         // exchange inputCount
         ptr = zbal_ptr(this->inputCumSumAddr, myGroupRank, offset, memSize, peerRank);
-        SetFlag(ptr, reinterpret_cast<uint64_t>(inputCumSum), myGroupRank);
+        ZBALSetFlag(ptr, reinterpret_cast<uint64_t>(inputCumSum), myGroupRank);
 
         // exchange input elements
         ptr = zbal_ptr(this->inputElementAddr, myGroupRank, offset, memSize, peerRank);
-        SetFlag(ptr, inputElement, myGroupRank);
+        ZBALSetFlag(ptr, inputElement, myGroupRank);
 
         // write exchangeFlag
         ptr = zbal_ptr(this->flagAddr, myGroupRank, offset, memSize, peerRank);
-        SetFlag(ptr, waitSymbol, myGroupRank);
+        ZBALSetFlag(ptr, waitSymbol, myGroupRank);
     }
 
     ZBAL_KERNEL void GetInputInfo(uint16_t offset, uint64_t &inputOff, uint64_t &srcElement, __gm__ void **srcAddress)
     {
-        uint64_t srcCumSumAddr = GetFlag(inputCumSumAddr, offset);
-        inputOff = GetFlag(reinterpret_cast<__gm__ uint64_t *>(srcCumSumAddr), myGroupRank);
-        srcElement = GetFlag(inputElementAddr, offset);
-        *srcAddress = reinterpret_cast<__gm__ void *>(GetFlag(this->inputAddr, offset));
+        uint64_t srcCumSumAddr = ZBALGetFlag(inputCumSumAddr, offset);
+        inputOff = ZBALGetFlag(reinterpret_cast<__gm__ uint64_t *>(srcCumSumAddr), myGroupRank);
+        srcElement = ZBALGetFlag(inputElementAddr, offset);
+        *srcAddress = reinterpret_cast<__gm__ void *>(ZBALGetFlag(this->inputAddr, offset));
     }
 
     ZBAL_KERNEL void GetCoreCommonRangeInfo(uint16_t &commStartRank, uint16_t &commEndRank)
@@ -285,7 +285,7 @@ public:
                         }
                         core += 1;
                         if (core >= aivNum) {
-                            k += groupSize;     // exit outer loop
+                            k += groupSize; // exit outer loop
                             break;
                         }
                         coreRight += avgElement;
@@ -294,13 +294,13 @@ public:
             }
 
             for (uint16_t m = 0; m < groupSize; m++) {
-                SetFlag(this->localStatBaseAddr, statBase[m], m);
+                ZBALSetFlag(this->localStatBaseAddr, statBase[m], m);
             }
 
-            SetFlag(this->localStatReadyAddr, waitSymbol, 0);
+            ZBALSetFlag(this->localStatReadyAddr, waitSymbol, 0);
         }
 
-        WaitFlag(this->localStatReadyAddr, waitSymbol, 0);
+        ZBALWaitFlag(this->localStatReadyAddr, waitSymbol, 0);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_INIT_STAT);
     }
 
@@ -317,7 +317,7 @@ public:
             uint64_t copyCount = copyElements[rank];
             if (copyCount > 0) {
                 ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-                WaitFlag(this->flagAddr, waitSymbol, rank);
+                ZBALWaitFlag(this->flagAddr, waitSymbol, rank);
                 ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
 
                 uint64_t inputOffset;
@@ -346,7 +346,7 @@ public:
             WaitLocalStat(this->localStatSendAddr, k);
 
             auto ptr = zbal_ptr(this->statAddr, myGroupRank, static_cast<int>(k), memSize, peerRank);
-            SetFlag(ptr, waitSymbol, myGroupRank);
+            ZBALSetFlag(ptr, waitSymbol, myGroupRank);
         }
     }
 
@@ -354,7 +354,7 @@ public:
     {
         for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
             ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
-            WaitFlag(this->statAddr, waitSymbol, k);
+            ZBALWaitFlag(this->statAddr, waitSymbol, k);
             ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
         }
     }
@@ -439,7 +439,7 @@ private:
 
 #define ZBAL_ALLTOALLV_CASE(TYPE, ENUM)                                                    \
     case zbal_datatype_t::ENUM: {                                                          \
-        AlltoAllVKernel<TYPE> op;                                                          \
+        ZBALAlltoAllVKernel<TYPE> op;                                                      \
         op.Init(input, output, metaAddr, inputCumSum, outputCounts, elements, waitSymbol); \
         op.Process();                                                                      \
         break;                                                                             \

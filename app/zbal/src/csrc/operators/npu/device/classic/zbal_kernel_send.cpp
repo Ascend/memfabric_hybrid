@@ -44,16 +44,16 @@ public:
         uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(sendBuf));
         auto ptr = zbal_ptr(exchangeAddr, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
         auto flagPtr = zbal_ptr(exchangeFlag, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
-        SetDataAddr(ptr, dataAddr, rank);
+        ZBALSetFlag(ptr, dataAddr, rank);
         AscendC::PipeBarrier<PIPE_ALL>();
-        SetFlag(flagPtr, waitSymbol, rank);
+        ZBALSetFlag(flagPtr, waitSymbol, rank);
         AscendC::PipeBarrier<PIPE_ALL>();
 
-        uint64_t readyFlag;
-        do {
-            readyFlag = GetFlag(exchangeAck, peer);
-        } while (readyFlag != waitSymbol);
-        SetFlag(exchangeAck, 0, peer);
+        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+        ZBALWaitFlag(exchangeAck, waitSymbol, peer);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
+
+        ZBALSetFlag(exchangeAck, 0, peer);
         AscendC::PipeBarrier<PIPE_ALL>();
         ZBAL_PROF_STOP(comm, ZBAL_PROF_SEND_KERNEL_ALL);
 #endif

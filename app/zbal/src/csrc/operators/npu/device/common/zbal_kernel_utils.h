@@ -95,71 +95,7 @@ ZBAL_KERNEL __gm__ void *zbal_ptr(__gm__ void *ptr, int curPe, int dstPe, uint64
     return reinterpret_cast<__gm__ void *>(dstPtr);
 }
 
-template<typename T>
-ZBAL_KERNEL T zbal_load(__gm__ T *addr)
-{
-    dcciCacheline(addr);
-    return *((__gm__ T *)addr);
-}
-
-template<typename T>
-ZBAL_KERNEL void zbal_store(__gm__ T *addr, T value)
-{
-    *((__gm__ T *)addr) = value;
-    dcciCacheline(addr);
-}
-
-ZBAL_KERNEL void SetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint64_t value, uint16_t groupSize,
-                              AscendC::LocalTensor<uint64_t> localTensor)
-{
-    GlobalTensor<uint64_t> globalTensor;
-    globalTensor.SetGlobalBuffer((__gm__ uint64_t *)ptr, groupSize * ZBAL_FLAG_SIZE);
-    localTensor.SetValue(0, value);
-    SyncFunc<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
-    AscendC::DataCopy(globalTensor[rankId * ZBAL_FLAG_SIZE], localTensor, UB_PAD_COUNT);
-}
-
-ZBAL_KERNEL void WaitMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint64_t value, uint16_t groupSize,
-                               AscendC::LocalTensor<uint64_t> localTensor)
-{
-    GlobalTensor<uint64_t> globalTensor;
-    globalTensor.SetGlobalBuffer((__gm__ uint64_t *)ptr, groupSize * ZBAL_FLAG_SIZE);
-    SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
-    while (true) {
-        AscendC::DataCopy(localTensor, globalTensor[rankId * ZBAL_FLAG_SIZE], UB_PAD_COUNT);
-        SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
-        if (localTensor.GetValue(0) == value) {
-            break;
-        }
-    }
-}
-
-ZBAL_KERNEL void GetMetaValue(__gm__ uint64_t *ptr, uint32_t rankId, uint16_t groupSize,
-                              AscendC::LocalTensor<uint64_t> localTensor)
-{
-    GlobalTensor<uint64_t> globalTensor;
-    globalTensor.SetGlobalBuffer((__gm__ uint64_t *)ptr, groupSize * ZBAL_FLAG_SIZE);
-    SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
-    AscendC::DataCopy(localTensor, globalTensor[rankId * ZBAL_FLAG_SIZE], UB_PAD_COUNT);
-}
-
-ZBAL_KERNEL uint64_t GetDataAddr(__gm__ void *metaAddr, uint32_t rank)
-{
-    uint32_t dataAddrOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
-    dcciCacheline((__gm__ uint8_t *)dataGmAddr);
-    return *dataGmAddr;
-}
-
-ZBAL_KERNEL void SetDataAddr(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
-{
-    uint32_t dataAddrOffset = rank * ZBAL_FLAG_SIZE;
-    __gm__ uint64_t *dataGmAddr = (__gm__ uint64_t *)metaAddr + dataAddrOffset;
-    *dataGmAddr = val;
-    dcciCacheline((__gm__ uint8_t *)dataGmAddr);
-}
-
-ZBAL_KERNEL uint64_t GetFlag(__gm__ void *metaAddr, uint32_t rank)
+ZBAL_KERNEL uint64_t ZBALGetFlag(__gm__ void *metaAddr, uint32_t rank)
 {
     uint32_t flagOffset = rank * ZBAL_FLAG_SIZE;
     __gm__ uint64_t *flagAddr = (__gm__ uint64_t *)metaAddr + flagOffset;
@@ -167,7 +103,7 @@ ZBAL_KERNEL uint64_t GetFlag(__gm__ void *metaAddr, uint32_t rank)
     return *flagAddr;
 }
 
-ZBAL_KERNEL void SetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
+ZBAL_KERNEL void ZBALSetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
 {
     uint32_t flagOffset = rank * ZBAL_FLAG_SIZE;
     __gm__ uint64_t *flagAddr = (__gm__ uint64_t *)metaAddr + flagOffset;
@@ -175,10 +111,10 @@ ZBAL_KERNEL void SetFlag(__gm__ void *metaAddr, uint64_t val, uint32_t rank)
     dcciCacheline((__gm__ uint8_t *)flagAddr);
 }
 
-ZBAL_KERNEL void WaitFlag(__gm__ void *metaAddr, uint64_t flagVal, uint32_t rank)
+ZBAL_KERNEL void ZBALWaitFlag(__gm__ void *metaAddr, uint64_t flagVal, uint32_t rank)
 {
     while (true) {
-        uint64_t flag = GetFlag(metaAddr, rank);
+        uint64_t flag = ZBALGetFlag(metaAddr, rank);
         if (flag == flagVal) {
             break;
         }
@@ -219,17 +155,17 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
         AscendC::PipeBarrier<PIPE_ALL>();
         auto ptr = zbal_ptr(flagAddr, comm->myGroupRank, rank,
                             comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
-        SetFlag(ptr, barrierMagic, comm->myGroupRank);
+        ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
     }
     for (uint16_t rank = startRank; rank < endRank; rank++) {
         AscendC::PipeBarrier<PIPE_ALL>();
         uint64_t readyFlag;
         do {
-            readyFlag = GetFlag(flagAddr, rank);
+            readyFlag = ZBALGetFlag(flagAddr, rank);
         } while (readyFlag != barrierMagic);
 
         AscendC::PipeBarrier<PIPE_ALL>();
-        SetFlag(flagAddr, 0, rank);
+        ZBALSetFlag(flagAddr, 0, rank);
     }
 
     // stat
@@ -237,17 +173,17 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
         AscendC::PipeBarrier<PIPE_ALL>();
         auto ptr = zbal_ptr(statAddr, comm->myGroupRank, rank,
                             comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
-        SetFlag(ptr, barrierMagic, comm->myGroupRank);
+        ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
     }
     for (uint16_t rank = startRank; rank < endRank; rank++) {
         AscendC::PipeBarrier<PIPE_ALL>();
         uint64_t readyFlag;
         do {
-            readyFlag = GetFlag(statAddr, rank);
+            readyFlag = ZBALGetFlag(statAddr, rank);
         } while (readyFlag != barrierMagic);
 
         AscendC::PipeBarrier<PIPE_ALL>();
-        SetFlag(statAddr, 0, rank);
+        ZBALSetFlag(statAddr, 0, rank);
     }
 
     AscendC::PipeBarrier<PIPE_ALL>();

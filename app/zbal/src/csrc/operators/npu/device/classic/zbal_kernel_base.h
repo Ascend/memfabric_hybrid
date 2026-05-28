@@ -23,9 +23,9 @@
 
 using namespace zbal;
 
-class BaseKernel {
+class ZBALBaseKernel {
 public:
-    ZBAL_KERNEL BaseKernel() {};
+    ZBAL_KERNEL ZBALBaseKernel() {};
 
     ZBAL_KERNEL void Init(uint32_t type = ZBAL_DATA_OP_MTE)
     {
@@ -35,8 +35,7 @@ public:
 
 protected:
     template<typename T>
-    ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> inputTensor,
-                             AscendC::GlobalTensor<T> outputTensor,
+    ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> inputTensor, AscendC::GlobalTensor<T> outputTensor,
                              uint32_t elemNum, bool atomic = false, uint32_t atomicOp = 0)
     {
         if (dataOpType == ZBAL_DATA_OP_DEVICE_SDMA) {
@@ -47,8 +46,7 @@ protected:
     }
 
     template<typename T>
-    ZBAL_KERNEL void CpGM2GMMTE(AscendC::GlobalTensor<T> inputTensor,
-                                AscendC::GlobalTensor<T> outputTensor,
+    ZBAL_KERNEL void CpGM2GMMTE(AscendC::GlobalTensor<T> inputTensor, AscendC::GlobalTensor<T> outputTensor,
                                 uint32_t elemNum, bool atomic, uint32_t atomicOp)
     {
         if (atomic) {
@@ -80,8 +78,7 @@ protected:
     }
 
     template<typename T>
-    ZBAL_KERNEL void CpGM2GMSDMA(AscendC::GlobalTensor<T> inputTensor,
-                                 AscendC::GlobalTensor<T> outputTensor,
+    ZBAL_KERNEL void CpGM2GMSDMA(AscendC::GlobalTensor<T> inputTensor, AscendC::GlobalTensor<T> outputTensor,
                                  uint64_t elemNum, bool atomic, uint32_t atomicOp)
     {
         uint8_t opCode = 0;

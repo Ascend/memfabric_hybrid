@@ -16,9 +16,9 @@
 #include "zbal_kernel_utils.h"
 #include "zbal_kernel_trace.h"
 
-class BarrierKernel {
+class ZBALBarrierKernel {
 public:
-    ZBAL_KERNEL BarrierKernel() {}
+    ZBAL_KERNEL ZBALBarrierKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR metaGM, uint64_t waitSymbol)
     {
@@ -70,7 +70,7 @@ private:
 
 extern "C" __global__ __aicore__ void ZBALBarrierInner(GM_ADDR metaAddr, uint64_t waitSymbol)
 {
-    BarrierKernel op;
+    ZBALBarrierKernel op;
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
     op.Init(metaAddr, waitSymbol);

@@ -23,9 +23,9 @@ struct RsParallelStrategy {
 };
 
 template<typename T>
-class ZeroBuffReduceScatterKernel : public BaseKernel {
+class ZBALReduceScatterKernel : public ZBALBaseKernel {
 public:
-    ZBAL_KERNEL ZeroBuffReduceScatterKernel() {}
+    ZBAL_KERNEL ZBALReduceScatterKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR input, GM_ADDR output, GM_ADDR metaAddr, size_t elements, uint32_t reduceOp,
                           uint64_t flagMagic)
@@ -49,7 +49,7 @@ public:
 
         InitParallelStrategy();
 
-        BaseKernel::Init(comm->dataOpType);
+        ZBALBaseKernel::Init(comm->dataOpType);
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -130,8 +130,10 @@ public:
         }
 
         for (auto srcRank = meta.startRank; srcRank < meta.endRank; srcRank++) {
-            WaitFlag(srcRank);
-            uint64_t inputAddr = GetDataAddr(exchangeAddr, srcRank);
+            ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
+            ZBALWaitFlag(exchangeFlag, flagMagic, srcRank);
+            ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
+            uint64_t inputAddr = ZBALGetFlag(exchangeAddr, srcRank);
             inputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputAddr) + xOffset, numPerCore);
             outputGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output) + yOffset, numPerCore);
             if (srcRank != rank) {
@@ -154,22 +156,12 @@ private:
             uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
             auto ptr = zbal_ptr(exchangeAddr, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
             auto flagPtr = zbal_ptr(exchangeFlag, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
-            SetDataAddr(ptr, dataAddr, rank);
+            ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
-            SetFlag(flagPtr, flagMagic, rank);
+            ZBALSetFlag(flagPtr, flagMagic, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
-    }
-
-    ZBAL_KERNEL void WaitFlag(uint32_t coreTargetRank)
-    {
-        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
-        uint64_t readyFlag;
-        do {
-            readyFlag = GetFlag(exchangeFlag, coreTargetRank);
-        } while (readyFlag != flagMagic);
-        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
@@ -193,9 +185,9 @@ private:
     __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
-extern "C" __global__ __aicore__ void ZeroBuffReduceScatter(GM_ADDR input, GM_ADDR output, size_t recvNumel,
-                                                            uint32_t dataType, uint32_t reduceOp, GM_ADDR metaAddr,
-                                                            uint64_t flagMagic)
+extern "C" __global__ __aicore__ void ZBALReduceScatterInner(GM_ADDR input, GM_ADDR output, size_t recvNumel,
+                                                             uint32_t dataType, uint32_t reduceOp, GM_ADDR metaAddr,
+                                                             uint64_t flagMagic)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
 
@@ -205,37 +197,37 @@ extern "C" __global__ __aicore__ void ZeroBuffReduceScatter(GM_ADDR input, GM_AD
     zbal_datatype_t zbalDataType = static_cast<zbal_datatype_t>(dataType);
     switch (zbalDataType) {
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT8: {
-            ZeroBuffReduceScatterKernel<int8_t> op;
+            ZBALReduceScatterKernel<int8_t> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT16: {
-            ZeroBuffReduceScatterKernel<int16_t> op;
+            ZBALReduceScatterKernel<int16_t> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT32: {
-            ZeroBuffReduceScatterKernel<int32_t> op;
+            ZBALReduceScatterKernel<int32_t> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
-            ZeroBuffReduceScatterKernel<float> op;
+            ZBALReduceScatterKernel<float> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
-            ZeroBuffReduceScatterKernel<float16_t> op;
+            ZBALReduceScatterKernel<float16_t> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16: {
-            ZeroBuffReduceScatterKernel<bfloat16_t> op;
+            ZBALReduceScatterKernel<bfloat16_t> op;
             op.Init(input, output, metaAddr, recvNumel, reduceOp, flagMagic);
             op.Process();
             break;
@@ -259,8 +251,8 @@ int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_d
 
     uint64_t flagMagic = ++groupInfo.waitSymbol;
 
-    ZeroBuffReduceScatter<<<blockDim, nullptr, stream>>>(input, output, recvNumel, dataTypeNum, reduceOpNum, metaAddr,
-                                                         flagMagic);
+    ZBALReduceScatterInner<<<blockDim, nullptr, stream>>>(input, output, recvNumel, dataTypeNum, reduceOpNum, metaAddr,
+                                                          flagMagic);
 
     return 0;
 }

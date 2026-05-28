@@ -9,7 +9,7 @@ CURRENT_DIR=$(
 
 echo $CURRENT_DIR
 
-TEST_TYPE=bfloat16_t
+TEST_TYPE=float
 CASE_NUM=0  # if CASE_NUM is 0 will use CASE_LIST instead
 CASE_LIST=${1:-7340032}
 WORLD_SIZE=${2:-16}
