@@ -167,7 +167,7 @@ Result DlHalApi::LoadLibrary(uint32_t gvaVersion)
         return BM_DL_FUNCTION_FAILED;
     }
 
-    BM_ASSERT_RETURN(gvaVersion != HYBM_GVA_UNKNOWN, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(gvaVersion != HYBM_GVA_UNKNOWN, "gvaVersion = " << gvaVersion, BM_NOT_INITIALIZED);
     /* load sym */
     auto ret = LoadHybmV1V2Library(gvaVersion) | LoadHybmVmmLibrary(gvaVersion);
     if (ret != 0) {

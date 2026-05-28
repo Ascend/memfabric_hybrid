@@ -78,7 +78,7 @@ int32_t GvaUnreserveMemory(uint64_t address, uint64_t total, size_t singleRankSi
     size_t maxChunk = HybmDevLegacySegment::GetReserveChunkSize(total, singleRankSize);
     while (ptr < address + total) {
         auto ret = drv::HalGvaUnreserveMemory(ptr);
-        BM_ASSERT_RETURN(ret == 0, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, ret);
         ptr += maxChunk;
     }
     return BM_OK;
@@ -192,7 +192,7 @@ Result HybmDevLegacySegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice)
 Result HybmDevLegacySegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     auto ret = RegisterMemCommon(addr, size, slice);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     slices_.emplace(slice->index_, slice);
     return BM_OK;
 }
@@ -236,7 +236,7 @@ Result HybmDevLegacySegment::Export(std::string &exInfo) noexcept
 // export不可重入
 Result HybmDevLegacySegment::Export(const MemSlicePtr &slice, std::string &exInfo) noexcept
 {
-    BM_ASSERT_RETURN(slice != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(slice != nullptr, "slice is nullptr", BM_INVALID_PARAM);
 
     auto pos = slices_.find(slice->index_);
     if (pos == slices_.end()) {
@@ -394,7 +394,7 @@ Result HybmDevLegacySegment::Mmap() noexcept
         // .host_va use info.deviceVa, because .host_va is the part of key for hybm_va_manager allocatedLookupMapByLva_
         ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
             {im.gva, im.deviceVa, im.deviceVa, im.size, HYBM_MEM_TYPE_DEVICE}, options_.rankId, im.rankId);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     }
     imports_.clear();
     return BM_OK;

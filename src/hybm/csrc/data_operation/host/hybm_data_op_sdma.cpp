@@ -49,7 +49,8 @@ Result HostDataOpSDMA::Initialize() noexcept
         BM_LOG_WARN("A5 or x86 not support batch extend copy now!");
     } else {
         auto ret = DlAclApi::AclrtMallocHost(&paramSpace_, HYBM_PARAM_SPACE_SIZE);
-        BM_ASSERT_RETURN(ret == 0 && paramSpace_ != nullptr, BM_MALLOC_FAILED);
+        BM_ASSERT_LOG_AND_RETURN(ret == 0 && paramSpace_ != nullptr,
+            "ret = " << ret << ", " << "paramSpace_ is nullptr", BM_MALLOC_FAILED);
 
         void *output = nullptr;
         ret = DlHalApi::HalHostRegister(paramSpace_, HYBM_PARAM_SPACE_SIZE, HOST_MEM_MAP_DEV,
@@ -91,7 +92,7 @@ void HostDataOpSDMA::UnInitialize() noexcept
 Result HostDataOpSDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
 
     if (options.flags & ASYNC_COPY_FLAG || options.stream != nullptr) {
         return DataCopyAsync(params, direction, options);
@@ -336,7 +337,7 @@ void HostDataOpSDMA::TransformVa(void *&src, void *&dst, hybm_data_copy_directio
 Result HostDataOpSDMA::Wait(int32_t waitId) noexcept
 {
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
-    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(hStream != nullptr, "hStream is nullptr", BM_ERROR);
     return hStream->Synchronize();
 }
 
@@ -516,7 +517,7 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, ui
     if (flags & COPY_EXTEND_FLAG) {
         void *st = (stream != nullptr) ? stream : HybmStreamManager::GetThreadAclStream();
         auto ret = DlHybmExtendApi::HybmCopyExtend(srcVA, destVA, count, HYBM_EXTEND_CONCURRENT, st);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
         ret = DlAclApi::AclrtSynchronizeStream(st);
         BM_VALIDATE_RETURN(ret == BM_OK, "AclrtSynchronizeStream failed:" << ret, BM_ERROR);
         return BM_OK;
@@ -525,13 +526,13 @@ Result HostDataOpSDMA::CopyG2G(void *destVA, const void *srcVA, size_t count, ui
     StreamTask task{};
     InitG2GStreamTask(task, destVA, srcVA, count);
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
-    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(hStream != nullptr, "hStream is nullptr", BM_ERROR);
 
     auto ret = hStream->SubmitTasks(task);
-    BM_ASSERT_RETURN(ret == 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, BM_ERROR);
 
     ret = hStream->Synchronize();
-    BM_ASSERT_RETURN(ret == 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, BM_ERROR);
     return BM_OK;
 }
 
@@ -548,12 +549,12 @@ Result HostDataOpSDMA::CopyG2GAsync(void *destVA, const void *srcVA, size_t coun
     StreamTask task{};
     InitG2GStreamTask(task, destVA, srcVA, count);
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
-    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(hStream != nullptr, "hStream is nullptr", BM_ERROR);
 
     TP_TRACE_BEGIN(TP_HYBM_SDMA_SUBMIT_G2G_TASK);
     auto ret = hStream->SubmitTasks(task);
     TP_TRACE_END(TP_HYBM_SDMA_SUBMIT_G2G_TASK, ret);
-    BM_ASSERT_RETURN(ret == 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, BM_ERROR);
     return BM_OK;
 }
 

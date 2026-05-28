@@ -70,7 +70,7 @@ Result HostDataOpHostShm::CopyHostToDevice(void *destVA, const void *srcVA, uint
 Result HostDataOpHostShm::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                    const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     (void)options;
     if (!IsSupportedDirection(direction)) {
         BM_LOG_ERROR("data copy invalid direction for host shm: " << direction);
@@ -100,7 +100,7 @@ Result HostDataOpHostShm::DataCopy(hybm_copy_params &params, hybm_data_copy_dire
 Result HostDataOpHostShm::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     (void)params;
     (void)direction;
     (void)options;
@@ -147,7 +147,7 @@ Result HostDataOpHostShm::BatchCopyHostToDevice(void **destAddrs, void **srcAddr
 Result HostDataOpHostShm::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                         const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     (void)options;
     if (!IsSupportedDirection(direction)) {
         BM_LOG_ERROR("batch data copy invalid direction for host shm: " << direction);
@@ -175,7 +175,7 @@ Result HostDataOpHostShm::BatchDataCopy(hybm_batch_copy_params &params, hybm_dat
 
 Result HostDataOpHostShm::Wait(int32_t waitId) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     (void)waitId;
     return BM_OK;
 }

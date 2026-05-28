@@ -149,7 +149,7 @@ void HostDataOpRDMA::PreRegisterLocalMr(hybm_copy_params &params, hybm_data_copy
 Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_direction direction,
                                 const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     Result ret;
     TransformVa(params.src, params.dest, direction);
     switch (direction) {
@@ -178,14 +178,14 @@ Result HostDataOpRDMA::DataCopy(hybm_copy_params &params, hybm_data_copy_directi
 Result HostDataOpRDMA::DataCopyAsync(hybm_copy_params &params, hybm_data_copy_direction direction,
                                      const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     BM_LOG_ERROR("not supported data copy async!");
     return BM_ERROR;
 }
 
 Result HostDataOpRDMA::Wait(int32_t waitId) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     return BM_OK;
 }
 
@@ -402,7 +402,7 @@ void HostDataOpRDMA::BatchUnRegisterLocalMr(hybm_batch_copy_params &params, hybm
 Result HostDataOpRDMA::BatchDataCopy(hybm_batch_copy_params &params, hybm_data_copy_direction direction,
                                      const ExtOptions &options) noexcept
 {
-    BM_ASSERT_RETURN(inited_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(inited_, "inited_ = " << inited_, BM_NOT_INITIALIZED);
     for (uint32_t i = 0; i < params.batchSize; i++) {
         TransformVa(params.sources[i], params.destinations[i], direction);
     }
@@ -553,7 +553,7 @@ Result HostDataOpRDMA::BatchWriteLD2RH(uint32_t rmtRankId, CopyDescriptor &rmtCo
     tmpOptions.destRankId = rmtRankId;
     size_t batchSize = rmtCopyDescriptor.counts.size();
     uint64_t *ptr = new uint64_t[batchSize * 3];
-    BM_ASSERT_RETURN(ptr != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(ptr != nullptr, "ptr is nullptr", BM_MALLOC_FAILED);
     uint64_t batchOffset = 0;
     while (batchOffset < batchSize) {
         uint64_t currentBatchDataSize = 0;
@@ -636,7 +636,7 @@ Result HostDataOpRDMA::BatchReadRH2LD(uint32_t rmtRankId, CopyDescriptor &rmtCop
     tmpOptions.srcRankId = rmtRankId;
     size_t batchSize = rmtCopyDescriptor.counts.size();
     uint64_t *ptr = new uint64_t[batchSize * 3];
-    BM_ASSERT_RETURN(ptr != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(ptr != nullptr, "ptr is nullptr", BM_MALLOC_FAILED);
     uint64_t batchOffset = 0;
     while (batchOffset < batchSize) {
         uint64_t currentBatchDataSize = 0;

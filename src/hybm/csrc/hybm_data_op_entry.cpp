@@ -34,12 +34,12 @@ HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_
 {
     BM_LOG_DEBUG("Src: " << VaToInfo(params->src) << ", dest: " << VaToInfo(params->dest)
                          << " flag:" << VaToStr(flags) << " direction:" << direction);
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->src != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->dest != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->dataSize != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(e != nullptr, "e is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params != nullptr, "params is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->src != nullptr, "params->src is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->dest != nullptr, "params->dest is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->dataSize != 0, "params->dataSize = " << params->dataSize, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, "direction = " << direction, BM_INVALID_PARAM);
 
     if (direction == HYBM_DATA_COPY_DIRECTION_AUTO) {
         auto& vaMgr = ock::mf::HybmVaManager::GetInstance();
@@ -54,7 +54,7 @@ HYBM_API int32_t hybm_data_copy(hybm_entity_t e, hybm_copy_params *params, hybm_
     }
 
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(entity != nullptr, "entity is nullptr", BM_INVALID_PARAM);
 
     bool addressValid = true;
     if (g_checkMap[direction][OP_CHECK_DEST]) {
@@ -80,20 +80,20 @@ HYBM_API int32_t hybm_wait(hybm_entity_t e)
         return BM_INVALID_PARAM;
     }
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(entity != nullptr, "entity is nullptr", BM_INVALID_PARAM);
     return entity->Wait();
 }
 
 HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *params,
                                       hybm_data_copy_direction direction, void *stream, uint32_t flags)
 {
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->sources != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->destinations != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(e != nullptr, "e is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params != nullptr, "params is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->sources != nullptr, "params->sources is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->destinations != nullptr, "params->destinations is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->dataSizes != nullptr, "params->dataSizes is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->batchSize != 0, "params->batchSize = " << params->batchSize, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(direction < HYBM_DATA_COPY_DIRECTION_BUTT, "direction = " << direction, BM_INVALID_PARAM);
     BM_LOG_DEBUG("Src[0]: " << VaToInfo(params->sources[0]) << ", dest[0]: " << VaToInfo(params->destinations[0])
                             << " flag:" << VaToStr(flags) << " direction:" << direction);
 
@@ -136,14 +136,14 @@ HYBM_API int32_t hybm_data_batch_copy(hybm_entity_t e, hybm_batch_copy_params *p
 
 HYBM_API int32_t hybm_data_quant_copy(hybm_entity_t e, hybm_quant_copy_params *params)
 {
-    BM_ASSERT_RETURN(e != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->sources != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->destinations != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->dataSizes != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->batchSize != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->scale != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(params->offset != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(e != nullptr, "e is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params != nullptr, "params is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->sources != nullptr, "params->sources is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->destinations != nullptr, "params->destinations is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->dataSizes != nullptr, "params->dataSizes is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->batchSize != 0, "params->batchSize = " << params->batchSize, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->scale != nullptr, "params->scale is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(params->offset != nullptr, "params->offset is nullptr", BM_INVALID_PARAM);
     BM_VALIDATE_RETURN(params->unitNum <= 32U * KB, "unit is " << params->unitNum << " large than 32K",
                        BM_INVALID_PARAM);
 
@@ -155,6 +155,6 @@ HYBM_API int32_t hybm_data_quant_copy(hybm_entity_t e, hybm_quant_copy_params *p
     }
 
     auto entity = MemEntityFactory::Instance().FindEngineByPtr(e);
-    BM_ASSERT_RETURN(entity != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(entity != nullptr, "entity is nullptr", BM_INVALID_PARAM);
     return entity->QuantCopy(*params);
 }

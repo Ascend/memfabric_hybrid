@@ -74,7 +74,7 @@ public:
 
     inline int Test(void *buffer, size_t length) const noexcept
     {
-        BM_ASSERT_RETURN(exchangeInfo_ != nullptr, -1);
+        BM_ASSERT_LOG_AND_RETURN(exchangeInfo_ != nullptr, "exchangeInfo_ is nullptr", -1);
         if (readOffset_ + length > exchangeInfo_->descLen) {
             BM_LOG_ERROR("read data size: " << length << " too long");
             return -1;
@@ -91,7 +91,7 @@ public:
 
     inline int Read(void *buffer, size_t length) const noexcept
     {
-        BM_ASSERT_RETURN(exchangeInfo_ != nullptr, -1);
+        BM_ASSERT_LOG_AND_RETURN(exchangeInfo_ != nullptr, "exchangeInfo_ is nullptr", -1);
         if (readOffset_ + length > exchangeInfo_->descLen) {
             BM_LOG_ERROR("read data size: " << length << " too long");
             return -1;
@@ -109,7 +109,7 @@ public:
 
     inline size_t LeftBytes() const noexcept
     {
-        BM_ASSERT_RETURN(exchangeInfo_ != nullptr, 0);
+        BM_ASSERT_LOG_AND_RETURN(exchangeInfo_ != nullptr, "exchangeInfo_ is nullptr", 0);
         if (readOffset_ >= exchangeInfo_->descLen) {
             return 0U;
         }
@@ -119,7 +119,7 @@ public:
 
     std::string LeftToString() const noexcept
     {
-        BM_ASSERT_RETURN(exchangeInfo_ != nullptr, "");
+        BM_ASSERT_LOG_AND_RETURN(exchangeInfo_ != nullptr, "exchangeInfo_ is nullptr", "");
         if (readOffset_ >= exchangeInfo_->descLen) {
             return "";
         }
@@ -157,7 +157,7 @@ public:
 
     inline int Append(const void *data, size_t length) noexcept
     {
-        BM_ASSERT_RETURN(exchangeInfo_ != nullptr, -1);
+        BM_ASSERT_LOG_AND_RETURN(exchangeInfo_ != nullptr, "exchangeInfo_ is nullptr", -1);
         if (exchangeInfo_->descLen + length > sizeof(exchangeInfo_->desc)) {
             BM_LOG_ERROR("write data size: " << length << " too long");
             return -1;

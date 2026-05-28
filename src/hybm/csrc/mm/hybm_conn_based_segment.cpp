@@ -214,7 +214,7 @@ Result HybmConnBasedSegment::Mmap() noexcept
 
         auto ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
             {import.gva, 0, 0, import.size, HYBM_MEM_TYPE_HOST}, options_.rankId, import.rankId);
-        BM_ASSERT_RETURN(ret == BM_OK, ret);
+        BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     }
     imports_.clear();
     return 0;
@@ -447,7 +447,7 @@ Result HybmConnBasedSegment::RemoveImported(const std::vector<uint32_t> &ranks) 
 Result HybmConnBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     auto ret = RegisterMemCommon(addr, size, slice);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     slices_.emplace(slice->index_, slice);
     return BM_OK;
 }

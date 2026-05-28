@@ -43,7 +43,7 @@ MemEntityDefault::~MemEntityDefault()
 Result MemEntityDefault::InitTagManager()
 {
     const static std::string defaultTag = "HYBM_DEFAULT_TAG_FOR_EMPTY";
-    BM_ASSERT_RETURN(tagManager_ == nullptr, BM_OK);
+    BM_ASSERT_LOG_AND_RETURN(tagManager_ == nullptr, "tagManager_ is not nullptr", BM_OK);
     std::string localTag = options_.tag;
     if (localTag.empty()) {
         localTag = defaultTag;
@@ -616,8 +616,8 @@ int32_t MemEntityDefault::ImportForTransportManager()
 int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc[], uint32_t count,
                                                    uint32_t flags) noexcept
 {
-    BM_ASSERT_RETURN(initialized_, BM_NOT_INITIALIZED);
-    BM_ASSERT_RETURN(desc != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(initialized_, "initialized_ = " << initialized_, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(desc != nullptr, "desc is nullptr", BM_INVALID_PARAM);
 
     std::vector<EntityExportInfo> deserializedInfos(count);
     for (auto i = 0U; i < count; i++) {
@@ -667,7 +667,7 @@ int32_t MemEntityDefault::SetExtraContext(const void *context, uint32_t size) no
         return BM_NOT_INITIALIZED;
     }
 
-    BM_ASSERT_RETURN(context != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(context != nullptr, "context is nullptr", BM_INVALID_PARAM);
     if (size > HYBM_DEVICE_USER_CONTEXT_PRE_SIZE) {
         BM_LOG_ERROR("set extra context failed, context size is too large: " << size << " limit: "
                                                                              << HYBM_DEVICE_USER_CONTEXT_PRE_SIZE);
@@ -775,9 +775,10 @@ int32_t MemEntityDefault::CopyData(hybm_copy_params &params, hybm_data_copy_dire
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
+    auto ret = SetThreadAclDevice();
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, BM_ERROR);
 
-    int32_t ret = BM_OK;
+    ret = BM_OK;
     std::pair<uint32_t, uint32_t> p2pInfo;
     ret = LocateAddrAndRank(params.src, params.dest, p2pInfo);
     if (ret != BM_OK) {
@@ -805,9 +806,10 @@ int32_t MemEntityDefault::BatchCopyData(hybm_batch_copy_params &params, hybm_dat
         BM_LOG_ERROR("the object is not initialized, please check whether Initialize is called.");
         return BM_NOT_INITIALIZED;
     }
-    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
+    auto ret = SetThreadAclDevice();
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, BM_ERROR);
 
-    int32_t ret = BM_ERROR;
+    ret = BM_ERROR;
     if (dataOperator_ == nullptr) {
         BM_LOG_ERROR("Data copy failed, dataOperator_ is null.");
         return ret;
@@ -843,9 +845,10 @@ int32_t MemEntityDefault::QuantCopy(hybm_quant_copy_params &params) noexcept
 {
     BM_VALIDATE_RETURN(initialized_, "the object is not initialized, please check whether Initialize is called.",
                        BM_NOT_INITIALIZED);
-    BM_ASSERT_RETURN(SetThreadAclDevice() == BM_OK, BM_ERROR);
+    auto ret = SetThreadAclDevice();
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, BM_ERROR);
 
-    int32_t ret = BM_ERROR;
+    ret = BM_ERROR;
     if (dataOperator_ == nullptr) {
         BM_LOG_ERROR("quant data copy failed, dataOperator_ is null.");
         return ret;

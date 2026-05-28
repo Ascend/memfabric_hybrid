@@ -34,15 +34,16 @@ Result HybmDevUserLegacySegment::ValidateOptions() noexcept
 
 Result HybmDevUserLegacySegment::ReserveMemorySpace(void **address) noexcept
 {
-    BM_ASSERT_RETURN(address != nullptr, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(options_.enable56BitsGva == true, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(address != nullptr, "address is nullptr", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(options_.enable56BitsGva == true,
+                             "options_.enable56BitsGva = " << options_.enable56BitsGva, BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(options_.rankId < options_.rankCnt,
                              "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
     totalVirtualSize_ = options_.rankCnt * options_.maxSize;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, 0,
                                                                 HYBM_MEM_TYPE_DEVICE, options_.enable56BitsGva, true);
-    BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(gvaInfo.va[HVM_GVA] > 0, "gvaInfo.va[HVM_GVA] = " << gvaInfo.va[HVM_GVA], BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
     lvaBase_ = globalVirtualAddress_ + options_.maxSize * options_.rankId;
     return BM_OK;
@@ -446,7 +447,7 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
     auto memType = HYBM_MEM_TYPE_DEVICE;
     ret = HybmVaManager::GetInstance().AddVaInfoFromExternal(
         {remoteSlice->gva_, remoteSlice->vAddress_, 0, remoteSlice->size_, memType}, options_.rankId, sliceInfo.rankId);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     return BM_OK;
 }
 

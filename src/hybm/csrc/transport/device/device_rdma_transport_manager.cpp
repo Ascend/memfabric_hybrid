@@ -233,7 +233,7 @@ Result RdmaTransportManager::Prepare(const HybmTransPrepareOptions &options)
     if ((ret = CheckPrepareOptions(options)) != 0) {
         return ret;
     }
-    BM_ASSERT_RETURN(qpManager_ != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(qpManager_ != nullptr, "qpManager_ is nullptr", BM_MALLOC_FAILED);
     sockaddr_in deviceNetwork;
     std::unordered_map<uint32_t, ConnectRankInfo> rankInfo;
     for (auto it = options.options.begin(); it != options.options.end(); ++it) {
@@ -264,7 +264,7 @@ Result RdmaTransportManager::Prepare(const HybmTransPrepareOptions &options)
 
 Result RdmaTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRanks)
 {
-    BM_ASSERT_RETURN(qpManager_ != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(qpManager_ != nullptr, "qpManager_ is nullptr", BM_MALLOC_FAILED);
     std::unordered_set<uint32_t> ranksSet;
     std::unordered_map<uint32_t, MemoryRegionMap> removedRankRegions;
 
@@ -338,7 +338,7 @@ Result RdmaTransportManager::WaitForConnected(int64_t timeoutNs)
 
 Result RdmaTransportManager::WaitQpReady()
 {
-    BM_ASSERT_RETURN(qpManager_ != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(qpManager_ != nullptr, "qpManager_ is nullptr", BM_MALLOC_FAILED);
     std::vector<uint32_t> rankIds;
     {
         ReadGuard lockGuard(lock_);
@@ -457,7 +457,7 @@ Result RdmaTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
 
 Result RdmaTransportManager::Synchronize(uint32_t rankId)
 {
-    BM_ASSERT_RETURN(qpManager_ != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(qpManager_ != nullptr, "qpManager_ is nullptr", BM_MALLOC_FAILED);
     auto qp = qpManager_->GetQpHandleWithRankId(rankId);
     if (qp == nullptr) {
         BM_LOG_ERROR("no qp to rankId: " << rankId);
@@ -742,7 +742,7 @@ int RdmaTransportManager::RemoteIO(uint32_t rankId, uint64_t lAddr, uint64_t rAd
     }
 
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
-    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(hStream != nullptr, "hStream is nullptr", BM_ERROR);
 
     struct send_wr_v2 wr = {};
     struct sg_list sgList = {.addr = lAddr, .len = (uint32_t)size, .lkey = 0};
@@ -930,7 +930,7 @@ void RdmaTransportManager::ConstructSqeNoSinkModeForRdmaDbSendTask(const send_wr
 
 uint64_t RdmaTransportManager::GetRoceDbAddrForRdmaDbSendTask()
 {
-    BM_ASSERT_RETURN(deviceChipInfo_ != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(deviceChipInfo_ != nullptr, "deviceChipInfo_ is nullptr", BM_MALLOC_FAILED);
 
     auto chipId = deviceChipInfo_->GetChipId();
     auto dieId = deviceChipInfo_->GetDieId();
@@ -988,7 +988,7 @@ int32_t RdmaTransportManager::InitStreamNotifyBuf()
 int32_t RdmaTransportManager::Synchronize(void *qpHandle, uint32_t rankId)
 {
     auto hStream = HybmStreamManager::GetThreadHybmStream(HybmGetInitedLogicDeviceId());
-    BM_ASSERT_RETURN(hStream != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(hStream != nullptr, "hStream is nullptr", BM_ERROR);
     auto &remoteMr = notifyRemoteInfo_[rankId];
     BM_ASSERT_LOG_AND_RETURN(remoteMr.second != 0, "remote notify not set! rank:" << rankId, BM_ERROR);
 

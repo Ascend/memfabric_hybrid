@@ -72,7 +72,7 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
 {
     BM_ASSERT_LOG_AND_RETURN(ValidateOptions() == BM_OK, "Failed to validate options.", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(globalVirtualAddress_ == nullptr, "Already prepare virtual memory.", BM_NOT_INITIALIZED);
-    BM_ASSERT_RETURN(address != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(address != nullptr, "address is nullptr", BM_INVALID_PARAM);
     BM_ASSERT_LOG_AND_RETURN(options_.rankId < options_.rankCnt,
                              "rank(" << options_.rankId << ") but total " << options_.rankCnt, BM_INVALID_PARAM);
 
@@ -82,7 +82,7 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
     auto mem_type = options_.segType == HYBM_MST_HBM ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
     auto gvaInfo = HybmVaManager::GetInstance().AllocReserveGva(options_.rankId, totalVirtualSize_, totalLvaSize,
                                                                 mem_type, options_.enable56BitsGva);
-    BM_ASSERT_RETURN(gvaInfo.va[HVM_GVA] > 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(gvaInfo.va[HVM_GVA] > 0, "gvaInfo.va[HVM_GVA] = " << gvaInfo.va[HVM_GVA], BM_ERROR);
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
 
     uint64_t flag = MEM_RSV_TYPE_REMOTE_MAP;
@@ -262,7 +262,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
         return BM_INVALID_PARAM;
     }
 
-    BM_ASSERT_RETURN(localVirtualAddress_ != nullptr, BM_NOT_INITIALIZED);
+    BM_ASSERT_LOG_AND_RETURN(localVirtualAddress_ != nullptr, "localVirtualAddress_ is nullptr", BM_NOT_INITIALIZED);
     if (size == 0) {
         return MallocEmptySlice(slice);
     }
@@ -291,7 +291,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
     allocatedSize_ += size;
     auto memType = options_.segType == HYBM_MST_HBM ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
     slice = std::make_shared<MemSlice>(sliceCount_++, memType, MEM_PT_TYPE_GVM, gva, allocAddr, size);
-    BM_ASSERT_RETURN(slice != nullptr, BM_MALLOC_FAILED);
+    BM_ASSERT_LOG_AND_RETURN(slice != nullptr, "slice is nullptr", BM_MALLOC_FAILED);
     slices_.emplace(slice->index_, MemSliceStatus(slice, reinterpret_cast<void *>(handle)));
     auto type = options_.segType == HYBM_MST_HBM ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
     ret =
@@ -343,7 +343,7 @@ Result HybmVmmBasedSegment::AllocLocalMemory(uint64_t size, MemSlicePtr &slice) 
 Result HybmVmmBasedSegment::RegisterMemory(const void *addr, uint64_t size, MemSlicePtr &slice) noexcept
 {
     auto ret = RegisterMemCommon(addr, size, slice);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
 
     registerSlices_.emplace(slice->index_, std::make_pair(slice, reinterpret_cast<uint64_t>(addr)));
     BM_LOG_INFO("HybmVmmBasedSegment: RegisterMemory success, size: " << size << " addr: " << VaToInfo(addr));
@@ -458,7 +458,7 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
 
 Result HybmVmmBasedSegment::Export(const MemSlicePtr &slice, std::string &exInfo) noexcept
 {
-    BM_ASSERT_RETURN(slice != nullptr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(slice != nullptr, "slice is nullptr", BM_INVALID_PARAM);
     if (!options_.shared) {
         BM_LOG_INFO("no need to share, skip export");
         return BM_OK;
@@ -613,7 +613,7 @@ Result HybmVmmBasedSegment::Mmap() noexcept
         }
 
         uint64_t lva = ReserveLva(im);
-        BM_ASSERT_RETURN(lva != 0, BM_ERROR);
+        BM_ASSERT_LOG_AND_RETURN(lva != 0, "lva = " << lva, BM_ERROR);
         BM_LOG_INFO("Try to mmap rank:" << im.rankId << " superPodId:" << im.superPodId << " serverId:" << im.serverId
                                         << " devId:" << im.logicDevId << " segType:" << options_.segType << " size:"
                                         << im.size << " gva:" << VaToStr(im.gva) << " dva:" << VaToStr(im.deviceVa)

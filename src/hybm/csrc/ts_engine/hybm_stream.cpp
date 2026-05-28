@@ -33,13 +33,13 @@ int HybmStream::Initialize() noexcept
 
     tsId_ = 0; // 当前仅支持0
     ret = AllocStreamId();
-    BM_ASSERT_RETURN(ret == 0, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, ret);
 
     ret = AllocSqcq(ssid);
-    BM_ASSERT_RETURN(ret == 0, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, ret);
 
     ret = AllocLogicCq();
-    BM_ASSERT_RETURN(ret == 0, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, ret);
 
     BM_LOG_INFO("init stream ok, stream:" << streamId_ << " sq:" << sqId_ << " cq:" << cqId_ << " logic:" << logicCq_
                                           << " ssid:" << ssid);

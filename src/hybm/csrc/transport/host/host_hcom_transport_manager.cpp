@@ -18,6 +18,7 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include "dl_hcom_api.h"
+#include "hybm_logger.h"
 #include "mf_env_util.h"
 #include "host_hcom_common.h"
 #include "host_hcom_helper.h"
@@ -112,8 +113,9 @@ static void CopyHcomOneSideKey(TransportMemoryKey &from, OneSideKey &to)
 
 Result HcomTransportManager::OpenDevice(const TransportOptions &options)
 {
-    BM_ASSERT_RETURN(rpcService_ == 0, BM_OK);
-    BM_ASSERT_RETURN(CheckTransportOptions(options) == BM_OK, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ == 0, "rpcService_ = " << rpcService_, BM_OK);
+    auto ret = CheckTransportOptions(options);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, BM_INVALID_PARAM);
     runtimeConfig_ = LoadHcomRuntimeConfig();
     DlHcomApi::SetExternalLogger(HcomExternalLoggerAdapter);
     Service_Options opt{};
@@ -121,7 +123,7 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
     opt.maxSendRecvDataSize = runtimeConfig_.recvDataSize;
     opt.workerThreadPriority = HCOM_THREAD_PRIORITY;
     Service_Type enumProtocolType = HostHcomHelper::HybmDopTransHcomProtocol(options.protocol, options.nic);
-    int ret = DlHcomApi::ServiceCreate(enumProtocolType, HCOM_RPC_SERVICE_NAME, opt, &rpcService_);
+    ret = DlHcomApi::ServiceCreate(enumProtocolType, HCOM_RPC_SERVICE_NAME, opt, &rpcService_);
     if (ret != 0) {
         BM_LOG_ERROR("Failed to create hcom service, nic: " << options.nic << " type: " << enumProtocolType
                                                             << " ret: " << ret);
@@ -173,7 +175,7 @@ Result HcomTransportManager::OpenDevice(const TransportOptions &options)
 Result HcomTransportManager::CloseDevice()
 {
     DlHcomApi::SetExternalLogger([]([[maybe_unused]] int level, [[maybe_unused]] const char *msg) {});
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_OK);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_OK);
 
     reconnect_.Stop();
     auto service = rpcService_;
@@ -206,8 +208,9 @@ Result HcomTransportManager::CloseDevice()
 #if defined(ASCEND_NPU) || defined(NVIDIA_GPU)
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(mr.addr != 0 && mr.size != 0,
+        "mr.addr = " << mr.addr << ", " << "mr.size = " << mr.size, BM_INVALID_PARAM);
     if (!(mr.flags & transport::REG_MR_FLAG_DRAM)) {
         BM_LOG_WARN("Only support register dram memory skip flag:" << mr.flags);
         return BM_OK;
@@ -253,8 +256,9 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 #else
 Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &mr)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(mr.addr != 0 && mr.size != 0, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(mr.addr != 0 && mr.size != 0,
+        "mr.addr = " << mr.addr << ", " << "mr.size = " << mr.size, BM_INVALID_PARAM);
     if ((mr.flags & transport::REG_MR_FLAG_DRAM) == 0) {
         BM_LOG_WARN("Failed to register hcom mr, mem type flag should be dram.");
         return BM_OK;
@@ -308,8 +312,8 @@ Result HcomTransportManager::RegisterMemoryRegion(const TransportMemoryRegion &m
 
 Result HcomTransportManager::UnregisterMemoryRegion(uint64_t addr)
 {
-    BM_ASSERT_RETURN(addr != 0, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(addr != 0, "addr = " << addr, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
 
     std::unique_lock<std::mutex> lock(mrMutex_[rankId_]);
     auto &localMrs = mrs_[rankId_];
@@ -392,7 +396,7 @@ Result HcomTransportManager::RemoveRanks(const std::vector<uint32_t> &removedRan
 
 Result HcomTransportManager::Connect()
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
     for (uint32_t i = 0; i < rankCount_; ++i) {
         if (rankId_ <= i || nics_[i].empty()) {
             continue;
@@ -437,7 +441,7 @@ Result HcomTransportManager::UpdateRankMrInfos(const std::unordered_map<uint32_t
             if (rankId != rankId_ && (bmOptype_ & HYBM_DOP_TYPE_HOST_URMA)) {
                 auto ret = DlHcomApi::ImportUrmaSegFunc(rpcService_, mrInfo.addr, mrInfo.size,
                                                         &keyUnion.hostKey.hcomInfo.lKey);
-                BM_ASSERT_RETURN(ret == 0, ret);
+                BM_ASSERT_LOG_AND_RETURN(ret == 0, "ret = " << ret, ret);
                 BM_LOG_DEBUG("hcom returned, tokens: " << keyUnion.hostKey.hcomInfo.lKey.tokens[0]);
             }
             CopyHcomOneSideKey(keyUnion.hostKey.hcomInfo.lKey, mrInfo.lKey);
@@ -506,9 +510,11 @@ const std::string &HcomTransportManager::GetNic() const
 
 Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(size <= std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(size <= std::numeric_limits<uint32_t>::max(),
+        "size = " << size << " > " << std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -544,9 +550,11 @@ Result HcomTransportManager::InnerReadRemote(uint32_t rankId, uint64_t lAddr, ui
 
 Result HcomTransportManager::InnerWriteRemote(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(size <= std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(size <= std::numeric_limits<uint32_t>::max(),
+        "size = " << size << " > " << std::numeric_limits<uint32_t>::max(), BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -595,8 +603,9 @@ int HcomTransportManager::PrepareThreadLocalStream()
 
 Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -631,7 +640,7 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
         BM_LOG_ERROR("prepare stream error rankId: " << rankId);
         return ret;
     }
-    BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(stream_.get() != nullptr, "stream_.get() is nullptr", BM_ERROR);
     Channel_Callback channelCallback;
     channelCallback.arg = stream_.get();
     channelCallback.cb = ChannelAsyncCallback;
@@ -663,8 +672,9 @@ Result HcomTransportManager::ReadRemoteAsync(uint32_t rankId, uint64_t lAddr, ui
 
 Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, uint64_t rAddr, uint64_t size)
 {
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -701,7 +711,7 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
         BM_LOG_ERROR("prepare stream error rankId: " << rankId);
         return ret;
     }
-    BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(stream_.get() != nullptr, "stream_.get() is nullptr", BM_ERROR);
     Channel_Callback channelCallback;
     channelCallback.arg = stream_.get();
     channelCallback.cb = ChannelAsyncCallback;
@@ -731,8 +741,9 @@ Result HcomTransportManager::WriteRemoteAsync(uint32_t rankId, uint64_t lAddr, u
 Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor)
 {
     BM_LOG_INFO("WriteRemoteBatchAsync start " << rankId << " rankId");
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -783,7 +794,7 @@ Result HcomTransportManager::WriteRemoteBatchAsync(uint32_t rankId, const CopyDe
             sglReq.iovCount++;
         }
         index++;
-        BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
+        BM_ASSERT_LOG_AND_RETURN(stream_.get() != nullptr, "stream_.get() is nullptr", BM_ERROR);
         Channel_Callback channelCallback;
         channelCallback.arg = stream_.get();
         channelCallback.cb = ChannelAsyncCallback;
@@ -970,9 +981,10 @@ Result HcomTransportManager::ReadRemote(uint32_t rankId, uint64_t lAddr, uint64_
 Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDescriptor &descriptor)
 {
     BM_LOG_INFO("ReadRemoteBatchAsync start : " << rankId << " size " << descriptor.counts.size());
-    BM_ASSERT_RETURN(!descriptor.counts.empty(), BM_INVALID_PARAM);
-    BM_ASSERT_RETURN(rpcService_ != 0, BM_ERROR);
-    BM_ASSERT_RETURN(rankId < rankCount_, BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(!descriptor.counts.empty(), "descriptor.counts is empty", BM_INVALID_PARAM);
+    BM_ASSERT_LOG_AND_RETURN(rpcService_ != 0, "rpcService_ = " << rpcService_, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(rankId < rankCount_,
+        "rankId = " << rankId << " << rankCount_ = " << rankCount_, BM_INVALID_PARAM);
     Hcom_Channel channel = channels_[rankId];
     if (channel == 0) {
         BM_LOG_INFO("Failed to write remote, rankId: " << rankId << " is not connect");
@@ -1021,7 +1033,7 @@ Result HcomTransportManager::ReadRemoteBatchAsync(uint32_t rankId, const CopyDes
             sglReq.iovCount++;
         }
         index++;
-        BM_ASSERT_RETURN(stream_.get() != nullptr, BM_ERROR);
+        BM_ASSERT_LOG_AND_RETURN(stream_.get() != nullptr, "stream_.get() is nullptr", BM_ERROR);
         Channel_Callback channelCallback;
         channelCallback.arg = stream_.get();
         channelCallback.cb = ChannelAsyncCallback;

@@ -80,7 +80,7 @@ Result HybmVaManager::AddVaInfoFromExternal(const BaseAllocatedGvaInfo &baseInfo
 {
     AllocatedGvaInfo info(baseInfo, localRankId, importedRankId);
     const auto ret = AddVaInfo(info);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     BM_LOG_INFO("AddVaInfoFromExternal success: " << info);
     return BM_OK;
 }
@@ -89,7 +89,7 @@ Result HybmVaManager::AddVaInfo(const BaseAllocatedGvaInfo &baseInfo, uint32_t l
 {
     AllocatedGvaInfo info(baseInfo, localRankId);
     const auto ret = AddVaInfo(info, onlyGva);
-    BM_ASSERT_RETURN(ret == BM_OK, ret);
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "ret = " << ret, ret);
     BM_LOG_INFO("AddVaInfo success: " << info);
     return BM_OK;
 }
