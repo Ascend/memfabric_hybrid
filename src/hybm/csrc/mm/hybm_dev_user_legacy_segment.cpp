@@ -153,6 +153,7 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
 {
     HbmExportDeviceInfo info;
     info.logicDeviceId = logicDeviceId_;
+    info.userDeviceId = static_cast<uint16_t>(deviceId_);
     info.rankId = options_.rankId;
     info.pid = HybmDevLegacySegment::pid_;
     HybmDevLegacySegment::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
@@ -163,7 +164,8 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
     }
 
     BM_LOG_DEBUG("export device info(sdid=" << sdid_ << " pid=" << pid_ << " rank=" << info.rankId
-                                            << " deviceId=" << logicDeviceId_ << ")");
+                                             << " logicDeviceId=" << info.logicDeviceId
+                                             << " userDeviceId=" << info.userDeviceId << ")");
     return BM_OK;
 }
 
@@ -182,6 +184,7 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
+    info.userDeviceId = static_cast<uint32_t>(deviceId_);
     info.rankId = options_.rankId;
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
@@ -192,7 +195,9 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     }
 
     BM_LOG_DEBUG("export slice success. addr:" << VaToStr(info.address) << " size:" << VaToStr(info.size)
-                                               << " name:" << info.name << " rank:" << options_.rankId);
+                                               << " name:" << info.name << " rank:" << options_.rankId
+                                               << " logicDeviceId=" << info.logicDeviceId
+                                               << " userDeviceId=" << info.userDeviceId);
     return BM_OK;
 }
 
@@ -363,16 +368,16 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
         return BM_ERROR;
     }
 
-    if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.logicDeviceId)) {
-        ret = DlAclApi::RtEnableP2P(deviceId_, deviceInfo.logicDeviceId, 0);
+    if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.userDeviceId)) {
+        ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.userDeviceId, 0);
         if (ret != 0) {
             BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                         << " logic_device:" << logicDeviceId_
                                                         << " remote_logic_device:" << deviceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        enablePeerDevices_.set(deviceInfo.logicDeviceId);
-        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.logicDeviceId);
+        enablePeerDevices_.set(deviceInfo.userDeviceId);
+        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.userDeviceId);
     }
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &it : registerSlices_) {
@@ -411,15 +416,16 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
         if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_) &&
-            !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
-            ret = DlAclApi::RtEnableP2P(deviceId_, sliceInfo.logicDeviceId, 0);
+            !enablePeerDevices_.test(sliceInfo.userDeviceId)) {
+            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.userDeviceId, 0);
             if (ret != 0) {
-                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.logicDeviceId
-                                                                        << " failed: " << ret);
+                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for userDevice: " << sliceInfo.userDeviceId
+                            << " logicDevice: " << sliceInfo.logicDeviceId << " failed: " << ret);
                 return BM_DL_FUNCTION_FAILED;
             }
-            enablePeerDevices_.set(sliceInfo.logicDeviceId);
-            BM_LOG_DEBUG("enable peer access for : " << sliceInfo.logicDeviceId);
+            enablePeerDevices_.set(sliceInfo.userDeviceId);
+            BM_LOG_DEBUG("enable peer access for userDeviceId=" << sliceInfo.userDeviceId
+                                                                 << " logicDeviceId=" << sliceInfo.logicDeviceId);
         }
 
         ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);
