@@ -341,14 +341,16 @@ int32_t NpuCommunicatorBase::DispatchNormalNotify(const zbal_tensor_info_t *send
                                 pushTargetOffset, balanceMatrix, factorHigh, factorLow, stream, GetMetaInfo(), flags);
 }
 
-int32_t NpuCommunicatorBase::DispatchNormalLayout(
-    const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum, int64_t topkNum,
-    const zbal_tensor_info_t *tokensPerRank, const zbal_tensor_info_t *tokensPerExpert,
-    const zbal_tensor_info_t *isTokenInRank, const zbal_tensor_info_t *sendTokensIndex,
-    const zbal_tensor_info_t *notifySendData, aclrtStream stream, int64_t flags) noexcept
+int32_t NpuCommunicatorBase::DispatchNormalLayout(const zbal_tensor_info_t *topkIndex, int64_t tokens,
+                                                  int64_t expertNum, int64_t topkNum,
+                                                  const zbal_tensor_info_t *tokensPerRank,
+                                                  const zbal_tensor_info_t *tokensPerExpert,
+                                                  const zbal_tensor_info_t *sendTokensIndex,
+                                                  const zbal_tensor_info_t *notifySendData, aclrtStream stream,
+                                                  int64_t flags) noexcept
 {
-    return ZBALOpDispatchLayout(topkIndex, tokens, expertNum, topkNum, tokensPerRank, tokensPerExpert, isTokenInRank,
-                                sendTokensIndex, notifySendData, stream, GetMetaInfo(), flags);
+    return ZBALOpDispatchLayout(topkIndex, tokens, expertNum, topkNum, tokensPerRank, tokensPerExpert, sendTokensIndex,
+                                notifySendData, stream, GetMetaInfo(), flags);
 }
 
 int32_t NpuCommunicatorBase::DispatchNormal(const zbal_tensor_info_t *srcTokens, const zbal_tensor_info_t *topkIndex,

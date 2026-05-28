@@ -137,7 +137,6 @@ int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex,
                                     int64_t topkNum,
                                     const zbal_tensor_info_t *tokensPerRank,
                                     const zbal_tensor_info_t *tokensPerExpert,
-                                    const zbal_tensor_info_t *isTokenInRank,
                                     const zbal_tensor_info_t *sendTokensIndex,
                                     const zbal_tensor_info_t *notifySendData,
                                     zbal_comm_t comm,
@@ -155,7 +154,6 @@ int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex,
 | topkNum           | in     | the topk value                                                                                 |
 | tokensPerRank     | in/out | the number of tokens to be sent to each rank statistics by local tokens, shape=[num_ranks]     |
 | tokensPerExpert   | in/out | the number of tokens to be sent to each expert statistics by local tokens, shape=[num_experts] |
-| isTokenInRank     | in/out | whether the token to be sent to a rank flag(0/1), shape=[num_tokens, num_ranks]                |
 | sendTokensIndex   | in/out | local token send to target expert index, shape=[num_tokens, topk]                              |
 | notifySendData    | in/out | temp buffer for the operation to caculate, shape=[50 * num_experts]                            |
 | comm              | in     | zbal communication handle                                                                      |

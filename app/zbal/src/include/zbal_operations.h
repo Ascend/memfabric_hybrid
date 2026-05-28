@@ -225,7 +225,6 @@ int32_t zbal_dispatch_normal_notify(const zbal_tensor_info_t *sendTokensPerExper
  * @param topkNum              [in] num of topK
  * @param tokensPerRank        [in/out] the number of tokens to be sent to each rank
  * @param tokensPerExpert      [in/out] the number of tokens to be sent to each expert
- * @param isTokenInRank        [in/out] whether a token be sent to a rank
  * @param sendTokensIndex      [in/out] send index of per token
  * @param notifySendData       [in/out] exchange data for notify
  * @param comm                 [in] zbal communication handle
@@ -235,7 +234,7 @@ int32_t zbal_dispatch_normal_notify(const zbal_tensor_info_t *sendTokensPerExper
  */
 int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum,
                                     int64_t topkNum, const zbal_tensor_info_t *tokensPerRank,
-                                    const zbal_tensor_info_t *tokensPerExpert, const zbal_tensor_info_t *isTokenInRank,
+                                    const zbal_tensor_info_t *tokensPerExpert,
                                     const zbal_tensor_info_t *sendTokensIndex, const zbal_tensor_info_t *notifySendData,
                                     zbal_comm_t comm, aclrtStream stream, int64_t flags);
 

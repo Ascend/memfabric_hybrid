@@ -43,9 +43,8 @@ int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataT
 
 int32_t ZBALOpDispatchLayout(const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum, int64_t topkNum,
                              const zbal_tensor_info_t *tokensPerRank, const zbal_tensor_info_t *tokensPerExpert,
-                             const zbal_tensor_info_t *isTokenInRank, const zbal_tensor_info_t *sendTokensIndex,
-                             const zbal_tensor_info_t *notifySendData, aclrtStream stream,
-                             const CommGroupInfo &groupInfo, int64_t flags);
+                             const zbal_tensor_info_t *sendTokensIndex, const zbal_tensor_info_t *notifySendData,
+                             aclrtStream stream, const CommGroupInfo &groupInfo, int64_t flags);
 
 int32_t ZBALOpNotifyDispatch(const zbal_tensor_info_t *sendTokensPerExpert, int64_t sendCount, int64_t topKNum,
                              const zbal_tensor_info_t *recvBuff, const zbal_tensor_info_t *totalRecvTokens,

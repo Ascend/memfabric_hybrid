@@ -68,9 +68,9 @@ public:
 
     int32_t DispatchNormalLayout(const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum,
                                  int64_t topkNum, const zbal_tensor_info_t *tokensPerRank,
-                                 const zbal_tensor_info_t *tokensPerExpert, const zbal_tensor_info_t *isTokenInRank,
-                                 const zbal_tensor_info_t *sendTokensIndex, const zbal_tensor_info_t *notifySendData,
-                                 aclrtStream stream, int64_t flags) noexcept override;
+                                 const zbal_tensor_info_t *tokensPerExpert, const zbal_tensor_info_t *sendTokensIndex,
+                                 const zbal_tensor_info_t *notifySendData, aclrtStream stream,
+                                 int64_t flags) noexcept override;
 
     int32_t DispatchNormal(const zbal_tensor_info_t *srcTokens, const zbal_tensor_info_t *topkIndex,
                            const zbal_tensor_info_t *sendTokensIndex, const zbal_tensor_info_t *pushTargetOffset,

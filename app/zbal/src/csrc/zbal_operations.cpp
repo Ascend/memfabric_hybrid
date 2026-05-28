@@ -278,7 +278,6 @@ ZBAL_API int32_t zbal_dispatch_normal_notify(const zbal_tensor_info_t *sendToken
 ZBAL_API int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum,
                                              int64_t topkNum, const zbal_tensor_info_t *tokensPerRank,
                                              const zbal_tensor_info_t *tokensPerExpert,
-                                             const zbal_tensor_info_t *isTokenInRank,
                                              const zbal_tensor_info_t *sendTokensIndex,
                                              const zbal_tensor_info_t *notifySendData, zbal_comm_t comm,
                                              aclrtStream stream, int64_t flags)
@@ -287,7 +286,6 @@ ZBAL_API int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex
     ZBAL_VALIDATE_RETURN(tokensPerRank != nullptr, "DispatchLayout failed as tokensPerRank is null", Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(tokensPerExpert != nullptr, "DispatchLayout failed as tokensPerExpert is null",
                          Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(isTokenInRank != nullptr, "DispatchLayout failed as isTokenInRank is null", Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(sendTokensIndex != nullptr, "DispatchLayout failed as sendTokensIndex is null",
                          Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(notifySendData != nullptr, "DispatchLayout failed as notifySendData is null", Z_INVALID_PARAM);
@@ -299,7 +297,7 @@ ZBAL_API int32_t zbal_dispatch_normal_layout(const zbal_tensor_info_t *topkIndex
     /* covert inner object ptr and execute op */
     auto innerComm = reinterpret_cast<Communicator *>(comm);
     return innerComm->DispatchNormalLayout(topkIndex, tokens, expertNum, topkNum, tokensPerRank, tokensPerExpert,
-                                           isTokenInRank, sendTokensIndex, notifySendData, stream, flags);
+                                           sendTokensIndex, notifySendData, stream, flags);
 }
 
 ZBAL_API int32_t zbal_dispatch_normal(const zbal_tensor_info_t *srcTokens, const zbal_tensor_info_t *topkIndex,

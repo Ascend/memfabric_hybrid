@@ -175,7 +175,7 @@ Buffer::get_dispatch_layout(const torch::Tensor &topk_idx, int num_experts, std:
         num_tokens_per_rdma_rank = at::empty({num_rdma_ranks}, dtype(at::kInt).device(device));
     }
     int blocks = 50;
-    auto notify_send_data = at::empty({num_experts * blocks}, at::dtype(at::kInt).device(device));
+    auto block_expert_cumsum = at::empty({num_experts * blocks}, at::dtype(at::kInt).device(device));
     auto acl_stream = c10_npu::getCurrentNPUStream().stream(false);
     int64_t flags = 0;
 
@@ -183,17 +183,16 @@ Buffer::get_dispatch_layout(const torch::Tensor &topk_idx, int num_experts, std:
     auto topk_idx_info = transfer_tensor_info(topk_idx);
     auto num_tokens_per_rank_info = transfer_tensor_info(num_tokens_per_rank);
     auto num_tokens_per_expert_info = transfer_tensor_info(num_tokens_per_expert);
-    auto is_token_in_rank_info = transfer_tensor_info(is_token_in_rank);
     auto send_token_idx_info = transfer_tensor_info(send_token_idx);
-    auto notify_send_data_info = transfer_tensor_info(notify_send_data);
+    auto block_expert_cumsum_info = transfer_tensor_info(block_expert_cumsum);
 
     std::function<int()> acl_call;
     acl_call = [this, topk_idx_info, num_tokens, num_experts, num_topk, num_tokens_per_rank_info,
-                num_tokens_per_expert_info, is_token_in_rank_info, send_token_idx_info, notify_send_data_info,
+                num_tokens_per_expert_info, send_token_idx_info, block_expert_cumsum_info,
                 acl_stream, flags]() -> int {
         auto api_ret = zbal_dispatch_normal_layout(
             &topk_idx_info, num_tokens, num_experts, num_topk, &num_tokens_per_rank_info, &num_tokens_per_expert_info,
-            &is_token_in_rank_info, &send_token_idx_info, &notify_send_data_info, this->comm_, acl_stream, flags);
+            &send_token_idx_info, &block_expert_cumsum_info, this->comm_, acl_stream, flags);
         return api_ret;
     };
     at_npu::native::OpCommand::RunOpApiV2("zbal_dispatch_normal_layout", acl_call);
@@ -275,7 +274,7 @@ Buffer::intranode_dispatch(const at::Tensor &x, const std::optional<at::Tensor> 
     int send_count = send_per_group * num_experts;
     auto recv_data = torch::empty({num_ranks, num_experts}, at::dtype(at::kInt).device(device));
     auto recv_tokens_per_expert = torch::empty({num_local_experts}, at::dtype(at::kLong).device(device));
-    auto put_offset = torch::empty({num_experts, num_ranks}, at::dtype(at::kInt).device(device));
+    auto put_offset = torch::empty({num_ranks, num_experts}, at::dtype(at::kInt).device(device));
     auto balance_matrix = torch::empty({num_ranks, num_ranks * 2}, at::dtype(at::kInt).device(device));
     auto total_recv_token = torch::empty({1}, at::dtype(at::kInt).device(device));
     auto acl_stream = c10_npu::getCurrentNPUStream().stream(false);
@@ -367,7 +366,7 @@ Buffer::intranode_combine(const torch::Tensor &x, const torch::Tensor &topk_idx,
         ZBAL_CHECK_S(topk_weights->scalar_type() == at::kFloat, "topk_weights scalar type check failed");
     }
     auto expert_scales = topk_weights.value();
-    uint16_t moe_expert_number = static_cast<uint16_t>(put_offset.size(0));
+    uint16_t moe_expert_number = static_cast<uint16_t>(put_offset.size(1));
     auto send_token_idx = this->send_token_idx;
 
     auto combined_x = torch::empty({expert_scales.size(0), hidden}, x.options());

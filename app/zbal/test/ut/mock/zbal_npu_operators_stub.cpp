@@ -67,9 +67,8 @@ int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataT
 
 int32_t ZBALOpDispatchLayout(const zbal_tensor_info_t *topkIndex, int64_t tokens, int64_t expertNum, int64_t topkNum,
                              const zbal_tensor_info_t *tokensPerRank, const zbal_tensor_info_t *tokensPerExpert,
-                             const zbal_tensor_info_t *isTokenInRank, const zbal_tensor_info_t *sendTokensIndex,
-                             const zbal_tensor_info_t *notifySendData, aclrtStream stream,
-                             const CommGroupInfo &groupInfo, int64_t flags)
+                             const zbal_tensor_info_t *sendTokensIndex, const zbal_tensor_info_t *notifySendData,
+                             aclrtStream stream, const CommGroupInfo &groupInfo, int64_t flags)
 {
     return 0;
 }
@@ -116,9 +115,7 @@ int32_t ZBALOpDispatchLowLatency(const zbal_tensor_info_t *x, const zbal_tensor_
 int32_t ZBALOpCombineLowLatency(const zbal_tensor_info_t *expandX, const zbal_tensor_info_t *expertIds,
                                 const zbal_tensor_info_t *expertIdx, const zbal_tensor_info_t *epSendCounts,
                                 const zbal_tensor_info_t *expertScales, const zbal_tensor_info_t *xOut,
-                                int64_t moeExpertNum, aclrtStream stream, const CommGroupInfo &groupInfo,
-                                int64_t flags)
+                                int64_t moeExpertNum, aclrtStream stream, const CommGroupInfo &groupInfo, int64_t flags)
 {
     return 0;
 }
-
