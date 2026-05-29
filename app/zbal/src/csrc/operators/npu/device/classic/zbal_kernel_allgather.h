@@ -55,12 +55,6 @@ private:
     __gm__ void *output;
     __gm__ CommGroupInfo *comm;
     __gm__ uint16_t *peerGroupRank2WorldRank;
-    TBuf<> getDataBuf_;
-    TBuf<> writeDataBuf_;
-    TBuf<> waitStatBuf_;
-    TBuf<> writeStatBuf_;
-    TBuf<> waitFlagBuf_;
-    TBuf<> writeFlagBuf_;
 };
 
 class ZBALAllGatherBigKernel : public ZBALBaseKernel {
@@ -103,13 +97,6 @@ private:
     __gm__ CommGroupInfo *comm;
     __gm__ uint16_t *worldRanks;
     uint64_t waitSymbol;
-    TBuf<> getDataBuf_;
-    TBuf<> writeDataBuf_;
-    TBuf<> waitStatBuf_;
-    TBuf<> writeStatBuf0_;
-    TBuf<> writeStatBuf1_;
-    TBuf<> waitFlagBuf_;
-    TBuf<> writeFlagBuf_;
 };
 
 template<typename T>
@@ -133,14 +120,6 @@ ZBAL_KERNEL void ZBALAllGatherSmallKernel::Init(GM_ADDR input, GM_ADDR output, G
     this->output = output;
     this->elements = elements;
     this->waitSymbol = waitSymbol;
-
-    uint32_t elementsSize = Ceil(sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-    pipe.InitBuffer(getDataBuf_, elementsSize);
-    pipe.InitBuffer(writeDataBuf_, elementsSize);
-    pipe.InitBuffer(waitStatBuf_, elementsSize);
-    pipe.InitBuffer(writeStatBuf_, elementsSize);
-    pipe.InitBuffer(waitFlagBuf_, elementsSize);
-    pipe.InitBuffer(writeFlagBuf_, elementsSize);
 
     ZBALBaseKernel::Init(comm->dataOpType);
 #endif
@@ -338,15 +317,6 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::Init(GM_ADDR input, GM_ADDR output, GM_
     this->output = output;
     this->elements = elements;
     this->waitSymbol = waitSymbol;
-
-    uint32_t elementsSize = Ceil(sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
-    pipe.InitBuffer(getDataBuf_, elementsSize);
-    pipe.InitBuffer(writeDataBuf_, elementsSize);
-    pipe.InitBuffer(waitStatBuf_, elementsSize);
-    pipe.InitBuffer(writeStatBuf0_, elementsSize);
-    pipe.InitBuffer(writeStatBuf1_, elementsSize);
-    pipe.InitBuffer(waitFlagBuf_, elementsSize);
-    pipe.InitBuffer(writeFlagBuf_, elementsSize);
 
     ZBALBaseKernel::Init(comm->dataOpType);
 #endif

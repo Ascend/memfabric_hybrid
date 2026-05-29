@@ -217,6 +217,9 @@ public:
         }
         ZBAL_PROF_STOP(comm, ZBAL_PROF_BROADCAST_SCATTER);
 
+        // reset pipe to aviod previous operations infect later kernel function
+        pipe.Reset();
+
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_ALLGATHER);
         BarrierAll(comm);
         if (elements * sizeof(T) <= SMALL_AG_THRESHOLD) {
