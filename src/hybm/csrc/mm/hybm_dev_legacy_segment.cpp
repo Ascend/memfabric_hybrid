@@ -324,7 +324,7 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
     for (auto i = 0U; i < desInfos.size(); i++) {
         if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId) &&
             logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) {
-            auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(desInfos[i].userDeviceId, 0);
+            auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                             << " userDeviceId:" << (int)desInfos[i].userDeviceId

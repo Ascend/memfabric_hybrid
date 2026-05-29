@@ -368,16 +368,16 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
         return BM_ERROR;
     }
 
-    if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.userDeviceId)) {
-        ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.userDeviceId, 0);
+    if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.logicDeviceId)) {
+        ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.logicDeviceId, 0);
         if (ret != 0) {
             BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                         << " logic_device:" << logicDeviceId_
                                                         << " remote_logic_device:" << deviceInfo.logicDeviceId);
             return BM_DL_FUNCTION_FAILED;
         }
-        enablePeerDevices_.set(deviceInfo.userDeviceId);
-        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.userDeviceId);
+        enablePeerDevices_.set(deviceInfo.logicDeviceId);
+        BM_LOG_DEBUG("enable peer access for : " << deviceInfo.logicDeviceId);
     }
     std::unique_lock<std::mutex> uniqueLock{mutex_};
     for (auto &it : registerSlices_) {
@@ -416,14 +416,14 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
     if ((options_.dataOpType & HYBM_DOP_TYPE_SDMA) &&
         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
         if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_) &&
-            !enablePeerDevices_.test(sliceInfo.userDeviceId)) {
-            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.userDeviceId, 0);
+            !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
+            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for userDevice: " << sliceInfo.userDeviceId
                             << " logicDevice: " << sliceInfo.logicDeviceId << " failed: " << ret);
                 return BM_DL_FUNCTION_FAILED;
             }
-            enablePeerDevices_.set(sliceInfo.userDeviceId);
+            enablePeerDevices_.set(sliceInfo.logicDeviceId);
             BM_LOG_DEBUG("enable peer access for userDeviceId=" << sliceInfo.userDeviceId
                                                                  << " logicDeviceId=" << sliceInfo.logicDeviceId);
         }

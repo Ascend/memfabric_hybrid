@@ -512,7 +512,7 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
         if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
             logicDeviceId_ != static_cast<int>(info.logicDevId) &&
             CanLocalHostReaches(info.superPodId, info.serverId, info.logicDevId)) {
-            ret = DlAclApi::AclrtDeviceEnablePeerAccess(info.userDeviceId, 0);
+            ret = DlAclApi::AclrtDeviceEnablePeerAccess(info.logicDevId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                             << " remote_device:" << (int)info.logicDevId);

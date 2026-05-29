@@ -18,6 +18,7 @@
 #include "dl_acl_api.h"
 #include "dl_hal_api.h"
 #include "hybm_functions.h"
+#include "hybm_gva.h"
 
 #define MOCKER_CPP(api, TT) MOCKCPP_NS::mockAPI(#api, reinterpret_cast<TT>(api))
 
@@ -339,6 +340,7 @@ public:
 
         // 模拟全局函数
         MOCKER(HybmGetInitDeviceId).stubs().will(returnValue(0));
+        MOCKER(&ock::mf::HybmGetInitedLogicDeviceId).stubs().will(returnValue(0));
     }
 
 protected:
