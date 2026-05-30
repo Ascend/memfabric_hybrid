@@ -619,6 +619,9 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
     BM_ASSERT_LOG_AND_RETURN(initialized_, "initialized_ = " << initialized_, BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(desc != nullptr, "desc is nullptr", BM_INVALID_PARAM);
 
+    auto ret = SetThreadAclDevice();
+    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "SetThreadAclDevice failed: " << ret, BM_ERROR);
+
     std::vector<EntityExportInfo> deserializedInfos(count);
     for (auto i = 0U; i < count; i++) {
         auto ret = desc[i].Read(deserializedInfos[i]);
@@ -651,7 +654,7 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
         }
     }
     if (infos.size() > 0) {
-        auto ret = hbmSegment_->Import(infos, nullptr);
+        ret = hbmSegment_->Import(infos, nullptr);
         if (ret != BM_OK) {
             BM_LOG_ERROR("failed to import segment info, ret: " << ret);
             return BM_ERROR;
