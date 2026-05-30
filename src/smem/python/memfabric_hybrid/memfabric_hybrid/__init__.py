@@ -19,7 +19,15 @@ current_dir = os.path.dirname(current_path)
 sys.path.append(current_dir)
 libs_path = os.path.join(current_dir, 'lib')
 for lib in ["libmf_hybm_core.so", "libmf_smem.so"]:
-    ctypes.CDLL(os.path.join(libs_path, lib))
+    ctypes.CDLL(os.path.join(libs_path, lib), mode=ctypes.RTLD_GLOBAL)
+
+# Preload optional dlopen-ed libraries (may not be packaged depending on build options)
+optional_libs = ["libboundscheck.so", "libhcom.so", "libetcd_client_v3.so"]
+for lib in optional_libs:
+    try:
+        ctypes.CDLL(os.path.join(libs_path, lib), mode=ctypes.RTLD_GLOBAL)
+    except OSError:
+        pass
 
 
 def get_include_path():
