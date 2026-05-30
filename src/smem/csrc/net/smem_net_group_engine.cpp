@@ -748,48 +748,72 @@ Result SmemNetGroupEngine::GroupBarrierPrefixKey(uint32_t dstRank, std::string &
     return SM_OK;
 }
 
+Result SmemNetGroupEngine::GatherAllPrefixKeys(const std::string &update,
+                                               std::unordered_map<uint32_t, std::string> &retMap)
+{
+    std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(option_.rank);
+    auto ret = store_->Set(key, update);
+    SM_VALIDATE_RETURN(ret == SM_OK,
+                       "set prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
+
+    prefixKey_ = update;
+    std::string completePrefix = store_->GetCompleteKey(SMEM_EXCHANGE_INFO_KEY);
+    std::unordered_map<std::string, std::string> val;
+    ret = store_->PrefixGet(SMEM_EXCHANGE_INFO_KEY, val);
+    SM_VALIDATE_RETURN(ret == SM_OK,
+                       "get prefix_key: " << completePrefix << " failed, ret:" << ret, SM_ERROR);
+    for (auto &it : val) {
+        std::vector<std::string> vec = StrUtil::Split(it.first, '_');
+        if (vec.empty() || it.first.compare(0, completePrefix.length(), completePrefix) != 0) {
+            SM_LOG_ERROR("prefix:" << completePrefix << " receive_key:" << it.first << " not match!");
+            return SM_ERROR;
+        }
+        uint32_t rk;
+        if (!StrUtil::String2Int(vec.back(), rk)) {
+            SM_LOG_ERROR("receive_key:" << it.first << " can't get rank!");
+            return SM_ERROR;
+        }
+        if (!TestBitmapForRank(rk)) {
+            SM_LOG_WARN("has expired prefix key need to remove, rank:" << rk);
+            TryRemovePrefixKey(rk);
+        } else {
+            retMap.emplace(rk, it.second);
+        }
+    }
+
+    if (retMap.size() != groupInfo_.groupSize) {
+        std::vector<uint32_t> bitmapRanks;
+        GetAllRanksFromBitMap(bitmapRanks);
+        for (auto rk : bitmapRanks) {
+            if (rk != option_.rank && retMap.find(rk) == retMap.end()) {
+                SM_LOG_WARN("rank " << rk << " is in bitmap but missing BMEX key, trigger link down cleanup");
+                RemoteRankLinkDownCb(rk);
+            }
+        }
+        return SM_INNER_BUSY;
+    }
+    return SM_OK;
+}
+
 Result SmemNetGroupEngine::GroupGatherPrefixKey(uint32_t dstRank, std::string &update,
                                                 std::unordered_map<uint32_t, std::string> &retMap)
 {
     SM_ASSERT_RETURN(store_ != nullptr, SM_INVALID_PARAM);
     SM_ASSERT_RETURN(option_.dynamic, SM_ERROR);
     if (dstRank == option_.rank) { // get all
-        std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(dstRank);
-        auto ret = store_->Set(key, update);
-        SM_VALIDATE_RETURN(ret == SM_OK,
-                           "set prefix_key: " << store_->GetCompleteKey(key) << " failed, ret:" << ret, SM_ERROR);
-
-        prefixKey_ = update;
-        std::string completePrefix = store_->GetCompleteKey(SMEM_EXCHANGE_INFO_KEY);
-        std::unordered_map<std::string, std::string> val;
-        ret = store_->PrefixGet(SMEM_EXCHANGE_INFO_KEY, val);
-        SM_VALIDATE_RETURN(ret == SM_OK,
-                           "get prefix_key: " << completePrefix << " failed, ret:" << ret, SM_ERROR);
-        for (auto &it : val) {
-            std::vector<std::string> vec = StrUtil::Split(it.first, '_');
-            if (vec.empty() || it.first.compare(0, completePrefix.length(), completePrefix) != 0) {
-                SM_LOG_ERROR("prefix:" << completePrefix << " receive_key:" << it.first << " not match!");
-                return SM_ERROR;
-            }
-            uint32_t rk;
-            if (!StrUtil::String2Int(vec.back(), rk)) {
-                SM_LOG_ERROR("receive_key:" << it.first << " can't get rank!");
-                return SM_ERROR;
-            }
-
-            if (!TestBitmapForRank(rk)) {
-                SM_LOG_WARN("has expired prefix key need to remove, rank:" << rk);
-                TryRemovePrefixKey(rk);
-            } else {
-                retMap.emplace(rk, it.second);
-            }
-        }
-
-        if (retMap.size() != groupInfo_.groupSize) {
-            SM_LOG_WARN("has some rank not exist prefix key, please retry");
-            return SM_INNER_BUSY;
+        auto ret = GatherAllPrefixKeys(update, retMap);
+        if (ret != SM_OK) {
+            return ret;
         }
     } else { // get one
+        uint32_t ownRank = option_.rank;
+        if (ownRank != dstRank && bmexNeedRefresh_ && !update.empty()) {
+            std::string ownKey = SMEM_EXCHANGE_INFO_KEY + std::to_string(ownRank);
+            auto writeRet = store_->Set(ownKey, update);
+            if (writeRet != SM_OK) {
+                SM_LOG_WARN("set own prefix_key: " << store_->GetCompleteKey(ownKey) << " failed, ret:" << writeRet);
+            }
+        }
         std::string key = SMEM_EXCHANGE_INFO_KEY + std::to_string(dstRank);
         std::string val;
         auto ret = StoreGetCanInterrupt(key, val, option_.timeoutMs);
@@ -872,6 +896,10 @@ void SmemNetGroupEngine::GroupListenEvent()
             if (eventCtx_.watchId == UINT32_MAX) {
                 continue;
             }
+            // === FIX: reset stale counters after watch re-established ===
+            currentLeaveCount_.store(0);
+            currentStopCount_.store(0);
+            eventCtx_.values.clear();
         }
 
         int cRet = SM_OK;
@@ -889,39 +917,20 @@ void SmemNetGroupEngine::GroupListenEvent()
         if (cRet != SM_OK) {
             store_->Unwatch(eventCtx_.watchId);
             eventCtx_.watchId = UINT32_MAX;
-            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << cRet);
             for (auto &info : currentEvents) {
-                if (info.curEvent == LEAVE_EVENT || info.curEvent == LINK_DOWN_EVENT) {
-                    currentLeaveCount_.fetch_sub(1U);
-                }
-            }
-            currentEvents.clear();
-            redoLast = false;
-            continue;
-        }
-
-        while (!currentEvents.empty()) {
-            auto &info = currentEvents.front();
-            bool canRemove = true;
-            int32_t ret2 = SM_OK;
-            if (TryUpdateInfo(info) || redoLast) {
-                ret2 = JoinLeaveEventProcess();
-                canRemove = (ret == SM_OK);
-            }
-            // remove now event if has leave event or do event success
-            if (canRemove || currentLeaveCount_.load() > 0) {
                 if (info.curEvent == LEAVE_EVENT || info.curEvent == LINK_DOWN_EVENT) {
                     currentLeaveCount_.fetch_sub(1U);
                 } else if (info.curEvent == STOP_EVENT) {
                     currentStopCount_.fetch_sub(1U);
                 }
-                currentEvents.pop_front();
-                redoLast = false;
-            } else {
-                redoLast = (ret == SM_INNER_BUSY); // groupInfo has updated, need redo next time
-                break;
             }
+            currentEvents.clear();
+            redoLast = false;
+            bmexNeedRefresh_ = true; // watch broke, may need to re-publish BMEX on next join
+            continue;
         }
+
+        ProcessEventItems(currentEvents, redoLast);
     }
     SM_LOG_DEBUG("GroupListenEvent end, rank:" << option_.rank);
     listenThreadStarted_.fetch_sub(1U);
@@ -939,6 +948,10 @@ void SmemNetGroupEngine::GroupListenLinkState()
             if (linkCtx_.watchId == UINT32_MAX) {
                 continue;
             }
+
+            // === FIX: reset stale counters after watch re-established ===
+            currentLinkDownCount_.store(0);
+            linkCtx_.values.clear();
         }
 
         int cRet = SM_OK;
@@ -954,9 +967,9 @@ void SmemNetGroupEngine::GroupListenLinkState()
         }
 
         if (cRet != SM_OK) {
+            SM_LOG_ERROR("link watch failed, unwatch wid:" << linkCtx_.watchId << " ret:" << cRet);
             store_->Unwatch(linkCtx_.watchId);
             linkCtx_.watchId = UINT32_MAX;
-            SM_LOG_ERROR("group watch failed, maybe link down, ret: " << cRet);
         } else {
             for (auto &rank: currentEvents) {
                 RankLinkDownEventProcess(rank);
@@ -1044,7 +1057,7 @@ int32_t SmemNetGroupEngine::JoinLeaveEventProcess()
         }
     }
 
-    if (groupInfo_.submitRank == option_.rank && (currentStopCount_.load() == 0)) {
+    if (groupInfo_.submitRank == option_.rank) {
         if (groupInfo_.curEvent != LINK_DOWN_EVENT) {
             localOpRet_ = ret;
             localOpSignal_.PthreadSignal();
@@ -1104,6 +1117,40 @@ wait_done:
         lastSubmitVersion_.store(info.version);
     }
     return SM_OK;
+}
+
+void SmemNetGroupEngine::ProcessEventItems(std::list<SmemGroupInfo> &currentEvents, bool &redoLast)
+{
+    uint32_t redoCount = 0;
+    while (!currentEvents.empty()) {
+        auto &info = currentEvents.front();
+        bool canRemove = true;
+        int32_t ret2 = SM_OK;
+        if (TryUpdateInfo(info) || redoLast || redoCount > 0) {
+            ret2 = JoinLeaveEventProcess();
+            canRemove = (ret2 == SM_OK);
+        }
+        if (canRemove || currentLeaveCount_.load() > 0) {
+            uint32_t curEvent = info.curEvent;
+            if (curEvent == LEAVE_EVENT || curEvent == LINK_DOWN_EVENT) {
+                currentLeaveCount_.fetch_sub(1U);
+            } else if (curEvent == STOP_EVENT) {
+                currentStopCount_.fetch_sub(1U);
+            }
+            currentEvents.pop_front();
+            redoLast = false;
+            if (ret2 == SM_OK && curEvent == JOIN_EVENT) {
+                redoCount = 0;
+                bmexNeedRefresh_ = false;
+            }
+        } else if (ret2 == SM_INNER_BUSY && redoCount < SMEM_GROUP_RETRY_TIME) {
+            currentEvents.splice(currentEvents.end(), currentEvents, currentEvents.begin());
+            redoLast = true;
+            redoCount++;
+        } else {
+            break;
+        }
+    }
 }
 
 void SmemNetGroupEngine::RankLinkDownEventProcess(uint32_t rankId)
@@ -1287,10 +1334,10 @@ Result SmemNetGroupEngine::GroupJoin()
     int retry_count = 0;
     static constexpr int MAX_RETRY = 30;
     localOpRet_ = SM_OK; // init ret
+    localOpSignal_.SignalClean(); // discard stale JOIN retry signal from prior attempt
     while (retry_count++ < MAX_RETRY) {
         if (!store_->GetConnectStatus()) {
-            SM_LOG_ERROR("store server link down, join failed!");
-            return SM_ERROR;
+            return SM_INNER_BUSY;
         }
 
         if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) { // has leave or link_down, retry
@@ -1324,6 +1371,7 @@ Result SmemNetGroupEngine::GroupJoin()
     }
 
     int ret = localOpSignal_.TimedwaitMillsecs(option_.timeoutMs);
+
     SmemGroupInfo info = GenerateInfo(NULL_EVNET, option_.rank, old);
     if (ret != SM_OK || localOpRet_ != SM_OK) {
         SM_LOG_ERROR("do join failed! signal_ret:" << ret << " op_ret:" << localOpRet_);
@@ -1357,6 +1405,7 @@ Result SmemNetGroupEngine::GroupUpdate()
     int retry_count = 0;
     static constexpr int MAX_RETRY = 30;
     localOpRet_ = SM_OK; // init ret
+    localOpSignal_.SignalClean(); // discard stale signal from prior update retry
     while (retry_count++ < MAX_RETRY) {
         if (currentLeaveCount_.load() > 0 || currentLinkDownCount_.load() > 0) { // has leave or link_down, retry
             usleep(SMEM_GROUP_SLEEP_TIMEOUT);

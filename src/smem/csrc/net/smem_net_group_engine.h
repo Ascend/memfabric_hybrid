@@ -138,6 +138,8 @@ public:
 
     bool IsJoined() const { return joined_.load(); }
 
+    bool GetStoreConnectStatus() const { return store_ != nullptr && store_->GetConnectStatus(); }
+
     Result GroupJoin();
 
     Result GroupUpdate();
@@ -158,6 +160,7 @@ private:
     void GroupListenEvent();
     void GroupListenLinkState();
     int32_t JoinLeaveEventProcess();
+    void ProcessEventItems(std::list<SmemGroupInfo> &currentEvents, bool &redoLast);
     void RankLinkDownEventProcess(uint32_t rankId);
     void GroupWatchCb(int result, const std::string &key, const std::string &value);
     void RemoteRankLinkDownCb(uint32_t remoteRankId);
@@ -173,6 +176,7 @@ private:
     Result StoreGetCanInterrupt(const std::string &key, std::string &value, uint64_t timeoutMs);
     void TryCleanOldEvent();
     Result DoLinkDownOnce(uint32_t rankId);
+    Result GatherAllPrefixKeys(const std::string &update, std::unordered_map<uint32_t, std::string> &retMap);
 
     StoreManagerPtr store_ = nullptr;
     SmemGroupOption option_;
@@ -189,6 +193,8 @@ private:
     GroupListenContext<SmemGroupInfo> eventCtx_;
     std::atomic_uint32_t currentLeaveCount_{0};
     std::atomic_uint32_t currentStopCount_{0};
+
+    bool bmexNeedRefresh_ = false; // set on watch break, cleared after first BMEX re-write
 
     std::thread linkListenThread_;
     SmemTimedwait linkListenSignal_;

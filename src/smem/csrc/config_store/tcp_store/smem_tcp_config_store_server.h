@@ -126,6 +126,8 @@ private:
     Result FindOrInsertRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
 
 private:
+    Result AllocateAndReplyRank(const ock::acc::AccTcpRequestContext &context, SmemMessage &responseMessage,
+                                uint32_t linkId, std::unique_lock<std::mutex> &lockGuard) noexcept;
     StoreErrorCode PersistWorldSize(uint32_t size) noexcept;
     StoreErrorCode PersistAliveRankIds(const std::unordered_set<uint32_t> &ranks) noexcept;
     StoreErrorCode RecoverAliveRankIds(std::unordered_set<uint32_t> &outRanks) noexcept;
@@ -143,6 +145,8 @@ private:
 
     std::mutex storeMutex_;
     std::condition_variable storeCond_;
+    std::condition_variable recoveryCond_;
+    std::mutex recoveryMutex_;
     StoreBackendPtr backend_;
     std::unordered_map<uint64_t, StoreWaitContext> waitCtx_;
     std::unordered_map<std::string, std::unordered_set<uint64_t>> keyWaiters_;
@@ -166,6 +170,8 @@ private:
     uint32_t worldSize_;
     uint32_t rankIndex_{0};
     std::unordered_set<uint32_t> aliveRankSet_;
+    std::unordered_set<uint32_t> reconnectedRankSet_; // only ranks that actually reconnected after startup
+    std::unordered_map<uint32_t, uint32_t> linkRankMap_; // linkId → rankId, in-memory only, no etcd
     ConfigStoreServerBrokenHandler externalBrokenHandler_{nullptr};
     std::unordered_map<uint32_t, int64_t> heartBeatMap_;
     std::thread checkerThread_;

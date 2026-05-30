@@ -222,6 +222,11 @@ void AccTcpListener::ProcessNewConnection(int fd, struct sockaddr_in addressIn) 
     // tmpLink作为智能指针 异常分支返回时会自动析构释放资源
     auto result = connHandler_(req, newLink.Get());
     if (result != ACC_OK) {
+        LOG_INFO("ProcessNewConnection: connHandler_ non-ok, send error resp result=" << result);
+        AccConnResp resp;
+        resp.result = static_cast<int16_t>(result);
+        (void)::send(fd, &resp, sizeof(resp), 0);
+        SafeCloseFd(fd);
         return;
     }
 

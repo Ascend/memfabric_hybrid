@@ -342,7 +342,20 @@ Result SmemBmEntry::Join(uint32_t flags)
         mf::MfEnvUtil::GetOptionalUintOrDefault("MF_GROUP_JOIN_MAX_TIMEOUT", MF_GROUP_JOIN_DEFAULT_TIMEOUT);
     SM_LOG_DEBUG("group join timeout sec: " << groupJoinTimeoutSec);
     auto start_time = std::chrono::steady_clock::now();
+    // Track store connection state: if the store was ever disconnected since
+    // we started joining, restart the clock once it reconnects. Time spent
+    // with a dead leader cannot be used to complete the join.
+    bool wasDisconnected = !globalGroup_->GetStoreConnectStatus();
+    uint32_t resetCount = 0;
     while (true) {
+        bool connected = globalGroup_->GetStoreConnectStatus();
+        if (wasDisconnected && connected && resetCount < 1) {
+            SM_LOG_INFO("store reconnected after disconnect, resetting join timer. rank: " << options_.rank);
+            start_time = std::chrono::steady_clock::now();
+            ++resetCount;
+        }
+        wasDisconnected = !connected;
+
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
         if (duration >= groupJoinTimeoutSec) {

@@ -466,6 +466,7 @@ Result HaConfigStore::ConnectClient(const std::string &ip, uint16_t port) noexce
         return clientStartRet;
     }
     SM_LOG_INFO("ClientStart succeeded");
+    clientDelegate_->SetConnectStatus(true);
     // Register broken link handler only once
     if (!brokenHandlerRegistered_.exchange(true, std::memory_order_acq_rel)) {
         SM_LOG_DEBUG("Registering broken link handler");

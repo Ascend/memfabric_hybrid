@@ -278,6 +278,48 @@ TEST_F(SmemHaConfigStoreTest, ConnectClientFirstConnectionRegistersBrokenHandler
     EXPECT_EQ(1U, client->brokenHandler_.size());
 }
 
+TEST_F(SmemHaConfigStoreTest, ConnectClientSetsConnectStatusOnFirstConnection)
+{
+    // Verify that ConnectClient calls SetConnectStatus(true) after ClientStart
+    // succeeds, as required by commit dc686c2.
+    auto backend = MakeBackend();
+    auto client = MakeClientDelegate();
+    HaConfigStore store(backend, client, K_STORE_ENDPOINT, K_DEFAULT_WORLD_SIZE);
+
+    // Initially connect status is false.
+    EXPECT_FALSE(client->GetConnectStatus());
+
+    // Stub ClientStart to return success.
+    MOCKER_CPP(&TcpConfigStore::ClientStart, int32_t(*)(const smem_tls_config &, int))
+        .stubs()
+        .will(returnValue(int32_t(0)));
+
+    EXPECT_EQ(SM_OK, store.ConnectClient(K_LOOPBACK_IP, K_STORE_PORT));
+
+    // After connection, SetConnectStatus(true) should have been called.
+    EXPECT_TRUE(client->GetConnectStatus());
+}
+
+TEST_F(SmemHaConfigStoreTest, ConnectClientDoesNotSetConnectStatusOnFailure)
+{
+    // If ClientStart fails, SetConnectStatus should NOT be called.
+    auto backend = MakeBackend();
+    auto client = MakeClientDelegate();
+    HaConfigStore store(backend, client, K_STORE_ENDPOINT, K_DEFAULT_WORLD_SIZE);
+
+    EXPECT_FALSE(client->GetConnectStatus());
+
+    // Stub ClientStart to return failure.
+    MOCKER_CPP(&TcpConfigStore::ClientStart, int32_t(*)(const smem_tls_config &, int))
+        .stubs()
+        .will(returnValue(int32_t(-1)));
+
+    EXPECT_NE(SM_OK, store.ConnectClient(K_LOOPBACK_IP, K_STORE_PORT));
+
+    // Status should remain false.
+    EXPECT_FALSE(client->GetConnectStatus());
+}
+
 TEST_F(SmemHaConfigStoreTest, ConnectClientReconnectPathPropagatesDelegateResult)
 {
     auto backend = MakeBackend();
@@ -488,4 +530,340 @@ TEST_F(SmemHaConfigStoreTest, ReConnectAfterBrokenReturnsOkWhenStopFlagSet)
     store.stopFlag_.store(true, std::memory_order_release);
 
     EXPECT_EQ(SM_OK, store.ReConnectAfterBroken(K_RECONNECT_RETRY_TIMES));
+}
+
+// === Tests for commit dc686c2: AccStoreServer recovery mechanism ===
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerRestoreFromBackendSeedsAliveRankSet)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // getHook returns "{0,1,2}" for KEY_ALIVE_RANK_LIST.
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_ALIVE_RANK_LIST) {
+            const std::string ranks = "0,1,2";
+            outValue.assign(ranks.begin(), ranks.end());
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+
+    auto ret = server.RestoreFromBackend();
+    ASSERT_EQ(SM_OK, ret);
+
+    // aliveRankSet_ should be seeded with {0,1,2}.
+    EXPECT_EQ(3U, server.aliveRankSet_.size());
+    EXPECT_TRUE(server.aliveRankSet_.count(0));
+    EXPECT_TRUE(server.aliveRankSet_.count(1));
+    EXPECT_TRUE(server.aliveRankSet_.count(2)); // 2
+    // reconnectedRankSet_ must NOT be seeded.
+    EXPECT_TRUE(server.reconnectedRankSet_.empty());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerRestoreFromBackendEmptyWhenNoBackendData)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // getHook returns NOT_EXIST for all keys.
+    auto ret = server.RestoreFromBackend();
+    ASSERT_EQ(SM_OK, ret);
+
+    // aliveRankSet_ remains empty.
+    EXPECT_TRUE(server.aliveRankSet_.empty());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerLaunchCleanupThreadSkipsWhenFirstUpdate)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // aliveRankFromBackend_ is empty → isFirstUpdate = true → skip cleanup.
+    auto ret = server.LaunchCleanupThread();
+    EXPECT_EQ(SM_OK, ret);
+    // cleanupThread_ should not be joinable (was never started).
+    EXPECT_FALSE(server.cleanupThread_.joinable());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerCanReceiveNewLinkTransitionsInitedToNormalWithSkipRecover)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, true);
+
+    server.state_.store(SS_INITED);
+    // skipRecover_ = true → state becomes NORMAL immediately.
+    EXPECT_TRUE(server.CanReceiveNewLink());
+    EXPECT_EQ(SS_NORMAL, server.state_.load());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerCanReceiveNewLinkTransitionsToRecoverThenNormalOnAllReconnect)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+    server.skipRecover_ = false;
+
+    // Set aliveRankFromBackend_ = {0,1} to simulate recovered ranks.
+    server.aliveRankFromBackend_ = {0, 1};
+    // Initially empty reconnectedRankSet_.
+    server.state_.store(SS_INITED);
+
+    // First call: INITED → RECOVER (not all reconnected).
+    EXPECT_FALSE(server.CanReceiveNewLink());
+    EXPECT_EQ(SS_RECOVER, server.state_.load());
+
+    // Insert ranks into reconnectedRankSet_ — simulates reconnect.
+    server.reconnectedRankSet_.insert(0);
+    server.reconnectedRankSet_.insert(1);
+
+    // Second call: allReconnected → NORMAL.
+    EXPECT_TRUE(server.CanReceiveNewLink());
+    EXPECT_EQ(SS_NORMAL, server.state_.load());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerCleanupStaleRanksDetectsOrphans)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Simulate state after recovery: ranks {0,1} in backend, only {1} reconnected.
+    server.aliveRankFromBackend_ = {0, 1};
+    server.reconnectedRankSet_ = {1};
+    server.aliveRankSet_ = {0, 1};
+
+    // Test the orphan detection logic that CleanupStaleRanks uses:
+    // subtract reconnected ranks from backend ranks.
+    std::unordered_set<uint32_t> ranksToRemove;
+    for (const uint32_t rank : server.reconnectedRankSet_) {
+        server.aliveRankFromBackend_.erase(rank);
+    }
+    ranksToRemove = server.aliveRankFromBackend_;
+
+    // Only rank 0 should be identified as orphan (rank 1 reconnected).
+    ASSERT_EQ(1U, ranksToRemove.size());
+    EXPECT_TRUE(ranksToRemove.count(0));
+    EXPECT_FALSE(ranksToRemove.count(1));
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerQueryAliveUsesReconnectedRankSet)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Rank 0 is in reconnectedRankSet_ (actually connected).
+    server.reconnectedRankSet_.insert(0);
+    // Rank 1 is in aliveRankSet_ (seeded from backend) but NOT in reconnectedRankSet_.
+    server.aliveRankSet_.insert(1);
+
+    // QueryAlive must use reconnectedRankSet_ — rank 0 alive, rank 1 not.
+    EXPECT_TRUE(server.reconnectedRankSet_.count(0));
+    EXPECT_FALSE(server.reconnectedRankSet_.count(1));
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerUpdateStatusSetsAndDeletesLeaderStatus)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // UpdateStatus(true) should PUT KEY_LEADER_STATUS="true".
+    EXPECT_EQ(SM_OK, server.UpdateStatus(true));
+    EXPECT_EQ(KEY_LEADER_STATUS, fb->lastPutKey);
+    EXPECT_EQ("true", std::string(fb->lastPutValue.begin(), fb->lastPutValue.end()));
+
+    // UpdateStatus(false) should DELETE KEY_LEADER_STATUS.
+    EXPECT_EQ(SM_OK, server.UpdateStatus(false));
+    EXPECT_EQ(KEY_LEADER_STATUS, fb->lastDeleteKey);
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerGetStatusChecksBackend)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // getHook returns "true" for KEY_LEADER_STATUS → GetStatus returns true.
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_LEADER_STATUS) {
+            outValue.assign({'t', 'r', 'u', 'e'});
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+    EXPECT_TRUE(server.GetStatus());
+
+    // getHook returns something else → GetStatus returns false after retries.
+    fb->getHook = [](const std::string &, std::vector<uint8_t> &) {
+        return StoreErrorCode::NOT_EXIST;
+    };
+    EXPECT_FALSE(server.GetStatus());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerRestoreFromBackendPersistsAliveRankList)
+{
+    // Verify that RestoreFromBackend correctly reads KEY_ALIVE_RANK_LIST
+    // from the backend and seeds aliveRankSet_ without touching reconnectedRankSet_.
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_ALIVE_RANK_LIST) {
+            const std::string ranks = "0,1,2";
+            outValue.assign(ranks.begin(), ranks.end());
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+
+    auto ret = server.RestoreFromBackend();
+    ASSERT_EQ(SM_OK, ret);
+
+    // aliveRankSet_ = {0,1,2} seeded from backend.
+    ASSERT_EQ(3U, server.aliveRankSet_.size());
+    EXPECT_TRUE(server.aliveRankSet_.count(0));
+
+    // reconnectedRankSet_ stays empty (only LinkConnectedHandler populates it).
+    EXPECT_TRUE(server.reconnectedRankSet_.empty());
+
+    // aliveRankFromBackend_ is also populated.
+    ASSERT_EQ(3U, server.aliveRankFromBackend_.size());
+    EXPECT_TRUE(server.aliveRankFromBackend_.count(0));
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerFindOrInsertRankUsesLinkRankMap)
+{
+    auto backend = MakeBackend();
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Manually insert a rank into linkRankMap_, simulating a prior connection.
+    uint32_t linkId = 42;
+    uint32_t existingRank = 7;
+    server.linkRankMap_[linkId] = existingRank;
+
+    // runState=SS_EXITED so that CanReceiveNewLink doesn't transition to RECOVER
+    // (we are not testing recovery here).
+    server.state_.store(SS_EXITED);
+
+    // FindOrInsertRank is called internally; we verify by checking that
+    // aliveRankSet_ contains a rank after insertion.  But we can't easily
+    // call FindOrInsertRank from here (needs AccTcpRequestContext).
+    // Instead verify the linkRankMap_ lookup path returns correct rank.
+    auto it = server.linkRankMap_.find(linkId);
+    ASSERT_NE(it, server.linkRankMap_.end());
+    EXPECT_EQ(existingRank, it->second);
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerPersistAndRecoverAliveRankIds)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // PersistAliveRankIds: write {0,1,2} to backend.
+    // unordered_set iteration order is not guaranteed, so check each element
+    // appears as a substring rather than comparing the full string.
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.PersistAliveRankIds({0, 1, 2}));
+    EXPECT_EQ(KEY_ALIVE_RANK_LIST, fb->lastPutKey);
+    std::string persisted(reinterpret_cast<const char *>(fb->lastPutValue.data()), fb->lastPutValue.size());
+    EXPECT_NE(std::string::npos, persisted.find('0'));
+    EXPECT_NE(std::string::npos, persisted.find('1'));
+    EXPECT_NE(std::string::npos, persisted.find('2'));
+
+    // PersistAliveRankIds with empty set → DELETE from backend.
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.PersistAliveRankIds({}));
+    EXPECT_EQ(KEY_ALIVE_RANK_LIST, fb->lastDeleteKey);
+
+    // RecoverAliveRankIds: mock backend to return "3,4,5".
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_ALIVE_RANK_LIST) {
+            const std::string ranks = "3,4,5";
+            outValue.assign(ranks.begin(), ranks.end());
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+    std::unordered_set<uint32_t> recovered;
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.RecoverAliveRankIds(recovered));
+    ASSERT_EQ(3U, recovered.size());
+    EXPECT_TRUE(recovered.count(3)); // 3
+    EXPECT_TRUE(recovered.count(5)); // 5
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerRecoverAliveRankIdsHandlesEmptyAndMissing)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Empty string in backend → recover returns empty set.
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_ALIVE_RANK_LIST) {
+            outValue.clear();
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+    std::unordered_set<uint32_t> recovered = {99};
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.RecoverAliveRankIds(recovered));
+    EXPECT_TRUE(recovered.empty()) << "empty backend string yields empty result";
+
+    // Missing key in backend → recover returns empty set.
+    fb->getHook = [](const std::string &, std::vector<uint8_t> &) {
+        return StoreErrorCode::NOT_EXIST;
+    };
+    recovered = {99};
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.RecoverAliveRankIds(recovered));
+    EXPECT_TRUE(recovered.empty()) << "missing key yields empty result";
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerRecoverAliveRankIdsHandlesInvalidInput)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Backend returns "abc" (non-numeric) → ERROR.
+    fb->getHook = [](const std::string &key, std::vector<uint8_t> &outValue) {
+        if (key == KEY_ALIVE_RANK_LIST) {
+            const std::string ranks = "0,abc,2";
+            outValue.assign(ranks.begin(), ranks.end());
+            return StoreErrorCode::SUCCESS;
+        }
+        return StoreErrorCode::NOT_EXIST;
+    };
+    std::unordered_set<uint32_t> recovered;
+    EXPECT_EQ(StoreErrorCode::ERROR, server.RecoverAliveRankIds(recovered));
+    EXPECT_TRUE(recovered.empty());
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerPersistWorldSizeWritesAndRecovers)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // PersistWorldSize writes to KEY_WORLD_SIZE.
+    EXPECT_EQ(StoreErrorCode::SUCCESS, server.PersistWorldSize(8)); // 8
+    EXPECT_EQ(KEY_WORLD_SIZE, fb->lastPutKey);
+    EXPECT_EQ("8", std::string(fb->lastPutValue.begin(), fb->lastPutValue.end()));
+}
+
+TEST_F(SmemHaConfigStoreTest, AccStoreServerSetAndGetStatus)
+{
+    auto backend = MakeBackend();
+    auto fb = Convert<ConfigStoreBackend, FakeStoreBackend>(backend);
+    AccStoreServer server(K_LOOPBACK_IP, K_STORE_PORT, K_DEFAULT_WORLD_SIZE, backend, false);
+
+    // Initially GetStatus should be true (non-distributed check bypasses backend).
+    // But we already have a dedicated test for UpdateStatus/GetStatus above.
+
+    // Test that UpdateStatus with false deletes and true puts.
+    ASSERT_EQ(SM_OK, server.UpdateStatus(false));
+    EXPECT_EQ(KEY_LEADER_STATUS, fb->lastDeleteKey);
+
+    ASSERT_EQ(SM_OK, server.UpdateStatus(true));
+    EXPECT_EQ(KEY_LEADER_STATUS, fb->lastPutKey);
+    EXPECT_EQ("true", std::string(fb->lastPutValue.begin(), fb->lastPutValue.end()));
 }

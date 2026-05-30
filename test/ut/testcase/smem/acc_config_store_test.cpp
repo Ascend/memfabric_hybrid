@@ -462,3 +462,26 @@ TEST_F(AccConfigStoreTest, set_get_binary_data)
     ASSERT_EQ(0, ret);
     ASSERT_EQ(value, valueOut);
 }
+
+// === Tests for commit dc686c2 new functionality ===
+
+TEST_F(AccConfigStoreTest, query_alive_for_connected_rank_returns_alive)
+{
+    // After g_client connects (worldSize=2, rankId=0 from CreateStore),
+    // QueryAliveHandler should find the rank via reconnectedRankSet_.
+    uint32_t alive = 0;
+    auto ret = g_client->QueryAlive(0, alive);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(1U, alive);
+}
+
+TEST_F(AccConfigStoreTest, query_alive_unconnected_rank_returns_not_alive)
+{
+    // The fixture server has worldSize=2. g_client is rank=1, server self is rank=0.
+    // Rank 2 is beyond worldSize and has never connected; QueryAliveHandler
+    // checks reconnectedRankSet_ and should return empty.
+    uint32_t alive = 0;
+    auto ret = g_client->QueryAlive(2, alive);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0U, alive);
+}
