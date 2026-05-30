@@ -242,6 +242,7 @@ static int32_t smem_bm_create2_inner(uint32_t id, const smem_bm_create_option_t 
             << "Please set enable56BitsGva = true, "
             << "maxDram=" << option->maxDramSize << ", maxHbm=" << option->maxHbmSize
             << ", rankCount=" << options.rankCount);
+        (void)manager.RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return SM_INVALID_PARAM;
     }
     options.enable56BitsGva = option->enable56BitsGva;
@@ -262,6 +263,7 @@ static int32_t smem_bm_create2_inner(uint32_t id, const smem_bm_create_option_t 
     if (manager.GetHcomUrl().size() > 64u) {
         SM_LOG_AND_SET_LAST_ERROR_CODE(SM_INVALID_PARAM,
             "url size is " << manager.GetHcomUrl().size());
+        (void)manager.RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return SM_INVALID_PARAM;
     }
     (void)std::copy_n(manager.GetHcomUrl().c_str(), manager.GetHcomUrl().size(), options.transUrl);
@@ -273,6 +275,7 @@ static int32_t smem_bm_create2_inner(uint32_t id, const smem_bm_create_option_t 
     ret = entry->Initialize(options);
     if (ret != 0) {
         SM_LOG_AND_SET_LAST_ERROR_CODE(ret, "entry init failed, result: " << ret);
+        (void)manager.RemoveEntryByPtr(reinterpret_cast<uintptr_t>(entry.Get()));
         return ret;
     }
     *out = reinterpret_cast<void *>(entry.Get());

@@ -185,6 +185,15 @@ Result HcomTransportManager::CloseDevice()
         }
     }
 
+    // destroy all registered MRs first to release UBContext refs before ServiceDestroy
+    for (uint32_t i = 0; i < mrMutex_.size(); ++i) {
+        std::unique_lock<std::mutex> lock(mrMutex_[i]);
+        for (auto it = mrs_[i].begin(); it != mrs_[i].end();) {
+            DlHcomApi::ServiceDestroyMemoryRegion(service, it->mr);
+            it = mrs_[i].erase(it);
+        }
+    }
+
     auto ret = DlHcomApi::ServiceDestroy(service, HCOM_RPC_SERVICE_NAME);
     if (ret != 0) {
         BM_LOG_WARN("Failed to destroy hcom service, ret: " << ret);

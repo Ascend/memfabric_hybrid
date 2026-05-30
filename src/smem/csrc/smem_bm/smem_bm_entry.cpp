@@ -100,6 +100,7 @@ int32_t SmemBmEntry::Initialize(const hybm_options &options)
     } while (0);
 
     if (ret != 0) {
+        inited_ = true; // ensure UnInitalize will execute
         UnInitalize();
         globalGroup_ = nullptr;
         return ret;
