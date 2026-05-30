@@ -9,9 +9,9 @@ yum install etcd.aarch64
 nohup etcd \
   --name test-etcd \
   --data-dir /tmp/etcd-data \
-  --listen-client-urls http://0.0.0.0:12335 \
+  --listen-client-urls http://<etcd_ip>:12335 \
   --advertise-client-urls http://127.0.0.1:12335 \
-  --listen-peer-urls http://0.0.0.0:12336 \
+  --listen-peer-urls http://<etcd_ip>:12336 \
   --initial-advertise-peer-urls http://127.0.0.1:12336 \
   --initial-cluster test-etcd=http://127.0.0.1:12336 \
   --initial-cluster-token tkn1 \

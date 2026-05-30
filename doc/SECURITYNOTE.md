@@ -128,6 +128,21 @@ export ACCLINK_CERT_CHECK_AHEAD_DAYS=14
 | 依赖三方库  |  https://github.com/google/googletest.git | .gitmodules | https://github.com/google/googletest.git   | 单元测试框架依赖 |
 | 依赖三方库  | https://github.com/sinojelly/mockcpp.git  | .gitmodules | https://github.com/sinojelly/mockcpp.git   | 单元测试框架依赖 |
 | 依赖三方库  | https://atomgit.com/openeuler/ubs-comm.git  | cmake/config_hcom.cmake | https://atomgit.com/openeuler/ubs-comm.git   | UBS通信库依赖 |
+| 依赖三方库  | https://atomgit.com/openeuler/libboundscheck.git | bazel/memfabric_deps.bzl | https://atomgit.com/openeuler/libboundscheck.git | boundscheck安全库依赖 |
+| 依赖三方库  | https://github.com/bazel-contrib/rules_python | WORKSPACE | https://github.com/bazel-contrib/rules_python | Bazel Python规则依赖 |
+| 依赖三方库  | https://github.com/pybind/pybind11 | WORKSPACE | https://github.com/pybind/pybind11 | Python绑定库依赖 |
+| 依赖三方库  | https://github.com/pybind/pybind11_bazel | WORKSPACE | https://github.com/pybind/pybind11_bazel | Bazel pybind11集成依赖 |
+| 依赖三方库  | https://pypi.org/project/memfabric-hybrid/ | README.md | https://pypi.org/project/memfabric-hybrid/ | Python包发布地址 |
+| 依赖工具  | https://gitcode.com/pre-commit/pre-commit-hooks | .pre-commit-config.yaml | https://gitcode.com/pre-commit/pre-commit-hooks | pre-commit基础检查 |
+| 依赖工具  | https://gitcode.com/gh_mirrors/ru/ruff-pre-commit | .pre-commit-config.yaml | https://gitcode.com/gh_mirrors/ru/ruff-pre-commit | Python linter/格式化工具镜像 |
+| 依赖工具  | https://gitcode.com/gh_mirrors/co/codespell | .pre-commit-config.yaml | https://gitcode.com/gh_mirrors/co/codespell | 拼写检查工具镜像 |
+| 依赖工具  | https://gitcode.com/gh_mirrors/pyl/pylint | .pre-commit-config.yaml | https://gitcode.com/gh_mirrors/pyl/pylint | Python代码质量检查工具镜像 |
+| 依赖工具  | https://gitcode.com/gh_mirrors/ba/bandit | .pre-commit-config.yaml | https://gitcode.com/gh_mirrors/ba/bandit | Python安全漏洞检查工具镜像 |
+| 依赖工具  | https://gitcode.com/gh_mirrors/ty/typos | .pre-commit-config.yaml | https://gitcode.com/gh_mirrors/ty/typos | 拼写检查工具镜像 |
+| 依赖工具  | https://gitcode.com/pre-commit-clang/mirrors-clang-format | .pre-commit-config.yaml | https://gitcode.com/pre-commit-clang/mirrors-clang-format | C++格式化工具镜像 |
+| 依赖三方库  | https://github.com/linux-rdma/rdma-core | src/hybm/csrc/driver/npu_direct_rdma/README.md | https://github.com/linux-rdma/rdma-core | RDMA核心库依赖 |
+| 依赖三方库  | https://github.com/vllm-project/vllm-ascend | README.md | https://github.com/vllm-project/vllm-ascend | vllm-ascend后端集成参考 |
+| 镜像/CDN  | 不涉及 | README.md | https://img.shields.io | 项目状态徽标CDN |
 | license 地址 | 不涉及  | LICENSE | http://www.apache.org/licenses/            | license文件 |
 | license 地址 |  不涉及 |  LICENSE | http://www.apache.org/licenses/LICENSE-2.0 | license文件  |
 | 代码仓地址 |  https://gitcode.com/Ascend/memfabric_hybrid | 不涉及 | https://gitcode.com/Ascend/memfabric_hybrid | shmem 仓库地址信息 |

@@ -17,7 +17,6 @@ build --action_env=GO111MODULE=on
 build --action_env=GOMODCACHE
 build --action_env=GOCACHE
 build --action_env=GOPATH
-#build --action_env=GOPROXY=https://goproxy.io,https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
 build --action_env=GOPROXY
 build --action_env=http_proxy
 build --action_env=https_proxy
