@@ -87,7 +87,7 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
             if ((options.dataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
                 tmpSeg = std::make_shared<HybmHostShmSegment>(options, entityId);
             } else if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
-                       options.shmFd < 0) {
+                       options.shmFd < 0 && options.dataOpType != HYBM_DOP_TYPE_DEVICE_RDMA) {
                 tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
                 tmpSeg = std::make_shared<HybmConnBasedSegment>(options, entityId);
