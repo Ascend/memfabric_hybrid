@@ -12,6 +12,7 @@
 #include <thread>
 #include <algorithm>
 
+#include "mf_ipv4_validator.h"
 #include "smem_net_common.h"
 #include "smem_net_group_engine.h"
 #include "smem_store_factory.h"
@@ -100,7 +101,8 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
     std::string localIp;
     auto success = NetworkEndpointUtil::GetLocalIpWithTarget(storeUrlExtraction_.ip, localIp);
     SM_ASSERT_RETURN(success, SM_ERROR);
-    if (localIp != storeUrlExtraction_.ip) {
+    if (localIp != storeUrlExtraction_.ip && !ock::mf::NetValidator::IsZeroIpV4(storeUrlExtraction_.ip)) {
+        SM_LOG_INFO("not local ip, skip create store server, ip:" << storeUrlExtraction_.ip);
         return SM_OK;
     }
 
