@@ -33,6 +33,19 @@ namespace mf {
 namespace transport {
 namespace device {
 
+class DeviceThreadContext : public ThreadContext {
+public:
+    explicit DeviceThreadContext(uint32_t deviceId) noexcept : deviceId_(deviceId) {}
+    int ThreadStartup() noexcept override
+    {
+        return HybmStreamManager::SetDevice(deviceId_);
+    }
+    void ThreadShutdown() noexcept override {}
+
+private:
+    uint32_t deviceId_;
+};
+
 constexpr int READ = 0;
 constexpr int WRITE = 1;
 
@@ -554,15 +567,15 @@ int RdmaIndirectTransportManager::SenderSidePhrase0(const QueueMessage &res, Que
         return BM_ERROR;
     }
 
-    auto stream = threadResourceContext_->GetStream();
+    auto stream = HybmStreamManager::GetThreadAclStream();
     auto respBody = static_cast<const Phrase0Response *>(static_cast<const void *>(res.body.data()));
     auto rtRank = res.head.dstRankId;
     if (context->sliceList.slices[0].type == READ) {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_R, &timestamp)
-        traceId = INDIRECT_SENDER_PHASE_0_R;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_R, &timestamp)
+        traceId = TP_INDIRECT_SENDER_PHASE_0_R;
     } else {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_W, &timestamp)
-        traceId = INDIRECT_SENDER_PHASE_0_W;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_W, &timestamp)
+        traceId = TP_INDIRECT_SENDER_PHASE_0_W;
     }
 
     nextReq.head = res.head;
@@ -592,9 +605,9 @@ int RdmaIndirectTransportManager::SenderSidePhrase0(const QueueMessage &res, Que
     if (context->sliceList.slices[0].type == WRITE) {
         uint32_t copyDir = (context->sliceList.slices[0].localMemType == LOCAL_HOST)
             ? ACL_MEMCPY_HOST_TO_DEVICE : ACL_MEMCPY_DEVICE_TO_DEVICE;
-        TP_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_W_D2D);
+        TP_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_W_D2D);
         ret = BatchCopy(scatterAddrs, gatherAddrs, counts, copyDir, stream);
-        TP_TRACE_END(INDIRECT_SENDER_PHASE_0_W_D2D, ret);
+        TP_TRACE_END(TP_INDIRECT_SENDER_PHASE_0_W_D2D, ret);
         if (ret != BM_OK) {
             TP_TRACE_TRACE_END(traceId, timestamp, ret)
             sendBufferQueue_.Push(localRdmaAddr);
@@ -602,9 +615,9 @@ int RdmaIndirectTransportManager::SenderSidePhrase0(const QueueMessage &res, Que
                                                             << ", local_rank:" << localRankId_);
             return ret;
         }
-        TP_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_W_D2R);
+        TP_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_W_D2R);
         ret = RdmaTransportManager::WriteRemote(rtRank, localRdmaAddr, respBody->rdmaAddress, totalDataSize);
-        TP_TRACE_END(INDIRECT_SENDER_PHASE_0_W_D2R, ret);
+        TP_TRACE_END(TP_INDIRECT_SENDER_PHASE_0_W_D2R, ret);
         if (ret != BM_OK) {
             sendBufferQueue_.Push(localRdmaAddr);
             BM_LOG_ERROR("sender phase0 WriteRemote failed, rankId: " << res.head.srcRankId << ", remote rank:"
@@ -612,9 +625,9 @@ int RdmaIndirectTransportManager::SenderSidePhrase0(const QueueMessage &res, Que
             return ret;
         }
     } else {
-        TP_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_R_R2D);
+        TP_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_R_R2D);
         ret = RdmaTransportManager::ReadRemote(rtRank, localRdmaAddr, respBody->rdmaAddress, totalDataSize);
-        TP_TRACE_END(INDIRECT_SENDER_PHASE_0_R_R2D, ret);
+        TP_TRACE_END(TP_INDIRECT_SENDER_PHASE_0_R_R2D, ret);
         if (ret != BM_OK) {
             TP_TRACE_TRACE_END(traceId, timestamp, ret)
             sendBufferQueue_.Push(localRdmaAddr);
@@ -624,9 +637,9 @@ int RdmaIndirectTransportManager::SenderSidePhrase0(const QueueMessage &res, Que
         }
         uint32_t copyDir = (context->sliceList.slices[0].localMemType == LOCAL_HOST)
             ? ACL_MEMCPY_DEVICE_TO_HOST : ACL_MEMCPY_DEVICE_TO_DEVICE;
-        TP_TRACE_BEGIN(INDIRECT_SENDER_PHASE_0_R_D2D);
+        TP_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_0_R_D2D);
         ret = BatchCopy(gatherAddrs, scatterAddrs, counts, copyDir, stream);
-        TP_TRACE_END(INDIRECT_SENDER_PHASE_0_R_D2D, ret);
+        TP_TRACE_END(TP_INDIRECT_SENDER_PHASE_0_R_D2D, ret);
         if (ret != BM_OK) {
             TP_TRACE_TRACE_END(traceId, timestamp, ret)
             sendBufferQueue_.Push(localRdmaAddr);
@@ -649,11 +662,11 @@ int RdmaIndirectTransportManager::SenderSidePhrase1(const QueueMessage &res, Que
     (void)nextReq;
     auto context = static_cast<SendMessageContext *>(ctx);
     if (context->sliceList.slices[0].type == READ) {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_SENDER_PHASE_1_R, &timestamp)
-        traceId = INDIRECT_SENDER_PHASE_1_R;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_1_R, &timestamp)
+        traceId = TP_INDIRECT_SENDER_PHASE_1_R;
     } else {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_SENDER_PHASE_1_W, &timestamp)
-        traceId = INDIRECT_SENDER_PHASE_1_W;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_SENDER_PHASE_1_W, &timestamp)
+        traceId = TP_INDIRECT_SENDER_PHASE_1_W;
     }
 
     finished = true;
@@ -672,11 +685,11 @@ int RdmaIndirectTransportManager::ReceiveSidePhrase0(const QueueMessage &request
     auto slices = static_cast<const Slice *>(static_cast<const void *>(reqBody + sizeof(uint64_t)));
     auto sliceCount = (request.head.bodySize - sizeof(uint64_t)) / sizeof(Slice);
     if (slices[0].type == READ) {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_0_R, &timestamp)
-        traceId = INDIRECT_RECEIVER_PHASE_0_R;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_0_R, &timestamp)
+        traceId = TP_INDIRECT_RECEIVER_PHASE_0_R;
     } else {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_0_W, &timestamp)
-        traceId = INDIRECT_RECEIVER_PHASE_0_W;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_0_W, &timestamp)
+        traceId = TP_INDIRECT_RECEIVER_PHASE_0_W;
     }
 
     response.head = request.head;
@@ -725,9 +738,9 @@ int RdmaIndirectTransportManager::ReceiveSidePhrase0(const QueueMessage &request
 
     if ((context->type = slices[0].type) == READ) {
         int ret;
-        TP_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_0_R_H2D);
+        TP_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_0_R_H2D);
         ret = BatchCopy(context->scatterAddrs, context->gatherAddrs, context->counts, ACL_MEMCPY_HOST_TO_DEVICE);
-        TP_TRACE_END(INDIRECT_RECEIVER_PHASE_0_R_H2D, ret);
+        TP_TRACE_END(TP_INDIRECT_RECEIVER_PHASE_0_R_H2D, ret);
         if (ret != 0) {
             TP_TRACE_TRACE_END(traceId, timestamp, BM_ERROR)
             recvBufferQueue_.Push(localBaseAddr);
@@ -776,17 +789,17 @@ int RdmaIndirectTransportManager::ReceiveSidePhrase1(const QueueMessage &request
     receiveContexts_.erase(pos);
     locker.unlock();
     if (context->type == READ) {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_1_R, &timestamp)
-        traceId = INDIRECT_RECEIVER_PHASE_1_R;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_1_R, &timestamp)
+        traceId = TP_INDIRECT_RECEIVER_PHASE_1_R;
     } else {
-        TP_TRACE_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_1_W, &timestamp)
-        traceId = INDIRECT_RECEIVER_PHASE_1_W;
+        TP_TRACE_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_1_W, &timestamp)
+        traceId = TP_INDIRECT_RECEIVER_PHASE_1_W;
     }
 
     if (context->type == WRITE) {
-        TP_TRACE_BEGIN(INDIRECT_RECEIVER_PHASE_1_W_D2H);
+        TP_TRACE_BEGIN(TP_INDIRECT_RECEIVER_PHASE_1_W_D2H);
         int ret = BatchCopy(context->gatherAddrs, context->scatterAddrs, context->counts, ACL_MEMCPY_DEVICE_TO_HOST);
-        TP_TRACE_END(INDIRECT_RECEIVER_PHASE_1_W_D2H, ret);
+        TP_TRACE_END(TP_INDIRECT_RECEIVER_PHASE_1_W_D2H, ret);
         if (ret != 0) {
             TP_TRACE_TRACE_END(traceId, timestamp, BM_ERROR)
             recvBufferQueue_.Push(context->localRdmaAddr);
@@ -814,13 +827,13 @@ Result RdmaIndirectTransportManager::InitializeDirectLoop()
         return ret;
     }
 
-    threadResourceContext_ = std::make_shared<ThreadResourceContext>(deviceLogicId);
-    if (!senderSideQueue_.Start(threadResourceContext_)) {
+    threadContext_ = std::make_shared<DeviceThreadContext>(deviceLogicId);
+    if (!senderSideQueue_.Start(threadContext_)) {
         BM_LOG_ERROR("sender side queue start failed!");
         return BM_ERROR;
     }
 
-    if (!receiverSideQueue_.Start(threadResourceContext_)) {
+    if (!receiverSideQueue_.Start(threadContext_)) {
         BM_LOG_ERROR("receiver side queue start failed!");
         senderSideQueue_.Stop();
         return BM_ERROR;
@@ -975,7 +988,7 @@ Result RdmaIndirectTransportManager::CloseDevice()
     nics_.clear();
     
     // Clear thread resource context
-    threadResourceContext_ = nullptr;
+    threadContext_ = nullptr;
     
     // Call parent class CloseDevice to clean up RDMA resources
     auto ret = RdmaTransportManager::CloseDevice();

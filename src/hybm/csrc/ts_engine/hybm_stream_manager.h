@@ -22,6 +22,7 @@ public:
     static HybmStreamPtr GetThreadHybmStream(uint32_t devId);
     static void DestroyAllThreadHybmStream();
     static void *GetThreadAclStream();
+    static int SetDevice(uint32_t devId);
 };
 } // namespace mf
 } // namespace ock

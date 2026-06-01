@@ -70,6 +70,16 @@ private:
     void *stream_;
 };
 
+int HybmStreamManager::SetDevice(uint32_t devId)
+{
+    auto ret = DlAclApi::AclrtSetDevice(devId);
+    if (ret != 0) {
+        BM_LOG_ERROR("aclrtSetDevice failed: " << ret);
+        return BM_ERROR;
+    }
+    return BM_OK;
+}
+
 void *HybmStreamManager::GetThreadAclStream()
 {
     static thread_local void *stream_ = nullptr;

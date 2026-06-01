@@ -17,11 +17,9 @@
 #include <cstdint>
 #include <string>
 #include <queue>
-#include <shared_mutex>
 #include <condition_variable>
 
 #include "hybm_types.h"
-#include "async_socket_queue.h"
 
 namespace ock {
 namespace mf {
@@ -72,19 +70,6 @@ private:
     std::mutex mutex_;
     std::condition_variable cond_;
     std::queue<uint64_t> queue_;
-};
-
-class ThreadResourceContext : public ThreadContext {
-public:
-    explicit ThreadResourceContext(int deviceId) noexcept : deviceId_{deviceId} {}
-    int ThreadStartup() noexcept override;
-    void ThreadShutdown() noexcept override;
-    void *GetStream() const noexcept;
-
-private:
-    const int deviceId_;
-    mutable std::shared_mutex mutex_;
-    std::unordered_map<std::thread::id, void *> streams_;
 };
 } // namespace device
 } // namespace transport

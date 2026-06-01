@@ -150,7 +150,7 @@ private:
     int gServerSocket_{};             // 接收侧fd，用于该Rank建立接收端，处理带外发送过来的数据
     std::thread outBandAcceptThread_; // 负责带外数据交互，接收端接收连接
     std::unique_ptr<RdmaTransportManager> rdmaTransportMgr_;
-    std::shared_ptr<ThreadResourceContext> threadResourceContext_;
+    std::shared_ptr<ThreadContext> threadContext_;
     SenderSideQueue senderSideQueue_;
     ReceiverSideQueue receiverSideQueue_;
     BlockingQueue sendBufferQueue_;

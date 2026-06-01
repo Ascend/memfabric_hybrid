@@ -92,17 +92,17 @@ void ReceiverSideQueue::ReceiverThreadProcess(int index, const std::shared_ptr<T
         }
         // 接收端 H2D
         if (request.head.opCode == 0) {
-            TP_TRACE_RECORD(INDIRECT_RECEIVER_PHASE_0_SCHE, (TP_CURRENT_TIME_NS - request.head.timestamp), 0);
+            TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_PHASE_0_SCHE, (TP_CURRENT_TIME_NS - request.head.timestamp), 0);
         } else if (request.head.opCode == 1) {
-            TP_TRACE_RECORD(INDIRECT_RECEIVER_PHASE_1_SCHE, (TP_CURRENT_TIME_NS - request.head.timestamp), 0);
+            TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_PHASE_1_SCHE, (TP_CURRENT_TIME_NS - request.head.timestamp), 0);
         }
         uint64_t timestamp = TP_CURRENT_TIME_NS;
         auto ret = pos->second(request, response);
         uint64_t diffNs = TP_CURRENT_TIME_NS - timestamp;
         if (request.head.opCode == 0) {
-            TP_TRACE_RECORD(INDIRECT_RECEIVER_PHASE_0, diffNs, ret);
+            TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_PHASE_0, diffNs, ret);
         } else if (request.head.opCode == 1) {
-            TP_TRACE_RECORD(INDIRECT_RECEIVER_PHASE_1, diffNs, ret);
+            TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_PHASE_1, diffNs, ret);
         }
 
         if (ret != 0) {

@@ -123,9 +123,9 @@ void SenderSideQueue::SenderThreadProcess(int index, const std::shared_ptr<Threa
         auto ret = (pos->second)(response, nextReq, finished, context);
         uint64_t diffNs = TP_CURRENT_TIME_NS - timestamp;
         if (response.head.opCode == 0) {
-            TP_TRACE_RECORD(INDIRECT_SENDER_PHASE_0, diffNs, ret);
+            TP_TRACE_RECORD(TP_INDIRECT_SENDER_PHASE_0, diffNs, ret);
         } else if (response.head.opCode == 1) {
-            TP_TRACE_RECORD(INDIRECT_SENDER_PHASE_1, diffNs, ret);
+            TP_TRACE_RECORD(TP_INDIRECT_SENDER_PHASE_1, diffNs, ret);
         }
         if (ret != 0) {
             BM_LOG_ERROR("process response(id: " << response.head.requestId << ", opCode:" << response.head.opCode

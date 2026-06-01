@@ -110,7 +110,7 @@ bool StreamMessageRW::ContinueWrite() noexcept
 
 bool StreamMessageRW::WriteOneMessage(QueueMessage &message) noexcept
 {
-    TP_TRACE_RECORD(INDIRECT_WRITE_OUT_SCHE, (TP_CURRENT_TIME_NS - message.head.timestamp), 0);
+    TP_TRACE_RECORD(TP_INDIRECT_WRITE_OUT_SCHE, (TP_CURRENT_TIME_NS - message.head.timestamp), 0);
     std::vector<iovec> iov;
     auto head = static_cast<uint8_t *>(static_cast<void *>(&message.head));
     auto body = message.body.data();
@@ -358,13 +358,13 @@ void AsyncSocketQueue::AsyncSocketThreadProcess() noexcept
 
     std::vector<epoll_event> events(MAX_EVENTS_COUNT);
     while (started_) {
-        TP_TRACE_BEGIN(INDIRECT_EPOOL_WAIT);
+        TP_TRACE_BEGIN(TP_INDIRECT_EPOOL_WAIT);
         int count = epoll_wait(readEpollFd_, events.data(), MAX_EVENTS_COUNT, EPOLL_WAIT_TIMEOUT);
         if (count <= 0) {
-            TP_TRACE_END(INDIRECT_EPOOL_WAIT, count);
+            TP_TRACE_END(TP_INDIRECT_EPOOL_WAIT, count);
             continue;
         }
-        TP_TRACE_END(INDIRECT_EPOOL_WAIT, 0);
+        TP_TRACE_END(TP_INDIRECT_EPOOL_WAIT, 0);
 
         for (auto i = 0; i < count; i++) {
             ProcessEvent(events[i]);
@@ -397,9 +397,9 @@ void AsyncSocketQueue::ProcessEvent(const epoll_event event)
             recvQueueCond_.notify_one();
 
             if (name_ == "ind_recv") {
-                TP_TRACE_RECORD(INDIRECT_RECEIVER_RECV_CNT, MAX_EVENTS_COUNT, 0);
+                TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_RECV_CNT, MAX_EVENTS_COUNT, 0);
             } else if (name_ == "ind_send") {
-                TP_TRACE_RECORD(INDIRECT_SENDER_RECV_CNT, MAX_EVENTS_COUNT, 0);
+                TP_TRACE_RECORD(TP_INDIRECT_SENDER_RECV_CNT, MAX_EVENTS_COUNT, 0);
             }
         } else {
             // BM_LOG_ERROR("read failed for socket fd: " << fd);
@@ -411,9 +411,9 @@ void AsyncSocketQueue::ProcessEvent(const epoll_event event)
             ev.data.fd = fd;
             epoll_ctl(readEpollFd_, EPOLL_CTL_MOD, fd, &ev);
             if (name_ == "ind_recv") {
-                TP_TRACE_RECORD(INDIRECT_RECEIVER_SEND_CNT, MAX_EVENTS_COUNT, 0);
+                TP_TRACE_RECORD(TP_INDIRECT_RECEIVER_SEND_CNT, MAX_EVENTS_COUNT, 0);
             } else if (name_ == "ind_send") {
-                TP_TRACE_RECORD(INDIRECT_SENDER_SEND_CNT, MAX_EVENTS_COUNT, 0);
+                TP_TRACE_RECORD(TP_INDIRECT_SENDER_SEND_CNT, MAX_EVENTS_COUNT, 0);
             }
         } else {
             BM_LOG_ERROR("write failed for socket fd: " << fd);

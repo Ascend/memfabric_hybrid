@@ -13,7 +13,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <limits>
-#include "dl_acl_api.h"
 #include "mf_str_util.h"
 #include "mf_ipv4_validator.h"
 #include "mf_num_util.h"
@@ -24,9 +23,6 @@ namespace ock {
 namespace mf {
 namespace transport {
 namespace device {
-
-constexpr uint32_t ACL_STREAM_FAST_LAUNCH = 1U;
-constexpr uint32_t ACL_STREAM_FAST_SYNC = 2U;
 
 static bool IsValidNicUrlFormat(const std::string &ip, const std::string &protocol)
 {
@@ -116,52 +112,6 @@ std::string GenerateDeviceNic(in_addr ip, uint16_t port)
     }
     ss << "tcp://" << host << ":" << port;
     return ss.str();
-}
-
-int ThreadResourceContext::ThreadStartup() noexcept
-{
-    auto ret = DlAclApi::AclrtSetDevice(deviceId_);
-    if (ret != 0) {
-        BM_LOG_ERROR("aclrtSetDevice failed: " << ret);
-        return BM_ERROR;
-    }
-
-    void *stream = nullptr;
-    ret = DlAclApi::AclrtCreateStreamWithConfig(&stream, 0, ACL_STREAM_FAST_LAUNCH | ACL_STREAM_FAST_SYNC);
-    if (ret != 0) {
-        BM_LOG_ERROR("create stream failed: " << ret);
-        return BM_ERROR;
-    }
-
-    std::unique_lock<std::shared_mutex> locker{mutex_};
-    streams_.emplace(std::this_thread::get_id(), stream);
-    return BM_OK;
-}
-
-void ThreadResourceContext::ThreadShutdown() noexcept
-{
-    std::unique_lock<std::shared_mutex> locker{mutex_};
-    auto pos = streams_.find(std::this_thread::get_id());
-    if (pos == streams_.end()) {
-        return;
-    }
-    auto stream = pos->second;
-    streams_.erase(pos);
-    locker.unlock();
-
-    if (stream != nullptr) {
-        DlAclApi::AclrtDestroyStream(stream);
-    }
-}
-
-void *ThreadResourceContext::GetStream() const noexcept
-{
-    std::shared_lock<std::shared_mutex> locker{mutex_};
-    auto pos = streams_.find(std::this_thread::get_id());
-    if (pos != streams_.end()) {
-        return pos->second;
-    }
-    return nullptr;
 }
 } // namespace device
 } // namespace transport
