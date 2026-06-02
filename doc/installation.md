@@ -128,7 +128,7 @@ Run 包安装后，动态库（`.so` 文件）权限默认为 `440`（属主和�
 
 ```bash
 # 查看 so 文件的属组
-ls -l /usr/local/memfabric_hybrid/latest/lib/*.so
+ls -l /usr/local/memfabric_hybrid/latest/aarch64-linux/lib64/*.so
 
 # 将部署用户加入该属组
 sudo usermod -a -G <group_name> <deploy_user>
@@ -139,5 +139,5 @@ sudo usermod -a -G <group_name> <deploy_user>
 也可在安装时通过 `--install-group` 参数指定自定义属组：
 
 ```bash
-bash memfabric_hybrid-*_*_*.run --install-group=<group_name>
+bash memfabric_hybrid-*.run --install-group=<group_name>
 ```
