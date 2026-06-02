@@ -238,30 +238,18 @@ Result AccStoreServer::LinkConnectedHandler(const ock::acc::AccConnReq &req,
     }
 
     std::unique_lock<std::mutex> lockGuard{storeMutex_};
-    if (req.reconnect == 1 && skipRecover_) {
-        STORE_LOG_WARN("receive first reconnect req, set recover flag!");
-        skipRecover_ = false;
-    }
+
     if (!CanReceiveNewLink() && req.reconnect == 0) {
-        lockGuard.unlock();
-        {
-            std::unique_lock<std::mutex> recoveryLock(recoveryMutex_);
-            recoveryCond_.wait(recoveryLock, [this]() { return state_.load() != SS_RECOVER; });
-        }
-        STORE_LOG_INFO("recovery complete, resuming suspended connection");
-        lockGuard.lock();
-        // State should be NORMAL now; re-check to be safe.
-        if (state_.load() != SS_NORMAL) {
-            STORE_LOG_ERROR("connection resumed but state is not NORMAL, rejecting");
-            return SM_ERROR;
-        }
+        STORE_LOG_ERROR("[RECOVER] reject new connection, linkId=" << link->Id()
+            << " state=" << state_.load() << " reconnect=" << (int)req.reconnect);
+        return SM_RECONNECT;
     }
+
     if (rankId >= std::numeric_limits<uint32_t>::max()) { // auto_rank
         return SM_OK;
     }
 
-    // If this is a new connection (not reconnect) and the rank is already actively connected, reject.
-    if (req.reconnect == 0 && reconnectedRankSet_.count(rankId) > 0) {
+    if (reconnectedRankSet_.count(rankId) > 0) {
         STORE_LOG_ERROR("rankId:" << rankId << " has connected!");
         return SM_ERROR;
     }

@@ -59,13 +59,31 @@ Result SmemBmEntryManager::Initialize(const std::string &storeURL, uint32_t worl
     deviceId_ = deviceId;
     config_ = config;
 
-    auto ret = PrepareStore();
-    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "prepare store failed: " << ret);
-
-    if (config_.autoRanking) {
-        ret = AutoRanking();
-        SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "auto ranking failed: " << ret);
+    // Retry loop for server recovery window (~60s). During recovery, new connections
+    // (reconnect=0) are rejected with SM_RECONNECT. Retry with 20s interval to cover
+    // both auto-ranking and specified-rank paths.  AutoRanking's internal retry is
+    // removed — the outer loop handles it uniformly.
+    constexpr uint32_t maxRetries = 5;
+    constexpr uint32_t retryIntervalSec = 20;
+    uint32_t attempt = 0;
+    Result ret = SM_OK;
+    while (attempt++ < maxRetries) {
+        ret = PrepareStore();
+        if (ret == SM_OK && config_.autoRanking) {
+            ret = AutoRanking();
+        }
+        if (ret == SM_OK) {
+            break;
+        }
+        SM_LOG_ERROR("[RECOVER] Initialize attempt " << attempt << "/" << maxRetries
+            << " failed, ret=" << ret << " deviceId=" << deviceId_);
+        if (attempt < maxRetries) {
+            confStore_ = nullptr;
+            StoreFactory::DestroyStore(storeURL_);
+            std::this_thread::sleep_for(std::chrono::seconds(retryIntervalSec));
+        }
     }
+    SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "initialize failed: " << ret);
 
     inited_ = true;
     SM_LOG_INFO("initialize store(" << storeURL << ") world size(" << worldSize << ") device(" << deviceId << ") OK.");
@@ -117,7 +135,8 @@ int32_t SmemBmEntryManager::RacingForStoreServer()
 int32_t SmemBmEntryManager::AutoRanking()
 {
     std::vector<uint8_t> rankIdData;
-    auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdData, SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
+    auto ret = confStore_->GetCoreStore()->Get(AutoRankingStr, rankIdData,
+                                               SMEM_DEFAUT_WAIT_TIME * SECOND_TO_MILLSEC);
     if (ret == SM_OK && rankIdData.size() == sizeof(uint32_t)) {
         union Transfer {
             uint32_t rankId;
@@ -130,8 +149,8 @@ int32_t SmemBmEntryManager::AutoRanking()
         SM_LOG_INFO("Success to auto ranking rankId: " << trans.rankId << " deviceId: " << deviceId_);
         return SM_OK;
     }
-    SM_LOG_ERROR("Failed to auto ranking deviceId: " << deviceId_ << ", ret: " << ret
-                                                     << ", dataSize: " << rankIdData.size());
+    SM_LOG_ERROR("AutoRanking failed, deviceId: " << deviceId_ << ", ret: " << ret
+        << ", dataSize: " << rankIdData.size());
     return SM_ERROR;
 }
 
