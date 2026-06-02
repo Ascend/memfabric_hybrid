@@ -1,7 +1,9 @@
 import argparse
 import math
 import os
+import sys
 import logging
+from pathlib import Path
 import random
 import time
 from functools import partial
@@ -25,21 +27,32 @@ from utils import (
 )
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(filename)s:%(lineno)d - %(funcName)s()] - %(message)s'
-)
+
+
+def redirect_io(rank, log_dir="./logs"):
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
+    pid = os.getpid()
+    log_path = f"{log_dir}/rank{rank:02d}_pid{pid}.log"
+    fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    os.dup2(fd, 1)
+    os.dup2(fd, 2)
+    os.close(fd)
+
+    sys.stdout = os.fdopen(1, "w", buffering=1)
+    sys.stderr = os.fdopen(2, "w", buffering=1)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    logging.info(f"[rank {rank}] logging to {log_path}")
 
 
 # noinspection PyShadowingNames
 def test_main(
-    args: argparse.Namespace,
-    num_local_ranks: int,
-    local_rank: int,
-    num_ranks: int,
-    rank: int,
-    buffer: zbal.Buffer,
-    group: dist.ProcessGroup,
+        args: argparse.Namespace,
+        num_local_ranks: int,
+        local_rank: int,
+        num_ranks: int,
+        rank: int,
+        buffer: zbal.Buffer,
+        group: dist.ProcessGroup,
 ):
     # Settings
     num_tokens, hidden = args.num_tokens, args.hidden
@@ -62,10 +75,10 @@ def test_main(
     experts_per_rank = num_experts // num_ranks
     # Default: random over all experts (original behavior)
     scores = (
-        torch.randn(
-            (num_tokens, num_experts), dtype=torch.float32, device="npu"
-        ).abs()
-        + 1
+            torch.randn(
+                (num_tokens, num_experts), dtype=torch.float32, device="npu"
+            ).abs()
+            + 1
     )
     # topk_idx = torch.topk(scores, num_topk, dim=-1, largest=True, sorted=False)[1]
     topk_idx = torch.zeros((num_tokens, num_topk), dtype=torch.int64, device='npu')
@@ -148,7 +161,7 @@ def test_main(
         (num_tokens, hidden), dtype=torch.bfloat16, device="npu"
     )
     topk_weights = (
-        torch.ones((num_tokens, num_topk), dtype=torch.float32, device="npu") * rank
+            torch.ones((num_tokens, num_topk), dtype=torch.float32, device="npu") * rank
     )
     topk_weights_pure_rand = torch.randn(
         (num_tokens, num_topk), dtype=torch.float32, device="npu"
@@ -212,8 +225,8 @@ def test_main(
             check_x = combined_x.float()
             ref_x = x_pure_rand if current_x is x_pure_rand else x
             ref_x_compute = (
-                ref_x
-                * handle[2].masked_fill(topk_idx == -1, 0).sum(dim=1).view(-1, 1)
+                    ref_x
+                    * handle[2].masked_fill(topk_idx == -1, 0).sum(dim=1).view(-1, 1)
             )
             diff = calc_diff(check_x, ref_x_compute)
             if diff > 5e-5 or math.isnan(diff):
@@ -297,6 +310,7 @@ def test_main(
 
 # noinspection PyUnboundLocalVariable,PyShadowingNames
 def test_loop(local_rank: int, num_local_ranks: int, args: argparse.Namespace):
+    redirect_io(local_rank, "./logs")
     rank, num_ranks, group = init_dist(local_rank, num_local_ranks)
     logger.info(f'[group] {group.rank()=} {group.size()=}')
 
