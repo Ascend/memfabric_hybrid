@@ -115,7 +115,7 @@ def test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type):
                 tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
                 os.makedirs(tensor_output_dir, exist_ok=True)
                 if check_precision and recv_role and dist_type == 'zbal':
-                    golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin")
+                    golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
 
                 for k in range(0, 20):
                     if enable_profiling and prof_cnt > 5:
@@ -131,14 +131,13 @@ def test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type):
                         if dist_type == 'hccl' and i == 0:
                             if recv_role:
                                 tensor_output_file = f"{tensor_output_dir}/output_hccl.bin"
-                                torch.save(recv_tensor, tensor_output_file)
+                                torch.save(recv_tensor.cpu(), tensor_output_file)
                             break
                         elif (dist_type == 'zbal' and recv_role and
                               not torch.allclose(golden_tensor, recv_tensor, rtol=1e-4, atol=1e-8)):
                             logger.error(golden_tensor, recv_tensor)
                             logger.error(f"[ERROR] rank {global_rank}, case {i} p2p result not correct\n")
-                            ret = 1
-                            break
+                            raise Exception(f"procesion error case:{data_len}")
 
                 if enable_profiling:
                     torch.npu.synchronize()

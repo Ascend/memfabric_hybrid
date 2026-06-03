@@ -102,7 +102,8 @@ def test_allreduce(dist_type, case_list, data_op_type):
             tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if check_precision and dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin")
+                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
+                                           weights_only=False).npu()
 
             for k in range(0, 20):
                 if enable_profiling and prof_cnt > 5:
@@ -115,7 +116,7 @@ def test_allreduce(dist_type, case_list, data_op_type):
                 if check_precision:
                     if dist_type == 'hccl' and k == 0:
                         tensor_output_file = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
-                        torch.save(inout, tensor_output_file)
+                        torch.save(inout.cpu(), tensor_output_file)
                         break
                     elif dist_type == 'zbal' and not torch.allclose(golden_tensor, inout, rtol=1e-4, atol=1e-8):
                         if local_rank == 0:
@@ -124,8 +125,7 @@ def test_allreduce(dist_type, case_list, data_op_type):
                             logger.error(anomaly_indices)
                             logger.error(golden_tensor[anomaly_indices[0]], inout[anomaly_indices[0]])
                         logger.error(f"[ERROR] rank {global_rank}, case {i} reducescatter result not correct\n")
-                        ret = 1
-                        break
+                        raise Exception(f"procesion error case:{data_len}")
 
             if enable_profiling:
                 torch.npu.synchronize()
@@ -142,6 +142,7 @@ def test_allreduce(dist_type, case_list, data_op_type):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('dist_type', type=str, choices=["hccl", "zbal"])
     parser.add_argument('--case_num', type=int, default=0)

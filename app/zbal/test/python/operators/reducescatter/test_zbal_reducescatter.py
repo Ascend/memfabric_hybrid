@@ -113,7 +113,8 @@ def test_reducescatter(dist_type, case_list, data_op_type):
             tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if check_precision and dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin")
+                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
+                                           weights_only=False).npu()
 
             for k in range(0, 20):
                 if enable_profiling and prof_cnt > 5:
@@ -127,14 +128,13 @@ def test_reducescatter(dist_type, case_list, data_op_type):
                 if check_precision:
                     if dist_type == 'hccl' and i == 0:
                         tensor_output_file = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
-                        torch.save(out_tensor, tensor_output_file)
+                        torch.save(out_tensor.cpu(), tensor_output_file)
                         break
                     elif dist_type == 'zbal' and not torch.allclose(golden_tensor, out_tensor, rtol=1e-4, atol=1e-8):
                         if global_rank == 0:
                             logger.error(golden_tensor, out_tensor)
                         logger.error(f"[ERROR] rank {global_rank}, case {i} reducescatter result not correct\n")
-                        ret = 1
-                        break
+                        raise Exception(f"procesion error case:{data_len}")
 
             if enable_profiling:
                 torch.npu.synchronize()
@@ -151,6 +151,7 @@ def test_reducescatter(dist_type, case_list, data_op_type):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('dist_type', type=str, choices=["hccl", "zbal"])
     parser.add_argument('--case_num', type=int, default=0)
@@ -170,4 +171,3 @@ if __name__ == "__main__":
         case_list = [8 * (2 ** i) for i in range(case_num)]
 
     test_reducescatter(dist_type, case_list, data_op_type)
-

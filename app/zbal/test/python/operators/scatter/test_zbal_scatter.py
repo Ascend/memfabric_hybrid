@@ -19,7 +19,6 @@ import torch_npu
 import numpy as np
 from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
-
 torch_npu.npu.config.allow_internal_format = True
 logger = logging.getLogger(__name__)
 
@@ -88,14 +87,14 @@ def test_scatter(dist_type, case_list, hidden_size, data_op_type):
                 profiling_path
             ),
             schedule=torch_npu.profiler.schedule(
-                    wait=1, warmup=1, active=10, repeat=1, skip_first=1
-                ),
-                record_shapes=True,
-                profile_memory=True,
-                with_stack=False,
-                with_flops=False,
-                with_modules=False,
-                experimental_config=experimental_config,
+                wait=1, warmup=1, active=10, repeat=1, skip_first=1
+            ),
+            record_shapes=True,
+            profile_memory=True,
+            with_stack=False,
+            with_flops=False,
+            with_modules=False,
+            experimental_config=experimental_config,
         )
 
     try:
@@ -110,7 +109,8 @@ def test_scatter(dist_type, case_list, hidden_size, data_op_type):
             tensor_output_dir = f"{current_dir}/output/scatter_{data_len}_{world_size}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin").npu()
+                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
+                                           weights_only=False).npu()
             for k in range(15):
                 if enable_profiling and prof_cnt > 1:
                     prof.step()
@@ -131,7 +131,7 @@ def test_scatter(dist_type, case_list, hidden_size, data_op_type):
                 prof_cnt += 1
                 if dist_type == 'hccl' and k == 0:
                     tensor_output_file = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
-                    torch.save(tensor_output, tensor_output_file)
+                    torch.save(tensor_output.cpu(), tensor_output_file)
                     break
                 elif dist_type == 'zbal':
                     if not torch.allclose(golden_tensor, tensor_output, rtol=1e-4, atol=1e-8):

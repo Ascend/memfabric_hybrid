@@ -81,8 +81,8 @@ def test_allgather(case_list, dist_type, data_op_type):
                 profiling_path
             ),
             schedule=torch_npu.profiler.schedule(
-                    wait=1, warmup=1, active=profiling_step, repeat=1, skip_first=1
-                ),
+                wait=1, warmup=1, active=profiling_step, repeat=1, skip_first=1
+            ),
             record_shapes=True,
             profile_memory=True,
             with_stack=False,
@@ -115,8 +115,8 @@ def test_allgather(case_list, dist_type, data_op_type):
             tensor_output_dir = f"{current_dir}/output/allgather_{data_len}_{world_size}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin")
-
+                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
+                                           weights_only=False).npu()
             for k in range(0, 20):
                 if enable_profiling and prof_cnt > 5:
                     prof.step()
@@ -130,12 +130,11 @@ def test_allgather(case_list, dist_type, data_op_type):
 
                 if dist_type == 'hccl' and k == 0:
                     tensor_output_file = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
-                    torch.save(out_tensor, tensor_output_file)
+                    torch.save(out_tensor.cpu(), tensor_output_file)
                     break
                 elif dist_type == 'zbal':
                     if not torch.allclose(out_tensor, golden_tensor, rtol=1e-4, atol=1e-8):
-                        logging.error(f"allgather {world_size=} {global_rank=} {data_len=} precision failed. "
-                                      f"{in_tensor=} {out_tensor=}")
+                        logging.error(f"allgather {world_size=} {global_rank=} {data_len=} precision failed. ")
                         raise Exception("precision error")
 
             if dist_type == "zbal":
@@ -158,6 +157,7 @@ def test_allgather(case_list, dist_type, data_op_type):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('dist_type', type=str, choices=["hccl", "zbal"])
     parser.add_argument('--case_num', type=int, default=0)
