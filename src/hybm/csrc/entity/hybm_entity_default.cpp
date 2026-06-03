@@ -1074,13 +1074,6 @@ Result MemEntityDefault::LocateAddrAndRank(void *&src, void *&dest, std::pair<ui
     auto [destRank, destFound] = HybmVaManager::GetInstance().GetRank(reinterpret_cast<uint64_t>(dest));
     p2pInfo.second = destFound ? destRank : options_.rankId;
 
-    if (options_.scene != HYBM_SCENE_TRANS &&
-        (!srcFound || !destFound) && p2pInfo.first == p2pInfo.second) {
-        BM_LOG_ERROR("Address not found in VaManager, srcFound: " << srcFound
-            << ", destFound: " << destFound << ", src: " << VaToStr(reinterpret_cast<uint64_t>(src))
-            << ", dest: " << VaToStr(reinterpret_cast<uint64_t>(dest)));
-        return BM_ERROR;
-    }
     BM_LOG_DEBUG("LocateAddrAndRank, srcRank: " << p2pInfo.first << ", destRank: " << p2pInfo.second);
     return BM_OK;
 }

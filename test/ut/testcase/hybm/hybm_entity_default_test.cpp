@@ -842,7 +842,10 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseLocalRankForAddrOutOfGvm
     params.dataSize = TEST_DATA_SIZE;
 
     auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
-    EXPECT_EQ(ret, BM_ERROR);
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_TRUE(dop->dataCopyCalled);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_6);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_6);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_UseRankFromVaManagerInSocRange)
@@ -955,7 +958,10 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaOutOfA5Range
     params.dataSize = TEST_DATA_SIZE;
 
     auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
-    EXPECT_EQ(ret, BM_ERROR);
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_TRUE(dop->dataCopyCalled);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_8);
 }
 
 TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutRegisteredGva_UseLocalRank)
@@ -984,7 +990,10 @@ TEST_F(HybmEntityDefaultTest, CopyData_NonTransScene_Enable56BitsGvaAddrWithoutR
     params.dataSize = 4096ULL;
 
     auto ret = entity.CopyData(params, HYBM_LOCAL_HOST_TO_GLOBAL_HOST, nullptr, 0);
-    EXPECT_EQ(ret, BM_ERROR);
+    EXPECT_EQ(ret, BM_OK);
+    EXPECT_TRUE(dop->dataCopyCalled);
+    EXPECT_EQ(dop->lastDataCopyOptions.srcRankId, TEST_RANK_8);
+    EXPECT_EQ(dop->lastDataCopyOptions.destRankId, TEST_RANK_8);
     ock::mf::HybmVaManager::GetInstance().ClearAll();
 }
 
