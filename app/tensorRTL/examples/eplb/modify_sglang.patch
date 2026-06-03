@@ -1,0 +1,102 @@
+Subject: [PATCH] TensorRTL EPLB适配
+---
+Index: python/sglang/srt/model_executor/model_runner.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+--- a/python/sglang/srt/model_executor/model_runner.py	(revision 866d5fd797d3b36901834fca5b0ff16cd6fb0174)
++++ b/python/sglang/srt/model_executor/model_runner.py	(revision 23bf8082aefbf78e3eae5bf4d1f506076fd3322d)
+@@ -51,6 +51,7 @@
+ )
+ from sglang.srt.distributed.parallel_state import monkey_patch_vllm_parallel_state
+ from sglang.srt.eplb.eplb_manager import EPLBManager
++from sglang.srt.eplb.experts_transform_manager import get_experts_transform_manager, EplbState
+ from sglang.srt.eplb.expert_distribution import (
+     ExpertDistributionRecorder,
+     get_global_expert_distribution_recorder,
+@@ -372,21 +373,41 @@
+ 
+         torch.get_device_module(self.device).empty_cache()
+         # Expert parallelism
+-        if self.server_args.enable_eplb and (not self.is_draft_worker):
+-            if self.server_args.enable_async_eplb:
+-                from sglang.srt.eplb.async_eplb_manager import AsyncEPLBManager
++        self.use_tensor_rtl = os.getenv("USE_TENSOR_RTL") == "1"
++        if self.use_tensor_rtl:
++            self.experts_transform_manager = (
++                get_experts_transform_manager(self, async_mode=True)
++                if self.server_args.enable_eplb and (not self.is_draft_worker)
++                else None
++            )
++        else:
++            if self.server_args.enable_eplb and (not self.is_draft_worker):
++                if self.server_args.enable_async_eplb:
++                    from sglang.srt.eplb.async_eplb_manager import AsyncEPLBManager
+ 
+-                self.eplb_manager = AsyncEPLBManager(self)
+-            else:
+-                self.eplb_manager = EPLBManager(self)
+-        else:
+-            self.eplb_manager = None
++                    self.eplb_manager = AsyncEPLBManager(self)
++                else:
++                    self.eplb_manager = EPLBManager(self)
++            else:
++                self.eplb_manager = None
++
+         self.expert_location_updater = ExpertLocationUpdater()
+ 
+         # Load the model
+         self.sampler = Sampler()
+         self.load_model()
+ 
++        if self.use_tensor_rtl:
++            for i, layer in enumerate(self.model.model.layers):
++                if i == 0:
++                    layer.self_attn.register_forward_hook(self._eplb_update_hook())
++
++                if i == self.model.config.first_k_dense_replace - 1:
++                    layer.self_attn.register_forward_hook(self._eplb_planner_hook())
++                    break
++
++            self.experts_transform_manager.register_experts(self.model.routed_experts_weights_of_layer)
++
+         # Check if the model is using hybrid SWA
+         if (
+             not self.server_args.disable_hybrid_swa_memory
+@@ -2061,11 +2082,31 @@
+                 split_forward_count,
+             )
+ 
+-        if self.eplb_manager is not None:
+-            self.eplb_manager.on_forward_pass_end()
++        if self.use_tensor_rtl:
++            if self.experts_transform_manager is not None:
++                self.experts_transform_manager.on_forward_pass_end()
++        else:
++            if self.eplb_manager is not None:
++                self.eplb_manager.on_forward_pass_end()
+ 
+         return output
+ 
++    def _eplb_planner_hook(self):
++        def hook(module, input, output):
++            if self.experts_transform_manager.get_state() >= EplbState.PLANNER and self.experts_transform_manager.get_state() < EplbState.FINAL:
++                logger.info(f"RUN _eplb_planner_hook")
++                self.experts_transform_manager.on_forward_pass_end()
++
++        return hook
++
++    def _eplb_update_hook(self):
++        def hook(module, input, output):
++            if self.experts_transform_manager.get_state() >= EplbState.UPDATE and self.experts_transform_manager.get_state() < EplbState.FINAL:
++                logger.info(f"RUN _eplb_update_hook")
++                self.experts_transform_manager.on_forward_pass_end()
++
++        return hook
++
+     def _forward_raw(
+         self,
+         forward_batch: ForwardBatch,

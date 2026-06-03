@@ -3,3 +3,4 @@
 | Application Name | Brief                            | Details                |
 |------------------|----------------------------------|------------------------|
 | zbal             | Zero Buffer Acceleration Library | [go](./zbal/README.md) |
+| TensorRTL        | High-Performance Tensor Resharding Component | [go](./TensorRTL/README.md) |

@@ -1,0 +1,568 @@
+Subject: [PATCH] MF优化
+---
+Index: verl/single_controller/base/worker.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/verl/single_controller/base/worker.py b/verl/single_controller/base/worker.py
+--- a/verl/single_controller/base/worker.py	(revision d62da4950573d7a4b7ef2362337952e7ab59e78d)
++++ b/verl/single_controller/base/worker.py	(revision 4e256af9c02d0230b5f4e562c1d5c78579723ce2)
+@@ -30,6 +30,7 @@
+ 
+ from .decorator import Dispatch, Execute, register
+ 
++from TensorRTL.examples.verl.utils import bind_actor_cpu
+ 
+ @dataclass
+ class DistRankInfo:
+@@ -164,6 +165,9 @@
+         # it is executed remotely
+         import os
+ 
++        if os.getenv("TENSOR_RTL") == "1":
++            bind_actor_cpu()
++
+         self._setup_env_cuda_visible_devices()
+ 
+         world_size = int(os.environ["WORLD_SIZE"])
+Index: verl/trainer/ppo/ray_trainer.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/verl/trainer/ppo/ray_trainer.py b/verl/trainer/ppo/ray_trainer.py
+--- a/verl/trainer/ppo/ray_trainer.py	(revision d62da4950573d7a4b7ef2362337952e7ab59e78d)
++++ b/verl/trainer/ppo/ray_trainer.py	(revision 4e256af9c02d0230b5f4e562c1d5c78579723ce2)
+@@ -585,6 +585,10 @@
+                 else self.config.actor_rollout_ref.rollout.agent.num_workers
+             )
+             test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, size_divisor)
++            if os.getenv('OFFLOAD_OPT') == '1':
++                test_gen_batch_padded.meta_info['_reload_param'] = False
++                test_gen_batch_padded.meta_info['_release_rollout'] = False  # 如果需要validate的reshard，需要修改validate的_release_rollout和rollout的_reshard
++
+             if not self.async_rollout_mode:
+                 test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
+             else:
+@@ -1006,6 +1010,7 @@
+         )
+         next_step_profile = False
+ 
++        _reshard = True
+         for epoch in range(self.config.trainer.total_epochs):
+             for batch_dict in self.train_dataloader:
+                 metrics = {}
+@@ -1036,6 +1041,8 @@
+                 with marked_timer("step", timing_raw):
+                     # generate a batch
+                     with marked_timer("gen", timing_raw, color="red"):
++                        if os.getenv('OFFLOAD_OPT') == '1':
++                            gen_batch.meta_info['_reshard'] = _reshard
+                         if not self.async_rollout_mode:
+                             gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch_output)
+                         else:
+@@ -1212,6 +1219,8 @@
+                         # update actor
+                         with marked_timer("update_actor", timing_raw, color="red"):
+                             batch.meta_info["multi_turn"] = self.config.actor_rollout_ref.rollout.multi_turn.enable
++                            if os.getenv('OFFLOAD_OPT') == '1':
++                                batch.meta_info["_offload_param"] = False
+                             actor_output = self.actor_rollout_wg.update_actor(batch)
+                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
+                         metrics.update(actor_output_metrics)
+@@ -1228,6 +1237,8 @@
+                     and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
+                 ):
+                     with marked_timer("testing", timing_raw, color="green"):
++                        if os.getenv('OFFLOAD_OPT') == '1':
++                            _reshard = False
+                         val_metrics: dict = self._validate()
+                         if is_last_step:
+                             last_val_metrics = val_metrics
+Index: verl/utils/megatron_utils.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/verl/utils/megatron_utils.py b/verl/utils/megatron_utils.py
+--- a/verl/utils/megatron_utils.py	(revision d62da4950573d7a4b7ef2362337952e7ab59e78d)
++++ b/verl/utils/megatron_utils.py	(revision 4e256af9c02d0230b5f4e562c1d5c78579723ce2)
+@@ -338,7 +338,12 @@
+                 for buffer in buffers:
+                     # offload parameters
+                     if buffer.param_data.storage().size() > 0:
+-                        buffer.param_data.cpu_data = buffer.param_data.data.cpu().pin_memory()
++                        if os.getenv('OFFLOAD_OPT') == '1':
++                            buffer.param_data.cpu_data = torch.empty_like(buffer.param_data, device='cpu', pin_memory=True)
++                            buffer.param_data.cpu_data.copy_(buffer.param_data.data)
++                            torch.npu.current_stream().synchronize()  
++                        else:
++                            buffer.param_data.cpu_data = buffer.param_data.data.cpu().pin_memory()
+                         buffer.param_data_size = buffer.param_data.storage().size()
+                         buffer.param_data.storage().resize_(0)
+ 
+Index: verl/workers/megatron_workers.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/verl/workers/megatron_workers.py b/verl/workers/megatron_workers.py
+--- a/verl/workers/megatron_workers.py	(revision d62da4950573d7a4b7ef2362337952e7ab59e78d)
++++ b/verl/workers/megatron_workers.py	(revision 4e256af9c02d0230b5f4e562c1d5c78579723ce2)
+@@ -23,6 +23,7 @@
+ 
+ import psutil
+ import torch
++import torch_npu
+ import torch.distributed
+ from codetiming import Timer
+ from omegaconf import DictConfig, OmegaConf
+@@ -76,7 +77,8 @@
+ from verl.workers.critic.megatron_critic import MegatronPPOCritic
+ from verl.workers.reward_model.megatron.reward_model import MegatronRewardModel
+ from verl.workers.rollout import get_rollout_class
+-
++from TensorRTL.examples.verl.rl_reshard_preprocessor import VerlSglangReshardPreprocessor
++from verl.utils.profiler import marked_timer
+ logger = logging.getLogger(__file__)
+ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
+ 
+@@ -405,7 +407,7 @@
+         model_config: HFModelConfig = omega_conf_to_dataclass(self.config.model, dataclass_type=HFModelConfig)
+ 
+         # 2. build rollout device mesh
+-        infer_tp = self.config.rollout.tensor_model_parallel_size * self.config.rollout.data_parallel_size
++        infer_tp = self.config.rollout.tensor_model_parallel_size
+         infer_pp = self.config.rollout.pipeline_model_parallel_size
+         infer_world_size = infer_tp * infer_pp
+         dp = self.world_size // infer_world_size
+@@ -446,6 +448,33 @@
+             loop = get_event_loop()
+             loop.run_until_complete(self.trainer_mode())
+ 
++        self.use_tensorrtl = os.getenv("TENSOR_RTL") == "1"
++        self.rollout_device_mesh = rollout_device_mesh
++        self.per_tensor_generator = None
++
++    def initialize_zero_reshard(self, actor_model_config, rollout_device_mesh):
++        param_name_mapping = None
++        self.mf_pipeline_overlap = True
++        reshard_preprocessor = VerlSglangReshardPreprocessor(  # 适配合入verl
++            actor_module=self.actor_module,
++            infer_model=None,
++            train_model=self.actor_module[0],
++            world_size=torch.distributed.get_world_size(),
++            train_config=self.tf_config,
++            infer_config=self.tf_config,
++            train_parallel_state=mpu,
++            infer_parallel_state=None,
++            param_name_mapping=param_name_mapping,
++            model_adaptor_name=actor_model_config.architectures[0],
++            device_mesh=rollout_device_mesh,
++            pipeline_overlap=self.mf_pipeline_overlap,
++            backend=self.tensor_rtl_backend
++        )
++        self.cached_generate = False
++        return (reshard_preprocessor.get_sglang_reshard_info(),
++                reshard_preprocessor.get_layer_list_meta(),
++                reshard_preprocessor.get_sglang_reshard_replay())
++
+     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+     def init_model(self):
+         if self.config.model.get("external_lib", None) is not None:
+@@ -565,39 +594,83 @@
+         get_torch_device().empty_cache()
+         log_gpu_memory_usage("After init_model finish", logger=logger)
+ 
+-    async def rollout_mode(self):
++    async def rollout_mode(self, timing_generate=None, _offload_param=True, _reload_param=True):
+         """Context switch hybridengine to rollout mode."""
+         aggressive_empty_cache(force_sync=True)
+ 
+-        if self._is_offload_param:
+-            load_megatron_model_to_gpu(self.actor.actor_module, load_grad=False)
+-            log_gpu_memory_usage("After load actor params during rollout_mode", logger=logger)
++        if self.use_tensorrtl and self.per_tensor_generator is None:
++            self.tensor_rtl_backend = "mf"
++            if self.tensor_rtl_backend == "mf":
++                old_env = os.getenv("ASCEND_RT_VISIBLE_DEVICES", None)
++                os.environ["ASCEND_RT_VISIBLE_DEVICES"] = str(torch.distributed.get_rank())
++            (self.per_tensor_generator,
++             self.layer_list_meta,
++             self.per_tensor_generator_replay) = self.initialize_zero_reshard(
++                self.actor_model_config, self.rollout_device_mesh
++            )
++            send_param_info = True
++            if self.tensor_rtl_backend == "mf":
++                os.environ["ASCEND_RT_VISIBLE_DEVICES"] = old_env
++                await self.rollout.init_memory_fabric()
++
++                torch.distributed.barrier()
++
++        if self.use_tensorrtl and self.tensor_rtl_backend == "mf":
++            if self.cached_generate:
++                self.per_tensor_generator = self.per_tensor_generator_replay
++                send_param_info = False
++
++        if timing_generate is None:
++            timing_generate = {}
++
++            if self._is_offload_param and _reload_param:
++                load_megatron_model_to_gpu(self.actor.actor_module, load_grad=False)
++                log_gpu_memory_usage("After load actor params during rollout_mode", logger=logger)
+ 
+-        if self.bridge is not None:
+-            per_tensor_param = self.bridge.export_weights(self.actor.actor_module)
+-        else:
+-            per_tensor_param = per_tensor_generator(
+-                self.actor.actor_module,
+-                self.actor_model_config,
+-                self.weight_converter,
+-                self.tf_config,
+-                self.layer_name_mapping,
+-            )
++            if self.use_tensorrtl:
++                per_tensor_param = self.per_tensor_generator()
++                set_expandable_segments(False)
++                if self.config.rollout.free_cache_engine:
++                    await self.rollout.resume(tags=["weights"])
++
++                if self.tensor_rtl_backend == "mf":
++                    if self.mf_pipeline_overlap:
++                        await self.rollout.update_weights_mf_async(
++                            self.layer_list_meta, self.tf_config, per_tensor_param, self.mf_pipeline_overlap, send_param_info
++                        )
++                    else:
++                        await self.rollout.update_weights_mf(
++                            self.layer_list_meta, self.tf_config, per_tensor_param
++                        )
++                else:
++                    await self.rollout.update_weights(per_tensor_param)
++            else:
++                if self.bridge is not None:
++                    per_tensor_param = self.bridge.export_weights(self.actor.actor_module)
++                else:
++                    per_tensor_param = per_tensor_generator(
++                        self.actor.actor_module,
++                        self.actor_model_config,
++                        self.weight_converter,
++                        self.tf_config,
++                        self.layer_name_mapping,
++                    )
+ 
+-        set_expandable_segments(False)
+-
+-        if self.config.rollout.free_cache_engine:
+-            await self.rollout.resume(tags=["weights"])
+-        await self.rollout.update_weights(per_tensor_param)
+-        if self._is_offload_param:
+-            offload_megatron_model_to_cpu(self.actor.actor_module)
+-        aggressive_empty_cache(force_sync=True)
+-        if self.config.rollout.free_cache_engine:
+-            await self.rollout.resume(tags=["kv_cache"])
++                set_expandable_segments(False)
++                if self.config.rollout.free_cache_engine:
++                    await self.rollout.resume(tags=["weights"])
++                await self.rollout.update_weights(per_tensor_param)
++
++            if self._is_offload_param and _offload_param:
++                offload_megatron_model_to_cpu(self.actor.actor_module)
++            aggressive_empty_cache(force_sync=True)
++            if self.config.rollout.free_cache_engine:
++                await self.rollout.resume(tags=["kv_cache"])
+ 
+         # important: need to manually set the random states of each tp to be identical.
+         self.torch_random_states = get_torch_device().get_rng_state()
+         get_torch_device().set_rng_state(self.gen_random_states)
++        self.cached_generate = True
+ 
+     async def trainer_mode(self):
+         """Context switch hybridengine to trainer mode."""
+@@ -626,7 +699,8 @@
+     @DistProfiler.annotate(color="red")
+     def update_actor(self, data: DataProto):
+         assert self._is_actor
+-        if self._is_offload_param:
++        _offload_param, _reload_param = data.meta_info.get("_offload_param", True), data.meta_info.get("_reload_param", True)
++        if self._is_offload_param and _reload_param:
+             load_megatron_model_to_gpu(self.actor_module)
+             log_gpu_memory_usage("After load actor params and grad during update_actor", logger=logger)
+         if self._is_offload_optimizer:
+@@ -654,7 +728,7 @@
+         output = DataProto(meta_info={"metrics": metrics})
+         output = output.to("cpu")
+ 
+-        if self._is_offload_param:
++        if self._is_offload_param and _offload_param:
+             offload_megatron_model_to_cpu(self.actor_module)
+             log_gpu_memory_usage("After offload actor params and grad during update_actor", logger=logger)
+         if self._is_offload_optimizer:
+@@ -669,6 +743,9 @@
+     @DistProfiler.annotate(color="red")
+     def generate_sequences(self, prompts: DataProto):
+         assert self._is_rollout
++        _offload_param, _reload_param, _release_rollout, _reshard = prompts.meta_info.get('_offload_param', True), \
++            prompts.meta_info.get('_reload_param', True), prompts.meta_info.get('_release_rollout', True), \
++            prompts.meta_info.get('_reshard', True)
+         prompts = prompts.to(get_device_name())
+         meta_info = {
+             "eos_token_id": self.generation_config.eos_token_id
+@@ -683,15 +760,16 @@
+             offload_megatron_optimizer(self.actor_optimizer)
+ 
+         timing_generate = {}
+-        if self._is_actor:  # For rollout only, we do not switch context.
+-            loop = get_event_loop()
+-            loop.run_until_complete(self.rollout_mode())
++        loop = get_event_loop()
++        if self._is_actor and _reshard:    # For rollout only, we do not switch context.
++            with marked_timer("reshard", timing_generate):
++                loop.run_until_complete(self.rollout_mode(timing_generate, _offload_param, _reload_param))
+             log_gpu_memory_usage("After switch to rollout mode", logger=logger)
+ 
+         with simple_timer("generate_sequences", timing_generate):
+             output = self.rollout.generate_sequences(prompts=prompts)
+ 
+-        if self._is_actor:
++        if self._is_actor and _release_rollout:
+             loop.run_until_complete(self.trainer_mode())
+             log_gpu_memory_usage("After switch to trainer mode", logger=logger)
+ 
+Index: verl/workers/rollout/sglang_rollout/sglang_rollout.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/verl/workers/rollout/sglang_rollout/sglang_rollout.py b/verl/workers/rollout/sglang_rollout/sglang_rollout.py
+--- a/verl/workers/rollout/sglang_rollout/sglang_rollout.py	(revision d62da4950573d7a4b7ef2362337952e7ab59e78d)
++++ b/verl/workers/rollout/sglang_rollout/sglang_rollout.py	(revision 4e256af9c02d0230b5f4e562c1d5c78579723ce2)
+@@ -14,7 +14,7 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ from __future__ import annotations
+-
++import time
+ import asyncio
+ import logging
+ import multiprocessing as mp
+@@ -28,11 +28,14 @@
+ import ray
+ import sglang.srt.entrypoints.engine
+ import torch
++import torch_npu
+ import torch.distributed as dist
+ from sglang.srt.managers.io_struct import (
+     ReleaseMemoryOccupationReqInput,
+     ResumeMemoryOccupationReqInput,
+     UpdateWeightsFromTensorReqInput,
++    InitMemoryFabricReqInput,
++    UpdateWeightMFReqInput
+ )
+ from sglang.srt.sampling.sampling_params import SamplingParams
+ from sglang.srt.server_args import ServerArgs
+@@ -44,6 +47,10 @@
+     set_ulimit,
+ )
+ from sglang.srt.weight_sync.utils import update_weights as sgl_update_weights
++from sglang.srt.weight_sync.memory_fabric_util import (
++    init_memory_fabric as sgl_init_memory_fabric, 
++    update_weights_mf as sgl_update_weights_mf
++)
+ from tensordict import TensorDict
+ from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
+ from torch.nn.utils.rnn import pad_sequence
+@@ -88,6 +95,8 @@
+ except ImportError:
+     from sglang.srt.utils import get_local_ip_auto as get_ip
+ 
++from TensorRTL.examples.verl.utils import bind_actor_cpu
++
+ logger = logging.getLogger(__file__)
+ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
+ 
+@@ -155,6 +164,12 @@
+     async def update_weights_from_tensor(self, update_weights_request: UpdateWeightsFromTensorReqInput):
+         return await self.tokenizer_manager.update_weights_from_tensor(update_weights_request, None)
+ 
++    async def init_memory_fabric(self, init_memory_fabric_request: InitMemoryFabricReqInput):
++        return await self.tokenizer_manager.init_memory_fabric(init_memory_fabric_request, None)
++
++    async def update_weights_mf(self, update_weights_mf_request: UpdateWeightMFReqInput):
++        return await self.tokenizer_manager.update_weights_mf(update_weights_mf_request, None)
++
+     async def flush_cache(self):
+         return await self.tokenizer_manager.flush_cache()
+ 
+@@ -358,6 +373,9 @@
+         self.visible_devices_set = set(",".join(visible_devices).split(","))
+         os.environ[devices_keyword] = ",".join(sorted(list(self.visible_devices_set), key=int))
+ 
++        if os.getenv("TENSOR_RTL") == "1":
++            bind_actor_cpu(self._tp_rank)
++
+     def _verify_config(self, model_hf_config):
+         if not self.config.get("max_model_len", None):
+             self.config.max_model_len = self.config.prompt_length + self.config.response_length
+@@ -450,6 +468,9 @@
+                 "base_gpu_id": 0,
+                 "gpu_id_step": 1,
+                 "tp_size": self._tp_size,
++                "enable_dp_attention": True,
++                "moe_a2a_backend": "deepep",
++                "deepep_mode": "auto",
+                 "node_rank": node_rank,
+                 "load_format": load_format,
+                 "dist_init_addr": dist_init_addr,
+@@ -1528,6 +1549,10 @@
+             - Main logic: https://github.com/THUDM/slime/blob/fb7605cc5fb09af0f9369d37f7192f12bddee577/slime/ray/ppo_actor.py#L452
+             - runtime envs: https://github.com/THUDM/slime/blob/fb7605cc5fb09af0f9369d37f7192f12bddee577/slime/ray/ppo_actor.py#L39
+         """
++        load_format = None
++        use_tensorrtl = os.getenv("TENSOR_RTL") == "1"
++        if use_tensorrtl:
++            load_format = "direct"
+         update_weights_bucket_bytes = int(self.config.update_weights_bucket_megabytes) << 20
+         for params_batch in get_named_tensor_buckets(weights, update_weights_bucket_bytes):
+             await sgl_update_weights(
+@@ -1535,8 +1560,119 @@
+                 params_batch=params_batch,
+                 device_mesh_key="infer_tp",
+                 device_mesh=self.device_mesh,
++                load_format=load_format
+             )
++
++        if self.device_mesh["infer_tp"].get_local_rank() == 0:
++            await self._engine.flush_cache()
++
++    async def init_memory_fabric(self):
++        if self._engine is not None and self.device_mesh["infer_tp"].get_local_rank() == 0:
++            await sgl_init_memory_fabric(engine=self._engine,
++                                         device_mesh_key="infer_tp",
++                                         device_mesh=self.device_mesh)
++
++    async def update_weights_mf(self, layer_list_meta, train_config, per_tensor_param):
++        reset_needed = True
++        while True:
++            try:
++                # cur_pool_id 表示当前训练往哪个pool写入，推理从哪个pool读取
++                torch.distributed.barrier()  # 保证所有卡读完前，禁止写
++                next(per_tensor_param)
++                torch.distributed.barrier()  # 保证全部写完
++
++                await sgl_update_weights_mf(
++                    engine=self._engine,
++                    device_mesh_key="infer_tp",
++                    device_mesh=self.device_mesh,
++                    layer_list_meta_input=layer_list_meta,
++                    train_config=train_config,
++                    reset_needed=reset_needed,
++                )
++
++                reset_needed = False
++            except StopIteration:
++                torch.distributed.barrier()  # 保证全部写完
++
++                await sgl_update_weights_mf(
++                    engine=self._engine,
++                    device_mesh_key="infer_tp",
++                    device_mesh=self.device_mesh,
++                    layer_list_meta_input=layer_list_meta,
++                    train_config=train_config,
++                    reset_needed=reset_needed,
++                )
++
++                await self.flush_cache()
++                torch.distributed.barrier()  # 保证所有卡读完前，禁止写
++                break
++
++    async def update_weights_mf_async(
++        self, layer_list_meta, train_config, per_tensor_param, pipeline_overlap, train_param_info
++    ):
++        torch_npu.npu.synchronize()
++        pool_num = 2
++        reset_needed = True
++        bucket_id = 0
++        read_done = [asyncio.Event() for _ in range(pool_num)]
++        for pool_id in range(pool_num):
++            read_done[pool_id].set()
++
++        read_tasks = []
++
++        def launch_read(pool_id, reset_needed):
++            """启动一个读任务，读完后自动释放缓冲区"""
++            nonlocal read_tasks
++
++            async def task(reset_needed):
++                nonlocal read_done
++                other_buf = 1 if pool_id == 0 else 0
++                await read_done[other_buf].wait()
++
++                await sgl_update_weights_mf(
++                    engine=self._engine,
++                    device_mesh_key="infer_tp",
++                    device_mesh=self.device_mesh,
++                    layer_list_meta_input=layer_list_meta,
++                    train_config=train_config,
++                    reset_needed=reset_needed,
++                    pipeline_overlap=pipeline_overlap,
++                    train_param_info=train_param_info
++                )
++                read_done[pool_id].set()
++
++            read_tasks.append(asyncio.create_task(task(reset_needed)))
++
++        def safe_next(gen):
++            try:
++                next(gen)
++                return False   # 表示还有更多数据
++            except StopIteration:
++                return True  # 表示生成器结束
++
++        while True:
++            pool_id = bucket_id % 2
++            await read_done[pool_id].wait()
++            await asyncio.to_thread(dist.barrier)
++            read_done[pool_id].clear()
+ 
++            is_last = await asyncio.to_thread(safe_next, per_tensor_param)
++            await asyncio.to_thread(dist.barrier)   # 在线程池中执行同步 barrier
++            launch_read(pool_id, reset_needed)   # 1.还原之后第一轮正确，第二轮开始出错
++
++            reset_needed = False
++            bucket_id += 1
++            await asyncio.sleep(0)   # 让出控制权，使流水线并发生效
++
++            if is_last:
++                # 等待最后一个桶的读完成
++                for pool_id in range(pool_num):
++                    await read_done[pool_id].wait()
++                break
++
++        await self.flush_cache()
++
++    async def flush_cache(self):
+         if self.device_mesh["infer_tp"].get_local_rank() == 0:
+             await self._engine.flush_cache()
+ 
+@@ -1625,3 +1761,20 @@
+ 
+         if self.device_mesh["infer_tp"].get_local_rank() == 0:
+             await self._engine.flush_cache()
++
++    async def init_memory_fabric(self):
++        if self._engine is not None and self.device_mesh["infer_tp"].get_local_rank() == 0:
++            await self._init_server_adapter()
++            await sgl_init_memory_fabric(engine=self._engine,
++                                         device_mesh_key="infer_tp",
++                                         device_mesh=self.device_mesh)
++
++    async def update_weights_mf(self, layer_list_meta, train_config, train_model_state_dict):
++        if self._engine is not None and self.device_mesh["infer_tp"].get_local_rank() == 0:
++            await self._init_server_adapter()
++            await sgl_update_weights_mf(engine=self._engine,
++                                        device_mesh_key="infer_tp",
++                                        device_mesh=self.device_mesh,
++                                        layer_list_meta_input=layer_list_meta,
++                                        train_config=train_config,
++                                        train_model_state_dict=train_model_state_dict)

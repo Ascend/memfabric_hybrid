@@ -1,0 +1,1069 @@
+Subject: [PATCH] MF优化
+---
+Index: python/sglang/srt/managers/io_struct.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/managers/io_struct.py b/python/sglang/srt/managers/io_struct.py
+--- a/python/sglang/srt/managers/io_struct.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/managers/io_struct.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -32,6 +32,7 @@
+ from sglang.srt.multimodal.mm_utils import has_valid_data
+ from sglang.srt.sampling.sampling_params import SamplingParams
+ from sglang.srt.utils import ImageData
++from sglang.srt.weight_sync.memory_fabric_dataclass import LayerMeta, QkvInfo, ExpertInfo
+ 
+ # Handle serialization of Image for pydantic
+ if TYPE_CHECKING:
+@@ -1455,6 +1456,40 @@
+     server_args: Dict[str, Any]
+ 
+ 
++@dataclass
++class InitMemoryFabricReqInput(BaseReq):
++    dp_size: int
++    dp_rank: int
++
++
++@dataclass
++class InitMemoryFabricReqOutput(BaseReq):
++    success: bool
++
++
++@dataclass
++class UpdateWeightMFReqInput(BaseReq):
++    layer_list_meta: List[LayerMeta]
++    qkv_info: QkvInfo
++    expert_info: ExpertInfo
++    train_tp_size: int
++    train_pp_size: int
++    infer_tp_size: int
++    infer_pp_size: int
++    infer_dp_size: int
++    reset_needed: bool
++    pipeline_overlap: bool
++    flush_cache: bool = True
++    weight_version: Optional[str] = None
++
++
++@dataclass
++class UpdateWeightMFReqOutput(BaseReq):
++    success: bool
++    message: str
++    attach_func: Optional[callable] = None
++
++
+ @dataclass
+ class ProfileReqInput(BaseReq):
+     # The output directory
+Index: python/sglang/srt/managers/scheduler.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+--- a/python/sglang/srt/managers/scheduler.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/managers/scheduler.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -122,6 +122,9 @@
+     UpdateWeightsFromDistributedReqInput,
+     UpdateWeightsFromIPCReqInput,
+     UpdateWeightsFromTensorReqInput,
++    InitMemoryFabricReqInput,
++    UpdateWeightMFReqInput,
++    UpdateWeightMFReqOutput
+ )
+ from sglang.srt.managers.mm_utils import init_mm_embedding_cache
+ from sglang.srt.managers.overlap_utils import FutureMap
+@@ -1065,6 +1068,8 @@
+                 (GetLoadReqInput, self.get_load),
+                 (PauseGenerationReqInput, self.pause_generation),
+                 (ContinueGenerationReqInput, self.continue_generation),
++                (InitMemoryFabricReqInput, self.init_memory_fabric_request),
++                (UpdateWeightMFReqInput, self.update_weights_mf_request),
+             ]
+         )
+ 
+@@ -1321,7 +1326,15 @@
+             output = self._request_dispatcher(recv_req)
+             if output is not None:
+                 if not isinstance(output, RpcReqOutput):
++                    if isinstance(output, UpdateWeightMFReqOutput):
++                        attach_func = None
++                        if hasattr(output.attach_func, 'func'):
++                            attach_func = output.attach_func
++                            output.attach_func = None
+                     self.send_to_tokenizer.send_output(output, recv_req)
++                    if isinstance(output, UpdateWeightMFReqOutput):
++                        if hasattr(attach_func, 'func'):
++                            attach_func()
+                 else:
+                     if self.recv_from_rpc is not None:
+                         self.recv_from_rpc.send_pyobj(output)
+@@ -2327,7 +2340,7 @@
+ 
+     def launch_batch_sample_if_needed(
+         self, batch_result: GenerationBatchResult
+-    ) -> Union[GenerationBatchResult]:
++    ) -> Union[GenerationBatchResult, EmbeddingBatchResult]:
+         # TODO(lsyin): make the delayed sample a default behavior after
+         # unifying the forward_batch_generation interface (related to spec V2).
+         if batch_result is None or batch_result.delay_sample_func is None:
+Index: python/sglang/srt/managers/scheduler_update_weights_mixin.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/managers/scheduler_update_weights_mixin.py b/python/sglang/srt/managers/scheduler_update_weights_mixin.py
+--- a/python/sglang/srt/managers/scheduler_update_weights_mixin.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/managers/scheduler_update_weights_mixin.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -33,6 +33,10 @@
+     UpdateWeightsFromIPCReqOutput,
+     UpdateWeightsFromTensorReqInput,
+     UpdateWeightsFromTensorReqOutput,
++    InitMemoryFabricReqInput,
++    InitMemoryFabricReqOutput,
++    UpdateWeightMFReqInput,
++    UpdateWeightMFReqOutput,
+ )
+ 
+ if TYPE_CHECKING:
+@@ -100,6 +104,24 @@
+         torch.distributed.barrier(group=self.tp_cpu_group)
+         return UpdateWeightsFromTensorReqOutput(success, message)
+ 
++    def init_memory_fabric_request(self, recv_req: InitMemoryFabricReqInput):
++        """Update the online model parameter from tensors."""
++        print(f"sglang init_memory_fabric Scheduler")
++        success = self.tp_worker.init_memory_fabric(recv_req)
++        return InitMemoryFabricReqOutput(success)
++
++    def update_weights_mf_request(self, recv_req: UpdateWeightMFReqInput):
++        """Update the online model parameter from tensors."""
++        success, message, next_resume_func = self.tp_worker.update_weights_mf(recv_req)
++        if success:
++            if recv_req.flush_cache:
++                flush_cache_success = self.flush_cache()
++                assert flush_cache_success, "Cache flush failed after updating weights"
++        else:
++            logger.error(message)
++        torch.distributed.barrier(group=self.tp_cpu_group)
++        return UpdateWeightMFReqOutput(success, message, next_resume_func)
++
+     def update_weights_from_ipc(
+         self: Scheduler, recv_req: UpdateWeightsFromIPCReqInput
+     ):
+Index: python/sglang/srt/managers/tokenizer_communicator_mixin.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/managers/tokenizer_communicator_mixin.py b/python/sglang/srt/managers/tokenizer_communicator_mixin.py
+--- a/python/sglang/srt/managers/tokenizer_communicator_mixin.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/managers/tokenizer_communicator_mixin.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -72,6 +72,10 @@
+     UpdateWeightsFromIPCReqOutput,
+     UpdateWeightsFromTensorReqInput,
+     UpdateWeightsFromTensorReqOutput,
++    InitMemoryFabricReqInput,
++    InitMemoryFabricReqOutput,
++    UpdateWeightMFReqInput,
++    UpdateWeightMFReqOutput
+ )
+ from sglang.srt.server_args import LoRARef, ServerArgs
+ from sglang.srt.utils import get_bool_env_var
+@@ -218,6 +222,12 @@
+         self.get_load_communicator = _Communicator(
+             self.send_to_scheduler, server_args.dp_size, mode="watching"
+         )
++        self.init_memory_fabric_communicator = _Communicator(
++            self.send_to_scheduler, server_args.dp_size
++        )
++        self.update_weights_mf_communicator = _Communicator(
++            self.send_to_scheduler, server_args.dp_size
++        )
+ 
+         self._result_dispatcher += self._get_communicator_dispatcher()
+ 
+@@ -249,6 +259,14 @@
+                     self.update_weights_from_tensor_communicator.handle_recv,
+                 ),
+                 (
++                    InitMemoryFabricReqOutput,
++                    self.init_memory_fabric_communicator.handle_recv,
++                ),
++                (
++                    UpdateWeightMFReqOutput,
++                    self.update_weights_mf_communicator.handle_recv,
++                ),
++                (
+                     UpdateWeightsFromIPCReqOutput,
+                     self.update_weights_from_ipc_communicator.handle_recv,
+                 ),
+@@ -485,6 +503,44 @@
+         )
+         async with lock_context:
+             results = await self.update_weights_from_tensor_communicator(obj)
++        success, message = _Communicator.merge_results(results)
++        if success and obj.weight_version is not None:
++            self._update_weight_version_if_provided(obj.weight_version)
++            message += f" Weight version updated to {obj.weight_version}."
++
++        return success, message
++
++    async def init_memory_fabric(
++        self: TokenizerManager,
++        obj: InitMemoryFabricReqInput,
++        request: Optional[fastapi.Request] = None,
++    ) -> Tuple[bool, str]:
++        print(f"sglang init_memory_fabric TokenizerManager")
++        self.auto_create_handle_loop()
++
++        result = (await self.init_memory_fabric_communicator(obj))[0]
++        return result.success
++
++    async def update_weights_mf(
++        self: TokenizerManager,
++        obj: UpdateWeightMFReqInput,
++        request: Optional[fastapi.Request] = None,
++    ) -> Tuple[bool, str]:
++        self.auto_create_handle_loop()
++
++        assert (
++            self.server_args.dp_size == 1 or self.server_args.enable_dp_attention
++        ), "dp_size must be 1 or dp attention must be enabled for update weights from tensor"
++
++        # Immediately update the weights if the engine is in paused state
++        async with self.is_pause_cond:
++            is_paused = self.is_pause
++
++        lock_context = (
++            self.model_update_lock.writer_lock if not is_paused else nullcontext()
++        )
++        async with lock_context:
++            results = (await self.update_weights_mf_communicator(obj))
+ 
+         success, message = _Communicator.merge_results(results)
+         if success and obj.weight_version is not None:
+Index: python/sglang/srt/managers/tp_worker.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/managers/tp_worker.py b/python/sglang/srt/managers/tp_worker.py
+--- a/python/sglang/srt/managers/tp_worker.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/managers/tp_worker.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -34,6 +34,8 @@
+     UpdateWeightsFromDistributedReqInput,
+     UpdateWeightsFromIPCReqInput,
+     UpdateWeightsFromTensorReqInput,
++    InitMemoryFabricReqInput,
++    UpdateWeightMFReqInput
+ )
+ from sglang.srt.managers.schedule_batch import ModelWorkerBatch, ScheduleBatch
+ from sglang.srt.managers.scheduler import GenerationBatchResult
+@@ -181,6 +183,18 @@
+         result = self.model_runner.unload_lora_adapter(recv_req.to_ref())
+         return result
+ 
++    def init_memory_fabric(self, recv_req: InitMemoryFabricReqInput):
++        return self.model_runner.init_memory_fabric(recv_req.dp_size, recv_req.dp_rank)
++
++    def update_weights_mf(self, recv_req: UpdateWeightMFReqInput):
++        success, message, next_resume_func = self.model_runner.update_weights_mf(
++            recv_req.layer_list_meta, recv_req.qkv_info, recv_req.expert_info,
++            recv_req.train_tp_size, recv_req.train_pp_size,
++            recv_req.infer_tp_size, recv_req.infer_pp_size,
++            recv_req.infer_dp_size, recv_req.reset_needed, recv_req.pipeline_overlap
++        )
++        return success, message, next_resume_func
++
+     def load_lora_adapter_from_tensors(
+         self, recv_req: LoadLoRAAdapterFromTensorsReqInput
+     ):
+Index: python/sglang/srt/model_executor/model_runner.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+--- a/python/sglang/srt/model_executor/model_runner.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/model_executor/model_runner.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -22,11 +22,15 @@
+ import socket
+ import threading
+ import time
++import math
++import re
+ from collections import defaultdict
+ from dataclasses import dataclass
+ from typing import Callable, List, Optional, Tuple, Union
++from functools import partial
+ 
+ import torch
++import torch_npu
+ import torch.distributed as dist
+ from torch import nn
+ 
+@@ -176,6 +180,15 @@
+     FlattenedTensorMetadata,
+ )
+ 
++from sglang.srt.weight_sync.memory_fabric_dataclass import LayerMeta, QkvInfo, ExpertInfo
++from TensorRTL.examples.verl.utils import (
++    generate_transfer_device_mesh,
++    generate_transfer_ep_device_mesh,
++    qkv_from_megatron_to_sglang,
++)
++from TensorRTL.tensor_rtl.core.ptensor import PTensor, PTensorSet
++from TensorRTL.tensor_rtl.utils.utils import get_dtype_size
++
+ _is_hip = is_hip()
+ _is_npu = is_npu()
+ _is_cpu_amx_available = cpu_has_amx_support()
+@@ -396,6 +409,7 @@
+         # For weight updates
+         self._model_update_group = {}
+         self._weights_send_group = {}
++        self.ptensorset_dict = {}
+ 
+     def init_mindspore_runner(self):
+         # Init the mindspore runner
+@@ -1353,6 +1367,553 @@
+             raise NotImplementedError(f"Unknown load_format={load_format}")
+         return True, "Success"
+ 
++    def init_memory_fabric(self, dp_size, dp_rank):
++        from TensorRTL.tensor_rtl.core.backend_config import MfBmConfig
++        from TensorRTL.tensor_rtl.core.executor import MemoryFabricExecutor
++        from memfabric_hybrid import bm
++        local_world_size = torch.distributed.get_world_size()  # 推理单DP组world size
++        process_world_size = local_world_size * dp_size  # 推理(训练)总进程数
++        self.pool_num = 2
++        bm_config = MfBmConfig(mem_type=bm.BmMemType.DEVICE, data_op_type=bm.BmDataOpType.SDMA,
++                            local_dram_size=0, local_hbm_size=os.environ.get("MF_HBM_SIZE", 1024*1024*512),
++                            rank_world_size=process_world_size * self.pool_num)
++        rank_id = torch.distributed.get_rank() + dp_rank * local_world_size + process_world_size
++        self.mf_rank_id = torch.distributed.get_rank() + dp_rank * local_world_size
++
++        self.executor = MemoryFabricExecutor(
++            bm_config, rank_id=rank_id,
++            executor_type=MemoryFabricExecutor.ExecutorType.READER)
++        self.read_gen = None
++        self.cur_bucket_id = 0
++
++        dist.barrier()
++        return True
++
++    def update_weights_mf(
++        self,
++        layer_list_meta: List[LayerMeta],
++        qkv_info: QkvInfo,
++        expert_info: ExpertInfo,
++        train_tp_size: int,
++        train_pp_size: int,
++        infer_tp_size: int,
++        infer_pp_size: int,
++        infer_dp_size: int,
++        reset_needed: bool,
++        pipeline_overlap: bool
++    ):
++        world_size = torch.distributed.get_world_size()
++        self.available_pool = [i * world_size * infer_dp_size for i in range(self.pool_num)]
++
++        next_resume_func = None
++        self.last_bucket = False
++        if reset_needed or (self.read_gen is None):
++            self.mf_named_tensors = []
++            if self.ptensorset_dict == {}:
++                self.read_gen = self._update_weights_mf_generator(
++                    layer_list_meta,
++                    qkv_info,
++                    expert_info,
++                    train_tp_size,
++                    train_pp_size,
++                    infer_tp_size,
++                    infer_pp_size,
++                    infer_dp_size,
++                    pipeline_overlap,
++                )
++            else:
++                self.read_gen = self._update_weights_mf_generator_replay(
++                    layer_list_meta,
++                    qkv_info,
++                    expert_info,
++                    train_tp_size,
++                    train_pp_size,
++                    infer_tp_size,
++                    infer_pp_size,
++                    infer_dp_size,
++                )
++            self.cur_bucket_id = 0
++
++        try:
++            mf_named_tensors_pack = next(self.read_gen)
++            self.cur_bucket_id += 1
++        except StopIteration as e:
++            self.last_bucket = True
++            mf_named_tensors_pack = e.value
++
++        if len(mf_named_tensors_pack) == 2:
++            mf_named_tensors, next_resume_func = mf_named_tensors_pack
++        else:
++            mf_named_tensors = mf_named_tensors_pack
++        _model_load_weights_direct(self.model, mf_named_tensors)  # 最后一轮更新
++
++        if self.last_bucket:
++            if self.read_gen == self._update_weights_mf_generator:
++                self._clear_ptensor_tensor_memory()
++            self._clear_ptensor_op_memory()
++
++        dist.barrier()  # 保证所有卡读完，才可以返回到训练侧
++
++        return True, "Success", next_resume_func
++
++    def read_buf(self):
++        from TensorRTL.examples.verl.test_comm import create_recv_tasks
++
++        task_list = create_recv_tasks(self.mf_rank_id, self.cur_bucket_id, self.available_pool[self.cur_bucket_id % 2])
++        self.executor.execute(task_list)
++
++    def _clear_ptensor_op_memory(self):
++        for _, ptensorset_list in self.ptensorset_dict.items():
++            for ptensorset in ptensorset_list:
++                for op in ptensorset.get_transfer_list():
++                    op.buffer = None
++
++    def _clear_ptensor_tensor_memory(self):
++        for _, ptensorset_list in self.ptensorset_dict.items():
++            for ptensorset in ptensorset_list:
++                for ptensor in ptensorset.ptensor_list:
++                    ptensor.tensor = None
++
++    def _resume_ptensor_op_memory(self, ptensorset_dict, expert_weight, num_moe_experts=1, infer_tp_size=1, bucket_id=0):
++        params_dict = dict(self.model.named_parameters())
++        for param_name, ptensorset_list in ptensorset_dict.items():
++            for ptensorset in ptensorset_list:
++                ops = ptensorset.get_transfer_list()
++                if 'mlp.experts.w13_weight' in param_name or 'mlp.experts.w2_weight' in param_name:
++                    expert_tensor = params_dict[param_name]
++                    for idx, op in enumerate(ops):
++                        op.buffer = expert_tensor[idx]
++                    expert_weight.setdefault(param_name, expert_tensor)
++                else:
++                    for op in ops:
++                        op.buffer = torch.empty(op.tensor_size, dtype=op.dtype, device=torch.npu.current_device())
++
++    def _update_weights_mf_generator_replay(
++        self,
++        layer_list_meta: List[LayerMeta],
++        qkv_info: QkvInfo,
++        expert_info: ExpertInfo,
++        train_tp_size: int,
++        train_pp_size: int,
++        infer_tp_size: int,
++        infer_pp_size: int,
++        infer_dp_size: int,
++    ):  
++        bucket_op = {}
++        bucket_ptensor_set = {}
++        allocate_memory_ptensor_set = {}
++        for param_name, ptensorset_list in self.ptensorset_dict.items():
++            max_bucket_id = -1
++            min_bucket_id = 999
++            for op in ptensorset_list[0].get_transfer_list():
++                bucket_op.setdefault(op.bucket_id, [])
++                bucket_op[op.bucket_id].append(op)
++                max_bucket_id = max(op.bucket_id, max_bucket_id)
++                min_bucket_id = min(op.bucket_id, min_bucket_id)
++
++            allocate_memory_ptensor_set.setdefault(min_bucket_id, {})
++            allocate_memory_ptensor_set[min_bucket_id].setdefault(param_name, ptensorset_list)
++
++            bucket_ptensor_set.setdefault(max_bucket_id, {})
++            bucket_ptensor_set[max_bucket_id].setdefault(param_name, ptensorset_list)
++        num_bucket = self.max_bucket_id
++        expert_weight = {}
++        resume_step = []
++        for bucket_id in range(num_bucket + 1):
++            resume_step.append(partial(self._resume_ptensor_op_memory, allocate_memory_ptensor_set[bucket_id], expert_weight, self.expert_info.num_moe_experts, infer_tp_size, bucket_id))
++        resume_step[0]()
++        resume_step.pop(0)
++        for bucket_id in range(num_bucket + 1):
++            if bucket_id != num_bucket:
++                next_resume_func = resume_step.pop(0)
++            self.executor.execute(bucket_op[bucket_id])
++
++            named_tensors = self._post_process_mf(bucket_ptensor_set[bucket_id], expert_weight, train_tp_size, infer_tp_size, self.qkv_info)
++            if bucket_id == num_bucket:
++                self.last_bucket = True
++                yield named_tensors
++            else:
++                yield named_tensors, next_resume_func
++        del expert_weight
++        return named_tensors
++
++    def _post_process_mf(self, ptensorset_dict, expert_weight, train_tp_size, infer_tp_size, qkv_info):
++        named_tensors = []
++        tensor_list_dict = {}
++        shard_dim_dict = {}
++        for param_name, ptensorset_list in ptensorset_dict.items():
++            for ptensorset in ptensorset_list:
++                if 'mlp.experts.w13_weight' in param_name or 'mlp.experts.w2_weight' in param_name:
++                    named_tensors.append((param_name, expert_weight[param_name]))
++                    continue
++
++                tensor_list_dict.setdefault(param_name, [])
++                shard_dim_dict.setdefault(param_name, -1)
++
++                tensor_shard_dim = ptensorset.ptensor_list[0].shard_dim
++                shard_dim_dict[param_name] = tensor_shard_dim
++                tensor_list_dict[param_name].append(ptensorset.collect_tensor())
++
++        for param_name, tensor_list in tensor_list_dict.items():
++            if len(tensor_list) > 1:
++                tensor_shard_dim = shard_dim_dict[param_name]
++                for fused_tensor in zip(*tensor_list):
++                    tensor = torch.cat(fused_tensor, tensor_shard_dim)
++            else:
++                tensor = tensor_list[0][0]  # id0 表示fused0， id1表示当前device的ptensor的tensor(非Moe每个device只有一个ptensor)
++
++            if 'self_attn.qkv_proj' in param_name:
++                if not (qkv_info.num_query_groups >= train_tp_size and \
++                    qkv_info.num_query_groups >= infer_tp_size):
++                    raise RuntimeError(f"[TensorRTL] heads should be divided in tp ranks.")
++
++                tensor = qkv_from_megatron_to_sglang(
++                    qkv_proj=tensor,
++                    num_query_groups=qkv_info.num_query_groups,
++                    num_attention_heads=qkv_info.num_attention_heads,
++                    q_head_dim=qkv_info.q_head_dim,
++                    k_head_dim=qkv_info.k_head_dim,
++                    v_head_dim=qkv_info.v_head_dim,
++                )
++            named_tensors.append((param_name, tensor))
++        return named_tensors
++
++    def _update_weights_mf_generator(
++        self,
++        layer_list_meta: Optional[List[LayerMeta]],
++        qkv_info: Optional[QkvInfo],
++        expert_info: Optional[ExpertInfo],
++        train_tp_size: int,
++        train_pp_size: int,
++        infer_tp_size: int,
++        infer_pp_size: int,
++        infer_dp_size: int,
++        pipeline_overlap: bool
++    ):
++        self.qkv_info = qkv_info
++        self.expert_info = expert_info
++
++        params_dict = dict(self.model.named_parameters())
++        world_size = torch.distributed.get_world_size()
++
++        def generate_global_param_size(fused, global_param_size):
++            def scale_func(param_size, shard_dim, r):
++                return tuple(int(x * r) if i == shard_dim else x for i, x in enumerate(param_size))
++
++            train_params = [None]
++            if fused:
++                train_params = [None for _ in fused_size]
++                fused_ratio = [chunk_size / sum(fused_size) for chunk_size in fused_size]
++                global_param_size = [scale_func(global_param_size, shard_dim, r) for r in fused_ratio]
++            else:
++                global_param_size = [global_param_size]
++
++            return global_param_size, train_params
++
++        def init_fused_offset():
++            fused_offset_list = []
++            fused_offset = 0
++            for idx, train_param in enumerate(train_params):
++                i_tp_size = infer_tp_size if tp_partition else 1
++                fused_tensor_size = get_dtype_size(param_dtype) * math.prod(global_param_size[idx]) // i_tp_size
++                fused_offset_list.append(fused_offset)
++                fused_offset += fused_tensor_size
++            return fused_offset_list
++
++        # 接收到之后的后处理
++        def post_update_experts(ptensorset_dict, new_bucket_param_name: str = ""):
++            nonlocal named_tensors
++            tensor_list_dict = {}
++            shard_dim_dict = {}
++            # 根据保存下来的ptensorset和param name构建tensor_list_dict
++            for param_name, ptensorset_list in ptensorset_dict.items():
++                if param_name == new_bucket_param_name:
++                    # 表示该参数并未完全获取，需要下次再做
++                    continue
++                if 'mlp.experts.w13_weight' in param_name or 'mlp.experts.w2_weight' in param_name:
++                    named_tensors.append((param_name, expert_weight[param_name]))
++                    continue
++                for ptensorset in ptensorset_list:
++                    tensor_list_dict.setdefault(param_name, [])
++                    shard_dim_dict.setdefault(param_name, -1)
++
++                    tensor_shard_dim = ptensorset.ptensor_list[0].shard_dim
++                    shard_dim_dict[param_name] = tensor_shard_dim
++
++                    tensor_list_dict[param_name].append(ptensorset.collect_tensor())
++
++            for param_name, tensor_list in tensor_list_dict.items():
++                if len(tensor_list) > 1:
++                    tensor_shard_dim = shard_dim_dict[param_name]
++                    for fused_tensor in zip(*tensor_list):
++                        tensor = torch.cat(fused_tensor, tensor_shard_dim)
++                else:
++                    tensor = tensor_list[0][0]  # id0 表示fused0， id1表示当前device的ptensor的tensor(非Moe每个device只有一个ptensor)
++
++                if 'self_attn.qkv_proj' in param_name:
++                    if not (qkv_info.num_query_groups >= train_tp_size and \
++                        qkv_info.num_query_groups >= infer_tp_size):
++                        raise RuntimeError(f"[TensorRTL] heads should be divided in tp ranks.")
++
++                    tensor = qkv_from_megatron_to_sglang(
++                        qkv_proj=tensor,
++                        num_query_groups=qkv_info.num_query_groups,
++                        num_attention_heads=qkv_info.num_attention_heads,
++                        q_head_dim=qkv_info.q_head_dim,
++                        k_head_dim=qkv_info.k_head_dim,
++                        v_head_dim=qkv_info.v_head_dim,
++                    )
++                named_tensors.append((param_name, tensor))
++
++        # 分桶偏移计算
++        param_offset_dict = {}
++        cur_offset = 0
++        bucket_id = 0
++
++        cur_bucket_op = []
++        cur_bucket_ptensorset = {}
++        expert_offset_init = []
++        if expert_info.num_moe_experts is not None:
++            local_expert_num = expert_info.num_moe_experts // infer_tp_size  # 根据推理侧专家数量分配
++
++        for weight_info in layer_list_meta:
++            train_pp_rank, name, global_name, global_param_size, param_dtype, shard_dim, ndim, \
++            tp_partition, ep_partition, fused, fused_size = weight_info.train_pp_rank, \
++            weight_info.name, \
++            weight_info.global_name, \
++            weight_info.global_param_size, \
++            weight_info.param_dtype, \
++            weight_info.shard_dim, \
++            weight_info.ndim, \
++            weight_info.tp_partition, \
++            weight_info.ep_partition, \
++            weight_info.fused, \
++            weight_info.fused_size
++
++            # 专家的只记录起始位置和最终结束位置, 因为会做合并
++            if 'mlp.experts.w13_weight' in global_name or 'mlp.experts.w2_weight' in global_name:
++                expert_global_name = re.sub(r'\d+$', '', global_name)
++                if expert_global_name in expert_offset_init:
++                    continue
++                expert_offset_init.append(expert_global_name)  # 每个专家只初始化一次偏移值，分配好推理侧需要的单个专家偏移值
++                single_param_size = get_dtype_size(param_dtype) * math.prod(global_param_size)
++                for i in range(local_expert_num):
++                    if cur_offset + single_param_size > self.executor.bm_config.local_hbm_size:
++                        bucket_id += 1
++                        cur_offset = 0
++                    single_expert_name = expert_global_name + str(i)
++                    param_offset_dict.setdefault(single_expert_name, (0, 0))
++                    param_offset_dict[single_expert_name] = (bucket_id, cur_offset)
++                    cur_offset += single_param_size
++            else:
++                i_tp_size = infer_tp_size if tp_partition else 1
++                param_size = get_dtype_size(param_dtype) * math.prod(global_param_size) // i_tp_size
++
++                if cur_offset + param_size > self.executor.bm_config.local_hbm_size:
++                    bucket_id += 1
++                    cur_offset = 0
++
++                param_offset_dict.setdefault(global_name, (0, 0))
++                param_offset_dict[global_name] = (bucket_id, cur_offset)
++                cur_offset += param_size
++
++        self.max_bucket_id = bucket_id
++        cur_bucket_id = 0
++
++        expert_weight = {}
++        named_tensors = []
++        for weight_info in layer_list_meta:
++            train_pp_rank, name, global_name, global_param_size, param_dtype, shard_dim, ndim, \
++            tp_partition, ep_partition, fused, fused_size = weight_info.train_pp_rank, \
++            weight_info.name, \
++            weight_info.global_name, \
++            weight_info.global_param_size, \
++            weight_info.param_dtype, \
++            weight_info.shard_dim, \
++            weight_info.ndim, \
++            weight_info.tp_partition, \
++            weight_info.ep_partition, \
++            weight_info.fused, \
++            weight_info.fused_size
++
++            if 'mlp.experts.w13_weight' in global_name or 'mlp.experts.w2_weight' in global_name:
++                tp_partition = False
++                key_name = re.sub(r'\d+$', '', global_name)
++                if key_name in expert_weight.keys():
++                    continue
++                global_param_size, train_params = generate_global_param_size(fused, global_param_size)
++                expert_weight.setdefault(key_name, params_dict[key_name])
++                # EP此处会一次性配置所有专家信息，所以需要先将参数信息一次性集合。
++                current_device_mesh, update_device_mesh = generate_transfer_ep_device_mesh(
++                    expert_info.num_moe_experts,
++                    expert_info.train_ep_size,
++                    expert_info.train_etp_size,
++                    train_pp_size,
++                    infer_tp_size,
++                    1,
++                    1,
++                    train_pp_rank,
++                    world_size * infer_dp_size)
++            else:
++                current_device_mesh, update_device_mesh = generate_transfer_device_mesh(
++                    train_tp_size,
++                    train_pp_size,
++                    infer_tp_size,
++                    infer_pp_size,
++                    tp_partition,
++                    train_pp_rank,
++                    world_size * infer_dp_size)
++
++                global_param_size, train_params = generate_global_param_size(fused, global_param_size)
++
++            for idx, device_mesh in enumerate(update_device_mesh):
++                update_device_mesh[idx] = [
++                    rank + world_size * infer_dp_size for rank in device_mesh
++                ]
++
++            if 'mlp.experts.w13_weight' in global_name or 'mlp.experts.w2_weight' in global_name:
++                expert_global_name = re.sub(r'\d+$', '', global_name)
++                expert_param = expert_weight[key_name]
++
++                ptensor_lists = []
++                for idx, old in enumerate(current_device_mesh):
++                    if idx in range(self.tp_rank * local_expert_num, (self.tp_rank + 1) * local_expert_num):
++                        tensors = expert_param[idx % local_expert_num]
++                    else:
++                        tensors = [None]
++                    ptensor_lists.append(PTensor(
++                        tensor=tensors,
++                        dtype=param_dtype,
++                        ndim=ndim,
++                        device_mesh=old,
++                        global_size=global_param_size[0],
++                        shard_dim=shard_dim,
++                        rank=self.mf_rank_id + world_size * infer_dp_size,
++                        backend='mf',
++                        check_sanity=False)
++                    )
++                ptensorset = PTensorSet(ptensor_lists)
++                ptensorset.transfer_map(update_device_mesh, use_empty_recv=False)
++                origin_op_list = ptensorset.get_transfer_list()
++
++                current_op_list = []
++                expert_offset_dict = {}
++                total_op_list = []
++                simulate_bucket_id = cur_bucket_id
++                self.ptensorset_dict.setdefault(expert_global_name, [])
++                self.ptensorset_dict[expert_global_name].append(ptensorset)
++                for op in origin_op_list:
++                    if op.is_send:
++                        continue
++                    expert_offset_dict.setdefault(op.src_rank, 0)
++
++                    infer_expert_idx = expert_offset_dict[op.src_rank]
++                    # 判断当前op到了第几个推理专家，是否需要分桶了
++                    infer_expert_name = expert_global_name + str(infer_expert_idx)
++                    if param_offset_dict[infer_expert_name][0] != simulate_bucket_id:
++                        # 需要新桶了，更新op_list
++                        if len(current_op_list) > 0:
++                            total_op_list.append(current_op_list)
++                        simulate_bucket_id = param_offset_dict[infer_expert_name][0]
++                        current_op_list = []
++
++                    # 不用更新，更新op的偏移值/推理侧专家的序号，并添加当前值到current
++                    op.gva_ptr += param_offset_dict[infer_expert_name][1]
++                    op.tensor_size = op.buffer.size()
++                    op.bucket_id = simulate_bucket_id
++                    op.dtype = op.buffer.dtype
++                    expert_offset_dict[op.src_rank] += 1
++                    if pipeline_overlap:
++                        pool_offset = self.available_pool[simulate_bucket_id % len(self.available_pool)]
++                        op.pool_rank = op.src_rank - pool_offset
++                    current_op_list.append(op)
++
++                if len(current_op_list) > 0:
++                    total_op_list.append(current_op_list)
++
++                # 直接看第一个值是不是直接在新桶
++                if len(total_op_list) > 0:
++                    infer_expert_name = expert_global_name + "0"
++                    if param_offset_dict[infer_expert_name][0] > cur_bucket_id:
++                        self.executor.execute(cur_bucket_op)
++                        post_update_experts(cur_bucket_ptensorset, "")
++                        cur_bucket_op = []
++                        cur_bucket_ptensorset.clear()
++
++                        yield named_tensors
++                        named_tensors = []
++                        cur_bucket_id = param_offset_dict[infer_expert_name][0]
++
++                while len(total_op_list) > 0:
++                    op_list = total_op_list.pop(0)
++
++                    cur_bucket_op.extend(op_list)
++                    cur_bucket_ptensorset.setdefault(expert_global_name, [])
++                    cur_bucket_ptensorset[expert_global_name].append(ptensorset)
++
++                    if len(total_op_list) > 0:  # 说明还有下一个桶内容，需要yield, 否则则说明还在本桶，不用处理。
++                        self.executor.execute(cur_bucket_op)
++                        post_update_experts(cur_bucket_ptensorset, expert_global_name)
++                        cur_bucket_ptensorset.clear()
++                        cur_bucket_ptensorset[expert_global_name] = [ptensorset]
++                        cur_bucket_op = []
++                        yield named_tensors
++                        named_tensors = []
++                        cur_bucket_id += 1
++            else:
++                # 到下一个桶了做一次更新
++                if param_offset_dict[global_name][0] != cur_bucket_id:
++                    self.executor.execute(cur_bucket_op)
++                    post_update_experts(cur_bucket_ptensorset, "")
++                    cur_bucket_op = []
++                    cur_bucket_ptensorset.clear()
++
++                    yield named_tensors
++                    cur_bucket_id = param_offset_dict[global_name][0]
++                    named_tensors = []
++
++                fused_offset_list = init_fused_offset()
++                for idx, train_param in enumerate(train_params):
++                    ptensor_list = []
++                    for device_mesh in current_device_mesh:
++                        ptensor_list.append(PTensor(
++                            tensor=train_param,
++                            dtype=param_dtype,
++                            ndim=ndim,
++                            device_mesh=device_mesh,
++                            global_size=global_param_size[idx],
++                            shard_dim=shard_dim,
++                            rank=self.mf_rank_id + world_size * infer_dp_size,
++                            backend='mf',
++                            check_sanity=False))
++                    ptensorset = PTensorSet(ptensor_list)
++                    ptensorset.transfer_map(update_device_mesh)
++                    op_list = ptensorset.get_transfer_list()
++                    self.ptensorset_dict.setdefault(global_name, [])
++                    self.ptensorset_dict[global_name].append(ptensorset)
++                    for op in op_list:
++                        if op.is_send:
++                            continue
++                        if pipeline_overlap:
++                            pool_offset = self.available_pool[cur_bucket_id % len(self.available_pool)]
++                            op.pool_rank = op.src_rank - pool_offset
++                        op.gva_ptr += (fused_offset_list[idx] + param_offset_dict[global_name][1])
++                        op.tensor_size = op.buffer.size()
++                        op.bucket_id = cur_bucket_id
++                        op.dtype = op.buffer.dtype
++
++                    cur_bucket_op.extend(op_list)
++                    cur_bucket_ptensorset.setdefault(global_name, [])
++                    cur_bucket_ptensorset[global_name].append(ptensorset)
++
++        if len(cur_bucket_op) > 0:
++            self.executor.execute(cur_bucket_op)
++            post_update_experts(cur_bucket_ptensorset, "")
++            cur_bucket_op = []
++            cur_bucket_ptensorset.clear()
++
++        return named_tensors
++
+     def _update_weights_from_flattened_bucket(
+         self,
+         flattened_tensor_bucket_dict,
+Index: python/sglang/srt/weight_sync/memory_fabric_dataclass.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/weight_sync/memory_fabric_dataclass.py b/python/sglang/srt/weight_sync/memory_fabric_dataclass.py
+new file mode 100644
+--- /dev/null	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
++++ b/python/sglang/srt/weight_sync/memory_fabric_dataclass.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -0,0 +1,31 @@
++import torch
++from dataclasses import dataclass
++
++@dataclass
++class LayerMeta:
++    train_pp_rank: int
++    name: str
++    global_name: str
++    global_param_size: torch.Size
++    param_dtype: torch.dtype
++    shard_dim: int
++    ndim: int
++    tp_partition: int
++    ep_partition: int
++    fused: bool
++    fused_size: torch.Size
++
++
++@dataclass
++class QkvInfo:
++    num_query_groups: int
++    num_attention_heads: int
++    q_head_dim: int
++    k_head_dim: int
++    v_head_dim: int
++
++@dataclass
++class ExpertInfo:
++    num_moe_experts: int
++    train_ep_size: int
++    train_etp_size: int
+Index: python/sglang/srt/weight_sync/memory_fabric_util.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/weight_sync/memory_fabric_util.py b/python/sglang/srt/weight_sync/memory_fabric_util.py
+new file mode 100644
+--- /dev/null	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
++++ b/python/sglang/srt/weight_sync/memory_fabric_util.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -0,0 +1,94 @@
++from torch.distributed.device_mesh import DeviceMesh
++
++from sglang.srt.entrypoints.engine import Engine
++from sglang.srt.managers.io_struct import InitMemoryFabricReqInput, UpdateWeightMFReqInput
++from sglang.srt.weight_sync.memory_fabric_dataclass import LayerMeta, QkvInfo, ExpertInfo
++
++
++async def init_memory_fabric(engine: Engine,
++                             device_mesh_key: str,
++                             device_mesh: DeviceMesh):
++    infer_tp_rank = device_mesh[device_mesh_key].get_local_rank()
++    infer_dp_rank = device_mesh["dp"].get_local_rank()
++    infer_dp_size = device_mesh["dp"].mesh.size()[0]
++    if infer_tp_rank == 0:
++        init_memory_fabric_request = InitMemoryFabricReqInput(infer_dp_size, infer_dp_rank)
++        return await engine.init_memory_fabric(init_memory_fabric_request)
++
++
++infer_tp_size_global = None
++infer_dp_size_global = None
++infer_local_rank = None
++infer_tp_rank = None
++
++
++async def update_weights_mf(engine: Engine,
++                            device_mesh_key: str,
++                            device_mesh: DeviceMesh,
++                            layer_list_meta_input,
++                            train_config,
++                            reset_needed,
++                            pipeline_overlap=False,
++                            update_weights_from_tensor_pending=None,
++                            train_param_info=False
++):
++    global infer_local_rank, infer_tp_rank
++    if infer_local_rank is None:
++        infer_local_rank = device_mesh["infer_tp"].get_local_rank()
++
++    if engine is not None and infer_local_rank == 0:
++        layer_list_meta = []
++        if train_param_info:
++            for weight_info in layer_list_meta_input:
++                (train_pp_rank, name, global_name, global_param_size, param_dtype, shard_dim, ndim,
++                tp_partition, ep_partition, fused, fused_size) = weight_info
++                layer_list_meta.append(LayerMeta(
++                    train_pp_rank=train_pp_rank,
++                    name=name,
++                    global_name=global_name,
++                    global_param_size=global_param_size,
++                    param_dtype=param_dtype,
++                    shard_dim=shard_dim,
++                    ndim=ndim,
++                    tp_partition=tp_partition,
++                    ep_partition=ep_partition,
++                    fused=fused,
++                    fused_size=fused_size
++                ))
++
++        qkv_info = QkvInfo(
++            num_query_groups=train_config.num_query_groups,
++            num_attention_heads=train_config.num_attention_heads,
++            q_head_dim=train_config.kv_channels,
++            k_head_dim=train_config.kv_channels,
++            v_head_dim=train_config.kv_channels,
++        )
++        expert_info = ExpertInfo(
++            num_moe_experts=train_config.num_moe_experts,
++            train_ep_size=train_config.expert_model_parallel_size,
++            train_etp_size=train_config.expert_tensor_parallel_size,
++        )
++        if infer_tp_rank is None:
++            infer_tp_rank = device_mesh[device_mesh_key].get_local_rank()
++
++        if infer_tp_rank == 0:
++            global infer_tp_size_global, infer_dp_size_global
++            if infer_tp_size_global is None:
++                infer_tp_size_global = device_mesh["infer_tp"].mesh.size()[0]
++            if infer_dp_size_global is None:
++                infer_dp_size_global = device_mesh["dp"].mesh.size()[0]
++
++            update_weights_mf_request = UpdateWeightMFReqInput(
++                layer_list_meta=layer_list_meta,
++                qkv_info=qkv_info,
++                expert_info=expert_info,
++                train_tp_size=train_config.tensor_model_parallel_size,
++                train_pp_size=train_config.pipeline_model_parallel_size,
++                infer_tp_size=infer_tp_size_global,
++                infer_pp_size=1,
++                infer_dp_size=infer_dp_size_global,
++                reset_needed=reset_needed,
++                pipeline_overlap=pipeline_overlap
++            )
++
++        return await engine.update_weights_mf(update_weights_mf_request)
+Index: python/sglang/srt/weight_sync/utils.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/python/sglang/srt/weight_sync/utils.py b/python/sglang/srt/weight_sync/utils.py
+--- a/python/sglang/srt/weight_sync/utils.py	(revision 38a88479c6a739b1a57778f2146b13f113875646)
++++ b/python/sglang/srt/weight_sync/utils.py	(revision 71d5c8751da6649a1f8d592efe73ee110a826132)
+@@ -1,4 +1,5 @@
+ from typing import Optional
++import asyncio
+ 
+ import torch
+ import torch.distributed as dist
+@@ -17,6 +18,8 @@
+     device_mesh_key: str,
+     device_mesh: DeviceMesh,
+     load_format: Optional[str] = None,
++    pipeline_overlap=False,
++    update_weights_from_tensor_pending = None
+ ):
+     """
+     Update weights for the inference engine.
+@@ -97,9 +100,13 @@
+             ],
+             load_format=load_format,
+         )
+-
+-        return await engine.update_weights_from_tensor(update_weights_request)
++        if not pipeline_overlap:
++            return await engine.update_weights_from_tensor(update_weights_request)
+ 
++        if update_weights_from_tensor_pending is not None:
++            await update_weights_from_tensor_pending
++        update_weights_from_tensor_pending = asyncio.create_task(engine.update_weights_from_tensor(update_weights_request))
++        return update_weights_from_tensor_pending
+ 
+ def _preprocess_tensor_for_update_weights(tensor: torch.Tensor):
+     """
