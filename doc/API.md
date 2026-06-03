@@ -236,7 +236,7 @@ int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId
 | startConfigStoreServer | 是否启动config store，默认true |
 | startConfigStoreOnly | 仅启动config store |
 | dynamicWorldSize    | 成员能否动态加入 |
-| unifiedAddressSpace | 与SVM统一地址空间 |
+| unifiedAddressSpace | 全局统一地址空间，默认true，当前仅支持true |
 | autoRanking         | 自动分配rank ID，默认false |
 | rankId              | 用户指定的rank ID，仅当autoRanking为false时有效 |
 | flags               | 其他标志，默认0 |
