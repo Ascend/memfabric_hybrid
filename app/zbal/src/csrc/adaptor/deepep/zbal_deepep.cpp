@@ -538,19 +538,6 @@ Buffer::low_latency_combine(const at::Tensor &x, const at::Tensor &topk_idx, con
         this->new_scales = torch::cat(scales_blocks, 0);
         new_scales = this->new_scales;
     }
-    if (this->is_padding) {
-        std::vector<at::Tensor> scales_blocks;
-        if (this->padding_cnt != PADDING_SIZE) {
-            scales_blocks.emplace_back(topk_weights);
-        }
-        for (int i = 0; i < this->padding_cnt; i++) {
-            at::Tensor tmp_scales = torch::zeros({1, topk_weights.size(1)}, topk_weights.options());
-            scales_blocks.emplace_back(tmp_scales);
-        }
-        new_idx = this->new_topk_idx;
-        this->new_scales = torch::cat(scales_blocks, 0);
-        new_scales = this->new_scales;
-    }
 
     // Tensor checks
     ZBAL_CHECK_S(x.dim() == 2 and x.is_contiguous() and x.scalar_type() == at::kBFloat16, "LL combine x check failed");
