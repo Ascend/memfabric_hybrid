@@ -227,6 +227,23 @@ int32_t smem_bm_init(const char *storeURL, uint32_t worldSize, uint16_t deviceId
 | config    | BM初始化配置                                           |
 | 返回值       | 成功返回0，其他为错误码                                      |
 
+**smem_bm_config_t 结构体参数说明**：
+| 参数                | 含义                                                                 |
+|---------------------|--------------------------------------------------------------------|
+| initTimeout         | smem_bm_init 函数超时时间，默认120秒（最小1秒，最大SMEM_BM_TIMEOUT_MAX） |
+| createTimeout       | smem_bm_create 函数超时时间，默认120秒（最小1秒，最大SMEM_BM_TIMEOUT_MAX） |
+| controlOperationTimeout | 控制操作超时时间，默认120秒（最小1秒，最大SMEM_BM_TIMEOUT_MAX） |
+| startConfigStoreServer | 是否启动config store，默认true |
+| startConfigStoreOnly | 仅启动config store |
+| dynamicWorldSize    | 成员能否动态加入 |
+| unifiedAddressSpace | 全局统一地址空间，默认true，当前仅支持true |
+| autoRanking         | 自动分配rank ID，默认false |
+| rankId              | 用户指定的rank ID，仅当autoRanking为false时有效 |
+| flags               | 其他标志，默认0 |
+| hcomUrl             | hcom地址 |
+| hcomTlsConfig       | hcom的TLS配置 |
+| storeTlsConfig      | store的TLS配置 |
+
 #### smem_bm_uninit
 BM退出
 
@@ -268,6 +285,20 @@ smem_bm_t smem_bm_create2(uint32_t id, const smem_bm_create_option_t *option);
 | id           | BM id，用户自定义，BM之间取不同值                                            |
 | option       | 创建BM的配置参数                                                       |
 | 返回值          | 成功返回BM handle，失败返回空指针                                           |
+
+**smem_bm_create_option_t 结构体参数说明**：
+| 参数                | 含义                                                                 |
+|---------------------|--------------------------------------------------------------------|
+| maxDramSize         | 所有rank贡献给BM对象的最大DRAM内存大小                             |
+| maxHbmSize          | 所有rank贡献给BM对象的最大HBM内存大小                              |
+| localDRAMSize       | 当前rank贡献给BM对象的DRAM内存大小，单位字节，范围为(0, 2TB]        |
+| localHBMSize        | 当前rank贡献给BM对象的HBM内存大小，单位字节，范围为(0, 64GB]        |
+| dataOpType          | 数据操作类型，如果tag或tagOpInfo为空，则使用此类型                   |
+| enable56BitsGva     | 当总地址空间超过32TB时启用56位GVA                                   |
+| flags               | 可选标志，默认0                                                     |
+| tag                 | BM的标识tag，例如：tag_1                                               |
+| tagOpInfo           | tag间的操作类型，例如：tag1:DEVICE_SDMA:tag1,tag1:DEVICE_RDMA:tag2 |
+| dramShmFd           | DRAM共享内存文件描述符                                              |
 
 #### smem_bm_destroy
 销毁BM
