@@ -48,6 +48,66 @@ inline std::ostream &operator<<(std::ostream &os, hybm_mem_type obj)
     }
 }
 
+inline std::ostream &operator<<(std::ostream &os, hybm_type obj)
+{
+    switch (obj) {
+        case HYBM_TYPE_AI_CORE_INITIATE:
+            return os << "AI_CORE_INITIATE";
+        case HYBM_TYPE_HOST_INITIATE:
+            return os << "HOST_INITIATE";
+        case HYBM_TYPE_BUTT:
+            return os << "BUTT";
+        default:
+            return os << "UNKNOWN(" << static_cast<unsigned>(obj) << ")";
+    }
+}
+
+inline std::ostream &operator<<(std::ostream &os, hybm_scene obj)
+{
+    switch (obj) {
+        case HYBM_SCENE_DEFAULT: return os << "DEFAULT";
+        case HYBM_SCENE_TRANS: return os << "TRANS";
+        case HYBM_SCENE_SHM: return os << "SHM";
+        case HYBM_SCENE_BUTT: return os << "BUTT";
+        default: return os << "UNKNOWN(" << static_cast<unsigned>(obj) << ")";
+    }
+}
+
+inline std::ostream &operator<<(std::ostream &os, hybm_role_type obj)
+{
+    switch (obj) {
+        case HYBM_ROLE_PEER: return os << "PEER";
+        case HYBM_ROLE_SENDER: return os << "SENDER";
+        case HYBM_ROLE_RECEIVER: return os << "RECEIVER";
+        case HYBM_ROLE_BUTT: return os << "BUTT";
+        default: return os << "UNKNOWN(" << static_cast<unsigned>(obj) << ")";
+    }
+}
+
+inline std::ostream &operator<<(std::ostream &os, const hybm_tls_config &obj)
+{
+    os << "TlsConfig{enable: " << obj.tlsEnable;
+    if (obj.tlsEnable) {
+        os << ", caPath: " << obj.caPath << ", crlPath: " << obj.crlPath
+           << ", certPath: " << obj.certPath << ", keyPath: " << obj.keyPath;
+    }
+    os << "}";
+    return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, const hybm_options &obj)
+{
+    os << "deviceId: " << obj.devId << ", rankId: " << obj.rankId << ", rankCount: " << obj.rankCount
+       << ", maxHBMSize: " << obj.maxHBMSize << ", maxDRAMSize: " << obj.maxDRAMSize
+       << ", deviceVASpace: " << obj.deviceVASpace << ", hostVASpace: " << obj.hostVASpace
+       << ", bmType: " << obj.bmType << ", memType: " << obj.memType << ", bmDataOpType: " << obj.bmDataOpType
+       << ", scene: " << obj.scene << ", enable56BitsGva: " << obj.enable56BitsGva
+       << ", role: " << obj.role << ", flags: " << obj.flags
+       << ", dramShmFd: " << obj.dramShmFd << ", transUrl: " << obj.transUrl
+       << ", tag: " << obj.tag << ", tagOpInfo: " << obj.tagOpInfo << ", tlsOption: " << obj.tlsOption;
+    return os;
+}
+
 template<typename T>
 std::string VaToStr(T v)
 {

@@ -121,6 +121,7 @@ int32_t MemEntityDefault::Initialize(const hybm_options *options) noexcept
     BM_ASSERT_LOG_AND_RETURN(InitDataOperator() == BM_OK, "Failed to init data operator.", BM_ERROR);
 
     initialized_ = true;
+    BM_LOG_INFO("Initialize success: " << options_);
     return BM_OK;
 }
 
