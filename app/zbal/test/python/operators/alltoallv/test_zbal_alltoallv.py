@@ -215,7 +215,8 @@ def test_alltoallv(dist_type, data_op_type):
                     cur_input_split = cur_input_splits[i][global_rank]
                     tensor_output = torch.zeros(cur_output_shape, dtype=tensor_input.dtype, device=tensor_input.device)
 
-                    # dist.barrier() # open it when test performance
+                    if enable_perf_test:
+                        dist.barrier()
                     dist.all_to_all_single(tensor_output, tensor_input, cur_output_split, cur_input_split)
                     prof_cnt += 1
 

@@ -6,7 +6,7 @@ echo $CURRENT_DIR
 TEST_TYPE=bfloat16_t
 export TEST_TYPE=$TEST_TYPE
 export CURRENT_DIR=$CURRENT_DIR
-rm -rf golden output
+rm -rf golden output profiling.*
 mkdir -p golden output
 
 RANK_PER_NODE=16

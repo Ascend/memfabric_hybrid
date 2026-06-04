@@ -32,15 +32,15 @@ public:
         this->peerRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
         this->exchangeAddr = comm->myAddressExchangeGva;
 
-        uint64_t inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
+        uint64_t inputAddrU64 = groupSize * ZBAL_FLAG_SIZE;                               // uint64_t elements
+        uint64_t inputAddrSize = Ceil(inputAddrU64, UB_ALIGN_SIZE) * UB_ALIGN_SIZE;       // bytes, for InitBuffer
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
-        this->inputCumSumAddr = this->inputAddr + inputAddrSize;
-        this->inputElementAddr = this->inputCumSumAddr + inputAddrSize;
-        this->flagAddr = this->inputElementAddr + inputAddrSize;
-        this->statAddr = this->flagAddr + inputAddrSize;
-        this->localStatSendAddr = this->statAddr + inputAddrSize;
-        this->localStatBaseAddr = this->localStatSendAddr + inputAddrSize;
-        this->localStatReadyAddr = this->localStatBaseAddr + inputAddrSize;
+        this->inputCumSumAddr = this->inputAddr + inputAddrU64;
+        this->inputElementAddr = this->inputCumSumAddr + inputAddrU64;
+        this->flagAddr = this->inputElementAddr + inputAddrU64;
+        this->localStatSendAddr = this->flagAddr + inputAddrU64;
+        this->localStatBaseAddr = this->localStatSendAddr + inputAddrU64;
+        this->localStatReadyAddr = this->localStatBaseAddr + inputAddrU64;
         this->input = input;
         this->output = output;
         this->inputCumSum = inputCumSum;
@@ -50,6 +50,7 @@ public:
 
         pipe.InitBuffer(elementsBuf_, Ceil(ZBAL_INOUT_LEN * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE);
         pipe.InitBuffer(outputCountsBuf_, Ceil(groupSize * sizeof(uint64_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE);
+        pipe.InitBuffer(statInitBuf_, inputAddrSize);
 
         uint32_t int32BufSize = Ceil(sizeof(int32_t), UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
         pipe.InitBuffer(atomicIncQue_, 1, int32BufSize);
@@ -68,22 +69,30 @@ public:
         AscendC::DataCopyExtParams copyParams{1U, static_cast<uint32_t>(ZBAL_INOUT_LEN * sizeof(uint64_t)), 0U, 0U, 0U};
         AscendC::DataCopyPadExtParams<uint64_t> padExtParams{false, 0U, 0U, 0U};
         AscendC::DataCopyPad(elementsLT, elementsGT, copyParams, padExtParams);
+        SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
         this->inputElement = elementsLT.GetValue(0);
         this->outputElement = elementsLT.GetValue(1);
 
-        AscendC::LocalTensor<uint64_t> outputCountsLT = outputCountsBuf_.Get<uint64_t>();
+        outputCountsLT_ = outputCountsBuf_.Get<uint64_t>();
         AscendC::GlobalTensor<uint64_t> outputCountsGT;
         outputCountsGT.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(outputCounts), groupSize);
         AscendC::DataCopyExtParams copyParams2{1U, static_cast<uint32_t>(groupSize * sizeof(uint64_t)), 0U, 0U, 0U};
         AscendC::DataCopyPadExtParams<uint64_t> padExtParams2{false, 0U, 0U, 0U};
-        AscendC::DataCopyPad(outputCountsLT, outputCountsGT, copyParams2, padExtParams2);
+        AscendC::DataCopyPad(outputCountsLT_, outputCountsGT, copyParams2, padExtParams2);
+        SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
 
-        for (uint16_t i = 0; i < groupSize; i++) {
-            ZBALSetFlag(this->localStatSendAddr, 0, i);
-            ZBALSetFlag(this->localStatBaseAddr, 0, i);
-            outputCountsArray[i] = outputCountsLT.GetValue(i);
-            copyElements[i] = 0;
-        }
+        AscendC::LocalTensor<uint64_t> initStatLT = statInitBuf_.Get<uint64_t>();
+        AscendC::LocalTensor<int32_t> initStatI32 = initStatLT.ReinterpretCast<int32_t>();
+        AscendC::Duplicate<int32_t>(initStatI32, (int32_t)0, initStatI32.GetSize());
+        SyncFunc<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
+
+        AscendC::GlobalTensor<uint64_t> sendGT;
+        AscendC::GlobalTensor<uint64_t> baseGT;
+        sendGT.SetGlobalBuffer(this->localStatSendAddr, groupSize * ZBAL_FLAG_SIZE);
+        baseGT.SetGlobalBuffer(this->localStatBaseAddr, groupSize * ZBAL_FLAG_SIZE);
+        AscendC::DataCopy(sendGT, initStatLT, groupSize * ZBAL_FLAG_SIZE);
+        AscendC::DataCopy(baseGT, initStatLT, groupSize * ZBAL_FLAG_SIZE);
+        SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
     }
 
     ZBAL_KERNEL void ReAssignmentCoreNum()
@@ -108,6 +117,7 @@ public:
         ZBALSetFlag(ptr, inputElement, myGroupRank);
 
         // write exchangeFlag
+        AscendC::PipeBarrier<PIPE_ALL>();
         ptr = zbal_ptr(this->flagAddr, myGroupRank, offset, memSize, peerRank);
         ZBALSetFlag(ptr, waitSymbol, myGroupRank);
     }
@@ -174,8 +184,8 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_ALLTOALL_CORE_RANGE);
         bool findStart = false;
         bool findEnd = false;
-        for (uint16_t i = 0; i < groupSize && i < copyEndRank; i++) {
-            uint64_t counts = outputCountsArray[i];
+        for (uint16_t i = 0; i < groupSize; i++) {
+            uint64_t counts = outputCountsLT_.GetValue(i);
             uint64_t right = left + counts;
             if (!findStart && right > curCoreLeft) {
                 copyStartRank = i;
@@ -236,6 +246,7 @@ public:
         globalGT.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(target), ZBAL_FLAG_SIZE * sizeof(uint64_t));
         SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::DataCopy(buf, globalGT, UB_PAD_COUNT);
+        SyncFunc<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
         return buf.GetValue(0);
     }
 
@@ -267,8 +278,8 @@ public:
             uint64_t cumsum[ZBAL_MAX_RANK_SIZE];
             uint32_t statBase[ZBAL_MAX_RANK_SIZE];
             for (uint16_t i = 0; i < groupSize; i++) {
-                statBase[i] = (outputCountsArray[i] > 0 ? 1 : 0);
-                cumsum[i] = (i > 0 ? cumsum[i - 1] : 0) + outputCountsArray[i];
+                statBase[i] = (outputCountsLT_.GetValue(i) > 0 ? 1 : 0);
+                cumsum[i] = (i > 0 ? cumsum[i - 1] : 0) + outputCountsLT_.GetValue(i);
             }
 
             uint16_t core = 1;
@@ -340,22 +351,10 @@ public:
         }
     }
 
-    ZBAL_KERNEL void WriteRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
+    ZBAL_KERNEL void WaitRangeLocalStat(uint16_t commonStartRank, uint16_t commonEndRank)
     {
         for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
             WaitLocalStat(this->localStatSendAddr, k);
-
-            auto ptr = zbal_ptr(this->statAddr, myGroupRank, static_cast<int>(k), memSize, peerRank);
-            ZBALSetFlag(ptr, waitSymbol, myGroupRank);
-        }
-    }
-
-    ZBAL_KERNEL void WaitRangeStat(uint16_t commonStartRank, uint16_t commonEndRank)
-    {
-        for (uint16_t k = commonStartRank; k < commonEndRank; k++) {
-            ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_STAT);
-            ZBALWaitFlag(this->statAddr, waitSymbol, k);
-            ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_STAT);
         }
     }
 
@@ -379,13 +378,10 @@ public:
 
             AlltoAllvCopy();
 
-            WriteRangeStat(commonStartRank, commonEndRank);
-
-            WaitRangeStat(commonStartRank, commonEndRank);
+            WaitRangeLocalStat(commonStartRank, commonEndRank);
         }
 
-        BarrierAll(comm);
-
+        BarrierAll(comm, false, true);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_KERNEL_ALL);
 #endif
     }
@@ -395,6 +391,7 @@ private:
     TBuf<> elementsBuf_;
     TBuf<> outputCountsBuf_;
     TQue<QuePosition::VECOUT, 1> atomicIncQue_;
+    TBuf<> statInitBuf_;
     TBuf<> getLocalStatBuf_;
     TBuf<> waitLocalStatBuf_;
     uint16_t groupSize;
@@ -405,7 +402,6 @@ private:
     __gm__ uint64_t *inputCumSumAddr;  /* exchange input splits cumsum area */
     __gm__ uint64_t *inputElementAddr; /* exchange input elements area */
     __gm__ uint64_t *flagAddr;         /* exchange flag area */
-    __gm__ uint64_t *statAddr;         /* exchange stat area */
     __gm__ uint64_t *localStatSendAddr;
     __gm__ uint64_t *localStatBaseAddr;
     __gm__ uint64_t *localStatReadyAddr;
@@ -419,8 +415,8 @@ private:
     uint64_t inputElement;
     uint64_t outputElement;
     uint64_t waitSymbol;
-    uint32_t outputCountsArray[ZBAL_MAX_RANK_SIZE]; /* same with outputCounts */
     uint32_t copyElements[ZBAL_MAX_RANK_SIZE];
+    AscendC::LocalTensor<uint64_t> outputCountsLT_;
 };
 
 #define ZBAL_ALLTOALLV_TYPE_MAP(F)     \

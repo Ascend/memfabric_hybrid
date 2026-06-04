@@ -168,9 +168,10 @@ ZBAL_KERNEL void dcci_cacheline(__gm__ uint8_t *addr)
 
 ZBAL_KERNEL void dcci_cachelines(__gm__ uint8_t *addr, uint64_t length)
 {
+    // lower and upper bound align 64B
     __gm__ uint8_t *start = (__gm__ uint8_t *)((uint64_t)addr / ZBAL_DATA_CACHE_LINE_SIZE * ZBAL_DATA_CACHE_LINE_SIZE);
-    __gm__ uint8_t *end =
-        (__gm__ uint8_t *)(((uint64_t)addr + length) / ZBAL_DATA_CACHE_LINE_SIZE * ZBAL_DATA_CACHE_LINE_SIZE);
+    __gm__ uint8_t *end = (__gm__ uint8_t *)(((uint64_t)addr + length + ZBAL_DATA_CACHE_LINE_SIZE - 1) /
+                                             ZBAL_DATA_CACHE_LINE_SIZE * ZBAL_DATA_CACHE_LINE_SIZE);
     AscendC::GlobalTensor<uint8_t> global;
     global.SetGlobalBuffer(start);
     for (uint64_t i = 0; i <= end - start; i += ZBAL_DATA_CACHE_LINE_SIZE) {
@@ -339,7 +340,7 @@ ZBAL_KERNEL void zbal_sdma_post_send(__gm__ uint8_t *recv_buffer, __gm__ uint8_t
     // 1. Initialize per-core parameters, including channel count, etc.
     sdma_config_t config;
     config.queue_num = 1;
-    config.block_bytes = 1024 * 1024; // 1MB per SQE
+    config.block_bytes = 8 * 1024 * 1024;   // Set to 8M for now, maybe change it later
     config.per_core_bytes = message_len;
     config.iter_num = (config.per_core_bytes + config.block_bytes - 1) / config.block_bytes;
 
@@ -490,8 +491,7 @@ ZBAL_KERNEL void zbal_sdma_poll_for_completion(const workspace_layout_t &layout,
         // Poll until flag is received or timeout occurs
         while (send_value == 0 && times < max_times) {
             copy_gm_to_gm<uint32_t>(local_recv_workspace, remote_recv_workspace, 1, tmp_local, sync_id);
-            dcci_cacheline(local_recv_workspace);
-            send_value = *((__gm__ uint32_t *)local_recv_workspace);
+            send_value = tmp_local.GetValue(0);
             times++;
         }
 

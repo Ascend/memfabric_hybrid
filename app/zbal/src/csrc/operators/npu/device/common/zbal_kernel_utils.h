@@ -121,7 +121,7 @@ ZBAL_KERNEL void ZBALWaitFlag(__gm__ void *metaAddr, uint64_t flagVal, uint32_t 
     }
 }
 
-ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
+ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm, bool flag = true, bool stat = true)
 {
     AscendC::SyncAll<true>();
     const uint64_t barrierMagic = 1024;
@@ -150,40 +150,44 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm)
         endRank = startRank + avg;
     }
 
-    // flag
-    for (uint16_t rank = startRank; rank < endRank; rank++) {
-        AscendC::PipeBarrier<PIPE_ALL>();
-        auto ptr = zbal_ptr(flagAddr, comm->myGroupRank, rank,
-                            comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
-        ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
-    }
-    for (uint16_t rank = startRank; rank < endRank; rank++) {
-        AscendC::PipeBarrier<PIPE_ALL>();
-        uint64_t readyFlag;
-        do {
-            readyFlag = ZBALGetFlag(flagAddr, rank);
-        } while (readyFlag != barrierMagic);
+    if (flag) {
+        // flag
+        for (uint16_t rank = startRank; rank < endRank; rank++) {
+            AscendC::PipeBarrier<PIPE_ALL>();
+            auto ptr = zbal_ptr(flagAddr, comm->myGroupRank, rank,
+                                comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+            ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
+        }
+        for (uint16_t rank = startRank; rank < endRank; rank++) {
+            AscendC::PipeBarrier<PIPE_ALL>();
+            uint64_t readyFlag;
+            do {
+                readyFlag = ZBALGetFlag(flagAddr, rank);
+            } while (readyFlag != barrierMagic);
 
-        AscendC::PipeBarrier<PIPE_ALL>();
-        ZBALSetFlag(flagAddr, 0, rank);
+            AscendC::PipeBarrier<PIPE_ALL>();
+            ZBALSetFlag(flagAddr, 0, rank);
+        }
     }
 
-    // stat
-    for (uint16_t rank = startRank; rank < endRank; rank++) {
-        AscendC::PipeBarrier<PIPE_ALL>();
-        auto ptr = zbal_ptr(statAddr, comm->myGroupRank, rank,
-                            comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
-        ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
-    }
-    for (uint16_t rank = startRank; rank < endRank; rank++) {
-        AscendC::PipeBarrier<PIPE_ALL>();
-        uint64_t readyFlag;
-        do {
-            readyFlag = ZBALGetFlag(statAddr, rank);
-        } while (readyFlag != barrierMagic);
+    if (stat) {
+        // stat
+        for (uint16_t rank = startRank; rank < endRank; rank++) {
+            AscendC::PipeBarrier<PIPE_ALL>();
+            auto ptr = zbal_ptr(statAddr, comm->myGroupRank, rank,
+                                comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+            ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
+        }
+        for (uint16_t rank = startRank; rank < endRank; rank++) {
+            AscendC::PipeBarrier<PIPE_ALL>();
+            uint64_t readyFlag;
+            do {
+                readyFlag = ZBALGetFlag(statAddr, rank);
+            } while (readyFlag != barrierMagic);
 
-        AscendC::PipeBarrier<PIPE_ALL>();
-        ZBALSetFlag(statAddr, 0, rank);
+            AscendC::PipeBarrier<PIPE_ALL>();
+            ZBALSetFlag(statAddr, 0, rank);
+        }
     }
 
     AscendC::PipeBarrier<PIPE_ALL>();
