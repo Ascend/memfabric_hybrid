@@ -135,9 +135,3 @@ sudo usermod -a -G <group_name> <deploy_user>
 
 # 退出当前会话后重新登录使组生效
 ```
-
-也可在安装时通过 `--install-group` 参数指定自定义属组：
-
-```bash
-bash memfabric_hybrid-*.run --install-group=<group_name>
-```
