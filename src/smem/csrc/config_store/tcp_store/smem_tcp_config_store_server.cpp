@@ -30,7 +30,8 @@ namespace smem {
 
 std::atomic<uint64_t> StoreWaitContext::idGen_{1UL};
 constexpr uint16_t MAX_U16_INDEX = 65535;
-constexpr uint64_t SERVER_RECOVER_TIME = 60 * 1000 * 1000; // 60s
+constexpr uint64_t SERVER_RECOVER_TIME = 60 * 1000 * 1000; // 60s (etcd distributed backend)
+constexpr uint64_t NON_ETCD_RECOVER_TIME = 10 * 1000 * 1000; // 10s (non-distributed backend)
 constexpr uint64_t RECOVER_PERIOD_TIME = 60; // 60s
 constexpr uint32_t HEARTBEAT_TIMEOUT = 3;
 constexpr int32_t EPHEMERAL_KEY_TTL_SEC = 5;
@@ -202,15 +203,25 @@ bool AccStoreServer::CanReceiveNewLink()
     static uint64_t startT = mf::MonotonicTime::TimeUs();
     if (state_.load() == SS_INITED) {
         state_.store(skipRecover_ ? SS_NORMAL : SS_RECOVER);
-        STORE_LOG_INFO("change server state from INITED to " << (skipRecover_? "NORMAL" : "RECOVER"));
+        STORE_LOG_INFO("change server state from INITED to " << (skipRecover_ ? "NORMAL" : "RECOVER"));
     } else if (state_.load() == SS_RECOVER) {
         uint64_t nowT = mf::MonotonicTime::TimeUs();
         // Exit recovery when:
         // 1. All old ranks (aliveRankFromBackend_) have reconnected (in reconnectedRankSet_), OR
-        // 2. SERVER_RECOVER_TIME (60s) timeout kicks in
-        bool allReconnected = std::all_of(aliveRankFromBackend_.begin(), aliveRankFromBackend_.end(),
-            [this](uint32_t rk) { return reconnectedRankSet_.count(rk) > 0; });
-        if (allReconnected || nowT > startT + SERVER_RECOVER_TIME) {
+        // 2. Timeout kicks in (60s for distributed backend, 10s for non-distributed)
+        //
+        // aliveRankFromBackend_ is empty in non-distributed mode (RestoreFromBackend skips it).
+        // In that case we skip the rank-check and only use the shorter timeout — this gives a
+        // recovery window for expansion (扩容) scenarios even without etcd.
+        bool allReconnected = false;
+        uint64_t timeoutUs = SERVER_RECOVER_TIME;
+        if (!aliveRankFromBackend_.empty()) {
+            allReconnected = std::all_of(aliveRankFromBackend_.begin(), aliveRankFromBackend_.end(),
+                [this](uint32_t rk) { return reconnectedRankSet_.count(rk) > 0; });
+        } else {
+            timeoutUs = NON_ETCD_RECOVER_TIME;
+        }
+        if (allReconnected || nowT > startT + timeoutUs) {
             state_.store(SS_NORMAL);
             STORE_LOG_INFO("change server state to NORMAL"
                 << (allReconnected ? " (all ranks reconnected)" : " (timeout)"));
