@@ -404,7 +404,10 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::Process() // ring allgather
     const int64_t statUpdateRank = aivIndex < coreNumPerRing ? nextRank : prevRank;
     __gm__ uint64_t *statAddr = aivIndex < coreNumPerRing ? this->readLeftStatAddr : this->readRightStatAddr;
 
-    ClearExchangeMeta(outputAddr, exchangeMetaSize);
+    AscendC::TBuf<AscendC::TPosition::VECIN> localBuf;
+    pipe.InitBuffer(localBuf, UB_DMA_MAX_SIZE);
+    AscendC::LocalTensor<uint64_t> localTensor = localBuf.Get<uint64_t>();
+    ClearExchangeMeta(localTensor, outputAddr, exchangeMetaSize);
     BarrierAll(comm);
 
     CopyLocal2Output((__gm__ T *)input, (__gm__ T *)output); // copy self input to output buffer

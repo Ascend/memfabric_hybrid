@@ -33,7 +33,9 @@ constexpr uint32_t ZBAL_TYPE_SIZE_ONE = 1;
 constexpr uint32_t ZBAL_TYPE_SIZE_TWO = 2;
 constexpr uint32_t ZBAL_TYPE_SIZE_FOUR = 4;
 constexpr uint32_t ZBAL_TYPE_SIZE_EIGHT = 8;
+
 using namespace AscendC;
+using namespace zbal;
 
 inline uint32_t GetTypeSize(zbal_datatype_t type)
 {
@@ -154,8 +156,8 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm, bool flag = true, bool s
         // flag
         for (uint16_t rank = startRank; rank < endRank; rank++) {
             AscendC::PipeBarrier<PIPE_ALL>();
-            auto ptr = zbal_ptr(flagAddr, comm->myGroupRank, rank,
-                                comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+            auto ptr =
+                zbal_ptr(flagAddr, comm->myGroupRank, rank, comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
             ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
         }
         for (uint16_t rank = startRank; rank < endRank; rank++) {
@@ -174,8 +176,8 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm, bool flag = true, bool s
         // stat
         for (uint16_t rank = startRank; rank < endRank; rank++) {
             AscendC::PipeBarrier<PIPE_ALL>();
-            auto ptr = zbal_ptr(statAddr, comm->myGroupRank, rank,
-                                comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
+            auto ptr =
+                zbal_ptr(statAddr, comm->myGroupRank, rank, comm->localDeviceMemSize, comm->peerGroupRank2WorldRank);
             ZBALSetFlag(ptr, barrierMagic, comm->myGroupRank);
         }
         for (uint16_t rank = startRank; rank < endRank; rank++) {
@@ -194,21 +196,29 @@ ZBAL_KERNEL void BarrierAll(__gm__ CommGroupInfo *comm, bool flag = true, bool s
     AscendC::SyncAll<true>();
 }
 
-ZBAL_KERNEL void ClearExchangeMeta(__gm__ uint64_t *exchangeMeta, uint32_t size)
+ZBAL_KERNEL void ClearExchangeMeta(AscendC::LocalTensor<uint64_t> &localTensor, __gm__ uint64_t *exchangeMeta,
+                                   uint32_t size)
 {
-    AscendC::LocalTensor<uint64_t> localBuf(AscendC::TPosition::VECIN, UB_BUFF_INTERVAL + UB_ALIGN_SIZE, size);
-    for (uint32_t offset = 0; offset < size; offset++) {
-        localBuf.SetValue(offset, 0);
+    if (size == 0) {
+        return;
     }
 
-    GlobalTensor<uint64_t> globalBuf;
-    globalBuf.SetGlobalBuffer(exchangeMeta, size);
+    uint32_t copyUbNum = UB_DMA_MAX_SIZE / sizeof(uint64_t);
 
-    AscendC::DataCopyPadExtParams<uint64_t> copyExtParams;
-    AscendC::DataCopyExtParams copyParams(1, size * sizeof(uint64_t), 0, 0, 0);
+    for (uint32_t offset = 0; offset < size; offset += copyUbNum) {
+        uint32_t chunkSize = (offset + copyUbNum <= size) ? copyUbNum : (size - offset);
 
-    AscendC::DataCopyPad(globalBuf, localBuf, copyParams);
-    SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        AscendC::LocalTensor<uint32_t> localTensorI32 = localTensor.ReinterpretCast<uint32_t>();
+        AscendC::Duplicate<uint32_t>(localTensorI32, 0, copyUbNum * ZBAL_TYPE_SIZE_TWO);
+        AscendC::PipeBarrier<PIPE_V>();
+
+        GlobalTensor<uint64_t> globalBuf;
+        globalBuf.SetGlobalBuffer(exchangeMeta + offset, chunkSize);
+        AscendC::DataCopyExtParams copyParams(1, chunkSize * sizeof(uint64_t), 0, 0, 0);
+
+        AscendC::DataCopyPad(globalBuf, localTensor, copyParams);
+        SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    }
 }
 
 template<typename T>
@@ -235,14 +245,8 @@ ZBAL_KERNEL void CpGM2GM(AscendC::GlobalTensor<T> outputGT, AscendC::GlobalTenso
 }
 
 const std::vector<RankCoreMapping> allgatherRankCoreMapping = {
-    {2, 2, 0, 256},
-    {2, 4, 256, 1024 * 1024},
-    {4, 4, 0, 256},
-    {4, 8, 256, 1024 * 1024},
-    {8, 8, 0, 256},
-    {8, 16, 256, 1024 * 1024},
-    {16, 16, 0, 256},
-    {16, 32, 256, 1024 * 1024},
+    {2, 2, 0, 256}, {2, 4, 256, 1024 * 1024},  {4, 4, 0, 256},   {4, 8, 256, 1024 * 1024},
+    {8, 8, 0, 256}, {8, 16, 256, 1024 * 1024}, {16, 16, 0, 256}, {16, 32, 256, 1024 * 1024},
 };
 
 inline uint32_t ZBALOpGetAivBlockDim(CommGroupInfo &groupInfo, size_t sendCount, zbal_datatype_t dataType)

@@ -105,7 +105,10 @@ public:
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
-        ClearExchangeMeta(exchangeInputStart, exchangeMetaSize);
+        AscendC::TBuf<AscendC::TPosition::VECIN> localBuf;
+        pipe.InitBuffer(localBuf, UB_DMA_MAX_SIZE);
+        AscendC::LocalTensor<uint64_t> localTensor = localBuf.Get<uint64_t>();
+        ClearExchangeMeta(localTensor, exchangeInputStart, exchangeMetaSize);
         BarrierAll(groupInfo);
 
         if (totalElems > groupSize) {
