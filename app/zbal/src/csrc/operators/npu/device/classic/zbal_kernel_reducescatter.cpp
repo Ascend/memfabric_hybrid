@@ -36,20 +36,22 @@ public:
         this->output = output;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
         this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
         this->reduceOp = reduceOp;
         this->elements = elements;
         this->addrOffset = groupSize * ZBAL_FLAG_SIZE;
         this->flagMagic = flagMagic;
-        this->localDeviceMemSize = comm->localDeviceMemSize;
+        this->memSize = comm->localDeviceMemSize;
         // |------input------|------flag------|
         this->exchangeAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
         this->exchangeFlag = exchangeAddr + addrOffset;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
         InitParallelStrategy();
 
-        ZBALBaseKernel::Init(comm->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -143,7 +145,7 @@ public:
             }
         }
 
-        BarrierAll(comm);
+        BarrierAll();
         ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_KERNEL_ALL);
 #endif
     }
@@ -154,8 +156,8 @@ private:
         ZBAL_PROF_START(comm, ZBAL_PROF_EXCHANGE_ADDR);
         for (auto dsrRank = meta.startNotifyRank; dsrRank < meta.endNotifyRank; dsrRank++) {
             uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-            auto ptr = zbal_ptr(exchangeAddr, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
-            auto flagPtr = zbal_ptr(exchangeFlag, rank, dsrRank, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto ptr = ZbalPtr(exchangeAddr, dsrRank);
+            auto flagPtr = ZbalPtr(exchangeFlag, dsrRank);
             ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
             ZBALSetFlag(flagPtr, flagMagic, rank);
@@ -170,19 +172,15 @@ private:
     uint32_t aivNum;
     uint32_t aivIndex;
     uint32_t rank;
-    uint32_t groupSize;
     uint32_t reduceOp;
     uint32_t elements;
     uint32_t addrOffset;
     uint64_t flagMagic;
-    uint64_t localDeviceMemSize;
     RsParallelStrategy meta;
     __gm__ void *input;
     __gm__ void *output;
-    __gm__ CommGroupInfo *comm;
     __gm__ uint64_t *exchangeAddr;
     __gm__ uint64_t *exchangeFlag;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 extern "C" __global__ __aicore__ void ZBALReduceScatterInner(GM_ADDR input, GM_ADDR output, size_t recvNumel,

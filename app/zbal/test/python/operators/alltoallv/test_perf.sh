@@ -6,7 +6,7 @@ echo $CURRENT_DIR
 TEST_TYPE=bfloat16_t
 export TEST_TYPE=$TEST_TYPE
 export CURRENT_DIR=$CURRENT_DIR
-export ZBAL_ENABLE_ALLTOALL_PERF_TEST=1
+export ZBAL_ENABLE_PERF_TEST=1
 mkdir -p golden output
 
 OP=${1:0}

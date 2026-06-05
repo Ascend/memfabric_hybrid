@@ -89,7 +89,7 @@
 | `CHECK_PRECISION`                | 算子测试是否检查精度               | `"0"` / `"1"`，默认 `"1"`                           |
 | `ENABLE_PROFILING`               | 算子测试是否启用profiling          | `"0"` / `"1"`，默认 `"0"`                           |
 | `PROFILING_STEP`                 | Profiling迭代步数                  | 整数，默认 `10`                                     |
-| `ZBAL_ENABLE_ALLTOALL_PERF_TEST` | AllToAll/AllToAllV性能测试模式     | `"0"` / `"1"`，默认 `"0"`                           |
+| `ZBAL_ENABLE_PERF_TEST`          | 性能测试模式                       | `"0"` / `"1"`，默认 `"0"`                           |
 
 ## External Integration (SGLang)
 

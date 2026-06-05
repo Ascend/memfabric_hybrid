@@ -24,11 +24,12 @@ public:
         this->elements = recvCount;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
         this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
         this->addrOffset = groupSize * ZBAL_FLAG_SIZE;
 
-        this->localDeviceMemSize = comm->localDeviceMemSize;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->memSize = comm->localDeviceMemSize;
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
         this->aivNum = AscendC::GetBlockNum();
         this->aivIndex = AscendC::GetBlockIdx();
@@ -38,7 +39,8 @@ public:
         this->exchangeFlag = exchangeAddr + addrOffset;
         this->exchangeAck = exchangeFlag + addrOffset;
 
-        ZBALBaseKernel::Init(comm->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -67,7 +69,7 @@ public:
             ZBALSetFlag(exchangeFlag, 0, peer);
             AscendC::PipeBarrier<PIPE_ALL>();
 
-            auto ackPtr = zbal_ptr(exchangeAck, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto ackPtr = ZbalPtr(exchangeAck, peer);
             ZBALSetFlag(ackPtr, waitSymbol, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
         }
@@ -84,16 +86,12 @@ private:
     uint32_t aivIndex;
     uint32_t rank;
     uint32_t peer;
-    uint32_t groupSize;
     uint32_t elements;
     uint32_t addrOffset;
-    uint64_t localDeviceMemSize;
     GM_ADDR recvBuf;
-    __gm__ CommGroupInfo *comm;
     __gm__ uint64_t *exchangeAddr;
     __gm__ uint64_t *exchangeFlag;
     __gm__ uint64_t *exchangeAck;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 extern "C" __global__ __aicore__ void ZBALRecvInner(GM_ADDR recvBuf, size_t recvCount, uint32_t dataTypeNum,

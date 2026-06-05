@@ -39,9 +39,6 @@ private:
     ZBAL_KERNEL void WriteStat(int64_t targetDataRank = -1);
 
 private:
-    uint16_t groupSize;
-    uint16_t myGroupRank;
-    uint64_t localDeviceMemSize;
     uint16_t inputAddrSize;
     int64_t aivNum;
     uint64_t elements;
@@ -53,8 +50,6 @@ private:
     __gm__ uint64_t *statAddr;
     __gm__ void *input;
     __gm__ void *output;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 class ZBALAllGatherBigKernel : public ZBALBaseKernel {
@@ -80,9 +75,6 @@ private:
 private:
     uint32_t coreNumPerRing;
     uint32_t statSizePerRank;
-    uint16_t groupSize;
-    uint16_t myGroupRank;
-    uint64_t memSize;
     uint16_t elemExchSize; // size for exchange one element
     uint32_t exchangeMetaSize;
     int64_t aivNum;
@@ -94,8 +86,6 @@ private:
     __gm__ uint64_t *readRightStatAddr;
     __gm__ void *input;
     __gm__ void *output;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *worldRanks;
     uint64_t waitSymbol;
 };
 
@@ -107,9 +97,9 @@ ZBAL_KERNEL void ZBALAllGatherSmallKernel::Init(GM_ADDR input, GM_ADDR output, G
     this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
     this->groupSize = comm->groupSize;
     this->myGroupRank = comm->myGroupRank;
-    this->localDeviceMemSize = comm->localDeviceMemSize;
+    this->memSize = comm->localDeviceMemSize;
     this->inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
-    this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+    this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
     this->exchangeAddr = comm->myAddressExchangeGva;
     this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
     this->flagAddr = this->inputAddr + inputAddrSize;
@@ -121,7 +111,8 @@ ZBAL_KERNEL void ZBALAllGatherSmallKernel::Init(GM_ADDR input, GM_ADDR output, G
     this->elements = elements;
     this->waitSymbol = waitSymbol;
 
-    ZBALBaseKernel::Init(comm->dataOpType);
+    this->dataOpType = comm->dataOpType;
+    ZBALBaseKernel::Init();
 #endif
 }
 
@@ -139,16 +130,16 @@ ZBAL_KERNEL void ZBALAllGatherSmallKernel::ExchangeInputAddrFlag()
         }
 
         for (int dstRank = startRank; dstRank < endRank; dstRank++) {
-            auto dataPtr = zbal_ptr(inputAddr, myGroupRank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-            auto flagPtr = zbal_ptr(flagAddr, myGroupRank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto dataPtr = ZbalPtr(inputAddr, dstRank);
+            auto flagPtr = ZbalPtr(flagAddr, dstRank);
             uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
 
             ZBALSetFlag(dataPtr, dataAddr, myGroupRank);
             ZBALSetFlag(flagPtr, waitSymbol, myGroupRank);
         }
     } else if (aivIndex < groupSize) {
-        auto dataPtr = zbal_ptr(inputAddr, myGroupRank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-        auto flagPtr = zbal_ptr(flagAddr, myGroupRank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+        auto dataPtr = ZbalPtr(inputAddr, aivIndex);
+        auto flagPtr = ZbalPtr(flagAddr, aivIndex);
         uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
 
         // write addr
@@ -169,7 +160,7 @@ ZBAL_KERNEL void ZBALAllGatherSmallKernel::WriteStat(int64_t targetDataRank)
     const int64_t corePerRank = AscendC::GetBlockNum() / groupSize;
     const int64_t offset = (targetDataRank == -1) ? aivIndex / corePerRank : targetDataRank;
     if (aivIndex % corePerRank == 0) {
-        auto destStatPtr = zbal_ptr(statAddr, myGroupRank, offset, localDeviceMemSize, peerGroupRank2WorldRank);
+        auto destStatPtr = ZbalPtr(statAddr, offset);
         ZBALSetFlag(destStatPtr, waitSymbol, myGroupRank);
     }
     ZBAL_PROF_STOP(comm, ZBAL_PROF_WRITE_STAT);
@@ -318,7 +309,8 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::Init(GM_ADDR input, GM_ADDR output, GM_
     this->elements = elements;
     this->waitSymbol = waitSymbol;
 
-    ZBALBaseKernel::Init(comm->dataOpType);
+    this->dataOpType = comm->dataOpType;
+    ZBALBaseKernel::Init();
 #endif
 }
 
@@ -328,7 +320,7 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::ExchangeOutputAddr(int64_t coreIndex, _
     // The stat area of the first cycle is set to ready in advance.
     ZBAL_PROF_START(comm, ZBAL_PROF_WRITE_STAT);
     for (int j = 0; j < ZBAL_AG_SLICE_PER_CORE; j++) {
-        auto targetStatAddr = zbal_ptr(statAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
+        auto targetStatAddr = ZbalPtr(statAddr, statUpdateRank);
         int64_t writeStatOffset = myGroupRank * this->statSizePerRank + coreIndex * ZBAL_AG_SLICE_PER_CORE + j;
 
         ZBALSetFlag(targetStatAddr, waitSymbol, writeStatOffset);
@@ -337,8 +329,8 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::ExchangeOutputAddr(int64_t coreIndex, _
 
     ZBAL_PROF_START(comm, ZBAL_PROF_ALLGATHER_PREPARE_PTR);
     if (coreIndex == 0) {
-        auto dataPtr = zbal_ptr(outputAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
-        auto flagPtr = zbal_ptr(flagAddr, myGroupRank, statUpdateRank, memSize, worldRanks);
+        auto dataPtr = ZbalPtr(outputAddr, statUpdateRank);
+        auto flagPtr = ZbalPtr(flagAddr, statUpdateRank);
         uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(output));
 
         ZBALSetFlag(dataPtr, dataAddr, myGroupRank);
@@ -383,7 +375,7 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::WriteStat(__gm__ uint64_t *statAddr, co
                                                    const int64_t targetStatOffset)
 {
     ZBAL_PROF_START(comm, ZBAL_PROF_WRITE_STAT);
-    auto nextStat = zbal_ptr(statAddr, myGroupRank, targetStatRank, memSize, worldRanks);
+    auto nextStat = ZbalPtr(statAddr, targetStatRank);
     ZBALSetFlag(nextStat, waitSymbol, targetStatOffset);
     ZBAL_PROF_STOP(comm, ZBAL_PROF_WRITE_STAT);
 }
@@ -404,11 +396,8 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::Process() // ring allgather
     const int64_t statUpdateRank = aivIndex < coreNumPerRing ? nextRank : prevRank;
     __gm__ uint64_t *statAddr = aivIndex < coreNumPerRing ? this->readLeftStatAddr : this->readRightStatAddr;
 
-    AscendC::TBuf<AscendC::TPosition::VECIN> localBuf;
-    pipe.InitBuffer(localBuf, UB_DMA_MAX_SIZE);
-    AscendC::LocalTensor<uint64_t> localTensor = localBuf.Get<uint64_t>();
-    ClearExchangeMeta(localTensor, outputAddr, exchangeMetaSize);
-    BarrierAll(comm);
+    ClearExchange(outputAddr, exchangeMetaSize);
+    BarrierAll();
 
     CopyLocal2Output((__gm__ T *)input, (__gm__ T *)output); // copy self input to output buffer
 
@@ -455,7 +444,7 @@ ZBAL_KERNEL void ZBALAllGatherBigKernel::Process() // ring allgather
             WriteStat(statAddr, statUpdateRank, sliceStatOffset); // write stat to next rank when data ready
         }
     }
-    BarrierAll(comm);
+    BarrierAll();
     ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLGATHER_KERNEL_ALL);
 #endif
 }

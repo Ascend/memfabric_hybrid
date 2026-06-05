@@ -13,7 +13,7 @@
 #include "zbal_kernel_base.h"
 
 template<typename T>
-class ZBALSendKernel {
+class ZBALSendKernel : public ZBALBaseKernel {
 public:
     ZBAL_KERNEL ZBALSendKernel() {}
 
@@ -24,11 +24,12 @@ public:
         this->elements = sendCount;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
         this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
         this->addrOffset = groupSize * ZBAL_FLAG_SIZE;
 
-        this->localDeviceMemSize = comm->localDeviceMemSize;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->memSize = comm->localDeviceMemSize;
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
         // |------input------|------flag------|------ack------|
         this->exchangeAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
@@ -42,8 +43,8 @@ public:
         ZBAL_PROF_START(comm, ZBAL_PROF_SEND_KERNEL_ALL);
         uint64_t waitSymbol = 1024;
         uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(sendBuf));
-        auto ptr = zbal_ptr(exchangeAddr, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
-        auto flagPtr = zbal_ptr(exchangeFlag, rank, peer, localDeviceMemSize, peerGroupRank2WorldRank);
+        auto ptr = ZbalPtr(exchangeAddr, peer);
+        auto flagPtr = ZbalPtr(exchangeFlag, peer);
         ZBALSetFlag(ptr, dataAddr, rank);
         AscendC::PipeBarrier<PIPE_ALL>();
         ZBALSetFlag(flagPtr, waitSymbol, rank);
@@ -62,16 +63,12 @@ public:
 private:
     uint32_t rank;
     uint32_t peer;
-    uint32_t groupSize;
     uint32_t elements;
     uint32_t addrOffset;
-    uint64_t localDeviceMemSize;
     GM_ADDR sendBuf;
-    __gm__ CommGroupInfo *comm;
     __gm__ uint64_t *exchangeAddr;
     __gm__ uint64_t *exchangeFlag;
     __gm__ uint64_t *exchangeAck;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 extern "C" __global__ __aicore__ void ZBALSendInner(GM_ADDR sendBuf, size_t sendCount, uint32_t dataTypeNum,

@@ -12,7 +12,6 @@
 
 import logging
 import os
-import sys
 import time
 import random
 import torch
@@ -40,6 +39,23 @@ g_torch_type_map = {
     "float": torch.float32,
     "bfloat16_t": torch.bfloat16
 }
+
+
+
+def get_golden_from_file(filepath):
+    """load pre-computed HCCL golden tensor from disk"""
+    return torch.load(filepath, weights_only=False).npu()
+
+
+def is_perf_test():
+    """check if running in performance test mode"""
+    return os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
+
+
+def get_golden_by_assembly(golden_dir, current_dir, data_type, tensor_data_type):
+    """p2p golden = sender's input tensor"""
+    data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm.bin", dtype=data_type)
+    return torch.from_numpy(data).to(tensor_data_type).npu()
 
 
 def test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type):
@@ -115,7 +131,10 @@ def test_p2p(dist_type, case_list, send_rank, recv_rank, data_op_type):
                 tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
                 os.makedirs(tensor_output_dir, exist_ok=True)
                 if check_precision and recv_role and dist_type == 'zbal':
-                    golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl.bin", weights_only=False).npu()
+                    if is_perf_test():
+                        golden_tensor = get_golden_from_file(f"{tensor_output_dir}/output_hccl.bin")
+                    else:
+                        golden_tensor = get_golden_by_assembly(golden_dir, current_dir, data_type, tensor_data_type)
 
                 for k in range(0, 20):
                     if enable_profiling and prof_cnt > 5:

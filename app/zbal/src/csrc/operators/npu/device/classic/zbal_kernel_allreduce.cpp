@@ -39,22 +39,23 @@ public:
         this->atomicOp = atomicOp;
         this->bufferElems = bufferElems;
         this->totalElems = totalElems;
-        this->groupInfo = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
-        this->rank = groupInfo->myGroupRank;
-        this->groupSize = groupInfo->groupSize;
+        this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
+        this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
+        this->groupSize = comm->groupSize;
         this->waitSymbol = waitSymbol;
         this->input = x;
         this->output = y;
         this->buffer = buf;
-        this->localMemSize = groupInfo->localDeviceMemSize;
-        this->groupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(groupInfo->peerGroupRank2WorldRank);
+        this->memSize = comm->localDeviceMemSize;
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
         this->aivNum = AscendC::GetBlockNum();
         this->aivIndex = AscendC::GetBlockIdx();
 
         // |------input------|------buffer------|------inputflag------|------bufferflag------|
         this->addrOffset = groupSize * ZBAL_FLAG_SIZE;
-        this->exchangeInputStart = reinterpret_cast<__gm__ uint64_t *>(groupInfo->myAddressExchangeGva);
+        this->exchangeInputStart = reinterpret_cast<__gm__ uint64_t *>(comm->myAddressExchangeGva);
         this->exchangeBufferStart = exchangeInputStart + addrOffset;
         this->exchangeInputFlagStart = exchangeBufferStart + addrOffset;
         this->exchangeBufferFlagStart = exchangeInputFlagStart + addrOffset;
@@ -62,7 +63,8 @@ public:
 
         InitParallelStrategy();
 
-        ZBALBaseKernel::Init(groupInfo->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
     }
 
     ZBAL_KERNEL void InitParallelStrategy()
@@ -105,11 +107,8 @@ public:
     ZBAL_KERNEL void Process()
     {
 #ifdef __DAV_C220_VEC__
-        AscendC::TBuf<AscendC::TPosition::VECIN> localBuf;
-        pipe.InitBuffer(localBuf, UB_DMA_MAX_SIZE);
-        AscendC::LocalTensor<uint64_t> localTensor = localBuf.Get<uint64_t>();
-        ClearExchangeMeta(localTensor, exchangeInputStart, exchangeMetaSize);
-        BarrierAll(groupInfo);
+        ClearExchange(exchangeInputStart, exchangeMetaSize);
+        BarrierAll();
 
         if (totalElems > groupSize) {
             ProcessElemsGtGroupSize();
@@ -123,9 +122,9 @@ private:
     ZBAL_KERNEL void ProcessElemsLtGroupSize()
     {
 #ifdef __DAV_C220_VEC__
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
         if (meta.aivNumLtGroupSize) {
-            ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+            ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
             if (aivIndex == 0) {
                 xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input), totalElems);
                 buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
@@ -142,12 +141,12 @@ private:
                     CpGM2GM(xGm, buffGm, totalElems, true, atomicOp);
                 }
             }
-            ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+            ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
         } else {
             InitDataAddrAndFlag(INPUT_BUFFER_BOTH);
             WaitFlagAndPtr(aivIndex, INPUT_BUFFER_BOTH);
 
-            ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+            ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
             xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputPtr), totalElems);
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
             if (aivIndex == rank) {
@@ -157,34 +156,34 @@ private:
                 AscendC::SyncAll<true>();
                 CpGM2GM(xGm, buffGm, totalElems, true, atomicOp);
             }
-            ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+            ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
         }
 
-        BarrierAll(groupInfo);
+        BarrierAll();
 
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_ALLGATHER);
         buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer), totalElems);
         yGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(output), totalElems);
         CpGM2GM(buffGm, yGm, totalElems);
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_ALLGATHER);
 
-        BarrierAll(groupInfo);
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
+        BarrierAll();
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
 #endif
     }
 
     ZBAL_KERNEL void ProcessElemsGtGroupSize()
     {
 #ifdef __DAV_C220_VEC__
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
 
         // 先做reducescatter，将reducescatter结果存入buffer区
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
         ProcessRs();
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_SCATTER_REDUCE);
 
         // 恢复tensor到完整范围, 搬运数据buffer -> output
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
+        ZBAL_PROF_START(comm, ZBAL_PROF_ALLREDUCE_ALLGATHER);
         pipe.Reset();
         pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
 
@@ -194,14 +193,14 @@ private:
         // 均分且数据量较大，走双ring实现，天然支持集群数大于核数
         if (regular && slice >= SMALL_DATA_SIZE) {
             ZBALAllGatherBigKernel op;
-            op.Init<T>(buffer, output, reinterpret_cast<GM_ADDR>(groupInfo), slice, --waitSymbol);
+            op.Init<T>(buffer, output, reinterpret_cast<GM_ADDR>(comm), slice, --waitSymbol);
             op.Process<T>();
         } else {
             ProcessAg();
         }
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_ALLGATHER);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_ALLGATHER);
 
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLREDUCE_KERNEL_ALL);
 #endif
     }
 
@@ -220,11 +219,11 @@ private:
             numPerCoreLocal = elements - (aivNum - 1) * numPerCoreLocal;
         }
 
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
+        ZBAL_PROF_START(comm, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(input) + xOffsetLocal, numPerCoreLocal);
         buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer) + yOffsetLocal, numPerCoreLocal);
         CpGM2GM(xGm, buffGm, numPerCoreLocal);
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_LOCAL_COPY);
         AscendC::SyncAll<true>();
 
         // step2. 分核与交换地址
@@ -252,13 +251,13 @@ private:
             xGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(inputPtr) + xOffset, numPerCore);
             buffGm.SetGlobalBuffer(reinterpret_cast<__gm__ T *>(buffer) + yOffset, numPerCore);
             if (srcRank != rank) {
-                ZBAL_PROF_START(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
+                ZBAL_PROF_START(comm, ZBAL_PROF_REDUCESCATTER_COPY);
                 CpGM2GM(xGm, buffGm, numPerCore, true, atomicOp);
-                ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_REDUCESCATTER_COPY);
+                ZBAL_PROF_STOP(comm, ZBAL_PROF_REDUCESCATTER_COPY);
             }
         }
 
-        BarrierAll(groupInfo);
+        BarrierAll();
     }
 
     ZBAL_KERNEL void ProcessAg()
@@ -295,41 +294,41 @@ private:
             CpGM2GM(buffGm, yGm, numPerCore);
         }
 
-        BarrierAll(groupInfo);
+        BarrierAll();
     }
 
     ZBAL_KERNEL void InitDataAddrAndFlag(uint32_t op)
     {
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_EXCHANGE_ADDR);
+        ZBAL_PROF_START(comm, ZBAL_PROF_EXCHANGE_ADDR);
         for (auto dsrRank = meta.startNotifyRank; dsrRank < meta.endNotifyRank; dsrRank++) {
             if (op != BUFFER_ONLY) {
                 uint64_t inputddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-                auto dstInput = zbal_ptr(exchangeInputStart, rank, dsrRank, localMemSize, groupRank2WorldRank);
+                auto dstInput = ZbalPtr(exchangeInputStart, dsrRank);
                 ZBALSetFlag(dstInput, inputddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
 
-                auto inputFlag = zbal_ptr(exchangeInputFlagStart, rank, dsrRank, localMemSize, groupRank2WorldRank);
+                auto inputFlag = ZbalPtr(exchangeInputFlagStart, dsrRank);
                 ZBALSetFlag(inputFlag, waitSymbol, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
 
             if (op != INPUT_ONLY) {
                 uint64_t bufferAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buffer));
-                auto dstBuffer = zbal_ptr(exchangeBufferStart, rank, dsrRank, localMemSize, groupRank2WorldRank);
+                auto dstBuffer = ZbalPtr(exchangeBufferStart, dsrRank);
                 ZBALSetFlag(dstBuffer, bufferAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
 
-                auto bufferFlag = zbal_ptr(exchangeBufferFlagStart, rank, dsrRank, localMemSize, groupRank2WorldRank);
+                auto bufferFlag = ZbalPtr(exchangeBufferFlagStart, dsrRank);
                 ZBALSetFlag(bufferFlag, waitSymbol, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
         }
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_EXCHANGE_ADDR);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_EXCHANGE_ADDR);
     }
 
     ZBAL_KERNEL void WaitFlagAndPtr(uint32_t srcRank, uint32_t op)
     {
-        ZBAL_PROF_START(groupInfo, ZBAL_PROF_WAIT_FLAG);
+        ZBAL_PROF_START(comm, ZBAL_PROF_WAIT_FLAG);
         if (op != BUFFER_ONLY) {
             ZBALWaitFlag(exchangeInputFlagStart, waitSymbol, srcRank);
 
@@ -343,7 +342,7 @@ private:
             uint64_t exchangeBufAddr = ZBALGetFlag(exchangeBufferStart, srcRank);
             this->exchangeBufPtr = reinterpret_cast<GM_ADDR>(static_cast<uintptr_t>(exchangeBufAddr));
         }
-        ZBAL_PROF_STOP(groupInfo, ZBAL_PROF_WAIT_FLAG);
+        ZBAL_PROF_STOP(comm, ZBAL_PROF_WAIT_FLAG);
     }
 
 private:
@@ -354,25 +353,21 @@ private:
     uint32_t atomicOp;
     uint32_t aivNum;
     uint32_t aivIndex;
-    uint32_t groupSize;
     uint32_t bufferElems;
     uint32_t totalElems;
     uint32_t addrOffset;
     uint32_t exchangeMetaSize;
     uint64_t waitSymbol;
-    uint64_t localMemSize;
     ArParallelStrategy meta;
     __gm__ uint64_t *exchangeInputStart;
     __gm__ uint64_t *exchangeBufferStart;
     __gm__ uint64_t *exchangeInputFlagStart;
     __gm__ uint64_t *exchangeBufferFlagStart;
-    __gm__ uint16_t *groupRank2WorldRank;
     GM_ADDR inputPtr;
     GM_ADDR exchangeBufPtr;
     GM_ADDR input;
     GM_ADDR output;
     GM_ADDR buffer;
-    __gm__ CommGroupInfo *groupInfo;
 };
 
 extern "C" __global__ __aicore__ void ZBALAllReduceInner(GM_ADDR input, GM_ADDR output, GM_ADDR buffer, GM_ADDR gva,

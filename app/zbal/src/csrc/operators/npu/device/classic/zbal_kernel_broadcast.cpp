@@ -31,18 +31,20 @@ public:
         this->output = output;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
         this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
         this->elements = elements;
         this->flagMagic = waitSymbol;
-        this->localDeviceMemSize = comm->localDeviceMemSize;
+        this->memSize = comm->localDeviceMemSize;
         this->inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
         // |------input------|------flag------|------stat------|
         this->exchangeAddr = comm->myAddressExchangeGva;
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
         this->flagAddr = this->inputAddr + inputAddrSize;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        ZBALBaseKernel::Init(comm->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -92,7 +94,7 @@ public:
             }
             ZBAL_PROF_STOP(comm, ZBAL_PROF_BROADCAST_SCATTER);
         }
-        BarrierAll(comm);
+        BarrierAll();
         ZBAL_PROF_STOP(comm, ZBAL_PROF_BROADCAST_KERNEL_ALL);
 #endif
     }
@@ -115,8 +117,8 @@ private:
 
             for (int dstRank = startRank; dstRank < endRank; dstRank++) {
                 uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-                auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto ptr = ZbalPtr(inputAddr, dstRank);
+                auto flagPtr = ZbalPtr(flagAddr, dstRank);
 
                 ZBALSetFlag(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
@@ -125,8 +127,8 @@ private:
             }
         } else if (aivIndex < groupSize) {
             uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-            auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-            auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto ptr = ZbalPtr(inputAddr, aivIndex);
+            auto flagPtr = ZbalPtr(flagAddr, aivIndex);
 
             ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
@@ -143,18 +145,14 @@ private:
     uint32_t aivIndex;
     uint16_t root;
     uint32_t rank;
-    uint32_t groupSize;
     uint32_t elements;
     uint32_t inputAddrSize;
     uint64_t flagMagic;
-    uint64_t localDeviceMemSize;
     __gm__ void *input;
     __gm__ void *output;
-    __gm__ CommGroupInfo *comm;
     uintptr_t exchangeAddr;
     __gm__ uint64_t *inputAddr;
     __gm__ uint64_t *flagAddr;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 template<typename T>
@@ -172,18 +170,20 @@ public:
         this->output = output;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
         this->rank = comm->myGroupRank;
+        this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
         this->elements = elements;
         this->flagMagic = waitSymbol;
-        this->localDeviceMemSize = comm->localDeviceMemSize;
+        this->memSize = comm->localDeviceMemSize;
         this->inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
         // |------input------|------flag------|------stat------|
         this->exchangeAddr = comm->myAddressExchangeGva;
         this->inputAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
         this->flagAddr = this->inputAddr + inputAddrSize;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 
-        ZBALBaseKernel::Init(comm->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
     }
 
     ZBAL_KERNEL void Process()
@@ -221,7 +221,7 @@ public:
         pipe.Reset();
 
         ZBAL_PROF_START(comm, ZBAL_PROF_BROADCAST_ALLGATHER);
-        BarrierAll(comm);
+        BarrierAll();
         if (elements * sizeof(T) <= SMALL_AG_THRESHOLD) {
             ZBALAllGatherSmallKernel op;
             op.Init<T>((GM_ADDR)(input) + rankOffset * sizeof(T), (GM_ADDR)output, (GM_ADDR)comm, elementsPerRank,
@@ -256,8 +256,8 @@ private:
 
             for (int dstRank = startRank; dstRank < endRank; dstRank++) {
                 uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-                auto ptr = zbal_ptr(inputAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
-                auto flagPtr = zbal_ptr(flagAddr, rank, dstRank, localDeviceMemSize, peerGroupRank2WorldRank);
+                auto ptr = ZbalPtr(inputAddr, dstRank);
+                auto flagPtr = ZbalPtr(flagAddr, dstRank);
 
                 ZBALSetFlag(ptr, dataAddr, rank);
                 AscendC::PipeBarrier<PIPE_ALL>();
@@ -266,8 +266,8 @@ private:
             }
         } else if (aivIndex < groupSize) {
             uint64_t dataAddr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(input));
-            auto ptr = zbal_ptr(inputAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
-            auto flagPtr = zbal_ptr(flagAddr, rank, aivIndex, localDeviceMemSize, peerGroupRank2WorldRank);
+            auto ptr = ZbalPtr(inputAddr, aivIndex);
+            auto flagPtr = ZbalPtr(flagAddr, aivIndex);
 
             ZBALSetFlag(ptr, dataAddr, rank);
             AscendC::PipeBarrier<PIPE_ALL>();
@@ -284,20 +284,16 @@ private:
     uint32_t aivIndex;
     uint16_t root;
     uint32_t rank;
-    uint32_t groupSize;
     uint32_t elements;
     uint32_t inputAddrSize;
     uint64_t flagMagic;
-    uint64_t localDeviceMemSize;
     uint32_t elementsPerRank;
     uint32_t rankOffset;
     __gm__ void *input;
     __gm__ void *output;
-    __gm__ CommGroupInfo *comm;
     uintptr_t exchangeAddr;
     __gm__ uint64_t *inputAddr;
     __gm__ uint64_t *flagAddr;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
 };
 
 extern "C" __global__ __aicore__ void ZBALBroadcastInner(GM_ADDR input, GM_ADDR output, size_t elements,

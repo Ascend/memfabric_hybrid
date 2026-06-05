@@ -18,7 +18,7 @@ import torch_npu
 import numpy as np
 from zbal import zbal_init, zbal_uninit, zbal_set_logger_level
 
-enable_perf_test = os.environ.get("ZBAL_ENABLE_ALLTOALL_PERF_TEST", "0") == "1"
+enable_perf_test = os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
 if enable_perf_test:
     from scripts.inout_splits_perf import input_shapes, output_shapes, input_splits, output_splits
 else:

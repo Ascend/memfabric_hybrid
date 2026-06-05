@@ -29,7 +29,7 @@ public:
         this->groupSize = comm->groupSize;
         this->myGroupRank = comm->myGroupRank;
         this->memSize = comm->localDeviceMemSize;
-        this->peerRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
         this->exchangeAddr = comm->myAddressExchangeGva;
 
         uint64_t inputAddrU64 = groupSize * ZBAL_FLAG_SIZE;                               // uint64_t elements
@@ -57,7 +57,8 @@ public:
         pipe.InitBuffer(waitLocalStatBuf_, int32BufSize);
         pipe.InitBuffer(getLocalStatBuf_, int32BufSize);
 
-        ZBALBaseKernel::Init(comm->dataOpType);
+        this->dataOpType = comm->dataOpType;
+        ZBALBaseKernel::Init();
 #endif
     }
 
@@ -105,20 +106,20 @@ public:
     ZBAL_KERNEL void Exchange(uint16_t offset)
     {
         // exchange input addr
-        auto ptr = zbal_ptr(this->inputAddr, myGroupRank, offset, memSize, peerRank);
+        auto ptr = ZbalPtr(this->inputAddr, offset);
         ZBALSetFlag(ptr, reinterpret_cast<uint64_t>(input), myGroupRank);
 
         // exchange inputCount
-        ptr = zbal_ptr(this->inputCumSumAddr, myGroupRank, offset, memSize, peerRank);
+        ptr = ZbalPtr(this->inputCumSumAddr, offset);
         ZBALSetFlag(ptr, reinterpret_cast<uint64_t>(inputCumSum), myGroupRank);
 
         // exchange input elements
-        ptr = zbal_ptr(this->inputElementAddr, myGroupRank, offset, memSize, peerRank);
+        ptr = ZbalPtr(this->inputElementAddr, offset);
         ZBALSetFlag(ptr, inputElement, myGroupRank);
 
         // write exchangeFlag
         AscendC::PipeBarrier<PIPE_ALL>();
-        ptr = zbal_ptr(this->flagAddr, myGroupRank, offset, memSize, peerRank);
+        ptr = ZbalPtr(this->flagAddr, offset);
         ZBALSetFlag(ptr, waitSymbol, myGroupRank);
     }
 
@@ -381,7 +382,7 @@ public:
             WaitRangeLocalStat(commonStartRank, commonEndRank);
         }
 
-        BarrierAll(comm, false, true);
+        BarrierAll(false, true);
         ZBAL_PROF_STOP(comm, ZBAL_PROF_ALLTOALL_KERNEL_ALL);
 #endif
     }
@@ -394,9 +395,6 @@ private:
     TBuf<> statInitBuf_;
     TBuf<> getLocalStatBuf_;
     TBuf<> waitLocalStatBuf_;
-    uint16_t groupSize;
-    uint16_t myGroupRank;
-    uint64_t memSize;
     uintptr_t exchangeAddr;
     __gm__ uint64_t *inputAddr;        /* exchange input addr area */
     __gm__ uint64_t *inputCumSumAddr;  /* exchange input splits cumsum area */
@@ -410,8 +408,6 @@ private:
     __gm__ void *inputCumSum;
     __gm__ void *outputCounts;
     __gm__ void *elements;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *peerRank;
     uint64_t inputElement;
     uint64_t outputElement;
     uint64_t waitSymbol;

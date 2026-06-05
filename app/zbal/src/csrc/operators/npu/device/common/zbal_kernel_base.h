@@ -27,10 +27,112 @@ class ZBALBaseKernel {
 public:
     ZBAL_KERNEL ZBALBaseKernel() {};
 
-    ZBAL_KERNEL void Init(uint32_t type = ZBAL_DATA_OP_MTE)
+    ZBAL_KERNEL void Init()
     {
-        dataOpType = type;
         pipe.InitBuffer(bindQueue, 1, UB_DMA_MAX_SIZE);
+    }
+
+    ZBAL_KERNEL __gm__ void *ZbalPtr(__gm__ void *ptr, int dstPe)
+    {
+        int worldDstPe = static_cast<int>(*((__gm__ uint16_t *)(worldRanks + dstPe)));
+        int worldCurPe = static_cast<int>(*((__gm__ uint16_t *)(worldRanks + myGroupRank)));
+        uint64_t curPtr = reinterpret_cast<uint64_t>(ptr);
+        uint64_t dstPtr = curPtr + (worldDstPe - worldCurPe) * memSize;
+        return reinterpret_cast<__gm__ void *>(dstPtr);
+    }
+
+    ZBAL_KERNEL void BarrierAll(bool flag = true, bool stat = true)
+    {
+        AscendC::SyncAll<true>();
+        const uint64_t barrierMagic = 1024;
+        int64_t aivIndex = AscendC::GetBlockIdx();
+        int64_t aivNum = AscendC::GetBlockNum();
+        uint16_t startRank = groupSize + 1;
+        uint16_t endRank = groupSize;
+        __gm__ uint64_t *flagAddr = reinterpret_cast<__gm__ uint64_t *>(comm->myParamDataGva);
+        __gm__ uint64_t *statAddr =
+            reinterpret_cast<__gm__ uint64_t *>(comm->myParamDataGva + zbal::ZBAL_OPERATE_PARAM_SIZE / 2);
+        if (groupSize <= aivNum) {
+            if (aivIndex < groupSize) {
+                startRank = aivIndex;
+                endRank = startRank + 1;
+            }
+        } else {
+            uint16_t avg = groupSize / aivNum;
+            uint16_t remain = groupSize % aivNum;
+            startRank = aivIndex * avg;
+            if (aivIndex < remain) {
+                avg += 1;
+                startRank += aivIndex;
+            } else {
+                startRank += remain;
+            }
+            endRank = startRank + avg;
+        }
+
+        if (flag) {
+            // flag
+            for (uint16_t rank = startRank; rank < endRank; rank++) {
+                AscendC::PipeBarrier<PIPE_ALL>();
+                auto ptr = ZbalPtr(flagAddr, rank);
+                ZBALSetFlag(ptr, barrierMagic, myGroupRank);
+            }
+            for (uint16_t rank = startRank; rank < endRank; rank++) {
+                AscendC::PipeBarrier<PIPE_ALL>();
+                uint64_t readyFlag;
+                do {
+                    readyFlag = ZBALGetFlag(flagAddr, rank);
+                } while (readyFlag != barrierMagic);
+
+                AscendC::PipeBarrier<PIPE_ALL>();
+                ZBALSetFlag(flagAddr, 0, rank);
+            }
+        }
+
+        if (stat) {
+            // stat
+            for (uint16_t rank = startRank; rank < endRank; rank++) {
+                AscendC::PipeBarrier<PIPE_ALL>();
+                auto ptr = ZbalPtr(statAddr, rank);
+                ZBALSetFlag(ptr, barrierMagic, myGroupRank);
+            }
+            for (uint16_t rank = startRank; rank < endRank; rank++) {
+                AscendC::PipeBarrier<PIPE_ALL>();
+                uint64_t readyFlag;
+                do {
+                    readyFlag = ZBALGetFlag(statAddr, rank);
+                } while (readyFlag != barrierMagic);
+
+                AscendC::PipeBarrier<PIPE_ALL>();
+                ZBALSetFlag(statAddr, 0, rank);
+            }
+        }
+
+        AscendC::PipeBarrier<PIPE_ALL>();
+        AscendC::SyncAll<true>();
+    }
+
+    ZBAL_KERNEL void ClearExchange(__gm__ uint64_t *exchangeMeta, uint32_t size)
+    {
+        uint32_t copyUbNum = UB_DMA_MAX_SIZE / sizeof(uint64_t);
+
+        for (uint32_t offset = 0; offset < size; offset += copyUbNum) {
+            uint32_t chunkSize = (offset + copyUbNum <= size) ? copyUbNum : (size - offset);
+
+            AscendC::LocalTensor<uint64_t> localTensor = bindQueue.AllocTensor<uint64_t>();
+            AscendC::LocalTensor<uint32_t> localTensorI32 = localTensor.ReinterpretCast<uint32_t>();
+            AscendC::Duplicate<uint32_t>(localTensorI32, 0, copyUbNum * ZBAL_TYPE_SIZE_TWO);
+            AscendC::PipeBarrier<PIPE_V>();
+
+            GlobalTensor<uint64_t> globalBuf;
+            globalBuf.SetGlobalBuffer(exchangeMeta + offset, chunkSize);
+            AscendC::DataCopyExtParams copyParams(1, chunkSize * sizeof(uint64_t), 0, 0, 0);
+
+            AscendC::DataCopyPad(globalBuf, localTensor, copyParams);
+            SyncFunc<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+
+            bindQueue.FreeTensor(localTensor);
+        }
     }
 
 protected:
@@ -142,6 +244,11 @@ protected:
     AscendC::TPipe pipe;
     AscendC::TQueBind<AscendC::TPosition::VECIN, AscendC::TPosition::VECOUT, 1> bindQueue;
     uint32_t dataOpType;
+    uint16_t groupSize;
+    uint16_t myGroupRank;
+    uint64_t memSize;
+    __gm__ uint16_t *worldRanks;
+    __gm__ CommGroupInfo *comm;
 };
 
 #endif

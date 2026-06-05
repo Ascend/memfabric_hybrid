@@ -12,7 +12,6 @@
 
 import logging
 import os
-import sys
 import time
 import torch
 import torch.distributed as dist
@@ -39,6 +38,32 @@ g_torch_type_map = {
     "float": torch.float32,
     "bfloat16_t": torch.bfloat16
 }
+
+
+
+
+def get_golden_from_file(filepath):
+    """load pre-computed HCCL golden tensor from disk"""
+    return torch.load(filepath, weights_only=False).npu()
+
+
+def is_perf_test():
+    """check if running in performance test mode"""
+    return os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
+
+
+def get_golden_by_assembly(golden_dir, world_size, global_rank, data_type, tensor_data_type, current_dir):
+    """reducescatter golden = reduce(all inputs) then slice for this rank"""
+    golden = None
+    for rank in range(world_size):
+        data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm_{rank}.bin", dtype=data_type)
+        rank_tensor = torch.from_numpy(data).to(tensor_data_type)
+        if golden is None:
+            golden = rank_tensor.clone()
+        else:
+            golden += rank_tensor
+    chunk_size = golden.numel() // world_size
+    return golden[global_rank * chunk_size:(global_rank + 1) * chunk_size].npu()
 
 
 def test_reducescatter(dist_type, case_list, data_op_type):
@@ -113,8 +138,12 @@ def test_reducescatter(dist_type, case_list, data_op_type):
             tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if check_precision and dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
-                                           weights_only=False).npu()
+                if is_perf_test():
+                    filepath = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
+                    golden_tensor = get_golden_from_file(filepath)
+                else:
+                    golden_tensor = get_golden_by_assembly(golden_dir, world_size, global_rank, data_type, \
+                        tensor_data_type, current_dir)
 
             for k in range(0, 20):
                 if enable_profiling and prof_cnt > 5:

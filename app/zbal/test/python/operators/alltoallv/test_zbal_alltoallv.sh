@@ -39,7 +39,7 @@ export ENABLE_PROFILING=1
 nnodes=$(((rank_size + RANK_PER_NODE - 1) / RANK_PER_NODE))
 node_rank=$(get_node_idx)
 if [[ $nnodes -eq 1 ]]; then
-    if [[ ${ZBAL_ENABLE_ALLTOALL_PERF_TEST} = "1" ]]; then
+    if [[ ${ZBAL_ENABLE_PERF_TEST} = "1" ]]; then
         echo; echo -e "run hccl..."; torchrun --nnodes ${nnodes} --nproc-per-node $rank_size --master_port 8877 ${CURRENT_DIR}/test_zbal_alltoallv.py hccl --data_op_type $DATA_OP_TYPE
     fi
     echo; echo -e "run zbal..."; torchrun --nnodes ${nnodes} --nproc-per-node $rank_size --master_port 8877 ${CURRENT_DIR}/test_zbal_alltoallv.py zbal --data_op_type $DATA_OP_TYPE

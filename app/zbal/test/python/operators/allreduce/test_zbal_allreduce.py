@@ -12,7 +12,6 @@
 
 import logging
 import os
-import sys
 import time
 import pickle
 import torch
@@ -32,6 +31,31 @@ g_torch_type_map = {
     "float": torch.float32,
     "bfloat16_t": torch.bfloat16
 }
+
+
+
+
+def get_golden_from_file(filepath):
+    """load pre-computed HCCL golden tensor from disk"""
+    return torch.load(filepath, weights_only=False).npu()
+
+
+def is_perf_test():
+    """check if running in performance test mode"""
+    return os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
+
+
+def get_golden_by_assembly(golden_dir, world_size, tensor_data_type, current_dir):
+    """assemble allreduce golden by summing all ranks' input tensors"""
+    golden = None
+    for rank in range(world_size):
+        with open(f"{current_dir}/golden/{golden_dir}/input_gm_{rank}.pkl", 'rb') as f:
+            rank_tensor = pickle.load(f).to(tensor_data_type)
+        if golden is None:
+            golden = rank_tensor.clone()
+        else:
+            golden += rank_tensor
+    return golden.npu()
 
 
 def test_allreduce(dist_type, case_list, data_op_type):
@@ -102,8 +126,12 @@ def test_allreduce(dist_type, case_list, data_op_type):
             tensor_output_dir = f"{current_dir}/output/{golden_dir}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if check_precision and dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
-                                           weights_only=False).npu()
+                if is_perf_test():
+                    golden_tensor = get_golden_from_file(
+                        f"{tensor_output_dir}/output_hccl_{global_rank}.bin")
+                else:
+                    golden_tensor = get_golden_by_assembly(
+                        golden_dir, world_size, tensor_data_type, current_dir)
 
             for k in range(0, 20):
                 if enable_profiling and prof_cnt > 5:

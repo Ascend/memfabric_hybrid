@@ -11,7 +11,7 @@
 # See the Mulan PSL v2 for more details.
 import os
 import numpy as np
-enable_perf_test = os.environ.get("ZBAL_ENABLE_ALLTOALL_PERF_TEST", "0") == "1"
+enable_perf_test = os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
 if enable_perf_test:
     from scripts.inout_splits_perf import input_shapes
 else:

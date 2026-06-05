@@ -15,8 +15,9 @@
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
 #include "zbal_kernel_trace.h"
+#include "zbal_kernel_base.h"
 
-class ZBALBarrierKernel {
+class ZBALBarrierKernel : public ZBALBaseKernel {
 public:
     ZBAL_KERNEL ZBALBarrierKernel() {}
 
@@ -24,19 +25,10 @@ public:
     {
 #ifdef __DAV_C220_VEC__
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaGM);
-        this->paramAddr = comm->myParamDataGva;
         this->myGroupRank = comm->myGroupRank;
         this->groupSize = comm->groupSize;
-        this->localDeviceMemSize = comm->localDeviceMemSize;
-        this->peerGroupRank2WorldRank = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
-        this->aivNum = AscendC::GetBlockNum();
-        this->inputAddrSize = groupSize * ZBAL_FLAG_SIZE;
-        this->exchangeAddr = comm->myAddressExchangeGva;
-        this->flagAddr = reinterpret_cast<__gm__ uint64_t *>(exchangeAddr);
-        this->statAddr = this->flagAddr + inputAddrSize;
-        this->startRank = groupSize + 1;
-        this->endRank = groupSize;
-        this->waitSymbol = waitSymbol;
+        this->memSize = comm->localDeviceMemSize;
+        this->worldRanks = reinterpret_cast<__gm__ uint16_t *>(comm->peerGroupRank2WorldRank);
 #endif
     }
 
@@ -45,27 +37,11 @@ public:
 #ifdef __DAV_C220_VEC__
         ZBAL_PROF_START(comm, ZBAL_PROF_BARRIER);
 
-        BarrierAll(comm);
+        BarrierAll();
 
         ZBAL_PROF_STOP(comm, ZBAL_PROF_BARRIER);
 #endif
     }
-
-private:
-    __gm__ CommGroupInfo *comm;
-    uintptr_t paramAddr;
-    uint16_t myGroupRank;
-    uint16_t groupSize;
-    uint64_t localDeviceMemSize;
-    __gm__ uint16_t *peerGroupRank2WorldRank;
-    int64_t aivNum;
-    uint16_t inputAddrSize;
-    uintptr_t exchangeAddr;
-    __gm__ uint64_t *flagAddr;
-    __gm__ uint64_t *statAddr;
-    uint16_t startRank;
-    uint16_t endRank;
-    uint64_t waitSymbol;
 };
 
 extern "C" __global__ __aicore__ void ZBALBarrierInner(GM_ADDR metaAddr, uint64_t waitSymbol)

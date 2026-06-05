@@ -50,7 +50,9 @@ export CHECK_PRECISION=1
 export ENABLE_PROFILING=0
 
 if [[ $nnodes -eq 1 ]]; then
-    torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+    if [[ ${ZBAL_ENABLE_PERF_TEST} = "1" ]]; then
+        torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py hccl --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
+    fi
     torchrun --nproc-per-node $WORLD_SIZE --master-port 8779 ${CURRENT_DIR}/test_zbal_reducescatter.py zbal --case_num $CASE_NUM --case_list $CASE_LIST --data_op_type $DATA_OP_TYPE
 else
     if [[ $ip_size -eq $nnodes ]]; then

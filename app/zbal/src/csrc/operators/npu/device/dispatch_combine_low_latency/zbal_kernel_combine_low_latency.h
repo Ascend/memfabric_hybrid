@@ -15,6 +15,7 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
+#include "zbal_kernel_base.h"
 #include "zbal_kernel_constant.h"
 
 using namespace AscendC;
@@ -49,7 +50,7 @@ __aicore__ inline void SyncFunc()
 #define TemplateTypeFunc ExpandXType, XType, ExpandIdxType, IsNeedReduceScatter, IsInt8Quant
 
 template<TemplateTypeClass>
-class CombineLowLatency {
+class CombineLowLatency : public ZBALBaseKernel {
 public:
     __aicore__ inline CombineLowLatency(){};
     __aicore__ inline void Init(GM_ADDR metaAddr, GM_ADDR expandX, GM_ADDR expertIds, GM_ADDR expandIdx,
@@ -72,7 +73,7 @@ private:
     // get metaInfo address
     __aicore__ inline GM_ADDR GetMetaAddrByRankId(const int32_t rankId, const int metaType)
     {
-        auto ptr = zbal_ptr((__gm__ uint64_t *)(gva_gm), epRankId_, rankId, localMemSize_, peerRanks);
+        auto ptr = ZbalPtr(gva_gm, rankId);
 
         switch (metaType) {
             case STATE: // 存放通信结束的state, 12KB
@@ -121,9 +122,6 @@ private:
     // shared addrs
     GM_ADDR gva_gm;
     GM_ADDR metaInfo_gva_gm;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *peerRanks;
-    uint64_t localMemSize_{0};
     uint64_t addrOffset_{0};
     uint64_t metaSize_{0};
     uint64_t flagOffset_{0};
@@ -386,7 +384,7 @@ __aicore__ inline void CombineLowLatency<TemplateTypeFunc>::GetShareAddr()
         auto addrPtr = GetMetaAddrByRankId(targetRankId, ADDR);
         remoteMetaAddrGt.SetGlobalBuffer((__gm__ uint64_t *)(addrPtr + targetRankId * ADDR_UINT64_ALIGN));
         localMetaAddrGt.SetGlobalBuffer((__gm__ uint64_t *)(shareAddrSpaceGm_ + targetRankId * ADDR_UINT64_ALIGN));
-        CpGM2GM(localMetaAddrGt, remoteMetaAddrGt, 1);
+        CpGM2GM(remoteMetaAddrGt, localMetaAddrGt, 1);
     }
 
     SyncAll<true>();
@@ -428,23 +426,25 @@ CombineLowLatency<TemplateTypeFunc>::Init(GM_ADDR metaAddr, GM_ADDR expandX, GM_
     aivId_ = GetBlockIdx();
     coreNum_ = GetBlockNum();
 
+    gva_gm = (GM_ADDR)metaAddr;
+    comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
+    worldRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
+    memSize = comm->localDeviceMemSize;
+    myGroupRank = comm->myGroupRank;
+    groupSize = comm->groupSize;
+    dataOpType = comm->dataOpType;
+    ZBALBaseKernel::Init();
+
     // init attributes
     axisBS_ = bs;
     axisH_ = hidden;
     axisK_ = topK;
     aivNum_ = coreNum_;
-    globalBS_ = axisBS_ * epWorldSize_;
     epWorldSizeOriginal_ = comm->groupSize;
     epWorldSize_ = comm->groupSize;
+    globalBS_ = axisBS_ * epWorldSize_;
     epRankId_ = rank;
     epRankIdOriginal_ = rank;
-
-    // / ******************* / ********************/
-
-    gva_gm = (GM_ADDR)metaAddr;
-    comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
-    peerRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
-    localMemSize_ = comm->localDeviceMemSize;
     // Change addrOffset Calculation
     GM_ADDR meta_addr_gm = reinterpret_cast<__gm__ uint8_t *>(comm->myAddressExchangeGva);
     addrOffset_ = (meta_addr_gm - gva_gm);

@@ -25,7 +25,29 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
                     handlers=[logging.StreamHandler()])
 
 
-def test_gather(dist_type, case_list, hidden_size):
+
+
+def get_golden_from_file(filepath):
+    """load pre-computed HCCL golden tensor from disk"""
+    return torch.load(filepath, weights_only=False).npu()
+
+
+def is_perf_test():
+    """check if running in performance test mode"""
+    return os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
+
+
+def get_golden_by_assembly(golden_dir, world_size, data_type, tensor_data_type, current_dir, rows_per_rank, hidden):
+    """gather golden = concatenation of all ranks' input tensors"""
+    golden_parts = []
+    for rank in range(world_size):
+        data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm_{rank}.bin", dtype=data_type)
+        rank_tensor = torch.from_numpy(data).to(tensor_data_type)
+        golden_parts.append(rank_tensor)
+    return torch.cat(golden_parts, dim=0).npu().view(world_size * rows_per_rank, hidden)
+
+
+def test_gather(dist_type, case_list, hidden_size, data_op_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"] or 2)
@@ -58,7 +80,7 @@ def test_gather(dist_type, case_list, hidden_size):
     if dist_type == "zbal":
         zbal_set_logger_level(2)
         local_mem = 4 * 1024 * 1024 * 1024
-        if not zbal_init(world_size, device_id, global_rank, local_mem):
+        if not zbal_init(world_size, device_id, global_rank, local_mem, data_op_type=data_op_type):
             logger.error(f"zbal_init failed on rank {global_rank}.")
             return
         else:
@@ -111,8 +133,12 @@ def test_gather(dist_type, case_list, hidden_size):
             tensor_output_dir = f"{current_dir}/output/gather_{data_len}_{world_size}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{global_rank}.bin",
-                                           weights_only=False).npu()
+                if is_perf_test():
+                    filepath = f"{tensor_output_dir}/output_hccl_{global_rank}.bin"
+                    golden_tensor = get_golden_from_file(filepath)
+                else:
+                    golden_tensor = get_golden_by_assembly(golden_dir, world_size, data_type, tensor_data_type, \
+                        current_dir, rows_per_rank, hidden_size)
             for k in range(20):
                 if enable_profiling and prof_cnt > 5:
                     prof.step()
@@ -166,6 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--case_num', type=int, default=0)
     parser.add_argument('--case_list', type=str, nargs='*', default=[])
     parser.add_argument('--hidden_size', type=int, default=0)
+    parser.add_argument('--data_op_type', type=int, default=0)
     args = parser.parse_args()
 
     dist_type = args.dist_type
@@ -173,4 +200,5 @@ if __name__ == "__main__":
     case_list = args.case_list
     case_list = [int(case) for case in case_list]
     hidden_size = args.hidden_size
-    test_gather(dist_type, case_list, hidden_size)
+    data_op_type = args.data_op_type
+    test_gather(dist_type, case_list, hidden_size, data_op_type)

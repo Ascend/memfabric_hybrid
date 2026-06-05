@@ -1,8 +1,10 @@
 #!/bin/bash
 
+MODE=${1:-0}
+PER_NODES=${2:-8}
+
 # --- Configuration ---
-RANK_IPS="141.61.39.237 141.61.39.238"
-PER_NODES=8
+RANK_IPS="Node-IP1 Node-IP2"
 
 # Convert IP list (supports space, comma, semicolon) to array
 RANK_IPS_ARR=(${RANK_IPS//[,;]/ })
@@ -49,12 +51,14 @@ export ASCEND_PROCESS_LOG_PATH=./logs
 export ASCEND_GLOBAL_LOG_LEVEL=2
 rm -rf ./logs
 
-# for normal mode
-export DEEP_NORMAL_MODE_USE_INT8_QUANT=1
-python test_normal.py --num-processes ${PER_NODES}
-
-# for low lantency mode
-#rm -rf ./export_only_prof_dir/*
-#python test_low_latency.py --num-processes ${PER_NODES}
+if [ "$MODE" -eq 0 ]; then
+    # low latency mode
+    rm -rf ./export_only_prof_dir/*
+    python test_low_latency.py --num-processes ${PER_NODES}
+else
+    # normal mode
+    export DEEP_NORMAL_MODE_USE_INT8_QUANT=1
+    python test_normal.py --num-processes ${PER_NODES}
+fi
 
 cat ./logs/rank00_*.log

@@ -4,6 +4,7 @@
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
+#include "zbal_kernel_base.h"
 #include "zbal_kernel_constant.h"
 
 using namespace AscendC;
@@ -50,7 +51,7 @@ __aicore__ inline void SyncFunc()
 #define TemplateTypeFunc XType, ExpandXOutType, StaticQuant, DynamicQuant, IsSmoothScaleExist, IsNeedAllgather
 
 template<TemplateTypeClass>
-class DispatchLowLatency {
+class DispatchLowLatency : public ZBALBaseKernel {
 public:
     __aicore__ inline DispatchLowLatency(){};
     // All Output Tensor GM can be regarded as IPC addr now
@@ -84,7 +85,7 @@ private:
     // get metaInfo address
     __aicore__ inline GM_ADDR GetMetaInfoAddrByRankId(GM_ADDR gva_gm, const int32_t rankId)
     {
-        return (GM_ADDR)(zbal_ptr((__gm__ uint64_t *)gva_gm, epRankId_, rankId, localMemSize_, peerRanks));
+        return (GM_ADDR)(ZbalPtr(gva_gm, rankId));
     }
 
     TPipe *tpipe_{nullptr};
@@ -174,9 +175,6 @@ private:
     GM_ADDR shareAddrSpaceGm2_;
     // metaInfo heap addrs
     GM_ADDR metaInfo_gva_gm;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *peerRanks;
-    uint64_t localMemSize_{0};
     uint64_t addrOffset_{0};
     // List of shared asymmetric output addresses (expandXOut_)
     uint64_t shareExpandXOutAddrs[ZBAL_MAX_RANK_SIZE];
@@ -272,8 +270,12 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::Init(
     axisH_ = hidden;
 
     comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
-    peerRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
-    localMemSize_ = comm->localDeviceMemSize;
+    worldRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
+    memSize = comm->localDeviceMemSize;
+    myGroupRank = comm->myGroupRank;
+    groupSize = comm->groupSize;
+    dataOpType = comm->dataOpType;
+    ZBALBaseKernel::Init();
     epWorldSizeOriginal_ = comm->groupSize;
     epWorldSize_ = comm->groupSize;
     moeExpertNum_ = numExperts;
@@ -644,7 +646,7 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::SendCountNotify()
         // remote GM ---> local GM 交换一下 LocalSendCount
         auto cntPtr = GetMetaInfoAddrByRankId(localNotifyDataSpaceGm_, targetRankId);
         LocalNotifyDataTensor_.SetGlobalBuffer((__gm__ int32_t *)(cntPtr));
-        CpGM2GM(allExpertTokenNumsGMTensor_[targetRankId * moeExpertNum_], LocalNotifyDataTensor_,
+        CpGM2GM(LocalNotifyDataTensor_, allExpertTokenNumsGMTensor_[targetRankId * moeExpertNum_],
                 static_cast<uint64_t>(moeExpertNum_));
         PipeBarrier<PIPE_ALL>();
 
@@ -653,13 +655,13 @@ __aicore__ inline void DispatchLowLatency<TemplateTypeFunc>::SendCountNotify()
         auto addrPtr2 = GetMetaInfoAddrByRankId(shareAddrSpaceGm2_, targetRankId);
         remoteMetaAddrGt1.SetGlobalBuffer((__gm__ uint64_t *)(addrPtr1 + targetRankId * ADDR_UINT64_ALIGN));
         localMetaAddrGt1.SetGlobalBuffer((__gm__ uint64_t *)(shareAddrSpaceGm1_ + targetRankId * ADDR_UINT64_ALIGN));
-        CpGM2GM(localMetaAddrGt1, remoteMetaAddrGt1, 1);
+        CpGM2GM(remoteMetaAddrGt1, localMetaAddrGt1, 1);
 
         PipeBarrier<PIPE_ALL>();
 
         remoteMetaAddrGt2.SetGlobalBuffer((__gm__ uint64_t *)(addrPtr2 + targetRankId * ADDR_UINT64_ALIGN));
         localMetaAddrGt2.SetGlobalBuffer((__gm__ uint64_t *)(shareAddrSpaceGm2_ + targetRankId * ADDR_UINT64_ALIGN));
-        CpGM2GM(localMetaAddrGt2, remoteMetaAddrGt2, 1);
+        CpGM2GM(remoteMetaAddrGt2, localMetaAddrGt2, 1);
 
         PipeBarrier<PIPE_ALL>();
     }

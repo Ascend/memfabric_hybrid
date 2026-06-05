@@ -23,6 +23,24 @@ torch_npu.npu.config.allow_internal_format = True
 logger = logging.getLogger(__name__)
 
 
+
+
+def get_golden_from_file(filepath):
+    """load pre-computed HCCL golden tensor from disk"""
+    return torch.load(filepath, weights_only=False).npu()
+
+
+def is_perf_test():
+    """check if running in performance test mode"""
+    return os.environ.get("ZBAL_ENABLE_PERF_TEST", "0") == "1"
+
+
+def get_golden_by_assembly(golden_dir, current_dir, world_size, data_type, tensor_data_type, root, row_num, hidden):
+    """broadcast golden = root rank's input tensor"""
+    data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm_{root}.bin", dtype=data_type)
+    return torch.from_numpy(data).to(tensor_data_type).npu().view(row_num, hidden)
+
+
 def test_broadcast(dist_type, case_list, hidden_size, data_op_type):
     global_rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -104,19 +122,23 @@ def test_broadcast(dist_type, case_list, hidden_size, data_op_type):
             torch.npu.synchronize()
             prof.start()
         for data_len in case_list:
+            root = 0
             row_num = data_len // hidden_size
             golden_dir = f"broadcast_{world_size}_{row_num}_{hidden_size}"
             tensor_output_dir = f"{current_dir}/output/broadcast_{data_len}_{world_size}/"
             os.makedirs(tensor_output_dir, exist_ok=True)
 
             if dist_type == 'zbal':
-                golden_tensor = torch.load(f"{tensor_output_dir}/output_hccl_{data_len}_{global_rank}.bin",
-                                           weights_only=False).npu()
+                if is_perf_test():
+                    filepath = f"{tensor_output_dir}/output_hccl_{data_len}_{global_rank}.bin"
+                    golden_tensor = get_golden_from_file(filepath)
+                else:
+                    golden_tensor = get_golden_by_assembly(golden_dir, current_dir, world_size, data_type, \
+                        tensor_data_type, root, row_num, hidden_size)
 
             for k in range(15):
                 if enable_profiling and prof_cnt > 1:
                     prof.step()
-                root = 0
                 data = np.fromfile(f"{current_dir}/golden/{golden_dir}/input_gm_{root}.bin", dtype=data_type)
                 tensor_input = torch.from_numpy(data).to(tensor_data_type).npu().view(row_num, hidden_size)
                 if global_rank != root:

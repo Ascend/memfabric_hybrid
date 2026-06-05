@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details.
 #include "kernel_operator.h"
 #include "zbal_def.h"
 #include "zbal_kernel_utils.h"
+#include "zbal_kernel_base.h"
 #include "zbal_kernel_constant.h"
 
 namespace MoeNotifyDispatch {
@@ -41,7 +42,7 @@ constexpr uint64_t ZBAL_NUM3 = 3;
 constexpr uint64_t ZBAL_NUM8 = 8;
 
 template<typename T>
-class NotifyDispatch {
+class NotifyDispatch : public ZBALBaseKernel {
 public:
     ZBAL_KERNEL NotifyDispatch() {};
 
@@ -61,14 +62,16 @@ public:
 
         gva_gm = (GM_ADDR)metaAddr;
         comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
-        localMemSize_ = comm->localDeviceMemSize;
+        memSize = comm->localDeviceMemSize;
+    myGroupRank = comm->myGroupRank;
+    groupSize = comm->groupSize;
         GM_ADDR meta_addr_gm = reinterpret_cast<__gm__ uint8_t *>(comm->myAddressExchangeGva);
         addrOffset_ = (meta_addr_gm - gva_gm);
         metaSize_ = addrOffset_ + comm->sizeForExchangeAddress;
         stateOffset_ = metaSize_ - NOTIFY_STATUS_OFFSET;
         flagOffset_ = metaSize_ - META_FLAG_R_OFFSET;
         epWorldSize_ = comm->groupSize;
-        peerRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
+        worldRanks = (__gm__ uint16_t *)comm->peerGroupRank2WorldRank;
         assert(comm->sizeForExchangeAddress >= META_FLAG_R_OFFSET * ZBAL_NUM2,
                "The group meta size for exchange is %lluKB, the min value should be %lluKB. \
             addrOffset_:%d, epRankId:%d, epWorldSize:%d, moeExpertNum:%d, shareAddrNum:%d\n",
@@ -183,9 +186,6 @@ private:
     int32_t processCapacity[ZBAL_MAX_RANK_SIZE]; // 记录每个rank的剩余处理能力, size=epWorldSize_
 
     GM_ADDR gva_gm;
-    __gm__ CommGroupInfo *comm;
-    __gm__ uint16_t *peerRanks;
-    uint64_t localMemSize_ = 0;
     uint64_t metaSize_ = 0;
     uint64_t addrOffset_ = 0;
     uint64_t stateOffset_ = 0;
@@ -211,7 +211,7 @@ private:
 
     ZBAL_KERNEL GM_ADDR GetMetaAddrByRankId(const int32_t rankId, const int metaType)
     {
-        auto ptr = zbal_ptr((__gm__ uint64_t *)(gva_gm), epRankId_, rankId, localMemSize_, peerRanks);
+        auto ptr = ZbalPtr(gva_gm, rankId);
         // sizeForExchangeAddress: |- addr -|- flag -|- state -|
         //                               -50kb    -20kb      -0kb
         switch (metaType) {
