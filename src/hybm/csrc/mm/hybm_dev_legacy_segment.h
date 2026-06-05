@@ -42,7 +42,7 @@ struct HbmExportInfo {
     MemPageTblType pageTblType{};
     MemSegType memSegType{};
     MemSegInfoExchangeType exchangeType{};
-    uint8_t userDeviceId{0};
+    uint8_t deviceId{0};
     char shmName[DEVICE_SHM_NAME_SIZE + 1U]{};
 
     char padding_[UNIFIED_EXCHANGE_SEG_INFO_SIZE - 160]{};

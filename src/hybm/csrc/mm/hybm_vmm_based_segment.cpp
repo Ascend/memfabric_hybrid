@@ -86,8 +86,8 @@ Result HybmVmmBasedSegment::ReserveMemorySpace(void **address) noexcept
     globalVirtualAddress_ = (uint8_t *)reinterpret_cast<void *>(gvaInfo.va[HVM_GVA]);
 
     uint64_t flag = MEM_RSV_TYPE_REMOTE_MAP;
-    auto ret =
-        DlHalApi::HalMemAddressReserve(&base, totalLvaSize, 0, reinterpret_cast<void *>(gvaInfo.va[HVM_DVA]), flag);
+    auto ret = DlHalApi::HalMemAddressReserve(&base, totalLvaSize, 0,
+                                              reinterpret_cast<void *>(gvaInfo.va[HVM_DVA]), flag);
     if (ret != 0 || base != reinterpret_cast<void *>(gvaInfo.va[HVM_DVA])) {
         BM_LOG_ERROR("prepare virtual memory size(" << totalVirtualSize_ << ") failed. ret: " << ret);
         return BM_MALLOC_FAILED;
@@ -230,12 +230,13 @@ Result HybmVmmBasedSegment::MallocEmptySlice(MemSlicePtr &slice) noexcept
     }
     HostSdmaExportInfo info;
     std::string exInfo;
-    info.logicDevId = static_cast<uint16_t>(logicDeviceId_);
+    info.logicDevId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
                                                      : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.gva = slice->vAddress_;
     info.deviceVa = slice->vAddress_;
+    info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.rankId = options_.rankId;
     info.size = slice->size_;
     info.sdid = sdid_;
@@ -419,21 +420,23 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
         return BM_DL_FUNCTION_FAILED;
     }
 
-    uint64_t shareable = 0U;
-    uint32_t sId;
-    ret = DlHalApi::HalMemTransShareableHandle(MEM_HANDLE_TYPE_FABRIC, &info.shareHandle, &sId, &shareable);
-    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemTransShareableHandle failed:" << ret, BM_ERROR);
-    struct ShareHandleAttr attr = {.enableFlag = SHR_HANDLE_NO_WLIST_ENABLE, .rsv = {0}};
-    ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
-    BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
+    if (socType_ == AscendSocType::ASCEND_910B || socType_ == AscendSocType::ASCEND_910C) {
+        uint64_t shareable = 0U;
+        uint32_t sId;
+        ret = DlHalApi::HalMemTransShareableHandle(MEM_HANDLE_TYPE_FABRIC, &info.shareHandle, &sId, &shareable);
+        BM_VALIDATE_RETURN(ret == BM_OK, "HalMemTransShareableHandle failed:" << ret, BM_ERROR);
+        struct ShareHandleAttr attr = {.enableFlag = SHR_HANDLE_NO_WLIST_ENABLE, .rsv = {0}};
+        ret = DlHalApi::HalMemShareHandleSetAttribute(shareable, SHR_HANDLE_ATTR_NO_WLIST_IN_SERVER, attr);
+        BM_VALIDATE_RETURN(ret == BM_OK, "HalMemShareHandleSetAttribute failed:" << ret, BM_ERROR);
+    }
 
-    info.userDeviceId = static_cast<uint16_t>(deviceId_);
-    info.logicDevId = static_cast<uint16_t>(logicDeviceId_);
+    info.logicDevId = logicDeviceId_;
     info.magic = (options_.segType == HYBM_MST_DRAM) ? VMM_BASE_DRAM_SLICE_EXPORT_INFO_MAGIC
                                                      : VMM_BASE_HBM_SLICE_EXPORT_INFO_MAGIC;
     info.version = EXPORT_INFO_VERSION;
     info.gva = gvaInfo.base.va[HVM_GVA];
     info.deviceVa = gvaInfo.base.va[HVM_DVA];
+    info.sliceIndex = static_cast<uint32_t>(slice->index_);
     info.rankId = options_.rankId;
     info.size = slice->size_;
     info.sdid = sdid_;
@@ -445,10 +448,9 @@ Result HybmVmmBasedSegment::ExportInner(const MemSlicePtr &slice, MemShareHandle
         return BM_ERROR;
     }
 
-    BM_LOG_INFO("Success to export vmm segment info rank:" << info.rankId << " superPodId:" << info.superPodId
-                                                           << " serverId:" << info.serverId << " userDeviceId:"
-                                                           << info.userDeviceId << " logicDevId:" << info.logicDevId
-                                                           << " segType:" << options_.segType << " size:" << info.size);
+    BM_LOG_INFO("Success to export vmm segment info rank:"
+                << info.rankId << " superPodId:" << info.superPodId << " serverId:" << info.serverId
+                << " devId:" << info.logicDevId << " segType:" << options_.segType << " size:" << info.size);
     exportMap_[slice->index_] = exInfo;
     sHandle = info.shareHandle;
     return BM_OK;
@@ -512,7 +514,7 @@ Result HybmVmmBasedSegment::Import(const std::vector<std::string> &allExInfo, vo
         if (options_.segType == HYBM_MST_HBM && info.rankId != options_.rankId &&
             logicDeviceId_ != static_cast<int>(info.logicDevId) &&
             CanLocalHostReaches(info.superPodId, info.serverId, info.logicDevId)) {
-            ret = DlAclApi::AclrtDeviceEnablePeerAccess(info.logicDevId, 0);
+            ret = DlAclApi::RtEnableP2P(deviceId_, info.logicDevId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                             << " remote_device:" << (int)info.logicDevId);
@@ -557,8 +559,7 @@ uint64_t HybmVmmBasedSegment::ReserveLva(const HostSdmaExportInfo &im)
     auto ret = DlHalApi::HalMemAddressReserve(&lva, im.size, 0, reinterpret_cast<void *>(reservedLva), flag);
     if (ret != 0 || lva != reinterpret_cast<void *>(reservedLva)) {
         BM_LOG_ERROR("Failed to reserve lva local:" << options_.rankId << " remoteRank:" << im.rankId
-                                                    << " size:" << im.size << " reservedLva:" << VaToStr(reservedLva)
-                                                    << " lva:" << lva << " ret:" << ret);
+            << " size:" << im.size << " reservedLva:" << VaToStr(reservedLva) << " lva:" << lva << " ret:" << ret);
         HybmVaManager::GetInstance().FreeReserveLva(reservedLva, HVM_DVA);
         return 0;
     }
@@ -614,9 +615,9 @@ Result HybmVmmBasedSegment::Mmap() noexcept
         uint64_t lva = ReserveLva(im);
         BM_ASSERT_LOG_AND_RETURN(lva != 0, "lva = " << lva, BM_ERROR);
         BM_LOG_INFO("Try to mmap rank:" << im.rankId << " superPodId:" << im.superPodId << " serverId:" << im.serverId
-                                        << " devId:" << im.logicDevId << " segType:" << options_.segType
-                                        << " size:" << im.size << " gva:" << VaToStr(im.gva)
-                                        << " dva:" << VaToStr(im.deviceVa) << " lva:" << VaToStr(lva));
+                                        << " devId:" << im.logicDevId << " segType:" << options_.segType << " size:"
+                                        << im.size << " gva:" << VaToStr(im.gva) << " dva:" << VaToStr(im.deviceVa)
+                                        << " lva:" << VaToStr(lva));
         drv_mem_handle_t *handle = nullptr;
         auto ret = DlHalApi::HalMemImport(MEM_HANDLE_TYPE_FABRIC, &im.shareHandle, logicDeviceId_, &handle);
         if (ret != BM_OK) {
@@ -639,8 +640,8 @@ Result HybmVmmBasedSegment::Mmap() noexcept
         }
 
         auto memType = im.magic == HBM_SLICE_EXPORT_INFO_MAGIC ? HYBM_MEM_TYPE_DEVICE : HYBM_MEM_TYPE_HOST;
-        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, lva, 0, im.size, memType}, options_.rankId,
-                                                                 im.rankId);
+        ret = HybmVaManager::GetInstance().AddVaInfoFromExternal({im.gva, lva, 0, im.size, memType},
+                                                                 options_.rankId, im.rankId);
         if (ret != BM_OK) {
             DlHalApi::HalMemUnmap(reinterpret_cast<void *>(lva));
             DlHalApi::HalMemRelease(handle);

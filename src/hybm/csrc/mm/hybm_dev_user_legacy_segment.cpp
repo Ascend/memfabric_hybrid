@@ -153,7 +153,6 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
 {
     HbmExportDeviceInfo info;
     info.logicDeviceId = logicDeviceId_;
-    info.userDeviceId = static_cast<uint16_t>(deviceId_);
     info.rankId = options_.rankId;
     info.pid = HybmDevLegacySegment::pid_;
     HybmDevLegacySegment::GetDeviceInfo(info.sdid, info.serverId, info.superPodId);
@@ -164,8 +163,7 @@ Result HybmDevUserLegacySegment::Export(std::string &exInfo) noexcept
     }
 
     BM_LOG_DEBUG("export device info(sdid=" << sdid_ << " pid=" << pid_ << " rank=" << info.rankId
-                                             << " logicDeviceId=" << info.logicDeviceId
-                                             << " userDeviceId=" << info.userDeviceId << ")");
+                                            << " deviceId=" << logicDeviceId_ << ")");
     return BM_OK;
 }
 
@@ -184,7 +182,6 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     info.address = pos->second.slice->vAddress_;
     info.size = pos->second.slice->size_;
     info.logicDeviceId = static_cast<uint32_t>(logicDeviceId_);
-    info.userDeviceId = static_cast<uint32_t>(deviceId_);
     info.rankId = options_.rankId;
     HybmDevLegacySegment::GetDeviceInfo(sdId, info.serverId, info.superPodId);
     std::copy_n(pos->second.name.c_str(), std::min(pos->second.name.size(), sizeof(info.name) - 1), info.name);
@@ -195,9 +192,7 @@ Result HybmDevUserLegacySegment::Export(const MemSlicePtr &slice, std::string &e
     }
 
     BM_LOG_DEBUG("export slice success. addr:" << VaToStr(info.address) << " size:" << VaToStr(info.size)
-                                               << " name:" << info.name << " rank:" << options_.rankId
-                                               << " logicDeviceId=" << info.logicDeviceId
-                                               << " userDeviceId=" << info.userDeviceId);
+                                               << " name:" << info.name << " rank:" << options_.rankId);
     return BM_OK;
 }
 
@@ -369,7 +364,7 @@ Result HybmDevUserLegacySegment::ImportDeviceInfo(const std::string &info) noexc
     }
 
     if (deviceInfo.logicDeviceId != logicDeviceId_ && !enablePeerDevices_.test(deviceInfo.logicDeviceId)) {
-        ret = DlAclApi::AclrtDeviceEnablePeerAccess(deviceInfo.logicDeviceId, 0);
+        ret = DlAclApi::RtEnableP2P(deviceId_, deviceInfo.logicDeviceId, 0);
         if (ret != 0) {
             BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
                                                         << " logic_device:" << logicDeviceId_
@@ -417,15 +412,14 @@ Result HybmDevUserLegacySegment::ImportSliceInfo(const std::string &info, MemSli
         CanSdmaReaches(sliceInfo.superPodId, sliceInfo.serverId, sliceInfo.logicDeviceId)) {
         if (sliceInfo.logicDeviceId != static_cast<uint32_t>(logicDeviceId_) &&
             !enablePeerDevices_.test(sliceInfo.logicDeviceId)) {
-            ret = DlAclApi::AclrtDeviceEnablePeerAccess(sliceInfo.logicDeviceId, 0);
+            ret = DlAclApi::RtEnableP2P(deviceId_, sliceInfo.logicDeviceId, 0);
             if (ret != 0) {
-                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for userDevice: " << sliceInfo.userDeviceId
-                            << " logicDevice: " << sliceInfo.logicDeviceId << " failed: " << ret);
+                BM_LOG_ERROR("AclrtDeviceEnablePeerAccess for device: " << sliceInfo.logicDeviceId
+                                                                        << " failed: " << ret);
                 return BM_DL_FUNCTION_FAILED;
             }
             enablePeerDevices_.set(sliceInfo.logicDeviceId);
-            BM_LOG_DEBUG("enable peer access for userDeviceId=" << sliceInfo.userDeviceId
-                                                                 << " logicDeviceId=" << sliceInfo.logicDeviceId);
+            BM_LOG_DEBUG("enable peer access for : " << sliceInfo.logicDeviceId);
         }
 
         ret = DlAclApi::RtIpcOpenMemory(&address, sliceInfo.name);

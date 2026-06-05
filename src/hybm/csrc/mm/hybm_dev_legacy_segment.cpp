@@ -267,7 +267,7 @@ Result HybmDevLegacySegment::Export(const MemSlicePtr &slice, std::string &exInf
     info.gva = slice->gva_;
     info.deviceVa = slice->vAddress_;
     info.sliceIndex = static_cast<uint32_t>(slice->index_);
-    info.userDeviceId = static_cast<uint8_t>(deviceId_);
+    info.deviceId = deviceId_;
     info.pid = pid_;
     info.rankId = options_.rankId;
     info.size = slice->size_;
@@ -323,11 +323,11 @@ Result HybmDevLegacySegment::Import(const std::vector<std::string> &allExInfo, v
 
     for (auto i = 0U; i < desInfos.size(); i++) {
         if (CanLocalHostReaches(desInfos[i].superPodId, desInfos[i].serverId, desInfos[i].logicDeviceId) &&
-            logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) {
-            auto ret = DlAclApi::AclrtDeviceEnablePeerAccess(desInfos[i].logicDeviceId, 0);
+            logicDeviceId_ != static_cast<int>(desInfos[i].logicDeviceId)) { // 应当用logic id判断是否需要p2p
+            auto ret = DlAclApi::RtEnableP2P(deviceId_, desInfos[i].logicDeviceId, 0);
             if (ret != 0) {
                 BM_LOG_ERROR("enable device access failed:" << ret << " local_device:" << deviceId_
-                                                            << " userDeviceId:" << (int)desInfos[i].userDeviceId
+                                                            << " remote_device:" << (int)desInfos[i].deviceId
                                                             << " logic_device:" << logicDeviceId_
                                                             << " remote_logic_device:" << desInfos[i].logicDeviceId);
                 return BM_DL_FUNCTION_FAILED;
