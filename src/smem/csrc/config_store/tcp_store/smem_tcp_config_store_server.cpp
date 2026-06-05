@@ -51,7 +51,8 @@ AccStoreServer::AccStoreServer(std::string ip, uint16_t port, uint32_t worldSize
                        {MessageType::WRITE, &AccStoreServer::WriteHandler},
                        {MessageType::QUERY_ALIVE, &AccStoreServer::QueryAliveHandler},
                        {MessageType::WATCH_RANK_STATE, &AccStoreServer::WatchRankStateHandler},
-                       {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler}},
+                       {MessageType::HEARTBEAT, &AccStoreServer::HeartbeatHandler},
+                       {MessageType::UNWATCH, &AccStoreServer::UnwatchHandler}},
       backend_(std::move(backend)), listenIp_{std::move(ip)}, listenPort_{port}, worldSize_{worldSize},
       skipRecover_{skipRecover}
 {}
@@ -933,6 +934,30 @@ Result AccStoreServer::WatchRankStateHandler(const acc::AccTcpRequestContext &co
     }
     STORE_LOG_DEBUG("WATCH REQUEST(" << context.SeqNo() << ") for key(" << WATCH_RANK_DOWN_KEY
                                      << ") finished, linkId: " << linkId);
+    return SM_OK;
+}
+
+Result AccStoreServer::UnwatchHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept
+{
+    if (request.keys.size() != 1) {
+        STORE_LOG_ERROR("UNWATCH request(" << context.SeqNo() << ") invalid body");
+        return SM_INVALID_PARAM;
+    }
+
+    const auto &key = request.keys[0];
+    STORE_ASSERT_RETURN(context.Link() != nullptr, SM_INVALID_PARAM);
+    auto linkId = context.Link()->Id();
+
+    std::unique_lock<std::mutex> uniqueLock{storeMutex_};
+    if (key == WATCH_RANK_DOWN_KEY) {
+        rankStateWaiters_.erase(linkId);
+        STORE_LOG_DEBUG("UNWATCH rank state for linkId: " << linkId);
+    } else {
+        watchWaiters_[key].erase(linkId);
+        auto &watchKeys = linkWatchList_[linkId];
+        watchKeys.erase(std::remove(watchKeys.begin(), watchKeys.end(), key), watchKeys.end());
+        STORE_LOG_DEBUG("UNWATCH key: " << key << " for linkId: " << linkId);
+    }
     return SM_OK;
 }
 

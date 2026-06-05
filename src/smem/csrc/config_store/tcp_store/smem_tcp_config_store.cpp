@@ -72,8 +72,8 @@ private:
 class ClientWatchContext : public ClientCommonContext {
 public:
     explicit ClientWatchContext(std::function<void(int, const std::vector<uint8_t> &)> nfy,
-                                bool oneTime = true) noexcept
-        : notify_{std::move(nfy)}, onlyOneTime_{oneTime}
+                                bool oneTime = true, std::string key = {}) noexcept
+        : notify_{std::move(nfy)}, onlyOneTime_{oneTime}, key_{std::move(key)}
     {}
 
     std::shared_ptr<ock::acc::AccTcpRequestContext> WaitFinished() noexcept override
@@ -122,9 +122,15 @@ public:
         return onlyOneTime_;
     }
 
+    const std::string &GetKey() const noexcept
+    {
+        return key_;
+    }
+
 private:
     const std::function<void(int result, const std::vector<uint8_t> &)> notify_;
     const bool onlyOneTime_;
+    const std::string key_;
 };
 
 std::atomic<uint32_t> TcpConfigStore::reqSeqGen_{0};
@@ -592,7 +598,11 @@ TcpConfigStore::Watch(const std::string &key,
 
     auto packedRequest = SmemMessagePacker::Pack(request);
     auto ret = SendWatchRequest(
-        packedRequest, [key, notify](int res, const std::vector<uint8_t> &value) { notify(res, key, value); }, wid);
+        packedRequest,
+        [key, notify](int res, const std::vector<uint8_t> &value) {
+            notify(res, key, value);
+        },
+        wid, key);
     if (ret != SM_OK) {
         STORE_LOG_ERROR_LIMIT("send get for key: " << key << ", get null response");
         return ret;
@@ -620,7 +630,7 @@ Result TcpConfigStore::Watch(WatchRankType type, const std::function<void(WatchR
                 notify(WATCH_RANK_LINK_DOWN, *(const uint32_t *)(const void *)value.data());
             }
         },
-        wid);
+        wid, WATCH_RANK_DOWN_KEY);
     if (ret != SM_OK) {
         STORE_LOG_ERROR("send watch for rank down get null response");
         return ret;
@@ -633,10 +643,15 @@ Result TcpConfigStore::Watch(WatchRankType type, const std::function<void(WatchR
 Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
 {
     std::shared_ptr<ClientCommonContext> watchContext;
+    std::string key;
 
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     auto pos = msgClientContext_.find(wid);
     if (pos != msgClientContext_.end() && !pos->second->Blocking()) {
+        auto *wctx = dynamic_cast<ClientWatchContext *>(pos->second.get());
+        if (wctx != nullptr) {
+            key = wctx->GetKey();
+        }
         watchContext = std::move(pos->second);
         msgClientContext_.erase(pos);
     }
@@ -647,7 +662,14 @@ Result TcpConfigStore::Unwatch(uint32_t wid) noexcept
         return NOT_EXIST;
     }
 
-    STORE_LOG_DEBUG("unwatch for id: " << wid << " success.");
+    if (!key.empty() && accClientLink_ != nullptr && accClientLink_->Established()) {
+        SmemMessage unwatchReq{MessageType::UNWATCH};
+        unwatchReq.keys.push_back(key);
+        auto packed = SmemMessagePacker::Pack(unwatchReq);
+        auto dataBuf = ock::acc::AccDataBuffer::Create(packed.data(), packed.size());
+        LocalNonBlockSend(0, reqSeqGen_.fetch_add(1U), dataBuf, nullptr);
+    }
+
     return SM_OK;
 }
 
@@ -782,12 +804,12 @@ Result TcpConfigStore::ReceiveResponseHandler(const ock::acc::AccTcpRequestConte
 
 Result TcpConfigStore::SendWatchRequest(const std::vector<uint8_t> &reqBody,
                                         const std::function<void(int result, const std::vector<uint8_t> &)> &notify,
-                                        uint32_t &id) noexcept
+                                        uint32_t &id, const std::string &key) noexcept
 {
     auto seqNo = reqSeqGen_.fetch_add(1U);
     auto dataBuf = ock::acc::AccDataBuffer::Create(reqBody.data(), reqBody.size());
     STORE_ASSERT_RETURN(accClientLink_ != nullptr, SM_NOT_INITIALIZED);
-    auto watchContext = std::make_shared<ClientWatchContext>(notify, false);
+    auto watchContext = std::make_shared<ClientWatchContext>(notify, false, key);
     STORE_ASSERT_RETURN(watchContext != nullptr, SM_MALLOC_FAILED);
     std::unique_lock<std::mutex> msgCtxLocker{msgCtxMutex_};
     msgClientContext_.emplace(seqNo, std::move(watchContext));

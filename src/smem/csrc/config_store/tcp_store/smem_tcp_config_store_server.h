@@ -109,6 +109,7 @@ private:
     Result AppendHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result CasHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result WatchRankStateHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
+    Result UnwatchHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result WriteHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result HeartbeatHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
     Result QueryAliveHandler(const ock::acc::AccTcpRequestContext &context, SmemMessage &request) noexcept;
