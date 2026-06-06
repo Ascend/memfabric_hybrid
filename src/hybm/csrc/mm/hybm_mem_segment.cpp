@@ -86,8 +86,9 @@ MemSegmentPtr MemSegment::Create(const MemSegmentOptions &options, int entityId)
             // When host shared memory op type is set, use dedicated host shm segment.
             if ((options.dataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
                 tmpSeg = std::make_shared<HybmHostShmSegment>(options, entityId);
-            } else if (HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
-                       options.shmFd < 0 && options.dataOpType != HYBM_DOP_TYPE_DEVICE_RDMA) {
+            } else if ((HybmGetGvaVersion() == HYBM_GVA_V4 && socType_ == AscendSocType::ASCEND_910C &&
+                        options.shmFd < 0 && options.dataOpType != HYBM_DOP_TYPE_DEVICE_RDMA) ||
+                       (socType_ == AscendSocType::ASCEND_950 && options.dataOpType == HYBM_DOP_TYPE_SDMA)) {
                 tmpSeg = std::make_shared<HybmVmmBasedSegment>(options, entityId);
             } else {
                 tmpSeg = std::make_shared<HybmConnBasedSegment>(options, entityId);
@@ -124,10 +125,10 @@ Result MemSegment::RegisterMemCommon(const void *addr, uint64_t size, MemSlicePt
 #if defined(ASCEND_NPU)
         const bool needDeviceVa = (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0U;
         if (needDeviceVa) {
-            ret = DlHalApi::HalHostRegister(const_cast<void*>(addr), size, HOST_MEM_MAP_DEV, logicDeviceId_, &output);
+            ret = DlHalApi::HalHostRegister(const_cast<void *>(addr), size, HOST_MEM_MAP_DEV, logicDeviceId_, &output);
             if (ret != 0) {
-                BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr << " ret: "
-                                                             << ret);
+                BM_LOG_ERROR("RegisterMemory failed, size: " << size << " addr: " << std::hex << addr
+                                                             << " ret: " << ret);
                 return ret;
             }
         }

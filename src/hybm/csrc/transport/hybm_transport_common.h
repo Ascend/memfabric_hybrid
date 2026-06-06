@@ -78,16 +78,17 @@ static inline std::ostream &operator<<(std::ostream &output, const TransportMemo
 }
 
 struct TransportMemoryKey {
-    uint64_t keys[KEY_SIZE * 2];
+    // Device使用前面4个KEY_SIZE slots(主要是device_urma最大)， Host使用最后1个KEY_SIZE slot
+    uint64_t keys[KEY_SIZE * 5];
 
     bool operator<(const TransportMemoryKey &other) const
     {
-        return memcmp(keys, other.keys, sizeof(uint64_t) * KEY_SIZE * 2U) < 0; // compare
+        return memcmp(keys, other.keys, sizeof(uint64_t) * KEY_SIZE * 5U) < 0; // compare
     }
 };
 
 struct TransportPrivateData {
-    char ip[128];  // 支持 IPv6 URL，包括协议头和端口号 (tcp://[ipv6]:port)
+    char ip[128]; // 支持 IPv6 URL，包括协议头和端口号 (tcp://[ipv6]:port)
     TransportMemoryKey key;
 };
 
@@ -96,19 +97,29 @@ inline void ReadDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMe
     std::copy_n(input.keys, KEY_SIZE, output.keys);
 }
 
-inline void ReadHcomMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
-{
-    std::copy_n(input.keys + KEY_SIZE, KEY_SIZE, output.keys);
-}
-
 inline void WriteDeviceRdmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
 {
     std::copy_n(input.keys, KEY_SIZE, output.keys);
 }
 
+inline void ReadHcomMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys + 4 * KEY_SIZE, KEY_SIZE, output.keys);
+}
+
 inline void WriteHcomMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
 {
-    std::copy_n(input.keys, KEY_SIZE, output.keys + KEY_SIZE);
+    std::copy_n(input.keys, KEY_SIZE, output.keys + 4 * KEY_SIZE);
+}
+
+inline void ReadDeviceUrmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys, KEY_SIZE * 4, output.keys);
+}
+
+inline void WriteDeviceUrmaMemoryKey(const TransportMemoryKey &input, TransportMemoryKey &output)
+{
+    std::copy_n(input.keys, KEY_SIZE * 4, output.keys);
 }
 
 static inline std::ostream &operator<<(std::ostream &output, const TransportMemoryKey &key)

@@ -56,6 +56,7 @@ private:
     HybmEntityTagInfoPtr entityTagInfo_;
     DataOperatorPtr sdmaDataOperator_;
     DataOperatorPtr devRdmaDataOperator_;
+    DataOperatorPtr devUrmaDataOperator_;
     DataOperatorPtr hostRdmaDataOperator_;
 };
 } // namespace mf

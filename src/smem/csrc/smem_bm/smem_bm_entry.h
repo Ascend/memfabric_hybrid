@@ -12,6 +12,9 @@
 #ifndef MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
 #define MEMFABRIC_HYBRID_SMEM_BM_ENTRY_H
 
+#include <string>
+#include <unordered_map>
+
 #include "hybm_def.h"
 #include "smem_thread_pool.h"
 #include "smem_common_includes.h"
@@ -85,7 +88,6 @@ private:
     hybm_data_copy_direction TransToHybmDirection(const smem_bm_copy_type &smemDirect, const void *src,
                                                   uint64_t srcSize, const void *dest, uint64_t destSize);
     Result CreateGlobalTeam(uint32_t rankSize, uint32_t rankId);
-
     Result JoinHandle(uint32_t rk);
     Result UpdateHandle(uint32_t rk);
     Result GroupOpBarrier(int32_t input);

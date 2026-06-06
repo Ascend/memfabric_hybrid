@@ -31,6 +31,7 @@ constexpr uint64_t RDMA_SWAP_SPACE_SIZE = 1024 * 1024 * 128;
 
 namespace ock {
 namespace mf {
+// clang-format off
 static hybm_mem_type HybmDirectionSrcMemType[HYBM_DATA_COPY_DIRECTION_BUTT] = {
     HYBM_MEM_TYPE_HOST,
     HYBM_MEM_TYPE_HOST,
@@ -61,6 +62,7 @@ static hybm_mem_type HybmDirectionDestMemType[HYBM_DATA_COPY_DIRECTION_BUTT] = {
     HYBM_MEM_TYPE_DEVICE,
     HYBM_MEM_TYPE_BUTT
 };
+// clang-format on
 
 DataOpDeviceRDMA::DataOpDeviceRDMA(uint32_t rankId, std::shared_ptr<transport::TransportManager> tm) noexcept
     : rankId_{rankId}, transportManager_{std::move(tm)}
@@ -126,14 +128,19 @@ Result DataOpDeviceRDMA::AllocSwapMemory()
     }
 
     void *output;
-    ret = DlHalApi::HalHostRegister(ptr, RDMA_SWAP_SPACE_SIZE,
-                                    HOST_MEM_MAP_DEV, HybmGetInitedLogicDeviceId(), &output);
+    ret = DlHalApi::HalHostRegister(ptr, RDMA_SWAP_SPACE_SIZE, HOST_MEM_MAP_DEV, HybmGetInitedLogicDeviceId(), &output);
     if (ret != 0) {
         BM_LOG_ERROR("Register swap mem failed, addr: " << ptr << " ret: " << ret);
+        auto ret2 = DlAclApi::AclrtFreeHost(ptr);
+        if (ret2 != 0) {
+            BM_LOG_ERROR("Failed to AclrtFreeHost swap memory, ret: " << ret2);
+        }
         return ret;
     }
-    ret = HybmVaManager::GetInstance().AddVaInfo({0, reinterpret_cast<uint64_t>(output),
-        reinterpret_cast<uint64_t>(ptr), RDMA_SWAP_SPACE_SIZE,HYBM_MEM_TYPE_HOST}, rankId_);
+    ret =
+        HybmVaManager::GetInstance().AddVaInfo({0, reinterpret_cast<uint64_t>(output), reinterpret_cast<uint64_t>(ptr),
+                                                RDMA_SWAP_SPACE_SIZE, HYBM_MEM_TYPE_HOST},
+                                               rankId_);
     if (ret != 0) {
         BM_LOG_ERROR("add va info failed, va:" << ptr << " ret:" << ret);
         FreeSwapMemory();
@@ -259,8 +266,8 @@ Result DataOpDeviceRDMA::CopyLH2LH(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
-                     " dest=" << VaToInfo(destVA) << " length=" << length);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) << " dest=" << VaToInfo(destVA)
+                                                 << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -270,8 +277,8 @@ Result DataOpDeviceRDMA::CopyLD2LD(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
-                     " dest=" << VaToInfo(destVA) << " length=" << length);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) << " dest=" << VaToInfo(destVA)
+                                                 << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -282,8 +289,8 @@ Result DataOpDeviceRDMA::CopyLH2LD(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
-                     " dest=" << VaToInfo(destVA) << " length=" << length);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) << " dest=" << VaToInfo(destVA)
+                                                 << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;
@@ -294,8 +301,8 @@ Result DataOpDeviceRDMA::CopyLD2LH(const void *srcVA, void *destVA, uint64_t len
     BM_LOG_DEBUG("SrcVA=" << VaToInfo(srcVA) << ", destVA=" << VaToInfo(destVA) << ", length=" << length);
     auto ret = DlAclApi::AclrtMemcpy(destVA, length, srcVA, length, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != BM_OK) {
-        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) <<
-                     " dest=" << VaToInfo(destVA) << " length=" << length);
+        BM_LOG_ERROR("AclrtMemcpy failed, ret: " << ret << " Src=" << VaToInfo(srcVA) << " dest=" << VaToInfo(destVA)
+                                                 << " length=" << length);
         return BM_DL_FUNCTION_FAILED;
     }
     return BM_OK;

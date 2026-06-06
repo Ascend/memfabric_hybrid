@@ -51,6 +51,75 @@ typedef union {
     uint32_t reserve[4];
 } aclrtStreamAttrValue;
 
+using aclError = int32_t;
+constexpr aclError ACL_SUCCESS = 0;
+using aclrtBinHandle = void *;
+using aclrtFuncHandle = void *;
+using aclrtArgsHandle = void *;
+using aclrtParamHandle = void *;
+
+enum class aclrtBinaryLoadOptionType : int32_t {
+    ACL_RT_BINARY_LOAD_OPT_LAZY_LOAD = 1,
+    ACL_RT_BINARY_LOAD_OPT_LAZY_MAGIC = 2,
+    ACL_RT_BINARY_LOAD_OPT_MAGIC = 2,
+    ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE = 3,
+};
+
+union aclrtBinaryLoadOptionValue {
+    uint32_t isLazyLoad;
+    uint32_t magic;
+    int32_t cpuKernelMode;
+    uint32_t rsv[4];
+};
+
+struct aclrtBinaryLoadOption {
+    aclrtBinaryLoadOptionType type;
+    aclrtBinaryLoadOptionValue value;
+};
+
+struct aclrtBinaryLoadOptions {
+    aclrtBinaryLoadOption *options;
+    size_t numOpt;
+};
+
+enum class aclrtLaunchKernelAttrId : int32_t {
+    ACL_RT_LAUNCH_KERNEL_ATTR_SCHEM_MODE = 1,
+    ACL_RT_LAUNCH_KERNEL_ATTR_LOCAL_MEMORY_SIZE = 2,
+    ACL_RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE = 3,
+    ACL_RT_LAUNCH_KERNEL_ATTR_NUMBLOCKS_OFFSET = 4,
+    ACL_RT_LAUNCH_KERNEL_ATTR_BLOCK_TASK_PREFETCH = 5,
+    ACL_RT_LAUNCH_KERNEL_ATTR_DATA_DUMP = 6,
+    ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT = 7,
+    ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT_US = 8,
+};
+
+struct aclrtTimeoutUs {
+    uint32_t timeoutLow;
+    uint32_t timeoutHigh;
+};
+
+union aclrtLaunchKernelAttrValue {
+    uint8_t schemMode;
+    uint32_t localMemorySize;
+    uint32_t engineType;
+    uint32_t numBlocksOffset;
+    uint8_t isBlockTaskPrefetch;
+    uint8_t isDataDump;
+    uint16_t timeout;
+    aclrtTimeoutUs timeoutUs;
+    uint32_t rsv[4];
+};
+
+struct aclrtLaunchKernelAttr {
+    aclrtLaunchKernelAttrId id;
+    aclrtLaunchKernelAttrValue value;
+};
+
+struct aclrtLaunchKernelCfg {
+    aclrtLaunchKernelAttr *attrs;
+    size_t numAttrs;
+};
+
 using aclrtSetDeviceFunc = int32_t (*)(int32_t);
 using aclrtGetDeviceFunc = int32_t (*)(int32_t *);
 using aclrtDeviceEnablePeerAccessFunc = int32_t (*)(int32_t, uint32_t);
@@ -81,12 +150,20 @@ using rtIpcDestroyMemoryNameFunc = int32_t (*)(const char *);
 using rtEnableP2PFunc = int32_t (*)(uint32_t, uint32_t, uint32_t);
 using rtDisableP2PFunc = int32_t (*)(uint32_t, uint32_t);
 using rtGetLogicDevIdByUserDevIdFunc = int32_t (*)(const int32_t, int32_t *const);
+using aclrtGetPhyDevIdByLogicDevIdFunc = int32_t (*)(const int32_t, int32_t *const);
 using rtIpcOpenMemoryFunc = int32_t (*)(void **, const char *);
 using rtIpcCloseMemoryFunc = int32_t (*)(const void *);
 using rtMemcpyAsyncFunc = int32_t (*)(void *, size_t, const void *, size_t, uint32_t, void *);
 using aclrtGetSocNameFunc = const char *(*)();
 using aclrtMemcpyBatchFunc = int32_t (*)(void **, size_t *, void **, size_t *, size_t, aclrtMemcpyBatchAttr *, size_t *,
                                          size_t, size_t *);
+using aclrtBinaryLoadFromFileFunc = int32_t (*)(const char *, aclrtBinaryLoadOptions *, aclrtBinHandle *);
+using aclrtBinaryGetFunctionFunc = int32_t (*)(const aclrtBinHandle, const char *, aclrtFuncHandle *);
+using aclrtKernelArgsInitFunc = int32_t (*)(aclrtFuncHandle, aclrtArgsHandle *);
+using aclrtKernelArgsAppendFunc = int32_t (*)(aclrtArgsHandle, void *, size_t, aclrtParamHandle *);
+using aclrtKernelArgsFinalizeFunc = int32_t (*)(aclrtArgsHandle);
+using aclrtLaunchKernelWithConfigFunc = int32_t (*)(aclrtFuncHandle, uint32_t, void *, aclrtLaunchKernelCfg *,
+                                                    aclrtArgsHandle, void *);
 
 class DlAclApi {
 public:
@@ -204,6 +281,59 @@ public:
             return BM_UNDER_API_UNLOAD;
         }
         return pAclrtSynchronizeStream(stream);
+    }
+
+    static inline Result AclrtBinaryLoadFromFile(const char *binPath, aclrtBinaryLoadOptions *options,
+                                                 aclrtBinHandle *binHandle)
+    {
+        if (pAclrtBinaryLoadFromFile == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtBinaryLoadFromFile(binPath, options, binHandle);
+    }
+
+    static inline Result AclrtBinaryGetFunction(aclrtBinHandle binHandle, const char *kernelName,
+                                                aclrtFuncHandle *funcHandle)
+    {
+        if (pAclrtBinaryGetFunction == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtBinaryGetFunction(binHandle, kernelName, funcHandle);
+    }
+
+    static inline Result AclrtKernelArgsInit(aclrtFuncHandle funcHandle, aclrtArgsHandle *argsHandle)
+    {
+        if (pAclrtKernelArgsInit == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtKernelArgsInit(funcHandle, argsHandle);
+    }
+
+    static inline Result AclrtKernelArgsAppend(aclrtArgsHandle argsHandle, void *param, size_t paramSize,
+                                               aclrtParamHandle *paramHandle)
+    {
+        if (pAclrtKernelArgsAppend == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtKernelArgsAppend(argsHandle, param, paramSize, paramHandle);
+    }
+
+    static inline Result AclrtKernelArgsFinalize(aclrtArgsHandle argsHandle)
+    {
+        if (pAclrtKernelArgsFinalize == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtKernelArgsFinalize(argsHandle);
+    }
+
+    static inline Result AclrtLaunchKernelWithConfig(aclrtFuncHandle funcHandle, uint32_t blockDim, void *stream,
+                                                     aclrtLaunchKernelCfg *cfg, aclrtArgsHandle argsHandle,
+                                                     void *reserved)
+    {
+        if (pAclrtLaunchKernelWithConfig == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtLaunchKernelWithConfig(funcHandle, blockDim, stream, cfg, argsHandle, reserved);
     }
 
     static inline Result AclrtMalloc(void **ptr, size_t count, uint32_t type)
@@ -383,6 +513,14 @@ public:
         return pRtGetLogicDevIdByUserDevId(userDevId, logicDevId);
     }
 
+    static inline Result AclrtGetPhyDevIdByLogicDevId(const int32_t logicDevId, int32_t *const phyDevId)
+    {
+        if (pAclrtGetPhyDevIdByLogicDevId == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return pAclrtGetPhyDevIdByLogicDevId(logicDevId, phyDevId);
+    }
+
     static inline Result RtMemcpyAsync(void *dst, size_t destMax, const void *src, size_t count, uint32_t kind,
                                        void *stream)
     {
@@ -411,6 +549,12 @@ private:
     static aclrtSetStreamAttributeFunc pAclrtSetStreamAttribute;
     static aclrtDestroyStreamFunc pAclrtDestroyStream;
     static aclrtSynchronizeStreamFunc pAclrtSynchronizeStream;
+    static aclrtBinaryLoadFromFileFunc pAclrtBinaryLoadFromFile;
+    static aclrtBinaryGetFunctionFunc pAclrtBinaryGetFunction;
+    static aclrtKernelArgsInitFunc pAclrtKernelArgsInit;
+    static aclrtKernelArgsAppendFunc pAclrtKernelArgsAppend;
+    static aclrtKernelArgsFinalizeFunc pAclrtKernelArgsFinalize;
+    static aclrtLaunchKernelWithConfigFunc pAclrtLaunchKernelWithConfig;
     static aclrtMallocFunc pAclrtMalloc;
     static aclrtFreeFunc pAclrtFree;
     static aclrtMallocHostFunc pAclrtMallocHost;
@@ -433,6 +577,7 @@ private:
     static rtDisableP2PFunc pRtDisableP2P;
     static rtMemcpyAsyncFunc pRtMemcpyAsync;
     static rtGetLogicDevIdByUserDevIdFunc pRtGetLogicDevIdByUserDevId;
+    static aclrtGetPhyDevIdByLogicDevIdFunc pAclrtGetPhyDevIdByLogicDevId;
 };
 } // namespace mf
 } // namespace ock

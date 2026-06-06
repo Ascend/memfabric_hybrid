@@ -251,6 +251,9 @@ ReservedGvaInfo HybmVaManager::AllocReserveGva(uint32_t localRankId, uint64_t si
     std::unique_lock<std::shared_mutex> lock(mutex_);
     uint64_t lva = 0;
     if (localSize > 0) {
+        if (soc_ == ASCEND_950) {
+            localSize += GB; // A5被底软额外占用了1G
+        }
         lva = AllocReserveLvaInner(localRankId, localSize, t);
         if (lva == 0) {
             return result;

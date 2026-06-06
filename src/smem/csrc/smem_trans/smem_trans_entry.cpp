@@ -28,6 +28,7 @@
 #include "mf_env_util.h"
 #include "smem_net_common.h"
 #include "smem_store_factory.h"
+#include "smem_trans_def.h"
 #include "smem_trans_entry_manager.h"
 #include "mf_fault_injection_point.h"
 #include "smem_trans_entry.h"
@@ -57,11 +58,14 @@ SmemTransEntryPtr SmemTransEntry::Create(const std::string &name, const std::str
         return nullptr;
     }
 
-    result = transEntry->Join(0);
-    if (result != SM_OK) {
-        SM_LOG_AND_SET_LAST_ERROR("trans join failed, ret:" << result);
-        SmemTransEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(transEntry.Get()));
-        return nullptr;
+    if (config.role == SMEM_TRANS_RECEIVER) {
+        // decode should call Join
+        result = transEntry->Join(0);
+        if (result != SM_OK) {
+            SM_LOG_AND_SET_LAST_ERROR("trans join failed, ret:" << result);
+            SmemTransEntryManager::Instance().RemoveEntryByPtr(reinterpret_cast<uintptr_t>(transEntry.Get()));
+            return nullptr;
+        }
     }
     return transEntry;
 }
@@ -95,6 +99,14 @@ int32_t SmemTransEntry::Initialize()
         return SM_ERROR;
 #endif
         auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_RDMA;
+        options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
+    }
+    if (config_.dataOpType & SMEMB_DATA_OP_DEVICE_URMA) {
+#if !defined(ASCEND_NPU)
+        SM_LOG_ERROR("current memfabric-hybrid binary is not built for ascend npu, can not use device_urma optype.");
+        return SM_ERROR;
+#endif
+        auto temp = static_cast<uint32_t>(options.bmDataOpType) | HYBM_DOP_TYPE_DEVICE_URMA;
         options.bmDataOpType = static_cast<hybm_data_op_type>(temp);
     }
 
@@ -292,6 +304,9 @@ Result SmemTransEntry::JoinHandle(uint32_t rk)
     std::string localInfo;
     if (rk == rankId_) {
         localInfo = std::string((char *) &entityInfo_, sizeof(SmemTransExchangeInfo));
+        for (auto &e : registedInfo_) {
+            localInfo += std::string((char *) &e, sizeof(SmemTransExchangeInfo));
+        }
     }
     std::unordered_map<uint32_t, std::string> allInfo;
     std::vector<uint32_t> joined;
@@ -433,6 +448,7 @@ Result SmemTransEntry::Join(uint32_t flags)
         }
         SM_LOG_ERROR_RETURN_IT_IF_NOT_OK(ret, "join failed, ret: " << ret);
         SM_LOG_DEBUG("join success. rank: " << rankId_);
+        joined_ = true;
         return SM_OK;
     }
 }
@@ -524,6 +540,16 @@ void* SmemTransEntry::MallocDram(uint64_t size)
         return nullptr;
     }
 
+    if (!joined_) {
+        ret = Join(0);
+        if (ret != SM_OK) {
+            SM_LOG_ERROR("join failed, rk:" << rankId_ << " ret:" << ret);
+            hybm_free_local_memory(entity_, slice, size, 0);
+            RemoveSlice(vaAddr);
+            return nullptr;
+        }
+    }
+
     std::unique_lock<std::mutex> uniqueLock{memMutex_};
     info.u.address = LocalMapAddress(vaAddr, size);
     registedInfo_.emplace_back(info);
@@ -593,10 +619,12 @@ Result SmemTransEntry::RegisterLocalMemories(const std::vector<std::pair<const v
             return ret;
         }
     }
-
-    auto ret = Update(0);
-    registedInfo_.clear();
-    SM_VALIDATE_RETURN(ret == SM_OK, "update failed, rk:" << rankId_ << " ret:" << ret, ret);
+    if (config_.role == SMEM_TRANS_RECEIVER) {
+        // decode should call Update
+        auto ret = Update(0);
+        registedInfo_.clear();
+        SM_VALIDATE_RETURN(ret == SM_OK, "update failed, rk:" << rankId_ << " ret:" << ret, ret);
+    }
     return SM_OK;
 }
 
@@ -636,6 +664,11 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
                                          const size_t dataSizes[], uint32_t batchSize, smem_bm_copy_type opcode,
                                          void *stream, uint32_t flags)
 {
+    if (!joined_) {
+        auto ret = Join(0);
+        SM_VALIDATE_RETURN(ret == SM_OK, "join failed!", SM_ERROR);
+    }
+
     SM_VALIDATE_RETURN(localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(dataSizes != nullptr, "invalid dataSizes, which is null", SM_INVALID_PARAM);
@@ -686,6 +719,11 @@ Result SmemTransEntry::BatchSyncTransfer(void *localAddrs[], const std::string &
 
 Result SmemTransEntry::BatchQuantTransfer(smem_trans_quant_copy_param_t *params, smem_bm_copy_type opcode)
 {
+    if (!joined_) {
+        auto ret = Join(0);
+        SM_VALIDATE_RETURN(ret == SM_OK, "join failed!", SM_ERROR);
+    }
+
     SM_VALIDATE_RETURN(params->localAddrs != nullptr, "invalid localAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params->remoteAddrs != nullptr, "invalid remoteAddrs, which is null", SM_INVALID_PARAM);
     SM_VALIDATE_RETURN(params->dataSizes != nullptr, "invalid dataSizes, which is null", SM_INVALID_PARAM);

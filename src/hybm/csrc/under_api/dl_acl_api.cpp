@@ -33,6 +33,12 @@ aclrtGetCurrentContextFunc DlAclApi::pAclrtGetCurrentContext = nullptr;
 aclrtSetStreamAttributeFunc DlAclApi::pAclrtSetStreamAttribute = nullptr;
 aclrtDestroyStreamFunc DlAclApi::pAclrtDestroyStream = nullptr;
 aclrtSynchronizeStreamFunc DlAclApi::pAclrtSynchronizeStream = nullptr;
+aclrtBinaryLoadFromFileFunc DlAclApi::pAclrtBinaryLoadFromFile = nullptr;
+aclrtBinaryGetFunctionFunc DlAclApi::pAclrtBinaryGetFunction = nullptr;
+aclrtKernelArgsInitFunc DlAclApi::pAclrtKernelArgsInit = nullptr;
+aclrtKernelArgsAppendFunc DlAclApi::pAclrtKernelArgsAppend = nullptr;
+aclrtKernelArgsFinalizeFunc DlAclApi::pAclrtKernelArgsFinalize = nullptr;
+aclrtLaunchKernelWithConfigFunc DlAclApi::pAclrtLaunchKernelWithConfig = nullptr;
 aclrtMallocFunc DlAclApi::pAclrtMalloc = nullptr;
 aclrtFreeFunc DlAclApi::pAclrtFree = nullptr;
 aclrtMallocHostFunc DlAclApi::pAclrtMallocHost = nullptr;
@@ -55,6 +61,7 @@ rtEnableP2PFunc DlAclApi::pRtEnableP2P = nullptr;
 rtDisableP2PFunc DlAclApi::pRtDisableP2P = nullptr;
 rtMemcpyAsyncFunc DlAclApi::pRtMemcpyAsync = nullptr;
 rtGetLogicDevIdByUserDevIdFunc DlAclApi::pRtGetLogicDevIdByUserDevId = nullptr;
+aclrtGetPhyDevIdByLogicDevIdFunc DlAclApi::pAclrtGetPhyDevIdByLogicDevId = nullptr;
 
 Result DlAclApi::LoadLibrary(const std::string &libDirPath)
 {
@@ -90,6 +97,13 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pAclrtSetStreamAttribute, aclrtSetStreamAttributeFunc, rtHandle, "aclrtSetStreamAttribute");
     DL_LOAD_SYM(pAclrtDestroyStream, aclrtDestroyStreamFunc, rtHandle, "aclrtDestroyStream");
     DL_LOAD_SYM(pAclrtSynchronizeStream, aclrtSynchronizeStreamFunc, rtHandle, "aclrtSynchronizeStream");
+    DL_LOAD_SYM_OPTIONAL(pAclrtBinaryLoadFromFile, aclrtBinaryLoadFromFileFunc, rtHandle, "aclrtBinaryLoadFromFile");
+    DL_LOAD_SYM_OPTIONAL(pAclrtBinaryGetFunction, aclrtBinaryGetFunctionFunc, rtHandle, "aclrtBinaryGetFunction");
+    DL_LOAD_SYM_OPTIONAL(pAclrtKernelArgsInit, aclrtKernelArgsInitFunc, rtHandle, "aclrtKernelArgsInit");
+    DL_LOAD_SYM_OPTIONAL(pAclrtKernelArgsAppend, aclrtKernelArgsAppendFunc, rtHandle, "aclrtKernelArgsAppend");
+    DL_LOAD_SYM_OPTIONAL(pAclrtKernelArgsFinalize, aclrtKernelArgsFinalizeFunc, rtHandle, "aclrtKernelArgsFinalize");
+    DL_LOAD_SYM_OPTIONAL(pAclrtLaunchKernelWithConfig, aclrtLaunchKernelWithConfigFunc, rtHandle,
+                         "aclrtLaunchKernelWithConfig");
     DL_LOAD_SYM(pAclrtMalloc, aclrtMallocFunc, rtHandle, "aclrtMalloc");
     DL_LOAD_SYM(pAclrtFree, aclrtFreeFunc, rtHandle, "aclrtFree");
     DL_LOAD_SYM(pAclrtMallocHost, aclrtMallocHostFunc, rtHandle, "aclrtMallocHost");
@@ -111,6 +125,8 @@ Result DlAclApi::LoadLibrary(const std::string &libDirPath)
     DL_LOAD_SYM(pRtEnableP2P, rtEnableP2PFunc, rtHandle, "rtEnableP2P");
     DL_LOAD_SYM(pRtDisableP2P, rtDisableP2PFunc, rtHandle, "rtDisableP2P");
     DL_LOAD_SYM(pRtGetLogicDevIdByUserDevId, rtGetLogicDevIdByUserDevIdFunc, rtHandle, "rtGetLogicDevIdByUserDevId");
+    DL_LOAD_SYM(pAclrtGetPhyDevIdByLogicDevId, aclrtGetPhyDevIdByLogicDevIdFunc, rtHandle,
+                "aclrtGetPhyDevIdByLogicDevId");
     DL_LOAD_SYM(pRtMemcpyAsync, rtMemcpyAsyncFunc, rtHandle, "rtMemcpyAsyncWithoutCheckKind");
 
     gLoaded = true;
@@ -156,6 +172,12 @@ void DlAclApi::CleanupLibrary()
     pAclrtCreateStreamWithConfig = nullptr;
     pAclrtDestroyStream = nullptr;
     pAclrtSynchronizeStream = nullptr;
+    pAclrtBinaryLoadFromFile = nullptr;
+    pAclrtBinaryGetFunction = nullptr;
+    pAclrtKernelArgsInit = nullptr;
+    pAclrtKernelArgsAppend = nullptr;
+    pAclrtKernelArgsFinalize = nullptr;
+    pAclrtLaunchKernelWithConfig = nullptr;
     pAclrtMalloc = nullptr;
     pAclrtFree = nullptr;
     pAclrtMallocHost = nullptr;
@@ -178,6 +200,7 @@ void DlAclApi::CleanupLibrary()
     pAclrtDestroyNotify = nullptr;
     pAclrtGetCurrentContext = nullptr;
     pAclrtSetStreamAttribute = nullptr;
+    pAclrtGetPhyDevIdByLogicDevId = nullptr;
 
     if (rtHandle != nullptr) {
         dlclose(rtHandle);

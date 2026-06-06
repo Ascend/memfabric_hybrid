@@ -43,6 +43,14 @@ cc_library(
     includes = ["hybm/include"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "hybm_kernel_headers",
+    hdrs = glob(["hybm/ops/hybm_kernel/*.h"]),
+    includes = ["hybm/ops/hybm_kernel"],
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "memfabric_libs",
     visibility = ["//visibility:public"],

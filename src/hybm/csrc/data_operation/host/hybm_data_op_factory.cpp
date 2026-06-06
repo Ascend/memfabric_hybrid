@@ -11,6 +11,7 @@
  */
 #include "hybm_data_op_sdma.h"
 #include "hybm_data_op_device_rdma.h"
+#include "hybm_data_op_device_urma.h"
 #include "hybm_data_op_host_shm.h"
 #include "hybm_data_op_host_rdma.h"
 #include "hybm_data_op_factory.h"
@@ -25,6 +26,11 @@ DataOperatorPtr DataOperatorFactory::CreateSdmaDataOperator()
 DataOperatorPtr DataOperatorFactory::CreateDevRdmaDataOperator(uint32_t rankId, const transport::TransManagerPtr &tm)
 {
     return std::make_shared<DataOpDeviceRDMA>(rankId, tm);
+}
+
+DataOperatorPtr DataOperatorFactory::CreateDevUrmaDataOperator(uint32_t rankId, const transport::TransManagerPtr &tm)
+{
+    return std::make_shared<DataOpDeviceURMA>(rankId, tm);
 }
 
 DataOperatorPtr DataOperatorFactory::CreateHostRdmaDataOperator(uint32_t rankId, const transport::TransManagerPtr &tm)

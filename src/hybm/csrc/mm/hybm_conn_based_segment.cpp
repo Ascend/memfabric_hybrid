@@ -340,7 +340,7 @@ Result HybmConnBasedSegment::MapSlice(void *&mapped, void *sliceAddr, uint64_t l
         return BM_ERROR;
     }
 
-    if (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+    if (options_.dataOpType & (HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_DEVICE_URMA)) {
         auto ret = DlHalApi::HalHostRegister(mapped, size, HOST_MEM_MAP_DEV, logicDeviceId_, &dva);
         if (ret != BM_OK) {
             BM_LOG_ERROR("register host va failed, ret:" << ret);
@@ -389,6 +389,10 @@ void* HybmConnBasedSegment::AllocMemory(void *sliceAddr, uint64_t lvOffset, uint
         // Use halMemAlloc to allocate DRAM huge page memory on host
         // Flag: MEM_HOST (host memory) | MEM_TYPE_DDR (DDR/DRAM) | MEM_PAGE_HUGE (2MB huge page)
         uint64_t allocFlag = MEM_HOST | MEM_TYPE_DDR | MEM_PAGE_HUGE;
+        if (socType_ == AscendSocType::ASCEND_950) {
+            // For ASCEND_950, use normal page size (4KB) instead of huge page (2MB) FOR NOW!!!
+            allocFlag = MEM_HOST | MEM_TYPE_DDR | MEM_PAGE_NORMAL;
+        }
         void *halAllocPtr = nullptr;
 
         int ret = DlHalApi::HalMemAlloc(&halAllocPtr, size, allocFlag);
@@ -474,7 +478,7 @@ Result HybmConnBasedSegment::ReleaseSliceMemory(const MemSlicePtr &slice) noexce
     slices_.erase(pos);
 
 #if defined(ASCEND_NPU)
-    const bool needUnregister = (options_.dataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0U;
+    const bool needUnregister = (options_.dataOpType & (HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_DEVICE_URMA)) != 0U;
     if (needUnregister) {
         auto unregRet = DlHalApi::HalHostUnregisterEx(reinterpret_cast<void *>(slice->vAddress_),
                                                       logicDeviceId_, HOST_MEM_MAP_DEV);

@@ -73,27 +73,6 @@ int MockHalHostRegister(void *addr, uint64_t size, uint32_t flags, uint32_t devI
     return 0;
 }
 
-// Mock for DlAclApi::RtGetDeviceInfo used by MemSegment::InitDeviceInfo.
-int32_t MockRtGetDeviceInfo(int32_t devId, int32_t deviceType, int32_t infoType, int64_t *value)
-{
-    (void)devId;
-    (void)deviceType;
-    if (value == nullptr) {
-        return -1;
-    }
-    switch (infoType) {
-        case ock::mf::INFO_TYPE_SDID:
-        case ock::mf::INFO_TYPE_SERVER_ID:
-        case ock::mf::INFO_TYPE_SUPER_POD_ID:
-            *value = 0;
-            break;
-        default:
-            *value = 0;
-            break;
-    }
-    return 0;
-}
-
 class HybmDataOpSdmaTest : public testing::Test {
 public:
     void SetUp() override
@@ -137,7 +116,7 @@ public:
         MOCKER(&ock::mf::DlAclApi::GetAscendSocType).stubs().will(returnValue(ock::mf::AscendSocType::ASCEND_910B));
 
         // 模拟 DlHalApi::HalHostRegister 方法
-        MOCKER(&ock::mf::DlHalApi::HalHostRegister).stubs().will(invoke(MockHalHostRegister));
+        MOCKER(&ock::mf::DlHalApi::HalHostRegister).stubs().will(returnValue(0));
 
         // 模拟 DlHalApi::HalHostUnregisterEx 方法
         MOCKER(&ock::mf::DlHalApi::HalHostUnregisterEx).stubs().will(returnValue(0));
@@ -162,8 +141,8 @@ public:
         void *mockAclStream = nullptr;
         MOCKER(&ock::mf::HybmStreamManager::GetThreadAclStream).stubs().will(returnValue(mockAclStream));
 
-        std::shared_ptr<ock::mf::HybmStream> mockStream = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
-        MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream));
+        mockStream_ = std::make_shared<ock::mf::HybmStream>(0, 0, 0);
+        MOCKER(&ock::mf::HybmStreamManager::GetThreadHybmStream).stubs().will(returnValue(mockStream_));
         MOCKER(&ock::mf::HybmStreamManager::DestroyAllThreadHybmStream).stubs().will(returnValue(0));
         MOCKER_CPP(&ock::mf::HybmStream::SubmitTasks,
             int32_t (*)(ock::mf::HybmStream *, const ock::mf::StreamTask &)).stubs().will(returnValue(0));
@@ -174,13 +153,14 @@ public:
         // checks behave consistently in UT.
         MOCKER(&ock::mf::DlAclApi::AclrtSetDevice).stubs().will(returnValue(0));
         MOCKER(&ock::mf::DlAclApi::RtDeviceGetBareTgid).stubs().will(returnValue(0));
-        MOCKER_CPP(&ock::mf::DlAclApi::RtGetDeviceInfo,
-            int32_t (*)(int32_t, int32_t, int32_t, int64_t *)).stubs().will(invoke(MockRtGetDeviceInfo));
+        MOCKER(&ock::mf::DlAclApi::RtGetLogicDevIdByUserDevId).stubs().will(returnValue(0));
+        MOCKER(&ock::mf::DlAclApi::RtGetDeviceInfo).stubs().will(returnValue(0));
         (void)ock::mf::MemSegment::InitDeviceInfo(0);
     }
 
 protected:
     std::shared_ptr<ock::mf::HostDataOpSDMA> dataOp_;
+    std::shared_ptr<ock::mf::HybmStream> mockStream_;
 };
 
 TEST_F(HybmDataOpSdmaTest, initialize_success)

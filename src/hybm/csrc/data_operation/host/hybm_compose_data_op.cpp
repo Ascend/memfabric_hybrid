@@ -43,9 +43,21 @@ Result HostComposeDataOp::Initialize() noexcept
         devRdmaDataOperator_ = DataOperatorFactory::CreateDevRdmaDataOperator(options_.rankId, transport_);
         auto ret = devRdmaDataOperator_->Initialize();
         if (ret != BM_OK) {
-            BM_LOG_ERROR("Device RDMA data operator init failed, ret:" << ret);
+            BM_LOG_ERROR("Device transport data operator init failed, ret:" << ret);
             sdmaDataOperator_ = nullptr;
             devRdmaDataOperator_ = nullptr;
+            return ret;
+        }
+    }
+
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_URMA) {
+        devUrmaDataOperator_ = DataOperatorFactory::CreateDevUrmaDataOperator(options_.rankId, transport_);
+        auto ret = devUrmaDataOperator_->Initialize();
+        if (ret != BM_OK) {
+            BM_LOG_ERROR("Device URMA data operator init failed, ret:" << ret);
+            sdmaDataOperator_ = nullptr;
+            devRdmaDataOperator_ = nullptr;
+            devUrmaDataOperator_ = nullptr;
             return ret;
         }
     }
@@ -57,6 +69,7 @@ Result HostComposeDataOp::Initialize() noexcept
             BM_LOG_ERROR("Host RDMA data operator init failed, ret:" << ret);
             sdmaDataOperator_ = nullptr;
             devRdmaDataOperator_ = nullptr;
+            devUrmaDataOperator_ = nullptr;
             hostRdmaDataOperator_ = nullptr;
             return ret;
         }
@@ -69,6 +82,7 @@ Result HostComposeDataOp::Initialize() noexcept
             BM_LOG_ERROR("Host shm data operator init failed, ret:" << ret);
             sdmaDataOperator_ = nullptr;
             devRdmaDataOperator_ = nullptr;
+            devUrmaDataOperator_ = nullptr;
             hostRdmaDataOperator_ = nullptr;
             return ret;
         }
@@ -86,6 +100,10 @@ void HostComposeDataOp::UnInitialize() noexcept
     if (devRdmaDataOperator_ != nullptr) {
         devRdmaDataOperator_->UnInitialize();
         devRdmaDataOperator_ = nullptr;
+    }
+    if (devUrmaDataOperator_ != nullptr) {
+        devUrmaDataOperator_->UnInitialize();
+        devUrmaDataOperator_ = nullptr;
     }
     if (sdmaDataOperator_ != nullptr) {
         sdmaDataOperator_->UnInitialize();
@@ -246,6 +264,10 @@ HostComposeDataOp::DataOperators HostComposeDataOp::GetPrioritedDataOperators(co
 
     if (devRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_DEVICE_RDMA)) != 0U) {
         dataOperators.emplace_back(HYBM_DOP_TYPE_DEVICE_RDMA, devRdmaDataOperator_);
+    }
+
+    if (devUrmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_DEVICE_URMA)) != 0U) {
+        dataOperators.emplace_back(HYBM_DOP_TYPE_DEVICE_URMA, devUrmaDataOperator_);
     }
 
     if (hostRdmaDataOperator_ != nullptr && (opTypes & static_cast<uint32_t>(HYBM_DOP_TYPE_HOST_RDMA)) != 0U) {

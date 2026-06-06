@@ -9,8 +9,6 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
 */
-#include "hybm_entity_default.h"
-
 #include <algorithm>
 
 #include "dl_api.h"
@@ -27,6 +25,7 @@
 #include "hybm_stream_manager.h"
 #include "hybm_va_manager.h"
 #include "hybm_compose_data_op.h"
+#include "hybm_entity_default.h"
 
 namespace ock {
 namespace mf {
@@ -59,6 +58,10 @@ Result MemEntityDefault::InitTagManager()
     std::ostringstream compatibleInfo;
     if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
         compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_DEVICE_RDMA) << ":"
+                       << localTag << ",";
+    }
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_URMA) {
+        compatibleInfo << localTag << ":" << HybmEntityTagInfo::GetOpTypeStr(HYBM_DOP_TYPE_DEVICE_URMA) << ":"
                        << localTag << ",";
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_SDMA) {
@@ -619,9 +622,7 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
 {
     BM_ASSERT_LOG_AND_RETURN(initialized_, "initialized_ = " << initialized_, BM_NOT_INITIALIZED);
     BM_ASSERT_LOG_AND_RETURN(desc != nullptr, "desc is nullptr", BM_INVALID_PARAM);
-
-    auto ret = SetThreadAclDevice();
-    BM_ASSERT_LOG_AND_RETURN(ret == BM_OK, "SetThreadAclDevice failed: " << ret, BM_ERROR);
+    BM_ASSERT_LOG_AND_RETURN(SetThreadAclDevice() == BM_OK, "SetThreadAclDevice failed", BM_ERROR);
 
     std::vector<EntityExportInfo> deserializedInfos(count);
     for (auto i = 0U; i < count; i++) {
@@ -655,7 +656,7 @@ int32_t MemEntityDefault::ImportEntityExchangeInfo(const ExchangeInfoReader desc
         }
     }
     if (infos.size() > 0) {
-        ret = hbmSegment_->Import(infos, nullptr);
+        auto ret = hbmSegment_->Import(infos, nullptr);
         if (ret != BM_OK) {
             BM_LOG_ERROR("failed to import segment info, ret: " << ret);
             return BM_ERROR;
@@ -736,6 +737,13 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
         return BM_NOT_INITIALIZED;
     }
 
+    if (transportManager_ != nullptr) {
+        auto ret = transportManager_->RemoveRanks(ranks);
+        if (ret != BM_OK) {
+            BM_LOG_WARN("transport remove ranks failed: " << ret);
+        }
+    }
+
     if (hbmSegment_ != nullptr) {
         auto ret = hbmSegment_->RemoveImported(ranks);
         if (ret != BM_OK) {
@@ -759,13 +767,6 @@ int32_t MemEntityDefault::RemoveImported(const std::vector<uint32_t> &ranks) noe
         for (auto rank : ranks) {
             importedRanks_.erase(rank);
             importedMemories_.erase(rank);
-        }
-    }
-
-    if (transportManager_ != nullptr) {
-        auto ret = transportManager_->RemoveRanks(ranks);
-        if (ret != BM_OK) {
-            BM_LOG_WARN("transport remove ranks failed: " << ret);
         }
     }
 
@@ -905,6 +906,12 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
         return BM_INVALID_PARAM;
     }
 
+    if ((options->bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) != 0 &&
+        (options->bmDataOpType & HYBM_DOP_TYPE_DEVICE_URMA) != 0) {
+        BM_LOG_ERROR("DEVICE_RDMA and DEVICE_URMA cannot be enabled together");
+        return BM_INVALID_PARAM;
+    }
+
     if ((options->bmDataOpType & HYBM_DOP_TYPE_HOST_SHM) != 0) {
         if (options->hostVASpace == 0) {
             BM_LOG_ERROR("HOST_SHM op type requires non-zero host VASpace");
@@ -915,8 +922,8 @@ int MemEntityDefault::CheckOptions(const hybm_options *options) noexcept
             return BM_INVALID_PARAM;
         }
         constexpr uint32_t hostShmConflictMask = HYBM_DOP_TYPE_SDMA | HYBM_DOP_TYPE_DEVICE_RDMA |
-                                                 HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_TCP |
-                                                 HYBM_DOP_TYPE_HOST_URMA;
+                                                 HYBM_DOP_TYPE_DEVICE_URMA | HYBM_DOP_TYPE_HOST_RDMA |
+                                                 HYBM_DOP_TYPE_HOST_TCP | HYBM_DOP_TYPE_HOST_URMA;
         if ((options->bmDataOpType & hostShmConflictMask) != 0) {
             BM_LOG_ERROR("HOST_SHM op type does not support mixing with other data op types");
             return BM_INVALID_PARAM;
@@ -955,6 +962,13 @@ int MemEntityDefault::LoadExtendLibrary() noexcept
         }
     }
 
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_URMA) {
+        auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_URMA);
+        if (ret != 0) {
+            BM_LOG_ERROR("LoadExtendLibrary for DEVICE URMA failed: " << ret);
+            return ret;
+        }
+    }
     if (options_.bmDataOpType & (HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP)) {
         auto ret = DlApi::LoadExtendLibrary(DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA);
         if (ret != 0) {
@@ -1019,15 +1033,12 @@ int32_t MemEntityDefault::ImportForTransportPrecheck(const ExchangeInfoReader de
             transportManager_->UpdateMemoryKey(transportKey.key, addresses[i]);
         }
 
-        std::unique_lock<std::mutex> uniqueLock{importMutex_};
-        importedMemories_[transportKey.rankId].insert(transportKey.key);
+        {
+            std::unique_lock<std::mutex> uniqueLock{importMutex_};
+            importedMemories_[transportKey.rankId].insert(transportKey.key);
+        }
         BM_LOG_INFO("Success to import slice rankId:" << transportKey.rankId << " addr:" << std::hex
                                                       << transportKey.address);
-
-        if (ret != 0) {
-            BM_LOG_ERROR("read info for transport failed: " << ret);
-            return ret;
-        }
     }
     return BM_OK;
 }
@@ -1151,7 +1162,7 @@ Result MemEntityDefault::InitDramSegment()
     segmentOptions.flags = options_.flags;
     segmentOptions.shmFd = options_.dramShmFd;
     segmentOptions.enable56BitsGva = options_.enable56BitsGva;
-    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_RDMA) {
+    if (options_.bmDataOpType & (HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_DEVICE_URMA)) {
         segmentOptions.shared = false;
     }
     dramSegment_ = MemSegment::Create(segmentOptions, id_);
@@ -1180,9 +1191,10 @@ Result MemEntityDefault::InitTransManager()
     }
 
     auto hostTransFlags = HYBM_DOP_TYPE_HOST_RDMA | HYBM_DOP_TYPE_HOST_URMA | HYBM_DOP_TYPE_HOST_TCP;
-    auto composeTransFlags = HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_AIV_SDMA | hostTransFlags;
+    auto composeTransFlags =
+        HYBM_DOP_TYPE_DEVICE_RDMA | HYBM_DOP_TYPE_AIV_SDMA | HYBM_DOP_TYPE_DEVICE_URMA | hostTransFlags;
     if ((options_.bmDataOpType & composeTransFlags) == 0) {
-        BM_LOG_DEBUG("NO RDMA Data Operator transport skip init.");
+        BM_LOG_DEBUG("NO RDMA/URMA Data Operator transport skip init.");
         return BM_OK;
     }
     if (options_.bmDataOpType & HYBM_DOP_TYPE_AIV_SDMA) {
@@ -1250,6 +1262,10 @@ hybm_data_op_type MemEntityDefault::CanReachDataOperators(uint32_t remoteRank) c
         supportDataOp |= HYBM_DOP_TYPE_DEVICE_RDMA;
     }
 
+    if (options_.bmDataOpType & HYBM_DOP_TYPE_DEVICE_URMA) {
+        supportDataOp |= HYBM_DOP_TYPE_DEVICE_URMA;
+    }
+
     if (options_.bmDataOpType & HYBM_DOP_TYPE_HOST_RDMA) {
         supportDataOp |= HYBM_DOP_TYPE_HOST_RDMA;
     }
@@ -1300,6 +1316,10 @@ void MemEntityDefault::ReleaseResources()
     if (!initialized_) {
         return;
     }
+    dataOperator_.reset();
+    if (transportManager_ != nullptr) {
+        transportManager_->CloseDevice();
+    }
     // Imported mappings are tracked separately from local slices and can survive
     // UnReserveMemorySpace(). Clear them before dropping segment objects so the
     // same process can initialize again without stale VA records.
@@ -1311,9 +1331,7 @@ void MemEntityDefault::ReleaseResources()
     dramGva_ = nullptr;
     hbmSegment_.reset();
     dramSegment_.reset();
-    dataOperator_.reset();
     if (transportManager_ != nullptr) {
-        transportManager_->CloseDevice();
         transportManager_.reset();
     }
     tagManager_.reset();

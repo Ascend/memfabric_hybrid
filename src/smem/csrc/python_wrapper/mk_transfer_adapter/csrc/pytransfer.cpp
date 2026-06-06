@@ -479,6 +479,7 @@ PYBIND11_MODULE(_pymf_transfer, m)
     py::enum_<TransferAdapterPy::TransDataOpType> transfer_type(m, "TransDataOpType", py::arithmetic());
     transfer_type.value("SDMA", TransferAdapterPy::TransDataOpType::SDMA)
         .value("DEVICE_RDMA", TransferAdapterPy::TransDataOpType::DEVICE_RDMA)
+        .value("DEVICE_URMA", TransferAdapterPy::TransDataOpType::DEVICE_URMA)
         .export_values();
 
     DefineAdapterFunctions(m);

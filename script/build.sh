@@ -297,7 +297,6 @@ GIT_COMMIT=`git rev-parse HEAD` || true
 } > "${PROJ_DIR}/output/VERSION"
 
 cp "${PROJ_DIR}/output/VERSION" "${PROJ_DIR}/src/smem/python/memfabric_hybrid/memfabric_hybrid/"
-rm -f "${PROJ_DIR}/output/VERSION"
 
 # 如果 PYTHON_HOME 不存在，则设置默认值
 if [ -z "$PYTHON_HOME" ]; then

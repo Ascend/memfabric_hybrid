@@ -85,6 +85,7 @@ private:
     Result OpenDeviceTransport(const TransportOptions &options);
     void GetHostPrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &hostOptions);
     void GetDevicePrepareOptions(const HybmTransPrepareOptions &param, HybmTransPrepareOptions &DeviceOptions);
+    bool IsDeviceUrma() const;
 
 private:
     std::shared_ptr<TransportManager> deviceTransportManager_{nullptr};

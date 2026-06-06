@@ -169,6 +169,7 @@ private:
 
     StorePtr store_;
     SmemGroupEnginePtr globalGroup_ = nullptr;
+    bool joined_{false};
 };
 
 inline const std::string &SmemTransEntry::Name() const

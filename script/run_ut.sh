@@ -105,6 +105,7 @@ if ! $FAST_MODE; then
             "*/3rdparty/*"
             "*/src/smem/csrc/python_wrapper/*"
             "*/src/hybm/csrc/driver/*"
+            "*/src/hybm/ops/*"
             "*/acc_links/csrc/common/*"
             "*/acc_links/csrc/security/*"
             "*/acc_links/csrc/under_api/openssl/*"

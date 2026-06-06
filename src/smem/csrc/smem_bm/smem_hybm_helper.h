@@ -45,6 +45,10 @@ public:
             resultOpType |= HYBM_DOP_TYPE_DEVICE_RDMA;
         }
 
+        if (smemBmDataOpType & SMEMB_DATA_OP_DEVICE_URMA) {
+            resultOpType |= HYBM_DOP_TYPE_DEVICE_URMA;
+        }
+
         if (smemBmDataOpType & SMEMB_DATA_OP_HOST_RDMA) {
             resultOpType |= HYBM_DOP_TYPE_HOST_RDMA;
         }

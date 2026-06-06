@@ -233,6 +233,12 @@ int32_t rtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t *const logic
     return 0;
 }
 
+int32_t aclrtGetPhyDevIdByLogicDevId(const int32_t logicDevId, int32_t *const phyDevId)
+{
+    *phyDevId = logicDevId;
+    return 0;
+}
+
 int32_t rtStreamGetSqid(const void *stm, uint32_t *sqId)
 {
     if (sqId != nullptr) {
@@ -328,6 +334,72 @@ int32_t aclnnShmemSdmaStarsQuery(void *workspace, uint64_t workspaceSize, aclOpE
     (void)workspaceSize;
     (void)executor;
     (void)stream;
+    return RETURN_OK;
+}
+
+typedef void *aclrtBinHandle;
+typedef void *aclrtFuncHandle;
+typedef void *aclrtArgsHandle;
+typedef void *aclrtParamHandle;
+
+struct aclrtBinaryLoadOptions {};
+struct aclrtLaunchKernelCfg {};
+
+int32_t aclrtBinaryLoadFromFile(const char *binPath, aclrtBinaryLoadOptions *options, aclrtBinHandle *binHandle)
+{
+    (void)binPath;
+    (void)options;
+    if (binHandle != nullptr) {
+        *binHandle = reinterpret_cast<void *>(0x1001);
+    }
+    return RETURN_OK;
+}
+
+int32_t aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName, aclrtFuncHandle *funcHandle)
+{
+    (void)binHandle;
+    (void)kernelName;
+    if (funcHandle != nullptr) {
+        *funcHandle = reinterpret_cast<void *>(0x1002);
+    }
+    return RETURN_OK;
+}
+
+int32_t aclrtKernelArgsInit(aclrtFuncHandle funcHandle, aclrtArgsHandle *argsHandle)
+{
+    (void)funcHandle;
+    if (argsHandle != nullptr) {
+        *argsHandle = reinterpret_cast<void *>(0x1003);
+    }
+    return RETURN_OK;
+}
+
+int32_t aclrtKernelArgsAppend(aclrtArgsHandle argsHandle, void *param, size_t paramSize, aclrtParamHandle *paramHandle)
+{
+    (void)argsHandle;
+    (void)param;
+    (void)paramSize;
+    if (paramHandle != nullptr) {
+        *paramHandle = reinterpret_cast<void *>(0x1004);
+    }
+    return RETURN_OK;
+}
+
+int32_t aclrtKernelArgsFinalize(aclrtArgsHandle argsHandle)
+{
+    (void)argsHandle;
+    return RETURN_OK;
+}
+
+int32_t aclrtLaunchKernelWithConfig(aclrtFuncHandle funcHandle, uint32_t blockDim, void *stream,
+                                    aclrtLaunchKernelCfg *cfg, aclrtArgsHandle argsHandle, void *reserved)
+{
+    (void)funcHandle;
+    (void)blockDim;
+    (void)stream;
+    (void)cfg;
+    (void)argsHandle;
+    (void)reserved;
     return RETURN_OK;
 }
 }

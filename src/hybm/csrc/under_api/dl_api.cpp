@@ -17,6 +17,7 @@
 #include "dl_hcom_api.h"
 #include "dl_rt_api.h"
 #include "dl_op_api.h"
+#include "dl_hcomm_api.h"
 #include "dl_hybm_copy_extend.h"
 
 namespace ock {
@@ -64,6 +65,7 @@ void DlApi::CleanupLibrary()
     DlAclApi::CleanupLibrary();
     DlHalApi::CleanupLibrary();
     DlHcomApi::CleanupLibrary();
+    DlHcommApi::CleanupLibrary();
     DlHybmExtendApi::CleanupLibrary();
 }
 
@@ -87,6 +89,10 @@ Result DlApi::LoadExtendLibrary(DlApiExtendLibraryType libraryType)
 
     if (libraryType == DlApiExtendLibraryType::DL_EXT_LIB_HOST_RDMA) {
         return DlHcomApi::LoadLibrary();
+    }
+
+    if (libraryType == DlApiExtendLibraryType::DL_EXT_LIB_DEVICE_URMA) {
+        return DlHcommApi::LoadLibrary();
     }
 
     return BM_OK;

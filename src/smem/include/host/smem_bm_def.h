@@ -57,6 +57,7 @@ typedef enum {
     SMEMB_DATA_OP_DEVICE_RDMA = 1U << 3, /* data operation done by device RDMA */
     SMEMB_DATA_OP_HOST_URMA = 1U << 4,   /* data operation done by host URMA */
     SMEMB_DATA_OP_HOST_SHM = 1U << 5,    /* same-node host shared memory (no network transport) */
+    SMEMB_DATA_OP_DEVICE_URMA = 1U << 6, /* data operation done by device URMA */
     SMEMB_DATA_OP_BUTT
 } smem_bm_data_op_type;
 typedef smem_bm_data_op_type smem_bm_data_op_type_t;

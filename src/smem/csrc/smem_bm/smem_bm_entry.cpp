@@ -581,8 +581,8 @@ Result SmemBmEntry::RegisterMem(uint64_t addr, uint64_t size)
     auto iter = registedSlice_.find(addr);
     if (iter != registedSlice_.end()) {
         if (iter->second.first != size) {
-            SM_LOG_ERROR("RegisterMem size_mismatch: addr=0x" << std::hex << addr << std::dec
-                << " new_size=" << size << " existing_size=" << iter->second.first);
+            SM_LOG_ERROR("RegisterMem size_mismatch: addr=0x" << std::hex << addr << std::dec << " new_size=" << size
+                                                              << " existing_size=" << iter->second.first);
             return SM_ERROR;
         }
         SM_LOG_WARN("RegisterMem skip_dup: addr=0x" << std::hex << addr << std::dec << " size=" << size);
@@ -610,8 +610,8 @@ Result SmemBmEntry::UnRegisterMem(uint64_t addr)
     auto sz = iter->second.first;
     auto ret = hybm_free_local_memory(entity_, iter->second.second, 1, 0);
     if (ret != 0) {
-        SM_LOG_ERROR("UnRegisterMem free_fail: addr=0x" << std::hex << addr << std::dec
-                                                         << " size=" << sz << " ret=" << ret);
+        SM_LOG_ERROR("UnRegisterMem free_fail: addr=0x" << std::hex << addr << std::dec << " size=" << sz
+                                                        << " ret=" << ret);
         return SM_ERROR;
     }
     registedSlice_.erase(iter);

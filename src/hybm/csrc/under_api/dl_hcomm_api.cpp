@@ -38,6 +38,11 @@ hcommChannelFenceOnThreadFunc DlHcommApi::gHcommChannelFenceOnThread = nullptr;
 hcommBatchModeStartFunc DlHcommApi::gHcommBatchModeStart = nullptr;
 hcommBatchModeEndFunc DlHcommApi::gHcommBatchModeEnd = nullptr;
 hcommBatchTransferOnThreadFunc DlHcommApi::gHcommBatchTransferOnThread = nullptr;
+hcommReadNbiFunc DlHcommApi::gHcommReadNbi = nullptr;
+hcommWriteNbiFunc DlHcommApi::gHcommWriteNbi = nullptr;
+hcommChannelFenceFunc DlHcommApi::gHcommChannelFence = nullptr;
+hcommMemGetAllMemHandlesFunc DlHcommApi::gHcommMemGetAllMemHandles = nullptr;
+hcommChannelUpdateMemInfoFunc DlHcommApi::gHcommChannelUpdateMemInfo = nullptr;
 
 Result DlHcommApi::LoadLibrary()
 {
@@ -75,6 +80,13 @@ Result DlHcommApi::LoadLibrary()
     DL_LOAD_SYM_OPTIONAL(gHcommBatchModeEnd, hcommBatchModeEndFunc, hcommHandle, "HcommBatchModeEnd");
     DL_LOAD_SYM_OPTIONAL(gHcommBatchTransferOnThread, hcommBatchTransferOnThreadFunc, hcommHandle,
                          "HcommBatchTransferOnThread");
+    DL_LOAD_SYM(gHcommReadNbi, hcommReadNbiFunc, hcommHandle, "HcommReadNbi");
+    DL_LOAD_SYM(gHcommWriteNbi, hcommWriteNbiFunc, hcommHandle, "HcommWriteNbi");
+    DL_LOAD_SYM(gHcommChannelFence, hcommChannelFenceFunc, hcommHandle, "HcommChannelFence");
+    DL_LOAD_SYM_OPTIONAL(gHcommMemGetAllMemHandles, hcommMemGetAllMemHandlesFunc, hcommHandle,
+                         "HcommMemGetAllMemHandles");
+    DL_LOAD_SYM_OPTIONAL(gHcommChannelUpdateMemInfo, hcommChannelUpdateMemInfoFunc, hcommHandle,
+                         "HcommChannelUpdateMemInfo");
 
     BM_LOG_INFO("LoadLibrary for DlHcommApi success");
     gLoaded = true;
@@ -105,6 +117,11 @@ void DlHcommApi::CleanupLibrary()
     gHcommBatchModeStart = nullptr;
     gHcommBatchModeEnd = nullptr;
     gHcommBatchTransferOnThread = nullptr;
+    gHcommReadNbi = nullptr;
+    gHcommWriteNbi = nullptr;
+    gHcommChannelFence = nullptr;
+    gHcommMemGetAllMemHandles = nullptr;
+    gHcommChannelUpdateMemInfo = nullptr;
 
     if (hcommHandle != nullptr) {
         dlclose(hcommHandle);

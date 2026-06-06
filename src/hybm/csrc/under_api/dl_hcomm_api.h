@@ -375,7 +375,6 @@ struct HcommBatchTransferDesc {
 // =============================================================================
 // HCOMM 函数指针类型定义
 // =============================================================================
-
 using hcommEndpointCreateFunc = HcommResult (*)(const EndpointDesc *, EndpointHandle *);
 using hcommEndpointDestroyFunc = HcommResult (*)(EndpointHandle);
 using hcommMemRegFunc = HcommResult (*)(EndpointHandle, const char *, const HcommCommMem *, HcommMemHandle *);
@@ -390,11 +389,29 @@ using hcommThreadAllocFunc = HcommResult (*)(CommEngine, uint32_t, const uint32_
 using hcommThreadFreeFunc = HcommResult (*)(const ThreadHandle *, uint32_t);
 using hcommReadOnThreadFunc = int32_t (*)(ThreadHandle, ChannelHandle, void *, const void *, uint64_t);
 using hcommWriteOnThreadFunc = int32_t (*)(ThreadHandle, ChannelHandle, void *, const void *, uint64_t);
+using hcommWriteNbiFunc = int32_t (*)(ChannelHandle, void *, const void *, uint64_t);
 using hcommChannelFenceOnThreadFunc = int32_t (*)(ThreadHandle, ChannelHandle);
 using hcommBatchModeStartFunc = int32_t (*)(const char *);
 using hcommBatchModeEndFunc = int32_t (*)(const char *);
 using hcommBatchTransferOnThreadFunc = int32_t (*)(ThreadHandle, ChannelHandle, const HcommBatchTransferDesc *,
                                                    uint32_t);
+
+// =============================================================================
+// NBI 函数指针类型定义 (Non-Blocking Interface for alpha RDMA)
+// =============================================================================
+
+using hcommReadNbiFunc = int32_t (*)(uint64_t, void *, const void *, uint64_t);
+using hcommWriteNbiFunc = int32_t (*)(uint64_t, void *, const void *, uint64_t);
+using hcommChannelFenceFunc = int32_t (*)(uint64_t);
+
+using hcommMemGetAllMemHandlesFunc = HcommResult (*)(EndpointHandle, void **, uint32_t *);
+using hcommMemGrantFunc = int32_t (*)(uint64_t, const void *);
+
+// =============================================================================
+// Mem Update 函数指针类型定义
+// =============================================================================
+
+using hcommChannelUpdateMemInfoFunc = HcommResult (*)(HcommMemHandle *, uint32_t, ChannelHandle);
 
 // =============================================================================
 // 初始化工具函数（对应 hcomm_res_defs.h 中的 EndpointDescInit / HcommChannelDescInit）
@@ -655,6 +672,51 @@ public:
         return gHcommBatchTransferOnThread(thread, channel, transferDescs, transferDescNum);
     }
 
+    // -------------------------------------------------------------------------
+    // NBI (Non-Blocking Interface) methods for alpha RDMA support
+    // -------------------------------------------------------------------------
+
+    static inline int32_t HcommReadNbi(ChannelHandle channel, void *dst, const void *src, uint64_t len)
+    {
+        if (gHcommReadNbi == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gHcommReadNbi(channel, dst, src, len);
+    }
+
+    static inline int32_t HcommWriteNbi(ChannelHandle channel, void *dst, const void *src, uint64_t len)
+    {
+        if (gHcommWriteNbi == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gHcommWriteNbi(channel, dst, src, len);
+    }
+
+    static inline int32_t HcommChannelFence(ChannelHandle channel)
+    {
+        if (gHcommChannelFence == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gHcommChannelFence(channel);
+    }
+
+    static inline int32_t HcommMemGetAllMemHandles(EndpointHandle endpoint, void **memHandles, uint32_t *memHandleNum)
+    {
+        if (gHcommMemGetAllMemHandles == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gHcommMemGetAllMemHandles(endpoint, memHandles, memHandleNum);
+    }
+
+    static inline int32_t HcommChannelUpdateMemInfo(HcommMemHandle *memHandles, uint32_t memHandleNum,
+                                                     ChannelHandle channel)
+    {
+        if (gHcommChannelUpdateMemInfo == nullptr) {
+            return BM_UNDER_API_UNLOAD;
+        }
+        return gHcommChannelUpdateMemInfo(memHandles, memHandleNum, channel);
+    }
+
 private:
     static std::mutex gMutex;
     static bool gLoaded;
@@ -678,6 +740,15 @@ private:
     static hcommBatchModeStartFunc gHcommBatchModeStart;
     static hcommBatchModeEndFunc gHcommBatchModeEnd;
     static hcommBatchTransferOnThreadFunc gHcommBatchTransferOnThread;
+
+    // NBI function pointer members
+    static hcommReadNbiFunc gHcommReadNbi;
+    static hcommWriteNbiFunc gHcommWriteNbi;
+    static hcommChannelFenceFunc gHcommChannelFence;
+
+    // Mem update function pointer members
+    static hcommMemGetAllMemHandlesFunc gHcommMemGetAllMemHandles;
+    static hcommChannelUpdateMemInfoFunc gHcommChannelUpdateMemInfo;
 };
 
 } // namespace mf

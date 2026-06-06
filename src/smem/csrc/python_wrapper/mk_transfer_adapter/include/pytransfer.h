@@ -34,7 +34,11 @@ inline auto to_uintptr(const void *p) -> fallback_uintptr
 class TransferAdapterPy {
 public:
     enum class TransferOpcode { READ = 0, WRITE = 1 };
-    enum class TransDataOpType { SDMA = SMEMB_DATA_OP_SDMA, DEVICE_RDMA = SMEMB_DATA_OP_DEVICE_RDMA };
+    enum class TransDataOpType {
+        SDMA = SMEMB_DATA_OP_SDMA,
+        DEVICE_RDMA = SMEMB_DATA_OP_DEVICE_RDMA,
+        DEVICE_URMA = SMEMB_DATA_OP_DEVICE_URMA
+    };
 
 public:
     TransferAdapterPy();

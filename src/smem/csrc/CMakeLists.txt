@@ -16,6 +16,8 @@ include_directories(
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_shm
         ${PROJECT_SMEM_SRC_BASE}/csrc/smem_trans
         ${PROJECT_HYBM_SRC_BASE}/include
+        ${PROJECT_HYBM_SRC_BASE}/csrc/common
+        ${PROJECT_HYBM_SRC_BASE}/csrc/transport/device/urma
         ${PROJECT_UTIL_SRC_BASE}/ptracer/include
         ${PROJECT_ACCLINKS_SRC_BASE}/include
 )

@@ -38,16 +38,17 @@ Result DlHcclApi::LoadLibrary()
     }
     if (hcclHandle == nullptr) {
         BM_LOG_ERROR(
-                "Failed to open library ["
-                << gHcclLibName << "," << gHcommLibName
-                << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"
-                << " error: " << dlerror());
+            "Failed to open library ["
+            << gHcclLibName << "," << gHcommLibName
+            << "], please source ascend-toolkit set_env.sh, or add ascend driver lib path into LD_LIBRARY_PATH,"
+            << " error: " << dlerror());
         return BM_DL_FUNCTION_FAILED;
     }
 
     /* load sym */
     DL_LOAD_SYM(gHcclCommInitClusterInfo, hcclCommInitClusterInfoFunc, hcclHandle, "HcclCommInitClusterInfoMemConfig");
     DL_LOAD_SYM(gHcclCommDestroy, hcclCommDestroyFunc, hcclHandle, "HcclCommDestroy");
+
     BM_LOG_INFO("LoadLibrary for DlHcclApi success");
     gLoaded = true;
     return BM_OK;
@@ -61,6 +62,7 @@ void DlHcclApi::CleanupLibrary()
     }
 
     gHcclCommInitClusterInfo = nullptr;
+    gHcclCommDestroy = nullptr;
 
     if (hcclHandle != nullptr) {
         dlclose(hcclHandle);
