@@ -30,11 +30,11 @@ int32_t HybmGetInitedLogicDeviceId()
     return initedLogicDeviceId; // logicDeviceId
 }
 
-int32_t HybmModernInitMetaGva(void *globalMemoryBase, size_t allocSize, void **allocHandle)
+int32_t HybmModernInitMetaGva(void **globalMemoryBase, size_t allocSize, void **allocHandle)
 {
     drv_mem_handle_t **handle = (drv_mem_handle_t **)allocHandle;
     uint64_t va = SVM_END_ADDR - GB;
-    auto ret = DlHalApi::HalMemAddressReserve(&globalMemoryBase, GB, 0, reinterpret_cast<void *>(va), 0);
+    auto ret = DlHalApi::HalMemAddressReserve(globalMemoryBase, GB, 0, reinterpret_cast<void *>(va), 0);
     if (ret != 0) {
         BM_LOG_ERROR("prepare virtual memory size(" << GB << ") failed. ret: " << ret);
         return BM_ERROR;
@@ -60,21 +60,21 @@ int32_t HybmModernInitMetaGva(void *globalMemoryBase, size_t allocSize, void **a
     return BM_OK;
 }
 
-int32_t HybmLegacyInitMetaGva(void *globalMemoryBase, size_t allocSize, uint64_t flags)
+int32_t HybmLegacyInitMetaGva(void **globalMemoryBase, size_t allocSize, uint64_t flags)
 {
-    auto ret = drv::HalGvaReserveMemory((uint64_t *)&globalMemoryBase, allocSize, initedLogicDeviceId, flags);
-    if (ret != 0 || reinterpret_cast<uint64_t>(globalMemoryBase) != (SVM_END_ADDR - GB)) {
-        if (ret == 0 && globalMemoryBase != nullptr) {
-            (void)drv::HalGvaUnreserveMemory((uint64_t)globalMemoryBase);
+    auto ret = drv::HalGvaReserveMemory((uint64_t *)globalMemoryBase, allocSize, initedLogicDeviceId, flags);
+    if (ret != 0 || reinterpret_cast<uint64_t>(*globalMemoryBase) != (SVM_END_ADDR - GB)) {
+        if (ret == 0 && *globalMemoryBase != nullptr) {
+            (void)drv::HalGvaUnreserveMemory((uint64_t)(*globalMemoryBase));
         }
         BM_LOG_ERROR("initialize meta memory failed: " << ret << " size:0x" << std::hex << allocSize <<
-                     " flag:0x" << flags << " ret_addr:" << globalMemoryBase);
+                     " flag:0x" << flags << " ret_addr:" << *globalMemoryBase);
         return BM_ERROR;
     }
 
     ret = drv::HalGvaAlloc(HYBM_DEVICE_META_ADDR, HYBM_DEVICE_INFO_SIZE, 0);
     if (ret != BM_OK) {
-        (void)drv::HalGvaUnreserveMemory((uint64_t)globalMemoryBase);
+        (void)drv::HalGvaUnreserveMemory((uint64_t)(*globalMemoryBase));
         BM_LOG_ERROR("HalGvaAlloc hybm meta memory failed: " << ret);
         return BM_MALLOC_FAILED;
     }
@@ -114,9 +114,9 @@ int32_t hybm_init_hbm_gva(uint16_t deviceId, uint64_t flags, uint64_t &baseAddre
     void *globalMemoryBase = nullptr;
     size_t allocSize = HYBM_DEVICE_INFO_SIZE; // 申请meta空间
     if ((socType == AscendSocType::ASCEND_950) || (HybmGetGvaVersion() == HYBM_GVA_V4)) {
-        ret = HybmModernInitMetaGva(globalMemoryBase, allocSize, allocHandle);
+        ret = HybmModernInitMetaGva(&globalMemoryBase, allocSize, allocHandle);
     } else {
-        ret = HybmLegacyInitMetaGva(globalMemoryBase, allocSize, flags);
+        ret = HybmLegacyInitMetaGva(&globalMemoryBase, allocSize, flags);
     }
     if (ret != BM_OK) {
         BM_LOG_ERROR("hybm init meta gva failed: " << ret);
