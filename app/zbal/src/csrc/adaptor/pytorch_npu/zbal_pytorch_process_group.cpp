@@ -451,9 +451,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::allreduce(std::vector<at::Tenso
                 at::empty({bufferElems}, at::TensorOptions().device(input.device()).dtype(scalarType));
             void *bufferDataPtr = bufferTensor.data_ptr();
 
-            std::function<int()> call_all_reduce = [inputDataPtr, outputDataPtr, bufferDataPtr, numel, bufferElems,
+            std::function<int()> call_all_reduce = [inputDataPtr, outputDataPtr, bufferDataPtr, numel,
                                                     zbalType, zbalReduceOp, comm, stream]() -> int {
-                auto result = zbal_all_reduce(inputDataPtr, outputDataPtr, bufferDataPtr, numel, bufferElems, zbalType,
+                auto result = zbal_all_reduce(inputDataPtr, outputDataPtr, bufferDataPtr, numel, zbalType,
                                               zbalReduceOp, comm, stream.stream(false));
                 return result;
             };
@@ -853,11 +853,10 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupZBAL::send(std::vector<at::Tensor> &t
             RECORD_FUNCTION("ZbalSend", std::vector<c10::IValue>({tensor}));
 
             auto dataPtr = tensor.data_ptr();
-            auto numel = GetNumelForZBAL(tensor);
             auto zbalType = GetZbalDataType(tensor.scalar_type());
 
-            auto call_send = [dataPtr, numel, zbalType, peer, comm, stream]() -> int {
-                return zbal_send(dataPtr, numel, zbalType, peer, comm, stream.stream(false));
+            auto call_send = [dataPtr, zbalType, peer, comm, stream]() -> int {
+                return zbal_send(dataPtr, zbalType, peer, comm, stream.stream(false));
             };
 
             at_npu::native::OpCommand::RunOpApiV2("zbal_send", call_send);

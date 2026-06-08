@@ -21,7 +21,7 @@ int32_t ZBALOpAllGather(const void *sendBuff, void *recvBuff, size_t sendCount, 
 int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_datatype_t dataType, aclrtStream stream,
                             zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo);
 
-int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, size_t bufCnt, zbal_datatype_t dataType,
+int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, zbal_datatype_t dataType,
                         aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo);
 
 int32_t ZBALOpAlltoAllV(const void *sendBuff, void *recvBuff, void *sendCumSum, void *recvSplitCounts, void *elements,
@@ -35,7 +35,7 @@ int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zb
 
 int32_t ZBALOpBarrier(aclrtStream stream, CommGroupInfo &groupInfo);
 
-int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
+int32_t ZBALOpSend(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
                    CommGroupInfo &groupInfo);
 
 int32_t ZBALOpRecv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,

@@ -17,11 +17,10 @@ class ZBALSendKernel : public ZBALBaseKernel {
 public:
     ZBAL_KERNEL ZBALSendKernel() {}
 
-    ZBAL_KERNEL void Init(GM_ADDR sendBuf, GM_ADDR metaAddr, size_t sendCount, uint32_t peer)
+    ZBAL_KERNEL void Init(GM_ADDR sendBuf, GM_ADDR metaAddr, uint32_t peer)
     {
         this->sendBuf = sendBuf;
         this->peer = peer;
-        this->elements = sendCount;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
         this->rank = comm->myGroupRank;
         this->myGroupRank = comm->myGroupRank;
@@ -63,7 +62,6 @@ public:
 private:
     uint32_t rank;
     uint32_t peer;
-    uint32_t elements;
     uint32_t addrOffset;
     GM_ADDR sendBuf;
     __gm__ uint64_t *exchangeAddr;
@@ -71,7 +69,7 @@ private:
     __gm__ uint64_t *exchangeAck;
 };
 
-extern "C" __global__ __aicore__ void ZBALSendInner(GM_ADDR sendBuf, size_t sendCount, uint32_t dataTypeNum,
+extern "C" __global__ __aicore__ void ZBALSendInner(GM_ADDR sendBuf, uint32_t dataTypeNum,
                                                     GM_ADDR metaAddr, uint32_t peer)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
@@ -83,73 +81,73 @@ extern "C" __global__ __aicore__ void ZBALSendInner(GM_ADDR sendBuf, size_t send
     switch (dataType) {
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT8: {
             ZBALSendKernel<int8_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT16: {
             ZBALSendKernel<int16_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT32: {
             ZBALSendKernel<int32_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
             ZBALSendKernel<float16_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
             ZBALSendKernel<float> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT64: {
             ZBALSendKernel<int64_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT64: {
             ZBALSendKernel<uint64_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT8: {
             ZBALSendKernel<uint8_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT16: {
             ZBALSendKernel<uint16_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_UINT32: {
             ZBALSendKernel<uint32_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP64: {
             ZBALSendKernel<float64_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16: {
             ZBALSendKernel<bfloat16_t> op;
-            op.Init(sendBuf, metaAddr, sendCount, peer);
+            op.Init(sendBuf, metaAddr, peer);
             op.Process();
             break;
         }
@@ -158,7 +156,7 @@ extern "C" __global__ __aicore__ void ZBALSendInner(GM_ADDR sendBuf, size_t send
     }
 }
 
-int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
+int32_t ZBALOpSend(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
                    CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = 1;
@@ -166,7 +164,7 @@ int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataT
     uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
     uint8_t *sendBuf = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
 
-    ZBALSendInner<<<blockDim, nullptr, stream>>>(sendBuf, sendCount, dataTypeNum, metaAddr, peer);
+    ZBALSendInner<<<blockDim, nullptr, stream>>>(sendBuf, dataTypeNum, metaAddr, peer);
 
     return 0;
 }

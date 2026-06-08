@@ -114,7 +114,7 @@ ZBAL_API void zbal_comm_destroy_all(uint32_t flags)
     Communicator::DestroyAll();
 }
 
-ZBAL_API int32_t zbal_all_reduce(const void *send_buff, void *recv_buff, void *buffer, size_t count, size_t buf_cnt,
+ZBAL_API int32_t zbal_all_reduce(const void *send_buff, void *recv_buff, void *buffer, size_t count,
                                  zbal_datatype_t data_type, zbal_reduce_op_t op, zbal_comm_t comm, aclrtStream stream)
 {
     if (send_buff == nullptr) {
@@ -128,11 +128,10 @@ ZBAL_API int32_t zbal_all_reduce(const void *send_buff, void *recv_buff, void *b
                          Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(comm != nullptr, "AllReduce failed as comm is null", Z_INVALID_PARAM);
     ZBAL_VALIDATE_RETURN(buffer != nullptr, "Allreduce tmp buffer is null", Z_INVALID_PARAM);
-    ZBAL_VALIDATE_RETURN(buf_cnt > 0, "AllReduce buf cnt is invalid", Z_INVALID_PARAM);
 
     /* covert inner object ptr and execute op */
     auto innerComm = reinterpret_cast<Communicator *>(comm);
-    return innerComm->AllReduce(send_buff, recv_buff, buffer, count, buf_cnt, data_type, op, stream);
+    return innerComm->AllReduce(send_buff, recv_buff, buffer, count, data_type, op, stream);
 }
 
 ZBAL_API int32_t zbal_reduce_scatter(const void *send_buff, void *recv_buff, size_t recv_count,
@@ -225,7 +224,7 @@ ZBAL_API int32_t zbal_scatter(const void *sendBuff, void *recvBuff, uint64_t dat
     return innerComm->Scatter(sendBuff, recvBuff, data_count, dataType, root, stream);
 }
 
-ZBAL_API int32_t zbal_send(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer,
+ZBAL_API int32_t zbal_send(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer,
                            zbal_comm_t comm, aclrtStream stream)
 {
     ZBAL_VALIDATE_RETURN(sendBuff != nullptr, "send failed as send buff is nullptr", Z_INVALID_PARAM);
@@ -233,7 +232,7 @@ ZBAL_API int32_t zbal_send(const void *sendBuff, size_t sendCount, zbal_datatype
     ZBAL_VALIDATE_RETURN(comm != nullptr, "send failed as comm is null", Z_INVALID_PARAM);
 
     auto innerComm = reinterpret_cast<Communicator *>(comm);
-    return innerComm->Send(sendBuff, sendCount, dataType, peer, stream);
+    return innerComm->Send(sendBuff, dataType, peer, stream);
 }
 
 ZBAL_API int32_t zbal_recv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer,

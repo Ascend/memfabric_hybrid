@@ -416,7 +416,6 @@ int32_t zbal_all_reduce(const void *send_buff,
                         void *recv_buff,
                         void *buffer,
                         size_t count,
-                        size_t buf_cnt,
                         zbal_datatype_t data_type,
                         zbal_reduce_op_t op,
                         zbal_comm_t comm,
@@ -431,7 +430,6 @@ int32_t zbal_all_reduce(const void *send_buff,
 | recv_buff         | out    | pointer of destination data |
 | buffer            | in     |                             |
 | count             | in     | count of the data           |
-| buf_cnt           | in     |                             |
 | data_type         | in     | type of the data            |
 | op                | in     | type of reduce operation    |
 | comm              | in     | handle of the communicator  |

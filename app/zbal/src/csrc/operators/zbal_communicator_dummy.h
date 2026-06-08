@@ -46,8 +46,8 @@ public:
         return Z_OK;
     }
 
-    int32_t AllReduce(const void *send_buff, void *recv_buff, void *buffer, size_t count, size_t buf_cnt,
-                      zbal_datatype_t data_type, zbal_reduce_op_t op, aclrtStream stream) noexcept override
+    int32_t AllReduce(const void *send_buff, void *recv_buff, void *buffer, size_t count, zbal_datatype_t data_type,
+                      zbal_reduce_op_t op, aclrtStream stream) noexcept override
     {
         return Z_OK;
     }
@@ -87,7 +87,7 @@ public:
         return Z_OK;
     }
 
-    int32_t Send(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer,
+    int32_t Send(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer,
                  aclrtStream stream) noexcept
     {
         return Z_OK;

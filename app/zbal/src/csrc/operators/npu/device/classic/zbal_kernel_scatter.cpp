@@ -225,10 +225,6 @@ int32_t ZBALOpScatter(const void *sendBuff, void *recvBuff, size_t sendCount, zb
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, sendCount, dataType);
 
     uint32_t dataTypeNum = static_cast<uint32_t>(dataType);
-
-    uint64_t fftsAddr = groupInfo.fftsConfig;
-    uint16_t rank = groupInfo.myGroupRank;
-    uint16_t groupSize = groupInfo.groupSize;
     uint8_t *metaAddr = reinterpret_cast<uint8_t *>(groupInfo.myMetaGva);
     uint8_t *input = reinterpret_cast<uint8_t *>(const_cast<void *>(sendBuff));
     uint8_t *output = reinterpret_cast<uint8_t *>(recvBuff);

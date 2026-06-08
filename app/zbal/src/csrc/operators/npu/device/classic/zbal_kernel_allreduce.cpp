@@ -34,10 +34,9 @@ public:
     ZBAL_KERNEL ZBALAllReduceKernel() {}
 
     ZBAL_KERNEL void Init(GM_ADDR x, GM_ADDR y, GM_ADDR metaAddr, GM_ADDR buf, uint32_t totalElems,
-                          uint32_t bufferElems, uint32_t atomicOp, uint64_t waitSymbol)
+                          uint32_t atomicOp, uint64_t waitSymbol)
     {
         this->atomicOp = atomicOp;
-        this->bufferElems = bufferElems;
         this->totalElems = totalElems;
         this->comm = reinterpret_cast<__gm__ CommGroupInfo *>(metaAddr);
         this->rank = comm->myGroupRank;
@@ -353,7 +352,6 @@ private:
     uint32_t atomicOp;
     uint32_t aivNum;
     uint32_t aivIndex;
-    uint32_t bufferElems;
     uint32_t totalElems;
     uint32_t addrOffset;
     uint32_t exchangeMetaSize;
@@ -372,7 +370,7 @@ private:
 
 extern "C" __global__ __aicore__ void ZBALAllReduceInner(GM_ADDR input, GM_ADDR output, GM_ADDR buffer, GM_ADDR gva,
                                                          uint64_t fftsAddr, uint32_t dataType, uint32_t totalElems,
-                                                         uint32_t bufferElems, uint32_t reduceOp, uint64_t waitSymbol)
+                                                         uint32_t reduceOp, uint64_t waitSymbol)
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIV_1_0);
     AscendC::SetSyncBaseAddr(fftsAddr);
@@ -380,37 +378,37 @@ extern "C" __global__ __aicore__ void ZBALAllReduceInner(GM_ADDR input, GM_ADDR 
     switch (zbalDataType) {
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT8: {
             ZBALAllReduceKernel<int8_t> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT16: {
             ZBALAllReduceKernel<int16_t> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_INT32: {
             ZBALAllReduceKernel<int32_t> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP32: {
             ZBALAllReduceKernel<float> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_FP16: {
             ZBALAllReduceKernel<float16_t> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
         case zbal_datatype_t::ZBAL_DATA_TYPE_BFP16: {
             ZBALAllReduceKernel<bfloat16_t> op;
-            op.Init(input, output, gva, buffer, totalElems, bufferElems, reduceOp, waitSymbol);
+            op.Init(input, output, gva, buffer, totalElems, reduceOp, waitSymbol);
             op.Process();
             break;
         }
@@ -419,7 +417,7 @@ extern "C" __global__ __aicore__ void ZBALAllReduceInner(GM_ADDR input, GM_ADDR 
     }
 }
 
-int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, size_t buf_cnt, zbal_datatype_t dataType,
+int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, zbal_datatype_t dataType,
                         aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
 {
     uint32_t blockDim = ZBALOpGetAivBlockDim(groupInfo, numel, dataType);
@@ -437,7 +435,7 @@ int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, siz
     uint8_t *buffer = reinterpret_cast<uint8_t *>(buf);
     uint64_t waitSymbol = ++groupInfo.waitSymbol;
     ZBALAllReduceInner<<<blockDim, nullptr, stream>>>(input, output, buffer, metaAddr, fftsAddr, dataTypeNum, numel,
-                                                      buf_cnt, reduceOpNum, waitSymbol);
+                                                      reduceOpNum, waitSymbol);
 
     return 0;
 }

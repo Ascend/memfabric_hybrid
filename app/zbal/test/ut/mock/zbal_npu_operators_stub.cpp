@@ -24,7 +24,7 @@ int32_t ZBALOpReduceScatter(const void *inp, void *out, size_t recvNumel, zbal_d
     return 0;
 }
 
-int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, size_t bufCnt, zbal_datatype_t dataType,
+int32_t ZBALOpAllReduce(const void *inp, void *out, void *buf, size_t numel, zbal_datatype_t dataType,
                         aclrtStream stream, zbal_reduce_op_t reduceOp, CommGroupInfo &groupInfo)
 {
     return 0;
@@ -53,7 +53,7 @@ int32_t ZBALOpBarrier(aclrtStream stream, CommGroupInfo &groupInfo)
     return 0;
 }
 
-int32_t ZBALOpSend(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
+int32_t ZBALOpSend(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer, aclrtStream stream,
                    CommGroupInfo &groupInfo)
 {
     return 0;

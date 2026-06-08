@@ -273,10 +273,10 @@ void NpuCommunicatorBase::SignalDumpTrace() noexcept
 }
 
 int32_t NpuCommunicatorBase::AllReduce(const void *send_buff, void *recv_buff, void *buffer, size_t count,
-                                       size_t buf_cnt, zbal_datatype_t data_type, zbal_reduce_op_t op,
+                                       zbal_datatype_t data_type, zbal_reduce_op_t op,
                                        aclrtStream stream) noexcept
 {
-    return ZBALOpAllReduce(send_buff, recv_buff, buffer, count, buf_cnt, data_type, stream, op,
+    return ZBALOpAllReduce(send_buff, recv_buff, buffer, count, data_type, stream, op,
                            const_cast<CommGroupInfo &>(GetMetaInfo()));
 }
 
@@ -313,10 +313,10 @@ int32_t NpuCommunicatorBase::Barrier(aclrtStream stream) noexcept
     return ZBALOpBarrier(stream, const_cast<CommGroupInfo &>(GetMetaInfo()));
 }
 
-int32_t NpuCommunicatorBase::Send(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer,
+int32_t NpuCommunicatorBase::Send(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer,
                                   aclrtStream stream) noexcept
 {
-    return ZBALOpSend(sendBuff, sendCount, dataType, peer, stream, const_cast<CommGroupInfo &>(GetMetaInfo()));
+    return ZBALOpSend(sendBuff, dataType, peer, stream, const_cast<CommGroupInfo &>(GetMetaInfo()));
 }
 
 int32_t NpuCommunicatorBase::Recv(const void *recvBuff, size_t recvCount, zbal_datatype_t dataType, uint32_t peer,

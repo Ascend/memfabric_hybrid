@@ -79,7 +79,7 @@ void zbal_comm_destroy_all(uint32_t flags);
  * @param stream               [in] stream
  * @return 0 if successful
  */
-int32_t zbal_all_reduce(const void *send_buff, void *recv_buff, void *buffer, size_t count, size_t buf_cnt,
+int32_t zbal_all_reduce(const void *send_buff, void *recv_buff, void *buffer, size_t count,
                         zbal_datatype_t data_type, zbal_reduce_op_t op, zbal_comm_t comm, aclrtStream stream);
 
 /**
@@ -170,14 +170,13 @@ int32_t zbal_barrier(zbal_comm_t comm, aclrtStream stream);
  * @brief Point to point send operation
  *
  * @param sendBuff             [in] pointer of send buffer
- * @param sendCount            [in] size of buffer
  * @param dataType             [in] data type
  * @param peer                 [in] rank of peer
  * @param comm                 [in] zbal communication handle
  * @param stream               [in] stream
  * @return 0 if successful
  */
-int32_t zbal_send(const void *sendBuff, size_t sendCount, zbal_datatype_t dataType, uint32_t peer, zbal_comm_t comm,
+int32_t zbal_send(const void *sendBuff, zbal_datatype_t dataType, uint32_t peer, zbal_comm_t comm,
                   aclrtStream stream);
 
 /**
